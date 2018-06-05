@@ -1,7 +1,19 @@
 # pymedphys
 
+## Description
+
 A range of python modules encompased under the pymedphys package, designed to
 be built upon for Medical Physics applications.
+
+## Installation
+
+This package is available on pypi at https://pypi.org/project/pymedphys/.
+
+Install this package by running the following:
+
+```bash
+pip install pymedphys
+```
 
 ## Alpha stage development
 
