@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open('README.md', 'r') as readme_file:
     long_description = readme_file.read()
 
 setup(
     name="pymedphys",
-    version="0.1.3",
+    version="0.1.5",
     author="Simon Biggs",
     author_email="me@simonbiggs.net",
     description='Medical Physics python modules',
@@ -20,9 +20,7 @@ setup(
     'Intended Audience :: Science/Research',
     'Intended Audience :: Healthcare Industry'
     ],
-    packages=[
-        "pymedphys"
-    ],
+    packages=find_packages(),
     license='AGPLv3+',
     install_requires=[
         'numpy',
