@@ -28,7 +28,6 @@
 """
 
 import struct
-import warnings
 
 import attr
 
@@ -48,21 +47,6 @@ FIELD_TYPES = {
     13: 'VMAT',
     14: 'DMLC'
 }
-
-MLC_MISSING_BYTE_DESCRIPTION = (
-    'There appears to be a bug within Mosaiq where it sometimes drops the '
-    'last byte from an MLC record. A workaround for this bug is '
-    'implemented which simply appends a \\x00 to the end of each MLC '
-    'record which contains an odd number of bytes. It is uncertain '
-    'whether or not this is the correct method to restore the data.\n\n')
-
-MLC_MISSING_BYTE_WARNING = (
-    '\n\n{}'
-    'The current version of this code uses this MLC missing byte workaround. '
-    'As with all use of this code, the use of this workaround is at your own '
-    'risk.\n'
-    ''.format(MLC_MISSING_BYTE_DESCRIPTION))
-
 
 @attr.s
 class OISDeliveryDetails(object):
@@ -155,8 +139,12 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
 
 
 def mosaiq_mlc_missing_byte_workaround(raw_bytes_list):
-    warnings.warn(MLC_MISSING_BYTE_WARNING)
+    """This function checks if there is an odd number of bytes in the mlc list
+    and appends a \\x00 if the byte number is odd.
 
+    It is uncertain whether or not this is the correct method to restore the
+    data.
+    """
     length = check_all_items_equal_length(raw_bytes_list, 'mlc bytes')
 
     if length % 2 == 1:
@@ -222,12 +210,7 @@ def decode_msq_mlc(raw_bytes):
 
     if length % 2 == 1:
         raise Exception(
-            'There should be an even number of bytes within an MLC record.\n\n'
-            '{}'
-            'Call `use_mlc_missing_byte_workaround()` to declare '
-            'that you wish to use this workaround recognising this is at your '
-            'own risk (as with all use of this code).'
-            ''.format(MLC_MISSING_BYTE_DESCRIPTION))
+            'There should be an even number of bytes within an MLC record.')
 
     mlc_pos = np.array([
         [
