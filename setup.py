@@ -5,7 +5,7 @@ with open('README.md', 'r') as readme_file:
 
 setup(
     name="pymedphys",
-    version="0.1.5",
+    version="0.1.6",
     author="Simon Biggs",
     author_email="me@simonbiggs.net",
     description='Medical Physics python modules',
