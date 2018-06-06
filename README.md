@@ -5,16 +5,6 @@
 A range of python modules encompased under the pymedphys package, designed to
 be built upon for Medical Physics applications.
 
-## Installation
-
-This package is available on pypi at https://pypi.org/project/pymedphys/.
-
-Install this package by running the following:
-
-```bash
-pip install pymedphys
-```
-
 ## Alpha stage development
 
 These libraries are currently under alpha level development. Be cautious with
@@ -28,6 +18,16 @@ Throughout the lifetime of this library however the following will always be
 true:
 
 > In no event and under no legal theory, whether in tort (including negligence), contract, or otherwise, unless required by applicable law (such as deliberate and grossly negligent acts) or agreed to in writing, shall any Contributor be liable to You for damages, including any direct, indirect, special, incidental, or consequential damages of any character arising as a result of this License or out of the use or inability to use the Work (including but not limited to damages for loss of goodwill, work stoppage, computer failure or malfunction, or any and all other commercial damages or losses), even if such Contributor has been advised of the possibility of such damages.
+
+## Installation
+
+This package is available on pypi at https://pypi.org/project/pymedphys/.
+
+Install this package by running the following:
+
+```bash
+pip install pymedphys
+```
 
 ## License agreement
 
