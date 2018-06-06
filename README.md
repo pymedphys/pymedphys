@@ -19,7 +19,7 @@ pip install pymedphys
 
 These libraries are currently under alpha level development. Be cautious with
 code in this library. Not only might code depending on it break, but the
-results given by this code might just be plain wrong.
+results given by this code likely may just be plain wrong.
 
 This will be true throughout the alpha stage development of these libraries.
 This notice will be adjusted once this should no longer be the case.
