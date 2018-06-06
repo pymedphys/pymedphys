@@ -17,12 +17,17 @@ pip install pymedphys
 
 ## Alpha stage development
 
-These libraries are currently under alpha level development. Expect code that
-depends on these libraries to often break with the changes that occur within
-this repository.
+These libraries are currently under alpha level development. Be cautious with
+code in this library. Not only might code depending on it break, but the
+results given by this code might just be plain wrong.
 
 This will be true throughout the alpha stage development of these libraries.
 This notice will be adjusted once this should no longer be the case.
+
+Throughout the lifetime of this library however the following will always be
+true:
+
+> In no event and under no legal theory, whether in tort (including negligence), contract, or otherwise, unless required by applicable law (such as deliberate and grossly negligent acts) or agreed to in writing, shall any Contributor be liable to You for damages, including any direct, indirect, special, incidental, or consequential damages of any character arising as a result of this License or out of the use or inability to use the Work (including but not limited to damages for loss of goodwill, work stoppage, computer failure or malfunction, or any and all other commercial damages or losses), even if such Contributor has been advised of the possibility of such damages.
 
 ## License agreement
 
