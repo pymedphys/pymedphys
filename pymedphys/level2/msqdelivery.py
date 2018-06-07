@@ -179,6 +179,8 @@ def check_all_items_equal_length(items, name):
 def patient_fields(cursor, patient_id):
     """Returns all of the patient fields for a given Patient ID.
     """
+    patient_id = str(patient_id)
+
     return execute_sql(
         cursor,
         """
