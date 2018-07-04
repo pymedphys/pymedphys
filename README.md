@@ -23,10 +23,10 @@ true:
 
 This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitHub at <https://github.com/CCA-Physics/pymedphys>.
 
-Install this package by running the following:
+To install use the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview) with the [conda-forge channel](https://conda-forge.org/):
 
 ```bash
-pip install pymedphys
+conda install -c conda-forge pymedphys
 ```
 
 ## Team and copyright
