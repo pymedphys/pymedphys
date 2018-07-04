@@ -38,6 +38,15 @@ You can of course also use pip to install, but you may have trouble with some of
 pip install pymedphys
 ```
 
+To run a development install, which may often be required during the alpha development stage, clone this repository and then use pip:
+
+```bash
+git clone https://github.com/CCA-Physics/pymedphys.git
+cd pymedphys
+pip install -e .
+```
+
+
 ## Team and copyright
 
 The aim of PyMedPhys is that it will be developed by an open community of contributors.
