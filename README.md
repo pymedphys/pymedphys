@@ -1,4 +1,4 @@
-# pymedphys
+# PyMedPhys
 
 ## Description
 
@@ -29,9 +29,21 @@ Install this package by running the following:
 pip install pymedphys
 ```
 
-## License agreement
+## Team and copyright
 
-Copyright (C) 2018 CCA Health Care
+The aim of PyMedPhys is that it will be developed by an open community of contributors.
+We use a shared copyright model that enables all contributors to maintain the copyright on their
+contributions. All code is licensed under the AGPLv3+ with additional terms from the Apache-2.0 license.
+
+PyMedPhys' current maintainers listed in alphabetical order, with affilliation, and main area of contribution:
+
+* [Anthony Bisulco](https://github.com/anthonytec2), [Brookhaven National Laboratory](https://www.bnl.gov/world/), Collapsed Cone Convolution
+* [Matthew Sobolewski](https://github.com/msobolewski), [Cancer Care Associates](http://cancercare.com.au/), Medical Physics Overview
+* [Simon Biggs](https://github.com/SimonBiggs), [Cancer Care Associates](http://cancercare.com.au/), General Development
+
+### License agreement
+
+Copyright (C) 2018 PyMedPhys Contributors
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published
