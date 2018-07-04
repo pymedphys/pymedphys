@@ -28,6 +28,7 @@ true:
 To install use the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview) with the [conda-forge channel](https://conda-forge.org/):
 
 ```bash
+conda config --add channels conda-forge
 conda install -c conda-forge pymedphys
 ```
 
