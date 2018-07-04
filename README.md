@@ -23,7 +23,7 @@ true:
 
 ## Installation
 
-This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitHub at <https://github.com/CCA-Physics/pymedphys
+
 
 To install use the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview) with the [conda-forge channel](https://conda-forge.org/):
 
