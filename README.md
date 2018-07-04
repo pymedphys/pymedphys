@@ -37,11 +37,11 @@ contributions. All code is licensed under the AGPLv3+ with additional terms from
 
 PyMedPhys' current maintainers listed in alphabetical order, with affilliation, and main area of contribution:
 
-* [Anthony Bisulco](https://github.com/anthonytec2), [Northeastern University](https://www.northeastern.edu/) (Collapsed Cone Convolution)
-* [Matthew Sobolewski](https://github.com/msobolewski), [Cancer Care Associates](http://cancercare.com.au/) (Medical Physics Oversight)
-* Sangroh Kim, [Baylor Scott & White Health](https://www.bswhealth.com/) (Collapsed Cone Convolution)
-* [Simon Biggs](https://github.com/SimonBiggs), [Cancer Care Associates](http://cancercare.com.au/) (General Development)
-* Theodore Mutanga, [Trillium Health Partners](http://www.trilliumhealthpartners.ca/) (Collapsed Cone Convolution)
+* [Anthony Bisulco](https://github.com/anthonytec2), [Northeastern University](https://www.northeastern.edu/) (collapsed cone convolution)
+* [Matthew Sobolewski](https://github.com/msobolewski), [Cancer Care Associates](http://cancercare.com.au/) (oversight)
+* Sangroh Kim, [Baylor Scott & White Health](https://www.bswhealth.com/) (collapsed cone convolution)
+* [Simon Biggs](https://github.com/SimonBiggs), [Cancer Care Associates](http://cancercare.com.au/) (general development)
+* Theodore Mutanga, [Trillium Health Partners](http://www.trilliumhealthpartners.ca/) (collapsed cone convolution)
 
 ### License agreement
 
