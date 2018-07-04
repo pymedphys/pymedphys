@@ -29,7 +29,7 @@ To install use the [Anaconda Python distribution](https://www.continuum.io/anaco
 
 ```bash
 conda config --add channels conda-forge
-conda install -c conda-forge pymedphys
+conda install pymedphys
 ```
 
 You can of course also use pip to install, but you may have trouble with some of the dependencies without conda:
