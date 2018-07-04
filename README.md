@@ -5,6 +5,8 @@
 A range of python modules encompased under the pymedphys package, designed to
 be built upon for Medical Physics applications.
 
+This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitHub at <https://github.com/CCA-Physics/pymedphys>.
+
 ## Alpha stage development
 
 These libraries are currently under alpha level development. Be cautious with
@@ -27,6 +29,12 @@ To install use the [Anaconda Python distribution](https://www.continuum.io/anaco
 
 ```bash
 conda install -c conda-forge pymedphys
+```
+
+You can of course also use pip to install, but you may have trouble with some of the dependencies without conda:
+
+```bash
+pip install pymedphys
 ```
 
 ## Team and copyright
