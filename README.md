@@ -21,7 +21,7 @@ true:
 
 ## Installation
 
-This package is available on pypi at https://pypi.org/project/pymedphys/.
+This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitHub at <https://github.com/CCA-Physics/pymedphys>.
 
 Install this package by running the following:
 

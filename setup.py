@@ -5,7 +5,7 @@ with open('README.md', 'r') as readme_file:
 
 setup(
     name="pymedphys",
-    version="0.1.7",
+    version="0.1.8",
     author="Simon Biggs",
     author_email="me@simonbiggs.net",
     description='Medical Physics python modules',
@@ -27,12 +27,12 @@ setup(
         'scipy',
         'pandas',
         'matplotlib',
+        'numba',
         'attrs',
         'psutil',
+        'pymssql',
         'keyring',
+        'shapely',
         'pydicom',
-    ],
-    extra_requires= {
-        'extras': ['pymssql', 'shapely']
-    }
+    ]
 )
