@@ -5,6 +5,8 @@
 A range of python modules encompased under the pymedphys package, designed to
 be built upon for Medical Physics applications.
 
+This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitHub at <https://github.com/CCA-Physics/pymedphys>.
+
 ## Alpha stage development
 
 These libraries are currently under alpha level development. Be cautious with
@@ -21,13 +23,29 @@ true:
 
 ## Installation
 
-This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitHub at <https://github.com/CCA-Physics/pymedphys>.
+
 
 To install use the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview) with the [conda-forge channel](https://conda-forge.org/):
 
 ```bash
-conda install -c conda-forge pymedphys
+conda config --add channels conda-forge
+conda install pymedphys
 ```
+
+You can of course also use pip to install, but you may have trouble with some of the dependencies without conda:
+
+```bash
+pip install pymedphys
+```
+
+To run a development install, which may often be required during the alpha development stage, clone this repository and then use pip:
+
+```bash
+git clone https://github.com/CCA-Physics/pymedphys.git
+cd pymedphys
+pip install -e .
+```
+
 
 ## Team and copyright
 
@@ -37,9 +55,11 @@ contributions. All code is licensed under the AGPLv3+ with additional terms from
 
 PyMedPhys' current maintainers listed in alphabetical order, with affilliation, and main area of contribution:
 
-* [Anthony Bisulco](https://github.com/anthonytec2), [Northeastern University](https://www.northeastern.edu/), Collapsed Cone Convolution
-* [Matthew Sobolewski](https://github.com/msobolewski), [Cancer Care Associates](http://cancercare.com.au/), Medical Physics Overview
-* [Simon Biggs](https://github.com/SimonBiggs), [Cancer Care Associates](http://cancercare.com.au/), General Development
+* [Anthony Bisulco](https://github.com/anthonytec2), [Northeastern University](https://www.northeastern.edu/) (collapsed cone convolution)
+* [Matthew Sobolewski](https://github.com/msobolewski), [Cancer Care Associates](http://cancercare.com.au/) (oversight)
+* Sangroh Kim, [Baylor Scott & White Health](https://www.bswhealth.com/) (collapsed cone convolution)
+* [Simon Biggs](https://github.com/SimonBiggs), [Cancer Care Associates](http://cancercare.com.au/) (general development)
+* Theodore Mutanga, [Trillium Health Partners](http://www.trilliumhealthpartners.ca/) (collapsed cone convolution)
 
 ### License agreement
 
