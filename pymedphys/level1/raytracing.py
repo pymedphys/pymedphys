@@ -23,15 +23,14 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-'''
-Code developed by Anthony Bisulco
+"""Code developed by Anthony Bisulco
 February 26th, 2018
 This is a script to run an imaging scenario on a given imaging volume
 with an arbitrary sized detector. Currently, the file that loads is
 a brain scan which is imaged. This code uses Numba acceleration in order
 to obtain reasonable imaging times. Additionally, a verification is placed
 to make sure this code gives them same results as a developed matlab code.
-'''
+"""
 
 import numpy as np
 import numba
@@ -43,15 +42,14 @@ MU_FAT = 0.193  # linear attenuation coefficient fat cm^-1
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def onemove_in_cube_true_numba(p0, v):
-    '''
-    This is a function that moves from a given position p0 in direction v to another cube in a 1x1x1mm setup
+    """This is a function that moves from a given position p0 in direction v to another cube in a 1x1x1mm setup
     Args:
         p0: np.array 1x3 start position (X,Y,Z)
         v: np.array 1x3 normalized(1) direction vector (X,Y,Z)
     Returns:
         htime: np.array 1x3 next cube position (X,Y,Z)
         dist: uint distance to the next cube position
-    '''
+    """
     htime = np.abs((np.floor(p0) - p0 + (v > 0)) /
                    v)  # find distance vector to new position
     minLoc = np.argmin(htime)  # find min distance location in htime
@@ -65,8 +63,7 @@ def onemove_in_cube_true_numba(p0, v):
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def main_loop(Nx, Ny, Nz, Mx, My, D, h, orginOffset, ep, mu):
-    '''
-    Ray tracing from end point to all pixels, calculates energy at every pixels
+    """Ray tracing from end point to all pixels, calculates energy at every pixels
     Args:
         Nx: uint imaging volume length in x direction
         Ny: uint imaging volume length in y direction
@@ -76,12 +73,12 @@ def main_loop(Nx, Ny, Nz, Mx, My, D, h, orginOffset, ep, mu):
         D: uint pixel length
         h: uint distance from detector to bottom of imaging volume
         orginOffset: np.array 1x2 offset origin for detector position start (X,Y)
-        ep: np.array 1x3 location of the x-ray source (X,Y,Z)
-        mu: np.array 1x3 normalized linear attenuation coefficient matrix (Nx,Ny,Nz)
+        ep: np.array 1x3'''
+        mu: np.array 1x3'''
     Returns:
-        detector: np.array 1x3 next cube position (X,Y,Z)
-    '''
-    detector = np.zeros(
+        detector: np.arr'''
+    """
+    detector = np.zeros('''
         (Mx, My), dtype=np.float32)  # detector Mx x pixels and My y pixels
     for z in range(0, Mx * My):  # loop for all pixels
         j = z % Mx  # y direction pixel
