@@ -89,6 +89,41 @@ mean the AGPL-3.0+.
 You should have received a copy of the Apache-2.0 along with this
 program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+### Benefits of using a copyleft license in Medical Physics
+
+For more information on why you as a Medical Physicist might want to use the
+AGPL-3.0+ license read the [benefits of AGPL-3.0+ for Medical Physics](./Benefits-of-AGPL-3.0+-for-Medical-Physics.md).
+
+### Justification for the inclusion of additional terms
+
+A significant and justifiable fear within the Medical Physics community is that
+should code be shared the author of the code may be liable for negligence.
+
+Within Australian courts if there is any ambiguity in liability exclusion
+clauses they will be interpreted narrowly. If liability for negligence is not
+expressly excluded it may not be read as excluded within an Australian court
+(<https://eprints.qut.edu.au/7404/1/open_source_book.pdf> page 80).
+The same is true for clauses which seek to exclude liability for consequential
+loss.
+
+The AGPL-3.0+ (nor the MIT license) does not explicitly mention negligence
+anywhere within its license text. The Apache-2.0 does. The AGPL-3.0+ in Section 7 does define
+allowable additional terms. The negligence clauses within the Apache-2.0 fall
+under these allowable additional terms so, as such, they have been included.
+
+There are also other desirable features of the Apache-2.0 license such as
+contribution, trademark, and warranty requirements. These were also included.
+
+### A note about the code sharing license requirement
+
+If you only ever use this code internally within your company to create
+your own programs the only people who need to have access to the source code are those users
+whom you distribute the program to. Therefore you do not need to share your
+code outside of your company if your only users are within your company.
+
+However there are significant benefits from sharing your code with the
+community. Please read the [benefits of AGPL-3.0+ for Medical Physics](./Benefits-of-AGPL-3.0+-for-Medical-Physics.md).
+
 ## Cyclic dependencies and the justification of file structure
 
 If package A depends on package B, and package B depends on package C, it is
