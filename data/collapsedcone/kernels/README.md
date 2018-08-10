@@ -20,7 +20,7 @@ scattering orders and categories of photons generated.
 
 The kernels have been stored in files called `scafxxx` where `xxx` stands
 for the photon energy in keV. This data is in two columns, it is presumed that
-the first column is the data itself and that the second column is the
+the first column is the data itself and that the second column is the percent
 uncertainty.
 
 The following categories of dose are tabulated:
