@@ -65,4 +65,3 @@ class Header(object):
     timezone = attr.ib()
     field_label = attr.ib()
     field_name = attr.ib()
-
