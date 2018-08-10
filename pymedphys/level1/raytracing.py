@@ -23,7 +23,8 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Code developed by Anthony Bisulco
+"""
+Code developed by Anthony Bisulco
 February 26th, 2018
 This is a script to run an imaging scenario on a given imaging volume
 with an arbitrary sized detector. Currently, the file that loads is
@@ -42,7 +43,8 @@ MU_FAT = 0.193  # linear attenuation coefficient fat cm^-1
 
 @numba.jit(nopython=True, nogil=True, cache=True)
 def onemove_in_cube_true_numba(p0, v):
-    """This is a function that moves from a given position p0 in direction v to another cube in a 1x1x1mm setup
+    """This is a function that moves from a given position p0 in direction v to
+    another cube in a 1x1x1mm setup
     Args:
         p0: np.array 1x3 start position (X,Y,Z)
         v: np.array 1x3 normalized(1) direction vector (X,Y,Z)
@@ -73,12 +75,12 @@ def main_loop(Nx, Ny, Nz, Mx, My, D, h, orginOffset, ep, mu):
         D: uint pixel length
         h: uint distance from detector to bottom of imaging volume
         orginOffset: np.array 1x2 offset origin for detector position start (X,Y)
-        ep: np.array 1x3'''
-        mu: np.array 1x3'''
+        ep: np.array 1x3
+        mu: np.array 1x3
     Returns:
-        detector: np.arr'''
+        detector: np.arr
     """
-    detector = np.zeros('''
+    detector = np.zeros(
         (Mx, My), dtype=np.float32)  # detector Mx x pixels and My y pixels
     for z in range(0, Mx * My):  # loop for all pixels
         j = z % Mx  # y direction pixel
