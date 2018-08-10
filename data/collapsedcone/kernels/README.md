@@ -9,7 +9,7 @@ Kernel's provided by Dr. Thomas R. Mackie
 The data here is stored in two forms, firslty its original form as provided
 by Dr Mackie, and secondly in yaml format for loading into Python.
 
-## Original data descrition
+## Descrition of original data
 
 Convolution kernels or "dose spread arrays" describe the distribution of dose
 deposited when primary photons interact at one location in a spherical phantom.
@@ -19,7 +19,9 @@ Council of Canada (NRCC) in Ottawa. The program keeps track of a number of
 scattering orders and categories of photons generated.
 
 The kernels have been stored in files called `scafxxx` where `xxx` stands
-for the photon energy.
+for the photon energy in keV. This data is in two columns, it is presumed that
+the first column is the data itself and that the second column is the
+uncertainty.
 
 The following categories of dose are tabulated:
 
@@ -30,11 +32,6 @@ The following categories of dose are tabulated:
 5 - bremsstrahlung plus annihilation dose
 6 - mean radius for the primary dose voxels
 7 - mean angle for the primary dose voxels
-
-The following photon energies have been run (MeV):
-
-0.10, 0.15, 0.20, 0.30, 0.40, 0.50, 0.60, 0.80, 1.00, 1.25, 1.50, 2.0, 3.0,
-4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0
 
 The voxels for the convolution kernels are in spherical coordinates. The
 boundaries are defined by the following radii expressed in radiological
