@@ -4,18 +4,18 @@ This document is a work in progress.
 
 ## Required tools
 
-* Install Python
+* Install `python`
   * [Anaconda Python distribution](https://www.anaconda.com/download/)
 * Install Python dependencies
   * `conda config --add channels conda-forge`
   * `conda install pymedphys`
-* Installing git and git-lfs
+* Installing `git` and `git-lfs`
   * Windows
     * Install [chocolatey](https://chocolatey.org/install)
     * Run `choco install git git-lfs`
-  * Mac -- use homebrew
-  * Linux -- use your package manager
-* Installing nbstripout
+  * Mac -- use `homebrew`
+  * Linux -- use your package manager such as `apt`
+* Installing `nbstripout`
   * `pip install nbstripout`
 * Clone and install off of this repo
   * `git clone https://github.com/CCA-Physics/pymedphys.git`
