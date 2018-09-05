@@ -23,8 +23,6 @@ true:
 
 ## Installation
 
-
-
 To install use the [Anaconda Python distribution](https://www.continuum.io/anaconda-overview) with the [conda-forge channel](https://conda-forge.org/):
 
 ```bash
@@ -46,6 +44,10 @@ cd pymedphys
 pip install -e .
 ```
 
+## Contributing
+
+To contribute to `pymedphys` you will need a working knowledge of git processes.
+The [`contributing.md`](./contributing.md) document provides links to some tutorials that may help get you up to speed.
 
 ## Team and copyright
 
