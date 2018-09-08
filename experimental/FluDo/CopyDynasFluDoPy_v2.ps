@@ -1,0 +1,61 @@
+# Purpose: 
+# ========
+# Look for dynalog files from NAS and copy $n days worth to a local
+# folder. 
+# 
+#
+# Inputs (set once in this file at the beginning):
+# =======
+# $LA1_dyna		: NAS path to look for LA1 dynalogs
+# $LA2_dyna		: NAS path to look for LA2 dynalogs
+# $LA3_dyna		: NAS path to look for LA3 dynalogs
+# $LA4_dyna		: NAS path to look for LA4 dynalogs
+#
+# $n_d			: look for files in the last $n_d days
+# $n_m          : look for files in the last $n_m minutes
+# $dest_dir		: path to move stuff to
+
+Write-Host "Num Args:" $args.Length
+
+$LA1_dyna = '\\nas-8tb-radonc\ARIAdata\MVimages\LA1\Dynalogs' 
+$LA3_dyna = '\\NAS-8TB-RADONC\ARIAdata\MVimages\LA3\dynalogs_from_20151106'
+$LA4_dyna = '\\NAS-8TB-RADONC\ARIAdata\MVimages\LA4\Dynalogs_from_2016-02-18'
+
+$n_m = -30
+$src_dir = ''
+$dest_dir = '' #D:\Temp\dyna_LA4'
+
+# Read-Host "How far back in time shall I search for dynalogs? Press a => 10 mins ago; b => 30 minutes ago; c=> 3 hours ago; d => 1 day ago; q for quit"
+$what_timespan =$args[0]
+Write-Host "Selected time limit:"$args[0]
+$MRN = $args[2]
+
+switch ($what_timespan)
+{
+    a { $n_m = -10 }
+    b { $n_m = -30 }
+    c { $n_m = -180 }
+    d { $n_m = -1440 }
+    q { exit }
+    default {'Did not get valid input' | out-host }
+}
+
+$which_machine =$args[1]
+Write-Host "Selected m/c:"$args[1]
+
+
+switch ($which_machine)
+{
+    1 { $src_dir = $LA1_dyna; $dest_dir = 'D:\Temp\dyna_LA1' }
+    3 { $src_dir = $LA3_dyna; $dest_dir = 'D:\Temp\dyna_LA3' }
+    4 { $src_dir = $LA4_dyna; $dest_dir = 'D:\Temp\dyna_LA4' }
+    default {'No valid machine ' | out-host }
+}
+
+
+#| where-object {$_.CreationTime -gt ((get-date).AddMinutes($n_m)) } 
+if (  "y" -contains $response ) 
+{
+    gci . -Path $src_dir -filter *$MRN | foreach-object {copy-item $_.FullName -destination $dest_dir}
+}
+ 
