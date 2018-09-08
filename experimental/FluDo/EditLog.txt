@@ -1,0 +1,11 @@
+28042017	JKS		Pylinac has been upgraded to 2.0.1
+
+28042017	JKS		exclude_beam_off should be False in Pylinac log_analyzer module located in Lib\site-packages\pylinac (def load_log(file_or_dir, exclude_beam_off=False, recursive=True))
+
+18/10/2017	JKS		UpdateForm definition in QAResultsScript.py now read BeamName instead of BeamDescription as description is not a mandatory tag and mayn't be available for some beams which results in a crash
+
+01/06/2018   JL     Rewrite CopyDynasFludoPy.ps.ps1 to use Patient MRN instead of time filter
+
+25/06/2018  JKS     Modified definition UpdateForm in QAResultsScript.py to fill DOB with XXXX-XX-XX if its empty
+
+02/07/2018  JKS     Reverted to use CopyDynasFluDoPy.ps instead of CopyDynasFluDoPy_v2.ps since the latter is untested
