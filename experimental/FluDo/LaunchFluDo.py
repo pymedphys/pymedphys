@@ -1,53 +1,7 @@
+#************************LaunchFluDO   CELL 01************************************************************************
 import os
 import numpy as np
-import subprocess
 
-from PyQt4 import QtCore, QtGui
-
-#**************************************Running Find_IMRT_DCM.bat********************************************************
-#FluDo script imports
-import RTPlanParse
-import DynaCollector
-
-#Run RTPlanParser class to scan for new RTPlans
-PP=RTPlanParse.RTPlanParser()
-PP.filterIMRT(PP.src_dcm_files)
-print("No. of patients found:",len(PP.imrt_candidates))
-for f, n, pln, pld, plt in PP.imrt_candidates:
-    print("patient: %s with plan name %s, on this date %s, at this time %s" % (n, pln, pld, plt))
-#************************************End Find_IMRT_DCM*******************************************************************
-
-
-#**************************Running Get_Dynalogs*************************************************************************
-import subprocess as sp
-print("")
-print("Running Get_Dynalogs.bat...")
-CopyDyns=sp.call(["C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\powershell.exe",'-ExecutionPolicy',
-                             'Unrestricted',"D:\\Projects\\FluDoPy\\copy-dyna.ps"])
-print("Finished Get_Dynalogs.bat")
-#************************************End Get_Dynalogs*******************************************************************
-
-
-#*************************************Running Parse_Dynalogs************************************************************
-print("")
-print("Running Parse_Dynalog...")
-DC=DynaCollector
-la1_dyna_path = r'D:\Temp\dyna_La1'
-la3_dyna_path = r'D:\Temp\dyna_La3'
-la4_dyna_path = r'D:\Temp\dyna_La4'
-
-LinacID=4
-if (LinacID == '1'):
-    x =DC.StartHere(la1_dyna_path)
-elif (LinacID == '3'):
-    x =DC.StartHere(la3_dyna_path)
-elif (LinacID == '4'):
-    x =DC.StartHere(la4_dyna_path)
-print("End of Parse_Dynalog")
-#*************************************************End Parse_Dynalogs****************************************************
-
-
-#************************LaunchFluDO   CELL 01************************************************************************
 import matplotlib
 #matplotlib.use('Agg')
 from scipy import interpolate as interpl
