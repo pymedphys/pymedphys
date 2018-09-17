@@ -239,6 +239,9 @@ def collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2):
 
 def convert_angle_to_bipolar(angle):
     angle = np.copy(angle)
+    if np.all(angle == 180):
+        return angle
+
     angle[angle > 180] = angle[angle > 180] - 360
 
     is_180 = np.where(angle == 180)[0]
