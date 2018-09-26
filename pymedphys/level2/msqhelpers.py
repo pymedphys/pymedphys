@@ -101,6 +101,8 @@ def get_treatments(cursor, start, end, machine):
             TxField.Field_Label,
             TxField.Field_Name,
             TxField.Type_Enum,
+            TxField.Meterset,
+            TxField.Version,
             Tracktreatment.WasQAMode,
             Tracktreatment.WasBeamComplete,
             TrackTreatment.Create_DtTm,
@@ -127,6 +129,7 @@ def get_treatments(cursor, start, end, machine):
         columns=[
             'patient_id', 'last_name', 'first_name',
             'field_id', 'field_label', 'field_name', 'field_type',
+            'monitor_units', 'field_version',
             'qa_mode', 'completed',
             'start', 'end'
         ]
