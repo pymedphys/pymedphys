@@ -78,8 +78,16 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
     """Identifies the patient details for a given delivery time.
     """
 
-    # Need to update the logic here to search for previous treatments
-    # that were incomplete
+    # TODO Need to update the logic here to search for previous treatments
+    # that were incomplete. Actually, this doesn't need to be in the indexing.
+    # Can solve this later on using multiple beams with one logfile ending in
+    # 'Terminated Fault'.
+
+    # TODO WasBeamComplete informs whether or not there were beams grouped
+    # together. If WasBeamComplete is false should actually search for
+    # subsequent beams until WasBeamComplete is true. This will help the case
+    # where multiple beams are MFSed into one delivery, resulting in multiple
+    # field ids and labels for a single logfile.
 
     execute_string = """
         SELECT
