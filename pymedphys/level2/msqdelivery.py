@@ -33,18 +33,7 @@ import numpy as np
 
 from ..level1.trfdecode import DeliveryData
 from ..level1.msqconnect import execute_sql
-
-
-FIELD_TYPES = {
-    1: 'Static',
-    2: 'StepNShoot',
-    5: 'CT',
-    6: 'Port',
-    11: 'Arc',
-    12: 'Skip Arcs',
-    13: 'VMAT',
-    14: 'DMLC'
-}
+from ..level1.msqdictionaries import FIELD_TYPES
 
 @attr.s
 class OISDeliveryDetails(object):
@@ -55,6 +44,7 @@ class OISDeliveryDetails(object):
     first_name = attr.ib()
     qa_mode = attr.ib()
     field_type = attr.ib()
+    beam_completed = attr.ib()
 
 
 class MultipleMosaiqEntries(Exception):
@@ -88,6 +78,9 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
     """Identifies the patient details for a given delivery time.
     """
 
+    # Need to update the logic here to search for previous treatments
+    # that were incomplete
+
     execute_string = """
         SELECT
             Ident.IDA,
@@ -95,7 +88,8 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
             Patient.Last_Name,
             Patient.First_Name,
             Tracktreatment.WasQAMode,
-            TxField.Type_Enum
+            TxField.Type_Enum,
+            Tracktreatment.WasBeamComplete
         FROM TrackTreatment, Ident, Patient, TxField, Staff
         WHERE
             TrackTreatment.Pat_ID1 = Ident.Pat_ID1 AND
@@ -172,33 +166,6 @@ def check_all_items_equal_length(items, name):
     assert len(length) == 1, "All {} should be the same length".format(name)
 
     return length[0]
-
-
-def patient_fields(cursor, patient_id):
-    """Returns all of the patient fields for a given Patient ID.
-    """
-    patient_id = str(patient_id)
-
-    return execute_sql(
-        cursor,
-        """
-        SELECT
-            TxField.FLD_ID,
-            TxField.Field_Label,
-            TxField.Field_Name,
-            TxField.Version,
-            TxField.Meterset,
-            Site.Site_Name
-        FROM Ident, TxField, Site
-        WHERE
-            TxField.Pat_ID1 = Ident.Pat_ID1 AND
-            TxField.SIT_Set_ID = Site.SIT_Set_ID AND
-            Ident.IDA = %(patient_id)s
-        """,
-        {
-            'patient_id': patient_id
-        }
-    )
 
 
 def decode_msq_mlc(raw_bytes):
