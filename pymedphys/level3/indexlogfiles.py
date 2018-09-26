@@ -163,6 +163,7 @@ def rename_and_handle_fileexists(old_filepath, new_filepath):
                 "File already exists and the hash does not match")
 
 
+# Split this function up into smaller functions for easier reuse.
 def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
                              unknown_error_in_logfile, no_mosaiq_record_found,
                              no_field_label_in_logfile,
