@@ -40,15 +40,18 @@ from ..level2.msqdelivery import delivery_data_from_mosaiq
 
 def mu_density_from_delivery_data(delivery_data):
     mu, mlc, jaw = get_delivery_parameters(delivery_data)
-    _, _, mu_density = calc_mu_density(mu, mlc, jaw)
+    xx, yy, mu_density = calc_mu_density(mu, mlc, jaw)
 
-    return mu_density
+    return xx, yy, mu_density
 
 
-def plot_mu_densities(labels, mu_densities):
-    for label, mu_density in zip(labels, mu_densities):
+def plot_mu_densities(labels, mu_density_results):
+    for label, results in zip(labels, mu_density_results):
+        xx = results[0]
+        yy = results[1]
+        mu_density = results[2]
         plt.figure()
-        plt.pcolormesh(mu_density)
+        plt.pcolormesh(xx, yy, mu_density)
         plt.colorbar()
         plt.title('MU density | {}'.format(label))
         plt.xlabel('MLC direction (mm)')
@@ -57,8 +60,6 @@ def plot_mu_densities(labels, mu_densities):
 
 
 def plot_gantry_collimator(labels, deliveries):
-
-
     plt.figure()
     plt.title('Gantry Angle')
     for label, delivery_data in zip(labels, deliveries):
@@ -89,9 +90,14 @@ def compare_mosaiq_fields(servers, field_ids):
             for server, field_id in zip(servers, field_ids)
         ]
 
-    mu_densities = [
+    mu_density_results = [
         mu_density_from_delivery_data(delivery_data)
         for delivery_data in deliveries
+    ]
+
+    mu_densities = [
+        results[2]
+        for results in mu_density_results
     ]
 
     labels = [
@@ -99,7 +105,7 @@ def compare_mosaiq_fields(servers, field_ids):
         for server, field_id in zip(servers, field_ids)]
 
     plot_gantry_collimator(labels, deliveries)
-    plot_mu_densities(labels, mu_densities)
+    plot_mu_densities(labels, mu_density_results)
 
     mu_densities_match = np.all([
         np.all(np.abs(mu_density_a - mu_density_b) < 0.1)
