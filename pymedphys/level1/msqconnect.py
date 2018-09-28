@@ -117,7 +117,7 @@ class multi_mosaiq_connect():
 
     Usage example:
         servers = ['nbccc-msq', 'msqsql']
-        with mult_mosaiq_connect(users, servers) as cursors:
+        with multi_mosaiq_connect(users, servers) as cursors:
             do_something(cursors['nbccc-msq'])
             do_something(cursors['msqsql'])
     """
