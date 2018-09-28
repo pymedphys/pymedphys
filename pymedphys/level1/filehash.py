@@ -23,24 +23,10 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-"""This is a placeholder file awaiting the required go ahead for public
-release.
+"""Create a reproducable hash from a filepath.
 """
 
-
 import hashlib
-
-import attr
-
-
-@attr.s
-class DeliveryData(object):
-    monitor_units = attr.ib()
-    gantry = attr.ib()
-    collimator = attr.ib()
-    mlc = attr.ib()
-    jaw = attr.ib()
 
 
 def hash_file(filename, dot_feedback=False):
@@ -56,12 +42,3 @@ def hash_file(filename, dot_feedback=False):
         print(".", end="", flush=True)
 
     return hasher.hexdigest()
-
-
-@attr.s
-class Header(object):
-    machine = attr.ib()
-    date = attr.ib()
-    timezone = attr.ib()
-    field_label = attr.ib()
-    field_name = attr.ib()
