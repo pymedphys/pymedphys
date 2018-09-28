@@ -137,9 +137,12 @@ class multi_mosaiq_connect():
 class mosaiq_connect():
     """A controlled execution class that opens and closes a single SQL
     connection to mosaiq.
+
+    Usage example:
+        with mosaiq_connect('msqsql') as cursor:
+            do_something(cursor)
     """
-    def __init__(self, user, sql_server):
-        self.user = user
+    def __init__(self, sql_server):
         self.sql_server = sql_server
 
     def __enter__(self):

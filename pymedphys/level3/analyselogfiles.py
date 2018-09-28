@@ -34,7 +34,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..level1.configutlities import (
+from ..level1.configutilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list
 )
