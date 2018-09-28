@@ -32,15 +32,13 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..level1.msqconnect import mosaiq_connect
+from ..level1.msqconnect import multi_mosaiq_connect
 from ..level1.mudensity import calc_mu_density
 from ..level1.deliverydata import get_delivery_parameters
 from ..level2.msqdelivery import delivery_data_from_mosaiq
 
 
-def msq_mu_density(server, field_id):
-
-
+def mu_density_from_delivery_data(delivery_data):
     mu, mlc, jaw = get_delivery_parameters(delivery_data)
     _, _, mu_density = calc_mu_density(mu, mlc, jaw)
 
@@ -61,20 +59,15 @@ def plot_mu_densities(mu_densities):
 def mosaiq_fields_agree(servers, field_ids, plots=False):
     unique_servers = list(set(servers))
 
-
-    with multi_mosaiq_connect(users, servers)
-
-    with mosaiq_connect('physics', server) as cursor:
+    with multi_mosaiq_connect(unique_servers) as cursors:
         deliveries = [
-            delivery_data_from_mosaiq(cursor, field_id)
-            for field_id in field_ids
+            delivery_data_from_mosaiq(cursors[server], field_id)
+            for server, field_id in zip(servers, field_ids)
         ]
 
-
-
     mu_densities = [
-        msq_mu_density(server, field_id)
-        for server, field_id in zip(servers, field_ids)
+        mu_density_from_delivery_data(delivery_data)
+        for delivery_data in deliveries
     ]
 
     if plots:
