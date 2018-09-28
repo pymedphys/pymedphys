@@ -34,10 +34,15 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ..level1.configutlities import (
+    get_cache_filepaths, get_mu_density_parameters,
+    get_index, get_centre, get_sql_servers, get_sql_servers_list
+)
 from ..level1.msqconnect import multi_mosaiq_connect
-from ..level1.trfdecode import hash_file
+from ..level1.filehash import hash_file
+from ..level1.deliverydata import get_delivery_parameters
 from ..level1.mudensity import calc_mu_density
-from ..level2.msqdelivery import delivery_data_from_mosaiq
+from ..level2.msqdelivery import multi_fetch_and_verify_mosaiq
 
 # from ..level1.trfdecode import delivery_data_from_logfile
 from decode_trf import delivery_data_from_logfile  # remove this when ready
@@ -75,10 +80,9 @@ def update_cache(config):
 
     np.random.shuffle(vmat_filepaths)
 
-    sql_users, sql_servers = get_sql_details(config)
+    sql_servers_list = get_sql_servers_list(config)
 
-    with multi_mosaiq_connect(sql_users, sql_servers) as cursors:
-
+    with multi_mosaiq_connect(sql_servers_list) as cursors:
         for file_hash, logfile_filepath in zip(
             vmat_not_yet_compared, vmat_filepaths
         ):
@@ -111,14 +115,10 @@ def update_cache(config):
     print('Done!')
 
 
-def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
+def load_comparisons_from_cache(config):
     (
-        comparison_storage_filepath, comparison_storage_scratch
+        comparison_storage_filepath, _
     ) = get_cache_filepaths(config)
-
-    grid_resolution, ram_fraction = get_mu_density_parameters(config)
-
-    index = get_index(config)
 
     with open(comparison_storage_filepath, 'r') as comparisons_file:
         comparison_storage = json.load(comparisons_file)
@@ -130,6 +130,7 @@ def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
         for file_hash in file_hashes
     ])
 
+    index = get_index(config)
     file_paths_worst_first = np.array([
         get_filepath_from_hash(config, index, file_hash)
         for file_hash in file_hashes
@@ -141,9 +142,25 @@ def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
     comparisons = comparisons[sort_ref]
     file_paths_worst_first = file_paths_worst_first[sort_ref]
 
-    sql_users, sql_servers = get_sql_details(config)
+    return file_hashes, comparisons, file_paths_worst_first
 
-    with multi_mosaiq_connect(sql_users, sql_servers) as cursors:
+
+def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
+    (
+        comparison_storage_filepath, comparison_storage_scratch
+    ) = get_cache_filepaths(config)
+
+    grid_resolution, ram_fraction = get_mu_density_parameters(config)
+
+    index = get_index(config)
+
+    (
+        file_hashes, comparisons, file_paths_worst_first
+    ) = load_comparisons_from_cache(config)
+
+    sql_servers_list = get_sql_servers_list(config)
+
+    with multi_mosaiq_connect(sql_servers_list) as cursors:
 
         for i, logfile_filepath in enumerate(file_paths_worst_first):
             print("\n{}".format(logfile_filepath))
@@ -179,67 +196,8 @@ def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
                 plot_results(*results)
 
 
-def get_cache_filepaths(config):
-    mu_density_config = config['mu_density']
-
-    comparison_storage_filepath = os.path.join(
-        config['linac_logfile_data_directory'],
-        mu_density_config['comparisons_cache']['primary'])
-    comparison_storage_scratch = os.path.join(
-        config['linac_logfile_data_directory'],
-        mu_density_config['comparisons_cache']['scratch'])
-
-    return comparison_storage_filepath, comparison_storage_scratch
-
-
-def get_mu_density_parameters(config):
-    mu_density_config = config['mu_density']
-    grid_resolution = mu_density_config['grid_resolution']
-    ram_fraction = mu_density_config['ram_fraction']
-
-    return grid_resolution, ram_fraction
-
-
-def get_index(config):
-    index_filepath = os.path.join(
-        config['linac_logfile_data_directory'], 'index.json')
-    with open(index_filepath) as json_data_file:
-        index = json.load(json_data_file)
-
-    return index
-
-
 def get_file_info(index, filepath):
     return index[hash_file(filepath)]
-
-
-def get_centre(config, file_info):
-    machine = file_info['logfile_header']['machine']
-    centre = config['machine_map'][machine]['centre']
-    return centre
-
-
-def get_sql_details(config):
-    centres = list(config['centres'].keys())
-    sql_users = {
-        centre: config['centres'][centre]['ois_specific_data']['sql_user']
-        for centre in centres
-    }
-
-    sql_servers = {
-        centre: config['centres'][centre]['ois_specific_data']['sql_server']
-        for centre in centres
-    }
-
-    return sql_users, sql_servers
-
-
-def get_delivery_parameters(delivery_data):
-    mu = np.array(delivery_data.monitor_units)
-    mlc = np.swapaxes(delivery_data.mlc, 0, 2)
-    jaw = np.swapaxes(delivery_data.jaw, 0, 1)
-
-    return mu, mlc, jaw
 
 
 def mu_density_from_delivery_data(delivery_data, grid_resolution=1,
@@ -253,33 +211,6 @@ def mu_density_from_delivery_data(delivery_data, grid_resolution=1,
     return grid_xx, grid_yy, mu_density
 
 
-def multi_fetch_and_verify_mosaiq(cursor, field_id):
-    reference_data = get_delivery_parameters(
-        delivery_data_from_mosaiq(cursor, field_id))
-    delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-    test_data = get_delivery_parameters(delivery_data)
-
-    agreement = False
-
-    while not agreement:
-        agreements = []
-        for ref, test in zip(reference_data, test_data):
-            agreements.append(np.all(ref == test))
-
-        agreement = np.all(agreements)
-        if not agreement:
-            print('Converted Mosaiq delivery data was conflicting.')
-            print(
-                'MU agreement: {}\nMLC agreement: {}\n'
-                'Jaw agreement: {}'.format(*agreements))
-            print('Trying again...')
-            reference_data = test_data
-            delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-            test_data = get_delivery_parameters(delivery_data)
-
-    return delivery_data
-
-
 def get_logfile_mosaiq_results(index, config, filepath, cursors,
                                ram_fraction=0.8, grid_resolution=1):
     logfile_delivery_data = delivery_data_from_logfile(filepath)
@@ -289,8 +220,9 @@ def get_logfile_mosaiq_results(index, config, filepath, cursors,
     field_id = delivery_details['field_id']
 
     centre = get_centre(config, file_info)
+    server = get_sql_servers(config)[centre]
     mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(
-        cursors[centre], field_id)
+        cursors[server], field_id)
 
     mosaiq_results = mu_density_from_delivery_data(
         mosaiq_delivery_data, ram_fraction=ram_fraction,

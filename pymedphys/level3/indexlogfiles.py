@@ -40,7 +40,9 @@ from dateutil import tz
 import attr
 
 from ..level1.msqconnect import multi_mosaiq_connect
-from ..level1.trfdecode import hash_file, Header
+from ..level1.filehash import hash_file
+from ..level1.configutilities import get_sql_servers
+from ..level2.trfdecode import Header
 from ..level2.msqdelivery import (
     get_mosaiq_delivery_details, OISDeliveryDetails, NoMosaiqEntries)
 
@@ -168,7 +170,7 @@ def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
                              unknown_error_in_logfile, no_mosaiq_record_found,
                              no_field_label_in_logfile,
                              indexed_directory, index_filepath, index,
-                             machine_map, centre_details):
+                             machine_map, centre_details, config):
     for filehash in filehash_list:
         logfile_basename = os.path.basename(to_be_indexed_dict[filehash])
 
@@ -184,6 +186,7 @@ def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
                 continue
 
             centre = machine_map[header.machine]['centre']
+            server = get_sql_servers(config)[centre]
 
             mosaiq_string_time, path_string_time = date_convert(
                 header.date, centre_details[centre]['timezone'])
@@ -197,7 +200,7 @@ def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
 
         try:
             delivery_details = get_mosaiq_delivery_details(
-                cursors[centre], header.machine, mosaiq_string_time,
+                cursors[server], header.machine, mosaiq_string_time,
                 header.field_label, header.field_name)
         except NoMosaiqEntries as e:
             print(e)
@@ -260,15 +263,10 @@ def index_logfiles(config):
     machine_map = config['machine_map']
     centre_details = config['centres']
 
-    sql_users = {
-        centre: details['ois_specific_data']['sql_user']
-        for centre, details in centre_details.items()
-    }
-
-    sql_servers = {
-        centre: details['ois_specific_data']['sql_server']
-        for centre, details in centre_details.items()
-    }
+    sql_servers = [
+        details['ois_specific_data']['sql_server']
+        for _, details in centre_details.items()
+    ]
 
     with open(index_filepath, 'r') as json_data_file:
         index = json.load(json_data_file)
@@ -276,7 +274,7 @@ def index_logfiles(config):
     indexset = set(index.keys())
 
     print('\nConnecting to Mosaiq SQL servers...')
-    with multi_mosaiq_connect(sql_users, sql_servers) as cursors:
+    with multi_mosaiq_connect(sql_servers) as cursors:
 
         print('Globbing index directory...')
         to_be_indexed = glob(
@@ -316,6 +314,6 @@ def index_logfiles(config):
                 unknown_error_in_logfile, no_mosaiq_record_found,
                 no_field_label_in_logfile,
                 indexed_directory, index_filepath, index,
-                machine_map, centre_details
+                machine_map, centre_details, config
             )
     print('Complete')
