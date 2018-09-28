@@ -45,18 +45,42 @@ def mu_density_from_delivery_data(delivery_data):
     return mu_density
 
 
-def plot_mu_densities(mu_densities):
-    for mu_density in mu_densities:
+def plot_mu_densities(labels, mu_densities):
+    for label, mu_density in zip(labels, mu_densities):
         plt.figure()
         plt.pcolormesh(mu_density)
         plt.colorbar()
-        plt.title('MU density')
+        plt.title('MU density | {}'.format(label))
         plt.xlabel('MLC direction (mm)')
         plt.ylabel('Jaw direction (mm)')
         plt.gca().invert_yaxis()
 
 
-def mosaiq_fields_agree(servers, field_ids, plots=False):
+def plot_gantry_collimator(labels, deliveries):
+
+
+    plt.figure()
+    plt.title('Gantry Angle')
+    for label, delivery_data in zip(labels, deliveries):
+        plt.plot(
+            delivery_data.monitor_units, delivery_data.gantry,
+            label=label, alpha=0.5)
+    plt.xlabel('Monitor Units')
+    plt.ylabel('Gantry Angle')
+    plt.legend()
+
+    plt.figure()
+    plt.title('Colimator Angle')
+    for label, delivery_data in zip(labels, deliveries):
+        plt.plot(
+            delivery_data.monitor_units, delivery_data.collimator,
+            label=label, alpha=0.5)
+    plt.xlabel('Monitor Units')
+    plt.ylabel('Collimator Angle')
+    plt.legend()
+
+
+def compare_mosaiq_fields(servers, field_ids):
     unique_servers = list(set(servers))
 
     with multi_mosaiq_connect(unique_servers) as cursors:
@@ -70,11 +94,20 @@ def mosaiq_fields_agree(servers, field_ids, plots=False):
         for delivery_data in deliveries
     ]
 
-    if plots:
-        plot_mu_densities(mu_densities)
+    labels = [
+        "Server: `{}` | Field ID: `{}`".format(server, field_id)
+        for server, field_id in zip(servers, field_ids)]
 
-    return np.all([
+    plot_gantry_collimator(labels, deliveries)
+    plot_mu_densities(labels, mu_densities)
+
+    mu_densities_match = np.all([
         np.all(np.abs(mu_density_a - mu_density_b) < 0.1)
         for mu_density_a, mu_density_b
         in itertools.combinations(mu_densities, 2)
     ])
+
+    plt.show()
+    print("MU Densities match: {}".format(mu_densities_match))
+
+    return deliveries, mu_densities
