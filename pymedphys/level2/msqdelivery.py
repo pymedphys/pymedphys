@@ -31,7 +31,7 @@ import struct
 import attr
 import numpy as np
 
-from ..level1.trfdecode import DeliveryData
+from ..level1.deliverydata import DeliveryData, get_delivery_parameters
 from ..level1.msqconnect import execute_sql
 from ..level1.msqdictionaries import FIELD_TYPES
 
@@ -330,7 +330,38 @@ def delivery_data_from_mosaiq(cursor, field_id):
     gantry = convert_angle_to_bipolar(msq_gantry_angle)
     collimator = convert_angle_to_bipolar(msq_collimator_angle)
 
+    # TODO Tidy up this axis swap
+    mlc = np.swapaxes(mlc, 0, 2)
+    jaw = np.swapaxes(jaw, 0, 1)
+
     mosaiq_delivery_data = DeliveryData(
         monitor_units, gantry, collimator, mlc, jaw)
 
     return mosaiq_delivery_data
+
+
+def multi_fetch_and_verify_mosaiq(cursor, field_id):
+    reference_data = get_delivery_parameters(
+        delivery_data_from_mosaiq(cursor, field_id))
+    delivery_data = delivery_data_from_mosaiq(cursor, field_id)
+    test_data = get_delivery_parameters(delivery_data)
+
+    agreement = False
+
+    while not agreement:
+        agreements = []
+        for ref, test in zip(reference_data, test_data):
+            agreements.append(np.all(ref == test))
+
+        agreement = np.all(agreements)
+        if not agreement:
+            print('Converted Mosaiq delivery data was conflicting.')
+            print(
+                'MU agreement: {}\nMLC agreement: {}\n'
+                'Jaw agreement: {}'.format(*agreements))
+            print('Trying again...')
+            reference_data = test_data
+            delivery_data = delivery_data_from_mosaiq(cursor, field_id)
+            test_data = get_delivery_parameters(delivery_data)
+
+    return delivery_data

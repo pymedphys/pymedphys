@@ -58,16 +58,26 @@ def execute_sql(cursor, sql_string, parameters=None):
     return data
 
 
-def single_connect(user, server):
+def single_connect(server):
     """Connect to the Mosaiq server.
     Ask the user for a password if they haven't logged in before.
     """
-    password = keyring.get_password(server, user)
+    user = keyring.get_password('MosaiqSQL_username', server)
+    password = keyring.get_password('MosaiqSQL_password', server)
+
+    if user is None:
+        print(
+            "Provide a user that only has `db_datareader` access to the "
+            "Mosaiq database at `{}`".format(server)
+        )
+        user = input()
+        keyring.set_password('MosaiqSQL_username', server, user)
+
     if password is None:
         print("Provide password for '{}' server and '{}' user".format(
             server, user))
         password = getpass()
-        keyring.set_password(server, user, password)
+        keyring.set_password('MosaiqSQL_password', server, password)
 
     try:
         conn = pymssql.connect(server, user, password, 'MOSAIQ')
@@ -78,14 +88,14 @@ def single_connect(user, server):
     return conn, conn.cursor()
 
 
-def multi_connect(users, sql_servers):
+def multi_connect(sql_servers):
     """Create SQL connections and cursors.
     """
     connections = dict()
     cursors = dict()
 
-    for key, server in sql_servers.items():
-        connections[key], cursors[key] = single_connect(users[key], server)
+    for server in sql_servers:
+        connections[server], cursors[server] = single_connect(server)
 
     return connections, cursors
 
@@ -104,25 +114,24 @@ def multi_close(connections):
 class multi_mosaiq_connect():
     """A controlled execution class that opens and closes multiple SQL
     connections.
+
+    Usage example:
+        servers = ['nbccc-msq', 'msqsql']
+        with mult_mosaiq_connect(users, servers) as cursors:
+            do_something(cursors['nbccc-msq'])
+            do_something(cursors['msqsql'])
     """
-    def __init__(self, users, sql_servers):
-        self.users = users
+
+    def __init__(self, sql_servers):
         self.sql_servers = sql_servers
 
     def __enter__(self):
         self.connections, cursors = multi_connect(
-            self.users, self.sql_servers)
+            self.sql_servers)
         return cursors
 
     def __exit__(self, type, value, traceback):
         multi_close(self.connections)
-
-
-def sql_connection(*args, **kwargs):
-    warnings.warn(
-        "sql_connection is deprecated in favour of mult_mosaiq_connect",
-        DeprecationWarning)
-    return multi_mosaiq_connect(*args, **kwargs)
 
 
 class mosaiq_connect():
@@ -135,7 +144,7 @@ class mosaiq_connect():
 
     def __enter__(self):
         self.connection, cursor = single_connect(
-            self.user, self.sql_server)
+            self.sql_server)
         return cursor
 
     def __exit__(self, type, value, traceback):
