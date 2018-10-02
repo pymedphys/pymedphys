@@ -34,48 +34,21 @@ import pathlib
 import traceback
 from glob import glob
 
-from datetime import datetime
-from dateutil import tz
-
 import attr
 
 from ..level1.msqconnect import multi_mosaiq_connect
 from ..level1.filehash import hash_file
 from ..level1.configutilities import get_sql_servers
+from ..level1.filesystemutilities import make_a_valid_directory_name
 from ..level2.trfdecode import Header
 from ..level2.msqdelivery import (
     get_mosaiq_delivery_details, OISDeliveryDetails, NoMosaiqEntries)
+from ..level3.trfidentify import (
+    date_convert
+)
 
 # from ..level1.trfdecode import decode_header_from_file
 from decode_trf import decode_header_from_file  # remove this when ready
-
-
-def date_convert(date, timezone):
-    """Converts logfile UTC date to the provided timezone.
-    The date is formatted to match the syntax required by Microsoft SQL."""
-
-    from_timezone = tz.gettz('UTC')
-    to_timezone = tz.gettz(timezone)
-
-    utc_datetime = datetime.strptime(
-        date, '%y/%m/%d %H:%M:%S Z').replace(tzinfo=from_timezone)
-    local_time = utc_datetime.astimezone(to_timezone)
-    mosaiq_string_time = local_time.strftime('%Y-%m-%d %H:%M:%S')
-    path_string_time = local_time.strftime('%Y-%m-%d_%H%M%S')
-
-    return mosaiq_string_time, path_string_time
-
-
-def make_a_valid_directory_name(proposed_directory_name):
-    """In the case a field label can't be used as a file name the invalid
-    characters can be dropped."""
-    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-    directory_name = ''.join(
-        c for c in proposed_directory_name if c in valid_chars)
-
-    directory_name = directory_name.replace(" ", "-")
-
-    return directory_name
 
 
 def create_logfile_directory_name(centre,
@@ -246,7 +219,6 @@ def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
 
 
 def index_logfiles(config):
-
     data_directory = config['linac_logfile_data_directory']
     index_filepath = os.path.abspath(
         os.path.join(data_directory, 'index.json'))
