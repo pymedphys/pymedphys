@@ -89,6 +89,10 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
     # where multiple beams are MFSed into one delivery, resulting in multiple
     # field ids and labels for a single logfile.
 
+    # TODO Convert all times to UTC so that timezone is not required within
+    # the API.
+    # https://docs.microsoft.com/en-us/sql/t-sql/queries/at-time-zone-transact-sql?view=sql-server-2017
+
     execute_string = """
         SELECT
             Ident.IDA,
