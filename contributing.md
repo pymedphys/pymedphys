@@ -21,6 +21,10 @@ This document is a work in progress.
   * `git clone https://github.com/CCA-Physics/pymedphys.git`
   * `cd pymedphys`
   *  `pip install -e .`
+  
+## Recommended tools
+
+* [Visual Studio Code](https://code.visualstudio.com/)
 
 ## Recommended tutorial
 
