@@ -62,8 +62,14 @@ def single_connect(server):
     """Connect to the Mosaiq server.
     Ask the user for a password if they haven't logged in before.
     """
+
+    if type(server) is not str:
+        raise TypeError("`server` input variable needs to be a string")
+
     user = keyring.get_password('MosaiqSQL_username', server)
     password = keyring.get_password('MosaiqSQL_password', server)
+
+
 
     if user is None:
         print(

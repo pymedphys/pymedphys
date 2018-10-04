@@ -80,7 +80,7 @@ def get_sql_servers_list(config):
 
     sql_servers_list = [
         value
-        for _, value in sql_servers.iteritems()
+        for _, value in sql_servers.items()
     ]
 
     return sql_servers_list

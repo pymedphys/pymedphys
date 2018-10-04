@@ -33,6 +33,13 @@ from ..level2.msqdelivery import (
     get_mosaiq_delivery_details, OISDeliveryDetails)
 
 
+# TODO Make the field identification run one whole day at a time, searching
+# for all logfiles on that day and then attempting to align the logfiles
+# to the full day's machine schedule.
+# This will allow for the code to be more flexible on time differences and
+# result in greater robustness to time differences between TCS and Mosaiq.
+
+
 def date_convert(date, timezone):
     """Converts logfile UTC date to the provided timezone.
     The date is formatted to match the syntax required by Microsoft SQL."""
@@ -55,8 +62,7 @@ def identify_logfile(cursor, filepath, timezone) -> OISDeliveryDetails:
     if header.field_label == "":
         raise Exception("No field label in logfile")
 
-    mosaiq_string_time, _ = date_convert(
-        header.date, timezone)
+    mosaiq_string_time, _ = date_convert(header.date, timezone)
 
     delivery_details = get_mosaiq_delivery_details(
         cursor, header.machine, mosaiq_string_time,
