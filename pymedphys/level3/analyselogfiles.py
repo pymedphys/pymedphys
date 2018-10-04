@@ -48,71 +48,71 @@ from ..level2.msqdelivery import multi_fetch_and_verify_mosaiq
 from decode_trf import delivery_data_from_logfile  # remove this when ready
 
 
-def update_cache(config):
-    (
-        comparison_storage_filepath, comparison_storage_scratch
-    ) = get_cache_filepaths(config)
+# def update_cache(config):
+#     (
+#         comparison_storage_filepath, comparison_storage_scratch
+#     ) = get_cache_filepaths(config)
 
-    index = get_index(config)
-    grid_resolution, ram_fraction = get_mu_density_parameters(config)
+#     index = get_index(config)
+#     grid_resolution, ram_fraction = get_mu_density_parameters(config)
 
-    with open(comparison_storage_filepath, 'r') as comparisons_file:
-        comparison_storage = json.load(comparisons_file)
+#     with open(comparison_storage_filepath, 'r') as comparisons_file:
+#         comparison_storage = json.load(comparisons_file)
 
-    index_set = set(index.keys())
-    comparison_set = set(comparison_storage.keys())
+#     index_set = set(index.keys())
+#     comparison_set = set(comparison_storage.keys())
 
-    not_yet_compared = np.array(list(index_set.difference(comparison_set)))
-    field_types = np.array([
-        index[file_hash]['delivery_details']['field_type']
-        for file_hash in not_yet_compared
-    ])
+#     not_yet_compared = np.array(list(index_set.difference(comparison_set)))
+#     field_types = np.array([
+#         index[file_hash]['delivery_details']['field_type']
+#         for file_hash in not_yet_compared
+#     ])
 
-    vmat_not_yet_compared = not_yet_compared[field_types == 'VMAT']
+#     vmat_not_yet_compared = not_yet_compared[field_types == 'VMAT']
 
-    vmat_filepaths = np.array([
-        os.path.join(
-            config['linac_logfile_data_directory'],
-            'indexed',
-            index[file_hash]['filepath'])
-        for file_hash in vmat_not_yet_compared
-    ])
+#     vmat_filepaths = np.array([
+#         os.path.join(
+#             config['linac_logfile_data_directory'],
+#             'indexed',
+#             index[file_hash]['filepath'])
+#         for file_hash in vmat_not_yet_compared
+#     ])
 
-    np.random.shuffle(vmat_filepaths)
+#     np.random.shuffle(vmat_filepaths)
 
-    sql_servers_list = get_sql_servers_list(config)
+#     sql_servers_list = get_sql_servers_list(config)
 
-    with multi_mosaiq_connect(sql_servers_list) as cursors:
-        for file_hash, logfile_filepath in zip(
-            vmat_not_yet_compared, vmat_filepaths
-        ):
-            try:
-                print("\n{}".format(logfile_filepath))
-                with open(
-                    comparison_storage_filepath, 'r'
-                ) as comparisons_file:
-                    comparison_storage = json.load(comparisons_file)
+#     with multi_mosaiq_connect(sql_servers_list) as cursors:
+#         for file_hash, logfile_filepath in zip(
+#             vmat_not_yet_compared, vmat_filepaths
+#         ):
+#             try:
+#                 print("\n{}".format(logfile_filepath))
+#                 with open(
+#                     comparison_storage_filepath, 'r'
+#                 ) as comparisons_file:
+#                     comparison_storage = json.load(comparisons_file)
 
-                file_hash = hash_file(logfile_filepath)
-                if file_hash in comparison_storage:
-                    print('This file has already been compared.')
-                else:
-                    comparison = get_logfile_mosaiq_comparison(
-                        index, config, logfile_filepath, cursors,
-                        grid_resolution=grid_resolution,
-                        ram_fraction=ram_fraction)
-                    update_comparison_file(
-                        file_hash, comparison,
-                        comparison_storage_filepath,
-                        comparison_storage_scratch)
+#                 file_hash = hash_file(logfile_filepath)
+#                 if file_hash in comparison_storage:
+#                     print('This file has already been compared.')
+#                 else:
+#                     comparison = get_logfile_mosaiq_comparison(
+#                         index, config, logfile_filepath, cursors,
+#                         grid_resolution=grid_resolution,
+#                         ram_fraction=ram_fraction)
+#                     update_comparison_file(
+#                         file_hash, comparison,
+#                         comparison_storage_filepath,
+#                         comparison_storage_scratch)
 
-                    print("Comparison result = {}".format(comparison))
-            except KeyboardInterrupt:
-                raise
-            except Exception:
-                print(traceback.format_exc())
+#                     print("Comparison result = {}".format(comparison))
+#             except KeyboardInterrupt:
+#                 raise
+#             except Exception:
+#                 print(traceback.format_exc())
 
-    print('Done!')
+#     print('Done!')
 
 
 def load_comparisons_from_cache(config):
@@ -153,6 +153,15 @@ def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
     grid_resolution, ram_fraction = get_mu_density_parameters(config)
 
     index = get_index(config)
+    field_id_key_map = dict()
+
+    for key, value in index.items():
+        if not value['delivery_details']['qa_mode']:
+            field_id = value['delivery_details']['field_id']
+            if field_id not in field_id_key_map:
+                field_id_key_map[field_id] = []
+
+            field_id_key_map[field_id].append(key)
 
     (
         file_hashes, comparisons, file_paths_worst_first
@@ -175,7 +184,8 @@ def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
                 print("Cached comparison value = {}".format(comparisons[i]))
 
                 results = get_logfile_mosaiq_results(
-                    index, config, logfile_filepath, cursors,
+                    index, config, logfile_filepath, field_id_key_map,
+                    file_hashes[i], cursors,
                     ram_fraction=ram_fraction, grid_resolution=grid_resolution)
                 new_comparison = calc_comparison(results[2], results[3])
 
@@ -211,9 +221,72 @@ def mu_density_from_delivery_data(delivery_data, grid_resolution=1,
     return grid_xx, grid_yy, mu_density
 
 
-def get_logfile_mosaiq_results(index, config, filepath, cursors,
-                               ram_fraction=0.8, grid_resolution=1):
-    logfile_delivery_data = delivery_data_from_logfile(filepath)
+def find_consequtive_logfiles(field_id_key_map, field_id, filehash, index,
+                              config):
+    keys = np.array(field_id_key_map[field_id])
+
+    times = np.array([
+        index[key]['local_time']
+        for key in keys
+    ]).astype(np.datetime64)
+
+    sort_reference = np.argsort(times)
+    keys = keys[sort_reference]
+    times = times[sort_reference]
+
+    hours_4 = np.array(60 * 60 * 4).astype(np.timedelta64)
+
+    delivery_time = np.array(index[filehash]['local_time']).astype(np.datetime64)
+    within_4_hours_reference = np.abs(delivery_time - times) < hours_4
+    within_4_hours = keys[within_4_hours_reference]
+
+    filepaths_within_4_hours = [
+        os.path.join(
+            config['linac_logfile_data_directory'],
+            'indexed', index[key]['filepath'])
+        for key in within_4_hours
+    ]
+
+    return filepaths_within_4_hours
+
+
+def calc_and_merge_logfile_mudensity(filepaths, ram_fraction=0.8,
+                                     grid_resolution=1):
+    logfile_results = []
+    for filepath in filepaths:
+        logfile_delivery_data = delivery_data_from_logfile(filepath)
+        mu_density_results = mu_density_from_delivery_data(
+            logfile_delivery_data, ram_fraction=ram_fraction,
+            grid_resolution=grid_resolution)
+
+        logfile_results.append(mu_density_results)
+
+    grid_xx_list = [
+        result[0] for result in logfile_results
+    ]
+    grid_yy_list = [
+        result[1] for result in logfile_results
+    ]
+
+    # assert np.array_equal(*grid_xx_list)
+    # assert np.array_equal(*grid_yy_list)
+
+    grid_xx = grid_xx_list[0]
+    grid_yy = grid_yy_list[0]
+
+    mu_densities = [
+        result[2] for result in logfile_results
+    ]
+
+    logfile_mu_density = np.sum(mu_densities, axis=0)
+
+    return grid_xx, grid_yy, logfile_mu_density
+
+
+def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
+                               filehash, cursors, ram_fraction=0.8,
+                               grid_resolution=1):
+    # logfile_delivery_data = delivery_data_from_logfile(filepath)
 
     file_info = get_file_info(index, filepath)
     delivery_details = file_info['delivery_details']
@@ -227,12 +300,24 @@ def get_logfile_mosaiq_results(index, config, filepath, cursors,
     mosaiq_results = mu_density_from_delivery_data(
         mosaiq_delivery_data, ram_fraction=ram_fraction,
         grid_resolution=grid_resolution)
-    logile_results = mu_density_from_delivery_data(
-        logfile_delivery_data, ram_fraction=ram_fraction,
+
+    logfilepaths = find_consequtive_logfiles(
+        field_id_key_map, field_id, filehash, index, config)
+    logile_results = calc_and_merge_logfile_mudensity(
+        logfilepaths, ram_fraction=ram_fraction,
         grid_resolution=grid_resolution)
 
-    assert np.all(logile_results[0] == mosaiq_results[0])
-    assert np.all(logile_results[1] == mosaiq_results[1])
+    # logile_results = mu_density_from_delivery_data(
+    #     logfile_delivery_data, ram_fraction=ram_fraction,
+    #     grid_resolution=grid_resolution)
+
+    try:
+        assert np.all(logile_results[0] == mosaiq_results[0])
+        assert np.all(logile_results[1] == mosaiq_results[1])
+    except AssertionError:
+        print(np.shape(logile_results[0]))
+        print(np.shape(mosaiq_results[0]))
+        raise
 
     grid_xx = logile_results[0]
     grid_yy = logile_results[1]
@@ -251,13 +336,13 @@ def calc_comparison(logfile_mu_density, mosaiq_mu_density):
     return comparison
 
 
-def get_logfile_mosaiq_comparison(index, config, filepath, cursors,
-                                  grid_resolution=1, ram_fraction=0.8):
-    _, _, logfile_mu_density, mosaiq_mu_density = get_logfile_mosaiq_results(
-        index, config, filepath, cursors, grid_resolution=grid_resolution,
-        ram_fraction=ram_fraction)
+# def get_logfile_mosaiq_comparison(index, config, filepath, cursors,
+#                                   grid_resolution=1, ram_fraction=0.8):
+#     _, _, logfile_mu_density, mosaiq_mu_density = get_logfile_mosaiq_results(
+#         index, config, filepath, cursors, grid_resolution=grid_resolution,
+#         ram_fraction=ram_fraction)
 
-    return calc_comparison(logfile_mu_density, mosaiq_mu_density)
+#     return calc_comparison(logfile_mu_density, mosaiq_mu_density)
 
 
 def get_filepath_from_hash(config, index, file_hash):
