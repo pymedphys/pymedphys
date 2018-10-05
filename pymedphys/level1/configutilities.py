@@ -84,3 +84,12 @@ def get_sql_servers_list(config):
     ]
 
     return sql_servers_list
+
+
+def get_filepath(index, config, filehash):
+    data_directory = config['linac_logfile_data_directory']
+    relative_path = index[filehash]['filepath']
+    filepath = os.path.abspath(
+        os.path.join(data_directory, 'indexed', relative_path))
+
+    return filepath
