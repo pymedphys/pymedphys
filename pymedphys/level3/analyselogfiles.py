@@ -36,7 +36,8 @@ import matplotlib.pyplot as plt
 
 from ..level1.configutilities import (
     get_cache_filepaths, get_mu_density_parameters,
-    get_index, get_centre, get_sql_servers, get_sql_servers_list
+    get_index, get_centre, get_sql_servers, get_sql_servers_list,
+    get_filepath
 )
 from ..level1.msqconnect import multi_mosaiq_connect
 from ..level1.filehash import hash_file
@@ -48,71 +49,21 @@ from ..level2.msqdelivery import multi_fetch_and_verify_mosaiq
 from decode_trf import delivery_data_from_logfile  # remove this when ready
 
 
-# def update_cache(config):
-#     (
-#         comparison_storage_filepath, comparison_storage_scratch
-#     ) = get_cache_filepaths(config)
+def analyse_single_hash(index, config, filehash, cursors):
+    field_id_key_map = get_field_id_key_map(index)
+    logfile_filepath = get_filepath(index, config, filehash)
+    print(logfile_filepath)
 
-#     index = get_index(config)
-#     grid_resolution, ram_fraction = get_mu_density_parameters(config)
+    results = get_logfile_mosaiq_results(
+        index, config, logfile_filepath, field_id_key_map,
+        filehash, cursors,
+        ram_fraction=0.45, grid_resolution=5/3)
 
-#     with open(comparison_storage_filepath, 'r') as comparisons_file:
-#         comparison_storage = json.load(comparisons_file)
+    comparison = calc_comparison(results[2], results[3])
+    print("Comparison result = {}".format(comparison))
+    plot_results(*results)
 
-#     index_set = set(index.keys())
-#     comparison_set = set(comparison_storage.keys())
-
-#     not_yet_compared = np.array(list(index_set.difference(comparison_set)))
-#     field_types = np.array([
-#         index[file_hash]['delivery_details']['field_type']
-#         for file_hash in not_yet_compared
-#     ])
-
-#     vmat_not_yet_compared = not_yet_compared[field_types == 'VMAT']
-
-#     vmat_filepaths = np.array([
-#         os.path.join(
-#             config['linac_logfile_data_directory'],
-#             'indexed',
-#             index[file_hash]['filepath'])
-#         for file_hash in vmat_not_yet_compared
-#     ])
-
-#     np.random.shuffle(vmat_filepaths)
-
-#     sql_servers_list = get_sql_servers_list(config)
-
-#     with multi_mosaiq_connect(sql_servers_list) as cursors:
-#         for file_hash, logfile_filepath in zip(
-#             vmat_not_yet_compared, vmat_filepaths
-#         ):
-#             try:
-#                 print("\n{}".format(logfile_filepath))
-#                 with open(
-#                     comparison_storage_filepath, 'r'
-#                 ) as comparisons_file:
-#                     comparison_storage = json.load(comparisons_file)
-
-#                 file_hash = hash_file(logfile_filepath)
-#                 if file_hash in comparison_storage:
-#                     print('This file has already been compared.')
-#                 else:
-#                     comparison = get_logfile_mosaiq_comparison(
-#                         index, config, logfile_filepath, cursors,
-#                         grid_resolution=grid_resolution,
-#                         ram_fraction=ram_fraction)
-#                     update_comparison_file(
-#                         file_hash, comparison,
-#                         comparison_storage_filepath,
-#                         comparison_storage_scratch)
-
-#                     print("Comparison result = {}".format(comparison))
-#             except KeyboardInterrupt:
-#                 raise
-#             except Exception:
-#                 print(traceback.format_exc())
-
-#     print('Done!')
+    return comparison
 
 
 def load_comparisons_from_cache(config):
@@ -139,20 +90,13 @@ def load_comparisons_from_cache(config):
     sort_ref = np.argsort(comparisons)[::-1]
 
     file_hashes = file_hashes[sort_ref]
-    comparisons = comparisons[sort_ref]
+    # comparisons = comparisons[sort_ref]
     file_paths_worst_first = file_paths_worst_first[sort_ref]
 
-    return file_hashes, comparisons, file_paths_worst_first
+    return file_hashes, comparison_storage, file_paths_worst_first
 
 
-def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
-    (
-        comparison_storage_filepath, comparison_storage_scratch
-    ) = get_cache_filepaths(config)
-
-    grid_resolution, ram_fraction = get_mu_density_parameters(config)
-
-    index = get_index(config)
+def get_field_id_key_map(index):
     field_id_key_map = dict()
 
     for key, value in index.items():
@@ -163,51 +107,108 @@ def plot_comparisons_from_cache(config, skip_larger_than=np.inf):
 
             field_id_key_map[field_id].append(key)
 
+    return field_id_key_map
+
+
+def random_uncompared_logfiles(index, config, compared_hashes):
+    index_set = set(index.keys())
+    comparison_set = set(compared_hashes)
+
+    not_yet_compared = np.array(list(index_set.difference(comparison_set)))
+    field_types = np.array([
+        index[file_hash]['delivery_details']['field_type']
+        for file_hash in not_yet_compared
+    ])
+
+    file_hashes_vmat = not_yet_compared[field_types == 'VMAT']
+
+    vmat_filepaths = np.array([
+        os.path.join(
+            config['linac_logfile_data_directory'],
+            'indexed',
+            index[file_hash]['filepath'])
+        for file_hash in file_hashes_vmat
+    ])
+
+    shuffle_index = np.arange(len(vmat_filepaths))
+    np.random.shuffle(shuffle_index)
+
+    return file_hashes_vmat[shuffle_index], vmat_filepaths[shuffle_index]
+
+
+def mudensity_comparisons(config, plot=True, new_logfiles=False):
     (
-        file_hashes, comparisons, file_paths_worst_first
+        comparison_storage_filepath, comparison_storage_scratch
+    ) = get_cache_filepaths(config)
+
+    grid_resolution, ram_fraction = get_mu_density_parameters(config)
+
+    index = get_index(config)
+    field_id_key_map = get_field_id_key_map(index)
+
+    (
+        file_hashes, comparisons, _
     ) = load_comparisons_from_cache(config)
+
+    if new_logfiles:
+        file_hashes, _ = random_uncompared_logfiles(
+            index, config, file_hashes)
 
     sql_servers_list = get_sql_servers_list(config)
 
     with multi_mosaiq_connect(sql_servers_list) as cursors:
+        for file_hash in file_hashes:
 
-        for i, logfile_filepath in enumerate(file_paths_worst_first):
-            print("\n{}".format(logfile_filepath))
+            try:
+                logfile_filepath = get_filepath(index, config, file_hash)
+                print("\n{}".format(logfile_filepath))
 
-            if index[file_hashes[i]]['delivery_details']['qa_mode']:
-                print('Skipping QA field')
-            elif comparisons[i] > skip_larger_than:
-                print(
-                    'Cached comparison value too large ({})\n'
-                    'Skipping...'.format(comparisons[i]))
-            else:
-                print("Cached comparison value = {}".format(comparisons[i]))
+                if (new_logfiles) and (file_hash in comparisons):
+                    raise AssertionError(
+                        "A new logfile shouldn't have already been compared")
 
-                results = get_logfile_mosaiq_results(
-                    index, config, logfile_filepath, field_id_key_map,
-                    file_hashes[i], cursors,
-                    ram_fraction=ram_fraction, grid_resolution=grid_resolution)
-                new_comparison = calc_comparison(results[2], results[3])
-
-                if np.abs(comparisons[i] - new_comparison) > 0.00001:
-                    print(
-                        "Calced comparison value does not agree with the "
-                        "cached value.")
-                    print("Newly calculated comparison value = {}".format(
-                        new_comparison))
-                    update_comparison_file(
-                        file_hashes[i], new_comparison,
-                        comparison_storage_filepath,
-                        comparison_storage_scratch)
-                    print("Overwrote the cache with the new result.")
+                if index[file_hash]['delivery_details']['qa_mode']:
+                    print('Skipping QA field')
                 else:
-                    print(
-                        "Calced comparison value agrees with the cached value")
-                plot_results(*results)
+                    if file_hash in comparisons:
+                        print("Cached comparison value = {}".format(
+                            comparisons[file_hash]))
 
+                    results = get_logfile_mosaiq_results(
+                        index, config, logfile_filepath, field_id_key_map,
+                        file_hash, cursors,
+                        ram_fraction=ram_fraction, grid_resolution=grid_resolution)
+                    new_comparison = calc_comparison(results[2], results[3])
 
-def get_file_info(index, filepath):
-    return index[hash_file(filepath)]
+                    if file_hash not in comparisons:
+                        update_comparison_file(
+                            file_hash, new_comparison,
+                            comparison_storage_filepath,
+                            comparison_storage_scratch)
+                        print("Newly calculated comparison value = {}".format(
+                            new_comparison))
+                    elif np.abs(comparisons[file_hash] - new_comparison) > 0.00001:
+                        print(
+                            "Calced comparison value does not agree with the "
+                            "cached value.")
+                        print("Newly calculated comparison value = {}".format(
+                            new_comparison))
+                        update_comparison_file(
+                            file_hash, new_comparison,
+                            comparison_storage_filepath,
+                            comparison_storage_scratch)
+                        print("Overwrote the cache with the new result.")
+                    else:
+                        print(
+                            "Calced comparison value agrees with the cached value")
+                    if plot:
+                        plot_results(*results)
+            except KeyboardInterrupt:
+                raise
+            except AssertionError:
+                raise
+            except Exception:
+                print(traceback.format_exc())
 
 
 def mu_density_from_delivery_data(delivery_data, grid_resolution=1,
@@ -286,9 +287,7 @@ def calc_and_merge_logfile_mudensity(filepaths, ram_fraction=0.8,
 def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
                                filehash, cursors, ram_fraction=0.8,
                                grid_resolution=1):
-    # logfile_delivery_data = delivery_data_from_logfile(filepath)
-
-    file_info = get_file_info(index, filepath)
+    file_info = index[filehash]
     delivery_details = file_info['delivery_details']
     field_id = delivery_details['field_id']
 
@@ -307,9 +306,10 @@ def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
         logfilepaths, ram_fraction=ram_fraction,
         grid_resolution=grid_resolution)
 
-    # logile_results = mu_density_from_delivery_data(
-    #     logfile_delivery_data, ram_fraction=ram_fraction,
-    #     grid_resolution=grid_resolution)
+    #     logfile_delivery_data = delivery_data_from_logfile(filepath)
+    #     logile_results = mu_density_from_delivery_data(
+    #         logfile_delivery_data, ram_fraction=ram_fraction,
+    #         grid_resolution=grid_resolution)
 
     try:
         assert np.all(logile_results[0] == mosaiq_results[0])
