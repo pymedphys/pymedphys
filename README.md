@@ -1,6 +1,4 @@
-# PyMedPhys
-
-[![Build Status](https://travis-ci.org/CCA-Physics/pymedphys.svg?branch=master)](https://travis-ci.org/CCA-Physics/pymedphys)
+# PyMedPhys [![Build Status](https://travis-ci.org/CCA-Physics/pymedphys.svg?branch=master)](https://travis-ci.org/CCA-Physics/pymedphys)
 
 ## Description
 
