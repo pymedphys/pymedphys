@@ -1,5 +1,7 @@
 # PyMedPhys
 
+[![Build Status](https://travis-ci.org/CCA-Physics/pymedphys.svg?branch=master)](https://travis-ci.org/CCA-Physics/pymedphys)
+
 ## Description
 
 A range of python modules encompased under the pymedphys package, designed to
