@@ -1,0 +1,17 @@
+sudo: required
+language: c
+cache:
+  directories:
+    - $HOME/miniconda
+    - $HOME/.cache/pip
+env:
+  matrix:
+    - PYTHON="3.5"
+    - PYTHON="3.6"
+    - PYTHON="3.7"
+  global:
+    - MINICONDA_DIR="$HOME/miniconda"
+install:
+  - bash ./scripts/travis_install.sh
+script:
+  - bash ./scripts/travis_script.sh
