@@ -222,7 +222,7 @@ def mu_density_from_delivery_data(delivery_data, grid_resolution=1,
     return grid_xx, grid_yy, mu_density
 
 
-def find_consequtive_logfiles(field_id_key_map, field_id, filehash, index,
+def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index,
                               config):
     keys = np.array(field_id_key_map[field_id])
 
@@ -239,16 +239,9 @@ def find_consequtive_logfiles(field_id_key_map, field_id, filehash, index,
 
     delivery_time = np.array(index[filehash]['local_time']).astype(np.datetime64)
     within_4_hours_reference = np.abs(delivery_time - times) < hours_4
-    within_4_hours = keys[within_4_hours_reference]
+    within_4_hours = keys[within_4_hours_reference].tolist()
 
-    filepaths_within_4_hours = [
-        os.path.join(
-            config['linac_logfile_data_directory'],
-            'indexed', index[key]['filepath'])
-        for key in within_4_hours
-    ]
-
-    return filepaths_within_4_hours
+    return within_4_hours
 
 
 def calc_and_merge_logfile_mudensity(filepaths, ram_fraction=0.8,
@@ -300,8 +293,14 @@ def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
         mosaiq_delivery_data, ram_fraction=ram_fraction,
         grid_resolution=grid_resolution)
 
-    logfilepaths = find_consequtive_logfiles(
+    consecutive_keys = find_consecutive_logfiles(
         field_id_key_map, field_id, filehash, index, config)
+
+    logfilepaths = [
+        get_filepath(index, config, key)
+        for key in consecutive_keys
+    ]
+
     logile_results = calc_and_merge_logfile_mudensity(
         logfilepaths, ram_fraction=ram_fraction,
         grid_resolution=grid_resolution)
