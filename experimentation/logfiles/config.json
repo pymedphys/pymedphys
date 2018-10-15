@@ -1,0 +1,52 @@
+{
+    "linac_logfile_data_directory": "S:\\Physics\\Programming\\data\\LinacLogFiles",
+    "machine_map": {
+        "2619": {
+            "centre": "rccc",
+            "type": "elekta-agility"
+        },
+        "2694": {
+            "centre": "rccc",
+            "type": "elekta-agility"
+        },
+        "4299": {
+            "centre": "nbccc",
+            "type": "elekta-agility"
+        }
+    },
+    "machine_types": {
+        "elekta-agility": {
+            "max_leaf_gap": 400,
+            "leaf_pair_widths": [
+                5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+                5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+                5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+                5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+            ]
+        }
+    },
+    "centres": {
+        "rccc": {
+            "timezone": "Australia/Sydney",
+            "ois": "mosaiq",
+            "ois_specific_data": {
+                "sql_server": "msqsql"
+            }
+        },
+        "nbccc": {
+            "timezone": "Australia/Sydney",
+            "ois": "mosaiq",
+            "ois_specific_data": {
+                "sql_server": "nbccc-msq"
+            }
+        }
+    },
+    "mu_density": {
+        "comparisons_cache": {
+            "primary": "comparisons.private.yaml",
+            "scratch": "comparisons_scratch.private.yaml"
+        },
+        "grid_resolution": 1,
+        "ram_fraction": 0.45
+    }
+}
