@@ -34,19 +34,18 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
+# from ..level1.trfdecode import delivery_data_from_logfile
+from decode_trf import delivery_data_from_logfile  # remove this when ready
+
 from ..level1.configutilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath
 )
 from ..level1.msqconnect import multi_mosaiq_connect
-from ..level1.filehash import hash_file
 from ..level1.deliverydata import get_delivery_parameters
 from ..level1.mudensity import calc_mu_density
 from ..level2.msqdelivery import multi_fetch_and_verify_mosaiq
-
-# from ..level1.trfdecode import delivery_data_from_logfile
-from decode_trf import delivery_data_from_logfile  # remove this when ready
 
 
 def analyse_single_hash(index, config, filehash, cursors):
