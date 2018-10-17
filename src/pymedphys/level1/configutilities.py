@@ -28,14 +28,18 @@ import os
 import json
 
 
+def get_data_directory(config):
+    return config['linac_logfile_data_directory']
+
+
 def get_cache_filepaths(config):
     mu_density_config = config['mu_density']
 
     comparison_storage_filepath = os.path.join(
-        config['linac_logfile_data_directory'],
+        get_data_directory(config),
         mu_density_config['comparisons_cache']['primary'])
     comparison_storage_scratch = os.path.join(
-        config['linac_logfile_data_directory'],
+        get_data_directory(config),
         mu_density_config['comparisons_cache']['scratch'])
 
     return comparison_storage_filepath, comparison_storage_scratch
@@ -51,7 +55,7 @@ def get_mu_density_parameters(config):
 
 def get_index(config):
     index_filepath = os.path.join(
-        config['linac_logfile_data_directory'], 'index.json')
+        get_data_directory(config), 'index.json')
     with open(index_filepath) as json_data_file:
         index = json.load(json_data_file)
 
@@ -87,7 +91,7 @@ def get_sql_servers_list(config):
 
 
 def get_filepath(index, config, filehash):
-    data_directory = config['linac_logfile_data_directory']
+    data_directory = get_data_directory(config)
     relative_path = index[filehash]['filepath']
     filepath = os.path.abspath(
         os.path.join(data_directory, 'indexed', relative_path))
