@@ -327,7 +327,7 @@ def determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
         adjusted_grid_leaf_map, adjusted_mlc, adjusted_leaf_xx)
 
 
-def remove_irrelevant_control_points(mu, mlc, jaw):
+def find_relevant_control_points(mu):
     mu_diff = np.diff(mu)
     no_change = mu_diff == 0
     no_change_before = no_change[0:-1]
@@ -336,7 +336,13 @@ def remove_irrelevant_control_points(mu, mlc, jaw):
     no_change_before_and_after = no_change_before & no_change_after
     irrelevant_control_point = np.hstack(
         [no_change[0], no_change_before_and_after, no_change[-1]])
-    control_points_to_use = np.invert(irrelevant_control_point)
+    relevant_control_points = np.invert(irrelevant_control_point)
+
+    return relevant_control_points
+
+
+def remove_irrelevant_control_points(mu, mlc, jaw):
+    control_points_to_use = find_relevant_control_points(mu)
 
     mu = mu[control_points_to_use]
     mlc = mlc[control_points_to_use, :, :]
