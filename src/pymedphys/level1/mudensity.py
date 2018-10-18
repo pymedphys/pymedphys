@@ -232,7 +232,7 @@ def calc_leaf_blocked_fraction_define_subset(leaf_xx, grid_yy, mlc,
                                              grid_leaf_map):
     leaf_blocked_fractions = calc_leaf_blocked_fractions(leaf_xx, mlc)
 
-    for key in leaf_blocked_fractions.keys():
+    for key in leaf_blocked_fractions:
         leaf_blocked_fractions[key] = (
             leaf_blocked_fractions[key][:, grid_leaf_map, :])
 
