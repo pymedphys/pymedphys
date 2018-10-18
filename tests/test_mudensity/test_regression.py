@@ -1,9 +1,10 @@
 import os
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from pymedphys.level1.mudensity import calc_mu_density
-import matplotlib.pyplot as plt
+
 
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "../data")
 DELIVERY_DATA_FILEPATH = os.path.join(DATA_DIRECTORY, 'mu_density_example_arrays.npz')
@@ -23,7 +24,7 @@ def test_regression(plot=False):
 
     assert np.all(grid_xx == cached_grid_xx)
     assert np.all(grid_yy == cached_grid_yy)
-    assert np.all(mu_density == cached_mu_density)
+    assert np.allclose(mu_density, cached_mu_density)
 
     if plot:
         plt.pcolormesh(grid_xx, grid_yy, mu_density)

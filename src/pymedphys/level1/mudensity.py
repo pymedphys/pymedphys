@@ -24,7 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import psutil
 import numpy as np
 
 
@@ -168,9 +167,6 @@ def determine_x_pos_to_be_calced(leaf_xx, mlc):
 
 def calc_blocked_fraction(leaf_xx, mlc, grid_leaf_map,
                           grid_yy, jaw):
-
-    virtual_memory_start = psutil.virtual_memory()
-
     leaf_blocked_fractions = calc_leaf_blocked_fraction_define_subset(
         leaf_xx, grid_yy, mlc, grid_leaf_map)
 
@@ -206,16 +202,14 @@ def calc_blocked_fraction(leaf_xx, mlc, grid_leaf_map,
     blocked_fraction = start_blocked_fraction + end_blocked_fraction
     blocked_fraction[blocked_fraction > 1] = 1
 
-    virtual_memory_end = psutil.virtual_memory()
-    ram_used = virtual_memory_end.used - virtual_memory_start.used
-
-    return blocked_fraction, ram_used
+    return blocked_fraction
 
 
-def calc_mu_density_over_slice(mu, mlc, jaw, slice_to_check,
-                               grid_xx, grid_yy, leaf_xx, grid_leaf_map):
+def calc_mu_density_over_slice(mu, mlc, jaw, i,
+                               grid_yy, leaf_xx, grid_leaf_map):
+    slice_to_check = slice(i, i + 2, 1)
 
-    blocked_fraction, ram_used = calc_blocked_fraction(
+    blocked_fraction = calc_blocked_fraction(
         leaf_xx, mlc[slice_to_check, :, :], grid_leaf_map,
         grid_yy, jaw[slice_to_check, :])
 
@@ -223,7 +217,7 @@ def calc_mu_density_over_slice(mu, mlc, jaw, slice_to_check,
         np.diff(mu[slice_to_check])[:, None, None] *
         (1 - blocked_fraction), axis=0)
 
-    return mu_density, ram_used
+    return mu_density
 
 
 def calc_max_index(current_index, number_of_sections, final_index):
@@ -342,6 +336,8 @@ def find_relevant_control_points(mu):
 
 
 def remove_irrelevant_control_points(mu, mlc, jaw):
+    assert len(mu) > 0, "No control points found"
+
     mu = np.array(mu)
     mlc = np.array(mlc)
     jaw = np.array(jaw)
@@ -356,14 +352,8 @@ def remove_irrelevant_control_points(mu, mlc, jaw):
 
 
 def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
-                    leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
-                    ram_fraction=0.8):
+                    leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS):
     leaf_pair_widths = np.array(leaf_pair_widths)
-    min_number_of_sections = 20
-
-    number_of_sections = min_number_of_sections
-    current_index = 0
-
     mu, mlc, jaw = remove_irrelevant_control_points(mu, mlc, jaw)
 
     (
@@ -372,30 +362,13 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
     ) = determine_calc_grid_and_adjustments(
         mlc, jaw, leaf_pair_widths, grid_resolution)
 
-    final_index = len(mu)
-    max_index = 0
-
     mu_density = np.zeros_like(grid_xx)
 
-    while max_index < final_index:
-        max_index = calc_max_index(
-            current_index, number_of_sections, final_index)
-
-        slice_to_check = slice(current_index, max_index, 1)
-        mu_density_of_slice, ram_used = calc_mu_density_over_slice(
-            mu, adjusted_mlc, jaw, slice_to_check,
-            grid_xx, grid_yy, adjusted_leaf_xx, adjusted_grid_leaf_map)
+    for i in range(len(mu) - 1):
+        mu_density_of_slice = calc_mu_density_over_slice(
+            mu, adjusted_mlc, jaw, i,
+            grid_yy, adjusted_leaf_xx, adjusted_grid_leaf_map)
         mu_density += mu_density_of_slice
-
-        current_index = current_index + number_of_sections
-
-        current_ram_fraction = ram_used / psutil.virtual_memory().available
-        if current_ram_fraction != 0:
-            number_of_sections = number_of_sections * int(
-                np.floor(ram_fraction / current_ram_fraction))
-
-            if number_of_sections < min_number_of_sections:
-                number_of_sections = min_number_of_sections
 
     full_grid_xx, full_grid_yy = determine_full_grid(
         max_leaf_gap, grid_resolution, leaf_pair_widths)
