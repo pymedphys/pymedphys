@@ -342,6 +342,10 @@ def find_relevant_control_points(mu):
 
 
 def remove_irrelevant_control_points(mu, mlc, jaw):
+    mu = np.array(mu)
+    mlc = np.array(mlc)
+    jaw = np.array(jaw)
+
     control_points_to_use = find_relevant_control_points(mu)
 
     mu = mu[control_points_to_use]

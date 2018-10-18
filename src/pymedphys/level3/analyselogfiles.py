@@ -326,10 +326,12 @@ def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
     return grid_xx, grid_yy, logfile_mu_density, mosaiq_mu_density
 
 
-def calc_comparison(logfile_mu_density, mosaiq_mu_density):
+def calc_comparison(logfile_mu_density, mosaiq_mu_density, normalisation=None):
+    if normalisation is None:
+        normalisation = np.sum(mosaiq_mu_density)
+
     comparison = (
-        np.sum(np.abs(logfile_mu_density - mosaiq_mu_density)) /
-        np.sum(mosaiq_mu_density))
+        np.sum(np.abs(logfile_mu_density - mosaiq_mu_density)) / normalisation)
 
     return comparison
 

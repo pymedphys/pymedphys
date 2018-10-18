@@ -28,6 +28,15 @@ import os
 import json
 
 
+def get_gantry_tolerance(index, file_hash, config):
+    machine_name = index[file_hash]['logfile_header']['machine']
+    machine_type = config['machine_map'][machine_name]['type']
+    gantry_tolerance = (
+        config['machine_types'][machine_type]['gantry_tolerance'])
+
+    return gantry_tolerance
+
+
 def get_data_directory(config):
     return config['linac_logfile_data_directory']
 
