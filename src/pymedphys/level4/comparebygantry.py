@@ -28,12 +28,12 @@ import numpy as np
 
 from decode_trf.decode_trf import delivery_data_from_logfile
 
-from ..level1.msqconnect import mosaiq_connect
-from ..level1.configutilities import get_filepath
+# from ..level1.msqconnect import mosaiq_connect
+from ..level1.configutilities import get_filepath, get_gantry_tolerance
 from ..level1.mudensity import (
     find_relevant_control_points, calc_mu_density)
 from ..level2.msqdelivery import multi_fetch_and_verify_mosaiq
-from ..level3.analyselogfiles import calc_comparison
+from ..level3.analyselogfiles import calc_comparison, plot_results
 
 
 def get_mappings(index, file_hashes):
@@ -91,13 +91,116 @@ def assert_array_agreement(unique_logfile_gantry_angles, mosaiq_gantry_angles,
             mosaiq_gantry_angles, difference_matrix, agreement_matrix))
 
 
-def get_gantry_tolerance(index, file_hash, config):
-    machine_name = index[file_hash]['logfile_header']['machine']
-    machine_type = config['machine_map'][machine_name]['type']
-    gantry_tolerance = (
-        config['machine_types'][machine_type]['gantry_tolerance'])
+def extract_angle_from_delivery_data(delivery_data, gantry_angle, gantry_tolerance=0):
+    moniter_units = np.array(delivery_data.monitor_units)
+    relevant_control_points = find_relevant_control_points(moniter_units)
 
-    return gantry_tolerance
+    mu = moniter_units[relevant_control_points]
+    mlc = np.array(delivery_data.mlc)[relevant_control_points]
+    jaw = np.array(delivery_data.jaw)[relevant_control_points]
+    gantry_angles = np.array(delivery_data.gantry)[relevant_control_points]
+
+    gantry_angle_within_tolerance = (
+        np.abs(gantry_angles - gantry_angle) <= gantry_tolerance)
+    diff_mu = np.concatenate([[0], np.diff(mu)])[gantry_angle_within_tolerance]
+    mu = np.cumsum(diff_mu)
+
+    mlc = mlc[gantry_angle_within_tolerance]
+    jaw = jaw[gantry_angle_within_tolerance]
+
+    return mu, mlc, jaw
+
+
+def get_field_id_from_logfile_group(index, logfile_group):
+    field_ids = []
+
+    for logfile_hash in logfile_group:
+        field_ids.append(index[logfile_hash]['delivery_details']['field_id'])
+
+    assert len(np.unique(field_ids)) == 1
+
+    field_id = field_ids[0]
+
+    return field_id
+
+
+def calc_normalisation(mosaiq_delivery_data):
+    all_gantry_angles = calc_mu_density(
+        mosaiq_delivery_data.monitor_units, mosaiq_delivery_data.mlc,
+        mosaiq_delivery_data.jaw
+    )
+    mosaiq_gantry_angles = np.unique(mosaiq_delivery_data.gantry)
+    number_of_gantry_angles = len(mosaiq_gantry_angles)
+
+    normalisation = np.sum(all_gantry_angles[2]) / number_of_gantry_angles
+
+    return normalisation
+
+
+def calc_mu_density_bygantry(delivery_data, gantry_angle):
+    mu_density = calc_mu_density(
+        *extract_angle_from_delivery_data(delivery_data, gantry_angle)
+    )
+
+    return mu_density
+
+
+def calc_logfile_mu_density_bygantry(index, config, logfile_group,
+                                     gantry_angle):
+    logfile_mu_density = None
+
+    for filehash in logfile_group:
+        filepath = get_filepath(index, config, filehash)
+        logfile_delivery_data = delivery_data_from_logfile(filepath)
+
+        gantry_tolerance = get_gantry_tolerance(index, filehash, config)
+
+        a_logfile_mu_density = calc_mu_density(
+            *extract_angle_from_delivery_data(
+                logfile_delivery_data, gantry_angle, gantry_tolerance)
+        )
+
+        if logfile_mu_density is None:
+            logfile_mu_density = a_logfile_mu_density
+        else:
+            assert np.all(logfile_mu_density[0] == a_logfile_mu_density[0])
+            assert np.all(logfile_mu_density[1] == a_logfile_mu_density[1])
+            logfile_mu_density[2] += a_logfile_mu_density[2]
+
+    return logfile_mu_density
+
+
+def compare_logfile_group_bygantry(index, config, cursor, logfile_group,
+                                   gantry_angle):
+    field_id = get_field_id_from_logfile_group(index, logfile_group)
+
+    mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(cursor, field_id)
+
+    mosaiq_mu_density = calc_mu_density_bygantry(
+        mosaiq_delivery_data, gantry_angle)
+    normalisation = calc_normalisation(mosaiq_delivery_data)
+
+    logfile_mu_density = calc_logfile_mu_density_bygantry(
+        index, config, logfile_group, gantry_angle)
+
+    grid_xx = logfile_mu_density[0]
+    grid_yy = logfile_mu_density[1]
+    assert np.all(grid_xx == mosaiq_mu_density[0])
+    assert np.all(grid_yy == mosaiq_mu_density[1])
+
+    comparison = calc_comparison(
+        logfile_mu_density[2], mosaiq_mu_density[2], normalisation)
+
+    print(comparison)
+    plot_results(
+        grid_xx, grid_yy, logfile_mu_density[2], mosaiq_mu_density[2])
+
+    return comparison
+
+
+# -----------------------------------------------------------------------------
+# TODO Refactor the following functions to be in terms of the above.
+# -----------------------------------------------------------------------------
 
 
 def get_logfile_delivery_data_bygantry(index, config, logfile_groups,
@@ -200,7 +303,8 @@ def get_mosaiq_mu_density_bygantry(mosaiq_delivery_data_bygantry):
     return mosaiq_mu_density_bygantry
 
 
-def get_comparison_results(mosaiq_mu_density_bygantry, logfile_mu_density_bygantry):
+def get_comparison_results(mosaiq_mu_density_bygantry,
+                           logfile_mu_density_bygantry, normalisation):
     comparison_results = dict()
     mosaiq_gantry_angles = mosaiq_mu_density_bygantry.keys()
     logfile_groups = list(logfile_mu_density_bygantry.keys())
@@ -219,7 +323,8 @@ def get_comparison_results(mosaiq_mu_density_bygantry, logfile_mu_density_bygant
 
             logfile_mu_density = logfile_mu_density_bygantry[logfile_group][mosaiq_gantry_angle][2]
 
-            comparison = calc_comparison(logfile_mu_density, mosaiq_mu_density)
+            comparison = calc_comparison(
+                logfile_mu_density, mosaiq_mu_density, normalisation)
             comparison_results[mosaiq_gantry_angle]['comparisons'][logfile_group] = comparison
 
         comparisons = np.array([
@@ -238,14 +343,13 @@ def get_comparison_results(mosaiq_mu_density_bygantry, logfile_mu_density_bygant
     return comparison_results
 
 
-def get_comparisons_byfield(index, config, field_ids, field_id_grouped_hashes):
+def get_comparisons_byfield(index, config, cursor, field_ids,
+                            field_id_grouped_hashes):
     mosaiq_delivery_data_byfield = dict()
 
-    # TODO Need to make the server usage configurable.
-    with mosaiq_connect('msqsql') as cursor:
-        for field_id in field_ids:
-            mosaiq_delivery_data_byfield[field_id] = multi_fetch_and_verify_mosaiq(
-                cursor, field_id)
+    for field_id in field_ids:
+        mosaiq_delivery_data_byfield[field_id] = multi_fetch_and_verify_mosaiq(
+            cursor, field_id)
 
     comparisons_byfield = dict()
 
@@ -260,6 +364,9 @@ def get_comparisons_byfield(index, config, field_ids, field_id_grouped_hashes):
         mosaiq_delivery_data = mosaiq_delivery_data_byfield[field_id]
         mosaiq_gantry_angles = np.unique(mosaiq_delivery_data.gantry)
 
+
+
+
         logfile_delivery_data_bygantry = get_logfile_delivery_data_bygantry(
             index, config, logfile_groups, mosaiq_gantry_angles)
         logfile_mu_density_bygantry = get_logfile_mu_density_bygantry(
@@ -268,8 +375,11 @@ def get_comparisons_byfield(index, config, field_ids, field_id_grouped_hashes):
             mosaiq_delivery_data)
         mosaiq_mu_density_bygantry = get_mosaiq_mu_density_bygantry(
             mosaiq_delivery_data_bygantry)
+
+        normalisation = calc_normalisation(mosaiq_delivery_data)
         comparison_results = get_comparison_results(
-            mosaiq_mu_density_bygantry, logfile_mu_density_bygantry)
+            mosaiq_mu_density_bygantry, logfile_mu_density_bygantry,
+            normalisation)
 
         comparisons_byfield[field_id] = comparison_results
 
