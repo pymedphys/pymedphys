@@ -42,8 +42,98 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
                     leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS, time_steps=50):
     """Determine the MU Density.
 
+    Both jaw and mlc positions are defined in bipolar format for each control
+    point. A negative value indicates travel over the isocentre. All positional
+    arguments are defined at the isocentre projection with the units of mm.
+
+    Args:
+        mu (np.array): 1-D array containing an MU value for each control point.
+        mlc (np.array): 3-D array containing the MLC positions.
+            axis 0: control point
+            axis 1: mlc pair
+            axis 2: leaf bank
+
+        jaw (np.array): 2-D array containing the jaw positions.
+            axis 0: control point
+            axis 1: diaphragm
+
+        grid_resolution (float, optional): The calc grid resolution. Defaults
+            to 1 mm.
+
+        max_leaf_gap (float, optional): The maximum possible distance between
+            opposing leaves. Defaults to 400 mm.
+
+        leaf_pair_widths (tuple, optional): The widths of each leaf pair in the
+            MLC limiting device. The number of entries in the tuples defines
+            the number of leaf pairs. Each entry itself defines that particular
+            leaf pair width. Defaults to 80 leaf pairs each 5 mm wide.
+
+        time_steps (int, optional): The number of time steps each control point
+            travel is calculated over. Calculation time approximately scales
+            linearly with this argument. Very small `grid_resolution` may
+            require larger `time_steps` to be used. For a `grid_resolution` of
+            1 mm, using a `time_steps` parameter less than 50 may produce
+            erroneous results.
+
+    Returns:
+        mu_density (np.array): 2-D array containing the calculated mu density.
+            axis 0: jaw direction
+            axis 1: mlc direction
+
     Examples:
-        Calculating the MU Density from a Mosaiq Field ID.
+        >>> import numpy as np
+
+        >>> from pymedphys.level1.mudensity import (
+        ...     calc_mu_density, get_grid, display_mu_density)
+
+        >>> leaf_pair_widths = (5, 5, 5)
+        >>> max_leaf_gap = 10
+        >>> mu = np.array([0, 2, 5, 10])
+        >>> mlc = np.array([
+        ...     [
+        ...         [1, 1],
+        ...         [2, 2],
+        ...         [3, 3]
+        ...     ],
+        ...     [
+        ...         [2, 2],
+        ...         [3, 3],
+        ...         [4, 4]
+        ...     ],
+        ...     [
+        ...         [-2, 3],
+        ...         [-2, 4],
+        ...         [-2, 5]
+        ...     ],
+        ...     [
+        ...         [0, 0],
+        ...         [0, 0],
+        ...         [0, 0]
+        ...     ]
+        ... ])
+        >>> jaw = np.array([
+        ...     [7.5, 7.5],
+        ...     [7.5, 7.5],
+        ...     [-2, 7.5],
+        ...     [0, 0]
+        ... ])
+
+        >>> grid = get_grid(
+        ...    max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths)
+        >>> mu_density = calc_mu_density(
+        ...    mu, mlc, jaw, max_leaf_gap=max_leaf_gap,
+        ...    leaf_pair_widths=leaf_pair_widths)
+        >>> display_mu_density(grid, mu_density)
+
+
+        MU, MLC, and Jaw arguments can be retrieved from the `DeliveryData`
+        object as defined within `pymedphys.level1.deliverydata`. Delivery
+        data from Mosaiq can be retrieved using `multi_fetch_and_verify_mosaiq`
+        found within `pymedphys.level2.msqdelivery`. Logfile delivery data
+        can be retrieved using `delivery_data_from_logfile` found within
+        `pymedphys.level2.trfdecode`. See below for respective usage.
+
+        MU Density from a Mosaiq record.
 
         >>> from pymedphys.level1.mudensity import (
         ...     calc_mu_density, get_grid, display_mu_density)
@@ -52,41 +142,53 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
         >>> from pymedphys.level2.msqdelivery import (
         ...     multi_fetch_and_verify_mosaiq)
 
-        >>> field_id = 0  # provide a mosaiq field id here
-        >>> msq_server_name = 'a_name'
-
-        >>> with mosaiq_connect(msq_server_name) as cursor:
-        ...     delivery_data = multi_fetch_and_verify_mosaiq(cursor, field_id)
-
-        >>> mu = delivery_data.monitor_units
-        >>> mlc = delivery_data.mlc
-        >>> jaw = delivery_data.jaw
-
-        >>> grid = get_grid()
-        >>> mu_density = calc_mu_density(mu, mlc, jaw)
-        >>> display_mu_density(grid, mu_density)
+        >>> def mu_density_from_mosaiq(msq_server_name, field_id):
+        ...     with mosaiq_connect(msq_server_name) as cursor:
+        ...         delivery_data = multi_fetch_and_verify_mosaiq(
+        ...             cursor, field_id)
 
 
-        Calculating the MU Density given the filepath of a logfile.
+        ...     mu = delivery_data.monitor_units
+        ...     mlc = delivery_data.mlc
+        ...     jaw = delivery_data.jaw
+
+        ...     grid = get_grid()
+        ...     mu_density = calc_mu_density(mu, mlc, jaw)
+        ...     display_mu_density(grid, mu_density)
+
+        >>> mu_density_from_mosaiq('a_server_name', 11111) # doctest: +SKIP
+
+
+        MU Density from a logfile at a given filepath.
 
         >>> from pymedphys.level1.mudensity import (
         ...     calc_mu_density, get_grid, display_mu_density)
 
-        >>> from pymedphys.level2.trfdecode import (
-        ...     delivery_data_from_logfile)
+        >>> # from pymedphys.level2.trfdecode import (
+        >>> #    delivery_data_from_logfile)
 
-        >>> filepath = r"a/path/goes/here"
-        >>> delivery_data = delivery_data_from_logfile(filepath)
+        >>> from decode_trf import delivery_data_from_logfile  # temporary
 
-        >>> mu = delivery_data.monitor_units
-        >>> mlc = delivery_data.mlc
-        >>> jaw = delivery_data.jaw
+        >>> def mu_density_from_logfile(filepath):
+        ...     delivery_data = delivery_data_from_logfile(filepath)
 
-        >>> grid = get_grid()
-        >>> mu_density = calc_mu_density(mu, mlc, jaw)
-        >>> display_mu_density(grid, mu_density)
+        ...     mu = delivery_data.monitor_units
+        ...     mlc = delivery_data.mlc
+        ...     jaw = delivery_data.jaw
+
+        ...     grid = get_grid()
+        ...     mu_density = calc_mu_density(mu, mlc, jaw)
+        ...     display_mu_density(grid, mu_density)
+
+        >>> mu_density_from_logfile(r"a/path/goes/here") # doctest: +SKIP
+
     """
     leaf_pair_widths = np.array(leaf_pair_widths)
+
+    assert np.max(np.abs(mlc)) <= max_leaf_gap / 2, (
+        "The mlc should not travel further out than half the maximum leaf "
+        "gap."
+    )
 
     mu, mlc, jaw = _remove_irrelevant_control_points(mu, mlc, jaw)
 
@@ -122,7 +224,7 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
         >>> from pymedphys.level1.mudensity import (
         ...     calc_single_control_point, display_mu_density)
 
-        >>> leaf_pair_widths = [2, 2]
+        >>> leaf_pair_widths = (2, 2)
         >>> mlc = np.array([
         ...     [
         ...         [1, 1],
@@ -188,7 +290,7 @@ def single_mlc_pair(left_mlc, right_mlc, grid_resolution=1, time_steps=50):
         >>> mlc_right = (0, 7.7)
 
         >>> x, mu_density = single_mlc_pair(mlc_left, mlc_right)
-        >>> plt.plot(x, mu_density, '-o')
+        >>> fig = plt.plot(x, mu_density, '-o')
     """
     leaf_pair_widths = [grid_resolution]
     jaw = np.array([
