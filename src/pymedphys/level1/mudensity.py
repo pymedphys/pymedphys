@@ -41,11 +41,6 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
                     leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS, time_steps=50):
     leaf_pair_widths = np.array(leaf_pair_widths)
 
-    leaf_division = leaf_pair_widths / grid_resolution
-    assert np.all(leaf_division.astype(int) == leaf_division), (
-        "The grid resolution needs to exactly divide every leaf pair width."
-    )
-
     mu, mlc, jaw = _remove_irrelevant_control_points(mu, mlc, jaw)
 
     full_grid = get_grid(
@@ -59,30 +54,10 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
         current_jaw = jaw[control_point_slice, :]
         delivered_mu = np.diff(mu[control_point_slice])
 
-        (
-            grid, grid_leaf_map, current_mlc
-        ) = _determine_calc_grid_and_adjustments(
-            current_mlc, current_jaw,
-            leaf_pair_widths, grid_resolution)
-
-        positions = {
-            'mlc': {
-                1: (-current_mlc[0, :, 0], -current_mlc[1, :, 0]),  # left
-                -1: (current_mlc[0, :, 1], current_mlc[1, :, 1])  # right
-            },
-            'jaw': {
-                1: (-current_jaw[0::-1, 0], -current_jaw[1::, 0]),  # bot
-                -1: (current_jaw[0::-1, 1], current_jaw[1::, 1])  # top
-            }
-        }
-
-        blocked_by_device = _calc_blocked_by_device(
-            grid, positions, grid_resolution, time_steps)
-        device_open = _calc_device_open(blocked_by_device)
-        mlc_open, jaw_open = _remap_mlc_and_jaw(device_open, grid_leaf_map)
-        open_fraction = _calc_open_fraction(mlc_open, jaw_open)
-
-        mu_density_of_slice = open_fraction * delivered_mu
+        grid, mu_density_of_slice = calc_single_control_point(
+            current_mlc, current_jaw, delivered_mu,
+            leaf_pair_widths=leaf_pair_widths, grid_resolution=grid_resolution,
+            time_steps=time_steps)
         full_grid_mu_density_of_slice = _convert_to_full_grid(
             grid, full_grid, mu_density_of_slice)
 
@@ -91,12 +66,51 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
     return mu_density
 
 
+def calc_single_control_point(mlc, jaw, delivered_mu=1,
+                              leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
+                              grid_resolution=1, time_steps=50):
+    leaf_pair_widths = np.array(leaf_pair_widths)
+    leaf_division = leaf_pair_widths / grid_resolution
+    assert np.all(leaf_division.astype(int) == leaf_division), (
+        "The grid resolution needs to exactly divide every leaf pair width."
+    )
+    assert np.max(np.abs(jaw)) <= np.sum(leaf_pair_widths) / 2, (
+        "The jaw should not travel further out than the maximum leaf limits."
+    )
+
+    (
+        grid, grid_leaf_map, mlc
+    ) = _determine_calc_grid_and_adjustments(
+        mlc, jaw,
+        leaf_pair_widths, grid_resolution)
+
+    positions = {
+        'mlc': {
+            1: (-mlc[0, :, 0], -mlc[1, :, 0]),  # left
+            -1: (mlc[0, :, 1], mlc[1, :, 1])  # right
+        },
+        'jaw': {
+            1: (-jaw[0::-1, 0], -jaw[1::, 0]),  # bot
+            -1: (jaw[0::-1, 1], jaw[1::, 1])  # top
+        }
+    }
+
+    blocked_by_device = _calc_blocked_by_device(
+        grid, positions, grid_resolution, time_steps)
+    device_open = _calc_device_open(blocked_by_device)
+    mlc_open, jaw_open = _remap_mlc_and_jaw(device_open, grid_leaf_map)
+    open_fraction = _calc_open_fraction(mlc_open, jaw_open)
+
+    mu_density = open_fraction * delivered_mu
+
+    return grid, mu_density
+
+
 def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
                                 max_leaf_gap=400,
                                 leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
                                 time_steps=50):
     leaf_pair_widths = np.array(leaf_pair_widths)
-
     mu_density = calc_mu_density(
         mu, mlc, jaw, grid_resolution=grid_resolution,
         max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths,
@@ -110,7 +124,10 @@ def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
     return grid_xx, grid_yy, mu_density
 
 
-def get_grid(max_leaf_gap, grid_resolution, leaf_pair_widths):
+def get_grid(max_leaf_gap=400, grid_resolution=1,
+             leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS):
+    leaf_pair_widths = np.array(leaf_pair_widths)
+
     grid = dict()
 
     grid['mlc'] = np.arange(
@@ -123,6 +140,7 @@ def get_grid(max_leaf_gap, grid_resolution, leaf_pair_widths):
     grid_reference_position = _determine_reference_grid_position(
         top_of_reference_leaf, grid_resolution)
 
+    # It might be better to use round instead of ceil here.
     total_leaf_widths = np.sum(leaf_pair_widths)
     top_grid_pos = (
         np.ceil(
@@ -257,12 +275,12 @@ def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
         top_of_reference_leaf, grid_resolution)
 
     top_grid_pos = (
-        np.ceil((max_y - grid_reference_position) / grid_resolution) *
+        (np.round((max_y - grid_reference_position) / grid_resolution)) *
         grid_resolution + grid_reference_position)
 
     bot_grid_pos = (
         grid_reference_position -
-        np.ceil((-min_y + grid_reference_position) / grid_resolution) *
+        (np.round((-min_y + grid_reference_position) / grid_resolution)) *
         grid_resolution)
 
     grid = dict()
@@ -278,9 +296,9 @@ def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
     leaves_to_be_calced = np.unique(grid_leaf_map)
     adjusted_mlc = mlc[:, leaves_to_be_calced, :]
 
-    min_x = np.floor(
+    min_x = np.round(
         np.min(-adjusted_mlc[:, :, 0]) / grid_resolution) * grid_resolution
-    max_x = np.ceil(
+    max_x = np.round(
         np.max(adjusted_mlc[:, :, 1]) / grid_resolution) * grid_resolution
 
     grid['mlc'] = np.arange(
