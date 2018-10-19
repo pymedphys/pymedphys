@@ -89,6 +89,23 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
     return mu_density
 
 
+def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
+                                max_leaf_gap=400,
+                                leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
+                                time_steps=50):
+    mu_density = calc_mu_density(
+        mu, mlc, jaw, grid_resolution=grid_resolution,
+        max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths,
+        time_steps=time_steps)
+
+    full_grid = get_grid(
+        max_leaf_gap, grid_resolution, leaf_pair_widths)
+
+    grid_xx, grid_yy = np.meshgrid(full_grid['mlc'], full_grid['jaw'])
+
+    return grid_xx, grid_yy, mu_density
+
+
 def get_grid(max_leaf_gap, grid_resolution, leaf_pair_widths):
     grid = dict()
 
