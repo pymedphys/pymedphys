@@ -32,30 +32,7 @@
 
 import numpy as np
 
-from pymedphys.level1.mudensity import calc_single_control_point
-
-
-def single_mlc_pair(left_mlc, right_mlc, grid_resolution, time_steps=50):
-    leaf_pair_widths = [grid_resolution]
-    jaw = np.array([
-        [grid_resolution/2, grid_resolution/2],
-        [grid_resolution/2, grid_resolution/2]
-    ])
-    mlc = np.array([
-        [
-            [-left_mlc[0], right_mlc[0]],
-        ],
-        [
-            [-left_mlc[1], right_mlc[1]],
-        ]
-    ])
-
-    grid, mu_density = calc_single_control_point(
-        mlc, jaw, leaf_pair_widths=leaf_pair_widths,
-        grid_resolution=grid_resolution, time_steps=time_steps
-    )
-
-    return grid['mlc'], mu_density[0, :]
+from pymedphys.level1.mudensity import single_mlc_pair
 
 
 def test_minimal_variance_with_resolution():
