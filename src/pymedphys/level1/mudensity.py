@@ -143,32 +143,10 @@ def calc_jaw_blocked_fraction(grid_y, jaw, repeats):
     }
 
 
-def determine_leaves_to_be_calced(grid_yy, grid_leaf_map, jaw):
-    calc_top = np.invert(grid_yy[:, 0] >= np.max(jaw[:, 1]))
-    top_leaves_calc = np.unique(grid_leaf_map[calc_top])
-
-    calc_bot = np.invert(grid_yy[:, 0] <= np.min(-jaw[:, 0]))
-    bot_leaves_calc = np.unique(grid_leaf_map[calc_bot])
-
-    leaves_to_be_calced = np.intersect1d(top_leaves_calc, bot_leaves_calc)
-
-    return leaves_to_be_calced
-
-
-def determine_x_pos_to_be_calced(leaf_xx, mlc):
-    leaf_x = leaf_xx[0, :]
-    calc_left = np.invert(leaf_x <= np.min(-mlc[:, :, 0]))
-    calc_right = np.invert(leaf_x >= np.max(mlc[:, :, 1]))
-
-    x_pos_to_be_calced = calc_left & calc_right
-
-    return x_pos_to_be_calced
-
-
 def calc_blocked_fraction(leaf_xx, mlc, grid_leaf_map,
                           grid_yy, jaw):
     leaf_blocked_fractions = calc_leaf_blocked_fraction_define_subset(
-        leaf_xx, grid_yy, mlc, grid_leaf_map)
+        leaf_xx, mlc, grid_leaf_map)
 
     jaw_blocked_fractions = calc_jaw_blocked_fraction(
         grid_yy[:, 0], jaw, len(leaf_xx[0, :]))
@@ -220,15 +198,7 @@ def calc_mu_density_over_slice(mu, mlc, jaw, i,
     return mu_density
 
 
-def calc_max_index(current_index, number_of_sections, final_index):
-    max_index = current_index + number_of_sections + 1
-    if max_index > final_index:
-        max_index = final_index
-
-    return max_index
-
-
-def calc_leaf_blocked_fraction_define_subset(leaf_xx, grid_yy, mlc,
+def calc_leaf_blocked_fraction_define_subset(leaf_xx, mlc,
                                              grid_leaf_map):
     leaf_blocked_fractions = calc_leaf_blocked_fractions(leaf_xx, mlc)
 
@@ -245,7 +215,9 @@ def determine_leaf_y(leaf_pair_widths):
         np.cumsum(leaf_pair_widths) -
         leaf_pair_widths/2 - total_leaf_widths/2)
 
-    return leaf_y
+    initial_leaf_grid_y_pos = leaf_y[len(leaf_y)//2]
+
+    return leaf_y, initial_leaf_grid_y_pos
 
 
 def determine_full_grid(max_leaf_gap, grid_resolution, leaf_pair_widths):
@@ -254,9 +226,7 @@ def determine_full_grid(max_leaf_gap, grid_resolution, leaf_pair_widths):
         max_leaf_gap/2 + grid_resolution,
         grid_resolution).astype('float')
 
-    leaf_y = determine_leaf_y(leaf_pair_widths)
-
-    initial_leaf_grid_y_pos = leaf_y[len(leaf_y)//2]
+    _, initial_leaf_grid_y_pos = determine_leaf_y(leaf_pair_widths)
 
     total_leaf_widths = np.sum(leaf_pair_widths)
     top_grid_pos = (
@@ -278,29 +248,18 @@ def determine_full_grid(max_leaf_gap, grid_resolution, leaf_pair_widths):
 
 def determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
                                         grid_resolution):
-    min_x = np.floor(np.min(-mlc[:, :, 0]) / grid_resolution) * grid_resolution
-    max_x = np.ceil(np.max(mlc[:, :, 1]) / grid_resolution) * grid_resolution
-
     min_y = np.min(-jaw[:, 0])
     max_y = np.max(jaw[:, 1])
 
-    leaf_x = np.arange(
-        min_x, max_x + grid_resolution, grid_resolution
-    ).astype('float')
-
-    leaf_y = determine_leaf_y(leaf_pair_widths)
-
-    leaf_xx, _ = np.meshgrid(leaf_x, leaf_y)
-
-    initial_leaf_grid_y_pos = leaf_y[len(leaf_y)//2]
+    leaf_y, initial_leaf_grid_y_pos = determine_leaf_y(leaf_pair_widths)
 
     top_grid_pos = (
-        (max_y - initial_leaf_grid_y_pos) // grid_resolution *
+        np.ceil((max_y - initial_leaf_grid_y_pos) / grid_resolution) *
         grid_resolution + initial_leaf_grid_y_pos)
 
     bot_grid_pos = (
         initial_leaf_grid_y_pos -
-        (-min_y + initial_leaf_grid_y_pos) // grid_resolution *
+        np.ceil((-min_y + initial_leaf_grid_y_pos) / grid_resolution) *
         grid_resolution)
 
     grid_y = np.arange(
@@ -309,11 +268,22 @@ def determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
     grid_leaf_map = np.argmin(
         np.abs(grid_y[:, None] - leaf_y[None, :]), axis=1)
 
-    grid_xx, grid_yy = np.meshgrid(leaf_x, grid_y)
     adjusted_grid_leaf_map = grid_leaf_map - np.min(grid_leaf_map)
 
     leaves_to_be_calced = np.unique(grid_leaf_map)
     adjusted_mlc = mlc[:, leaves_to_be_calced, :]
+
+    min_x = np.floor(
+        np.min(-adjusted_mlc[:, :, 0]) / grid_resolution) * grid_resolution
+    max_x = np.ceil(
+        np.max(adjusted_mlc[:, :, 1]) / grid_resolution) * grid_resolution
+
+    leaf_x = np.arange(
+        min_x, max_x + grid_resolution, grid_resolution
+    ).astype('float')
+
+    grid_xx, grid_yy = np.meshgrid(leaf_x, grid_y)
+    leaf_xx, _ = np.meshgrid(leaf_x, leaf_y)
     adjusted_leaf_xx = leaf_xx[leaves_to_be_calced, :]
 
     return (
@@ -353,6 +323,10 @@ def remove_irrelevant_control_points(mu, mlc, jaw):
 
 def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
                     leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS):
+
+    # TODO assert the grid resolution to be a common diviser of every leaf
+    # width.
+
     leaf_pair_widths = np.array(leaf_pair_widths)
     mu, mlc, jaw = remove_irrelevant_control_points(mu, mlc, jaw)
 
