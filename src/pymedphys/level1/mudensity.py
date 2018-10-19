@@ -39,11 +39,13 @@ AGILITY_LEAF_PAIR_WIDTHS = [
 
 def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
                     leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS, time_steps=50):
-
-    # TODO assert the grid resolution to be a common diviser of every leaf
-    # width.
-
     leaf_pair_widths = np.array(leaf_pair_widths)
+
+    leaf_division = leaf_pair_widths / grid_resolution
+    assert np.all(leaf_division.astype(int) == leaf_division), (
+        "The grid resolution needs to exactly divide every leaf pair width."
+    )
+
     mu, mlc, jaw = _remove_irrelevant_control_points(mu, mlc, jaw)
 
     full_grid = get_grid(
@@ -116,19 +118,22 @@ def get_grid(max_leaf_gap, grid_resolution, leaf_pair_widths):
         max_leaf_gap/2 + grid_resolution,
         grid_resolution).astype('float')
 
-    _, initial_leaf_grid_y_pos = _determine_leaf_y(leaf_pair_widths)
+    _, top_of_reference_leaf = _determine_leaf_centres(
+        leaf_pair_widths)
+    grid_reference_position = _determine_reference_grid_position(
+        top_of_reference_leaf, grid_resolution)
 
     total_leaf_widths = np.sum(leaf_pair_widths)
     top_grid_pos = (
         np.ceil(
-            (total_leaf_widths/2 - initial_leaf_grid_y_pos)
+            (total_leaf_widths/2 - grid_reference_position)
             / grid_resolution) *
-        grid_resolution + initial_leaf_grid_y_pos)
+        grid_resolution + grid_reference_position)
 
     bot_grid_pos = (
-        initial_leaf_grid_y_pos -
+        grid_reference_position -
         np.ceil(
-            (total_leaf_widths/2 + initial_leaf_grid_y_pos)
+            (total_leaf_widths/2 + grid_reference_position)
             / grid_resolution) *
         grid_resolution)
 
@@ -219,15 +224,26 @@ def _calc_open_fraction(mlc_open, jaw_open):
     return open_fraction
 
 
-def _determine_leaf_y(leaf_pair_widths):
+def _determine_leaf_centres(leaf_pair_widths):
     total_leaf_widths = np.sum(leaf_pair_widths)
-    leaf_y = (
+    leaf_centres = (
         np.cumsum(leaf_pair_widths) -
         leaf_pair_widths/2 - total_leaf_widths/2)
 
-    initial_leaf_grid_y_pos = leaf_y[len(leaf_y)//2]
+    reference_leaf_index = len(leaf_centres)//2
 
-    return leaf_y, initial_leaf_grid_y_pos
+    top_of_reference_leaf = (
+        leaf_centres[reference_leaf_index] +
+        leaf_pair_widths[reference_leaf_index] / 2
+    )
+
+    return leaf_centres, top_of_reference_leaf
+
+
+def _determine_reference_grid_position(top_of_reference_leaf, grid_resolution):
+    grid_reference_position = top_of_reference_leaf - grid_resolution/2
+
+    return grid_reference_position
 
 
 def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
@@ -235,15 +251,18 @@ def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
     min_y = np.min(-jaw[:, 0])
     max_y = np.max(jaw[:, 1])
 
-    leaf_y, initial_leaf_grid_y_pos = _determine_leaf_y(leaf_pair_widths)
+    leaf_centres, top_of_reference_leaf = _determine_leaf_centres(
+        leaf_pair_widths)
+    grid_reference_position = _determine_reference_grid_position(
+        top_of_reference_leaf, grid_resolution)
 
     top_grid_pos = (
-        np.ceil((max_y - initial_leaf_grid_y_pos) / grid_resolution) *
-        grid_resolution + initial_leaf_grid_y_pos)
+        np.ceil((max_y - grid_reference_position) / grid_resolution) *
+        grid_resolution + grid_reference_position)
 
     bot_grid_pos = (
-        initial_leaf_grid_y_pos -
-        np.ceil((-min_y + initial_leaf_grid_y_pos) / grid_resolution) *
+        grid_reference_position -
+        np.ceil((-min_y + grid_reference_position) / grid_resolution) *
         grid_resolution)
 
     grid = dict()
@@ -252,7 +271,7 @@ def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
     ).astype('float')
 
     grid_leaf_map = np.argmin(
-        np.abs(grid['jaw'][:, None] - leaf_y[None, :]), axis=1)
+        np.abs(grid['jaw'][:, None] - leaf_centres[None, :]), axis=1)
 
     adjusted_grid_leaf_map = grid_leaf_map - np.min(grid_leaf_map)
 
