@@ -23,6 +23,33 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""Calculate the MU Density given mu, mlc, and jaw control points.
+
+.. WARNING::
+   Although this a useful tool in the toolbox for patient specific IMRT QA
+   in and of itself it is not a sufficient stand in replacement. In and of
+   itself this tool does not verify that the reported dose within the
+   treatment planning system is delivered by the Linac.
+
+   Deficiencies or limitations in the agreement between the treatment planning
+   system's beam model and the Linac delivery will not be able to be
+   highlighted by this tool. An example might be an overly modulated beam with
+   many thin sweeping strips, the Linac may deliver those control points
+   exactly but if the beam model in the TPS cannot sufficiently accurately
+   model the dose effects of those MLC control points the dose delivery will
+   not sufficiently agree with the treatment plan. In this case however, this
+   tool will say everything is in agreement.
+
+   It also may be the case that due to a hardware or calibration fault the
+   Linac itself may be incorrectly reporting its MLC and/or Jaw postions. In
+   this case the logfile record can agree exactly with the planned positions
+   while the true real world positions be in significant deviations.
+
+   The impact of these issues may be able to be limited by including with this
+   tool an automated independent 3-D dose calculation tool as well as a daily
+   automated MLC/jaw logfile to EPID to baseline agreement test.
+"""
+
 
 # pylint: disable=C0103,C1801
 
