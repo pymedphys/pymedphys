@@ -27,30 +27,47 @@
 # pylint: disable=C0103,C1801
 
 
-"""End to end regression testing.
+"""Regression testing of the single control point function.
 """
-
-import os
 
 import numpy as np
 
-from pymedphys.level1.mudensity import calc_mu_density
+from pymedphys.level1.mudensity import calc_single_control_point
 
 
-DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "../data")
-DELIVERY_DATA_FILEPATH = os.path.join(
-    DATA_DIRECTORY, 'mu_density_example_arrays.npz')
-
-
-def test_regression():
-    """The results of MU Density calculation should not change
+def test_partial_jaws():
+    """Parital jaw location should give a fractional result.
     """
-    regress_test_arrays = np.load(DELIVERY_DATA_FILEPATH)
+    leaf_pair_widths = [2, 2]
 
-    mu = regress_test_arrays['mu']
-    mlc = regress_test_arrays['mlc']
-    jaw = regress_test_arrays['jaw']
+    mlc = np.array([
+        [
+            [1, 1],
+            [2, 2],
+        ],
+        [
+            [2, 2],
+            [3, 3],
+        ]
+    ])
+    jaw = np.array([
+        [1.5, 1.2],
+        [1.5, 1.2]
+    ])
 
-    cached_mu_density = regress_test_arrays['mu_density']
-    mu_density = calc_mu_density(mu, mlc, jaw)
-    assert np.allclose(mu_density, cached_mu_density)
+    _, mu_density = calc_single_control_point(
+        mlc, jaw, leaf_pair_widths=leaf_pair_widths
+    )
+
+    reference_mu_density = [
+        [0.0, 0.06377551020408162, 0.4362244897959184, 0.5, 0.4362244897959184,
+         0.06377551020408162, 0.0],
+        [0.0, 0.12755102040816324, 0.8724489795918368, 1.0, 0.8724489795918368,
+         0.12755102040816324, 0.0],
+        [0.12755102040816324, 0.8724489795918368, 1.0, 1.0, 1.0,
+         0.8724489795918368, 0.12755102040816324],
+        [0.025510204081632643, 0.17448979591836736, 0.19999999999999993,
+         0.19999999999999993, 0.19999999999999993, 0.17448979591836736,
+         0.025510204081632643]]
+
+    assert np.allclose(mu_density, reference_mu_density)
