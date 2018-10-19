@@ -93,6 +93,8 @@ def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
                                 max_leaf_gap=400,
                                 leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
                                 time_steps=50):
+    leaf_pair_widths = np.array(leaf_pair_widths)
+
     mu_density = calc_mu_density(
         mu, mlc, jaw, grid_resolution=grid_resolution,
         max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths,
