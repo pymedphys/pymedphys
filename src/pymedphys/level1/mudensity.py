@@ -27,18 +27,65 @@
 # pylint: disable=C0103,C1801
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 
-AGILITY_LEAF_PAIR_WIDTHS = [
+AGILITY_LEAF_PAIR_WIDTHS = (
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
-]
+)
 
 
 def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
                     leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS, time_steps=50):
+    """Determine the MU Density.
+
+    Examples:
+        Calculating the MU Density from a Mosaiq Field ID.
+
+        >>> from pymedphys.level1.mudensity import (
+                calc_mu_density, get_grid, display_mu_density)
+
+        >>> from pymedphys.level1.msqconnect import mosaiq_connect
+        >>> from pymedphys.level2.msqdelivery import (
+                multi_fetch_and_verify_mosaiq)
+
+        >>> field_id = 0  # provide a mosaiq field id here
+        >>> msq_server_name = 'a_name'
+
+        >>> with mosaiq_connect(msq_server_name) as cursor:
+                delivery_data = multi_fetch_and_verify_mosaiq(cursor, field_id)
+
+        >>> mu = delivery_data.monitor_units
+        >>> mlc = delivery_data.mlc
+        >>> jaw = delivery_data.jaw
+
+        >>> grid = get_grid()
+        >>> mu_density = calc_mu_density(mu, mlc, jaw)
+        >>> display_mu_density(grid, mu_density)
+
+
+        Calculating the MU Density given the filepath of a logfile.
+
+        >>> from pymedphys.level1.mudensity import (
+                calc_mu_density, get_grid, display_mu_density)
+
+        >>> from pymedphys.level2.trfdecode import (
+                delivery_data_from_logfile)
+
+        >>> filepath = r"a/path/goes/here"
+        >>> delivery_data = delivery_data_from_logfile(filepath)
+
+        >>> mu = delivery_data.monitor_units
+        >>> mlc = delivery_data.mlc
+        >>> jaw = delivery_data.jaw
+
+        >>> grid = get_grid()
+        >>> mu_density = calc_mu_density(mu, mlc, jaw)
+        >>> display_mu_density(grid, mu_density)
+    """
     leaf_pair_widths = np.array(leaf_pair_widths)
 
     mu, mlc, jaw = _remove_irrelevant_control_points(mu, mlc, jaw)
@@ -69,6 +116,31 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
 def calc_single_control_point(mlc, jaw, delivered_mu=1,
                               leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
                               grid_resolution=1, time_steps=50):
+    """Calculate the MU Density for a single control point.
+
+    Example:
+        >>> from pymedphys.level1.mudensity import (
+                calc_single_control_point, display_mu_density)
+
+        >>> leaf_pair_widths = [2, 2]
+        >>> mlc = np.array([
+                [
+                    [1, 1],
+                    [2, 2],
+                ],
+                [
+                    [2, 2],
+                    [3, 3],
+                ]
+            ])
+        >>> jaw = np.array([
+                [1.5, 1.2],
+                [1.5, 1.2]
+            ])
+        >>> grid, mu_density = calc_single_control_point(
+                mlc, jaw, leaf_pair_widths=leaf_pair_widths)
+        >>> display_mu_density(grid, mu_density)
+    """
     leaf_pair_widths = np.array(leaf_pair_widths)
     leaf_division = leaf_pair_widths / grid_resolution
     assert np.all(leaf_division.astype(int) == leaf_division), (
@@ -106,10 +178,47 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
     return grid, mu_density
 
 
+def single_mlc_pair(left_mlc, right_mlc, grid_resolution=1, time_steps=50):
+    """Calculate the MU Density of a single leaf pair.
+
+    Example:
+        >>> import matplotlib.pyplot as plt
+
+        >>> mlc_left = (-2.3, 3.1)  # (start position, end position)
+        >>> mlc_right = (0, 7.7)
+
+        >>> x, mu_density = single_mlc_pair(mlc_left, mlc_right)
+        >>> plt.plot(x, mu_density, '-o')
+    """
+    leaf_pair_widths = [grid_resolution]
+    jaw = np.array([
+        [grid_resolution/2, grid_resolution/2],
+        [grid_resolution/2, grid_resolution/2]
+    ])
+    mlc = np.array([
+        [
+            [-left_mlc[0], right_mlc[0]],
+        ],
+        [
+            [-left_mlc[1], right_mlc[1]],
+        ]
+    ])
+
+    grid, mu_density = calc_single_control_point(
+        mlc, jaw, leaf_pair_widths=leaf_pair_widths,
+        grid_resolution=grid_resolution, time_steps=time_steps
+    )
+
+    return grid['mlc'], mu_density[0, :]
+
+
 def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
                                 max_leaf_gap=400,
                                 leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
                                 time_steps=50):
+    """DEPRECATED. This is a temporary helper function to provide the old
+    api.
+    """
     leaf_pair_widths = np.array(leaf_pair_widths)
     mu_density = calc_mu_density(
         mu, mlc, jaw, grid_resolution=grid_resolution,
@@ -126,6 +235,11 @@ def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
 
 def get_grid(max_leaf_gap=400, grid_resolution=1,
              leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS):
+    """Get the MU Density grid for plotting purposes.
+
+    Example:
+        See `calc_mu_density`.
+    """
     leaf_pair_widths = np.array(leaf_pair_widths)
 
     grid = dict()
@@ -162,6 +276,8 @@ def get_grid(max_leaf_gap=400, grid_resolution=1,
 
 
 def find_relevant_control_points(mu):
+    """Removes control points that will not contribute to the MU Density.
+    """
     mu_diff = np.diff(mu)
     no_change = mu_diff == 0
     no_change_before = no_change[0:-1]
@@ -173,6 +289,34 @@ def find_relevant_control_points(mu):
     relevant_control_points = np.invert(irrelevant_control_point)
 
     return relevant_control_points
+
+
+def display_mu_density(grid, mu_density, grid_resolution=None):
+    """Prints a colour plot of the MU Density.
+
+    Example:
+        See `calc_mu_density`.
+    """
+    if grid_resolution is None:
+        grid_resolution = grid['mlc'][1] - grid['mlc'][0]
+
+    x, y = _colormesh_grid(grid['mlc'], grid['jaw'], grid_resolution)
+    plt.pcolormesh(x, y, mu_density)
+    plt.colorbar()
+    plt.title('MU density')
+    plt.xlabel('MLC direction (mm)')
+    plt.ylabel('Jaw direction (mm)')
+    plt.axis('equal')
+    plt.gca().invert_yaxis()
+
+
+def _colormesh_grid(x, y, grid_resolution):
+    new_x = np.concatenate(
+        [x - grid_resolution/2, [x[-1] + grid_resolution/2]])
+    new_y = np.concatenate(
+        [y - grid_resolution/2, [y[-1] + grid_resolution/2]])
+
+    return new_x, new_y
 
 
 def _calc_blocked_t(travel_diff, grid_resolution):
