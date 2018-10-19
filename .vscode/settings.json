@@ -1,3 +1,5 @@
 {
-    "python.linting.pylintUseMinimalCheckers": false
+    "python.linting.pylintUseMinimalCheckers": false,
+    "files.trimTrailingWhitespace": true,
+    "editor.formatOnSave": true
 }
