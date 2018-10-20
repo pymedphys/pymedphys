@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+"""A Dicom Dose toolbox"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path

@@ -37,9 +37,9 @@ from glob import glob
 import attr
 
 from .._level1.msqconnect import multi_mosaiq_connect
-from .._level1.filehash import hash_file
-from .._level1.configutilities import get_sql_servers
-from .._level1.filesystemutilities import make_a_valid_directory_name
+from .._level1._filehash import hash_file
+from .._level1.utilitiesconfig import get_sql_servers
+from .._level1.utilitiesfilesystem import make_a_valid_directory_name
 from .._level2.trfdecode import Header
 from .._level2.msqdelivery import (
     get_mosaiq_delivery_details, OISDeliveryDetails, NoMosaiqEntries)
