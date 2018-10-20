@@ -35,7 +35,7 @@ class ClobberCheck:
     """Used to check if `from package import *` clobbered any globals.
 
     Example:
-        >>> from pymedphys._level1.importutilities import ClobberCheck
+        >>> from pymedphys._level1._importutilities import ClobberCheck
 
         >>> clobberCheck = ClobberCheck(globals())
         >>> from numpy import *

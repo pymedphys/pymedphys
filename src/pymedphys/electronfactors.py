@@ -24,7 +24,11 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Model insert factors and parameterise inserts as equivalent ellipses."""
+"""Model insert factors and parameterise inserts as equivalent ellipses.
+
+Example:
+    >>> from pymedphys.electronfactors import parameterise_insert
+"""
 
 # pylint: disable=W0401, W0614
 
