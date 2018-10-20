@@ -37,15 +37,15 @@ import matplotlib.pyplot as plt
 # from ..level1.trfdecode import delivery_data_from_logfile
 from decode_trf import delivery_data_from_logfile  # remove this when ready
 
-from ..level1.configutilities import (
+from .._level1.utilitiesconfig import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath
 )
-from ..level1.msqconnect import multi_mosaiq_connect
-from ..level1.deliverydata import get_delivery_parameters
-from ..level1.mudensity import calc_mu_density
-from ..level2.msqdelivery import multi_fetch_and_verify_mosaiq
+from .._level1.msqconnect import multi_mosaiq_connect
+from .._level1._deliverydata import get_delivery_parameters
+from .._level1.mudensity import calc_mu_density
+from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
 
 
 def analyse_single_hash(index, config, filehash, cursors):
@@ -56,7 +56,7 @@ def analyse_single_hash(index, config, filehash, cursors):
     results = get_logfile_mosaiq_results(
         index, config, logfile_filepath, field_id_key_map,
         filehash, cursors,
-        ram_fraction=0.45, grid_resolution=5/3)
+        grid_resolution=5/3)
 
     comparison = calc_comparison(results[2], results[3])
     print("Comparison result = {}".format(comparison))
@@ -176,7 +176,7 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
                     results = get_logfile_mosaiq_results(
                         index, config, logfile_filepath, field_id_key_map,
                         file_hash, cursors,
-                        ram_fraction=ram_fraction, grid_resolution=grid_resolution)
+                        grid_resolution=grid_resolution)
                     new_comparison = calc_comparison(results[2], results[3])
 
                     if file_hash not in comparisons:
@@ -210,12 +210,11 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
                 print(traceback.format_exc())
 
 
-def mu_density_from_delivery_data(delivery_data, grid_resolution=1,
-                                  ram_fraction=0.8):
+def mu_density_from_delivery_data(delivery_data, grid_resolution=1):
     mu, mlc, jaw = get_delivery_parameters(delivery_data)
 
     grid_xx, grid_yy, mu_density = calc_mu_density(
-        mu, mlc, jaw, ram_fraction=ram_fraction,
+        mu, mlc, jaw,
         grid_resolution=grid_resolution)
 
     return grid_xx, grid_yy, mu_density
@@ -236,21 +235,20 @@ def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index,
 
     hours_4 = np.array(60 * 60 * 4).astype(np.timedelta64)
 
-    delivery_time = np.array(index[filehash]['local_time']).astype(np.datetime64)
+    delivery_time = np.array(
+        index[filehash]['local_time']).astype(np.datetime64)
     within_4_hours_reference = np.abs(delivery_time - times) < hours_4
     within_4_hours = keys[within_4_hours_reference].tolist()
 
     return within_4_hours
 
 
-def calc_and_merge_logfile_mudensity(filepaths, ram_fraction=0.8,
-                                     grid_resolution=1):
+def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
     logfile_results = []
     for filepath in filepaths:
         logfile_delivery_data = delivery_data_from_logfile(filepath)
         mu_density_results = mu_density_from_delivery_data(
-            logfile_delivery_data, ram_fraction=ram_fraction,
-            grid_resolution=grid_resolution)
+            logfile_delivery_data, grid_resolution=grid_resolution)
 
         logfile_results.append(mu_density_results)
 
@@ -277,8 +275,7 @@ def calc_and_merge_logfile_mudensity(filepaths, ram_fraction=0.8,
 
 
 def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
-                               filehash, cursors, ram_fraction=0.8,
-                               grid_resolution=1):
+                               filehash, cursors, grid_resolution=1):
     file_info = index[filehash]
     delivery_details = file_info['delivery_details']
     field_id = delivery_details['field_id']
@@ -289,8 +286,7 @@ def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
         cursors[server], field_id)
 
     mosaiq_results = mu_density_from_delivery_data(
-        mosaiq_delivery_data, ram_fraction=ram_fraction,
-        grid_resolution=grid_resolution)
+        mosaiq_delivery_data, grid_resolution=grid_resolution)
 
     consecutive_keys = find_consecutive_logfiles(
         field_id_key_map, field_id, filehash, index, config)
@@ -301,8 +297,7 @@ def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
     ]
 
     logile_results = calc_and_merge_logfile_mudensity(
-        logfilepaths, ram_fraction=ram_fraction,
-        grid_resolution=grid_resolution)
+        logfilepaths, grid_resolution=grid_resolution)
 
     #     logfile_delivery_data = delivery_data_from_logfile(filepath)
     #     logile_results = mu_density_from_delivery_data(

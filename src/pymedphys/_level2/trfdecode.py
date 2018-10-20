@@ -31,8 +31,8 @@ release.
 
 import attr
 
-from ..level1.deliverydata import DeliveryData
-from ..level1.filehash import hash_file
+from .._level1._deliverydata import DeliveryData
+from .._level1._filehash import hash_file
 
 
 @attr.s
