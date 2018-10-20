@@ -28,12 +28,12 @@ import numpy as np
 
 from decode_trf.decode_trf import delivery_data_from_logfile
 
-# from ..level1.msqconnect import mosaiq_connect
-from ..level1.configutilities import get_filepath, get_gantry_tolerance
-from ..level1.mudensity import find_relevant_control_points
-from ..level1.mudensity import calc_mu_density_return_grid as calc_mu_density
-from ..level2.msqdelivery import multi_fetch_and_verify_mosaiq
-from ..level3.analyselogfiles import calc_comparison, plot_results
+# from .._level1.msqconnect import mosaiq_connect
+from .._level1.configutilities import get_filepath, get_gantry_tolerance
+from .._level1.mudensity import find_relevant_control_points
+from .._level1.mudensity import calc_mu_density_return_grid as calc_mu_density
+from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
+from .._level3.analyselogfiles import calc_comparison, plot_results
 
 
 def get_mappings(index, file_hashes):
