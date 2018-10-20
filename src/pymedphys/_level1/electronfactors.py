@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -116,10 +116,10 @@ def _single_calculate_deformability(x_test, y_test, x_data, y_data, z_data):
 
     pos_adjusted_model = SmoothBivariateSpline(
         adjusted_x_data, adjusted_y_data, pos_adjusted_z_data, kx=2, ky=1
-        ).ev(x_test, y_test)
+    ).ev(x_test, y_test)
     neg_adjusted_model = SmoothBivariateSpline(
         adjusted_x_data, adjusted_y_data, neg_adjusted_z_data, kx=2, ky=1
-        ).ev(x_test, y_test)
+    ).ev(x_test, y_test)
 
     deformability_from_pos_adjustment = (
         pos_adjusted_model - initial_model) / deviation
