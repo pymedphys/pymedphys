@@ -28,8 +28,9 @@
 
 import pandas as pd
 
-from ..level1.msqconnect import execute_sql
-from ..level1.msqdictionaries import FIELD_TYPES
+from .._level1.msqconnect import execute_sql
+from .._level1.msqdictionaries import FIELD_TYPES
+
 
 def get_treatment_times(cursor, field_id):
     treatment_time_results = execute_sql(
@@ -88,6 +89,7 @@ def get_patient_fields(cursor, patient_id):
             'monitor_units', 'site'
         ]
     )
+
 
 def get_treatments(cursor, start, end, machine):
     treatment_results = execute_sql(

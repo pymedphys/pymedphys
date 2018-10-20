@@ -112,7 +112,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
     Examples:
         >>> import numpy as np
 
-        >>> from pymedphys.level1.mudensity import (
+        >>> from pymedphys.mudensity import (
         ...     calc_mu_density, get_grid, display_mu_density)
 
         >>> leaf_pair_widths = (5, 5, 5)
@@ -183,12 +183,11 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
 
         MU Density from a Mosaiq record.
 
-        >>> from pymedphys.level1.mudensity import (
+        >>> from pymedphys.mudensity import (
         ...     calc_mu_density, get_grid, display_mu_density)
 
-        >>> from pymedphys.level1.msqconnect import mosaiq_connect
-        >>> from pymedphys.level2.msqdelivery import (
-        ...     multi_fetch_and_verify_mosaiq)
+        >>> from pymedphys.msq import (
+        ...     mosaiq_connect, multi_fetch_and_verify_mosaiq)
 
         >>> def mu_density_from_mosaiq(msq_server_name, field_id):
         ...     with mosaiq_connect(msq_server_name) as cursor:
@@ -209,7 +208,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
 
         MU Density from a logfile at a given filepath.
 
-        >>> from pymedphys.level1.mudensity import (
+        >>> from pymedphys.mudensity import (
         ...     calc_mu_density, get_grid, display_mu_density)
 
         >>> # from pymedphys.level2.trfdecode import (
@@ -269,7 +268,7 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
     """Calculate the MU Density for a single control point.
 
     Example:
-        >>> from pymedphys.level1.mudensity import (
+        >>> from pymedphys.mudensity import (
         ...     calc_single_control_point, display_mu_density)
 
         >>> leaf_pair_widths = (2, 2)
@@ -340,8 +339,7 @@ def single_mlc_pair(left_mlc, right_mlc, grid_resolution=1, time_steps=50):
     Example:
         >>> import matplotlib.pyplot as plt
 
-        >>> from pymedphys.level1.mudensity import (
-        ...     single_mlc_pair)
+        >>> from pymedphys.mudensity import single_mlc_pair
 
         >>> mlc_left = (-2.3, 3.1)  # (start position, end position)
         >>> mlc_right = (0, 7.7)

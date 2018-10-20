@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,41 +24,21 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: disable=C0103,C1801
-
-
-"""Testing of a single mlc pair.
+"""This is a placeholder file awaiting the required go ahead for public
+release.
 """
 
-import numpy as np
 
-from pymedphys.mudensity import single_mlc_pair
+import attr
 
-
-def test_minimal_variance_with_resolution():
-    mlc_left = (-2.3, 3.1)
-    mlc_right = (0, 7.7)
-    time_steps = 1000
-
-    x_coarse, mu_density_coarse = single_mlc_pair(
-        mlc_left, mlc_right, 1, time_steps=time_steps)
-    x_fine, mu_density_fine = single_mlc_pair(
-        mlc_left, mlc_right, 0.01, time_steps=time_steps)
-
-    reference = np.argmin(np.abs(x_fine[None, :] - x_coarse[:, None]), axis=0)
-
-    average_mu_density_fine = []
-    for i in range(2, len(x_coarse) - 2):
-        average_mu_density_fine.append(
-            np.mean(mu_density_fine[reference == i]))
-
-    average_mu_density_fine = np.array(average_mu_density_fine)
-
-    assert np.allclose(
-        average_mu_density_fine, mu_density_coarse[2:-2], 0.01)
+from .._level1.deliverydata import DeliveryData
+from .._level1.filehash import hash_file
 
 
-def test_stationary_partial_occlusion():
-    _, mu_density = single_mlc_pair((-1, -1), (2.7, 2.7), 1, time_steps=1000)
-
-    assert np.allclose(mu_density, [0.5, 1, 1, 1, 0.2])
+@attr.s
+class Header(object):
+    machine = attr.ib()
+    date = attr.ib()
+    timezone = attr.ib()
+    field_label = attr.ib()
+    field_name = attr.ib()
