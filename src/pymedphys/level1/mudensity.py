@@ -47,7 +47,9 @@
 
    The impact of these issues may be able to be limited by including with this
    tool an automated independent IMRT 3-D dose calculation tool as well as a
-   daily automated MLC/jaw logfile to EPID to baseline agreement test.
+   daily automated MLC/jaw logfile to EPI to baseline agreement test that
+   moves the EPI so as to measure the full set of leaf pairs and the full range
+   of MLC and Jaw travel.
 """
 
 
