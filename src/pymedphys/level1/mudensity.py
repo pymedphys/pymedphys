@@ -46,8 +46,8 @@
    while the true real world positions be in significant deviation.
 
    The impact of these issues may be able to be limited by including with this
-   tool an automated independent 3-D dose calculation tool as well as a daily
-   automated MLC/jaw logfile to EPID to baseline agreement test.
+   tool an automated independent IMRT 3-D dose calculation tool as well as a
+   daily automated MLC/jaw logfile to EPID to baseline agreement test.
 """
 
 
