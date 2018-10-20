@@ -35,21 +35,21 @@ class ClobberCheck:
     """Used to check if `from package import *` clobbered any globals.
 
     Example:
-        >>> from pymedphys.level1.importutilities import ClobberCheck
+        >>> from pymedphys._level1.importutilities import ClobberCheck
 
         >>> clobberCheck = ClobberCheck(globals())
         >>> from numpy import *
         >>> clobberCheck.baseline = globals()
 
         >>> an_unused_variable = 'foo'
-        >>> clobberCheck.check(globals())
+        >>> clobberCheck.check(globals(), label="shouldn't trigger")
 
         >>> mean = 'bar'
         >>> try:
-        ...     clobberCheck.check(globals())
+        ...     clobberCheck.check(globals(), label="After setting mean")
         ... except AssertionError as e:
         ...     print(e)
-        A global has been clobbered: `mean`
+        [After setting mean] A global has been clobbered: `mean`
     """
 
     def __init__(self, input_globals):
@@ -69,12 +69,12 @@ class ClobberCheck:
         self.__keys_to_check = copy(
             set(self.__baseline).difference(set(self.__original)))
 
-    def check(self, input_globals):
+    def check(self, input_globals, label='No label'):
         """Run the check against the baseline.
         """
         keys_to_check = set(self.__baseline).difference(set(self.__original))
 
         for key in keys_to_check:
             assert self.__baseline[key] is input_globals[key], (
-                "A global has been clobbered: `{}`".format(key)
+                "[{}] A global has been clobbered: `{}`".format(label, key)
             )
