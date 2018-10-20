@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,21 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""This is a placeholder file awaiting the required go ahead for public
-release.
+"""A Dicom Dose toolbox
+
+Example:
+    >>> from pymedphys.dcmdose import create_dvh
 """
 
+# pylint: disable=W0401, W0614
 
-import attr
-
-from .._level1._deliverydata import DeliveryData
-from .._level1._filehash import hash_file
-
-
-@attr.s
-class Header(object):
-    machine = attr.ib()
-    date = attr.ib()
-    timezone = attr.ib()
-    field_label = attr.ib()
-    field_name = attr.ib()
+from ._level1.dcmdose import *

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,21 +24,24 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""This is a placeholder file awaiting the required go ahead for public
-release.
+"""A logfile toolbox.
+
+Examples:
+    >>> from pymedphys.logfile import index_logfiles
 """
 
+# pylint: disable=W0401,W0614,C0103,C0413
 
-import attr
+from ._level1._importutilities import ClobberCheck
+__clobber_check = ClobberCheck(globals())
 
-from .._level1._deliverydata import DeliveryData
-from .._level1._filehash import hash_file
+from ._level3.logfileanalyse import *  # nopep8
+__clobber_check.baseline = globals()
 
+from ._level4.logfilebygantry import *  # nopep8
+__clobber_check.check(globals(), label='logfilebygantry')
+__clobber_check.baseline = globals()
 
-@attr.s
-class Header(object):
-    machine = attr.ib()
-    date = attr.ib()
-    timezone = attr.ib()
-    field_label = attr.ib()
-    field_name = attr.ib()
+from ._level4.logfileindex import *  # nopep8
+__clobber_check.check(globals(), label='logfileindex')
+__clobber_check.baseline = globals()
