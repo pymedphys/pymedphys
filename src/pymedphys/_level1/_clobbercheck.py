@@ -61,15 +61,14 @@ class ClobberCheck:
 
         >>> clobberCheck.baseline = globals()
         >>> a_new_variable = 10
-        >>> clobberCheck.check(globals(), label="Creating a new variable")
+        >>> clobberCheck.check(globals())
 
 
         Reassigning the variable to the same object doesn't tigger the
         assertion either:
 
         >>> a_variable = 6
-        >>> clobberCheck.check(
-        ...     globals(), label="Making an equivalent assignment")
+        >>> clobberCheck.check(globals())
 
 
         Intendend usage
@@ -101,7 +100,7 @@ class ClobberCheck:
         >>> clobberCheck.baseline = globals()
 
         >>> an_unused_variable = 'foo'
-        >>> clobberCheck.check(globals(), label="shouldn't trigger")
+        >>> clobberCheck.check(globals())
 
         >>> mean = 'bar'
         >>> sum = 'foobar'
@@ -127,7 +126,7 @@ class ClobberCheck:
     def baseline(self, input_globals):
         self.__baseline = copy(input_globals)
 
-    def check(self, input_globals, label='No label'):
+    def check(self, input_globals, label='You have'):
         """Run the check against the baseline.
         """
 
