@@ -32,10 +32,14 @@ Examples:
 
 # pylint: disable=W0401,W0614,C0103,C0413
 
-from ._level1.importutilities import ClobberCheck
+from ._level1._importutilities import ClobberCheck
 __clobber_check = ClobberCheck(globals())
 
 from ._level1.msqconnect import *  # nopep8
+__clobber_check.baseline = globals()
+
+from ._level1.msqdictionaries import *  # nopep8
+__clobber_check.check(globals(), label='msqdictionaries')
 __clobber_check.baseline = globals()
 
 from ._level2.msqdelivery import *  # nopep8

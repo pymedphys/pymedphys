@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 
 from .._level1.msqconnect import multi_mosaiq_connect
 from .._level1.mudensity import calc_mu_density
-from .._level1.deliverydata import get_delivery_parameters
+from .._level1._deliverydata import get_delivery_parameters
 from .._level2.msqdelivery import delivery_data_from_mosaiq
 
 
