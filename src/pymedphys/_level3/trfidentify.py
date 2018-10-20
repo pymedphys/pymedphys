@@ -29,7 +29,7 @@ from dateutil import tz
 # from ..level1.trfdecode import decode_header_from_file
 from decode_trf import decode_header_from_file  # remove this when ready
 
-from ..level2.msqdelivery import (
+from .._level2.msqdelivery import (
     get_mosaiq_delivery_details, OISDeliveryDetails)
 
 

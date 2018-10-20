@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+"""A Dicom Dose toolbox"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
@@ -183,7 +185,7 @@ def pull_structure(string, dcm_struct):
     return x, y, z
 
 
-def get_index(z_list, z_val):
+def _get_index(z_list, z_val):
     indices = np.array([item[0] for item in z_list])
     # This will error if more than one contour exists on a given slice
     index = int(np.where(indices == z_val)[0])
@@ -192,7 +194,7 @@ def get_index(z_list, z_val):
     return index
 
 
-def find_dose_within_structure(structure, dcm_struct, dcm_dose):
+def _find_dose_within_structure(structure, dcm_struct, dcm_dose):
     x_dose, y_dose, z_dose = load_xyz_from_dicom(dcm_dose)
     dose = load_dose_from_dicom(dcm_dose)
 
@@ -206,18 +208,18 @@ def find_dose_within_structure(structure, dcm_struct, dcm_dose):
     structure_dose_values = np.array([])
 
     for z_val in structure_z_values:
-        structure_index = get_index(z_structure, z_val)
+        structure_index = _get_index(z_structure, z_val)
         dose_index = int(np.where(z_dose == z_val)[0])
 
         assert z_structure[structure_index][0] == z_dose[dose_index]
 
         structure_polygon = path.Path([
-                (
-                    x_structure[structure_index][i],
-                    y_structure[structure_index][i]
-                )
-                for i in range(len(x_structure[structure_index]))
-            ])
+            (
+                x_structure[structure_index][i],
+                y_structure[structure_index][i]
+            )
+            for i in range(len(x_structure[structure_index]))
+        ])
         mask = structure_polygon.contains_points(points).reshape(
             len(y_dose), len(x_dose))
         masked_dose = dose[:, :, dose_index]
@@ -228,7 +230,7 @@ def find_dose_within_structure(structure, dcm_struct, dcm_dose):
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = find_dose_within_structure(
+    structure_dose_values = _find_dose_within_structure(
         structure, dcm_struct, dcm_dose)
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]
@@ -248,5 +250,5 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     plt.ylabel('Relative Volume (%)')
 
 
-def list_structures(dcm_struct):
+def _list_structures(dcm_struct):
     return [item.ROIName for item in dcm_struct.StructureSetROISequence]
