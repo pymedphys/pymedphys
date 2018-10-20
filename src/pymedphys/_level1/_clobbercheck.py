@@ -34,10 +34,69 @@ from copy import copy
 class ClobberCheck:
     """Used to check if `from package import *` clobbered any globals.
 
-    Example:
+    Examples:
+        Basic usage
+
+        In it's rawest form `ClobberCheck` is simply checking to see if any
+        global has changed since it was last baselined:
+
         >>> from pymedphys._level1._clobbercheck import ClobberCheck
 
-        >>> clobberCheck = ClobberCheck(globals())
+        >>> clobberCheck = ClobberCheck()
+        >>> a_variable = 5
+
+        >>> clobberCheck.baseline = globals()
+        >>> a_variable = 6
+
+        >>> try:
+        ...     clobberCheck.check(globals(), label="Changing a_variable")
+        ... except AssertionError as e:
+        ...     print(e)
+        Changing a_variable clobbered the following:
+        ['a_variable']
+
+
+        New variables can be assigned, as long as they don't overwrite an old
+        one that is not an issue:
+
+        >>> clobberCheck.baseline = globals()
+        >>> a_new_variable = 10
+        >>> clobberCheck.check(globals(), label="Creating a new variable")
+
+
+        Reassigning the variable to the same object doesn't tigger the
+        assertion either:
+
+        >>> a_variable = 6
+        >>> clobberCheck.check(
+        ...     globals(), label="Making an equivalent assignment")
+
+
+        Intendend usage
+
+        The design of this class is to verify whether or not importing a
+        package using `*` overwrote any definitions:
+
+        >>> from pymedphys._level1._clobbercheck import ClobberCheck
+        >>> clobberCheck = ClobberCheck()
+
+        >>> from numpy import *
+        >>> clobberCheck.baseline = globals()
+
+        >>> from pandas import *
+        >>> try:
+        ...     clobberCheck.check(globals(), label="Importing pandas")
+        ... except AssertionError as e:
+        ...     print(e)
+        Importing pandas clobbered the following:
+        ['unique']
+
+
+        It can also detect if you yourself have clobbered a global as so:
+
+        >>> from pymedphys._level1._clobbercheck import ClobberCheck
+
+        >>> clobberCheck = ClobberCheck()
         >>> from numpy import *
         >>> clobberCheck.baseline = globals()
 
@@ -45,17 +104,18 @@ class ClobberCheck:
         >>> clobberCheck.check(globals(), label="shouldn't trigger")
 
         >>> mean = 'bar'
+        >>> sum = 'foobar'
+
         >>> try:
-        ...     clobberCheck.check(globals(), label="After setting mean")
+        ...     clobberCheck.check(globals(), label="Reassigning mean and sum")
         ... except AssertionError as e:
         ...     print(e)
-        [After setting mean] A global has been clobbered: `mean`
+        Reassigning mean and sum clobbered the following:
+        ['mean', 'sum']
     """
 
-    def __init__(self, input_globals):
-        self.__original = copy(input_globals)
+    def __init__(self):
         self.__baseline = None
-        self.__keys_to_check = None
 
     @property
     def baseline(self):
@@ -66,15 +126,19 @@ class ClobberCheck:
     @baseline.setter
     def baseline(self, input_globals):
         self.__baseline = copy(input_globals)
-        self.__keys_to_check = copy(
-            set(self.__baseline).difference(set(self.__original)))
 
     def check(self, input_globals, label='No label'):
         """Run the check against the baseline.
         """
-        keys_to_check = set(self.__baseline).difference(set(self.__original))
 
-        for key in keys_to_check:
-            assert self.__baseline[key] is input_globals[key], (
-                "[{}] A global has been clobbered: `{}`".format(label, key)
-            )
+        clobbered_variables = []
+        for key, a_global in self.__baseline.items():
+            if a_global is not input_globals[key]:
+                clobbered_variables.append(key)
+
+        clobbered_variables.sort()
+
+        assert not clobbered_variables, (
+            "{} clobbered the following:\n{}".format(
+                label, clobbered_variables)
+        )
