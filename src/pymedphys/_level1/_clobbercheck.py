@@ -57,7 +57,7 @@ class ClobberCheck:
 
 
         New variables can be assigned, as long as they don't overwrite an old
-        one that is not an issue:
+        one:
 
         >>> clobberCheck.baseline = globals()
         >>> a_new_variable = 10
