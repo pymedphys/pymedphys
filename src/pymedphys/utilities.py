@@ -32,16 +32,12 @@ Examples:
 
 # pylint: disable=W0401,W0614,C0103,C0413
 
-from ._level1.importutilities import ClobberCheck
+from ._level1._importutilities import ClobberCheck
 __clobber_check = ClobberCheck(globals())
 
-from ._level1.configutilities import *  # nopep8
+from ._level1.utilitiesconfig import *  # nopep8
 __clobber_check.baseline = globals()
 
-from ._level1.dcmutilities import *  # nopep8
-__clobber_check.check(globals(), label='dcmutilities')
-__clobber_check.baseline = globals()
-
-from ._level1.filesystemutilities import *  # nopep8
+from ._level1.utilitiesfilesystem import *  # nopep8
 __clobber_check.check(globals(), label='filesystemutilities')
 __clobber_check.baseline = globals()

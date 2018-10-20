@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,21 +24,24 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""This is a placeholder file awaiting the required go ahead for public
-release.
+"""A toolbox for handling trf files.
+
+Examples:
+    >>> from pymedphys.trf import identify_logfile
 """
 
+# pylint: disable=W0401,W0614,C0103,C0413
 
-import attr
+from ._level1._importutilities import ClobberCheck
+__clobber_check = ClobberCheck(globals())
 
-from .._level1._deliverydata import DeliveryData
-from .._level1._filehash import hash_file
+from ._level2.trfdecode import *  # nopep8
+__clobber_check.baseline = globals()
 
+from ._level3.trf2csv import *  # nopep8
+__clobber_check.check(globals(), label='trf2csv')
+__clobber_check.baseline = globals()
 
-@attr.s
-class Header(object):
-    machine = attr.ib()
-    date = attr.ib()
-    timezone = attr.ib()
-    field_label = attr.ib()
-    field_name = attr.ib()
+from ._level3.trfidentify import *  # nopep8
+__clobber_check.check(globals(), label='trfidentify')
+__clobber_check.baseline = globals()
