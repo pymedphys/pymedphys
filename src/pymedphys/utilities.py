@@ -32,7 +32,7 @@ Examples:
 
 # pylint: disable=W0401,W0614,C0103,C0413
 
-from ._level1._importutilities import ClobberCheck
+from ._level1._clobbercheck import ClobberCheck
 __clobber_check = ClobberCheck(globals())
 
 from ._level1.utilitiesconfig import *  # nopep8
