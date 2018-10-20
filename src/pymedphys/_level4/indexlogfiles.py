@@ -29,25 +29,25 @@
 
 import os
 import json
-import string
+# import string
 import pathlib
 import traceback
 from glob import glob
 
 import attr
 
-from ..level1.msqconnect import multi_mosaiq_connect
-from ..level1.filehash import hash_file
-from ..level1.configutilities import get_sql_servers
-from ..level1.filesystemutilities import make_a_valid_directory_name
-from ..level2.trfdecode import Header
-from ..level2.msqdelivery import (
+from .._level1.msqconnect import multi_mosaiq_connect
+from .._level1.filehash import hash_file
+from .._level1.configutilities import get_sql_servers
+from .._level1.filesystemutilities import make_a_valid_directory_name
+from .._level2.trfdecode import Header
+from .._level2.msqdelivery import (
     get_mosaiq_delivery_details, OISDeliveryDetails, NoMosaiqEntries)
-from ..level3.trfidentify import (
+from .._level3.trfidentify import (
     date_convert
 )
 
-# from ..level1.trfdecode import decode_header_from_file
+# from .._level1.trfdecode import decode_header_from_file
 from decode_trf import decode_header_from_file  # remove this when ready
 
 

@@ -31,9 +31,10 @@ import struct
 import attr
 import numpy as np
 
-from ..level1.deliverydata import DeliveryData, get_delivery_parameters
-from ..level1.msqconnect import execute_sql
-from ..level1.msqdictionaries import FIELD_TYPES
+from .._level1.deliverydata import DeliveryData, get_delivery_parameters
+from .._level1.msqconnect import execute_sql
+from .._level1.msqdictionaries import FIELD_TYPES
+
 
 @attr.s
 class OISDeliveryDetails(object):
