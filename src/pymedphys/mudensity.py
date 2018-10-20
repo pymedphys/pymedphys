@@ -51,6 +51,9 @@
    daily automated MLC/jaw logfile to EPI to baseline agreement test that
    moves the EPI so as to measure the full set of leaf pairs and the full range
    of MLC and Jaw travel.
+
+Example:
+    >>> from pymedphys.mudensity import calc_mu_density
 """
 
 # pylint: disable=W0401, W0614
