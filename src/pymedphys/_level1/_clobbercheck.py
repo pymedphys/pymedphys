@@ -41,8 +41,8 @@ class ClobberCheck:
         global has changed since it was last baselined:
 
         >>> from pymedphys._level1._clobbercheck import ClobberCheck
-
         >>> clobberCheck = ClobberCheck()
+
         >>> a_variable = 5
 
         >>> clobberCheck.baseline = globals()
@@ -60,6 +60,7 @@ class ClobberCheck:
         one:
 
         >>> clobberCheck.baseline = globals()
+
         >>> a_new_variable = 10
         >>> clobberCheck.check(globals())
 
