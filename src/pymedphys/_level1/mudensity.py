@@ -174,13 +174,6 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
                [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])
 
 
-        MU, MLC, and Jaw arguments can be retrieved from the `DeliveryData`
-        object as defined within `pymedphys.level1.deliverydata`. Delivery
-        data from Mosaiq can be retrieved using `multi_fetch_and_verify_mosaiq`
-        found within `pymedphys.level2.msqdelivery`. Logfile delivery data
-        can be retrieved using `delivery_data_from_logfile` found within
-        `pymedphys.level2.trfdecode`. See below for respective usage.
-
         MU Density from a Mosaiq record.
 
         >>> from pymedphys.mudensity import (
