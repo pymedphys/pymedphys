@@ -149,6 +149,13 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
 
         >>> grid = get_grid(
         ...    max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths)
+        >>> grid['mlc']
+        array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])
+
+        >>> grid['jaw']
+        array([-8., -7., -6., -5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,
+                5.,  6.,  7.,  8.])
+
         >>> mu_density = calc_mu_density(
         ...    mu, mlc, jaw, max_leaf_gap=max_leaf_gap,
         ...    leaf_pair_widths=leaf_pair_widths)
@@ -283,11 +290,17 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
         ...     mlc, jaw, leaf_pair_widths=leaf_pair_widths)
         >>> display_mu_density(grid, mu_density)
 
-        >>> np.round(mu_density, 1)
-        array([[0. , 0.1, 0.4, 0.5, 0.4, 0.1, 0. ],
-               [0. , 0.1, 0.9, 1. , 0.9, 0.1, 0. ],
-               [0.1, 0.9, 1. , 1. , 1. , 0.9, 0.1],
-               [0. , 0.2, 0.2, 0.2, 0.2, 0.2, 0. ]])
+        >>> grid['mlc']
+        array([-3., -2., -1.,  0.,  1.,  2.,  3.])
+
+        >>> grid['jaw']
+        array([-1.5, -0.5,  0.5,  1.5])
+
+        >>> np.round(mu_density, 2)
+        array([[0.  , 0.06, 0.44, 0.5 , 0.44, 0.06, 0.  ],
+               [0.  , 0.13, 0.87, 1.  , 0.87, 0.13, 0.  ],
+               [0.13, 0.87, 1.  , 1.  , 1.  , 0.87, 0.13],
+               [0.03, 0.17, 0.2 , 0.2 , 0.2 , 0.17, 0.03]])
     """
     leaf_pair_widths = np.array(leaf_pair_widths)
     leaf_division = leaf_pair_widths / grid_resolution
@@ -340,8 +353,12 @@ def single_mlc_pair(left_mlc, right_mlc, grid_resolution=1, time_steps=50):
         >>> x, mu_density = single_mlc_pair(mlc_left, mlc_right)
         >>> fig = plt.plot(x, mu_density, '-o')
 
-        >>> np.round(mu_density, 1)
-        array([0.1, 0.2, 0.4, 0.5, 0.5, 0.6, 0.5, 0.4, 0.2, 0.1, 0. ])
+        >>> x
+        array([-2., -1.,  0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.])
+
+        >>> np.round(mu_density, 3)
+        array([0.066, 0.246, 0.406, 0.471, 0.526, 0.569, 0.481, 0.354, 0.226,
+               0.099, 0.005])
     """
     leaf_pair_widths = [grid_resolution]
     jaw = np.array([
