@@ -38,12 +38,11 @@ from pymedphys.mudensity import single_mlc_pair
 def test_minimal_variance_with_resolution():
     mlc_left = (-2.3, 3.1)
     mlc_right = (0, 7.7)
-    time_steps = 1000
 
     x_coarse, mu_density_coarse = single_mlc_pair(
-        mlc_left, mlc_right, 1, time_steps=time_steps)
+        mlc_left, mlc_right, 1)
     x_fine, mu_density_fine = single_mlc_pair(
-        mlc_left, mlc_right, 0.01, time_steps=time_steps)
+        mlc_left, mlc_right, 0.01)
 
     reference = np.argmin(np.abs(x_fine[None, :] - x_coarse[:, None]), axis=0)
 
@@ -55,10 +54,21 @@ def test_minimal_variance_with_resolution():
     average_mu_density_fine = np.array(average_mu_density_fine)
 
     assert np.allclose(
-        average_mu_density_fine, mu_density_coarse[2:-2], 0.01)
+        average_mu_density_fine, mu_density_coarse[2:-2], 0.1)
 
 
 def test_stationary_partial_occlusion():
-    _, mu_density = single_mlc_pair((-1, -1), (2.7, 2.7), 1, time_steps=1000)
+    _, mu_density = single_mlc_pair((-1, -1), (2.7, 2.7), 1)
 
     assert np.allclose(mu_density, [0.5, 1, 1, 1, 0.2])
+
+
+def test_large_travel():
+    x, mu_density = single_mlc_pair(
+        (-400, 400), (400, 400)
+    )
+
+    linear = (x + 400) / 800
+    linear[-1] = 0.5
+
+    assert np.allclose(linear, mu_density, atol=0.001)
