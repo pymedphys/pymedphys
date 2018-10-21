@@ -53,4 +53,4 @@ def test_regression():
 
     cached_mu_density = regress_test_arrays['mu_density']
     mu_density = calc_mu_density(mu, mlc, jaw)
-    assert np.allclose(mu_density, cached_mu_density)
+    assert np.allclose(mu_density, cached_mu_density, atol=0.1)
