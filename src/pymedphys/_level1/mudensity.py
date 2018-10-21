@@ -59,16 +59,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-AGILITY_LEAF_PAIR_WIDTHS = (
+__AGILITY_LEAF_PAIR_WIDTHS = (
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
 )
 
+__DEFAULT_GRID_RESOLUTION = 1
+__DEFAULT_MAX_LEAF_GAP = 400
+__DEFAULT_MIN_STEP_PER_PIXEL = 10
 
-def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
-                    leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS, time_steps=50):
+
+def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
+                    max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
+                    leaf_pair_widths=__AGILITY_LEAF_PAIR_WIDTHS,
+                    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
     """Determine the MU Density.
 
     Both jaw and mlc positions are defined in bipolar format for each control
@@ -97,12 +103,8 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
             the number of leaf pairs. Each entry itself defines that particular
             leaf pair width. Defaults to 80 leaf pairs each 5 mm wide.
 
-        time_steps (int, optional): The number of time steps each control point
-            travel is calculated over. Calculation time approximately scales
-            linearly with this argument. Very small `grid_resolution` may
-            require larger `time_steps` to be used. For a `grid_resolution` of
-            1 mm, using a `time_steps` parameter less than 50 may produce
-            erroneous results.
+        min_step_per_pixel (int, optional): The minimum number of time steps
+            used per pixel for each control point. Defaults to 3.
 
     Returns:
         mu_density (np.array): 2-D array containing the calculated mu density.
@@ -164,20 +166,20 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
         >>> np.round(mu_density, 1)
         array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
                [0. , 0. , 0. , 0.3, 1.9, 2.2, 1.9, 0.4, 0. , 0. , 0. ],
-               [0. , 0. , 0. , 0.4, 2.2, 2.5, 2.2, 0.5, 0. , 0. , 0. ],
+               [0. , 0. , 0. , 0.4, 2.2, 2.5, 2.2, 0.6, 0. , 0. , 0. ],
                [0. , 0. , 0. , 0.4, 2.4, 2.8, 2.5, 0.8, 0. , 0. , 0. ],
-               [0. , 0. , 0. , 0.4, 2.5, 3.1, 2.9, 1. , 0. , 0. , 0. ],
-               [0. , 0. , 0. , 0.4, 2.5, 3.4, 3.2, 1.3, 0. , 0. , 0. ],
-               [0. , 0. , 0.3, 2.4, 3.2, 3.7, 3.7, 3.5, 1.6, 0. , 0. ],
-               [0. , 0. , 0.3, 2.4, 3.2, 3.8, 4. , 3.8, 1.9, 0.1, 0. ],
-               [0. , 0. , 0.3, 2.4, 3.2, 3.8, 4.3, 4.1, 2.2, 0.1, 0. ],
-               [0. , 0. , 0.3, 2.4, 3.2, 3.9, 5.2, 4.7, 2.5, 0.2, 0. ],
-               [0. , 0. , 0.3, 2.4, 3.2, 3.8, 5.4, 6.6, 3.8, 0.5, 0. ],
-               [0. , 0.3, 2.3, 3. , 3.5, 4. , 5.1, 7.4, 6.8, 3.9, 0.5],
-               [0. , 0.3, 2.3, 3. , 3.5, 4. , 4.7, 6.9, 6.7, 3.9, 0.5],
-               [0. , 0.3, 2.3, 3. , 3.5, 4. , 4.5, 6.3, 6.4, 3.9, 0.5],
-               [0. , 0.3, 2.3, 3. , 3.5, 4. , 4.5, 5.6, 5.8, 3.8, 0.5],
-               [0. , 0.3, 2.3, 3. , 3.5, 4. , 4.5, 5.1, 5.1, 3.2, 0.5],
+               [0. , 0. , 0. , 0.4, 2.5, 3.1, 2.8, 1. , 0. , 0. , 0. ],
+               [0. , 0. , 0. , 0.4, 2.5, 3.4, 3.1, 1.3, 0. , 0. , 0. ],
+               [0. , 0. , 0.4, 2.3, 3.2, 3.7, 3.7, 3.5, 1.6, 0. , 0. ],
+               [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4. , 3.8, 1.9, 0.1, 0. ],
+               [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4.3, 4.1, 2.3, 0.1, 0. ],
+               [0. , 0. , 0.4, 2.3, 3.2, 3.9, 5.2, 4.7, 2.6, 0.2, 0. ],
+               [0. , 0. , 0.4, 2.3, 3.2, 3.8, 5.4, 6.6, 3.8, 0.5, 0. ],
+               [0. , 0.3, 2.2, 3. , 3.5, 4. , 5.1, 7.5, 6.7, 3.9, 0.5],
+               [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.7, 6.9, 6.7, 3.9, 0.5],
+               [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 6.3, 6.4, 3.9, 0.5],
+               [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.6, 5.7, 3.8, 0.5],
+               [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.1, 5.1, 3.3, 0.5],
                [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])
 
 
@@ -253,7 +255,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
         grid, mu_density_of_slice = calc_single_control_point(
             current_mlc, current_jaw, delivered_mu,
             leaf_pair_widths=leaf_pair_widths, grid_resolution=grid_resolution,
-            time_steps=time_steps)
+            min_step_per_pixel=min_step_per_pixel)
         full_grid_mu_density_of_slice = _convert_to_full_grid(
             grid, full_grid, mu_density_of_slice)
 
@@ -263,11 +265,13 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=1, max_leaf_gap=400,
 
 
 def calc_single_control_point(mlc, jaw, delivered_mu=1,
-                              leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
-                              grid_resolution=1, time_steps=50):
+                              leaf_pair_widths=__AGILITY_LEAF_PAIR_WIDTHS,
+                              grid_resolution=__DEFAULT_GRID_RESOLUTION,
+                              min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
     """Calculate the MU Density for a single control point.
 
     Example:
+        >>> import numpy as np
         >>> from pymedphys.mudensity import (
         ...     calc_single_control_point, display_mu_density)
 
@@ -297,9 +301,9 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
         array([-1.5, -0.5,  0.5,  1.5])
 
         >>> np.round(mu_density, 2)
-        array([[0.  , 0.06, 0.44, 0.5 , 0.44, 0.06, 0.  ],
-               [0.  , 0.13, 0.87, 1.  , 0.87, 0.13, 0.  ],
-               [0.13, 0.87, 1.  , 1.  , 1.  , 0.87, 0.13],
+        array([[0.  , 0.07, 0.43, 0.5 , 0.43, 0.07, 0.  ],
+               [0.  , 0.14, 0.86, 1.  , 0.86, 0.14, 0.  ],
+               [0.14, 0.86, 1.  , 1.  , 1.  , 0.86, 0.14],
                [0.03, 0.17, 0.2 , 0.2 , 0.2 , 0.17, 0.03]])
     """
     leaf_pair_widths = np.array(leaf_pair_widths)
@@ -328,6 +332,8 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
         }
     }
 
+    time_steps = _calc_time_steps(
+        positions, grid_resolution, min_step_per_pixel)
     blocked_by_device = _calc_blocked_by_device(
         grid, positions, grid_resolution, time_steps)
     device_open = _calc_device_open(blocked_by_device)
@@ -339,10 +345,13 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
     return grid, mu_density
 
 
-def single_mlc_pair(left_mlc, right_mlc, grid_resolution=1, time_steps=50):
+def single_mlc_pair(left_mlc, right_mlc,
+                    grid_resolution=__DEFAULT_GRID_RESOLUTION,
+                    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
     """Calculate the MU Density of a single leaf pair.
 
     Example:
+        >>> import numpy as np
         >>> import matplotlib.pyplot as plt
 
         >>> from pymedphys.mudensity import single_mlc_pair
@@ -357,8 +366,8 @@ def single_mlc_pair(left_mlc, right_mlc, grid_resolution=1, time_steps=50):
         array([-2., -1.,  0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.])
 
         >>> np.round(mu_density, 3)
-        array([0.066, 0.246, 0.406, 0.471, 0.526, 0.569, 0.481, 0.354, 0.226,
-               0.099, 0.005])
+        array([0.064, 0.244, 0.408, 0.475, 0.53 , 0.572, 0.481, 0.352, 0.224,
+               0.096, 0.004])
     """
     leaf_pair_widths = [grid_resolution]
     jaw = np.array([
@@ -376,16 +385,17 @@ def single_mlc_pair(left_mlc, right_mlc, grid_resolution=1, time_steps=50):
 
     grid, mu_density = calc_single_control_point(
         mlc, jaw, leaf_pair_widths=leaf_pair_widths,
-        grid_resolution=grid_resolution, time_steps=time_steps
+        grid_resolution=grid_resolution, min_step_per_pixel=min_step_per_pixel
     )
 
     return grid['mlc'], mu_density[0, :]
 
 
-def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
-                                max_leaf_gap=400,
-                                leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS,
-                                time_steps=50):
+def calc_mu_density_return_grid(mu, mlc, jaw,
+                                grid_resolution=__DEFAULT_GRID_RESOLUTION,
+                                max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
+                                leaf_pair_widths=__AGILITY_LEAF_PAIR_WIDTHS,
+                                min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
     """DEPRECATED. This is a temporary helper function to provide the old
     api.
     """
@@ -393,7 +403,7 @@ def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
     mu_density = calc_mu_density(
         mu, mlc, jaw, grid_resolution=grid_resolution,
         max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths,
-        time_steps=time_steps)
+        min_step_per_pixel=min_step_per_pixel)
 
     full_grid = get_grid(
         max_leaf_gap, grid_resolution, leaf_pair_widths)
@@ -403,8 +413,8 @@ def calc_mu_density_return_grid(mu, mlc, jaw, grid_resolution=1,
     return grid_xx, grid_yy, mu_density
 
 
-def get_grid(max_leaf_gap=400, grid_resolution=1,
-             leaf_pair_widths=AGILITY_LEAF_PAIR_WIDTHS):
+def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP, grid_resolution=__DEFAULT_GRID_RESOLUTION,
+             leaf_pair_widths=__AGILITY_LEAF_PAIR_WIDTHS):
     """Get the MU Density grid for plotting purposes.
 
     Example:
@@ -508,7 +518,24 @@ def _calc_blocked_t(travel_diff, grid_resolution):
     return blocked_t
 
 
-def _calc_blocked_by_device(grid, positions, grid_resolution, time_steps):
+def _calc_time_steps(positions, grid_resolution, min_step_per_pixel):
+    maximum_travel = []
+    for _, value in positions.items():
+        for _, (start, end) in value.items():
+            maximum_travel.append(np.max(np.abs(end - start)))
+
+    maximum_travel = np.max(maximum_travel)
+    number_of_pixels = np.ceil(maximum_travel / grid_resolution)
+    time_steps = number_of_pixels * min_step_per_pixel
+
+    if time_steps < 10:
+        time_steps = 10
+
+    return time_steps
+
+
+def _calc_blocked_by_device(grid, positions, grid_resolution,
+                            time_steps):
     blocked_by_device = {}
 
     for device, value in positions.items():
