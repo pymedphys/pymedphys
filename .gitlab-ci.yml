@@ -2,6 +2,7 @@ image: continuumio/miniconda3:latest
 
 variables:
   EXTERNAL_GIT_DIR: "/external-git"
+  DISPLAY: ":99.0"
 
 test:
   script:
