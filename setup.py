@@ -17,7 +17,7 @@ def read(*names, **kwargs):
 
 setup(
     name="pymedphys",
-    version="0.1.9",
+    version="0.2.0",
     author="Simon Biggs",
     author_email="me@simonbiggs.net",
     description='Medical Physics python modules',
@@ -42,10 +42,8 @@ setup(
         'scipy',
         'pandas',
         'matplotlib',
-        'pillow',
         'numba',
         'attrs',
-        'psutil',
         'pymssql',
         'keyring',
         'shapely',
