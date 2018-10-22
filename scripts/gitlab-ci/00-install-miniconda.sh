@@ -20,5 +20,7 @@ export PATH="$MINICONDA_DIR/bin:$PATH"
 conda config --set always_yes yes --set changeps1 no
 conda config --add channels conda-forge
 
+pip install .
+
 conda update -q conda
 conda info -a # for debugging
