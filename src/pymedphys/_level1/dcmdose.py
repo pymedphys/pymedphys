@@ -30,6 +30,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
 
+from scipy.interpolate import splprep, splev
+
 import pydicom.uid
 
 
@@ -250,5 +252,30 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     plt.ylabel('Relative Volume (%)')
 
 
-def _list_structures(dcm_struct):
+def list_structures(dcm_struct):
     return [item.ROIName for item in dcm_struct.StructureSetROISequence]
+
+
+def resample_contour(contour, n=50):
+    tck, u = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
+    new_points = splev(np.arange(0, 1, 1/n), tck)
+
+    return new_points
+
+
+def resample_contour_set(contours, n=50):
+
+    resampled_contours = [
+        resample_contour([x, y, z], n)
+        for x, y, z in zip(*contours)
+    ]
+
+    return resampled_contours
+
+
+def contour_to_points(contours):
+    resampled_contours = resample_contour_set([
+        contours[1], contours[0], contours[2]])
+    contour_points = np.concatenate(resampled_contours, axis=1)
+
+    return contour_points
