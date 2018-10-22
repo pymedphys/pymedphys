@@ -30,6 +30,6 @@ Example:
     >>> from pymedphys.electronfactors import parameterise_insert
 """
 
-# pylint: disable=W0401, W0614
+# pylint: disable=W0401,W0614
 
 from ._level1.electronfactors import *

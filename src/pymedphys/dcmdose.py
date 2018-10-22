@@ -30,6 +30,6 @@ Example:
     >>> from pymedphys.dcmdose import create_dvh
 """
 
-# pylint: disable=W0401, W0614
+# pylint: disable=W0401,W0614
 
 from ._level1.dcmdose import *
