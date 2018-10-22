@@ -7,15 +7,22 @@ cache:
 variables:
   PYTHON: "3.7"
   MINICONDA_DIR: "$HOME/miniconda"
+  EXTERNAL_GIT_DIR: "$HOME/external-git"
 
 stages:
   - install
   - test
 
 install:
+
+
+install:
   stage: install
-  script: bash ./scripts/gitlab-ci/install.sh
+  script:
+    - bash ./scripts/gitlab-ci/00-install-miniconda.sh
+    - bash ./scripts/gitlab-ci/01-create-env.sh
+    - bash ./scripts/gitlab-ci/02-install-private.sh
 
 test:
   stage: test
-  script: bash ./scripts/gitlab-ci/test.sh
+  script: bash ./scripts/gitlab-ci/10-test.sh
