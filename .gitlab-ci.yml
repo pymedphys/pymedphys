@@ -1,4 +1,4 @@
-image: continuumio/anaconda3:latest
+image: continuumio/miniconda3:latest
 
 variables:
   EXTERNAL_GIT_DIR: "$HOME/external-git"
