@@ -1,14 +1,6 @@
-cache:
-  key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
-  paths:
-    - $HOME/miniconda
-    - $HOME/.cache/pip
+image: continuumio/anaconda3:latest
 
 variables:
-  PYTHON: "3.7"
-  USER: "root"
-  HOME: "/root"
-  MINICONDA_DIR: "$HOME/miniconda"
   EXTERNAL_GIT_DIR: "$HOME/external-git"
 
 stages:
@@ -16,14 +8,10 @@ stages:
   - test
 
 install:
-
-
-install:
   stage: install
   script:
-    - bash ./scripts/gitlab-ci/00-install-miniconda.sh
-    - bash ./scripts/gitlab-ci/01-create-env.sh
-    - bash ./scripts/gitlab-ci/03-install-private.sh
+    - bash ./scripts/gitlab-ci/00-create-env.sh
+    - bash ./scripts/gitlab-ci/01-install-private.sh
 
 test:
   stage: test
