@@ -24,13 +24,13 @@ setup(
     long_description=read('README.md'),
     long_description_content_type='text/markdown',
     classifiers=[
-    'Development Status :: 3 - Alpha',
-    'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
-    'Programming Language :: Python :: 3.5',
-    'Topic :: Scientific/Engineering :: Medical Science Apps.',
-    'Topic :: Scientific/Engineering :: Physics',
-    'Intended Audience :: Science/Research',
-    'Intended Audience :: Healthcare Industry'
+        'Development Status :: 3 - Alpha',
+        'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
+        'Programming Language :: Python :: 3.5',
+        'Topic :: Scientific/Engineering :: Medical Science Apps.',
+        'Topic :: Scientific/Engineering :: Physics',
+        'Intended Audience :: Science/Research',
+        'Intended Audience :: Healthcare Industry'
     ],
     packages=find_packages('src'),
     package_dir={'': 'src'},
@@ -42,6 +42,7 @@ setup(
         'scipy',
         'pandas',
         'matplotlib',
+        'pillow',
         'numba',
         'attrs',
         'psutil',
