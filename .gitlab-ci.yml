@@ -1,7 +1,7 @@
 image: continuumio/miniconda3:latest
 
 variables:
-  EXTERNAL_GIT_DIR: "$HOME/external-git"
+  EXTERNAL_GIT_DIR: "/external-git"
 
 stages:
   - install
