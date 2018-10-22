@@ -5,9 +5,6 @@
 
 set -ex
 
-export PATH="$MINICONDA_DIR/bin:$PATH"
-
-conda remove --name test --all || true
 conda create -q -n test python=$PYTHON pytest pymedphys
 source activate test
 
