@@ -22,7 +22,6 @@ install:
   script:
     - bash ./scripts/gitlab-ci/00-install-miniconda.sh
     - bash ./scripts/gitlab-ci/01-create-env.sh
-    - bash ./scripts/gitlab-ci/02-install-pymedphys.sh
     - bash ./scripts/gitlab-ci/03-install-private.sh
 
 test:
