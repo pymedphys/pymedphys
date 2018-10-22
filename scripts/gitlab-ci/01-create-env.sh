@@ -14,6 +14,6 @@ source activate test
 conda uninstall pymedphys
 
 MATPLOTLIB_RC = `python -c "import matplotlib; print(matplotlib.matplotlib_fname())"`
-echo "backend: Agg" > MATPLOTLIB_RC
+echo "backend: Agg" > $MATPLOTLIB_RC
 
 pip install .
