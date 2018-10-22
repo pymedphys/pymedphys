@@ -1,8 +1,6 @@
 #!/bin/bash
 
 set -ex
-
-export PATH="$MINICONDA_DIR/bin:$PATH"
 source activate test
 
 cd $EXTERNAL_GIT_DIR
