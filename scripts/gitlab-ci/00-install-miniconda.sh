@@ -22,9 +22,3 @@ conda config --add channels conda-forge
 
 conda update -q conda
 conda info -a # for debugging
-
-conda remove --name test --all || true
-conda create -q -n test python=$PYTHON pytest numpy scipy pandas matplotlib numba attrs psutil pymssql shapely pydicom keyring
-source activate test
-
-pip install .
