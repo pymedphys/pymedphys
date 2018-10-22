@@ -58,6 +58,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from .._level1.plthelpers import pcolormesh_grid
+
 
 __AGILITY_LEAF_PAIR_WIDTHS = (
     5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
@@ -480,7 +482,7 @@ def display_mu_density(grid, mu_density, grid_resolution=None):
     if grid_resolution is None:
         grid_resolution = grid['mlc'][1] - grid['mlc'][0]
 
-    x, y = _colormesh_grid(grid['mlc'], grid['jaw'], grid_resolution)
+    x, y = pcolormesh_grid(grid['mlc'], grid['jaw'], grid_resolution)
     plt.pcolormesh(x, y, mu_density)
     plt.colorbar()
     plt.title('MU density')
@@ -488,15 +490,6 @@ def display_mu_density(grid, mu_density, grid_resolution=None):
     plt.ylabel('Jaw direction (mm)')
     plt.axis('equal')
     plt.gca().invert_yaxis()
-
-
-def _colormesh_grid(x, y, grid_resolution):
-    new_x = np.concatenate(
-        [x - grid_resolution/2, [x[-1] + grid_resolution/2]])
-    new_y = np.concatenate(
-        [y - grid_resolution/2, [y[-1] + grid_resolution/2]])
-
-    return new_x, new_y
 
 
 def _calc_blocked_t(travel_diff, grid_resolution):
