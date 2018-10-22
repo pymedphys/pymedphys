@@ -3,16 +3,8 @@ image: continuumio/miniconda3:latest
 variables:
   EXTERNAL_GIT_DIR: "/external-git"
 
-stages:
-  - install
-  - test
-
-install:
-  stage: install
+test:
   script:
     - bash ./scripts/gitlab-ci/00-create-env.sh
     - bash ./scripts/gitlab-ci/01-install-private.sh
-
-test:
-  stage: test
-  script: bash ./scripts/gitlab-ci/10-test.sh
+    - bash ./scripts/gitlab-ci/02-test.sh
