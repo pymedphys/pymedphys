@@ -29,16 +29,6 @@ release.
 """
 
 
-import attr
+# pylint: disable=W0401,W0614
 
-from .._level1._deliverydata import DeliveryData
-from .._level1._filehash import hash_file
-
-
-@attr.s
-class Header(object):
-    machine = attr.ib()
-    date = attr.ib()
-    timezone = attr.ib()
-    field_label = attr.ib()
-    field_name = attr.ib()
+from decode_trf import *
