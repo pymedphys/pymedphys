@@ -28,6 +28,8 @@
 
 Examples:
     >>> from pymedphys.trf import identify_logfile
+    >>> from pymedphys.trf import delivery_data_from_logfile
+    >>> from pymedphys.trf import decode_header_from_file
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413

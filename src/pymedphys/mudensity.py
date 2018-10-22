@@ -56,6 +56,6 @@ Example:
     >>> from pymedphys.mudensity import calc_mu_density
 """
 
-# pylint: disable=W0401, W0614
+# pylint: disable=W0401,W0614
 
 from ._level1.mudensity import *
