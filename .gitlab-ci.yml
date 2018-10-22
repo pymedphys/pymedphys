@@ -6,6 +6,7 @@ cache:
 
 variables:
   PYTHON: "3.7"
+  HOME: "root"
   MINICONDA_DIR: "$HOME/miniconda"
   EXTERNAL_GIT_DIR: "$HOME/external-git"
 
