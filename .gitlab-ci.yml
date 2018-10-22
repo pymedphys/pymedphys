@@ -6,6 +6,7 @@ variables:
 
 test:
   script:
-    - bash ./scripts/gitlab-ci/00-create-env.sh
-    - bash ./scripts/gitlab-ci/01-install-private.sh
-    - bash ./scripts/gitlab-ci/02-test.sh
+    - bash ./scripts/gitlab-ci/00-dummy-display.sh
+    - bash ./scripts/gitlab-ci/01-create-env.sh
+    - bash ./scripts/gitlab-ci/02-install-private.sh
+    - bash ./scripts/gitlab-ci/03-test.sh
