@@ -30,8 +30,8 @@ from decode_trf.decode_trf import delivery_data_from_logfile
 
 # from .._level1.msqconnect import mosaiq_connect
 from .._level1.utilitiesconfig import get_filepath, get_gantry_tolerance
-from .._level1.mudensity import find_relevant_control_points
-from .._level1.mudensity import calc_mu_density_return_grid
+from .._level2.mudensity import find_relevant_control_points
+from .._level2.mudensity import calc_mu_density_return_grid
 from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
 from .._level3.logfileanalyse import calc_comparison, plot_results
 

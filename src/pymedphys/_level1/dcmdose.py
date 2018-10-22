@@ -30,6 +30,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
 
+from scipy.interpolate import splprep, splev
+
 import pydicom.uid
 
 
@@ -185,7 +187,7 @@ def pull_structure(string, dcm_struct):
     return x, y, z
 
 
-def _get_index(z_list, z_val):
+def get_index(z_list, z_val):
     indices = np.array([item[0] for item in z_list])
     # This will error if more than one contour exists on a given slice
     index = int(np.where(indices == z_val)[0])
@@ -194,7 +196,7 @@ def _get_index(z_list, z_val):
     return index
 
 
-def _find_dose_within_structure(structure, dcm_struct, dcm_dose):
+def find_dose_within_structure(structure, dcm_struct, dcm_dose):
     x_dose, y_dose, z_dose = load_xyz_from_dicom(dcm_dose)
     dose = load_dose_from_dicom(dcm_dose)
 
@@ -208,7 +210,7 @@ def _find_dose_within_structure(structure, dcm_struct, dcm_dose):
     structure_dose_values = np.array([])
 
     for z_val in structure_z_values:
-        structure_index = _get_index(z_structure, z_val)
+        structure_index = get_index(z_structure, z_val)
         dose_index = int(np.where(z_dose == z_val)[0])
 
         assert z_structure[structure_index][0] == z_dose[dose_index]
@@ -230,7 +232,7 @@ def _find_dose_within_structure(structure, dcm_struct, dcm_dose):
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = _find_dose_within_structure(
+    structure_dose_values = find_dose_within_structure(
         structure, dcm_struct, dcm_dose)
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]
@@ -250,5 +252,30 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     plt.ylabel('Relative Volume (%)')
 
 
-def _list_structures(dcm_struct):
+def list_structures(dcm_struct):
     return [item.ROIName for item in dcm_struct.StructureSetROISequence]
+
+
+def resample_contour(contour, n=50):
+    tck, u = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
+    new_points = splev(np.arange(0, 1, 1/n), tck)
+
+    return new_points
+
+
+def resample_contour_set(contours, n=50):
+
+    resampled_contours = [
+        resample_contour([x, y, z], n)
+        for x, y, z in zip(*contours)
+    ]
+
+    return resampled_contours
+
+
+def contour_to_points(contours):
+    resampled_contours = resample_contour_set([
+        contours[1], contours[0], contours[2]])
+    contour_points = np.concatenate(resampled_contours, axis=1)
+
+    return contour_points
