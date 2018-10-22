@@ -2,11 +2,9 @@ image: continuumio/miniconda3:latest
 
 variables:
   EXTERNAL_GIT_DIR: "/external-git"
-  DISPLAY: ":99.0"
 
 test:
   script:
-    - bash ./scripts/gitlab-ci/00-dummy-display.sh
     - bash ./scripts/gitlab-ci/01-create-env.sh
     - bash ./scripts/gitlab-ci/02-install-private.sh
     - bash ./scripts/gitlab-ci/03-test.sh
