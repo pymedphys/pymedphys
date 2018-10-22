@@ -1,11 +1,11 @@
-# PyMedPhys [![Build Status](https://travis-ci.org/CCA-Physics/pymedphys.svg?branch=master)](https://travis-ci.org/CCA-Physics/pymedphys)
+# PyMedPhys
 
 ## Description
 
 A range of python modules encompased under the pymedphys package, designed to
 be built upon for Medical Physics applications.
 
-This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitHub at <https://github.com/CCA-Physics/pymedphys>.
+This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitLab at <https://gitlab.com/CCA-Physics/pymedphys>.
 
 ## Alpha stage development
 
