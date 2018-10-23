@@ -31,6 +31,52 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
 def cubify_cube_definition(cube_definition):
+    """Convertes a set of 3-D points into the vertices that define a cube.
+
+    Each point is defined as a length 3 tuple.
+
+    Args:
+        cube_definition: A list containing three 3-D points.
+
+            cube_definition[0]: The origin of the cube.
+            cube_definition[1]: Point that primarily determines the cube edge
+                lengths.
+            cube_definition[2]: Point that primarily defines the cube rotation.
+
+    Returns:
+        final_points: A list containing four 3-D points on the vertices of a
+            cube.
+
+    Examples:
+        >>> import numpy as np
+        >>> from pymedphys.geometry import cubify_cube_definition
+
+        >>> cube_definition = [(0, 0, 0), (0, 1, 0), (0, 0, 1)]
+        >>> np.array(cubify_cube_definition(cube_definition))
+        array([[0., 0., 0.],
+               [0., 1., 0.],
+               [0., 0., 1.],
+               [1., 0., 0.]])
+
+
+        The second point has primary control over the resulting edge lengths.
+
+        >>> cube_definition = [(0, 0, 0), (0, 3, 0), (0, 0, 1)]
+        >>> np.array(cubify_cube_definition(cube_definition))
+        array([[0., 0., 0.],
+               [0., 3., 0.],
+               [0., 0., 3.],
+               [3., 0., 0.]])
+
+
+        The third point has control over the final cube rotation:
+        >>> cube_definition = [(0, 0, 0), (0, 1, 0), (1, 0, 0)]
+        >>> np.array(cubify_cube_definition(cube_definition))
+        array([[ 0.,  0.,  0.],
+               [ 0.,  1.,  0.],
+               [ 1.,  0.,  0.],
+               [ 0.,  0., -1.]])
+    """
     cube_definition_array = [
         np.array(list(item))
         for item in cube_definition

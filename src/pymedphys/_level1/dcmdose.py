@@ -196,7 +196,7 @@ def _get_index(z_list, z_val):
     return index
 
 
-def _find_dose_within_structure(structure, dcm_struct, dcm_dose):
+def find_dose_within_structure(structure, dcm_struct, dcm_dose):
     x_dose, y_dose, z_dose = load_xyz_from_dicom(dcm_dose)
     dose = load_dose_from_dicom(dcm_dose)
 
@@ -232,7 +232,7 @@ def _find_dose_within_structure(structure, dcm_struct, dcm_dose):
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = _find_dose_within_structure(
+    structure_dose_values = find_dose_within_structure(
         structure, dcm_struct, dcm_dose)
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]

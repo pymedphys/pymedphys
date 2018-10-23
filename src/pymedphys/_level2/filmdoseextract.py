@@ -25,14 +25,10 @@
 
 
 import numpy as np
-from scipy.optimize import basinhopping
 
-from .._level1.dcmdose import (
-    pull_structure, contour_to_points
-)
-from .._level1._geometry import (
+from .._level1.geometry import (
     cubify_cube_definition, cube_vertices, get_bounding_box, test_if_in_cube,
-    plot_cube, cube_vectors
+    plot_cube
 )
 
 
@@ -92,56 +88,6 @@ def dose_inside_cube(x_dose, y_dose, z_dose, dose, cube):
     return ax
 
 
-def calc_min_distance(cube_definition, contours):
-    vertices = cube_vertices(cube_definition)
-
-    vectors = cube_vectors(cube_definition)
-    unit_vectors = [
-        vector / np.linalg.norm(vector)
-        for vector in vectors
-    ]
-
-    plane_norms = np.array([
-        unit_vectors[1],
-        -unit_vectors[0],
-        -unit_vectors[1],
-        unit_vectors[0],
-        unit_vectors[2],
-        -unit_vectors[2]
-    ])
-
-    plane_points = np.array([
-        vertices[0],
-        vertices[1],
-        vertices[2],
-        vertices[0],
-        vertices[0],
-        vertices[3]
-    ])
-
-    plane_origin_dist = -np.sum(plane_points * plane_norms, axis=1)
-
-    distance_to_planes = np.dot(
-        plane_norms, contours) + plane_origin_dist[:, None]
-    min_dist_squared = np.min(distance_to_planes**2, axis=0)
-
-    return min_dist_squared
-
-
-def create_minimise(structure_name, dcm_struct):
-    contours = pull_structure(structure_name, dcm_struct)
-    contour_points = contour_to_points(contours)
-
-    def minimise(cube):
-        cube_definition = cubify_cube_definition(
-            [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
-        )
-        min_dist_squared = calc_min_distance(cube_definition, contour_points)
-        return np.sum(min_dist_squared)
-
-    return minimise
-
-
 def get_interpolated_dose(coords_grid, dose_interpolation):
     coords_grid_ij_indexing = np.array([
         np.ravel(coords_grid[:, :, 1]),
@@ -155,33 +101,3 @@ def get_interpolated_dose(coords_grid, dose_interpolation):
         interpolated_dose, (coords_dim[0], coords_dim[1]))
 
     return interpolated_dose
-
-
-def get_structure_aligned_cube(x0, structure_name, dcm_struct):
-
-    to_minimise = create_minimise(structure_name, dcm_struct)
-
-    def print_fun(x, f, accepted):
-        print("at minimum %.4f accepted %d" % (f, int(accepted)))
-
-    result = basinhopping(
-        to_minimise, x0, callback=print_fun, niter=10, stepsize=5)
-
-    cube = result.x
-
-    cube_definition = cubify_cube_definition(
-        [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
-    )
-
-    cube_definition_array = [
-        np.array(list(item))
-        for item in cube_definition
-    ]
-
-    vectors = [
-        cube_definition_array[1] - cube_definition_array[0],
-        cube_definition_array[2] - cube_definition_array[0],
-        cube_definition_array[3] - cube_definition_array[0]
-    ]
-
-    return cube_definition_array, vectors
