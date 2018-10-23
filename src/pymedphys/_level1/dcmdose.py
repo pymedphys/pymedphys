@@ -170,7 +170,7 @@ def pull_structure_by_number(number, dcm_struct):
     y = [np.array(item[1::3]) for item in contours_by_slice_raw]
     z = [np.array(item[2::3]) for item in contours_by_slice_raw]
 
-    print("Loaded {}".format(structure_names[number]))
+    # print("Loaded {}".format(structure_names[number]))
     return x, y, z
 
 
