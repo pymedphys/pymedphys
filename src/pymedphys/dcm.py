@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,12 +24,21 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A film toolbox.
+"""A Dicom toolbox
 
 Example:
-    >>> from pymedphys.film import get_interpolated_dose
+    >>> from pymedphys.dcm import create_dvh
+    >>> from pymedphys.dcm import get_structure_aligned_cube
 """
 
-# pylint: disable=W0401, W0614
+# pylint: disable=W0401,W0614,C0103,C0413
 
-from ._level2.filmdoseextract import *
+from ._level1._clobbercheck import ClobberCheck
+__clobber_check = ClobberCheck()
+
+from ._level1.dcmdose import *  # nopep8
+__clobber_check.baseline = globals()
+
+from ._level2.dcmstruct import *  # nopep8
+__clobber_check.check(globals(), label='dcmstruct')
+__clobber_check.baseline = globals()

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,12 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Dicom Dose toolbox
+"""A geometry toolbox.
 
 Example:
-    >>> from pymedphys.dcmdose import create_dvh
+    >>> from pymedphys.geometry import cubify_cube_definition, plot_cube
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401, W0614
 
-from ._level1.dcmdose import *
+from ._level1.geometry import *
