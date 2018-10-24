@@ -39,7 +39,7 @@ pip install pymedphys
 To run a development install, which may often be required during the alpha development stage, clone this repository and then use pip:
 
 ```bash
-git clone https://github.com/CCA-Physics/pymedphys.git
+git clone https://gitlab.com/CCA-Physics/pymedphys.git
 cd pymedphys
 pip install -e .
 ```
