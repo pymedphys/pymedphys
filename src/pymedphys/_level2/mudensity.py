@@ -106,7 +106,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
             leaf pair width. Defaults to 80 leaf pairs each 5 mm wide.
 
         min_step_per_pixel (int, optional): The minimum number of time steps
-            used per pixel for each control point. Defaults to 3.
+            used per pixel for each control point. Defaults to 10.
 
     Returns:
         mu_density (np.array): 2-D array containing the calculated mu density.
