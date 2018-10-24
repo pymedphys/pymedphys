@@ -135,8 +135,9 @@ def calc_normalisation(mosaiq_delivery_data):
     return normalisation
 
 
-def calc_mu_density_bygantry(delivery_data, gantry_angle):
+def calc_mu_density_bygantry(delivery_data, gantry_angle, grid_resolution=1):
     mu_density = calc_mu_density_return_grid(
+        grid_resolution=grid_resolution,
         *extract_angle_from_delivery_data(delivery_data, gantry_angle)
     )
 
@@ -144,7 +145,7 @@ def calc_mu_density_bygantry(delivery_data, gantry_angle):
 
 
 def calc_logfile_mu_density_bygantry(index, config, logfile_group,
-                                     gantry_angle):
+                                     gantry_angle, grid_resolution=1):
     logfile_mu_density = None
 
     for filehash in logfile_group:
@@ -154,6 +155,7 @@ def calc_logfile_mu_density_bygantry(index, config, logfile_group,
         gantry_tolerance = get_gantry_tolerance(index, filehash, config)
 
         a_logfile_mu_density = calc_mu_density_return_grid(
+            grid_resolution=grid_resolution,
             *extract_angle_from_delivery_data(
                 logfile_delivery_data, gantry_angle, gantry_tolerance)
         )
