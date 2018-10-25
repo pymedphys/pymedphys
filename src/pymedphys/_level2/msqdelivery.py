@@ -77,6 +77,23 @@ def get_field_type(cursor, field_id):
 def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
                                 field_name):
     """Identifies the patient details for a given delivery time.
+
+    Args:
+    Args:
+        cursor: A pymssql cursor pointing to the Mosaiq SQL server
+        machine: The name of the machine the delivery occured on
+        delivery_time: The time of the treatment delivery
+        field_label: The beam field label, called Field ID within Monaco
+        field_name: The beam field name, called Description within Monaco
+    Returns:
+        delivery_details: The identified delivery details
+            patient_id: User defined Mosaiq patient ID
+            field_id: Internal Mosaiq SQL field ID
+            last_name: Patient last name
+            first_name: Patient first name
+            qa_mode: Whether or not the delivery was in QA mode
+            field_type: What field type the delivery was
+            beam_completed: Whether or not this beam was the last in a sequence
     """
 
     # TODO Need to update the logic here to search for previous treatments
@@ -247,6 +264,16 @@ def convert_angle_to_bipolar(angle):
 
 
 def delivery_data_sql(cursor, field_id):
+    """Get the treatment delivery data from Mosaiq given the SQL field_id
+
+    Args:
+        cursor: A pymssql cursor pointing to the Mosaiq SQL server
+        field_id: The Mosaiq SQL field ID
+
+    Returns:
+        txfield_results: The results from the TxField table.
+        txfieldpoint_results: The results from the TxFieldPoint table.
+    """
     txfield_results = execute_sql(
         cursor,
         """

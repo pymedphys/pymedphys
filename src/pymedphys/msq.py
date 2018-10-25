@@ -52,4 +52,3 @@ __clobber_check.baseline = globals()
 
 from ._level3.msqfieldcompare import *  # nopep8
 __clobber_check.check(globals(), label='msqfieldcompare')
-__clobber_check.baseline = globals()
