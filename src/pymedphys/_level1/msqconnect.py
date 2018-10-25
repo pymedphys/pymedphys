@@ -28,11 +28,11 @@
 """
 
 # import time
-import warnings
+# import warnings
 from getpass import getpass
 
-import pymssql
 import keyring
+import pymssql
 
 
 def execute_sql(cursor, sql_string, parameters=None):
@@ -68,8 +68,6 @@ def single_connect(server):
 
     user = keyring.get_password('MosaiqSQL_username', server)
     password = keyring.get_password('MosaiqSQL_password', server)
-
-
 
     if user is None:
         print(
@@ -148,6 +146,7 @@ class mosaiq_connect():
         with mosaiq_connect('msqsql') as cursor:
             do_something(cursor)
     """
+
     def __init__(self, sql_server):
         self.sql_server = sql_server
 
