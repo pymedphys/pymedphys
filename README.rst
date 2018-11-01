@@ -1,20 +1,52 @@
 PyMedPhys
 =========
 
+Documentation -- https://pymedphys.com
+
 Description
 -----------
-Designed to be the astropy for Medical Physicists.
+The PyMedPhys Project aims to develop a common core package for Medical Physics
+in Python and foster an ecosystem of interoperable Medical Physics packages. It
+is inspired by our Astronomy Physics peers and their `Astropy Project`_.
 
+.. _`Astropy Project`: http://www.astropy.org/
 
-A range of python modules encompased under the pymedphys package, designed to
-be built upon for Medical Physics applications. Work in progress documentation
-for this package is available at https://pymedphys.com.
-
-This package is available on pypi at https://pypi.org/project/pymedphys/
-and GitLab at https://gitlab.com/pymedphys/pymedphys.
+This package is available on PyPi (https://pypi.org/project/pymedphys/),
+GitLab (https://gitlab.com/pymedphys/pymedphys), and conda-forge
+(https://anaconda.org/conda-forge/pymedphys)
 
 Our Team
 --------
+
+PyMedPhys is what it is today due to its maintainers and developers. The
+currently active developers and maintainers of PyMedPhys as well as their
+company/hospital logos in both in alphabetical order are given below:
+
+* `Matthew Sobolewski`_, `Northern Beaches Cancer Care`_, `Cancer Care Associates`_, Australia
+
+.. _`Matthew Sobolewski`: https://gitlab.com/msobolewski
+
+* `Simon Biggs`_, `Riverina Cancer Care Centre`_, `Cancer Care Associates`_, Australia
+
+.. _`Simon Biggs`: https://gitlab.com/SimonBiggs
+
+.. _`Cancer Care Associates`: http://cancercare.com.au/
+
+.. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
+
+.. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
+
+
+.. image:: docs/logos/CCA_logo.png
+    :target: `Cancer Care Associates`_
+
+.. image:: docs/logos/NBCCC_logo.png
+    :target: `Northern Beaches Cancer Care`_
+
+.. image:: docs/logos/RCCC_logo.png
+    :target: `Riverina Cancer Care Centre`_
+
+
 
 We want you on this list. We want you, clinical Medical Physicist, to join our
 team. Even if all you feel comfortable contributing to is documentation.
@@ -23,28 +55,6 @@ The aim of PyMedPhys is that it will be developed by an open community of
 contributors. We use a shared copyright model that enables all contributors
 to maintain the copyright on their contributions. All code is licensed under
 the AGPLv3+ with additional terms from the Apache-2.0 license.
-
-PyMedPhys' is what it is today due to its maintainers and developers. The
-currently active developers and maintainers of PyMedPhys listed in alphabetical
-order are:
-
-* `Matthew Sobolewski`_, `Northern Beaches Cancer Care, Australia`_
-
-.. image:: docs/logos/NBCCC_logo.png
-    :target: `Northern Beaches Cancer Care, Australia`_
-
-.. _`Matthew Sobolewski`: https://github.com/msobolewski
-
-.. _`Northern Beaches Cancer Care, Australia`: http://www.northernbeachescancercare.com.au/
-
-* `Simon Biggs`_, `Riverina Cancer Care Centre, Australia`_
-
-.. image:: docs/logos/RCCC_logo.png
-    :target: `Riverina Cancer Care Centre, Australia`_
-
-.. _`Simon Biggs`: https://github.com/SimonBiggs
-
-.. _`Riverina Cancer Care Centre, Australia`: http://www.riverinacancercare.com.au/
 
 
 Beta stage development
@@ -71,24 +81,8 @@ hold:
 Installation
 ------------
 
-To install use the `Anaconda Python distribution`_ with the
-`conda-forge channel`_
-
-.. _`Anaconda Python distribution`: https://www.continuum.io/anaconda-overview
-
-.. _`conda-forge channel`: https://conda-forge.org/
-
-.. code:: bash
-
-    conda config --add channels conda-forge
-    conda install pymedphys
-
-You can of course also use pip to install, but you may have trouble with some
-of the dependencies without conda
-
-.. code:: bash
-
-    pip install pymedphys
+For instructions on how to install see the documentation at
+https://pymedphys.com/en/latest/docs/installation.html.
 
 
 Contributing
