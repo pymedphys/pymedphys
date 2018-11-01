@@ -83,152 +83,162 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     point. A negative value indicates travel over the isocentre. All positional
     arguments are defined at the isocentre projection with the units of mm.
 
-    Args:
-        mu (np.array): 1-D array containing an MU value for each control point.
-        mlc (np.array): 3-D array containing the MLC positions.
+    Parameters
+    ----------
+    mu : numpy.ndarray
+        1-D array containing an MU value for each control point.
+    mlc : numpy.ndarray
+        3-D array containing the MLC positions.
             axis 0: control point
             axis 1: mlc pair
             axis 2: leaf bank
 
-        jaw (np.array): 2-D array containing the jaw positions.
+    jaw : numpy.ndarray
+        2-D array containing the jaw positions.
             axis 0: control point
             axis 1: diaphragm
 
-        grid_resolution (float, optional): The calc grid resolution. Defaults
-            to 1 mm.
+    grid_resolution : float, optional
+        The calc grid resolution. Defaults to 1 mm.
 
-        max_leaf_gap (float, optional): The maximum possible distance between
-            opposing leaves. Defaults to 400 mm.
+    max_leaf_gap : float, optional
+        The maximum possible distance between opposing leaves. Defaults to
+        400 mm.
 
-        leaf_pair_widths (tuple, optional): The widths of each leaf pair in the
-            MLC limiting device. The number of entries in the tuples defines
-            the number of leaf pairs. Each entry itself defines that particular
-            leaf pair width. Defaults to 80 leaf pairs each 5 mm wide.
+    leaf_pair_widths : tuple, optional
+        The widths of each leaf pair in the
+        MLC limiting device. The number of entries in the tuples defines
+        the number of leaf pairs. Each entry itself defines that particular
+        leaf pair width. Defaults to 80 leaf pairs each 5 mm wide.
 
-        min_step_per_pixel (int, optional): The minimum number of time steps
-            used per pixel for each control point. Defaults to 10.
+    min_step_per_pixel : int, optional
+        The minimum number of time steps
+        used per pixel for each control point. Defaults to 10.
 
-    Returns:
-        mu_density (np.array): 2-D array containing the calculated mu density.
+    Returns
+    -------
+    mu_density : numpy.ndarray
+        2-D array containing the calculated mu density.
             axis 0: jaw direction
             axis 1: mlc direction
 
-    Examples:
-        >>> import numpy as np
+    Examples
+    --------
+    >>> import numpy as np
 
-        >>> from pymedphys.mudensity import (
-        ...     calc_mu_density, get_grid, display_mu_density)
+    >>> from pymedphys.mudensity import (
+    ...     calc_mu_density, get_grid, display_mu_density)
 
-        >>> leaf_pair_widths = (5, 5, 5)
-        >>> max_leaf_gap = 10
-        >>> mu = np.array([0, 2, 5, 10])
-        >>> mlc = np.array([
-        ...     [
-        ...         [1, 1],
-        ...         [2, 2],
-        ...         [3, 3]
-        ...     ],
-        ...     [
-        ...         [2, 2],
-        ...         [3, 3],
-        ...         [4, 4]
-        ...     ],
-        ...     [
-        ...         [-2, 3],
-        ...         [-2, 4],
-        ...         [-2, 5]
-        ...     ],
-        ...     [
-        ...         [0, 0],
-        ...         [0, 0],
-        ...         [0, 0]
-        ...     ]
-        ... ])
-        >>> jaw = np.array([
-        ...     [7.5, 7.5],
-        ...     [7.5, 7.5],
-        ...     [-2, 7.5],
-        ...     [0, 0]
-        ... ])
+    >>> leaf_pair_widths = (5, 5, 5)
+    >>> max_leaf_gap = 10
+    >>> mu = np.array([0, 2, 5, 10])
+    >>> mlc = np.array([
+    ...     [
+    ...         [1, 1],
+    ...         [2, 2],
+    ...         [3, 3]
+    ...     ],
+    ...     [
+    ...         [2, 2],
+    ...         [3, 3],
+    ...         [4, 4]
+    ...     ],
+    ...     [
+    ...         [-2, 3],
+    ...         [-2, 4],
+    ...         [-2, 5]
+    ...     ],
+    ...     [
+    ...         [0, 0],
+    ...         [0, 0],
+    ...         [0, 0]
+    ...     ]
+    ... ])
+    >>> jaw = np.array([
+    ...     [7.5, 7.5],
+    ...     [7.5, 7.5],
+    ...     [-2, 7.5],
+    ...     [0, 0]
+    ... ])
 
-        >>> grid = get_grid(
-        ...    max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths)
-        >>> grid['mlc']
-        array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])
+    >>> grid = get_grid(
+    ...    max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths)
+    >>> grid['mlc']
+    array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])
 
-        >>> grid['jaw']
-        array([-8., -7., -6., -5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,
-                5.,  6.,  7.,  8.])
+    >>> grid['jaw']
+    array([-8., -7., -6., -5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,
+            5.,  6.,  7.,  8.])
 
-        >>> mu_density = calc_mu_density(
-        ...    mu, mlc, jaw, max_leaf_gap=max_leaf_gap,
-        ...    leaf_pair_widths=leaf_pair_widths)
-        >>> display_mu_density(grid, mu_density)
+    >>> mu_density = calc_mu_density(
+    ...    mu, mlc, jaw, max_leaf_gap=max_leaf_gap,
+    ...    leaf_pair_widths=leaf_pair_widths)
+    >>> display_mu_density(grid, mu_density)
 
-        >>> np.round(mu_density, 1)
-        array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
-               [0. , 0. , 0. , 0.3, 1.9, 2.2, 1.9, 0.4, 0. , 0. , 0. ],
-               [0. , 0. , 0. , 0.4, 2.2, 2.5, 2.2, 0.6, 0. , 0. , 0. ],
-               [0. , 0. , 0. , 0.4, 2.4, 2.8, 2.5, 0.8, 0. , 0. , 0. ],
-               [0. , 0. , 0. , 0.4, 2.5, 3.1, 2.8, 1. , 0. , 0. , 0. ],
-               [0. , 0. , 0. , 0.4, 2.5, 3.4, 3.1, 1.3, 0. , 0. , 0. ],
-               [0. , 0. , 0.4, 2.3, 3.2, 3.7, 3.7, 3.5, 1.6, 0. , 0. ],
-               [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4. , 3.8, 1.9, 0.1, 0. ],
-               [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4.3, 4.1, 2.3, 0.1, 0. ],
-               [0. , 0. , 0.4, 2.3, 3.2, 3.9, 5.2, 4.7, 2.6, 0.2, 0. ],
-               [0. , 0. , 0.4, 2.3, 3.2, 3.8, 5.4, 6.6, 3.8, 0.5, 0. ],
-               [0. , 0.3, 2.2, 3. , 3.5, 4. , 5.1, 7.5, 6.7, 3.9, 0.5],
-               [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.7, 6.9, 6.7, 3.9, 0.5],
-               [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 6.3, 6.4, 3.9, 0.5],
-               [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.6, 5.7, 3.8, 0.5],
-               [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.1, 5.1, 3.3, 0.5],
-               [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])
-
-
-        MU Density from a Mosaiq record.
-
-        >>> from pymedphys.mudensity import (
-        ...     calc_mu_density, get_grid, display_mu_density)
-
-        >>> from pymedphys.msq import (
-        ...     mosaiq_connect, multi_fetch_and_verify_mosaiq)
-
-        >>> def mu_density_from_mosaiq(msq_server_name, field_id):
-        ...     with mosaiq_connect(msq_server_name) as cursor:
-        ...         delivery_data = multi_fetch_and_verify_mosaiq(
-        ...             cursor, field_id)
+    >>> np.round(mu_density, 1)
+    array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
+            [0. , 0. , 0. , 0.3, 1.9, 2.2, 1.9, 0.4, 0. , 0. , 0. ],
+            [0. , 0. , 0. , 0.4, 2.2, 2.5, 2.2, 0.6, 0. , 0. , 0. ],
+            [0. , 0. , 0. , 0.4, 2.4, 2.8, 2.5, 0.8, 0. , 0. , 0. ],
+            [0. , 0. , 0. , 0.4, 2.5, 3.1, 2.8, 1. , 0. , 0. , 0. ],
+            [0. , 0. , 0. , 0.4, 2.5, 3.4, 3.1, 1.3, 0. , 0. , 0. ],
+            [0. , 0. , 0.4, 2.3, 3.2, 3.7, 3.7, 3.5, 1.6, 0. , 0. ],
+            [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4. , 3.8, 1.9, 0.1, 0. ],
+            [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4.3, 4.1, 2.3, 0.1, 0. ],
+            [0. , 0. , 0.4, 2.3, 3.2, 3.9, 5.2, 4.7, 2.6, 0.2, 0. ],
+            [0. , 0. , 0.4, 2.3, 3.2, 3.8, 5.4, 6.6, 3.8, 0.5, 0. ],
+            [0. , 0.3, 2.2, 3. , 3.5, 4. , 5.1, 7.5, 6.7, 3.9, 0.5],
+            [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.7, 6.9, 6.7, 3.9, 0.5],
+            [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 6.3, 6.4, 3.9, 0.5],
+            [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.6, 5.7, 3.8, 0.5],
+            [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.1, 5.1, 3.3, 0.5],
+            [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])
 
 
-        ...     mu = delivery_data.monitor_units
-        ...     mlc = delivery_data.mlc
-        ...     jaw = delivery_data.jaw
+    MU Density from a Mosaiq record.
 
-        ...     grid = get_grid()
-        ...     mu_density = calc_mu_density(mu, mlc, jaw)
-        ...     display_mu_density(grid, mu_density)
+    >>> from pymedphys.mudensity import (
+    ...     calc_mu_density, get_grid, display_mu_density)
 
-        >>> mu_density_from_mosaiq('a_server_name', 11111) # doctest: +SKIP
+    >>> from pymedphys.msq import (
+    ...     mosaiq_connect, multi_fetch_and_verify_mosaiq)
+
+    >>> def mu_density_from_mosaiq(msq_server_name, field_id):
+    ...     with mosaiq_connect(msq_server_name) as cursor:
+    ...         delivery_data = multi_fetch_and_verify_mosaiq(
+    ...             cursor, field_id)
 
 
-        MU Density from a logfile at a given filepath.
+    ...     mu = delivery_data.monitor_units
+    ...     mlc = delivery_data.mlc
+    ...     jaw = delivery_data.jaw
 
-        >>> from pymedphys.mudensity import (
-        ...     calc_mu_density, get_grid, display_mu_density)
+    ...     grid = get_grid()
+    ...     mu_density = calc_mu_density(mu, mlc, jaw)
+    ...     display_mu_density(grid, mu_density)
 
-        >>> from pymedphys.trf import delivery_data_from_logfile
+    >>> mu_density_from_mosaiq('a_server_name', 11111) # doctest: +SKIP
 
-        >>> def mu_density_from_logfile(filepath):
-        ...     delivery_data = delivery_data_from_logfile(filepath)
 
-        ...     mu = delivery_data.monitor_units
-        ...     mlc = delivery_data.mlc
-        ...     jaw = delivery_data.jaw
+    MU Density from a logfile at a given filepath.
 
-        ...     grid = get_grid()
-        ...     mu_density = calc_mu_density(mu, mlc, jaw)
-        ...     display_mu_density(grid, mu_density)
+    >>> from pymedphys.mudensity import (
+    ...     calc_mu_density, get_grid, display_mu_density)
 
-        >>> mu_density_from_logfile(r"a/path/goes/here") # doctest: +SKIP
+    >>> from pymedphys.trf import delivery_data_from_logfile
+
+    >>> def mu_density_from_logfile(filepath):
+    ...     delivery_data = delivery_data_from_logfile(filepath)
+
+    ...     mu = delivery_data.monitor_units
+    ...     mlc = delivery_data.mlc
+    ...     jaw = delivery_data.jaw
+
+    ...     grid = get_grid()
+    ...     mu_density = calc_mu_density(mu, mlc, jaw)
+    ...     display_mu_density(grid, mu_density)
+
+    >>> mu_density_from_logfile(r"a/path/goes/here") # doctest: +SKIP
 
     """
     leaf_pair_widths = np.array(leaf_pair_widths)
