@@ -146,6 +146,10 @@ describes this methodology in a talk he gave which is available on YouTube:
 
 > <https://youtu.be/QjFpKJ8Xx78?t=41m7s>
 
+For a bit more context rewind back to:
+
+> <https://youtu.be/QjFpKJ8Xx78?t=32m50s>
+
 ### Level 1
 
 Level 1 packages are the foundation library packages.
