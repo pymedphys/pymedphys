@@ -4,6 +4,7 @@
     :maxdepth: 2
 
     self
+    docs/installation
     docs/contributing
     docs/physical-design
     docs/licensing-notes
