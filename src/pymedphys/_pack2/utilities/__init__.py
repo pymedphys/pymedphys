@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,25 +23,15 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Working with delivery data from either logfiles or Mosaiq.
-"""
 
+# pylint: disable=W0401,W0614,C0103,C0413
 
-import attr
-import numpy as np
+from ..._pack1.clobbercheck import ClobberCheck
+__clobber_check = ClobberCheck()
 
-@attr.s
-class DeliveryData(object):
-    monitor_units = attr.ib()
-    gantry = attr.ib()
-    collimator = attr.ib()
-    mlc = attr.ib()
-    jaw = attr.ib()
+from .level1.utilitiesconfig import *  # nopep8
+__clobber_check.baseline = globals()
 
-
-def get_delivery_parameters(delivery_data):
-    mu = np.array(delivery_data.monitor_units)
-    mlc = np.array(delivery_data.mlc)
-    jaw = np.array(delivery_data.jaw)
-
-    return mu, mlc, jaw
+from .level1.utilitiesfilesystem import *  # nopep8
+__clobber_check.check(globals(), label='filesystemutilities')
+__clobber_check.baseline = globals()

@@ -30,6 +30,6 @@ Example:
     >>> from pymedphys.film import get_interpolated_dose
 """
 
-# pylint: disable=W0401, W0614
+# pylint: disable=W0401,W0614
 
-from ._level2.filmdoseextract import *
+from ._pack2.film import *

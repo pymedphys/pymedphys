@@ -26,7 +26,7 @@
 
 import numpy as np
 
-from .._level1.geometry import (
+from .._pack1.geometry import (
     cubify_cube_definition, cube_vertices, get_bounding_box, test_if_in_cube,
     plot_cube
 )

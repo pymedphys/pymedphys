@@ -32,4 +32,4 @@ Example:
 
 # pylint: disable=W0401,W0614
 
-from ._level1.electronfactors import *
+from ._pack1.electronfactors import *
