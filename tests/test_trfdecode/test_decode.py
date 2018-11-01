@@ -74,8 +74,8 @@ def convert_and_check(filepath):
         extension_removed, CONVERTED_TAG)
     assert os.path.exists(reference_csv_file), "Reference file should exist"
 
-    assert not os.path.exists(converted_csv_file), (
-        "Filename for converted file shouldn't exist.")
+    if os.path.exists(converted_csv_file):
+        os.remove(converted_csv_file)
 
     with file_teardown(converted_csv_file):
         trf2csv(filepath, csv_filepath=converted_csv_file)
