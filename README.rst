@@ -49,8 +49,8 @@ and main area of contribution:
 Beta stage development
 ----------------------
 
-These libraries are currently under beta level development. As with any code
-where the results matter, be cautious with the code in this library.
+These libraries are currently under beta level development.
+Be prudent with the code in this library.
 
 Throughout the lifetime of this library the following disclaimer will always
 hold:
