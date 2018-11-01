@@ -11,9 +11,11 @@ def pytest_ignore_collect(path, config):
     more specific hooks.
     """
 
-
-
-
     relative_path = os.path.relpath(str(path), os.path.dirname(__file__))
 
-    return relative_path.startswith('experimentation')
+    build_dir = os.path.join('docs', '_build')
+
+    return (
+        relative_path.startswith('experimentation') or
+        relative_path.startswith(build_dir)
+    )

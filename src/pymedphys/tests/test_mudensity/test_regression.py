@@ -38,9 +38,9 @@ from pymedphys.mudensity import calc_mu_density
 
 
 DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../../data/mu_density")
-DELIVERY_DATA_FILEPATH = os.path.join(
-    DATA_DIRECTORY, 'mu_density_example_arrays.npz')
+    os.path.dirname(__file__), "../data/mudensity")
+DELIVERY_DATA_FILEPATH = os.path.abspath(os.path.join(
+    DATA_DIRECTORY, 'mu_density_example_arrays.npz'))
 
 
 def test_regression():
