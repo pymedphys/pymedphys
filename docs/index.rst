@@ -3,8 +3,7 @@
 .. toctree::
     :maxdepth: 2
 
-    overview
-    installation
+    self
     contributing
     physical-design
     licensing-notes
