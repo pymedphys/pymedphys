@@ -1,2 +1,2 @@
-A Title
-=======
+Contributing
+============
