@@ -161,9 +161,50 @@ dependencies with conda:
     pip install -e .
 
 
-Add yourself to our team
-------------------------
+Update this document
+--------------------
 
 .. note::
 
     If you've made it this far, well done!
+
+Now that you've got this far, you have a copy of the code on your machine.
+
+First things first is to make a branch. If you don't know what that is, head on
+back over to https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html
+and scrub up on your terminology.
+
+To make a branch you need to have cmder open and run the following:
+
+.. code:: bash
+
+    git checkout -b edit-contributing-document
+
+Once you've run that you are now free to make some changes.
+
+Right click on the top level pymedphys directory, and press
+"Open with Code". This document that you're reading is located at
+`docs/contributing.rst`. Use Visual Studio Code to navigate to that file up and
+begin making your changes.
+
+Once your changes are complete reopen your cmder and run:
+
+.. code:: bash
+
+    git add -A
+    git commit -m "my first commit"
+    git push --set-upstream origin edit-contributing-document
+
+Now, you have successfully sent your branch online.
+
+Now you need to open a merge request. Travel on over to:
+
+https://gitlab.com/pymedphys/pymedphys/merge_requests/new
+
+And select the source branch to be `pymedphys/edit-contributing-document`
+and set the target branch to be `pymedphys/master`.
+
+At that point I'll get notified and we can begin discussing the changes
+you've made.
+
+Thank you! Welcome to the team!.
