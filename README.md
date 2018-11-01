@@ -142,9 +142,19 @@ designed and programmed with these restrictions in mind.
 
 The physical design of the module dependencies is inspired by
 John Lakos at Bloomberg, writer of Large-Scale C++ Software Design. He
-describes this methodology in a talk he gave which is available on YouTube:
+describes this methodology in a talk he gave which is available on YouTube.
+
+For an overview of its use see:
+
+> <https://youtu.be/NrARQ7rHV-c?t=2898>
+
+For some details on the level structure basics see
 
 > <https://youtu.be/QjFpKJ8Xx78?t=41m7s>
+
+And lastly for a bit more context rewind back to:
+
+> <https://youtu.be/QjFpKJ8Xx78?t=32m50s>
 
 ### Level 1
 
