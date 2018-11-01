@@ -58,7 +58,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .._level1.plthelpers import pcolormesh_grid
+from .._pack1.plthelpers import pcolormesh_grid
 
 
 __AGILITY_LEAF_PAIR_WIDTHS = (

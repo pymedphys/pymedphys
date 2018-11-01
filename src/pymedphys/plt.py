@@ -30,6 +30,6 @@ Example:
     >>> from pymedphys.plt import pcolormesh_grid
 """
 
-# pylint: disable=W0401, W0614
+# pylint: disable=W0401,W0614
 
-from ._level1.plthelpers import *
+from ._pack1.plthelpers import *

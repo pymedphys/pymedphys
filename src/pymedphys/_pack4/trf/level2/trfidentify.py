@@ -26,9 +26,10 @@
 from datetime import datetime
 from dateutil import tz
 
-from .._level2.trfdecode import decode_header_from_file
-from .._level2.msqdelivery import (
+from ...._pack3.msq import (
     get_mosaiq_delivery_details, OISDeliveryDetails)
+
+from ..level1.trfdecode import decode_header_from_file
 
 
 # TODO Make the field identification run one whole day at a time, searching

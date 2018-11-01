@@ -26,12 +26,16 @@
 
 import numpy as np
 
-from .._level1.utilitiesconfig import get_filepath, get_gantry_tolerance
-from .._level2.mudensity import find_relevant_control_points
-from .._level2.mudensity import calc_mu_density_return_grid
-from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
-from .._level2.trfdecode import delivery_data_from_logfile
-from .._level3.logfileanalyse import calc_comparison, plot_results
+from ...._pack2.utilities import get_filepath, get_gantry_tolerance
+from ...._pack2.mudensity import (
+    find_relevant_control_points, calc_mu_density_return_grid)
+
+from ...._pack3.msq import multi_fetch_and_verify_mosaiq
+
+from ...._pack4.trf import delivery_data_from_logfile
+
+
+from ..level1.logfileanalyse import calc_comparison, plot_results
 
 
 def get_mappings(index, file_hashes):
