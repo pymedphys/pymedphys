@@ -18,7 +18,7 @@ GNU Affero General Public License and the additional terms for more
 details.
 
 You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <http://www.gnu.org/licenses/>.
+along with this program. If not, see http://www.gnu.org/licenses/.
 
 ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
 Affrero General Public License. These aditional terms are Sections 1, 5,
@@ -27,13 +27,13 @@ where all references to the definition "License" are instead defined to
 mean the AGPL-3.0+.
 
 You should have received a copy of the Apache-2.0 along with this
-program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+program. If not, see http://www.apache.org/licenses/LICENSE-2.0.
 
 Benefits of using a copyleft license in Medical Physics
 -------------------------------------------------------
 
 For more information on why you as a Medical Physicist might want to use the
-AGPL-3.0+ license read the [benefits of AGPL-3.0+ for Medical Physics](./Benefits-of-AGPL-3.0+-for-Medical-Physics.md).
+AGPL-3.0+ license read the `the Benefits of AGPL-3.0+ for Medical Physics`_.
 
 Justification for the inclusion of additional terms
 ---------------------------------------------------
@@ -44,7 +44,7 @@ should code be shared the author of the code may be liable for negligence.
 Within Australian courts if there is any ambiguity in liability exclusion
 clauses they will be interpreted narrowly. If liability for negligence is not
 expressly excluded it may not be read as excluded within an Australian court
-(<https://eprints.qut.edu.au/7404/1/open_source_book.pdf> page 80).
+(https://eprints.qut.edu.au/7404/1/open_source_book.pdf page 80).
 The same is true for clauses which seek to exclude liability for consequential
 loss.
 
@@ -65,4 +65,7 @@ whom you distribute the program to. Therefore you do not need to share your
 code outside of your company if your only users are within your company.
 
 However there are significant benefits from sharing your code with the
-community. Please read the [benefits of AGPL-3.0+ for Medical Physics](./Benefits-of-AGPL-3.0+-for-Medical-Physics.md).
+community. Please read `the Benefits of AGPL-3.0+ for Medical Physics`_.
+
+
+.. _`the Benefits of AGPL-3.0+ for Medical Physics`: ./agpl-benefits.html

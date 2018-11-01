@@ -1,60 +1,73 @@
-[WIP] Physical File Structure and Design
-========================================
+Physical File Structure and Design
+==================================
 
-Cyclic dependencies and the justification of file structure
+John Lakos and Physical Design
+------------------------------
 
-If package A depends on package B, and package B depends on package C, it is
-important that package C does not then depend on package A. This is called a
-cyclic dependency. It causes issues in dependency logic and can be avoided
-by purposefully designing how the packages depend on one another.
-
-Ideally library packages are split up module by module based upon single tasks
-that each library achieves. By having a very large number of small single
-purpose modules the dependency tree can become very complicated. Complicated
-dependency trees do not scale. As a result the inter dependencies between
-library packages is tightly regulated. The modules themselves need to be
-designed and programmed with these restrictions in mind.
-
-The physical design of the module dependencies is inspired by
+The physical design of PyMedPhys is inspired by
 John Lakos at Bloomberg, writer of Large-Scale C++ Software Design. He
-describes this methodology in a talk he gave which is available on YouTube.
+describes this methodology in a talk he gave which is available on YouTube:
 
-For an overview of its use see:
+.. raw:: html
 
-> <https://youtu.be/NrARQ7rHV-c?t=2898>
+    <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+        <iframe src="https://www.youtube.com/embed/QjFpKJ8Xx78?t=39m10s" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+    </div></br>
 
-For some details on the level structure basics see
 
-> <https://youtu.be/QjFpKJ8Xx78?t=41m7s>
 
-And lastly for a bit more context rewind back to:
+The aim is to have an easy to understand hierarchy of component and package
+dependencies that continues to be easy to hold in ones head even when there are
+a very large number of these items.
 
-> <https://youtu.be/QjFpKJ8Xx78?t=32m50s>
+This is achieved by levelling. The idea is that in each type of aggregation
+there are only three levels, and each level can only depend on the levels lower
+than it. Never those higher, nor those the same level. So as such, Level 1
+components or packages can only depend on external dependencies. Level 2 can
+depend on Level 1 or external, and then Level3 can depend ong Level 1, Level 2,
+or external.
 
-### Level 1
+John Lakos uses three aggregation terms, component, package, and package group.
+Primarily PyMedPhys avoids object oriented programming choosing functional
+methods where appropriate. However within Python, a single python file itself
+can act as a module object. This module object contains public and private
+functions (or methods) and largely acts like an object in the object oriented
+paradime. So the physical and logical component within PyMedPhys is being
+interpreted as a single `.py` file that contains a range of functions.
+A set of related components are levelled and grouped together in a package,
+and then the set of these packages make up the package group of PyMedPhys
+itself.
 
-Level 1 packages are the foundation library packages.
+He presents the following diagram:
 
-These packages SHALL NOT depend on any internal package. They MAY however
-depend on external packages (Level 0).
+.. image:: img/physical_aggregation.png
 
-Given that these Level 1 packages are foundation packages their external
-packages SHOULD only ever be those that are in wide use and are highly
-supported within the python community. Examples of reasonable external packages
-to be used are numpy, scipy, and pandas.
+It is important that the packages themselves are levelled. See in the following
+image, even though the individual components themselves form a nice dependency
+tree, the packages to which those components belong end up interdepending on
+one another:
 
-### Level 2
+.. image:: img/group_cycle.png
 
-Level 2 packages.
+In this case, it might be able to be solved by appropriately dividing the
+components up into differently structured packages:
 
-The internal packages that Level 2 packages depend on SHALL only be Level 1
-packages or external packages as long as those external
-packages don't intern depend on one defined within this group.
+.. image:: img/group_tree.png
 
-### Level 3
 
-Level 3 packages.
+The Layout of PyMedPhys
+-----------------------
 
-The internal packages that these depend on SHALL only be Level 1 or Level 2.
-They MAY also depend external packages as long as those external
-packages don't intern depend on one defined within this group.
+All source code for PyMedPhys is contained within `src/pymedphys`. Packages
+are levelled and placed with respect to their dependency level by directory
+name. The packages within _pack1 only depend on external packages, packages
+within _pack2 only depend on _pack1 or external, and so on.
+
+Inside each package, the component files are split up into directories by
+level1, level2, level3. Once again level1 can only depend on either an external
+dependency or a lower package. Those within level2 can depend on lower
+pacakges, external dependencies, or level1, and so on.
+
+So that the api to PyMedPhys doesn't vary with the physical structure of the
+dependencies, each package is imported out to be directly accessable within
+the top namespace of `src/pymedphys`.
