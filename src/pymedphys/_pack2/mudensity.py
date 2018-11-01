@@ -205,12 +205,12 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     ...     with mosaiq_connect(msq_server_name) as cursor:
     ...         delivery_data = multi_fetch_and_verify_mosaiq(
     ...             cursor, field_id)
-    >>>
-    >>>
+    ...
+    ...
     ...     mu = delivery_data.monitor_units
     ...     mlc = delivery_data.mlc
     ...     jaw = delivery_data.jaw
-    >>>
+    ...
     ...     grid = get_grid()
     ...     mu_density = calc_mu_density(mu, mlc, jaw)
     ...     display_mu_density(grid, mu_density)
@@ -227,11 +227,11 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     >>>
     >>> def mu_density_from_logfile(filepath):
     ...     delivery_data = delivery_data_from_logfile(filepath)
-    >>>
+    ...
     ...     mu = delivery_data.monitor_units
     ...     mlc = delivery_data.mlc
     ...     jaw = delivery_data.jaw
-    >>>
+    ...
     ...     grid = get_grid()
     ...     mu_density = calc_mu_density(mu, mlc, jaw)
     ...     display_mu_density(grid, mu_density)
