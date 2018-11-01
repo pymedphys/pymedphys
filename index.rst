@@ -4,11 +4,11 @@
     :maxdepth: 2
 
     self
-    contributing
-    physical-design
-    licensing-notes
-    agpl-benefits
-    mudensity
+    docs/contributing
+    docs/physical-design
+    docs/licensing-notes
+    docs/agpl-benefits
+    docs/mudensity
 
 Indices and tables
 ==================
