@@ -13,7 +13,9 @@ def pytest_ignore_collect(path, config):
 
     relative_path = os.path.relpath(str(path), os.path.dirname(__file__))
 
+    build_dir = os.path.join('docs', '_build')
+
     return (
         relative_path.startswith('experimentation') or
-        relative_path.startswith('docs')
+        relative_path.startswith(build_dir)
     )
