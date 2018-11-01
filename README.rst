@@ -102,5 +102,5 @@ development stage, clone this repository and then use pip
 Contributing
 ------------
 
-See the contributor documentation at https://pymedphys.com/en/latest/contributing.html
+See the contributor documentation at https://pymedphys.com/en/latest/docs/contributing.html
 if you wish to create and validate open source Medical Physics tools together.
