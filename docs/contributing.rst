@@ -5,8 +5,9 @@ Assumptions
 -----------
 
 These instructions assume you are using a Windows machine and that you are
-able to have administrator rights on your machine. This should however work
-work on Windows, Mac, or Linux. 
+able to have administrator rights on your machine. Although this document
+is tailored to Windows users PyMedPhys itself works
+on all three of Windows, Mac, and Linux. 
 
 Your mission
 ------------
