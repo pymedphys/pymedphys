@@ -19,12 +19,3 @@ of the dependencies without conda
 .. code:: bash
 
     pip install pymedphys
-
-To run a development install, which may often be required during the alpha
-development stage, clone this repository and then use pip
-
-.. code:: bash
-
-    git clone https://gitlab.com/pymedphys/pymedphys.git
-    cd pymedphys
-    pip install -e .
