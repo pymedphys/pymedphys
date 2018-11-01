@@ -27,20 +27,30 @@ the AGPLv3+ with additional terms from the Apache-2.0 license.
 PyMedPhys' current maintainers listed in alphabetical order, with affilliation,
 and main area of contribution:
 
-* `Matthew Sobolewski`_, `Cancer Care Associates, Australia`_
-* `Simon Biggs`_, `Cancer Care Associates, Australia`_
+* `Matthew Sobolewski`_, `Northern Beaches Cancer Care, Australia`_
 
-.. _`Cancer Care Associates, Australia`: http://cancercare.com.au/
+.. image:: docs/logos/NBCCC_logo.png
+    :target: `Northern Beaches Cancer Care, Australia`_
 
 .. _`Matthew Sobolewski`: https://github.com/msobolewski
 
+.. _`Northern Beaches Cancer Care, Australia`: http://www.northernbeachescancercare.com.au/
+
+* `Simon Biggs`_, `Riverina Cancer Care Centre, Australia`_
+
+.. image:: docs/logos/RCCC_logo.png
+    :target: `Riverina Cancer Care Centre, Australia`_
+
 .. _`Simon Biggs`: https://github.com/SimonBiggs
+
+.. _`Riverina Cancer Care Centre, Australia`: http://www.riverinacancercare.com.au/
+
 
 Beta stage development
 ----------------------
 
-These libraries are currently under beta level development. As with any code
-where the results matter, be cautious with the code in this library.
+These libraries are currently under beta level development.
+Be prudent with the code in this library.
 
 Throughout the lifetime of this library the following disclaimer will always
 hold:
@@ -88,7 +98,9 @@ development stage, clone this repository and then use pip
     cd pymedphys
     pip install -e .
 
-## Contributing
 
-To contribute to `pymedphys` you will need a working knowledge of git processes.
-The [`contributing.md`](./contributing.md) document provides links to some tutorials that may help get you up to speed.
+Contributing
+------------
+
+See the contributor documentation at https://pymedphys.com/en/latest/contributing.html
+if you wish to create and validate open source Medical Physics tools together.
