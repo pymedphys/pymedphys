@@ -24,12 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Mosaiq toolbox.
+# pylint: disable=W0401,W0614,C0103,C0413
 
-Examples:
-    >>> from pymedphys.msq import mosaiq_connect
-"""
+from ..._pack1.clobbercheck import ClobberCheck
+__clobber_check = ClobberCheck()
 
-# pylint: disable=W0401,W0614
+from .level1.dcmdose import *  # nopep8
+__clobber_check.baseline = globals()
 
-from ._pack3.msq import *
+from .level2.dcmstruct import *  # nopep8
+__clobber_check.check(globals(), label='dcmstruct')
+__clobber_check.baseline = globals()

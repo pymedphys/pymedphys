@@ -33,12 +33,4 @@ Example:
 
 # pylint: disable=W0401,W0614,C0103,C0413
 
-from ._level1._clobbercheck import ClobberCheck
-__clobber_check = ClobberCheck()
-
-from ._level1.dcmdose import *  # nopep8
-__clobber_check.baseline = globals()
-
-from ._level2.dcmstruct import *  # nopep8
-__clobber_check.check(globals(), label='dcmstruct')
-__clobber_check.baseline = globals()
+from ._pack2.dcm import *

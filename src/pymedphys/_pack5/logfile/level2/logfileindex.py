@@ -35,19 +35,17 @@ from glob import glob
 
 import attr
 
-from .._level1.msqconnect import multi_mosaiq_connect
-from .._level1._filehash import hash_file
-from .._level1.utilitiesconfig import get_sql_servers
-from .._level1.utilitiesfilesystem import make_a_valid_directory_name
+from ...._pack1.filehash import hash_file
 
-from .._level2.trfdecode import Header
-from .._level2.msqdelivery import (
-    get_mosaiq_delivery_details, OISDeliveryDetails, NoMosaiqEntries)
-from .._level2.trfdecode import decode_header_from_file
+from ...._pack2.utilities import (
+    make_a_valid_directory_name, get_sql_servers)
 
-from .._level3.trfidentify import (
-    date_convert
+from ...._pack3.msq import (
+    multi_mosaiq_connect,
+    get_mosaiq_delivery_details, OISDeliveryDetails, NoMosaiqEntries
 )
+
+from ...._pack4.trf import Header, decode_header_from_file, date_convert
 
 
 def create_logfile_directory_name(centre,

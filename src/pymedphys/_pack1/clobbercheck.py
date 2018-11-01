@@ -40,7 +40,7 @@ class ClobberCheck:
         In it's rawest form `ClobberCheck` is simply checking to see if any
         global has changed since it was last baselined:
 
-        >>> from pymedphys._level1._clobbercheck import ClobberCheck
+        >>> from pymedphys._pack1.clobbercheck import ClobberCheck
         >>> clobberCheck = ClobberCheck()
 
         >>> a_variable = 5
@@ -77,7 +77,7 @@ class ClobberCheck:
         The design of this class is to verify whether or not importing a
         package using `*` overwrote any definitions:
 
-        >>> from pymedphys._level1._clobbercheck import ClobberCheck
+        >>> from pymedphys._pack1.clobbercheck import ClobberCheck
         >>> clobberCheck = ClobberCheck()
 
         >>> from numpy import *
@@ -94,7 +94,7 @@ class ClobberCheck:
 
         It can also detect if you yourself have clobbered a global as so:
 
-        >>> from pymedphys._level1._clobbercheck import ClobberCheck
+        >>> from pymedphys._pack1.clobbercheck import ClobberCheck
 
         >>> clobberCheck = ClobberCheck()
         >>> from numpy import *
