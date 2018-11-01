@@ -28,11 +28,12 @@ from scipy.optimize import basinhopping
 
 import pydicom
 
-from .._level1.dcmdose import (
-    pull_structure, contour_to_points
-)
-from .._level1.geometry import (
+from ...._pack1.geometry import (
     cubify_cube_definition, cube_vertices, cube_vectors
+)
+
+from ..level1.dcmdose import (
+    pull_structure, contour_to_points
 )
 
 

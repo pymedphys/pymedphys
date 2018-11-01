@@ -32,18 +32,6 @@ Examples:
     >>> from pymedphys.trf import decode_header_from_file
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
+# pylint: disable=W0401,W0614
 
-from ._level1._clobbercheck import ClobberCheck
-__clobber_check = ClobberCheck()
-
-from ._level2.trfdecode import *  # nopep8
-__clobber_check.baseline = globals()
-
-from ._level3.trf2csv import *  # nopep8
-__clobber_check.check(globals(), label='trf2csv')
-__clobber_check.baseline = globals()
-
-from ._level3.trfidentify import *  # nopep8
-__clobber_check.check(globals(), label='trfidentify')
-__clobber_check.baseline = globals()
+from ._pack4.trf import *

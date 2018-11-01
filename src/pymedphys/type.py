@@ -24,12 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Mosaiq toolbox.
+"""Model insert factors and parameterise inserts as equivalent ellipses.
 
-Examples:
-    >>> from pymedphys.msq import mosaiq_connect
+Example:
+    >>> from pymedphys.type import DeliveryData
 """
 
 # pylint: disable=W0401,W0614
 
-from ._pack3.msq import *
+from ._pack1.typedeliverydata import *
