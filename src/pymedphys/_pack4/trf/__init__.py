@@ -29,13 +29,13 @@
 from ..._pack1.clobbercheck import ClobberCheck
 __clobber_check = ClobberCheck()
 
-from .level1.trfdecode import *  # nopep8
+from .level2.trfdecode import *  # nopep8
 __clobber_check.baseline = globals()
 
-from .level2.trf2csv import *  # nopep8
+from .level3.trf2csv import *  # nopep8
 __clobber_check.check(globals(), label='trf2csv')
 __clobber_check.baseline = globals()
 
-from .level2.trfidentify import *  # nopep8
+from .level3.trfidentify import *  # nopep8
 __clobber_check.check(globals(), label='trfidentify')
 __clobber_check.baseline = globals()
