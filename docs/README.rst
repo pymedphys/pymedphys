@@ -6,8 +6,9 @@
     overview
     installation
     contributing
-    licensing-notes
     physical-design
+    licensing-notes
+    agpl-benefits
     mudensity
 
 Indices and tables
