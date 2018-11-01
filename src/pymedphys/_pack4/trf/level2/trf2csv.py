@@ -24,6 +24,45 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""This is a placeholder file awaiting the required go ahead for public
-release.
+"""Converts a trf file into a csv file.
 """
+
+
+import sys
+import os
+from glob import glob
+
+from ..level1.trfdecode import decode_trf
+
+
+def trf2csv(trf_filepath, csv_filepath=None, skip_if_exists=True):
+    if not os.path.exists(trf_filepath):
+        raise Exception("The provided trf filepath cannot be found.")
+
+    if csv_filepath is None:
+        extension_removed = os.path.splitext(trf_filepath)[0]
+        csv_filepath = "{}_python_decode.csv".format(extension_removed)
+
+    # Skip if conversion has already occured
+    if not skip_if_exists or not os.path.exists(csv_filepath):
+        print("Converting {}".format(trf_filepath))
+        dataframe = decode_trf(trf_filepath)
+        dataframe.to_csv(csv_filepath)
+    # else:
+    #     print("Skipping {}".format(trf_filepath))
+
+
+def trf2csv_cli():
+    if len(sys.argv) == 1:
+        print(
+            "=============================================================\n"
+            "Need to provide filename(s).\n\n"
+            "Example usage for converting all files in current directory:\n"
+            "    trf2csv *.trf\n"
+            "=============================================================")
+
+    glob_strings = sys.argv[1::]
+    for glob_string in glob_strings:
+        filepaths = glob(glob_string)
+        for filepath in filepaths:
+            trf2csv(filepath)
