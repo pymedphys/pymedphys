@@ -5,7 +5,7 @@
 A range of python modules encompased under the pymedphys package, designed to
 be built upon for Medical Physics applications.
 
-This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitLab at <https://gitlab.com/CCA-Physics/pymedphys>.
+This package is available on pypi at <https://pypi.org/project/pymedphys/> and GitLab at <https://gitlab.com/pymedphys/pymedphys>.
 
 ## Alpha stage development
 
@@ -39,7 +39,7 @@ pip install pymedphys
 To run a development install, which may often be required during the alpha development stage, clone this repository and then use pip:
 
 ```bash
-git clone https://gitlab.com/CCA-Physics/pymedphys.git
+git clone https://gitlab.com/pymedphys/pymedphys.git
 cd pymedphys
 pip install -e .
 ```
