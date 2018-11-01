@@ -18,17 +18,17 @@ This document is a work in progress.
 * Installing `nbstripout`
   * `pip install nbstripout`
 * Clone and install off of this repo
-  * `git clone https://github.com/CCA-Physics/pymedphys.git`
+  * `git clone https://github.com/pymedphys/pymedphys.git`
   * `cd pymedphys`
   *  `pip install -e .`
-  
+
 ## Recommended tools
 
 * [Visual Studio Code](https://code.visualstudio.com/)
 
 ## Recommended tutorial
 
-I recommend the [`Git and GitHub` portion of the  don't be afraid to commit](https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html) tutorial. 
+I recommend the [`Git and GitHub` portion of the  don't be afraid to commit](https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html) tutorial.
 To be able to contribute to `pymedphys` you need to have a handle on git and GitHub and how they interact.
 I do recommend the whole [`Git and GitHub`](https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html) section however, the key concepts that are required are:
 * [Give GitHub your ssh keys](https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/commandlinegit.html#give-github-your-public-keys)
@@ -38,4 +38,4 @@ I do recommend the whole [`Git and GitHub`](https://dont-be-afraid-to-commit.rea
 * [Add an upstream remote](https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/remotes.html#add-a-remote)
 
 
-  
+
