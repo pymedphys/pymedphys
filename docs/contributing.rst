@@ -4,8 +4,9 @@ Set up required to be able to Contribute
 Assumptions
 -----------
 
-These instructions assume you are using a Windows 10 machine and that you are
-able to have administrator rights on your machine.
+These instructions assume you are using a Windows machine and that you are
+able to have administrator rights on your machine. This should however work
+work on Windows, Mac, or Linux. 
 
 Your mission
 ------------
