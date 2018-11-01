@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'pymedphys'
-copyright = '2018, Simon Biggs, Cancer Care Associates'
+copyright = '2015-2018, The PyMedPhys contributors'
 author = 'Simon Biggs, Matthew Sobolewski'
 
 # The short X.Y version
@@ -46,6 +46,9 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.graphviz',
+    'matplotlib.sphinxext.plot_directive',
     'm2r'
 ]
 
