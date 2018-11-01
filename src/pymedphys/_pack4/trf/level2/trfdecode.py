@@ -31,4 +31,11 @@ release.
 
 # pylint: disable=W0401,W0614
 
-from decode_trf import *
+try:
+    from decode_trf import *
+except ImportError:
+    Warning(
+        "You need to have the decode_trf library to be able to decode `.trf` "
+        "files. Please contact `me@simonbiggs.net` regarding access to this "
+        "library.")
+    from ..level1.trfdummydecode import *
