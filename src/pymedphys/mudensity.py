@@ -58,4 +58,4 @@ Example:
 
 # pylint: disable=W0401,W0614
 
-from ._level2.mudensity import *
+from ._pack2.mudensity import *

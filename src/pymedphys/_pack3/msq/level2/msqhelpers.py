@@ -28,8 +28,8 @@
 
 import pandas as pd
 
-from .._level1.msqconnect import execute_sql
-from .._level1.msqdictionaries import FIELD_TYPES
+from ..level1.msqconnect import execute_sql
+from ..level1.msqdictionaries import FIELD_TYPES
 
 
 def get_treatment_times(cursor, field_id):
