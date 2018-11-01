@@ -27,14 +27,22 @@ the AGPLv3+ with additional terms from the Apache-2.0 license.
 PyMedPhys' current maintainers listed in alphabetical order, with affilliation,
 and main area of contribution:
 
-* `Matthew Sobolewski`_, `Cancer Care Associates, Australia`_
-* `Simon Biggs`_, `Cancer Care Associates, Australia`_
+* `Matthew Sobolewski`_, `Northern Beaches Cancer Care, Australia`_
 
-.. _`Cancer Care Associates, Australia`: http://cancercare.com.au/
+.. :image:: docs/logos/NBCCC_logo.png
 
 .. _`Matthew Sobolewski`: https://github.com/msobolewski
 
+.. _`Northern Beaches Cancer Care, Australia`: http://www.northernbeachescancercare.com.au/
+
+* `Simon Biggs`_, `Riverina Cancer Care Centre, Australia`_
+
+.. :image:: docs/logos/RCCC_logo.png
+
 .. _`Simon Biggs`: https://github.com/SimonBiggs
+
+.. _`Riverina Cancer Care Centre, Australia`: http://www.riverinacancercare.com.au/
+
 
 Beta stage development
 ----------------------
