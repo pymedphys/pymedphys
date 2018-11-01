@@ -52,10 +52,13 @@
     moves the EPI so as to measure the full set of leaf pairs and the full range
     of MLC and Jaw travel.
 
-Example:
-    >>> from pymedphys.mudensity import calc_mu_density
+Available Functions
+-------------------
+>>> from pymedphys.mudensity import (
+...     calc_mu_density, calc_single_control_point, single_mlc_pair, get_grid,
+...     find_relevant_control_points, display_mu_density)
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401,W0614,W0611
 
 from ._pack2.mudensity import *

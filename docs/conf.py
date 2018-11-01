@@ -49,7 +49,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.graphviz',
     'matplotlib.sphinxext.plot_directive',
-    'm2r'
+    'numpydoc'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
