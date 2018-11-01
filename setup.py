@@ -21,7 +21,7 @@ setup(
     author="Simon Biggs",
     author_email="me@simonbiggs.net",
     description='Medical Physics python modules',
-    long_description=read('README.md'),
+    long_description=read('README.rst'),
     long_description_content_type='text/markdown',
     classifiers=[
         'Development Status :: 4 - Beta',
