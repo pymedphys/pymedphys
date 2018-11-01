@@ -3,15 +3,16 @@ PyMedPhys
 
 Description
 -----------
-Designed to be the astropy for Medical Physicists.
+Designed to be the Astropy for Medical Physicists.
 
 
-A range of python modules encompased under the pymedphys package, designed to
+A range of Python modules encompased under the PyMedPhys package, designed to
 be built upon for Medical Physics applications. Work in progress documentation
 for this package is available at https://pymedphys.com.
 
-This package is available on pypi at https://pypi.org/project/pymedphys/
-and GitLab at https://gitlab.com/pymedphys/pymedphys.
+This package is available on pypi at https://pypi.org/project/pymedphys/,
+conda at https://anaconda.org/conda-forge/pymedphys and GitLab at
+https://gitlab.com/pymedphys/pymedphys.
 
 Our Team
 --------
