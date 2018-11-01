@@ -38,7 +38,7 @@ from pymedphys.trf import trf2csv
 CONVERTED_TAG = '_test_comparison'
 
 DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../../data/trf")
+    os.path.dirname(__file__), "../data/trf")
 
 
 # TODO need to include header test
