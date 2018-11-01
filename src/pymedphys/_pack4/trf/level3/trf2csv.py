@@ -32,7 +32,7 @@ import sys
 import os
 from glob import glob
 
-from ..level1.trfdecode import decode_trf
+from ..level2.trfdecode import decode_trf
 
 
 def trf2csv(trf_filepath, csv_filepath=None, skip_if_exists=True):
