@@ -34,17 +34,15 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .._level1.utilitiesconfig import (
+from ...._pack1.typedeliverydata import get_delivery_parameters
+from ...._pack2.utilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath
 )
-from .._level1.msqconnect import multi_mosaiq_connect
-from .._level1._deliverydata import get_delivery_parameters
-
-from .._level2.mudensity import calc_mu_density
-from .._level2.trfdecode import delivery_data_from_logfile
-from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
+from ...._pack2.mudensity import calc_mu_density
+from ...._pack3.msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
+from ...._pack4.trf import delivery_data_from_logfile
 
 
 def analyse_single_hash(index, config, filehash, cursors):

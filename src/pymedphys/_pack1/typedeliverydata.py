@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,13 +23,26 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-"""A Mosaiq toolbox.
-
-Examples:
-    >>> from pymedphys.msq import mosaiq_connect
+"""Working with delivery data from either logfiles or Mosaiq.
 """
 
-# pylint: disable=W0401,W0614
 
-from ._pack3.msq import *
+import attr
+import numpy as np
+
+
+@attr.s
+class DeliveryData(object):
+    monitor_units = attr.ib()
+    gantry = attr.ib()
+    collimator = attr.ib()
+    mlc = attr.ib()
+    jaw = attr.ib()
+
+
+def get_delivery_parameters(delivery_data):
+    mu = np.array(delivery_data.monitor_units)
+    mlc = np.array(delivery_data.mlc)
+    jaw = np.array(delivery_data.jaw)
+
+    return mu, mlc, jaw
