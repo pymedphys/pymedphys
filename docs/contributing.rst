@@ -207,4 +207,4 @@ and set the target branch to be `pymedphys/master`.
 At that point I'll get notified and we can begin discussing the changes
 you've made.
 
-Thank you! Welcome to the team!.
+Thank you! Welcome to the team!
