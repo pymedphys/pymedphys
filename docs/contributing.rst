@@ -6,7 +6,7 @@ Assumptions
 
 These instructions assume you are using a Windows machine and that you are
 able to have administrator rights on your machine. This should however work
-work on Windows, Mac, or Linux. 
+work on Windows, Mac, or Linux.
 
 Your mission
 ------------
@@ -39,7 +39,7 @@ Python and git. https://code.visualstudio.com/
 
 When installing Visual Studio Code make sure to tick the “Open with Code” boxes:
 
-.. image: open_with_code.png
+.. image:: img/open_with_code.png
 
 
 A Command Prompt
