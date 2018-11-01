@@ -24,8 +24,9 @@ contributors. We use a shared copyright model that enables all contributors
 to maintain the copyright on their contributions. All code is licensed under
 the AGPLv3+ with additional terms from the Apache-2.0 license.
 
-PyMedPhys' current maintainers listed in alphabetical order, with affilliation,
-and main area of contribution:
+PyMedPhys' is what it is today due to its maintainers and developers. The
+currently active developers and maintainers of PyMedPhys listed in alphabetical
+order are:
 
 * `Matthew Sobolewski`_, `Northern Beaches Cancer Care, Australia`_
 
