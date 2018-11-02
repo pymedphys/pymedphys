@@ -26,8 +26,13 @@
 
 """Model insert factors and parameterise inserts as equivalent ellipses.
 
-Example:
-    >>> from pymedphys.electronfactors import parameterise_insert
+Available Functions
+-------------------
+>>> from pymedphys.electronfactors import (
+...     parameterise_insert, spline_model, calculate_deformability,
+...     spline_model_with_deformability,
+...     calculate_percent_prediction_differences,
+...     visual_alignment_of_equivalent_ellipse)
 """
 
 # pylint: disable=W0401,W0614

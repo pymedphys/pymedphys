@@ -45,52 +45,58 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
     Designed to allow arbitrary references frames within a dicom file to be
     extracted via contouring a cube.
 
-    Args:
-        x0: A 3x3 array with each row defining a 3-D point in space.
-            These three points are used as initial conditions to search for
-            a cube that fits the contours. Choosing initial values close to the
-            structure set, and in the desired orientation will allow consistent
-            results. See examples within
-            `pymedphys.geometry.cubify_cube_definition` on what the effects
-            of each of the three points are on the resulting cube.
-        structure_name: The DICOM label of the cube structure
-        dcm_struct: The pydicom reference to the DICOM structure file.
-        quiet (bool): Tell the function to not print anything. Defaults to
-            False.
+    Parameters
+    ----------
+    x0
+        A 3x3 array with each row defining a 3-D point in space.
+        These three points are used as initial conditions to search for
+        a cube that fits the contours. Choosing initial values close to the
+        structure set, and in the desired orientation will allow consistent
+        results. See examples within
+        `pymedphys.geometry.cubify_cube_definition`_ on what the effects
+        of each of the three points are on the resulting cube.
+    structure_name
+        The DICOM label of the cube structure
+    dcm_struct
+        The pydicom reference to the DICOM structure file.
+    quiet : bool
+        Tell the function to not print anything. Defaults to False.
 
-    Returns:
-        cube_definition_array: Four 3-D points the define the vertices of the
-            cube.
+    Returns
+    -------
+    cube_definition_array
+        Four 3-D points the define the vertices of the cube.
 
-        vectors: The vectors between the points that can be used to traverse
-            the cube.
+    vectors
+        The vectors between the points that can be used to traverse the cube.
 
-    Example:
-        >>> import pydicom
-        >>> from pymedphys.dcm import get_structure_aligned_cube
-
-        >>> struct_path = 'data/srs/max_structure_set.dcm'
-        >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
-
-        >>> x0 = np.array([
-        ...     -270, -35, -20,
-        ...     -270, 30, -20,
-        ...     -260, -35, 40
-        ... ])
-
-        >>> structure_name = 'ANT Box'
-        >>> cube_definition_array, vectors = get_structure_aligned_cube(
-        ...     x0, structure_name, dcm_struct, quiet=True, niter=1)
-        >>> np.round(cube_definition_array)
-        array([[-276.,  -31.,  -16.],
-               [-275.,   29.,  -17.],
-               [-266.,  -31.,   43.],
-               [-217.,  -32.,  -26.]])
-
-        >>> np.round(vectors, 1)
-        array([[ 0.7, 59.9, -0.5],
-               [ 9.7,  0.4, 59.1],
-               [59.1, -0.8, -9.7]])
+    Examples
+    --------
+    >>> import pydicom
+    >>> from pymedphys.dcm import get_structure_aligned_cube
+    >>>
+    >>> struct_path = 'data/srs/max_structure_set.dcm'
+    >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
+    >>>
+    >>> x0 = np.array([
+    ...     -270, -35, -20,
+    ...     -270, 30, -20,
+    ...     -260, -35, 40
+    ... ])
+    >>>
+    >>> structure_name = 'ANT Box'
+    >>> cube_definition_array, vectors = get_structure_aligned_cube(
+    ...     x0, structure_name, dcm_struct, quiet=True, niter=1)
+    >>> np.round(cube_definition_array)
+    array([[-276.,  -31.,  -16.],
+           [-275.,   29.,  -17.],
+           [-266.,  -31.,   43.],
+           [-217.,  -32.,  -26.]])
+    >>>
+    >>> np.round(vectors, 1)
+    array([[ 0.7, 59.9, -0.5],
+           [ 9.7,  0.4, 59.1],
+           [59.1, -0.8, -9.7]])
     """
 
     to_minimise = create_minimise(structure_name, dcm_struct)

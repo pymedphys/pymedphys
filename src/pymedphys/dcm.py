@@ -24,11 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Dicom toolbox
+"""A Dicom toolbox built ontop of the pydicom library.
 
-Example:
-    >>> from pymedphys.dcm import create_dvh
-    >>> from pymedphys.dcm import get_structure_aligned_cube
+Available Functions
+-------------------
+>>> from pymedphys.dcm import (
+...     load_dose_from_dicom, load_xyz_from_dicom, find_dose_within_structure,
+...     create_dvh, get_structure_aligned_cube)
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413

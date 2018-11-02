@@ -26,8 +26,9 @@
 
 """A geometry toolbox.
 
-Example:
-    >>> from pymedphys.geometry import cubify_cube_definition, plot_cube
+Available Functions
+-------------------
+>>> from pymedphys.geometry import cubify_cube_definition, plot_cube
 """
 
 # pylint: disable=W0401, W0614
