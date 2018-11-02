@@ -24,10 +24,18 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Gamma calculation.
+"""Compare two dose grids with the gamma index.
 
-Examples:
-    >>> from pymedphys.gamma import calc_gamma
+This module is a python implementation of the gamma index.
+It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
+interpolating on the fly.
+This module makes use of some of the ideas presented within
+<http://dx.doi.org/10.1118/1.2721657>.
+
+
+Available Functions
+-------------------
+>>> from pymedphys.gamma import calc_gamma
 """
 
 # pylint: disable=W0401,W0614
