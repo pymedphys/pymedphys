@@ -1,7 +1,5 @@
-PyMedPhys
-=========
-
-Documentation -- https://pymedphys.com
+PyMedPhys (https://pymedphys.com)
+=================================
 
 Description
 -----------
