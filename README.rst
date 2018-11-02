@@ -12,7 +12,8 @@ is inspired by our Astronomy Physics peers and their `Astropy Project`_.
 
 This package is available on PyPi (https://pypi.org/project/pymedphys/),
 GitLab (https://gitlab.com/pymedphys/pymedphys), and conda-forge
-(https://anaconda.org/conda-forge/pymedphys)
+(https://anaconda.org/conda-forge/pymedphys). Documentation is at
+https://pymedphys.com.
 
 Our Team
 --------
