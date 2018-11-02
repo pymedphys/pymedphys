@@ -22,23 +22,20 @@ PyMedPhys is what it is today due to its maintainers and developers. The
 currently active developers and maintainers of PyMedPhys as well as their
 company/hospital logos are given below in alphabetical order:
 
-* `Matthew Sobolewski`_, `Northern Beaches Cancer Care`_, `Cancer Care Associates`_, Australia
+* `Matthew Sobolewski`_
+  * `Riverina Cancer Care Centre`_, Australia
+  * `Northern Beaches Cancer Care`_, Australia
 
 .. _`Matthew Sobolewski`: https://gitlab.com/msobolewski
 
-* `Simon Biggs`_, `Riverina Cancer Care Centre`_, `Cancer Care Associates`_, Australia
+* `Simon Biggs`_
+  * `Riverina Cancer Care Centre`_, Australia
 
 .. _`Simon Biggs`: https://gitlab.com/SimonBiggs
-
-.. _`Cancer Care Associates`: http://cancercare.com.au/
 
 .. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
-
-
-.. image:: docs/logos/CCA_logo.png
-    :target: `Cancer Care Associates`_
 
 .. image:: docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
