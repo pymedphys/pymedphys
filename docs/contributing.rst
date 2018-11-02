@@ -7,7 +7,7 @@ Assumptions
 These instructions assume you are using a Windows machine and that you are
 able to have administrator rights on your machine. Although this document
 is tailored to Windows users PyMedPhys itself works
-on all three of Windows, Mac, and Linux. 
+on all three of Windows, Mac, and Linux.
 
 Your mission
 ------------
@@ -49,7 +49,8 @@ A Command Prompt
 Cmder is a good command prompt that fills the massive gap on Windows machines.
 One would think syntax highlighting, copy and paste, and window resizing would
 be common place in terminals everywhere. But it appears not. Nevertheless,
-cmder to the rescue:
+cmder to the rescue. Install the full version of cmder to also get some extra
+tools that will help us later:
 
 http://cmder.net/
 
@@ -117,7 +118,8 @@ running
 
 
 Follow the instructions at the following website to create and add an SSH key
-to your GitLab account:
+to your GitLab account. You already have ssh built into cmder, so you can skip
+the first steps of that tutorial.
 
 https://docs.gitlab.com/ee/ssh/
 
