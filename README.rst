@@ -20,7 +20,7 @@ Our Team
 
 PyMedPhys is what it is today due to its maintainers and developers. The
 currently active developers and maintainers of PyMedPhys as well as their
-company/hospital logos in both in alphabetical order are given below:
+company/hospital logos in alphabetical order are given below:
 
 * `Matthew Sobolewski`_, `Northern Beaches Cancer Care`_, `Cancer Care Associates`_, Australia
 
