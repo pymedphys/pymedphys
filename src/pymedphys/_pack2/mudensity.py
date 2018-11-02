@@ -279,7 +279,6 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
 
     Examples
     --------
-
     >>> import numpy as np
     >>> from pymedphys.mudensity import (
     ...     calc_single_control_point, display_mu_density)

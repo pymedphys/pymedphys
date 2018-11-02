@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2015 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -46,22 +46,29 @@ def spline_model(width_test, ratio_perim_area_test,
     see the *Methods: Bivariate spline model* section within
     <http://dx.doi.org/10.1016/j.ejmp.2015.11.002>.
 
-    Args:
-        width_test (numpy.array): The width point(s) which are to have the
-            electron insert factor interpolated.
-        ratio_perim_area_test (numpy.array): The perimeter/area which are to
-            have the electron insert factor interpolated.
+    Parameters
+    ----------
+    width_test : np.ndarray
+        The width point(s) which are to have the electron insert factor
+        interpolated.
+    ratio_perim_area_test : np.ndarray
+        The perimeter/area which are to have the electron insert factor
+        interpolated.
 
-        width_data (numpy.array): The width data points for the relevant
-            applicator, energy and ssd.
-        ratio_perim_area_data (numpy.array): The perimeter/area data points for
-            the relevant applicator, energy and ssd.
-        factor_data (numpy.array): The insert factor data points for the
-            relevant applicator, energy and ssd.
+    width_data : np.ndarray
+        The width data points for the relevant applicator, energy and ssd.
+    ratio_perim_area_data : np.ndarray
+        The perimeter/area data points for the relevant applicator, energy and
+        ssd.
+    factor_data : np.ndarray
+        The insert factor data points for the relevant applicator, energy and
+        ssd.
 
-    Returns:
-        numpy.array: The interpolated electron insert factors for width_test
-            and ratio_perim_area_test.
+    Returns
+    -------
+    result : np.ndarray
+        The interpolated electron insert factors for width_test and
+        ratio_perim_area_test.
 
     """
     bbox = [
@@ -85,18 +92,26 @@ def _single_calculate_deformability(x_test, y_test, x_data, y_data, z_data):
     prediction regions of the spline* section within
     <http://dx.doi.org/10.1016/j.ejmp.2015.11.002>.
 
-    Args:
-        x_test (float): The x coordinate of the point to test
-        y_test (float): The y coordinate of the point to test
-        x_data (np.array): The x coordinates of the model data to test
-        y_data (np.array): The y coordinates of the model data to test
-        z_data (np.array): The z coordinates of the model data to test
+    Parameters
+    ----------
+    x_test : float
+        The x coordinate of the point to test
+    y_test : float
+        The y coordinate of the point to test
+    x_data : np.ndarray
+        The x coordinates of the model data to test
+    y_data : np.ndarray
+        The y coordinates of the model data to test
+    z_data : np.ndarray
+        The z coordinates of the model data to test
 
-    Returns:
-        deformability (float): The resulting deformability between 0 and 1
-            representing the ratio of deviation the spline model underwent at
-            the point in question by introducing an outlier at the point in
-            question.
+    Returns
+    -------
+    deformability : float
+        The resulting deformability between 0 and 1
+        representing the ratio of deviation the spline model underwent at
+        the point in question by introducing an outlier at the point in
+        question.
 
     """
     deviation = 0.02
@@ -144,18 +159,26 @@ def calculate_deformability(x_test, y_test, x_data, y_data, z_data):
     prediction regions of the spline* section within
     <http://dx.doi.org/10.1016/j.ejmp.2015.11.002>.
 
-    Args:
-        x_test (np.array): The x coordinate of the point(s) to test
-        y_test (np.array): The y coordinate of the point(s) to test
-        x_data (np.array): The x coordinate of the model data to test
-        y_data (np.array): The y coordinate of the model data to test
-        z_data (np.array): The z coordinate of the model data to test
+    Parameters
+    ----------
+    x_test : np.ndarray
+        The x coordinate of the point(s) to test
+    y_test : np.ndarray
+        The y coordinate of the point(s) to test
+    x_data : np.ndarray
+        The x coordinate of the model data to test
+    y_data : np.ndarray
+        The y coordinate of the model data to test
+    z_data : np.ndarray
+        The z coordinate of the model data to test
 
-    Returns:
-        deformability (float): The resulting deformability between 0 and 1
-            representing the ratio of deviation the spline model underwent at
-            the point in question by introducing an outlier at the point in
-            question.
+    Returns
+    -------
+    deformability : float
+        The resulting deformability between 0 and 1
+        representing the ratio of deviation the spline model underwent at
+        the point in question by introducing an outlier at the point in
+        question.
 
     """
     dim = np.shape(x_test)
@@ -189,25 +212,33 @@ def spline_model_with_deformability(width_test, ratio_perim_area_test,
 
     Calls both ``spline_model`` and ``calculate_deformabilty`` and then adjusts
     the result so that points with  deformability greater than 0.5 return
-    ``numpy.nan``.
+    ``np.nan``.
 
-    Args:
-        width_test (numpy.array): The width point(s) which are to have the
-            electron insert factor interpolated.
-        ratio_perim_area_test (numpy.array): The perimeter/area which are to
-            have the electron insert factor interpolated.
+    Parameters
+    ----------
+    width_test : np.ndarray
+        The width point(s) which are to have the
+        electron insert factor interpolated.
+    ratio_perim_area_test : np.ndarray
+        The perimeter/area which are to
+        have the electron insert factor interpolated.
 
-        width_data (numpy.array): The width data points for the relevant
-            applicator, energy and ssd.
-        ratio_perim_area_data (numpy.array): The perimeter/area data points for
-            the relevant applicator, energy and ssd.
-        factor_data (numpy.array): The insert factor data points for the
-            relevant applicator, energy and ssd.
+    width_data : np.ndarray
+        The width data points for the relevant
+        applicator, energy and ssd.
+    ratio_perim_area_data : np.ndarray
+        The perimeter/area data points for
+        the relevant applicator, energy and ssd.
+    factor_data : np.ndarray
+        The insert factor data points for the
+        relevant applicator, energy and ssd.
 
-    Returns:
-        numpy.array: The interpolated electron insert factors for width_test
-            and ratio_perim_area_test with points outside the valid prediction
-            region set to ``numpy.nan``.
+    Returns
+    -------
+    model_factor : np.ndarray
+        The interpolated electron insert factors for width_test
+        and ratio_perim_area_test with points outside the valid prediction
+        region set to ``np.nan``.
 
     """
     deformability = calculate_deformability(
@@ -231,17 +262,23 @@ def calculate_percent_prediction_differences(width_data, ratio_perim_area_data,
     from the data set. Used to determine an estimated uncertainty for
     prediction.
 
-    Args:
-        width_data (numpy.array): The width data points for a specific
-            applicator, energy and ssd.
-        ratio_perim_area_data (numpy.array): The perimeter/area data points for
-            a specific applicator, energy and ssd.
-        factor_data (numpy.array): The insert factor data points for a specific
-            applicator, energy and ssd.
+    Parameters
+    ----------
+    width_data : np.ndarray
+        The width data points for a specific
+        applicator, energy and ssd.
+    ratio_perim_area_data : np.ndarray
+        The perimeter/area data points for
+        a specific applicator, energy and ssd.
+    factor_data : np.ndarray
+        The insert factor data points for a specific
+        applicator, energy and ssd.
 
-    Returns:
-        numpy.array: The predicted electron insert factors for each data point
-            with that given data point removed.
+    Returns
+    -------
+    percent_prediction_differences : np.ndarray
+        The predicted electron insert factors for each data point
+        with that given data point removed.
 
     """
     predictions = [
@@ -252,7 +289,10 @@ def calculate_percent_prediction_differences(width_data, ratio_perim_area_data,
         for i in range(len(width_data))
     ]
 
-    return 100 * (factor_data - predictions) / factor_data
+    percent_prediction_differences = (
+        100 * (factor_data - predictions) / factor_data)
+
+    return percent_prediction_differences
 
 
 def shapely_insert(x, y):

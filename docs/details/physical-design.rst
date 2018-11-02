@@ -40,19 +40,19 @@ itself.
 
 He presents the following diagram:
 
-.. image:: img/physical_aggregation.png
+.. image:: ../img/physical_aggregation.png
 
 It is important that the packages themselves are levelled. See in the following
 image, even though the individual components themselves form a nice dependency
 tree, the packages to which those components belong end up interdepending on
 one another:
 
-.. image:: img/group_cycle.png
+.. image:: ../img/group_cycle.png
 
 In this case, it might be able to be solved by appropriately dividing the
 components up into differently structured packages:
 
-.. image:: img/group_tree.png
+.. image:: ../img/group_tree.png
 
 
 The Layout of PyMedPhys
