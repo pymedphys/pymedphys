@@ -17,7 +17,11 @@ import sys
 sys.path.insert(0, os.path.abspath('src'))
 
 
+def setup(app):
+    app.add_stylesheet('style.css')
+
 # -- Project information -----------------------------------------------------
+
 
 project = 'PyMedPhys'
 copyright = '2015-2018, the PyMedPhys contributors'
