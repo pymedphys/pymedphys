@@ -10,6 +10,9 @@
     docs/licensing-notes
     docs/agpl-benefits
     docs/mudensity
+    docs/dcm
+    docs/geometry
+    docs/electronfactors
 
 Indices and tables
 ==================
