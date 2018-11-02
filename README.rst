@@ -6,7 +6,7 @@ Description
 -----------
 The PyMedPhys Project aims to develop a common core package for Medical Physics
 in Python and foster an ecosystem of interoperable Medical Physics packages. It
-is inspired by our Astronomy Physics peers and their `Astropy Project`_.
+is inspired by our Physics peers in astronomy and their `Astropy Project`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
 
