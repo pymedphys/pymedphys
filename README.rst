@@ -1,5 +1,6 @@
-PyMedPhys (https://pymedphys.com)
-=================================
+PyMedPhys
+=========
+https://pymedphys.com
 
 Description
 -----------
