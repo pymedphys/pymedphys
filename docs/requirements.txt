@@ -1,2 +1,4 @@
 matplotlib
 numpydoc
+scipy
+shapely
