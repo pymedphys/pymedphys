@@ -49,7 +49,9 @@ company/hospital logos are given below in alphabetical order:
 
 
 We want you on this list. We want you, clinical Medical Physicist, to join our
-team. Even if all you feel comfortable contributing to is documentation.
+team. We want you if you have a desire to create and validate a toolbox we can
+all use. We want you even if all you feel comfortable contributing to is
+documentation.
 
 The aim of PyMedPhys is that it will be developed by an open community of
 contributors. We use a shared copyright model that enables all contributors
