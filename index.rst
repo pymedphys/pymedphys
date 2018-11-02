@@ -4,12 +4,13 @@
     :maxdepth: 2
 
     self
-    docs/installation
-    docs/contributing
-    docs/physical-design
-    docs/licensing-notes
-    docs/agpl-benefits
+    docs/details/details
     docs/mudensity
+    docs/gamma
+    docs/electronfactors
+    docs/dcm
+    docs/geometry
+
 
 Indices and tables
 ==================

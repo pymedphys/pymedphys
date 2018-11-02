@@ -30,15 +30,130 @@ It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
 interpolating on the fly.
 This module makes use of some of the ideas presented within
 <http://dx.doi.org/10.1118/1.2721657>.
-
-It needs to be noted that this code base has not yet undergone sufficient
-independent validation.
 """
 
 from multiprocessing import Process, Queue
 
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
+
+
+def calc_gamma(coords_reference, dose_reference,
+               coords_evaluation, dose_evaluation,
+               distance_threshold, dose_threshold,
+               lower_dose_cutoff=0, distance_step_size=None,
+               maximum_test_distance=np.inf,
+               max_concurrent_calc_points=np.inf,
+               num_threads=1):
+    """Compare two dose grids with the gamma index.
+
+    To have this calculate in a timely manner it is recommended to set
+    ``maximum_test_distance`` to a value of 2 * ``distance_threshold``. This
+    has the downside of having gamma values larger than 2 potentially being
+    erroneous.
+
+    Parameters
+    ----------
+    coords_reference : tuple
+        The reference coordinates.
+    dose_reference : np.array
+        The reference dose grid.
+    coords_evaluation : tuple
+        The evaluation coordinates.
+    dose_evaluation : np.array
+        The evaluation dose grid.
+    distance_threshold : float
+        The gamma distance threshold. Units must
+        match of the coordinates given.
+    dose_threshold : float
+        An absolute dose threshold.
+        If you wish to use 3% of maximum reference dose input
+        np.max(dose_reference) * 0.03 here.
+    lower_dose_cutoff : :obj:`float`, optional
+        The lower dose cutoff below
+        which gamma will not be calculated.
+    distance_step_size : :obj:`float`, optional
+        The step size to use in
+        within the reference grid interpolation. Defaults to a tenth of the
+        distance threshold as recommended within
+        <http://dx.doi.org/10.1118/1.2721657>.
+    maximum_test_distance : :obj:`float`, optional
+        The distance beyond
+        which searching will stop. Defaults to np.inf. To speed up
+        calculation it is recommended that this parameter is set to
+        something reasonable such as 2*distance_threshold
+
+    Returns
+    -------
+    gamma : np.ndarray
+        The array of gamma values the same shape as that
+        given by the evaluation coordinates and dose.
+    """
+    coords_reference, coords_evaluation = _run_input_checks(
+        coords_reference, dose_reference,
+        coords_evaluation, dose_evaluation)
+
+    if distance_step_size is None:
+        distance_step_size = distance_threshold / 10
+
+    reference_interpolation = RegularGridInterpolator(
+        coords_reference, np.array(dose_reference),
+        bounds_error=False, fill_value=np.inf
+    )
+
+    dose_evaluation = np.array(dose_evaluation)
+    dose_evaluation_flat = np.ravel(dose_evaluation)
+
+    mesh_coords_evaluation = np.meshgrid(*coords_evaluation, indexing='ij')
+    coords_evaluation_flat = [
+        np.ravel(item)
+        for item in mesh_coords_evaluation]
+
+    evaluation_index = np.arange(len(dose_evaluation_flat))
+    np.random.shuffle(evaluation_index)
+    thread_indicies = np.array_split(evaluation_index, num_threads)
+
+    output = Queue()
+
+    kwargs = {
+        "coords_reference": coords_reference,
+        "num_dimensions": len(coords_evaluation),
+        "reference_interpolation": reference_interpolation,
+        "lower_dose_cutoff": lower_dose_cutoff,
+        "distance_threshold": distance_threshold,
+        "dose_threshold": dose_threshold,
+        "distance_step_size": distance_step_size,
+        "max_concurrent_calc_points": max_concurrent_calc_points / num_threads,
+        "maximum_test_distance": maximum_test_distance}
+
+    for thread_index in thread_indicies:
+        thread_index.sort()
+        thread_dose_evaluation = dose_evaluation_flat[thread_index]
+        thread_coords_evaluation = [
+            coords[thread_index]
+            for coords in coords_evaluation_flat]
+        kwargs['dose_evaluation'] = thread_dose_evaluation
+        kwargs['mesh_coords_evaluation'] = thread_coords_evaluation
+
+        Process(
+            target=_new_thread,
+            args=(
+                kwargs, output, thread_index,
+                np.nan * np.ones_like(dose_evaluation_flat))).start()
+
+    gamma_flat = np.nan * np.ones_like(dose_evaluation_flat)
+
+    for _ in range(num_threads):
+        result = output.get()
+        thread_reference = np.invert(np.isnan(result))
+        gamma_flat[thread_reference] = result[thread_reference]
+
+    assert np.all(np.invert(np.isnan(gamma_flat)))
+
+    gamma_flat[np.isinf(gamma_flat)] = np.nan
+    gamma = np.reshape(gamma_flat, np.shape(dose_evaluation))
+
+    return gamma
 
 
 def _run_input_checks(
@@ -248,104 +363,3 @@ def _calculation_loop(**kwargs):
 def _new_thread(kwargs, output, thread_index, gamma_store):
     gamma_store[thread_index] = _calculation_loop(**kwargs)
     output.put(gamma_store)
-
-
-def calc_gamma(coords_reference, dose_reference,
-               coords_evaluation, dose_evaluation,
-               distance_threshold, dose_threshold,
-               lower_dose_cutoff=0, distance_step_size=None,
-               maximum_test_distance=np.inf,
-               max_concurrent_calc_points=np.inf,
-               num_threads=1):
-    """Compare two dose grids with the gamma index.
-
-    Args:
-        coords_reference (tuple): The reference coordinates.
-        dose_reference (np.array): The reference dose grid.
-        coords_evaluation (tuple): The evaluation coordinates.
-        dose_evaluation (np.array): The evaluation dose grid.
-        distance_threshold (float): The gamma distance threshold. Units must
-            match of the coordinates given.
-        dose_threshold (float): An absolute dose threshold.
-            If you wish to use 3% of maximum reference dose input
-            np.max(dose_reference) * 0.03 here.
-        lower_dose_cutoff (:obj:`float`, optional): The lower dose cutoff below
-            which gamma will not be calculated.
-        distance_step_size (:obj:`float`, optional): The step size to use in
-            within the reference grid interpolation. Defaults to a tenth of the
-            distance threshold as recommended within
-            <http://dx.doi.org/10.1118/1.2721657>.
-        maximum_test_distance (:obj:`float`, optional): The distance beyond
-            which searching will stop. Defaults to np.inf. To speed up
-            calculation it is recommended that this parameter is set to
-            something reasonable such as 2*distance_threshold
-
-    Returns:
-        gamma (np.array): The array of gamma values the same shape as that
-            given by the evaluation coordinates and dose.
-    """
-    coords_reference, coords_evaluation = _run_input_checks(
-        coords_reference, dose_reference,
-        coords_evaluation, dose_evaluation)
-
-    if distance_step_size is None:
-        distance_step_size = distance_threshold / 10
-
-    reference_interpolation = RegularGridInterpolator(
-        coords_reference, np.array(dose_reference),
-        bounds_error=False, fill_value=np.inf
-    )
-
-    dose_evaluation = np.array(dose_evaluation)
-    dose_evaluation_flat = np.ravel(dose_evaluation)
-
-    mesh_coords_evaluation = np.meshgrid(*coords_evaluation, indexing='ij')
-    coords_evaluation_flat = [
-        np.ravel(item)
-        for item in mesh_coords_evaluation]
-
-    evaluation_index = np.arange(len(dose_evaluation_flat))
-    np.random.shuffle(evaluation_index)
-    thread_indicies = np.array_split(evaluation_index, num_threads)
-
-    output = Queue()
-
-    kwargs = {
-        "coords_reference": coords_reference,
-        "num_dimensions": len(coords_evaluation),
-        "reference_interpolation": reference_interpolation,
-        "lower_dose_cutoff": lower_dose_cutoff,
-        "distance_threshold": distance_threshold,
-        "dose_threshold": dose_threshold,
-        "distance_step_size": distance_step_size,
-        "max_concurrent_calc_points": max_concurrent_calc_points / num_threads,
-        "maximum_test_distance": maximum_test_distance}
-
-    for thread_index in thread_indicies:
-        thread_index.sort()
-        thread_dose_evaluation = dose_evaluation_flat[thread_index]
-        thread_coords_evaluation = [
-            coords[thread_index]
-            for coords in coords_evaluation_flat]
-        kwargs['dose_evaluation'] = thread_dose_evaluation
-        kwargs['mesh_coords_evaluation'] = thread_coords_evaluation
-
-        Process(
-            target=_new_thread,
-            args=(
-                kwargs, output, thread_index,
-                np.nan * np.ones_like(dose_evaluation_flat))).start()
-
-    gamma_flat = np.nan * np.ones_like(dose_evaluation_flat)
-
-    for _ in range(num_threads):
-        result = output.get()
-        thread_reference = np.invert(np.isnan(result))
-        gamma_flat[thread_reference] = result[thread_reference]
-
-    assert np.all(np.invert(np.isnan(gamma_flat)))
-
-    gamma_flat[np.isinf(gamma_flat)] = np.nan
-    gamma = np.reshape(gamma_flat, np.shape(dose_evaluation))
-
-    return gamma

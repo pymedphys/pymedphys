@@ -40,7 +40,7 @@ Python and git. https://code.visualstudio.com/
 
 When installing Visual Studio Code make sure to tick the “Open with Code” boxes:
 
-.. image:: img/open_with_code.png
+.. image:: ../img/open_with_code.png
 
 
 A Command Prompt
