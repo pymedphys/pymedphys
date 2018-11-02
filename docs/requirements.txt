@@ -2,3 +2,4 @@ matplotlib
 numpydoc
 scipy
 shapely
+pydicom
