@@ -1,6 +1,5 @@
 PyMedPhys
 =========
-https://pymedphys.com
 
 Description
 -----------
