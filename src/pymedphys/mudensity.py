@@ -61,4 +61,4 @@ Available Functions
 
 # pylint: disable=W0401,W0614,W0611
 
-from ._pack2.mudensity import *
+from ._level2.mudensity import *

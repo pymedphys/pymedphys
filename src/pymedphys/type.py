@@ -32,4 +32,4 @@ Example:
 
 # pylint: disable=W0401,W0614
 
-from ._pack1.typedeliverydata import *
+from ._level1.typedeliverydata import *
