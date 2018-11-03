@@ -30,6 +30,18 @@ Examples:
     >>> from pymedphys.logfile import index_logfiles
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401,W0614,C0103,C0413
 
-from ._pack5.logfile import *
+from ._level1.clobbercheck import ClobberCheck
+__clobber_check = ClobberCheck()
+
+from ._level3.logfileanalyse import *  # nopep8
+__clobber_check.baseline = globals()
+
+from ._level4.logfilebygantry import *  # nopep8
+__clobber_check.check(globals(), label='logfilebygantry')
+__clobber_check.baseline = globals()
+
+from ._level4.logfileindex import *  # nopep8
+__clobber_check.check(globals(), label='logfileindex')
+__clobber_check.baseline = globals()

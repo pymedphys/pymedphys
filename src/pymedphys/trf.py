@@ -34,4 +34,18 @@ Examples:
 
 # pylint: disable=W0401,W0614
 
-from ._pack4.trf import *
+# pylint: disable=W0401,W0614,C0103,C0413
+
+from ._level1.clobbercheck import ClobberCheck
+__clobber_check = ClobberCheck()
+
+from ._level2.trfdecode import *  # nopep8
+__clobber_check.baseline = globals()
+
+from ._level3.trf2csv import *  # nopep8
+__clobber_check.check(globals(), label='trf2csv')
+__clobber_check.baseline = globals()
+
+from ._level3.trfidentify import *  # nopep8
+__clobber_check.check(globals(), label='trfidentify')
+__clobber_check.baseline = globals()

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,12 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A film toolbox.
+"""Check if imports clobbered any varaibles
 
-Example:
-    >>> from pymedphys.film import get_interpolated_dose
+Available Classes
+-----------------
+>>> from pymedphys.clobbercheck import ClobberCheck
 """
 
 # pylint: disable=W0401,W0614
 
-from ._level2.film import *
+from ._level1.clobbercheck import *
