@@ -79,7 +79,7 @@ Installation
 ------------
 
 For instructions on how to install see the documentation a
-http://pymedphys.com/en/latest/docs/details/installation.html.
+https://pymedphys.com/en/latest/docs/details/installation.html.
 
 
 Contributing
