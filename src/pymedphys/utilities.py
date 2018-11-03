@@ -30,6 +30,14 @@ Examples:
     >>> from pymedphys.utilities import get_filepath
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401,W0614,C0103,C0413
 
-from ._pack2.utilities import *
+from ._level1.clobbercheck import ClobberCheck
+__clobber_check = ClobberCheck()
+
+from ._level1.utilitiesconfig import *  # nopep8
+__clobber_check.baseline = globals()
+
+from ._level1.utilitiesfilesystem import *  # nopep8
+__clobber_check.check(globals(), label='filesystemutilities')
+__clobber_check.baseline = globals()

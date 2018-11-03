@@ -40,4 +40,4 @@ Available Functions
 
 # pylint: disable=W0401,W0614
 
-from ._pack1.gamma import *
+from ._level1.gamma import *
