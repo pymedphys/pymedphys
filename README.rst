@@ -78,12 +78,12 @@ hold:
 Installation
 ------------
 
-For instructions on how to install see the documentation at
-https://pymedphys.com/en/latest/docs/installation.html.
+For instructions on how to install see the documentation a
+http://pymedphys.com/en/latest/docs/details/installation.html.
 
 
 Contributing
 ------------
 
-See the contributor documentation at https://pymedphys.com/en/latest/docs/contributing.html
+See the contributor documentation at https://pymedphys.com/en/latest/docs/details/contributing.html
 if you wish to create and validate open source Medical Physics tools together.
