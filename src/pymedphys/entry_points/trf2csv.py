@@ -26,4 +26,4 @@
 
 # pylint: disable=W0611
 
-from .._pack4.trf import trf2csv_cli
+from ..trf import trf2csv_cli

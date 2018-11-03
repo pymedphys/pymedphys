@@ -30,6 +30,25 @@ Examples:
     >>> from pymedphys.msq import mosaiq_connect
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401,W0614,C0103,C0413
 
-from ._pack3.msq import *
+from ._level1.clobbercheck import ClobberCheck
+__clobber_check = ClobberCheck()
+
+from ._level1.msqconnect import *  # nopep8
+__clobber_check.baseline = globals()
+
+from ._level1.msqdictionaries import *  # nopep8
+__clobber_check.check(globals(), label='msqdictionaries')
+__clobber_check.baseline = globals()
+
+from ._level2.msqdelivery import *  # nopep8
+__clobber_check.check(globals(), label='msqdelivery')
+__clobber_check.baseline = globals()
+
+from ._level2.msqhelpers import *  # nopep8
+__clobber_check.check(globals(), label='msqhelpers')
+__clobber_check.baseline = globals()
+
+from ._level3.msqfieldcompare import *  # nopep8
+__clobber_check.check(globals(), label='msqfieldcompare')
