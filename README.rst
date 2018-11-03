@@ -78,7 +78,7 @@ hold:
 Installation
 ------------
 
-For instructions on how to install see the documentation a
+For instructions on how to install see the documentation at
 https://pymedphys.com/en/latest/docs/details/installation.html.
 
 
