@@ -58,23 +58,20 @@ def execute_sql(cursor, sql_string, parameters=None):
     return data
 
 
-def single_connect(server):
-    """Connect to the Mosaiq server.
-    Ask the user for a password if they haven't logged in before.
-    """
-
-    if type(server) is not str:
-        raise TypeError("`server` input variable needs to be a string")
-
+def get_username_password(server):
     user = keyring.get_password('MosaiqSQL_username', server)
     password = keyring.get_password('MosaiqSQL_password', server)
 
-    if user is None:
+    if user is None or user == '':
         print(
             "Provide a user that only has `db_datareader` access to the "
             "Mosaiq database at `{}`".format(server)
         )
         user = input()
+        if user == '':
+            error_message = 'Username should not be blank.'
+            print(error_message)
+            raise ValueError(error_message)
         keyring.set_password('MosaiqSQL_username', server, user)
 
     if password is None:
@@ -83,11 +80,40 @@ def single_connect(server):
         password = getpass()
         keyring.set_password('MosaiqSQL_password', server, password)
 
+    return user, password
+
+
+def try_connect_delete_user_if_fail(server, user, password):
     try:
         conn = pymssql.connect(server, user, password, 'MOSAIQ')
-    except Exception:
+    except pymssql.OperationalError as error:
+        error_message = error.args[0][1]
+        if error_message.startswith(b'Login failed for user'):
+            print('Login failed, wiping the saved username and password.')
+            try:
+                keyring.delete_password('MosaiqSQL_username', server)
+                keyring.delete_password('MosaiqSQL_password', server)
+            except keyring.errors.PasswordDeleteError as error:
+                pass
+        raise
+
+    except Exception as error:
         print("Server: {}, User: {}".format(server, user))
         raise
+
+    return conn
+
+
+def single_connect(server):
+    """Connect to the Mosaiq server.
+    Ask the user for a password if they haven't logged in before.
+    """
+
+    if type(server) is not str:
+        raise TypeError("`server` input variable needs to be a string")
+
+    user, password = get_username_password(server)
+    conn = try_connect_delete_user_if_fail(server, user, password)
 
     return conn, conn.cursor()
 
