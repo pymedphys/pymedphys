@@ -26,7 +26,7 @@
 """Tests for npgamma."""
 
 import numpy as np
-from pymedphys.gamma import calc_gamma, calculate_coordinates_kernel
+from pymedphys.gamma import gamma_shell, calculate_coordinates_kernel
 
 
 class TestGamma():
@@ -53,7 +53,7 @@ class TestGamma():
 
     def test_regression_of_gamma_3d(self):
         """Test for changes in expected 3D gamma."""
-        self.gamma3d = np.round(calc_gamma(
+        self.gamma3d = np.round(gamma_shell(
             self.coords, self.reference,
             self.coords, self.evaluation,
             0.3, 0.03), decimals=3)
@@ -62,7 +62,7 @@ class TestGamma():
 
     def test_regression_of_gamma_2d(self):
         """Test for changes in expected 2D gamma."""
-        self.gamma2d = np.round(calc_gamma(
+        self.gamma2d = np.round(gamma_shell(
             self.coords[1::], self.reference[5, :, :],
             self.coords[1::], self.evaluation[5, :, :],
             0.3, 0.03), decimals=3)
@@ -71,7 +71,7 @@ class TestGamma():
 
     def test_regression_of_gamma_1d(self):
         """Test for changes in expected 3D gamma."""
-        self.gamma1d = np.round(calc_gamma(
+        self.gamma1d = np.round(gamma_shell(
             self.coords[2], self.reference[5, 5, :],
             self.coords[2], self.evaluation[5, 5, :],
             0.3, 0.03), decimals=3)
@@ -106,20 +106,10 @@ class TestGamma():
 
     def test_calc_by_sections(self):
         """Testing that splitting into sections doesn't change the result."""
-        self.concurrent_reduction = np.round(calc_gamma(
+        self.concurrent_reduction = np.round(gamma_shell(
             self.coords, self.reference,
             self.coords, self.evaluation,
             0.3, 0.03, max_concurrent_calc_points=10000), decimals=3)
 
         # print(self.expected_gamma - self.concurrent_reduction)
         assert np.all(self.expected_gamma == self.concurrent_reduction)
-
-    def test_multithreading(self):
-        """Testing that running multiple threads doesn't change the result."""
-        self.multithreading = np.round(calc_gamma(
-            self.coords, self.reference,
-            self.coords, self.evaluation,
-            0.3, 0.03, num_threads=4), decimals=3)
-
-        # print(self.expected_gamma - self.multithreading)
-        assert np.all(self.expected_gamma == self.multithreading)
