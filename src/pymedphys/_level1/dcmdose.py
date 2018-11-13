@@ -32,6 +32,7 @@ from matplotlib import path
 
 from scipy.interpolate import splprep, splev
 
+import pydicom
 import pydicom.uid
 
 
@@ -65,6 +66,15 @@ def load_xyz_from_dicom(dcm):
         dcm.ImagePositionPatient[2])
 
     return x, y, z
+
+
+def coords_and_dose_from_dcm(dcm_filepath):
+    dcm = pydicom.read_file(dcm_filepath, force=True)
+    x, y, z = load_xyz_from_dicom(dcm)
+    coords = (y, x, z)
+    dose = load_dose_from_dicom(dcm)
+
+    return coords, dose
 
 
 def load_dicom_data(dcm, depth_adjust):
