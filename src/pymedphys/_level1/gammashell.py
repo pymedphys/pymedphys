@@ -38,13 +38,12 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
 
-def calc_gamma(coords_reference, dose_reference,
-               coords_evaluation, dose_evaluation,
-               distance_threshold, dose_threshold,
-               lower_dose_cutoff=0, distance_step_size=None,
-               maximum_test_distance=np.inf,
-               max_concurrent_calc_points=np.inf,
-               num_threads=1):
+def gamma_shell(coords_reference, dose_reference,
+                coords_evaluation, dose_evaluation,
+                distance_threshold, dose_threshold,
+                lower_dose_cutoff=0, distance_step_size=None,
+                maximum_test_distance=np.inf,
+                max_concurrent_calc_points=np.inf):
     """Compare two dose grids with the gamma index.
 
     To have this calculate in a timely manner it is recommended to set
@@ -89,6 +88,8 @@ def calc_gamma(coords_reference, dose_reference,
         The array of gamma values the same shape as that
         given by the evaluation coordinates and dose.
     """
+    num_threads = 1  # multithreading is now handled by numpy natively
+
     coords_reference, coords_evaluation = _run_input_checks(
         coords_reference, dose_reference,
         coords_evaluation, dose_evaluation)
@@ -304,9 +305,9 @@ def _calculate_min_dose_difference_by_slice(
 
     for current_slice in sliced:
         current_to_be_checked = np.zeros_like(to_be_checked).astype(bool)
-        current_to_be_checked[[
+        current_to_be_checked[tuple([
             item[current_slice] for
-            item in all_checks]] = True
+            item in all_checks])] = True
 
         assert np.all(to_be_checked[current_to_be_checked])
 
