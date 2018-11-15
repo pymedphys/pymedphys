@@ -48,22 +48,34 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
 
 
 def load_xyz_from_dicom(dcm):
-    resolution = np.array(
-        dcm.PixelSpacing).astype(float)
-    dx = resolution[0]
 
-    x = (
-        dcm.ImagePositionPatient[0] +
-        np.arange(0, dcm.Columns * dx, dx))
+    orientation = np.array(dcm.ImageOrientationPatient)
+    z_orientation = orientation[0]*orientation[4] # Determines whether image is Head First (+1) or Feet First (-1)
 
-    dy = resolution[1]
-    y = (
-        dcm.ImagePositionPatient[1] +
-        np.arange(0, dcm.Rows * dy, dy))
+    ''' 
+    FeetFirstDecubitusLeft: { 0, 1, 0, -1, 0, 0 }
+    FeetFirstDecubitusRight: { 0, -1, 0, 1, 0, 0 }
+    FeetFirstProne: { 1, 0, 0, 0, -1, 0 }
+    FeetFirstSupine: { -1, 0, 0, 0, 1, 0 }
+    HeadFirstDecubitusLeft: { 0, 1, 0, 1, 0, 0 }
+    HeadFirstDecubitusRight: { 0, -1, 0, -1, 0, 0 }
+    HeadFirstProne: { -1, 0, 0, 0, -1, 0 }
+    HeadFirstSupine: { 1, 0, 0, 0, 1, 0 }
+    '''
 
-    z = (
-        np.array(dcm.GridFrameOffsetVector) +
-        dcm.ImagePositionPatient[2])
+    #  Only proceed if no pitch, roll or yaw exists between the image set and the dose grid
+    if not np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])):
+        raise Exception("Dose grid is not parallel to its corresponding image dataset in the DICOM RT Dose file.")
+
+    xy_resolution = np.array(dcm.PixelSpacing).astype(float)
+
+    dx = xy_resolution[0]
+    x = dcm.ImagePositionPatient[0] + np.arange(0, dcm.Columns * dx, dx)
+
+    dy = xy_resolution[1]
+    y = dcm.ImagePositionPatient[1] + np.arange(0, dcm.Rows * dy, dy)
+
+    z = dcm.ImagePositionPatient[2] + z_orientation * np.array(dcm.GridFrameOffsetVector)
 
     return x, y, z
 
