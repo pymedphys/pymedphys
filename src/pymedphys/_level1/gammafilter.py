@@ -1,5 +1,4 @@
 # Copyright (C) 2018 Simon Biggs
-
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -24,22 +23,4 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Compare two dose grids with the gamma index.
-
-This module is a python implementation of the gamma index.
-It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
-interpolating on the fly.
-This module makes use of some of the ideas presented within
-<http://dx.doi.org/10.1118/1.2721657>.
-
-
-Available Functions
--------------------
->>> from pymedphys.gamma import gamma_shell
-"""
-
-# pylint: disable=W0401,W0614
-
-from ._level1.gammashell import *
-from ._level1.gammafilter import *
-from ._level2.gammainterface import *
+import numpy as np
