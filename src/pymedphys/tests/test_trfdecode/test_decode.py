@@ -30,6 +30,8 @@ from glob import glob
 import os
 from contextlib import contextmanager
 
+import pytest
+
 import numpy as np
 import pandas as pd
 
@@ -94,4 +96,10 @@ def test_conversions():
     trf_files = glob(os.path.join(DATA_DIRECTORY, '*.trf'))
 
     for filepath in trf_files:
-        convert_and_check(filepath)
+        try:
+            convert_and_check(filepath)
+        except NotImplementedError:
+            pytest.skip(
+                "`decode_trf` doesn't appear to be installed, skipping this "
+                "test."
+            )
