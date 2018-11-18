@@ -31,6 +31,11 @@ currently active developers and maintainers of PyMedPhys are given below:
 
 .. _`Matthew Sobolewski`: https://gitlab.com/msobolewski
 
+* `Matthew Jennings`_
+    * `Royal Adelaide Hospital`_, Australia
+
+.. _`Matthew Jennings`: https://gitlab.com/centrus
+
 .. image:: docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
 
@@ -40,6 +45,8 @@ currently active developers and maintainers of PyMedPhys are given below:
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
+
+.. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
 
 
 
