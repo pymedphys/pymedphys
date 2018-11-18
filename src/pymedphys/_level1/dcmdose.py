@@ -50,24 +50,29 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
 def load_xyz_from_dicom(dcm):
 
     orientation = np.array(dcm.ImageOrientationPatient)
-    z_orientation = orientation[0]*orientation[4] # Determines whether image is Head First (+1) or Feet First (-1)
 
-    ''' 
-    FeetFirstDecubitusLeft: { 0, 1, 0, -1, 0, 0 }
-    FeetFirstDecubitusRight: { 0, -1, 0, 1, 0, 0 }
-    FeetFirstProne: { 1, 0, 0, 0, -1, 0 }
-    FeetFirstSupine: { -1, 0, 0, 0, 1, 0 }
-    HeadFirstDecubitusLeft: { 0, 1, 0, 1, 0, 0 }
-    HeadFirstDecubitusRight: { 0, -1, 0, -1, 0, 0 }
-    HeadFirstProne: { -1, 0, 0, 0, -1, 0 }
-    HeadFirstSupine: { 1, 0, 0, 0, 1, 0 }
+    '''
+    Supported scan orientations with corresponding ImagePositionPatient vectors:
+    
+        FeetFirstDecubitusLeft: { 0, 1, 0, -1, 0, 0 }
+        FeetFirstDecubitusRight: { 0, -1, 0, 1, 0, 0 }
+        FeetFirstProne: { 1, 0, 0, 0, -1, 0 }
+        FeetFirstSupine: { -1, 0, 0, 0, 1, 0 }
+        HeadFirstDecubitusLeft: { 0, 1, 0, 1, 0, 0 }
+        HeadFirstDecubitusRight: { 0, -1, 0, -1, 0, 0 }
+        HeadFirstProne: { -1, 0, 0, 0, -1, 0 }
+        HeadFirstSupine: { 1, 0, 0, 0, 1, 0 }
     '''
 
-    #  Only proceed if no pitch, roll or yaw exists between the image set and the dose grid
-    if not np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])):
-        raise Exception("Dose grid is not parallel to its corresponding image dataset in the DICOM RT Dose file.")
+    # Only proceed if the DICOM RT Dose file has a supported orientation.
+    # I.e. no pitch or yaw exists between the image set and the dose grid
+    if not (np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])) or
+            np.array_equal(np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))):
+        raise Exception("Dose grid orientation is not supported. " +
+                        "Z-axis of dose grid must be parallel to z-axis of corresponding image dataset")
 
     xy_resolution = np.array(dcm.PixelSpacing).astype(float)
+    z_orientation = np.sum(np.absolute(orientation)) - 1 # Head First = +1, Feet First = -1
 
     dx = xy_resolution[0]
     x = dcm.ImagePositionPatient[0] + np.arange(0, dcm.Columns * dx, dx)
