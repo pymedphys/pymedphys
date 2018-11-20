@@ -24,15 +24,13 @@
 
 import numpy as np
 
-import pydicom
-
 from .._level1.gammashell import gamma_shell
 from .._level1.dcmdose import coords_and_dose_from_dcm
 
 
-def gamma_dcm(dcm_ref_filepath, dcm_eval_filepath, dose_percent_threshold,
-              distance_mm_threshold, max_gamma=np.inf, interp_fraction=10,
-              lower_percent_dose_cutoff=20, normalisation=None):
+def determine_gamma_inputs(dcm_ref_filepath, dcm_eval_filepath, dose_percent_threshold,
+                           distance_mm_threshold, max_gamma=np.inf, interp_fraction=10,
+                           lower_percent_dose_cutoff=20, normalisation=None):
     coords_reference, dose_reference = coords_and_dose_from_dcm(
         dcm_ref_filepath)
     coords_evaluation, dose_evaluation = coords_and_dose_from_dcm(
@@ -47,13 +45,33 @@ def gamma_dcm(dcm_ref_filepath, dcm_eval_filepath, dose_percent_threshold,
     distance_step_size = distance_mm_threshold / interp_fraction
     maximum_test_distance = distance_mm_threshold * max_gamma
 
-    gamma = gamma_shell(
-        coords_reference, dose_reference,
-        coords_evaluation, dose_evaluation,
-        distance_mm_threshold, dose_threshold,
-        lower_dose_cutoff=lower_dose_cutoff,
-        distance_step_size=distance_step_size,
-        maximum_test_distance=maximum_test_distance)
+    kwargs = {
+        'coords_reference': coords_reference,
+        'dose_reference': dose_reference,
+        'coords_evaluation': coords_evaluation,
+        'dose_evaluation': dose_evaluation,
+        'distance_mm_threshold': distance_mm_threshold,
+        'dose_threshold': dose_threshold,
+        'lower_dose_cutoff': lower_dose_cutoff,
+        'distance_step_size': distance_step_size,
+        'maximum_test_distance': maximum_test_distance
+    }
+
+    return kwargs
+
+
+def gamma_dcm(dcm_ref_filepath, dcm_eval_filepath, dose_percent_threshold,
+              distance_mm_threshold, max_gamma=np.inf, interp_fraction=10,
+              lower_percent_dose_cutoff=20, normalisation=None):
+
+    kwargs = determine_gamma_inputs(
+        dcm_ref_filepath, dcm_eval_filepath, dose_percent_threshold,
+        distance_mm_threshold, max_gamma=max_gamma,
+        interp_fraction=interp_fraction,
+        lower_percent_dose_cutoff=lower_percent_dose_cutoff,
+        normalisation=normalisation)
+
+    gamma = gamma_shell(**kwargs)
 
     gamma[gamma > max_gamma] = max_gamma
 
