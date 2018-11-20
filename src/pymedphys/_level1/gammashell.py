@@ -40,7 +40,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 def gamma_shell(coords_reference, dose_reference,
                 coords_evaluation, dose_evaluation,
-                distance_threshold, dose_threshold,
+                dose_threshold, distance_mm_threshold,
                 lower_dose_cutoff=0, distance_step_size=None,
                 maximum_test_distance=np.inf,
                 max_concurrent_calc_points=np.inf):
@@ -95,7 +95,7 @@ def gamma_shell(coords_reference, dose_reference,
         coords_evaluation, dose_evaluation)
 
     if distance_step_size is None:
-        distance_step_size = distance_threshold / 10
+        distance_step_size = distance_mm_threshold / 10
 
     reference_interpolation = RegularGridInterpolator(
         coords_reference, np.array(dose_reference),
@@ -121,7 +121,7 @@ def gamma_shell(coords_reference, dose_reference,
         "num_dimensions": len(coords_evaluation),
         "reference_interpolation": reference_interpolation,
         "lower_dose_cutoff": lower_dose_cutoff,
-        "distance_threshold": distance_threshold,
+        "distance_threshold": distance_mm_threshold,
         "dose_threshold": dose_threshold,
         "distance_step_size": distance_step_size,
         "max_concurrent_calc_points": max_concurrent_calc_points / num_threads,
