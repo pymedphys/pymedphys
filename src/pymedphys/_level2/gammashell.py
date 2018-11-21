@@ -42,9 +42,10 @@ from .._level1.gammainputcheck import run_input_checks
 
 def gamma_shell(coords_reference, dose_reference,
                 coords_evaluation, dose_evaluation,
-                dose_threshold, distance_mm_threshold,
-                lower_dose_cutoff=0, distance_step_size=None,
-                maximum_test_distance=np.inf):
+                dose_percent_threshold, distance_mm_threshold,
+                lower_percent_dose_cutoff=20, interp_fraction=10,
+                max_gamma=np.inf, local_gamma=False,
+                global_normalisation=None):
     """Compare two dose grids with the gamma index.
 
     To have this calculate in a timely manner it is recommended to set
@@ -62,26 +63,29 @@ def gamma_shell(coords_reference, dose_reference,
         The evaluation coordinates.
     dose_evaluation : np.array
         The evaluation dose grid.
-    dose_threshold : float
-        An absolute dose threshold.
-        If you wish to use 3% of maximum reference dose input
-        np.max(dose_reference) * 0.03 here.
+    dose_percent_threshold : float
+        The percent dose threshold
     distance_mm_threshold : float
         The gamma distance threshold. Units must
         match of the coordinates given.
-    lower_dose_cutoff : :obj:`float`, optional
-        The lower dose cutoff below
-        which gamma will not be calculated.
-    distance_step_size : :obj:`float`, optional
-        The step size to use in
-        within the reference grid interpolation. Defaults to a tenth of the
-        distance threshold as recommended within
+    lower_percent_dose_cutoff : :obj:`float`, optional
+        The percent lower dose cutoff below which gamma will not be calculated.
+        If either the evaluation grid, or the interpolated reference grid fall
+        below this dose percent then that evaluation point is not used.
+    interp_fraction : :obj:`float`, optional
+        The fraction which the distance threshold is divided into for
+        interpolation. Defaults to 10 as recommended within
         <http://dx.doi.org/10.1118/1.2721657>.
-    maximum_test_distance : :obj:`float`, optional
-        The distance beyond
-        which searching will stop. Defaults to np.inf. To speed up
-        calculation it is recommended that this parameter is set to
-        something reasonable such as 2*distance_mm_threshold
+    max_gamma : :obj:`float`, optional
+        The maximum gamma searched for. This can be used to speed up
+        calculation, once a search distance is reached that would give gamma
+        values larger than this parameter, the search stops. Defaults to np.inf
+    local_gamma
+        Designates local gamma should be used instead of global. Defaults to
+        False.
+    global_normalisation
+        The dose normalisation value that the percent inputs calculate from.
+        Defaults to the maximum value of dose_reference.
 
     Returns
     -------
@@ -93,8 +97,14 @@ def gamma_shell(coords_reference, dose_reference,
         coords_reference, dose_reference,
         coords_evaluation, dose_evaluation)
 
-    if distance_step_size is None:
-        distance_step_size = distance_mm_threshold / 10
+    if global_normalisation is None:
+        global_normalisation = np.max(dose_reference)
+
+    global_dose_threshold = dose_percent_threshold / 100 * global_normalisation
+    lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
+
+    distance_step_size = distance_mm_threshold / interp_fraction
+    maximum_test_distance = distance_mm_threshold * max_gamma
 
     reference_interpolation = RegularGridInterpolator(
         coords_reference, np.array(dose_reference),
@@ -137,13 +147,14 @@ def gamma_shell(coords_reference, dose_reference,
                 np.sum(to_be_checked)))
         # sys.stdout.flush()
 
-        min_dose_difference = calculate_min_dose_difference(
+        min_relative_dose_difference = calculate_min_dose_difference(
             reference_interpolation, coords_evaluation, dose_evaluation,
-            distance, distance_step_size, to_be_checked)
+            distance, distance_step_size, to_be_checked, global_dose_threshold,
+            dose_percent_threshold, local_gamma)
 
         gamma_at_distance = np.sqrt(
-            min_dose_difference ** 2 / dose_threshold ** 2 +
-            distance ** 2 / distance_mm_threshold ** 2)
+            min_relative_dose_difference ** 2 +
+            (distance / distance_mm_threshold) ** 2)
 
         current_gamma[to_be_checked] = np.min(
             np.vstack((
@@ -169,7 +180,8 @@ def gamma_shell(coords_reference, dose_reference,
 
 def calculate_min_dose_difference(
         reference_interpolation, coords_evaluation, dose_evaluation,
-        distance, distance_step_size, to_be_checked):
+        distance, distance_step_size, to_be_checked, global_dose_threshold,
+        dose_percent_threshold, local_gamma):
     """Determine the minimum dose difference.
 
     Calculated for a given distance from each evaluation point.
@@ -179,10 +191,19 @@ def calculate_min_dose_difference(
         reference_interpolation, coords_evaluation, distance,
         distance_step_size, to_be_checked)
 
-    dose_difference = reference_dose - dose_evaluation[to_be_checked][None, :]
-    min_dose_difference = np.min(np.abs(dose_difference), axis=0)
+    if local_gamma:
+        relative_dose_difference = (
+            reference_dose - dose_evaluation[to_be_checked][None, :]
+        ) / (reference_dose * dose_percent_threshold / 100)
+    else:
+        relative_dose_difference = (
+            reference_dose - dose_evaluation[to_be_checked][None, :]
+        ) / global_dose_threshold
 
-    return min_dose_difference
+    min_relative_dose_difference = np.min(
+        np.abs(relative_dose_difference), axis=0)
+
+    return min_relative_dose_difference
 
 
 def interpolate_reference_dose_at_distance(
