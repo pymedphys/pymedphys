@@ -101,11 +101,7 @@ def gamma_shell(coords_reference, dose_reference,
 
     dose_evaluation = np.array(dose_evaluation)
 
-    mesh_coords_evaluation = np.meshgrid(*coords_evaluation, indexing='ij')
-
-    num_dimensions = len(coords_evaluation)
-
-    dose_valid = dose_evaluation >= lower_dose_cutoff
+    dose_above_threshold = dose_evaluation >= lower_dose_cutoff
     still_searching_for_gamma = np.ones_like(
         dose_evaluation).astype(bool)
     current_gamma = np.inf * np.ones_like(dose_evaluation)
@@ -113,15 +109,11 @@ def gamma_shell(coords_reference, dose_reference,
 
     while True:
         to_be_checked = (
-            dose_valid & still_searching_for_gamma)
-
-        coordinates_at_distance_shell = calculate_coordinates_shell(
-            distance, num_dimensions, distance_step_size)
+            dose_above_threshold & still_searching_for_gamma)
 
         min_dose_difference = calculate_min_dose_difference(
-            num_dimensions, mesh_coords_evaluation, to_be_checked,
-            reference_interpolation, dose_evaluation,
-            coordinates_at_distance_shell)
+            reference_interpolation, coords_evaluation, dose_evaluation,
+            distance, distance_step_size, to_be_checked)
 
         gamma_at_distance = np.sqrt(
             min_dose_difference ** 2 / dose_threshold ** 2 +
@@ -145,7 +137,46 @@ def gamma_shell(coords_reference, dose_reference,
     gamma = current_gamma
     gamma[np.isinf(gamma)] = np.nan
 
+    # Verify that nans only appear where the dose wasn't above the threshold
+    assert np.all(np.invert(np.isnan(gamma[dose_above_threshold])))
+
     return gamma
+
+
+def calculate_min_dose_difference(
+        reference_interpolation, coords_evaluation, dose_evaluation,
+        distance, distance_step_size, to_be_checked):
+    """Determine the minimum dose difference.
+
+    Calculated for a given distance from each evaluation point.
+    """
+    num_dimensions = len(coords_evaluation)
+
+    coordinates_at_distance_shell = calculate_coordinates_shell(
+        distance, num_dimensions, distance_step_size)
+
+    # Add the distance shells to each evaluation coordinate to make a set of
+    # points to be tested for this given distance
+    mesh_coords_evaluation = np.meshgrid(*coords_evaluation, indexing='ij')
+
+    coordinates_at_distance = []
+    for i in range(num_dimensions):
+        coordinates_at_distance.append(np.array(
+            mesh_coords_evaluation[i][to_be_checked][None, :] +
+            coordinates_at_distance_shell[i][:, None])[:, :, None])
+
+    all_points = np.concatenate(coordinates_at_distance, axis=2)
+
+    # Interpolate the dose at each testing point and determine the minimum dose
+    # difference for this given distance
+    dose_difference = np.array([
+        reference_interpolation(points) -
+        dose_evaluation[to_be_checked] for
+        points in all_points
+    ])
+    min_dose_difference = np.min(np.abs(dose_difference), axis=0)
+
+    return min_dose_difference
 
 
 def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
@@ -200,30 +231,3 @@ def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
 
     else:
         raise Exception("No valid dimension")
-
-
-def calculate_min_dose_difference(
-        num_dimensions, mesh_coords_evaluation, to_be_checked,
-        reference_interpolation, dose_evaluation,
-        coordinates_at_distance_shell):
-    """Determine the minimum dose difference.
-
-    Calculated for a given distance from each evaluation point.
-    """
-    # Add the
-    coordinates_at_distance = []
-    for i in range(num_dimensions):
-        coordinates_at_distance.append(np.array(
-            mesh_coords_evaluation[i][to_be_checked][None, :] +
-            coordinates_at_distance_shell[i][:, None])[:, :, None])
-
-    all_points = np.concatenate(coordinates_at_distance, axis=2)
-
-    dose_difference = np.array([
-        reference_interpolation(points) -
-        dose_evaluation[to_be_checked] for
-        points in all_points
-    ])
-    min_dose_difference = np.min(np.abs(dose_difference), axis=0)
-
-    return min_dose_difference
