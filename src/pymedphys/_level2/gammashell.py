@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Simon Biggs
+# Copyright (C) 2015-2018 Simon Biggs
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -32,8 +32,6 @@ This module makes use of some of the ideas presented within
 <http://dx.doi.org/10.1118/1.2721657>.
 """
 
-from multiprocessing import Process, Queue
-
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
@@ -48,7 +46,7 @@ def gamma_shell(coords_reference, dose_reference,
     """Compare two dose grids with the gamma index.
 
     To have this calculate in a timely manner it is recommended to set
-    ``maximum_test_distance`` to a value of 2 * ``distance_threshold``. This
+    ``maximum_test_distance`` to a value of 2 * ``distance_mm_threshold``. This
     has the downside of having gamma values larger than 2 potentially being
     erroneous.
 
@@ -66,7 +64,7 @@ def gamma_shell(coords_reference, dose_reference,
         An absolute dose threshold.
         If you wish to use 3% of maximum reference dose input
         np.max(dose_reference) * 0.03 here.
-    distance_threshold : float
+    distance_mm_threshold : float
         The gamma distance threshold. Units must
         match of the coordinates given.
     lower_dose_cutoff : :obj:`float`, optional
@@ -81,7 +79,7 @@ def gamma_shell(coords_reference, dose_reference,
         The distance beyond
         which searching will stop. Defaults to np.inf. To speed up
         calculation it is recommended that this parameter is set to
-        something reasonable such as 2*distance_threshold
+        something reasonable such as 2*distance_mm_threshold
 
     Returns
     -------
@@ -102,44 +100,63 @@ def gamma_shell(coords_reference, dose_reference,
     )
 
     dose_evaluation = np.array(dose_evaluation)
-    dose_evaluation_flat = np.ravel(dose_evaluation)
 
     mesh_coords_evaluation = np.meshgrid(*coords_evaluation, indexing='ij')
-    coords_evaluation_flat = [
-        np.ravel(item)
-        for item in mesh_coords_evaluation]
 
-    evaluation_index = np.arange(len(dose_evaluation_flat))
-    np.random.shuffle(evaluation_index)
+    num_dimensions = len(coords_evaluation)
 
-    kwargs = {
-        "coords_reference": coords_reference,
-        "num_dimensions": len(coords_evaluation),
-        "reference_interpolation": reference_interpolation,
-        "lower_dose_cutoff": lower_dose_cutoff,
-        "distance_threshold": distance_mm_threshold,
-        "dose_threshold": dose_threshold,
-        "distance_step_size": distance_step_size,
-        "maximum_test_distance": maximum_test_distance,
-        'dose_evaluation': dose_evaluation_flat,
-        'mesh_coords_evaluation': coords_evaluation_flat}
+    dose_valid = dose_evaluation >= lower_dose_cutoff
+    still_searching_for_gamma = np.ones_like(
+        dose_evaluation).astype(bool)
+    current_gamma = np.inf * np.ones_like(dose_evaluation)
+    distance = 0
 
-    gamma_flat = _calculation_loop(**kwargs)
+    while True:
+        to_be_checked = (
+            dose_valid & still_searching_for_gamma)
 
-    gamma_flat[np.isinf(gamma_flat)] = np.nan
-    gamma = np.reshape(gamma_flat, np.shape(dose_evaluation))
+        coordinates_at_distance_shell = calculate_coordinates_shell(
+            distance, num_dimensions, distance_step_size)
+
+        min_dose_difference = calculate_min_dose_difference(
+            num_dimensions, mesh_coords_evaluation, to_be_checked,
+            reference_interpolation, dose_evaluation,
+            coordinates_at_distance_shell)
+
+        gamma_at_distance = np.sqrt(
+            min_dose_difference ** 2 / dose_threshold ** 2 +
+            distance ** 2 / distance_mm_threshold ** 2)
+
+        current_gamma[to_be_checked] = np.min(
+            np.vstack((
+                gamma_at_distance, current_gamma[to_be_checked]
+            )), axis=0)
+
+        still_searching_for_gamma = (
+            current_gamma > distance / distance_mm_threshold)
+
+        distance += distance_step_size
+
+        is_complete = (
+            (np.sum(to_be_checked) == 0) | (distance > maximum_test_distance))
+        if is_complete:
+            break
+
+    gamma = current_gamma
+    gamma[np.isinf(gamma)] = np.nan
 
     return gamma
 
 
-def calculate_coordinates_kernel(
-        distance, num_dimensions, distance_step_size):
-    """Determine the coodinate shifts required.
+def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
+    """Create the shell of coordinate shifts for the given testing distance.
 
     Coordinate shifts are determined to check the reference dose for a
     given distance, dimension, and step size
     """
     if num_dimensions == 1:
+        # Output the two points that are of the defined distance in
+        # one-dimension
         if distance == 0:
             x_coords = np.array([0])
         else:
@@ -148,8 +165,10 @@ def calculate_coordinates_kernel(
         return (x_coords,)
 
     elif num_dimensions == 2:
+        # Create points along the circumference of a circle. The spacing
+        # between points is not larger than the defined distance_step_size
         amount_to_check = np.floor(
-            2 * np.pi * distance / distance_step_size) + 2
+            2 * np.pi * distance / distance_step_size).astype(int) + 2
         theta = np.linspace(0, 2*np.pi, amount_to_check + 1)[:-1:]
         x_coords = distance * np.cos(theta)
         y_coords = distance * np.sin(theta)
@@ -157,6 +176,8 @@ def calculate_coordinates_kernel(
         return (x_coords, y_coords)
 
     elif num_dimensions == 3:
+        # Create points along the surface of a sphere (a shell) where no gap
+        # between points is larger than the defined distance_step_size
         number_of_rows = np.floor(
             np.pi * distance / distance_step_size).astype(int) + 2
         elevation = np.linspace(0, np.pi, number_of_rows)
@@ -181,19 +202,20 @@ def calculate_coordinates_kernel(
         raise Exception("No valid dimension")
 
 
-def _calculate_min_dose_difference(
+def calculate_min_dose_difference(
         num_dimensions, mesh_coords_evaluation, to_be_checked,
         reference_interpolation, dose_evaluation,
-        coordinates_at_distance_kernel, **kwargs):
+        coordinates_at_distance_shell):
     """Determine the minimum dose difference.
 
     Calculated for a given distance from each evaluation point.
     """
+    # Add the
     coordinates_at_distance = []
     for i in range(num_dimensions):
         coordinates_at_distance.append(np.array(
             mesh_coords_evaluation[i][to_be_checked][None, :] +
-            coordinates_at_distance_kernel[i][:, None])[:, :, None])
+            coordinates_at_distance_shell[i][:, None])[:, :, None])
 
     all_points = np.concatenate(coordinates_at_distance, axis=2)
 
@@ -205,44 +227,3 @@ def _calculate_min_dose_difference(
     min_dose_difference = np.min(np.abs(dose_difference), axis=0)
 
     return min_dose_difference
-
-
-def _calculation_loop(**kwargs):
-    """Iteratively calculates gamma at increasing distances."""
-    dose_valid = kwargs['dose_evaluation'] >= kwargs['lower_dose_cutoff']
-    still_searching_for_gamma = np.ones_like(
-        kwargs['dose_evaluation']).astype(bool)
-    current_gamma = np.inf * np.ones_like(kwargs['dose_evaluation'])
-    distance = 0
-
-    while True:
-        to_be_checked = (
-            dose_valid & still_searching_for_gamma)
-
-        coordinates_at_distance_kernel = calculate_coordinates_kernel(
-            distance, kwargs['num_dimensions'], kwargs['distance_step_size'])
-        min_dose_difference = _calculate_min_dose_difference(
-            to_be_checked=to_be_checked,
-            coordinates_at_distance_kernel=coordinates_at_distance_kernel,
-            **kwargs)
-
-        gamma_at_distance = np.sqrt(
-            min_dose_difference ** 2 / kwargs['dose_threshold'] ** 2 +
-            distance ** 2 / kwargs['distance_threshold'] ** 2)
-
-        current_gamma[to_be_checked] = np.min(
-            np.vstack((
-                gamma_at_distance, current_gamma[to_be_checked]
-            )), axis=0)
-
-        still_searching_for_gamma = (
-            current_gamma > distance / kwargs['distance_threshold'])
-
-        distance += kwargs['distance_step_size']
-
-        if (
-                (np.sum(to_be_checked) == 0) |
-                (distance > kwargs['maximum_test_distance'])):
-            break
-
-    return current_gamma
