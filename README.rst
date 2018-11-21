@@ -31,10 +31,10 @@ currently active developers and maintainers of PyMedPhys are given below:
 
 .. _`Matthew Sobolewski`: https://gitlab.com/msobolewski
 
-.. image:: docs/logos/RCCC_logo.png
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
 
-.. image:: docs/logos/NBCCC_logo.png
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/

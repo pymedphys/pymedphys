@@ -17,12 +17,12 @@ def read(*names, **kwargs):
 
 setup(
     name="pymedphys",
-    version="0.3.4",
+    version="0.3.6",
     author="Simon Biggs",
     author_email="me@simonbiggs.net",
     description='Medical Physics python modules',
     long_description=read('README.rst'),
-    long_description_content_type='text/markdown',
+    long_description_content_type='text/x-rst',
     classifiers=[
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
