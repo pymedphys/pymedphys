@@ -76,7 +76,7 @@ the option “add to path”
 Chocolatey
 ----------
 
-Chocolatey is a package manager for Windows. It makes installed software
+Chocolatey is a package manager for Windows. It makes installing software
 development tools quite a breeze. To install chocolatey follow the instructions
 at https://chocolatey.org/install
 
@@ -183,13 +183,13 @@ To make a branch you need to have cmder open and run the following:
 
 .. code:: bash
 
-    git checkout -b edit-contributing-document
+    git checkout -b your-name-edit-contributing-document
 
 Once you've run that you are now free to make some changes.
 
 Right click on the top level pymedphys directory, and press
 "Open with Code". This document that you're reading is located at
-`docs/contributing.rst`. Use Visual Studio Code to navigate to that file up and
+`docs/developer/contributing.rst`. Use Visual Studio Code to navigate to that file and
 begin making your changes.
 
 Once your changes are complete reopen your cmder and run:
@@ -198,7 +198,7 @@ Once your changes are complete reopen your cmder and run:
 
     git add -A
     git commit -m "my first commit"
-    git push --set-upstream origin edit-contributing-document
+    git push --set-upstream origin your-name-edit-contributing-document
 
 Now, you have successfully sent your branch online.
 
@@ -206,7 +206,7 @@ Now you need to open a merge request. Travel on over to:
 
 https://gitlab.com/pymedphys/pymedphys/merge_requests/new
 
-And select the source branch to be `pymedphys/edit-contributing-document`
+And select the source branch to be `pymedphys/your-name-edit-contributing-document`
 and set the target branch to be `pymedphys/master`.
 
 At that point I'll get notified and we can begin discussing the changes
