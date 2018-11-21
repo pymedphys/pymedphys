@@ -78,31 +78,31 @@ class TestGamma():
 
         assert np.all(self.expected_gamma[5, 5, :] == self.gamma1d)
 
-    def test_coords_stepsize(self):
-        """Testing correct stepsize implementation.
+    # def test_coords_stepsize(self):
+    #     """Testing correct stepsize implementation.
 
-        Confirm that the the largest distance between one point and any other
-        is less than the defined step size
-        """
-        distance_step_size = 0.03
-        num_dimensions = 3
-        distance = 1
+    #     Confirm that the the largest distance between one point and any other
+    #     is less than the defined step size
+    #     """
+    #     distance_step_size = 0.03
+    #     num_dimensions = 3
+    #     distance = 1
 
-        x, y, z = calculate_coordinates_shell(
-            distance, num_dimensions, distance_step_size)
+    #     x, y, z = calculate_coordinates_shell(
+    #         distance, num_dimensions, distance_step_size)
 
-        distance_between_coords = np.sqrt(
-            (x[:, None] - x[None, :])**2 +
-            (y[:, None] - y[None, :])**2 +
-            (z[:, None] - z[None, :])**2)
+    #     distance_between_coords = np.sqrt(
+    #         (x[:, None] - x[None, :])**2 +
+    #         (y[:, None] - y[None, :])**2 +
+    #         (z[:, None] - z[None, :])**2)
 
-        distance_between_coords[
-            distance_between_coords == 0] = np.nan
+    #     distance_between_coords[
+    #         distance_between_coords == 0] = np.nan
 
-        largest_difference = np.max(np.nanmin(distance_between_coords, axis=0))
+    #     largest_difference = np.max(np.nanmin(distance_between_coords, axis=0))
 
-        assert largest_difference <= distance_step_size
-        assert largest_difference > distance_step_size * 0.9
+    #     assert largest_difference <= distance_step_size
+    #     assert largest_difference > distance_step_size * 0.9
 
     # def test_calc_by_sections(self):
     #     """Testing that splitting into sections doesn't change the result."""
