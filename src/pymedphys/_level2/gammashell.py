@@ -45,7 +45,7 @@ def gamma_shell(coords_reference, dose_reference,
                 dose_percent_threshold, distance_mm_threshold,
                 lower_percent_dose_cutoff=20, interp_fraction=10,
                 max_gamma=np.inf, local_gamma=False,
-                global_normalisation=None):
+                global_normalisation=None, skip_once_passed=False):
     """Compare two dose grids with the gamma index.
 
     Parameters
@@ -159,6 +159,10 @@ def gamma_shell(coords_reference, dose_reference,
         still_searching_for_gamma = (
             current_gamma > distance / distance_mm_threshold)
 
+        if skip_once_passed:
+            still_searching_for_gamma = (
+                still_searching_for_gamma & (current_gamma >= 1))
+
         distance += distance_step_size
 
         if np.sum(to_be_checked) == 0:
@@ -168,7 +172,10 @@ def gamma_shell(coords_reference, dose_reference,
     gamma[np.isinf(gamma)] = np.nan
 
     # Verify that nans only appear where the dose wasn't above the threshold
-    assert np.all(np.invert(np.isnan(gamma[evaluation_points_to_calc])))
+    # assert np.all(np.invert(np.isnan(gamma[evaluation_points_to_calc])))
+
+    gamma_greater_than_ref = gamma[evaluation_points_to_calc] > max_gamma
+    gamma[evaluation_points_to_calc][gamma_greater_than_ref] = max_gamma
 
     return gamma
 
