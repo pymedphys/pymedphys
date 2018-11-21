@@ -63,29 +63,29 @@ def gamma_shell(coords_reference, dose_reference,
         The evaluation coordinates.
     dose_evaluation : np.array
         The evaluation dose grid.
-    dose_threshold : float
-        An absolute dose threshold.
-        If you wish to use 3% of maximum reference dose input
-        np.max(dose_reference) * 0.03 here.
+    dose_percent_threshold : float
+        The percent dose threshold
     distance_mm_threshold : float
         The gamma distance threshold. Units must
         match of the coordinates given.
-    lower_dose_cutoff : :obj:`float`, optional
-        The lower dose cutoff below
-        which gamma will not be calculated.
-    distance_step_size : :obj:`float`, optional
-        The step size to use in
-        within the reference grid interpolation. Defaults to a tenth of the
-        distance threshold as recommended within
+    lower_percent_dose_cutoff : :obj:`float`, optional
+        The percent lower dose cutoff below which gamma will not be calculated.
+        If either the evaluation grid, or the interpolated reference grid fall
+        below this dose percent then that evaluation point is not used.
+    interp_fraction : :obj:`float`, optional
+        The fraction which the distance threshold is divided into for
+        interpolation. Defaults to 10 as recommended within
         <http://dx.doi.org/10.1118/1.2721657>.
-    maximum_test_distance : :obj:`float`, optional
-        The distance beyond
-        which searching will stop. Defaults to np.inf. To speed up
-        calculation it is recommended that this parameter is set to
-        something reasonable such as 2*distance_mm_threshold
+    max_gamma : :obj:`float`, optional
+        The maximum gamma searched for. This can be used to speed up
+        calculation, once a search distance is reached that would give gamma
+        values larger than this parameter, the search stops. Defaults to np.inf
     local_gamma
         Designates local gamma should be used instead of global. Defaults to
         False.
+    global_normalisation
+        The dose normalisation value that the percent inputs calculate from.
+        Defaults to the maximum value of dose_reference.
 
     Returns
     -------
