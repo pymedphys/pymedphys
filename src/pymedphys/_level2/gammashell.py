@@ -48,11 +48,6 @@ def gamma_shell(coords_reference, dose_reference,
                 global_normalisation=None):
     """Compare two dose grids with the gamma index.
 
-    To have this calculate in a timely manner it is recommended to set
-    ``maximum_test_distance`` to a value of 2 * ``distance_mm_threshold``. This
-    has the downside of having gamma values larger than 2 potentially being
-    erroneous.
-
     Parameters
     ----------
     coords_reference : tuple
