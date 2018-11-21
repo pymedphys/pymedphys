@@ -17,7 +17,7 @@ def read(*names, **kwargs):
 
 setup(
     name="pymedphys",
-    version="0.3.6",
+    version="0.3.7",
     author="Simon Biggs",
     author_email="me@simonbiggs.net",
     description='Medical Physics python modules',
