@@ -7,4 +7,4 @@ Gamma Calculation
 API
 ---
 
-.. autofunction:: pymedphys.gamma.calc_gamma
+.. autofunction:: pymedphys.gamma.gamma_shell
