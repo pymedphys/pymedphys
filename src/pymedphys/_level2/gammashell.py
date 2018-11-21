@@ -103,25 +103,7 @@ def gamma_shell(coords_reference, dose_reference,
 
     dose_evaluation = np.array(dose_evaluation)
 
-    interpolated_reference_dose = interpolate_reference_dose_at_distance(
-        reference_interpolation, coords_evaluation, 0,
-        distance_step_size)[0, :]
-
-    interpolated_reference_dose = np.reshape(
-        interpolated_reference_dose, np.shape(dose_evaluation))
-
-    reference_dose_interpolation_within_bounds = (
-        interpolated_reference_dose != np.inf)
-    reference_dose_above_threshold = (
-        interpolated_reference_dose > lower_dose_cutoff)
-    evaluation_dose_above_threshold = dose_evaluation > lower_dose_cutoff
-
-    evaluation_points_to_calc = (
-        reference_dose_interpolation_within_bounds &
-        reference_dose_above_threshold &
-        evaluation_dose_above_threshold
-    )
-
+    dose_above_threshold = dose_evaluation >= lower_dose_cutoff
     still_searching_for_gamma = np.ones_like(
         dose_evaluation).astype(bool)
     current_gamma = np.inf * np.ones_like(dose_evaluation)
@@ -129,13 +111,7 @@ def gamma_shell(coords_reference, dose_reference,
 
     while True:
         to_be_checked = (
-            evaluation_points_to_calc & still_searching_for_gamma)
-
-        sys.stdout.write(
-            '\rCurrent distance: {0:.2f} mm | Number of evaluation points remaining: {1}'.format(
-                distance,
-                np.sum(to_be_checked)))
-        # sys.stdout.flush()
+            dose_above_threshold & still_searching_for_gamma)
 
         min_dose_difference = calculate_min_dose_difference(
             reference_interpolation, coords_evaluation, dose_evaluation,
@@ -164,7 +140,7 @@ def gamma_shell(coords_reference, dose_reference,
     gamma[np.isinf(gamma)] = np.nan
 
     # Verify that nans only appear where the dose wasn't above the threshold
-    assert np.all(np.invert(np.isnan(gamma[evaluation_points_to_calc])))
+    assert np.all(np.invert(np.isnan(gamma[dose_above_threshold])))
 
     return gamma
 
@@ -176,7 +152,6 @@ def calculate_min_dose_difference(
 
     Calculated for a given distance from each evaluation point.
     """
-
     reference_dose = interpolate_reference_dose_at_distance(
         reference_interpolation, coords_evaluation, distance,
         distance_step_size, to_be_checked)
