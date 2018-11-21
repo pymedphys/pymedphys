@@ -174,8 +174,9 @@ def gamma_shell(coords_reference, dose_reference,
     # Verify that nans only appear where the dose wasn't above the threshold
     # assert np.all(np.invert(np.isnan(gamma[evaluation_points_to_calc])))
 
-    gamma_greater_than_ref = gamma[evaluation_points_to_calc] > max_gamma
-    gamma[evaluation_points_to_calc][gamma_greater_than_ref] = max_gamma
+    with np.errstate(invalid='ignore'):
+        gamma_greater_than_ref = gamma > max_gamma
+        gamma[gamma_greater_than_ref] = max_gamma
 
     return gamma
 
@@ -194,9 +195,10 @@ def calculate_min_dose_difference(
         distance_step_size, to_be_checked)
 
     if local_gamma:
-        relative_dose_difference = (
-            reference_dose - dose_evaluation[to_be_checked][None, :]
-        ) / (reference_dose * dose_percent_threshold / 100)
+        with np.errstate(divide='ignore'):
+            relative_dose_difference = (
+                reference_dose - dose_evaluation[to_be_checked][None, :]
+            ) / (reference_dose * dose_percent_threshold / 100)
     else:
         relative_dose_difference = (
             reference_dose - dose_evaluation[to_be_checked][None, :]
