@@ -56,7 +56,7 @@ class TestGamma():
         self.gamma3d = np.round(gamma_shell(
             self.coords, self.reference,
             self.coords, self.evaluation,
-            0.03, 0.3), decimals=3)
+            3, 0.3, lower_percent_dose_cutoff=0), decimals=3)
 
         assert np.all(self.expected_gamma == self.gamma3d)
 
@@ -65,7 +65,7 @@ class TestGamma():
         self.gamma2d = np.round(gamma_shell(
             self.coords[1::], self.reference[5, :, :],
             self.coords[1::], self.evaluation[5, :, :],
-            0.03, 0.3), decimals=3)
+            3, 0.3, lower_percent_dose_cutoff=0), decimals=3)
 
         assert np.all(self.expected_gamma[5, :, :] == self.gamma2d)
 
@@ -74,7 +74,7 @@ class TestGamma():
         self.gamma1d = np.round(gamma_shell(
             self.coords[2], self.reference[5, 5, :],
             self.coords[2], self.evaluation[5, 5, :],
-            0.03, 0.3), decimals=3)
+            3, 0.3, lower_percent_dose_cutoff=0), decimals=3)
 
         assert np.all(self.expected_gamma[5, 5, :] == self.gamma1d)
 
