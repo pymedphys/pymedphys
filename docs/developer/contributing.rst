@@ -160,8 +160,7 @@ dependencies with conda:
 .. code:: bash
 
     conda config --add channels conda-forge
-    conda install pymedphys
-    conda uninstall pymedphys
+    conda install pymedphys --only-deps
     pip install -e .
 
 
