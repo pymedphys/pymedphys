@@ -68,4 +68,4 @@ However there are significant benefits from sharing your code with the
 community. Please read `the Benefits of AGPL-3.0+ for Medical Physics`_.
 
 
-.. _`the Benefits of AGPL-3.0+ for Medical Physics`: ./agpl-benefits.html
+.. _`the Benefits of AGPL-3.0+ for Medical Physics`: ../developer/agpl-benefits.html
