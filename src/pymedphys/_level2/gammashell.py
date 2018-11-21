@@ -127,7 +127,7 @@ def gamma_shell(coords_reference, dose_reference,
     current_gamma = np.inf * np.ones_like(dose_evaluation)
     distance = 0
 
-    while True:
+    while distance <= maximum_test_distance:
         to_be_checked = (
             evaluation_points_to_calc & still_searching_for_gamma)
 
@@ -155,9 +155,7 @@ def gamma_shell(coords_reference, dose_reference,
 
         distance += distance_step_size
 
-        is_complete = (
-            (np.sum(to_be_checked) == 0) | (distance > maximum_test_distance))
-        if is_complete:
+        if np.sum(to_be_checked) == 0:
             break
 
     gamma = current_gamma
