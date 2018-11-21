@@ -24,6 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+"""The tests given here are replicated using pymedphys.gamma from the method
+given within the following paper:
+
+> C. Agnew, C. McGarry, A tool to include gamma analysis software into a
+> quality assurance program. Radiotherapy and Oncology (2016),
+> http://dx.doi.org/10.1016/j.radonc.2015.11.034
+"""
+
 # pylint: disable=C0103,C1801
 
 import os
@@ -37,10 +45,16 @@ from pymedphys.gamma import gamma_shell
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/gamma/agnew_mcgarry_images")
-REF_VMAT = os.path.abspath(os.path.join(
+
+REF_VMAT_1mm = os.path.abspath(os.path.join(
     DATA_DIRECTORY, 'H&N_VMAT_Reference_1mmPx.dcm'))
-EVAL_VMAT = os.path.abspath(os.path.join(
+EVAL_VMAT_1mm = os.path.abspath(os.path.join(
     DATA_DIRECTORY, 'H&N_VMAT_Evaluated_1mmPx.dcm'))
+
+REF_VMAT_0_25mm = os.path.abspath(os.path.join(
+    DATA_DIRECTORY, 'H&N_VMAT_Reference_0_25mmPx.dcm'))
+EVAL_VMAT_0_25mm = os.path.abspath(os.path.join(
+    DATA_DIRECTORY, 'H&N_VMAT_Evaluated_0_25mmPx.dcm'))
 
 
 def load_dose_from_dicom(dcm):
@@ -66,11 +80,11 @@ def load_yx_from_dicom(dcm):
     return y, x
 
 
-def test_local_gamma():
+def local_gamma(filepath_ref, filepath_eval, result):
     """The results of MU Density calculation should not change
     """
-    dcm_ref = pydicom.read_file(REF_VMAT)
-    dcm_eval = pydicom.read_file(EVAL_VMAT)
+    dcm_ref = pydicom.read_file(filepath_ref)
+    dcm_eval = pydicom.read_file(filepath_eval)
 
     coords_reference = load_yx_from_dicom(dcm_ref)
     dose_reference = load_dose_from_dicom(dcm_ref)
@@ -89,4 +103,12 @@ def test_local_gamma():
     valid_gamma = gamma[np.invert(np.isnan(gamma))]
     gamma_pass = 100 * np.sum(valid_gamma <= 1) / len(valid_gamma)
 
-    assert np.round(gamma_pass, decimals=1) == 95.1
+    assert np.round(gamma_pass, decimals=1) == result
+
+
+def test_local_gamma_1mm():
+    local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 95.1)
+
+
+def test_local_gamma_0_25mm():
+    local_gamma(REF_VMAT_0_25mm, EVAL_VMAT_0_25mm, 97.6)
