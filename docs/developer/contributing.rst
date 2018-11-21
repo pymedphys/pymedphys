@@ -22,8 +22,10 @@ a merge request.
 GitLab Account
 --------------
 
-Make a GitLab account. Contact me@simonbiggs.net to request the required
-permissions to be able to make changes to the PyMedPhys repository.
+Make a GitLab account.
+Email me@simonbiggs.net requesting the required
+permissions to be able to make changes to the PyMedPhys repository. You wil
+need to provide me your GitLab account name in the email you send.
 
 A great piece of Git documentation can be found at the following link:
 https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html
