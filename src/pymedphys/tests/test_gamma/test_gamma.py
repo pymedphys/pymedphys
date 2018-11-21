@@ -26,7 +26,7 @@
 """Tests for npgamma."""
 
 import numpy as np
-from pymedphys.gamma import gamma_shell, calculate_coordinates_kernel
+from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
 
 
 class TestGamma():
@@ -88,7 +88,7 @@ class TestGamma():
         num_dimensions = 3
         distance = 1
 
-        x, y, z = calculate_coordinates_kernel(
+        x, y, z = calculate_coordinates_shell(
             distance, num_dimensions, distance_step_size)
 
         distance_between_coords = np.sqrt(
