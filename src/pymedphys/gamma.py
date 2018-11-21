@@ -40,6 +40,6 @@ Available Functions
 
 # pylint: disable=W0401,W0614
 
-from ._level1.gammashell import *
 from ._level1.gammafilter import *
-from ._level2.gammainterface import *
+from ._level2.gammashell import *
+from ._level3.gammainterface import *
