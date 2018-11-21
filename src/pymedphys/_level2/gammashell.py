@@ -238,8 +238,8 @@ def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
     elif num_dimensions == 2:
         # Create points along the circumference of a circle. The spacing
         # between points is not larger than the defined distance_step_size
-        amount_to_check = np.floor(
-            2 * np.pi * distance / distance_step_size).astype(int) + 1  # may need to make this + 2
+        amount_to_check = np.ceil(
+            2 * np.pi * distance / distance_step_size).astype(int) + 1
         theta = np.linspace(0, 2*np.pi, amount_to_check + 1)[:-1:]
         x_coords = distance * np.cos(theta)
         y_coords = distance * np.sin(theta)
@@ -249,14 +249,14 @@ def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
     elif num_dimensions == 3:
         # Create points along the surface of a sphere (a shell) where no gap
         # between points is larger than the defined distance_step_size
-        number_of_rows = np.floor(
-            np.pi * distance / distance_step_size).astype(int) + 1  # may need to make this + 2
+        number_of_rows = np.ceil(
+            np.pi * distance / distance_step_size).astype(int) + 1
 
         elevation = np.linspace(0, np.pi, number_of_rows)
         row_radii = distance * np.sin(elevation)
         row_circumference = 2 * np.pi * row_radii
-        amount_in_row = np.floor(
-            row_circumference / distance_step_size).astype(int) + 1  # may need to make this + 2
+        amount_in_row = np.ceil(
+            row_circumference / distance_step_size).astype(int) + 1
 
         x_coords = []
         y_coords = []
