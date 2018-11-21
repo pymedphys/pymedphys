@@ -24,7 +24,7 @@
 
 import numpy as np
 
-from .._level1.gammashell import gamma_shell
+from .._level2.gammashell import gamma_shell
 from .._level1.dcmdose import coords_and_dose_from_dcm
 
 
