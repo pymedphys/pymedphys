@@ -79,11 +79,11 @@ Installation
 ------------
 
 For instructions on how to install see the documentation at
-https://pymedphys.com/en/latest/docs/details/installation.html.
+https://pymedphys.com/en/latest/getting-started/installation.html.
 
 
 Contributing
 ------------
 
-See the contributor documentation at https://pymedphys.com/en/latest/docs/details/contributing.html
+See the contributor documentation at https://pymedphys.com/en/latest/developer/contributing.html
 if you wish to create and validate open source Medical Physics tools together.
