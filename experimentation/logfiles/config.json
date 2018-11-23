@@ -12,6 +12,10 @@
         "4299": {
             "centre": "nbccc",
             "type": "elekta-agility"
+        },
+        "9002": {
+            "centre": "sash",
+            "type": "elekta-agility"
         }
     },
     "machine_types": {
@@ -39,6 +43,13 @@
             "ois": "mosaiq",
             "ois_specific_data": {
                 "sql_server": "nbccc-msq"
+            }
+        },
+        "sash": {
+            "timezone": "Australia/Sydney",
+            "ois": "mosaiq",
+            "ois_specific_data": {
+                "sql_server": "rccc-physics3"
             }
         }
     },
