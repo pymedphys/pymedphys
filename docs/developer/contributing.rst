@@ -22,13 +22,26 @@ a merge request.
 GitLab Account
 --------------
 
-Make a GitLab account. Contact me@simonbiggs.net to request the required
-permissions to be able to make changes to the PyMedPhys repository.
+Make a GitLab account. Once you've made
+your account you are going to need commit
+rights to this repository.
+To get these rights create an issue on GitLab
+within the PyMedPhys repository using the following link
+https://gitlab.com/pymedphys/pymedphys/issues/new
+To make sure I see your issue write @SimonBiggs
+within the content of your issue.
+Within your issue request for commit rights.
 
-A great piece of Git documentation can be found at the following link:
+Whenever you wish to discuss anything about PyMedPhys
+create an issue on GitLab. It can be to ask for help,
+suggest a change, provide feedback, or anything else regarding
+PyMedPhys. Write @ followed by someones username if you would like
+to talk to someone specifically.
+
+The real power of GitLab comes from git itself. A great piece of Git documentation can be found at the following link:
 https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html
 
-Use that to begin to get a feel for what Git is.
+Use that documentation to begin to get a feel for what Git is.
 
 
 Text Editor
@@ -74,7 +87,7 @@ the option “add to path”
 Chocolatey
 ----------
 
-Chocolatey is a package manager for Windows. It makes installed software
+Chocolatey is a package manager for Windows. It makes installing software
 development tools quite a breeze. To install chocolatey follow the instructions
 at https://chocolatey.org/install
 
@@ -160,8 +173,7 @@ dependencies with conda:
 .. code:: bash
 
     conda config --add channels conda-forge
-    conda install pymedphys
-    conda uninstall pymedphys
+    conda install pymedphys --only-deps
     pip install -e .
 
 
@@ -182,13 +194,13 @@ To make a branch you need to have cmder open and run the following:
 
 .. code:: bash
 
-    git checkout -b edit-contributing-document
+    git checkout -b your-name-edit-contributing-document
 
 Once you've run that you are now free to make some changes.
 
 Right click on the top level pymedphys directory, and press
 "Open with Code". This document that you're reading is located at
-`docs/contributing.rst`. Use Visual Studio Code to navigate to that file up and
+`docs/developer/contributing.rst`. Use Visual Studio Code to navigate to that file and
 begin making your changes.
 
 Once your changes are complete reopen your cmder and run:
@@ -197,7 +209,7 @@ Once your changes are complete reopen your cmder and run:
 
     git add -A
     git commit -m "my first commit"
-    git push --set-upstream origin edit-contributing-document
+    git push --set-upstream origin your-name-edit-contributing-document
 
 Now, you have successfully sent your branch online.
 
@@ -205,7 +217,7 @@ Now you need to open a merge request. Travel on over to:
 
 https://gitlab.com/pymedphys/pymedphys/merge_requests/new
 
-And select the source branch to be `pymedphys/edit-contributing-document`
+And select the source branch to be `pymedphys/your-name-edit-contributing-document`
 and set the target branch to be `pymedphys/master`.
 
 At that point I'll get notified and we can begin discussing the changes

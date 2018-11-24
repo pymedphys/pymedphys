@@ -26,7 +26,7 @@
 """Tests for npgamma."""
 
 import numpy as np
-from pymedphys.gamma import gamma_shell, calculate_coordinates_kernel
+from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
 
 
 class TestGamma():
@@ -56,7 +56,7 @@ class TestGamma():
         self.gamma3d = np.round(gamma_shell(
             self.coords, self.reference,
             self.coords, self.evaluation,
-            0.3, 0.03), decimals=3)
+            3, 0.3, lower_percent_dose_cutoff=0), decimals=3)
 
         assert np.all(self.expected_gamma == self.gamma3d)
 
@@ -65,7 +65,7 @@ class TestGamma():
         self.gamma2d = np.round(gamma_shell(
             self.coords[1::], self.reference[5, :, :],
             self.coords[1::], self.evaluation[5, :, :],
-            0.3, 0.03), decimals=3)
+            3, 0.3, lower_percent_dose_cutoff=0), decimals=3)
 
         assert np.all(self.expected_gamma[5, :, :] == self.gamma2d)
 
@@ -74,7 +74,7 @@ class TestGamma():
         self.gamma1d = np.round(gamma_shell(
             self.coords[2], self.reference[5, 5, :],
             self.coords[2], self.evaluation[5, 5, :],
-            0.3, 0.03), decimals=3)
+            3, 0.3, lower_percent_dose_cutoff=0), decimals=3)
 
         assert np.all(self.expected_gamma[5, 5, :] == self.gamma1d)
 
@@ -88,7 +88,7 @@ class TestGamma():
         num_dimensions = 3
         distance = 1
 
-        x, y, z = calculate_coordinates_kernel(
+        x, y, z = calculate_coordinates_shell(
             distance, num_dimensions, distance_step_size)
 
         distance_between_coords = np.sqrt(
@@ -104,12 +104,27 @@ class TestGamma():
         assert largest_difference <= distance_step_size
         assert largest_difference > distance_step_size * 0.9
 
-    def test_calc_by_sections(self):
-        """Testing that splitting into sections doesn't change the result."""
-        self.concurrent_reduction = np.round(gamma_shell(
-            self.coords, self.reference,
-            self.coords, self.evaluation,
-            0.3, 0.03, max_concurrent_calc_points=10000), decimals=3)
+    def test_distance_0_gives_1_point(self):
+        """Testing correct stepsize implementation.
 
-        # print(self.expected_gamma - self.concurrent_reduction)
-        assert np.all(self.expected_gamma == self.concurrent_reduction)
+        Confirm that the the largest distance between one point and any other
+        is less than the defined step size
+        """
+        distance_step_size = 0.03
+        num_dimensions = 3
+        distance = 0
+
+        x, y, z = calculate_coordinates_shell(
+            distance, num_dimensions, distance_step_size)
+
+        assert len(x) == 1 & len(y) == 1 & len(z) == 1
+
+    # def test_calc_by_sections(self):
+    #     """Testing that splitting into sections doesn't change the result."""
+    #     self.concurrent_reduction = np.round(gamma_shell(
+    #         self.coords, self.reference,
+    #         self.coords, self.evaluation,
+    #         0.03, 0.3, max_concurrent_calc_points=10000), decimals=3)
+
+    #     # print(self.expected_gamma - self.concurrent_reduction)
+    #     assert np.all(self.expected_gamma == self.concurrent_reduction)
