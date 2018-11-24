@@ -54,22 +54,22 @@ def load_xyz_from_dicom(dcm):
     '''
     Supported scan orientations with corresponding ImagePositionPatient vectors:
     
-        FeetFirstDecubitusLeft: { 0, 1, 0, -1, 0, 0 }
-        FeetFirstDecubitusRight: { 0, -1, 0, 1, 0, 0 }
-        FeetFirstProne: { 1, 0, 0, 0, -1, 0 }
-        FeetFirstSupine: { -1, 0, 0, 0, 1, 0 }
-        HeadFirstDecubitusLeft: { 0, 1, 0, 1, 0, 0 }
-        HeadFirstDecubitusRight: { 0, -1, 0, -1, 0, 0 }
-        HeadFirstProne: { -1, 0, 0, 0, -1, 0 }
-        HeadFirstSupine: { 1, 0, 0, 0, 1, 0 }
+        Feet First Decubitus Left:  {0, 1, 0, -1, 0, 0}
+        Feet First Decubitus Right: {0, -1, 0, 1, 0, 0}
+        Feet First Prone:           {1, 0, 0, 0, -1, 0}
+        Feet First Supine:          {-1, 0, 0, 0, 1, 0}
+        Head First Decubitus Left:  {0, 1, 0, 1, 0, 0}
+        Head First Decubitus Right: {0, -1, 0, -1, 0, 0}
+        Head First Prone:           {-1, 0, 0, 0, -1, 0}
+        Head First Supine:          {1, 0, 0, 0, 1, 0}
     '''
 
     # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch or yaw exists between the image set and the dose grid
+    # I.e. no pitch or yaw exists between the dose grid and the 'patient'
     if not (np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])) or
             np.array_equal(np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))):
         raise Exception("Dose grid orientation is not supported. " +
-                        "Z-axis of dose grid must be parallel to z-axis of corresponding image dataset")
+                        "Z-axis of dose grid must be parallel to z-axis of patient")
 
     xy_resolution = np.array(dcm.PixelSpacing).astype(float)
     z_orientation = np.sum(np.absolute(orientation)) - 1 # Head First = +1, Feet First = -1
