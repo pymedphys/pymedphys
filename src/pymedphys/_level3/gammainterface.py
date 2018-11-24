@@ -22,17 +22,16 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import numpy as np
+# import numpy as np
 
 from .._level1.dcmdose import coords_and_dose_from_dcm
+from .._level1.gammafilter import gamma_filter_numpy, convert_to_percent_pass
 from .._level2.gammashell import gamma_shell
 
 
 def gamma_dcm(dcm_ref_filepath, dcm_eval_filepath,
               dose_percent_threshold, distance_mm_threshold,
-              lower_percent_dose_cutoff=20, interp_fraction=10,
-              max_gamma=np.inf, local_gamma=False,
-              global_normalisation=None, skip_once_passed=False):
+              **kwargs):
 
     coords_reference, dose_reference = coords_and_dose_from_dcm(
         dcm_ref_filepath)
@@ -43,10 +42,36 @@ def gamma_dcm(dcm_ref_filepath, dcm_eval_filepath,
         coords_reference, dose_reference,
         coords_evaluation, dose_evaluation,
         dose_percent_threshold, distance_mm_threshold,
-        lower_percent_dose_cutoff=lower_percent_dose_cutoff,
-        interp_fraction=interp_fraction,
-        max_gamma=max_gamma, local_gamma=local_gamma,
-        global_normalisation=global_normalisation,
-        skip_once_passed=skip_once_passed)
+        **kwargs)
 
     return gamma
+
+
+def gamma_percent_pass(dcm_ref_filepath, dcm_eval_filepath,
+                       dose_percent_threshold, distance_mm_threshold,
+                       method='shell', **kwargs):
+
+    coords_reference, dose_reference = coords_and_dose_from_dcm(
+        dcm_ref_filepath)
+    coords_evaluation, dose_evaluation = coords_and_dose_from_dcm(
+        dcm_eval_filepath)
+
+    if method == 'shell':
+        gamma = gamma_shell(
+            coords_reference, dose_reference,
+            coords_evaluation, dose_evaluation,
+            dose_percent_threshold, distance_mm_threshold,
+            **kwargs)
+
+        percent_pass = convert_to_percent_pass(gamma)
+
+    elif method == 'filter':
+        percent_pass = gamma_filter_numpy(
+            coords_reference, dose_reference,
+            coords_evaluation, dose_evaluation,
+            dose_percent_threshold, distance_mm_threshold,
+            **kwargs)
+    else:
+        raise ValueError('method should be either `shell` or `filter`')
+
+    return percent_pass
