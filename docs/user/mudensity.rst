@@ -7,10 +7,10 @@ MU Density
 Example Usage
 -------------
 
-.. plot:: docs/pyplots/mudensity.py
+.. plot:: pyplots/mudensity.py
    :include-source:
 
-.. plot:: docs/pyplots/single_leaf.py
+.. plot:: pyplots/single_leaf.py
    :include-source:
 
 

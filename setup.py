@@ -17,12 +17,12 @@ def read(*names, **kwargs):
 
 setup(
     name="pymedphys",
-    version="0.3.3",
+    version="0.3.8",
     author="Simon Biggs",
     author_email="me@simonbiggs.net",
     description='Medical Physics python modules',
     long_description=read('README.rst'),
-    long_description_content_type='text/markdown',
+    long_description_content_type='text/x-rst',
     classifiers=[
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
@@ -36,7 +36,8 @@ setup(
     packages=find_packages('src'),
     package_dir={'': 'src'},
     package_data={'pymedphys': [
-        'tests/data/*/*.npz', 'tests/data/*/*.csv', 'tests/data/*/*.trf']},
+        'tests/data/*/*.npz', 'tests/data/*/*.csv', 'tests/data/*/*.trf',
+        'tests/data/gamma/agnew_mcgarry_images/*.dcm']},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     include_package_data=True,
     entry_points={

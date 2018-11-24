@@ -25,21 +25,21 @@ currently active developers and maintainers of PyMedPhys are given below:
 
 .. _`Simon Biggs`: https://gitlab.com/SimonBiggs
 
+* `Matthew Jennings`_
+    * `Royal Adelaide Hospital`_, Australia
+
+.. _`Matthew Jennings`: https://gitlab.com/centrus
+
 * `Matthew Sobolewski`_
     * `Riverina Cancer Care Centre`_, Australia
     * `Northern Beaches Cancer Care`_, Australia
 
 .. _`Matthew Sobolewski`: https://gitlab.com/msobolewski
 
-* `Matthew Jennings`_
-    * `Royal Adelaide Hospital`_, Australia
-
-.. _`Matthew Jennings`: https://gitlab.com/centrus
-
-.. image:: docs/logos/RCCC_logo.png
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
 
-.. image:: docs/logos/NBCCC_logo.png
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
@@ -86,11 +86,11 @@ Installation
 ------------
 
 For instructions on how to install see the documentation at
-https://pymedphys.com/en/latest/docs/details/installation.html.
+https://pymedphys.com/en/latest/getting-started/installation.html.
 
 
 Contributing
 ------------
 
-See the contributor documentation at https://pymedphys.com/en/latest/docs/details/contributing.html
+See the contributor documentation at https://pymedphys.com/en/latest/developer/contributing.html
 if you wish to create and validate open source Medical Physics tools together.
