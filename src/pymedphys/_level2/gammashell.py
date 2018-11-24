@@ -94,7 +94,7 @@ def gamma_shell(coords_reference, dose_reference,
     """
 
     (
-        global_dose_threshold, maximum_test_distance,
+        coords_reference, coords_evaluation, global_dose_threshold, maximum_test_distance,
         evaluation_points_to_calc, distance_step_size, reference_interpolation
     ) = initialisation(
         coords_reference, dose_reference, coords_evaluation,
@@ -204,7 +204,7 @@ def initialisation(coords_reference, dose_reference, coords_evaluation,
         evaluation_points_to_calc = evaluation_dose_above_threshold
 
     return (
-        global_dose_threshold, maximum_test_distance,
+        coords_reference, coords_evaluation, global_dose_threshold, maximum_test_distance,
         evaluation_points_to_calc, distance_step_size, reference_interpolation)
 
 
