@@ -207,7 +207,8 @@ def gamma_shell(coords_reference, dose_reference,
 
 
 def calculate_min_dose_difference(
-        reference_interpolation, flat_mesh_coords_evaluation, dose_evaluation,
+        reference_interpolation, flat_mesh_coords_evaluation,
+        flat_dose_evaluation,
         distance, distance_step_size, to_be_checked, global_dose_threshold,
         dose_percent_threshold, local_gamma, total_ram):
     """Determine the minimum dose difference.
@@ -216,19 +217,21 @@ def calculate_min_dose_difference(
     """
 
     min_relative_dose_difference = np.nan * np.ones_like(
-        dose_evaluation[to_be_checked])
+        flat_dose_evaluation[to_be_checked])
 
     num_dimensions = len(flat_mesh_coords_evaluation)
-    max_concurrent_calc_points = (total_ram * 0.8 / num_dimensions) // 32
 
     coordinates_at_distance_shell = calculate_coordinates_shell(
         distance, num_dimensions, distance_step_size)
 
     num_points_in_shell = np.shape(coordinates_at_distance_shell)[1]
 
+    estimated_ram_needed = (
+        num_points_in_shell * np.sum(to_be_checked) * 32 * num_dimensions * 2
+    )
+
     num_slices = np.floor(
-        num_points_in_shell * np.sum(to_be_checked) /
-        max_concurrent_calc_points).astype(int) + 1
+        estimated_ram_needed // (total_ram * 0.8)).astype(int) + 1
 
     sys.stdout.write(' | Points tested per evaluation point: {} | RAM split count: {}'.format(
         num_points_in_shell, num_slices))
@@ -251,20 +254,19 @@ def calculate_min_dose_difference(
 
         reference_dose = interpolate_reference_dose_at_distance(
             reference_interpolation, flat_mesh_coords_evaluation,
-            coordinates_at_distance_shell, to_be_checked)
+            coordinates_at_distance_shell, to_be_checked_sliced)
 
         if local_gamma:
             with np.errstate(divide='ignore'):
                 relative_dose_difference = (
-                    reference_dose - dose_evaluation[to_be_checked][None, :]
+                    reference_dose -
+                    flat_dose_evaluation[to_be_checked_sliced][None, :]
                 ) / (reference_dose * dose_percent_threshold / 100)
         else:
             relative_dose_difference = (
-                reference_dose - dose_evaluation[to_be_checked][None, :]
+                reference_dose -
+                flat_dose_evaluation[to_be_checked_sliced][None, :]
             ) / global_dose_threshold
-
-        min_relative_dose_difference = np.min(
-            np.abs(relative_dose_difference), axis=0)
 
         min_relative_dose_difference[current_slice] = np.min(
             np.abs(relative_dose_difference), axis=0)
