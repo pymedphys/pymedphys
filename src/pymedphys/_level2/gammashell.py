@@ -33,9 +33,12 @@ This module makes use of some of the ideas presented within
 """
 
 import sys
+from multiprocessing import Process, Queue
 
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
+
+import psutil
 
 from .._level1.gammainputcheck import run_input_checks
 
@@ -93,15 +96,49 @@ def gamma_shell(coords_reference, dose_reference,
         given by the evaluation coordinates and dose.
     """
 
-    (
-        coords_reference, coords_evaluation, global_dose_threshold, maximum_test_distance,
-        evaluation_points_to_calc, distance_step_size, reference_interpolation
-    ) = initialisation(
-        coords_reference, dose_reference, coords_evaluation,
-        dose_evaluation, global_normalisation,
-        dose_percent_threshold, distance_mm_threshold,
-        interp_fraction, lower_percent_dose_cutoff, max_gamma,
-        mask_reference)
+    coords_reference, coords_evaluation = run_input_checks(
+        coords_reference, dose_reference,
+        coords_evaluation, dose_evaluation)
+
+    if global_normalisation is None:
+        global_normalisation = np.max(dose_reference)
+
+    global_dose_threshold = dose_percent_threshold / 100 * global_normalisation
+    lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
+
+    distance_step_size = distance_mm_threshold / interp_fraction
+    maximum_test_distance = distance_mm_threshold * max_gamma
+
+    reference_interpolation = RegularGridInterpolator(
+        coords_reference, np.array(dose_reference),
+        bounds_error=False, fill_value=np.inf
+    )
+
+    dose_evaluation = np.array(dose_evaluation)
+    evaluation_dose_above_threshold = dose_evaluation >= lower_dose_cutoff
+
+    if mask_reference:
+        coordinates_at_distance_shell = calculate_coordinates_shell(
+            0, len(coords_evaluation), distance_step_size)
+        interpolated_reference_dose = interpolate_reference_dose_at_distance(
+            reference_interpolation, coords_evaluation,
+            coordinates_at_distance_shell)[0, :]
+
+        interpolated_reference_dose = np.reshape(
+            interpolated_reference_dose, np.shape(dose_evaluation))
+
+        reference_dose_interpolation_within_bounds = (
+            interpolated_reference_dose != np.inf)
+        reference_dose_above_threshold = (
+            interpolated_reference_dose >= lower_dose_cutoff)
+
+        evaluation_points_to_calc = (
+            reference_dose_interpolation_within_bounds &
+            reference_dose_above_threshold &
+            evaluation_dose_above_threshold
+        )
+    else:
+        evaluation_points_to_calc = evaluation_dose_above_threshold
 
     still_searching_for_gamma = np.ones_like(
         dose_evaluation).astype(bool)
@@ -156,58 +193,6 @@ def gamma_shell(coords_reference, dose_reference,
     return gamma
 
 
-def initialisation(coords_reference, dose_reference, coords_evaluation,
-                   dose_evaluation, global_normalisation,
-                   dose_percent_threshold, distance_mm_threshold,
-                   interp_fraction, lower_percent_dose_cutoff, max_gamma,
-                   mask_reference):
-    coords_reference, coords_evaluation = run_input_checks(
-        coords_reference, dose_reference,
-        coords_evaluation, dose_evaluation)
-
-    if global_normalisation is None:
-        global_normalisation = np.max(dose_reference)
-
-    global_dose_threshold = dose_percent_threshold / 100 * global_normalisation
-    lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
-
-    distance_step_size = distance_mm_threshold / interp_fraction
-    maximum_test_distance = distance_mm_threshold * max_gamma
-
-    reference_interpolation = RegularGridInterpolator(
-        coords_reference, np.array(dose_reference),
-        bounds_error=False, fill_value=np.inf
-    )
-
-    dose_evaluation = np.array(dose_evaluation)
-    evaluation_dose_above_threshold = dose_evaluation >= lower_dose_cutoff
-
-    if mask_reference:
-        interpolated_reference_dose = interpolate_reference_dose_at_distance(
-            reference_interpolation, coords_evaluation, 0,
-            distance_step_size)[0, :]
-
-        interpolated_reference_dose = np.reshape(
-            interpolated_reference_dose, np.shape(dose_evaluation))
-
-        reference_dose_interpolation_within_bounds = (
-            interpolated_reference_dose != np.inf)
-        reference_dose_above_threshold = (
-            interpolated_reference_dose >= lower_dose_cutoff)
-
-        evaluation_points_to_calc = (
-            reference_dose_interpolation_within_bounds &
-            reference_dose_above_threshold &
-            evaluation_dose_above_threshold
-        )
-    else:
-        evaluation_points_to_calc = evaluation_dose_above_threshold
-
-    return (
-        coords_reference, coords_evaluation, global_dose_threshold, maximum_test_distance,
-        evaluation_points_to_calc, distance_step_size, reference_interpolation)
-
-
 def calculate_min_dose_difference(
         reference_interpolation, coords_evaluation, dose_evaluation,
         distance, distance_step_size, to_be_checked, global_dose_threshold,
@@ -216,10 +201,25 @@ def calculate_min_dose_difference(
 
     Calculated for a given distance from each evaluation point.
     """
+    # all_checks = np.where(to_be_checked)
+    # min_dose_difference = (np.nan * np.ones_like(all_checks[0]))
+
+    # num_slices = np.floor(
+    #     len(coordinates_at_distance_kernel[0]) *
+    #     len(all_checks[0]) / max_concurrent_calc_points) + 1
+
+    num_dimensions = len(coords_evaluation)
+
+    coordinates_at_distance_shell = calculate_coordinates_shell(
+        distance, num_dimensions, distance_step_size)
+
+    sys.stdout.write(' | Points tested per evaluation point: {}'.format(
+        np.shape(coordinates_at_distance_shell)[1]))
+    sys.stdout.flush()
 
     reference_dose = interpolate_reference_dose_at_distance(
-        reference_interpolation, coords_evaluation, distance,
-        distance_step_size, to_be_checked)
+        reference_interpolation, coords_evaluation,
+        coordinates_at_distance_shell, to_be_checked)
 
     if local_gamma:
         with np.errstate(divide='ignore'):
@@ -238,20 +238,11 @@ def calculate_min_dose_difference(
 
 
 def interpolate_reference_dose_at_distance(
-        reference_interpolation, coords_evaluation, distance,
-        distance_step_size, to_be_checked=None):
+        reference_interpolation, coords_evaluation,
+        coordinates_at_distance_shell, to_be_checked=None):
     """Determine the reference dose for the points a given distance away for
     each evaluation coordinate.
     """
-    num_dimensions = len(coords_evaluation)
-
-    coordinates_at_distance_shell = calculate_coordinates_shell(
-        distance, num_dimensions, distance_step_size)
-
-    sys.stdout.write(' | Points tested per evaluation point: {}'.format(
-        np.shape(coordinates_at_distance_shell)[1]))
-    sys.stdout.flush()
-
     mesh_coords_evaluation = np.meshgrid(*coords_evaluation, indexing='ij')
 
     if to_be_checked is None:
@@ -260,7 +251,7 @@ def interpolate_reference_dose_at_distance(
     # Add the distance shells to each evaluation coordinate to make a set of
     # points to be tested for this given distance
     coordinates_at_distance = []
-    for i in range(num_dimensions):
+    for i in range(len(coords_evaluation)):
         coordinates_at_distance.append(np.array(
             mesh_coords_evaluation[i][to_be_checked][None, :] +
             coordinates_at_distance_shell[i][:, None])[:, :, None])

@@ -25,52 +25,76 @@
 
 import numpy as np
 
+from multiprocessing import Process, Queue
 
-def calc_gamma(coords_reference, dose_reference,
-               coords_evaluation, dose_evaluation,
-               distance_threshold, dose_threshold,
-               lower_dose_cutoff=0, distance_step_size=None,
-               maximum_test_distance=np.inf,
-               max_concurrent_calc_points=np.inf,
-               num_threads=1):
+import psutil
+
+# from .._level2.gammashell import initialisation
+
+
+def gamma_multithread(coords_reference, dose_reference,
+                      coords_evaluation, dose_evaluation,
+                      dose_percent_threshold, distance_mm_threshold,
+                      lower_percent_dose_cutoff=20, interp_fraction=10,
+                      max_gamma=np.inf, local_gamma=False,
+                      global_normalisation=None, skip_once_passed=False,
+                      mask_reference=True):
     """Compare two dose grids with the gamma index.
-    Args:
-        coords_reference (tuple): The reference coordinates.
-        dose_reference (np.array): The reference dose grid.
-        coords_evaluation (tuple): The evaluation coordinates.
-        dose_evaluation (np.array): The evaluation dose grid.
-        distance_threshold (float): The gamma distance threshold. Units must
-            match of the coordinates given.
-        dose_threshold (float): An absolute dose threshold.
-            If you wish to use 3% of maximum reference dose input
-            np.max(dose_reference) * 0.03 here.
-        lower_dose_cutoff (:obj:`float`, optional): The lower dose cutoff below
-            which gamma will not be calculated.
-        distance_step_size (:obj:`float`, optional): The step size to use in
-            within the reference grid interpolation. Defaults to a tenth of the
-            distance threshold as recommended within
-            <http://dx.doi.org/10.1118/1.2721657>.
-        maximum_test_distance (:obj:`float`, optional): The distance beyond
-            which searching will stop. Defaults to np.inf. To speed up
-            calculation it is recommended that this parameter is set to
-            something reasonable such as 2*distance_threshold
-    Returns:
-        gamma (np.array): The array of gamma values the same shape as that
-            given by the evaluation coordinates and dose.
+
+    Parameters
+    ----------
+    coords_reference : tuple
+        The reference coordinates.
+    dose_reference : np.array
+        The reference dose grid.
+    coords_evaluation : tuple
+        The evaluation coordinates.
+    dose_evaluation : np.array
+        The evaluation dose grid.
+    dose_percent_threshold : float
+        The percent dose threshold
+    distance_mm_threshold : float
+        The gamma distance threshold. Units must
+        match of the coordinates given.
+    lower_percent_dose_cutoff : :obj:`float`, optional
+        The percent lower dose cutoff below which gamma will not be calculated.
+        This is always applied to the evaluation grid, and then also applied
+        to the reference grid if `mask_reference` is set to `True`.
+    interp_fraction : :obj:`float`, optional
+        The fraction which the distance threshold is divided into for
+        interpolation. Defaults to 10 as recommended within
+        <http://dx.doi.org/10.1118/1.2721657>.
+    max_gamma : :obj:`float`, optional
+        The maximum gamma searched for. This can be used to speed up
+        calculation, once a search distance is reached that would give gamma
+        values larger than this parameter, the search stops. Defaults to np.inf
+    local_gamma
+        Designates local gamma should be used instead of global. Defaults to
+        False.
+    global_normalisation
+        The dose normalisation value that the percent inputs calculate from.
+        Defaults to the maximum value of dose_reference.
+    mask_reference : bool
+        Whether or not the `lower_percent_dose_cutoff` is applied to the
+        reference as well as the evaluation grid.
+
+    Returns
+    -------
+    gamma : np.ndarray
+        The array of gamma values the same shape as that
+        given by the evaluation coordinates and dose.
     """
-    coords_reference, coords_evaluation = _run_input_checks(
-        coords_reference, dose_reference,
-        coords_evaluation, dose_evaluation)
+    (
+        coords_reference, coords_evaluation, global_dose_threshold,
+        maximum_test_distance,
+        evaluation_points_to_calc, distance_step_size, reference_interpolation
+    ) = initialisation(
+        coords_reference, dose_reference, coords_evaluation,
+        dose_evaluation, global_normalisation,
+        dose_percent_threshold, distance_mm_threshold,
+        interp_fraction, lower_percent_dose_cutoff, max_gamma,
+        mask_reference)
 
-    if distance_step_size is None:
-        distance_step_size = distance_threshold / 10
-
-    reference_interpolation = RegularGridInterpolator(
-        coords_reference, np.array(dose_reference),
-        bounds_error=False, fill_value=np.inf
-    )
-
-    dose_evaluation = np.array(dose_evaluation)
     dose_evaluation_flat = np.ravel(dose_evaluation)
 
     mesh_coords_evaluation = np.meshgrid(*coords_evaluation, indexing='ij')
