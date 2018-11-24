@@ -45,7 +45,8 @@ def gamma_shell(coords_reference, dose_reference,
                 dose_percent_threshold, distance_mm_threshold,
                 lower_percent_dose_cutoff=20, interp_fraction=10,
                 max_gamma=np.inf, local_gamma=False,
-                global_normalisation=None, skip_once_passed=False):
+                global_normalisation=None, skip_once_passed=False,
+                mask_reference=True):
     """Compare two dose grids with the gamma index.
 
     Parameters
@@ -65,8 +66,8 @@ def gamma_shell(coords_reference, dose_reference,
         match of the coordinates given.
     lower_percent_dose_cutoff : :obj:`float`, optional
         The percent lower dose cutoff below which gamma will not be calculated.
-        If either the evaluation grid, or the interpolated reference grid fall
-        below this dose percent then that evaluation point is not used.
+        This is always applied to the evaluation grid, and then also applied
+        to the reference grid if `mask_reference` is set to `True`.
     interp_fraction : :obj:`float`, optional
         The fraction which the distance threshold is divided into for
         interpolation. Defaults to 10 as recommended within
@@ -81,6 +82,9 @@ def gamma_shell(coords_reference, dose_reference,
     global_normalisation
         The dose normalisation value that the percent inputs calculate from.
         Defaults to the maximum value of dose_reference.
+    mask_reference : bool
+        Whether or not the `lower_percent_dose_cutoff` is applied to the
+        reference as well as the evaluation grid.
 
     Returns
     -------
@@ -107,25 +111,28 @@ def gamma_shell(coords_reference, dose_reference,
     )
 
     dose_evaluation = np.array(dose_evaluation)
-
-    interpolated_reference_dose = interpolate_reference_dose_at_distance(
-        reference_interpolation, coords_evaluation, 0,
-        distance_step_size)[0, :]
-
-    interpolated_reference_dose = np.reshape(
-        interpolated_reference_dose, np.shape(dose_evaluation))
-
-    reference_dose_interpolation_within_bounds = (
-        interpolated_reference_dose != np.inf)
-    reference_dose_above_threshold = (
-        interpolated_reference_dose >= lower_dose_cutoff)
     evaluation_dose_above_threshold = dose_evaluation >= lower_dose_cutoff
 
-    evaluation_points_to_calc = (
-        reference_dose_interpolation_within_bounds &
-        reference_dose_above_threshold &
-        evaluation_dose_above_threshold
-    )
+    if mask_reference:
+        interpolated_reference_dose = interpolate_reference_dose_at_distance(
+            reference_interpolation, coords_evaluation, 0,
+            distance_step_size)[0, :]
+
+        interpolated_reference_dose = np.reshape(
+            interpolated_reference_dose, np.shape(dose_evaluation))
+
+        reference_dose_interpolation_within_bounds = (
+            interpolated_reference_dose != np.inf)
+        reference_dose_above_threshold = (
+            interpolated_reference_dose >= lower_dose_cutoff)
+
+        evaluation_points_to_calc = (
+            reference_dose_interpolation_within_bounds &
+            reference_dose_above_threshold &
+            evaluation_dose_above_threshold
+        )
+    else:
+        evaluation_points_to_calc = evaluation_dose_above_threshold
 
     still_searching_for_gamma = np.ones_like(
         dose_evaluation).astype(bool)
