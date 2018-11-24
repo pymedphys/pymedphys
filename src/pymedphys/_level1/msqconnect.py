@@ -27,8 +27,7 @@
 """A toolbox for connecting to Mosaiq SQL.
 """
 
-# import time
-# import warnings
+from contextlib import contextmanager
 from getpass import getpass
 
 import keyring
@@ -141,7 +140,8 @@ def multi_close(connections):
         single_close(item)
 
 
-class multi_mosaiq_connect():
+@contextmanager
+def multi_mosaiq_connect(sql_servers):
     """A controlled execution class that opens and closes multiple SQL
     connections.
 
@@ -151,20 +151,15 @@ class multi_mosaiq_connect():
             do_something(cursors['nbccc-msq'])
             do_something(cursors['msqsql'])
     """
-
-    def __init__(self, sql_servers):
-        self.sql_servers = sql_servers
-
-    def __enter__(self):
-        self.connections, cursors = multi_connect(
-            self.sql_servers)
-        return cursors
-
-    def __exit__(self, type, value, traceback):
-        multi_close(self.connections)
+    connections, cursors = multi_connect(sql_servers)
+    try:
+        yield cursors
+    finally:
+        multi_close(connections)
 
 
-class mosaiq_connect():
+@contextmanager
+def mosaiq_connect(sql_server):
     """A controlled execution class that opens and closes a single SQL
     connection to mosaiq.
 
@@ -172,14 +167,8 @@ class mosaiq_connect():
         with mosaiq_connect('msqsql') as cursor:
             do_something(cursor)
     """
-
-    def __init__(self, sql_server):
-        self.sql_server = sql_server
-
-    def __enter__(self):
-        self.connection, cursor = single_connect(
-            self.sql_server)
-        return cursor
-
-    def __exit__(self, type, value, traceback):
-        single_close(self.connection)
+    connection, cursor = single_connect(sql_server)
+    try:
+        yield cursor
+    finally:
+        single_close(connection)
