@@ -52,6 +52,7 @@ setup(
         'pandas',
         'matplotlib',
         'attrs',
+        'psutil',
         'pymssql',
         'keyring',
         'shapely',

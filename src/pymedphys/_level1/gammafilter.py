@@ -44,7 +44,7 @@ def convert_to_percent_pass(gamma_array):
 def gamma_filter_brute_force(coords_reference, dose_reference,
                              coords_evaluation, dose_evaluation,
                              distance_mm_threshold, dose_threshold,
-                             lower_dose_cutoff=0):
+                             lower_dose_cutoff=0, **kwargs):
 
     xx_ref, yy_ref, zz_ref = np.meshgrid(*coords_reference, indexing='ij')
     gamma_array = np.ones_like(dose_evaluation).astype(np.float) * np.nan
@@ -114,7 +114,7 @@ def convert_to_ravel_index(points):
 def gamma_filter_numpy(coords_reference, dose_reference,
                        coords_evaluation, dose_evaluation,
                        distance_mm_threshold, dose_threshold,
-                       lower_dose_cutoff=0):
+                       lower_dose_cutoff=0, **kwargs):
 
     coord_diffs = [
         coord_ref[:, None] - coord_eval[None, :]
