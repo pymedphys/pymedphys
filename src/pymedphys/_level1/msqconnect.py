@@ -86,7 +86,7 @@ def get_username_password(storage_name):
 def separate_server_port_string(sql_server_and_port):
     split_tuple = str(sql_server_and_port).split(':')
     if len(split_tuple) == 1:
-        server = split_tuple
+        server = split_tuple[0]
         port = 1433
     elif len(split_tuple) == 2:
         server, port = split_tuple
@@ -119,7 +119,8 @@ def try_connect_delete_user_if_fail(sql_server_and_port):
             conn = try_connect_delete_user_if_fail(sql_server_and_port)
 
     except Exception as error:
-        print("Server: {}, User: {}".format(sql_server_and_port, user))
+        print("Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
+            sql_server_and_port, user, server, port))
         raise
 
     return conn
