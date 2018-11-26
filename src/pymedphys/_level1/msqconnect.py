@@ -131,7 +131,17 @@ def multi_connect(sql_server_and_ports):
     cursors = dict()
 
     for server_port in sql_server_and_ports:
-        server, port = server_port.split(':')
+        split_tuple = server_port.split(':')
+        if len(split_tuple) == 1:
+            server = split_tuple
+            port = 1433
+        elif len(split_tuple) == 2:
+            server, port = split_tuple
+        else:
+            raise ValueError(
+                "Only one : should appear in server name,"
+                " and it should be used to divide hostname from port number")
+
         connections[server_port], cursors[server_port] = single_connect(
             server, port=port)
 
