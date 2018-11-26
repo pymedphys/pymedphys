@@ -130,8 +130,9 @@ def multi_connect(sql_server_and_ports):
     connections = dict()
     cursors = dict()
 
-    for server, port in sql_server_and_ports:
-        connections[server], cursors[server] = single_connect(
+    for server_port in sql_server_and_ports:
+        server, port = server_port.split(':')
+        connections[server_port], cursors[server_port] = single_connect(
             server, port=port)
 
     return connections, cursors
