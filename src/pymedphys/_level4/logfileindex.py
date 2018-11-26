@@ -231,8 +231,8 @@ def index_logfiles(config):
     centre_details = config['centres']
 
     sql_server_and_ports = [
-        (details['ois_specific_data']['sql_server'],
-         details['ois_specific_data']['port'])
+        "{}:{}".format(details['ois_specific_data']['sql_server'],
+                       details['ois_specific_data']['port'])
         for _, details in centre_details.items()
     ]
 
