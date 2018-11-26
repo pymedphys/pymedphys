@@ -107,8 +107,8 @@ def local_gamma(filepath_ref, filepath_eval, result):
 
 
 def test_local_gamma_1mm():
-    local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 95.1)
+    local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6)
 
 
 def test_local_gamma_0_25mm():
-    local_gamma(REF_VMAT_0_25mm, EVAL_VMAT_0_25mm, 97.6)
+    local_gamma(REF_VMAT_0_25mm, EVAL_VMAT_0_25mm, 96.9)
