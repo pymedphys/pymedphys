@@ -24,22 +24,31 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Compare two dose grids with the gamma index.
-
-This module is a python implementation of the gamma index.
-It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
-interpolating on the fly.
-This module makes use of some of the ideas presented within
-<http://dx.doi.org/10.1118/1.2721657>.
+"""A range of functions for calculating gamma.
 
 
 Available Functions
 -------------------
->>> from pymedphys.gamma import gamma_shell
+>>> from pymedphys.gamma import (
+...     gamma_shell, gamma_dcm, gamma_filter_numpy, gamma_filter_brute_force)
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401,W0614,C0103,C0413
 
-from ._level1.gammafilter import *
-from ._level2.gammashell import *
-from ._level3.gammainterface import *
+from ._level1.clobbercheck import ClobberCheck
+__clobber_check = ClobberCheck()
+
+from ._level1.gammafilter import *  # nopep8
+__clobber_check.baseline = globals()
+
+from ._level2.gammashell import *  # nopep8
+__clobber_check.check(globals(), label='gammashell')
+__clobber_check.baseline = globals()
+
+from ._level3.gammainterface import *  # nopep8
+__clobber_check.check(globals(), label='gammainterface')
+__clobber_check.baseline = globals()
+
+from ._level4.gammaregressiondata import *  # nopep8
+__clobber_check.check(globals(), label='gammaregressiondata')
+__clobber_check.baseline = globals()
