@@ -16,6 +16,8 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../src'))
 
+import pymedphys  # nopep8
+
 
 def setup(app):
     app.add_stylesheet('style.css')
@@ -30,7 +32,7 @@ author = 'Simon Biggs, Matthew Sobolewski'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.3.7'
+release = pymedphys.__version__
 
 
 # -- General configuration ---------------------------------------------------
