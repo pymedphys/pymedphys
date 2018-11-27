@@ -49,7 +49,7 @@ def gamma_shell(coords_reference, dose_reference,
                 lower_percent_dose_cutoff=20, interp_fraction=10,
                 max_gamma=np.inf, local_gamma=False,
                 global_normalisation=None, skip_once_passed=False,
-                mask_evaluation=False):
+                mask_evaluation=False, random_subset=None):
     """Compare two dose grids with the gamma index.
 
     Parameters
@@ -89,12 +89,15 @@ def gamma_shell(coords_reference, dose_reference,
     local_gamma
         Designates local gamma should be used instead of global. Defaults to
         False.
-    global_normalisation
+    global_normalisation : float, optional
         The dose normalisation value that the percent inputs calculate from.
         Defaults to the maximum value of :obj:`dose_reference`.
     mask_evaluation : bool
         Whether or not the :obj:`lower_percent_dose_cutoff` is applied to the
         evaluation grid as well as the reference grid.
+    random_subset : int, optional
+        Used to only calculate a random subset of the reference grid. The
+        number chosen is how many random points to calculate.
 
     Returns
     -------
@@ -154,6 +157,17 @@ def gamma_shell(coords_reference, dose_reference,
         reference_points_to_calc = reference_dose_above_threshold
 
     reference_points_to_calc = np.ravel(reference_points_to_calc)
+
+    if random_subset is not None:
+        to_calc_index = np.where(reference_points_to_calc)[0]
+
+        np.random.shuffle(to_calc_index)
+        random_subset_to_calc = np.zeros_like(
+            reference_points_to_calc).astype(bool)
+        random_subset_to_calc[to_calc_index[0:random_subset]] = True
+
+        reference_points_to_calc = random_subset_to_calc
+
     flat_dose_reference = np.ravel(dose_reference)
 
     memory = psutil.virtual_memory()
@@ -246,7 +260,6 @@ def calculate_min_dose_difference(
 
     all_checks = np.where(np.ravel(to_be_checked))[0]
     index = np.arange(len(all_checks))
-    np.random.shuffle(index)
     sliced = np.array_split(index, num_slices)
 
     sorted_sliced = [
