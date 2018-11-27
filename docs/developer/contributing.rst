@@ -149,21 +149,6 @@ This will download all of PyMedPhys to your local machine.
 
 Next is to install and set up nbstripout.
 
-.. WARNING::
-
-    nbstripout is used to make it so that you do not post Jupyter Notebook
-    outputs online. Depending on how you use notebooks these outputs may
-    contain private and/or sensitive information. Should you uninstall Python
-    it may be possible that nbstripout ends up disabled. Stay prudent, and
-    be extra cautious when working with sensitive information stored within
-    a notebook in a git repository.
-
-.. code:: bash
-
-    pip install nbstripout
-    nbstripout --install
-
-
 Install the development version of PyMedPhys
 --------------------------------------------
 
@@ -176,6 +161,18 @@ dependencies with conda:
     conda install pymedphys --only-deps
     pip install -e .
 
+.. WARNING::
+
+    nbstripout is used to make it so that you do not post Jupyter Notebook
+    outputs online. Depending on how you use notebooks these outputs may
+    contain private and/or sensitive information. Should you uninstall Python
+    it may be possible that nbstripout ends up disabled. Stay prudent, and
+    be extra cautious when working with sensitive information stored within
+    a notebook in a git repository.
+
+.. code:: bash
+
+    conda install -c conda-forge nbstripout
 
 Update this document
 --------------------
@@ -190,7 +187,7 @@ First things first is to make a branch. If you don't know what that is, head on
 back over to https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html
 and scrub up on your terminology.
 
-To make a branch you need to have cmder open and run the following:
+To make a branch you need to have cmder open, be in the pymedphys directory, and run the following:
 
 .. code:: bash
 
