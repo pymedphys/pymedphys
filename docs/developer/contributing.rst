@@ -129,7 +129,6 @@ running
 
     setx HOME "C:\Users\yourusername"
 
-
 Follow the instructions at the following website to create and add an SSH key
 to your GitLab account. You already have ssh built into cmder, so you can skip
 the first steps of that tutorial.
@@ -144,22 +143,7 @@ prompted for a password.
     git clone git@gitlab.com:pymedphys/pymedphys.git
     cd pymedphys
 
-
 This will download all of PyMedPhys to your local machine.
-
-Next is to install and set up nbstripout.
-
-Install the development version of PyMedPhys
---------------------------------------------
-
-Begin by installing the online version of PyMedPhys so that you get all of its
-dependencies with conda:
-
-.. code:: bash
-
-    conda config --add channels conda-forge
-    conda install pymedphys --only-deps
-    pip install -e .
 
 .. WARNING::
 
@@ -170,9 +154,23 @@ dependencies with conda:
     be extra cautious when working with sensitive information stored within
     a notebook in a git repository.
 
+Install the development version of PyMedPhys
+--------------------------------------------
+
+Begin by installing the online version of PyMedPhys so that you get all of its
+dependencies with conda. With cmder open and from the pymedphys directory:
+
 .. code:: bash
 
-    conda install -c conda-forge nbstripout
+    conda config --add channels conda-forge
+    conda install pymedphys --only-deps
+    pip install -e .
+
+Next is to install nbstripout.
+
+.. code:: bash
+
+    conda install nbstripout
 
 Update this document
 --------------------
