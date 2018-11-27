@@ -182,7 +182,7 @@ def gamma_shell(coords_reference, dose_reference,
             reference_points_to_calc & still_searching_for_gamma)
 
         sys.stdout.write(
-            '\rCurrent distance: {0:.2f} mm | Number of evaluation points remaining: {1}'.format(
+            '\rCurrent distance: {0:.2f} mm | Number of reference points remaining: {1}'.format(
                 distance,
                 np.sum(to_be_checked)))
         # sys.stdout.flush()
@@ -234,7 +234,7 @@ def calculate_min_dose_difference(
         dose_percent_threshold, local_gamma, total_ram):
     """Determine the minimum dose difference.
 
-    Calculated for a given distance from each evaluation point.
+    Calculated for a given distance from each reference point.
     """
 
     min_relative_dose_difference = np.nan * np.ones_like(
@@ -254,7 +254,7 @@ def calculate_min_dose_difference(
     num_slices = np.floor(
         estimated_ram_needed // (total_ram * 0.8)).astype(int) + 1
 
-    sys.stdout.write(' | Points tested per evaluation point: {} | RAM split count: {}'.format(
+    sys.stdout.write(' | Points tested per reference point: {} | RAM split count: {}'.format(
         num_points_in_shell, num_slices))
     sys.stdout.flush()
 
@@ -302,8 +302,8 @@ def calculate_min_dose_difference(
 def interpolate_evaluation_dose_at_distance(
         evaluation_interpolation, flat_mesh_coords_reference,
         coordinates_at_distance_shell, to_be_checked=None):
-    """Determine the reference dose for the points a given distance away for
-    each evaluation coordinate.
+    """Determine the evaluation dose for the points a given distance away for
+    each reference coordinate.
     """
     if to_be_checked is None:
         to_be_checked = np.ones_like(
@@ -330,7 +330,7 @@ def interpolate_evaluation_dose_at_distance(
 def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
     """Create the shell of coordinate shifts for the given testing distance.
 
-    Coordinate shifts are determined to check the reference dose for a
+    Coordinate shifts are determined to check the evaluation dose for a
     given distance, dimension, and step size
     """
     if num_dimensions == 1:
