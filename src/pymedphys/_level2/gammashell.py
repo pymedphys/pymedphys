@@ -71,34 +71,36 @@ def gamma_shell(coords_reference, dose_reference,
     distance_mm_threshold : float
         The gamma distance threshold. Units must
         match of the coordinates given.
-    lower_percent_dose_cutoff : :obj:`float`, optional
+    lower_percent_dose_cutoff : float, optional
         The percent lower dose cutoff below which gamma will not be calculated.
         By default this is only applied to the reference grid. Set
-        `mask_evaluation` to True to have this apply to the evaluation grid
+        :obj:`mask_evaluation` to True to have this apply to the evaluation grid
         also.
-    interp_fraction : :obj:`float`, optional
-        The fraction which the distance threshold is divided into for
+    interp_fraction : float, optional
+        The fraction which gamma distance threshold is divided into for
         interpolation. Defaults to 10 as recommended within
-        <http://dx.doi.org/10.1118/1.2721657>.
-    max_gamma : :obj:`float`, optional
+        <http://dx.doi.org/10.1118/1.2721657>. If a 3 mm distance threshold is chosen
+        this default value would mean that the evaluation grid is interpolated at
+        a step size of 0.3 mm.
+    max_gamma : float, optional
         The maximum gamma searched for. This can be used to speed up
         calculation, once a search distance is reached that would give gamma
-        values larger than this parameter, the search stops. Defaults to np.inf
+        values larger than this parameter, the search stops. Defaults to :obj:`np.inf`
     local_gamma
         Designates local gamma should be used instead of global. Defaults to
         False.
     global_normalisation
         The dose normalisation value that the percent inputs calculate from.
-        Defaults to the maximum value of dose_reference.
+        Defaults to the maximum value of :obj:`dose_reference`.
     mask_evaluation : bool
-        Whether or not the `lower_percent_dose_cutoff` is applied to the
+        Whether or not the :obj:`lower_percent_dose_cutoff` is applied to the
         evaluation grid as well as the reference grid.
 
     Returns
     -------
     gamma : np.ndarray
         The array of gamma values the same shape as that
-        given by the evaluation coordinates and dose.
+        given by the reference coordinates and dose.
     """
 
     coords_reference, coords_evaluation = run_input_checks(
