@@ -83,6 +83,13 @@ install the latest Python 3 version available.
 When installing Anaconda make sure to install it for your user only, and tick
 the option “add to path”
 
+Once you have installed Anaconda add the conda-forge channel to your machine using
+the following command in a new command prompt:
+
+.. code:: bash
+
+    conda config --add channels conda-forge
+
 
 Chocolatey
 ----------
@@ -145,14 +152,27 @@ prompted for a password.
 
 This will download all of PyMedPhys to your local machine.
 
+Set up nbstripout
+-----------------
+
+nbstripout is used to make it so that you do not post Jupyter Notebook
+outputs online. Depending on how you use notebooks these outputs may
+contain private and/or sensitive information.
+
 .. WARNING::
 
-    nbstripout is used to make it so that you do not post Jupyter Notebook
-    outputs online. Depending on how you use notebooks these outputs may
-    contain private and/or sensitive information. Should you uninstall Python
+    Should you uninstall Python
     it may be possible that nbstripout ends up disabled. Stay prudent, and
     be extra cautious when working with sensitive information stored within
     a notebook in a git repository.
+
+To install nbstripout run the following within the pymedphys directory:
+
+.. code:: bash
+
+    conda install nbstripout
+    nbstripout install
+
 
 Install the development version of PyMedPhys
 --------------------------------------------
@@ -162,15 +182,9 @@ dependencies with conda. With cmder open and from the pymedphys directory:
 
 .. code:: bash
 
-    conda config --add channels conda-forge
     conda install pymedphys --only-deps
     pip install -e .
 
-Next is to install nbstripout.
-
-.. code:: bash
-
-    conda install nbstripout
 
 Update this document
 --------------------
