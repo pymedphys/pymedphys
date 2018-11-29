@@ -117,6 +117,10 @@ def try_connect_delete_user_if_fail(sql_server_and_port):
                 pass
             print('Please try login again:')
             conn = try_connect_delete_user_if_fail(sql_server_and_port)
+        else:
+            print("Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
+                sql_server_and_port, user, server, port))
+            raise
 
     except Exception as error:
         print("Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
