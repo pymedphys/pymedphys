@@ -57,74 +57,93 @@ def execute_sql(cursor, sql_string, parameters=None):
     return data
 
 
-def get_username_password(server):
-    user = keyring.get_password('MosaiqSQL_username', server)
-    password = keyring.get_password('MosaiqSQL_password', server)
+def get_username_password(storage_name):
+
+    user = keyring.get_password('MosaiqSQL_username', storage_name)
+    password = keyring.get_password('MosaiqSQL_password', storage_name)
 
     if user is None or user == '':
         print(
             "Provide a user that only has `db_datareader` access to the "
-            "Mosaiq database at `{}`".format(server)
+            "Mosaiq database at `{}`".format(storage_name)
         )
         user = input()
         if user == '':
             error_message = 'Username should not be blank.'
             print(error_message)
             raise ValueError(error_message)
-        keyring.set_password('MosaiqSQL_username', server, user)
+        keyring.set_password('MosaiqSQL_username', storage_name, user)
 
     if password is None:
         print("Provide password for '{}' server and '{}' user".format(
-            server, user))
+            storage_name, user))
         password = getpass()
-        keyring.set_password('MosaiqSQL_password', server, password)
+        keyring.set_password('MosaiqSQL_password', storage_name, password)
 
     return user, password
 
 
-def try_connect_delete_user_if_fail(server, user, password):
+def separate_server_port_string(sql_server_and_port):
+    split_tuple = str(sql_server_and_port).split(':')
+    if len(split_tuple) == 1:
+        server = split_tuple[0]
+        port = 1433
+    elif len(split_tuple) == 2:
+        server, port = split_tuple
+    else:
+        raise ValueError(
+            "Only one : should appear in server name,"
+            " and it should be used to divide hostname from port number")
+
+    return server, port
+
+
+def try_connect_delete_user_if_fail(sql_server_and_port):
+    server, port = separate_server_port_string(sql_server_and_port)
+    user, password = get_username_password(sql_server_and_port)
+
     try:
-        conn = pymssql.connect(server, user, password, 'MOSAIQ')
+        conn = pymssql.connect(server, user, password, 'MOSAIQ', port=port)
     except pymssql.OperationalError as error:
         error_message = error.args[0][1]
         if error_message.startswith(b'Login failed for user'):
             print('Login failed, wiping the saved username and password.')
             try:
-                keyring.delete_password('MosaiqSQL_username', server)
-                keyring.delete_password('MosaiqSQL_password', server)
+                keyring.delete_password(
+                    'MosaiqSQL_username', sql_server_and_port)
+                keyring.delete_password(
+                    'MosaiqSQL_password', sql_server_and_port)
             except keyring.errors.PasswordDeleteError as error:
                 pass
-        raise
+            print('Please try login again:')
+            conn = try_connect_delete_user_if_fail(sql_server_and_port)
 
     except Exception as error:
-        print("Server: {}, User: {}".format(server, user))
+        print("Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
+            sql_server_and_port, user, server, port))
         raise
 
     return conn
 
 
-def single_connect(server):
+def single_connect(sql_server_and_port):
     """Connect to the Mosaiq server.
     Ask the user for a password if they haven't logged in before.
     """
-
-    if type(server) is not str:
-        raise TypeError("`server` input variable needs to be a string")
-
-    user, password = get_username_password(server)
-    conn = try_connect_delete_user_if_fail(server, user, password)
+    conn = try_connect_delete_user_if_fail(sql_server_and_port)
 
     return conn, conn.cursor()
 
 
-def multi_connect(sql_servers):
+def multi_connect(sql_server_and_ports):
     """Create SQL connections and cursors.
     """
     connections = dict()
     cursors = dict()
 
-    for server in sql_servers:
-        connections[server], cursors[server] = single_connect(server)
+    for server_port in sql_server_and_ports:
+        connections[server_port], cursors[server_port] = single_connect(
+            server_port)
 
     return connections, cursors
 
@@ -141,7 +160,7 @@ def multi_close(connections):
 
 
 @contextmanager
-def multi_mosaiq_connect(sql_servers):
+def multi_mosaiq_connect(sql_server_and_ports):
     """A controlled execution class that opens and closes multiple SQL
     connections.
 
@@ -151,7 +170,7 @@ def multi_mosaiq_connect(sql_servers):
             do_something(cursors['nbccc-msq'])
             do_something(cursors['msqsql'])
     """
-    connections, cursors = multi_connect(sql_servers)
+    connections, cursors = multi_connect(sql_server_and_ports)
     try:
         yield cursors
     finally:
@@ -159,7 +178,7 @@ def multi_mosaiq_connect(sql_servers):
 
 
 @contextmanager
-def mosaiq_connect(sql_server):
+def mosaiq_connect(sql_server_and_port):
     """A controlled execution class that opens and closes a single SQL
     connection to mosaiq.
 
@@ -167,7 +186,7 @@ def mosaiq_connect(sql_server):
         with mosaiq_connect('msqsql') as cursor:
             do_something(cursor)
     """
-    connection, cursor = single_connect(sql_server)
+    connection, cursor = single_connect(sql_server_and_port)
     try:
         yield cursor
     finally:
