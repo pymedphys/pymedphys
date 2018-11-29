@@ -230,8 +230,9 @@ def index_logfiles(config):
     machine_map = config['machine_map']
     centre_details = config['centres']
 
-    sql_servers = [
-        details['ois_specific_data']['sql_server']
+    sql_server_and_ports = [
+        "{}:{}".format(details['ois_specific_data']['sql_server'],
+                       details['ois_specific_data']['port'])
         for _, details in centre_details.items()
     ]
 
@@ -241,7 +242,7 @@ def index_logfiles(config):
     indexset = set(index.keys())
 
     print('\nConnecting to Mosaiq SQL servers...')
-    with multi_mosaiq_connect(sql_servers) as cursors:
+    with multi_mosaiq_connect(sql_server_and_ports) as cursors:
 
         print('Globbing index directory...')
         to_be_indexed = glob(

@@ -83,6 +83,13 @@ install the latest Python 3 version available.
 When installing Anaconda make sure to install it for your user only, and tick
 the option “add to path”
 
+Once you have installed Anaconda add the conda-forge channel to your machine using
+the following command in a new command prompt:
+
+.. code:: bash
+
+    conda config --add channels conda-forge
+
 
 Chocolatey
 ----------
@@ -129,7 +136,6 @@ running
 
     setx HOME "C:\Users\yourusername"
 
-
 Follow the instructions at the following website to create and add an SSH key
 to your GitLab account. You already have ssh built into cmder, so you can skip
 the first steps of that tutorial.
@@ -144,35 +150,38 @@ prompted for a password.
     git clone git@gitlab.com:pymedphys/pymedphys.git
     cd pymedphys
 
-
 This will download all of PyMedPhys to your local machine.
 
-Next is to install and set up nbstripout.
+Set up nbstripout
+-----------------
+
+nbstripout is used to make it so that you do not post Jupyter Notebook
+outputs online. Depending on how you use notebooks these outputs may
+contain private and/or sensitive information.
 
 .. WARNING::
 
-    nbstripout is used to make it so that you do not post Jupyter Notebook
-    outputs online. Depending on how you use notebooks these outputs may
-    contain private and/or sensitive information. Should you uninstall Python
+    Should you uninstall Python
     it may be possible that nbstripout ends up disabled. Stay prudent, and
     be extra cautious when working with sensitive information stored within
     a notebook in a git repository.
 
+To install nbstripout run the following within the pymedphys directory:
+
 .. code:: bash
 
-    pip install nbstripout
-    nbstripout --install
+    conda install nbstripout
+    nbstripout install
 
 
 Install the development version of PyMedPhys
 --------------------------------------------
 
 Begin by installing the online version of PyMedPhys so that you get all of its
-dependencies with conda:
+dependencies with conda. With cmder open and from the pymedphys directory:
 
 .. code:: bash
 
-    conda config --add channels conda-forge
     conda install pymedphys --only-deps
     pip install -e .
 
@@ -190,7 +199,7 @@ First things first is to make a branch. If you don't know what that is, head on
 back over to https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html
 and scrub up on your terminology.
 
-To make a branch you need to have cmder open and run the following:
+To make a branch you need to have cmder open, be in the pymedphys directory, and run the following:
 
 .. code:: bash
 

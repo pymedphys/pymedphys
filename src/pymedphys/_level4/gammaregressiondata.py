@@ -1,5 +1,4 @@
 # Copyright (C) 2018 Simon Biggs
-
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -23,32 +22,7 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import os
 
-"""A range of functions for calculating gamma.
-
-
-Available Functions
--------------------
->>> from pymedphys.gamma import (
-...     gamma_shell, gamma_dcm, gamma_filter_numpy, gamma_filter_brute_force)
-"""
-
-# pylint: disable=W0401,W0614,C0103,C0413
-
-from ._level1.clobbercheck import ClobberCheck
-__clobber_check = ClobberCheck()
-
-from ._level1.gammafilter import *  # nopep8
-__clobber_check.baseline = globals()
-
-from ._level2.gammashell import *  # nopep8
-__clobber_check.check(globals(), label='gammashell')
-__clobber_check.baseline = globals()
-
-from ._level3.gammainterface import *  # nopep8
-__clobber_check.check(globals(), label='gammainterface')
-__clobber_check.baseline = globals()
-
-from ._level4.gammaregressiondata import *  # nopep8
-__clobber_check.check(globals(), label='gammaregressiondata')
-__clobber_check.baseline = globals()
+DATA_DIRECTORY = os.path.join(
+    os.path.dirname(__file__), "..tests/data/gamma/regression_dicom")
