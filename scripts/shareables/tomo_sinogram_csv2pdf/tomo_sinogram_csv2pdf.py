@@ -23,53 +23,27 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""
-@author: king.r.paul@gmail.com
-"""
 
 import csv
 from string import ascii_letters as LETTERS
 from string import digits as DIGITS
+from os.path import dirname, join
 
+from matplotlib.gridspec import GridSpec
+from matplotlib import pyplot as plt
 import numpy as np
 
+from sinogram import unshuffle
 
-def unshuffle_sinogram(array):
-    assert array.shape[1] == 64  # num leaves
+"""
+@author: king.r.paul@gmail.com
+"""
 
-    # SPLIT SINOGRAM INTO 51 ANGLE-INDEXED SEGMENTS
-    result = [[] for i in range(51)]
-    idx = 0
-    for row in array:
-        result[idx].append(row)
-        idx = (idx + 1) % 51
-
-    # EXCLUDE EXTERIOR LEAVES WITH ZERO LEAF-OPEN TIMES
-    include = [False for f in range(64)]
-    for i, angle in enumerate(result):
-        for j, couch_step in enumerate(angle):
-            for k, _ in enumerate(couch_step):
-                if result[i][j][k] > 0.0:
-                    include[k] = True
-    gap = max([2 + max(i-32, 31-i) for i, v in enumerate(include) if v])
-    result = [[p[31 - gap:32 + gap] for p in result[i]] for i in range(51)]
-
-    return result
-
-
-def unshuffle_sinogram_csv(file_name):
+def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
     """
-    Convert a CSV sinogram file into a fluence map collection, by
+    Convert a CSV sinogram file into a PDF fluence map collection, by
     unshuffling the sinogram, i.e. separating leaf pattern into
     the 51 tomtherapy discretization angles; display & save result.
-
-    Return a nested list:
-        [ [ [leaf-open-fraction] [leaf-open-fraction] ... ]   - couch increment
-          [ [leaf-open-fraction] [leaf-open-fraction] ... ]   - couch increment
-        ]                                                     - gantry angle
-        [   [ [leaf-open-fraction] [leaf-open-fraction] ... ] - couch increment
-            [ [leaf-open-fraction] [leaf-open-fraction] ... ] - couch increment
-        ]                                                     - gantry angle
 
     Keyword Args:
         file_name:
@@ -82,9 +56,16 @@ def unshuffle_sinogram_csv(file_name):
             containing its leaf-open fraction.
             This format is produced by ExportTomoSinogram.py, shared by
             Brandon Merz on on the RaySearch customer forum, 1/18/2018.
+        show: diplay on screen
+        save: save to disk
     """
 
+    fig = plt.figure(figsize=(7.5, 11))
+    grid_spec = GridSpec(nrows=9, ncols=6, hspace=None, wspace=None,
+                         left=0.05, right=0.9, bottom=0.02, top=0.975)
+
     with open(file_name, 'r') as csvfile:
+
         # PATIENT NAME & ID
         pat_name, pat_num = csvfile.readline().split('ID:')
         pat_name = pat_name.replace('Patient name:', '')
@@ -100,6 +81,27 @@ def unshuffle_sinogram_csv(file_name):
         reader = csv.reader(csvfile, delimiter=',')
         array = np.asarray([line[1:] for line in reader]).astype(float)
 
-    result = unshuffle_sinogram(array)
+    result = unshuffle(array)
 
-    return document_id, result
+    fig.text(0.03, 0.985, document_id,
+             horizontalalignment='left', verticalalignment='center')
+
+    for idx, angle in enumerate(result):
+        subplot = fig.add_subplot(grid_spec[idx])
+        _ = subplot.imshow(angle, cmap='gray')
+        subplot.axes.get_xaxis().set_visible(False)
+        subplot.axes.get_yaxis().set_visible(False)
+        subplot.set_title('{0:.0f} dg'.format(7.06*idx), fontsize=9)
+
+    if save:
+        plt.savefig(join(dirname(file_name), document_id + ' Sinogram.pdf'))
+
+    if show:
+        plt.show()
+
+if __name__ == '__main__':
+    try:
+        test = ".\\scripts\\shareables\\tomo_sinogram_csv2pdf\\sinogram.csv"
+        tomo_sinogram_csv2pdf(test, show=True, save=True)
+    except IOError:
+        print('No sinogram csv file.')
