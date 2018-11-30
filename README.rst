@@ -43,16 +43,21 @@ currently active developers and maintainers of PyMedPhys are given below:
 
 .. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
+    :width: 500 px
 
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png
+    
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png  
     :target: `Royal Adelaide Hospital`_
-
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
+    :width: 500 px
+   
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png  
     :target: `Northern Beaches Cancer Care`_
-
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
+    :width: 500 px
+    
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png  
     :target: `Anderson Regional Cancer Center`_	
-	
+    :width: 500 px
+   
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
@@ -60,6 +65,7 @@ currently active developers and maintainers of PyMedPhys are given below:
 .. _`Anderson Regional Cancer Center`: http://www.andersonregional.org/CancerCenter.aspx
 
 .. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
+
 
 We want you on this list. We want you, clinical Medical Physicist, to join our
 team. We want you if you have a desire to create and validate a toolbox we can
