@@ -35,7 +35,11 @@ Examples:
 from ._level1.clobbercheck import ClobberCheck
 __clobber_check = ClobberCheck()
 
-from ._level1.collequivalent import *  # nopep8
+from ._level1.collmlctypes import *  # nopep8
+__clobber_check.baseline = globals()
+
+from ._level2.collequivalent import *  # nopep8
+__clobber_check.check(globals(), label='collequivalent')
 __clobber_check.baseline = globals()
 
 from ._level2 import collmudensity  # nopep8
