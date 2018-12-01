@@ -25,7 +25,7 @@
 
 import warnings
 
-from .._level1.collmlctypes import LENGTH_MAP
+from .._level1.collmlctypes import autodetect_leaf_pair_widths
 
 
 def abutted(a, b, tolerance=1):
@@ -46,17 +46,7 @@ def mlc_equivalent_square_fs(mlc_segments, leaf_pair_widths=None):
     """
 
     if leaf_pair_widths is None:
-        try:
-            collimator_name, leaf_pair_widths = LENGTH_MAP[len(mlc_segments)]
-            warnings.warn(
-                (
-                    'Based on number of segments provided the collimator type '
-                    '{} has automatically been chosen. Please define '
-                    'leaf_widths parameter if this is not correct.'
-                ).format(collimator_name), UserWarning)
-        except KeyError:
-            raise ValueError(
-                'Please define leaf_widths parameter')
+        leaf_pair_widths = autodetect_leaf_pair_widths(len(mlc_segments))
 
     # y_component: y component of distance from (0,0) to leaf center by leaf
     # pair
