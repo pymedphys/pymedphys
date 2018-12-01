@@ -25,21 +25,51 @@
 
 import numpy as np
 
-from pymedphys.coll import mlc_equivalent_square_fs, MILLENIUM
+from pymedphys.coll import mlc_equivalent_square_fs, MILLENIUM, AGILITY
 
 
-def test_equivalent_fs():
+def test_equivalent_mlc():
     """ Compare effective field size for known pattern against benchmark. """
-    shape = [(0.0, 0.0)] * 14
-    shape += [(3.03, 2.47), (2.88, 2.46), (3.08, 2.51), (2.86, 2.46),
-              (2.88, 2.46), (2.91, 5.04), (2.5, 5.04), (2.55, 4.87),
-              (2.38, 4.61), (2.38, 7.04), (2.61, 7.46), (2.48, 6.55),
-              (3.02, 6.52), (3.9, 7.2), (4.5, 7.5), (4.5, 7.5), (4.5, 7.5),
-              (4.5, 7.5), (4.45, 7.5), (4.0, 7.5), (3.5, 7.5), (3.49, 7.5),
-              (3.0, 7.5), (3.0, 7.5), (3.0, 7.5), (2.5, 7.5), (2.5, 7.5),
-              (2.49, 6.52)]
-    shape += [(0.0, 0.0)] * 18
+    mlc_segments = [(0.0, 0.0)] * 14
+    mlc_segments += [
+        (3.03, 2.47), (2.88, 2.46), (3.08, 2.51), (2.86, 2.46),
+        (2.88, 2.46), (2.91, 5.04), (2.5, 5.04), (2.55, 4.87),
+        (2.38, 4.61), (2.38, 7.04), (2.61, 7.46), (2.48, 6.55),
+        (3.02, 6.52), (3.9, 7.2), (4.5, 7.5), (4.5, 7.5), (4.5, 7.5),
+        (4.5, 7.5), (4.45, 7.5), (4.0, 7.5), (3.5, 7.5), (3.49, 7.5),
+        (3.0, 7.5), (3.0, 7.5), (3.0, 7.5), (2.5, 7.5), (2.5, 7.5),
+        (2.49, 6.52)]
+    mlc_segments += [(0.0, 0.0)] * 18
 
-    shape = np.array(shape) * 10  # convert to mm
+    mlc_segments = np.array(mlc_segments) * 10  # convert to mm
 
-    assert abs(mlc_equivalent_square_fs(shape, MILLENIUM) - 107.25) < 0.05
+    assert abs(
+        mlc_equivalent_square_fs(mlc_segments, MILLENIUM) - 107.25
+    ) < 0.05
+
+
+def an_equivalent_square(square_size):
+    open_leaves = square_size // 5
+
+    # Make sure evenly divides
+    assert open_leaves == square_size / 5
+
+    num_remaining_leaves = 80 - open_leaves
+    leaves_on_top = 80 - num_remaining_leaves // 2
+    leaves_on_bottom = num_remaining_leaves - leaves_on_top
+
+    mlc_segments = (
+        [(0, 0)]*leaves_on_top +
+        [(100, 100)] * open_leaves +
+        [(0, 0)]*leaves_on_bottom)
+
+    assert mlc_equivalent_square_fs(mlc_segments, AGILITY) == square_size
+
+
+def test_equivalent_squares():
+    sizes_to_test = (
+        10, 20, 50, 100, 400
+    )
+
+    for square_size in sizes_to_test:
+        an_equivalent_square(square_size)
