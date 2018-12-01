@@ -23,6 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""@author: king.r.paul@gmail.com
+"""
+
 
 import csv
 from string import ascii_letters as LETTERS
@@ -33,11 +36,8 @@ from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
 import numpy as np
 
-from sinogram import unshuffle
+from pymedphys.tomo import unshuffle_sinogram
 
-"""
-@author: king.r.paul@gmail.com
-"""
 
 def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
     """
@@ -81,7 +81,7 @@ def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
         reader = csv.reader(csvfile, delimiter=',')
         array = np.asarray([line[1:] for line in reader]).astype(float)
 
-    result = unshuffle(array)
+    result = unshuffle_sinogram(array)
 
     fig.text(0.03, 0.985, document_id,
              horizontalalignment='left', verticalalignment='center')
@@ -98,6 +98,7 @@ def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
 
     if show:
         plt.show()
+
 
 if __name__ == '__main__':
     try:
