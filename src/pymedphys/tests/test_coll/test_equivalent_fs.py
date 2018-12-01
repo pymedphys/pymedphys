@@ -23,13 +23,14 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import numpy as np
 
-from pymedphys.coll import mlc_equivalent_square_fs
+from pymedphys.coll import mlc_equivalent_square_fs, MILLENIUM
 
 
 def test_equivalent_fs():
     """ Compare effective field size for known pattern against benchmark. """
-    shape = [(0.0, 0.0) for i in range(14)]
+    shape = [(0.0, 0.0)] * 14
     shape += [(3.03, 2.47), (2.88, 2.46), (3.08, 2.51), (2.86, 2.46),
               (2.88, 2.46), (2.91, 5.04), (2.5, 5.04), (2.55, 4.87),
               (2.38, 4.61), (2.38, 7.04), (2.61, 7.46), (2.48, 6.55),
@@ -37,6 +38,8 @@ def test_equivalent_fs():
               (4.5, 7.5), (4.45, 7.5), (4.0, 7.5), (3.5, 7.5), (3.49, 7.5),
               (3.0, 7.5), (3.0, 7.5), (3.0, 7.5), (2.5, 7.5), (2.5, 7.5),
               (2.49, 6.52)]
-    shape += [(0.0, 0.0) for i in range(18)]
+    shape += [(0.0, 0.0)] * 18
 
-    assert abs(mlc_equivalent_square_fs(shape) - 10.725) < 0.05
+    shape = np.array(shape) * 10  # convert to mm
+
+    assert abs(mlc_equivalent_square_fs(shape, MILLENIUM) - 107.25) < 0.05

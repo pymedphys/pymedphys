@@ -23,6 +23,36 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import warnings
+
 MILLENIUM = (10,)*10 + (5,)*40 + (10,)*10
 BRAINLAB = (5.5,)*3 + (4.5,)*3 + (3,)*14 + (4.5,)*3 + (5.5,)*3
 AGILITY = (5,)*80
+
+
+ALL_TYPES = {
+    'millenium': MILLENIUM,
+    'brainlab': BRAINLAB,
+    'agility': AGILITY
+}
+
+LENGTH_MAP = {
+    len(leaf_pair_widths): (name, leaf_pair_widths)
+    for name, leaf_pair_widths in ALL_TYPES.items()
+}
+
+
+def autodetect_leaf_pair_widths(number_of_mlc_pairs):
+    try:
+        collimator_name, leaf_pair_widths = LENGTH_MAP[number_of_mlc_pairs]
+        warnings.warn(
+            (
+                'Based on number of segments provided the collimator type '
+                '{} has automatically been chosen. Please define '
+                'leaf_widths parameter if this is not correct.'
+            ).format(collimator_name), UserWarning)
+    except KeyError:
+        raise ValueError(
+            'Please define leaf_widths parameter')
+
+    return leaf_pair_widths
