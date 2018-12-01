@@ -32,7 +32,7 @@
 
 import numpy as np
 
-from pymedphys.mudensity import calc_single_control_point
+from pymedphys.coll import calc_single_control_point
 
 
 def test_partial_jaws():
