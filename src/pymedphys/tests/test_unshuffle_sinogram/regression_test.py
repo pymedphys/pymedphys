@@ -23,9 +23,16 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import pymedphys
-import os
-print(os.getcwd())
 
-if __name__ == '__main__':
-    pass
+import os
+
+from pymedphys.tomo import unshuffle_sinogram_csv
+
+SINOGRAM_FILE = os.path.join(
+    os.path.dirname(__file__), "../data/tomo/sinogram.csv")
+
+
+def test_unshuffle():
+    document_id, results = unshuffle_sinogram_csv(SINOGRAM_FILE)
+
+    assert document_id == '00000 - ANONYMOUS, PATIENT'
