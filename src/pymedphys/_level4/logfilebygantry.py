@@ -28,7 +28,7 @@ import numpy as np
 
 from .._level1.utilitiesconfig import get_filepath, get_gantry_tolerance
 
-from .._level2.aperturemudensity import (
+from .._level2.collmudensity import (
     find_relevant_control_points, calc_mu_density_return_grid)
 from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
 from .._level2.trfdecode import delivery_data_from_logfile
@@ -125,7 +125,7 @@ def get_field_id_from_logfile_group(index, logfile_group):
 
 
 def calc_normalisation(mosaiq_delivery_data):
-    all_gantry_angles = calc_mu_density_return_grid(
+    all_gantry_angles = mu_density_return_grid(
         mosaiq_delivery_data.monitor_units, mosaiq_delivery_data.mlc,
         mosaiq_delivery_data.jaw
     )
@@ -137,8 +137,8 @@ def calc_normalisation(mosaiq_delivery_data):
     return normalisation
 
 
-def calc_mu_density_bygantry(delivery_data, gantry_angle, grid_resolution=1):
-    mu_density = calc_mu_density_return_grid(
+def mu_density_bygantry(delivery_data, gantry_angle, grid_resolution=1):
+    mu_density = mu_density_return_grid(
         grid_resolution=grid_resolution,
         *extract_angle_from_delivery_data(delivery_data, gantry_angle)
     )
@@ -156,7 +156,7 @@ def calc_logfile_mu_density_bygantry(index, config, logfile_group,
 
         gantry_tolerance = get_gantry_tolerance(index, filehash, config)
 
-        a_logfile_mu_density = calc_mu_density_return_grid(
+        a_logfile_mu_density = mu_density_return_grid(
             grid_resolution=grid_resolution,
             *extract_angle_from_delivery_data(
                 logfile_delivery_data, gantry_angle, gantry_tolerance)
@@ -178,7 +178,7 @@ def compare_logfile_group_bygantry(index, config, cursor, logfile_group,
 
     mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(cursor, field_id)
 
-    mosaiq_mu_density = calc_mu_density_bygantry(
+    mosaiq_mu_density = mu_density_bygantry(
         mosaiq_delivery_data, gantry_angle)
     normalisation = calc_normalisation(mosaiq_delivery_data)
 
@@ -263,7 +263,7 @@ def get_logfile_mu_density_bygantry(logfile_groups, mosaiq_gantry_angles,
                 num_control_points = len(
                     delivery_data[file_hash][mosaiq_gantry_angle]['mu'])
                 if num_control_points > 0:
-                    mu_density = calc_mu_density_return_grid(
+                    mu_density = mu_density_return_grid(
                         **delivery_data[file_hash][mosaiq_gantry_angle])
                     if mosaiq_gantry_angle not in logfile_mu_density_bygantry[logfile_group]:
                         logfile_mu_density_bygantry[logfile_group][mosaiq_gantry_angle] = list(
@@ -306,7 +306,7 @@ def get_mosaiq_mu_density_bygantry(mosaiq_delivery_data_bygantry):
     mosaiq_gantry_angles = mosaiq_delivery_data_bygantry.keys()
 
     for mosaiq_gantry_angle in mosaiq_gantry_angles:
-        mu_density = calc_mu_density_return_grid(
+        mu_density = mu_density_return_grid(
             **mosaiq_delivery_data_bygantry[mosaiq_gantry_angle])
         mosaiq_mu_density_bygantry[mosaiq_gantry_angle] = mu_density
 
