@@ -60,7 +60,7 @@ def an_equivalent_square(square_size):
 
     mlc_segments = (
         [(0, 0)]*leaves_on_top +
-        [(100, 100)] * open_leaves +
+        [(square_size, square_size)] * open_leaves +
         [(0, 0)]*leaves_on_bottom)
 
     assert mlc_equivalent_square_fs(mlc_segments, AGILITY) == square_size
