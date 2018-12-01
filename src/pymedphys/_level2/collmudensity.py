@@ -124,7 +124,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     --------
     >>> import numpy as np
     >>>
-    >>> from pymedphys.mudensity import (
+    >>> from pymedphys.coll import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
     >>> leaf_pair_widths = (5, 5, 5)
@@ -195,7 +195,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
 
     MU Density from a Mosaiq record
 
-    >>> from pymedphys.mudensity import (
+    >>> from pymedphys.coll import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
     >>> from pymedphys.msq import (
@@ -220,7 +220,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
 
     MU Density from a logfile at a given filepath
 
-    >>> from pymedphys.mudensity import (
+    >>> from pymedphys.coll import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
     >>> from pymedphys.trf import delivery_data_from_logfile
@@ -280,7 +280,7 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
     Examples
     --------
     >>> import numpy as np
-    >>> from pymedphys.mudensity import (
+    >>> from pymedphys.coll import (
     ...     calc_single_control_point, display_mu_density)
     >>>
     >>> leaf_pair_widths = (2, 2)
@@ -363,7 +363,7 @@ def single_mlc_pair(left_mlc, right_mlc,
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>>
-    >>> from pymedphys.mudensity import single_mlc_pair
+    >>> from pymedphys.coll import single_mlc_pair
     >>>
     >>> mlc_left = (-2.3, 3.1)  # (start position, end position)
     >>> mlc_right = (0, 7.7)
@@ -428,7 +428,7 @@ def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP, grid_resolution=__DEFAULT_GRID
 
     Examples
     --------
-    See `pymedphys.mudensity.calc_mu_density`_.
+    See `pymedphys.coll.calc_mu_density`_.
     """
     leaf_pair_widths = np.array(leaf_pair_widths)
 
@@ -486,7 +486,7 @@ def display_mu_density(grid, mu_density, grid_resolution=None):
 
     Examples
     --------
-    See `pymedphys.mudensity.calc_mu_density`_.
+    See `pymedphys.coll.calc_mu_density`_.
     """
     if grid_resolution is None:
         grid_resolution = grid['mlc'][1] - grid['mlc'][0]
