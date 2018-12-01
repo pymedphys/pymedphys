@@ -26,9 +26,11 @@
 """
 @author: king.r.paul@gmail.com
 """
+
 import numpy as np
 
-def unshuffle(array):
+
+def unshuffle_sinogram(array):
     """
     Unshuffling sinogram, i.e. separate leaf pattern into the 51
     tomtherapy discretization angles, accepting a 2d list of lists
@@ -77,9 +79,3 @@ def unshuffle(array):
     result = [[p[31 - gap:32 + gap] for p in result[i]] for i in range(51)]
 
     return result
-
-if __name__ == '__main__':
-    ## SELF TEST
-    GREY = [[0.5 for i in range(64)] for j in range(102)]
-    assert (len(unshuffle(GREY))) == 51
-    assert (len(unshuffle(GREY)[0])) == (len(unshuffle(GREY)[0][0]))
