@@ -42,6 +42,9 @@ import psutil
 
 from .._level1.gammainputcheck import run_input_checks
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def gamma_shell(coords_reference, dose_reference,
                 coords_evaluation, dose_evaluation,

@@ -35,6 +35,9 @@ from scipy.interpolate import splprep, splev
 import pydicom
 import pydicom.uid
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
     if set_transfer_syntax_uid:

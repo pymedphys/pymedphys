@@ -60,6 +60,9 @@ import matplotlib.pyplot as plt
 
 from .._level1.plthelpers import pcolormesh_grid
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 __AGILITY_LEAF_PAIR_WIDTHS = (5,) * 80
 
