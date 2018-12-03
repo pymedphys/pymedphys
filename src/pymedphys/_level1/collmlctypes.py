@@ -34,9 +34,9 @@ AGILITY = (5,)*80
 
 
 ALL_TYPES = {
-    'millenium': MILLENIUM,
-    'brainlab': BRAINLAB,
-    'agility': AGILITY
+    'Millenium': MILLENIUM,
+    'BrainLab': BRAINLAB,
+    'Agility': AGILITY
 }
 
 LENGTH_MAP = {
