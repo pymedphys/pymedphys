@@ -67,7 +67,7 @@ def an_equivalent_square(square_size):
     assert mlc_equivalent_square_fs(mlc_segments, AGILITY) == square_size
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_equivalent_squares():
     sizes_to_test = (
         10, 20, 50, 100, 400
