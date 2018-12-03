@@ -36,12 +36,12 @@ def clean_and_verify_levelled_modules(input_globals, module_names):
     all_new_definitions = []
 
     scope = {}
+    scope['IMPORTS'] = None
 
     clobber_check = ClobberCheck(ignore=['IMPORTS'])
     new_definitions = NewDefinitions()
 
     for module_name in module_names:
-        scope['IMPORTS'] = []
         clobber_check.baseline = scope
         new_definitions.baseline = scope
 
