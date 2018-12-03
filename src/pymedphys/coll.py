@@ -30,9 +30,15 @@ Examples:
     ...    calc_mu_density, mlc_equivalent_square_fs)
 """
 
-from .libutils import import_levelled_modules
+# pylint: disable=W0401,W0614
 
-import_levelled_modules(globals(), [
+from ._level0.libutils import clean_and_verify_levelled_modules
+
+from ._level1.collmlctypes import *
+from ._level2.collequivalent import *
+from ._level2.collmudensity import *
+
+clean_and_verify_levelled_modules(globals(), [
     '._level1.collmlctypes', '._level2.collequivalent',
     '._level2.collmudensity'
 ])

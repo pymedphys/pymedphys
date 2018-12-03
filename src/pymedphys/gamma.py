@@ -33,9 +33,15 @@ Available Functions
 ...     gamma_shell, gamma_dcm, gamma_filter_numpy, gamma_filter_brute_force)
 """
 
-from .libutils import import_levelled_modules
+# pylint: disable=W0401,W0614,C0103,C0413
 
-import_levelled_modules(globals(), [
+from ._level0.libutils import clean_and_verify_levelled_modules
+
+from ._level1.gammafilter import *
+from ._level2.gammashell import *
+from ._level3.gammainterface import *
+
+clean_and_verify_levelled_modules(globals(), [
     '._level1.gammafilter', '._level2.gammashell',
     '._level3.gammainterface'
 ])

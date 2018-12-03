@@ -31,6 +31,8 @@ release.
 
 # pylint: disable=W0401,W0614
 
+IMPORTS = []
+
 try:
     from decode_trf import *
 except ImportError:
