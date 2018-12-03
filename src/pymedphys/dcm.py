@@ -33,14 +33,8 @@ Available Functions
 ...     create_dvh, get_structure_aligned_cube)
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
+from .libutils import import_levelled_modules
 
-from ._level1.clobbercheck import ClobberCheck
-__clobber_check = ClobberCheck()
-
-from ._level1.dcmdose import *  # nopep8
-__clobber_check.baseline = globals()
-
-from ._level2.dcmstruct import *  # nopep8
-__clobber_check.check(globals(), label='dcmstruct')
-__clobber_check.baseline = globals()
+import_levelled_modules(globals(), [
+    '._level1.dcmdose', '._level2.dcmstruct'
+])

@@ -23,7 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 """A film toolbox.
 
 Example:
@@ -32,4 +31,8 @@ Example:
 
 # pylint: disable=W0401,W0614
 
-from ._level2.film import *
+from .libutils import import_levelled_modules
+
+import_levelled_modules(globals(), [
+    '._level2.film'
+])

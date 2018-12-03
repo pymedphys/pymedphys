@@ -61,6 +61,9 @@ import matplotlib.pyplot as plt
 from .._level1.plthelpers import pcolormesh_grid
 from .._level1.collmlctypes import autodetect_leaf_pair_widths
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 __DEFAUT_LEAF_PAIR_WIDTHS = None
 __DEFAULT_GRID_RESOLUTION = 1

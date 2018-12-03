@@ -27,6 +27,9 @@ import warnings
 
 from .._level1.collmlctypes import autodetect_leaf_pair_widths
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def abutted(a, b, tolerance=1):
     """ Returns True iff leaf-tips a and b are within 1 mm. """
