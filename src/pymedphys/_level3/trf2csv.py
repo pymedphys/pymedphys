@@ -34,6 +34,9 @@ from glob import glob
 
 from .._level2.trfdecode import decode_trf
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def trf2csv(trf_filepath, csv_filepath=None, skip_if_exists=True):
     if not os.path.exists(trf_filepath):

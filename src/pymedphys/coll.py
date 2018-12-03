@@ -30,19 +30,9 @@ Examples:
     ...    calc_mu_density, mlc_equivalent_square_fs)
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413,W0611
+from .libutils import import_levelled_modules
 
-from ._level1.clobbercheck import ClobberCheck
-__clobber_check = ClobberCheck()
-
-from ._level1.collmlctypes import *  # nopep8
-__clobber_check.baseline = globals()
-
-from ._level2.collequivalent import *  # nopep8
-__clobber_check.check(globals(), label='collequivalent')
-__clobber_check.baseline = globals()
-
-from ._level2 import collmudensity  # nopep8
-from ._level2.collmudensity import *  # nopep8
-__clobber_check.check(globals(), label='collmudensity')
-__clobber_check.baseline = globals()
+import_levelled_modules(globals(), [
+    '._level1.collmlctypes', '._level2.collequivalent',
+    '._level2.collmudensity'
+])

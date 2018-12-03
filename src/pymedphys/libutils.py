@@ -28,9 +28,9 @@
 
 Available Classes
 -----------------
->>> from pymedphys.clobbercheck import ClobberCheck
+>>> from pymedphys.libutils import ClobberCheck
 """
 
 # pylint: disable=W0401,W0614
 
-from ._level1.clobbercheck import *
+from ._level0.libutils import *

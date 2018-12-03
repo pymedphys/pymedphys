@@ -25,6 +25,9 @@
 
 import warnings
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 MILLENIUM = (10,)*10 + (5,)*40 + (10,)*10
 BRAINLAB = (5.5,)*3 + (4.5,)*3 + (3,)*14 + (4.5,)*3 + (5.5,)*3
 AGILITY = (5,)*80

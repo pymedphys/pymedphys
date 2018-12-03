@@ -27,6 +27,9 @@
 import os
 import json
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def get_gantry_tolerance(index, file_hash, config):
     machine_name = index[file_hash]['logfile_header']['machine']
