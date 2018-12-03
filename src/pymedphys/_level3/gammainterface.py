@@ -28,6 +28,9 @@ from .._level1.dcmdose import coords_and_dose_from_dcm
 from .._level1.gammafilter import gamma_filter_numpy, convert_to_percent_pass
 from .._level2.gammashell import gamma_shell
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def gamma_dcm(dcm_ref_filepath, dcm_eval_filepath,
               dose_percent_threshold, distance_mm_threshold,
