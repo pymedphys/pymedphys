@@ -28,6 +28,9 @@
 
 import hashlib
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def hash_file(filename, dot_feedback=False):
     BLOCKSIZE = 65536
