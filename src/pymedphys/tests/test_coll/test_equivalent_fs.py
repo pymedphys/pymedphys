@@ -56,12 +56,12 @@ def an_equivalent_square(square_size):
     assert open_leaves == square_size / 5
 
     num_remaining_leaves = 80 - open_leaves
-    leaves_on_top = 80 - num_remaining_leaves // 2
+    leaves_on_top = num_remaining_leaves // 2
     leaves_on_bottom = num_remaining_leaves - leaves_on_top
 
     mlc_segments = (
         [(0, 0)]*leaves_on_top +
-        [(square_size, square_size)] * open_leaves +
+        [(square_size/2, square_size/2)] * open_leaves +
         [(0, 0)]*leaves_on_bottom)
 
     assert mlc_equivalent_square_fs(mlc_segments, AGILITY) == square_size
@@ -70,7 +70,7 @@ def an_equivalent_square(square_size):
 # @pytest.mark.xfail
 def test_equivalent_squares():
     sizes_to_test = (
-        10, 20, 50, 100, 400
+        10, 20, 50, 100, 200, 400
     )
 
     for square_size in sizes_to_test:

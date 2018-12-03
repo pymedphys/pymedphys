@@ -23,7 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import warnings
 
 from .._level1.collmlctypes import autodetect_leaf_pair_widths
 
@@ -50,6 +49,11 @@ def mlc_equivalent_square_fs(mlc_segments, leaf_pair_widths=None):
 
     if leaf_pair_widths is None:
         leaf_pair_widths = autodetect_leaf_pair_widths(len(mlc_segments))
+
+    assert len(leaf_pair_widths) == len(mlc_segments), (
+        'Length of `leaf_pair_widths` ({}) needs to match length of '
+        '`mlc_segments` ({})'.format(len(leaf_pair_widths), len(mlc_segments))
+    )
 
     # y_component: y component of distance from (0,0) to leaf center by leaf
     # pair
