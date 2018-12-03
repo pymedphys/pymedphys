@@ -33,8 +33,10 @@ Available Functions
 
 # pylint: disable=W0401, W0614
 
-from .libutils import import_levelled_modules
+from ._level0.libutils import clean_and_verify_levelled_modules
 
-import_levelled_modules(globals(), [
+from ._level1.geometry import *
+
+clean_and_verify_levelled_modules(globals(), [
     '._level1.geometry'
 ])
