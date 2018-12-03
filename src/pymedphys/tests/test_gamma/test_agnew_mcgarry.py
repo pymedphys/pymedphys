@@ -42,7 +42,6 @@ import pydicom
 
 from pymedphys.gamma import gamma_shell
 
-
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/gamma/agnew_mcgarry_images")
 
