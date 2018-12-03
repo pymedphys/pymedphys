@@ -31,6 +31,9 @@ from .._level1.geometry import (
     plot_cube
 )
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def dose_inside_cube(x_dose, y_dose, z_dose, dose, cube):
     """Find the dose just within the given cube.
