@@ -33,6 +33,9 @@ import sys
 
 import numpy as np
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def convert_to_percent_pass(gamma_array):
     valid_gamma = gamma_array[np.invert(np.isnan(gamma_array))]

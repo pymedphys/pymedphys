@@ -61,4 +61,8 @@ Available Functions
 
 # pylint: disable=W0401,W0614,W0611
 
-from ._level2.mudensity import *
+from .libutils import import_levelled_modules
+
+import_levelled_modules(globals(), [
+    '._level2.mudensity'
+])
