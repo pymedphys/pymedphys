@@ -25,6 +25,9 @@
 
 import numpy as np
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def run_input_checks(
         coords_reference, dose_reference,

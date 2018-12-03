@@ -32,6 +32,10 @@ from .._level2.msqdelivery import (
 from .._level2.trfdecode import decode_header_from_file
 
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
+
 # TODO Make the field identification run one whole day at a time, searching
 # for all logfiles on that day and then attempting to align the logfiles
 # to the full day's machine schedule.

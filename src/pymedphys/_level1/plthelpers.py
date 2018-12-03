@@ -26,6 +26,9 @@
 
 import numpy as np
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def pcolormesh_grid(x, y, grid_resolution=None):
     if grid_resolution is None:

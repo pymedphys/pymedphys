@@ -32,4 +32,9 @@ Example:
 
 # pylint: disable=W0401,W0614
 
-from ._level1.plthelpers import *
+
+from .libutils import import_levelled_modules
+
+import_levelled_modules(globals(), [
+    '._level1.plthelpers'
+])
