@@ -28,28 +28,35 @@
 library.
 """
 
+import importlib
 from copy import copy
 
 
-def import_levelled_modules(input_globals, module_names):
-    input_globals['__all_new_definitions'] = []
-    input_globals['__clobber_check'] = ClobberCheck(ignore=['IMPORTS'])
-    input_globals['__clobber_check'].baseline = input_globals
-    input_globals['__new_definitions'] = NewDefinitions()
+def clean_and_verify_levelled_modules(input_globals, module_names):
+    all_new_definitions = []
+
+    scope = {}
+
+    clobber_check = ClobberCheck(ignore=['IMPORTS'])
+    new_definitions = NewDefinitions()
 
     for module_name in module_names:
-        exec(  # pylint: disable=W0122
-            'IMPORTS = []\n'
-            '__new_definitions.baseline = globals()\n'
-            'from {0} import *\n'
-            '__all_new_definitions += __new_definitions.find(globals(), IMPORTS)\n'
-            '__clobber_check.check(globals(), label="{0}")\n'
-            '__clobber_check.baseline = globals()\n'.format(module_name),
-            input_globals, input_globals
-        )
+        scope['IMPORTS'] = []
+        clobber_check.baseline = scope
+        new_definitions.baseline = scope
+
+        module = importlib.import_module(
+            module_name, package='pymedphys')
+        for key, item in module.__dict__.items():
+            if not key.startswith('_'):
+                scope[key] = item
+
+        clobber_check.check(scope, label=module_name)
+        all_new_definitions += new_definitions.find(
+            scope, module.IMPORTS)
 
     for key in copy(input_globals):
-        if (key not in input_globals['__all_new_definitions']) and (not key.startswith('_')):
+        if (key not in all_new_definitions) and (not key.startswith('_')):
             del input_globals[key]
 
 

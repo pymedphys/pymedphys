@@ -31,8 +31,12 @@ Available Functions
 >>> from pymedphys.tomo import unshuffle_sinogram
 """
 
-from .libutils import import_levelled_modules
+# pylint: disable=W0401,W0614
 
-import_levelled_modules(globals(), [
-    '._level1.tomounshuffle '
+from ._level0.libutils import clean_and_verify_levelled_modules
+
+from ._level1.tomounshuffle import *
+
+clean_and_verify_levelled_modules(globals(), [
+    '._level1.tomounshuffle'
 ])

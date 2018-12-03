@@ -33,8 +33,13 @@ Available Functions
 ...     create_dvh, get_structure_aligned_cube)
 """
 
-from .libutils import import_levelled_modules
+# pylint: disable=W0401,W0614
 
-import_levelled_modules(globals(), [
+from ._level0.libutils import clean_and_verify_levelled_modules
+
+from ._level1.dcmdose import *
+from ._level2.dcmstruct import *
+
+clean_and_verify_levelled_modules(globals(), [
     '._level1.dcmdose', '._level2.dcmstruct'
 ])
