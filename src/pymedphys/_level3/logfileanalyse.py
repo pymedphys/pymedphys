@@ -46,6 +46,9 @@ from .._level2.mudensity import calc_mu_density
 from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
 from .._level2.trfdecode import delivery_data_from_logfile
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def analyse_single_hash(index, config, filehash, cursors):
     field_id_key_map = get_field_id_key_map(index)
