@@ -32,12 +32,14 @@ Examples:
     >>> from pymedphys.trf import decode_header_from_file
 """
 
-# pylint: disable=W0401,W0614
-
 # pylint: disable=W0401,W0614,C0103,C0413
 
-from .libutils import import_levelled_modules
+from ._level0.libutils import clean_and_verify_levelled_modules
 
-import_levelled_modules(globals(), [
+from ._level2.trfdecode import *
+from ._level3.trf2csv import *
+from ._level3.trfidentify import *
+
+clean_and_verify_levelled_modules(globals(), [
     '._level2.trfdecode', '._level3.trf2csv', '._level3.trfidentify'
 ])

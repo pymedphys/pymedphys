@@ -32,9 +32,15 @@ Examples:
 
 # pylint: disable=W0401,W0614,C0103,C0413
 
-from .libutils import import_levelled_modules
+from ._level0.libutils import clean_and_verify_levelled_modules
 
-import_levelled_modules(globals(), [
+from ._level1.msqconnect import *
+from ._level1.msqdictionaries import *
+from ._level2.msqdelivery import *
+from ._level2.msqhelpers import *
+from ._level3.msqfieldcompare import *
+
+clean_and_verify_levelled_modules(globals(), [
     '._level1.msqconnect', '._level1.msqdictionaries',
     '._level2.msqdelivery', '._level2.msqhelpers', '._level3.msqfieldcompare'
 ])
