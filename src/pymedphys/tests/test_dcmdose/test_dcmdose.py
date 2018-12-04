@@ -32,8 +32,10 @@ from pymedphys.dcm import load_xyz_from_dicom
 
 # Fixed the finding of the data files by referencing the path based on HERE
 # variable
-HERE = os.path.dirname(__file__)
-DATA_DIRECTORY = os.path.join(HERE, '../data/dcmdose/')
+HERE = os.path.dirname(os.path.abspath(__file__))
+print(HERE)
+DATA_DIRECTORY = os.path.join(os.path.dirname(HERE), 'data', 'dcmdose')
+print(DATA_DIRECTORY)
 
 
 def get_data_file(orientation_key):
@@ -42,10 +44,7 @@ def get_data_file(orientation_key):
 
 
 class TestDcmDose():
-
-    def test_load_xyz_from_dicom_coordinates(self):
-        # TODO: read in HFS, HFP, FFS and FFP skeleton dcm dose files using pydicom
-
+   
     def test_load_xyz_from_dicom(self):
         expected_coords = {
             'FFDL': 'he',
@@ -57,20 +56,19 @@ class TestDcmDose():
             'HFP': None,
             'HFS': None
         }
-
-        # Applied DRY principle
-        # https://www.nceclusters.no/globalassets/filer/nce/diverse/the-pragmatic-programmer.pdf#page=52
+       
         test_dcms = {
             key: dcm.dcmread(get_data_file(key))
             for key in expected_coords
         }
-
+        
         for orient, d in test_dcms.items():
             x, y, z = load_xyz_from_dicom(d)
+            print()
+            print(orient)
             print(x)
             print(y)
             print(z)
-            break
 
         # TODO: run load_xyz_from_dicom() on each file and compare x, y and z coordinate arrays to expected values
             # What values to use as expected?
@@ -78,3 +76,8 @@ class TestDcmDose():
             # What if coordinate system is incorrectly configured in software?
 
         return
+
+        
+if __name__ == "__main__":
+    TestDcmDose().test_load_xyz_from_dicom()
+    
