@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -85,32 +85,41 @@ def load_xyz_from_dicom(dcm):
        and VMC++) verifications of DICOM compatible radiotherapy treatment plans", 
        arXiv:1406.0014, Table 1, https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
-
+    
+    DECIMALS=3
+    
+    position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
 
     # Only proceed if the DICOM RT Dose file has a supported orientation.
     # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose grid and the 'patient'
-    if not (np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])) or
-            np.array_equal(np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))):
+    if np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])):
+        decubitis = False
+    elif np.array_equal(np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.])):
+        decubitis = True
+    else:
         raise Exception("Dose grid orientation is not supported. " +
                         "Z-axis of dose grid must be parallel to z-axis of patient")
 
-    xy_resolution = np.array(dcm.PixelSpacing).astype(float)
+    di = np.round(float(dcm.PixelSpacing[0]), decimals = DECIMALS)
+    dj = np.round(float(dcm.PixelSpacing[1]), decimals = DECIMALS)
+    print(decubitis)
     
     if orientation[0] == 0:
         z_orientation = 1 - np.absolute(np.sum(orientation)) # Head First = +1, Feet First = -1
     else:
         z_orientation = np.absolute(np.sum(orientation)) - 1 # Head First = +1, Feet First = -1    
 
-    dx = xy_resolution[0]
-    x = dcm.ImagePositionPatient[0] + np.arange(0, dcm.Columns * dx, dx)
+    if decubitis:
+        x = position[0] + orientation[3]*np.arange(0, dcm.Rows, dj)
+        y = position[1] + orientation[1]*np.arange(0, dcm.Columns, di)
+    else:
+        x = position[0] + orientation[0]*np.arange(0, dcm.Columns, di)
+        y = position[1] + orientation[4]*np.arange(0, dcm.Rows, dj)        
 
-    dy = xy_resolution[1]
-    y = dcm.ImagePositionPatient[1] + np.arange(0, dcm.Rows * dy, dy)
+    z = position[2] + z_orientation * np.array(dcm.GridFrameOffsetVector)
 
-    z = dcm.ImagePositionPatient[2] + z_orientation * np.array(dcm.GridFrameOffsetVector)
-
-    return x, y, z
+    return np.round(x, decimals = DECIMALS), np.round(y, decimals = DECIMALS), np.round(z, decimals = DECIMALS)
 
 
 def coords_and_dose_from_dcm(dcm_filepath):
