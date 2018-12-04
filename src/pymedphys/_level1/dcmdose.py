@@ -48,31 +48,59 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
 
 
 def load_xyz_from_dicom(dcm):
+    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
+
+    Parameters
+    ----------
+    dcm : pydicom FileDataset
+        An instance of pydicom.dataset.FileDataset ordinarily returned by pydicom.dcmread()
+        `dcm` must represent a valid DICOM RT Dose file.
+
+    Returns
+    -------
+    (x, y, z) : (`ndarray`, `ndarray`, `ndarray`)
+        The x, y and z coordinates of the DICOM RT Dose file's dose grid, given in the DICOM
+        patient coordinate system [1].
+
+    Notes
+    -----
+    Supported scan orientations with corresponding ImagePositionPatient vectors [2]:
+    
+        Feet First Decubitus Left:  [0, 1, 0, 1, 0, 0]
+        Feet First Decubitus Right: [0, -1, 0, -1, 0, 0]
+        Feet First Prone:           [1, 0, 0, 0, -1, 0]
+        Feet First Supine:          [-1, 0, 0, 0, 1, 0]
+        Head First Decubitus Left:  [0, -1, 0, 1, 0, 0]
+        Head First Decubitus Right: [0, 1, 0, -1, 0, 0]
+        Head First Prone:           [-1, 0, 0, 0, -1, 0]
+        Head First Supine:          [1, 0, 0, 0, 1, 0]
+
+    References
+    ----------
+    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation", 
+       "DICOM PS3.3 2016a - Information Object Definitions",
+       dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
+    
+    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo (DOSXYZnrc
+       and VMC++) verifications of DICOM compatible radiotherapy treatment plans", 
+       arXiv:1406.0014, Table 1, https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+    """
 
     orientation = np.array(dcm.ImageOrientationPatient)
 
-    '''
-    Supported scan orientations with corresponding ImagePositionPatient vectors:
-    
-        Feet First Decubitus Left:  {0, 1, 0, -1, 0, 0}
-        Feet First Decubitus Right: {0, -1, 0, 1, 0, 0}
-        Feet First Prone:           {1, 0, 0, 0, -1, 0}
-        Feet First Supine:          {-1, 0, 0, 0, 1, 0}
-        Head First Decubitus Left:  {0, 1, 0, 1, 0, 0}
-        Head First Decubitus Right: {0, -1, 0, -1, 0, 0}
-        Head First Prone:           {-1, 0, 0, 0, -1, 0}
-        Head First Supine:          {1, 0, 0, 0, 1, 0}
-    '''
-
     # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch or yaw exists between the dose grid and the 'patient'
+    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose grid and the 'patient'
     if not (np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])) or
             np.array_equal(np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))):
         raise Exception("Dose grid orientation is not supported. " +
                         "Z-axis of dose grid must be parallel to z-axis of patient")
 
     xy_resolution = np.array(dcm.PixelSpacing).astype(float)
-    z_orientation = np.sum(np.absolute(orientation)) - 1 # Head First = +1, Feet First = -1
+    
+    if orientation[0] == 0:
+        z_orientation = 1 - np.absolute(np.sum(orientation)) # Head First = +1, Feet First = -1
+    else:
+        z_orientation = np.absolute(np.sum(orientation)) - 1 # Head First = +1, Feet First = -1    
 
     dx = xy_resolution[0]
     x = dcm.ImagePositionPatient[0] + np.arange(0, dcm.Columns * dx, dx)
