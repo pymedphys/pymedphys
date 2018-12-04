@@ -1,0 +1,1 @@
+start bash -c "./clean-merged-branches.sh; echo ''; read -n 1 -s -r -p 'Press any key to continue...'"
