@@ -38,8 +38,9 @@ Available Functions
 from ._level0.libutils import clean_and_verify_levelled_modules
 
 from ._level1.dcmdose import *
+from ._level1.dcmanon import *
 from ._level2.dcmstruct import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.dcmdose', '._level2.dcmstruct'
+    '._level1.dcmdose', '._level1.dcmanon', '._level2.dcmstruct'
 ])
