@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 PyMedPhys Contributors
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,25 +23,39 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import warnings
 
-"""A range of functions for calculating gamma.
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
+MILLENIUM = (10,)*10 + (5,)*40 + (10,)*10
+BRAINLAB = (5.5,)*3 + (4.5,)*3 + (3,)*14 + (4.5,)*3 + (5.5,)*3
+AGILITY = (5,)*80
 
 
-Available Functions
--------------------
->>> from pymedphys.gamma import (
-...     gamma_shell, gamma_dcm, gamma_filter_numpy, gamma_filter_brute_force)
-"""
+ALL_TYPES = {
+    'Millenium': MILLENIUM,
+    'BrainLab': BRAINLAB,
+    'Agility': AGILITY
+}
 
-# pylint: disable=W0401,W0614,C0103,C0413
+LENGTH_MAP = {
+    len(leaf_pair_widths): (name, leaf_pair_widths)
+    for name, leaf_pair_widths in ALL_TYPES.items()
+}
 
-from ._level0.libutils import clean_and_verify_levelled_modules
 
-from ._level1.gammafilter import *
-from ._level2.gammashell import *
-from ._level3.gammainterface import *
+def autodetect_leaf_pair_widths(number_of_mlc_pairs):
+    try:
+        collimator_name, leaf_pair_widths = LENGTH_MAP[number_of_mlc_pairs]
+        warnings.warn(
+            (
+                'Based on number of segments provided the collimator type '
+                '{} has automatically been chosen. Please define '
+                'leaf_widths parameter if this is not correct.'
+            ).format(collimator_name), UserWarning)
+    except KeyError:
+        raise ValueError(
+            'Please define leaf_widths parameter')
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.gammafilter', '._level2.gammashell',
-    '._level3.gammainterface'
-])
+    return leaf_pair_widths

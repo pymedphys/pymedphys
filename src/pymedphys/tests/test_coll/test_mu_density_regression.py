@@ -34,7 +34,7 @@ import os
 
 import numpy as np
 
-from pymedphys.mudensity import calc_mu_density
+from pymedphys.coll import calc_mu_density
 
 
 DATA_DIRECTORY = os.path.join(
