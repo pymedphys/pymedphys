@@ -42,7 +42,7 @@ from .._level1.utilitiesconfig import (
 )
 from .._level1.msqconnect import multi_mosaiq_connect
 
-from .._level2.mudensity import calc_mu_density
+from .._level2.collmudensity import calc_mu_density
 from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
 from .._level2.trfdecode import delivery_data_from_logfile
 
