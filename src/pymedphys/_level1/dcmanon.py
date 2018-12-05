@@ -23,13 +23,8 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import os, time
 import copy
 import pydicom
-from pydicom.misc import is_dicom
-
-import tkinter as tk
-from tkinter import filedialog as fd, messagebox as mb, simpledialog as sd
     
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
@@ -132,45 +127,3 @@ def dicom_anon(dcm, tags_to_keep = []):
             setattr(dcm_out, tag, "")
 
     return dcm_out
-
-if __name__ == '__main__':
-
-    PROGRAM_NAME = "Dicom Anonymiser"
-    window = tk.Tk()
-    window.withdraw()
-
-    dcm_path = fd.askopenfilename(title = "Open DICOM file to anonymise",                                     
-                                  filetypes = [("DICOM files", "*.dcm")])
-    if not is_dicom(dcm_path):
-        mb.showerror(title=PROGRAM_NAME,
-                     message="The selected file is not a DICOM file.")
-        window.destroy()
-        sys.exit()
-
-    try:
-        dcm = pydicom.dcmread(dcm_path)
-    except:
-        mb.showerror(title=PROGRAM_NAME,
-                     message="Could not read DICOM file.")
-        window.destroy()
-        sys.exit()
-
-    dcm_out = dicom_anon(dcm)
-
-    dcm_out_default_basename = os.path.basename(dcm_path)[:-4] + "_anon.dcm"
-    dcm_out_path = fd.asksaveasfilename(title = "Save anonymised DICOM file",
-                                        initialdir = os.path.dirname(dcm_path),
-                                        filetypes = [("DICOM files", "*.dcm")],
-                                        initialfile = dcm_out_default_basename)
-
-    try:
-        pydicom.dcmwrite(dcm_out_path, dcm_out)
-    except:
-        mb.showerror(title="PROGRAM_NAME",
-                     message="Could not save anonymised DICOM file.")
-        window.destroy()
-        sys.exit()
-
-
-
-
