@@ -28,12 +28,12 @@ import numpy as np
 
 
 def read_file(file_name):
-    """ 
+    """
     Read and return dose profiles and CAX dose from native Profiler data file.
-    
+
     Arguments:
         file_name -- long file name of profiler file
-        
+
     Returns:
         object of type Profiler:
             Profiler.cax = float(dose) at central axis
@@ -79,17 +79,19 @@ def read_file(file_name):
 
 
 def test():
-    file_name = os.path.join(os.getcwd(), 'test_varian_open.prs')
+    test_folder = (".\\src\\pymedphys\\tests\\test_profiler")
+
+    file_name = os.path.join(test_folder, 'test_varian_open.prs')
     assert np.allclose(read_file(file_name).cax, 45.50562901780488)
     assert np.allclose(read_file(file_name).x[0][1], 0.579460838649598)
     assert np.allclose(read_file(file_name).y[0][1], 0.2910764234184594)
 
-    file_name = os.path.join(os.getcwd(), 'test_varian_wedge.prs')
+    file_name = os.path.join(test_folder, 'test_varian_wedge.prs')
     assert np.allclose(read_file(file_name).cax, 21.863167869662274)
     assert np.allclose(read_file(file_name).x[0][1], 0.5626051581458927)
     assert np.allclose(read_file(file_name).y[0][1], 0.260042064635505)
 
-    file_name = os.path.join(os.getcwd(), 'test_tomo_50mm.prs')
+    file_name = os.path.join(test_folder, 'test_tomo_50mm.prs')
     assert np.allclose(read_file(file_name).cax, 784.320114110518)
     assert np.allclose(read_file(file_name).x[0][1], 563.4064789252321)
     assert np.allclose(read_file(file_name).y[0][1], 1.8690221773721463)
