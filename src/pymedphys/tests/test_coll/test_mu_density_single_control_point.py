@@ -27,48 +27,41 @@
 # pylint: disable=C0103,C1801
 
 
-"""Testing of a single mlc pair.
+"""Regression testing of the single control point function.
 """
 
 import numpy as np
 
-from pymedphys.mudensity import single_mlc_pair
+from pymedphys.coll import calc_single_control_point
 
 
-def test_minimal_variance_with_resolution():
-    mlc_left = (-2.3, 3.1)
-    mlc_right = (0, 7.7)
+def test_partial_jaws():
+    """Parital jaw location should give a fractional result.
+    """
+    leaf_pair_widths = [2, 2]
 
-    x_coarse, mu_density_coarse = single_mlc_pair(
-        mlc_left, mlc_right, 1)
-    x_fine, mu_density_fine = single_mlc_pair(
-        mlc_left, mlc_right, 0.01)
+    mlc = np.array([
+        [
+            [1, 1],
+            [2, 2],
+        ],
+        [
+            [2, 2],
+            [3, 3],
+        ]
+    ])
+    jaw = np.array([
+        [1.5, 1.2],
+        [1.5, 1.2]
+    ])
 
-    reference = np.argmin(np.abs(x_fine[None, :] - x_coarse[:, None]), axis=0)
-
-    average_mu_density_fine = []
-    for i in range(2, len(x_coarse) - 2):
-        average_mu_density_fine.append(
-            np.mean(mu_density_fine[reference == i]))
-
-    average_mu_density_fine = np.array(average_mu_density_fine)
-
-    assert np.allclose(
-        average_mu_density_fine, mu_density_coarse[2:-2], 0.1)
-
-
-def test_stationary_partial_occlusion():
-    _, mu_density = single_mlc_pair((-1, -1), (2.7, 2.7), 1)
-
-    assert np.allclose(mu_density, [0.5, 1, 1, 1, 0.2])
-
-
-def test_large_travel():
-    x, mu_density = single_mlc_pair(
-        (-400, 400), (400, 400)
+    _, mu_density = calc_single_control_point(
+        mlc, jaw, leaf_pair_widths=leaf_pair_widths
     )
 
-    linear = (x + 400) / 800
-    linear[-1] = 0.5
+    reference_mu_density = [[0., 0.07, 0.43, 0.5, 0.43, 0.07, 0.],
+                            [0., 0.14, 0.86, 1., 0.86, 0.14, 0.],
+                            [0.14, 0.86, 1., 1., 1., 0.86, 0.14],
+                            [0.03, 0.17, 0.2, 0.2, 0.2, 0.17, 0.03]]
 
-    assert np.allclose(linear, mu_density, atol=0.001)
+    assert np.allclose(np.round(mu_density, 2), reference_mu_density)

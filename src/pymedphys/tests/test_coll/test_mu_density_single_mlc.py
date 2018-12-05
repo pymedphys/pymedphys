@@ -24,24 +24,51 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A range of functions for calculating gamma.
+# pylint: disable=C0103,C1801
 
 
-Available Functions
--------------------
->>> from pymedphys.gamma import (
-...     gamma_shell, gamma_dcm, gamma_filter_numpy, gamma_filter_brute_force)
+"""Testing of a single mlc pair.
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
+import numpy as np
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+from pymedphys.coll import single_mlc_pair
 
-from ._level1.gammafilter import *
-from ._level2.gammashell import *
-from ._level3.gammainterface import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.gammafilter', '._level2.gammashell',
-    '._level3.gammainterface'
-])
+def test_minimal_variance_with_resolution():
+    mlc_left = (-2.3, 3.1)
+    mlc_right = (0, 7.7)
+
+    x_coarse, mu_density_coarse = single_mlc_pair(
+        mlc_left, mlc_right, 1)
+    x_fine, mu_density_fine = single_mlc_pair(
+        mlc_left, mlc_right, 0.01)
+
+    reference = np.argmin(np.abs(x_fine[None, :] - x_coarse[:, None]), axis=0)
+
+    average_mu_density_fine = []
+    for i in range(2, len(x_coarse) - 2):
+        average_mu_density_fine.append(
+            np.mean(mu_density_fine[reference == i]))
+
+    average_mu_density_fine = np.array(average_mu_density_fine)
+
+    assert np.allclose(
+        average_mu_density_fine, mu_density_coarse[2:-2], 0.1)
+
+
+def test_stationary_partial_occlusion():
+    _, mu_density = single_mlc_pair((-1, -1), (2.7, 2.7), 1)
+
+    assert np.allclose(mu_density, [0.5, 1, 1, 1, 0.2])
+
+
+def test_large_travel():
+    x, mu_density = single_mlc_pair(
+        (-400, 400), (400, 400)
+    )
+
+    linear = (x + 400) / 800
+    linear[-1] = 0.5
+
+    assert np.allclose(linear, mu_density, atol=0.001)

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 PyMedPhys Contributors
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,25 +23,22 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""Various helper functions for mlcs and jaws.
 
-"""A range of functions for calculating gamma.
-
-
-Available Functions
--------------------
->>> from pymedphys.gamma import (
-...     gamma_shell, gamma_dcm, gamma_filter_numpy, gamma_filter_brute_force)
+Examples:
+    >>> from pymedphys.coll import (
+    ...    calc_mu_density, mlc_equivalent_square_fs)
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
+# pylint: disable=W0401,W0614
 
 from ._level0.libutils import clean_and_verify_levelled_modules
 
-from ._level1.gammafilter import *
-from ._level2.gammashell import *
-from ._level3.gammainterface import *
+from ._level1.collmlctypes import *
+from ._level2.collequivalent import *
+from ._level2.collmudensity import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.gammafilter', '._level2.gammashell',
-    '._level3.gammainterface'
+    '._level1.collmlctypes', '._level2.collequivalent',
+    '._level2.collmudensity'
 ])
