@@ -34,22 +34,22 @@ def dicom_anon(dcm, delete_private_tags = True, tags_to_keep = []):
 
     Parameters
     ----------
-    dcm : pydicom.dataset.FileDataset
-        The DICOM file to be anonymised. `dcm` must be an instance of 
-        pydicom.dataset.FileDataset - ordinarily returned by pydicom.dcmread().
-        `dcm` must represent a valid DICOM file.
+    dcm
+        The DICOM file to be anonymised. `dcm` must represent a valid 
+        DICOM file in the form of a pydicom FileDataset - ordinarily 
+        returned by pydicom.dcmread().
         
-    delete_private_tags : boolean
-        Flags whether to remove all private (non-standard) DICOM tags
-        from the DICOM file. These may also contain identifying information.
-        Defaults to True. 
+    delete_private_tags
+        A boolean to flag whether or not to remove all private 
+        (non-standard) DICOM tags from the DICOM file. These may 
+        also contain identifying information. Defaults to True. 
 
-    tags_to_keep : array_like
+    tags_to_keep
         A sequence of DICOM tags to exclude from anonymisation. Empty by default.
 
     Returns
     -------
-    dcm_out : pydicom.dataset.FileDataset
+    dcm_out
         An anonymised copy of the input DICOM file as a pydicom FileDataset
 
     Raises
