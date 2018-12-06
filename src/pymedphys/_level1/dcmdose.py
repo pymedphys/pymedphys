@@ -52,29 +52,33 @@ def load_xyz_from_dicom(dcm):
 
     Parameters
     ----------
-    dcm : pydicom FileDataset
-        An instance of pydicom.dataset.FileDataset ordinarily returned by pydicom.dcmread()
-        `dcm` must represent a valid DICOM RT Dose file.
+    dcm
+       A pydicom FileDataset - ordinarily returned by pydicom.dcmread().
+       Must represent a valid DICOM RT Dose file.
 
     Returns
     -------
-    (x, y, z) : (`ndarray`, `ndarray`, `ndarray`)
-        The x, y and z coordinates of the DICOM RT Dose file's dose grid, given in the DICOM
-        patient coordinate system [1].
+    (x, y, z)
+        A tuple of ndarrays containing the x, y and z coordinates of the DICOM 
+        RT Dose file's dose grid, given in the DICOM patient coordinate system [1]_.
 
     Notes
     -----
-    Supported scan orientations with corresponding ImagePositionPatient vectors [2]:
+    Supported scan orientations [2]_:
     
-        Feet First Decubitus Left:  [0, 1, 0, 1, 0, 0]
-        Feet First Decubitus Right: [0, -1, 0, -1, 0, 0]
-        Feet First Prone:           [1, 0, 0, 0, -1, 0]
-        Feet First Supine:          [-1, 0, 0, 0, 1, 0]
-        Head First Decubitus Left:  [0, -1, 0, 1, 0, 0]
-        Head First Decubitus Right: [0, 1, 0, -1, 0, 0]
-        Head First Prone:           [-1, 0, 0, 0, -1, 0]
-        Head First Supine:          [1, 0, 0, 0, 1, 0]
-
+    =========================== =====================
+    Orientation                 Vector
+    =========================== =====================
+    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
+    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
+    Feet First Prone            [1, 0, 0, 0, -1, 0]
+    Feet First Supine           [-1, 0, 0, 0, 1, 0]
+    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
+    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
+    Head First Prone            [-1, 0, 0, 0, -1, 0]
+    Head First Supine           [1, 0, 0, 0, 1, 0]
+    =========================== =====================
+    
     References
     ----------
     .. [1] "C.7.6.2.1.1 Image Position and Image Orientation", 
