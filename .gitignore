@@ -105,3 +105,8 @@ venv.bak/
 
 
 .~lock
+.idea/vcs.xml
+.idea/pymedphys.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
