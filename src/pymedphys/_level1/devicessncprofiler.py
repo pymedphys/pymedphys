@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from collections import namedtuple
+
 import numpy as np
 
 from .._level0.libutils import get_imports
@@ -38,7 +40,7 @@ def read_prs(file_name):
         file_name -- long file name of profiler file
 
     Returns:
-        object of type Profiler:
+        The namedtuple Profiler which has the following:
             Profiler.cax = float(dose) at central axis
             Profiler.x = x profile, i.e. [(distance, dose), ...]
             Profiler.x = x profile, i.e. [(distance, dose), ...]
@@ -46,15 +48,7 @@ def read_prs(file_name):
                 dose = float(absolute dose at detector)
     """
 
-    class Profiler():
-        def __init__(self, cax, x, y):
-            assert float(cax)
-            assert type(x) == list
-            assert type(y) == list
-
-            self.cax = float(cax)
-            self.x = x
-            self.y = y
+    Profiler = namedtuple('Profiler', ['cax', 'x', 'y'])
 
     with open(file_name) as profiler_file:
         for row in profiler_file.readlines():
