@@ -1,4 +1,5 @@
 # Copyright (C) 2018 Paul King
+
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -23,11 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
 import numpy as np
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
 
-def read_file(file_name):
+
+def read_prs(file_name):
     """
     Read and return dose profiles and CAX dose from native Profiler data file.
 
@@ -76,28 +79,3 @@ def read_file(file_name):
     cax_dose = y_prof[41][1]
 
     return Profiler(cax_dose, x_prof, y_prof)
-
-
-def test():
-    test_folder = (".\\src\\pymedphys\\tests\\test_profiler")
-
-    file_name = os.path.join(test_folder, 'test_varian_open.prs')
-    assert np.allclose(read_file(file_name).cax, 45.50562901780488)
-    assert np.allclose(read_file(file_name).x[0][1], 0.579460838649598)
-    assert np.allclose(read_file(file_name).y[0][1], 0.2910764234184594)
-
-    file_name = os.path.join(test_folder, 'test_varian_wedge.prs')
-    assert np.allclose(read_file(file_name).cax, 21.863167869662274)
-    assert np.allclose(read_file(file_name).x[0][1], 0.5626051581458927)
-    assert np.allclose(read_file(file_name).y[0][1], 0.260042064635505)
-
-    file_name = os.path.join(test_folder, 'test_tomo_50mm.prs')
-    assert np.allclose(read_file(file_name).cax, 784.320114110518)
-    assert np.allclose(read_file(file_name).x[0][1], 563.4064789252321)
-    assert np.allclose(read_file(file_name).y[0][1], 1.8690221773721463)
-
-    print('profiler.read_file() -> OK, props: .cax, .x, .y')
-
-
-if __name__ == "__main__":
-    test()
