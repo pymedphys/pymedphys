@@ -111,7 +111,7 @@ def load_xyz_from_dicom(dcm):
         yflip = ( orientation[1] == -1 )
         head_first = ( xflip != yflip )        
     else:
-        raise AttributeError("Dose grid orientation is not supported. " +
+        raise ValueError("Dose grid orientation is not supported. " +
                              "Z-axis of dose grid must be parallel to z-axis of patient")
 
     di = np.round(float(dcm.PixelSpacing[0]), decimals = DECIMALS)
