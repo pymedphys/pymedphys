@@ -101,6 +101,9 @@ def load_xyz_from_dicom(dcm):
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
 
+    di = float(dcm.PixelSpacing[0])
+    dj = float(dcm.PixelSpacing[1])
+
     is_prone_or_supine = np.array_equal(
         np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
 
@@ -111,38 +114,32 @@ def load_xyz_from_dicom(dcm):
     # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
     # grid and the 'patient'
     if is_prone_or_supine:
-        decubitis = False
         xflip = (orientation[0] == -1)
         yflip = (orientation[4] == -1)
         head_first = (xflip == yflip)
-    elif is_decubitus:
-        decubitis = True
-        xflip = (orientation[3] == -1)
-        yflip = (orientation[1] == -1)
-        head_first = (xflip != yflip)
-    else:
-        raise ValueError(
-            "Dose grid orientation is not supported. "
-            "Z-axis of dose grid must be parallel to z-axis of patient")
 
-    di = float(dcm.PixelSpacing[0])
-    dj = float(dcm.PixelSpacing[1])
-
-    if decubitis:
-        x = (
-            orientation[3]*position[0] +
-            np.arange(0, dcm.Rows * dj, dj))
-        y = (
-            orientation[1]*position[1] +
-            np.arange(0, dcm.Columns * di, di))
-
-    else:
         x = (
             orientation[0]*position[0] +
             np.arange(0, dcm.Columns * di, di))
         y = (
             orientation[4]*position[1] +
             np.arange(0, dcm.Rows * dj, dj))
+
+    elif is_decubitus:
+        xflip = (orientation[3] == -1)
+        yflip = (orientation[1] == -1)
+        head_first = (xflip != yflip)
+
+        x = (
+            orientation[3]*position[0] +
+            np.arange(0, dcm.Rows * dj, dj))
+        y = (
+            orientation[1]*position[1] +
+            np.arange(0, dcm.Columns * di, di))
+    else:
+        raise ValueError(
+            "Dose grid orientation is not supported. "
+            "Z-axis of dose grid must be parallel to z-axis of patient")
 
     if xflip:
         x = np.flip(x)
