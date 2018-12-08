@@ -62,13 +62,13 @@ def load_xyz_from_dicom(dcm):
     Returns
     -------
     (x, y, z)
-        A tuple of ndarrays containing the x, y and z coordinates of the DICOM 
+        A tuple of ndarrays containing the x, y and z coordinates of the DICOM
         RT Dose file's dose grid, given in the DICOM patient coordinate system [1]_.
 
     Notes
     -----
     Supported scan orientations [2]_:
-    
+
     =========================== =======================
     Orientation                 ImageOrientationPatient
     =========================== =======================
@@ -81,36 +81,36 @@ def load_xyz_from_dicom(dcm):
     Head First Prone            [-1, 0, 0, 0, -1, 0]
     Head First Supine           [1, 0, 0, 0, 1, 0]
     =========================== =======================
-    
+
     References
     ----------
-    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation", 
+    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation",
        "DICOM PS3.3 2016a - Information Object Definitions",
        dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
-    
+
     .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo (DOSXYZnrc
-       and VMC++) verifications of DICOM compatible radiotherapy treatment plans", 
+       and VMC++) verifications of DICOM compatible radiotherapy treatment plans",
        arXiv:1406.0014, Table 1, https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
-    
+
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
 
     # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose grid and the 'patient'    
+    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose grid and the 'patient'
     if np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])):
         decubitis = False
-        xflip = ( orientation[0] == -1 )
-        yflip = ( orientation[4] == -1 )
-        head_first = ( xflip == yflip )        
+        xflip = (orientation[0] == -1)
+        yflip = (orientation[4] == -1)
+        head_first = (xflip == yflip)
     elif np.array_equal(np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.])):
         decubitis = True
-        xflip = ( orientation[3] == -1 )
-        yflip = ( orientation[1] == -1 )
-        head_first = ( xflip != yflip )        
+        xflip = (orientation[3] == -1)
+        yflip = (orientation[1] == -1)
+        head_first = (xflip != yflip)
     else:
         raise ValueError("Dose grid orientation is not supported. " +
-                             "Z-axis of dose grid must be parallel to z-axis of patient")
+                         "Z-axis of dose grid must be parallel to z-axis of patient")
 
     di = float(dcm.PixelSpacing[0])
     dj = float(dcm.PixelSpacing[1])
@@ -118,7 +118,7 @@ def load_xyz_from_dicom(dcm):
     if decubitis:
         x = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
         y = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
-       
+
     else:
         x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
         y = orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj)
@@ -126,8 +126,8 @@ def load_xyz_from_dicom(dcm):
     if xflip:
         x = np.flip(x)
     if yflip:
-        y = np.flip(y)   
-                  
+        y = np.flip(y)
+
     if head_first:
         z = position[2] + np.array(dcm.GridFrameOffsetVector)
     else:

@@ -25,24 +25,25 @@
 
 import copy
 import pydicom
-    
+
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
-def dicom_anon(dcm, delete_private_tags = True, tags_to_keep = []):
+
+def dicom_anon(dcm, delete_private_tags=True, tags_to_keep=[]):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
     ----------
     dcm
-        The DICOM file to be anonymised. `dcm` must represent a valid 
-        DICOM file in the form of a pydicom FileDataset - ordinarily 
+        The DICOM file to be anonymised. `dcm` must represent a valid
+        DICOM file in the form of a pydicom FileDataset - ordinarily
         returned by pydicom.dcmread().
-        
+
     delete_private_tags
-        A boolean to flag whether or not to remove all private 
-        (non-standard) DICOM tags from the DICOM file. These may 
-        also contain identifying information. Defaults to True. 
+        A boolean to flag whether or not to remove all private
+        (non-standard) DICOM tags from the DICOM file. These may
+        also contain identifying information. Defaults to True.
 
     tags_to_keep
         A sequence of DICOM tags to exclude from anonymisation. Empty by default.
@@ -60,71 +61,72 @@ def dicom_anon(dcm, delete_private_tags = True, tags_to_keep = []):
 
     # Is this a pydicom FileDataset?
     if not isinstance(dcm, pydicom.dataset.FileDataset):
-        raise TypeError("The input argument is a member of {}. " + 
-                        "It must be a pydicom FileDataset.".format(type(dcm)))
+        raise TypeError(
+            "The input argument is a member of {}. "
+            "It must be a pydicom FileDataset.".format(type(dcm)))
 
-    tags_to_anonymise = ["StudyDate", 
-                         "SeriesDate", 
-                         "AcquisitionDate", 
-                         "ContentDate", 
-                         "OverlayDate", 
-                         "CurveDate", 
-                         "AcquisitionDatetime", 
-                         "StudyTime", 
-                         "SeriesTime", 
-                         "AcquisitionTime", 
-                         "ContentTime", 
-                         "OverlayTime", 
-                         "CurveTime", 
-                         "AccessionNumber", 
-                         "InstitutionName", 
-                         "InstitutionAddress", 
-                         "ReferringPhysicianName", 
-                         "ReferringPhysicianAddress", 
-                         "ReferringPhysicianTelephoneNumber", 
-                         "ReferringPhysicianIdentificationSequence", 
-                         "InstitutionalDepartmentName", 
-                         "PhysiciansOfRecord", 
-                         "PhysiciansOfRecordIdentificationSequence", 
-                         "PerformingPhysicianName", 
-                         "PerformingPhysicianIdentificationSequence", 
-                         "NameOfPhysiciansReadingStudy", 
-                         "PhysiciansReadingStudyIdentificationSequence", 
-                         "OperatorsName", 
-                         "PatientName", 
-                         "PatientID", 
-                         "IssuerOfPatientID", 
-                         "PatientBirthDate", 
-                         "PatientBirthTime", 
-                         "PatientSex", 
-                         "OtherPatientIDs", 
-                         "OtherPatientNames", 
-                         "PatientBirthName", 
-                         "PatientAge", 
-                         "PatientAddress", 
-                         "PatientMotherBirthName", 
-                         "CountryOfResidence", 
-                         "RegionOfResidence", 
-                         "PatientTelephoneNumbers", 
-                         "StudyID", 
-                         "CurrentPatientLocation", 
-                         "PatientInstitutionResidence", 
-                         "DateTime", 
-                         "Date", 
-                         "Time", 
-                         "PersonName", 
-                         "EthnicGroup", 
-                         "StationName", 
-                         "InstanceCreationDate", 
-                         "InstanceCreationTime", 
-                         "InstanceCreatorUID"]            
-                         
+    tags_to_anonymise = ["StudyDate",
+                         "SeriesDate",
+                         "AcquisitionDate",
+                         "ContentDate",
+                         "OverlayDate",
+                         "CurveDate",
+                         "AcquisitionDatetime",
+                         "StudyTime",
+                         "SeriesTime",
+                         "AcquisitionTime",
+                         "ContentTime",
+                         "OverlayTime",
+                         "CurveTime",
+                         "AccessionNumber",
+                         "InstitutionName",
+                         "InstitutionAddress",
+                         "ReferringPhysicianName",
+                         "ReferringPhysicianAddress",
+                         "ReferringPhysicianTelephoneNumber",
+                         "ReferringPhysicianIdentificationSequence",
+                         "InstitutionalDepartmentName",
+                         "PhysiciansOfRecord",
+                         "PhysiciansOfRecordIdentificationSequence",
+                         "PerformingPhysicianName",
+                         "PerformingPhysicianIdentificationSequence",
+                         "NameOfPhysiciansReadingStudy",
+                         "PhysiciansReadingStudyIdentificationSequence",
+                         "OperatorsName",
+                         "PatientName",
+                         "PatientID",
+                         "IssuerOfPatientID",
+                         "PatientBirthDate",
+                         "PatientBirthTime",
+                         "PatientSex",
+                         "OtherPatientIDs",
+                         "OtherPatientNames",
+                         "PatientBirthName",
+                         "PatientAge",
+                         "PatientAddress",
+                         "PatientMotherBirthName",
+                         "CountryOfResidence",
+                         "RegionOfResidence",
+                         "PatientTelephoneNumbers",
+                         "StudyID",
+                         "CurrentPatientLocation",
+                         "PatientInstitutionResidence",
+                         "DateTime",
+                         "Date",
+                         "Time",
+                         "PersonName",
+                         "EthnicGroup",
+                         "StationName",
+                         "InstanceCreationDate",
+                         "InstanceCreationTime",
+                         "InstanceCreatorUID"]
+
     dcm_out = copy.deepcopy(dcm)
 
     # Remove private tags from DICOM file unless requested not to.
     if delete_private_tags:
         dcm_out.remove_private_tags()
-    
+
     # Exclude tags from anonymisation process that have been requested to remain as is
     for tag in tags_to_keep:
         try:
@@ -132,7 +134,7 @@ def dicom_anon(dcm, delete_private_tags = True, tags_to_keep = []):
         except ValueError:
             # Value not in list. TODO: Warn?
             pass
-    
+
     # Overwrite tags in anonymisation list with an empty string.
     # TODO: Provide alternative overwrite values?
     for tag in tags_to_anonymise:
