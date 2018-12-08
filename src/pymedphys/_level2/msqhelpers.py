@@ -28,8 +28,11 @@
 
 import pandas as pd
 
-from .._level1.msqconnect import execute_sql
+from .._level1.msqconnect import execute_sql, multi_mosaiq_connect
 from .._level1.msqdictionaries import FIELD_TYPES
+
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
 def get_treatment_times(cursor, field_id):
@@ -70,6 +73,7 @@ def get_patient_fields(cursor, patient_id):
             TxField.Field_Name,
             TxField.Version,
             TxField.Meterset,
+            TxField.Type_Enum,
             Site.Site_Name
         FROM Ident, TxField, Site
         WHERE
@@ -82,13 +86,20 @@ def get_patient_fields(cursor, patient_id):
         }
     )
 
-    return pd.DataFrame(
+    table = pd.DataFrame(
         data=patient_field_results,
         columns=[
             'field_id', 'field_label', 'field_name', 'field_version',
-            'monitor_units', 'site'
+            'monitor_units', 'field_type', 'site'
         ]
     )
+
+    table['field_type'] = [
+        FIELD_TYPES[item]
+        for item in table['field_type']
+    ]
+
+    return table
 
 
 def get_treatments(cursor, start, end, machine):
@@ -145,3 +156,128 @@ def get_treatments(cursor, start, end, machine):
     table = table.sort_values('start')
 
     return table
+
+
+def get_staff_name(cursor, staff_id):
+    data = execute_sql(
+        cursor,
+        """
+        SELECT
+            Staff.Initials,
+            Staff.User_Name,
+            Staff.Type,
+            Staff.Category,
+            Staff.Last_Name,
+            Staff.First_Name
+        FROM Staff
+        WHERE
+            Staff.Staff_ID = %(staff_id)s
+        """,
+        {
+            'staff_id': staff_id
+        }
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=['initials', 'user_name',
+                 'type', 'category', 'last_name', 'first_name']
+    )
+
+    return results
+
+
+def get_incomplete_qcls(cursor, location):
+    data = execute_sql(
+        cursor,
+        """
+        SELECT
+            Ident.IDA,
+            Patient.Last_Name,
+            Patient.First_Name,
+            Chklist.Due_DtTm,
+            Chklist.Instructions,
+            Chklist.Notes,
+            QCLTask.Description
+        FROM Chklist, Staff, QCLTask, Ident, Patient
+        WHERE
+            Chklist.Pat_ID1 = Ident.Pat_ID1 AND
+            Patient.Pat_ID1 = Ident.Pat_ID1 AND
+            QCLTask.TSK_ID = Chklist.TSK_ID AND
+            Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
+            Staff.Last_Name = %(location)s AND
+            Chklist.Complete = 0
+        """,
+        {
+            'location': location
+        }
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=['patient_id', 'last_name', 'first_name',
+                 'due', 'instructions', 'comment', 'task']
+    )
+
+    results = results.sort_values(by=['due'], ascending=False)
+
+    return results
+
+
+def get_incomplete_qcls_across_sites(servers, centres, locations):
+    servers_list = [
+        item for _, item in servers.items()
+    ]
+
+    results = pd.DataFrame()
+
+    with multi_mosaiq_connect(servers_list) as cursors:
+        for centre in centres:
+            cursor = cursors[servers[centre]]
+
+            incomplete_qcls = get_incomplete_qcls(
+                cursor, locations[centre])
+            incomplete_qcls['centre'] = [centre] * len(incomplete_qcls)
+
+            results = results.append(incomplete_qcls)
+
+    results = results.sort_values(by='due')
+
+    return results
+
+
+def get_qcls_by_date(cursor, location, start, end):
+    data = execute_sql(
+        cursor,
+        """
+        SELECT
+            QCLTask.Description,
+            Chklist.Act_DtTm,
+            Staff.Last_Name,
+            Chklist.Instructions,
+            Chklist.Due_DtTm,
+            Chklist.Complete
+        FROM Chklist, Staff, QCLTask
+        WHERE
+            QCLTask.TSK_ID = Chklist.TSK_ID AND
+            Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
+            Staff.Last_Name = %(location)s AND
+            Chklist.Act_DtTm >= %(start)s AND
+            Chklist.Act_DtTm < %(end)s
+        """,
+        {
+            'location': location,
+            'start': start,
+            'end': end
+        }
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=['task', 'actual_completed_time',
+                 'responsible_staff', 'instructions', 'due', 'complete']
+    )
+
+    results = results.sort_values(by=['actual_completed_time'])
+
+    return results

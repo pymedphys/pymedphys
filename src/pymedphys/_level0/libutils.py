@@ -28,7 +28,70 @@
 library.
 """
 
+import importlib
 from copy import copy
+
+
+def clean_and_verify_levelled_modules(input_globals, module_names):
+    all_new_definitions = []
+
+    scope = {}
+    scope['IMPORTS'] = None
+
+    clobber_check = ClobberCheck(ignore=['IMPORTS'])
+    new_definitions = NewDefinitions()
+
+    for module_name in module_names:
+        clobber_check.baseline = scope
+        new_definitions.baseline = scope
+
+        module = importlib.import_module(
+            module_name, package='pymedphys')
+        for key, item in module.__dict__.items():
+            if not key.startswith('_'):
+                scope[key] = item
+
+        clobber_check.check(scope, label=module_name)
+        all_new_definitions += new_definitions.find(
+            scope, module.IMPORTS)
+
+    for key in copy(input_globals):
+        if (key not in all_new_definitions) and (not key.startswith('_')):
+            del input_globals[key]
+
+
+class NewDefinitions:
+    def __init__(self):
+        self.__baseline = None
+
+    @property
+    def baseline(self):
+        """The reference set of globals to compare against.
+        """
+        return self.__baseline
+
+    @baseline.setter
+    def baseline(self, input_globals):
+        self.__baseline = copy(input_globals)
+
+    def find(self, input_globals, imports):
+        """Run the check against the baseline.
+        """
+
+        new_definitions = []
+        for key in input_globals.keys():
+            if (key not in self.__baseline) and (key not in imports):
+                new_definitions.append(key)
+
+        return new_definitions
+
+
+def get_imports(input_globals):
+    input_globals_copy = copy(input_globals)
+    public_imports = [
+        item for item in input_globals_copy if not item.startswith('_')]
+
+    return public_imports
 
 
 class ClobberCheck:
@@ -40,7 +103,7 @@ class ClobberCheck:
         In it's rawest form `ClobberCheck` is simply checking to see if any
         global has changed since it was last baselined:
 
-        >>> from pymedphys.clobbercheck import ClobberCheck
+        >>> from pymedphys.libutils import ClobberCheck
         >>> clobberCheck = ClobberCheck()
 
         >>> a_variable = 5
@@ -77,7 +140,7 @@ class ClobberCheck:
         The design of this class is to verify whether or not importing a
         package using `*` overwrote any definitions:
 
-        >>> from pymedphys.clobbercheck import ClobberCheck
+        >>> from pymedphys.libutils import ClobberCheck
         >>> clobberCheck = ClobberCheck()
 
         >>> from numpy import *
@@ -94,7 +157,7 @@ class ClobberCheck:
 
         It can also detect if you yourself have clobbered a global as so:
 
-        >>> from pymedphys.clobbercheck import ClobberCheck
+        >>> from pymedphys.libutils import ClobberCheck
 
         >>> clobberCheck = ClobberCheck()
         >>> from numpy import *
@@ -114,8 +177,9 @@ class ClobberCheck:
         ['mean', 'sum']
     """
 
-    def __init__(self):
+    def __init__(self, ignore=[]):
         self.__baseline = None
+        self.__ignore = ignore
 
     @property
     def baseline(self):
@@ -133,7 +197,7 @@ class ClobberCheck:
 
         clobbered_variables = []
         for key, a_global in self.__baseline.items():
-            if a_global is not input_globals[key]:
+            if (key not in self.__ignore) and (a_global is not input_globals[key]):
                 clobbered_variables.append(key)
 
         clobbered_variables.sort()

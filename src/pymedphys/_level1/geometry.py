@@ -29,6 +29,9 @@ import matplotlib.pyplot as plt
 
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def cubify_cube_definition(cube_definition):
     """Convertes a set of 3-D points into the vertices that define a cube.

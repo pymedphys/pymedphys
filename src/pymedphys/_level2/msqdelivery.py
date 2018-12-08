@@ -35,6 +35,9 @@ from .._level1.typedeliverydata import DeliveryData, get_delivery_parameters
 from .._level1.msqconnect import execute_sql
 from .._level1.msqdictionaries import FIELD_TYPES
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 @attr.s
 class OISDeliveryDetails(object):
