@@ -30,12 +30,8 @@ import pydicom as dcm
 
 from pymedphys.dcm import load_xyz_from_dicom
 
-# Fixed the finding of the data files by referencing the path based on HERE
-# variable
 HERE = os.path.dirname(os.path.abspath(__file__))
-print(HERE)
 DATA_DIRECTORY = os.path.join(os.path.dirname(HERE), 'data', 'dcmdose')
-print(DATA_DIRECTORY)
 
 
 def get_data_file(orientation_key):
@@ -44,19 +40,17 @@ def get_data_file(orientation_key):
 
 
 def test_load_xyz_from_dicom():
-    expected_coords = np.load(os.path.join(DATA_DIRECTORY, "expected_coords.npy")).item()
-   
+    expected_coords = np.load(os.path.join(
+        DATA_DIRECTORY, "expected_coords.npy")).item()
+
     test_dcms = {
         key: dcm.dcmread(get_data_file(key))
         for key in expected_coords
     }
-    
+
     for orient, dicom in test_dcms.items():
         x, y, z = load_xyz_from_dicom(dicom)
-        
-        assert(np.array_equal(x, expected_coords[orient][0]))
-        assert(np.array_equal(y, expected_coords[orient][1]))
-        assert(np.array_equal(z, expected_coords[orient][2]))
 
-    return
-    
+        assert np.array_equal(x, expected_coords[orient][0])
+        assert np.array_equal(y, expected_coords[orient][1])
+        assert np.array_equal(z, expected_coords[orient][2])
