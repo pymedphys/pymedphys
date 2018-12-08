@@ -57,7 +57,8 @@ setup(
     package_dir={'': 'src'},
     package_data={'pymedphys': [
         'tests/data/*/*.npz', 'tests/data/*/*.csv', 'tests/data/*/*.trf',
-        'tests/data/gamma/agnew_mcgarry_images/*.dcm']},
+        'tests/data/gamma/agnew_mcgarry_images/*.dcm',
+		'tests/data/dcmdose/*.dcm']},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     include_package_data=True,
     entry_points={

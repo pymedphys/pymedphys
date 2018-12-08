@@ -102,11 +102,4 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-
-
-.~lock
-.idea/vcs.xml
-.idea/pymedphys.iml
-.idea/misc.xml
-.idea/modules.xml
-.idea/workspace.xml
+.idea/
