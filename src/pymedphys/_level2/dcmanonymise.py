@@ -36,7 +36,7 @@ IMPORTS = get_imports(globals())
 
 
 def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
-                    ignore_unknown_tag=False):
+                    ignore_unknown_tags=False):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
@@ -55,7 +55,7 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
         A sequence of DICOM tags to exclude from anonymisation. Empty by
         default.
 
-    ignore_unknown_tag
+    ignore_unknown_tags
         In the case where pydicom has updated its DICOM dictionary this
         function will raise an error in the off chance a new identifying tag
         has been introduced. Set this to True to ignore this. Default is False.
@@ -77,7 +77,7 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
             "The input argument is a member of {}. "
             "It must be a pydicom FileDataset.".format(type(dcm)))
 
-    if not ignore_unknown_tag:
+    if not ignore_unknown_tags:
         tags_used = list(dcm.keys())
         non_private_tags_used = np.array([
             tag for tag in tags_used if not tag.is_private
@@ -86,24 +86,25 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
             key in DicomDictionary.keys() for key in non_private_tags_used]
 
         if not np.all(are_tags_used_in_dict_copy):
-            unrecorded_tags = non_private_tags_used[
+            unknown_tags = non_private_tags_used[
                 np.invert(are_tags_used_in_dict_copy)]
 
-            tag_names = [
+            unknown_tag_names = [
                 dcm[tag].keyword
-                for tag in unrecorded_tags]
+                for tag in unknown_tags]
 
             raise AssertionError(
-                "One of the non-private tags within your DICOM file is not "
+                "At least one of the non-private tags within your DICOM file "
+                "is not "
                 "within PyMedPhys's copy of the DICOM dictionary. If this is "
                 "the case there is a small chance an introduced tag might be "
                 "identifying. The unrecognised tags are:\n\n{}\n\n"
-                "To ignore this issue pass `ignore_unknown_tag` to "
-                " `anonymise_dicom`. Please inform the creators of PyMedPhys "
-                "that the baseline dictionary is out of date.".format(
-                    tag_names
-                )
-            )
+                "To ignore this error, pass a value of True to "
+                "`ignore_unknown_tags` within "
+                "`anonymise_dicom`. Please inform the creators of PyMedPhys "
+                "that the baseline DICOM dictionary is out of date.".format(
+                    unknown_tag_names
+                ))
 
     tags_to_anonymise = ["StudyDate",
                          "SeriesDate",
