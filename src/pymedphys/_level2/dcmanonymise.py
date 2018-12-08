@@ -24,13 +24,19 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import copy
+
+import numpy as np
+
 import pydicom
+
+from .._level1._dcmdictbaseline import DicomDictionary
 
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def dicom_anon(dcm, delete_private_tags=True, tags_to_keep=[]):
+def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
+                    ignore_unknown_tags=False):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
@@ -46,7 +52,13 @@ def dicom_anon(dcm, delete_private_tags=True, tags_to_keep=[]):
         also contain identifying information. Defaults to True.
 
     tags_to_keep
-        A sequence of DICOM tags to exclude from anonymisation. Empty by default.
+        A sequence of DICOM tags to exclude from anonymisation. Empty by
+        default.
+
+    ignore_unknown_tags
+        In the case where pydicom has updated its DICOM dictionary this
+        function will raise an error in the off chance a new identifying tag
+        has been introduced. Set this to True to ignore this. Default is False.
 
     Returns
     -------
@@ -64,6 +76,35 @@ def dicom_anon(dcm, delete_private_tags=True, tags_to_keep=[]):
         raise TypeError(
             "The input argument is a member of {}. "
             "It must be a pydicom FileDataset.".format(type(dcm)))
+
+    if not ignore_unknown_tags:
+        tags_used = list(dcm.keys())
+        non_private_tags_used = np.array([
+            tag for tag in tags_used if not tag.is_private
+        ])
+        are_tags_used_in_dict_copy = [
+            key in DicomDictionary.keys() for key in non_private_tags_used]
+
+        if not np.all(are_tags_used_in_dict_copy):
+            unknown_tags = non_private_tags_used[
+                np.invert(are_tags_used_in_dict_copy)]
+
+            unknown_tag_names = [
+                dcm[tag].keyword
+                for tag in unknown_tags]
+
+            raise AssertionError(
+                "At least one of the non-private tags within your DICOM file "
+                "is not "
+                "within PyMedPhys's copy of the DICOM dictionary. If this is "
+                "the case there is a small chance an introduced tag might be "
+                "identifying. The unrecognised tags are:\n\n{}\n\n"
+                "To ignore this error, pass a value of True to "
+                "`ignore_unknown_tags` within "
+                "`anonymise_dicom`. Please inform the creators of PyMedPhys "
+                "that the baseline DICOM dictionary is out of date.".format(
+                    unknown_tag_names
+                ))
 
     tags_to_anonymise = ["StudyDate",
                          "SeriesDate",
