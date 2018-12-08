@@ -43,6 +43,12 @@ def test_load_xyz_from_dicom():
     expected_coords = np.load(os.path.join(
         DATA_DIRECTORY, "expected_coords.npy")).item()
 
+    assert (
+        set(expected_coords.keys()) ==
+        set([
+            'FFDL', 'FFDR', 'FFP', 'FFS', 'HFDL', 'HFDR', 'HFP', 'HFS'
+        ]))
+
     test_dcms = {
         key: dcm.dcmread(get_data_file(key))
         for key in expected_coords
