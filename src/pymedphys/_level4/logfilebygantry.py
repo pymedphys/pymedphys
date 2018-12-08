@@ -36,6 +36,10 @@ from .._level2.trfdecode import delivery_data_from_logfile
 from .._level3.logfileanalyse import calc_comparison, plot_results
 
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
+
 def get_mappings(index, file_hashes):
     patient_grouped_fields = dict()
     field_id_grouped_hashes = dict()

@@ -33,6 +33,9 @@ from .._level1.geometry import (
 from .._level1.dcmdose import (
     pull_structure, contour_to_points)
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
                                dcm_struct: pydicom.dataset.FileDataset,
@@ -69,6 +72,7 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
 
     Examples
     --------
+    >>> import numpy as np
     >>> import pydicom
     >>> from pymedphys.dcm import get_structure_aligned_cube
     >>>
