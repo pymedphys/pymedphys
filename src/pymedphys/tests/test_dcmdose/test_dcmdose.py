@@ -61,14 +61,13 @@ class TestDcmDose():
             key: dcm.dcmread(get_data_file(key))
             for key in expected_coords
         }
-        
+        print()
         for orient, d in test_dcms.items():
             x, y, z = load_xyz_from_dicom(d)
-            print()
-            print(orient)
-            print(x)
-            print(y)
-            print(z)
+            print("Orientation: {}\n".format(orient) + 
+                  "x: {}, {}, {}\n".format(x[0], x[1]-x[0], x[-1]) +
+                  "y: {}, {}, {}\n".format(y[0], y[1]-y[0], y[-1]) +
+                  "z: {}, {}, {}\n".format(z[0], z[1]-z[0], z[-1]) )
 
         # TODO: run load_xyz_from_dicom() on each file and compare x, y and z coordinate arrays to expected values
             # What values to use as expected?
