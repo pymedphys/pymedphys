@@ -37,6 +37,9 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+# pylint: disable=C0103
+
+
 def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
                                dcm_struct: pydicom.dataset.FileDataset,
                                quiet=False, niter=10):

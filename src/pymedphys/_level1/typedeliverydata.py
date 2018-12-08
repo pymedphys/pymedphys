@@ -35,7 +35,7 @@ IMPORTS = get_imports(globals())
 
 
 @attr.s
-class DeliveryData(object):
+class DeliveryData:
     monitor_units = attr.ib()
     gantry = attr.ib()
     collimator = attr.ib()
@@ -44,7 +44,7 @@ class DeliveryData(object):
 
 
 def get_delivery_parameters(delivery_data):
-    mu = np.array(delivery_data.monitor_units)
+    mu = np.array(delivery_data.monitor_units)  # pylint: disable=C0103
     mlc = np.array(delivery_data.mlc)
     jaw = np.array(delivery_data.jaw)
 

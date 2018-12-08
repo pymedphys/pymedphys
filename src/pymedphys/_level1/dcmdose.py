@@ -39,6 +39,9 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+# pylint: disable=C0103
+
+
 def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
     if set_transfer_syntax_uid:
         dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
@@ -63,7 +66,8 @@ def load_xyz_from_dicom(dcm):
     -------
     (x, y, z)
         A tuple of ndarrays containing the x, y and z coordinates of the DICOM
-        RT Dose file's dose grid, given in the DICOM patient coordinate system [1]_.
+        RT Dose file's dose grid, given in the DICOM patient coordinate system
+        [1]_.
 
     Notes
     -----
@@ -86,42 +90,59 @@ def load_xyz_from_dicom(dcm):
     ----------
     .. [1] "C.7.6.2.1.1 Image Position and Image Orientation",
        "DICOM PS3.3 2016a - Information Object Definitions",
-       dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
+       http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
 
-    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo (DOSXYZnrc
-       and VMC++) verifications of DICOM compatible radiotherapy treatment plans",
-       arXiv:1406.0014, Table 1, https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
+       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
+       treatment plans", arXiv:1406.0014, Table 1,
+       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
 
+    is_prone_or_supine = np.array_equal(
+        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
+
+    is_decubitus = np.array_equal(
+        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
+
     # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose grid and the 'patient'
-    if np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])):
+    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
+    # grid and the 'patient'
+    if is_prone_or_supine:
         decubitis = False
         xflip = (orientation[0] == -1)
         yflip = (orientation[4] == -1)
         head_first = (xflip == yflip)
-    elif np.array_equal(np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.])):
+    elif is_decubitus:
         decubitis = True
         xflip = (orientation[3] == -1)
         yflip = (orientation[1] == -1)
         head_first = (xflip != yflip)
     else:
-        raise ValueError("Dose grid orientation is not supported. " +
-                         "Z-axis of dose grid must be parallel to z-axis of patient")
+        raise ValueError(
+            "Dose grid orientation is not supported. "
+            "Z-axis of dose grid must be parallel to z-axis of patient")
 
     di = float(dcm.PixelSpacing[0])
     dj = float(dcm.PixelSpacing[1])
 
     if decubitis:
-        x = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
-        y = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
+        x = (
+            orientation[3]*position[0] +
+            np.arange(0, dcm.Rows * dj, dj))
+        y = (
+            orientation[1]*position[1] +
+            np.arange(0, dcm.Columns * di, di))
 
     else:
-        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
-        y = orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj)
+        x = (
+            orientation[0]*position[0] +
+            np.arange(0, dcm.Columns * di, di))
+        y = (
+            orientation[4]*position[1] +
+            np.arange(0, dcm.Rows * dj, dj))
 
     if xflip:
         x = np.flip(x)
@@ -129,9 +150,12 @@ def load_xyz_from_dicom(dcm):
         y = np.flip(y)
 
     if head_first:
-        z = position[2] + np.array(dcm.GridFrameOffsetVector)
+        z = (
+            position[2] +
+            np.array(dcm.GridFrameOffsetVector))
     else:
-        z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
+        z = (
+            np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector)))
 
     return x, y, z
 
@@ -237,18 +261,20 @@ def average_bounding_profiles(dcm, depth_adjust, depth_lookup,
 
 
 def pull_structure_by_number(number, dcm_struct):
-    structure_names = [
-        item.ROIName for item in dcm_struct.StructureSetROISequence]
-
     contours_by_slice_raw = [
         item.ContourData
         for item in dcm_struct.ROIContourSequence[number].ContourSequence
     ]
-    x = [np.array(item[0::3]) for item in contours_by_slice_raw]
-    y = [np.array(item[1::3]) for item in contours_by_slice_raw]
-    z = [np.array(item[2::3]) for item in contours_by_slice_raw]
+    x = [
+        np.array(item[0::3])
+        for item in contours_by_slice_raw]
+    y = [
+        np.array(item[1::3])
+        for item in contours_by_slice_raw]
+    z = [
+        np.array(item[2::3])
+        for item in contours_by_slice_raw]
 
-    # print("Loaded {}".format(structure_names[number]))
     return x, y, z
 
 
@@ -256,11 +282,12 @@ def pull_structure(string, dcm_struct):
     structure_names = np.array(
         [item.ROIName for item in dcm_struct.StructureSetROISequence])
     reference = structure_names == string
-    if np.all(reference == False):  # noqa E712
+    if np.all(reference == False):  # pylint: disable=C0121
         raise Exception("Structure not found (case sensitive)")
 
     index = int(np.where(reference)[0])
-    x, y, z = pull_structure_by_number(index, dcm_struct)
+    x, y, z = pull_structure_by_number(
+        index, dcm_struct)
 
     return x, y, z
 
@@ -335,7 +362,8 @@ def list_structures(dcm_struct):
 
 
 def resample_contour(contour, n=50):
-    tck, u = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
+    tck, u = splprep(
+        [contour[0], contour[1], contour[2]], s=0, k=1)
     new_points = splev(np.arange(0, 1, 1/n), tck)
 
     return new_points
