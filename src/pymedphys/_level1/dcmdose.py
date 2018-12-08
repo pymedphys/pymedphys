@@ -93,8 +93,6 @@ def load_xyz_from_dicom(dcm):
        arXiv:1406.0014, Table 1, https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
     
-    DECIMALS=3
-    
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
 
@@ -114,8 +112,8 @@ def load_xyz_from_dicom(dcm):
         raise ValueError("Dose grid orientation is not supported. " +
                              "Z-axis of dose grid must be parallel to z-axis of patient")
 
-    di = np.round(float(dcm.PixelSpacing[0]), decimals = DECIMALS)
-    dj = np.round(float(dcm.PixelSpacing[1]), decimals = DECIMALS)
+    di = float(dcm.PixelSpacing[0])
+    dj = float(dcm.PixelSpacing[1])
 
     if decubitis:
         x = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
@@ -135,7 +133,7 @@ def load_xyz_from_dicom(dcm):
     else:
         z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
 
-    return np.round(x, decimals = DECIMALS), np.round(y, decimals = DECIMALS), np.round(z, decimals = DECIMALS)
+    return x, y, z
 
 
 def coords_and_dose_from_dcm(dcm_filepath):

@@ -43,40 +43,20 @@ def get_data_file(orientation_key):
     return os.path.join(DATA_DIRECTORY, filename)
 
 
-class TestDcmDose():
+def test_load_xyz_from_dicom():
+    expected_coords = np.load(os.path.join(DATA_DIRECTORY, "expected_coords.npy")).item()
    
-    def test_load_xyz_from_dicom(self):
-        expected_coords = {
-            'FFDL': 'he',
-            'FFDR': None,
-            'FFP': None,
-            'FFS': None,
-            'HFDL': None,
-            'HFDR': None,
-            'HFP': None,
-            'HFS': None
-        }
-       
-        test_dcms = {
-            key: dcm.dcmread(get_data_file(key))
-            for key in expected_coords
-        }
-        print()
-        for orient, d in test_dcms.items():
-            x, y, z = load_xyz_from_dicom(d)
-            print("Orientation: {}\n".format(orient) + 
-                  "x: {}, {}, {}\n".format(x[0], x[1]-x[0], x[-1]) +
-                  "y: {}, {}, {}\n".format(y[0], y[1]-y[0], y[-1]) +
-                  "z: {}, {}, {}\n".format(z[0], z[1]-z[0], z[-1]) )
-
-        # TODO: run load_xyz_from_dicom() on each file and compare x, y and z coordinate arrays to expected values
-            # What values to use as expected?
-            # Use a commercial DICOM RT Dose display tool?
-            # What if coordinate system is incorrectly configured in software?
-
-        return
-
+    test_dcms = {
+        key: dcm.dcmread(get_data_file(key))
+        for key in expected_coords
+    }
+    
+    for orient, dicom in test_dcms.items():
+        x, y, z = load_xyz_from_dicom(dicom)
         
-if __name__ == "__main__":
-    TestDcmDose().test_load_xyz_from_dicom()
+        assert(np.array_equal(x, expected_coords[orient][0]))
+        assert(np.array_equal(y, expected_coords[orient][1]))
+        assert(np.array_equal(z, expected_coords[orient][2]))
+
+    return
     
