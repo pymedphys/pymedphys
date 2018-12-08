@@ -35,6 +35,8 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+# pylint: disable=C0103
+
 def dose_inside_cube(x_dose, y_dose, z_dose, dose, cube):
     """Find the dose just within the given cube.
     """

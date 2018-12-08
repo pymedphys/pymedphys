@@ -95,7 +95,8 @@ def assert_array_agreement(unique_logfile_gantry_angles, mosaiq_gantry_angles,
             mosaiq_gantry_angles, difference_matrix, agreement_matrix))
 
 
-def extract_angle_from_delivery_data(delivery_data, gantry_angle, gantry_tolerance=0):
+def extract_angle_from_delivery_data(delivery_data, gantry_angle,
+                                     gantry_tolerance=0):
     moniter_units = np.array(delivery_data.monitor_units)
     relevant_control_points = find_relevant_control_points(moniter_units)
 
