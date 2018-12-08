@@ -118,24 +118,16 @@ def load_xyz_from_dicom(dcm):
         yflip = (orientation[4] == -1)
         head_first = (xflip == yflip)
 
-        x = (
-            orientation[0]*position[0] +
-            np.arange(0, dcm.Columns * di, di))
-        y = (
-            orientation[4]*position[1] +
-            np.arange(0, dcm.Rows * dj, dj))
+        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
+        y = orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj)
 
     elif is_decubitus:
         xflip = (orientation[3] == -1)
         yflip = (orientation[1] == -1)
         head_first = (xflip != yflip)
 
-        x = (
-            orientation[3]*position[0] +
-            np.arange(0, dcm.Rows * dj, dj))
-        y = (
-            orientation[1]*position[1] +
-            np.arange(0, dcm.Columns * di, di))
+        x = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
+        y = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
     else:
         raise ValueError(
             "Dose grid orientation is not supported. "
@@ -147,12 +139,9 @@ def load_xyz_from_dicom(dcm):
         y = np.flip(y)
 
     if head_first:
-        z = (
-            position[2] +
-            np.array(dcm.GridFrameOffsetVector))
+        z = position[2] + np.array(dcm.GridFrameOffsetVector)
     else:
-        z = (
-            np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector)))
+        z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
 
     return x, y, z
 
@@ -176,7 +165,6 @@ def load_dicom_data(dcm, depth_adjust):
 
 
 def extract_depth_dose(dcm, depth_adjust, averaging_distance=0):
-
     inplane, crossplane, depth, dose = load_dicom_data(dcm, depth_adjust)
 
     inplane_ref = abs(inplane) <= averaging_distance
