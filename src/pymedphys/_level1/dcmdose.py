@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -51,24 +51,91 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
 
 
 def load_xyz_from_dicom(dcm):
-    resolution = np.array(
-        dcm.PixelSpacing).astype(float)
-    dx = resolution[0]
+    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
 
-    x = (
-        dcm.ImagePositionPatient[0] +
-        np.arange(0, dcm.Columns * dx, dx))
+    Parameters
+    ----------
+    dcm
+       A pydicom FileDataset - ordinarily returned by pydicom.dcmread().
+       Must represent a valid DICOM RT Dose file.
 
-    dy = resolution[1]
-    y = (
-        dcm.ImagePositionPatient[1] +
-        np.arange(0, dcm.Rows * dy, dy))
+    Returns
+    -------
+    (x, y, z)
+        A tuple of ndarrays containing the x, y and z coordinates of the DICOM 
+        RT Dose file's dose grid, given in the DICOM patient coordinate system [1]_.
 
-    z = (
-        np.array(dcm.GridFrameOffsetVector) +
-        dcm.ImagePositionPatient[2])
+    Notes
+    -----
+    Supported scan orientations [2]_:
+    
+    =========================== =======================
+    Orientation                 ImageOrientationPatient
+    =========================== =======================
+    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
+    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
+    Feet First Prone            [1, 0, 0, 0, -1, 0]
+    Feet First Supine           [-1, 0, 0, 0, 1, 0]
+    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
+    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
+    Head First Prone            [-1, 0, 0, 0, -1, 0]
+    Head First Supine           [1, 0, 0, 0, 1, 0]
+    =========================== =======================
+    
+    References
+    ----------
+    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation", 
+       "DICOM PS3.3 2016a - Information Object Definitions",
+       dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
+    
+    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo (DOSXYZnrc
+       and VMC++) verifications of DICOM compatible radiotherapy treatment plans", 
+       arXiv:1406.0014, Table 1, https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+    """
+    
+    DECIMALS=3
+    
+    position = np.array(dcm.ImagePositionPatient)
+    orientation = np.array(dcm.ImageOrientationPatient)
 
-    return x, y, z
+    # Only proceed if the DICOM RT Dose file has a supported orientation.
+    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose grid and the 'patient'    
+    if np.array_equal(np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.])):
+        decubitis = False
+        xflip = ( orientation[0] == -1 )
+        yflip = ( orientation[4] == -1 )
+        head_first = ( xflip == yflip )        
+    elif np.array_equal(np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.])):
+        decubitis = True
+        xflip = ( orientation[3] == -1 )
+        yflip = ( orientation[1] == -1 )
+        head_first = ( xflip != yflip )        
+    else:
+        raise ValueError("Dose grid orientation is not supported. " +
+                             "Z-axis of dose grid must be parallel to z-axis of patient")
+
+    di = np.round(float(dcm.PixelSpacing[0]), decimals = DECIMALS)
+    dj = np.round(float(dcm.PixelSpacing[1]), decimals = DECIMALS)
+
+    if decubitis:
+        x = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
+        y = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
+       
+    else:
+        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
+        y = orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj)
+
+    if xflip:
+        x = np.flip(x)
+    if yflip:
+        y = np.flip(y)   
+                  
+    if head_first:
+        z = position[2] + np.array(dcm.GridFrameOffsetVector)
+    else:
+        z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
+
+    return np.round(x, decimals = DECIMALS), np.round(y, decimals = DECIMALS), np.round(z, decimals = DECIMALS)
 
 
 def coords_and_dose_from_dcm(dcm_filepath):
