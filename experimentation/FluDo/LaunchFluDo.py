@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -48,8 +48,8 @@ rcParams['figure.figsize'] = 17, 12
 init_pin_path = r'D:\RTPlanFromPin'
 init_dynalog_path = r'D:\Temp'
 
-dynalog_dir_path = ''  # 
-pinnacle_dcm_path = ''  # 
+dynalog_dir_path = ''  #
+pinnacle_dcm_path = ''  #
 
 if not (os.path.exists(dynalog_dir_path) and os.path.exists(pinnacle_dcm_path)):
     root = tkinter.Tk()  # make a top-level instance and hide since it is ugly and big.

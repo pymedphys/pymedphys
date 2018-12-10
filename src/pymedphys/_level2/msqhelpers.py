@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -73,6 +73,7 @@ def get_patient_fields(cursor, patient_id):
             TxField.Field_Name,
             TxField.Version,
             TxField.Meterset,
+            TxField.Type_Enum,
             Site.Site_Name
         FROM Ident, TxField, Site
         WHERE
@@ -85,13 +86,20 @@ def get_patient_fields(cursor, patient_id):
         }
     )
 
-    return pd.DataFrame(
+    table = pd.DataFrame(
         data=patient_field_results,
         columns=[
             'field_id', 'field_label', 'field_name', 'field_version',
-            'monitor_units', 'site'
+            'monitor_units', 'field_type', 'site'
         ]
     )
+
+    table['field_type'] = [
+        FIELD_TYPES[item]
+        for item in table['field_type']
+    ]
+
+    return table
 
 
 def get_treatments(cursor, start, end, machine):
