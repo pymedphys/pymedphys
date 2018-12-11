@@ -178,7 +178,13 @@ def gamma_shell(coords_reference, dose_reference,
 
     if ram_available is None:
         memory = psutil.virtual_memory()
-        ram_available = memory.total * 0.8
+        total_memory = memory.total
+
+        if total_memory == -1:
+            # Presume 2 GiB available if psutil not successful
+            total_memory = 2 ** 31
+
+        ram_available = total_memory * 0.8
 
     still_searching_for_gamma = np.ones_like(
         flat_dose_reference).astype(bool)
