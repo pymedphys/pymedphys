@@ -181,7 +181,7 @@ def gamma_shell(coords_reference, dose_reference,
         total_memory = memory.total
 
         if total_memory == -1:
-            # Presume 2 GiB available if psutil not successful
+            # Presume 2 GiB total memory if psutil not successful
             total_memory = 2 ** 31
 
         ram_available = total_memory * 0.8
