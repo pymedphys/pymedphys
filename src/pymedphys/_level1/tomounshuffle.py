@@ -39,9 +39,9 @@ IMPORTS = get_imports(globals())
 
 def unshuffle_sinogram(array):
     """
-    Unshuffling sinogram, i.e. separate leaf pattern into the 51
-    tomtherapy discretization angles, accepting a 2d list of lists
-    and returning a 3-D nested list of gantry positions, each
+    Unshuffle sinogram, i.e. separate leaf pattern into the 51
+    tomtherapy discretization angles, accepting a 2D list of lists
+    and returning a 3D nested list of gantry positions, each
     containting a list of leaf-open-fractions.
     Return a 3-D nested array from a 2-D nested array.
         Input
@@ -64,9 +64,7 @@ def unshuffle_sinogram(array):
         ]
     """
 
-    array = np.array(array)
-
-    assert array.shape[1] == 64  # num leaves
+    assert len(array[0]) == 64  # num leaves
 
     # SPLIT SINOGRAM INTO 51 ANGLE-INDEXED SEGMENTS
     result = [[] for i in range(51)]
@@ -74,8 +72,7 @@ def unshuffle_sinogram(array):
     for row in array:
         result[idx].append(row)
         idx = (idx + 1) % 51
-
-    # EXCLUDE EXTERIOR LEAVES WITH ZERO LEAF-OPEN TIMES
+    # SUPPRESS EXTERIOR LEAVES WITH ZERO LEAF-OPEN TIMES
     include = [False for f in range(64)]
     for i, angle in enumerate(result):
         for j, couch_step in enumerate(angle):
@@ -83,7 +80,7 @@ def unshuffle_sinogram(array):
                 if result[i][j][k] > 0.0:
                     include[k] = True
     gap = max([2 + max(i-32, 31-i) for i, v in enumerate(include) if v])
-    result = [[p[31 - gap:32 + gap] for p in result[i]] for i in range(51)]
+    result = [[p[32 - gap:32 + gap] for p in result[i]] for i in range(51)]
 
     return result
 

@@ -26,13 +26,29 @@
 
 import os
 
+from pymedphys.tomo import unshuffle_sinogram
 from pymedphys.tomo import unshuffle_sinogram_csv
 
 SINOGRAM_FILE = os.path.join(
     os.path.dirname(__file__), "../data/tomo/sinogram.csv")
 
 
-def test_unshuffle():
-    document_id, results = unshuffle_sinogram_csv(SINOGRAM_FILE)
+def test_unshuffle_sinogram():
+    """ Compare unshuffle_sinogram results vs expected values """
+    unshuffled = unshuffle_sinogram([[0]*25 + [1.0]*14 + [0]*25]*510)
+    assert len(unshuffled) == 51          # number of angles is 51
+    assert len(unshuffled[0]) == 10       # number of couch increments
+    assert len(unshuffled[0][0]) == 16    # number of visible leaves (is even)
+    assert unshuffled[0][0][0] == 0       # first leaf is closed
 
+
+def test_unshuffle_sinogram_csv():
+    """ Compare unshuffle_sinogram_csv results vs expected """
+    document_id, results = unshuffle_sinogram_csv(SINOGRAM_FILE)
     assert document_id == '00000 - ANONYMOUS, PATIENT'
+    assert len(results) == 51
+
+
+if __name__ == "__main__":
+    test_unshuffle_sinogram()
+    test_unshuffle_sinogram_csv()

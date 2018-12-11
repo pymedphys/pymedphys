@@ -101,6 +101,10 @@ def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
 
 
 if __name__ == '__main__':
+    import os
+    # print(os.path.join(os.getcwd(), 'scripts\\shareables\\tomo_sinogram_csv2pdf'))
+    print(  os.path.join(        os.path.split(__file__)[0]  , 'sinogram.csv'     ))
+
     try:
         test = ".\\scripts\\shareables\\tomo_sinogram_csv2pdf\\sinogram.csv"
         tomo_sinogram_csv2pdf(test, show=True, save=True)
