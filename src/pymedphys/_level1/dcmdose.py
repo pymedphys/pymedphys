@@ -26,6 +26,8 @@
 
 """A Dicom Dose toolbox"""
 
+import warnings
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
@@ -54,6 +56,18 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
 
 
 def load_xyz_from_dicom(dcm):
+    """This function is deprecated. It is due to be replaced with either
+    `extract_iec_room_coords` or `extract_patient_coords` depending on which
+    coord system is desired.
+    """
+
+    warnings.warn((
+        '`load_xyz_from_dicom` presumes patient orientation. '
+        'This presumption may not be correct and may not return appropriate '
+        'x, y, z values. In the future this function will be removed. '
+        'It is currently preserved for temporary backwards compatibility.'
+    ), UserWarning)
+
     resolution = np.array(
         dcm.PixelSpacing).astype(float)
     dx = resolution[0]
