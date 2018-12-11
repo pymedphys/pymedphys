@@ -54,6 +54,27 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
 
 
 def load_xyz_from_dicom(dcm):
+    resolution = np.array(
+        dcm.PixelSpacing).astype(float)
+    dx = resolution[0]
+
+    x = (
+        dcm.ImagePositionPatient[0] +
+        np.arange(0, dcm.Columns * dx, dx))
+
+    dy = resolution[1]
+    y = (
+        dcm.ImagePositionPatient[1] +
+        np.arange(0, dcm.Rows * dy, dy))
+
+    z = (
+        np.array(dcm.GridFrameOffsetVector) +
+        dcm.ImagePositionPatient[2])
+
+    return x, y, z
+
+
+def extract_patient_coords(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
 
     Parameters
