@@ -24,22 +24,22 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A range of utility functions.
+import lzma
 
-Examples:
-    >>> from pymedphys.utilities import get_filepath
-"""
+from glob import glob
 
-# pylint: disable=W0401,W0614,C0103,C0413
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+def compress_test_file(filepath):
+    with open(filepath, 'rb') as load_file:
+        with lzma.open('{}.xz'.format(filepath), 'w') as save_file:
+            save_file.write(load_file.read())
 
-from ._level1.utilitiescompression import *
-from ._level1.utilitiesconfig import *
-from ._level1.utilitiesfilesystem import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.utilitiesconfig', '._level1.utilitiesfilesystem',
-    '._level1.utilitiescompression'
-])
+def compress_test_files(glob_string):
+    files_to_compress = glob(glob_string, recursive=True)
+
+    for filepath in files_to_compress:
+        compress_test_file(filepath)
