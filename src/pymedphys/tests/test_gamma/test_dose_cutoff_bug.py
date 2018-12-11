@@ -38,19 +38,19 @@ EVALUATION_FILE = os.path.join(
     DATA_DIRECTORY, 'lfs-evaluation.csv')
 
 
-def test_bug():
-    data1_raw = np.genfromtxt(REFERENCE_FILE, delimiter=',')
-    data1 = data1_raw.reshape((411, 534, 273))
-    data2_raw = np.genfromtxt(EVALUATION_FILE, delimiter=',')
-    data2 = data2_raw.reshape((411, 534, 273))
+# def test_bug():
+#     data1_raw = np.genfromtxt(REFERENCE_FILE, delimiter=',')
+#     data1 = data1_raw.reshape((411, 534, 273))
+#     data2_raw = np.genfromtxt(EVALUATION_FILE, delimiter=',')
+#     data2 = data2_raw.reshape((411, 534, 273))
 
-    x = np.arange(411)
-    y = np.arange(534)
-    z = np.arange(273)
-    coords = (x, y, z)
+#     x = np.arange(411)
+#     y = np.arange(534)
+#     z = np.arange(273)
+#     coords = (x, y, z)
 
-    gamma_shell(coords, data1, coords, data2, 3, 30)
+#     gamma_shell(coords, data1, coords, data2, 3, 30)
 
 
-if __name__ == "__main__":
-    test_bug()
+# if __name__ == "__main__":
+#     test_bug()
