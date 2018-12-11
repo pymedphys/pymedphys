@@ -24,27 +24,33 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import lzma
+import os
 
-from glob import glob
+import numpy as np
+from pymedphys.gamma import gamma_shell
 
-from .._level0.libutils import get_imports
-IMPORTS = get_imports(globals())
+DATA_DIRECTORY = os.path.join(
+    os.path.dirname(__file__), "../data/gamma/dose-cutoff-bug")
 
-
-def compress_test_file(filepath):
-    with open(filepath, 'rb') as load_file:
-        with lzma.open('{}.xz'.format(filepath), 'w') as save_file:
-            save_file.write(load_file.read())
-
-
-def compress_test_files(glob_string, exclude_xz_files=True):
-    files_to_compress = glob(glob_string, recursive=True)
-
-    for filepath in files_to_compress:
-        if not filepath.endswith(".xz") or not exclude_xz_files:
-            compress_test_file(filepath)
+REFERENCE_FILE = os.path.join(
+    DATA_DIRECTORY, 'lfs-reference.csv')
+EVALUATION_FILE = os.path.join(
+    DATA_DIRECTORY, 'lfs-evaluation.csv')
 
 
-def decompress_test_files():
-    pass
+def test_bug():
+    data1_raw = np.genfromtxt(REFERENCE_FILE, delimiter=',')
+    data1 = data1_raw.reshape((411, 534, 273))
+    data2_raw = np.genfromtxt(EVALUATION_FILE, delimiter=',')
+    data2 = data2_raw.reshape((411, 534, 273))
+
+    x = np.arange(411)
+    y = np.arange(534)
+    z = np.arange(273)
+    coords = (x, y, z)
+
+    gamma_shell(coords, data1, coords, data2, 3, 30)
+
+
+if __name__ == "__main__":
+    test_bug()
