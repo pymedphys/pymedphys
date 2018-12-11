@@ -28,7 +28,7 @@ import os
 import numpy as np
 import pydicom as dcm
 
-from pymedphys.dcm import load_xyz_from_dicom
+from pymedphys.dcm import extract_patient_coords
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIRECTORY = os.path.join(os.path.dirname(HERE), 'data', 'dcmdose')
@@ -39,7 +39,7 @@ def get_data_file(orientation_key):
     return os.path.join(DATA_DIRECTORY, filename)
 
 
-def test_load_xyz_from_dicom():
+def test_extract_patient_coords():
     expected_coords = np.load(os.path.join(
         DATA_DIRECTORY, "expected_coords.npy")).item()
 
@@ -55,7 +55,7 @@ def test_load_xyz_from_dicom():
     }
 
     for orient, dicom in test_dcms.items():
-        x, y, z = load_xyz_from_dicom(dicom)
+        x, y, z = extract_patient_coords(dicom)
 
         assert np.array_equal(x, expected_coords[orient][0])
         assert np.array_equal(y, expected_coords[orient][1])
