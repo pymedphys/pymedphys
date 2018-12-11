@@ -44,12 +44,22 @@ IMPORTS = get_imports(globals())
 # pylint: disable=C0103
 
 
-def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
+def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
+
     if set_transfer_syntax_uid:
         dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
-    pixels = np.transpose(
-        dcm.pixel_array, (1, 2, 0))
+    if reshape:
+        warnings.warn((
+            '`load_dose_from_dicom` currently reshapes the dose grid. In a '
+            'future version this will no longer occur. To begin using this '
+            'function without the reshape pass the parameter `reshape=False` '
+            'when calling `load_dose_from_dicom`.'), UserWarning)
+        pixels = np.transpose(
+            dcm.pixel_array, (1, 2, 0))
+    else:
+        pixels = dcm.pixel_array
+
     dose = pixels * dcm.DoseGridScaling
 
     return dose
