@@ -72,9 +72,10 @@ def load_xyz_from_dicom(dcm):
     """
 
     warnings.warn((
-        '`load_xyz_from_dicom` presumes patient orientation. '
-        'This presumption may not be correct and may not return appropriate '
-        'x, y, z values. In the future this function will be removed. '
+        '`load_xyz_from_dicom` returns x, y & z values in the DICOM patient'
+        'coordinate system and presumes the patient\'s orientation is HFS.'
+        'This presumption may not be correct and so the function may return'
+        'incorrect x, y, z values. In the future, this function will be removed. '
         'It is currently preserved for temporary backwards compatibility.'
     ), UserWarning)
 
@@ -100,6 +101,7 @@ def load_xyz_from_dicom(dcm):
 
 def extract_patient_coords(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
+        in the DICOM patient coordinate system
 
     Parameters
     ----------
