@@ -32,7 +32,7 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def read_prs(file_name):
+def write_prs(file_name):
     """
     Read and return dose profiles and CAX dose from native Profiler data file.
 
@@ -43,7 +43,7 @@ def read_prs(file_name):
         The namedtuple Profiler which has the following:
             Profiler.cax = float(dose) at central axis
             Profiler.x = x profile, i.e. [(distance, dose), ...]
-            Profiler.x = x profile, i.e. [(distance, dose), ...]
+            Profiler.y = y profile, i.e. [(distance, dose), ...]
                 distance = float(+/- distance from cax
                 dose = float(absolute dose at detector)
     """
@@ -73,3 +73,44 @@ def read_prs(file_name):
     cax_dose = y_prof[41][1]
 
     return Profiler(cax_dose, x_prof, y_prof)
+
+
+def write_prs(x_prof, y_prof, file_name=None):
+    """
+    Write dose profiles to a file in the native Profiler data format.
+
+    Arguments:
+        x_prof -- x profile, i.e. [(distance, dose), ...]
+        y_prof -- y profile, i.e. [(distance, dose), ...]
+        file_name -- long file name of profiler file to be written
+
+    Returns:
+        None
+    """
+    return('OK')
+
+    # Profiler = namedtuple('Profiler', ['cax', 'x', 'y'])
+
+    # with open(file_name) as profiler_file:
+    #     for row in profiler_file.readlines():
+    #         contents = row
+    #         if contents[:11] == "Calibration" and "File" not in contents:
+    #             calibs = np.array(contents.split())[1:].astype(float)
+    #         elif contents[:5] == "Data:":
+    #             counts = np.array(contents.split()[5:145]).astype(float)
+    #         elif contents[:15] == "Dose Per Count:":
+    #             dose_per_count = (float(contents.split()[-1]))
+    #     assert (len(calibs)) == (len(counts)) == 140
+    #     assert dose_per_count > 0.0
+    # dose = counts * dose_per_count * calibs
+
+    # y_vals = [-16.4 + 0.4*i for i in range(83)]
+    # x_vals = [-11.2 + 0.4*i for i in range(57)]
+
+    # x_prof = list(zip(y_vals, dose[:57]))
+    # y_prof = list(zip(x_vals, dose[57:]))
+
+    # assert np.allclose(y_prof[41][1], x_prof[28][1])
+    # cax_dose = y_prof[41][1]
+
+    # return Profiler(cax_dose, x_prof, y_prof)
