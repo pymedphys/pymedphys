@@ -193,6 +193,88 @@ def extract_patient_coords(dcm):
     return x, y, z
 
 
+def extract_iec_fixed_coords(dcm):
+    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
+        in the IEC fixed coordinate system
+
+    Parameters
+    ----------
+    dcm
+       A pydicom FileDataset - ordinarily returned by pydicom.dcmread().
+       Must represent a valid DICOM RT Dose file.
+
+    Returns
+    -------
+    (x, y, z)
+        A tuple of ndarrays containing the x, y and z coordinates of the DICOM
+        RT Dose file's dose grid, given in the IEC fixed coordinate system
+        [1]_.
+
+    Notes
+    -----
+    Supported scan orientations [2]_:
+
+    =========================== =======================
+    Orientation                 ImageOrientationPatient
+    =========================== =======================
+    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
+    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
+    Feet First Prone            [1, 0, 0, 0, -1, 0]
+    Feet First Supine           [-1, 0, 0, 0, 1, 0]
+    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
+    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
+    Head First Prone            [-1, 0, 0, 0, -1, 0]
+    Head First Supine           [1, 0, 0, 0, 1, 0]
+    =========================== =======================
+
+    References
+    ----------
+    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation",
+       "DICOM PS3.3 2016a - Information Object Definitions",
+       http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
+
+    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
+       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
+       treatment plans", arXiv:1406.0014, Table 1,
+       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+    """
+
+    position = np.array(dcm.ImagePositionPatient)
+    orientation = np.array(dcm.ImageOrientationPatient)
+
+    di = float(dcm.PixelSpacing[0])
+    dj = float(dcm.PixelSpacing[1])
+
+    is_prone_or_supine = np.array_equal(
+        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
+
+    is_decubitus = np.array_equal(
+        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
+
+    # Only proceed if the DICOM RT Dose file has a supported orientation.
+    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
+    # grid and the 'patient'
+    if is_prone_or_supine:
+        y_orientation = 2*(orientation[0] == orientation[4])-1
+
+        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
+        z = orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj)
+
+    elif is_decubitus:
+        y_orientation = 2*(orientation[1] != orientation[3])-1
+
+        z = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
+        x = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
+    else:
+        raise ValueError(
+            "Dose grid orientation is not supported. "
+            "Z-axis of dose grid must be parallel to z-axis of patient")
+
+    y = y_orientation*position[2] + np.array(dcm.GridFrameOffsetVector)
+
+    return x, y, z
+    
+
 def coords_and_dose_from_dcm(dcm_filepath):
     dcm = pydicom.read_file(dcm_filepath, force=True)
     x, y, z = load_xyz_from_dicom(dcm)
