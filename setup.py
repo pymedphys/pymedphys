@@ -58,6 +58,7 @@ setup(
     package_data={'pymedphys': [
         'tests/data/*/*.npz', 'tests/data/*/*.csv', 'tests/data/*/*.trf',
         'tests/data/gamma/agnew_mcgarry_images/*.dcm',
+        'tests/data/devices/profiler/*.prs',
         'tests/data/dcmdose/*.dcm',
         'tests/data/dcmdose/*.npy'
     ]},
