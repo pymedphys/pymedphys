@@ -5,3 +5,4 @@ shapely
 pydicom
 psutil
 keyring
+pymssql
