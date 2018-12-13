@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -35,7 +35,7 @@ IMPORTS = get_imports(globals())
 
 
 @attr.s
-class DeliveryData(object):
+class DeliveryData:
     monitor_units = attr.ib()
     gantry = attr.ib()
     collimator = attr.ib()
@@ -44,7 +44,7 @@ class DeliveryData(object):
 
 
 def get_delivery_parameters(delivery_data):
-    mu = np.array(delivery_data.monitor_units)
+    mu = np.array(delivery_data.monitor_units)  # pylint: disable=C0103
     mlc = np.array(delivery_data.mlc)
     jaw = np.array(delivery_data.jaw)
 
