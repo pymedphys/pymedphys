@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -25,6 +25,8 @@
 
 
 """A Dicom Dose toolbox"""
+
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -39,18 +41,44 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
+# pylint: disable=C0103
+
+
+def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
+
     if set_transfer_syntax_uid:
         dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
-    pixels = np.transpose(
-        dcm.pixel_array, (1, 2, 0))
+    if reshape:
+        warnings.warn((
+            '`load_dose_from_dicom` currently reshapes the dose grid. In a '
+            'future version this will no longer occur. To begin using this '
+            'function without the reshape pass the parameter `reshape=False` '
+            'when calling `load_dose_from_dicom`.'), UserWarning)
+        pixels = np.transpose(
+            dcm.pixel_array, (1, 2, 0))
+    else:
+        pixels = dcm.pixel_array
+
     dose = pixels * dcm.DoseGridScaling
 
     return dose
 
 
 def load_xyz_from_dicom(dcm):
+    """This function is deprecated. It is due to be replaced with either
+    `extract_iec_room_coords` or `extract_patient_coords` depending on which
+    coordinate system is desired.
+    """
+
+    warnings.warn((
+        '`load_xyz_from_dicom` returns x, y & z values in the DICOM patient'
+        'coordinate system and presumes the patient\'s orientation is HFS.'
+        'This presumption may not be correct and so the function may return'
+        'incorrect x, y, z values. In the future, this function will be removed. '
+        'It is currently preserved for temporary backwards compatibility.'
+    ), UserWarning)
+
     resolution = np.array(
         dcm.PixelSpacing).astype(float)
     dx = resolution[0]
@@ -67,6 +95,100 @@ def load_xyz_from_dicom(dcm):
     z = (
         np.array(dcm.GridFrameOffsetVector) +
         dcm.ImagePositionPatient[2])
+
+    return x, y, z
+
+
+def extract_patient_coords(dcm):
+    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
+        in the DICOM patient coordinate system
+
+    Parameters
+    ----------
+    dcm
+       A pydicom FileDataset - ordinarily returned by pydicom.dcmread().
+       Must represent a valid DICOM RT Dose file.
+
+    Returns
+    -------
+    (x, y, z)
+        A tuple of ndarrays containing the x, y and z coordinates of the DICOM
+        RT Dose file's dose grid, given in the DICOM patient coordinate system
+        [1]_.
+
+    Notes
+    -----
+    Supported scan orientations [2]_:
+
+    =========================== =======================
+    Orientation                 ImageOrientationPatient
+    =========================== =======================
+    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
+    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
+    Feet First Prone            [1, 0, 0, 0, -1, 0]
+    Feet First Supine           [-1, 0, 0, 0, 1, 0]
+    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
+    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
+    Head First Prone            [-1, 0, 0, 0, -1, 0]
+    Head First Supine           [1, 0, 0, 0, 1, 0]
+    =========================== =======================
+
+    References
+    ----------
+    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation",
+       "DICOM PS3.3 2016a - Information Object Definitions",
+       http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
+
+    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
+       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
+       treatment plans", arXiv:1406.0014, Table 1,
+       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+    """
+
+    position = np.array(dcm.ImagePositionPatient)
+    orientation = np.array(dcm.ImageOrientationPatient)
+
+    di = float(dcm.PixelSpacing[0])
+    dj = float(dcm.PixelSpacing[1])
+
+    is_prone_or_supine = np.array_equal(
+        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
+
+    is_decubitus = np.array_equal(
+        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
+
+    # Only proceed if the DICOM RT Dose file has a supported orientation.
+    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
+    # grid and the 'patient'
+    if is_prone_or_supine:
+        xflip = (orientation[0] == -1)
+        yflip = (orientation[4] == -1)
+        head_first = (xflip == yflip)
+
+        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
+        y = orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj)
+
+    elif is_decubitus:
+        xflip = (orientation[3] == -1)
+        yflip = (orientation[1] == -1)
+        head_first = (xflip != yflip)
+
+        x = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
+        y = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
+    else:
+        raise ValueError(
+            "Dose grid orientation is not supported. "
+            "Z-axis of dose grid must be parallel to z-axis of patient")
+
+    if xflip:
+        x = np.flip(x)
+    if yflip:
+        y = np.flip(y)
+
+    if head_first:
+        z = position[2] + np.array(dcm.GridFrameOffsetVector)
+    else:
+        z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
 
     return x, y, z
 
@@ -90,7 +212,6 @@ def load_dicom_data(dcm, depth_adjust):
 
 
 def extract_depth_dose(dcm, depth_adjust, averaging_distance=0):
-
     inplane, crossplane, depth, dose = load_dicom_data(dcm, depth_adjust)
 
     inplane_ref = abs(inplane) <= averaging_distance
@@ -172,18 +293,20 @@ def average_bounding_profiles(dcm, depth_adjust, depth_lookup,
 
 
 def pull_structure_by_number(number, dcm_struct):
-    structure_names = [
-        item.ROIName for item in dcm_struct.StructureSetROISequence]
-
     contours_by_slice_raw = [
         item.ContourData
         for item in dcm_struct.ROIContourSequence[number].ContourSequence
     ]
-    x = [np.array(item[0::3]) for item in contours_by_slice_raw]
-    y = [np.array(item[1::3]) for item in contours_by_slice_raw]
-    z = [np.array(item[2::3]) for item in contours_by_slice_raw]
+    x = [
+        np.array(item[0::3])
+        for item in contours_by_slice_raw]
+    y = [
+        np.array(item[1::3])
+        for item in contours_by_slice_raw]
+    z = [
+        np.array(item[2::3])
+        for item in contours_by_slice_raw]
 
-    # print("Loaded {}".format(structure_names[number]))
     return x, y, z
 
 
@@ -191,11 +314,12 @@ def pull_structure(string, dcm_struct):
     structure_names = np.array(
         [item.ROIName for item in dcm_struct.StructureSetROISequence])
     reference = structure_names == string
-    if np.all(reference == False):  # noqa E712
+    if np.all(reference == False):  # pylint: disable=C0121
         raise Exception("Structure not found (case sensitive)")
 
     index = int(np.where(reference)[0])
-    x, y, z = pull_structure_by_number(index, dcm_struct)
+    x, y, z = pull_structure_by_number(
+        index, dcm_struct)
 
     return x, y, z
 
@@ -270,7 +394,8 @@ def list_structures(dcm_struct):
 
 
 def resample_contour(contour, n=50):
-    tck, u = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
+    tck, u = splprep(
+        [contour[0], contour[1], contour[2]], s=0, k=1)
     new_points = splev(np.arange(0, 1, 1/n), tck)
 
     return new_points
