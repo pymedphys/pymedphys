@@ -4,3 +4,4 @@ scipy
 shapely
 pydicom
 psutil
+keyring
