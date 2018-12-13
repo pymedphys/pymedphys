@@ -66,9 +66,7 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
 
 
 def extract_dose(dcm, set_transfer_syntax_uid=True):
-
-
-r"""Returns the dose grid of a DICOM RT Dose file along with dose units,
+    r"""Returns the dose grid of a DICOM RT Dose file along with dose units,
     dose type, dose summation type and heterogeneity correction technique.
 
     Parameters
@@ -132,9 +130,10 @@ r"""Returns the dose grid of a DICOM RT Dose file along with dose units,
     .. [1] "C8.8.3 RT Dose Module", DICOM PS3.3 2018c - Information Object Definitions
        http://dicom.nema.org/medical/dicom/2018c/output/chtml/part03/sect_C.8.8.3.html
     """
-  check_dcmdose(dcm)
 
-   if set_transfer_syntax_uid:
+    check_dcmdose(dcm)
+
+    if set_transfer_syntax_uid:
         dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
     dose_grid = dcm.pixel_array * dcm.DoseGridScaling
