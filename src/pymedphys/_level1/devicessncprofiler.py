@@ -32,7 +32,7 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def write_prs(file_name):
+def read_prs(file_name):
     """
     Read and return dose profiles and CAX dose from native Profiler data file.
 
