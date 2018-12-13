@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -95,7 +95,8 @@ def assert_array_agreement(unique_logfile_gantry_angles, mosaiq_gantry_angles,
             mosaiq_gantry_angles, difference_matrix, agreement_matrix))
 
 
-def extract_angle_from_delivery_data(delivery_data, gantry_angle, gantry_tolerance=0):
+def extract_angle_from_delivery_data(delivery_data, gantry_angle,
+                                     gantry_tolerance=0):
     moniter_units = np.array(delivery_data.monitor_units)
     relevant_control_points = find_relevant_control_points(moniter_units)
 

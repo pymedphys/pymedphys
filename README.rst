@@ -25,10 +25,18 @@ currently active developers and maintainers of PyMedPhys are given below:
 
 .. _`Simon Biggs`: https://gitlab.com/SimonBiggs
 
+
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
 
 .. _`Matthew Jennings`: https://gitlab.com/centrus
+
+
+* `Paul King`_
+    * `Anderson Regional Cancer Center`_, United States
+
+.. _`Paul King`: https://gitlab.com/kingrpaul
+
 
 * `Matthew Sobolewski`_
     * `Riverina Cancer Care Centre`_, Australia
@@ -36,28 +44,24 @@ currently active developers and maintainers of PyMedPhys are given below:
 
 .. _`Matthew Sobolewski`: https://gitlab.com/msobolewski
 
-* `Paul King`_
-    * `Anderson Regional Cancer Center`_, United States
-
-.. _`Paul King`: https://gitlab.com/kingrpaul
 
 .. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
     :width: 500 px
 
-    
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png  
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png
     :target: `Royal Adelaide Hospital`_
     :width: 500 px
-   
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png  
+
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
+    :target: `Anderson Regional Cancer Center`_
+    :width: 500 px
+
+.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
     :width: 500 px
-    
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png  
-    :target: `Anderson Regional Cancer Center`_	
-    :width: 500 px
-   
+
+
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
