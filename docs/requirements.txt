@@ -6,4 +6,4 @@ pydicom
 psutil
 keyring
 pymssql
-attr
+attrs
