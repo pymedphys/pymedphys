@@ -2,5 +2,6 @@
     "python.linting.pylintUseMinimalCheckers": false,
     "files.trimTrailingWhitespace": true,
     "editor.formatOnSave": true,
-    "restructuredtext.confPath": "${workspaceFolder}\\docs"
+    "restructuredtext.confPath": "${workspaceFolder}\\docs",
+    "python.pythonPath": "C:\\Users\\mjenni03\\AppData\\Local\\Continuum\\anaconda3\\envs\\pmp\\python.exe"
 }

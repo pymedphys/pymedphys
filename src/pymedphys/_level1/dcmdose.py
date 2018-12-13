@@ -65,6 +65,87 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
     return dose
 
 
+def extract_dose(dcm, set_transfer_syntax_uid=True):
+
+
+r"""Returns the dose grid of a DICOM RT Dose file along with dose units,
+    dose type, dose summation type and heterogeneity correction technique.
+
+    Parameters
+    ----------
+    dcm
+       A pydicom FileDataset - ordinarily returned by `pydicom.dcmread()`.
+       Must represent a valid DICOM RT Dose file.
+    set_transfer_syntax_uid
+       TODO: Fill in
+
+    Returns
+    -------
+    dose_grid
+        A 3D numpy array containing the dose grid in units specified by `dose_units`.
+
+    dose_units
+        A string indicating whether the dose grid values are in units of Gray ("GY")
+        or are relative to the implicit reference value ("RELATIVE").
+
+    dose_type
+        A string indicating whether `dose_grid` contains values of physical dose
+        ("PHYSICAL"), physical dose corrected for biological effect ("EFFECTIVE"),
+        or differences between desired and planned dose values ("ERROR").
+
+    summation_type
+        A string indicating whether the dose grid was calculated for the entire
+        delivery of all fraction groups ("PLAN"), the entire delivery of multiple
+        RT Plans ("MULTI_PLAN"), the entire delivery of a single Fraction Group within
+        RT Plan ("FRACTION"), etc. See Notes.
+
+    heterogeneity_correction
+        A list of patient heterogeneity characteristics for which the dose was calculated.
+        Multiple entries may exist if beams in the plan have differing correction techniques.
+        Possible values include: use of image data only ("IMAGE"), one or more ROIs have
+        explicit density overrides ("ROI_OVERRIDE"), or the entire volume is treated as water
+        ("WATER")
+
+    Notes
+    -----
+    This section heavily draws from DICOM PS3.3 2018c - Information Object Definitions [1]_
+
+    Possible values of `summation type`:
+
+    ================ ==============================================================
+    `summation_type` Dose is calculated for:
+    ================ ==============================================================
+    PLAN             All fraction groups of the RT Plan
+    MULTI_PLAN       Multiple RT plans
+    FRACTION         A single fraction group of the RT Plan
+    BEAM             One or more beams of the RT Plan
+    BRACHY           One or more Brachy Application Setups within the RT Plan
+    FRACTION_SESSION A single session of a single Fraction Group
+    BEAM_SESSION     A single session of one or more beams
+    BRACHY_SESSION   A single session of one or more Brachy Application Setups
+    CONTROL_POINT    One or more control points within a beam for a single fraction
+    RECORD           The RT Beams Treatment Record
+    ================ ==============================================================
+
+    References
+    ----------
+    .. [1] "C8.8.3 RT Dose Module", DICOM PS3.3 2018c - Information Object Definitions
+       http://dicom.nema.org/medical/dicom/2018c/output/chtml/part03/sect_C.8.8.3.html
+    """
+  check_dcmdose(dcm)
+
+   if set_transfer_syntax_uid:
+        dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+
+    dose_grid = dcm.pixel_array * dcm.DoseGridScaling
+    dose_units = dcm.DoseUnits
+    dose_type = dcm.DoseType
+    summation_type = dcm.DoseSummationType
+    heterogeneity_correction = dcm.TissueHeterogeneityCorrection
+
+    return dose_grid, dose_units, dose_type, summation_type, heterogeneity_correction
+
+
 def load_xyz_from_dicom(dcm):
     """This function is deprecated. It is due to be replaced with either
     `extract_iec_room_coords` or `extract_patient_coords` depending on which
@@ -106,7 +187,7 @@ def extract_patient_coords(dcm):
     Parameters
     ----------
     dcm
-       A pydicom FileDataset - ordinarily returned by pydicom.dcmread().
+       A pydicom FileDataset - ordinarily returned by `pydicom.dcmread()`.
        Must represent a valid DICOM RT Dose file.
 
     Returns
@@ -144,6 +225,8 @@ def extract_patient_coords(dcm):
        treatment plans", arXiv:1406.0014, Table 1,
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
+
+    check_dcmdose(dcm)
 
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
@@ -200,7 +283,7 @@ def extract_iec_fixed_coords(dcm):
     Parameters
     ----------
     dcm
-       A pydicom FileDataset - ordinarily returned by pydicom.dcmread().
+       A pydicom FileDataset - ordinarily returned by `pydicom.dcmread()`.
        Must represent a valid DICOM RT Dose file.
 
     Returns
@@ -239,6 +322,8 @@ def extract_iec_fixed_coords(dcm):
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
+    check_dcmdose(dcm)
+
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
 
@@ -273,7 +358,7 @@ def extract_iec_fixed_coords(dcm):
     y = y_orientation*position[2] + np.array(dcm.GridFrameOffsetVector)
 
     return x, y, z
-    
+
 
 def coords_and_dose_from_dcm(dcm_filepath):
     dcm = pydicom.read_file(dcm_filepath, force=True)
@@ -499,3 +584,17 @@ def contour_to_points(contours):
     contour_points = np.concatenate(resampled_contours, axis=1)
 
     return contour_points
+
+
+def check_dcmdose(dcm):
+    r"""Checks whether `dcm` is a pydicom dataset and of the RT Dose
+    DICOM modality
+    """
+
+    if not isinstance(dcm, pydicom.dataset.FileDataset):
+        raise TypeError(
+            "The input argument is a member of {}. "
+            "It must be a pydicom FileDataset.".format(type(dcm)))
+
+    if dcm.Modality != "RTDOSE":
+        raise ValueError("The input DICOM file is not an RT Dose file")

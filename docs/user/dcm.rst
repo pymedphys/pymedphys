@@ -13,6 +13,8 @@ API
 
 .. autofunction:: pymedphys.dcm.load_dose_from_dicom
 
+.. autofunction:: pymedphys.dcm.extract_dose
+
 .. autofunction:: pymedphys.dcm.load_xyz_from_dicom
 
 .. autofunction:: pymedphys.dcm.extract_patient_coords
