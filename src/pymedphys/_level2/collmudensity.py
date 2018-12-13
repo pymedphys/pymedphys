@@ -65,7 +65,7 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-__DEFAUlT_LEAF_PAIR_WIDTHS = None
+__DEFAULT_LEAF_PAIR_WIDTHS = None
 __DEFAULT_GRID_RESOLUTION = 1
 __DEFAULT_MAX_LEAF_GAP = 400
 __DEFAULT_MIN_STEP_PER_PIXEL = 10
@@ -73,7 +73,7 @@ __DEFAULT_MIN_STEP_PER_PIXEL = 10
 
 def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
                     max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
-                    leaf_pair_widths=__DEFAUlT_LEAF_PAIR_WIDTHS,
+                    leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
                     min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
     """Determine the MU Density.
 
@@ -278,7 +278,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
 
 
 def calc_single_control_point(mlc, jaw, delivered_mu=1,
-                              leaf_pair_widths=__DEFAUlT_LEAF_PAIR_WIDTHS,
+                              leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
                               grid_resolution=__DEFAULT_GRID_RESOLUTION,
                               min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
     """Calculate the MU Density for a single control point.
@@ -412,7 +412,7 @@ def single_mlc_pair(left_mlc, right_mlc,
 def calc_mu_density_return_grid(mu, mlc, jaw,
                                 grid_resolution=__DEFAULT_GRID_RESOLUTION,
                                 max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
-                                leaf_pair_widths=__DEFAUlT_LEAF_PAIR_WIDTHS,
+                                leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
                                 min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
     """DEPRECATED. This is a temporary helper function to provide the old
     api.
