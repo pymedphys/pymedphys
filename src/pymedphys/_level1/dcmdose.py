@@ -72,7 +72,7 @@ def extract_dose(dcm, set_transfer_syntax_uid=True):
     Parameters
     ----------
     dcm
-       A pydicom FileDataset - ordinarily returned by `pydicom.dcmread()`.
+       A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
        Must represent a valid DICOM RT Dose file.
     set_transfer_syntax_uid
        TODO: Fill in
@@ -87,26 +87,31 @@ def extract_dose(dcm, set_transfer_syntax_uid=True):
         or are relative to the implicit reference value ("RELATIVE").
 
     dose_type
-        A string indicating whether `dose_grid` contains values of physical dose
-        ("PHYSICAL"), physical dose corrected for biological effect ("EFFECTIVE"),
-        or differences between desired and planned dose values ("ERROR").
+        A string indicating whether dose is physical, biological or differences
+        between desired and planned dose values.
 
     summation_type
-        A string indicating whether the dose grid was calculated for the entire
-        delivery of all fraction groups ("PLAN"), the entire delivery of multiple
-        RT Plans ("MULTI_PLAN"), the entire delivery of a single Fraction Group within
-        RT Plan ("FRACTION"), etc. See Notes.
+        A string indicating whether the calculation scope of the dose grid. See Notes.
 
     heterogeneity_correction
         A list of patient heterogeneity characteristics for which the dose was calculated.
         Multiple entries may exist if beams in the plan have differing correction techniques.
-        Possible values include: use of image data only ("IMAGE"), one or more ROIs have
-        explicit density overrides ("ROI_OVERRIDE"), or the entire volume is treated as water
-        ("WATER")
 
     Notes
     -----
     This section heavily draws from DICOM PS3.3 2018c - Information Object Definitions [1]_
+
+
+    Possible values of `dose_type`:
+
+    =========== =============================================
+    `dose_type` Description
+    =========== =============================================
+    PHYSICAL    Physical dose
+    EFFECTIVE   Physical dose corrected for biological effect
+    ERROR       Difference between desired and planned dose
+    =========== =============================================
+
 
     Possible values of `summation type`:
 
@@ -124,6 +129,16 @@ def extract_dose(dcm, set_transfer_syntax_uid=True):
     CONTROL_POINT    One or more control points within a beam for a single fraction
     RECORD           The RT Beams Treatment Record
     ================ ==============================================================
+
+    Possible values of `heterogeneity_correction`:
+
+    ========================== ==================================================
+    `heterogeneity_correction` Dose is calculated using:
+    ========================== ==================================================
+    IMAGE                      Unaltered image data
+    ROI_OVERRIDE               Image data where one or more ROIs override density
+    WATER                      The entire volume treated as water equivalent
+    ========================== ==================================================
 
     References
     ----------
@@ -181,18 +196,18 @@ def load_xyz_from_dicom(dcm):
 
 def extract_patient_coords(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-        in the DICOM patient coordinate system
+    in the DICOM patient coordinate system
 
     Parameters
     ----------
     dcm
-       A pydicom FileDataset - ordinarily returned by `pydicom.dcmread()`.
+       A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
        Must represent a valid DICOM RT Dose file.
 
     Returns
     -------
     (x, y, z)
-        A tuple of ndarrays containing the x, y and z coordinates of the DICOM
+        A tuple of `ndarray`s containing the x, y and z coordinates of the DICOM
         RT Dose file's dose grid, given in the DICOM patient coordinate system
         [1]_.
 
@@ -277,18 +292,18 @@ def extract_patient_coords(dcm):
 
 def extract_iec_fixed_coords(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-        in the IEC fixed coordinate system
+    in the IEC fixed coordinate system
 
     Parameters
     ----------
     dcm
-       A pydicom FileDataset - ordinarily returned by `pydicom.dcmread()`.
+       A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
        Must represent a valid DICOM RT Dose file.
 
     Returns
     -------
     (x, y, z)
-        A tuple of ndarrays containing the x, y and z coordinates of the DICOM
+        A tuple of `ndarray`s containing the x, y and z coordinates of the DICOM
         RT Dose file's dose grid, given in the IEC fixed coordinate system
         [1]_.
 
