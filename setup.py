@@ -60,7 +60,8 @@ setup(
         'tests/data/gamma/agnew_mcgarry_images/*.dcm',
         'tests/data/devices/profiler/*.prs',
         'tests/data/dcmdose/*.dcm',
-        'tests/data/dcmdose/*.npy'
+        'tests/data/dcmdose/*.npy',
+        'tests/data/devices/*/*.txt'
     ]},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     include_package_data=True,

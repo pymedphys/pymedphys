@@ -26,6 +26,8 @@
 
 """A Dicom Dose toolbox"""
 
+import warnings
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
@@ -42,19 +44,64 @@ IMPORTS = get_imports(globals())
 # pylint: disable=C0103
 
 
-def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True):
+def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
+
     if set_transfer_syntax_uid:
         dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
-    pixels = np.transpose(
-        dcm.pixel_array, (1, 2, 0))
+    if reshape:
+        warnings.warn((
+            '`load_dose_from_dicom` currently reshapes the dose grid. In a '
+            'future version this will no longer occur. To begin using this '
+            'function without the reshape pass the parameter `reshape=False` '
+            'when calling `load_dose_from_dicom`.'), UserWarning)
+        pixels = np.transpose(
+            dcm.pixel_array, (1, 2, 0))
+    else:
+        pixels = dcm.pixel_array
+
     dose = pixels * dcm.DoseGridScaling
 
     return dose
 
 
 def load_xyz_from_dicom(dcm):
+    """This function is deprecated. It is due to be replaced with either
+    `extract_iec_room_coords` or `extract_patient_coords` depending on which
+    coordinate system is desired.
+    """
+
+    warnings.warn((
+        '`load_xyz_from_dicom` returns x, y & z values in the DICOM patient'
+        'coordinate system and presumes the patient\'s orientation is HFS.'
+        'This presumption may not be correct and so the function may return'
+        'incorrect x, y, z values. In the future, this function will be removed. '
+        'It is currently preserved for temporary backwards compatibility.'
+    ), UserWarning)
+
+    resolution = np.array(
+        dcm.PixelSpacing).astype(float)
+    dx = resolution[0]
+
+    x = (
+        dcm.ImagePositionPatient[0] +
+        np.arange(0, dcm.Columns * dx, dx))
+
+    dy = resolution[1]
+    y = (
+        dcm.ImagePositionPatient[1] +
+        np.arange(0, dcm.Rows * dy, dy))
+
+    z = (
+        np.array(dcm.GridFrameOffsetVector) +
+        dcm.ImagePositionPatient[2])
+
+    return x, y, z
+
+
+def extract_patient_coords(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
+        in the DICOM patient coordinate system
 
     Parameters
     ----------
