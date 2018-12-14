@@ -130,7 +130,7 @@ Authenticate your computer to be able to access your GitLab account
 
 Before setting your SSH keys I recommend permanently setting your HOME
 variable. This can clear up some potentially confusing issues. Do this by
-running
+running the following where `yourusername` is your Windows domain user name.
 
 .. code:: bash
 
