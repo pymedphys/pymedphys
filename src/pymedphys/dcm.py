@@ -29,8 +29,15 @@
 Available Functions
 -------------------
 >>> from pymedphys.dcm import (
-...     load_dose_from_dicom, load_xyz_from_dicom, find_dose_within_structure,
-...     create_dvh, get_structure_aligned_cube)
+            anonymise_dicom,
+            load_dose_from_dicom,
+            extract_dose,
+            load_xyz_from_dicom,
+            extract_patient coords,
+            extract_iec_fixed_coords,
+            find_dose_within_structure,
+            create_dvh,
+            get_structure_aligned_cube)
 """
 
 # pylint: disable=W0401,W0614
@@ -42,5 +49,4 @@ from ._level2.dcmanonymise import *
 from ._level2.dcmstruct import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.dcmdose', '._level2.dcmanonymise', '._level2.dcmstruct'
-])
+    '._level1.dcmdose', '._level2.dcmanonymise', '._level2.dcmstruct'])
