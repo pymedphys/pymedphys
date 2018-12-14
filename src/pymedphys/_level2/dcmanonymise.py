@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Matthew Jennings
+# Copyright (C) 2018 Matthew Jennings, Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,18 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import copy
-
 import numpy as np
-
 import pydicom
-
 from .._level1._dcmdictbaseline import DicomDictionary
-
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
+def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
                     ignore_unknown_tags=False):
     r"""A simple tool to anonymise a DICOM file.
 
@@ -43,39 +39,40 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
     ----------
     dcm
         The DICOM file to be anonymised. `dcm` must represent a valid
-        DICOM file in the form of a pydicom FileDataset - ordinarily
-        returned by pydicom.dcmread().
+        DICOM file in the form of a `pydicom FileDataset` - ordinarily
+        returned by `pydicom.dcmread()`.
 
     delete_private_tags
         A boolean to flag whether or not to remove all private
         (non-standard) DICOM tags from the DICOM file. These may
-        also contain identifying information. Defaults to True.
+        also contain identifying information. Defaults to `True`.
 
     tags_to_keep
         A sequence of DICOM tags to exclude from anonymisation. Empty by
         default.
 
     ignore_unknown_tags
-        In the case where pydicom has updated its DICOM dictionary this
-        function will raise an error in the off chance a new identifying tag
-        has been introduced. Set this to True to ignore this. Default is False.
+        If `pydicom` has updated its DICOM dictionary, this function will raise an
+        error since a new identifying tag may have been introduced. Set to `True` to
+        ignore this error. Defaults to `False`.
 
     Returns
     -------
     dcm_out
-        An anonymised copy of the input DICOM file as a pydicom FileDataset
+        An anonymised copy of the input DICOM file as a `pydicom FileDataset`
 
     Raises
     ------
     TypeError
-        If `dcm` is not an instance of pydicom.dataset.FileDataset
+        If `dcm` is not an instance of `pydicom.dataset.FileDataset`
     """
 
-    # Is this a pydicom FileDataset?
+    if tags_to_keep is None:
+        tags_to_keep = []
+
     if not isinstance(dcm, pydicom.dataset.FileDataset):
-        raise TypeError(
-            "The input argument is a member of {}. "
-            "It must be a pydicom FileDataset.".format(type(dcm)))
+        raise TypeError("The input argument is a member of {}. "
+                        "It must be a pydicom FileDataset.".format(type(dcm)))
 
     if not ignore_unknown_tags:
         tags_used = list(dcm.keys())
@@ -103,8 +100,7 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
                 "`ignore_unknown_tags` within "
                 "`anonymise_dicom`. Please inform the creators of PyMedPhys "
                 "that the baseline DICOM dictionary is out of date.".format(
-                    unknown_tag_names
-                ))
+                    unknown_tag_names))
 
     tags_to_anonymise = ["StudyDate",
                          "SeriesDate",
