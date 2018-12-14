@@ -39,32 +39,32 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
     ----------
     dcm
         The DICOM file to be anonymised. `dcm` must represent a valid
-        DICOM file in the form of a pydicom FileDataset - ordinarily
-        returned by pydicom.dcmread().
+        DICOM file in the form of a `pydicom FileDataset` - ordinarily
+        returned by `pydicom.dcmread()`.
 
     delete_private_tags
         A boolean to flag whether or not to remove all private
         (non-standard) DICOM tags from the DICOM file. These may
-        also contain identifying information. Defaults to True.
+        also contain identifying information. Defaults to `True`.
 
     tags_to_keep
         A sequence of DICOM tags to exclude from anonymisation. Empty by
         default.
 
     ignore_unknown_tags
-        In the case where pydicom has updated its DICOM dictionary this
-        function will raise an error in the off chance a new identifying tag
-        has been introduced. Set this to True to ignore this. Default is False.
+        If `pydicom` has updated its DICOM dictionary, this function will raise an
+        error if a new identifying tag has been introduced. Set to `True` to ignore
+        this error. Default is `False`.
 
     Returns
     -------
     dcm_out
-        An anonymised copy of the input DICOM file as a pydicom FileDataset
+        An anonymised copy of the input DICOM file as a `pydicom FileDataset`
 
     Raises
     ------
     TypeError
-        If `dcm` is not an instance of pydicom.dataset.FileDataset
+        If `dcm` is not an instance of `pydicom.dataset.FileDataset`
     """
 
     if tags_to_keep is None:
