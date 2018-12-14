@@ -102,8 +102,11 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
 .~lock
 
-.vscode
-
+# IDE configuration
 .idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
