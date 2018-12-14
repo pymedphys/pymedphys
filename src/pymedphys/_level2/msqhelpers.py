@@ -187,6 +187,49 @@ def get_staff_name(cursor, staff_id):
     return results
 
 
+def get_qcls_by_date(cursor, location, start, end):
+    data = execute_sql(
+        cursor,
+        """
+        SELECT
+            Ident.IDA,
+            Patient.Last_Name,
+            Patient.First_Name,
+            QCLTask.Description,
+            Chklist.Act_DtTm,
+            Staff.Last_Name,
+            Chklist.Instructions,
+            Chklist.Due_DtTm,
+            Chklist.Complete
+        FROM Chklist, Staff, QCLTask, Ident, Patient
+        WHERE
+            Chklist.Pat_ID1 = Ident.Pat_ID1 AND
+            Patient.Pat_ID1 = Ident.Pat_ID1 AND
+            QCLTask.TSK_ID = Chklist.TSK_ID AND
+            Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
+            Staff.Last_Name = %(location)s AND
+            Chklist.Act_DtTm >= %(start)s AND
+            Chklist.Act_DtTm < %(end)s
+        """,
+        {
+            'location': location,
+            'start': start,
+            'end': end
+        }
+    )
+
+    results = pd.DataFrame(
+        data=data,
+        columns=['patient_id', 'last_name', 'first_name', 'task',
+                 'actual_completed_time',
+                 'responsible_staff', 'instructions', 'due', 'complete']
+    )
+
+    results = results.sort_values(by=['actual_completed_time'])
+
+    return results
+
+
 def get_incomplete_qcls(cursor, location):
     data = execute_sql(
         cursor,
@@ -242,42 +285,5 @@ def get_incomplete_qcls_across_sites(servers, centres, locations):
             results = results.append(incomplete_qcls)
 
     results = results.sort_values(by='due')
-
-    return results
-
-
-def get_qcls_by_date(cursor, location, start, end):
-    data = execute_sql(
-        cursor,
-        """
-        SELECT
-            QCLTask.Description,
-            Chklist.Act_DtTm,
-            Staff.Last_Name,
-            Chklist.Instructions,
-            Chklist.Due_DtTm,
-            Chklist.Complete
-        FROM Chklist, Staff, QCLTask
-        WHERE
-            QCLTask.TSK_ID = Chklist.TSK_ID AND
-            Staff.Staff_ID = Chklist.Rsp_Staff_ID AND
-            Staff.Last_Name = %(location)s AND
-            Chklist.Act_DtTm >= %(start)s AND
-            Chklist.Act_DtTm < %(end)s
-        """,
-        {
-            'location': location,
-            'start': start,
-            'end': end
-        }
-    )
-
-    results = pd.DataFrame(
-        data=data,
-        columns=['task', 'actual_completed_time',
-                 'responsible_staff', 'instructions', 'due', 'complete']
-    )
-
-    results = results.sort_values(by=['actual_completed_time'])
 
     return results

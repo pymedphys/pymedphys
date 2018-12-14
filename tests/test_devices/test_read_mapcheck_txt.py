@@ -23,15 +23,28 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import os
+import numpy as np
 
-# pylint: disable=W0401,W0614
+from pymedphys.devices import read_mapcheck_txt
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+DATA_DIRECTORY = os.path.abspath(
+    os.path.join(os.path.dirname(__file__),
+                 os.pardir, 'data', 'devices', 'mapcheck'))
 
-from ._level1.devicessncprofiler import *
-from ._level1.devicessncmapcheck import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.devicessncprofiler',
-    '._level1.devicessncmapcheck'
-])
+def test_read_mapcheck_txt():
+    """ Test for successful read of mapcheck file with consistent results.  """
+    file_name = os.path.join(DATA_DIRECTORY, 'tomo_mapcheck_test.txt')
+    result = read_mapcheck_txt(file_name)
+    assert result.dose.shape == (len(result.x), len(result.y))  # x,y -> (x,y)
+    assert result.x[0] < result.x[-1]                          # x ascending
+    assert result.y[0] < result.y[-1]                          # y ascending
+    assert len(set(result.x)) == len(set(result.x))            # x vals unique
+    assert len(set(result.y)) == len(set(result.y))            # y vals unique
+    assert np.all([i >= 0 for i in result.dose.flatten()])     # doses >= 0
+    assert np.allclose(result.dose[20][20], 92.03876716076289)
+
+
+if __name__ == "__main__":
+    test_read_mapcheck_txt()

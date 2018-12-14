@@ -4,3 +4,7 @@ scipy
 shapely
 pydicom
 psutil
+keyring
+pymssql
+attrs
+pandas
