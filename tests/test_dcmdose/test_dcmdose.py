@@ -1,5 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
-
+# Copyright (C) 2018 Matthew Jennings
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -24,34 +23,40 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: disable=C0103,C1801
-
-
-"""End to end regression testing.
-"""
-
 import os
 
 import numpy as np
+import pydicom as dcm
 
-from pymedphys.mudensity import calc_mu_density
+from pymedphys.dcm import extract_patient_coords
 
-
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../data/mudensity")
-DELIVERY_DATA_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, 'mu_density_example_arrays.npz'))
+HERE = os.path.dirname(os.path.abspath(__file__))
+DATA_DIRECTORY = os.path.join(os.path.dirname(HERE), 'data', 'dcmdose')
 
 
-def test_regression():
-    """The results of MU Density calculation should not change
-    """
-    regress_test_arrays = np.load(DELIVERY_DATA_FILEPATH)
+def get_data_file(orientation_key):
+    filename = 'RD.DICOMORIENT.Dose_{}.dcm'.format(orientation_key)
+    return os.path.join(DATA_DIRECTORY, filename)
 
-    mu = regress_test_arrays['mu']
-    mlc = regress_test_arrays['mlc']
-    jaw = regress_test_arrays['jaw']
 
-    cached_mu_density = regress_test_arrays['mu_density']
-    mu_density = calc_mu_density(mu, mlc, jaw)
-    assert np.allclose(mu_density, cached_mu_density, atol=0.1)
+def test_extract_patient_coords():
+    expected_coords = np.load(os.path.join(
+        DATA_DIRECTORY, "expected_coords.npy")).item()
+
+    assert (
+        set(expected_coords.keys()) ==
+        set([
+            'FFDL', 'FFDR', 'FFP', 'FFS', 'HFDL', 'HFDR', 'HFP', 'HFS'
+        ]))
+
+    test_dcms = {
+        key: dcm.dcmread(get_data_file(key))
+        for key in expected_coords
+    }
+
+    for orient, dicom in test_dcms.items():
+        x, y, z = extract_patient_coords(dicom)
+
+        assert np.array_equal(x, expected_coords[orient][0])
+        assert np.array_equal(y, expected_coords[orient][1])
+        assert np.array_equal(z, expected_coords[orient][2])
