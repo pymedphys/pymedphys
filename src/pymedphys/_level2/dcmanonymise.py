@@ -53,8 +53,8 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
 
     ignore_unknown_tags
         If `pydicom` has updated its DICOM dictionary, this function will raise an
-        error if a new identifying tag has been introduced. Set to `True` to ignore
-        this error. Default is `False`.
+        error since a new identifying tag may have been introduced. Set to `True` to
+        ignore this error. Defaults to `False`.
 
     Returns
     -------
