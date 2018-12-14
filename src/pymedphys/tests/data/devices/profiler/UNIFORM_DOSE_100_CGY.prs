@@ -1,13 +1,13 @@
 Version:	 7
-Filename:	C:\SNC\Profiler2\X04D04.prs
+Filename:	C:\SNC\Profiler2\PYMEDPHYS.prs
 Date:	 11/10/2018	 Time:	16:56:28
 Description:	
 Institution:	
-Calibration File:	C:\SNC\Profiler2\Factors\0000000\X04.cal
+Calibration File:	C:\SNC\Profiler2\Factors\0000000\PYMEDPHYS.cal
 	Profiler Setup
 
 Collector Model:	Profiler2
-Collector Serial:	4736338 Revision:	C
+Collector Serial:	0000000 Revision:	C
 Firmware Version:	1.2.1
 Software Version:	1.1.0.0
 Buildup:	0	cm	WaterEquiv
@@ -36,7 +36,7 @@ Pulse Mode:	true
 Analyze Panels:	1015679
 
 	Hardware Data
-Cal-Serial Number:	4736338
+Cal-Serial Number:	0000000
 Cal-Revision:	C
 Temperature:	-98.96726775
 Dose Calibration
