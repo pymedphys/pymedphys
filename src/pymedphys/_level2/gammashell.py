@@ -180,10 +180,6 @@ def gamma_shell(coords_reference, dose_reference,
         memory = psutil.virtual_memory()
         total_memory = memory.total
 
-        if total_memory == -1:
-            # Presume 2 GiB total memory if psutil not successful
-            total_memory = 2 ** 31
-
         ram_available = total_memory * 0.8
 
     still_searching_for_gamma = np.ones_like(
@@ -260,12 +256,14 @@ def calculate_min_dose_difference(
 
     num_points_in_shell = np.shape(coordinates_at_distance_shell)[1]
 
-    estimated_ram_needed = (
-        num_points_in_shell * np.sum(to_be_checked) * 32 * num_dimensions * 2
-    )
+    estimated_ram_needed = (np.uint64(num_points_in_shell)
+                            * np.sum(to_be_checked).astype(np.uint64)
+                            * np.uint64(32)
+                            * np.uint64(num_dimensions)
+                            * np.uint64(2))
 
     num_slices = np.floor(
-        estimated_ram_needed / ram_available).astype(int) + 1
+        estimated_ram_needed / ram_available).astype(np.uint64) + 1
 
     sys.stdout.write(' | Points tested per reference point: {} | RAM split count: {}'.format(
         num_points_in_shell, num_slices))
