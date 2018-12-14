@@ -65,15 +65,18 @@ def test_write_prs():
     # UNSAMPLED PULSE 100 CGY
     out_file = os.path.join(DATA_DIRECTORY, 'UNSAMPLED_PULSE_100_CGY.prs')
     base_file = os.path.join(DATA_DIRECTORY, 'UNSAMPLED_PULSE_100_CGY.npy')
-    x_prof = [(-50.0, 0.0), (-5.1, 0.0), (-4.9, 100.0),
-              (0.0, 100.0),
-              (4.9, 100.0), (5.1, 0.0), (50.0, 0.0)]
-    y_prof = [(-50.0, 0.0), (-5.1, 0.0), (-4.9, 100.0),
-              (0.0, 100.0),
-              (4.9, 100.0), (5.1, 0.0), (50.0, 0.0)]
-    result = write_prs(x_prof, y_prof, file_name=out_file)
-    np.save(base_file, result)
-    # assert np.all(result == np.load(base_file))
+    pulse = [(-50, 0), (-5.1, 0), (-4.9, 100), (4.9, 100), (5.1, 0), (50, 0)]
+    result = write_prs(pulse, pulse, file_name=out_file)
+    # np.save(base_file, result)
+    assert np.all(result == np.load(base_file))
+
+    # TOO SHORT PULSE
+    out_file = os.path.join(DATA_DIRECTORY, 'TOO_SHORT_PULSE.prs')
+    base_file = os.path.join(DATA_DIRECTORY, 'TOO_SHORT_PULSE.npy')
+    pulse = [(-10, 0), (-5.1, 0), (-4.9, 100), (4.9, 100), (5.1, 0), (10, 0)]
+    result = write_prs(pulse, pulse, file_name=out_file)
+    # np.save(base_file, result)
+    assert np.all(result == np.load(base_file))
 
 
 if __name__ == "__main__":
