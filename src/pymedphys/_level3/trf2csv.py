@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+# pylint: skip-file
+
 """Converts a trf file into a csv file.
 """
 

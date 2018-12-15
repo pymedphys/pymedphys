@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Matthew Jennings
+# Copyright (C) 2018 Matthew Jennings, Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -26,14 +26,12 @@
 import copy
 import numpy as np
 import pydicom
-
 from .._level1._dcmdictbaseline import DicomDictionary
-
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
+def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
                     ignore_unknown_tags=False):
     r"""A simple tool to anonymise a DICOM file.
 
@@ -54,9 +52,9 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
         default.
 
     ignore_unknown_tags
-        If `pydicom` has updated its DICOM dictionary, this function will raise
-        an error if a new identifying tag has been introduced. Set this to `True`
-        to ignore this. Defaults to `False`.
+        If `pydicom` has updated its DICOM dictionary, this function will raise an
+        error since a new identifying tag may have been introduced. Set to `True` to
+        ignore this error. Defaults to `False`.
 
     Returns
     -------
@@ -69,11 +67,12 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
         If `dcm` is not an instance of `pydicom.dataset.FileDataset`
     """
 
-    # Is this a pydicom FileDataset?
+    if tags_to_keep is None:
+        tags_to_keep = []
+
     if not isinstance(dcm, pydicom.dataset.FileDataset):
-        raise TypeError(
-            "The input argument is a member of {}. "
-            "It must be a pydicom FileDataset.".format(type(dcm)))
+        raise TypeError("The input argument is a member of {}. "
+                        "It must be a pydicom FileDataset.".format(type(dcm)))
 
     if not ignore_unknown_tags:
         tags_used = list(dcm.keys())
@@ -101,8 +100,7 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=[],
                 "`ignore_unknown_tags` within "
                 "`anonymise_dicom`. Please inform the creators of PyMedPhys "
                 "that the baseline DICOM dictionary is out of date.".format(
-                    unknown_tag_names
-                ))
+                    unknown_tag_names))
 
     tags_to_anonymise = ["StudyDate",
                          "SeriesDate",
