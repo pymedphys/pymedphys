@@ -162,7 +162,7 @@ def extract_dose(dcm, set_transfer_syntax_uid=True):
 
 def load_xyz_from_dicom(dcm):
     """This function is deprecated. It is due to be replaced with either
-    `extract_iec_room_coords` or `extract_patient_coords` depending on which
+    `extract_iec_fixed_coords` or `extract_patient_coords`, depending on which
     coordinate system is desired.
     """
 
