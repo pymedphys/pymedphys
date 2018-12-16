@@ -29,6 +29,17 @@ import numpy as np
 from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
 
 
+def test_lower_dose_threshold():
+    """Verify that the lower dose threshold works as expected"""
+    ref = [0, 1, 1.9, 2, 2.1, 3, 4, 5, 10, 10]
+    evl = [10]*len(ref)
+    coords = (np.arange(len(ref)),)
+
+    result = gamma_shell(coords, ref, coords, evl, 1, 1)
+
+    assert np.array_equal(ref < 0.2*np.max(ref), np.isnan(result))
+
+
 class TestGamma():
     """Testing class."""
 
