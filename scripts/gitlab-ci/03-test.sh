@@ -3,4 +3,4 @@
 set -ex
 source activate test
 
-pytest --pyargs pymedphys
+pytest
