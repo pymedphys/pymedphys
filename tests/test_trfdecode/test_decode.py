@@ -37,7 +37,8 @@ import pandas as pd
 
 from pymedphys.trf import trf2csv
 
-CONVERTED_TAG = '_test_comparison'
+HEADER_TAG = '_header'
+TABLE_TAG = '_table'
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/trf")
@@ -47,9 +48,10 @@ DATA_DIRECTORY = os.path.join(
 
 
 @contextmanager
-def file_teardown(converted_csv_file):
+def files_teardown(files_to_delete):
     yield
-    os.remove(converted_csv_file)
+    for a_file in files_to_delete:
+        os.remove(a_file)
 
 
 def compare_reference_to_converted(reference_dataframe, converted_dataframe):
@@ -72,21 +74,33 @@ def compare_reference_to_converted(reference_dataframe, converted_dataframe):
 def convert_and_check(filepath):
     extension_removed = os.path.splitext(filepath)[0]
     reference_csv_file = "{}.csv".format(extension_removed)
-    converted_csv_file = "{}{}.csv".format(
-        extension_removed, CONVERTED_TAG)
+
+    converted_header_csv_filepath = "{}{}.csv".format(
+        extension_removed, HEADER_TAG)
+    converted_table_csv_filepath = "{}{}.csv".format(
+        extension_removed, TABLE_TAG)
+
+    converted_filepaths = [
+        converted_header_csv_filepath, converted_table_csv_filepath
+    ]
+
     assert os.path.exists(reference_csv_file), "Reference file should exist"
 
-    if os.path.exists(converted_csv_file):
-        os.remove(converted_csv_file)
+    if os.path.exists(converted_header_csv_filepath):
+        os.remove(converted_header_csv_filepath)
 
-    with file_teardown(converted_csv_file):
-        trf2csv(filepath, csv_filepath=converted_csv_file)
+    if os.path.exists(converted_table_csv_filepath):
+        os.remove(converted_table_csv_filepath)
+
+    with files_teardown(converted_filepaths):
+        trf2csv(filepath)
 
         reference_dataframe = pd.read_csv(
             reference_csv_file, skiprows=9, index_col=0)
         del reference_dataframe[reference_dataframe.columns[-1]]
 
-        converted_dataframe = pd.read_csv(converted_csv_file, index_col=0)
+        converted_dataframe = pd.read_csv(
+            converted_table_csv_filepath, index_col=0)
 
         compare_reference_to_converted(
             reference_dataframe, converted_dataframe)
