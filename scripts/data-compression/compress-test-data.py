@@ -24,22 +24,17 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A range of utility functions.
+import os
 
-Examples:
-    >>> from pymedphys.utilities import get_filepath
-"""
+from pymedphys.utilities import compress_test_files
 
-# pylint: disable=W0401,W0614,C0103,C0413
+LFS_TEST_DATA = os.path.join(
+    os.path.dirname(__file__), "../../src/pymedphys/tests/data/**/lfs-*")
 
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+def main():
+    compress_test_files(LFS_TEST_DATA)
 
-from ._level1.utilitiescompression import *
-from ._level1.utilitiesconfig import *
-from ._level1.utilitiesfilesystem import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.utilitiesconfig', '._level1.utilitiesfilesystem',
-    '._level1.utilitiescompression'
-])
+if __name__ == "__main__":
+    main()

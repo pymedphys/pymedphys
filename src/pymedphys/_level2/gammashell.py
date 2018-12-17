@@ -52,7 +52,7 @@ def gamma_shell(coords_reference, dose_reference,
                 lower_percent_dose_cutoff=20, interp_fraction=10,
                 max_gamma=np.inf, local_gamma=False,
                 global_normalisation=None, skip_once_passed=False,
-                mask_evaluation=False, random_subset=None):
+                mask_evaluation=False, random_subset=None, ram_available=None):
     """Compare two dose grids with the gamma index.
 
     Parameters
@@ -101,6 +101,9 @@ def gamma_shell(coords_reference, dose_reference,
     random_subset : int, optional
         Used to only calculate a random subset of the reference grid. The
         number chosen is how many random points to calculate.
+    ram_available : int, optional
+        The number of bytes of RAM available for use by this function. Defaults
+        to 0.8 times your total RAM as determined by psutil.
 
     Returns
     -------
@@ -173,8 +176,11 @@ def gamma_shell(coords_reference, dose_reference,
 
     flat_dose_reference = np.ravel(dose_reference)
 
-    memory = psutil.virtual_memory()
-    total_ram = memory.total
+    if ram_available is None:
+        memory = psutil.virtual_memory()
+        total_memory = memory.total
+
+        ram_available = total_memory * 0.8
 
     still_searching_for_gamma = np.ones_like(
         flat_dose_reference).astype(bool)
@@ -193,7 +199,7 @@ def gamma_shell(coords_reference, dose_reference,
         min_relative_dose_difference = calculate_min_dose_difference(
             evaluation_interpolation, flat_mesh_coords_reference, flat_dose_reference,
             distance, distance_step_size, to_be_checked, global_dose_threshold,
-            dose_percent_threshold, local_gamma, total_ram)
+            dose_percent_threshold, local_gamma, ram_available)
 
         gamma_at_distance = np.sqrt(
             min_relative_dose_difference ** 2 +
@@ -234,7 +240,7 @@ def calculate_min_dose_difference(
         evaluation_interpolation, flat_mesh_coords_reference,
         flat_dose_reference,
         distance, distance_step_size, to_be_checked, global_dose_threshold,
-        dose_percent_threshold, local_gamma, total_ram):
+        dose_percent_threshold, local_gamma, ram_available):
     """Determine the minimum dose difference.
 
     Calculated for a given distance from each reference point.
@@ -250,12 +256,14 @@ def calculate_min_dose_difference(
 
     num_points_in_shell = np.shape(coordinates_at_distance_shell)[1]
 
-    estimated_ram_needed = (
-        num_points_in_shell * np.sum(to_be_checked) * 32 * num_dimensions * 2
-    )
+    estimated_ram_needed = (np.uint64(num_points_in_shell)
+                            * np.sum(to_be_checked).astype(np.uint64)
+                            * np.uint64(32)
+                            * np.uint64(num_dimensions)
+                            * np.uint64(2))
 
     num_slices = np.floor(
-        estimated_ram_needed // (total_ram * 0.8)).astype(int) + 1
+        estimated_ram_needed / ram_available).astype(np.uint64) + 1
 
     sys.stdout.write(' | Points tested per reference point: {} | RAM split count: {}'.format(
         num_points_in_shell, num_slices))
