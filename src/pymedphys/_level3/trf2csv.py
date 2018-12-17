@@ -70,6 +70,14 @@ def trf2csv_cli():
 
     glob_strings = sys.argv[1::]
     for glob_string in glob_strings:
+        glob_string = glob_string.replace('[', '<[>')
+        glob_string = glob_string.replace(']', '<]>')
+        glob_string = glob_string.replace('?', '[?]')
+
+        glob_string = glob_string.replace('<[>', '[[]')
+        glob_string = glob_string.replace('<]>', '[]]')
+
         filepaths = glob(glob_string)
+
         for filepath in filepaths:
             trf2csv(filepath)
