@@ -125,7 +125,9 @@ def gamma_shell(coords_reference, dose_reference,
 
     if not quiet:
         print('Global normalisation set to {}'.format(global_normalisation))
-        print('Global dose threshold set to {}'.format(global_dose_threshold))
+        print('Global dose threshold set to {} Gy ({} %)'.format(
+            global_dose_threshold, dose_percent_threshold))
+        print('Distance threshold set to {} mm'.format(distance_mm_threshold))
         print('Lower dose cutoff set to {}'.format(lower_dose_cutoff))
 
     distance_step_size = distance_mm_threshold / interp_fraction
