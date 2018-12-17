@@ -34,25 +34,27 @@ import sys
 import os
 from glob import glob
 
-from .._level2.trfdecode import decode_trf
+from .._level2.trfdecode import trf2pandas
 
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def trf2csv(trf_filepath, csv_filepath=None, skip_if_exists=True):
+def trf2csv(trf_filepath, skip_if_exists=False):
     if not os.path.exists(trf_filepath):
         raise Exception("The provided trf filepath cannot be found.")
 
-    if csv_filepath is None:
-        extension_removed = os.path.splitext(trf_filepath)[0]
-        csv_filepath = "{}_python_decode.csv".format(extension_removed)
+    extension_removed = os.path.splitext(trf_filepath)[0]
+    header_csv_filepath = "{}_header.csv".format(extension_removed)
+    table_csv_filepath = "{}_table.csv".format(extension_removed)
 
     # Skip if conversion has already occured
     if not skip_if_exists or not os.path.exists(csv_filepath):
         print("Converting {}".format(trf_filepath))
-        dataframe = decode_trf(trf_filepath)
-        dataframe.to_csv(csv_filepath)
+        header, table = trf2pandas(trf_filepath)
+
+        header.to_csv(header_csv_filepath)
+        table.to_csv(table_csv_filepath)
     # else:
     #     print("Skipping {}".format(trf_filepath))
 
