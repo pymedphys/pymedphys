@@ -49,7 +49,12 @@ DATA_DIRECTORY = os.path.join(
 
 @contextmanager
 def files_teardown(files_to_delete):
+    for a_file in files_to_delete:
+        if os.path.exists(a_file):
+            os.remove(a_file)
+
     yield
+
     for a_file in files_to_delete:
         os.remove(a_file)
 
@@ -71,7 +76,7 @@ def compare_reference_to_converted(reference_dataframe, converted_dataframe):
                 "The {} column should be equal".format(column))
 
 
-def convert_and_check(filepath):
+def get_filepaths(filepath):
     extension_removed = os.path.splitext(filepath)[0]
     reference_csv_file = "{}.csv".format(extension_removed)
 
@@ -84,13 +89,14 @@ def convert_and_check(filepath):
         converted_header_csv_filepath, converted_table_csv_filepath
     ]
 
+    return reference_csv_file, converted_filepaths
+
+
+def convert_and_check(filepath):
+
+    reference_csv_file, converted_filepaths = get_filepaths(filepath)
+
     assert os.path.exists(reference_csv_file), "Reference file should exist"
-
-    if os.path.exists(converted_header_csv_filepath):
-        os.remove(converted_header_csv_filepath)
-
-    if os.path.exists(converted_table_csv_filepath):
-        os.remove(converted_table_csv_filepath)
 
     with files_teardown(converted_filepaths):
         trf2csv(filepath)
@@ -98,6 +104,8 @@ def convert_and_check(filepath):
         reference_dataframe = pd.read_csv(
             reference_csv_file, skiprows=9, index_col=0)
         del reference_dataframe[reference_dataframe.columns[-1]]
+
+        converted_table_csv_filepath = converted_filepaths[1]
 
         converted_dataframe = pd.read_csv(
             converted_table_csv_filepath, index_col=0)
@@ -107,12 +115,27 @@ def convert_and_check(filepath):
 
 
 def test_conversions():
-    trf_files = glob(os.path.join(DATA_DIRECTORY, '*.trf'))
+    reference_files = glob(
+        os.path.join(DATA_DIRECTORY, 'elekta_reference', '*.trf'))
 
-    for filepath in trf_files:
-        # convert_and_check(filepath)
+    for filepath in reference_files:
         try:
             convert_and_check(filepath)
+        except NotImplementedError:
+            pytest.skip(
+                "`decode_trf` doesn't appear to be installed, skipping this "
+                "test."
+            )
+
+    integrity4_files = glob(
+        os.path.join(DATA_DIRECTORY, 'integrity4', '*.trf'))
+
+    for filepath in integrity4_files:
+        try:
+            _, converted_filepaths = get_filepaths(filepath)
+            with files_teardown(converted_filepaths):
+                trf2csv(filepath)
+
         except NotImplementedError:
             pytest.skip(
                 "`decode_trf` doesn't appear to be installed, skipping this "
