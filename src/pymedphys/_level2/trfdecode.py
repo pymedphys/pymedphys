@@ -33,6 +33,9 @@ release.
 
 IMPORTS = []
 
+# from decode_trf import *  # nopep8
+
+
 try:
     from decode_trf import *
 except ImportError:
