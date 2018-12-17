@@ -124,11 +124,17 @@ def gamma_shell(coords_reference, dose_reference,
     lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
 
     if not quiet:
-        print('Global normalisation set to {}'.format(global_normalisation))
-        print('Global dose threshold set to {} Gy ({} %)'.format(
+        if local_gamma:
+            print('Calcing using local normalisation point for gamma')
+        else:
+            print('Calcing using global normalisation point for gamma')
+        print('Global normalisation set to {} Gy'.format(global_normalisation))
+        print('Global dose threshold set to {} Gy ({}%)'.format(
             global_dose_threshold, dose_percent_threshold))
         print('Distance threshold set to {} mm'.format(distance_mm_threshold))
-        print('Lower dose cutoff set to {}'.format(lower_dose_cutoff))
+        print('Lower dose cutoff set to {} Gy ({}%)'.format(
+            lower_dose_cutoff, lower_percent_dose_cutoff))
+        print('')
 
     distance_step_size = distance_mm_threshold / interp_fraction
     maximum_test_distance = distance_mm_threshold * max_gamma
