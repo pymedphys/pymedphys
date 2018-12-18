@@ -37,7 +37,8 @@ import pandas as pd
 
 from pymedphys.trf import trf2csv
 
-CONVERTED_TAG = '_test_comparison'
+HEADER_TAG = '_header'
+TABLE_TAG = '_table'
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/trf")
@@ -47,9 +48,15 @@ DATA_DIRECTORY = os.path.join(
 
 
 @contextmanager
-def file_teardown(converted_csv_file):
+def files_teardown(files_to_delete):
+    for a_file in files_to_delete:
+        if os.path.exists(a_file):
+            os.remove(a_file)
+
     yield
-    os.remove(converted_csv_file)
+
+    for a_file in files_to_delete:
+        os.remove(a_file)
 
 
 def compare_reference_to_converted(reference_dataframe, converted_dataframe):
@@ -69,35 +76,66 @@ def compare_reference_to_converted(reference_dataframe, converted_dataframe):
                 "The {} column should be equal".format(column))
 
 
-def convert_and_check(filepath):
+def get_filepaths(filepath):
     extension_removed = os.path.splitext(filepath)[0]
     reference_csv_file = "{}.csv".format(extension_removed)
-    converted_csv_file = "{}{}.csv".format(
-        extension_removed, CONVERTED_TAG)
+
+    converted_header_csv_filepath = "{}{}.csv".format(
+        extension_removed, HEADER_TAG)
+    converted_table_csv_filepath = "{}{}.csv".format(
+        extension_removed, TABLE_TAG)
+
+    converted_filepaths = [
+        converted_header_csv_filepath, converted_table_csv_filepath
+    ]
+
+    return reference_csv_file, converted_filepaths
+
+
+def convert_and_check(filepath):
+
+    reference_csv_file, converted_filepaths = get_filepaths(filepath)
+
     assert os.path.exists(reference_csv_file), "Reference file should exist"
 
-    if os.path.exists(converted_csv_file):
-        os.remove(converted_csv_file)
-
-    with file_teardown(converted_csv_file):
-        trf2csv(filepath, csv_filepath=converted_csv_file)
+    with files_teardown(converted_filepaths):
+        trf2csv(filepath)
 
         reference_dataframe = pd.read_csv(
             reference_csv_file, skiprows=9, index_col=0)
         del reference_dataframe[reference_dataframe.columns[-1]]
 
-        converted_dataframe = pd.read_csv(converted_csv_file, index_col=0)
+        converted_table_csv_filepath = converted_filepaths[1]
+
+        converted_dataframe = pd.read_csv(
+            converted_table_csv_filepath, index_col=0)
 
         compare_reference_to_converted(
             reference_dataframe, converted_dataframe)
 
 
 def test_conversions():
-    trf_files = glob(os.path.join(DATA_DIRECTORY, '*.trf'))
+    reference_files = glob(
+        os.path.join(DATA_DIRECTORY, 'elekta_reference', '*.trf'))
 
-    for filepath in trf_files:
+    for filepath in reference_files:
         try:
             convert_and_check(filepath)
+        except NotImplementedError:
+            pytest.skip(
+                "`decode_trf` doesn't appear to be installed, skipping this "
+                "test."
+            )
+
+    integrity4_files = glob(
+        os.path.join(DATA_DIRECTORY, 'integrity4', '*.trf'))
+
+    for filepath in integrity4_files:
+        try:
+            _, converted_filepaths = get_filepaths(filepath)
+            with files_teardown(converted_filepaths):
+                trf2csv(filepath)
+
         except NotImplementedError:
             pytest.skip(
                 "`decode_trf` doesn't appear to be installed, skipping this "
