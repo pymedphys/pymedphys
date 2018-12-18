@@ -103,7 +103,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-.~lock
+
+.~lock*
+
 
 # IDE configuration
 .idea/
