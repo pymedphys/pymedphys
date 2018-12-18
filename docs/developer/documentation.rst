@@ -36,7 +36,7 @@ Some documentation is best written right within a given function itself. This
 type of documentation is called a docstring. However this documentation does
 also need to be available on the main documentation and it is exceptionally
 important that this isn't written twice. If it was written twice, as time goes
-on one may go out of date, or be in consitent with another. It is also an extra
+on one may go out of date, or be in consitent with the other. It is also an extra
 unnecessary workload to maintain two sources of duplicated information. See
 the DRY programming philosophy for more on this.
 
