@@ -9,7 +9,7 @@ API
 
 .. _`pymedphys.geometry.cubify_cube_definition`: geometry.html#pymedphys.geometry.cubify_cube_definition
 
-.. autofunction:: pymedphys.dcm.dicom_anon
+.. autofunction:: pymedphys.dcm.anonymise_dicom
 
 .. autofunction:: pymedphys.dcm.load_dose_from_dicom
 

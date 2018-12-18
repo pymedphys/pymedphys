@@ -23,6 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
+# pylint: skip-file
+
 from datetime import datetime
 from dateutil import tz
 

@@ -1,4 +1,5 @@
 # Copyright (C) 2018 Simon Biggs
+
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -21,3 +22,19 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+
+import os
+
+from pymedphys.utilities import compress_test_files
+
+LFS_TEST_DATA = os.path.join(
+    os.path.dirname(__file__), "../../src/pymedphys/tests/data/**/lfs-*")
+
+
+def main():
+    compress_test_files(LFS_TEST_DATA)
+
+
+if __name__ == "__main__":
+    main()

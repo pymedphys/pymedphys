@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+# pylint: skip-file
+
 import numpy as np
 
 from .._level1.utilitiesconfig import get_filepath, get_gantry_tolerance
