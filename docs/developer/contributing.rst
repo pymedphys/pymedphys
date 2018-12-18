@@ -18,24 +18,33 @@ what feedback you have. By the end, instead of you emailing that feedback to me,
 I'd like you to use your new set up to edit this file and submit a merge request!
 
 
-GitLab Account
---------------
+Python & Anaconda
+-----------------
 
-Make a GitLab account `here <https://gitlab.com/users/sign_in/>`__.
-Once you have an account, you will need commit rights to this
-repository in order to make contributions. Create an issue on GitLab
-within the PyMedPhys repository `here <https://gitlab.com/pymedphys/pymedphys/issues/new/>`__
-and include "request for commit rights" or similar in your issue's
-content, along with "@SimonBiggs" to ensure it is seen!
+Anaconda is a free, open source, optimized Python (and R) distrubution. It includes:
 
-Whenever you wish to discuss anything about PyMedPhys, please create an issue on GitLab.
-It can be to ask for help, suggest a change, provide feedback, or anything else regarding
-PyMedPhys. Write "@" followed by someone's username if you would like to talk to someone
-specifically.
+- `conda <https://conda.io/docs/index.html>`__, a powerful package and environment management system.
+- Python
+- Over 100 automatically installed scientific packages (`numpy`, `scipy`, etc.) that have been tested to work well together, along with their dependencies.
 
-The real power of GitLab comes from Git itself. A great piece of Git documentation can be found
-`here <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__. Use this
-documentation to begin to get a feel for what Git is.
+Download the latest Anaconda Python **3** version from `here <https://www.anaconda.com/download/>`__
+
+When installing Anaconda make sure to install it for your user only, and tick
+the option “add to path”.
+
+.. image:: ../img/add_anaconda_to_path.png
+
+You might notice that Microsoft VS Code is available to be installed via the Anaconda
+installation. However, we recommend installing VS Code from its official install location
+as outlined below in :ref:`text-editor-section`. The Anaconda installer
+does not provide the opportunity to tick the “Open with Code” boxes detailed below.
+
+Once you have installed Anaconda, add the conda-forge channel to your machine using
+the following command in a new command prompt:
+
+.. code:: bash
+
+    conda config --add channels conda-forge
 
 .. _text-editor-section:
 
@@ -74,34 +83,6 @@ Once you've downloaded cmder, follow the steps given `here <https://github.com/c
 to obtain the ability to open a terminal in any directory by right clicking in
 the file browser.
 
-
-Python & Anaconda
------------------
-
-Anaconda is a free, open source, optimized Python (and R) distrubution. It includes:
-
-- `conda <https://conda.io/docs/index.html>`__, a powerful package and environment management system.
-- Python
-- Over 100 automatically installed scientific packages (`numpy`, `scipy`, etc.) that have been tested to work well together, along with their dependencies.
-
-Download the latest Anaconda Python **3** version from `here <https://www.anaconda.com/download/>`__
-
-When installing Anaconda make sure to install it for your user only, and tick
-the option “add to path”.
-
-You might notice that Microsoft VS Code is available to be installed via the Anaconda
-installation. However, we recommend installing VS Code from its official install location
-as outlined above in :ref:`text-editor-section`. The Anaconda installer
-does not provide the opportunity to tick the “Open with Code” boxes.
-
-Once you have installed Anaconda, add the conda-forge channel to your machine using
-the following command in a new command prompt:
-
-.. code:: bash
-
-    conda config --add channels conda-forge
-
-
 Chocolatey
 ----------
 
@@ -119,6 +100,26 @@ Cit LFS like so:
 .. code:: bash
 
     choco install git git-lfs
+
+
+GitLab Account
+--------------
+
+Make a GitLab account `here <https://gitlab.com/users/sign_in/>`__.
+Once you have an account, you will need commit rights to this
+repository in order to make contributions. Create an issue on GitLab
+within the PyMedPhys repository `here <https://gitlab.com/pymedphys/pymedphys/issues/new/>`__
+and include "request for commit rights" or similar in your issue's
+content, along with "@SimonBiggs" to ensure it is seen!
+
+Whenever you wish to discuss anything about PyMedPhys, please create an issue on GitLab.
+It can be to ask for help, suggest a change, provide feedback, or anything else regarding
+PyMedPhys. Write "@" followed by someone's username if you would like to talk to someone
+specifically.
+
+The real power of GitLab comes from Git itself. A great piece of Git documentation can be found
+`here <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__. Use this
+documentation to begin to get a feel for what Git is.
 
 
 Some useful resources
