@@ -1,6 +1,8 @@
 PyMedPhys
 =========
 
+.. image:: http://readthedocs.org/projects/pymedphys/badge/?version=latest
+
 Description
 -----------
 The PyMedPhys Project aims to develop a common core package for Medical Physics
