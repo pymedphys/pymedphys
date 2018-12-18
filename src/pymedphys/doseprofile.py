@@ -31,5 +31,5 @@ from ._level0.libutils import clean_and_verify_levelled_modules
 from ._level1.doseprofile import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.doseprofile',
+    '._level1.doseprofile'
 ])
