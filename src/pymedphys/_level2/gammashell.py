@@ -105,6 +105,9 @@ def gamma_shell(coords_reference, dose_reference,
     ram_available : int, optional
         The number of bytes of RAM available for use by this function. Defaults
         to 0.8 times your total RAM as determined by psutil.
+    quiet : bool, optional
+        Used to quiet informational printing during function usage. Defaults to
+        False.
 
     Returns
     -------
