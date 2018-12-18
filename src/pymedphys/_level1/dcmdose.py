@@ -27,6 +27,7 @@
 """A Dicom Dose toolbox"""
 
 import warnings
+from collections import namedtuple
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,6 +46,9 @@ IMPORTS = get_imports(globals())
 
 
 def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
+    r"""This function is deprecated. It is due to be replaced with
+    `extract_dose`.
+    """
 
     if set_transfer_syntax_uid:
         dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
@@ -65,7 +69,7 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
     return dose
 
 
-def extract_dose(dcm, set_transfer_syntax_uid=True):
+def extract_dose(dcm):
     r"""Returns the dose grid of a DICOM RT Dose file along with dose units,
     dose type, dose summation type and heterogeneity correction technique.
 
@@ -74,38 +78,39 @@ def extract_dose(dcm, set_transfer_syntax_uid=True):
     dcm
        A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
        Must represent a valid DICOM RT Dose file.
-    set_transfer_syntax_uid
-       TODO: Fill in
 
     Returns
     -------
-    dose_grid
-        A 3D numpy array containing the dose grid in units specified by `dose_units`.
+    Dose(values, units, type, summation, heterogeneity_correction)
+        A `namedtuple` containing the following fields:
 
-    dose_units
-        A string indicating whether the dose grid values are in units of Gray ("GY")
-        or are relative to the implicit reference value ("RELATIVE").
+        `values`
+            A 3D numpy array containing the dose grid's values in units specified by `dose_units`.
 
-    dose_type
-        A string indicating whether dose is physical, biological or differences
-        between desired and planned dose values.
+        `units`
+            A string indicating whether the dose grid values are in units of Gray ("GY")
+            or are relative to the implicit reference value ("RELATIVE").
 
-    summation_type
-        A string indicating whether the calculation scope of the dose grid. See Notes.
+        `type`
+            A string indicating whether dose is physical, biological or differences
+            between desired and planned dose values.
 
-    heterogeneity_correction
-        A list of patient heterogeneity characteristics for which the dose was calculated.
-        Multiple entries may exist if beams in the plan have differing correction techniques.
+        `summation`
+            A string indicating whether the calculation scope of the dose grid. See Notes.
+
+        `heterogeneity correction`
+            A list of patient heterogeneity characteristics for which the dose was calculated.
+            Multiple entries may exist if beams in the plan have differing correction techniques.
 
     Notes
     -----
     This section heavily draws from DICOM PS3.3 2018c - Information Object Definitions [1]_
 
 
-    Possible values of `dose_type`:
+    Possible values of `type`:
 
     =========== =============================================
-    `dose_type` Description
+    `type`      Description
     =========== =============================================
     PHYSICAL    Physical dose
     EFFECTIVE   Physical dose corrected for biological effect
@@ -113,10 +118,10 @@ def extract_dose(dcm, set_transfer_syntax_uid=True):
     =========== =============================================
 
 
-    Possible values of `summation type`:
+    Possible values of `summation_type`:
 
     ================ ==============================================================
-    `summation_type` Dose is calculated for:
+    `summation`      Dose is calculated for:
     ================ ==============================================================
     PLAN             All fraction groups of the RT Plan
     MULTI_PLAN       Multiple RT plans
@@ -148,16 +153,16 @@ def extract_dose(dcm, set_transfer_syntax_uid=True):
 
     check_dcmdose(dcm)
 
-    if set_transfer_syntax_uid:
-        dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+    Dose = namedtuple(
+        'Dose', 'values units type summation heterogeneity_correction')
 
-    dose_grid = dcm.pixel_array * dcm.DoseGridScaling
-    dose_units = dcm.DoseUnits
+    values = dcm.pixel_array * dcm.DoseGridScaling
+    units = dcm.DoseUnits
     dose_type = dcm.DoseType
-    summation_type = dcm.DoseSummationType
+    summation = dcm.DoseSummationType
     heterogeneity_correction = dcm.TissueHeterogeneityCorrection
 
-    return dose_grid, dose_units, dose_type, summation_type, heterogeneity_correction
+    return Dose(values, units, dose_type, summation, heterogeneity_correction)
 
 
 def load_xyz_from_dicom(dcm):
@@ -174,22 +179,15 @@ def load_xyz_from_dicom(dcm):
         'It is currently preserved for temporary backwards compatibility.'
     ), UserWarning)
 
-    resolution = np.array(
-        dcm.PixelSpacing).astype(float)
-    dx = resolution[0]
+    resolution = np.array(dcm.PixelSpacing).astype(float)
 
-    x = (
-        dcm.ImagePositionPatient[0] +
-        np.arange(0, dcm.Columns * dx, dx))
+    dx = resolution[0]
+    x = (dcm.ImagePositionPatient[0] + np.arange(0, dcm.Columns * dx, dx))
 
     dy = resolution[1]
-    y = (
-        dcm.ImagePositionPatient[1] +
-        np.arange(0, dcm.Rows * dy, dy))
+    y = (dcm.ImagePositionPatient[1] + np.arange(0, dcm.Rows * dy, dy))
 
-    z = (
-        np.array(dcm.GridFrameOffsetVector) +
-        dcm.ImagePositionPatient[2])
+    z = (np.array(dcm.GridFrameOffsetVector) + dcm.ImagePositionPatient[2])
 
     return x, y, z
 
@@ -206,10 +204,20 @@ def extract_patient_coords(dcm):
 
     Returns
     -------
-    (x, y, z)
-        A tuple of `ndarray`s containing the x, y and z coordinates of the DICOM
-        RT Dose file's dose grid, given in the DICOM patient coordinate system
-        [1]_.
+    Coords(x, y, z)
+        A `namedtuple` containing three `ndarrays` corresponding to the `x`,
+        `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
+        the DICOM patient coordinate system [1]_:
+
+        `x`
+            An `ndarray` of coordinates corresponding to the patient's left-right
+            axis and increasing to the left hand side of the patient.
+        `y`
+            An `ndarray` of coordinates corresponding to the patient's anteroposterior
+            axis and increasing to the posterior side of the patient.
+        `z`
+            An `ndarray` of coordinates corresponding to the patient's superoinferior
+            axis and increasing toward the head of the patient.
 
     Notes
     -----
@@ -287,7 +295,9 @@ def extract_patient_coords(dcm):
     else:
         z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
 
-    return x, y, z
+    Coords = namedtuple('Coords', 'x y z')
+
+    return Coords(x, y, z)
 
 
 def extract_iec_fixed_coords(dcm):
@@ -302,10 +312,21 @@ def extract_iec_fixed_coords(dcm):
 
     Returns
     -------
-    (x, y, z)
-        A tuple of `ndarray`s containing the x, y and z coordinates of the DICOM
-        RT Dose file's dose grid, given in the IEC fixed coordinate system
-        [1]_.
+    Coords(x, y, z)
+        A `namedtuple` containing three `ndarrays` corresponding to the `x`,
+        `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
+        the IEC fixed coordinate system [1]_:
+
+        `x`
+            An `ndarray` of coordinates along a horizontal axis that runs
+            orthogonally to `y` (described below). 'x' increases toward the
+            viewer's right hand side when facing the front of the gantry.
+        `y`
+            An `ndarray` of coordinates along a horizontal axis that is
+            directed from the isocentre to the gantry.
+        `z`
+            An `ndarray` of coordinates along a axis directed vertically
+            upward.
 
     Notes
     -----
@@ -326,9 +347,7 @@ def extract_iec_fixed_coords(dcm):
 
     References
     ----------
-    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation",
-       "DICOM PS3.3 2016a - Information Object Definitions",
-       http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
+    .. [1] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
 
     .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
        (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
@@ -371,7 +390,9 @@ def extract_iec_fixed_coords(dcm):
 
     y = y_orientation*position[2] + np.array(dcm.GridFrameOffsetVector)
 
-    return x, y, z
+    Coords = namedtuple('Coords', 'x y z')
+
+    return Coords(x, y, z)
 
 
 def coords_and_dose_from_dcm(dcm_filepath):
