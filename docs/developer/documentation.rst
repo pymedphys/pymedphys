@@ -33,20 +33,22 @@ changes live update within your browser.
 Docstring extraction
 --------------------
 Some documentation is best written right within a given function itself. This
-type of documentation is called a docstring. However this documentation does
-also need to be available on the main documentation and it is exceptionally
-important that this isn't written twice. If it was written twice, as time goes
-on one may go out of date, or be in consitent with the other. It is also an extra
-unnecessary workload to maintain two sources of duplicated information. See
-the DRY programming philosophy for more on this.
+type of documentation is called a **docstring**. However, this documentation should
+also be available in the main documentation and it is exceptionally important that
+this isn't written more than once. Duplicating documentation increases
+`software entropy <https://en.wikipedia.org/wiki/Software_entropy>`__. As time goes by,
+documentation updates may result in one or more copies being missed and becoming
+obsolete or inconsistent with the up-to-date copy. Even if all copies are updated correctly,
+unnecessary duplication adds to ongoing maintenance requirements. See the `DRY programming
+philosophy <https://en.wikipedia.org/wiki/Don%27t_repeat_yourself>`__ for more on this.
 
-So, to solve this problem, most of the documentation is written as docstrings
-and then automatically extracted into the documentation pages themselves.
-To make this work docstrings need to be documented using the numpy style. See
+To solve this problem, most of PyMedPhys' documentation is written as docstrings,
+which are then automatically extracted into the main documentation pages. For this
+to work properly, docstrings need to be formatted according to the numpy style. See
 the following sites for examples of how to conform to that style:
 
  - https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html#example-numpy
  - https://numpydoc.readthedocs.io/en/latest/format.html
 
-See examples within the documentation itself for how then to import those
-functions into the docs.
+See existing examples within PyMedPhys for how to include new function docstrings
+into the main PyMedPhys documentation.
