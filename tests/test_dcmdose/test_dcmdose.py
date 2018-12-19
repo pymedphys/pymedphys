@@ -26,11 +26,16 @@
 import os
 import numpy as np
 import pydicom as dcm
+from collections import namedtuple
 
-from pymedphys.dcm import extract_patient_coords, extract_iec_fixed_coords
+from pymedphys.dcm import extract_dose, extract_patient_coords, extract_iec_fixed_coords
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIRECTORY = os.path.join(os.path.dirname(HERE), 'data', 'dcmdose')
+
+Dose = namedtuple(
+    'Dose', 'values units type summation heterogeneity_correction')
+Coords = namedtuple('Coords', 'x y z')
 
 
 def get_data_file(orientation_key):
@@ -67,6 +72,24 @@ def save_coords_baseline(filename, coords_dict):
         np.save(os.path.join(DATA_DIRECTORY, filename), coords_dict)
 
 
+def test_extract_dose():
+
+    expected_dose = Dose(*np.load(os.path.join(
+        DATA_DIRECTORY, "expected_wedge_dose.npy")))
+
+    test_file = os.path.join(DATA_DIRECTORY, "RD.wedge.dcm")
+    test_dcm = dcm.dcmread(test_file)
+
+    test_dose = extract_dose(test_dcm)
+
+    assert(np.array_equal(test_dose.values, expected_dose.values))
+    assert(test_dose.units == expected_dose.units)
+    assert(test_dose.type == expected_dose.type)
+    assert(test_dose.summation == expected_dose.summation)
+    assert(test_dose.heterogeneity_correction ==
+           expected_dose.heterogeneity_correction)
+
+
 def test_extract_patient_coords():
     expected_coords = np.load(os.path.join(DATA_DIRECTORY,
                                            "expected_patient_coords.npy")).item()
@@ -80,9 +103,11 @@ def test_extract_patient_coords():
     for orient, dicom in test_dcms.items():
         x, y, z = extract_patient_coords(dicom)
 
-        assert np.array_equal(x, expected_coords[orient][0])
-        assert np.array_equal(y, expected_coords[orient][1])
-        assert np.array_equal(z, expected_coords[orient][2])
+        expected_coords[orient] = Coords(*expected_coords[orient])
+
+        assert np.array_equal(x, expected_coords[orient].x)
+        assert np.array_equal(y, expected_coords[orient].y)
+        assert np.array_equal(z, expected_coords[orient].z)
 
 
 def test_extract_iec_fixed_coords():
@@ -98,6 +123,12 @@ def test_extract_iec_fixed_coords():
     for orient, dicom in test_dcms.items():
         x, y, z = extract_iec_fixed_coords(dicom)
 
-        assert np.array_equal(x, expected_coords[orient][0])
-        assert np.array_equal(y, expected_coords[orient][1])
-        assert np.array_equal(z, expected_coords[orient][2])
+        expected_coords[orient] = Coords(*expected_coords[orient])
+
+        assert np.array_equal(x, expected_coords[orient].x)
+        assert np.array_equal(y, expected_coords[orient].y)
+        assert np.array_equal(z, expected_coords[orient].z)
+
+
+# if __name__ == "__main__":
+#     test_extract_dose()

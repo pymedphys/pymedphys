@@ -137,13 +137,14 @@ def extract_dose(dcm):
 
     Possible values of `heterogeneity_correction`:
 
-    ========================== ==================================================
+    ========================== ================================================================
     `heterogeneity_correction` Dose is calculated using:
-    ========================== ==================================================
+    ========================== ================================================================
     IMAGE                      Unaltered image data
     ROI_OVERRIDE               Image data where one or more ROIs override density
     WATER                      The entire volume treated as water equivalent
-    ========================== ==================================================
+    UNKNOWN                    The TissueHeterogeneityCorrection tag of the DICOM file is empty
+    ========================== ================================================================
 
     References
     ----------
@@ -160,7 +161,10 @@ def extract_dose(dcm):
     units = dcm.DoseUnits
     dose_type = dcm.DoseType
     summation = dcm.DoseSummationType
-    heterogeneity_correction = dcm.TissueHeterogeneityCorrection
+    if hasattr(dcm, "TissueHeterogeneityCorrection"):
+        heterogeneity_correction = dcm.TissueHeterogeneityCorrection
+    else:
+        heterogeneity_correction = "UNKNOWN"
 
     return Dose(values, units, dose_type, summation, heterogeneity_correction)
 
