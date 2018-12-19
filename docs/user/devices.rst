@@ -8,5 +8,6 @@ API
 ---
 
 .. autofunction:: pymedphys.devices.read_mapcheck_txt
+.. autofunction:: pymedphys.devices.read_profiler_prs
 
 

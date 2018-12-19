@@ -35,16 +35,19 @@ IMPORTS = get_imports(globals())
 
 def read_mapcheck_txt(file_name):
     """
-    Read and return dose array from native Profiler data file.
+    Read native MapCheck data file and return dose array.
 
-    Arguments:
-        file_name -- long file name of profiler file
+    Parameters
+    ----------
+    file_name : string
+        | file name of MapCheck file including path
 
-    Returns:
-        The namedtuple MapCheck which has the following:
-            MapCheck.x = 1-D np.array of float x-coordinates
-            MapCheck.y = 1-D np.array of float y-coordinates
-            MapCheck.dose = 2-D np.array of float dose, shape described by x, y
+    Returns
+    -------
+    MapCheck : named tuple
+        | MapCheck.x = np.array, float x-coords
+        | MapCheck.y = np.array, float y-coords
+        | MapCheck.dose = np.array (x,y), float dose
     """
 
     Mapcheck = namedtuple('Mapcheck', ['x', 'y', 'dose'])

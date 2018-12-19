@@ -32,20 +32,21 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def read_prs(file_name):
+def read_profiler_prs(file_name):
     """
-    Read and return dose profiles and CAX dose from native Profiler data file.
+    Read native Profiler data file and return dose profiles.
 
-    Arguments:
-        file_name -- long file name of profiler file
+    Parameters
+    ----------
+    file_name : string
+        | file name of Profiler file including path
 
-    Returns:
-        The namedtuple Profiler which has the following:
-            Profiler.cax = float(dose) at central axis
-            Profiler.x = x profile, i.e. [(distance, dose), ...]
-            Profiler.x = x profile, i.e. [(distance, dose), ...]
-                distance = float(+/- distance from cax
-                dose = float(absolute dose at detector)
+    Returns
+    -------
+    Profiler : named tuple
+        | Profiler.cax = float dose at central axis
+        | Profiler.x = list of (x, dose) tuples
+        | Profiler.y = list of (y, dose) tuples
     """
 
     Profiler = namedtuple('Profiler', ['cax', 'x', 'y'])
