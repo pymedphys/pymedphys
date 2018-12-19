@@ -33,6 +33,9 @@ release.
 
 IMPORTS = []
 
+# from decode_trf import *  # nopep8
+
+
 try:
     from decode_trf import *
 except ImportError:
@@ -63,6 +66,9 @@ except ImportError:
             "You need to have the decode_trf library to be able to decode `.trf` "
             "files. Please contact `me@simonbiggs.net` regarding access to this "
             "library.")
+
+    def trf2pandas(filepath):
+        not_implemented_error()
 
     def delivery_data_from_logfile(logfile_path):
         not_implemented_error()

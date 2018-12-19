@@ -26,21 +26,27 @@
 """Working with delivery data from either logfiles or Mosaiq.
 """
 
+from collections import namedtuple
 
-import attr
+# import attr
 import numpy as np
 
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-@attr.s
-class DeliveryData:
-    monitor_units = attr.ib()
-    gantry = attr.ib()
-    collimator = attr.ib()
-    mlc = attr.ib()
-    jaw = attr.ib()
+DeliveryData = namedtuple(
+    'DeliveryData',
+    ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
+
+
+# @attr.s
+# class DeliveryData:
+#     monitor_units = attr.ib()
+#     gantry = attr.ib()
+#     collimator = attr.ib()
+#     mlc = attr.ib()
+#     jaw = attr.ib()
 
 
 def get_delivery_parameters(delivery_data):
