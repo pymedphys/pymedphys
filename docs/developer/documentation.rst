@@ -47,8 +47,8 @@ which are then automatically extracted into the main documentation pages. For th
 to work properly, docstrings need to be formatted according to the numpy style. See
 the following sites for examples of how to conform to that style:
 
- - https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html#example-numpy
- - https://numpydoc.readthedocs.io/en/latest/format.html
+ - `Napoleon Docs >> Example NumPy Style Python Docstrings <https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html#example-numpy>`__
+ - `numpydoc docstring guide <https://numpydoc.readthedocs.io/en/latest/format.html>`__
 
 See existing examples within PyMedPhys for how to include new function docstrings
 into the main PyMedPhys documentation.
