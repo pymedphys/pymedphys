@@ -37,14 +37,17 @@ IMPORTS = get_imports(globals())
 
 def crossings(dose_profile, threshold):
     """
-    Return a list of distance vals where dose_profile crosses threshold.
+    Return a list of distances where dose_profile crosses threshold.
 
-    Arguments:
-        dose_profile -- e.g. [(distance, dose), ...]
-        threshold    -- float value being to be checked
+    Parameters
+    ----------
+    dose_profile : [(distance, dose), ...]
+    threshold : [(distance, dose), ...]
 
-    Returns:
-        intersects   -- list of floats, interp distances ST dose == threshold
+     Returns
+    -------
+    intersections : list of floats
+        | interpolated distances such that dose == threshold
     """
     x = [float(i[0]) for i in dose_profile]  # distance
     d = [float(i[1]) for i in dose_profile]  # dose
