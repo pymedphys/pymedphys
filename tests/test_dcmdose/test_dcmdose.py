@@ -82,12 +82,13 @@ def test_extract_dose():
 
     test_dose = extract_dose(test_dcm)
 
+    # Test - Constancy with wedge field baseline.
     assert(np.array_equal(test_dose.values, expected_dose.values))
     assert(test_dose.units == expected_dose.units)
     assert(test_dose.type == expected_dose.type)
     assert(test_dose.summation == expected_dose.summation)
-    assert(test_dose.heterogeneity_correction ==
-           expected_dose.heterogeneity_correction)
+    assert(test_dose.heterogeneity_correction
+           == expected_dose.heterogeneity_correction)
 
 
 def test_extract_patient_coords():
@@ -130,5 +131,5 @@ def test_extract_iec_fixed_coords():
         assert np.array_equal(z, expected_coords[orient].z)
 
 
-# if __name__ == "__main__":
-#     test_extract_dose()
+if __name__ == "__main__":
+    test_extract_dose()

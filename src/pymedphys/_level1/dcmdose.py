@@ -41,6 +41,7 @@ import pydicom.uid
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
+Coords = namedtuple('Coords', 'x y z')
 
 # pylint: disable=C0103
 
@@ -170,15 +171,15 @@ def extract_dose(dcm):
 
 
 def load_xyz_from_dicom(dcm):
-    """This function is deprecated. It is due to be replaced with either
+    r"""This function is deprecated. It is due to be replaced with either
     `extract_iec_fixed_coords` or `extract_patient_coords`, depending on which
     coordinate system is desired.
     """
 
     warnings.warn((
-        '`load_xyz_from_dicom` returns x, y & z values in the DICOM patient'
-        'coordinate system and presumes the patient\'s orientation is HFS.'
-        'This presumption may not be correct and so the function may return'
+        '`load_xyz_from_dicom` returns x, y & z values in the DICOM patient '
+        'coordinate system and presumes the patient\'s orientation is HFS. '
+        'This presumption may not be correct and so the function may return '
         'incorrect x, y, z values. In the future, this function will be removed. '
         'It is currently preserved for temporary backwards compatibility.'
     ), UserWarning)
@@ -203,8 +204,8 @@ def extract_patient_coords(dcm):
     Parameters
     ----------
     dcm
-       A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
-       Must represent a valid DICOM RT Dose file.
+        A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
+        Must represent a valid DICOM RT Dose file.
 
     Returns
     -------
@@ -242,14 +243,14 @@ def extract_patient_coords(dcm):
 
     References
     ----------
-    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation",
-       "DICOM PS3.3 2016a - Information Object Definitions",
-       http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
+    ..  [1] "C.7.6.2.1.1 Image Position and Image Orientation",
+        "DICOM PS3.3 2016a - Information Object Definitions",
+        http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
 
-    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
-       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+    ..  [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
+        (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
+        treatment plans", arXiv:1406.0014, Table 1,
+        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
     check_dcmdose(dcm)
@@ -299,8 +300,6 @@ def extract_patient_coords(dcm):
     else:
         z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
 
-    Coords = namedtuple('Coords', 'x y z')
-
     return Coords(x, y, z)
 
 
@@ -311,8 +310,8 @@ def extract_iec_fixed_coords(dcm):
     Parameters
     ----------
     dcm
-       A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
-       Must represent a valid DICOM RT Dose file.
+        A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
+        Must represent a valid DICOM RT Dose file.
 
     Returns
     -------
@@ -321,16 +320,16 @@ def extract_iec_fixed_coords(dcm):
         `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
         the IEC fixed coordinate system [1]_:
 
-        `x`
-            An `ndarray` of coordinates along a horizontal axis that runs
-            orthogonally to `y` (described below). 'x' increases toward the
-            viewer's right hand side when facing the front of the gantry.
-        `y`
-            An `ndarray` of coordinates along a horizontal axis that is
-            directed from the isocentre to the gantry.
-        `z`
-            An `ndarray` of coordinates along a axis directed vertically
-            upward.
+            `x`
+                An `ndarray` of coordinates along a horizontal axis that runs
+                orthogonally to `y` (described below). 'x' increases toward the
+                viewer's right hand side when facing the front of the gantry.
+            `y`
+                An `ndarray` of coordinates along a horizontal axis that is
+                directed from the isocentre to the gantry.
+            `z`
+                An `ndarray` of coordinates along a axis directed vertically
+                upward.
 
     Notes
     -----
@@ -351,12 +350,12 @@ def extract_iec_fixed_coords(dcm):
 
     References
     ----------
-    .. [1] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
+    ..  [1] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
 
-    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
-       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
+    ..  [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
+        (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
+        treatment plans", arXiv:1406.0014, Table 1,
+        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
     check_dcmdose(dcm)
@@ -393,8 +392,6 @@ def extract_iec_fixed_coords(dcm):
             "Z-axis of dose grid must be parallel to z-axis of patient")
 
     y = y_orientation*position[2] + np.array(dcm.GridFrameOffsetVector)
-
-    Coords = namedtuple('Coords', 'x y z')
 
     return Coords(x, y, z)
 
@@ -434,6 +431,74 @@ def extract_depth_dose(dcm, depth_adjust, averaging_distance=0):
 
     return depth, depth_dose
 
+def extract_depth_dose2(dcm, depth_adjust = 0, xy_coords = (0, 0), xy_averaging_distance=(0,0)):
+    r"""Returns a depth dose array of a DICOM RT Dose file with a corresponding depth coordinate array.
+
+    The depth dose can be adjusted for explicit correction for effective point of measurement. Also, the
+    crossplane and inplane position of the depth dose can be chosen by the user. Finally, neighbouring
+    crossplane and inplane voxels can be averaged together to form a smoother depth dose if desired.
+
+    Parameters
+    ----------
+    dcm
+        A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
+        Must represent a valid DICOM RT Dose file.
+
+    depth_adjust
+    TODO: fill in
+
+    Returns
+    -------
+    TODO: fill in or delete section
+
+    Raises
+    -------
+    TODO: fill in or delete section
+
+    Warns
+    -------
+    TODO: fill in or delete section
+
+    Notes
+    -----
+    TODO: fill in or delete section
+
+    References
+    ----------
+    TODO: fill in or delete section
+
+    Examples
+    ----------
+    TODO: fill in or delete section
+    """
+    coords = extract_iec_fixed_coords(dcm)
+    z_adjusted = coords.z + depth_adjust
+
+    xy_averaging_distance = np.array(xy_averaging_distance)
+    xy_min_averaging_distance = np.array(dcm.PixelSpacing) / 2
+
+    if np.any(xy_averaging_distance < 0):
+        raise ValueError("Averaging distances cannot be negative.")
+    elif np.any(xy_averaging_distance <= xy_min_averaging_distance):
+       xy_averaging_distance = xy_min_averaging_distance
+
+    x_rel = abs(coords.x - xy_coords[0]) <= xy_averaging_distance[0]
+    y_rel = abs(coords.y - xy_coords[1]) <= xy_averaging_distance[1]
+
+    # Note that this function works within the IEC fixed coordinate system. In this
+    # system, `dose.values` has index order of inplane, depth, crossplane (y, z, x).
+    # In the DICOM coordinate system, this corresponds to slices, rows, columns (z, y, x)
+    dose = extract_dose(dcm)
+    sheet_dose = dose.values[y_rel, :, :]
+    column_dose = sheet_dose[:, :, x_rel]
+
+    depth_dose = np.mean(column_dose, axis=(0, 2))
+
+    # uncertainty = np.std(column_dose, axis=(1, 2)) / depth_dose
+    # assert np.all(uncertainty < 0.01),
+    # "Shouldn't average over more than 1% uncertainty"
+
+    return z_adjusted, depth_dose
 
 def extract_profiles(dcm, depth_adjust, depth_lookup, averaging_distance=0):
 
