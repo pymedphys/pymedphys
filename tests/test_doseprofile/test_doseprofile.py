@@ -28,7 +28,7 @@ import sys
 import numpy as np
 import os
 # from pymedphys.doseprofile import *
-from pymedphys.dose import crossings
+from pymedphys.dose import crossings, edges
 # print(pymedphys.doseprofile)
 
 
@@ -40,47 +40,31 @@ DATA_DIRECTORY = os.path.abspath(
 def test_crossings():
     """ """
 
-    # simple_cross.x, simple_cross.y, t = [0, 1], [0, 1], 0.5
-    simple_cross = zip([0, 1], [0, 1])
-    print(simple_cross)
-    # assert crossings(simple_cross, t) == [0.5]
+    # RISING EDGE
+    dose_profile = [(0, 0), (1, 1)]
+    assert crossings(dose_profile, 0.5) == [0.5]
 
-    # flat_section = read.Scan()
-    # flat_section.x, flat_section.y, t = [0, 1, 2], [0, 0, 1], 0.5
-    # assert crossings(flat_section, t) == [1.5]
+    # FLAT TAIL
+    dose_profile = [(0, 0), (1, 0), (2, 1)]
+    assert crossings(dose_profile,  0.5) == [1.5]
 
-    # double_cross = read.Scan()
-    # double_cross.x, double_cross.y, t = [0, 1, 2], [0, 0, 1], 0.5
-    # assert crossings(double_cross, t) == [1.5]
+    # IDEAL PULSE
+    dose_profile = [(-10.1, 0), (-9.9, 1), (9.9, 1), (10.1, 0)]
+    assert crossings(dose_profile, 0.5) == [-10.0, 10.0]
 
-    # above_bounds = read.Scan()
-    # above_bounds.x, above_bounds.y, t = [0, 1, 2], [0, 0, 1], 0.5
-    # assert crossings(above_bounds, t) == [1.5]
 
-    # below_bounds = read.Scan()
-    # below_bounds.x, below_bounds.y, t = [0, 1, 2], [0, 0, 1], 0.5
-    # assert crossings(below_bounds, t) == [1.5]
+def test_edges():
+    """ """
+    # IDEAL PULSE
+    dose_profile = [(-20, 0.0), (-10.1, 0.0), (-9.9, 1.0),
+                    (9.9, 1.0), (10.1, 0.0), (20, 0.0)]
+    assert np.allclose(edges(dose_profile), (-10.0, 10.0))
 
-    # simple_pulse = read.Scan()
-    # simple_pulse.x = [-10.1, -9.9, 9.9, 10.1]
-    # simple_pulse.y = [0.0, 1.0, 1.0, 0.0]
-    # assert crossings(simple_pulse, 0.5) == [-10.0, 10.0]
 
-    print('crossings passed')
-
-# def test_edges():
-#     """ """
-#     # simple pulse
-#     simple_pulse = read.Scan()
-#     simple_pulse.x = [-20, -10.1, -9.9, 9.9, 10.1, 20]
-#     simple_pulse.y = [0.0, 0.0,1.0,1.0,0.0, 0.0]
-#     assert np.allclose(edges(simple_pulse), (-10.0, 0.0, 10.0))
 #     # profiler
 #     a = read.profiler(TEST[0])
 #     for k in a.keys():
 #         assert abs(sum(edges(a[k]))) <= 0.3
-
-#     print 'edges passed'
 
 # def test_move_to_match():
 #     """ """
@@ -105,5 +89,5 @@ def test_crossings():
 
 if __name__ == "__main__":
     test_crossings()
-    # test_edges()
+    test_edges()
     # test_move_to_match()
