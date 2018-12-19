@@ -37,7 +37,7 @@ IMPORTS = get_imports(globals())
 
 def crossings(dose_profile, threshold):
     """
-    Read and return dose profiles and CAX dose from native Profiler data file.
+    Return a list of distance vals where dose_profile crosses threshold.
 
     Arguments:
         dose_profile -- e.g. [(distance, dose), ...]
@@ -46,41 +46,60 @@ def crossings(dose_profile, threshold):
     Returns:
         intersects   -- list of floats, interp distances ST dose == threshold
     """
-    return
-    # X, Y = scan.x, scan.y
-    # t = float(threshold)
-    # idx = range(len(X))
-    # result = []
-    # for i in idx[1:]:
-    #     val = None
-    #     if Y[i] != Y[i-1]:
-    #         if (Y[i]-t)*(Y[i-1]-t) < 0:
-    #             val = (X[i]-((Y[i]-t)/(Y[i]-Y[i-1]))*(X[i]-X[i-1]))
-    #     elif Y[i] == t:
-    #         val = X[i]
-    #     if val and (val not in result):
-    #         result.append(val)
-    # return result
+    x = [float(i[0]) for i in dose_profile]  # distance
+    d = [float(i[1]) for i in dose_profile]  # dose
+    t = float(threshold)                     # threshold dose
 
-# def edges(scan):
-#     """ input = read.Scan()
-#         returns = 3 x-values, (left_edge, center, right_edge)"""
-#     x,y = scan.x, scan.y
-#     tol = max(np.diff(x))/1000
+    result = []
+    for i in range(1, len(x)):
+        val = None
+        if d[i] != d[i-1]:
+            # subsequent doses bracket threshold
+            if (d[i]-t)*(d[i-1]-t) < 0:
+                # interpolate
+                val = (x[i]-((d[i]-t)/(d[i]-d[i-1]))*(x[i]-x[i-1]))
+        elif d[i] == t:
+            val = x[i]
+        if val and (val not in result):
+            result.append(val)
+    return result
 
-#     kinds = ['cubic', 'quadratic', 'slinear', 'linear', 'nearest', 'zero']
-#     for k in kinds:
-#         try:
-#             f = interpolate.interp1d(x, y, kind = 'linear')
-#             diff = np.inf
-#             lt, rt, c = x[0], x[-1], np.average([x[0], x[-1]])
-#             while diff > tol:
-#                 last = [c, lt, rt]
-#                 c = np.average([lt, rt])
-#                 lt, rt  = tuple(crossings(scan, f(c)/2.0))
-#                 diff = abs(max([c - last[0], lt - last[1], rt - last[2]]))
-#             return lt, c, rt
-#         except: pass
+
+def edges(dose_profile):
+    """
+    Find the edges of a dose_profile.
+
+    Parameters
+    ----------
+    dose_profile : list of tuples [(distance, dose), ...]
+
+    Returns
+    -------
+    edges : 2-tuple of distance values
+    """
+
+    x = [float(i[0]) for i in dose_profile]  # DISTANCE
+    d = [float(i[1]) for i in dose_profile]  # DOSE
+
+    step_size = 0.1  # 1 MM RESOLUTION
+    num_steps = int((max(x)-min(x)) / step_size)
+    x_interp = [min(x) + i*step_size for i in range(num_steps + 1)]
+    f = interpolate.interp1d(x, d, kind='linear')
+    d_interp = list(map(f, x_interp))
+
+    max_dose = max(d_interp)
+    min_dose = min(d_interp)
+    inc_dose = (max_dose - min_dose)/100
+    test_doses = [max_dose - i*inc_dose for i in range(101)]
+
+    for t in test_doses:
+        cr = crossings(dose_profile, t/2.0)
+        # print(cr[0], cr[1])
+
+    dydx = list(np.gradient(d_interp, x_interp))
+    lt_edge = x_interp[dydx.index(max(dydx))]
+    rt_edge = x_interp[dydx.index(min(dydx))]
+    return (lt_edge, rt_edge)
 
 # def move_to_match(s1, s2, rez = 0.1):
 #     """Calcs the offset and orientation between two scans
