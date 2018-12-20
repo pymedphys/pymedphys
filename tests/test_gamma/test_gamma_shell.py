@@ -27,7 +27,6 @@
 
 import numpy as np
 from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
-import pytest
 
 
 def test_lower_dose_threshold():
