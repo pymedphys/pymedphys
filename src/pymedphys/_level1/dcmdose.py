@@ -42,9 +42,11 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 Coords = namedtuple('Coords', 'x y z')
-Dose = namedtuple('Dose', 'values units type summation heterogeneity_correction')
+Dose = namedtuple(
+    'Dose', 'values units type summation heterogeneity_correction')
 
 # pylint: disable=C0103
+
 
 def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
     r"""Extract the dose grid from a DICOM RT Dose file.
@@ -308,103 +310,6 @@ def extract_patient_coords(dcm):
     return Coords(x, y, z)
 
 
-def extract_scanning_tank_coords(dcm):
-    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-    in the typical coordinate system for scanning water tanks.
-
-    Parameters
-    ----------
-    dcm
-        A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
-        Must represent a valid DICOM RT Dose file.
-
-    Returns
-    -------
-    Coords(x, y, z)
-        A `namedtuple` containing three `ndarrays` corresponding to the `x`,
-        `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the typical coordinate system for scanning water tanks:
-
-            `x`
-                An `ndarray` of coordinates along a horizontal axis that runs
-                orthogonally to `y` (described below). 'x' increases toward the
-                viewer's right hand side when facing the front of the gantry.
-            `y`
-                An `ndarray` of coordinates along a horizontal axis that is
-                directed from the isocentre to the gantry.
-            `z`
-                An `ndarray` of coordinates along a axis directed vertically
-                downward.
-
-    Notes
-    -----
-    This z-axis of the scanning water tank coordinate system is flipped relative
-    to the IEC fixed coordinate system. The x- and y-axes match the IEC fixed
-    coordinate system [1]_.
-
-    Supported scan orientations [2]_:
-
-    =========================== =======================
-    Orientation                 ImageOrientationPatient
-    =========================== =======================
-    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
-    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
-    Feet First Prone            [1, 0, 0, 0, -1, 0]
-    Feet First Supine           [-1, 0, 0, 0, 1, 0]
-    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
-    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
-    Head First Prone            [-1, 0, 0, 0, -1, 0]
-    Head First Supine           [1, 0, 0, 0, 1, 0]
-    =========================== =======================
-
-    References
-    ----------
-    .. [1] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
-
-    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
-       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
-    """
-
-    check_dcmdose(dcm)
-
-    position = np.array(dcm.ImagePositionPatient)
-    orientation = np.array(dcm.ImageOrientationPatient)
-
-    di = float(dcm.PixelSpacing[0])
-    dj = float(dcm.PixelSpacing[1])
-
-    is_prone_or_supine = np.array_equal(
-        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
-
-    is_decubitus = np.array_equal(
-        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
-
-    # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
-    # grid and the 'patient'
-    if is_prone_or_supine:
-        y_orientation = 2*(orientation[0] == orientation[4])-1
-
-        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
-        z = orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj)
-
-    elif is_decubitus:
-        y_orientation = 2*(orientation[1] != orientation[3])-1
-
-        z = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
-        x = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
-    else:
-        raise ValueError(
-            "Dose grid orientation is not supported. "
-            "Z-axis of dose grid must be parallel to z-axis of patient")
-
-    y = y_orientation*position[2] + np.array(dcm.GridFrameOffsetVector)
-
-    return Coords(x, y, z)
-
-
 def extract_iec_fixed_coords(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
     in the IEC fixed coordinate system.
@@ -423,15 +328,19 @@ def extract_iec_fixed_coords(dcm):
         the IEC fixed coordinate system [1]_:
 
             `x`
-                An `ndarray` of coordinates along a horizontal axis that runs
-                orthogonally to `y` (described below). 'x' increases toward the
-                viewer's right hand side when facing the front of the gantry.
+                An `np.ndarray` of coordinates on the horizontal plane that runs
+                orthogonal to the gantry axis of rotation. The x axis increases
+                towards a viewer's right hand side when facing the gantry standing
+                at the isocentre. The isocentre has an x value of 0.
             `y`
-                An `ndarray` of coordinates along a horizontal axis that is
-                directed from the isocentre to the gantry.
+                An `np.ndarray` of coordinates on the horizontal plane that runs
+                parallel to the gantry axis of rotation. The positive direction
+                of the y axis travels from the isocentre to the gantry. The
+                isocentre has a y value of 0.
             `z`
-                An `ndarray` of coordinates along a axis directed vertically
-                upward.
+                An `np.ndarray` of coordinates aligned vertically and passing through
+                the isocentre. The positive direction of the z axis travels upwards
+                and the isocentre has a z value of 0.
 
     Notes
     -----
@@ -481,12 +390,14 @@ def extract_iec_fixed_coords(dcm):
         y_orientation = 2*(orientation[0] == orientation[4])-1
 
         x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
-        z = -np.flip(orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj))
+        z = -np.flip(orientation[4]*position[1] +
+                     np.arange(0, dcm.Rows * dj, dj))
 
     elif is_decubitus:
         y_orientation = 2*(orientation[1] != orientation[3])-1
 
-        z = -np.flip(orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj))
+        z = -np.flip(orientation[3]*position[0] +
+                     np.arange(0, dcm.Rows * dj, dj))
         x = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
     else:
         raise ValueError(

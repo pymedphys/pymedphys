@@ -32,7 +32,6 @@ Available Functions
 ...     anonymise_dicom,
 ...     extract_dose,
 ...     extract_patient_coords,
-...     extract_scanning_tank_coords,
 ...     extract_iec_fixed_coords,
 ...     load_dose_from_dicom,
 ...     load_xyz_from_dicom,
