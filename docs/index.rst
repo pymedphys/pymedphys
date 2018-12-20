@@ -22,6 +22,7 @@
     :caption: Developer Guide
 
     developer/contributing
+    developer/documentation
     developer/physical-design
     developer/agpl-benefits
 
