@@ -36,7 +36,6 @@ given within the following paper:
 > quality assurance program. Radiotherapy and Oncology (2016),
 > http://dx.doi.org/10.1016/j.radonc.2015.11.034
 """
-pytestmark = pytest.mark.skip(reason="very slow on RAH PC")
 # pylint: disable=C0103,C1801
 
 
