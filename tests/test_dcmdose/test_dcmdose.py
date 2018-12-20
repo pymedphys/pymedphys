@@ -105,10 +105,6 @@ def test_extract_patient_coords():
     run_coords_function_tests(extract_patient_coords)
 
 
-def test_extract_scanning_tank_coords():
-    run_coords_function_tests(extract_scanning_tank_coords)
-
-
 def test_extract_iec_fixed_coords():
     run_coords_function_tests(extract_iec_fixed_coords)
 
@@ -130,7 +126,3 @@ def test_extract_dose():
     assert(test_dose.summation == expected_dose.summation)
     assert(test_dose.heterogeneity_correction
            == expected_dose.heterogeneity_correction)
-
-
-if __name__ == "__main__":
-    test_extract_scanning_tank_coords()
