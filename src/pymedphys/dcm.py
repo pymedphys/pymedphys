@@ -34,6 +34,7 @@ Available Functions
 ...     extract_dose,
 ...     load_xyz_from_dicom,
 ...     extract_patient_coords,
+...     extract_scanning_tank_coords,
 ...     extract_iec_fixed_coords,
 ...     find_dose_within_structure,
 ...     create_dvh,

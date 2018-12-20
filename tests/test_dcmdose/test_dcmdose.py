@@ -26,16 +26,10 @@
 import os
 import numpy as np
 import pydicom as dcm
-from collections import namedtuple
-
-from pymedphys.dcm import extract_dose, extract_patient_coords, extract_iec_fixed_coords
+from pymedphys.dcm import *
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIRECTORY = os.path.join(os.path.dirname(HERE), 'data', 'dcmdose')
-
-Dose = namedtuple(
-    'Dose', 'values units type summation heterogeneity_correction')
-Coords = namedtuple('Coords', 'x y z')
 
 
 def get_data_file(orientation_key):
@@ -44,9 +38,44 @@ def get_data_file(orientation_key):
     return os.path.join(DATA_DIRECTORY, filename)
 
 
+def run_coords_function_tests(coords_function):
+    r"""Run the coordinate extraction test sequence for a given
+    coordinate extraction function"""
+
+    expected_coords_filename = "expected_{}.npy".format(
+        '_'.join(coords_function.__name__.split('_')[1:]))
+
+    expected_coords = np.load(os.path.join(
+        DATA_DIRECTORY, expected_coords_filename)).item()
+
+    assert (set(expected_coords.keys()) == set(['FFDL', 'FFDR', 'FFP', 'FFS',
+                                                'HFDL', 'HFDR', 'HFP', 'HFS']))
+
+    test_dcms = {key: dcm.dcmread(get_data_file(key))
+                 for key in expected_coords}
+
+    for orient, dicom in test_dcms.items():
+        test_coords = coords_function(dicom)
+
+        # print(orient)
+        # print("{}, {}".format(test_coords.x[0], test_coords.x[-1]))
+        # print("{}, {}".format(test_coords.y[0], test_coords.y[-1]))
+        # print("{}, {}\n".format(test_coords.z[0], test_coords.z[-1]))
+
+        # For baseline saving only!
+        # expected_coords[orient] = test_coords
+
+        assert np.array_equal(test_coords.x, expected_coords[orient].x)
+        assert np.array_equal(test_coords.y, expected_coords[orient].y)
+        assert np.array_equal(test_coords.z, expected_coords[orient].z)
+
+    # For baseline saving only!
+    # save_coords_baseline("expected_patient_coords.npy", expected_coords)
+
+
 def save_coords_baseline(filename, coords_dict):
-    r"""Use this to save a new baseline for the test functions
-    `test_extract_patient_coords()` and `test_extract_iec_fixed_coords() `
+    r"""Save a new baseline for any of the coordinate extraction functions.
+
     `coords_dict` should have key : value in the following form:
     <orientation string> : (x_coords, y_coords, z_coords)
     """
@@ -72,6 +101,18 @@ def save_coords_baseline(filename, coords_dict):
         np.save(os.path.join(DATA_DIRECTORY, filename), coords_dict)
 
 
+def test_extract_patient_coords():
+    run_coords_function_tests(extract_patient_coords)
+
+
+def test_extract_scanning_tank_coords():
+    run_coords_function_tests(extract_scanning_tank_coords)
+
+
+def test_extract_iec_fixed_coords():
+    run_coords_function_tests(extract_iec_fixed_coords)
+
+
 def test_extract_dose():
 
     expected_dose = Dose(*np.load(os.path.join(
@@ -91,45 +132,5 @@ def test_extract_dose():
            == expected_dose.heterogeneity_correction)
 
 
-def test_extract_patient_coords():
-    expected_coords = np.load(os.path.join(DATA_DIRECTORY,
-                                           "expected_patient_coords.npy")).item()
-
-    assert set(expected_coords.keys()) == set(['FFDL', 'FFDR', 'FFP', 'FFS',
-                                               'HFDL', 'HFDR', 'HFP', 'HFS'])
-
-    test_dcms = {key: dcm.dcmread(get_data_file(key))
-                 for key in expected_coords}
-
-    for orient, dicom in test_dcms.items():
-        x, y, z = extract_patient_coords(dicom)
-
-        expected_coords[orient] = Coords(*expected_coords[orient])
-
-        assert np.array_equal(x, expected_coords[orient].x)
-        assert np.array_equal(y, expected_coords[orient].y)
-        assert np.array_equal(z, expected_coords[orient].z)
-
-
-def test_extract_iec_fixed_coords():
-    expected_coords = np.load(os.path.join(
-        DATA_DIRECTORY, "expected_iec_fixed_coords.npy")).item()
-
-    assert (set(expected_coords.keys()) == set(['FFDL', 'FFDR', 'FFP', 'FFS',
-                                                'HFDL', 'HFDR', 'HFP', 'HFS']))
-
-    test_dcms = {key: dcm.dcmread(get_data_file(key))
-                 for key in expected_coords}
-
-    for orient, dicom in test_dcms.items():
-        x, y, z = extract_iec_fixed_coords(dicom)
-
-        expected_coords[orient] = Coords(*expected_coords[orient])
-
-        assert np.array_equal(x, expected_coords[orient].x)
-        assert np.array_equal(y, expected_coords[orient].y)
-        assert np.array_equal(z, expected_coords[orient].z)
-
-
 if __name__ == "__main__":
-    test_extract_dose()
+    test_extract_scanning_tank_coords()

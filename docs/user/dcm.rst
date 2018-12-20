@@ -19,6 +19,8 @@ API
 
 .. autofunction:: pymedphys.dcm.extract_patient_coords
 
+.. autofunction:: pymedphys.dcm.extract_scanning_tank_coords
+
 .. autofunction:: pymedphys.dcm.extract_iec_fixed_coords
 
 .. autofunction:: pymedphys.dcm.find_dose_within_structure
