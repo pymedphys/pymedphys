@@ -30,12 +30,12 @@ Available Functions
 -------------------
 >>> from pymedphys.dcm import (
 ...     anonymise_dicom,
-...     load_dose_from_dicom,
 ...     extract_dose,
-...     load_xyz_from_dicom,
 ...     extract_patient_coords,
 ...     extract_scanning_tank_coords,
 ...     extract_iec_fixed_coords,
+...     load_dose_from_dicom,
+...     load_xyz_from_dicom,
 ...     find_dose_within_structure,
 ...     create_dvh,
 ...     get_structure_aligned_cube)

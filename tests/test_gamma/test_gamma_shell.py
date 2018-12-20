@@ -29,8 +29,6 @@ import numpy as np
 from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
 import pytest
 
-pytestmark = pytest.mark.skip(reason="very slow on RAH PC")
-
 
 def test_lower_dose_threshold():
     """Verify that the lower dose threshold works as expected"""
