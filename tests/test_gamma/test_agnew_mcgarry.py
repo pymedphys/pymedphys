@@ -28,7 +28,6 @@ from pymedphys.gamma import gamma_shell
 import pydicom
 import numpy as np
 import os
-import pytest
 """The tests given here are replicated using pymedphys.gamma from the method
 given within the following paper:
 
