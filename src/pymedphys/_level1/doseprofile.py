@@ -35,6 +35,32 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+def resample(dose_profile, step_size=0.1):
+    """
+    Resample a dose_profile at a new, uniform step_size.
+
+    Parameters
+    ----------
+    dose_profile : [(distance, dose), ...]
+        | where distance and dose are floats
+    step_size : float increment at which to sample
+
+    Returns
+    -------
+    resamp_profile : [(distance, dose), ...]
+        | where distance and dose are floats
+    """
+
+    x = [float(i[0]) for i in dose_profile]  # DISTANCE
+    d = [float(i[1]) for i in dose_profile]  # DOSE
+    num_steps = int((max(x)-min(x)) / step_size)
+    x_interp = [min(x) + i*step_size for i in range(num_steps + 1)]
+    f = interpolate.interp1d(x, d, kind='linear')
+    d_interp = [float(f(x)) for x in x_interp]
+    resamp_profile = list(zip(x_interp, d_interp))
+    return resamp_profile
+
+
 def crossings(dose_profile, threshold):
     """
     Return a list of distances where dose_profile crosses threshold.
@@ -44,11 +70,12 @@ def crossings(dose_profile, threshold):
     dose_profile : [(distance, dose), ...]
     threshold : [(distance, dose), ...]
 
-     Returns
+    Returns
     -------
     intersections : list of floats
         | interpolated distances such that dose == threshold
     """
+
     x = [float(i[0]) for i in dose_profile]  # distance
     d = [float(i[1]) for i in dose_profile]  # dose
     t = float(threshold)                     # threshold dose
@@ -57,7 +84,7 @@ def crossings(dose_profile, threshold):
     for i in range(1, len(x)):
         val = None
         if d[i] != d[i-1]:
-            # subsequent doses bracket threshold
+            # bracket threshold
             if (d[i]-t)*(d[i-1]-t) < 0:
                 # interpolate
                 val = (x[i]-((d[i]-t)/(d[i]-d[i-1]))*(x[i]-x[i-1]))
@@ -81,14 +108,10 @@ def edges(dose_profile):
     edges : 2-tuple of distance values
     """
 
-    x = [float(i[0]) for i in dose_profile]  # DISTANCE
-    d = [float(i[1]) for i in dose_profile]  # DOSE
+    resampled = resample(dose_profile)
 
-    step_size = 0.1  # 1 MM RESOLUTION
-    num_steps = int((max(x)-min(x)) / step_size)
-    x_interp = [min(x) + i*step_size for i in range(num_steps + 1)]
-    f = interpolate.interp1d(x, d, kind='linear')
-    d_interp = list(map(f, x_interp))
+    x_interp = [float(i[0]) for i in resampled]  # DISTANCE
+    d_interp = [float(i[1]) for i in resampled]  # DOSE
 
     max_dose = max(d_interp)
     min_dose = min(d_interp)
@@ -97,7 +120,6 @@ def edges(dose_profile):
 
     for t in test_doses:
         cr = crossings(dose_profile, t/2.0)
-        # print(cr[0], cr[1])
 
     dydx = list(np.gradient(d_interp, x_interp))
     lt_edge = x_interp[dydx.index(max(dydx))]
