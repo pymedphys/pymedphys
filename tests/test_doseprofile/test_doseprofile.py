@@ -31,7 +31,7 @@ import os
 from pymedphys.dose import lookup, resample, crossings, edges
 from pymedphys.dose import normalise_dose, normalize_dose
 from pymedphys.dose import normalise_distance, normalize_distance
-
+from pymedphys.dose import recentre, recenter
 
 DATA_DIRECTORY = os.path.abspath(
     os.path.join(os.path.dirname(__file__),
@@ -140,6 +140,18 @@ def test_normalize_distance():
                 (15.2, 0.33), (15.6, 0.32), (16, 0.3), (16.4, 0.3)]
     assert np.isclose(normalize_distance(dose_profile)[0][0], 3.215686274509805)
 
+
+
+def test_recentre():
+
+    # PULSE
+    dose_profile =[(-11.1, 0), (-10.9, 1), (8.9, 1), (9.1, 0)]
+    assert recentre(dose_profile)[0][0] + 10 < 0.2
+
+
+
+
+
     # def test_move_to_match():
     #     """ """
     #     # DYNAMIC WEDGE, PROFILER -> TOMO_FILM PROFILE
@@ -162,10 +174,11 @@ def test_normalize_distance():
 
 
 if __name__ == "__main__":
-    # test_lookup()
-    # test_resample()
-    # test_crossings()
-    # test_edges()
-    # test_normalize_dose()
+    test_lookup()
+    test_resample()
+    test_crossings()
+    test_edges()
+    test_normalize_dose()
     test_normalize_distance()
+    test_recentre()
     # test_move_to_match()
