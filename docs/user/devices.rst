@@ -12,5 +12,4 @@ API
 .. autofunction:: pymedphys.dose.crossings
 .. autofunction:: pymedphys.dose.edges
 .. autofunction:: pymedphys.dose.normalise_dose
-
-
+.. autofunction:: pymedphys.dose.normalize_distance
