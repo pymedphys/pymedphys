@@ -35,6 +35,45 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+def _unzip(dose_profile):
+    """
+    Separate  axes of dose_profile into a tuple
+
+    Parameters
+    ----------
+    dose_profile : [(distance, dose), ...]
+        | where distance and dose are floats
+
+    Returns
+    -------
+    unizpped : 2-tuple of lists
+        | ([distance, ...], [dose, ...]  )
+    """
+
+    x = [float(i[0]) for i in dose_profile]  # DISTANCE
+    d = [float(i[1]) for i in dose_profile]  # DOSE
+    return x, d
+
+
+def lookup(dose_profile, distance):
+    """
+    Return value of dose_profile at distance.
+
+    Parameters
+    ----------
+    dose_profile : [(distance, dose), ...]
+        | where distance and dose are floats
+    distance : float distance at which to get value
+
+    Returns
+    -------
+    value : float profile value at distance
+    """
+    x, d = _unzip(dose_profile)
+    f = interpolate.interp1d(x, d, kind='linear')
+    return(f(distance))
+
+
 def resample(dose_profile, step_size=0.1):
     """
     Resample a dose_profile at a new, uniform step_size.
@@ -51,8 +90,7 @@ def resample(dose_profile, step_size=0.1):
         | where distance and dose are floats
     """
 
-    x = [float(i[0]) for i in dose_profile]  # DISTANCE
-    d = [float(i[1]) for i in dose_profile]  # DOSE
+    x, d = _unzip(dose_profile)
     num_steps = int((max(x)-min(x)) / step_size)
     x_interp = [min(x) + i*step_size for i in range(num_steps + 1)]
     f = interpolate.interp1d(x, d, kind='linear')
@@ -75,20 +113,16 @@ def crossings(dose_profile, threshold):
     intersections : list of floats
         | interpolated distances such that dose == threshold
     """
-
-    x = [float(i[0]) for i in dose_profile]  # distance
-    d = [float(i[1]) for i in dose_profile]  # dose
-    t = float(threshold)                     # threshold dose
-
+    x, d = _unzip(dose_profile)
     result = []
     for i in range(1, len(x)):
         val = None
         if d[i] != d[i-1]:
             # bracket threshold
-            if (d[i]-t)*(d[i-1]-t) < 0:
+            if (d[i]-threshold)*(d[i-1]-threshold) < 0:
                 # interpolate
-                val = (x[i]-((d[i]-t)/(d[i]-d[i-1]))*(x[i]-x[i-1]))
-        elif d[i] == t:
+                val = (x[i]-((d[i]-threshold)/(d[i]-d[i-1]))*(x[i]-x[i-1]))
+        elif d[i] == threshold:
             val = x[i]
         if val and (val not in result):
             result.append(val)
@@ -125,6 +159,37 @@ def edges(dose_profile):
     lt_edge = x_interp[dydx.index(max(dydx))]
     rt_edge = x_interp[dydx.index(min(dydx))]
     return (lt_edge, rt_edge)
+
+
+def normalise_dose(dose_profile, location=0.0, dose=100.0):
+    """
+    Renormalize dose_profile so as to force dose at location.
+
+    Parameters
+    ----------
+    dose_profile : list of tuples [(distance, dose), ...]
+
+    KeyWord Arguments
+    -----------------
+    location : float or string
+        |  float distance set to dose
+        |  string 'max' at max dose point
+
+    Returns
+    -------
+    norm_profile : list of tuples [(distance, dose), ...]
+    """
+
+    x, d = _unzip(dose_profile)
+
+    try:
+        norm_fact = dose / lookup(dose_profile, location)
+    except:
+        norm_fact = dose / max(d)
+
+    d = [norm_fact * i for i in d]
+    return list(zip(x, d))
+
 
 # def move_to_match(s1, s2, rez = 0.1):
 #     """Calcs the offset and orientation between two scans
