@@ -28,7 +28,7 @@ import sys
 import numpy as np
 import os
 # from pymedphys.doseprofile import *
-from pymedphys.dose import crossings, edges
+from pymedphys.dose import resample, crossings, edges
 # print(pymedphys.doseprofile)
 
 
@@ -37,9 +37,21 @@ DATA_DIRECTORY = os.path.abspath(
                  os.pardir, 'data', 'doseprofile'))
 
 
-def test_crossings():
-    """ """
+def test_get_value():
+    assert True
 
+
+def test_resample():
+    # STEP FUNCTION
+    dose_profile = [(-1.0, 0.0), (-0.1, 0.0), (0.0, 0.5),
+                    (0.1, 1.0), (1.0, 1.0)]
+    resampled = resample(dose_profile)
+    increments = np.diff([i[0] for i in resampled])
+    assert np.allclose(increments, 0.1)      # DEFAULT INCR
+    assert resampled[0] == dose_profile[0]   # BEGIN
+    assert resampled[-1] == dose_profile[-1  # END
+
+def test_crossings():
     # RISING EDGE
     dose_profile = [(0, 0), (1, 1)]
     assert crossings(dose_profile, 0.5) == [0.5]
@@ -54,7 +66,6 @@ def test_crossings():
 
 
 def test_edges():
-    """ """
     # IDEAL PULSE
     dose_profile = [(-20, 0.0), (-10.1, 0.0), (-9.9, 1.0),
                     (9.9, 1.0), (10.1, 0.0), (20, 0.0)]
@@ -107,6 +118,7 @@ def test_edges():
 #     print 'move_to_match passed'
 
 if __name__ == "__main__":
+    test_resample()
     test_crossings()
     test_edges()
     # test_move_to_match()
