@@ -58,7 +58,7 @@ def _zip(x, d):
 
 def _unzip(dose_profile):
     """
-    Separate  axes of dose_profile into a tuple
+    Separate axes of dose_profile into a tuple
 
     Parameters
     ----------
@@ -186,8 +186,8 @@ def edges(dose_profile):
 
 def normalise_dose(dose_profile, location=0.0, dose=100.0):
     """
-    Renormalize dose_profile so as to force dose at location.
-        | normalize_dose() redirects here
+    Rescale profile doses to set dose to location.
+        | also, normalize_dose()
 
     Parameters
     ----------
@@ -222,8 +222,8 @@ def normalize_dose(dose_profile, location=0.0, dose=100.0):
 
 def normalise_distance(dose_profile):
     """
-    Renormalize dose_profile so as to force dose at location.
-        | normalize_dose() redirects here
+    Normalize profile distances as relative to beam edge.
+        | also, normalize_distance()
 
     Parameters
     ----------
@@ -238,13 +238,11 @@ def normalise_distance(dose_profile):
     Returns
     -------
     norm_profile : list of tuples [(distance, dose), ...]
+        | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
+        | of radiation dose data in a small digital computer
+        | (2) Heintz, King, & Childs, May-95, User Manual,
+        | Prowess 3000 CT Treatment Planning
 
-    Refs
-    ----
-    Milan & Bentley, BJR Feb-74, The Storage and anipulation of
-    radiation dose data in a small digital computer
-    Heintz, King, & Childs, May-95, User Manual,  Prowess 3000
-    CT Treatment Planning
     """
     x, d = _unzip(dose_profile)
 
@@ -263,6 +261,37 @@ def normalise_distance(dose_profile):
 
 
 def normalize_distance(dose_profile):
+    """ US English -> UK English """
+    return normalise_distance(dose_profile)
+
+
+#########
+
+def recentre(dose_profile):
+    """
+    Adjusts profile distances so that the point midway between the edges is zero.
+        | also, recenter()
+
+    Parameters
+    ----------
+    dose_profile : list of tuples [(distance, dose), ...]
+
+    Returns
+    -------
+    cent_profile : list of tuples [(distance, dose), ...]
+
+    """
+    x, d = _unzip(dose_profile)
+
+    lt_edge, rt_edge = edges(dose_profile)
+    cax = (lt_edge + rt_edge)/2.0
+    result = []
+    for i, dist in enumerate(x):
+        result.append((dist - cax, d[i]))
+    return result
+
+
+def recenter(dose_profile):
     """ US English -> UK English """
     return normalise_distance(dose_profile)
 
