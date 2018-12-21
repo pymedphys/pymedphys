@@ -35,6 +35,27 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+def _zip(x, d):
+    """
+    Combine distance and dose axes into dose_profile.
+
+    Parameters
+    ----------
+    x   : [ distance, distance, ...]
+    d   : [ dose, dose, ...]
+        | where distance, dose are floats
+
+    Returns
+    -------
+    dose_profile : [(distance, dose), ...]
+    """
+
+    x = [float(i) for i in x]  # ENFORCE TYPE
+    d = [float(i) for i in d]
+
+    return list(zip(x, d))
+
+
 def _unzip(dose_profile):
     """
     Separate  axes of dose_profile into a tuple
@@ -91,11 +112,13 @@ def resample(dose_profile, step_size=0.1):
     """
 
     x, d = _unzip(dose_profile)
+    f = interpolate.interp1d(x, d, kind='linear')
+
     num_steps = int((max(x)-min(x)) / step_size)
     x_interp = [min(x) + i*step_size for i in range(num_steps + 1)]
-    f = interpolate.interp1d(x, d, kind='linear')
     d_interp = [float(f(x)) for x in x_interp]
-    resamp_profile = list(zip(x_interp, d_interp))
+
+    resamp_profile = _zip(x_interp, d_interp)
     return resamp_profile
 
 
@@ -164,6 +187,7 @@ def edges(dose_profile):
 def normalise_dose(dose_profile, location=0.0, dose=100.0):
     """
     Renormalize dose_profile so as to force dose at location.
+        | normalize_dose() redirects here
 
     Parameters
     ----------
@@ -188,7 +212,59 @@ def normalise_dose(dose_profile, location=0.0, dose=100.0):
         norm_fact = dose / max(d)
 
     d = [norm_fact * i for i in d]
-    return list(zip(x, d))
+    return _zip(x, d)
+
+
+def normalize_dose(dose_profile, location=0.0, dose=100.0):
+    """ US English -> UK English """
+    return normalise_dose(dose_profile, location=0.0, dose=100.0)
+
+
+def normalise_distance(dose_profile):
+    """
+    Renormalize dose_profile so as to force dose at location.
+        | normalize_dose() redirects here
+
+    Parameters
+    ----------
+    dose_profile : list of tuples [(distance, dose), ...]
+
+    KeyWord Arguments
+    -----------------
+    location : float or string
+        |  float distance set to dose
+        |  string 'max' at max dose point
+
+    Returns
+    -------
+    norm_profile : list of tuples [(distance, dose), ...]
+
+    Refs
+    ----
+    Milan & Bentley, BJR Feb-74, The Storage and anipulation of
+    radiation dose data in a small digital computer
+    Heintz, King, & Childs, May-95, User Manual,  Prowess 3000
+    CT Treatment Planning
+    """
+    x, d = _unzip(dose_profile)
+
+    lt_edge, rt_edge = edges(dose_profile)
+    cax = (lt_edge + rt_edge)/2.0
+
+    result = []
+    for i, dist in enumerate(x):
+        if dist < cax:
+            result.append((dist/lt_edge, d[i]))
+        elif dist == cax:
+            result.append((0.0, d[i]))
+        elif dist > cax:
+            result.append((dist/rt_edge, d[i]))
+    return result
+
+
+def normalize_distance(dose_profile):
+    """ US English -> UK English """
+    return normalise_distance(dose_profile)
 
 
 # def move_to_match(s1, s2, rez = 0.1):
