@@ -27,9 +27,8 @@
 import sys
 import numpy as np
 import os
-# from pymedphys.doseprofile import *
-from pymedphys.dose import resample, crossings, edges
-# print(pymedphys.doseprofile)
+
+from pymedphys.dose import lookup, resample, crossings, edges, normalise_dose
 
 
 DATA_DIRECTORY = os.path.abspath(
@@ -37,8 +36,11 @@ DATA_DIRECTORY = os.path.abspath(
                  os.pardir, 'data', 'doseprofile'))
 
 
-def test_get_value():
-    assert True
+def test_lookup():
+    dose_profile = [(0, 0), (1, 1)]
+    assert np.isclose(lookup(dose_profile, 0.0), 0.0)
+    assert np.isclose(lookup(dose_profile, 0.5), 0.5)
+    assert np.isclose(lookup(dose_profile, 1.0), 1.0)
 
 
 def test_resample():
@@ -49,7 +51,8 @@ def test_resample():
     increments = np.diff([i[0] for i in resampled])
     assert np.allclose(increments, 0.1)      # DEFAULT INCR
     assert resampled[0] == dose_profile[0]   # BEGIN
-    assert resampled[-1] == dose_profile[-1  # END
+    assert resampled[-1] == dose_profile[-1]  # END
+
 
 def test_crossings():
     # RISING EDGE
@@ -97,28 +100,43 @@ def test_edges():
     assert np.allclose(edges(dose_profile), (-5.1, 4.9))
 
 
-# def test_move_to_match():
-#     """ """
-#     # DYNAMIC WEDGE, PROFILER -> TOMO_FILM PROFILE
-#     p = read.profiler(TEST[1]);  to_move = p[p.keys()[0]]
-#     f = read.tomo_film(TEST[2]); to_match= f[f.keys()[0]]
-#     r = move_to_match(to_move, to_match, 0.1)
-#     assert abs(r['shft'] - 9.3) < 0.1
-#     assert np.allclose(r['flp'], True)
-#     assert len(r['x1']) -len(r['y1']) + len(r['x2']) -len(r['y2']) == 0
-#     if True: # POPUP PLOT
-#         import pylab as plt
-#         kwargs = {'markersize': 1,  'markeredgewidth': 0.2, 'marker': 'o',
-#           'linestyle': '-', 'linewidth': .010, 'markeredgecolor': 'r',
-#           'markerfacecolor': 'r'}
-#         plt.plot(r['x1'],  r['y1'], **kwargs)
-#         kwargs['markeredgecolor'] = 'b'; kwargs['markerfacecolor'] = 'b'
-#         plt.plot(r['x2'],  r['y2'], **kwargs)
-#         plt.show()
-#     print 'move_to_match passed'
+def test_normalise_dose():
+
+    # TRIANGLE
+    dose_profile = [(-10, 0), (0, 2), (10, 0)]
+    correct = [(-10.0, 0.0), (0.0, 100.0), (10.0, 0.0)]
+    assert normalise_dose(dose_profile) == correct
+
+    # INVERSE TRIANGLE
+    dose_profile = [(-1, 1), (0, 0), (1, 1)]
+    correct = [(-1.0, 100.0), (0.0, 0.0), (1.0, 100.0)]
+    assert normalise_dose(dose_profile, location='max') == correct
+
+    # def test_move_to_match():
+    #     """ """
+    #     # DYNAMIC WEDGE, PROFILER -> TOMO_FILM PROFILE
+    #     p = read.profiler(TEST[1]);  to_move = p[p.keys()[0]]
+    #     f = read.tomo_film(TEST[2]); to_match= f[f.keys()[0]]
+    #     r = move_to_match(to_move, to_match, 0.1)
+    #     assert abs(r['shft'] - 9.3) < 0.1
+    #     assert np.allclose(r['flp'], True)
+    #     assert len(r['x1']) -len(r['y1']) + len(r['x2']) -len(r['y2']) == 0
+    #     if True: # POPUP PLOT
+    #         import pylab as plt
+    #         kwargs = {'markersize': 1,  'markeredgewidth': 0.2, 'marker': 'o',
+    #           'linestyle': '-', 'linewidth': .010, 'markeredgecolor': 'r',
+    #           'markerfacecolor': 'r'}
+    #         plt.plot(r['x1'],  r['y1'], **kwargs)
+    #         kwargs['markeredgecolor'] = 'b'; kwargs['markerfacecolor'] = 'b'
+    #         plt.plot(r['x2'],  r['y2'], **kwargs)
+    #         plt.show()
+    #     print 'move_to_match passed'
+
 
 if __name__ == "__main__":
+    test_lookup()
     test_resample()
     test_crossings()
     test_edges()
+    test_normalise_dose()
     # test_move_to_match()
