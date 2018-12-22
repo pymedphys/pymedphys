@@ -31,8 +31,8 @@ import csv
 import numpy as np
 
 
-from .._level0.libutils import get_imports
-IMPORTS = get_imports(globals())
+# from .._level0.libutils import get_imports
+# IMPORTS = get_imports(globals())
 
 
 def _zip(x, d):
@@ -93,6 +93,25 @@ def _lookup(dose_profile, distance):
     x, d = _unzip(dose_profile)
     f = interpolate.interp1d(x, d, kind='linear')
     return(f(distance))
+
+
+def _slice(dose_profile, begin=-np.inf, end=np.inf):
+    """
+    Extract slice from a dose profile, excluduing points
+    before begin or after end.
+
+    Parameters
+    ----------
+    dose_profile : [(distance, dose), ...]
+        | where distance and dose are floats
+    begin : float beginning of result profile
+    end   : float end of result profile
+
+    Returns
+    -------
+    slice_profile : [(distance, dose), ...]
+    """
+    return [d for d in dose_profile if d[0] >= begin and d[0] <= end]
 
 
 def resample(dose_profile, step_size=0.1, start=-np.inf, stop=np.inf):
