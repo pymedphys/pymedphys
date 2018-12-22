@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 PyMedPhys Contributors
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,35 +23,39 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import warnings
 
-# pylint: disable=C0103,C1801
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
 
-
-"""End to end regression testing.
-"""
-
-import os
-
-import numpy as np
-
-from pymedphys.mudensity import calc_mu_density
+MILLENIUM = (10,)*10 + (5,)*40 + (10,)*10
+BRAINLAB = (5.5,)*3 + (4.5,)*3 + (3,)*14 + (4.5,)*3 + (5.5,)*3
+AGILITY = (5,)*80
 
 
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../data/mudensity")
-DELIVERY_DATA_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, 'mu_density_example_arrays.npz'))
+ALL_TYPES = {
+    'Millenium': MILLENIUM,
+    'BrainLab': BRAINLAB,
+    'Agility': AGILITY
+}
+
+LENGTH_MAP = {
+    len(leaf_pair_widths): (name, leaf_pair_widths)
+    for name, leaf_pair_widths in ALL_TYPES.items()
+}
 
 
-def test_regression():
-    """The results of MU Density calculation should not change
-    """
-    regress_test_arrays = np.load(DELIVERY_DATA_FILEPATH)
+def autodetect_leaf_pair_widths(number_of_mlc_pairs):
+    try:
+        collimator_name, leaf_pair_widths = LENGTH_MAP[number_of_mlc_pairs]
+        warnings.warn(
+            (
+                'Based on number of segments provided the collimator type '
+                '{} has automatically been chosen. Please define '
+                'leaf_widths parameter if this is not correct.'
+            ).format(collimator_name), UserWarning)
+    except KeyError:
+        raise ValueError(
+            'Please define leaf_widths parameter')
 
-    mu = regress_test_arrays['mu']
-    mlc = regress_test_arrays['mlc']
-    jaw = regress_test_arrays['jaw']
-
-    cached_mu_density = regress_test_arrays['mu_density']
-    mu_density = calc_mu_density(mu, mlc, jaw)
-    assert np.allclose(mu_density, cached_mu_density, atol=0.1)
+    return leaf_pair_widths

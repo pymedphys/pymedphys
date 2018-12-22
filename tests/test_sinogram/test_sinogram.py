@@ -24,14 +24,31 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: disable=W0401,W0614
+import os
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+from pymedphys.tomo import unshuffle_sinogram
+from pymedphys.tomo import unshuffle_sinogram_csv
 
-from ._level1.devicessncprofiler import *
-from ._level1.devicessncmapcheck import *
+SINOGRAM_FILE = os.path.join(
+    os.path.dirname(__file__), "../data/tomo/sinogram.csv")
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.devicessncprofiler',
-    '._level1.devicessncmapcheck'
-])
+
+def test_unshuffle_sinogram():
+    """ Compare unshuffle_sinogram results vs expected values """
+    unshuffled = unshuffle_sinogram([[0]*25 + [1.0]*14 + [0]*25]*510)
+    assert len(unshuffled) == 51          # number of angles is 51
+    assert len(unshuffled[0]) == 10       # number of couch increments
+    assert len(unshuffled[0][0]) == 16    # number of visible leaves (is even)
+    assert unshuffled[0][0][0] == 0       # first leaf is closed
+
+
+def test_unshuffle_sinogram_csv():
+    """ Compare unshuffle_sinogram_csv results vs expected """
+    document_id, results = unshuffle_sinogram_csv(SINOGRAM_FILE)
+    assert document_id == '00000 - ANONYMOUS, PATIENT'
+    assert len(results) == 51
+
+
+if __name__ == "__main__":
+    test_unshuffle_sinogram()
+    test_unshuffle_sinogram_csv()
