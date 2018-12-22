@@ -1,5 +1,8 @@
-Collimatation Toolbox
-=====================
+Collimator Toolbox
+==================
+
+.. automodule:: pymedphys.coll
+    :no-members:
 
 .. automodule:: pymedphys.coll.collmudensity
     :no-members:
