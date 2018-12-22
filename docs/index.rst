@@ -11,7 +11,7 @@
     :maxdepth: 1
     :caption: User Guide
 
-    user/mudensity
+    user/coll
     user/gamma
     user/electronfactors
     user/dcm
@@ -22,6 +22,7 @@
     :caption: Developer Guide
 
     developer/contributing
+    developer/documentation
     developer/physical-design
     developer/agpl-benefits
 
