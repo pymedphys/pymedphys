@@ -30,7 +30,7 @@ Examples:
     ...    calc_mu_density, mlc_equivalent_square_fs)
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401,W0614,C0413,W0611
 
 from ._level0.libutils import clean_and_verify_levelled_modules
 
@@ -42,3 +42,5 @@ clean_and_verify_levelled_modules(globals(), [
     '._level1.collmlctypes', '._level2.collequivalent',
     '._level2.collmudensity'
 ])
+
+from ._level2 import collmudensity  # nopep8
