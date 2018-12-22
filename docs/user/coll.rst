@@ -4,7 +4,7 @@ Collimator Toolbox
 .. automodule:: pymedphys.coll
     :no-members:
 
-.. automodule:: pymedphys.coll.collmudensity
+.. automodule:: pymedphys._level2.collmudensity
     :no-members:
 
 Example Usage
