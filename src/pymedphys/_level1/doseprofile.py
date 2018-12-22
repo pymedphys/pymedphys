@@ -95,7 +95,7 @@ def lookup(dose_profile, distance):
     return(f(distance))
 
 
-def resample(dose_profile, step_size=0.1):
+def resample(dose_profile, step_size=0.1, start=-np.inf, stop=np.inf):
     """
     Resample a dose_profile at a new, uniform step_size.
 
@@ -103,7 +103,12 @@ def resample(dose_profile, step_size=0.1):
     ----------
     dose_profile : [(distance, dose), ...]
         | where distance and dose are floats
+
+    Keyword Arguments
+    -----------------
     step_size : float increment at which to sample
+    start     : starting distance, or from input
+    stop      : stopping distance, or from input
 
     Returns
     -------
@@ -114,8 +119,12 @@ def resample(dose_profile, step_size=0.1):
     x, d = _unzip(dose_profile)
     f = interpolate.interp1d(x, d, kind='linear')
 
-    num_steps = int((max(x)-min(x)) / step_size)
-    x_interp = [min(x) + i*step_size for i in range(num_steps + 1)]
+    start = max(start, min(x))
+    stop = min(stop, max(x))
+
+    num_steps = int((stop-start) / step_size)
+    x_interp = [start + i*step_size for i in range(num_steps + 1)]
+
     d_interp = [float(f(x)) for x in x_interp]
 
     resamp_profile = _zip(x_interp, d_interp)
@@ -265,8 +274,6 @@ def normalize_distance(dose_profile):
     return normalise_distance(dose_profile)
 
 
-#########
-
 def recentre(dose_profile):
     """
     Adjusts profile distances so that the point midway between the edges is zero.
@@ -295,6 +302,39 @@ def recenter(dose_profile):
     """ US English -> UK English """
     return normalise_distance(dose_profile)
 
+
+def symmetrise(dose_profile, step_size=0.1):
+    """
+    Return a symmetric version of a profile, in which the values are averaged
+    across the central axis.
+        | also, symetrize()
+
+    Parameters
+    ----------
+    dose_profile : list of tuples [(distance, dose), ...]
+
+    Returns
+    -------
+    sym_profile : list of tuples [(distance, dose), ...]
+        | The length of the result will extend will be the shorter of
+        | +/- extents of the original profile and will be resampled
+        | at with the kwarg step-size.
+    """
+    x, d = _unzip(dose_profile)
+    start = max(x[0], -x[-1])
+    stop = min(-x[0], x[-1])
+    dose_profile = resample(dose_profile, start=start, stop=stop)
+    rev = dose_profile[::-1]
+    result = [(dose_profile[i][0],  (dose_profile[i][0]+rev[i][0])/2.0)
+              for i in range(len(x))]
+    print(result)
+    return result
+    # PRETTY SURE THESE ANSWERS ARE NOT VERY GOOD
+
+
+def symmetrize(dose_profile):
+    """ US English -> UK English """
+    return symmetrise(dose_profile)
 
 # def move_to_match(s1, s2, rez = 0.1):
 #     """Calcs the offset and orientation between two scans
