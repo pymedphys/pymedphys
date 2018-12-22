@@ -76,7 +76,7 @@ def _unzip(dose_profile):
     return x, d
 
 
-def lookup(dose_profile, distance):
+def _lookup(dose_profile, distance):
     """
     Return value of dose_profile at distance.
 
@@ -264,8 +264,6 @@ def normalize_distance(dose_profile):
     """ US English -> UK English """
     return normalise_distance(dose_profile)
 
-
-#########
 
 def recentre(dose_profile):
     """

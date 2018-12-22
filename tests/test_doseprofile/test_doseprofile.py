@@ -28,7 +28,7 @@ import sys
 import numpy as np
 import os
 
-from pymedphys.dose import lookup, resample, crossings, edges
+from pymedphys.dose import resample, crossings, edges
 from pymedphys.dose import normalise_dose, normalize_dose
 from pymedphys.dose import normalise_distance, normalize_distance
 from pymedphys.dose import recentre, recenter
@@ -38,11 +38,11 @@ DATA_DIRECTORY = os.path.abspath(
                  os.pardir, 'data', 'doseprofile'))
 
 
-def test_lookup():
-    dose_profile = [(0, 0), (1, 1)]
-    assert np.isclose(lookup(dose_profile, 0.0), 0.0)
-    assert np.isclose(lookup(dose_profile, 0.5), 0.5)
-    assert np.isclose(lookup(dose_profile, 1.0), 1.0)
+# def test_lookup():
+#     dose_profile = [(0, 0), (1, 1)]
+#     assert np.isclose(lookup(dose_profile, 0.0), 0.0)
+#     assert np.isclose(lookup(dose_profile, 0.5), 0.5)
+#     assert np.isclose(lookup(dose_profile, 1.0), 1.0)
 
 
 def test_resample():
@@ -174,7 +174,7 @@ def test_recentre():
 
 
 if __name__ == "__main__":
-    test_lookup()
+    # test_lookup()
     test_resample()
     test_crossings()
     test_edges()
