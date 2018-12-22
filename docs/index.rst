@@ -11,7 +11,7 @@
     :maxdepth: 1
     :caption: User Guide
 
-    user/mudensity
+    user/coll
     user/gamma
     user/electronfactors
     user/dcm

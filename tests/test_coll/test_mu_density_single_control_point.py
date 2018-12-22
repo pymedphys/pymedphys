@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Paul King
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,14 +24,44 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: disable=W0401,W0614
+# pylint: disable=C0103,C1801
 
-from ._level0.libutils import clean_and_verify_levelled_modules
 
-from ._level1.devicessncprofiler import *
-from ._level1.devicessncmapcheck import *
+"""Regression testing of the single control point function.
+"""
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.devicessncprofiler',
-    '._level1.devicessncmapcheck'
-])
+import numpy as np
+
+from pymedphys.coll import calc_single_control_point
+
+
+def test_partial_jaws():
+    """Parital jaw location should give a fractional result.
+    """
+    leaf_pair_widths = [2, 2]
+
+    mlc = np.array([
+        [
+            [1, 1],
+            [2, 2],
+        ],
+        [
+            [2, 2],
+            [3, 3],
+        ]
+    ])
+    jaw = np.array([
+        [1.5, 1.2],
+        [1.5, 1.2]
+    ])
+
+    _, mu_density = calc_single_control_point(
+        mlc, jaw, leaf_pair_widths=leaf_pair_widths
+    )
+
+    reference_mu_density = [[0., 0.07, 0.43, 0.5, 0.43, 0.07, 0.],
+                            [0., 0.14, 0.86, 1., 0.86, 0.14, 0.],
+                            [0.14, 0.86, 1., 1., 1., 0.86, 0.14],
+                            [0.03, 0.17, 0.2, 0.2, 0.2, 0.17, 0.03]]
+
+    assert np.allclose(np.round(mu_density, 2), reference_mu_density)
