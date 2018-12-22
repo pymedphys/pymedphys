@@ -25,9 +25,10 @@
 
 """Various helper functions for mlcs and jaws.
 
-Examples:
-    >>> from pymedphys.coll import (
-    ...    calc_mu_density, mlc_equivalent_square_fs)
+Available Functions
+-------------------
+>>> from pymedphys.coll import (
+...    calc_mu_density, mlc_equivalent_square_fs)
 """
 
 # pylint: disable=W0401,W0614,C0413,W0611

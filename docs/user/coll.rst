@@ -4,11 +4,11 @@ Collimator Toolbox
 .. automodule:: pymedphys.coll
     :no-members:
 
+MU Density
+----------
+
 .. automodule:: pymedphys._level2.collmudensity
     :no-members:
-
-Example Usage
--------------
 
 .. plot:: pyplots/mudensity.py
    :include-source:
