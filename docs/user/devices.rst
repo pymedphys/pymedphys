@@ -16,3 +16,4 @@ API
 .. autofunction:: pymedphys.dose.normalise_dose
 .. autofunction:: pymedphys.dose.normalise_distance
 .. autofunction:: pymedphys.dose.recentre
+.. autofunction:: pymedphys.dose.symmetrise
