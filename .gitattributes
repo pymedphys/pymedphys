@@ -3,6 +3,8 @@ data/collapsedcone/*.dcm filter=lfs diff=lfs merge=lfs -text
 
 lfs-*.xz filter=lfs diff=lfs merge=lfs -text
 
+CT.DICOMORIENT*.dcm filter=lfs diff=lfs merge=lfs -text
+
 *.ipynb filter=nbstripout
 
 *.ipynb diff=ipynb
