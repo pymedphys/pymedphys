@@ -31,8 +31,8 @@ import csv
 import numpy as np
 
 
-# from .._level0.libutils import get_imports
-# IMPORTS = get_imports(globals())
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
 def _zip(x, d):
@@ -240,6 +240,10 @@ def normalise_dose(dose_profile, location=0.0, dose=100.0):
         norm_fact = dose / max(d)
 
     d = [norm_fact * i for i in d]
+
+    import pprint
+    pprint.pprint(_zip(x, d))
+
     return _zip(x, d)
 
 
