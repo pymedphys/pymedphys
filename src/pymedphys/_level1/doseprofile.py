@@ -35,14 +35,14 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def _zip(x, d):
+def _zip(x, dose):
     """
     Combine distance and dose axes into dose_profile.
 
     Parameters
     ----------
     x   : [ distance, distance, ...]
-    d   : [ dose, dose, ...]
+    dose: [ dose, dose, ...]
         | where distance, dose are floats
 
     Returns
@@ -50,10 +50,8 @@ def _zip(x, d):
     dose_profile : [(distance, dose), ...]
     """
 
-    x = [float(i) for i in x]  # ENFORCE TYPE
-    d = [float(i) for i in d]
-
-    return list(zip(x, d))
+    result = [(x[i], dose[i]) for i, _ in enumerate(x)]
+    return result
 
 
 def _unzip(dose_profile):
@@ -71,8 +69,8 @@ def _unzip(dose_profile):
         | ([distance, ...], [dose, ...]  )
     """
 
-    x = [float(i[0]) for i in dose_profile]  # DISTANCE
-    d = [float(i[1]) for i in dose_profile]  # DOSE
+    x = [i[0] for i in dose_profile]  # DISTANCE
+    d = [i[1] for i in dose_profile]  # DOSE
     return x, d
 
 
@@ -235,16 +233,14 @@ def normalise_dose(dose_profile, location=0.0, dose=100.0):
     x, d = _unzip(dose_profile)
 
     try:
-        norm_fact = dose / lookup(dose_profile, location)
-    except:
+        norm_fact = dose / _lookup(dose_profile, location)
+        assert type(location) in (float, int)
+    except AssertionError:
         norm_fact = dose / max(d)
+        assert type(d) == str
 
-    d = [norm_fact * i for i in d]
-
-    import pprint
-    pprint.pprint(_zip(x, d))
-
-    return _zip(x, d)
+    norm_dose = [norm_fact * i for i in d]
+    return _zip(x, norm_dose)
 
 
 def normalize_dose(dose_profile, location=0.0, dose=100.0):
@@ -326,7 +322,7 @@ def recenter(dose_profile):
     return normalise_distance(dose_profile)
 
 
-def symmetrise(dose_profile, step_size=0.1):
+def symmetrise(dose_profile, step_size=0.1):  # STUB  ######
     """
     Return a symmetric version of a profile, in which the values are averaged
     across the central axis.
@@ -350,7 +346,6 @@ def symmetrise(dose_profile, step_size=0.1):
     rev = dose_profile[::-1]
     result = [(dose_profile[i][0],  (dose_profile[i][0]+rev[i][0])/2.0)
               for i in range(len(x))]
-    print(result)
     return result
     # PRETTY SURE THESE ANSWERS ARE NOT VERY GOOD
 
@@ -359,7 +354,14 @@ def symmetrize(dose_profile):
     """ US English -> UK English """
     return symmetrise(dose_profile)
 
-# def move_to_match(s1, s2, rez = 0.1):
+
+def get_umbra(dose_profile):  # STUB  ######
+    """ """
+    pass
+
+
+def align_to(s1, s2, rez=0.1):  # STUB  ######
+    pass
 #     """Calcs the offset and orientation between two scans
 #        input:
 #             s1  = read.Scan() # to move
@@ -411,3 +413,23 @@ def symmetrize(dose_profile):
 #     r['x2'] = x
 
 #     return r
+
+
+def symmetry(dose_profile):  # STUB  ######
+    """ """
+    pass
+
+
+def flatness(dose_profile):  # STUB  ######
+    """ """
+    pass
+
+
+def is_wedged(dose_profile):  # STUB  ######
+    """ """
+    pass
+
+
+def is_fff(dose_profile):  # STUB  ######
+    """ """
+    pass
