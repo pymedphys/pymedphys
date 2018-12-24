@@ -30,7 +30,7 @@ import datetime
 
 import pandas as pd
 
-from .._level1.msqconnect import execute_sql, multi_mosaiq_connect
+from .._level1.msqconnect import execute_sql
 from .._level1.msqdictionaries import FIELD_TYPES
 
 from .._level0.libutils import get_imports
@@ -203,7 +203,6 @@ def get_qcls_by_date(cursor, location, start, end):
             Chklist.Act_DtTm,
             Chklist.Instructions,
             Chklist.Notes,
-
             QCLTask.Description
         FROM Chklist, Staff, QCLTask, Ident, Patient
         WHERE
