@@ -26,6 +26,8 @@
 """Some helper utility functions for accessing Mosaiq SQL.
 """
 
+import datetime
+
 import pandas as pd
 
 from .._level1.msqconnect import execute_sql, multi_mosaiq_connect
@@ -93,6 +95,8 @@ def get_patient_fields(cursor, patient_id):
             'monitor_units', 'field_type', 'site'
         ]
     )
+
+    table.drop_duplicates(inplace=True)
 
     table['field_type'] = [
         FIELD_TYPES[item]
@@ -195,12 +199,12 @@ def get_qcls_by_date(cursor, location, start, end):
             Ident.IDA,
             Patient.Last_Name,
             Patient.First_Name,
-            QCLTask.Description,
-            Chklist.Act_DtTm,
-            Staff.Last_Name,
-            Chklist.Instructions,
             Chklist.Due_DtTm,
-            Chklist.Complete
+            Chklist.Act_DtTm,
+            Chklist.Instructions,
+            Chklist.Notes,
+
+            QCLTask.Description
         FROM Chklist, Staff, QCLTask, Ident, Patient
         WHERE
             Chklist.Pat_ID1 = Ident.Pat_ID1 AND
@@ -220,9 +224,10 @@ def get_qcls_by_date(cursor, location, start, end):
 
     results = pd.DataFrame(
         data=data,
-        columns=['patient_id', 'last_name', 'first_name', 'task',
-                 'actual_completed_time',
-                 'responsible_staff', 'instructions', 'due', 'complete']
+        columns=['patient_id', 'last_name', 'first_name',
+                 'due', 'actual_completed_time', 'instructions', 'comment',
+                 'task'
+                 ]
     )
 
     results = results.sort_values(by=['actual_completed_time'])
@@ -267,23 +272,43 @@ def get_incomplete_qcls(cursor, location):
     return results
 
 
-def get_incomplete_qcls_across_sites(servers, centres, locations):
-    servers_list = [
-        item for _, item in servers.items()
-    ]
+def get_incomplete_qcls_across_sites(cursors, servers, centres, locations):
+    results = pd.DataFrame()
+
+    for centre in centres:
+        cursor = cursors[servers[centre]]
+
+        incomplete_qcls = get_incomplete_qcls(
+            cursor, locations[centre])
+        incomplete_qcls['centre'] = [centre] * len(incomplete_qcls)
+
+        results = results.append(incomplete_qcls)
+
+    results = results.sort_values(by='due')
+
+    return results
+
+
+def get_recently_completed_qcls_across_sites(cursors, servers, centres, locations, days=7):
+    now = datetime.datetime.now()
+    days_ago = now - datetime.timedelta(days=days)
+    tomorrow = now + datetime.timedelta(days=1)
+
+    days_ago_string = "{} 00:00:00".format(days_ago.strftime("%Y-%m-%d"))
+    tomorrow_string = "{} 00:00:00".format(tomorrow.strftime("%Y-%m-%d"))
 
     results = pd.DataFrame()
 
-    with multi_mosaiq_connect(servers_list) as cursors:
-        for centre in centres:
-            cursor = cursors[servers[centre]]
+    for centre in centres:
+        cursor = cursors[servers[centre]]
 
-            incomplete_qcls = get_incomplete_qcls(
-                cursor, locations[centre])
-            incomplete_qcls['centre'] = [centre] * len(incomplete_qcls)
+        qcls = get_qcls_by_date(
+            cursor, locations[centre], days_ago_string, tomorrow_string)
 
-            results = results.append(incomplete_qcls)
+        qcls['centre'] = [centre] * len(qcls)
 
-    results = results.sort_values(by='due')
+        results = results.append(qcls)
+
+    results = results.sort_values(by='actual_completed_time', ascending=False)
 
     return results
