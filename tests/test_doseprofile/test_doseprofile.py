@@ -28,6 +28,11 @@ import sys
 import numpy as np
 import os
 
+from pymedphys.dose import is_even_spaced
+from pymedphys.dose import make_dist_vals
+from pymedphys.dose import get_dist_vals, get_dose_vals
+from pymedphys.dose import find_strt_stop
+# from pymedphys.dose import dose_profile_format
 from pymedphys.dose import resample, crossings, edges
 from pymedphys.dose import normalise_dose, normalize_dose
 from pymedphys.dose import normalise_distance, normalize_distance
@@ -60,6 +65,28 @@ PROFILER = dose_profile = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28),
                     (13.6, 0.43), (14, 0.4), (14.4, 0.39), (14.8, 0.34),
                     (15.2, 0.33), (15.6, 0.32), (16, 0.3), (16.4, 0.3)]
 
+def test_is_even_spaced():
+    assert is_even_spaced(PROFILER)
+    assert not is_even_spaced([(-1,0),(0,0),(2,0)])
+
+def test_make_dist_vals():
+    assert np.allclose(make_dist_vals(0,0.5,0.1), [0.0, 0.1, 0.2, 0.3, 0.4, 0.5])
+
+def test_get_dist_vals():
+    assert get_dist_vals([(0,0), (2,3)]) == [0.0, 2.0]
+
+def test_get_dose_vals():
+    assert get_dose_vals([(0,0), (2,3)]) == [0.0, 3.0]
+
+def test_find_strt_stop():
+    assert find_strt_stop([(-1,0),(0,0),(1,0)], None, None) == (-1.0, 1.0)
+    assert find_strt_stop([(-1,0),(0,0),(1,0)], -0.1, None) == (-0.1, 1.0)
+    assert find_strt_stop([(-1,0),(0,0),(1,0)], -10, 0.5) == (-1.0, 0.5)
+    assert find_strt_stop(PROFILER, -10, 0.5) == (-10, 0.5)
+
+# def test_dose_profile_format():   #### WIP:
+#     dose_profile_format(dose_prof=PROFILER)
+#     assert True
 
 def test_resample():
     resampled = resample(PROFILER)
@@ -74,19 +101,7 @@ def test_edges():
     assert np.allclose(edges(PROFILER), (-5.1, 4.9))
 
 def test_normalize_dose():
-    ### THIS LOOKS WONKY
-    # TRIANGLE
-    dose_profile = [(-10, 0), (0, 2), (10, 0)]
-    correct = [(-10.0, 0.0), (0.0, 100.0), (10.0, 0.0)]
-    assert normalise_dose(dose_profile) == correct
-
-    # INVERSE TRIANGLE
-    dose_profile = [(-1, 1), (0, 0), (1, 1)]
-    correct = [(-1.0, 100.0), (0.0, 0.0), (1.0, 100.0)]
-    assert normalise_dose(dose_profile, location='max') == correct
-
-    # print(normalize_dose(PROFILER))
-    print(normalize_dose(PROFILER))
+    assert normalize_dose(PROFILER, 0.0)[41][1] == 100.0
 
 def test_normalize_distance():
     assert np.isclose(normalize_distance(PROFILER)[0][0], 3.215686274509805)
@@ -116,6 +131,12 @@ def test_recentre():
 
 
 if __name__ == "__main__":
+    test_is_even_spaced()
+    test_make_dist_vals()
+    test_get_dist_vals()
+    test_get_dose_vals()
+    test_find_strt_stop()
+    # test_dose_profile_format()
     test_resample()
     test_crossings()
     test_edges()
