@@ -37,31 +37,20 @@ IMPORTS = get_imports(globals())
 # ADD SYMMETRISE TEST
 # REMOVE _UNZIP
 
-<<<<<<< HEAD
 
 def is_even_spaced(dose_prof):
-=======
-def _zip(x, dose):
->>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
     """
     Determine if dose profile are spaced evenly.
 
     Parameters
     ----------
-<<<<<<< HEAD
     dose_prof : dose profile
-=======
-    x   : [ distance, distance, ...]
-    dose: [ dose, dose, ...]
-        | where distance, dose are floats
->>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
     Returns
     -------
     is_even_spaced : boolean
     """
 
-<<<<<<< HEAD
     diffs = np.diff(get_dist_vals(dose_prof))
     avg_diff = np.mean(diffs)
     if(np.allclose(diffs, avg_diff)):
@@ -69,10 +58,6 @@ def _zip(x, dose):
     else:
         return False
 
-=======
-    result = [(x[i], dose[i]) for i, _ in enumerate(x)]
-    return result
->>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
 def make_dist_vals(dist_strt, dist_stop, dist_step):
     """
@@ -114,7 +99,6 @@ def get_dist_vals(dose_prof):
     dist_vals : distance values as list
     """
 
-<<<<<<< HEAD
     try:
         dist_vals = [float(i[0]) for i in dose_prof]
     except:
@@ -252,11 +236,6 @@ def _zip(x, d):
     d = [float(i) for i in d]
 
     return list(zip(x, d))
-=======
-    x = [i[0] for i in dose_profile]  # DISTANCE
-    d = [i[1] for i in dose_profile]  # DOSE
-    return x, d
->>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
 
 def _lookup(dose_profile, distance):
@@ -421,23 +400,13 @@ def normalise_dose(dose_profile, location=0.0, dose=100.0):
 
     try:
         norm_fact = dose / _lookup(dose_profile, location)
-<<<<<<< HEAD
     except:
-=======
-        assert type(location) in (float, int)
-    except AssertionError:
->>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
         norm_fact = dose / max(d)
         assert type(d) == str
 
-<<<<<<< HEAD
     d = [norm_fact * i for i in d]
 
     return _zip(x, d)
-=======
-    norm_dose = [norm_fact * i for i in d]
-    return _zip(x, norm_dose)
->>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
 
 def normalize_dose(dose_profile, location=0.0, dose=100.0):
