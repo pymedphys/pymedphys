@@ -10,7 +10,6 @@ API
 Collection of tools for reading, writing, manipulating,
 and analyzing dose profiles.
 
-<<<<<<< HEAD
 Data Types
 ----------
     dose_prof : list of tuples
@@ -35,10 +34,6 @@ Functions
 .. autofunction:: pymedphys.dose.get_dist_vals
 .. autofunction:: pymedphys.dose.get_dose_vals
 .. autofunction:: pymedphys.dose.find_strt_stop
-=======
-dose_profile : list of tuples [(distance, dose), ...]
-
->>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 .. autofunction:: pymedphys.devices.read_mapcheck_txt
 .. autofunction:: pymedphys.devices.read_profiler_prs
 .. autofunction:: pymedphys.dose.resample

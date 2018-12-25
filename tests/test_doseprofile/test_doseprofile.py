@@ -70,28 +70,35 @@ PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28),
             (14, 0.4), (14.4, 0.39), (14.8, 0.34),
             (15.2, 0.33), (15.6, 0.32), (16, 0.3), (16.4, 0.3)]
 
+
 def test_is_even_spaced():
     assert is_even_spaced(PROFILER)
-    assert not is_even_spaced([(-1,0),(0,0),(2,0)])
+    assert not is_even_spaced([(-1, 0), (0, 0), (2, 0)])
+
 
 def test_make_dist_vals():
-    assert np.allclose(make_dist_vals(0,0.5,0.1), [0.0, 0.1, 0.2, 0.3, 0.4, 0.5])
+    assert np.allclose(make_dist_vals(0, 0.5, 0.1), [
+                       0.0, 0.1, 0.2, 0.3, 0.4, 0.5])
+
 
 def test_get_dist_vals():
-    assert get_dist_vals([(0,0), (2,3)]) == [0.0, 2.0]
+    assert get_dist_vals([(0, 0), (2, 3)]) == [0.0, 2.0]
+
 
 def test_get_dose_vals():
-    assert get_dose_vals([(0,0), (2,3)]) == [0.0, 3.0]
+    assert get_dose_vals([(0, 0), (2, 3)]) == [0.0, 3.0]
+
 
 def test_find_strt_stop():
-    assert find_strt_stop([(-1,0),(0,0),(1,0)], None, None) == (-1.0, 1.0)
-    assert find_strt_stop([(-1,0),(0,0),(1,0)], -0.1, None) == (-0.1, 1.0)
-    assert find_strt_stop([(-1,0),(0,0),(1,0)], -10, 0.5) == (-1.0, 0.5)
+    assert find_strt_stop([(-1, 0), (0, 0), (1, 0)], None, None) == (-1.0, 1.0)
+    assert find_strt_stop([(-1, 0), (0, 0), (1, 0)], -0.1, None) == (-0.1, 1.0)
+    assert find_strt_stop([(-1, 0), (0, 0), (1, 0)], -10, 0.5) == (-1.0, 0.5)
     assert find_strt_stop(PROFILER, -10, 0.5) == (-10, 0.5)
 
 # def test_dose_profile_format():   #### WIP:
 #     dose_profile_format(dose_prof=PROFILER)
 #     assert True
+
 
 def test_resample():
     resampled = resample(PROFILER)
@@ -107,17 +114,10 @@ def test_crossings():
 def test_edges():
     assert np.allclose(edges(PROFILER), (-5.1, 4.9))
 
-<<<<<<< HEAD
+
 def test_normalize_dose():
     assert normalize_dose(PROFILER, 0.0)[41][1] == 100.0
-=======
 
-def test_normalize_dose():
-    zero_distance, norm_dose = normalize_dose(PROFILER)[41]
-    assert np.isclose(zero_distance, 0.0)
-    assert np.isclose(norm_dose,  100.0)
-
->>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
 def test_normalize_distance():
     assert np.isclose(normalize_distance(PROFILER)[0][0], 3.215686274509805)
