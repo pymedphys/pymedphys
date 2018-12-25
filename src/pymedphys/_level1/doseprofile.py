@@ -37,20 +37,31 @@ IMPORTS = get_imports(globals())
 # ADD SYMMETRISE TEST
 # REMOVE _UNZIP
 
+<<<<<<< HEAD
 
 def is_even_spaced(dose_prof):
+=======
+def _zip(x, dose):
+>>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
     """
     Determine if dose profile are spaced evenly.
 
     Parameters
     ----------
+<<<<<<< HEAD
     dose_prof : dose profile
+=======
+    x   : [ distance, distance, ...]
+    dose: [ dose, dose, ...]
+        | where distance, dose are floats
+>>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
     Returns
     -------
     is_even_spaced : boolean
     """
 
+<<<<<<< HEAD
     diffs = np.diff(get_dist_vals(dose_prof))
     avg_diff = np.mean(diffs)
     if(np.allclose(diffs, avg_diff)):
@@ -58,6 +69,10 @@ def is_even_spaced(dose_prof):
     else:
         return False
 
+=======
+    result = [(x[i], dose[i]) for i, _ in enumerate(x)]
+    return result
+>>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
 def make_dist_vals(dist_strt, dist_stop, dist_step):
     """
@@ -99,6 +114,7 @@ def get_dist_vals(dose_prof):
     dist_vals : distance values as list
     """
 
+<<<<<<< HEAD
     try:
         dist_vals = [float(i[0]) for i in dose_prof]
     except:
@@ -236,6 +252,11 @@ def _zip(x, d):
     d = [float(i) for i in d]
 
     return list(zip(x, d))
+=======
+    x = [i[0] for i in dose_profile]  # DISTANCE
+    d = [i[1] for i in dose_profile]  # DOSE
+    return x, d
+>>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
 
 def _lookup(dose_profile, distance):
@@ -400,12 +421,23 @@ def normalise_dose(dose_profile, location=0.0, dose=100.0):
 
     try:
         norm_fact = dose / _lookup(dose_profile, location)
+<<<<<<< HEAD
     except:
+=======
+        assert type(location) in (float, int)
+    except AssertionError:
+>>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
         norm_fact = dose / max(d)
+        assert type(d) == str
 
+<<<<<<< HEAD
     d = [norm_fact * i for i in d]
 
     return _zip(x, d)
+=======
+    norm_dose = [norm_fact * i for i in d]
+    return _zip(x, norm_dose)
+>>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
 
 
 def normalize_dose(dose_profile, location=0.0, dose=100.0):
@@ -491,7 +523,7 @@ def recenter(dose_profile):
     return normalise_distance(dose_profile)
 
 
-def symmetrise(dose_profile, step_size=0.1):
+def symmetrise(dose_profile, step_size=0.1):  # STUB  ######
     """
     Return a symmetric version of a profile, in which the values are averaged
     across the central axis.
@@ -517,7 +549,10 @@ def symmetrise(dose_profile, step_size=0.1):
     rev = dose_profile[::-1]
     result = [(dose_profile[i][0],  (dose_profile[i][0]+rev[i][0])/2.0)
               for i in range(len(x))]
+<<<<<<< HEAD
     # print(result)
+=======
+>>>>>>> b427c4f03750a682222e3abd8b1e5c455f04c409
     return result
     # PRETTY SURE THESE ANSWERS ARE NOT VERY GOOD
 
@@ -526,7 +561,14 @@ def symmetrize(dose_profile):
     """ US English -> UK English """
     return symmetrise(dose_profile)
 
-# def move_to_match(s1, s2, rez = 0.1):
+
+def get_umbra(dose_profile):  # STUB  ######
+    """ """
+    pass
+
+
+def align_to(s1, s2, rez=0.1):  # STUB  ######
+    pass
 #     """Calcs the offset and orientation between two scans
 #        input:
 #             s1  = read.Scan() # to move
@@ -578,3 +620,23 @@ def symmetrize(dose_profile):
 #     r['x2'] = x
 
 #     return r
+
+
+def symmetry(dose_profile):  # STUB  ######
+    """ """
+    pass
+
+
+def flatness(dose_profile):  # STUB  ######
+    """ """
+    pass
+
+
+def is_wedged(dose_profile):  # STUB  ######
+    """ """
+    pass
+
+
+def is_fff(dose_profile):  # STUB  ######
+    """ """
+    pass
