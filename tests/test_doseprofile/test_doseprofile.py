@@ -28,18 +28,26 @@ import sys
 import numpy as np
 import os
 
+from pymedphys.dose import find_dists
+from pymedphys.dose import slice_dose_prof
+from pymedphys.dose import find_umbra
 from pymedphys.dose import is_even_spaced
+from pymedphys.dose import find_dose
+from pymedphys.dose import make_dose_prof
 from pymedphys.dose import make_dist_vals
 from pymedphys.dose import get_dist_vals, get_dose_vals
+from pymedphys.dose import make_dose_vals
 from pymedphys.dose import find_strt_stop
-# from pymedphys.dose import dose_profile_format
-from pymedphys.dose import resample, crossings, edges
-from pymedphys.dose import normalise_dose, normalize_dose
-from pymedphys.dose import normalise_distance, normalize_distance
-from pymedphys.dose import recentre, recenter
-from pymedphys.dose import symmetrise, symmetrize
-from pymedphys.dose import get_umbra
+from pymedphys.dose import resample, find_edges
+from pymedphys.dose import norm_dose_vals
+from pymedphys.dose import norm_dist_vals
+from pymedphys.dose import cent_dose_prof
+from pymedphys.dose import make_dose_prof_sym
 from pymedphys.dose import align_to
+from pymedphys.dose import symmetry
+
+# PUT IMPORTS IN ORDER
+# ADD SYMMETRISE TEST
 
 DATA_DIRECTORY = os.path.abspath(
     os.path.join(os.path.dirname(__file__),
@@ -71,33 +79,52 @@ PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28),
             (15.2, 0.33), (15.6, 0.32), (16, 0.3), (16.4, 0.3)]
 
 
-def test_is_even_spaced():
-    assert is_even_spaced(PROFILER)
-    assert not is_even_spaced([(-1, 0), (0, 0), (2, 0)])
-
-
 def test_make_dist_vals():
-    assert np.allclose(make_dist_vals(0, 0.5, 0.1), [
-                       0.0, 0.1, 0.2, 0.3, 0.4, 0.5])
+    assert len(make_dist_vals(-16.4, 16.4, .4)) == len(PROFILER)
+
+
+def test_make_dose_vals():
+    def dose_func(dist):
+        return 1.0
+    assert np.allclose(make_dose_vals(get_dist_vals(PROFILER), dose_func), 1.0)
 
 
 def test_get_dist_vals():
-    assert get_dist_vals([(0, 0), (2, 3)]) == [0.0, 2.0]
+    assert get_dist_vals(PROFILER)[0] == -get_dist_vals(PROFILER)[-1]
 
 
 def test_get_dose_vals():
-    assert get_dose_vals([(0, 0), (2, 3)]) == [0.0, 3.0]
+    assert np.allclose(get_dose_vals(PROFILER)[-1], 0.3)
 
 
 def test_find_strt_stop():
-    assert find_strt_stop([(-1, 0), (0, 0), (1, 0)], None, None) == (-1.0, 1.0)
-    assert find_strt_stop([(-1, 0), (0, 0), (1, 0)], -0.1, None) == (-0.1, 1.0)
-    assert find_strt_stop([(-1, 0), (0, 0), (1, 0)], -10, 0.5) == (-1.0, 0.5)
-    assert find_strt_stop(PROFILER, -10, 0.5) == (-10, 0.5)
+    assert find_strt_stop(PROFILER, -10, 500) == (-10, 16.4)
 
-# def test_dose_profile_format():   #### WIP:
-#     dose_profile_format(dose_prof=PROFILER)
-#     assert True
+
+def test_is_even_spaced():
+    assert is_even_spaced(PROFILER)
+    assert not is_even_spaced(PROFILER[:7] + PROFILER[8:])
+
+
+def test_make_dose_prof():
+    assert make_dose_prof(
+        get_dist_vals(PROFILER), get_dose_vals(PROFILER)) == PROFILER
+
+
+def test_find_dose():
+    assert np.allclose(find_dose(PROFILER, 0.0), 45.23)
+
+
+def test_find_dists():
+    assert np.allclose(find_dists(PROFILER, 23), [-5.017083, 5.007189])
+
+
+def test_slice_dose_prof():
+    assert slice_dose_prof(PROFILER) == PROFILER
+
+
+def test_find_umbra():
+    assert np.isclose(find_umbra(PROFILER)[0][0], -3.6)
 
 
 def test_resample():
@@ -107,32 +134,29 @@ def test_resample():
     assert np.allclose(resampled[0], PROFILER[0])
 
 
-def test_crossings():
-    assert np.allclose(crossings(PROFILER, 23), [-5.017083, 5.007189])
+def test_find_edges():
+    assert np.allclose(find_edges(PROFILER), (-4.9, 5.0))
 
 
-def test_edges():
-    assert np.allclose(edges(PROFILER), (-5.1, 4.9))
+def test_norm_dose_vals():
+    assert norm_dose_vals(PROFILER, 0.0)[41][1] == 100.0
 
 
-def test_normalize_dose():
-    assert normalize_dose(PROFILER, 0.0)[41][1] == 100.0
+def test_norm_dist_vals():
+    assert np.isclose(norm_dist_vals(PROFILER)[0][0], 3.3469387755)
 
 
-def test_normalize_distance():
-    assert np.isclose(normalize_distance(PROFILER)[0][0], 3.215686274509805)
+def test_cent_dose_prof():
+    assert np.allclose(cent_dose_prof(PROFILER)[0][0], -16.45)
 
 
-def test_recentre():  # STUB  ######
-    assert np.allclose(edges(recentre(PROFILER)), (-5.0, 5.0))
+def test_make_dose_prof_sym():
+    symmetric = make_dose_prof_sym(PROFILER)
+    assert symmetric[0][1] == symmetric[-1][1]
 
 
-def test_symmetrise():  # STUB  ######
-    assert True
-
-
-def test_get_umbra():  # STUB  ######
-    assert True
+def test_symmetry():
+    assert np.allclose(symmetry(PROFILER), 0.014657383657017305)
 
 
 def test_align_to():  # STUB  ######
@@ -158,10 +182,6 @@ def test_align_to():  # STUB  ######
     #     print 'move_to_match passed'
 
 
-def test_symmetry():  # STUB  ######
-    assert True
-
-
 def test_flatness():  # STUB  ######
     assert True
 
@@ -175,22 +195,26 @@ def test_is_fff():  # STUB  ######
 
 
 if __name__ == "__main__":
-    test_is_even_spaced()
     test_make_dist_vals()
+    test_make_dose_vals()
     test_get_dist_vals()
     test_get_dose_vals()
     test_find_strt_stop()
-    # test_dose_profile_format()
+    test_is_even_spaced()
+    test_make_dose_prof()
+    test_find_dose()
+    test_find_dists()
+    # test_slice_dose_prof()
+    test_find_umbra()
     test_resample()
-    test_crossings()
-    test_edges()
-    test_normalize_dose()
-    test_normalize_distance()
-    test_recentre()
-    test_symmetrise()
-    test_get_umbra()
-    test_align_to()
+    test_find_edges()
+    test_norm_dose_vals()
+    test_norm_dist_vals()
+    test_cent_dose_prof()
+    test_make_dose_prof_sym()
     test_symmetry()
-    test_flatness()
-    test_is_wedged()
-    test_is_fff()
+
+    # test_align_to()
+    # test_flatness()
+    # test_is_wedged()
+    # test_is_fff()

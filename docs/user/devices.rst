@@ -29,23 +29,30 @@ Data Types
 
 Functions
 ---------
-.. autofunction:: pymedphys.dose.is_even_spaced
+
 .. autofunction:: pymedphys.dose.make_dist_vals
+.. autofunction:: pymedphys.dose.make_dose_vals
 .. autofunction:: pymedphys.dose.get_dist_vals
 .. autofunction:: pymedphys.dose.get_dose_vals
 .. autofunction:: pymedphys.dose.find_strt_stop
+.. autofunction:: pymedphys.dose.is_even_spaced
+.. autofunction:: pymedphys.dose.make_dose_prof
+.. autofunction:: pymedphys.dose.find_dose
+.. autofunction:: pymedphys.dose.find_dists
+.. autofunction:: pymedphys.dose.slice_dose_prof
+.. autofunction:: pymedphys.dose.find_umbra
+.. autofunction:: pymedphys.dose.find_edges
+.. autofunction:: pymedphys.dose.norm_dist_vals
+.. autofunction:: pymedphys.dose.cent_dose_prof
+.. autofunction:: pymedphys.dose.make_dose_prof_sym
+.. autofunction:: pymedphys.dose.symmetry
+
 .. autofunction:: pymedphys.devices.read_mapcheck_txt
 .. autofunction:: pymedphys.devices.read_profiler_prs
 .. autofunction:: pymedphys.dose.resample
-.. autofunction:: pymedphys.dose.crossings
-.. autofunction:: pymedphys.dose.edges
-.. autofunction:: pymedphys.dose.normalise_dose
-.. autofunction:: pymedphys.dose.normalise_distance
-.. autofunction:: pymedphys.dose.recentre
-.. autofunction:: pymedphys.dose.symmetrise
+.. autofunction:: pymedphys.dose.norm_dose_vals
 .. autofunction:: pymedphys.dose.get_umbra
 .. autofunction:: pymedphys.dose.align_to
-.. autofunction:: pymedphys.dose.symmetry
 .. autofunction:: pymedphys.dose.flatness
 .. autofunction:: pymedphys.dose.is_wedged
 .. autofunction:: pymedphys.dose.is_fff
