@@ -24,30 +24,39 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import sys
 import numpy as np
 import os
 
-from pymedphys.dose import find_dists
-from pymedphys.dose import slice_dose_prof
-from pymedphys.dose import find_umbra
-from pymedphys.dose import is_even_spaced
-from pymedphys.dose import find_dose
-from pymedphys.dose import make_dose_prof
+# DISTANCE FUNCTIONS
 from pymedphys.dose import make_dist_vals
 from pymedphys.dose import get_dist_vals, get_dose_vals
+# DOSE FUNCTIONS
 from pymedphys.dose import make_dose_vals
+from pymedphys.dose import get_dose_vals
+# PROFILE FUNCTIONS
+from pymedphys.dose import make_dose_prof
+from pymedphys.dose import make_pulse_dose_prof
+from pymedphys.dose import is_even_spaced
+from pymedphys.dose import resample
+from pymedphys.dose import align_to
+from pymedphys.dose import is_wedged
+from pymedphys.dose import is_fff
+# SLICING FUNCTIONS
 from pymedphys.dose import find_strt_stop
-from pymedphys.dose import resample, find_edges
+from pymedphys.dose import slice_dose_prof
+from pymedphys.dose import find_edges
+from pymedphys.dose import find_umbra
+# SCALING FUNCTIONS
+from pymedphys.dose import find_dose
+from pymedphys.dose import find_dists
 from pymedphys.dose import norm_dose_vals
 from pymedphys.dose import norm_dist_vals
 from pymedphys.dose import cent_dose_prof
-from pymedphys.dose import make_dose_prof_sym
-from pymedphys.dose import align_to
+# FLATNESS & SYMMETRY FUNCTIONS
+from pymedphys.dose import flatness
 from pymedphys.dose import symmetry
+from pymedphys.dose import make_dose_prof_sym
 
-# PUT IMPORTS IN ORDER
-# ADD SYMMETRISE TEST
 
 DATA_DIRECTORY = os.path.abspath(
     os.path.join(os.path.dirname(__file__),
@@ -79,9 +88,17 @@ PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28),
             (15.2, 0.33), (15.6, 0.32), (16, 0.3), (16.4, 0.3)]
 
 
+# DISTANCE FUNCTIONS
+
 def test_make_dist_vals():
     assert len(make_dist_vals(-16.4, 16.4, .4)) == len(PROFILER)
 
+
+def test_get_dist_vals():
+    assert get_dist_vals(PROFILER)[0] == -get_dist_vals(PROFILER)[-1]
+
+
+# DOSE FUNCTIONS
 
 def test_make_dose_vals():
     def dose_func(dist):
@@ -89,42 +106,24 @@ def test_make_dose_vals():
     assert np.allclose(make_dose_vals(get_dist_vals(PROFILER), dose_func), 1.0)
 
 
-def test_get_dist_vals():
-    assert get_dist_vals(PROFILER)[0] == -get_dist_vals(PROFILER)[-1]
-
-
 def test_get_dose_vals():
     assert np.allclose(get_dose_vals(PROFILER)[-1], 0.3)
 
 
-def test_find_strt_stop():
-    assert find_strt_stop(PROFILER, -10, 500) == (-10, 16.4)
-
-
-def test_is_even_spaced():
-    assert is_even_spaced(PROFILER)
-    assert not is_even_spaced(PROFILER[:7] + PROFILER[8:])
-
+# PROFILE FUNCTIONS
 
 def test_make_dose_prof():
     assert make_dose_prof(
         get_dist_vals(PROFILER), get_dose_vals(PROFILER)) == PROFILER
 
 
-def test_find_dose():
-    assert np.allclose(find_dose(PROFILER, 0.0), 45.23)
+def test_is_even_spaced():
+    print("test_is_even_spaced is not implemented")
 
 
-def test_find_dists():
-    assert np.allclose(find_dists(PROFILER, 23), [-5.017083, 5.007189])
-
-
-def test_slice_dose_prof():
-    assert slice_dose_prof(PROFILER) == PROFILER
-
-
-def test_find_umbra():
-    assert np.isclose(find_umbra(PROFILER)[0][0], -3.6)
+def test_make_pulse_dose_prof():
+    print('test_make_pulse_dose_prof is not implemented')  # STUB
+    print(make_pulse_dose_prof())  # STUB
 
 
 def test_resample():
@@ -134,33 +133,9 @@ def test_resample():
     assert np.allclose(resampled[0], PROFILER[0])
 
 
-def test_find_edges():
-    assert np.allclose(find_edges(PROFILER), (-4.9, 5.0))
-
-
-def test_norm_dose_vals():
-    assert norm_dose_vals(PROFILER, 0.0)[41][1] == 100.0
-
-
-def test_norm_dist_vals():
-    assert np.isclose(norm_dist_vals(PROFILER)[0][0], 3.3469387755)
-
-
-def test_cent_dose_prof():
-    assert np.allclose(cent_dose_prof(PROFILER)[0][0], -16.45)
-
-
-def test_make_dose_prof_sym():
-    symmetric = make_dose_prof_sym(PROFILER)
-    assert symmetric[0][1] == symmetric[-1][1]
-
-
-def test_symmetry():
-    assert np.allclose(symmetry(PROFILER), 0.014657383657017305)
-
-
 def test_align_to():  # STUB  ######
-    assert True
+    print(align_to(PROFILER, PROFILER))
+    print("test_align_to is not implemented")
 
     #     """ """
     #     # DYNAMIC WEDGE, PROFILER -> TOMO_FILM PROFILE
@@ -182,39 +157,98 @@ def test_align_to():  # STUB  ######
     #     print 'move_to_match passed'
 
 
-def test_flatness():  # STUB  ######
-    assert True
-
-
 def test_is_wedged():  # STUB  ######
-    assert True
+    print(is_wedged(PROFILER))
+    print('test_is_wedged is not yet implemented')
 
 
 def test_is_fff():  # STUB  ######
-    assert True
+    print(is_fff(PROFILER))
+    print('test_is_fff is not yet implemented')
+
+# SLICING FUNCTIONS
+
+
+def test_find_strt_stop():
+    assert find_strt_stop(PROFILER, -10, 500) == (-10, 16.4)
+
+
+def test_slice_dose_prof():
+    assert slice_dose_prof(PROFILER) == PROFILER
+
+
+def test_find_edges():
+    assert np.allclose(find_edges(PROFILER), (-4.9, 5.0))
+
+
+def test_find_umbra():
+    assert np.isclose(find_umbra(PROFILER)[0][0], -3.6)
+
+
+# SCALING FUNCTIONS
+
+def test_find_dose():
+    assert np.allclose(find_dose(PROFILER, 0.0), 45.23)
+
+
+def test_find_dists():
+    assert np.allclose(find_dists(PROFILER, 23), [-5.017083, 5.007189])
+
+
+def test_norm_dose_vals():
+    assert norm_dose_vals(PROFILER, 0.0)[41][1] == 100.0
+
+
+def test_norm_dist_vals():
+    assert np.isclose(norm_dist_vals(PROFILER)[0][0], 3.3469387755)
+
+
+def test_cent_dose_prof():
+    assert np.allclose(cent_dose_prof(PROFILER)[0][0], -16.45)
+
+# FLATNESS & SYMMETRY FUNCTIONS
+
+
+def test_flatness():  # STUB  ######
+    assert np.allclose(flatness(PROFILER), 0.03020309)
+
+
+def test_symmetry():
+    assert np.allclose(symmetry(PROFILER), 0.014657383657017305)
+
+
+def test_make_dose_prof_sym():
+    symmetric = make_dose_prof_sym(PROFILER)
+    assert symmetric[0][1] == symmetric[-1][1]
 
 
 if __name__ == "__main__":
+    # DISTANCE FUNCTIONS
     test_make_dist_vals()
-    test_make_dose_vals()
     test_get_dist_vals()
+    # DOSE FUNCTIONS
+    test_make_dose_vals()
     test_get_dose_vals()
-    test_find_strt_stop()
-    test_is_even_spaced()
+    # PROFILE FUNCTIONS
     test_make_dose_prof()
+    test_is_even_spaced()
+    test_make_pulse_dose_prof()
+    test_resample()
+    test_align_to()
+    test_is_wedged()
+    test_is_fff()
+    # SLICING FUNCTIONS
+    test_find_strt_stop()
+    test_slice_dose_prof()
+    test_find_edges()
+    test_find_umbra()
+    # SCALING FUNCTIONS
     test_find_dose()
     test_find_dists()
-    # test_slice_dose_prof()
-    test_find_umbra()
-    test_resample()
-    test_find_edges()
     test_norm_dose_vals()
     test_norm_dist_vals()
     test_cent_dose_prof()
-    test_make_dose_prof_sym()
+    # FLATNESS & SYMMETRY FUNCTIONS
+    test_flatness()
     test_symmetry()
-
-    # test_align_to()
-    # test_flatness()
-    # test_is_wedged()
-    # test_is_fff()
+    test_make_dose_prof_sym()
