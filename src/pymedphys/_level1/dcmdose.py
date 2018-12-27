@@ -83,7 +83,7 @@ def extract_dose(dcm):
     Parameters
     ----------
     dcm
-       A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
+       A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
        Must represent a valid DICOM RT Dose file.
 
     Returns
@@ -212,7 +212,7 @@ def extract_iec_patient_coords(dcm):
     Parameters
     ----------
     dcm
-        A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
+        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
         Must represent a valid DICOM RT Dose file.
 
     Returns
@@ -313,7 +313,7 @@ def extract_iec_fixed_coords(dcm):
     Parameters
     ----------
     dcm
-        A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
+        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
         Must represent a valid DICOM RT Dose file.
 
     Returns
@@ -412,7 +412,7 @@ def extract_dicom_patient_coords(dcm):
     Parameters
     ----------
     dcm
-        A `pydicom FileDataset` - ordinarily returned by `pydicom.dcmread()`.
+        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
         Must represent a valid DICOM RT Dose file.
 
     Returns
