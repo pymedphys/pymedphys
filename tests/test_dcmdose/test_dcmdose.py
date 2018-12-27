@@ -70,7 +70,7 @@ def run_coords_function_tests(coords_function):
         assert np.array_equal(test_coords.z, expected_coords[orient].z)
 
     # For baseline saving only!
-    # save_coords_baseline("expected_patient_coords.npy", expected_coords)
+    # save_coords_baseline(expected_coords_filename, expected_coords)
 
 
 def save_coords_baseline(filename, coords_dict):
@@ -101,12 +101,16 @@ def save_coords_baseline(filename, coords_dict):
         np.save(os.path.join(DATA_DIRECTORY, filename), coords_dict)
 
 
-def test_extract_patient_coords():
-    run_coords_function_tests(extract_patient_coords)
+def test_extract_iec_patient_coords():
+    run_coords_function_tests(extract_iec_patient_coords)
 
 
 def test_extract_iec_fixed_coords():
     run_coords_function_tests(extract_iec_fixed_coords)
+
+
+def test_extract_dicom_patient_coords():
+    run_coords_function_tests(extract_dicom_patient_coords)
 
 
 def test_extract_dose():
