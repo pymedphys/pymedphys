@@ -65,7 +65,8 @@ def generate_rtplan_file_meta():
     file_meta.MediaStorageSOPClassUID = '1.2.840.10008.5.1.4.1.1.481.5'
 
     # Recommended here: https://github.com/pydicom/pydicom/issues/316#issuecomment-280547547
-    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+    file_meta.MediaStorageSOPInstanceUID = generate_uid(
+        prefix='1.2.840.10008.5.1.4.1.1.481.5.')
 
     # Implicit VR Endian: Default Transfer Syntax for DICOM
     file_meta.TransferSyntaxUID = '1.2.840.10008.1.2'
@@ -81,11 +82,11 @@ def generate_rtplan_skeleton():
 
     ds = Dataset()
 
-    # File meta
+    # ----- File meta -----
     file_meta = generate_rtplan_file_meta()
     ds.file_meta = file_meta
 
-    # Patient Module
+    # ----- Patient Module -----
     ds.PatientName = 'PyMedPhys'  # Required - can be empty - could fill in?
     ds.PatientID = 'PMP'  # Required - can be empty - could fill in?
     ds.PatientSex = 'O'  # Required - can be empty
@@ -98,21 +99,21 @@ def generate_rtplan_skeleton():
     ds.StudyID = ''  # Required - can be empty'
     ds.AccessionNumber = ''  # Required - can be empty'
 
-    # RT Series Module
+    # ----- RT Series Module -----
     ds.Modality = 'RTPLAN'
     ds.SeriesInstanceUID = pydicom.uid.generate_uid()
     ds.SeriesNumber = ""  # Required - can be empty'
     ds.OperatorsName = ''  # Required - can be empty'
 
-    # Frame of Reference Module
+    # ----- Frame of Reference Module -----
     ds.FrameOfReferenceUID = pydicom.uid.generate_uid()
     ds.PositionReferenceIndicator = ''  # Required - can be empty'
 
-    # General Equipment Module
+    # ----- General Equipment Module -----
     ds.Manufacturer = ''  # Required - can be empty TODO: Check if RS is happy'
     # ds.ManufacturerModelName = '' # Optional TODO: Check if RS is happy'
 
-    # RT General Plan Module
+    # ----- RT General Plan Module -----
     ds.RTPlanLabel = 'PyMedPhys'  # Set from field definition?
     ds.RTPlanName = 'PyMedPhys'  # Optional, Set from field definition?
     ds.RTPlanDescription = 'PyMedPhys'  # Optional, Set from field definition?
@@ -123,7 +124,7 @@ def generate_rtplan_skeleton():
     ds.PlanIntent = 'VERIFICATION'
     ds.RTPlanGeometry = 'TREATMENT_DEVICE'  # Structure Set will probably not exist
 
-    # RT Patient Setup Sequence & Patient Setup
+    # ----- RT Patient Setup Sequence & Patient Setup -----
     patient_setup_sequence = Sequence()
     ds.PatientSetupSequence = patient_setup_sequence
 
@@ -132,7 +133,7 @@ def generate_rtplan_skeleton():
     patient_setup.PatientPosition = "HFS"
     patient_setup_sequence.append(patient_setup)
 
-    # SOP Common Module
+    # ----- SOP Common Module -----
     ds.SpecificCharacterSet = 'ISO_IR 192'
     ds.InstanceCreationDate = ''  # Optional, could fill in?
     ds.InstanceCreationTime = ''  # Optional, could fill in?'
@@ -160,13 +161,16 @@ def generate_rtplan_beam(field):
     primary_fluence_mode_sequence.append(primary_fluence_mode)
 
     # beam.HighDoseTechniqueType = "HDR" # TODO: Check this - might be needed for FFF?
-    beam.TreatmentMachineName = ''  # Required but can leave empty
-    beam.PrimaryDosimeterUnit = 'MU'  # Optional, but probably should set
+
+    # Treatment Machine Required for ARIA/Eclipse (Must match existing machine in
+    # database). Should we handle this in our TPS Dose Toolbox?
+    beam.TreatmentMachineName = "TS2_TBHD"
+    beam.PrimaryDosimeterUnit = 'MU'
 
     # Optional, but probably should set (user?)
     beam.SourceAxisDistance = "1000"
 
-    # Beam Limiting Device Sequence
+    # ----- Beam Limiting Device Sequence -----
     beam_limiting_device_sequence = Sequence()
     beam.BeamLimitingDeviceSequence = beam_limiting_device_sequence
 
@@ -197,10 +201,11 @@ def generate_rtplan_beam(field):
 
     # Optional but might be best to set.
     beam.TreatmentDeliveryType = 'TREATMENT'
+
+    # ----- Wedge Sequence TODO: Handle wedges -----
+
     # Assume no wedge or same wedge throughout beam (0 or 1)
     beam.NumberOfWedges = 0
-
-    # Wedge Sequence TODO: Handle wedges
     if HAS_WEDGE:
         wedge_sequence = Sequence()
         beam.WedgeSequence = wedge_sequence
@@ -223,7 +228,7 @@ def generate_rtplan_beam(field):
     # ASSUME NO BLOCKS (TODO: check if used for electrons)
     beam.NumberOfBlocks = '0'
 
-    # Applicator Sequence (electrons & SRS) TODO: Handle cones
+    # ----- Applicator Sequence (electrons & SRS) TODO: Handle cones -----
     if HAS_APPLICATOR:
         applicator_sequence = Sequence()
         beam.ApplicatorSequence = applicator_sequence
@@ -251,7 +256,7 @@ def generate_rtplan_beam(field):
     beam.FinalCumulativeMetersetWeight = "1"
     beam.NumberOfControlPoints = "2"
 
-    # Control Point Sequence
+    # ----- Control Point Sequence -----
     cp_sequence = Sequence()
     beam.ControlPointSequence = cp_sequence
 
@@ -348,6 +353,6 @@ def generate_rtplan_beam(field):
 
 if __name__ == "__main__":
 
-    fields = [Field('test1', 'a', 'b', 'c', 'd')]
+    fields = [Field('test1', 'a', 'b', 'c', 'd')]  # values unused for now
     save_path = os.path.join(DATA_DIRECTORY, 'RP.test.dcm')
     generate_rtplan(fields, save_path)
