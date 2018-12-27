@@ -1,3 +1,4 @@
+from datetime import datetime
 from collections import namedtuple
 import os.path
 import pydicom
@@ -84,12 +85,11 @@ def generate_rtplan_skeleton():
     file_meta = generate_rtplan_file_meta()
     ds.file_meta = file_meta
 
-    # Main data elements
-    # Required - can be empty - could fill in?
-    ds.PatientName = 'Orientation, DICOM'
-    ds.PatientID = 'PyMedPhys'  # Required - can be empty - could fill in?
-    ds.PatientSex = ''  # Required - can be empty
-    ds.PatientBirthDate = ''  # Required - can be empty
+    # Patient Module
+    ds.PatientName = 'PyMedPhys'  # Required - can be empty - could fill in?
+    ds.PatientID = 'PMP'  # Required - can be empty - could fill in?
+    ds.PatientSex = 'O'  # Required - can be empty
+    ds.PatientBirthDate = ''  # Required - can be empty TODO: check if RS happy
 
     ds.StudyInstanceUID = pydicom.uid.generate_uid()
     ds.StudyDate = ''  # Required - can be empty
@@ -98,23 +98,41 @@ def generate_rtplan_skeleton():
     ds.StudyID = ''  # Required - can be empty'
     ds.AccessionNumber = ''  # Required - can be empty'
 
+    # RT Series Module
     ds.Modality = 'RTPLAN'
     ds.SeriesInstanceUID = pydicom.uid.generate_uid()
     ds.SeriesNumber = ""  # Required - can be empty'
     ds.OperatorsName = ''  # Required - can be empty'
 
+    # Frame of Reference Module
     ds.FrameOfReferenceUID = pydicom.uid.generate_uid()
     ds.PositionReferenceIndicator = ''  # Required - can be empty'
 
-    ds.Manufacturer = ''  # Required - can be empty'
+    # General Equipment Module
+    ds.Manufacturer = ''  # Required - can be empty TODO: Check if RS is happy'
+    # ds.ManufacturerModelName = '' # Optional TODO: Check if RS is happy'
 
+    # RT General Plan Module
     ds.RTPlanLabel = 'PyMedPhys'  # Set from field definition?
     ds.RTPlanName = 'PyMedPhys'  # Optional, Set from field definition?
     ds.RTPlanDescription = 'PyMedPhys'  # Optional, Set from field definition?
-    ds.RTPlanDate = ''  # Required - can be empty
-    ds.RTPlanTime = ''  # Required - can be empty
+    # Required - can be empty TODO: Check if RS is happy
+    ds.RTPlanDate = datetime.now().strftime("%Y%m%d")
+    # Required - can be empty TODO: Check if RS is happy
+    ds.RTPlanTime = datetime.now().strftime("%H%M%S")
     ds.PlanIntent = 'VERIFICATION'
     ds.RTPlanGeometry = 'TREATMENT_DEVICE'  # Structure Set will probably not exist
+
+    # RT Patient Setup Sequence & Patient Setup
+    patient_setup_sequence = Sequence()
+    ds.PatientSetupSequence = patient_setup_sequence
+
+    patient_setup = Dataset()
+    patient_setup.PatientSetupNumber = '1'  # or "ASYMX"
+    patient_setup.PatientPosition = "HFS"
+    patient_setup_sequence.append(patient_setup)
+
+    # SOP Common Module
     ds.SpecificCharacterSet = 'ISO_IR 192'
     ds.InstanceCreationDate = ''  # Optional, could fill in?
     ds.InstanceCreationTime = ''  # Optional, could fill in?'
@@ -127,7 +145,6 @@ def generate_rtplan_skeleton():
 
 def generate_rtplan_beam(field):
 
-    # Beam Sequence: Beam 1
     beam = Dataset()
     beam.BeamNumber = 1  # TODO: Required, need to auto-set
     beam.BeamName = "3x3 J"  # TODO: Optional, want to auto-set
@@ -196,7 +213,8 @@ def generate_rtplan_beam(field):
         wedge.AccessoryCode = ""  # Optional TODO: check if needed
         wedge.WedgeAngle = 60
         wedge.WedgeFactor = ""  # Required but can leave empty
-        wedge.WedgeOrientation = 0  # Degrees relative to Beam Limiting Device
+        # Degrees relative to Beam Limiting Device TODO: (always 0 for EDW?)
+        wedge.WedgeOrientation = 0
         wedge_sequence.append(wedge)
 
     beam.NumberOfCompensators = '0'  # ASSUME NO COMPENSATORS
@@ -307,7 +325,8 @@ def generate_rtplan_beam(field):
     cp0.TableTopVerticalPosition = ''  # Required but can leave empty
     cp0.TableTopLongitudinalPosition = ''  # Required but can leave empty
     cp0.TableTopLateralPosition = ''  # Required but can leave empty
-    cp0.IsocenterPosition = ""  # Required but can leave empty
+    # Required but can leave empty TODO: not according to RS!
+    cp0.IsocenterPosition = ['0', '0', '0']
     cp0.SourceToSurfaceDistance = 900  # TODO: User supplied
 
     cp_sequence.append(cp0)
