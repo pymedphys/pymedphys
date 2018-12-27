@@ -24,10 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from collections import namedtuple
 from scipy import interpolate
 
-import csv
 import numpy as np
 
 
@@ -35,65 +33,25 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+# DISTANCE FUNCTIONS
+
 def make_dist_vals(dist_strt, dist_stop, dist_step):
     """
-    Make the list of distance values from endpoints and increment.
-
-    Parameters
-    ----------
-    dist_strt : float
-        | starting distance
-    dist_stop : float
-        | ending distance
-    dist_step : float
-        | distance increment
-
-    Returns
-    -------
-    dist_vals : distance values as list
+    Return a list of distance-values; beginning at distance-start,
+    ending at distance-stop, and spaced at increments of distance-step.
     """
 
-    start, stop = dist_strt, dist_stop
     num_steps = int(np.ceil((dist_stop - dist_strt) / dist_step))
-    result = dist_strt + dist_step * np.array(range(num_steps + 1))
+    dist_vals = dist_strt + dist_step * np.array(range(num_steps + 1))
 
     num_digits = len(str(dist_step).split('.')[-1])
-    result = list(np.round(result, num_digits))
-    return result
-
-
-def make_dose_vals(dist_vals, dose_func):
-    """
-    Create a list of dose values from a distance list and dose function.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Returns
-    -------
-    dose_vals : dose values as list
-    """
-    result = []
-    for x in dist_vals:
-        try:
-            result.append(float(dose_func(x)))
-        except ValueError:
-            result.append(0.0)
-    return result
+    dist_vals = list(np.round(dist_vals, num_digits))
+    return dist_vals
 
 
 def get_dist_vals(dose_prof):
     """
-    Get the list of distance values from a dose profile.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Returns
-    -------
-    dist_vals : distance values as list
+    Return a list of distance-values, from a dose-profile.
     """
 
     try:
@@ -104,17 +62,25 @@ def get_dist_vals(dose_prof):
     return dist_vals
 
 
+# DOSE FUNCTIONS
+
+def make_dose_vals(dist_vals, dose_func):
+    """
+    Return a list of dose-values; for doses corresponding to distance-values,
+    and created using a generating dose-function.
+    """
+    dose_vals = []
+    for x in dist_vals:
+        try:
+            dose_vals.append(float(dose_func(x)))
+        except ValueError:
+            dose_vals.append(0.0)
+    return dose_vals
+
+
 def get_dose_vals(dose_prof):
     """
-    Get the list of dose values from a dose profile.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Returns
-    -------
-    dose_vals : distance values as list
+    Return a list of dose-values, from a dose-profile.
     """
 
     try:
@@ -125,47 +91,22 @@ def get_dose_vals(dose_prof):
     return dose_vals
 
 
-def find_strt_stop(dose_prof, dist_strt, dist_stop):
+# PROFILE FUNCTIONS
+
+def make_dose_prof(dist_vals, dose_vals):
     """
-    Find the start and stop distances for a dose profile, as the supplied
-    values (optional) or the end-points of the dose profile (optional).
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-    dist_strt : float, start distance
-    dist_stop : float, stop distance
-
-    Returns
-    -------
-    (dist_strt, dist_stop) : tuple of floats
+    Return a dose-profile, from provided distance-values and dose-values.
     """
 
-    dist_vals = get_dist_vals(dose_prof)
-
-    if not dist_strt:
-        dist_strt = -np.inf
-    dist_strt = max(dist_strt, min(dist_vals))
-
-    if not dist_stop:
-        dist_stop = np.inf
-    dist_stop = min(dist_stop, max(dist_vals))
-
-    assert dist_stop > dist_strt
-    return (dist_strt, dist_stop)
+    result = list(
+        zip([float(i) for i in dist_vals],
+            [float(i) for i in dose_vals]))
+    return result
 
 
 def is_even_spaced(dose_prof):
     """
-    Determine if dose profile are spaced evenly.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Returns
-    -------
-    is_even_spaced : boolean
+    Return True iff the distance locations of a dose-profile are evenly spaced.
     """
 
     diffs = np.diff(get_dist_vals(dose_prof))
@@ -176,134 +117,18 @@ def is_even_spaced(dose_prof):
         return False
 
 
-def make_dose_prof(dist_vals, dose_vals):
+def make_pulse_dose_prof(centre=0.0, width=10.0, dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
     """
-    Combine distance and dose axes into dose_profile.
-
-    Parameters
-    ----------
-    dist_vals : distance values
-    dose_vals : dose values
-
-    Returns
-    -------
-    dose_prof : dose profile
+    make_pulse_dose_prof is not implemented
     """
-
-    result = list(
-        zip([float(i) for i in dist_vals],
-            [float(i) for i in dose_vals]))
-    return result
-
-
-def find_dose(dose_prof, dist):
-    """
-    Value of dose_profile at distance.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-    dist      : float distance
-
-    Returns
-    -------
-    dose_val  : float profile value at distance
-    """
-
-    dose_func = interpolate.interp1d(
-        get_dist_vals(dose_prof),
-        get_dose_vals(dose_prof),
-        kind='linear')
-    dose_val = dose_func(dist)
-
-    return(dose_val)
-
-
-def find_dists(dose_prof, dose):
-    """
-    List of distances where dose profile intersects a threshold dose.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-    dose      : float threshold dose
-
-    Returns
-    -------
-    dists : list of floats
-    """
-
-    x = get_dist_vals(dose_prof)
-    d = get_dose_vals(dose_prof)
-    dists = []
-    for i in range(1, len(x)):
-        val = None
-        if d[i] != d[i-1]:
-            # bracket threshold
-            if (d[i]-dose)*(d[i-1]-dose) < 0:
-                # interpolate
-                val = (x[i]-((d[i]-dose)/(d[i]-d[i-1]))*(x[i]-x[i-1]))
-        elif d[i] == dose:
-            val = x[i]
-        if val and (val not in dists):
-            dists.append(val)
-    return dists
-
-
-def slice_dose_prof(dose_prof, begin=-np.inf, end=np.inf):
-    """
-    Extract slice from a dose profile, excluduing points
-    before begin or after end.
-
-    Parameters
-    ----------
-    dose_profile : dose profile
-    begin : float start of profile
-    end   : float end of profile
-
-    Returns
-    -------
-    slice_profile : [(distance, dose), ...]
-    """
-    return [d for d in dose_prof if d[0] >= begin and d[0] <= end]
-
-
-def find_umbra(dose_prof):
-    """
-    Extract the central 80% of the flattened part of dose profile.
-
-    Parameters
-    ----------
-    dose_profile : dose profile
-
-    Returns
-    -------
-    umbra        : dose profile
-    """
-    edges = find_edges(dose_prof)
-    umbra = slice_dose_prof(dose_prof, begin=0.8*edges[0], end=0.8*edges[-1])
-    return umbra
+    return "make_pulse_dose_prof is not implemented"
 
 
 def resample(dose_prof, dist_strt=-np.inf, dist_stop=np.inf, dist_step=0.1):
     """
-    Create a dose profile with specified end-points and distance increment,
-    by resampling an existing dose profile.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Keyword Arguments
-    -----------------
-    dist_strt : float start
-    dist_stop : float stop
-    dist_step : float increment
-
-    Returns
-    -------
-    resampled : dose profile
-
+    Return a dose-profile from a supplied profile, extending from
+    distance-start to distance-stop, and resampled at the supplied
+    distance-step.
     """
 
     dose_func = interpolate.interp1d(
@@ -320,169 +145,9 @@ def resample(dose_prof, dist_strt=-np.inf, dist_stop=np.inf, dist_step=0.1):
     return resampled
 
 
-def find_edges(dose_prof):
-    """
-    Find edges of a dose profile as location of greatest gradient.
-
-    Parameters
-    ----------
-    dose_prof           : dose profile
-
-    Returns
-    -------
-     (lt_edge, rt_edge) : tuple of float dists
-    """
-
-    resampled = resample(dose_prof)
-
-    dist_vals = get_dist_vals(resampled)
-    dose_vals = get_dose_vals(resampled)
-
-    max_dose = max(dose_vals)
-    min_dose = min(dose_vals)
-    inc_dose = (max_dose - min_dose)/100
-    test_doses = [max_dose - i*inc_dose for i in range(101)]
-
-    for t in test_doses:
-        cr = find_dists(dose_prof, t/2.0)
-
-    dydx = list(np.gradient(dose_vals, dist_vals))
-    lt_edge = dist_vals[dydx.index(max(dydx))]
-    rt_edge = dist_vals[dydx.index(min(dydx))]
-    return (lt_edge, rt_edge)
-
-
-def norm_dose_vals(dose_prof, dist=0.0, dose=100.0):
-    """
-    Ccale profile doses so as to achieve specified dose at dist.
-
-    Parameters
-    ----------
-    dose_profile : dose profile
-
-    KeyWord Arguments
-    -----------------
-    dist : float
-
-    Returns
-    -------
-    norm_prof : dose profile
-    """
-
-    norm_fact = dose / find_dose(dose_prof, dist)
-    d = [norm_fact * i for i in get_dose_vals(dose_prof)]
-
-    return make_dose_prof(get_dist_vals(dose_prof), d)
-
-
-def norm_dist_vals(dose_prof):
-    """
-    Scale profile distances so as to place beam edges at dist = +/- 1.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Returns
-    -------
-    norm_profile : dose profile
-        | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
-              of radiation dose data in a small digital computer
-        | (2) Heintz, King, & Childs, May-95, User Manual,
-              Prowess 3000 CT Treatment Planning
-    """
-
-    x = get_dist_vals(dose_prof)
-    d = get_dose_vals(dose_prof)
-
-    lt_edge, rt_edge = find_edges(dose_prof)
-    cax = (lt_edge + rt_edge)/2.0
-
-    result = []
-    for i, dist in enumerate(x):
-        if dist < cax:
-            result.append((dist/lt_edge, d[i]))
-        elif dist == cax:
-            result.append((0.0, d[i]))
-        elif dist > cax:
-            result.append((dist/rt_edge, d[i]))
-    return result
-
-
-def cent_dose_prof(dose_prof):
-    """
-    Translate profile so as to place the point, midway between the edges, at dist = 0.0.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Returns
-    -------
-    cent_prof : dose profile
-
-    """
-
-    dist_vals = get_dist_vals(dose_prof)
-    dose_vals = get_dose_vals(dose_prof)
-    cax = np.mean(find_edges(dose_prof))
-
-    cent_prof = []
-    for i, dist in enumerate(dist_vals):
-        cent_prof.append((dist - cax, dose_vals[i]))
-    return cent_prof
-
-
-def make_dose_prof_sym(dose_prof, dist_step=0.1):  # STUB  ######
-    """
-    Create a symmetric dose profile by averaging the corresponding points on
-    either side of the central axis of the resampled source profile.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Returns
-    -------
-    sym_profile : dose profile
-    """
-    dist_vals = get_dist_vals(dose_prof)
-
-    start = -min(-dist_vals[0], dist_vals[-1])
-    stop = min(-dist_vals[0], dist_vals[-1])
-
-    dose_prof = resample(dose_prof, dist_strt=start, dist_stop=stop)
-
-    rev = dose_prof[::-1]
-
-    result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
-              for i, _ in enumerate(dose_prof)]
-
-    return result
-
-
-def symmetry(dose_prof):  # STUB  ######
-    """
-    Find symmtry for a dose profile.
-
-    Parameters
-    ----------
-    dose_prof : dose profile
-
-    Returns
-    -------
-    sym       : float
-    """
-    umbra = find_umbra(dose_prof)
-    dose = get_dose_vals(umbra)
-    avg_dose = np.average(dose)
-    dose_rev = dose[::-1]
-    asym = max(np.abs(np.subtract(dose, dose_rev)/avg_dose))
-    return asym
-
-
 def align_to(s1, s2, rez=0.1):  # STUB  ######
-    pass
+    """ align_to is not yet implemented """
+    return("align_to is not yet implemented")
 #     """Calcs the offset and orientation between two scans
 #        input:
 #             s1  = read.Scan() # to move
@@ -536,16 +201,219 @@ def align_to(s1, s2, rez=0.1):  # STUB  ######
 #     return r
 
 
-def flatness(dose_profile):  # STUB  ######
-    """ """
-    pass
-
-
 def is_wedged(dose_profile):  # STUB  ######
-    """ """
-    pass
+    """ is_wedge is not yet implemented """
+    return('is_wedge is not yet implemented')
 
 
 def is_fff(dose_profile):  # STUB  ######
-    """ """
-    pass
+    """ is_fff is not yet implemented """
+    return('is_fff is not yet implemented')
+
+
+# SLICING FUNCTIONS
+
+def find_strt_stop(dose_prof, dist_strt, dist_stop):
+    """
+    Return as a tuple, the distance-to-start and distance-to-stop, which are the
+    end-points of a dose-profile or, optionally, suggested start and stop
+    distances, which ever is more restrictive.
+    """
+
+    dist_vals = get_dist_vals(dose_prof)
+
+    if not dist_strt:
+        dist_strt = -np.inf
+    dist_strt = max(dist_strt, min(dist_vals))
+
+    if not dist_stop:
+        dist_stop = np.inf
+    dist_stop = min(dist_stop, max(dist_vals))
+
+    assert dist_stop > dist_strt
+    return (dist_strt, dist_stop)
+
+
+def slice_dose_prof(dose_prof, dist_strt=-np.inf, dist_stop=np.inf):
+    """
+    Return a dose-profile, sliced from a supplied profile, including
+    only points betwee distance-start and distance-stop.
+    """
+    return [d for d in dose_prof if d[0] >= dist_strt and d[0] <= dist_stop]
+
+
+def find_edges(dose_prof):
+    """
+    Return a tuple, the distance of the two profile edges, calculated
+    as the distances of greatest postivie and negative gradient.
+    """
+
+    resampled = resample(dose_prof)
+
+    dist_vals = get_dist_vals(resampled)
+    dose_vals = get_dose_vals(resampled)
+
+    max_dose = max(dose_vals)
+    min_dose = min(dose_vals)
+    inc_dose = (max_dose - min_dose)/100
+    test_doses = [max_dose - i*inc_dose for i in range(101)]
+
+    for t in test_doses:
+        cr = find_dists(dose_prof, t/2.0)
+
+    dydx = list(np.gradient(dose_vals, dist_vals))
+    lt_edge = dist_vals[dydx.index(max(dydx))]
+    rt_edge = dist_vals[dydx.index(min(dydx))]
+    return (lt_edge, rt_edge)
+
+
+def find_umbra(dose_prof):
+    """
+    Return a dose-profile from a supplied profile, including only the
+    central 80% of the profile between the end-points.
+    """
+    edges = find_edges(dose_prof)
+    umbra = slice_dose_prof(dose_prof, dist_strt=0.8 *
+                            edges[0], dist_stop=0.8*edges[-1])
+    return umbra
+
+# SCALING FUNCTIONS
+
+
+def find_dose(dose_prof, dist):
+    """
+    Return the dose from a dose-profile, corresponding to a provided distance.
+    """
+
+    dose_func = interpolate.interp1d(
+        get_dist_vals(dose_prof),
+        get_dose_vals(dose_prof),
+        kind='linear')
+    dose = dose_func(dist)
+
+    return(dose)
+
+
+def find_dists(dose_prof, dose):
+    """
+    Return a list of distances where dose-profile takes on a value of dose.
+    """
+
+    x = get_dist_vals(dose_prof)
+    d = get_dose_vals(dose_prof)
+    dists = []
+    for i in range(1, len(x)):
+        val = None
+        if d[i] != d[i-1]:
+            # bracket threshold
+            if (d[i]-dose)*(d[i-1]-dose) < 0:
+                # interpolate
+                val = (x[i]-((d[i]-dose)/(d[i]-d[i-1]))*(x[i]-x[i-1]))
+        elif d[i] == dose:
+            val = x[i]
+        if val and (val not in dists):
+            dists.append(val)
+    return dists
+
+
+def norm_dose_vals(dose_prof, dist=0.0, dose=100.0):
+    """
+    Return a dose-profile from a supplied profile, in which the dose
+    values are rescaled so as to yield a specified dose and the
+    specified distance.
+    """
+
+    norm_fact = dose / find_dose(dose_prof, dist)
+    d = [norm_fact * i for i in get_dose_vals(dose_prof)]
+
+    return make_dose_prof(get_dist_vals(dose_prof), d)
+
+
+def norm_dist_vals(dose_prof):
+    """
+    Return a dose-profile from a supplied profile, in which the distance
+    values are rescaled to 2X/W so as to position the beam edges at
+    distances of +/-1.
+
+        | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
+              of radiation dose data in a small digital computer
+        | (2) Heintz, King, & Childs, May-95, User Manual,
+              Prowess 3000 CT Treatment Planning
+    """
+
+    x = get_dist_vals(dose_prof)
+    d = get_dose_vals(dose_prof)
+
+    lt_edge, rt_edge = find_edges(dose_prof)
+    cax = (lt_edge + rt_edge)/2.0
+
+    result = []
+    for i, dist in enumerate(x):
+        if dist < cax:
+            result.append((dist/lt_edge, d[i]))
+        elif dist == cax:
+            result.append((0.0, d[i]))
+        elif dist > cax:
+            result.append((dist/rt_edge, d[i]))
+    return result
+
+
+def cent_dose_prof(dose_prof):
+    """
+    Return a dose-profile from a supplied profile, in which the distance values
+    are translated so as to place the central-axis, midway between the edges,
+    at zero distance.
+    """
+
+    dist_vals = get_dist_vals(dose_prof)
+    dose_vals = get_dose_vals(dose_prof)
+    cax = np.mean(find_edges(dose_prof))
+
+    cent_prof = []
+    for i, dist in enumerate(dist_vals):
+        cent_prof.append((dist - cax, dose_vals[i]))
+    return cent_prof
+
+# FLATNESS & SYMMETRY FUNCTIONS
+
+
+def flatness(dose_prof):
+    """
+    Return float value of flatness for a supplied dose-profile.
+    """
+    dose = get_dose_vals(find_umbra(dose_prof))
+    flat = (max(dose)-min(dose))/np.average(dose)
+    return flat
+
+
+def symmetry(dose_prof):
+    """
+    Return float value of symmetry for a supplied dose-profile.
+    """
+    dose = get_dose_vals(find_umbra(dose_prof))
+    avg_dose = np.average(dose)
+    dose_rev = dose[::-1]
+    symmetry = max(np.abs(np.subtract(dose, dose_rev)/avg_dose))
+    return symmetry
+
+
+def make_dose_prof_sym(dose_prof, dist_step=0.1):  # STUB  ######
+    """
+    Return a dose-profile from a supplied profile, which has been made
+    symmetric by averaging dose values over corresponding distances across
+    the central axis, and resampled at increments of distance-step.
+    """
+    dist_vals = get_dist_vals(dose_prof)
+
+    start = -min(-dist_vals[0], dist_vals[-1])
+    stop = min(-dist_vals[0], dist_vals[-1])
+
+    dose_prof = resample(dose_prof, dist_strt=start,
+                         dist_stop=stop, dist_step=dist_step)
+
+    rev = dose_prof[::-1]
+
+    result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
+              for i, _ in enumerate(dose_prof)]
+
+    return result
