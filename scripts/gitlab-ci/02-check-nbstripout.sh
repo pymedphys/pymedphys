@@ -5,4 +5,5 @@ source activate test
 
 find . -iname \*.ipynb | xargs -d "\n" nbstripout
 git add -A
-git diff HEAD --exit-code
+git diff HEAD --name-only --exit-code -- '*ipynb'
+
