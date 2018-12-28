@@ -8,7 +8,7 @@ conda config --add channels conda-forge
 conda update -q conda
 conda info -a # for debugging
 
-conda create -q -n test pytest pymedphys
+conda create -q -n test pytest nbstripout pymedphys
 source activate test
 
 pip install pytest-pylint pytest-testmon

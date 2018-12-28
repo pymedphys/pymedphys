@@ -180,7 +180,14 @@ To install `nbstripout` run the following within the pymedphys directory:
 .. code:: bash
 
     conda install nbstripout
-    nbstripout install
+    nbstripout --install
+    nbstripout --status
+
+Make sure that the output of `nbstipout --status` starts with:
+
+```bash
+nbstripout is installed in repository
+```
 
 
 Install the development version of PyMedPhys
