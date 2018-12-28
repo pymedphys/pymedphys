@@ -1,0 +1,7 @@
+[run]
+omit =
+    scripts/*
+    experimentation/*
+    data/*
+    conftest.py
+    setup.py
