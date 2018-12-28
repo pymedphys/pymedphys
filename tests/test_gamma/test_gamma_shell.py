@@ -26,7 +26,10 @@
 """Tests for npgamma."""
 
 import numpy as np
+import pytest
 from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
+
+# pytestmark = pytest.mark.skip("too slow on Matt's PC")
 
 
 def test_lower_dose_threshold():
