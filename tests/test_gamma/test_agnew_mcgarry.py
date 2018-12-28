@@ -28,6 +28,7 @@ from pymedphys.gamma import gamma_shell
 import pydicom
 import numpy as np
 import os
+import pytest
 """The tests given here are replicated using pymedphys.gamma from the method
 given within the following paper:
 
@@ -35,8 +36,9 @@ given within the following paper:
 > quality assurance program. Radiotherapy and Oncology (2016),
 > http://dx.doi.org/10.1016/j.radonc.2015.11.034
 """
-# pylint: disable=C0103,C1801
 
+# pylint: disable=C0103,C1801
+# pytestmark = pytest.mark.skip("too slow on Matt's PC")
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/gamma/agnew_mcgarry_images")
