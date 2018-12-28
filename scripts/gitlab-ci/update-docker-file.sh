@@ -3,5 +3,7 @@
 
 # INFO at https://gitlab.com/help/user/project/container_registry#build-and-push-images
 
-docker build -t registry.gitlab.com/pymedphys/pymedphys/ci .
+DIR=`dirname "$0"`
+
+docker build -t registry.gitlab.com/pymedphys/pymedphys/ci $DIR
 docker push registry.gitlab.com/pymedphys/pymedphys/ci
