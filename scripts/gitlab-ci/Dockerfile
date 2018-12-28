@@ -5,14 +5,14 @@ RUN conda config --add channels conda-forge
 RUN conda info -a
 
 RUN conda update -q conda && \
-    conda clean -tipsy
+    conda clean -tisy
 
 RUN conda install -q pytest nbstripout pylint coverage pymedphys numpy>=1.12 && \
     conda uninstall pymedphys && \
-    conda clean -tipsy
+    conda clean -tisy
 
 RUN pip install --no-cache-dir pytest-pylint pytest-testmon && \
-    conda clean -tipsy
+    conda clean -tisy
 
 RUN MATPLOTLIB_RC=`python -c "import matplotlib; print(matplotlib.matplotlib_fname())"` && \
     echo "backend: Agg" > $MATPLOTLIB_RC
