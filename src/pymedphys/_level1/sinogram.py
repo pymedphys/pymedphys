@@ -24,7 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""@author: king.r.paul@gmail.com
+"""
+@author: king.r.paul@gmail.com
 """
 
 from string import digits as DIGITS
@@ -37,7 +38,35 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def unshuffle_sinogram(array):
+def read_bin_file(file_name):
+    """
+    read_bin_file is not implemented
+    """
+    return "read_bin_file is not implemented"
+
+
+def crop(sinogram):
+    """
+    crop is not implemented
+    """
+    return "crop is not implemented"
+
+
+def make_histogram(sinogram):
+    """
+    make_histogram is not implemented
+    """
+    return "make_histogram is not implemented"
+
+
+def find_modulation_factor(sinogram):
+    """
+    find_modulation_factor is not implemented
+    """
+    return "find_modulation_factor is not implemented"
+
+
+def unshuffle(array):
     """
     Unshuffle sinogram, i.e. separate leaf pattern into the 51
     tomtherapy discretization angles, accepting a 2D list of lists
@@ -121,6 +150,6 @@ def unshuffle_sinogram_csv(file_name):
         reader = csv.reader(csvfile, delimiter=',')
         array = np.asarray([line[1:] for line in reader]).astype(float)
 
-    result = unshuffle_sinogram(array)
+    result = unshuffle(array)
 
     return document_id, result
