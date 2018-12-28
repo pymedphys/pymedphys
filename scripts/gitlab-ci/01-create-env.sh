@@ -11,7 +11,7 @@ conda info -a # for debugging
 conda create -q -n test pytest pymedphys
 source activate test
 
-pip install pytest-pylint
+pip install pytest-pylint pytest-testmon
 
 conda uninstall pymedphys
 
