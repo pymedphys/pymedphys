@@ -17,6 +17,5 @@ def pytest_ignore_collect(path, config):
 
     return (
         relative_path.startswith('experimentation') or
-        relative_path.startswith('data') or
         relative_path.startswith(build_dir)
     )
