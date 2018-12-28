@@ -3,11 +3,8 @@ variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
 
-services:
-  - docker:dind
-
 test:
-  image: continuumio/miniconda3:latest # registry.gitlab.com/pymedphys/pymedphys/ci:latest
+  image: registry.gitlab.com/pymedphys/pymedphys/ci:latest
   script:
     - mkdir $EXTERNAL_GIT_DIR
     - CI_DIR=$PWD
@@ -24,7 +21,11 @@ test:
 
 ci-docker-build:
   image: docker:stable
+  services:
+    - docker:dind
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker build -t registry.gitlab.com/pymedphys/pymedphys/ci ./scripts/gitlab-ci
     - docker push registry.gitlab.com/pymedphys/pymedphys/ci
+  only:
+    - master
