@@ -29,7 +29,7 @@ import os
 
 # DISTANCE FUNCTIONS
 from pymedphys.dose import make_dist_vals
-from pymedphys.dose import get_dist_vals, get_dose_vals
+from pymedphys.dose import get_dist_vals
 # DOSE FUNCTIONS
 from pymedphys.dose import make_dose_vals
 from pymedphys.dose import get_dose_vals
@@ -116,6 +116,7 @@ def test_make_dist_vals():
 def test_get_dist_vals():
     assert get_dist_vals(PROFILER)[0] == -get_dist_vals(PROFILER)[-1]
 
+
 # DOSE FUNCTIONS
 
 
@@ -127,6 +128,7 @@ def test_make_dose_vals():
 
 def test_get_dose_vals():
     assert np.allclose(get_dose_vals(PROFILER)[-1], 0.3)
+
 
 # PROFILE FUNCTIONS
 
@@ -146,8 +148,7 @@ def test_shift_dose_prof():
 
 
 def test_make_pulse_dose_prof():
-    print('test_make_pulse_dose_prof is not implemented')  # STUB
-    print(make_pulse_dose_prof())  # STUB
+    assert make_pulse_dose_prof()[0] == (-20.0, 0.0)
 
 
 def test_resample():
@@ -166,6 +167,7 @@ def test_align_to():
 def test_is_wedged():  # STUB  ######
     assert not is_wedged(PROFILER)
     assert is_wedged(WEDGED)
+
 
 # SLICING FUNCTIONS
 
@@ -207,6 +209,7 @@ def test_norm_dist_vals():
 
 def test_cent_dose_prof():
     assert np.allclose(cent_dose_prof(PROFILER)[0][0], -16.45)
+
 
 # FLATNESS & SYMMETRY FUNCTIONS
 
