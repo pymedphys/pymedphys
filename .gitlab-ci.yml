@@ -1,7 +1,13 @@
-image: registry.gitlab.com/pymedphys/pymedphys/ci:latest
+image: continuumio/miniconda3:latest  # registry.gitlab.com/pymedphys/pymedphys/ci:latest
 
 variables:
   EXTERNAL_GIT_DIR: "/external-git"
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  NEW_IMAGE_TAG: registry.gitlab.com/pymedphys/pymedphys/ci:$CI_COMMIT_REF_SLUG
+
+services:
+  - docker:dind
 
 test:
   script:
@@ -17,3 +23,9 @@ test:
     # Only install private packages if `RUN_PRIVATE_TESTS` is set to yes
     - if [ "$RUN_PRIVATE_TESTS" = yes ]; then bash ./scripts/gitlab-ci/03-install-private.sh; fi
     - bash ./scripts/gitlab-ci/04-test.sh
+
+ci-docker-build:
+  image: docker:stable
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - bash ./scripts/gitlab-ci/update-docker-file.sh
