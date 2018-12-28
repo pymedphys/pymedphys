@@ -40,11 +40,11 @@ Profile Functions
 
     .. autofunction:: pymedphys.dose.make_dose_prof
     .. autofunction:: pymedphys.dose.is_even_spaced
+    .. autofunction:: pymedphys.dose.shift_dose_prof
     .. autofunction:: pymedphys.dose.make_pulse_dose_prof
     .. autofunction:: pymedphys.dose.resample
     .. autofunction:: pymedphys.dose.align_to
     .. autofunction:: pymedphys.dose.is_wedged
-    .. autofunction:: pymedphys.dose.is_fff
 
 Slicing Functions
 ---------------------------------------------------------

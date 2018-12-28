@@ -37,10 +37,10 @@ from pymedphys.dose import get_dose_vals
 from pymedphys.dose import make_dose_prof
 from pymedphys.dose import make_pulse_dose_prof
 from pymedphys.dose import is_even_spaced
+from pymedphys.dose import shift_dose_prof
 from pymedphys.dose import resample
 from pymedphys.dose import align_to
 from pymedphys.dose import is_wedged
-from pymedphys.dose import is_fff
 # SLICING FUNCTIONS
 from pymedphys.dose import find_strt_stop
 from pymedphys.dose import slice_dose_prof
@@ -87,8 +87,27 @@ PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28),
             (14, 0.4), (14.4, 0.39), (14.8, 0.34),
             (15.2, 0.33), (15.6, 0.32), (16, 0.3), (16.4, 0.3)]
 
+WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
+          (-14.8, 0.32), (-14.4, 0.33), (-14, 0.35), (-13.6, 0.38),
+          (-13.2, 0.4), (-12.8, 0.44), (-12.4, 0.46), (-12, 0.51),
+          (-11.6, 0.55), (-11.2, 0.6), (-10.8, 0.65), (-10.4, 0.7),
+          (-10, 0.74), (-9.6, 0.84), (-9.2, 0.94), (-8.8, 1.04), (-8.4, 1.14),
+          (-8, 1.25), (-7.6, 1.45), (-7.2, 1.6), (-6.8, 1.78), (-6.4, 2.14),
+          (-6, 2.66), (-5.6, 3.62), (-5.2, 6.54), (-4.8, 17.55), (-4.4, 20.07),
+          (-4, 21.37), (-3.6, 22.19), (-3.2, 23.1), (-2.8, 23.74), (-2.4, 24.56),
+          (-2, 25.49), (-1.6, 26.35), (-1.2, 27), (-0.8, 28.06), (-0.4, 28.89),
+          (0, 29.8), (0.4, 30.61), (0.8, 31.4), (1.2, 32.53), (1.6, 33.06),
+          (2, 34.15), (2.4, 34.85), (2.8, 35.65), (3.2, 36.6), (3.6, 37.04),
+          (4, 37.45), (4.4, 36.72), (4.8, 30.93), (5.2, 10.06), (5.6, 5.43),
+          (6, 3.71), (6.4, 3.01), (6.8, 2.52), (7.2, 2.19), (7.6, 1.9), (8, 1.7),
+          (8.4, 1.48), (8.8, 1.35), (9.2, 1.19), (9.6, 1.09), (10, 0.93),
+          (10.4, 0.89), (10.8, 0.78), (11.2, 0.72), (11.6, 0.65), (12, 0.6),
+          (12.4, 0.55), (12.8, 0.5), (13.2, 0.48), (13.6, 0.45), (14, 0.41),
+          (14.4, 0.4), (14.8, 0.35), (15.2, 0.33), (15.6, 0.32),
+          (16, 0.31), (16.4, 0.3)]
 
 # DISTANCE FUNCTIONS
+
 
 def test_make_dist_vals():
     assert len(make_dist_vals(-16.4, 16.4, .4)) == len(PROFILER)
@@ -97,8 +116,8 @@ def test_make_dist_vals():
 def test_get_dist_vals():
     assert get_dist_vals(PROFILER)[0] == -get_dist_vals(PROFILER)[-1]
 
-
 # DOSE FUNCTIONS
+
 
 def test_make_dose_vals():
     def dose_func(dist):
@@ -109,8 +128,8 @@ def test_make_dose_vals():
 def test_get_dose_vals():
     assert np.allclose(get_dose_vals(PROFILER)[-1], 0.3)
 
-
 # PROFILE FUNCTIONS
+
 
 def test_make_dose_prof():
     assert make_dose_prof(
@@ -118,7 +137,12 @@ def test_make_dose_prof():
 
 
 def test_is_even_spaced():
-    print("test_is_even_spaced is not implemented")
+    assert is_even_spaced(PROFILER)
+    assert not is_even_spaced(PROFILER[:7] + PROFILER[8:])
+
+
+def test_shift_dose_prof():
+    assert np.isclose(shift_dose_prof(PROFILER, 10)[0][0], -6.4)
 
 
 def test_make_pulse_dose_prof():
@@ -133,38 +157,15 @@ def test_resample():
     assert np.allclose(resampled[0], PROFILER[0])
 
 
-def test_align_to():  # STUB  ######
-    print(align_to(PROFILER, PROFILER))
-    print("test_align_to is not implemented")
-
-    #     """ """
-    #     # DYNAMIC WEDGE, PROFILER -> TOMO_FILM PROFILE
-    #     p = read.profiler(TEST[1]);  to_move = p[p.keys()[0]]
-    #     f = read.tomo_film(TEST[2]); to_match= f[f.keys()[0]]
-    #     r = move_to_match(to_move, to_match, 0.1)
-    #     assert abs(r['shft'] - 9.3) < 0.1
-    #     assert np.allclose(r['flp'], True)
-    #     assert len(r['x1']) -len(r['y1']) + len(r['x2']) -len(r['y2']) == 0
-    #     if True: # POPUP PLOT
-    #         import pylab as plt
-    #         kwargs = {'markersize': 1,  'markeredgewidth': 0.2, 'marker': 'o',
-    #           'linestyle': '-', 'linewidth': .010, 'markeredgecolor': 'r',
-    #           'markerfacecolor': 'r'}
-    #         plt.plot(r['x1'],  r['y1'], **kwargs)
-    #         kwargs['markeredgecolor'] = 'b'; kwargs['markerfacecolor'] = 'b'
-    #         plt.plot(r['x2'],  r['y2'], **kwargs)
-    #         plt.show()
-    #     print 'move_to_match passed'
+def test_align_to():
+    assert np.allclose(align_to(
+        shift_dose_prof(PROFILER, 1.2),
+        shift_dose_prof(PROFILER, 0)), -1.2)
 
 
 def test_is_wedged():  # STUB  ######
-    print(is_wedged(PROFILER))
-    print('test_is_wedged is not yet implemented')
-
-
-def test_is_fff():  # STUB  ######
-    print(is_fff(PROFILER))
-    print('test_is_fff is not yet implemented')
+    assert not is_wedged(PROFILER)
+    assert is_wedged(WEDGED)
 
 # SLICING FUNCTIONS
 
@@ -186,6 +187,7 @@ def test_find_umbra():
 
 
 # SCALING FUNCTIONS
+
 
 def test_find_dose():
     assert np.allclose(find_dose(PROFILER, 0.0), 45.23)
@@ -232,11 +234,11 @@ if __name__ == "__main__":
     # PROFILE FUNCTIONS
     test_make_dose_prof()
     test_is_even_spaced()
+    test_shift_dose_prof()
     test_make_pulse_dose_prof()
     test_resample()
     test_align_to()
     test_is_wedged()
-    test_is_fff()
     # SLICING FUNCTIONS
     test_find_strt_stop()
     test_slice_dose_prof()
