@@ -1,4 +1,4 @@
-image: continuumio/miniconda3:latest
+image: registry.gitlab.com/pymedphys/pymedphys/ci:latest
 
 variables:
   EXTERNAL_GIT_DIR: "/external-git"
