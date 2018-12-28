@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -ex
-source activate test
 
 rm pytest.ini
 mv pytest-no-testmon.ini pytest.ini
