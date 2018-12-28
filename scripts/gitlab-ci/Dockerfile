@@ -7,7 +7,7 @@ RUN conda info -a
 RUN conda update -q conda && \
     conda clean -tipsy
 
-RUN conda install -q pytest nbstripout pylint coverage pymedphys && \
+RUN conda install -q pytest nbstripout pylint coverage pymedphys numpy>=1.12 && \
     conda uninstall pymedphys && \
     conda clean -tipsy
 
