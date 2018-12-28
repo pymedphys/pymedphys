@@ -28,4 +28,5 @@ ci-docker-build:
   image: docker:stable
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - bash ./scripts/gitlab-ci/update-docker-file.sh
+    - docker build -t registry.gitlab.com/pymedphys/pymedphys/ci ./scripts/gitlab-ci
+    - docker push registry.gitlab.com/pymedphys/pymedphys/ci
