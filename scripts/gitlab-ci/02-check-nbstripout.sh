@@ -3,6 +3,6 @@
 set -ex
 source activate test
 
-find . -iname \*.ipynb | xargs nbstripout
+find . -iname \*.ipynb | xargs -d "\n" nbstripout
 git add -A
 git diff HEAD --exit-code
