@@ -16,6 +16,7 @@
     user/electronfactors
     user/dcm
     user/geometry
+    user/tomo
 
 .. toctree::
     :maxdepth: 1

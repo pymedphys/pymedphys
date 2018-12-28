@@ -26,16 +26,39 @@
 
 import os
 
-from pymedphys.tomo import unshuffle_sinogram
+from pymedphys.tomo import read_bin_file
+from pymedphys.tomo import crop
+from pymedphys.tomo import make_histogram
+from pymedphys.tomo import find_modulation_factor
+from pymedphys.tomo import unshuffle
 from pymedphys.tomo import unshuffle_sinogram_csv
 
 SINOGRAM_FILE = os.path.join(
     os.path.dirname(__file__), "../data/tomo/sinogram.csv")
 
 
-def test_unshuffle_sinogram():
-    """ Compare unshuffle_sinogram results vs expected values """
-    unshuffled = unshuffle_sinogram([[0]*25 + [1.0]*14 + [0]*25]*510)
+def test_read_bin_file():
+    print(read_bin_file(None))
+    print("read_bin_file is not implemented")
+
+
+def test_crop():
+    print(crop(None))
+    print("test_crop is not implemented")
+
+
+def test_make_histogram():
+    print(make_histogram(None))
+    print("test_make_histogram is not implemented")
+
+
+def test_find_modulation_factor():
+    print(find_modulation_factor(None))
+    print("test_find_modulation_factor is not implemented")
+
+
+def test_unshuffle():
+    unshuffled = unshuffle([[0]*25 + [1.0]*14 + [0]*25]*510)
     assert len(unshuffled) == 51          # number of angles is 51
     assert len(unshuffled[0]) == 10       # number of couch increments
     assert len(unshuffled[0][0]) == 16    # number of visible leaves (is even)
@@ -43,12 +66,15 @@ def test_unshuffle_sinogram():
 
 
 def test_unshuffle_sinogram_csv():
-    """ Compare unshuffle_sinogram_csv results vs expected """
     document_id, results = unshuffle_sinogram_csv(SINOGRAM_FILE)
     assert document_id == '00000 - ANONYMOUS, PATIENT'
     assert len(results) == 51
 
 
 if __name__ == "__main__":
-    test_unshuffle_sinogram()
+    test_read_bin_file()
+    test_crop()
+    test_make_histogram()
+    test_find_modulation_factor()
+    test_unshuffle()
     test_unshuffle_sinogram_csv()
