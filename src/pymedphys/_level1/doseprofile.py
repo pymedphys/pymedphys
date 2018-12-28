@@ -117,6 +117,15 @@ def is_even_spaced(dose_prof):
         return False
 
 
+def shift_dose_prof(dose_prof, dist):
+    """
+    Return a dose-profile where distance values are shifted by the indicated amount.
+    """
+    dist_vals = np.add(get_dist_vals(dose_prof), dist)
+    dose_vals = get_dose_vals(dose_prof)
+    return make_dose_prof(dist_vals, dose_vals)
+
+
 def make_pulse_dose_prof(centre=0.0, width=10.0, dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
     """
     make_pulse_dose_prof is not implemented
@@ -145,73 +154,63 @@ def resample(dose_prof, dist_strt=-np.inf, dist_stop=np.inf, dist_step=0.1):
     return resampled
 
 
-def align_to(s1, s2, rez=0.1):  # STUB  ######
-    """ align_to is not yet implemented """
-    return("align_to is not yet implemented")
-#     """Calcs the offset and orientation between two scans
-#        input:
-#             s1  = read.Scan() # to move
-#             s2  = read.Scan() # to match
-#             rez = float  # precision in cm
-#         returns:
-#             r = {'flp':  # boolean, flipped or not
-#                  'shft': # float , x-shift to agreement
-#                  'x1':   # np.array([fitted-x for moved curve]),
-#                  'x2':   # np.array([fitted-x for matched curve]),
-#                  'y1':   # np.array([fitted-y for moved curve]),
-#                  'y2':   # np.array([fitted-y for matched curve])}   """
+def align_to(dose_prof_moves, dose_prof_fixed, dist_step=0.1):  # STUB  ######
+    """ align_to is not yet implemented """  # WRITE DOCSTRING !!!!!!!!
 
-#     r = {}
+    dist_vals_moves = get_dist_vals(dose_prof_moves)
+    dose_vals_moves = get_dose_vals(dose_prof_moves)
 
-#     end_pt = int((1/rez)*np.round(max(abs(np.append(s1.x, s2.x))), 1))
-#     x = np.array([rez*i for i in range(-end_pt, end_pt+1)])
+    dist_vals_fixed = get_dist_vals(dose_prof_fixed)
+    dose_vals_fixed = get_dose_vals(dose_prof_fixed)
 
-#     y1, y2 = [], []
-#     f1 = interpolate.interp1d(s1.x, s1.y)
-#     f2 = interpolate.interp1d(s2.x, s2.y)
-#     for i in x:
-#         try: y1.append(f1(i))
-#         except: y1.append(0)
-#         try: y2.append(f2(i))
-#         except: y2.append(0)
-#     y1, r['y2'] = np.array(y1), np.array(y2)
+    min_possible_offset = max(min(dist_vals_moves), min(dist_vals_fixed))
+    max_possible_offset = min(max(dist_vals_moves), max(dist_vals_fixed))
+    inc_possible_offset = 0.5 * min(min(np.diff(dist_vals_moves)),
+                                    min(np.diff(dist_vals_fixed)))
+    possible_offsets = (make_dist_vals
+                        (min_possible_offset,
+                         max_possible_offset,
+                         inc_possible_offset))
 
-#     # correlation
-#     c1 = list(np.correlate(y2, y1, "same"))
-#     c2 = list(np.correlate(y2, y1[::-1], "same"))
-#     # best match
-#     C1 = max(c1)
-#     C2 = max(c2)
-#     # shift
-#     i1 = c1.index(C1)
-#     i2 = c2.index(C2)
+    dose_func_fixed = interpolate.interp1d(dist_vals_fixed, dose_vals_fixed)
 
-#     if C2 > C1:
-#         r['flp'] = True
-#         r['shft'] = x[0] + rez * i2
-#         r['y1'] = y1[::-1]
-#     else:
-#         r['flp'] = False
-#         r['shft'] = x[0] + rez * i1
-#         r['y1'] = y1
+    dose_func_moves = interpolate.interp1d(dist_vals_moves, dose_vals_moves)
 
-#     r['x1'] = x + r['shft']
-#     r['x2'] = x
+    best_correlation_factor = 0
+    best_offset = -np.inf
 
-#     return r
+    new_coords = make_dist_vals(3 * min(min(dist_vals_moves), min(dist_vals_fixed)),
+                                3 * max(max(dist_vals_moves),
+                                        max(dist_vals_fixed)),
+                                dist_step)
+    ref_fixed = make_dose_vals(new_coords, dose_func_fixed)
+
+    for offset in possible_offsets:
+        moved_profile = shift_dose_prof(dose_prof_moves, offset)
+        moved_x_vals = get_dist_vals(moved_profile)
+        moved_d_vals = get_dose_vals(moved_profile)
+        dose_func_moves = interpolate.interp1d(moved_x_vals, moved_d_vals)
+
+        correl = np.correlate(ref_fixed,
+                              make_dose_vals(new_coords, dose_func_moves))
+        if max(correl) > best_correlation_factor:
+            best_correlation_factor = max(correl)
+            best_offset = offset
+
+    return(best_offset)
 
 
-def is_wedged(dose_profile):  # STUB  ######
-    """ is_wedge is not yet implemented """
-    return('is_wedge is not yet implemented')
-
-
-def is_fff(dose_profile):  # STUB  ######
-    """ is_fff is not yet implemented """
-    return('is_fff is not yet implemented')
-
+def is_wedged(dose_prof):  # STUB  ######
+    """ Return True iff dose-profile has significant gradient in the umbra. """
+    wedginess = np.average(np.diff(get_dose_vals(find_umbra(dose_prof))))
+    if wedginess > 0.05:  # threshold, this is a 'magic number'
+        return True
+    else:
+        return False
+    # return('is_wedge is not yet implemented')
 
 # SLICING FUNCTIONS
+
 
 def find_strt_stop(dose_prof, dist_strt, dist_stop):
     """
