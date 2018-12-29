@@ -11,12 +11,11 @@ RUN conda update -q conda && \
 ADD environment.yml environment.yml
 
 RUN conda env create -f environment.yml && \
-    conda clean -tisy
-
-ENV PATH /opt/conda/envs/pymedphys/bin:$PATH
+    conda clean -tisy && \
+    sed -i '$ d' ~/.bashrc && \
+    echo "conda activate pymedphys" >> ~/.bashrc
 
 RUN conda install -q pytest nbstripout pylint coverage && \
-    conda uninstall pymedphys && \
     conda clean -tisy
 
 RUN pip install --no-cache-dir pytest-pylint pytest-testmon && \
