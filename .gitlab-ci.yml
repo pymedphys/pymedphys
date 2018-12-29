@@ -30,7 +30,7 @@ application:
   stage: tests
   image: electronuserland/builder:wine-chrome
   script:
-    - bash /builds/pymedphys/pymedphys/scripts/gitlab-ci-pipelines/tests/application/01-build-application.sh
+    - bash ./scripts/gitlab-ci-pipelines/tests/application/01-build-application.sh
 
 ci-docker-build:
   stage: utils
