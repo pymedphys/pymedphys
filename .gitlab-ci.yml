@@ -27,7 +27,7 @@ source-tests:
     - bash ./scripts/gitlab-ci-pipelines/source/04-test.sh
 
 build-application:
-  stage: build
+  stage: source  # build
   image: electronuserland/builder:wine-chrome
   script:
     - cd applications/desktop && yarn dist
