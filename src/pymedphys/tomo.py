@@ -29,7 +29,7 @@ A tomotherapy toolbox.
 
 Available Functions
 -------------------
->>> from pymedphys.tomo import unshuffle
+>>> from pymedphys.tomo import read_sin_csv_file
 """
 
 # pylint: disable=W0401,W0614

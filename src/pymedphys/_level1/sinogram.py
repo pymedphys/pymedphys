@@ -38,7 +38,40 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def read_bin_file(file_name):
+def read_sin_csv_file(file_name):
+    """
+    Return patient ID and sinogram array produced by reading a RayStation sinogram
+    CSV file with the provided file name.
+
+    Files are produced by ExportTomoSinogram.py, Brandon Merz,
+    RaySearch customer forum, 1/18/2018.
+
+        Format:
+            First row contains demographics. Subsequent rows correspond to couch positions.
+            Leaf-open time range from zero to one.
+                "Patient name: ANONYMOUS^PATIENT, ID: 00000",,,,,,,,,
+                ,0,0,0,0,0,0,0,0,0,0,0,0,0.39123373,0.366435635 ...
+    """
+
+    with open(file_name, 'r') as csvfile:
+
+        pat_name, pat_num = csvfile.readline().split('ID:')
+        pat_name = pat_name.replace('Patient name:', '')
+
+        pat_name_last, pat_name_first = pat_name.split('^')
+        pat_name_last = ''.join([c for c in pat_name_last if c in LETTERS])
+        pat_name_first = ''.join([c for c in pat_name_first if c in LETTERS])
+        pat_num = ''.join([c for c in pat_num if c in DIGITS])
+
+        document_id = pat_num + ' - ' + pat_name_last + ', ' + pat_name_first
+        reader = csv.reader(csvfile, delimiter=',')
+        array = np.asarray([line[1:] for line in reader]).astype(float)
+
+        # print(document_id)
+    return document_id, array
+
+
+def read_sin_bin_file(file_name):
     """
     read_bin_file is not implemented
     """
@@ -112,44 +145,3 @@ def unshuffle(array):
     result = [[p[32 - gap:32 + gap] for p in result[i]] for i in range(51)]
 
     return result
-
-
-def unshuffle_sinogram_csv(file_name):
-    """
-    Convert a CSV sinogram file into a PDF fluence map collection, by
-    unshuffling the sinogram, i.e. separating leaf pattern into
-    the 51 tomtherapy discretization angles; display & save result.
-
-    Keyword Args:
-        file_name:
-            path to csv sinogram file, file formatted as follows
-                "Patient name: ANONYMOUS^PATIENT, ID: 00000",,,,,,,,,
-                ,0,0,0,0,0,0,0,0,0,0,0,0,,0.39123373,0.366435635 ...
-            Demographics on row1, with each following row corresponding
-            to a single couch step increment and comprised of 64 cells.
-            Each cell in a row corresponding to an mlc leaf, and
-            containing its leaf-open fraction.
-            This format is produced by ExportTomoSinogram.py, shared by
-            Brandon Merz on on the RaySearch customer forum, 1/18/2018.
-    """
-
-    with open(file_name, 'r') as csvfile:
-
-        # PATIENT NAME & ID
-        pat_name, pat_num = csvfile.readline().split('ID:')
-        pat_name = pat_name.replace('Patient name:', '')
-        pat_name_last, pat_name_first = pat_name.split('^')
-
-        pat_name_last = ''.join([c for c in pat_name_last if c in LETTERS])
-        pat_name_first = ''.join([c for c in pat_name_first if c in LETTERS])
-        pat_num = ''.join([c for c in pat_num if c in DIGITS])
-
-        document_id = pat_num + ' - ' + pat_name_last + ', ' + pat_name_first
-
-        # SINOGRAM
-        reader = csv.reader(csvfile, delimiter=',')
-        array = np.asarray([line[1:] for line in reader]).astype(float)
-
-    result = unshuffle(array)
-
-    return document_id, result
