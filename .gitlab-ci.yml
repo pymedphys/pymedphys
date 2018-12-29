@@ -33,7 +33,7 @@ application:
     - bash ./scripts/gitlab-ci-pipelines/tests/application/01-build-application.sh
 
 ci-docker-build:
-  stage: tests  # utils
+  stage: utils
   image: docker:stable
   services:
     - docker:dind
@@ -46,3 +46,5 @@ ci-docker-build:
     - docker build --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:$CI_COMMIT_SHA --tag $CONTAINER_IMAGE:latest ./environment
     - docker push $CONTAINER_IMAGE:$CI_COMMIT_SHA
     - docker push $CONTAINER_IMAGE:latest
+  only:
+    master
