@@ -11,6 +11,14 @@ API
 
 .. autofunction:: pymedphys.dcm.anonymise_dicom
 
+.. autofunction:: pymedphys.dcm.extract_dose
+
+.. autofunction:: pymedphys.dcm.extract_iec_patient_coords
+
+.. autofunction:: pymedphys.dcm.extract_iec_fixed_coords
+
+.. autofunction:: pymedphys.dcm.extract_dicom_patient_coords
+
 .. autofunction:: pymedphys.dcm.load_dose_from_dicom
 
 .. autofunction:: pymedphys.dcm.load_xyz_from_dicom

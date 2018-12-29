@@ -1,9 +1,11 @@
-image: continuumio/miniconda3:latest
-
 variables:
   EXTERNAL_GIT_DIR: "/external-git"
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  CONTAINER_IMAGE: registry.gitlab.com/pymedphys/pymedphys/ci
 
 test:
+  image: $CONTAINER_IMAGE:latest
   script:
     - mkdir $EXTERNAL_GIT_DIR
     - CI_DIR=$PWD
@@ -11,8 +13,25 @@ test:
     # Attempt to download the private repo `monorepo`. If access is not
     # available set an env variable `RUN_PRIVATE_TESTS=no`
     - cd $EXTERNAL_GIT_DIR; export RUN_PRIVATE_TESTS=yes && git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/CCA-Physics/monorepo.git || export RUN_PRIVATE_TESTS=no; cd $CI_DIR
-    - bash ./scripts/gitlab-ci/01-create-env.sh
+    - bash ./scripts/gitlab-ci/01-install-pymedphys.sh
+    - bash ./scripts/gitlab-ci/02-check-nbstripout.sh
 
     # Only install private packages if `RUN_PRIVATE_TESTS` is set to yes
-    - if [ "$RUN_PRIVATE_TESTS" = yes ]; then bash ./scripts/gitlab-ci/02-install-private.sh; fi
-    - bash ./scripts/gitlab-ci/03-test.sh
+    - if [ "$RUN_PRIVATE_TESTS" = yes ]; then bash ./scripts/gitlab-ci/03-install-private.sh; fi
+    - bash ./scripts/gitlab-ci/04-test.sh
+
+ci-docker-build:
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#authenticating-to-the-container-registry
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+
+    # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#using-docker-caching
+    - docker pull $CONTAINER_IMAGE:latest || true
+    - docker build --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:$CI_COMMIT_SHA --tag $CONTAINER_IMAGE:latest ./scripts/gitlab-ci
+    - docker push $CONTAINER_IMAGE:$CI_COMMIT_SHA
+    - docker push $CONTAINER_IMAGE:latest
+  only:
+    - master
