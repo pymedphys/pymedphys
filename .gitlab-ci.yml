@@ -47,4 +47,4 @@ ci-docker-build:
     - docker push $CONTAINER_IMAGE:$CI_COMMIT_SHA
     - docker push $CONTAINER_IMAGE:latest
   only:
-    master
+    - master
