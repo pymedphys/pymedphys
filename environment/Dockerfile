@@ -13,13 +13,15 @@ ADD environment.yml environment.yml
 RUN conda env create -f environment.yml && \
     conda clean -tisy && \
     sed -i '$ d' ~/.bashrc && \
-    echo "conda activate pymedphys" >> ~/.bashrc
+    cat ~/.bashrc
 
-RUN bash -c "conda install -q pytest nbstripout pylint coverage && \
-    conda clean -tisy"
+ENV PATH /opt/conda/envs/pymedphys/bin:$PATH
 
-RUN bash -c "pip install --no-cache-dir pytest-pylint pytest-testmon && \
-    conda clean -tisy"
+RUN conda install -q pytest nbstripout pylint coverage && \
+    conda clean -tisy
 
-RUN bash -c 'MATPLOTLIB_RC=`python -c "import matplotlib; print(matplotlib.matplotlib_fname())"` && \
-    echo "backend: Agg" > $MATPLOTLIB_RC'
+RUN pip install --no-cache-dir pytest-pylint pytest-testmon && \
+    conda clean -tisy
+
+RUN MATPLOTLIB_RC=`python -c "import matplotlib; print(matplotlib.matplotlib_fname())"` && \
+    echo "backend: Agg" > $MATPLOTLIB_RC
