@@ -2,4 +2,4 @@
 
 set -ex
 
-bash ./tests-all.sh
+bash ./test-all.sh
