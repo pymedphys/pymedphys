@@ -1,0 +1,8 @@
+{
+  "main": "main.js",
+  "license": "AGPL-3.0+",
+  "scripts": {
+    "start": "electron ."
+  },
+  "private": true
+}
