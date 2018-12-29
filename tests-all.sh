@@ -1,0 +1,1 @@
+pytest -v --pylint --pylint-error-types=EF
