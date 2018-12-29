@@ -1,12 +1,21 @@
 {
-  "main": "main.js",
+  "name": "pymedphys",
+  "version": "0.1.0",
   "license": "AGPL-3.0+",
   "scripts": {
-    "start": "electron ."
+    "dev": "electron-webpack dev",
+    "compile": "electron-webpack",
+    "dist": "yarn compile && electron-builder -mwl"
   },
   "private": true,
   "devDependencies": {
     "electron": "^4.0.0",
-    "spectron": "^5.0.0"
+    "electron-builder": "^20.38.4",
+    "electron-webpack": "^2.6.1",
+    "spectron": "^5.0.0",
+    "webpack": "^4.28.2"
+  },
+  "dependencies": {
+    "source-map-support": "^0.5.9"
   }
 }
