@@ -2,5 +2,16 @@
     "python.linting.pylintUseMinimalCheckers": false,
     "files.trimTrailingWhitespace": true,
     "editor.formatOnSave": true,
-    "restructuredtext.confPath": "${workspaceFolder}\\docs"
+    "restructuredtext.confPath": "${workspaceFolder}\\docs",
+    "editor.detectIndentation": false,
+    "editor.insertSpaces": true,
+    "[javascript]": {
+        "editor.tabSize": 2
+    },
+    "[html]": {
+        "editor.tabSize": 2
+    },
+    "[python]": {
+        "editor.tabSize": 4
+    }
 }
