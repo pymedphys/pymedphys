@@ -2,10 +2,15 @@
   "name": "pymedphys",
   "version": "0.1.0",
   "license": "AGPL-3.0+",
+  "homepage": "https://pymedphys.com",
+  "author": {
+    "name": "Simon Biggs",
+    "email": "sbiggs@pymedphys.com"
+  },
   "scripts": {
     "dev": "electron-webpack dev",
     "compile": "electron-webpack",
-    "dist": "yarn compile && electron-builder -mwl"
+    "dist": "yarn compile && electron-builder -wl"
   },
   "private": true,
   "devDependencies": {
@@ -17,5 +22,13 @@
   },
   "dependencies": {
     "source-map-support": "^0.5.9"
+  },
+  "build": {
+    "linux": {
+      "target": "deb"
+    },
+    "win": {
+      "target": "portable"
+    }
   }
 }
