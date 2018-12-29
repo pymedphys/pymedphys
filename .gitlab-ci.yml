@@ -5,12 +5,12 @@ variables:
   CONTAINER_IMAGE: registry.gitlab.com/pymedphys/pymedphys/ci
 
 stages:
-  - source
-  - application
+  - tests
+  - deploy
   - utils
 
-source-tests:
-  stage: source
+source:
+  stage: tests
   image: $CONTAINER_IMAGE:latest
   script:
     - mkdir $EXTERNAL_GIT_DIR
@@ -26,8 +26,8 @@ source-tests:
     - if [ "$RUN_PRIVATE_TESTS" = yes ]; then bash ./scripts/gitlab-ci-pipelines/source/03-install-private.sh; fi
     - bash ./scripts/gitlab-ci-pipelines/source/04-test.sh
 
-build-application:
-  stage: source  # build
+application:
+  stage: tests
   image: electronuserland/builder:wine-chrome
   script:
     - bash /builds/pymedphys/pymedphys/scripts/gitlab-ci-pipelines/application/01-build-application.sh
