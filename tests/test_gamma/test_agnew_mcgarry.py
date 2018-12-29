@@ -24,6 +24,11 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from pymedphys.gamma import gamma_shell
+import pydicom
+import numpy as np
+import os
+import pytest
 """The tests given here are replicated using pymedphys.gamma from the method
 given within the following paper:
 
@@ -33,14 +38,7 @@ given within the following paper:
 """
 
 # pylint: disable=C0103,C1801
-
-import os
-
-import numpy as np
-
-import pydicom
-
-from pymedphys.gamma import gamma_shell
+# pytestmark = pytest.mark.skip("too slow on Matt's PC")
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/gamma/agnew_mcgarry_images")

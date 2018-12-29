@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 PyMedPhys Contributors
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,44 +24,19 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: disable=C0103,C1801
+"""A tomotherapy toolbox.
 
-
-"""Regression testing of the single control point function.
+Available Functions
+-------------------
+>>> from pymedphys.tomo import unshuffle_sinogram
 """
 
-import numpy as np
+# pylint: disable=W0401,W0614
 
-from pymedphys.mudensity import calc_single_control_point
+from ._level0.libutils import clean_and_verify_levelled_modules
 
+from ._level1.tomounshuffle import *
 
-def test_partial_jaws():
-    """Parital jaw location should give a fractional result.
-    """
-    leaf_pair_widths = [2, 2]
-
-    mlc = np.array([
-        [
-            [1, 1],
-            [2, 2],
-        ],
-        [
-            [2, 2],
-            [3, 3],
-        ]
-    ])
-    jaw = np.array([
-        [1.5, 1.2],
-        [1.5, 1.2]
-    ])
-
-    _, mu_density = calc_single_control_point(
-        mlc, jaw, leaf_pair_widths=leaf_pair_widths
-    )
-
-    reference_mu_density = [[0., 0.07, 0.43, 0.5, 0.43, 0.07, 0.],
-                            [0., 0.14, 0.86, 1., 0.86, 0.14, 0.],
-                            [0.14, 0.86, 1., 1., 1., 0.86, 0.14],
-                            [0.03, 0.17, 0.2, 0.2, 0.2, 0.17, 0.03]]
-
-    assert np.allclose(np.round(mu_density, 2), reference_mu_density)
+clean_and_verify_levelled_modules(globals(), [
+    '._level1.tomounshuffle'
+])

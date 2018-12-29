@@ -1,7 +1,7 @@
 PyMedPhys
 =========
 
-.. image:: http://readthedocs.org/projects/pymedphys/badge/?version=latest
+.. image:: https://readthedocs.org/projects/pymedphys/badge/?version=latest
     :target: https://pymedphys.com/
 
 Description
