@@ -4,5 +4,9 @@
   "scripts": {
     "start": "electron ."
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "electron": "^4.0.0",
+    "spectron": "^5.0.0"
+  }
 }
