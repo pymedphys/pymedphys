@@ -7,7 +7,6 @@ variables:
 stages:
   - source-tests
   - build
-  - binary-tests
   - ci-utils
 
 source-tests:
@@ -32,10 +31,6 @@ build-application:
   image: electronuserland/builder:wine-chrome
   script:
     - cd applications/desktop && yarn dist
-
-
-binary-tests:
-  stage: binary-tests
 
 ci-docker-build:
   stage: ci-utils
