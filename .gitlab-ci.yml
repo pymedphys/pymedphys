@@ -30,7 +30,7 @@ build-application:
   stage: source  # build
   image: electronuserland/builder:wine-chrome
   script:
-    - cd applications/desktop && yarn dist
+    - bash ./scripts/gitlab-ci-pipelines/build/01-build-application.sh
 
 ci-docker-build:
   stage: utils
