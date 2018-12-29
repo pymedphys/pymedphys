@@ -33,20 +33,24 @@ from pymedphys.tomo import make_histogram
 from pymedphys.tomo import find_modulation_factor
 from pymedphys.tomo import unshuffle
 
-SINOGRAM_FILE = os.path.join(
+SIN_CSV_FILE = os.path.join(
     os.path.dirname(__file__), "../data/tomo/sinogram.csv")
+
+SIN_BIN_FILE = os.path.join(
+    os.path.dirname(__file__), "../data/tomo/MLC_all_test_old_800P.bin")
 
 
 def test_read_sin_csv_file():
-    document_id, results = read_sin_csv_file(SINOGRAM_FILE)
-    assert document_id == '00000 - ANONYMOUS, PATIENT'
-    print(TEST=len(results[0]))
-    # assert len(results) == 51   464, 64
+    pat_id, results = read_sin_csv_file(SIN_CSV_FILE)
+    assert pat_id == '00000 - ANONYMOUS, PATIENT'
+    num_projections = len(results)
+    assert num_projections == 464
+    num_leaves = len(results[0])
+    assert num_leaves == 64
 
 
 def test_read_sin_bin_file():
-    print(read_sin_bin_file(None))
-    print("read_bin_file is not implemented")
+    assert read_sin_bin_file(SIN_BIN_FILE).shape == (400, 64)
 
 
 def test_crop():
@@ -73,10 +77,10 @@ def test_unshuffle():
 
 
 if __name__ == "__main__":
-    test_read_sin_csv_file()
+    # test_read_sin_csv_file()
     test_read_sin_bin_file()
-    test_crop()
-    test_make_histogram()
-    test_find_modulation_factor()
-    test_unshuffle()
+    # test_crop()
+    # test_make_histogram()
+    # test_find_modulation_factor()
+    # test_unshuffle()
     # test_unshuffle_sinogram_csv()
