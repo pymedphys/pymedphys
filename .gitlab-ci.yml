@@ -28,11 +28,9 @@ source-tests:
 
 build-application:
   stage: source  # build
-  image:
-    name: electronuserland/builder:wine-chrome
-    entrypoint: ["/bin/bash"]
+  image: electronuserland/builder:wine-chrome
   script:
-    - bash ./scripts/gitlab-ci-pipelines/build/01-build-application.sh
+    - sh ./scripts/gitlab-ci-pipelines/build/01-build-application.sh
 
 ci-docker-build:
   stage: utils
