@@ -2,6 +2,6 @@
 
 set -ex
 
-cd applications/desktop
+cd application
 yarn
 yarn dist
