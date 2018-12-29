@@ -5,12 +5,12 @@ variables:
   CONTAINER_IMAGE: registry.gitlab.com/pymedphys/pymedphys/ci
 
 stages:
-  - source-tests
+  - source
   - build
-  - ci-utils
+  - utils
 
 source-tests:
-  stage: source-tests
+  stage: source
   image: $CONTAINER_IMAGE:latest
   script:
     - mkdir $EXTERNAL_GIT_DIR
@@ -19,12 +19,12 @@ source-tests:
     # Attempt to download the private repo `monorepo`. If access is not
     # available set an env variable `RUN_PRIVATE_TESTS=no`
     - cd $EXTERNAL_GIT_DIR; export RUN_PRIVATE_TESTS=yes && git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/CCA-Physics/monorepo.git || export RUN_PRIVATE_TESTS=no; cd $CI_DIR
-    - bash ./scripts/gitlab-ci-pipelines/source-tests/01-install-pymedphys.sh
-    - bash ./scripts/gitlab-ci-pipelines/source-tests/02-check-nbstripout.sh
+    - bash ./scripts/gitlab-ci-pipelines/source/01-install-pymedphys.sh
+    - bash ./scripts/gitlab-ci-pipelines/source/02-check-nbstripout.sh
 
     # Only install private packages if `RUN_PRIVATE_TESTS` is set to yes
-    - if [ "$RUN_PRIVATE_TESTS" = yes ]; then bash ./scripts/gitlab-ci-pipelines/source-tests/03-install-private.sh; fi
-    - bash ./scripts/gitlab-ci-pipelines/source-tests/04-test.sh
+    - if [ "$RUN_PRIVATE_TESTS" = yes ]; then bash ./scripts/gitlab-ci-pipelines/source/03-install-private.sh; fi
+    - bash ./scripts/gitlab-ci-pipelines/source/04-test.sh
 
 build-application:
   stage: build
@@ -33,7 +33,7 @@ build-application:
     - cd applications/desktop && yarn dist
 
 ci-docker-build:
-  stage: ci-utils
+  stage: utils
   image: docker:stable
   services:
     - docker:dind
@@ -43,7 +43,7 @@ ci-docker-build:
 
     # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#using-docker-caching
     - docker pull $CONTAINER_IMAGE:latest || true
-    - docker build --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:$CI_COMMIT_SHA --tag $CONTAINER_IMAGE:latest ./scripts/gitlab-ci-pipelines/ci-utils/ci-docker-build
+    - docker build --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:$CI_COMMIT_SHA --tag $CONTAINER_IMAGE:latest ./scripts/gitlab-ci-pipelines/utils/ci-docker-build
     - docker push $CONTAINER_IMAGE:$CI_COMMIT_SHA
     - docker push $CONTAINER_IMAGE:latest
   only:
