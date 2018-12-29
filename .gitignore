@@ -107,6 +107,11 @@ venv.bak/
 .~lock*
 
 
+# TestMon
+.testmondata
+.tmontmp/*
+
+
 # IDE configuration
 .idea/
 .vscode/*
