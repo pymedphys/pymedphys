@@ -7,14 +7,15 @@ Tomotherapy Toolbox
 API
 ---
 
-.. autofunction:: pymedphys.tomo.read_bin_file
+.. autofunction:: pymedphys.tomo.read_sin_csv_file
 
-.. autofunction:: pymedphys.tomo.crop
+#.. autofunction:: pymedphys.tomo.read_sin_bin_file
 
-.. autofunction:: pymedphys.tomo.make_histogram
+#.. autofunction:: pymedphys.tomo.crop
 
-.. autofunction:: pymedphys.tomo.find_modulation_factor
+#.. autofunction:: pymedphys.tomo.make_histogram
 
-.. autofunction:: pymedphys.tomo.unshuffle
+#.. autofunction:: pymedphys.tomo.find_modulation_factor
 
-.. autofunction:: pymedphys.tomo.unshuffle_sinogram_csv
+#.. autofunction:: pymedphys.tomo.unshuffle
+
