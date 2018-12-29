@@ -67,15 +67,23 @@ def read_sin_csv_file(file_name):
         reader = csv.reader(csvfile, delimiter=',')
         array = np.asarray([line[1:] for line in reader]).astype(float)
 
-        # print(document_id)
     return document_id, array
 
 
 def read_sin_bin_file(file_name):
     """
-    read_bin_file is not implemented
+    Return sinogram np.array produced by reading an Accuray sinogram
+    BIN file with the provided file name. BIN files are sinograms
+    stored in binary format used in Tomotherapy calibration plans.
+
     """
-    return "read_bin_file is not implemented"
+    leaf_open_times = np.fromfile(file_name, dtype=float,
+                                  count=-1, sep='')
+    num_leaves = 64
+    num_projections = int(len(leaf_open_times)/num_leaves)
+    sinogram = np.reshape(leaf_open_times, (num_projections, num_leaves))
+
+    return sinogram
 
 
 def crop(sinogram):
