@@ -30,6 +30,9 @@ build-application:
   stage: source  # build
   image: electronuserland/builder:wine-chrome
   script:
+    - ls -hal
+    - ls /builds/pymedphys/pymedphys/ -hal
+    - ls /builds/pymedphys/pymedphys/scripts/gitlab-ci-pipelines/build/ -hal
     - bash /builds/pymedphys/pymedphys/scripts/gitlab-ci-pipelines/build/01-build-application.sh
 
 ci-docker-build:
