@@ -55,30 +55,43 @@ function runJupyterServer(port: number) {
   let exec = util.promisify(child_process.exec);
 
   let labPromise: Promise<string>
+  let and: string
+  let bash: string
+  let activate: string
+  let quote: string
+  let start: string
 
   if (process.platform === 'win32') {
-    labPromise = exec(`cmd /C activate pymedphys & python -c "import secrets; print(secrets.token_hex(50))"`).then(value => {
-      let token = value.stdout;
-      return token
-    }).then(token => {
-      exec(
-        `cmd /C activate pymedphys &
-        start jupyter lab --port ${port} --no-browser --port-retries 0 --LabApp.token=${token}`
-      );
-      return token
-    })
+    and = '&';
+    bash = 'cmd /C';
+    activate = 'activate';
+    quote = '';
+    start = 'start ';
   } else {
-    labPromise = exec(`bash -c 'source activate pymedphys && python -c "import secrets; print(secrets.token_hex(50))"'`).then(value => {
-      let token = value.stdout;
-      return token
-    }).then(token => {
-      exec(
-        `bash -c 'source activate pymedphys &&
-        jupyter lab --port ${port} --no-browser --port-retries 0 --LabApp.token=${token}'`
-      );
-      return token
-    })
+    and = '&&';
+    bash = 'bash -c'
+    activate = 'source activate';
+    quote = "'";
+    start = ''
   }
+
+  const begin = `${bash} ${quote}${activate} pymedphys ${and}`
+
+  labPromise = exec(
+    `conda env update -f environment.yml ${and} ${begin} python -m ipykernel install --user --name PyMedPhys${quote}`
+  ).then(() => {
+    return exec(
+      `${begin} python -c "import secrets; print(secrets.token_hex(50))"${quote}`
+    )
+  }).then(value => {
+    let token = value.stdout;
+    return token
+  }).then(token => {
+    exec(
+      `${begin} ${start}jupyter lab --port ${port} --no-browser --port-retries 0 --LabApp.token=${token}${quote}`
+    );
+    return token
+  })
 
   labPromise.then(token => {
     console.log(`JupyterLab server running at:\n    http://localhost:${port}/lab?token=${token}`)

@@ -38,6 +38,9 @@
     "source-map-support": "^0.5.9"
   },
   "build": {
+    "extraResources": [
+      "./environment.yml"
+    ],
     "linux": {
       "target": "deb",
       "category": "science"

@@ -8,7 +8,7 @@ conda info -a
 
 conda update -q conda
 
-conda env create -f environment.yml
+conda env create -f ./application/environment.yml
 source activate pymedphys
 
 conda uninstall pymedphys
