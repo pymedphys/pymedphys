@@ -29,7 +29,7 @@ import os
 from pymedphys.utilities import compress_test_files
 
 LFS_TEST_DATA = os.path.join(
-    os.path.dirname(__file__), "../../src/pymedphys/tests/data/**/lfs-*")
+    os.path.dirname(__file__), "../../library/pymedphys/tests/data/**/lfs-*")
 
 
 def main():
