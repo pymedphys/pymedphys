@@ -58,7 +58,7 @@ components up into differently structured packages:
 The Layout of PyMedPhys
 -----------------------
 
-All source code for PyMedPhys is contained within `src/pymedphys`. Packages
+All source code for PyMedPhys is contained within `library/pymedphys`. Packages
 are levelled and placed with respect to their dependency level by directory
 name. The packages within _pack1 only depend on external packages, packages
 within _pack2 only depend on _pack1 or external, and so on.
@@ -70,4 +70,4 @@ pacakges, external dependencies, or level1, and so on.
 
 So that the api to PyMedPhys doesn't vary with the physical structure of the
 dependencies, each package is imported out to be directly accessable within
-the top namespace of `src/pymedphys`.
+the top namespace of `library/pymedphys`.
