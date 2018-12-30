@@ -74,7 +74,7 @@ setup(
         'pymssql',
         'keyring',
         'shapely',
-        'pydicom',
+        'pydicom>=1.0',
         'python-dateutil'
     ]
 )
