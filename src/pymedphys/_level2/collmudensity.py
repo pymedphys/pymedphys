@@ -59,13 +59,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .._level1.plthelpers import pcolormesh_grid
-from .._level1.collmlctypes import autodetect_leaf_pair_widths
+# from .._level1.collmlctypes import autodetect_leaf_pair_widths
+from .._level1.collmlctypes import AGILITY
 
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-__DEFAULT_LEAF_PAIR_WIDTHS = None
+__DEFAULT_LEAF_PAIR_WIDTHS = AGILITY
 __DEFAULT_GRID_RESOLUTION = 1
 __DEFAULT_MAX_LEAF_GAP = 400
 __DEFAULT_MIN_STEP_PER_PIXEL = 10
@@ -214,7 +215,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     ...     mlc = delivery_data.mlc
     ...     jaw = delivery_data.jaw
     ...
-    ...     grid = get_grid(mlc=mlc)
+    ...     grid = get_grid()
     ...     mu_density = calc_mu_density(mu, mlc, jaw)
     ...     display_mu_density(grid, mu_density)
     >>>
@@ -235,15 +236,15 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     ...     mlc = delivery_data.mlc
     ...     jaw = delivery_data.jaw
     ...
-    ...     grid = get_grid(mlc=mlc)
+    ...     grid = get_grid()
     ...     mu_density = calc_mu_density(mu, mlc, jaw)
     ...     display_mu_density(grid, mu_density)
     >>>
     >>> mu_density_from_logfile(r"a/path/goes/here") # doctest: +SKIP
 
     """
-    if leaf_pair_widths is None:
-        leaf_pair_widths = autodetect_leaf_pair_widths(np.shape(mlc)[1])
+    # if leaf_pair_widths is None:
+    #     leaf_pair_widths = autodetect_leaf_pair_widths(np.shape(mlc)[1])
 
     leaf_pair_widths = np.array(leaf_pair_widths)
 
@@ -320,8 +321,8 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
            [0.14, 0.86, 1.  , 1.  , 1.  , 0.86, 0.14],
            [0.03, 0.17, 0.2 , 0.2 , 0.2 , 0.17, 0.03]])
     """
-    if leaf_pair_widths is None:
-        leaf_pair_widths = autodetect_leaf_pair_widths(np.shape(mlc)[1])
+    # if leaf_pair_widths is None:
+    #     leaf_pair_widths = autodetect_leaf_pair_widths(np.shape(mlc)[1])
 
     leaf_pair_widths = np.array(leaf_pair_widths)
     leaf_division = leaf_pair_widths / grid_resolution
@@ -417,8 +418,8 @@ def calc_mu_density_return_grid(mu, mlc, jaw,
     """DEPRECATED. This is a temporary helper function to provide the old
     api.
     """
-    if leaf_pair_widths is None:
-        leaf_pair_widths = autodetect_leaf_pair_widths(np.shape(mlc)[1])
+    # if leaf_pair_widths is None:
+    #     leaf_pair_widths = autodetect_leaf_pair_widths(np.shape(mlc)[1])
 
     leaf_pair_widths = np.array(leaf_pair_widths)
     mu_density = calc_mu_density(
@@ -436,19 +437,19 @@ def calc_mu_density_return_grid(mu, mlc, jaw,
 
 def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
              grid_resolution=__DEFAULT_GRID_RESOLUTION,
-             leaf_pair_widths=None, mlc=None):
+             leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS):
     """Get the MU Density grid for plotting purposes.
 
     Examples
     --------
     See `pymedphys.coll.calc_mu_density`_.
     """
-    if leaf_pair_widths is None:
-        if mlc is None:
-            raise ValueError(
-                'Please provide either leaf_pair_widths or an mlc parameter')
-        if leaf_pair_widths is None:
-            leaf_pair_widths = autodetect_leaf_pair_widths(np.shape(mlc)[1])
+    # if leaf_pair_widths is None:
+    #     if mlc is None:
+    #         raise ValueError(
+    #             'Please provide either leaf_pair_widths or an mlc parameter')
+    #     if leaf_pair_widths is None:
+    #         leaf_pair_widths = autodetect_leaf_pair_widths(np.shape(mlc)[1])
 
     leaf_pair_widths = np.array(leaf_pair_widths)
 

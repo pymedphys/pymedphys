@@ -65,7 +65,7 @@ setup(
     },
     license='AGPLv3+',
     install_requires=[
-        'numpy',
+        'numpy>=1.12',
         'scipy',
         'pandas',
         'matplotlib',
@@ -74,7 +74,7 @@ setup(
         'pymssql',
         'keyring',
         'shapely',
-        'pydicom',
+        'pydicom>=1.0',
         'python-dateutil'
     ]
 )
