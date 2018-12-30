@@ -7,7 +7,7 @@ import { format as formatUrl } from 'url'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
-let mainWindow
+let mainWindow: any
 
 function createMainWindow() {
   const window = new BrowserWindow()
