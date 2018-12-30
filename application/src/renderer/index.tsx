@@ -9,9 +9,12 @@ const cellRenderer = (rowIndex: number) => {
   return <Cell>{`$${(rowIndex * 10).toFixed(2)}`}</Cell>
 };
 
+const root = document.createElement('div')
+document.body.append(root)
+
 ReactDOM.render(
   <Table numRows={10}>
     <Column name="Dollars" cellRenderer={cellRenderer} />
   </Table>,
-  document.body
+  root
 );
