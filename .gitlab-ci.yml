@@ -1,17 +1,13 @@
 variables:
   EXTERNAL_GIT_DIR: "/external-git"
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_DRIVER: overlay2
-  CONTAINER_IMAGE: registry.gitlab.com/pymedphys/pymedphys/ci
 
 stages:
   - tests
   - deploy
-  - utils
 
 library:
   stage: tests
-  image: $CONTAINER_IMAGE:latest
+  image: continuumio/miniconda3:latest
   script:
     - mkdir $EXTERNAL_GIT_DIR
     - CI_DIR=$PWD
@@ -31,20 +27,3 @@ application:
   image: electronuserland/builder:wine-chrome
   script:
     - bash ./scripts/gitlab-ci-pipelines/tests/application/01-build-application.sh
-
-ci-docker-build:
-  stage: utils
-  image: docker:stable
-  services:
-    - docker:dind
-  script:
-    # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#authenticating-to-the-container-registry
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-
-    # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#using-docker-caching
-    - docker pull $CONTAINER_IMAGE:latest || true
-    - docker build --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:$CI_COMMIT_SHA --tag $CONTAINER_IMAGE:latest ./environment
-    - docker push $CONTAINER_IMAGE:$CI_COMMIT_SHA
-    - docker push $CONTAINER_IMAGE:latest
-  only:
-    - master
