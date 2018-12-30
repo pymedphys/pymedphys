@@ -11,7 +11,8 @@
   "scripts": {
     "dev": "electron-webpack dev",
     "compile": "electron-webpack",
-    "dist": "yarn compile && electron-builder -wl"
+    "dist": "yarn compile && electron-builder -wl",
+    "dist:win": "yarn compile && electron-builder -w"
   },
   "private": true,
   "devDependencies": {
