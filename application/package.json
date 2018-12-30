@@ -21,11 +21,20 @@
     "electron-builder": "^20.38.4",
     "electron-webpack": "^2.6.1",
     "electron-webpack-ts": "^3.1.0",
+    "node-sass": "^4.11.0",
+    "sass-loader": "^7.1.0",
     "spectron": "^5.0.0",
     "typescript": "^3.2.2",
     "webpack": "^4.28.2"
   },
   "dependencies": {
+    "@blueprintjs/core": "^3.10.0",
+    "@blueprintjs/docs-theme": "^3.0.3",
+    "@blueprintjs/table": "^3.3.0",
+    "@types/react": "^16.7.18",
+    "@types/react-dom": "^16.0.11",
+    "react": "^16.7.0",
+    "react-dom": "^16.7.0",
     "source-map-support": "^0.5.9"
   },
   "build": {

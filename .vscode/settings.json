@@ -1,20 +1,12 @@
 {
-    "python.linting.pylintUseMinimalCheckers": false,
-    "files.trimTrailingWhitespace": true,
-    "editor.formatOnSave": true,
-    "restructuredtext.confPath": "${workspaceFolder}\\docs",
-    "editor.detectIndentation": false,
-    "editor.insertSpaces": true,
-    "[javascript]": {
-        "editor.tabSize": 2
-    },
-    "[html]": {
-        "editor.tabSize": 2
-    },
-    "[json]": {
-        "editor.tabSize": 2
-    },
-    "[python]": {
-        "editor.tabSize": 4
-    }
+  "python.linting.pylintUseMinimalCheckers": false,
+  "files.trimTrailingWhitespace": true,
+  "editor.formatOnSave": true,
+  "restructuredtext.confPath": "${workspaceFolder}\\docs",
+  "editor.detectIndentation": false,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "[python]": {
+    "editor.tabSize": 4
+  }
 }
