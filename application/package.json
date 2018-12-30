@@ -16,10 +16,13 @@
   },
   "private": true,
   "devDependencies": {
+    "@babel/preset-react": "^7.0.0",
     "electron": "^4.0.0",
     "electron-builder": "^20.38.4",
     "electron-webpack": "^2.6.1",
+    "electron-webpack-ts": "^3.1.0",
     "spectron": "^5.0.0",
+    "typescript": "^3.2.2",
     "webpack": "^4.28.2"
   },
   "dependencies": {
