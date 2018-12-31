@@ -36,7 +36,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
 import numpy as np
 
-from pymedphys.tomo import unshuffle_sinogram
+from pymedphys.tomo import unshuffle
 
 
 def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
