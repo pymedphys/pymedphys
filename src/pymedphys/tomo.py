@@ -31,6 +31,7 @@ Available Functions
 -------------------
 >>> from pymedphys.tomo import read_sin_csv_file
 >>> from pymedphys.tomo import read_sin_bin_file
+>>> from pymedphys.tomo import crop_sinogram
 """
 
 # pylint: disable=W0401,W0614

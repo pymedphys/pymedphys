@@ -85,26 +85,22 @@ def read_sin_bin_file(file_name):
 
     return sinogram
 
+def crop_sinogram(sinogram):
+    """
+    Return a symmetrically cropped sinogram, such that always-closed
+    leaves are excluded and the sinogram center is maintained.
+    """
+    include = [False for f in range(64)]
+    for i, projection in enumerate(sinogram):
+        for j, leaf in enumerate(projection):
+            if sinogram[i][j] > 0.0:
+                include[j] = True
+    ### BREAKS HERE
+    gap = max([max(i-32, 31-i) for i, v in enumerate(include) if v])
+    sinogram = [p[32 - gap:32 + gap] for p in sinogram[i]]
+    return sinogram
 
-def crop(sinogram):
-    """
-    crop is not implemented
-    """
     return "crop is not implemented"
-
-
-def make_histogram(sinogram):
-    """
-    make_histogram is not implemented
-    """
-    return "make_histogram is not implemented"
-
-
-def find_modulation_factor(sinogram):
-    """
-    find_modulation_factor is not implemented
-    """
-    return "find_modulation_factor is not implemented"
 
 
 def unshuffle(array):
@@ -153,3 +149,17 @@ def unshuffle(array):
     result = [[p[32 - gap:32 + gap] for p in result[i]] for i in range(51)]
 
     return result
+
+
+def make_histogram(sinogram):
+    """
+    make_histogram is not implemented
+    """
+    return "make_histogram is not implemented"
+
+
+def find_modulation_factor(sinogram):
+    """
+    find_modulation_factor is not implemented
+    """
+    return "find_modulation_factor is not implemented"

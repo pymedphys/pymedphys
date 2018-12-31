@@ -28,7 +28,7 @@ import os
 
 from pymedphys.tomo import read_sin_csv_file
 from pymedphys.tomo import read_sin_bin_file
-from pymedphys.tomo import crop
+from pymedphys.tomo import crop_sinogram
 from pymedphys.tomo import make_histogram
 from pymedphys.tomo import find_modulation_factor
 from pymedphys.tomo import unshuffle
@@ -51,11 +51,24 @@ def test_read_sin_csv_file():
 
 def test_read_sin_bin_file():
     assert read_sin_bin_file(SIN_BIN_FILE).shape == (400, 64)
+# convert this to a nested list
 
 
-def test_crop():
-    print(crop(None))
+STRIP = [[0.0]*30 + [1.0]*4 + [0.0]*30]
+# print(STRIP)
+
+
+def test_crop_sinogram():
+    print(crop_sinogram(STRIP))
     print("test_crop is not implemented")
+
+
+def test_unshuffle():
+    unshuffled = unshuffle([[0]*25 + [1.0]*14 + [0]*25]*510)
+    assert len(unshuffled) == 51          # number of angles is 51
+    assert len(unshuffled[0]) == 10       # number of couch increments
+    assert len(unshuffled[0][0]) == 16    # number of visible leaves (is even)
+    assert unshuffled[0][0][0] == 0       # first leaf is closed
 
 
 def test_make_histogram():
@@ -68,19 +81,10 @@ def test_find_modulation_factor():
     print("test_find_modulation_factor is not implemented")
 
 
-def test_unshuffle():
-    unshuffled = unshuffle([[0]*25 + [1.0]*14 + [0]*25]*510)
-    assert len(unshuffled) == 51          # number of angles is 51
-    assert len(unshuffled[0]) == 10       # number of couch increments
-    assert len(unshuffled[0][0]) == 16    # number of visible leaves (is even)
-    assert unshuffled[0][0][0] == 0       # first leaf is closed
-
-
 if __name__ == "__main__":
     # test_read_sin_csv_file()
-    test_read_sin_bin_file()
-    # test_crop()
+    # test_read_sin_bin_file()
+    test_crop_sinogram()
+    # test_unshuffle()
     # test_make_histogram()
     # test_find_modulation_factor()
-    # test_unshuffle()
-    # test_unshuffle_sinogram_csv()
