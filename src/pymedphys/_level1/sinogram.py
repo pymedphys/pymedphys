@@ -109,31 +109,45 @@ def unshuffle_sng(sinogram):
     to the same gantry rotation angle.
 
     """
-    # SPLIT SINOGRAM INTO 51 ANGLE-INDEXED SEGMENTS
     unshufd = [[] for i in range(51)]
     idx = 0
-    for row in sinogram:
-        unshufd[idx].append(row)
+    for prj in sinogram:
+        unshufd[idx].append(prj)
         idx = (idx + 1) % 51
-    # SUPPRESS EXTERIOR LEAVES WITH ZERO LEAF-OPEN TIMES
-    include = [False for f in range(64)]
-    for i, angle in enumerate(unshufd):
-        for j, couch_step in enumerate(angle):
-            for k, _ in enumerate(couch_step):
-                if unshufd[i][j][k] > 0.0:
-                    include[k] = True
-    gap = max([2 + max(i-32, 31-i) for i, v in enumerate(include) if v])
-    unshufd = [[p[32 - gap:32 + gap] for p in unshufd[i]] for i in range(51)]
-
     return unshufd
 
 
-def make_histogram(sinogram):
+def make_histogram(sinogram, num_bins=10):
     """
-    make_histogram is not implemented
-    """
-    return "make_histogram is not implemented"
+    Return a histogram of leaf-open-times for the provided sinogram
+    comprised of the specified number of bins, in the form of a list
+    of tuples: [(bin, count)...] where bin is a 2-element array setting
+    the bounds and count in the number leaf-open-times in the bin.
 
+    """
+
+    lfts = sinogram.flatten()
+    # print(list(lfts))
+
+    bin_inc = (max(lfts) - min(lfts)) / num_bins
+    bin_min = min(lfts)
+    bin_max = max(lfts)
+
+    bins1 = np.arange(bin_min, bin_max,  bin_inc)
+    bins2 = np.arange(bin_inc, bin_max+bin_inc, bin_inc)
+    bins = np.dstack((bins1,bins2))[0]
+
+    counts = [0 for b in bins]
+
+
+    for lft in lfts:
+        for idx, bin in enumerate(bins):
+            if lft >= bin[0] and lft < bin[1]:
+                counts[idx] = counts[idx] + 1
+
+    histogram = list(zip(bins, counts))
+
+    return histogram
 
 def find_modulation_factor(sinogram):
     """
