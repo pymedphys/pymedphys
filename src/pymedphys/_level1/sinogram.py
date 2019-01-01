@@ -95,12 +95,10 @@ def crop_sinogram(sinogram):
         for j, leaf in enumerate(projection):
             if sinogram[i][j] > 0.0:
                 include[j] = True
-    ### BREAKS HERE
-    gap = max([max(i-32, 31-i) for i, v in enumerate(include) if v])
-    sinogram = [p[32 - gap:32 + gap] for p in sinogram[i]]
+    include = include or include[::-1]
+    idx = [i for i,yes in enumerate(include) if yes]
+    sinogram = [[projection[i] for i in idx] for projection in sinogram]
     return sinogram
-
-    return "crop is not implemented"
 
 
 def unshuffle(array):
