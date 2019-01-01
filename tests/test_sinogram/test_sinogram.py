@@ -54,13 +54,10 @@ def test_read_sin_bin_file():
 # convert this to a nested list
 
 
-STRIP = [[0.0]*30 + [1.0]*4 + [0.0]*30]
-# print(STRIP)
-
-
 def test_crop_sinogram():
-    print(crop_sinogram(STRIP))
-    print("test_crop is not implemented")
+    STRIP = [[0.0]*31 + [1.0]*2 + [0.0]*31,
+             [0.0]*31 + [1.0]*2 + [0.0]*31]
+    assert crop_sinogram(STRIP) == [[1.0, 1.0], [1.0, 1.0]]
 
 
 def test_unshuffle():
