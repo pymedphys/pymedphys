@@ -29,9 +29,11 @@ A tomotherapy toolbox.
 
 Available Functions
 -------------------
->>> from pymedphys.tomo import read_sin_csv_file
->>> from pymedphys.tomo import read_sin_bin_file
->>> from pymedphys.tomo import crop_sinogram
+>>> from pymedphys.tomo import read_sng_csv_file
+>>> from pymedphys.tomo import read_sng_bin_file
+>>> from pymedphys.tomo import crop_sng
+>>> from pymedphys.tomo import unshuffle_sng
+>>> from pymedphys.tomo import make_histogram
 """
 
 # pylint: disable=W0401,W0614

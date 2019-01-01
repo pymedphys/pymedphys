@@ -24,7 +24,7 @@ API
 
 .. autofunction:: pymedphys.tomo.crop_sinogram
 
-.. autofunction:: pymedphys.tomo.unshuffle
+.. autofunction:: pymedphys.tomo.unshuffle_sng
 
 .. autofunction:: pymedphys.tomo.make_histogram
 
