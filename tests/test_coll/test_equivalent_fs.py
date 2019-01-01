@@ -24,9 +24,9 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-import pytest
+# import pytest
 
-from pymedphys.coll import mlc_equivalent_square_fs, MILLENIUM, AGILITY
+from pymedphys.coll import mlc_equivalent_square_fs, A_LEAF_TYPE, AGILITY
 
 
 def test_equivalent_mlc():
@@ -45,7 +45,7 @@ def test_equivalent_mlc():
     mlc_segments = np.array(mlc_segments) * 10  # convert to mm
 
     assert abs(
-        mlc_equivalent_square_fs(mlc_segments, MILLENIUM) - 107.25
+        mlc_equivalent_square_fs(mlc_segments, A_LEAF_TYPE) - 107.25
     ) < 0.05
 
 
