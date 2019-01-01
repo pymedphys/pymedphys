@@ -38,7 +38,7 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def read_sin_csv_file(file_name):
+def read_sng_csv_file(file_name):
     """
     Return patient ID and sinogram array produced by reading a RayStation sinogram
     CSV file with the provided file name.
@@ -70,7 +70,7 @@ def read_sin_csv_file(file_name):
     return document_id, array
 
 
-def read_sin_bin_file(file_name):
+def read_sng_bin_file(file_name):
     """
     Return sinogram np.array produced by reading an Accuray sinogram
     BIN file with the provided file name. BIN files are sinograms
@@ -85,10 +85,11 @@ def read_sin_bin_file(file_name):
 
     return sinogram
 
-def crop_sinogram(sinogram):
+def crop_sng(sinogram):
     """
     Return a symmetrically cropped sinogram, such that always-closed
     leaves are excluded and the sinogram center is maintained.
+
     """
     include = [False for f in range(64)]
     for i, projection in enumerate(sinogram):
@@ -101,52 +102,30 @@ def crop_sinogram(sinogram):
     return sinogram
 
 
-def unshuffle(array):
+def unshuffle_sng(sinogram):
     """
-    Unshuffle sinogram, i.e. separate leaf pattern into the 51
-    tomtherapy discretization angles, accepting a 2D list of lists
-    and returning a 3D nested list of gantry positions, each
-    containting a list of leaf-open-fractions.
-    Return a 3-D nested array from a 2-D nested array.
-        Input
-        -----
-        [
-          [ [leaf-open-fx] [leaf-open-fx] ... ] -> couch+gantry incr
-          [ [leaf-open-fx] [leaf-open-fx] ... ] -> couch+gantry incr
-        ]
-        Output
-        ------
-        [
-            [ -> gantry incr
-                [ [leaf-open-fx] [leaf-open-fx] ... ]   -> couch incr
-                [ [leaf-open-fx] [leaf-open-fx] ... ]   -> couch incr
-            ]
-            [ -> gantry incr
-                [ [leaf-open-fx] [leaf-open-fx] ... ]   -> couch incr
-                [ [leaf-open-fx] [leaf-open-fx] ... ]   -> couch incr
-            ]
-        ]
+    Return a list of 51 sinograms, by unshuffling the provided
+    sinogram; so that all projections in the result correspond
+    to the same gantry rotation angle.
+
     """
-
-    assert len(array[0]) == 64  # num leaves
-
     # SPLIT SINOGRAM INTO 51 ANGLE-INDEXED SEGMENTS
-    result = [[] for i in range(51)]
+    unshufd = [[] for i in range(51)]
     idx = 0
-    for row in array:
-        result[idx].append(row)
+    for row in sinogram:
+        unshufd[idx].append(row)
         idx = (idx + 1) % 51
     # SUPPRESS EXTERIOR LEAVES WITH ZERO LEAF-OPEN TIMES
     include = [False for f in range(64)]
-    for i, angle in enumerate(result):
+    for i, angle in enumerate(unshufd):
         for j, couch_step in enumerate(angle):
             for k, _ in enumerate(couch_step):
-                if result[i][j][k] > 0.0:
+                if unshufd[i][j][k] > 0.0:
                     include[k] = True
     gap = max([2 + max(i-32, 31-i) for i, v in enumerate(include) if v])
-    result = [[p[32 - gap:32 + gap] for p in result[i]] for i in range(51)]
+    unshufd = [[p[32 - gap:32 + gap] for p in unshufd[i]] for i in range(51)]
 
-    return result
+    return unshufd
 
 
 def make_histogram(sinogram):

@@ -7,20 +7,20 @@ Tomotherapy Toolbox
 Variables
 ---------
 
-    sinogram: list of lists of floats
-
-    [ projection = [ leaf-open-time,
-                     leaf-open-time, ... *64]
-      projection = [ leaf-open-time,
-                     leaf-open-time, ... *64]
-      ... *num_projections ]
+    +------+----------------+----------------------+------------------+
+    | sng  | sinogram       | [ proj, proj, ... ]  | 0 < len < np.inf |
+    +------+----------------+----------------------+------------------+
+    | prj  | projection     | [ lft, lft, ... ]    | len=64           |
+    +------+----------------+----------------------+------------------+
+    | lft  | leaf open time | float                | >= 0.0           |
+    +------+----------------+----------------------+------------------+
 
 API
 ---
 
-.. autofunction:: pymedphys.tomo.read_sin_csv_file
+.. autofunction:: pymedphys.tomo.read_sng_csv_file
 
-.. autofunction:: pymedphys.tomo.read_sin_bin_file
+.. autofunction:: pymedphys.tomo.read_sng_bin_file
 
 .. autofunction:: pymedphys.tomo.crop_sinogram
 
