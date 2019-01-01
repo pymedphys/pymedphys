@@ -34,6 +34,7 @@ Available Functions
 >>> from pymedphys.tomo import crop_sng
 >>> from pymedphys.tomo import unshuffle_sng
 >>> from pymedphys.tomo import make_histogram
+>>> from pymedphys.tomo import find_modulation_factor
 """
 
 # pylint: disable=W0401,W0614

@@ -127,18 +127,16 @@ def make_histogram(sinogram, num_bins=10):
     """
 
     lfts = sinogram.flatten()
-    # print(list(lfts))
 
     bin_inc = (max(lfts) - min(lfts)) / num_bins
     bin_min = min(lfts)
     bin_max = max(lfts)
 
-    bins1 = np.arange(bin_min, bin_max,  bin_inc)
-    bins2 = np.arange(bin_inc, bin_max+bin_inc, bin_inc)
-    bins = np.dstack((bins1,bins2))[0]
+    bins_strt = np.arange(bin_min, bin_max,  bin_inc)
+    bins_stop = np.arange(bin_inc, bin_max+bin_inc, bin_inc)
+    bins = np.dstack((bins_strt,bins_stop))[0]
 
     counts = [0 for b in bins]
-
 
     for lft in lfts:
         for idx, bin in enumerate(bins):
@@ -151,6 +149,13 @@ def make_histogram(sinogram, num_bins=10):
 
 def find_modulation_factor(sinogram):
     """
-    find_modulation_factor is not implemented
+    Return as float the ratio of the maximum leaf open time (assumed
+    fully open) to the mean leaf open time, as determined over all
+    non-zero leaf open times, where zero is interpreted as blocked
+    versus modulated.
+
     """
-    return "find_modulation_factor is not implemented"
+    lfts = [lft for lft in sinogram.flatten() if lft > 0.0]
+    modulation_factor = max(lfts) / np.mean(lfts)
+
+    return modulation_factor

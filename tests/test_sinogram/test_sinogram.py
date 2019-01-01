@@ -79,8 +79,8 @@ def test_make_histogram():
 
 
 def test_find_modulation_factor():
-    print(find_modulation_factor(None))
-    print("test_find_modulation_factor is not implemented")
+    sinogram = read_sng_csv_file(SIN_CSV_FILE)[-1]
+    assert np.isclose(find_modulation_factor(sinogram), 2.762391)
 
 
 if __name__ == "__main__":
@@ -88,5 +88,5 @@ if __name__ == "__main__":
     # test_read_sin_bin_file()
     # test_crop_sinogram()
     # test_unshuffle()
-    test_make_histogram()
-    # test_find_modulation_factor()
+    # test_make_histogram()
+    test_find_modulation_factor()
