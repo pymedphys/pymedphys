@@ -25,6 +25,7 @@
 
 
 import os
+import numpy as np
 
 from pymedphys.tomo import read_sng_csv_file
 from pymedphys.tomo import read_sng_bin_file
@@ -68,8 +69,13 @@ def test_unshuffle():
 
 
 def test_make_histogram():
-    print(make_histogram(None))
-    print("test_make_histogram is not implemented")
+    sinogram = read_sng_csv_file(SIN_CSV_FILE)[-1]
+    assert np.allclose(make_histogram(sinogram)[0][0], [0. , 0.1])
+    assert make_histogram(sinogram)[0][1] == 25894
+    # [(array([0. , 0.1]), 25894),
+    #  (array([0.1, 0.2]), 0),
+    #  (array([0.2, 0.3]), 11),
+    #  (array([0.3, 0.4]), 3523), ...]
 
 
 def test_find_modulation_factor():
@@ -80,7 +86,7 @@ def test_find_modulation_factor():
 if __name__ == "__main__":
     # test_read_sin_csv_file()
     # test_read_sin_bin_file()
-    test_crop_sinogram()
+    # test_crop_sinogram()
     # test_unshuffle()
-    # test_make_histogram()
+    test_make_histogram()
     # test_find_modulation_factor()
