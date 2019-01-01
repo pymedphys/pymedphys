@@ -10,7 +10,7 @@ Variables
     +------+----------------+----------------------+------------------+
     | sng  | sinogram       | [ proj, proj, ... ]  | 0 < len < np.inf |
     +------+----------------+----------------------+------------------+
-    | prj  | projection     | [ lft, lft, ... ]    | len=64           |
+    | prj  | projection     | [ lft, lft, ... ]    | len==64          |
     +------+----------------+----------------------+------------------+
     | lft  | leaf open time | float                | >= 0.0           |
     +------+----------------+----------------------+------------------+
@@ -22,7 +22,7 @@ API
 
 .. autofunction:: pymedphys.tomo.read_sng_bin_file
 
-.. autofunction:: pymedphys.tomo.crop_sinogram
+.. autofunction:: pymedphys.tomo.crop_sng
 
 .. autofunction:: pymedphys.tomo.unshuffle_sng
 
