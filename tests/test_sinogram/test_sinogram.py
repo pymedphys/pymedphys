@@ -26,12 +26,12 @@
 
 import os
 
-from pymedphys.tomo import read_sin_csv_file
-from pymedphys.tomo import read_sin_bin_file
-from pymedphys.tomo import crop_sinogram
+from pymedphys.tomo import read_sng_csv_file
+from pymedphys.tomo import read_sng_bin_file
+from pymedphys.tomo import crop_sng
 from pymedphys.tomo import make_histogram
 from pymedphys.tomo import find_modulation_factor
-from pymedphys.tomo import unshuffle
+from pymedphys.tomo import unshuffle_sng
 
 SIN_CSV_FILE = os.path.join(
     os.path.dirname(__file__), "../data/tomo/sinogram.csv")
@@ -41,7 +41,7 @@ SIN_BIN_FILE = os.path.join(
 
 
 def test_read_sin_csv_file():
-    pat_id, results = read_sin_csv_file(SIN_CSV_FILE)
+    pat_id, results = read_sng_csv_file(SIN_CSV_FILE)
     assert pat_id == '00000 - ANONYMOUS, PATIENT'
     num_projections = len(results)
     assert num_projections == 464
@@ -50,21 +50,20 @@ def test_read_sin_csv_file():
 
 
 def test_read_sin_bin_file():
-    assert read_sin_bin_file(SIN_BIN_FILE).shape == (400, 64)
+    assert read_sng_bin_file(SIN_BIN_FILE).shape == (400, 64)
 # convert this to a nested list
 
 
 def test_crop_sinogram():
     STRIP = [[0.0]*31 + [1.0]*2 + [0.0]*31,
              [0.0]*31 + [1.0]*2 + [0.0]*31]
-    assert crop_sinogram(STRIP) == [[1.0, 1.0], [1.0, 1.0]]
+    assert crop_sng(STRIP) == [[1.0, 1.0], [1.0, 1.0]]
 
 
 def test_unshuffle():
-    unshuffled = unshuffle([[0]*25 + [1.0]*14 + [0]*25]*510)
-    assert len(unshuffled) == 51          # number of angles is 51
-    assert len(unshuffled[0]) == 10       # number of couch increments
-    assert len(unshuffled[0][0]) == 16    # number of visible leaves (is even)
+    unshuffled = unshuffle_sng([[0]*25 + [1.0]*14 + [0]*25]*510)
+    assert len(unshuffled) == 51          # number of angles
+    assert len(unshuffled[0]) == 10       # number of projections
     assert unshuffled[0][0][0] == 0       # first leaf is closed
 
 
