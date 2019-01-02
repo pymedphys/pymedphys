@@ -28,11 +28,9 @@ import numpy as np
 import os
 
 # DISTANCE FUNCTIONS
-from pymedphys.dose import make_dist_vals
-from pymedphys.dose import get_dist_vals
+from pymedphys.dose import make_dist_vals, get_dist_vals
 # DOSE FUNCTIONS
-from pymedphys.dose import make_dose_vals
-from pymedphys.dose import get_dose_vals
+from pymedphys.dose import make_dose_vals, get_dose_vals
 # PROFILE FUNCTIONS
 from pymedphys.dose import make_dose_prof
 from pymedphys.dose import make_pulse_dose_prof
@@ -44,17 +42,13 @@ from pymedphys.dose import is_wedged
 # SLICING FUNCTIONS
 from pymedphys.dose import find_strt_stop
 from pymedphys.dose import slice_dose_prof
-from pymedphys.dose import find_edges
-from pymedphys.dose import find_umbra
+from pymedphys.dose import find_edges, find_umbra
 # SCALING FUNCTIONS
-from pymedphys.dose import find_dose
-from pymedphys.dose import find_dists
-from pymedphys.dose import norm_dose_vals
-from pymedphys.dose import norm_dist_vals
+from pymedphys.dose import find_dose, find_dists
+from pymedphys.dose import norm_dose_vals, norm_dist_vals
 from pymedphys.dose import cent_dose_prof
 # FLATNESS & SYMMETRY FUNCTIONS
-from pymedphys.dose import flatness
-from pymedphys.dose import symmetry
+from pymedphys.dose import flatness, symmetry
 from pymedphys.dose import make_dose_prof_sym
 
 
