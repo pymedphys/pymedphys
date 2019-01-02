@@ -36,7 +36,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
 import numpy as np
 
-from pymedphys.tomo import unshuffle_sng
+from pymedphys.tomo import unshuffle_sng, crop_sng
 
 
 def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
@@ -81,7 +81,7 @@ def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
         reader = csv.reader(csvfile, delimiter=',')
         array = np.asarray([line[1:] for line in reader]).astype(float)
 
-    result = unshuffle_sinogram(array)
+    result = unshuffle_sng(crop_sng(array))
 
     fig.text(0.03, 0.985, document_id,
              horizontalalignment='left', verticalalignment='center')
@@ -102,11 +102,9 @@ def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
 
 if __name__ == '__main__':
     import os
-    # print(os.path.join(os.getcwd(), 'scripts\\shareables\\tomo_sinogram_csv2pdf'))
-    print(  os.path.join(        os.path.split(__file__)[0]  , 'sinogram.csv'     ))
 
     try:
-        test = ".\\scripts\\shareables\\tomo_sinogram_csv2pdf\\sinogram.csv"
+        test = os.path.join(os.getcwd(), 'tests', 'data', 'tomo', 'sinogram.csv')
         tomo_sinogram_csv2pdf(test, show=True, save=True)
     except IOError:
         print('No sinogram csv file.')
