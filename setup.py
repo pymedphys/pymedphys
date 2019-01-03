@@ -23,7 +23,7 @@ def execfile(fname, globs, locs=None):
 
 
 version_ns = {}
-execfile(pjoin(repo_root, 'library', 'pymedphys', '_version.py'), version_ns)
+execfile(pjoin(repo_root, 'src', 'pymedphys', '_version.py'), version_ns)
 
 version = version_ns['__version__']
 
@@ -53,9 +53,9 @@ setup(
         'Intended Audience :: Science/Research',
         'Intended Audience :: Healthcare Industry'
     ],
-    packages=find_packages('library'),
-    package_dir={'': 'library'},
-    py_modules=[splitext(basename(path))[0] for path in glob('library/*.py')],
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
+    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     include_package_data=True,
     package_data={'pymedphys': []},
     entry_points={
