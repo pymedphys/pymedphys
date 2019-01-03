@@ -18,7 +18,10 @@
       "email": "sbiggs@mymedphys.com"
     }
   ],
-  "scripts": {},
+  "scripts": {
+    "dev": "webpack-dev-server --mode development --hot --progress --color --port 3000 --open",
+    "build": "webpack -p --progress --colors"
+  },
   "dependencies": {
     "@blueprintjs/core": "^3.10.0",
     "@blueprintjs/table": "^3.3.0",
@@ -29,23 +32,23 @@
     "@phosphor/widgets": "~1.6.0",
     "@phosphor/coreutils": "~1.3.0",
     "react": "~16.4.2",
-    "react-dom": "~16.4.2",
-    "source-map-support": "^0.5.9"
+    "react-dom": "~16.4.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.2.2",
-    "@babel/preset-react": "^7.0.0",
     "@types/react": "~16.4.18",
-    "electron": "^4.0.0",
-    "electron-builder": "^20.38.4",
-    "electron-webpack": "^2.6.1",
-    "electron-webpack-ts": "^3.1.0",
     "node-sass": "^4.11.0",
     "sass-loader": "^7.1.0",
-    "spectron": "^5.0.0",
+    "style-loader": "^0.23.1",
+    "react-hot-loader": "^4.3.11",
     "tslint": "^5.12.0",
+    "html-loader": "^1.0.0-alpha.0",
+    "html-webpack-plugin": "^4.0.0-alpha",
+    "mini-css-extract-plugin": "^0.4.4",
     "typescript": "^3.2.2",
-    "webpack": "^4.28.2"
+    "webpack": "^4.20.2",
+    "webpack-cleanup-plugin": "^0.5.1",
+    "webpack-cli": "^3.1.2",
+    "webpack-dev-server": "^3.1.9"
   },
   "private": true
 }
