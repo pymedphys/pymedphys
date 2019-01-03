@@ -29,10 +29,10 @@ A tomotherapy toolbox.
 
 Available Functions
 -------------------
->>> from pymedphys.sinogram import read_sng_csv_file
->>> from pymedphys.sinogram import read_sng_bin_file
->>> from pymedphys.sinogram import crop_sng
->>> from pymedphys.sinogram import unshuffle_sng
+>>> from pymedphys.sinogram import read_csv_file
+>>> from pymedphys.sinogram import read_bin_file
+>>> from pymedphys.sinogram import crop
+>>> from pymedphys.sinogram import unshuffle
 >>> from pymedphys.sinogram import make_histogram
 >>> from pymedphys.sinogram import find_modulation_factor
 """
