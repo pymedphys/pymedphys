@@ -72,6 +72,7 @@ setup(
     entry_points={
         'console_scripts': [
             'trf2csv=pymedphys.entry_points.trf2csv:trf2csv_cli',
+            'pymedphys-gui=pymedphys.entry_points.gui:gui'
         ],
     },
     license='AGPLv3+',
