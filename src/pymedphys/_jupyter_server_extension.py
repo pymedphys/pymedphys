@@ -3,21 +3,42 @@
 
 
 import os
+import re
+from glob import glob
 
-from notebook.base.handlers import IPythonHandler
+from notebook.base.handlers import IPythonHandler, FileFindHandler
 from notebook.utils import url_path_join as ujoin
 
-from jinja2 import FileSystemLoader
+from jinja2 import FileSystemLoader, Markup
 
 HERE = os.path.dirname(__file__)
-GUI_PATH = os.path.join(HERE, 'gui')
+GUI_PATH = os.path.join(HERE, 'gui', 'build')
 LOADER = FileSystemLoader(GUI_PATH)
 
 
 def get_pymedphys_handlers(base_url):
+    build_dir = os.path.join(GUI_PATH)
+    build_files = glob(os.path.join(build_dir, '*'))
+
+    print(build_dir)
+
+    rel_paths = [os.path.relpath(item, build_dir) for item in build_files]
+
+    build_escaped = [re.escape(item) for item in rel_paths]
+    build_strings = '|'.join(build_escaped)
+
+    static_handler_regex = "/pymedphys/({})".format(build_strings)
+
+    print(static_handler_regex)
+
     pymedphys_handlers = [
         (
-            ujoin(base_url, r'/pymedphys/.*'),
+            ujoin(base_url, static_handler_regex),
+            FileFindHandler,
+            {'path': build_dir}
+        ),
+        (
+            ujoin(base_url, r'/pymedphys'),
             PyMedPhysHandler
         )
     ]
@@ -27,8 +48,10 @@ def get_pymedphys_handlers(base_url):
 
 class PyMedPhysHandler(IPythonHandler):
     def get(self):
-        return self.write(
-            self.render_template("index.html", base_url=self.base_url))
+        base_tag = Markup(
+            '<base href="{}pymedphys/"></base>'.format(self.base_url))
+        return self.write(self.render_template(
+            "index.html", base_url=self.base_url, base_tag=base_tag))
 
     def get_template(self, name):
         return LOADER.load(self.settings['jinja2_env'], name)
