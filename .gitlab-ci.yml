@@ -21,9 +21,3 @@ library:
     # Only install private packages if `RUN_PRIVATE_TESTS` is set to yes
     - if [ "$RUN_PRIVATE_TESTS" = yes ]; then bash ./scripts/gitlab-ci-pipelines/tests/library/03-install-private.sh; fi
     - bash ./scripts/gitlab-ci-pipelines/tests/library/04-test.sh
-
-application:
-  stage: tests
-  image: electronuserland/builder:wine-chrome
-  script:
-    - bash ./scripts/gitlab-ci-pipelines/tests/application/01-build-application.sh
