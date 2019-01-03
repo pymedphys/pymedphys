@@ -1,15 +1,15 @@
-var webpack = require('webpack');
-var path = require('path');
+const webpack = require('webpack');
+const path = require('path');
 
 // variables
-var isProduction = process.argv.indexOf('-p') >= 0 || process.env.NODE_ENV === 'production';
-var sourcePath = path.join(__dirname, './src');
-var outPath = path.join(__dirname, './build');
+const isProduction = process.argv.indexOf('-p') >= 0 || process.env.NODE_ENV === 'production';
+const sourcePath = path.join(__dirname, './src');
+const outPath = path.join(__dirname, './build');
 
 // plugins
-var HtmlWebpackPlugin = require('html-webpack-plugin');
-var MiniCssExtractPlugin = require('mini-css-extract-plugin');
-var WebpackCleanupPlugin = require('webpack-cleanup-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const WebpackCleanupPlugin = require('webpack-cleanup-plugin');
 
 module.exports = {
   context: sourcePath,
@@ -33,7 +33,6 @@ module.exports = {
   },
   module: {
     rules: [
-      // .ts, .tsx
       {
         test: /\.tsx?$/,
         use: [
@@ -44,7 +43,14 @@ module.exports = {
           'ts-loader'
         ].filter(Boolean)
       },
-      // css
+      {
+        test: /\.scss$/,
+        use: [
+          "style-loader", // creates style nodes from JS strings
+          "css-loader", // translates CSS into CommonJS
+          "sass-loader" // compiles Sass to CSS, using Node Sass by default
+        ]
+      },
       {
         test: /\.css$/,
         use: [
@@ -78,7 +84,6 @@ module.exports = {
           }
         ]
       },
-      // static assets
       { test: /\.html$/, use: 'html-loader' },
       { test: /\.(a?png|svg)$/, use: 'url-loader?limit=10000' },
       { test: /\.(jpe?g|gif|bmp|mp3|mp4|ogg|wav|eot|ttf|woff|woff2)$/, use: 'file-loader' }
