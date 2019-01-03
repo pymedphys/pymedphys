@@ -93,13 +93,8 @@ to install Chocolatey.
 Git, Git LFS, and Yarn
 ----------------------
 
-<<<<<<< HEAD
 Use Chocolatey within an administrator command prompt to install Git,
 Git LFS, and yarn like so:
-=======
-Use Chocolatey within an administrator command prompt to install Git and
-Git LFS like so:
->>>>>>> origin/master
 
 .. code:: bash
 
