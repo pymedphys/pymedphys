@@ -6,4 +6,4 @@ set -ex
 
 source activate pymedphys
 conda update --all -y
-conda env export | grep -v "^prefix: " > ./application/environment.yml
+conda env export | grep -v "^prefix: " > ./environment.yml
