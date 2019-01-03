@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
 import "./style.scss"
-// import { matplotlib } from './matplotlib';
+import { matplotlib } from './matplotlib';
 
 import { Cell, Column, Table } from "@blueprintjs/table";
 
@@ -26,3 +26,5 @@ ReactDOM.render(
   </Table>,
   root
 );
+
+matplotlib(app)
