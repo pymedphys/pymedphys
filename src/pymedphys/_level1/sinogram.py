@@ -38,7 +38,7 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def read_sng_csv_file(file_name):
+def read_csv_file(file_name):
     """
     Return patient ID and sinogram array produced by reading a RayStation sinogram
     CSV file with the provided file name.
@@ -70,7 +70,7 @@ def read_sng_csv_file(file_name):
     return document_id, array
 
 
-def read_sng_bin_file(file_name):
+def read_bin_file(file_name):
     """
     Return sinogram np.array produced by reading an Accuray sinogram
     BIN file with the provided file name. BIN files are sinograms
@@ -85,7 +85,8 @@ def read_sng_bin_file(file_name):
 
     return sinogram
 
-def crop_sng(sinogram):
+
+def crop(sinogram):
     """
     Return a symmetrically cropped sinogram, such that always-closed
     leaves are excluded and the sinogram center is maintained.
@@ -97,12 +98,12 @@ def crop_sng(sinogram):
             if sinogram[i][j] > 0.0:
                 include[j] = True
     include = include or include[::-1]
-    idx = [i for i,yes in enumerate(include) if yes]
+    idx = [i for i, yes in enumerate(include) if yes]
     sinogram = [[projection[i] for i in idx] for projection in sinogram]
     return sinogram
 
 
-def unshuffle_sng(sinogram):
+def unshuffle(sinogram):
     """
     Return a list of 51 sinograms, by unshuffling the provided
     sinogram; so that all projections in the result correspond
@@ -134,7 +135,7 @@ def make_histogram(sinogram, num_bins=10):
 
     bins_strt = np.arange(bin_min, bin_max,  bin_inc)
     bins_stop = np.arange(bin_inc, bin_max+bin_inc, bin_inc)
-    bins = np.dstack((bins_strt,bins_stop))[0]
+    bins = np.dstack((bins_strt, bins_stop))[0]
 
     counts = [0 for b in bins]
 
@@ -146,6 +147,7 @@ def make_histogram(sinogram, num_bins=10):
     histogram = list(zip(bins, counts))
 
     return histogram
+
 
 def find_modulation_factor(sinogram):
     """
