@@ -18,24 +18,7 @@
       "email": "sbiggs@mymedphys.com"
     }
   ],
-  "scripts": {
-    "dev": "electron-webpack dev",
-    "compile": "electron-webpack",
-    "dist": "yarn compile && electron-builder -wl",
-    "dist:win": "yarn compile && electron-builder -w"
-  },
-  "build": {
-    "extraResources": [
-      "./environment.yml"
-    ],
-    "linux": {
-      "target": "deb",
-      "category": "science"
-    },
-    "win": {
-      "target": "portable"
-    }
-  },
+  "scripts": {},
   "dependencies": {
     "@blueprintjs/core": "^3.10.0",
     "@blueprintjs/table": "^3.3.0",
