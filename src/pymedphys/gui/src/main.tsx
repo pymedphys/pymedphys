@@ -1,8 +1,6 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
-import * as electron from 'electron';
-
 import "./style.scss"
 // import { matplotlib } from './matplotlib';
 
@@ -23,12 +21,3 @@ ReactDOM.render(
   </Table>,
   root
 );
-
-electron.ipcRenderer.on('jupyter', (event: any, store: { port: number; token: string }) => {
-  let jupyterConfig = document.createElement('script')
-  jupyterConfig.id = 'jupyter-config-data'
-  jupyterConfig.type = 'application/json'
-  jupyterConfig.textContent = `{ "baseUrl": "http://localhost:${store.port}", "token": "${store.token}" }`
-  document.head.append(jupyterConfig)
-  // matplotlib(app)
-})
