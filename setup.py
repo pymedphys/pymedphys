@@ -35,6 +35,17 @@ def read(*names, **kwargs):
     ).read()
 
 
+def get_data_files():
+    """Get the data files for the package.
+    """
+    return [
+        ('etc/jupyter/jupyter_notebook_config.d', [
+            os.path.relpath(
+                pjoin(repo_root, 'src', 'pymedphys', 'pymedphys.json'), '.')
+        ])
+    ]
+
+
 setup(
     name="pymedphys",
     version=version,
@@ -64,6 +75,7 @@ setup(
         ],
     },
     license='AGPLv3+',
+    data_files=get_data_files(),
     install_requires=[
         'numpy>=1.12',
         'scipy',
