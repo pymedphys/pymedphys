@@ -27,12 +27,12 @@
 import os
 import numpy as np
 
-from pymedphys.tomo import read_sng_csv_file
-from pymedphys.tomo import read_sng_bin_file
-from pymedphys.tomo import crop_sng
-from pymedphys.tomo import make_histogram
-from pymedphys.tomo import find_modulation_factor
-from pymedphys.tomo import unshuffle_sng
+from pymedphys.sinogram import read_csv_file
+from pymedphys.sinogram import read_bin_file
+from pymedphys.sinogram import crop
+from pymedphys.sinogram import make_histogram
+from pymedphys.sinogram import find_modulation_factor
+from pymedphys.sinogram import unshuffle
 
 SIN_CSV_FILE = os.path.join(
     os.path.dirname(__file__), "../data/tomo/sinogram.csv")
@@ -41,8 +41,8 @@ SIN_BIN_FILE = os.path.join(
     os.path.dirname(__file__), "../data/tomo/MLC_all_test_old_800P.bin")
 
 
-def test_read_sin_csv_file():
-    pat_id, results = read_sng_csv_file(SIN_CSV_FILE)
+def test_read_csv_file():
+    pat_id, results = read_csv_file(SIN_CSV_FILE)
     assert pat_id == '00000 - ANONYMOUS, PATIENT'
     num_projections = len(results)
     assert num_projections == 464
@@ -50,27 +50,27 @@ def test_read_sin_csv_file():
     assert num_leaves == 64
 
 
-def test_read_sin_bin_file():
-    assert read_sng_bin_file(SIN_BIN_FILE).shape == (400, 64)
+def test_read_bin_file():
+    assert read_bin_file(SIN_BIN_FILE).shape == (400, 64)
 # convert this to a nested list
 
 
-def test_crop_sinogram():
+def test_crop():
     STRIP = [[0.0]*31 + [1.0]*2 + [0.0]*31,
              [0.0]*31 + [1.0]*2 + [0.0]*31]
-    assert crop_sng(STRIP) == [[1.0, 1.0], [1.0, 1.0]]
+    assert crop(STRIP) == [[1.0, 1.0], [1.0, 1.0]]
 
 
 def test_unshuffle():
-    unshuffled = unshuffle_sng([[0]*25 + [1.0]*14 + [0]*25]*510)
+    unshuffled = unshuffle([[0]*25 + [1.0]*14 + [0]*25]*510)
     assert len(unshuffled) == 51          # number of angles
     assert len(unshuffled[0]) == 10       # number of projections
     assert unshuffled[0][0][0] == 0       # first leaf is closed
 
 
 def test_make_histogram():
-    sinogram = read_sng_csv_file(SIN_CSV_FILE)[-1]
-    assert np.allclose(make_histogram(sinogram)[0][0], [0. , 0.1])
+    sinogram = read_csv_file(SIN_CSV_FILE)[-1]
+    assert np.allclose(make_histogram(sinogram)[0][0], [0., 0.1])
     assert make_histogram(sinogram)[0][1] == 25894
     # [(array([0. , 0.1]), 25894),
     #  (array([0.1, 0.2]), 0),
@@ -79,14 +79,14 @@ def test_make_histogram():
 
 
 def test_find_modulation_factor():
-    sinogram = read_sng_csv_file(SIN_CSV_FILE)[-1]
+    sinogram = read_csv_file(SIN_CSV_FILE)[-1]
     assert np.isclose(find_modulation_factor(sinogram), 2.762391)
 
 
 if __name__ == "__main__":
-    # test_read_sin_csv_file()
-    # test_read_sin_bin_file()
-    # test_crop_sinogram()
-    # test_unshuffle()
-    # test_make_histogram()
+    test_read_csv_file()
+    test_read_bin_file()
+    test_crop()
+    test_unshuffle()
+    test_make_histogram()
     test_find_modulation_factor()

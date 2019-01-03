@@ -36,7 +36,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
 import numpy as np
 
-from pymedphys.tomo import unshuffle_sng, crop_sng
+from pymedphys.sinogram import unshuffle, crop
 
 
 def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
@@ -81,7 +81,7 @@ def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
         reader = csv.reader(csvfile, delimiter=',')
         array = np.asarray([line[1:] for line in reader]).astype(float)
 
-    result = unshuffle_sng(crop_sng(array))
+    result = unshuffle(crop(array))
 
     fig.text(0.03, 0.985, document_id,
              horizontalalignment='left', verticalalignment='center')
@@ -104,7 +104,8 @@ if __name__ == '__main__':
     import os
 
     try:
-        test = os.path.join(os.getcwd(), 'tests', 'data', 'tomo', 'sinogram.csv')
+        test = os.path.join(os.getcwd(), 'tests', 'data',
+                            'tomo', 'sinogram.csv')
         tomo_sinogram_csv2pdf(test, show=True, save=True)
     except IOError:
         print('No sinogram csv file.')
