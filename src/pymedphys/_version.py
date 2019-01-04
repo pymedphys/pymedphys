@@ -1,6 +1,7 @@
 """Extracts version number information from gui/package.json
 """
 
+# pylint: disable=C0103
 
 import os
 import json
