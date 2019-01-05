@@ -39,7 +39,7 @@ def get_pymedphys_handlers(base_url):
             {'path': build_dir}
         ),
         (
-            ujoin(base_url, r'/pymedphys'),
+            ujoin(base_url, r'/pymedphys.*'),
             PyMedPhysHandler
         )
     ]
