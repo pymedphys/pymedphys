@@ -1,7 +1,7 @@
 Tomotherapy Toolbox
 ===================
 
-.. automodule:: pymedphys.tomo
+.. automodule:: pymedphys.sinogram
     :no-members:
 
 Variables
@@ -18,17 +18,17 @@ Variables
 API
 ---
 
-.. autofunction:: pymedphys.tomo.read_sng_csv_file
+.. autofunction:: pymedphys.sinogram.read_csv_file
 
-.. autofunction:: pymedphys.tomo.read_sng_bin_file
+.. autofunction:: pymedphys.sinogram.read_bin_file
 
-.. autofunction:: pymedphys.tomo.crop_sng
+.. autofunction:: pymedphys.sinogram.crop
 
-.. autofunction:: pymedphys.tomo.unshuffle_sng
+.. autofunction:: pymedphys.sinogram.unshuffle
 
-.. autofunction:: pymedphys.tomo.make_histogram
+.. autofunction:: pymedphys.sinogram.make_histogram
 
-.. autofunction:: pymedphys.tomo.find_modulation_factor
+.. autofunction:: pymedphys.sinogram.find_modulation_factor
 
 
 
