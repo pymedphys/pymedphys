@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
+// import ReactDOM from 'react-dom';
 
 import { Button } from "@blueprintjs/core";
 
@@ -18,9 +18,13 @@ import {
 
 import { Kernel } from '@jupyterlab/services';
 
+import { DocumentRegistry, Context } from '@jupyterlab/docregistry'
+
+import { DocumentManager } from '@jupyterlab/docmanager';
+
 import { CommandRegistry } from '@phosphor/commands';
 
-import { CommandPalette, SplitPanel, Widget } from '@phosphor/widgets';
+import { DockPanel, Menu, CommandPalette, SplitPanel, Widget } from '@phosphor/widgets';
 
 import { ServiceManager } from '@jupyterlab/services';
 
@@ -28,10 +32,71 @@ import { editorServices } from '@jupyterlab/codemirror';
 
 import { ConsolePanel } from '@jupyterlab/console';
 
+import { BokehJSLoad, BokehJSExec, BOKEHJS_LOAD_MIME_TYPE, BOKEHJS_EXEC_MIME_TYPE } from 'jupyterlab_bokeh/lib/renderer';
+import { ContextManager } from 'jupyterlab_bokeh/lib/manager';
+// import { NBWidgetExtension } from 'jupyterlab_bokeh/lib/plugin';
+
+
+
+// let dock = new DockPanel();
+
+// let widgets: Widget[] = [];
+// let activeWidget: Widget;
+
+// let opener = {
+//   open: (widget: Widget) => {
+//     if (widgets.indexOf(widget) === -1) {
+//       dock.addWidget(widget, { mode: 'tab-after' });
+//       widgets.push(widget);
+//     }
+//     dock.activateWidget(widget);
+//     activeWidget = widget;
+//     widget.disposed.connect((w: Widget) => {
+//       let index = widgets.indexOf(w);
+//       widgets.splice(index, 1);
+//     });
+//   }
+// };
+
+let serviceManager = new ServiceManager();
+// let docRegistry = new DocumentRegistry();
+// let docManager = new DocumentManager({
+//   registry: docRegistry,
+//   manager: serviceManager,
+//   opener
+// });
+
+// let context = new Context({
+//   manager: serviceManager
+// })
+
+// let widget = new Widget()
+
+// docManager
+
+// docRegistry.addWidgetExtension('Notebook', new NBWidgetExtension())
+// docRegistry
+
+let context = {} as DocumentRegistry.IContext<DocumentRegistry.IModel>
+
+let contextManager = new ContextManager(context);
+
 const rendermime = new RenderMimeRegistry({ initialFactories });
+rendermime.addFactory({
+  safe: true,  // false
+  mimeTypes: [BOKEHJS_LOAD_MIME_TYPE],
+  createRenderer: (options) => new BokehJSLoad(options)
+}, 0);
+
+rendermime.addFactory({
+  safe: true,  // false
+  mimeTypes: [BOKEHJS_EXEC_MIME_TYPE],
+  createRenderer: (options) => new BokehJSExec(options, contextManager)
+}, -1);
+
 const kernelPromise = Kernel.startNew()
 
-let manager = new ServiceManager();
+
 
 export class CodeButtons extends Component {
 
@@ -40,7 +105,9 @@ export class CodeButtons extends Component {
   constructor(props: any) {
     super(props);
     this.outputDiv = React.createRef<HTMLDivElement>();
+    this.runCode = this.runCode.bind(this);
     this.matplotlib = this.matplotlib.bind(this);
+    this.bokeh = this.bokeh.bind(this);
   }
 
   // componentDidMount() {
@@ -58,6 +125,27 @@ export class CodeButtons extends Component {
       'print(y)',
       'plt.plot(x, y)'
     ].join('\n');
+    this.runCode(code)
+  }
+
+  bokeh() {
+    const code = [
+      'import numpy as np',
+      'from bokeh.plotting import figure, show, output_notebook',
+      'output_notebook()',
+      'N = 500',
+      'x = np.linspace(0, 10, N)',
+      'y = np.linspace(0, 10, N)',
+      'xx, yy = np.meshgrid(x, y)',
+      'd = np.sin(xx)*np.cos(yy)',
+      'p = figure(x_range=(0, 10), y_range=(0, 10), tooltips=[("x", "$x"), ("y", "$y"), ("value", "@image")])',
+      'p.image(image=[d], x=0, y=0, dw=10, dh=10, palette="Spectral11")',
+      'show(p)'
+    ].join('\n');
+    this.runCode(code)
+  }
+
+  runCode(code: string) {
     const model = new OutputAreaModel();
     const outputArea = new OutputArea({ model, rendermime });
 
@@ -69,10 +157,12 @@ export class CodeButtons extends Component {
     });
   }
 
+
   render() {
     return (
       <div>
         <Button icon="refresh" intent="primary" text="Matplotlib" onClick={this.matplotlib} />
+        <Button icon="refresh" intent="primary" text="Bokeh" onClick={this.bokeh} />
         <div ref={this.outputDiv}></div>
       </div>
     )
@@ -103,8 +193,8 @@ export class CodeButtons extends Component {
 // }
 
 export function createConsole(app: HTMLDivElement) {
-  manager.ready.then(() => {
-    console(app, manager)
+  serviceManager.ready.then(() => {
+    console(app, serviceManager)
   })
 }
 
