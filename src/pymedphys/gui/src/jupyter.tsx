@@ -1,3 +1,11 @@
+// Copyright (c) Jupyter Development Team.
+// Distributed under the terms of the Modified BSD License.
+
+import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
+
+import { Button } from "@blueprintjs/core";
+
 import {
   OutputArea,
   OutputAreaModel
@@ -25,27 +33,74 @@ const kernelPromise = Kernel.startNew()
 
 let manager = new ServiceManager();
 
-export function matplotlib(app: HTMLDivElement) {
-  const code = [
-    'import numpy as np',
-    'import matplotlib.pyplot as plt',
-    '%matplotlib inline',
-    'x = np.linspace(-10,10)',
-    'y = x**2',
-    'print(x)',
-    'print(y)',
-    'plt.plot(x, y)'
-  ].join('\n');
-  const model = new OutputAreaModel();
-  const outputArea = new OutputArea({ model, rendermime });
+export class CodeButtons extends Component {
 
-  kernelPromise.then(kernel => {
-    outputArea.future = kernel.requestExecute({ code });
-    Widget.attach(outputArea, app)
-  });
+  outputDiv: React.RefObject<HTMLDivElement>
 
-  return { model, code }
+  constructor(props: any) {
+    super(props);
+    this.outputDiv = React.createRef<HTMLDivElement>();
+    this.matplotlib = this.matplotlib.bind(this);
+  }
+
+  // componentDidMount() {
+  //   this.node = ReactDOM.findDOMNode(this) as HTMLElement
+  // }
+
+  matplotlib() {
+    const code = [
+      'import numpy as np',
+      'import matplotlib.pyplot as plt',
+      '%matplotlib inline',
+      'x = np.linspace(-10,10)',
+      'y = x**2',
+      'print(x)',
+      'print(y)',
+      'plt.plot(x, y)'
+    ].join('\n');
+    const model = new OutputAreaModel();
+    const outputArea = new OutputArea({ model, rendermime });
+
+    kernelPromise.then(kernel => {
+      let node = this.outputDiv.current as HTMLDivElement
+
+      outputArea.future = kernel.requestExecute({ code });
+      Widget.attach(outputArea, node)
+    });
+  }
+
+  render() {
+    return (
+      <div>
+        <Button icon="refresh" intent="primary" text="Matplotlib" onClick={this.matplotlib} />
+        <div ref={this.outputDiv}></div>
+      </div>
+    )
+  }
 }
+
+
+// export function matplotlib(app: HTMLDivElement) {
+//   const code = [
+//     'import numpy as np',
+//     'import matplotlib.pyplot as plt',
+//     '%matplotlib inline',
+//     'x = np.linspace(-10,10)',
+//     'y = x**2',
+//     'print(x)',
+//     'print(y)',
+//     'plt.plot(x, y)'
+//   ].join('\n');
+//   const model = new OutputAreaModel();
+//   const outputArea = new OutputArea({ model, rendermime });
+
+//   kernelPromise.then(kernel => {
+//     outputArea.future = kernel.requestExecute({ code });
+//     Widget.attach(outputArea, app)
+//   });
+
+//   return { model, code }
+// }
 
 export function createConsole(app: HTMLDivElement) {
   manager.ready.then(() => {
