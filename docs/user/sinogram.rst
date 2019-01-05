@@ -1,4 +1,4 @@
-Tomotherapy Toolbox
+Sinogram Toolbox
 ===================
 
 .. automodule:: pymedphys.sinogram
