@@ -2,5 +2,6 @@
     "python.linting.pylintUseMinimalCheckers": false,
     "files.trimTrailingWhitespace": true,
     "editor.formatOnSave": true,
-    "restructuredtext.confPath": "${workspaceFolder}\\docs"
+    "restructuredtext.confPath": "${workspaceFolder}\\docs",
+    "python.formatting.provider": "black"
 }
