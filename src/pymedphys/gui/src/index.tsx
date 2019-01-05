@@ -8,7 +8,8 @@ import { dockpanel } from './dockpanel';
 import { CodeButtons, createConsole } from './jupyter';
 
 function main() {
-  dockpanel()
+  let root = document.getElementById('root') as HTMLDivElement
+  dockpanel(root)
   ReactDOM.render(<DollarsTable />, document.getElementById('table'));
 
   ReactDOM.render(<CodeButtons />, document.getElementById('output'));
@@ -16,8 +17,8 @@ function main() {
   // let outputDiv = document.getElementById('output') as HTMLDivElement
   // matplotlib(outputDiv);
 
-  let consoleDiv = document.getElementById('console') as HTMLDivElement
-  createConsole(consoleDiv);
+  // let consoleDiv = document.getElementById('console') as HTMLDivElement
+  // createConsole(consoleDiv);
 }
 
 window.onload = main;
