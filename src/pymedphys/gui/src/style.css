@@ -13,8 +13,7 @@
 @import '~@phosphor/default-theme/style/index.css';
 @import '~@jupyterlab/theme-light-extension/static/index.css';
 
-
-body {
+#root {
   display: flex;
   flex-direction: column;
   position: absolute;
@@ -25,6 +24,7 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background: white;
 }
 
 
@@ -32,17 +32,9 @@ body {
   flex: 0 0 auto;
 }
 
-
-#main {
+.full-flex {
   flex: 1 1 auto;
 }
-
-
-#palette {
-  min-width: 300px;
-  border-right: 1px solid #DDDDDD;
-}
-
 
 #dock {
   padding: 4px;
@@ -53,7 +45,19 @@ body {
   min-height: 50px;
   display: flex;
   flex-direction: column;
-  padding: 8px;
+  padding: 13px;
+  border: 1px solid #C0C0C0;
+  border-top: none;
+  background: white;
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.console {
+  min-width: 50px;
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  padding: 0px;
   border: 1px solid #C0C0C0;
   border-top: none;
   background: white;
@@ -63,31 +67,9 @@ body {
 
 .content > div {
   flex: 1 1 auto;
-  border: 1px solid #505050;
   overflow: auto;
 }
 
-
 .content  input {
   margin: 8px;
-}
-
-
-.red > div {
-  background: #E74C3C;
-}
-
-
-.yellow > div {
-  background: #F1C40F;
-}
-
-
-.green > div {
-  background: #27AE60;
-}
-
-
-.blue > div {
-  background: #3498DB;
 }

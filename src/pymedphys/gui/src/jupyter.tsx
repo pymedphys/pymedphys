@@ -11,6 +11,9 @@ import {
   OutputAreaModel
 } from '@jupyterlab/outputarea';
 
+import { ClientSession, IClientSession } from '@jupyterlab/apputils';
+
+
 import {
   RenderMimeRegistry,
   standardRendererFactories as initialFactories
@@ -24,13 +27,13 @@ import { DocumentManager } from '@jupyterlab/docmanager';
 
 import { CommandRegistry } from '@phosphor/commands';
 
-import { DockPanel, Menu, CommandPalette, SplitPanel, Widget } from '@phosphor/widgets';
+import { DockPanel, Menu, CommandPalette, SplitPanel, Widget, Panel } from '@phosphor/widgets';
 
 import { ServiceManager } from '@jupyterlab/services';
 
 import { editorServices } from '@jupyterlab/codemirror';
 
-import { ConsolePanel } from '@jupyterlab/console';
+import { ConsolePanel, CodeConsole } from '@jupyterlab/console';
 
 import { BokehJSLoad, BokehJSExec, BOKEHJS_LOAD_MIME_TYPE, BOKEHJS_EXEC_MIME_TYPE } from 'jupyterlab_bokeh/lib/renderer';
 import { ContextManager } from 'jupyterlab_bokeh/lib/manager';
@@ -192,13 +195,21 @@ export class CodeButtons extends Component {
 //   return { model, code }
 // }
 
-export function createConsole(app: HTMLDivElement) {
-  serviceManager.ready.then(() => {
-    console(app, serviceManager)
+
+
+
+
+
+
+
+
+export function createConsole(): Promise<SplitPanel> {
+  return serviceManager.ready.then(() => {
+    return buildConsole(serviceManager)
   })
 }
 
-function console(app: HTMLDivElement, manager: ServiceManager.IManager) {
+function buildConsole(manager: ServiceManager.IManager) {
   let commands = new CommandRegistry();
 
   // Setup the keydown listener for the document.
@@ -208,6 +219,12 @@ function console(app: HTMLDivElement, manager: ServiceManager.IManager) {
 
   let editorFactory = editorServices.factoryService.newInlineEditor;
   let contentFactory = new ConsolePanel.ContentFactory({ editorFactory });
+  // let consoleWidget = new CodeConsole({
+  //   contentFactory,
+  //   rendermime,
+  //   mimeTypeService: editorServices.mimeTypeService,
+  //   session:
+  // })
   let consolePanel = new ConsolePanel({
     rendermime,
     manager,
@@ -215,19 +232,15 @@ function console(app: HTMLDivElement, manager: ServiceManager.IManager) {
     mimeTypeService: editorServices.mimeTypeService
   });
 
-  let palette = new CommandPalette({ commands });
-
   let panel = new SplitPanel();
-  panel.id = 'main';
+  panel.id = 'console-panel';
   panel.orientation = 'horizontal';
   panel.spacing = 0;
-  SplitPanel.setStretch(palette, 0);
   SplitPanel.setStretch(consolePanel, 1);
-  panel.addWidget(palette);
   panel.addWidget(consolePanel);
 
   // Attach the panel to the DOM.
-  Widget.attach(panel, app);
+  // Widget.attach(panel, app);
 
   // Handle resize events.
   window.addEventListener('resize', () => {
@@ -246,7 +259,6 @@ function console(app: HTMLDivElement, manager: ServiceManager.IManager) {
       consolePanel.console.clear();
     }
   });
-  palette.addItem({ command, category });
 
   command = 'console:execute';
   commands.addCommand(command, {
@@ -255,7 +267,6 @@ function console(app: HTMLDivElement, manager: ServiceManager.IManager) {
       consolePanel.console.execute();
     }
   });
-  palette.addItem({ command, category });
   commands.addKeyBinding({ command, selector, keys: ['Enter'] });
 
   command = 'console:execute-forced';
@@ -265,7 +276,6 @@ function console(app: HTMLDivElement, manager: ServiceManager.IManager) {
       consolePanel.console.execute(true);
     }
   });
-  palette.addItem({ command, category });
   commands.addKeyBinding({ command, selector, keys: ['Shift Enter'] });
 
   command = 'console:linebreak';
@@ -275,6 +285,7 @@ function console(app: HTMLDivElement, manager: ServiceManager.IManager) {
       consolePanel.console.insertLinebreak();
     }
   });
-  palette.addItem({ command, category });
   commands.addKeyBinding({ command, selector, keys: ['Ctrl Enter'] });
+
+  return panel
 }
