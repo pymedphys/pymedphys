@@ -27,30 +27,17 @@
 import numpy as np
 import os
 
-# DISTANCE FUNCTIONS
-from pymedphys.dose import make_dist_vals, get_dist_vals
-# DOSE FUNCTIONS
-from pymedphys.dose import make_dose_vals, get_dose_vals
-# PROFILE FUNCTIONS
-from pymedphys.dose import make_dose_prof
-from pymedphys.dose import make_pulse_dose_prof
-from pymedphys.dose import is_even_spaced
-from pymedphys.dose import shift_dose_prof
+from pymedphys.dose import pulse
 from pymedphys.dose import resample
-from pymedphys.dose import align_to
+from pymedphys.dose import overlay
 from pymedphys.dose import is_wedged
-# SLICING FUNCTIONS
-from pymedphys.dose import find_strt_stop
-from pymedphys.dose import slice_dose_prof
-from pymedphys.dose import find_edges, find_umbra
-# SCALING FUNCTIONS
-from pymedphys.dose import find_dose, find_dists
-from pymedphys.dose import norm_dose_vals, norm_dist_vals
-from pymedphys.dose import cent_dose_prof
-# FLATNESS & SYMMETRY FUNCTIONS
-from pymedphys.dose import flatness, symmetry
-from pymedphys.dose import make_dose_prof_sym
-
+from pymedphys.dose import edges
+from pymedphys.dose import normalise_distance
+from pymedphys.dose import normalise_dose
+from pymedphys.dose import recentre
+from pymedphys.dose import flatness
+from pymedphys.dose import symmetry
+from pymedphys.dose import symmetrise
 
 DATA_DIRECTORY = os.path.abspath(
     os.path.join(os.path.dirname(__file__),
@@ -100,50 +87,9 @@ WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
           (14.4, 0.4), (14.8, 0.35), (15.2, 0.33), (15.6, 0.32),
           (16, 0.31), (16.4, 0.3)]
 
-# DISTANCE FUNCTIONS
 
-
-def test_make_dist_vals():
-    assert len(make_dist_vals(-16.4, 16.4, .4)) == len(PROFILER)
-
-
-def test_get_dist_vals():
-    assert get_dist_vals(PROFILER)[0] == -get_dist_vals(PROFILER)[-1]
-
-
-# DOSE FUNCTIONS
-
-
-def test_make_dose_vals():
-    def dose_func(dist):
-        return 1.0
-    assert np.allclose(make_dose_vals(get_dist_vals(PROFILER), dose_func), 1.0)
-
-
-def test_get_dose_vals():
-    assert np.allclose(get_dose_vals(PROFILER)[-1], 0.3)
-
-
-# PROFILE FUNCTIONS
-
-
-def test_make_dose_prof():
-    assert make_dose_prof(
-        get_dist_vals(PROFILER), get_dose_vals(PROFILER)) == PROFILER
-
-
-def test_is_even_spaced():
-    assert is_even_spaced(PROFILER)
-    assert not is_even_spaced(PROFILER[:7] + PROFILER[8:])
-
-
-def test_shift_dose_prof():
-    assert np.isclose(shift_dose_prof(PROFILER, 10)[0][0], -6.4)
-
-
-def test_make_pulse_dose_prof():
-    assert make_pulse_dose_prof()[0] == (-20.0, 0.0)
-
+def test_pulse():
+    assert pulse()[0] == (-20.0, 0.0)
 
 def test_resample():
     resampled = resample(PROFILER)
@@ -151,103 +97,45 @@ def test_resample():
     assert np.allclose(increments, 0.1)
     assert np.allclose(resampled[0], PROFILER[0])
 
+def test_overlay():
+    assert np.allclose(overlay(PROFILER, WEDGED), 0.2)
 
-def test_align_to():
-    assert np.allclose(align_to(
-        shift_dose_prof(PROFILER, 1.2),
-        shift_dose_prof(PROFILER, 0)), -1.2)
+def test_normalise_dose():
+    assert normalise_dose(PROFILER, 0.0)[41][1] == 100.0
 
+def test_normalise_distance():
+    assert np.isclose(normalise_distance(PROFILER)[0][0], 3.215686274)
 
-def test_is_wedged():  # STUB  ######
-    assert not is_wedged(PROFILER)
-    assert is_wedged(WEDGED)
+def test_edges():
+    assert np.allclose(edges(PROFILER), (-5.1, 4.9))
 
+def test_recentre():
+    assert np.allclose(recentre(PROFILER)[0][0], -16.3)
 
-# SLICING FUNCTIONS
-
-
-def test_find_strt_stop():
-    assert find_strt_stop(PROFILER, -10, 500) == (-10, 16.4)
-
-
-def test_slice_dose_prof():
-    assert slice_dose_prof(PROFILER) == PROFILER
-
-
-def test_find_edges():
-    assert np.allclose(find_edges(PROFILER), (-4.9, 5.0))
-
-
-def test_find_umbra():
-    assert np.isclose(find_umbra(PROFILER)[0][0], -3.6)
-
-
-# SCALING FUNCTIONS
-
-
-def test_find_dose():
-    assert np.allclose(find_dose(PROFILER, 0.0), 45.23)
-
-
-def test_find_dists():
-    assert np.allclose(find_dists(PROFILER, 23), [-5.017083, 5.007189])
-
-
-def test_norm_dose_vals():
-    assert norm_dose_vals(PROFILER, 0.0)[41][1] == 100.0
-
-
-def test_norm_dist_vals():
-    assert np.isclose(norm_dist_vals(PROFILER)[0][0], 3.3469387755)
-
-
-def test_cent_dose_prof():
-    assert np.allclose(cent_dose_prof(PROFILER)[0][0], -16.45)
-
-
-# FLATNESS & SYMMETRY FUNCTIONS
-
-
-def test_flatness():  # STUB  ######
-    assert np.allclose(flatness(PROFILER), 0.03020309)
+def test_flatness():
+    assert np.allclose(flatness(PROFILER), 0.03042720)
 
 
 def test_symmetry():
-    assert np.allclose(symmetry(PROFILER), 0.014657383657017305)
+    assert np.allclose(symmetry(PROFILER), 0.0253189859)
 
-
-def test_make_dose_prof_sym():
-    symmetric = make_dose_prof_sym(PROFILER)
+def test_symmetrise():
+    symmetric = symmetrise(PROFILER)
     assert symmetric[0][1] == symmetric[-1][1]
 
+def test_is_wedged():
+    assert not is_wedged(PROFILER)
+    assert is_wedged(WEDGED)
 
 if __name__ == "__main__":
-    # DISTANCE FUNCTIONS
-    test_make_dist_vals()
-    test_get_dist_vals()
-    # DOSE FUNCTIONS
-    test_make_dose_vals()
-    test_get_dose_vals()
-    # PROFILE FUNCTIONS
-    test_make_dose_prof()
-    test_is_even_spaced()
-    test_shift_dose_prof()
-    test_make_pulse_dose_prof()
+    test_pulse()
     test_resample()
-    test_align_to()
-    test_is_wedged()
-    # SLICING FUNCTIONS
-    test_find_strt_stop()
-    test_slice_dose_prof()
-    test_find_edges()
-    test_find_umbra()
-    # SCALING FUNCTIONS
-    test_find_dose()
-    test_find_dists()
-    test_norm_dose_vals()
-    test_norm_dist_vals()
-    test_cent_dose_prof()
-    # FLATNESS & SYMMETRY FUNCTIONS
+    test_overlay()
+    test_edges()
+    test_normalise_dose()
+    test_normalise_distance()
+    test_recentre()
     test_flatness()
     test_symmetry()
-    test_make_dose_prof_sym()
+    test_symmetrise()
+    test_is_wedged()
