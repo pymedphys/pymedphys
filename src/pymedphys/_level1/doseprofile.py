@@ -36,6 +36,7 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+
 # PRIVATE FUNCTIONS ======================================
 
 def _get_dist_vals(dose_prof):
@@ -59,9 +60,9 @@ def _make_dose_vals(dist_vals, dose_func):
 
 def _find_umbra(dose_prof):
     """ Return a list of distances over the central 80% a dose profile. """
-    edges = find_edges(dose_prof)
-    dist_strt= 0.8 * edges[0]
-    dist_stop= 0.8 * edges[-1]
+    e = edges(dose_prof)
+    dist_strt= 0.8 * e[0]
+    dist_stop= 0.8 * e[-1]
     umbra = [d for d in dose_prof if d[0] >= dist_strt and d[0] <= dist_stop]
     return umbra
 
@@ -95,12 +96,7 @@ def _find_dists(dose_prof, dose):
     return dists
 
 
-# =========================================================
-
-
-# PROFILE FUNCTIONS
-
-def shift_dose_prof(dose_prof, dist):
+def _shift_dose_prof(dose_prof, dist):
     """
     Return a dose-profile whose distances are shifted by a specified distance.
     """
@@ -110,7 +106,10 @@ def shift_dose_prof(dose_prof, dist):
     return list(zip(dist_vals, dose_vals))
 
 
-def make_pulse_dose_prof(centre=0.0, center=None, width=10.0,
+
+# PUBLIC FUNCTIONS ==========================================
+
+def pulse(centre=0.0, center=None, width=10.0,
                          dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
     """
     Return a pulse shaped dose-profile; specified centre, width, and domain.
@@ -165,7 +164,7 @@ def resample(dose_prof, dist_strt=-np.inf, dist_stop=np.inf, dist_step=0.1):
     return resampled
 
 
-def align_to(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
+def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
     """
     Return as a float, the misalignment between two dose-profiles, i.e. the
     distance by which one would need to move to align to the other.
@@ -199,7 +198,7 @@ def align_to(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
     best_fit_qual = 0
     best_offset = -np.inf
     for offset in possible_offsets:
-        moved_profile = shift_dose_prof(dose_prof_moves, offset)
+        moved_profile = _shift_dose_prof(dose_prof_moves, offset)
         moved_dist_vals = _get_dist_vals(moved_profile)
         moved_dose_vals = _get_dose_vals(moved_profile)
         dose_func_moves = interpolate.interp1d(moved_dist_vals,
@@ -215,19 +214,54 @@ def align_to(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
     return best_offset
 
 
-def is_wedged(dose_prof):
-    """ Return True iff dose-profile has significant gradient in the umbra. """
-    wedginess = np.average(np.diff(_get_dose_vals(_find_umbra(dose_prof))))
-    if wedginess > 0.05:  # 'magic number'
-        return True
-    else:
-        return False
+def normalise_dose(dose_prof, dist=0.0, dose=100.0):
+    """
+    Return a dose-profile, with dose rescaled to yield a dose at distance.
+
+    """
+
+    norm_fact = dose / _find_dose(dose_prof, dist)
+    d = [norm_fact * i for i in _get_dose_vals(dose_prof)]
+
+    return list(zip(_get_dist_vals(dose_prof), d))
+
+def normalize_dose(dose_prof, dist=0.0, dose=100.0):
+    """ US Eng -> UK Eng """
+    return normalise_dose(dose_prof, dist, dose)
+
+def normalise_distance(dose_prof):
+    """
+    Return a dose-profile which is  rescaled to 2X/W distance
+    so as to force the beam edges to distances of +/-1.
+
+        | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
+              of radiation dose data in a small digital computer
+        | (2) Heintz, King, & Childs, May-95, User Manual,
+              Prowess 3000 CT Treatment Planning
+    """
+
+    x = _get_dist_vals(dose_prof)
+    d = _get_dose_vals(dose_prof)
+
+    lt_edge, rt_edge = edges(dose_prof)
+    cax = (lt_edge + rt_edge)/2.0
+
+    result = []
+    for i, dist in enumerate(x):
+        if dist < cax:
+            result.append((dist/lt_edge, d[i]))
+        elif dist == cax:
+            result.append((0.0, d[i]))
+        elif dist > cax:
+            result.append((dist/rt_edge, d[i]))
+    return result
+
+def normalize_distance(dose_prof):
+    """ US Eng -> UK Eng """
+    return normalise_distance(dose_prof)
 
 
-# SLICING FUNCTIONS
-
-
-def find_edges(dose_prof):
+def edges(dose_prof):
     """
     Return profile edges as a tuple, distances of greatest + / - gradient.
     """
@@ -244,65 +278,26 @@ def find_edges(dose_prof):
     return (lt_edge, rt_edge)
 
 
-# SCALING FUNCTIONS
-
-def norm_dose_vals(dose_prof, dist=0.0, dose=100.0):
-    """
-    Return a dose-profile, with dose rescaled to yield a dose at distance.
-
-    """
-
-    norm_fact = dose / _find_dose(dose_prof, dist)
-    d = [norm_fact * i for i in _get_dose_vals(dose_prof)]
-
-    return list(zip(_get_dist_vals(dose_prof), d))
-
-
-def norm_dist_vals(dose_prof):
-    """
-    Return a dose-profile which is  rescaled to 2X/W distance
-    so as to force the beam edges to distances of +/-1.
-
-        | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
-              of radiation dose data in a small digital computer
-        | (2) Heintz, King, & Childs, May-95, User Manual,
-              Prowess 3000 CT Treatment Planning
-    """
-
-    x = _get_dist_vals(dose_prof)
-    d = _get_dose_vals(dose_prof)
-
-    lt_edge, rt_edge = find_edges(dose_prof)
-    cax = (lt_edge + rt_edge)/2.0
-
-    result = []
-    for i, dist in enumerate(x):
-        if dist < cax:
-            result.append((dist/lt_edge, d[i]))
-        elif dist == cax:
-            result.append((0.0, d[i]))
-        elif dist > cax:
-            result.append((dist/rt_edge, d[i]))
-    return result
-
-
-def cent_dose_prof(dose_prof):
+def recentre(dose_prof):
     """
     Return a translated dose-profile in which the central-axis,
     midway between the edges, is defined as zero distance.
+    Also, recenter().
 
     """
 
     dist_vals = _get_dist_vals(dose_prof)
     dose_vals = _get_dose_vals(dose_prof)
-    cax = np.mean(find_edges(dose_prof))
+    cax = np.mean(edges(dose_prof))
 
     cent_prof = []
     for i, dist in enumerate(dist_vals):
         cent_prof.append((dist - cax, dose_vals[i]))
     return cent_prof
 
-# FLATNESS & SYMMETRY FUNCTIONS
+def recenter(dose_prof):
+    """ US Eng -> UK Eng """
+    return recentre(dose_prof)
 
 
 def flatness(dose_prof):
@@ -347,7 +342,15 @@ def symmetrise(dose_prof, dist_step=0.1):
     return result
 
 def symmetrize(dose_prof, dist_step=0.1):
-    """
-    US Eng -> UK Eng
-    """
-    symmetrise(dose_prof, dist_step)
+    """ US Eng -> UK Eng """
+    return symmetrise(dose_prof, dist_step)
+
+
+def is_wedged(dose_prof):
+    """ Return True iff dose-profile has significant gradient in the umbra. """
+    wedginess = np.average(np.diff(_get_dose_vals(_find_umbra(dose_prof))))
+    if wedginess > 0.05:  # 'magic number'
+        return True
+    else:
+        return False
+
