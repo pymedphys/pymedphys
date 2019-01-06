@@ -117,3 +117,6 @@ venv.bak/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# USER DEFINED
+*.pdf
