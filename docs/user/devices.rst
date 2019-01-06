@@ -1,5 +1,5 @@
-Devices Toolbox
-================
+Profile Device Toolbox
+======================
 
 .. automodule:: pymedphys.devices
     :no-members:
@@ -23,27 +23,23 @@ Variables
     | symmetry, flatness                   | float, absolute                      |
     +--------------------------------------+--------------------------------------+
 
-
-Profile Functions
----------------------------------------------------------
-
-    .. autofunction:: pymedphys.dose.shift_dose_prof
-    .. autofunction:: pymedphys.dose.make_pulse_dose_prof
-    .. autofunction:: pymedphys.dose.resample
-    .. autofunction:: pymedphys.dose.align_to
-    .. autofunction:: pymedphys.dose.is_wedged
-    .. autofunction:: pymedphys.dose.find_edges
-    .. autofunction:: pymedphys.dose.norm_dose_vals
-    .. autofunction:: pymedphys.dose.norm_dist_vals
-    .. autofunction:: pymedphys.dose.cent_dose_prof
-    .. autofunction:: pymedphys.dose.flatness
-    .. autofunction:: pymedphys.dose.symmetry
-    .. autofunction:: pymedphys.dose.symmetrise
-
 Device Functions
 ---------------------------------------------------------
 
     .. autofunction:: pymedphys.devices.read_mapcheck_txt
     .. autofunction:: pymedphys.devices.read_profiler_prs
 
+Profile Functions
+---------------------------------------------------------
 
+    .. autofunction:: pymedphys.dose.pulse
+    .. autofunction:: pymedphys.dose.resample
+    .. autofunction:: pymedphys.dose.overlay
+    .. autofunction:: pymedphys.dose.edges
+    .. autofunction:: pymedphys.dose.normalise_dose
+    .. autofunction:: pymedphys.dose.normalise_distance
+    .. autofunction:: pymedphys.dose.recentre
+    .. autofunction:: pymedphys.dose.flatness
+    .. autofunction:: pymedphys.dose.symmetry
+    .. autofunction:: pymedphys.dose.symmetrise
+    .. autofunction:: pymedphys.dose.is_wedged
