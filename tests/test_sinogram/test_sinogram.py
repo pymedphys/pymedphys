@@ -35,10 +35,10 @@ from pymedphys.sinogram import find_modulation_factor
 from pymedphys.sinogram import unshuffle
 
 SIN_CSV_FILE = os.path.join(
-    os.path.dirname(__file__), "../data/tomo/sinogram.csv")
+    os.path.dirname(__file__), "../data/sinogram/sinogram.csv")
 
 SIN_BIN_FILE = os.path.join(
-    os.path.dirname(__file__), "../data/tomo/MLC_all_test_old_800P.bin")
+    os.path.dirname(__file__), "../data/sinogram/MLC_all_test_old_800P.bin")
 
 
 def test_read_csv_file():
