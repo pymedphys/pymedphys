@@ -117,3 +117,8 @@ venv.bak/
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# Test data
+tests/data/*.pdf
+tests/data/**/*.pdf
+tests/data/**/**/*.pdf
