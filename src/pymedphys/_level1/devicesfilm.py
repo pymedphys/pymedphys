@@ -53,8 +53,9 @@ def read_narrow_png(file_name, dpi=600, step_size=0.1):
 
     Raises
     ------
-    AssertionError
+    ValueError
         If image is not narrow, i.e. aspect ratio <= 5
+    AssertionError
         If step_size is too small, i.e. step_size <= 12.7 / dpi
 
     """
@@ -67,7 +68,7 @@ def read_narrow_png(file_name, dpi=600, step_size=0.1):
     elif image_array.shape[1] > 5*image_array.shape[0]:  # HORIZONTAL
         image_vector = np.average(image_array, axis=(0, 2))
     else:
-        assert False, "png not narrow"
+        raise ValueError('The PNG file is not a narrow strip.')
 
     # FIND PIXEL SIZE
     pixel_size_in_cm = (2.54 / dpi)
