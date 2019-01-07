@@ -15,7 +15,7 @@ Your mission
 Your mission, should you choose to accept it, is to complete all the tasks within
 this document. While doing so, please take notes of the pain points. Write down
 what feedback you have. By the end, instead of you emailing that feedback to me,
-I'd like you to use your new set up to edit this file and submit a merge request!
+we'd like you to use your new set up to edit this file and submit a merge request!
 
 
 Python & Anaconda
@@ -51,9 +51,8 @@ the following command in a new command prompt:
 Text Editor
 -----------
 
-Visual Studio Code is an excellent source code editor. It is free and open-source, and
-it comes with many great lots of features for both Python and Git. You can get the official
-download `here <https://code.visualstudio.com/>`__.
+Visual Studio Code is an excellent, free, open-source code editor. It comes with many great
+features for both Python and Git. You can download the official release `here <https://code.visualstudio.com/>`__.
 
 When installing VS Code, make sure to tick the “Open with Code” boxes:
 
@@ -75,8 +74,8 @@ A Command Prompt
 ----------------
 
 Cmder is a good command prompt that fills the massive gap on Windows machines.
-One would think syntax highlighting, copy and paste, and window resizing would
-be commonplace in terminals everywhere, but apparently not! Nevertheless, cmder
+One would think that syntax highlighting, copy/paste, and window resizing would
+be commonplace in terminals everywhere - but apparently not! Nevertheless, cmder
 to the rescue. Install the mini version of cmder from `here <http://cmder.net/>`__.
 
 Once you've downloaded cmder, follow the steps given `here <https://github.com/cmderdev/cmder#shortcut-to-open-cmder-in-a-chosen-folder>`__
@@ -91,15 +90,15 @@ development tools quite a breeze. Follow `these instructions <https://chocolatey
 to install Chocolatey.
 
 
-Git and Git LFS
----------------
+Git, Git LFS, and Yarn
+----------------------
 
-Use Chocolatey within an administrator command prompt to install Cit and
-Cit LFS like so:
+Use Chocolatey within an administrator command prompt to install Git,
+Git LFS, and yarn like so:
 
 .. code:: bash
 
-    choco install git git-lfs
+    choco install git git-lfs yarn
 
 
 GitLab Account
@@ -127,11 +126,11 @@ Some useful resources
 
 At this point you might find some of the following resources useful:
 
- * https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html
- * http://mathesaurus.sourceforge.net/matlab-numpy.html
- * https://github.com/trekhleb/learn-python
- * https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html
- * Chapter 2 of https://www.nceclusters.no/globalassets/filer/nce/diverse/the-pragmatic-programmer.pdf
+ * `Numpy for Matlab users (Scipy.org) <https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html>`__.
+ * `NumPy for MATLAB users (Mathesaurus) <http://mathesaurus.sourceforge.net/matlab-numpy.html>`__.
+ * `Playground and cheatsheet for learning Python <https://github.com/trekhleb/learn-python>`__.
+ * `Don't be afraid to commit: Git and GitHub <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__.
+ * Chapter 2 of `The Pragmatic Programmer <https://www.nceclusters.no/globalassets/filer/nce/diverse/the-pragmatic-programmer.pdf>`__.
 
 The "Don't be afraid to commit" resource will be invaluable for these next few
 steps.

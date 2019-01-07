@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  {{base_tag}}
+
+  <!-- <link rel="icon" href="/favicon.ico" /> -->
+  <title>PyMedPhys</title>
+</head>
+
+<body>
+  <noscript>If you're seeing this message, that means
+    <strong>JavaScript has been disabled on your browser</strong>, please
+    <strong>enable JS</strong> to make this app work.
+  </noscript>
+
+  <script id='jupyter-config-data' type="application/json">
+    { "baseUrl": "{{base_url}}" }
+  </script>
+
+  <div id="app"></div>
+</body>
+
+</html>
