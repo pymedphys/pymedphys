@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -ex
+source activate pymedphys
 
 cd $EXTERNAL_GIT_DIR
 
