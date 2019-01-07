@@ -90,15 +90,15 @@ development tools quite a breeze. Follow `these instructions <https://chocolatey
 to install Chocolatey.
 
 
-Git and Git LFS
----------------
+Git, Git LFS, and Yarn
+----------------------
 
-Use Chocolatey within an administrator command prompt to install Git and
-Git LFS like so:
+Use Chocolatey within an administrator command prompt to install Git,
+Git LFS, and yarn like so:
 
 .. code:: bash
 
-    choco install git git-lfs
+    choco install git git-lfs yarn
 
 
 GitLab Account
