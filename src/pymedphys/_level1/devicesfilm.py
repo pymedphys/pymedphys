@@ -23,20 +23,22 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-import numpy as np
-import matplotlib.image as mpimg
-
+from PIL import Image
 from .._level0.libutils import get_imports
+import matplotlib.image as mpimg
+import numpy as np
+import matplotlib.cbook as cbook
+
 IMPORTS = get_imports(globals())
 
 
-def read_narrow_png(file_name, dpi=600, step_size=0.1):
+def read_narrow_png(file_name, step_size=0.1):
     """  Extract a an relative-density profilee from a narrow png file.
 
-    Image density is assumed to be uniform along its short dimension and
-    contain an image density along its long dimension, reflective of a dose
-    distribution.
+    Source file is a full color PNG that is sufficiently narrow that
+    density uniform along its short dimension. The image density along
+    its long dimension is reflective of a dose distribution. Requires
+    Python PIL.
 
     Parameters
     ----------
@@ -60,21 +62,24 @@ def read_narrow_png(file_name, dpi=600, step_size=0.1):
 
     """
 
+    image_file = Image.open(file_name)
+    assert image_file.mode == 'RGB'
+    dpi_horiz, dpi_vert = image_file.info['dpi']
+
     image_array = mpimg.imread(file_name)
 
     # AVG ACROSS NARROW DIMENSION & COLORS
     if image_array.shape[0] > 5*image_array.shape[1]:    # VERTICAL
         image_vector = np.average(image_array, axis=(1, 2))
+        pixel_size_in_cm = (2.54 / dpi_vert)
     elif image_array.shape[1] > 5*image_array.shape[0]:  # HORIZONTAL
         image_vector = np.average(image_array, axis=(0, 2))
+        pixel_size_in_cm = (2.54 / dpi_horiz)
     else:
         raise ValueError('The PNG file is not a narrow strip.')
-
-    # FIND PIXEL SIZE
-    pixel_size_in_cm = (2.54 / dpi)
     assert step_size > 5 * pixel_size_in_cm, "step size too small"
 
-    # ENFORCE AN ODD NUMBER OF PIXELS
+    # ENFORCE ODD NUMBER OF PIXELS, SO PROFILE CENTER IS MID-PIXEL
     if image_vector.shape[0] % 2 == 0:
         image_vector = image_vector[:-1]
 
@@ -92,9 +97,8 @@ def read_narrow_png(file_name, dpi=600, step_size=0.1):
                                num_pixels_to_avg_over).astype(int)
     downsampled_distance = list(image_vector_distances[sample_indices])
 
-    # DOWNSAMPLE DENSITY BY AVERAGING OVER THE WINDOW
     downsampled_density = []
-    for idx in sample_indices:
+    for idx in sample_indices:  # AVERAGE OVER THE SAMPLING WINDOW
         avg_density = np.average(
             image_vector[int(idx - num_pixels_to_avg_over / 2):
                          int(idx + num_pixels_to_avg_over / 2)])
