@@ -22,7 +22,7 @@ def execfile(fname, globs, locs=None):
     exec(compile(open(fname).read(), fname, "exec"), globs, locs)
 
 
-version_ns = {}
+version_ns = {}  # type: ignore
 execfile(pjoin(repo_root, 'src', 'pymedphys', '_version.py'), version_ns)
 
 version = version_ns['__version__']
@@ -89,5 +89,14 @@ setup(
         'shapely',
         'pydicom>=1.0',
         'python-dateutil'
-    ]
+    ],
+    tests_require=[
+        'pylint',
+        'coverage',
+        'mypy',
+        'pytest',
+        'pytest-pylint',
+        'pytest-mypy'
+    ],
+    test_suite="test_all.PytestExitCode"
 )

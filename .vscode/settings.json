@@ -1,5 +1,6 @@
 {
   "python.linting.pylintUseMinimalCheckers": false,
+  "python.linting.mypyEnabled": true,
   "files.trimTrailingWhitespace": true,
   "editor.formatOnSave": true,
   "restructuredtext.confPath": "${workspaceFolder}\\docs",
