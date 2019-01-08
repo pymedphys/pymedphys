@@ -99,7 +99,7 @@ class Profile:
         self._update_dose()
 
     def _interp1d(self) -> NumpyFunction:
-        return interpolate.interp1d(self._dist, self._dose)
+        return interpolate.interp1d(self._dist, self._dose)  # type: ignore
 
     def shift(self, applied_shift):
         if self._func is not None:
