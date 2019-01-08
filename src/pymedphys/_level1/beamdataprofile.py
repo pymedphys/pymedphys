@@ -31,6 +31,12 @@ import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
 
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
+
+
+# pylint: disable = C0103
+
 
 def _verify_shape_agreement_if_not_none(a, b, message="Does not agree"):
     if a is not None and b is not None:
@@ -68,6 +74,10 @@ class Profile:
         self._dist = np.array(array)
         self._update_dose()
 
+    def _update_dose(self):
+        if self._dist is not None and self._func is not None:
+            self._dose = self._func(self._dist)
+
     @property
     def func(self) -> np.ndarray:
         if self._func is not None:
@@ -87,10 +97,6 @@ class Profile:
     def func(self, function: Callable) -> None:
         self._func = function
         self._update_dose()
-
-    def _update_dose(self):
-        if self._dist is not None and self._func is not None:
-            self._dose = self._func(self._dist)
 
     def shift(self, applied_shift):
         if self._func is not None:
