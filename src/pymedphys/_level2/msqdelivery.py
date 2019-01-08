@@ -78,7 +78,7 @@ def get_field_type(cursor, field_id):
 
 
 def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
-                                field_name):
+                                field_name) -> OISDeliveryDetails:
     """Identifies the patient details for a given delivery time.
 
     Args:
