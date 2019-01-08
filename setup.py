@@ -88,6 +88,7 @@ setup(
         'keyring',
         'shapely',
         'pydicom>=1.0',
-        'python-dateutil'
+        'python-dateutil',
+        'pillow'
     ]
 )
