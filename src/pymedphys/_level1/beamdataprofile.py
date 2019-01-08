@@ -25,7 +25,7 @@
 
 
 from copy import copy
-from typing import Callable
+from typing import Callable, Union
 
 import numpy as np
 from scipy import interpolate
@@ -33,6 +33,9 @@ import matplotlib.pyplot as plt
 
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
+
+
+NumpyFunction = Callable[[np.ndarray], np.ndarray]
 
 
 # pylint: disable = C0103
@@ -47,7 +50,7 @@ def _verify_shape_agreement_if_not_none(a, b, message="Does not agree"):
 class Profile:
     _dose: np.ndarray = None
     _dist: np.ndarray = None
-    _func: Callable = None
+    _func: Union[NumpyFunction, None] = None
 
     @property
     def dose(self) -> np.ndarray:
@@ -79,7 +82,7 @@ class Profile:
             self._dose = self._func(self._dist)
 
     @property
-    def func(self) -> Callable:
+    def func(self) -> NumpyFunction:
         if self._func is not None:
             return self._func
 
@@ -90,13 +93,13 @@ class Profile:
 
         return self._interp1d()
 
-    def _interp1d(self) -> Callable:
-        return interpolate.interp1d(self._dist, self._dose)
-
     @func.setter
-    def func(self, function: Callable) -> None:
+    def func(self, function: NumpyFunction) -> None:
         self._func = function
         self._update_dose()
+
+    def _interp1d(self) -> NumpyFunction:
+        return interpolate.interp1d(self._dist, self._dose)
 
     def shift(self, applied_shift):
         if self._func is not None:
