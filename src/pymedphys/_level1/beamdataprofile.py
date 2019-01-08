@@ -79,7 +79,7 @@ class Profile:
             self._dose = self._func(self._dist)
 
     @property
-    def func(self) -> np.ndarray:
+    def func(self) -> Callable:
         if self._func is not None:
             return self._func
 
