@@ -18,13 +18,14 @@ LOADER = FileSystemLoader(GUI_PATH)
 
 def get_pymedphys_handlers(base_url):
     build_dir = os.path.join(GUI_PATH)
-    build_files = glob(os.path.join(build_dir, '*'))
+    build_files = glob(os.path.join(build_dir, '**'), recursive=True)
 
     print(build_dir)
 
     rel_paths = [os.path.relpath(item, build_dir) for item in build_files]
+    forward_slash = [path.replace('\\', '/') for path in rel_paths]
 
-    build_escaped = [re.escape(item) for item in rel_paths]
+    build_escaped = [re.escape(item) for item in forward_slash]
     build_strings = '|'.join(build_escaped)
 
     static_handler_regex = "/pymedphys/({})".format(build_strings)
@@ -38,7 +39,7 @@ def get_pymedphys_handlers(base_url):
             {'path': build_dir}
         ),
         (
-            ujoin(base_url, r'/pymedphys'),
+            ujoin(base_url, r'/pymedphys.*'),
             PyMedPhysHandler
         )
     ]
