@@ -12,7 +12,7 @@ conda env create -f ./environment.yml
 source activate pymedphys
 
 conda uninstall pymedphys
-conda install -q pytest nbstripout pylint coverage
+conda install -q pytest nbstripout pylint coverage mypy
 
 pip install pytest-pylint
 

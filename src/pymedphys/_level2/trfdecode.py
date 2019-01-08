@@ -31,7 +31,7 @@ release.
 
 # pylint: disable=W0401,W0614
 
-IMPORTS = []
+IMPORTS = []  # type: ignore
 
 # from decode_trf import *  # nopep8
 
@@ -73,13 +73,13 @@ except ImportError:
     def delivery_data_from_logfile(logfile_path):
         not_implemented_error()
 
-    def decode_data_item(row, group, byteorder) -> int:
+    def decode_data_item(row, group, byteorder):
         not_implemented_error()
 
-    def decode_column(raw_table_rows: List[str], column_number: int) -> np.ndarray:
+    def decode_column(raw_table_rows: List[str], column_number: int):
         not_implemented_error()
 
-    def decode_table_data(raw_table_rows: List[str]) -> np.ndarray:
+    def decode_table_data(raw_table_rows: List[str]):
         not_implemented_error()
 
     def create_dataframe(data, column_names, time_increment):
