@@ -81,6 +81,7 @@ setup(
         'numpy>=1.12',
         'scipy',
         'pandas',
+        'xarray'
         'matplotlib',
         'attrs',
         'psutil',
