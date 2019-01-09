@@ -31,6 +31,8 @@ import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
 
+import xarray as xr
+
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
@@ -38,19 +40,33 @@ IMPORTS = get_imports(globals())
 NumpyFunction = Callable[[np.ndarray], np.ndarray]
 
 
-# pylint: disable = C0103
+# pylint: disable = C0103, C0121
 
 
-def _verify_shape_agreement_if_not_none(a, b, message="Does not agree"):
-    if a is not None and b is not None:
-        if np.any(np.shape(a) != np.shape(b)):
-            raise ValueError(message)
+def _verify_shape_agreement_if_not_none(arrays, names):
+    for array in arrays:
+        if array is None:
+            return
+
+    shapes = [np.shape(array) for array in arrays]
+
+    for shape, name in zip(shapes, names):
+        if len(shape) != 1:
+            raise ValueError(
+                "`{}` needs to be of exactly dimension 1".format(name))
+
+    if len(set(shapes)) != 1:
+        all_names = ', '.join(names)
+        raise ValueError(
+            "{} need to all be the same length.".format(all_names))
 
 
-class Profile:
-    _dose: np.ndarray = None
-    _dist: np.ndarray = None
-    _func: Union[NumpyFunction, None] = None
+class _BaseDose:
+    def __init__(self):
+        self._dose: np.ndarray = None
+        self._dist: np.ndarray = None
+        self._func: Union[NumpyFunction, None] = None
+        self._xarray: xr.DataArray = None
 
     @property
     def dose(self) -> np.ndarray:
@@ -60,10 +76,12 @@ class Profile:
     def dose(self, array) -> None:
         if self._func is not None:
             raise ValueError("Cannot set dose when `func` is defined")
-        _verify_shape_agreement_if_not_none(
-            self._dist, array, "`dose` does not match dimensions of `dist`")
+        array = np.array(array)
 
-        self._dose = np.array(array)
+        _verify_shape_agreement_if_not_none(
+            (self._dist, array), ("dist", "dose"))
+
+        self._dose = array
 
     @property
     def dist(self) -> np.ndarray:
@@ -71,15 +89,27 @@ class Profile:
 
     @dist.setter
     def dist(self, array) -> None:
-        _verify_shape_agreement_if_not_none(
-            self._dose, array, "`dist` does not match dimensions of `dose`")
+        array = np.array(array)
 
-        self._dist = np.array(array)
+        _verify_shape_agreement_if_not_none(
+            (self._dose, array), ("dose", "dist"))
+
+        self._dist = array
         self._update_dose()
 
     def _update_dose(self):
         if self._dist is not None and self._func is not None:
             self._dose = self._func(self._dist)
+
+        self._update_xarray()
+
+    def _update_xarray(self):
+        if self._dist is not None and self._dose is not None:
+            if self._xarray is None:
+                self._xarray = xr.DataArray(
+                    self._dose, coords=[('dist', self._dist)])
+            # else:
+            #     self._xarray
 
     @property
     def func(self) -> NumpyFunction:
@@ -113,15 +143,40 @@ class Profile:
             self._dist, self._dose, 'o-', label=self._func.__name__)
 
     @property
+    def xarray(self):
+        return self._xarray
+
+    def __getattribute__(self, attr):
+        try:
+            return object.__getattribute__(self, attr)
+        except AttributeError:
+            return getattr(self._xarray, attr)
+
+
+class ProfileDose(_BaseDose):
+
+    def resample(self):
+        pass
+
+    def dose_normalise(self):
+        pass
+
+    def dist_normalise(self):
+        pass
+
+    @property
     def umbra(self):
+        pass
+
+    @property
+    def edges(self):
         pass
 
     @property
     def centre(self):
         pass
 
-    @property
-    def edges(self):
+    def shift_to_centre(self):
         pass
 
     @property
@@ -132,17 +187,9 @@ class Profile:
     def symmetry(self):
         pass
 
-    def shift_to_centre(self):
-        pass
-
     def symmetrise(self):
         pass
 
-    def resample(self):
-        pass
 
-    def dose_normalise(self):
-        pass
-
-    def dist_normalise(self):
-        pass
+class DepthDose(_BaseDose):
+    pass
