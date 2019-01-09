@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from copy import copy
+from copy import copy, deepcopy
 from typing import Callable, Union
 
 import numpy as np
@@ -43,80 +43,70 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121
 
 
-def _verify_shape_agreement_if_not_none(arrays, names):
-    for array in arrays:
-        if array is None:
-            return
-
-    shapes = [np.shape(array) for array in arrays]
-
-    for shape, name in zip(shapes, names):
-        if len(shape) != 1:
-            raise ValueError(
-                "`{}` needs to be of exactly dimension 1".format(name))
-
-    if len(set(shapes)) != 1:
-        all_names = ', '.join(names)
-        raise ValueError(
-            "{} need to all be the same length.".format(all_names))
-
-
 class _BaseDose:
     def __init__(self):
-        self._dose: np.ndarray = None
-        self._dist: np.ndarray = None
+        self._dose_init: np.ndarray = None
+        self._dist_init: np.ndarray = None
         self._func: Union[NumpyFunction, None] = None
         self._xarray: xr.DataArray = None
 
     @property
     def dose(self) -> np.ndarray:
-        return self._dose
+        try:
+            return self._xarray.data
+        except AttributeError:
+            return self._dose_init
 
     @dose.setter
     def dose(self, array) -> None:
-        if self._func is not None:
-            raise ValueError("Cannot set dose when `func` is defined")
         array = np.array(array)
+        if len(np.shape(array)) != 1:
+            raise ValueError("`dose` must be of one dimension.")
 
-        _verify_shape_agreement_if_not_none(
-            (self._dist, array), ("dist", "dose"))
+        try:
+            self._xarray.data = array
+        except AttributeError:
+            self._dose_init = array
+            self._create_xarray_if_both_init_defined()
 
-        self._dose = array
+    def _create_xarray_if_both_init_defined(self):
+        if self._dist_init is not None and self._dose_init is not None:
+            if self._xarray is None:
+                self._xarray = xr.DataArray(
+                    self._dose_init, coords=[('dist', self._dist_init)])
 
     @property
     def dist(self) -> np.ndarray:
-        return self._dist
+        try:
+            return self._xarray.dist.data
+        except AttributeError:
+            return self._dist_init
 
     @dist.setter
     def dist(self, array) -> None:
         array = np.array(array)
+        if len(np.shape(array)) != 1:
+            raise ValueError("`dist` must be of one dimension.")
 
-        _verify_shape_agreement_if_not_none(
-            (self._dose, array), ("dose", "dist"))
+        try:
+            self._xarray.dist.data = array
+        except AttributeError:
+            self._dist_init = array
+            self._create_xarray_if_both_init_defined()
 
-        self._dist = array
+        self._dist_init = array
         self._update_dose()
 
     def _update_dose(self):
-        if self._dist is not None and self._func is not None:
-            self._dose = self._func(self._dist)
-
-        self._update_xarray()
-
-    def _update_xarray(self):
-        if self._dist is not None and self._dose is not None:
-            if self._xarray is None:
-                self._xarray = xr.DataArray(
-                    self._dose, coords=[('dist', self._dist)])
-            # else:
-            #     self._xarray
+        if self._dist_init is not None and self._func is not None:
+            self.dose = self._func(self.dist)
 
     @property
     def func(self) -> NumpyFunction:
         if self._func is not None:
             return self._func
 
-        if self._dose is None or self._dist is None:
+        if self._xarray is None:
             raise ValueError(
                 "Either define a `func` or provide both `dist` and "
                 "`dose` values for linear interpolation.")
@@ -129,28 +119,34 @@ class _BaseDose:
         self._update_dose()
 
     def _interp1d(self) -> NumpyFunction:
-        return interpolate.interp1d(self._dist, self._dose)  # type: ignore
+        return interpolate.interp1d(self.dist, self.dose)  # type: ignore
 
     def shift(self, applied_shift):
         if self._func is not None:
             old_func = copy(self._func)
             self._func = lambda x: old_func(x - applied_shift)
 
-        self._dist = self._dist + applied_shift
+        self.dist = self.dist + applied_shift
 
     def plot(self):
         return plt.plot(
-            self._dist, self._dose, 'o-', label=self._func.__name__)
+            self.dist, self.dose, 'o-', label=self._func.__name__)
+
+    def interactive(self):
+        pass
+
+    def to_xarray(self):
+        return deepcopy(self._xarray)
+
+    def to_pandas(self):
+        return self.to_xarray().to_pandas()
+
+    def to_dict(self):
+        return self.to_xarray().to_dict()
 
     @property
-    def xarray(self):
-        return self._xarray
-
-    def __getattribute__(self, attr):
-        try:
-            return object.__getattribute__(self, attr)
-        except AttributeError:
-            return getattr(self._xarray, attr)
+    def deepcopy(self):
+        return deepcopy(self)
 
 
 class ProfileDose(_BaseDose):

@@ -83,6 +83,7 @@ setup(
         'pandas',
         'xarray'
         'matplotlib',
+        'rx',
         'attrs',
         'psutil',
         'pymssql',
