@@ -24,10 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 from PIL import Image
-from .._level0.libutils import get_imports
 import matplotlib.image as mpimg
 import numpy as np
-import matplotlib.cbook as cbook
+
+from .._level0.libutils import get_imports
 
 IMPORTS = get_imports(globals())
 
@@ -43,9 +43,8 @@ def read_narrow_png(file_name, step_size=0.1):
     Parameters
     ----------
     file_name : str
-    dpi : int, optional
     step-size : float, optional
-        Distance output increment in cm
+        Distance output increment in cm, defaults to 1 mm
 
     Returns
     -------
