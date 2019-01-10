@@ -90,7 +90,8 @@ setup(
         'keyring',
         'shapely',
         'pydicom>=1.0',
-        'python-dateutil'
+        'python-dateutil',
+        'Pillow'
     ],
     tests_require=[
         'pylint',
@@ -100,5 +101,10 @@ setup(
         'pytest-pylint',
         'pytest-mypy'
     ],
-    test_suite="test_all.PytestExitCode"
+    test_suite="test_all.PytestExitCode",
+    extras_require={
+        'docs': [
+            'numpydoc',
+            'sphinx >= 1.4',
+            'sphinx_rtd_theme']}
 )

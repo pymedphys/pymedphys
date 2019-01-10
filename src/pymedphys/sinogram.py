@@ -24,19 +24,25 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A tomotherapy toolbox.
+"""
+A tomotherapy toolbox.
 
 Available Functions
 -------------------
->>> from pymedphys.tomo import unshuffle_sinogram
+>>> from pymedphys.sinogram import read_csv_file
+>>> from pymedphys.sinogram import read_bin_file
+>>> from pymedphys.sinogram import crop
+>>> from pymedphys.sinogram import unshuffle
+>>> from pymedphys.sinogram import make_histogram
+>>> from pymedphys.sinogram import find_modulation_factor
 """
 
 # pylint: disable=W0401,W0614
 
 from ._level0.libutils import clean_and_verify_levelled_modules
 
-from ._level1.tomounshuffle import *
+from ._level1.sinogram import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.tomounshuffle'
+    '._level1.sinogram'
 ])
