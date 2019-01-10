@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Paul King
+# Copyright (C) 2019 Paul King
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,17 +23,22 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import os
+import numpy as np
 
-# pylint: disable=W0401,W0614
+from pymedphys.devices import read_narrow_png
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+DATA_DIRECTORY = os.path.abspath(
+    os.path.join(os.path.dirname(__file__),
+                 os.pardir, 'data', 'devices', 'film'))
 
-from ._level1.devicessncprofiler import *
-from ._level1.devicessncmapcheck import *
-from ._level1.devicesfilm import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.devicessncprofiler',
-    '._level1.devicessncmapcheck',
-    '._level1.devicesfilm'
-])
+def test_read_narrow_png():
+    vert_strip = os.path.join(DATA_DIRECTORY, 'FilmCalib_EBT_vert_strip.png')
+    horz_strip = os.path.join(DATA_DIRECTORY, 'FilmCalib_EBT_horz_strip.png')
+    assert np.allclose(read_narrow_png(vert_strip)[0][0],
+                       read_narrow_png(horz_strip)[0][0])
+
+
+if __name__ == "__main__":
+    test_read_narrow_png()

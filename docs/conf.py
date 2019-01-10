@@ -12,6 +12,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+
+# pylint: disable = C0413, C0103
+
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../src'))
@@ -26,8 +29,8 @@ def setup(app):
 
 
 project = 'PyMedPhys'
-copyright = '2015-2018, the PyMedPhys contributors'
-author = 'Simon Biggs, Matthew Sobolewski'
+copyright = '2015-2019, the PyMedPhys contributors'
+author = 'Simon Biggs, Matt Jennings, Paul King, Matthew Sobolewski'
 
 # The short X.Y version
 version = ''
@@ -146,7 +149,7 @@ latex_elements = {   # type: ignore
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'pymedphys.tex', 'pymedphys Documentation',
-     'Simon Biggs, Matthew Sobolewski', 'manual'),
+     author, 'manual'),
 ]
 
 
