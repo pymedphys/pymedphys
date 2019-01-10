@@ -26,6 +26,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from deepdiff import DeepDiff
+
 from pymedphys.beamdata import ProfileDose
 
 
@@ -47,24 +49,16 @@ def test_conversion():
         expected_dose, coords=[('dist', expected_dist)])
 
     expected_dict = {
-        'coords': {
-            'dist': {
-                'data': expected_dist,
-                'dims': ('dist',),
-                'attrs': {
-                    'unit': 'mm'
-                }
-            }
-        },
-        'attrs': {
-            'unit': 'Gy'
-        },
+        'coords': {'dist': {'data': expected_dist,
+                            'dims': ('dist',),
+                            'attrs': {}}},
+        'attrs': {},
         'dims': ('dist',),
         'data': expected_dose,
-        'name': 'dose'
-    }
+        'name': None}
 
     assert np.array_equal(profile.dist, np.array(expected_dist))
     assert np.array_equal(profile.dose, np.array(expected_dose))
     assert expected_pandas.equals(profile.to_pandas())
     assert expected_xarray.identical(profile.to_xarray())
+    assert DeepDiff(result, expected) == {}
