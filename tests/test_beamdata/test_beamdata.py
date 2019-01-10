@@ -61,4 +61,4 @@ def test_conversion():
     assert np.array_equal(profile.dose, np.array(expected_dose))
     assert expected_pandas.equals(profile.to_pandas())
     assert expected_xarray.identical(profile.to_xarray())
-    assert DeepDiff(result, expected) == {}
+    assert DeepDiff(profile.to_dict(), expected_dict) == {}
