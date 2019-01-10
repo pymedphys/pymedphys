@@ -99,7 +99,8 @@ setup(
         'mypy',
         'pytest',
         'pytest-pylint',
-        'pytest-mypy'
+        'pytest-mypy',
+        'deepdiff'
     ],
     test_suite="test_all.PytestExitCode",
     extras_require={
