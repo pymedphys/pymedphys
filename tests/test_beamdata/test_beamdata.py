@@ -30,6 +30,8 @@ from deepdiff import DeepDiff
 
 from pymedphys.beamdata import ProfileDose
 
+# pylint: disable = E1102
+
 
 def cubed(x):
     return x ** 3
@@ -62,3 +64,28 @@ def test_conversion():
     assert expected_pandas.equals(profile.to_pandas())
     assert expected_xarray.identical(profile.to_xarray())
     assert DeepDiff(profile.to_dict(), expected_dict) == {}
+
+
+def test_function_updating():
+    profile = ProfileDose()
+    profile.dist = [1, 2, 3]
+    profile.func = lambda x: x**2
+    assert np.array_equal(profile.dose, [1, 4, 9])
+
+    profile.shift(2)
+    assert np.array_equal(profile.dose, [1, 4, 9])
+    assert np.array_equal(profile.dist, [3, 4, 5])
+
+    profile.dist = [1, 2, 3]
+    assert np.array_equal(profile.dose, [1, 0, 1])
+
+    profile.dist = [3, 4, 5]
+    assert np.array_equal(profile.dose, [1, 4, 9])
+
+
+def test_default_interp_function():
+    profile = ProfileDose()
+    profile.dist = [-10, 0, 10]
+    profile.dose = [3, 8, 2]
+
+    assert np.array_equal(profile.func([1, 3, 4]), [7.4, 6.2, 5.6])
