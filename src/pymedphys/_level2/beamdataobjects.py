@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 import xarray as xr
 
 from .._level0.libutils import get_imports
+from .._level1.coreobjects import _PyMedPhysBase
 IMPORTS = get_imports(globals())
 
 
@@ -43,7 +44,7 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121
 
 
-class _BaseDose:
+class _BaseDose(_PyMedPhysBase):
     def __init__(self):
         self._dose_init: np.ndarray = None
         self._dist_init: np.ndarray = None
