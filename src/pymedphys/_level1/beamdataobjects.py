@@ -49,6 +49,13 @@ class _BaseDose:
         self._dist_init: np.ndarray = None
         self._func: Union[NumpyFunction, None] = None
         self._xarray: xr.DataArray = None
+        self._dose_unit = 'Gy'
+        self._dist_unit = 'mm'
+
+        self._xarray_init = {
+            'dose': [None, 'Gy'],
+            'dist': [None, 'mm']
+        }
 
     @property
     def dose(self) -> np.ndarray:
