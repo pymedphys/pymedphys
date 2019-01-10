@@ -8,3 +8,4 @@ keyring
 pymssql
 attrs
 pandas
+notebook
