@@ -1,13 +1,16 @@
 """Module docstring
 """
 
-# pylint: disable=W0401,C0413
+# pylint: disable=W0401,C0413,W0406
 
 
 import os
 from glob import glob
 
 from ._version import version_info, __version__
+from ._jupyter_server_extension import (
+    _jupyter_server_extension_paths, load_jupyter_server_extension
+)
 
 MODULE_PATHS = glob(os.path.join(
     os.path.dirname(__file__), '[!_]*.py'))
@@ -19,6 +22,6 @@ __all__ = [
 
 del os
 del glob
-del MODULE_PATHS
+# del MODULE_PATHS
 
 from . import *  # nopep8
