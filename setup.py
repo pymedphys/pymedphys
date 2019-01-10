@@ -88,7 +88,8 @@ setup(
         'keyring',
         'shapely',
         'pydicom>=1.0',
-        'python-dateutil'
+        'python-dateutil',
+        'Pillow'
     ],
     tests_require=[
         'pylint',
