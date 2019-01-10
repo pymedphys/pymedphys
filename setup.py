@@ -22,7 +22,7 @@ def execfile(fname, globs, locs=None):
     exec(compile(open(fname).read(), fname, "exec"), globs, locs)
 
 
-version_ns = {}
+version_ns = {}  # type: ignore
 execfile(pjoin(repo_root, 'src', 'pymedphys', '_version.py'), version_ns)
 
 version = version_ns['__version__']
@@ -35,15 +35,15 @@ def read(*names, **kwargs):
     ).read()
 
 
-def get_data_files():
-    """Get the data files for the package.
-    """
-    return [
-        ('etc/jupyter/jupyter_notebook_config.d', [
-            os.path.relpath(
-                pjoin(repo_root, 'src', 'pymedphys', 'pymedphys.json'), '.')
-        ])
-    ]
+# def get_data_files():
+#     """Get the data files for the package.
+#     """
+#     return [
+#         ('etc/jupyter/jupyter_notebook_config.d', [
+#             os.path.relpath(
+#                 pjoin(repo_root, 'src', 'pymedphys', 'pymedphys.json'), '.')
+#         ])
+#     ]
 
 
 setup(
@@ -72,11 +72,11 @@ setup(
     entry_points={
         'console_scripts': [
             'trf2csv=pymedphys.entry_points.trf2csv:trf2csv_cli',
-            'pymedphys-gui=pymedphys.entry_points.gui:gui'
+            # 'pymedphys=pymedphys.entry_points.gui:gui'
         ],
     },
     license='AGPLv3+',
-    data_files=get_data_files(),
+    # data_files=get_data_files(),
     install_requires=[
         'numpy>=1.12',
         'scipy',
@@ -89,6 +89,15 @@ setup(
         'shapely',
         'pydicom>=1.0',
         'python-dateutil',
-        'pillow'
-    ]
+        'Pillow'
+    ],
+    tests_require=[
+        'pylint',
+        'coverage',
+        'mypy',
+        'pytest',
+        'pytest-pylint',
+        'pytest-mypy'
+    ],
+    test_suite="test_all.PytestExitCode"
 )

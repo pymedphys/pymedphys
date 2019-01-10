@@ -22,6 +22,6 @@ __all__ = [
 
 del os
 del glob
-del MODULE_PATHS
+# del MODULE_PATHS
 
 from . import *  # nopep8
