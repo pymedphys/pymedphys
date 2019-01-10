@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- A 'hello world' browser based, jupyter powered, GUI interface from [@SimonBiggs](https://gitlab.com/SimonBiggs).
+- The beginning of a standardised pymedphys object base class from [@SimonBiggs](https://gitlab.com/SimonBiggs).
 
 ### Changed
 - nil
