@@ -5,9 +5,6 @@ python:
   version: 3.7
   pip_install: true
 
-conda:
-  file: environment.yml
-
 python:
     extra_requirements:
         - docs
