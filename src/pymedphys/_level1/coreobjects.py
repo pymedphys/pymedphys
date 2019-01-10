@@ -24,14 +24,25 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""
-"""
+from copy import copy, deepcopy
+from typing import Callable, Union
 
-# pylint: disable=W0401,W0614
+import numpy as np
+from scipy import interpolate
+import matplotlib.pyplot as plt
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+import xarray as xr
 
-from ._level2.beamdataobjects import *
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level2.beamdataobjects'])
+
+NumpyFunction = Callable[[np.ndarray], np.ndarray]
+
+
+# pylint: disable = C0103, C0121
+
+
+class _PyMedPhysBase:
+    def __init__(self):
+        pass
