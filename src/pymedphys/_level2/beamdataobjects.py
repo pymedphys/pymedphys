@@ -45,26 +45,28 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 
 
 class _BaseDose(_PyMedPhysBase):
-    def __init__(self):
-        self._dose_init: np.ndarray = None
+    def __init__(self, dist=None, dose=None, func=None):
         self._dist_init: np.ndarray = None
+        self._dose_init: np.ndarray = None
         self._func: Union[NumpyFunction, None] = None
         self._xarray: xr.DataArray = None
-        self._dose_unit = 'Gy'
-        self._dist_unit = 'mm'
 
-        self._xarray_init = {
-            'dose': [None, 'Gy'],
-            'dist': [None, 'mm']
-        }
+        if dist is not None:
+            self.dist = dist
 
-    def has_custom_func(self):
-        return self._func is not None
+        # Order here is important. Need to call func first so that dose will
+        # raise an error if func and dose are both defined.
+        # Don't want func to quietly clobber inputted dose.
+        if func is not None:
+            self.func = func
+
+        if dose is not None:
+            self.dose = dose
 
     @property
     def dose(self) -> np.ndarray:
         try:
-            return self._xarray.data
+            return self._xarray.data  # type: ignore
         except AttributeError:
             return self._dose_init
 
@@ -89,7 +91,7 @@ class _BaseDose(_PyMedPhysBase):
     @property
     def dist(self) -> np.ndarray:
         try:
-            return self._xarray.dist.data
+            return self._xarray.dist.data  # type: ignore
         except AttributeError:
             return self._dist_init
 
@@ -112,6 +114,9 @@ class _BaseDose(_PyMedPhysBase):
         if self._dist_init is not None and self._func is not None:
             self.dose = self._func(self.dist)
 
+    def _interp1d(self) -> NumpyFunction:
+        return interpolate.interp1d(self.dist, self.dose)  # type: ignore
+
     @property
     def func(self) -> NumpyFunction:
         if self._func is not None:
@@ -129,8 +134,8 @@ class _BaseDose(_PyMedPhysBase):
         self._func = function
         self._update_dose()
 
-    def _interp1d(self) -> NumpyFunction:
-        return interpolate.interp1d(self.dist, self.dose)  # type: ignore
+    def has_custom_func(self):
+        return self._func is not None
 
     def shift(self, applied_shift, inplace=False):
         if inplace:
