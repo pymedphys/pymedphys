@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- The beginning of a standardised pymedphys object base class from [@SimonBiggs](https://gitlab.com/SimonBiggs).
+- ProfileDose object built ontop of xarray. [@SimonBiggs](https://gitlab.com/SimonBiggs).
 
 ### Changed
 - nil
