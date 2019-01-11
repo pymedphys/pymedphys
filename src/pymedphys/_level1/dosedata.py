@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 import xarray as xr
 
 from .._level0.libutils import get_imports
-from .._level1.coreobjects import _PyMedPhysBase
+# from .._level1.coreobjects import _PyMedPhysBase
 IMPORTS = get_imports(globals())
 
 
@@ -44,31 +44,29 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121
 
 
-class _BaseDose(_PyMedPhysBase):
-    def __init__(self, dist=None, dose=None, func=None):
-        self._dist_init: np.ndarray = None
-        self._dose_init: np.ndarray = None
+class _BaseDose():
+    def __init__(self, dist, dose=None, func=None):
+        if dose is None and func is None:
+            raise ValueError("Must define either `dose` or `func`")
+
+        if dose is not None and func is not None:
+            raise ValueError("Cannot define both `dose` and `func`")
+
         self._func: Union[NumpyFunction, None] = None
-        self._xarray: xr.DataArray = None
 
-        if dist is not None:
-            self.dist = dist
-
-        # Order here is important. Need to call func first so that dose will
-        # raise an error if func and dose are both defined.
-        # Don't want func to quietly clobber inputted dose.
         if func is not None:
-            self.func = func
+            dose = func(dist)
 
-        if dose is not None:
-            self.dose = dose
+        self._xarray = xr.DataArray(dose, coords=[('dist', dist)])
+
+        # Set each property so that they can raise errors if need be
+        self.dist = dist
+        self.dose = dose
+        self.func = func
 
     @property
     def dose(self) -> np.ndarray:
-        try:
-            return self._xarray.data  # type: ignore
-        except AttributeError:
-            return self._dose_init
+        return self._xarray.data  # type: ignore
 
     @dose.setter
     def dose(self, array) -> None:
@@ -76,24 +74,14 @@ class _BaseDose(_PyMedPhysBase):
         if len(np.shape(array)) != 1:
             raise ValueError("`dose` must be of one dimension.")
 
-        try:
-            self._xarray.data = array
-        except AttributeError:
-            self._dose_init = array
-            self._create_xarray_if_both_init_defined()
+        self._xarray.data = array
 
-    def _create_xarray_if_both_init_defined(self):
-        if self._dist_init is not None and self._dose_init is not None:
-            if self._xarray is None:
-                self._xarray = xr.DataArray(
-                    self._dose_init, coords=[('dist', self._dist_init)])
+    def has_custom_func(self):
+        return self._func is not None
 
     @property
     def dist(self) -> np.ndarray:
-        try:
-            return self._xarray.dist.data  # type: ignore
-        except AttributeError:
-            return self._dist_init
+        return self._xarray.dist.data  # type: ignore
 
     @dist.setter
     def dist(self, array) -> None:
@@ -101,18 +89,10 @@ class _BaseDose(_PyMedPhysBase):
         if len(np.shape(array)) != 1:
             raise ValueError("`dist` must be of one dimension.")
 
-        try:
-            self._xarray.dist.data = array
-        except AttributeError:
-            self._dist_init = array
-            self._create_xarray_if_both_init_defined()
+        self._xarray.dist.data = array
 
-        self._dist_init = array
-        self._update_dose()
-
-    def _update_dose(self):
-        if self._dist_init is not None and self._func is not None:
-            self.dose = self._func(self.dist)
+        if self.has_custom_func():
+            self.dose = self._func(self.dist)  # type: ignore
 
     def _interp1d(self) -> NumpyFunction:
         return interpolate.interp1d(self.dist, self.dose)  # type: ignore
@@ -122,20 +102,12 @@ class _BaseDose(_PyMedPhysBase):
         if self._func is not None:
             return self._func
 
-        if self._xarray is None:
-            raise ValueError(
-                "Either define a `func` or provide both `dist` and "
-                "`dose` values for linear interpolation.")
-
         return self._interp1d()
 
     @func.setter
     def func(self, function: NumpyFunction) -> None:
         self._func = function
-        self._update_dose()
-
-    def has_custom_func(self):
-        return self._func is not None
+        self.dose = self._func(self.dist)  # type: ignore
 
     def shift(self, applied_shift, inplace=False):
         if inplace:
