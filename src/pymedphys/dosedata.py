@@ -24,25 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from copy import copy, deepcopy
-from typing import Callable, Union
+"""
+"""
 
-import numpy as np
-from scipy import interpolate
-import matplotlib.pyplot as plt
+# pylint: disable=W0401,W0614
 
-import xarray as xr
+from ._level0.libutils import clean_and_verify_levelled_modules
 
-from .._level0.libutils import get_imports
-IMPORTS = get_imports(globals())
+from ._level1.dosedata import *
 
-
-NumpyFunction = Callable[[np.ndarray], np.ndarray]
-
-
-# pylint: disable = C0103, C0121
-
-
-class _PyMedPhysBase:
-    def __init__(self):
-        pass
+clean_and_verify_levelled_modules(globals(), [
+    '._level1.dosedata'])
