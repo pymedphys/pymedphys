@@ -55,14 +55,21 @@ class _BaseDose():
         self._func: Union[NumpyFunction, None] = None
 
         if func is not None:
-            dose = func(dist)
+            dose_init = func(np.array(dist))
+        else:
+            dose_init = dose
 
-        self._xarray = xr.DataArray(dose, coords=[('dist', dist)])
+        self._xarray = xr.DataArray(dose_init, coords=[('dist', dist)])
 
         # Set each property so that they can raise errors if need be
         self.dist = dist
-        self.dose = dose
-        self.func = func
+
+        if func is not None and dose is None:
+            self.func = func
+        elif dose is not None and func is None:
+            self.dose = dose
+        else:
+            raise AssertionError()
 
     @property
     def dose(self) -> np.ndarray:

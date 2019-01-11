@@ -80,10 +80,10 @@ def test_function_updating_with_shift():
 
     profile_copy = profile.shift(2)
     assert np.array_equal(profile.dist, [3, 4, 5])
-    assert np.array_equal(profile_copy.dist, [4, 6, 7])
+    assert np.array_equal(profile_copy.dist, [5, 6, 7])
 
 
 def test_default_interp_function():
-    profile = ProfileDose(dist=[-10, 0, 10], func=[3, 8, 2])
+    profile = ProfileDose(dist=[-10, 0, 10], dose=[3, 8, 2])
 
     assert np.array_equal(profile.func([1, 3, 4]), [7.4, 6.2, 5.6])
