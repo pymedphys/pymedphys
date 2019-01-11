@@ -44,7 +44,7 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121
 
 
-class _BaseDose():
+class DoseData():
     def __init__(self, dist, dose=None, func=None):
         if dose is None and func is None:
             raise ValueError("Must define either `dose` or `func`")
@@ -151,7 +151,7 @@ class _BaseDose():
         return deepcopy(self)
 
 
-class ProfileDose(_BaseDose):
+class ProfileDoseData(DoseData):
 
     def resample(self):
         pass
@@ -189,5 +189,5 @@ class ProfileDose(_BaseDose):
         pass
 
 
-class DepthDose(_BaseDose):
+class DepthDoseData(DoseData):
     pass
