@@ -114,7 +114,7 @@ class DoseData():
     @func.setter
     def func(self, function: NumpyFunction) -> None:
         self._func = function
-        self.dose = self._func(self.dist)  # type: ignore
+        self.dose = function(self.dist)  # type: ignore
 
     def shift(self, applied_shift, inplace=False):
         if inplace:
