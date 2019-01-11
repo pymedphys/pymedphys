@@ -89,7 +89,8 @@ setup(
         'shapely',
         'pydicom>=1.0',
         'python-dateutil',
-        'Pillow'
+        'Pillow',
+        'notebook'
     ],
     tests_require=[
         'pylint',
