@@ -28,7 +28,7 @@ import xarray as xr
 
 from deepdiff import DeepDiff
 
-from pymedphys.dosedata import ProfileDose
+from pymedphys.dosedata import ProfileDoseData
 
 # pylint: disable = E1102
 
@@ -38,7 +38,7 @@ def cubed(x):
 
 
 def test_conversion():
-    profile = ProfileDose(dist=range(-3, 4), func=cubed)
+    profile = ProfileDoseData(dist=range(-3, 4), func=cubed)
 
     expected_dist = [-3, -2, -1, 0, 1, 2, 3]
     expected_dose = [-27, -8, -1, 0, 1, 8, 27]
@@ -65,7 +65,7 @@ def test_conversion():
 
 
 def test_function_updating_with_shift():
-    profile = ProfileDose(dist=[1, 2, 3], func=lambda x: x**2)
+    profile = ProfileDoseData(dist=[1, 2, 3], func=lambda x: x**2)
     assert np.array_equal(profile.dose, [1, 4, 9])
 
     profile.shift(2, inplace=True)
@@ -84,6 +84,6 @@ def test_function_updating_with_shift():
 
 
 def test_default_interp_function():
-    profile = ProfileDose(dist=[-10, 0, 10], dose=[3, 8, 2])
+    profile = ProfileDoseData(dist=[-10, 0, 10], dose=[3, 8, 2])
 
     assert np.array_equal(profile.func([1, 3, 4]), [7.4, 6.2, 5.6])
