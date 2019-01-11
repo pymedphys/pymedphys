@@ -58,6 +58,9 @@ class _BaseDose(_PyMedPhysBase):
             'dist': [None, 'mm']
         }
 
+    def has_custom_func(self):
+        return self._func is not None
+
     @property
     def dose(self) -> np.ndarray:
         try:
@@ -129,12 +132,20 @@ class _BaseDose(_PyMedPhysBase):
     def _interp1d(self) -> NumpyFunction:
         return interpolate.interp1d(self.dist, self.dose)  # type: ignore
 
-    def shift(self, applied_shift):
-        if self._func is not None:
-            old_func = copy(self._func)
-            self._func = lambda x: old_func(x - applied_shift)
+    def shift(self, applied_shift, inplace=False):
+        if inplace:
+            adjusted_object = self
+        else:
+            adjusted_object = self.deepcopy()
 
-        self.dist = self.dist + applied_shift
+        if adjusted_object.has_custom_func():
+            old_func = copy(adjusted_object.func)
+            adjusted_object.func = lambda x: old_func(x - applied_shift)
+
+        adjusted_object.dist = adjusted_object.dist + applied_shift
+
+        if not inplace:
+            return adjusted_object
 
     def plot(self):
         return plt.plot(
@@ -152,7 +163,6 @@ class _BaseDose(_PyMedPhysBase):
     def to_dict(self):
         return self.to_xarray().to_dict()
 
-    @property
     def deepcopy(self):
         return deepcopy(self)
 

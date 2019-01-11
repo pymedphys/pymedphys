@@ -72,7 +72,7 @@ def test_function_updating():
     profile.func = lambda x: x**2
     assert np.array_equal(profile.dose, [1, 4, 9])
 
-    profile.shift(2)
+    profile.shift(2, inplace=True)
     assert np.array_equal(profile.dose, [1, 4, 9])
     assert np.array_equal(profile.dist, [3, 4, 5])
 
