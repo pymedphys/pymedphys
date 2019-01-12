@@ -24,8 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from copy import copy, deepcopy
-from typing import Callable, Union
+from copy import deepcopy
+from typing import Callable
 
 import numpy as np
 from scipy import interpolate
@@ -71,9 +71,9 @@ class DoseBase():
 
 
 class Dose1D(DoseBase):
-    def __init__(self, x, dose):
+    def __init__(self, x, data):
         coords = [('x', x)]
-        super().__init__(dose, coords)
+        super().__init__(data, coords)
 
     @property
     def x(self) -> np.ndarray:
@@ -87,8 +87,9 @@ class Dose1D(DoseBase):
 
         self._xarray.x.data = array
 
+    @property
     def interp(self) -> NumpyFunction:
-        return interpolate.interp1d(self.x, self.dose)  # type: ignore
+        return interpolate.interp1d(self.x, self.data)  # type: ignore
 
     def shift(self, applied_shift, inplace=False):
         if inplace:
@@ -102,8 +103,7 @@ class Dose1D(DoseBase):
             return adjusted_object
 
     def plot(self):
-        return plt.plot(
-            self.x, self.dose, 'o-')
+        return plt.plot(self.x, self.data, 'o-')
 
     def interactive(self):
         pass

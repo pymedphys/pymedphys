@@ -28,62 +28,65 @@ import xarray as xr
 
 from deepdiff import DeepDiff
 
-from pymedphys.dosedata import ProfileDoseData
+from pymedphys.dosedata import DoseProfile
 
 # pylint: disable = E1102
 
 
 def cubed(x):
-    return x ** 3
+    return np.array(x) ** 3
 
 
 def test_conversion():
-    profile = ProfileDoseData(dist=range(-3, 4), func=cubed)
+    x = range(-3, 4)
+    profile = DoseProfile(x=x, data=cubed(x))
 
-    expected_dist = [-3, -2, -1, 0, 1, 2, 3]
-    expected_dose = [-27, -8, -1, 0, 1, 8, 27]
+    expected_x = [-3, -2, -1, 0, 1, 2, 3]
+    expected_data = [-27, -8, -1, 0, 1, 8, 27]
 
     expected_pandas = pd.Series(
-        expected_dose, pd.Index(expected_dist, name='dist'))
+        expected_data, pd.Index(expected_x, name='x'))
     expected_xarray = xr.DataArray(
-        expected_dose, coords=[('dist', expected_dist)])
+        expected_data, coords=[('x', expected_x)], name='dose')
 
     expected_dict = {
-        'coords': {'dist': {'data': expected_dist,
-                            'dims': ('dist',),
-                            'attrs': {}}},
+        'coords': {'x': {'data': expected_x,
+                         'dims': ('x',),
+                         'attrs': {}}},
         'attrs': {},
-        'dims': ('dist',),
-        'data': expected_dose,
-        'name': None}
+        'dims': ('x',),
+        'data': expected_data,
+        'name': 'dose'}
 
-    assert np.array_equal(profile.dist, np.array(expected_dist))
-    assert np.array_equal(profile.dose, np.array(expected_dose))
+    assert np.array_equal(profile.x, np.array(expected_x))
+    assert np.array_equal(profile.data, np.array(expected_data))
     assert expected_pandas.equals(profile.to_pandas())
     assert expected_xarray.identical(profile.to_xarray())
     assert DeepDiff(profile.to_dict(), expected_dict) == {}
 
 
 def test_function_updating_with_shift():
-    profile = ProfileDoseData(dist=[1, 2, 3], func=lambda x: x**2)
-    assert np.array_equal(profile.dose, [1, 4, 9])
+    x = np.array([1, 2, 3])
+
+    profile = DoseProfile(x=x, data=x**2)
+    assert np.array_equal(profile.data, [1, 4, 9])
 
     profile.shift(2, inplace=True)
-    assert np.array_equal(profile.dose, [1, 4, 9])
-    assert np.array_equal(profile.dist, [3, 4, 5])
+    assert np.array_equal(profile.data, [1, 4, 9])
+    assert np.array_equal(profile.x, [3, 4, 5])
 
-    profile.dist = [1, 2, 3]
-    assert np.array_equal(profile.dose, [1, 0, 1])
+    # profile.x = [1, 2, 3]
+    # assert np.array_equal(profile.dose, [1, 0, 1])
 
     profile.dist = [3, 4, 5]
-    assert np.array_equal(profile.dose, [1, 4, 9])
+    assert np.array_equal(profile.data, [1, 4, 9])
 
-    profile_copy = profile.shift(2)
-    assert np.array_equal(profile.dist, [3, 4, 5])
-    assert np.array_equal(profile_copy.dist, [5, 6, 7])
+    # profile_copy = profile.shift(2)
+    # assert np.array_equal(profile.dist, [3, 4, 5])
+    # assert np.array_equal(profile_copy.dist, [5, 6, 7])
 
 
 def test_default_interp_function():
-    profile = ProfileDoseData(dist=[-10, 0, 10], dose=[3, 8, 2])
+    profile = DoseProfile(x=[-10, 0, 10], data=[3, 8, 2])
 
-    assert np.array_equal(profile.func([1, 3, 4]), [7.4, 6.2, 5.6])
+    assert np.array_equal(profile.interp([1, 3, 4]), [7.4, 6.2, 5.6])
