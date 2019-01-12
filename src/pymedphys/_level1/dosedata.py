@@ -44,16 +44,16 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121
 
 
-class DoseData():
-    def __init__(self, dose, coords=None, dims=None):
-        self._xarray = xr.DataArray(dose, coords, dims, name='dose')
+class DoseBase():
+    def __init__(self, data, coords=None, dims=None):
+        self._xarray = xr.DataArray(data, coords, dims, name='dose')
 
     @property
-    def dose(self) -> np.ndarray:
+    def data(self) -> np.ndarray:
         return self._xarray.data  # type: ignore
 
-    @dose.setter
-    def dose(self, array) -> None:
+    @data.setter
+    def data(self, array) -> None:
         array = np.array(array)
         self._xarray.data = array
 
@@ -70,7 +70,7 @@ class DoseData():
         return deepcopy(self)
 
 
-class DoseData1D(DoseData):
+class Dose1D(DoseBase):
     def __init__(self, x, dose):
         coords = [('x', x)]
         super().__init__(dose, coords)
@@ -109,7 +109,7 @@ class DoseData1D(DoseData):
         pass
 
 
-class DoseDataProfile(DoseData1D):
+class DoseProfile(Dose1D):
     def interactive(self):
         pass
 
@@ -149,5 +149,5 @@ class DoseDataProfile(DoseData1D):
         pass
 
 
-class DoseDataDepth(DoseData1D):
+class DoseDepth(Dose1D):
     pass
