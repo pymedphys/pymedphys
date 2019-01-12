@@ -45,31 +45,8 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 
 
 class DoseData():
-    def __init__(self, dist, dose=None, func=None):
-        if dose is None and func is None:
-            raise ValueError("Must define either `dose` or `func`")
-
-        if dose is not None and func is not None:
-            raise ValueError("Cannot define both `dose` and `func`")
-
-        self._func: Union[NumpyFunction, None] = None
-
-        if func is not None:
-            dose_init = func(np.array(dist))
-        else:
-            dose_init = dose
-
-        self._xarray = xr.DataArray(dose_init, coords=[('dist', dist)])
-
-        # Set each property so that they can raise errors if need be
-        self.dist = dist
-
-        if func is not None and dose is None:
-            self.func = func
-        elif dose is not None and func is None:
-            self.dose = dose
-        else:
-            raise AssertionError()
+    def __init__(self, dose, coords=None, dims=None):
+        self._xarray = xr.DataArray(dose, coords, dims, name='dose')
 
     @property
     def dose(self) -> np.ndarray:
@@ -78,65 +55,7 @@ class DoseData():
     @dose.setter
     def dose(self, array) -> None:
         array = np.array(array)
-        if len(np.shape(array)) != 1:
-            raise ValueError("`dose` must be of one dimension.")
-
         self._xarray.data = array
-
-    def has_custom_func(self):
-        return self._func is not None
-
-    @property
-    def dist(self) -> np.ndarray:
-        return self._xarray.dist.data  # type: ignore
-
-    @dist.setter
-    def dist(self, array) -> None:
-        array = np.array(array)
-        if len(np.shape(array)) != 1:
-            raise ValueError("`dist` must be of one dimension.")
-
-        self._xarray.dist.data = array
-
-        if self.has_custom_func():
-            self.dose = self._func(self.dist)  # type: ignore
-
-    def _interp1d(self) -> NumpyFunction:
-        return interpolate.interp1d(self.dist, self.dose)  # type: ignore
-
-    @property
-    def func(self) -> NumpyFunction:
-        if self._func is not None:
-            return self._func
-
-        return self._interp1d()
-
-    @func.setter
-    def func(self, function: NumpyFunction) -> None:
-        self._func = function
-        self.dose = function(self.dist)  # type: ignore
-
-    def shift(self, applied_shift, inplace=False):
-        if inplace:
-            adjusted_object = self
-        else:
-            adjusted_object = self.deepcopy()
-
-        if adjusted_object.has_custom_func():
-            old_func = copy(adjusted_object.func)
-            adjusted_object.func = lambda x: old_func(x - applied_shift)
-
-        adjusted_object.dist = adjusted_object.dist + applied_shift
-
-        if not inplace:
-            return adjusted_object
-
-    def plot(self):
-        return plt.plot(
-            self.dist, self.dose, 'o-', label=self._func.__name__)
-
-    def interactive(self):
-        pass
 
     def to_xarray(self):
         return deepcopy(self._xarray)
@@ -151,7 +70,48 @@ class DoseData():
         return deepcopy(self)
 
 
-class ProfileDoseData(DoseData):
+class DoseData1D(DoseData):
+    def __init__(self, x, dose):
+        coords = [('x', x)]
+        super().__init__(dose, coords)
+
+    @property
+    def x(self) -> np.ndarray:
+        return self._xarray.x.data  # type: ignore
+
+    @x.setter
+    def x(self, array) -> None:
+        array = np.array(array)
+        if len(np.shape(array)) != 1:
+            raise ValueError("`x` must be of one dimension.")
+
+        self._xarray.x.data = array
+
+    def interp(self) -> NumpyFunction:
+        return interpolate.interp1d(self.x, self.dose)  # type: ignore
+
+    def shift(self, applied_shift, inplace=False):
+        if inplace:
+            adjusted_object = self
+        else:
+            adjusted_object = self.deepcopy()
+
+        adjusted_object.x = adjusted_object.x + applied_shift
+
+        if not inplace:
+            return adjusted_object
+
+    def plot(self):
+        return plt.plot(
+            self.x, self.dose, 'o-')
+
+    def interactive(self):
+        pass
+
+
+class DoseDataProfile(DoseData1D):
+    def interactive(self):
+        pass
 
     def resample(self):
         pass
@@ -189,5 +149,5 @@ class ProfileDoseData(DoseData):
         pass
 
 
-class DepthDoseData(DoseData):
+class DoseDataDepth(DoseData):
     pass
