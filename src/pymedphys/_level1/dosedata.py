@@ -149,5 +149,5 @@ class DoseDataProfile(DoseData1D):
         pass
 
 
-class DoseDataDepth(DoseData):
+class DoseDataDepth(DoseData1D):
     pass
