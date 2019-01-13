@@ -29,7 +29,8 @@
 Available Functions
 -------------------
 >>> from pymedphys.coordinates import (
-...     rotate_about_z)
+...     rotate_about_z,
+...     translate)
 """
 
 # pylint: disable=W0401,W0614
