@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs, Matthew Jennings
+# Copyright (C) 2019 Matthew Jennings
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,8 +30,27 @@ from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 def rotate_about_z(theta):
-    transform_matrix = np.array([[cos((theta)*pi/180), sin((theta)*pi/180), 0, 0],
-                                [-sin((theta)*pi/180), cos((theta)*pi/180), 0, 0],
-                                [                   0,                   0, 1, 0],
-                                [                   0,                   0, 0, 1]])
-    return transform_matrix
+    r"""Rotates a 4 x n vector of the form np.array((x, y, z, extra)) about the z-axis
+
+    Fourth (extra) dimension permits translations. See translate()
+    """
+    z_rotation_matrix = np.array([[ cos((theta)*pi/180), sin((theta)*pi/180), 0, 0],
+                                  [-sin((theta)*pi/180), cos((theta)*pi/180), 0, 0],
+                                  [                   0,                   0, 1, 0],
+                                  [                   0,                   0, 0, 1]])
+    return z_rotation_matrix
+
+
+def translate(displacement_coords):
+    r"""Translates a 4 x Y vector of the form np.array((x, y, z, extra)) by a given
+    displacement vector of the same form
+    """
+    x = displacement_coords[0]
+    y = displacement_coords[1]
+    z = displacement_coords[2]
+
+    translation_matrix = np.array([[1, 0, 0, x],
+                                   [0, 1, 0, y],
+                                   [0, 0, 1, z],
+                                   [0, 0, 0, 1]])
+    return translation_matrix
