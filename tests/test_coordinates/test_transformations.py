@@ -23,38 +23,58 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-from math import sin, cos
 from pymedphys.coordinates import translate, rotate_about_z
 
 
+def get_single_and_multi_test_coords():
+
+    x_single = 1
+    y_single = 2
+    z_single = 3
+    test_single_coords = np.array((x_single, y_single, z_single))
+
+    number_of_coordinates = 11
+    x_multi = np.array(range(-1, number_of_coordinates-1, 1))
+    y_multi = np.array(range(-2, 2*(number_of_coordinates-1), 2))
+    z_multi = np.array(range(-3, 3*(number_of_coordinates-1), 3))
+    test_multi_coords = np.array((x_multi, y_multi, z_multi))
+
+    return test_single_coords, test_multi_coords
+
+
 def test_translate():
-    test_vector = np.array((1, 2, 3, 1))
 
-    assert np.allclose(translate(np.array((1, 2, 3))) @ test_vector,
-                       np.array((2, 4, 6, 1)))
-    assert np.allclose(translate(np.array((-1, -2, -3))) @ test_vector,
-                       np.array((0, 0, 0, 1)))
+    test_single_coords, test_multi_coords = get_single_and_multi_test_coords()
 
+    assert np.allclose(translate(test_single_coords, np.array((10, 20, 30))),
+                       np.array((11, 22, 33)))
+    assert np.allclose(translate(test_single_coords, np.array((-1, -2, -3))),
+                       np.array((0, 0, 0)))
+
+    assert np.allclose(translate(test_multi_coords, np.array((1, 1, 1))),
+                       test_multi_coords + 1)
 
 def test_rotate_about_z():
-    number_of_coordinates = 11
-    x = np.array(range(-1, number_of_coordinates-1, 1))
-    y = np.array(range(-2, 2*(number_of_coordinates-1), 2))
-    z = np.array(range(-3, 3*(number_of_coordinates-1), 3))
-    extra = np.ones(number_of_coordinates)
-    coords = np.array((x, y, z, extra))
 
-    coords = np.array((x, y, z, extra))
+    test_single_coords, test_multi_coords = get_single_and_multi_test_coords()
 
-    coords_rotated_90_about_z = rotate_about_z(90) @ coords
-    expected_coords_rotated_90_about_z = np.array((y, np.negative(x), z, extra))
+    x_s = test_single_coords[0]
+    y_s = test_single_coords[1]
+    z_s = test_single_coords[2]
+    x_m = test_multi_coords[0]
+    y_m = test_multi_coords[1]
+    z_m = test_multi_coords[2]
 
-    coords_rotated_180_about_z = rotate_about_z(180) @ coords
-    expected_coords_rotated_180_about_z = np.array((np.negative(x), np.negative(y), z, extra))
+    assert np.allclose(rotate_about_z(test_single_coords, 90),
+                       np.array((y_s, np.negative(x_s), z_s)))
+    assert np.allclose(rotate_about_z(test_single_coords, 180),
+                       np.array((np.negative(x_s), np.negative(y_s), z_s)))
+    assert np.allclose(rotate_about_z(test_single_coords, 270),
+                       np.array((np.negative(y_s), x_s, z_s)))
 
-    coords_rotated_270_about_z = rotate_about_z(270) @ coords
-    expected_coords_rotated_270_about_z = np.array((np.negative(y), x, z, extra))
-
-    assert np.allclose(coords_rotated_90_about_z, expected_coords_rotated_90_about_z)
-    assert np.allclose(coords_rotated_180_about_z, expected_coords_rotated_180_about_z)
-    assert np.allclose(coords_rotated_270_about_z, expected_coords_rotated_270_about_z)
+    assert np.allclose(rotate_about_z(test_multi_coords, 90),
+                       np.array((y_m, np.negative(x_m), z_m)))
+    assert np.allclose(rotate_about_z(test_multi_coords, 180),
+                       np.array((np.negative(x_m), np.negative(y_m), z_m)))
+    assert np.allclose(rotate_about_z(test_multi_coords, 270),
+                       np.array((np.negative(y_m), x_m, z_m)))
