@@ -29,28 +29,29 @@ from math import sin, cos, pi
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
-def rotate_about_z(theta):
-    r"""Rotates a 4 x n vector of the form np.array((x, y, z, extra)) about the z-axis
-
-    Fourth (extra) dimension permits translations. See translate()
+def rotate_about_z(coords_to_rotate, theta):
+    r"""Rotates a 4 x n vector of the form np.array((x, y, z)) about the z-axis
     """
-    z_rotation_matrix = np.array([[ cos((theta)*pi/180), sin((theta)*pi/180), 0, 0],
-                                  [-sin((theta)*pi/180), cos((theta)*pi/180), 0, 0],
-                                  [                   0,                   0, 1, 0],
-                                  [                   0,                   0, 0, 1]])
-    return z_rotation_matrix
+    z_rotation_matrix = np.array([[ cos((theta)*pi/180), sin((theta)*pi/180), 0],
+                                  [-sin((theta)*pi/180), cos((theta)*pi/180), 0],
+                                  [                   0,                   0, 1]])
+
+    return z_rotation_matrix @ coords_to_rotate
 
 
-def translate(displacement_coords):
-    r"""Translates a 4 x Y vector of the form np.array((x, y, z, extra)) by a given
+def translate(coords_to_translate, translation_vector):
+    r"""Translates a 3 x Y array of the form np.array((x, y, z)) by a given
     displacement vector of the same form
     """
-    x = displacement_coords[0]
-    y = displacement_coords[1]
-    z = displacement_coords[2]
 
-    translation_matrix = np.array([[1, 0, 0, x],
-                                   [0, 1, 0, y],
-                                   [0, 0, 1, z],
-                                   [0, 0, 0, 1]])
-    return translation_matrix
+    if len(coords_to_translate.shape) == 1:
+        coords_to_translate_4d = np.append(coords_to_translate, 1)
+    else:
+        coords_to_translate_4d = np.vstack((coords_to_translate, np.ones(coords_to_translate.shape[1])))
+
+    translation_matrix = np.array([[1, 0, 0, translation_vector[0]],
+                                   [0, 1, 0, translation_vector[1]],
+                                   [0, 0, 1, translation_vector[2]],
+                                   [0, 0, 0,                    1]])
+
+    return (translation_matrix @ coords_to_translate_4d)[:-1]
