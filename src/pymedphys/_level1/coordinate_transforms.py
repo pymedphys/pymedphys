@@ -24,17 +24,47 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-from math import sin, cos, pi
+from numpy import sin, cos, pi, radians
 
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
-def rotate_about_z(coords_to_rotate, theta):
-    r"""Rotates a 4 x n vector of the form np.array((x, y, z)) about the z-axis
+
+def rotate_about_x(coords_to_rotate, psi):
+    r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the x-axis
     """
-    z_rotation_matrix = np.array([[ cos((theta)*pi/180), sin((theta)*pi/180), 0],
-                                  [-sin((theta)*pi/180), cos((theta)*pi/180), 0],
-                                  [                   0,                   0, 1]])
+    s = sin(radians(psi))
+    c = cos(radians(psi))
+
+    x_rotation_matrix = np.array([[1,  0, 0],
+                                  [0,  c, s],
+                                  [0, -s, c]])
+
+    return x_rotation_matrix @ coords_to_rotate
+
+
+def rotate_about_y(coords_to_rotate, phi):
+    r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the y-axis
+    """
+    s = sin(radians(phi))
+    c = cos(radians(phi))
+
+    y_rotation_matrix = np.array([[c, 0, -s],
+                                  [0, 1,  0],
+                                  [s, 0,  c]])
+
+    return y_rotation_matrix @ coords_to_rotate
+
+
+def rotate_about_z(coords_to_rotate, theta):
+    r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the z-axis
+    """
+    s = sin(radians(theta))
+    c = cos(radians(theta))
+
+    z_rotation_matrix = np.array([[ c,  s, 0],
+                                  [-s,  c, 0],
+                                  [ 0,  0, 1]])
 
     return z_rotation_matrix @ coords_to_rotate
 
