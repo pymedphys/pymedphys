@@ -32,7 +32,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .._level1.typedeliverydata import get_delivery_parameters
+from .._level1.deliverydata_namedtuple import get_delivery_parameters
 from .._level1.msqconnect import multi_mosaiq_connect
 
 from .._level2.collmudensity import calc_mu_density

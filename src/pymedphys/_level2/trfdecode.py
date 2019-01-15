@@ -51,7 +51,7 @@ except ImportError:
     import numpy as np
     import pandas as pd
 
-    from .._level1.typedeliverydata import DeliveryData
+    from .._level1.deliverydata_namedtuple import DeliveryData
 
     @attr.s
     class Header(object):

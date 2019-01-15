@@ -36,7 +36,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .._level1.typedeliverydata import get_delivery_parameters
+from .._level1.deliverydata_namedtuple import get_delivery_parameters
 from .._level1.utilitiesconfig import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
