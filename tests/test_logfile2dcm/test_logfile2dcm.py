@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,19 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Model insert factors and parameterise inserts as equivalent ellipses.
-
-Example:
-    >>> from pymedphys.type import DeliveryData
-"""
-
-# pylint: disable=W0401,W0614
+from pymedphys.deliverydata import (
+    deliverydata2dcm, get_dicom_template
+)
 
 
-from ._level0.libutils import clean_and_verify_levelled_modules
-
-from ._level1.typedeliverydata import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.typedeliverydata'
-])
