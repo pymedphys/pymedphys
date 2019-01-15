@@ -31,7 +31,7 @@ import struct
 import attr
 import numpy as np
 
-from .._level1.typedeliverydata import DeliveryData, get_delivery_parameters
+from .._level1.deliverydata_namedtuple import DeliveryData, get_delivery_parameters
 from .._level1.msqconnect import execute_sql
 from .._level1.msqdictionaries import FIELD_TYPES
 
