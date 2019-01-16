@@ -1,4 +1,4 @@
-# Copyright (C) 2018 PyMedPhys Contributors
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,11 +23,7 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-# import warnings
 
-from .._level0.libutils import get_imports
-IMPORTS = get_imports(globals())
+# pylint: disable=C0111
 
-A_LEAF_TYPE = (10,)*10 + (5,)*40 + (10,)*10
-BRAINLAB = (5.5,)*3 + (4.5,)*3 + (3,)*14 + (4.5,)*3 + (5.5,)*3
-AGILITY = (5,)*80
+from ..gamma import gamma_dcm as gamma

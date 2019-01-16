@@ -57,7 +57,8 @@ def clean_and_verify_levelled_modules(input_globals, module_names):
 
     for key in copy(input_globals):
         if (key not in all_new_definitions) and (not key.startswith('_')):
-            del input_globals[key]
+            # del input_globals[key]
+            pass
 
 
 class NewDefinitions:

@@ -12,9 +12,7 @@ conda env create -f ./environment.yml
 source activate pymedphys
 
 conda uninstall pymedphys
-conda install -q pytest nbstripout pylint coverage
-
-pip install pytest-pylint
+conda install -q nbstripout
 
 MATPLOTLIB_RC=`python -c "import matplotlib; print(matplotlib.matplotlib_fname())"`
 echo "backend: Agg" > $MATPLOTLIB_RC
