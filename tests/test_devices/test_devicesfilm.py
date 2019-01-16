@@ -1,4 +1,4 @@
-# Copyright (C) 2018 PyMedPhys Contributors
+# Copyright (C) 2019 Paul King
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,11 +23,22 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-# import warnings
+import os
+import numpy as np
 
-from .._level0.libutils import get_imports
-IMPORTS = get_imports(globals())
+from pymedphys.devices import read_narrow_png
 
-A_LEAF_TYPE = (10,)*10 + (5,)*40 + (10,)*10
-BRAINLAB = (5.5,)*3 + (4.5,)*3 + (3,)*14 + (4.5,)*3 + (5.5,)*3
-AGILITY = (5,)*80
+DATA_DIRECTORY = os.path.abspath(
+    os.path.join(os.path.dirname(__file__),
+                 os.pardir, 'data', 'devices', 'film'))
+
+
+def test_read_narrow_png():
+    vert_strip = os.path.join(DATA_DIRECTORY, 'FilmCalib_EBT_vert_strip.png')
+    horz_strip = os.path.join(DATA_DIRECTORY, 'FilmCalib_EBT_horz_strip.png')
+    assert np.allclose(read_narrow_png(vert_strip)[0][0],
+                       read_narrow_png(horz_strip)[0][0])
+
+
+if __name__ == "__main__":
+    test_read_narrow_png()
