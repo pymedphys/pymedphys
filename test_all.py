@@ -9,7 +9,7 @@ class PytestExitCode(unittest.TestCase):
 
 def main():
     return pytest.main([
-        "-v", "--pylint", "--pylint-error-types=EF", "--mypy"])
+        "-v", "--pylint", "--pylint-error-types=EF", "--mypy", "--color=yes"])
 
 
 if __name__ == "__main__":
