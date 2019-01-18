@@ -31,7 +31,7 @@
 
 from ._level0.libutils import clean_and_verify_levelled_modules
 
-from ._level1.beamdataprofile import *
+from ._level1.dosedata import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.beamdataprofile'])
+    '._level1.dosedata'])

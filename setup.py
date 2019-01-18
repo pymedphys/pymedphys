@@ -81,6 +81,7 @@ setup(
         'numpy>=1.12',
         'scipy',
         'pandas',
+        'xarray',
         'matplotlib',
         'attrs',
         'psutil',
@@ -98,7 +99,8 @@ setup(
         'mypy',
         'pytest',
         'pytest-pylint',
-        'pytest-mypy'
+        'pytest-mypy',
+        'deepdiff'
     ],
     test_suite="test_all.PytestExitCode",
     extras_require={
