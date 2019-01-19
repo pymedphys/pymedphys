@@ -1,8 +1,10 @@
 """Module docstring
 """
 
-# pylint: disable=W0401,C0413,W0406
 # type: ignore
+
+# pylint: disable=W0401,C0413,W0406
+
 
 import os
 from glob import glob
