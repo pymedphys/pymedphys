@@ -100,9 +100,10 @@ setup(
         'pytest',
         'pytest-pylint',
         'pytest-mypy',
+        'pytest-sphinx',
         'deepdiff'
     ],
-    test_suite="test_all.PytestExitCode",
+    test_suite="scripts.full_test_suite.PytestExitCode",
     extras_require={
         'docs': [
             'numpydoc',
