@@ -113,7 +113,10 @@ setup(
         'pytest-mypy',
         'pytest-doctestplus',
         'sphinx-testing',
-        'deepdiff'
+        'deepdiff',
+        'numpydoc',
+        'sphinx >= 1.4',
+        'sphinx_rtd_theme'
     ],
     cmdclass={"pytest": PyTest},
     extras_require={
