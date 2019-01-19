@@ -100,7 +100,7 @@ setup(
         'pytest',
         'pytest-pylint',
         'pytest-mypy',
-        'pytest-sphinx',
+        'pytest-doctestplus',
         'deepdiff'
     ],
     test_suite="scripts.full_test_suite.PytestExitCode",
