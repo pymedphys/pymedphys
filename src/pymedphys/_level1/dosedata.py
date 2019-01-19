@@ -120,12 +120,12 @@ class DoseProfile(Dose1D):
         pass
 
     def resample(self, new_x):
-        adjusted_object = self.deepcopy()
+        resampled_profile = self.deepcopy()
 
-        new_data = adjusted_object.interp(new_x)
-        adjusted_object.new_xarray(new_x, new_data)
+        new_data = resampled_profile.interp(new_x)
+        resampled_profile.new_xarray(new_x, new_data)
 
-        return adjusted_object
+        return resampled_profile
 
     def dose_normalise(self):
         pass
