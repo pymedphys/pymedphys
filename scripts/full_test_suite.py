@@ -10,4 +10,5 @@ class PytestExitCode(unittest.TestCase):
 def main():
     return pytest.main([
         "-v", "--pylint", "--pylint-error-types=EF", "--mypy",
-        "--doctest-modules", "--doctest-continue-on-failure"])
+        "--doctest-modules", "--doctest-continue-on-failure",
+        "--doctest-plus", "--doctest-rst"])
