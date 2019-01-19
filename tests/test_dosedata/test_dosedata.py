@@ -145,8 +145,6 @@ def test_DoseProfile_resample():
     assert np.allclose(increments, 0.1)
     assert np.isclose(resampled.data[0], profiler.data[0])
 
-    # print(profiler.x)
-
 # def test_pulse():
 #     assert pulse()[0] == (-20.0, 0.0)
 
@@ -179,8 +177,11 @@ def test_DoseProfile_resample():
 #     assert not is_wedged(PROFILER)
 #     assert is_wedged(WEDGED)
 
-if __name__ == "__main__":
-    test_DoseProfile_resample()
+# if __name__ == "__main__":
+#     test_conversion()
+#     test_function_updating_with_shift()
+#     test_default_interp_function()
+#     test_DoseProfile_resample()
 #     test_pulse()
 #     test_resample()
 #     test_overlay()
