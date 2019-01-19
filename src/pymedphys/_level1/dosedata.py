@@ -111,20 +111,30 @@ class Dose1D(DoseBase):
 
 class DoseProfile(Dose1D):
     def __init__(self, *args, **kwargs):
-        try:  ## args == [ [X], [DATA] ]
-            assert len(args) == 2
+        x, data = [], []      ## DoseProfile()
+
+        try:                  ## DoseProfile( x=[0,2,4], data=[1,3,5] )
+            x = kwargs.pop('x')
+            data = kwargs.pop('data')
+        except (KeyError):
+            pass
+
+        try:                  ## DoseProfile( [0,2,4], [1,3,5] )
+            assert (len(args) == 2)
             assert len(args[0]) == len(args[1])
             x = args[0]
             data = args[1]
-        except:
-            try:  ## args == [ (x,data),(x,data) ]
-                assert len(args) == 1
-                assert len(args[0]) > 2
-                assert len(args[0][0]) == 2
-                x = list(list(zip(*args[0]))[0])
-                data = list(list(zip(*args[0]))[1])
-            except:
-                raise TypeError("Bad DoseProfile argument type(s)")
+        except (AssertionError, IndexError):
+            pass
+
+        try:                  ## DoseProfile( [(0,1),(2,3),(4,5) ]
+            assert len(args) == 1
+            assert len(args[0][0]) == 2
+            x = list(list(zip(*args[0]))[0])
+            data = list(list(zip(*args[0]))[1])
+        except (AssertionError, IndexError):
+            pass
+
         Dose1D.__init__(self, x, data)
 
         self.metadata = dict()
@@ -135,11 +145,35 @@ class DoseProfile(Dose1D):
         pass
 
     def resample(self, start=-np.inf, stop=np.inf, step=0.1, inplace=False):
-        """
-        Resample DoseProfile, start -> stop, increments of step.
-        # DOCUMENT KWARGS & ADD TO ONLINE DOCS
+        """ Resample a dose profile at a specified increment.
+
+        Resulting profile extends between the specified endpoints and
+        has stepsize of the indicated step. Profile is either modified
+        in place or returned as a new profile.
+
+        Keyword Arguments
+        -----------------
+        start : float, optional
+            First location included in result, defaults to source end-point
+        stop : float, optional 
+            Last location included in result, defaults to source end-point
+        step : float, optional
+            Step size used to create result, defaults to 1 mm
+        inplace : boolean, optional
+            Mofify the profile in place, defaults to False, i.e. return result
+
+        Returns
+        -------
+        array_like
+            Resampled dose profile
+
+        Raises
+        ------
+        ValueError
+            For invalid start/stop
 
         """
+
         start = max(start, min(self.x))  # extrapolation not supported
         stop = min(stop, max(self.x))    # & to default to end points
         if stop <= start:
@@ -151,6 +185,7 @@ class DoseProfile(Dose1D):
             Dose1D.__init__(self, new_x, new_data)
         else:
             return DoseProfile(new_x, new_data)
+
 
     def dose_normalise(self):
         pass
@@ -184,9 +219,10 @@ class DoseProfile(Dose1D):
     def symmetrise(self):
         pass
 
+class DoseDepth(Dose1D):    ## SHOULD DOSE PROFILE SUPPORT PDD?
+    pass 
 
-class DoseDepth(Dose1D):
-    pass ## IS A DEPTH DOSE NOT A DOSE PROFILE?
+
 
 
 # # PRIVATE FUNCTIONS ======================================
