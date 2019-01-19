@@ -1,4 +1,5 @@
 import io
+import sys
 from glob import glob
 
 import os
@@ -7,6 +8,7 @@ from os.path import dirname
 from os.path import splitext
 
 from setuptools import setup, find_packages
+from setuptools.command.test import test as TestCommand
 
 basename = os.path.basename
 dirname = os.path.dirname
@@ -35,15 +37,21 @@ def read(*names, **kwargs):
     ).read()
 
 
-# def get_data_files():
-#     """Get the data files for the package.
-#     """
-#     return [
-#         ('etc/jupyter/jupyter_notebook_config.d', [
-#             os.path.relpath(
-#                 pjoin(repo_root, 'src', 'pymedphys', 'pymedphys.json'), '.')
-#         ])
-#     ]
+# https://docs.pytest.org/en/latest/goodpractices.html#manual-integration
+class PyTest(TestCommand):
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+
+    def run_tests(self):
+
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+
+        errno = pytest.main([
+            "-v", "--pylint", "--pylint-error-types=EF", "--mypy",
+            "--doctest-modules", "--doctest-continue-on-failure",
+            "--doctest-plus", "--doctest-rst"])
+        sys.exit(errno)
 
 
 setup(
@@ -93,6 +101,9 @@ setup(
         'Pillow',
         'notebook'
     ],
+    setup_requires=[
+        'pytest-runner'
+    ],
     tests_require=[
         'pylint',
         'coverage',
@@ -104,7 +115,7 @@ setup(
         'sphinx-testing',
         'deepdiff'
     ],
-    test_suite="scripts.full_test_suite.PyTestAndDocs",
+    cmdclass={"pytest": PyTest},
     extras_require={
         'docs': [
             'numpydoc',
