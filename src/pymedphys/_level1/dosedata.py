@@ -46,6 +46,9 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 
 class DoseBase():
     def __init__(self, data, coords=None, dims=None):
+        self.new_xarray(data, coords=coords, dims=dims)
+
+    def new_xarray(self, data, coords=None, dims=None):
         self._xarray = xr.DataArray(data, coords, dims, name='dose')
 
     @property
@@ -72,8 +75,11 @@ class DoseBase():
 
 class Dose1D(DoseBase):
     def __init__(self, x, data):
+        self.new_xarray(x, data)
+
+    def new_xarray(self, x, data):
         coords = [('x', x)]
-        super().__init__(data, coords)
+        super().new_xarray(data, coords=coords)
 
     @property
     def x(self) -> np.ndarray:
@@ -113,8 +119,17 @@ class DoseProfile(Dose1D):
     def interactive(self):
         pass
 
-    def resample(self):
-        pass
+    def resample(self, new_x, inplace=False):
+        if inplace:
+            adjusted_object = self
+        else:
+            adjusted_object = self.deepcopy()
+
+        new_data = adjusted_object.interp(new_x)
+        adjusted_object.new_xarray(new_x, new_data)
+
+        if not inplace:
+            return adjusted_object
 
     def dose_normalise(self):
         pass
