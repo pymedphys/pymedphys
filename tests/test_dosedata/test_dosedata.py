@@ -53,13 +53,13 @@ def test_resample():
     assert ~np.all(profile.x == new_x)
     assert ~np.all(profile.data == linear(new_x))
 
-    profile.resample(new_x, inplace=True)
+    new_profile = profile.resample(new_x)
 
-    assert np.all(profile.x == new_x)
-    assert np.all(profile.data == linear(new_x))
+    assert np.all(new_profile.x == new_x)
+    assert np.all(new_profile.data == linear(new_x))
 
-    assert ~np.all(profile.x == x)
-    assert ~np.all(profile.data == linear(x))
+    assert ~np.all(new_profile.x == x)
+    assert ~np.all(new_profile.data == linear(x))
 
 
 def test_conversion():
