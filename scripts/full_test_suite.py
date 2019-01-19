@@ -1,10 +1,16 @@
 import unittest
 import pytest
 
+from sphinx_testing import with_app
 
-class PytestExitCode(unittest.TestCase):
+
+class PyTestAndDocs(unittest.TestCase):
     def test_pytest(self):
         self.assertEqual(main(), 0)
+
+    @with_app(buildername='html', srcdir='docs', warningiserror=True)
+    def test_sphinx_build(self, app, status, warning):
+        app.build()
 
 
 def main():
