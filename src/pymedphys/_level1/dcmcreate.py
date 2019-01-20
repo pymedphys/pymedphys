@@ -23,6 +23,7 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import numpy as np
 
 from pydicom import Dataset
 from pydicom.datadict import DicomDictionary
@@ -45,7 +46,15 @@ def dcm_from_dict(input_dict: dict):
         if isinstance(value, dict):
             setattr(dataset, key, dcm_from_dict(value))
         elif isinstance(value, list):
-            setattr(dataset, key, [dcm_from_dict(item) for item in value])
+            if np.all([not isinstance(item, dict) for item in value]):
+                setattr(dataset, key, value)
+            elif np.all([isinstance(item, dict) for item in value]):
+                setattr(dataset, key, [dcm_from_dict(item) for item in value])
+            else:
+                raise ValueError(
+                    "{} should contain either only dictionaries, or no "
+                    "dictionaries".format(key)
+                )
         else:
             setattr(dataset, key, value)
 
