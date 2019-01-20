@@ -24,17 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from copy import deepcopy
 from typing import Callable
 
 import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
 
-import xarray as xr
-
 from .._level0.libutils import get_imports
-# from .._level1.coreobjects import _PyMedPhysBase
+from .._level1.xarraycomposition import XArrayComposition
 IMPORTS = get_imports(globals())
 
 
@@ -44,36 +41,10 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121
 
 
-class DoseBase():
-    def __init__(self, data, coords=None, dims=None):
-        self._xarray = xr.DataArray(data, coords, dims, name='dose')
-
-    @property
-    def data(self) -> np.ndarray:
-        return self._xarray.data  # type: ignore
-
-    @data.setter
-    def data(self, array) -> None:
-        array = np.array(array)
-        self._xarray.data = array
-
-    def to_xarray(self):
-        return deepcopy(self._xarray)
-
-    def to_pandas(self):
-        return self.to_xarray().to_pandas()
-
-    def to_dict(self):
-        return self.to_xarray().to_dict()
-
-    def deepcopy(self):
-        return deepcopy(self)
-
-
-class Dose1D(DoseBase):
+class Dose1D(XArrayComposition):
     def __init__(self, x, data):
         coords = [('x', x)]
-        super().__init__(data, coords)
+        super().__init__(data, coords, name='dose')
 
     @property
     def x(self) -> np.ndarray:
