@@ -32,7 +32,8 @@ import importlib
 from copy import copy
 
 
-def clean_and_verify_levelled_modules(input_globals, module_names):
+def clean_and_verify_levelled_modules(input_globals, module_names,
+                                      package='pymedphys'):
     all_new_definitions = []
 
     scope = {}
@@ -46,7 +47,7 @@ def clean_and_verify_levelled_modules(input_globals, module_names):
         new_definitions.baseline = scope
 
         module = importlib.import_module(
-            module_name, package='pymedphys')
+            module_name, package=package)
         for key, item in module.__dict__.items():
             if not key.startswith('_'):
                 scope[key] = item

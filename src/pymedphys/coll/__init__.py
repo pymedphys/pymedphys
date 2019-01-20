@@ -40,4 +40,4 @@ from .level1.collequivalent import *
 
 clean_and_verify_levelled_modules(globals(), [
     '.level1.collmlctypes', '.level1.collequivalent'
-])
+], package='pymedphys.coll')

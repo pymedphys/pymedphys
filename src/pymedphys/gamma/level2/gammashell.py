@@ -33,16 +33,16 @@ This module makes use of some of the ideas presented within
 """
 
 import sys
-# from multiprocessing import Process, Queue
 
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
 import psutil
 
-from .._level1.gammainputcheck import run_input_checks
-
 from ...libutils import get_imports
+
+from ..level1.gammainputcheck import run_input_checks
+
 IMPORTS = get_imports(globals())
 
 
