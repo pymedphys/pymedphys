@@ -243,12 +243,23 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
 
     """
 
+    divisibility_of_max_leaf_gap = np.array(max_leaf_gap / 2 / grid_resolution)
+    max_leaf_gap_is_divisible = (
+        divisibility_of_max_leaf_gap.astype(int) ==
+        divisibility_of_max_leaf_gap)
+
+    if not max_leaf_gap_is_divisible:
+        raise ValueError(
+            "The grid resolution needs to exaclty divide half of the max leaf "
+            "gap")
+
     leaf_pair_widths = np.array(leaf_pair_widths)
 
-    assert np.max(np.abs(mlc)) <= max_leaf_gap / 2, (
-        "The mlc should not travel further out than half the maximum leaf "
-        "gap."
-    )
+    if not np.max(np.abs(mlc)) <= max_leaf_gap / 2:
+        raise ValueError(
+            "The mlc should not travel further out than half the maximum leaf "
+            "gap."
+        )
 
     mu, mlc, jaw = _remove_irrelevant_control_points(mu, mlc, jaw)
 
@@ -321,12 +332,16 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
 
     leaf_pair_widths = np.array(leaf_pair_widths)
     leaf_division = leaf_pair_widths / grid_resolution
-    assert np.all(leaf_division.astype(int) == leaf_division), (
-        "The grid resolution needs to exactly divide every leaf pair width."
-    )
-    assert np.max(np.abs(jaw)) <= np.sum(leaf_pair_widths) / 2, (
-        "The jaw should not travel further out than the maximum leaf limits."
-    )
+
+    if not np.all(leaf_division.astype(int) == leaf_division):
+        raise ValueError(
+            "The grid resolution needs to exactly divide every leaf pair "
+            "width.")
+
+    if not np.max(np.abs(jaw)) <= np.sum(leaf_pair_widths) / 2:
+        raise ValueError(
+            "The jaw should not travel further out than the maximum leaf "
+            "limits.")
 
     (
         grid, grid_leaf_map, mlc
