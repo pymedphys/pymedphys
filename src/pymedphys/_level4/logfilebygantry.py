@@ -30,7 +30,7 @@ import numpy as np
 
 from .._level1.utilitiesconfig import get_filepath, get_gantry_tolerance
 
-from .._level2.collmudensity import (
+from .._level2.mudensitycore import (
     find_relevant_control_points, calc_mu_density_return_grid)
 from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
 from .._level2.trfdecode import delivery_data_from_logfile
