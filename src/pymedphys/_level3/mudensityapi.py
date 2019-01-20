@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,23 +23,21 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Determine MU Density given a range of formats.
 
-Available Functions
--------------------
->>> from pymedphys.mudensity import (
-...    calc_mu_density)
-"""
+from pydicom import Dataset
 
-# pylint: disable=W0401,W0614,C0413,W0611
+from .._level0.libutils import get_imports
+from .._level1.xarraycomposition import XArrayComposition
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+IMPORTS = get_imports(globals())
 
-from ._level2.mudensitycore import *
-from ._level3.mudensityapi import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level2.mudensitycore', '._level3.mudensityapi'
-])
+class MUDensity(XArrayComposition):
+    """Wrapper object for the calculation of MU Density given a range of
+    formats
+    """
 
-from ._level2 import mudensitycore  # nopep8
+    @classmethod
+    def from_dicom(cls, dcm: Dataset):
+        """Calculate MU Density when provided with a pydicom dicom object"""
+        return cls(None)

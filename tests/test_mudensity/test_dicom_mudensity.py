@@ -23,5 +23,51 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import io
+import os
+import zipfile
+from glob import glob
+
+import pydicom
+from pydicom.filebase import DicomBytesIO
 
 from pymedphys.mudensity import MUDensity
+
+
+DATA_DIRECTORY = os.path.join(
+    os.path.dirname(__file__), "../data/logfiles")
+LOGFILE_ZIPS = glob(os.path.abspath(os.path.join(
+    DATA_DIRECTORY, '*/lfs-*.zip')))
+
+
+def create_dummy_dicom_object():
+    pass
+
+
+def test_compare_varian_logfiles_to_dicom():
+    for zip_filepath in LOGFILE_ZIPS:
+        compare_logfile_within_zip(zip_filepath)
+
+
+def compare_logfile_within_zip(zip_filepath):
+    with open(zip_filepath, 'rb') as input_file:
+        data = io.BytesIO(input_file.read())
+
+    data_zip = zipfile.ZipFile(data)
+
+    namelist = data_zip.namelist()
+    dicom_files = [path for path in namelist if path.endswith('.dcm')]
+
+    assert len(dicom_files) == 1
+    dicom_file = dicom_files[0]
+
+    with data_zip.open(dicom_file) as file_object:
+        dcm_bytes = DicomBytesIO(file_object.read())
+        dcm = pydicom.dcmread(dcm_bytes)
+
+    MUDensity.from_dicom(dcm)
+
+
+def test_from_dicom():
+    pass
+    # MUDensity.from_dicom()
