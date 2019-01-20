@@ -116,7 +116,8 @@ setup(
         'deepdiff',
         'numpydoc',
         'sphinx >= 1.4',
-        'sphinx_rtd_theme'
+        'sphinx_rtd_theme',
+        'layer-linter'
     ],
     cmdclass={"pytest": PyTest},
     extras_require={
