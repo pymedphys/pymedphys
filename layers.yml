@@ -28,6 +28,7 @@ Top Level Modules:
         - pymedphys
     layers:
         - logfile
+        - trf
         - msq
         - mudensity
         - pddprofiles
@@ -37,7 +38,6 @@ Top Level Modules:
         - film
         - sinogram
         - dcm
-        - trf
         - utilities
         - deliverydata
         - geometry
