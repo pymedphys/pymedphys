@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,23 +23,26 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Determine MU Density given a range of formats.
 
-Available Functions
--------------------
->>> from pymedphys.mudensity import (
-...    calc_mu_density)
-"""
+import pydicom
 
-# pylint: disable=W0401,W0614,C0413,W0611
+from pymedphys.dcm import dcm_from_dict
 
-from ._level0.libutils import clean_and_verify_levelled_modules
 
-from ._level2.mudensitycore import *
-from ._level3.mudensityapi import *
+def test_dcm_from_dict():
+    baseline_dataset = pydicom.Dataset()
+    baseline_dataset.Manufacturer = 'PyMedPhys'
+    beam_sequence = pydicom.Dataset()
+    beam_sequence.Manufacturer = 'PyMedPhys'
+    baseline_dataset.BeamSequence = [beam_sequence]
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level2.mudensitycore', '._level3.mudensityapi'
-])
+    created_dataset = dcm_from_dict({
+        'Manufacturer': 'PyMedPhys',
+        'BeamSequence': [
+            {
+                'Manufacturer': 'PyMedPhys'
+            }
+        ]
+    })
 
-from ._level2 import mudensitycore  # nopep8
+    assert created_dataset == baseline_dataset

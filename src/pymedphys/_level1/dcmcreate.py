@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,23 +23,30 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Determine MU Density given a range of formats.
 
-Available Functions
--------------------
->>> from pymedphys.mudensity import (
-...    calc_mu_density)
-"""
+from pydicom import Dataset
+from pydicom.datadict import DicomDictionary
 
-# pylint: disable=W0401,W0614,C0413,W0611
+from .._level0.libutils import get_imports
+IMPORTS = get_imports(globals())
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+DICOMNAMES = [item[-1] for _, item in DicomDictionary.items()]
 
-from ._level2.mudensitycore import *
-from ._level3.mudensityapi import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level2.mudensitycore', '._level3.mudensityapi'
-])
+def dcm_from_dict(input_dict: dict):
+    """Create a pydicom DICOM object from a dictionary"""
+    dataset = Dataset()
 
-from ._level2 import mudensitycore  # nopep8
+    for key, value in input_dict.items():
+        if key not in DICOMNAMES:
+            raise ValueError(
+                "{} is not within the DICOM dictionary.".format(key))
+
+        if isinstance(value, dict):
+            setattr(dataset, key, dcm_from_dict(value))
+        elif isinstance(value, list):
+            setattr(dataset, key, [dcm_from_dict(item) for item in value])
+        else:
+            setattr(dataset, key, value)
+
+    return dataset

@@ -26,7 +26,7 @@
 import copy
 import numpy as np
 import pydicom
-from .._level1._dcmdictbaseline import DicomDictionary
+from .._level1._dcmdictbaseline import BaselineDicomDictionary
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
@@ -80,7 +80,8 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
             tag for tag in tags_used if not tag.is_private
         ])
         are_tags_used_in_dict_copy = [
-            key in DicomDictionary.keys() for key in non_private_tags_used]
+            key in BaselineDicomDictionary.keys()
+            for key in non_private_tags_used]
 
         if not np.all(are_tags_used_in_dict_copy):
             unknown_tags = non_private_tags_used[
