@@ -34,6 +34,13 @@ IMPORTS = get_imports(globals())
 DICOMNAMES = [item[-1] for _, item in DicomDictionary.items()]
 
 
+def convert_nparray_and_set_key_value_in_dataset(dataset, key, value):
+    if isinstance(value, np.ndarray):
+        value = value.tolist()
+
+    setattr(dataset, key, value)
+
+
 def dcm_from_dict(input_dict: dict):
     """Create a pydicom DICOM object from a dictionary"""
     dataset = Dataset()
@@ -47,7 +54,8 @@ def dcm_from_dict(input_dict: dict):
             setattr(dataset, key, dcm_from_dict(value))
         elif isinstance(value, list):
             if np.all([not isinstance(item, dict) for item in value]):
-                setattr(dataset, key, value)
+                convert_nparray_and_set_key_value_in_dataset(
+                    dataset, key, value)
             elif np.all([isinstance(item, dict) for item in value]):
                 setattr(dataset, key, [dcm_from_dict(item) for item in value])
             else:
@@ -56,6 +64,6 @@ def dcm_from_dict(input_dict: dict):
                     "dictionaries".format(key)
                 )
         else:
-            setattr(dataset, key, value)
+            convert_nparray_and_set_key_value_in_dataset(dataset, key, value)
 
     return dataset
