@@ -39,4 +39,4 @@ from .level1.plthelpers import *
 
 clean_and_verify_levelled_modules(globals(), [
     '.level1.plthelpers'
-])
+], package='pymedphys.plt')

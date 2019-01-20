@@ -36,4 +36,4 @@ clean_and_verify_levelled_modules(globals(), [
     '.level1.devicessncprofiler',
     '.level1.devicessncmapcheck',
     '.level1.devicesfilm'
-])
+], package='pymedphys.devices')

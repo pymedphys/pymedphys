@@ -58,8 +58,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .._level1.plthelpers import pcolormesh_grid
-from .._level1.collmlctypes import AGILITY
+from ...plt import pcolormesh_grid
+from ...coll import AGILITY
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())

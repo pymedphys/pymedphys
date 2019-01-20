@@ -44,4 +44,4 @@ from .level3.gammainterface import *
 clean_and_verify_levelled_modules(globals(), [
     '.level1.gammafilter', '.level2.gammashell',
     '.level3.gammainterface'
-])
+], package='pymedphys.gamma')

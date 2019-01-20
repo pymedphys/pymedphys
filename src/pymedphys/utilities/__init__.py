@@ -42,4 +42,4 @@ from .level1.utilitiesfilesystem import *
 clean_and_verify_levelled_modules(globals(), [
     '.level1.utilitiesconfig', '.level1.utilitiesfilesystem',
     '.level1.utilitiescompression'
-])
+], package='pymedphys.utilities')

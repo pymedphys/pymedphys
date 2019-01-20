@@ -43,4 +43,4 @@ from .level3.msqfieldcompare import *
 clean_and_verify_levelled_modules(globals(), [
     '.level1.msqconnect', '.level1.msqdictionaries',
     '.level2.msqdelivery', '.level2.msqhelpers', '.level3.msqfieldcompare'
-])
+], package='pymedphys.msq')

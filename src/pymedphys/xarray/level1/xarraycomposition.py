@@ -28,6 +28,9 @@ from copy import deepcopy
 import numpy as np
 import xarray as xr
 
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 class XArrayComposition():
     def __init__(self, data, coords=None, dims=None, name=None):

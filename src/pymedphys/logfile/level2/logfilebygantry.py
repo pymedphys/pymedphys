@@ -28,14 +28,14 @@
 
 import numpy as np
 
-from .._level1.utilitiesconfig import get_filepath, get_gantry_tolerance
+from ...utilities import get_filepath, get_gantry_tolerance
 
-from .._level2.mudensitycore import (
+from ...mudensity import (
     find_relevant_control_points, calc_mu_density_return_grid)
-from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
-from .._level2.trfdecode import delivery_data_from_logfile
+from ...msq import multi_fetch_and_verify_mosaiq
+from ...trf import delivery_data_from_logfile
 
-from .._level3.logfileanalyse import calc_comparison, plot_results
+from ..level1.logfileanalyse import calc_comparison, plot_results
 
 
 from ...libutils import get_imports

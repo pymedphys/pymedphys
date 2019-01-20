@@ -40,6 +40,6 @@ from .level2.mudensityapi import *
 
 clean_and_verify_levelled_modules(globals(), [
     '.level1.mudensitycore', '.level2.mudensityapi'
-])
+], package='pymedphys.mudensity')
 
 from .level1 import mudensitycore  # nopep8

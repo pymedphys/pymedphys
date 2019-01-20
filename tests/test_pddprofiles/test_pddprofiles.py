@@ -28,7 +28,7 @@ import xarray as xr
 
 from deepdiff import DeepDiff
 
-from pymedphys.dosedata import DoseProfile
+from pymedphys.pddprofiles import DoseProfile
 
 # pylint: disable = E1102
 

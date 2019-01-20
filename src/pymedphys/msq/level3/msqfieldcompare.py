@@ -32,13 +32,14 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .._level2.deliverydatacore import get_delivery_parameters
-from .._level1.msqconnect import multi_mosaiq_connect
-
-from .._level2.mudensitycore import calc_mu_density
-from .._level2.msqdelivery import delivery_data_from_mosaiq
-
 from ...libutils import get_imports
+
+from ...deliverydata import get_delivery_parameters
+from ...mudensity import calc_mu_density
+
+from ..level1.msqconnect import multi_mosaiq_connect
+from ..level2.msqdelivery import delivery_data_from_mosaiq
+
 IMPORTS = get_imports(globals())
 
 
