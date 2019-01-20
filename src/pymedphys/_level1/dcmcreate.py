@@ -31,7 +31,7 @@ from pydicom.datadict import DicomDictionary
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
-DICOMNAMES = [item[-1] for _, item in DicomDictionary.items()]
+DICOM_NAMES = [item[-1] for _, item in DicomDictionary.items()]
 
 
 def convert_nparray_and_set_key_value_in_dataset(dataset, key, value):
@@ -41,12 +41,15 @@ def convert_nparray_and_set_key_value_in_dataset(dataset, key, value):
     setattr(dataset, key, value)
 
 
-def dcm_from_dict(input_dict: dict):
+def dcm_from_dict(input_dict: dict, template_dcm=None):
     """Create a pydicom DICOM object from a dictionary"""
-    dataset = Dataset()
+    if template_dcm is None:
+        dataset = Dataset()
+    else:
+        dataset = template_dcm
 
     for key, value in input_dict.items():
-        if key not in DICOMNAMES:
+        if key not in DICOM_NAMES:
             raise ValueError(
                 "{} is not within the DICOM dictionary.".format(key))
 
