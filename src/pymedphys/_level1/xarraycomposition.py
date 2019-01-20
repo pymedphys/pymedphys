@@ -23,15 +23,33 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+from copy import deepcopy
 
-"""
-"""
+import numpy as np
+import xarray as xr
 
-# pylint: disable=W0401,W0614
 
-from ._level0.libutils import clean_and_verify_levelled_modules
+class XArrayComposition():
+    def __init__(self, data, coords=None, dims=None, name=None):
+        self._xarray = xr.DataArray(data, coords=coords, dims=dims, name=name)
 
-from ._level2.dosedata import *
+    @property
+    def data(self) -> np.ndarray:
+        return self._xarray.data  # type: ignore
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level2.dosedata'])
+    @data.setter
+    def data(self, array) -> None:
+        array = np.array(array)
+        self._xarray.data = array
+
+    def to_xarray(self):
+        return deepcopy(self._xarray)
+
+    def to_pandas(self):
+        return self.to_xarray().to_pandas()
+
+    def to_dict(self):
+        return self.to_xarray().to_dict()
+
+    def deepcopy(self):
+        return deepcopy(self)
