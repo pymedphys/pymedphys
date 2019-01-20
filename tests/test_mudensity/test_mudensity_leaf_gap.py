@@ -50,7 +50,7 @@ JAW = np.array([
 LEAF_PAIR_WIDTHS = [2, 2, 2]
 
 
-def test_max_leaf_gap_bug():
+def test_max_leaf_gap():
     max_leaf_gap_init = 2 * np.max(np.abs(MLC))
     grid_resolution = 2
     how_many_to_test = 20
@@ -63,10 +63,27 @@ def test_max_leaf_gap_bug():
         max_leaf_gap_init + how_many_to_test * 2 * grid_resolution,
         2 * grid_resolution)
 
-    for max_leaf_gap in multiple_max_leaf_gaps:
+    init_mu_density = calc_mu_density(
+        MU, MLC, JAW,
+        leaf_pair_widths=LEAF_PAIR_WIDTHS,
+        max_leaf_gap=max_leaf_gap_init, grid_resolution=grid_resolution)
+
+    for i, max_leaf_gap in enumerate(multiple_max_leaf_gaps):
         mu_density = calc_mu_density(
             MU, MLC, JAW,
             leaf_pair_widths=LEAF_PAIR_WIDTHS,
             max_leaf_gap=max_leaf_gap, grid_resolution=grid_resolution)
 
         assert not np.all(mu_density == 0)
+        if i != 0:
+            assert np.all(mu_density[:, i:-i] == init_mu_density)
+
+    try:
+        calc_mu_density(
+            MU, MLC, JAW,
+            leaf_pair_widths=LEAF_PAIR_WIDTHS,
+            max_leaf_gap=max_leaf_gap_init + 1, grid_resolution=grid_resolution
+        )
+        raise AssertionError()
+    except ValueError:
+        pass

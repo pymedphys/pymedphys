@@ -23,6 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+# pylint: disable=C0326
+
+
 import io
 import os
 import zipfile
@@ -36,10 +39,44 @@ from pydicom.filebase import DicomBytesIO
 from pymedphys.dcm import dcm_from_dict
 from pymedphys.mudensity import MUDensity
 
-from .test_mu_density_single_control_point import (
-    MLC, JAW, LEAF_PAIR_WIDTHS, REFERENCE_MU_DENSITY
-)
+MU = [0, 10, 20]
 
+MLC = np.array([
+    [
+        [3, -3],
+        [3, -3],
+        [3, -3]
+    ],
+    [
+        [3, 3],
+        [3, 3],
+        [3, 3]
+    ],
+    [
+        [-3, 3],
+        [-3, 3],
+        [-3, 3]
+    ]
+])
+
+JAW = np.array([
+    [3, 3],
+    [3, 3],
+    [3, 3]
+])
+
+LEAF_PAIR_WIDTHS = [2, 2, 2]
+
+GRID_RESOLUTION = 2
+MAX_LEAF_GAP = 8
+
+REFERENCE_MU_DENSITY = [
+    [0,  0,  0,  0, 0],
+    [0, 10, 10, 10, 0],
+    [0, 10, 10, 10, 0],
+    [0, 10, 10, 10, 0],
+    [0,  0,  0,  0, 0]
+]
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/logfiles")
@@ -73,14 +110,39 @@ def compare_logfile_within_zip(zip_filepath):
 
 def test_from_dicom():
     leaf_boundaries = [0] + np.cumsum(LEAF_PAIR_WIDTHS).tolist()
+    leaf_boundaries = np.array(leaf_boundaries) - np.mean(leaf_boundaries)
+
+    total_mu = MU[-1]
+    mu_weights = np.array(MU) / total_mu
+
+    control_point_sequence = [
+        {
+            'CumulativeMetersetWeight': mu_weight,
+            'BeamLimitingDevicePositionSequence': [
+                {
+                    'RTBeamLimitingDeviceType': 'ASYMY',
+                    'LeafJawPositions': None
+                },
+                {
+
+                }
+            ]
+        }
+        for mu_weight in mu_weights
+    ]
+
     dcm = dcm_from_dict({
         'BeamSequence': [
             {
                 'BeamLimitingDeviceSequence': [
                     {
                         'RTBeamLimitingDeviceType': 'MLCX',
-                        'LeafPositionBoundaries': leaf_boundaries
+                        'LeafPositionBoundaries': leaf_boundaries,
+                        'NumberOfLeafJawPairs': len(leaf_boundaries) - 1
                     }
+                ],
+                'ControlPointSequence': [
+
                 ]
             }
         ]
