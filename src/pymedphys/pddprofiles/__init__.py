@@ -34,5 +34,5 @@ from ..libutils import clean_and_verify_levelled_modules
 from .level1.pddprofilescore import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.1level1.pddprofilescore'
+    '.level1.pddprofilescore'
 ], package='pymedphys.pddprofiles')
