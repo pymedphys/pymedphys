@@ -39,4 +39,4 @@ from .level1.geometry import *
 
 clean_and_verify_levelled_modules(globals(), [
     '.level1.geometry'
-])
+], package='pymedphys.geometry')

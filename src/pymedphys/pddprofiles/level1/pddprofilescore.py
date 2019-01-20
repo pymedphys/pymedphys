@@ -31,7 +31,7 @@ from scipy import interpolate
 import matplotlib.pyplot as plt
 
 from ...libutils import get_imports
-from .._level1.xarraycomposition import XArrayComposition
+from ...xarray import XArrayComposition
 IMPORTS = get_imports(globals())
 
 

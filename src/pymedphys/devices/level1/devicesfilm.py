@@ -24,8 +24,9 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 from PIL import Image
-import matplotlib.image as mpimg
+
 import numpy as np
+import matplotlib.image as mpimg
 
 from ...libutils import get_imports
 

@@ -26,12 +26,12 @@
 
 import numpy as np
 
-from .._level1.geometry import (
+from ...libutils import get_imports
+from ...geometry import (
     cubify_cube_definition, cube_vertices, get_bounding_box, test_if_in_cube,
     plot_cube
 )
 
-from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

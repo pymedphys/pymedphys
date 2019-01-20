@@ -52,4 +52,5 @@ from .level2.dcmstruct import *
 
 clean_and_verify_levelled_modules(globals(), [
     '.level1.dcmdose', '.level1.dcmcreate', '.level2.dcmanonymise',
-    '.level2.dcmstruct'])
+    '.level2.dcmstruct'
+], package='pymedphys.dcm')

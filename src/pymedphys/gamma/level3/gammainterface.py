@@ -25,11 +25,12 @@
 # import numpy as np
 # import matplotlib.pyplot as plt
 
-from .._level1.dcmdose import coords_and_dose_from_dcm
-from .._level1.gammafilter import gamma_filter_numpy, convert_to_percent_pass
-from .._level2.gammashell import gamma_shell
-
 from ...libutils import get_imports
+from ...dcm import coords_and_dose_from_dcm
+
+from ..level1.gammafilter import gamma_filter_numpy, convert_to_percent_pass
+from ..level2.gammashell import gamma_shell
+
 IMPORTS = get_imports(globals())
 
 

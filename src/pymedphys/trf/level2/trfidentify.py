@@ -29,13 +29,12 @@
 from datetime import datetime
 from dateutil import tz
 
-from .._level2.msqdelivery import (
+from ...libutils import get_imports
+from ...msq import (
     get_mosaiq_delivery_details, OISDeliveryDetails)
 
-from .._level2.trfdecode import decode_header_from_file
+from ..level1.trfdecode import decode_header_from_file
 
-
-from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

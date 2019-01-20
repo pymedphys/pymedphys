@@ -36,19 +36,18 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .._level2.deliverydatacore import get_delivery_parameters
-from .._level1.utilitiesconfig import (
+from ...libutils import get_imports
+from ...deliverydata import get_delivery_parameters
+from ...utilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath
 )
-from .._level1.msqconnect import multi_mosaiq_connect
+from ...msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
+from ...mudensity import calc_mu_density
+from ...trf import delivery_data_from_logfile
 
-from .._level2.mudensitycore import calc_mu_density
-from .._level2.msqdelivery import multi_fetch_and_verify_mosaiq
-from .._level2.trfdecode import delivery_data_from_logfile
 
-from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

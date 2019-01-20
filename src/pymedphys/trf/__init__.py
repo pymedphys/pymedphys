@@ -42,4 +42,4 @@ from .level2.trfidentify import *
 
 clean_and_verify_levelled_modules(globals(), [
     '.level1.trfdecode', '.level2.trf2csv', '.level2.trfidentify'
-])
+], package='pymedphys.trf')

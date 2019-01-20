@@ -43,4 +43,4 @@ from .level1.electronfactors import *
 
 clean_and_verify_levelled_modules(globals(), [
     '.level1.electronfactors'
-])
+], package='pymedphys.electronfactors')

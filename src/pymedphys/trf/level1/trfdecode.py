@@ -51,7 +51,7 @@ except ImportError:
     import numpy as np
     import pandas as pd
 
-    from .._level2.deliverydatacore import DeliveryData
+    from ...deliverydata import DeliveryData
 
     @attr.s
     class Header(object):
