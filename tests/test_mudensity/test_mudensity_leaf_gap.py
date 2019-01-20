@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,46 +23,37 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-# pylint: disable=C0103,C1801
-
-
-"""Regression testing of the single control point function.
-"""
-
 import numpy as np
 
-from pymedphys.mudensity import calc_single_control_point
+from pymedphys.mudensity import calc_mu_density
+
+MU = [0, 30]
 
 MLC = np.array([
     [
-        [1, 1],
-        [2, 2],
+        [4, -3],
+        [4, -3],
+        [4, -3]
     ],
     [
-        [2, 2],
-        [3, 3],
+        [-3, 4],
+        [-3, 4],
+        [-3, 4]
     ]
 ])
 
 JAW = np.array([
-    [1.5, 1.2],
-    [1.5, 1.2]
+    [3, 3],
+    [3, 3]
 ])
 
-LEAF_PAIR_WIDTHS = [2, 2]
-
-REFERENCE_MU_DENSITY = [[0., 0.07, 0.43, 0.5, 0.43, 0.07, 0.],
-                        [0., 0.14, 0.86, 1., 0.86, 0.14, 0.],
-                        [0.14, 0.86, 1., 1., 1., 0.86, 0.14],
-                        [0.03, 0.17, 0.2, 0.2, 0.2, 0.17, 0.03]]
+LEAF_PAIR_WIDTHS = [2, 2, 2]
 
 
-def test_partial_jaws():
-    """Parital jaw location should give a fractional result.
-    """
-    _, mu_density = calc_single_control_point(
-        MLC, JAW, leaf_pair_widths=LEAF_PAIR_WIDTHS
-    )
+def test_max_leaf_gap_bug():
+    mu_density = calc_mu_density(
+        MU, MLC, JAW,
+        leaf_pair_widths=LEAF_PAIR_WIDTHS,
+        max_leaf_gap=10, grid_resolution=2)
 
-    assert np.allclose(np.round(mu_density, 2), REFERENCE_MU_DENSITY)
+    assert not np.all(mu_density == 0)

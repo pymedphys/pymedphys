@@ -28,20 +28,23 @@ import os
 import zipfile
 from glob import glob
 
+import numpy as np
+
 import pydicom
 from pydicom.filebase import DicomBytesIO
 
+from pymedphys.dcm import dcm_from_dict
 from pymedphys.mudensity import MUDensity
+
+from .test_mu_density_single_control_point import (
+    MLC, JAW, LEAF_PAIR_WIDTHS, REFERENCE_MU_DENSITY
+)
 
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/logfiles")
 LOGFILE_ZIPS = glob(os.path.abspath(os.path.join(
     DATA_DIRECTORY, '*/lfs-*.zip')))
-
-
-def create_dummy_dicom_object():
-    pass
 
 
 def test_compare_varian_logfiles_to_dicom():
@@ -69,5 +72,18 @@ def compare_logfile_within_zip(zip_filepath):
 
 
 def test_from_dicom():
-    pass
+    leaf_boundaries = [0] + np.cumsum(LEAF_PAIR_WIDTHS).tolist()
+    dcm = dcm_from_dict({
+        'BeamSequence': [
+            {
+                'BeamLimitingDeviceSequence': [
+                    {
+                        'RTBeamLimitingDeviceType': 'MLCX',
+                        'LeafPositionBoundaries': leaf_boundaries
+                    }
+                ]
+            }
+        ]
+    })
+
     # MUDensity.from_dicom()
