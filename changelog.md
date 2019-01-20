@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ProfileDose object built ontop of xarray. [@SimonBiggs](https://gitlab.com/SimonBiggs).
 
 ### Changed
-- nil
+- MU Density related functions are no longer available under the `pymedphys.coll` package, instead they are found within `pymedphys.mudensity` package.
 
 ### Deprecated
 - nil
