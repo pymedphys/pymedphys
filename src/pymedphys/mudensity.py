@@ -23,35 +23,22 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""Determine MU Density given a range of formats.
 
-# pylint: disable=C0103,C1801
-
-
-"""End to end regression testing.
+Available Functions
+-------------------
+>>> from pymedphys.mudensity import (
+...    calc_mu_density)
 """
 
-import os
+# pylint: disable=W0401,W0614,C0413,W0611
 
-import numpy as np
+from ._level0.libutils import clean_and_verify_levelled_modules
 
-from pymedphys.coll import calc_mu_density
+from ._level2.mudensitycore import *
 
+clean_and_verify_levelled_modules(globals(), [
+    '._level2.mudensitycore'
+])
 
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../data/mudensity")
-DELIVERY_DATA_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, 'mu_density_example_arrays.npz'))
-
-
-def test_regression():
-    """The results of MU Density calculation should not change
-    """
-    regress_test_arrays = np.load(DELIVERY_DATA_FILEPATH)
-
-    mu = regress_test_arrays['mu']
-    mlc = regress_test_arrays['mlc']
-    jaw = regress_test_arrays['jaw']
-
-    cached_mu_density = regress_test_arrays['mu_density']
-    mu_density = calc_mu_density(mu, mlc, jaw)
-    assert np.allclose(mu_density, cached_mu_density, atol=0.1)
+from ._level2 import mudensitycore  # nopep8
