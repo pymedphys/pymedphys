@@ -135,7 +135,7 @@ class DoseProfile(Dose1D):
         except (AssertionError, IndexError):
             pass
 
-        Dose1D.__init__(self, x, data)
+        super().__init__(x, data)
 
         self.metadata = dict()
         for key in kwargs:
@@ -179,10 +179,10 @@ class DoseProfile(Dose1D):
         if stop <= start:
             raise ValueError("Bad start|stop for resample")
         new_x = list(np.arange(start, stop, step))
-        new_data = [float(self.interp(i)) for i in new_x]
+        new_data = self.interp(new_x)
 
         if inplace:
-            Dose1D.__init__(self, new_x, new_data)
+            self.__init__(new_x, new_data)
         else:
             return DoseProfile(new_x, new_data)
 
