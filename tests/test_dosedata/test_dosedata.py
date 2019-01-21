@@ -177,11 +177,11 @@ def test_DoseProfile_resample():
 #     assert not is_wedged(PROFILER)
 #     assert is_wedged(WEDGED)
 
-# if __name__ == "__main__":
-#     test_conversion()
-#     test_function_updating_with_shift()
-#     test_default_interp_function()
-#     test_DoseProfile_resample()
+if __name__ == "__main__":
+    test_conversion()
+    test_function_updating_with_shift()
+    test_default_interp_function()
+    test_DoseProfile_resample()
 #     test_pulse()
 #     test_resample()
 #     test_overlay()
