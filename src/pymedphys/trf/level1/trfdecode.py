@@ -46,20 +46,17 @@ except ImportError:
 
     from typing import List
 
-    import attr
+    from collections import namedtuple
 
     import numpy as np
     import pandas as pd
 
     from ...deliverydata import DeliveryData
 
-    @attr.s
-    class Header(object):
-        machine = attr.ib()
-        date = attr.ib()
-        timezone = attr.ib()
-        field_label = attr.ib()
-        field_name = attr.ib()
+    Header = namedtuple(
+        'Header',
+        ['machine', 'date', 'timezone', 'field_label', 'field_name']
+    )
 
     def not_implemented_error():
         raise NotImplementedError(
