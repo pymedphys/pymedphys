@@ -39,19 +39,22 @@ IMPORTS = get_imports(globals())
 
 
 def read_csv_file(file_name):
-    """
-    Return patient ID and sinogram array produced by reading a RayStation sinogram
-    CSV file with the provided file name.
+    # Temporarily disabling docstring due to "Unexpected indentation"
+    # error within Sphinx build
 
-    Files are produced by ExportTomoSinogram.py, Brandon Merz,
-    RaySearch customer forum, 1/18/2018.
+    # """
+    # Return patient ID and sinogram array produced by reading a RayStation sinogram
+    # CSV file with the provided file name.
 
-        Format:
-            First row contains demographics. Subsequent rows correspond to couch positions.
-            Leaf-open time range from zero to one.
-                "Patient name: ANONYMOUS^PATIENT, ID: 00000",,,,,,,,,
-                ,0,0,0,0,0,0,0,0,0,0,0,0,0.39123373,0.366435635 ...
-    """
+    # Files are produced by ExportTomoSinogram.py, Brandon Merz,
+    # RaySearch customer forum, 1/18/2018.
+
+    #     Format:
+    #         First row contains demographics. Subsequent rows correspond to couch positions.
+    #         Leaf-open time range from zero to one.
+    #             "Patient name: ANONYMOUS^PATIENT, ID: 00000",,,,,,,,,
+    #             ,0,0,0,0,0,0,0,0,0,0,0,0,0.39123373,0.366435635 ...
+    # """
 
     with open(file_name, 'r') as csvfile:
 
