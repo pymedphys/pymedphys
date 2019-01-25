@@ -73,7 +73,7 @@ def test_decorator():
 
     new_container = DummyDeliveryData(MU, MLC, JAW, GANTRY, COLLIMATOR)
 
-    assert new_container.to_tuple() == (
+    assert np.all(new_container.to_tuple() == (
         np.array(MU), np.array(MLC), np.array(JAW), np.array(GANTRY),
         np.array(COLLIMATOR)
-    )
+    ))
