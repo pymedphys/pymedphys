@@ -37,8 +37,8 @@ from ...libutils import get_imports
 from ...deliverydata import get_delivery_parameters
 from ...mudensity import calc_mu_density
 
-from ..level1.msqconnect import multi_mosaiq_connect
-from ..level2.msqdelivery import delivery_data_from_mosaiq
+from .._level1.msqconnect import multi_mosaiq_connect
+from .._level2.msqdelivery import delivery_data_from_mosaiq
 
 IMPORTS = get_imports(globals())
 

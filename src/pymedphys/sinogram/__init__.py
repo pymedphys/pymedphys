@@ -41,8 +41,8 @@ Available Functions
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.sinogram import *
+from ._level1.sinogram import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.sinogram'
+    '._level1.sinogram'
 ], package='pymedphys.sinogram')

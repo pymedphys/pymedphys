@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
+import pytest
 
 from pymedphys.mudensity import calc_mu_density
 
@@ -78,12 +79,9 @@ def test_max_leaf_gap():
         if i != 0:
             assert np.all(mu_density[:, i:-i] == init_mu_density)
 
-    try:
+    with pytest.raises(ValueError):
         calc_mu_density(
             MU, MLC, JAW,
             leaf_pair_widths=LEAF_PAIR_WIDTHS,
             max_leaf_gap=max_leaf_gap_init + 1, grid_resolution=grid_resolution
         )
-        raise AssertionError()
-    except ValueError:
-        pass

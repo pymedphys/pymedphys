@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,24 +24,15 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A range of functions for calculating gamma.
-
-
-Available Functions
--------------------
->>> from pymedphys.gamma import (
-...     gamma_shell, gamma_dcm, gamma_filter_numpy, gamma_filter_brute_force)
+"""
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
+# pylint: disable=W0401,W0614
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from ._level1.gammafilter import *
-from ._level2.gammashell import *
-from ._level3.gammainterface import *
+from ._level1.profilescore import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.gammafilter', '._level2.gammashell',
-    '._level3.gammainterface'
-], package='pymedphys.gamma')
+    '._level1.profilescore'
+], package='pymedphys.profiles')

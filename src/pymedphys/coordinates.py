@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2019 Matthew Jennings
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,15 +24,20 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""
+"""A coordinates toolbox.
+
+Available Functions
+-------------------
+>>> from pymedphys.coordinates import (
+...     rotate_about_z,
+...     translate)
 """
 
 # pylint: disable=W0401,W0614
 
-from ..libutils import clean_and_verify_levelled_modules
+from ._level0.libutils import clean_and_verify_levelled_modules
 
-from .level1.pddprofilescore import *
+from ._level1.coordinate_transforms import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.pddprofilescore'
-], package='pymedphys.pddprofiles')
+    '._level1.coordinate_transforms'])

@@ -45,12 +45,12 @@ Available Functions
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.dcmdose import *
-from .level1.dcmcreate import *
-from .level2.dcmanonymise import *
-from .level2.dcmstruct import *
+from ._level1.dcmdose import *
+from ._level1.dcmcreate import *
+from ._level2.dcmanonymise import *
+from ._level2.dcmstruct import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.dcmdose', '.level1.dcmcreate', '.level2.dcmanonymise',
-    '.level2.dcmstruct'
+    '._level1.dcmdose', '._level1.dcmcreate', '._level2.dcmanonymise',
+    '._level2.dcmstruct'
 ], package='pymedphys.dcm')

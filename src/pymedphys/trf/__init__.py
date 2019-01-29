@@ -36,10 +36,10 @@ Examples:
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.trfdecode import *
-from .level2.trf2csv import *
-from .level2.trfidentify import *
+from ._level1.trfdecode import *
+from ._level2.trf2csv import *
+from ._level2.trfidentify import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.trfdecode', '.level2.trf2csv', '.level2.trfidentify'
+    '._level1.trfdecode', '._level2.trf2csv', '._level2.trfidentify'
 ], package='pymedphys.trf')
