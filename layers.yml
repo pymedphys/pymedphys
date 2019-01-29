@@ -19,9 +19,9 @@ Internal Levelled Modules:
         - pymedphys.utilities
         - pymedphys.xarray
     layers:
-        - (level3)
-        - (level2)
-        - level1
+        - (_level3)
+        - (_level2)
+        - _level1
 
 Top Level Modules:
     containers:
