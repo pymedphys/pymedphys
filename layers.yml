@@ -12,7 +12,7 @@ Internal Levelled Modules:
         - pymedphys.logfile
         - pymedphys.msq
         - pymedphys.mudensity
-        - pymedphys.pddprofiles
+        - pymedphys.profiles
         - pymedphys.plt
         - pymedphys.sinogram
         - pymedphys.trf
@@ -31,7 +31,7 @@ Top Level Modules:
         - trf
         - msq
         - mudensity
-        - pddprofiles
+        - profiles
         - gamma
         - coll
         - electronfactors
