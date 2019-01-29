@@ -32,8 +32,8 @@ import pandas as pd
 
 from ...libutils import get_imports
 
-from ..level1.msqconnect import execute_sql
-from ..level1.msqdictionaries import FIELD_TYPES
+from .._level1.msqconnect import execute_sql
+from .._level1.msqdictionaries import FIELD_TYPES
 
 IMPORTS = get_imports(globals())
 
