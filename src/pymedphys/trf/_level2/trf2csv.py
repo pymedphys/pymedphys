@@ -36,7 +36,7 @@ from glob import glob
 
 from ...libutils import get_imports
 
-from ..level1.trfdecode import trf2pandas
+from .._level1.trfdecode import trf2pandas
 
 IMPORTS = get_imports(globals())
 

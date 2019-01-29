@@ -34,13 +34,13 @@ Examples:
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.msqconnect import *
-from .level1.msqdictionaries import *
-from .level2.msqdelivery import *
-from .level2.msqhelpers import *
-from .level3.msqfieldcompare import *
+from ._level1.msqconnect import *
+from ._level1.msqdictionaries import *
+from ._level2.msqdelivery import *
+from ._level2.msqhelpers import *
+from ._level3.msqfieldcompare import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.msqconnect', '.level1.msqdictionaries',
-    '.level2.msqdelivery', '.level2.msqhelpers', '.level3.msqfieldcompare'
+    '._level1.msqconnect', '._level1.msqdictionaries',
+    '._level2.msqdelivery', '._level2.msqhelpers', '._level3.msqfieldcompare'
 ], package='pymedphys.msq')

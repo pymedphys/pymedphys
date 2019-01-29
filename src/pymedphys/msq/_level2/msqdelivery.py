@@ -34,8 +34,8 @@ import numpy as np
 from ...libutils import get_imports
 from ...deliverydata import DeliveryData, get_delivery_parameters
 
-from ..level1.msqconnect import execute_sql
-from ..level1.msqdictionaries import FIELD_TYPES
+from .._level1.msqconnect import execute_sql
+from .._level1.msqdictionaries import FIELD_TYPES
 
 IMPORTS = get_imports(globals())
 

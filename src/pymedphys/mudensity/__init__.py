@@ -35,11 +35,11 @@ Available Functions
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.mudensitycore import *
-from .level2.mudensityapi import *
+from ._level1.mudensitycore import *
+from ._level2.mudensityapi import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.mudensitycore', '.level2.mudensityapi'
+    '._level1.mudensitycore', '._level2.mudensityapi'
 ], package='pymedphys.mudensity')
 
-from .level1 import mudensitycore  # nopep8
+from ._level1 import mudensitycore  # nopep8
