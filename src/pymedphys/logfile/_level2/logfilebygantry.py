@@ -35,7 +35,7 @@ from ...mudensity import (
 from ...msq import multi_fetch_and_verify_mosaiq
 from ...trf import delivery_data_from_logfile
 
-from ..level1.logfileanalyse import calc_comparison, plot_results
+from .._level1.logfileanalyse import calc_comparison, plot_results
 
 
 from ...libutils import get_imports

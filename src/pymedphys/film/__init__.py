@@ -33,8 +33,8 @@ Example:
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.film import *
+from ._level1.film import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.film'
+    '._level1.film'
 ], package='pymedphys.film')

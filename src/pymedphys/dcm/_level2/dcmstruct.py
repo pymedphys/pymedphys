@@ -32,7 +32,7 @@ from ...libutils import get_imports
 from ...geometry import (
     cubify_cube_definition, cube_vertices, cube_vectors)
 
-from ..level1.dcmdose import (
+from .._level1.dcmdose import (
     pull_structure, contour_to_points)
 
 IMPORTS = get_imports(globals())
