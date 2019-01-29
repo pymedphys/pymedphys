@@ -24,8 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# from .._level1.collmlctypes import autodetect_leaf_pair_widths
-
 from .._level0.libutils import get_imports
 IMPORTS = get_imports(globals())
 
@@ -46,9 +44,6 @@ def mlc_equivalent_square_fs(mlc_segments, leaf_pair_widths):
     with distance defined in mm.
     https://aapm.onlinelibrary.wiley.com/doi/10.1118/1.4814441
     """
-
-    # if leaf_pair_widths is None:
-    #     leaf_pair_widths = autodetect_leaf_pair_widths(len(mlc_segments))
 
     assert len(leaf_pair_widths) == len(mlc_segments), (
         'Length of `leaf_pair_widths` ({}) needs to match length of '
