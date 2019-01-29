@@ -34,34 +34,35 @@ import numpy as np
 
 from pymedphys.mudensity import calc_single_control_point
 
+MLC = np.array([
+    [
+        [1, 1],
+        [2, 2],
+    ],
+    [
+        [2, 2],
+        [3, 3],
+    ]
+])
+
+JAW = np.array([
+    [1.5, 1.2],
+    [1.5, 1.2]
+])
+
+LEAF_PAIR_WIDTHS = [2, 2]
+
+REFERENCE_MU_DENSITY = [[0., 0.07, 0.43, 0.5, 0.43, 0.07, 0.],
+                        [0., 0.14, 0.86, 1., 0.86, 0.14, 0.],
+                        [0.14, 0.86, 1., 1., 1., 0.86, 0.14],
+                        [0.03, 0.17, 0.2, 0.2, 0.2, 0.17, 0.03]]
+
 
 def test_partial_jaws():
     """Parital jaw location should give a fractional result.
     """
-    leaf_pair_widths = [2, 2]
-
-    mlc = np.array([
-        [
-            [1, 1],
-            [2, 2],
-        ],
-        [
-            [2, 2],
-            [3, 3],
-        ]
-    ])
-    jaw = np.array([
-        [1.5, 1.2],
-        [1.5, 1.2]
-    ])
-
     _, mu_density = calc_single_control_point(
-        mlc, jaw, leaf_pair_widths=leaf_pair_widths
+        MLC, JAW, leaf_pair_widths=LEAF_PAIR_WIDTHS
     )
 
-    reference_mu_density = [[0., 0.07, 0.43, 0.5, 0.43, 0.07, 0.],
-                            [0., 0.14, 0.86, 1., 0.86, 0.14, 0.],
-                            [0.14, 0.86, 1., 1., 1., 0.86, 0.14],
-                            [0.03, 0.17, 0.2, 0.2, 0.2, 0.17, 0.03]]
-
-    assert np.allclose(np.round(mu_density, 2), reference_mu_density)
+    assert np.allclose(np.round(mu_density, 2), REFERENCE_MU_DENSITY)

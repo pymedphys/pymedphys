@@ -7,7 +7,7 @@ Collimator Toolbox
 MU Density
 ----------
 
-.. automodule:: pymedphys._level2.mudensitycore
+.. automodule:: pymedphys.mudensity._level1.mudensitycore
     :no-members:
 
 .. plot:: pyplots/mudensity.py
