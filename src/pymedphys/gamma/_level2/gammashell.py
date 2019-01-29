@@ -41,7 +41,7 @@ import psutil
 
 from ...libutils import get_imports
 
-from ..level1.gammainputcheck import run_input_checks
+from .._level1.gammainputcheck import run_input_checks
 
 IMPORTS = get_imports(globals())
 

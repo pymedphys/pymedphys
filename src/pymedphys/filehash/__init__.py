@@ -31,8 +31,8 @@
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.filehash import *
+from ._level1.filehash import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.filehash'
+    '._level1.filehash'
 ], package='pymedphys.filehash')

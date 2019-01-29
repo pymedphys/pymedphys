@@ -28,7 +28,7 @@ import xarray as xr
 
 from deepdiff import DeepDiff
 
-from pymedphys.pddprofiles import DoseProfile
+from pymedphys.profiles import DoseProfile
 
 # pylint: disable = E1102
 
@@ -45,7 +45,7 @@ def test_conversion():
     expected_data = [-27, -8, -1, 0, 1, 8, 27]
 
     expected_pandas = pd.Series(
-        expected_data, pd.Index(expected_x, name='x'))
+        expected_data, pd.Index(expected_x, name='x')).astype(float)
     expected_xarray = xr.DataArray(
         expected_data, coords=[('x', expected_x)], name='dose')
 
@@ -60,7 +60,7 @@ def test_conversion():
 
     assert np.array_equal(profile.x, np.array(expected_x))
     assert np.array_equal(profile.data, np.array(expected_data))
-    assert expected_pandas.equals(profile.to_pandas())
+    assert expected_pandas.equals(profile.to_pandas().astype(float))
     assert expected_xarray.identical(profile.to_xarray())
     assert DeepDiff(profile.to_dict(), expected_dict) == {}
 

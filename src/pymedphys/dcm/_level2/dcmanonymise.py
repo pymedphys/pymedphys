@@ -31,7 +31,7 @@ import pydicom
 
 from ...libutils import get_imports
 
-from ..level1.dcmdictbaseline import BaselineDicomDictionary
+from .._level1.dcmdictbaseline import BaselineDicomDictionary
 
 IMPORTS = get_imports(globals())
 

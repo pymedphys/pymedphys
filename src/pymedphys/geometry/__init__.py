@@ -35,8 +35,8 @@ Available Functions
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.geometry import *
+from ._level1.geometry import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.geometry'
+    '._level1.geometry'
 ], package='pymedphys.geometry')
