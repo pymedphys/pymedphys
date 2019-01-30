@@ -15,6 +15,6 @@ jobs:
     pool:
       vmImage: 'macOS-10.13'
     steps:
-      - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils --with-default-names
+      - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && echo '/usr/local/opt/findutils/libexec/gnubin' | cat - /etc/paths > temp && mv temp /etc/paths
         displayName: 'Install GNU xargs'
       - template: ./scripts/azure-pipelines/template.yml
