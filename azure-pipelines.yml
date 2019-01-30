@@ -4,8 +4,6 @@ jobs:
       vmImage: 'ubuntu-16.04'
     steps:
       - task: CondaEnvironment@1
-        inputs:
-          createOptions: --file ./environment.yml
       - task: Bash@3
         displayName: 'install-pymedphys'
         inputs:
