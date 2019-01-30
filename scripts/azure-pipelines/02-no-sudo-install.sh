@@ -1,5 +1,3 @@
-#!/bin/bash
-
 set -ex
 
 echo $PATH
