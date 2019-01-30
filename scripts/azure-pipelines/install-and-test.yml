@@ -1,7 +1,7 @@
 steps:
   - bash: echo $PATH && source activate pymedphys && pip install -e .
     displayName: 'Install development version of PyMedPhys'
-  - bash: MATPLOTLIB_RC=`python -c "import matplotlib; print(matplotlib.matplotlib_fname())"` && echo "backend: Agg" > $MATPLOTLIB_RC
+  - bash: ./scripts/azure-pipelines/matplotlib-backend.sh
     displayName: 'Set matplotlib backend to Agg'
   - bash: source activate pymedphys && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
     displayName: 'Check that notebooks have no included output'
