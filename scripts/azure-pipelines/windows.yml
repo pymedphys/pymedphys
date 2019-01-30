@@ -1,0 +1,3 @@
+steps:
+  - template: ./scripts/azure-pipelines/02-no-sudo-install.yml
+  - template: ./scripts/azure-pipelines/04-notebook-and-pytest.yml
