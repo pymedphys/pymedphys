@@ -37,11 +37,11 @@ Available Functions
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.gammafilter import *
-from .level2.gammashell import *
-from .level3.gammainterface import *
+from ._level1.gammafilter import *
+from ._level2.gammashell import *
+from ._level3.gammainterface import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.gammafilter', '.level2.gammashell',
-    '.level3.gammainterface'
+    '._level1.gammafilter', '._level2.gammashell',
+    '._level3.gammainterface'
 ], package='pymedphys.gamma')

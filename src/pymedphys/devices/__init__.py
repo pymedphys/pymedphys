@@ -28,12 +28,12 @@
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.devicessncprofiler import *
-from .level1.devicessncmapcheck import *
-from .level1.devicesfilm import *
+from ._level1.devicessncprofiler import *
+from ._level1.devicessncmapcheck import *
+from ._level1.devicesfilm import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.devicessncprofiler',
-    '.level1.devicessncmapcheck',
-    '.level1.devicesfilm'
+    '._level1.devicessncprofiler',
+    '._level1.devicessncmapcheck',
+    '._level1.devicesfilm'
 ], package='pymedphys.devices')

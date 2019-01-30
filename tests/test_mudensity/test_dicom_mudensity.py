@@ -31,6 +31,8 @@ import os
 import zipfile
 from glob import glob
 
+import pytest
+
 import numpy as np
 
 import pydicom
@@ -89,6 +91,7 @@ def test_compare_varian_logfiles_to_dicom():
         compare_logfile_within_zip(zip_filepath)
 
 
+@pytest.mark.skip("Deleted LFS files, need to implement test file storage")
 def compare_logfile_within_zip(zip_filepath):
     with open(zip_filepath, 'rb') as input_file:
         data = io.BytesIO(input_file.read())

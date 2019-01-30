@@ -35,8 +35,8 @@ Example:
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.xarraycomposition import *
+from ._level1.xarraycomposition import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.xarraycomposition'
+    '._level1.xarraycomposition'
 ], package='pymedphys.xarray')

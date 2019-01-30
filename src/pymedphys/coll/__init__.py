@@ -35,9 +35,9 @@ Available Functions
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.collmlctypes import *
-from .level1.collequivalent import *
+from ._level1.collmlctypes import *
+from ._level1.collequivalent import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.collmlctypes', '.level1.collequivalent'
+    '._level1.collmlctypes', '._level1.collequivalent'
 ], package='pymedphys.coll')
