@@ -2,7 +2,11 @@ import os
 
 
 def main():
-    os.remove('.testmondata')
+    try:
+        os.remove('.testmondata')
+    except FileNotFoundError:
+        pass
+
     os.system('ptw -- --testmon')
 
 
