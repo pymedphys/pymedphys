@@ -7,3 +7,9 @@ steps:
     displayName: 'Check that notebooks have no included output'
   - bash: source activate pymedphys && python setup.py test
     displayName: 'Run the full pytest suite'
+  - task: PublishTestResults@2
+    displayName: Publish Test Results
+    inputs:
+      testResultsFiles: junit/*.xml
+      testRunTitle: 'Library'
+    condition: succeededOrFailed()
