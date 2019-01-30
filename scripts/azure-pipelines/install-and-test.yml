@@ -1,4 +1,6 @@
 steps:
+  - bash: ./scripts/azure-pipelines/01-install.sh
+    displayName: 'Install development version of PyMedPhys with sudo'
   - bash: ./scripts/azure-pipelines/02-notebook-output.sh
     displayName: 'Check that notebooks have no included output'
   - bash: ./scripts/azure-pipelines/03-pytest.sh
