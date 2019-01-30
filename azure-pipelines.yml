@@ -2,7 +2,6 @@ jobs:
   - job: 'Linux'
     pool:
       vmImage: 'ubuntu-16.04'
-
     steps:
       - task: Bash@3
         displayName: 'install-pymedphys'
@@ -14,7 +13,7 @@ jobs:
         inputs:
           targetType: 'filePath'
           filePath: ./scripts/azure-pipelines/02-check-nbstripout.sh
-       - task: Bash@3
+      - task: Bash@3
         displayName: 'test'
         inputs:
           targetType: 'filePath'
