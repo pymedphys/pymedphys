@@ -44,6 +44,11 @@ DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/trf")
 
 
+pytest.skip(
+    "Skipping decode_trf tests, the library can't be made public.",
+    allow_module_level=True)
+
+
 # TODO need to include header test
 
 
