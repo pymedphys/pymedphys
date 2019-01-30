@@ -1,3 +1,0 @@
-steps:
-  - template: ./01-sudo-install.yml
-  - template: ./04-notebook-and-pytest.yml
