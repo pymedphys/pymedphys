@@ -1,6 +1,7 @@
 Internal Levelled Modules:
     containers:
         - pymedphys.coll
+        - pymedphys.coordinates
         - pymedphys.dcm
         - pymedphys.deliverydata
         - pymedphys.electronfactors
@@ -12,16 +13,16 @@ Internal Levelled Modules:
         - pymedphys.logfile
         - pymedphys.msq
         - pymedphys.mudensity
-        - pymedphys.pddprofiles
+        - pymedphys.profiles
         - pymedphys.plt
         - pymedphys.sinogram
         - pymedphys.trf
         - pymedphys.utilities
         - pymedphys.xarray
     layers:
-        - (level3)
-        - (level2)
-        - level1
+        - (_level3)
+        - (_level2)
+        - _level1
 
 Top Level Modules:
     containers:
@@ -31,7 +32,7 @@ Top Level Modules:
         - trf
         - msq
         - mudensity
-        - pddprofiles
+        - profiles
         - gamma
         - coll
         - electronfactors
@@ -42,6 +43,7 @@ Top Level Modules:
         - deliverydata
         - geometry
         - plt
+        - coordinates
         - filehash
         - xarray
         - libutils

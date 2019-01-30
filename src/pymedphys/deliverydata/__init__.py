@@ -35,8 +35,8 @@ Example:
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.deliverydatacore import *
+from ._level1.deliverydatacore import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.deliverydatacore'
+    '._level1.deliverydatacore'
 ], package='pymedphys.deliverydata')
