@@ -1,5 +1,0 @@
-steps:
-  - bash: ./02-notebook-output.sh
-    displayName: 'Check that notebooks have no included output'
-  - bash: ./03-pytest.sh
-    displayName: 'Run the full pytest suite'
