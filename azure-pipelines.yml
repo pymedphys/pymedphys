@@ -21,3 +21,49 @@ jobs:
         inputs:
           targetType: 'filePath'
           filePath: ./scripts/azure-pipelines/03-test.sh
+
+  - job: 'Windows'
+    pool:
+      vmImage: 'vs2017-win2016'
+    steps:
+      - task: CondaEnvironment@1
+        inputs:
+          createOptions: --channel conda-forge
+      - task: Bash@3
+        displayName: 'install-pymedphys'
+        inputs:
+          targetType: 'filePath'
+          filePath: ./scripts/azure-pipelines/01-install-pymedphys.sh
+      - task: Bash@3
+        displayName: 'check-nbstripout'
+        inputs:
+          targetType: 'filePath'
+          filePath: ./scripts/azure-pipelines/02-check-nbstripout.sh
+      - task: Bash@3
+        displayName: 'test'
+        inputs:
+          targetType: 'filePath'
+          filePath: ./scripts/azure-pipelines/03-test.sh
+
+  - job: 'macOS'
+    pool:
+      vmImage: 'macOS-10.13'
+    steps:
+      - task: CondaEnvironment@1
+        inputs:
+          createOptions: --channel conda-forge
+      - task: Bash@3
+        displayName: 'install-pymedphys'
+        inputs:
+          targetType: 'filePath'
+          filePath: ./scripts/azure-pipelines/01-install-pymedphys.sh
+      - task: Bash@3
+        displayName: 'check-nbstripout'
+        inputs:
+          targetType: 'filePath'
+          filePath: ./scripts/azure-pipelines/02-check-nbstripout.sh
+      - task: Bash@3
+        displayName: 'test'
+        inputs:
+          targetType: 'filePath'
+          filePath: ./scripts/azure-pipelines/03-test.sh
