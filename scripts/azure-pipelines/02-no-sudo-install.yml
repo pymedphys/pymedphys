@@ -1,0 +1,3 @@
+steps:
+  - bash: ./scripts/azure-pipelines/02-no-sudo-install.sh
+    displayName: 'Install development version of PyMedPhys without sudo'
