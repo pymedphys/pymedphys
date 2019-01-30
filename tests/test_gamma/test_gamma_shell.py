@@ -29,8 +29,6 @@ import numpy as np
 import pytest
 from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
 
-# pytestmark = pytest.mark.skip("too slow on Matt's PC")
-
 
 def test_lower_dose_threshold():
     """Verify that the lower dose threshold works as expected"""
@@ -95,6 +93,7 @@ class TestGamma():
 
         assert np.all(self.expected_gamma[5, 5, :] == self.gamma1d)
 
+    @pytest.mark.skip("This test is too slow, it needs refactoring")
     def test_coords_stepsize(self):
         """Testing correct stepsize implementation.
 
