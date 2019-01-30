@@ -35,11 +35,11 @@ Examples:
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.utilitiescompression import *
-from .level1.utilitiesconfig import *
-from .level1.utilitiesfilesystem import *
+from ._level1.utilitiescompression import *
+from ._level1.utilitiesconfig import *
+from ._level1.utilitiesfilesystem import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.utilitiesconfig', '.level1.utilitiesfilesystem',
-    '.level1.utilitiescompression'
+    '._level1.utilitiesconfig', '._level1.utilitiesfilesystem',
+    '._level1.utilitiescompression'
 ], package='pymedphys.utilities')

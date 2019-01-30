@@ -35,8 +35,8 @@ Example:
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from .level1.plthelpers import *
+from ._level1.plthelpers import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '.level1.plthelpers'
+    '._level1.plthelpers'
 ], package='pymedphys.plt')
