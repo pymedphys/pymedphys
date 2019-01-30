@@ -27,7 +27,7 @@ import numpy as np
 from numpy import sin, cos, pi, radians
 from numpy import linalg as LA
 
-from .._level0.libutils import get_imports
+from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
@@ -44,8 +44,9 @@ def rotate_about_vector(coords_to_rotate, vector, theta, active=False):
     s = sin(radians(theta))
     c = cos(radians(theta))
 
-    rotation_matrix = np.array([[    c + u_x*u_x*(1-c), u_x*u_y*(1-c) - u_z*s, u_x*u_z*(1-c) + u_y*s],
-                                [u_y*u_x*(1-c) + u_z*s,     c + u_y*u_y*(1-c), u_y*u_z*(1-c) - u_x*s],
+    rotation_matrix = np.array([[c + u_x*u_x*(1-c), u_x*u_y*(1-c) - u_z*s, u_x*u_z*(1-c) + u_y*s],
+                                [u_y*u_x*(1-c) + u_z*s,     c + u_y *
+                                 u_y*(1-c), u_y*u_z*(1-c) - u_x*s],
                                 [u_z*u_x*(1-c) - u_y*s, u_z*u_y*(1-c) + u_x*s,     c + u_z*u_z*(1-c)]])
 
     # Rotation matrix above is active (unlike in other functions). Will manually transpose to avoid
