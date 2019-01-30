@@ -1,0 +1,3 @@
+steps:
+  - bash: ./scripts/azure-pipelines/01-sudo-install.sh
+    displayName: 'Install development version of PyMedPhys with sudo'
