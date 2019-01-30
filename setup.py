@@ -1,4 +1,5 @@
 import io
+import sys
 from glob import glob
 
 import os
@@ -7,6 +8,7 @@ from os.path import dirname
 from os.path import splitext
 
 from setuptools import setup, find_packages
+from setuptools.command.test import test as TestCommand
 
 basename = os.path.basename
 dirname = os.path.dirname
@@ -22,7 +24,7 @@ def execfile(fname, globs, locs=None):
     exec(compile(open(fname).read(), fname, "exec"), globs, locs)
 
 
-version_ns = {}
+version_ns = {}  # type: ignore
 execfile(pjoin(repo_root, 'src', 'pymedphys', '_version.py'), version_ns)
 
 version = version_ns['__version__']
@@ -33,6 +35,23 @@ def read(*names, **kwargs):
         pjoin(dirname(__file__), *names),
         encoding=kwargs.get('encoding', 'utf8')
     ).read()
+
+
+# https://docs.pytest.org/en/latest/goodpractices.html#manual-integration
+class PyTest(TestCommand):
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+
+    def run_tests(self):
+
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+
+        errno = pytest.main([
+            "-v", "--pylint", "--pylint-error-types=EF", "--mypy",
+            "--doctest-modules", "--doctest-continue-on-failure",
+            "--doctest-plus", "--doctest-rst"])
+        sys.exit(errno)
 
 
 setup(
@@ -55,32 +74,55 @@ setup(
     ],
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    package_data={'pymedphys': [
-        'tests/data/*/*.npz', 'tests/data/*/*.csv', 'tests/data/*/*.trf',
-        'tests/data/gamma/agnew_mcgarry_images/*.dcm',
-        'tests/data/devices/profiler/*.prs',
-        'tests/data/dcmdose/*.dcm',
-        'tests/data/dcmdose/*.npy'
-    ]},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     include_package_data=True,
+    package_data={'pymedphys': []},
     entry_points={
         'console_scripts': [
             'trf2csv=pymedphys.entry_points.trf2csv:trf2csv_cli',
+            # 'pymedphys=pymedphys.entry_points.gui:gui'
         ],
     },
     license='AGPLv3+',
+    # data_files=get_data_files(),
     install_requires=[
-        'numpy',
+        'numpy>=1.12',
         'scipy',
         'pandas',
+        'xarray',
         'matplotlib',
         'attrs',
         'psutil',
         'pymssql',
         'keyring',
         'shapely',
-        'pydicom',
-        'python-dateutil'
-    ]
+        'pydicom>=1.0',
+        'python-dateutil',
+        'Pillow',
+        'notebook'
+    ],
+    setup_requires=[
+        'pytest-runner'
+    ],
+    tests_require=[
+        'pylint',
+        'coverage',
+        'mypy',
+        'pytest',
+        'pytest-pylint',
+        'pytest-mypy',
+        'pytest-doctestplus',
+        'sphinx-testing',
+        'deepdiff',
+        'numpydoc',
+        'sphinx >= 1.4',
+        'sphinx_rtd_theme',
+        'layer-linter'
+    ],
+    cmdclass={"pytest": PyTest},
+    extras_require={
+        'docs': [
+            'numpydoc',
+            'sphinx >= 1.4',
+            'sphinx_rtd_theme']}
 )

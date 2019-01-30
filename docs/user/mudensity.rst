@@ -1,11 +1,14 @@
-MU Density
-==========
+Collimator Toolbox
+==================
 
 .. automodule:: pymedphys.mudensity
     :no-members:
 
-Example Usage
--------------
+MU Density
+----------
+
+.. automodule:: pymedphys.mudensity._level1.mudensitycore
+    :no-members:
 
 .. plot:: pyplots/mudensity.py
    :include-source:
