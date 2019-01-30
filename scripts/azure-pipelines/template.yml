@@ -6,7 +6,7 @@ steps:
       packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip
       updateConda: true
       createOptions: --channel conda-forge
-  - bash: source activate pymedphys && pip install -e .
+  - bash: echo $PATH && which activate && source activate pymedphys && pip install -e .
     displayName: 'Install development version of PyMedPhys'
   - bash: source activate pymedphys && which xargs && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
     displayName: 'Check that notebooks have no included output'
