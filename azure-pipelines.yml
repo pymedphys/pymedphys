@@ -4,8 +4,8 @@ jobs:
       vmImage: 'ubuntu-16.04'
     steps:
       - template: ./scripts/azure-pipelines/conda-environment.yml
-      - bash: /usr/bin/sudo ls -s /home/vsts/.conda/bin/activate /usr/bin/activate
-        displayName: 'Add Conda bin to PATH'
+      - bash: /usr/bin/sudo ln -s /home/vsts/.conda/bin/activate /usr/bin/activate
+        displayName: 'Create activate symbolic link'
       - template: ./scripts/azure-pipelines/install-and-test.yml
 
   - job: 'Windows'
@@ -20,6 +20,6 @@ jobs:
       vmImage: 'macOS-10.13'
     steps:
       - template: ./scripts/azure-pipelines/conda-environment.yml
-      - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ls -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
+      - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ln -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
         displayName: 'Install GNU xargs'
       - template: ./scripts/azure-pipelines/install-and-test.yml
