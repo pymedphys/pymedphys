@@ -1,11 +1,10 @@
 steps:
-  - task: UsePythonVersion@0
-    displayName: Use Python 3 latest
-    inputs:
-      versionSpec: '3'
   - task: CondaEnvironment@1
     inputs:
-      packageSpecs: pymedphys nbstripout pylint coverage mypy pytest xarray Pillow
+      createCustomEnvironment: true
+      environmentName: pymedphys
+      packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow
+      updateConda: true
       installOptions: --channel conda-forge
   - bash: pip install -e .
     displayName: 'install-pymedphys'
