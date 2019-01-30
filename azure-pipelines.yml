@@ -21,5 +21,5 @@ jobs:
     steps:
       - template: ./scripts/azure-pipelines/00-conda-environment.yml
       - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ln -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
-        displayName: 'Install GNU xargs'
+        displayName: 'Install Homebrew and GNU xargs'
       - template: ./scripts/azure-pipelines/nix.yml
