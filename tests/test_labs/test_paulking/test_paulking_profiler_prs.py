@@ -30,7 +30,7 @@ import numpy as np
 from pymedphys.devices import read_profiler_prs
 
 DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../data/devices/profiler")
+    os.path.dirname(__file__), "../../data/devices/profiler")
 
 
 def test_read_profiler_prs():
