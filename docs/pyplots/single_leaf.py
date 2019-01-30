@@ -1,7 +1,6 @@
-import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys.coll import single_mlc_pair
+from pymedphys.mudensity import single_mlc_pair
 
 mlc_left = (-2.3, 3.1)  # (start position, end position)
 mlc_right = (0, 7.7)
