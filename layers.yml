@@ -1,6 +1,7 @@
 Internal Levelled Modules:
     containers:
         - pymedphys.coll
+        - pymedphys.coordinates
         - pymedphys.dcm
         - pymedphys.deliverydata
         - pymedphys.electronfactors
@@ -42,6 +43,7 @@ Top Level Modules:
         - deliverydata
         - geometry
         - plt
+        - coordinates
         - filehash
         - xarray
         - libutils

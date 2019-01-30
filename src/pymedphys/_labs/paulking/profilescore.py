@@ -234,13 +234,13 @@ def _make_dose_vals(dist_vals, dose_func):
     return dose_vals
 
 
-def _find_umbra(dose_prof):
-    """ Return a list of distances over the central 80% a dose profile. """
-    e = edges(dose_prof)
-    dist_strt = 0.8 * e[0]
-    dist_stop = 0.8 * e[-1]
-    umbra = [d for d in dose_prof if d[0] >= dist_strt and d[0] <= dist_stop]
-    return umbra
+# def _find_umbra(dose_prof):
+#     """ Return a list of distances over the central 80% a dose profile. """
+#     e = edges(dose_prof)
+#     dist_strt = 0.8 * e[0]
+#     dist_stop = 0.8 * e[-1]
+#     umbra = [d for d in dose_prof if d[0] >= dist_strt and d[0] <= dist_stop]
+#     return umbra
 
 
 def _find_dose(dose_prof, dist):
@@ -286,25 +286,25 @@ def _shift_dose_prof(dose_prof, dist):
 
 # PUBLIC FUNCTIONS ==========================================
 
-def pulse(centre=0.0, center=None, width=10.0,
-          dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
-    """
-    Return a pulse shaped dose-profile; specified centre, width, and domain.
-    """
-    if center:  # US Eng -> UK Eng
-        centre = center
+# def pulse(centre=0.0, center=None, width=10.0,
+#           dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
+#     """
+#     Return a pulse shaped dose-profile; specified centre, width, and domain.
+#     """
+#     if center:  # US Eng -> UK Eng
+#         centre = center
 
-    def pulse(centre, width, dist):
-        if abs(dist) > (centre + width/2.0):
-            return 0.0
-        if abs(dist) < (centre + width/2.0):
-            return 1.0
-        return 0.5
+#     def pulse(centre, width, dist):
+#         if abs(dist) > (centre + width/2.0):
+#             return 0.0
+#         if abs(dist) < (centre + width/2.0):
+#             return 1.0
+#         return 0.5
 
-    dist_vals = np.arange(dist_strt, dist_stop + dist_step, dist_step)
-    dose_vals = _make_dose_vals(dist_vals, partial(pulse, centre, width))
-    dose_prof = list(zip(dist_vals, dose_vals))
-    return dose_prof
+#     dist_vals = np.arange(dist_strt, dist_stop + dist_step, dist_step)
+#     dose_vals = _make_dose_vals(dist_vals, partial(pulse, centre, width))
+#     dose_prof = list(zip(dist_vals, dose_vals))
+#     return dose_prof
 
 
 def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
@@ -374,130 +374,130 @@ def normalize_dose(dose_prof, dist=0.0, dose=100.0):
     return normalise_dose(dose_prof, dist, dose)
 
 
-def normalise_distance(dose_prof):
-    """
-    Return a dose-profile which is  rescaled to 2X/W distance
-    so as to force the beam edges to distances of +/-1.
+# def normalise_distance(dose_prof):
+#     """
+#     Return a dose-profile which is  rescaled to 2X/W distance
+#     so as to force the beam edges to distances of +/-1.
 
-        | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
-              of radiation dose data in a small digital computer
-        | (2) Heintz, King, & Childs, May-95, User Manual,
-              Prowess 3000 CT Treatment Planning
-    """
+#         | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
+#               of radiation dose data in a small digital computer
+#         | (2) Heintz, King, & Childs, May-95, User Manual,
+#               Prowess 3000 CT Treatment Planning
+#     """
 
-    x = _get_dist_vals(dose_prof)
-    d = _get_dose_vals(dose_prof)
+#     x = _get_dist_vals(dose_prof)
+#     d = _get_dose_vals(dose_prof)
 
-    lt_edge, rt_edge = edges(dose_prof)
-    cax = (lt_edge + rt_edge)/2.0
+#     lt_edge, rt_edge = edges(dose_prof)
+#     cax = (lt_edge + rt_edge)/2.0
 
-    result = []
-    for i, dist in enumerate(x):
-        if dist < cax:
-            result.append((dist/lt_edge, d[i]))
-        elif dist == cax:
-            result.append((0.0, d[i]))
-        elif dist > cax:
-            result.append((dist/rt_edge, d[i]))
-    return result
-
-
-def normalize_distance(dose_prof):
-    """ US Eng -> UK Eng """
-    return normalise_distance(dose_prof)
+#     result = []
+#     for i, dist in enumerate(x):
+#         if dist < cax:
+#             result.append((dist/lt_edge, d[i]))
+#         elif dist == cax:
+#             result.append((0.0, d[i]))
+#         elif dist > cax:
+#             result.append((dist/rt_edge, d[i]))
+#     return result
 
 
-def edges(dose_prof):
-    """
-    Return profile edges as a tuple, distances of greatest + / - gradient.
-    """
-
-    resampled = resample(dose_prof)
-
-    dist_vals = _get_dist_vals(resampled)
-    dose_vals = _get_dose_vals(resampled)
-
-    dydx = list(np.gradient(dose_vals, dist_vals))
-    lt_edge = dist_vals[dydx.index(max(dydx))]
-    rt_edge = dist_vals[dydx.index(min(dydx))]
-
-    return (lt_edge, rt_edge)
+# def normalize_distance(dose_prof):
+#     """ US Eng -> UK Eng """
+#     return normalise_distance(dose_prof)
 
 
-def recentre(dose_prof):
-    """
-    Return a translated dose-profile in which the central-axis,
-    midway between the edges, is defined as zero distance.
-    Also, recenter().
+# def edges(dose_prof):
+#     """
+#     Return profile edges as a tuple, distances of greatest + / - gradient.
+#     """
 
-    """
+#     resampled = resample(dose_prof)
 
-    dist_vals = _get_dist_vals(dose_prof)
-    dose_vals = _get_dose_vals(dose_prof)
-    cax = np.mean(edges(dose_prof))
+#     dist_vals = _get_dist_vals(resampled)
+#     dose_vals = _get_dose_vals(resampled)
 
-    cent_prof = []
-    for i, dist in enumerate(dist_vals):
-        cent_prof.append((dist - cax, dose_vals[i]))
-    return cent_prof
+#     dydx = list(np.gradient(dose_vals, dist_vals))
+#     lt_edge = dist_vals[dydx.index(max(dydx))]
+#     rt_edge = dist_vals[dydx.index(min(dydx))]
 
-
-def recenter(dose_prof):
-    """ US Eng -> UK Eng """
-    return recentre(dose_prof)
+#     return (lt_edge, rt_edge)
 
 
-def flatness(dose_prof):
-    """
-    Return float flatness of a dose-profile.
-    """
-    dose = _get_dose_vals(_find_umbra(dose_prof))
-    flat = (max(dose)-min(dose))/np.average(dose)
-    return flat
+# def recentre(dose_prof):
+#     """
+#     Return a translated dose-profile in which the central-axis,
+#     midway between the edges, is defined as zero distance.
+#     Also, recenter().
+
+#     """
+
+#     dist_vals = _get_dist_vals(dose_prof)
+#     dose_vals = _get_dose_vals(dose_prof)
+#     cax = np.mean(edges(dose_prof))
+
+#     cent_prof = []
+#     for i, dist in enumerate(dist_vals):
+#         cent_prof.append((dist - cax, dose_vals[i]))
+#     return cent_prof
 
 
-def symmetry(dose_prof):
-    """
-    Return float symmetry of a dose-profile.
-    """
-    dose = _get_dose_vals(_find_umbra(dose_prof))
-    avg_dose = np.average(dose)
-    dose_rev = dose[::-1]
-    asymmetry = max(np.abs(np.subtract(dose, dose_rev)/avg_dose))
-    return asymmetry
+# def recenter(dose_prof):
+#     """ US Eng -> UK Eng """
+#     return recentre(dose_prof)
 
 
-def symmetrise(dose_prof, dist_step=0.1):
-    """
-    Return a symmetric dose-profile, averaging dose values over
-    locations across the CAX, and resampled. Also, symmetrize()
-
-    """
-    dist_vals = _get_dist_vals(dose_prof)
-
-    strt = -min(-dist_vals[0], dist_vals[-1])
-    stop = min(-dist_vals[0], dist_vals[-1])
-
-    dose_prof = resample(dose_prof, dist_strt=strt,
-                         dist_stop=stop, dist_step=dist_step)
-
-    rev = dose_prof[::-1]
-
-    result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
-              for i, _ in enumerate(dose_prof)]
-
-    return result
+# def flatness(dose_prof):
+#     """
+#     Return float flatness of a dose-profile.
+#     """
+#     dose = _get_dose_vals(_find_umbra(dose_prof))
+#     flat = (max(dose)-min(dose))/np.average(dose)
+#     return flat
 
 
-def symmetrize(dose_prof, dist_step=0.1):
-    """ US Eng -> UK Eng """
-    return symmetrise(dose_prof, dist_step)
+# def symmetry(dose_prof):
+#     """
+#     Return float symmetry of a dose-profile.
+#     """
+#     dose = _get_dose_vals(_find_umbra(dose_prof))
+#     avg_dose = np.average(dose)
+#     dose_rev = dose[::-1]
+#     asymmetry = max(np.abs(np.subtract(dose, dose_rev)/avg_dose))
+#     return asymmetry
 
 
-def is_wedged(dose_prof):
-    """ Return True iff dose-profile has significant gradient in the umbra. """
-    wedginess = np.average(np.diff(_get_dose_vals(_find_umbra(dose_prof))))
-    if wedginess > 0.05:  # 'magic number'
-        return True
-    else:
-        return False
+# def symmetrise(dose_prof, dist_step=0.1):
+#     """
+#     Return a symmetric dose-profile, averaging dose values over
+#     locations across the CAX, and resampled. Also, symmetrize()
+
+#     """
+#     dist_vals = _get_dist_vals(dose_prof)
+
+#     strt = -min(-dist_vals[0], dist_vals[-1])
+#     stop = min(-dist_vals[0], dist_vals[-1])
+
+#     dose_prof = resample(dose_prof, dist_strt=strt,
+#                          dist_stop=stop, dist_step=dist_step)
+
+#     rev = dose_prof[::-1]
+
+#     result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
+#               for i, _ in enumerate(dose_prof)]
+
+#     return result
+
+
+# def symmetrize(dose_prof, dist_step=0.1):
+#     """ US Eng -> UK Eng """
+#     return symmetrise(dose_prof, dist_step)
+
+
+# def is_wedged(dose_prof):
+#     """ Return True iff dose-profile has significant gradient in the umbra. """
+#     wedginess = np.average(np.diff(_get_dose_vals(_find_umbra(dose_prof))))
+#     if wedginess > 0.05:  # 'magic number'
+#         return True
+#     else:
+#         return False
