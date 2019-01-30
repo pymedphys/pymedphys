@@ -1,5 +1,5 @@
 steps:
-  - bash: source activate pymedphys && pip install -e .
+  - bash: echo $PATH && source activate pymedphys && pip install -e .
     displayName: 'Install development version of PyMedPhys with sudo'
   - bash: source activate pymedphys && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
     displayName: 'Check that notebooks have no included output'
