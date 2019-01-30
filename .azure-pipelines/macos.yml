@@ -1,0 +1,9 @@
+jobs:
+  - job: 'macOS'
+    pool:
+      vmImage: 'macOS-10.13'
+    steps:
+      - template: ./scripts/conda-environment.yml
+      - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ln -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
+        displayName: 'Install Homebrew and GNU xargs'
+      - template: ./scripts/install-and-test.yml
