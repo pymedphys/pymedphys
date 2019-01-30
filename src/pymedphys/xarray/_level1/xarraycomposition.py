@@ -23,7 +23,8 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-from copy import deepcopy
+import dataclasses
+import copy
 
 import numpy as np
 import xarray as xr
@@ -46,7 +47,7 @@ class XArrayComposition():
         self._xarray.data = array
 
     def to_xarray(self):
-        return deepcopy(self._xarray)
+        return self.deepcopy()._xarray
 
     def to_pandas(self):
         return self.to_xarray().to_pandas()
@@ -55,4 +56,72 @@ class XArrayComposition():
         return self.to_xarray().to_dict()
 
     def deepcopy(self):
-        return deepcopy(self)
+        return copy.deepcopy(self)
+
+
+def xarray_dataclass(cls):
+    def __post_init__(self, *args, **kwargs):
+        self._create_xarray()
+
+    def _create_xarray(self):
+        xarray = xr.Dataset({
+            field.name: (field.type, getattr(self, '_' + field.name))
+            for field in dataclasses.fields(self)
+        })
+        object.__setattr__(self, '_xarray', xarray)
+
+    def __iter__(self):
+        for field in dataclasses.fields(self):
+            yield getattr(self, field.name)
+
+    cls.__post_init__ = __post_init__
+    cls._create_xarray = _create_xarray
+    cls.__iter__ = __iter__
+
+    cls = dataclasses.dataclass(frozen=True)(cls)
+
+    for field in dataclasses.fields(cls):
+        txt = '\n'.join([
+            f'@property',
+            f'def {field.name}(self):',
+            f'    return self._xarray.{field.name}.data',
+            '',
+            f'@{field.name}.setter',
+            f'def {field.name}(self, data):',
+            f'    object.__setattr__(self, "_{field.name}", np.array(data))',
+            f'    try:',
+            f'        self._xarray.{field.name}.data = data',
+            f'    except AttributeError:',
+            f'        pass',
+            '',
+            f'cls.{field.name} = {field.name}'
+        ])
+
+        exec(txt)
+
+    def to_tuple(self):
+        return dataclasses.astuple(self)
+
+    def to_list(self):
+        return list(self.to_tuple())
+
+    def to_xarray(self):
+        return self.deepcopy()._xarray
+
+    def to_dataframe(self):
+        return self.to_xarray().to_dataframe()
+
+    def to_dict(self):
+        return self.to_xarray().to_dict()
+
+    def deepcopy(self):
+        return copy.deepcopy(self)
+
+    cls.to_tuple = to_tuple
+    cls.to_list = to_list
+    cls.to_dict = to_dict
+    cls.to_xarray = to_xarray
+    cls.to_dataframe = to_dataframe
+    cls.deepcopy = deepcopy
+
+    return cls
