@@ -1,4 +1,8 @@
 steps:
+  - task: UsePythonVersion@0
+    displayName: Use Python 3 latest
+    inputs:
+      versionSpec: '3'
   - task: CondaEnvironment@1
     inputs:
       packageSpecs: pymedphys nbstripout pylint coverage mypy pytest xarray Pillow
