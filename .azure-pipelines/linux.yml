@@ -1,0 +1,9 @@
+jobs:
+  - job: 'Linux'
+    pool:
+      vmImage: 'ubuntu-16.04'
+    steps:
+      - template: ./scripts/conda-environment.yml
+      - bash: /usr/bin/sudo ln -s /home/vsts/.conda/bin/activate /usr/bin/activate
+        displayName: 'Create activate symbolic link'
+      - template: ./scripts/install-and-test.yml
