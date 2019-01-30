@@ -221,3 +221,5 @@ dmypy.json
 
 # USER DEFINED
 *.pdf
+
+junit/
