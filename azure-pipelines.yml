@@ -5,7 +5,8 @@ jobs:
     steps:
       - task: CondaEnvironment@1
         inputs:
-          createOptions: --channel conda-forge
+          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest
+          installOptions: --channel conda-forge
       - task: Bash@3
         displayName: 'install-pymedphys'
         inputs:
@@ -28,7 +29,8 @@ jobs:
     steps:
       - task: CondaEnvironment@1
         inputs:
-          createOptions: --channel conda-forge
+          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest
+          installOptions: --channel conda-forge
       - task: Bash@3
         displayName: 'install-pymedphys'
         inputs:
@@ -51,7 +53,8 @@ jobs:
     steps:
       - task: CondaEnvironment@1
         inputs:
-          createOptions: --channel conda-forge
+          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest
+          installOptions: --channel conda-forge
       - task: Bash@3
         displayName: 'install-pymedphys'
         inputs:
