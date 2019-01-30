@@ -11,12 +11,11 @@
     :maxdepth: 1
     :caption: User Guide
 
-    user/coll
+    user/mudensity
     user/gamma
     user/electronfactors
     user/dcm
     user/geometry
-    user/sinogram
 
 .. toctree::
     :maxdepth: 1
