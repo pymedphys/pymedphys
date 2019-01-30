@@ -219,7 +219,5 @@ dmypy.json
 !.vscode/settings.json
 !.vscode/extensions.json
 
-# Test data
-tests/data/*.pdf
-tests/data/**/*.pdf
-tests/data/**/**/*.pdf
+# USER DEFINED
+*.pdf
