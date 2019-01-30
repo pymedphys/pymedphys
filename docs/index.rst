@@ -16,7 +16,6 @@
     user/electronfactors
     user/dcm
     user/geometry
-    user/devices
 
 .. toctree::
     :maxdepth: 1
