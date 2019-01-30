@@ -32,9 +32,8 @@ from scipy import interpolate
 
 import numpy as np
 
-from .._level0.libutils import get_imports
+from pymedphys.libutils import get_imports
 IMPORTS = get_imports(globals())
-
 
 
 # PRIVATE FUNCTIONS ======================================
@@ -42,6 +41,7 @@ IMPORTS = get_imports(globals())
 def _get_dist_vals(dose_prof):
     """ Unzip distance-values from dose-profile. """
     return list(list(zip(*dose_prof))[0])
+
 
 def _get_dose_vals(dose_prof):
     """ Unzip dose-values from dose-profile. """
@@ -58,13 +58,15 @@ def _make_dose_vals(dist_vals, dose_func):
             dose_vals.append(0.0)
     return dose_vals
 
+
 def _find_umbra(dose_prof):
     """ Return a list of distances over the central 80% a dose profile. """
     e = edges(dose_prof)
-    dist_strt= 0.8 * e[0]
-    dist_stop= 0.8 * e[-1]
+    dist_strt = 0.8 * e[0]
+    dist_stop = 0.8 * e[-1]
     umbra = [d for d in dose_prof if d[0] >= dist_strt and d[0] <= dist_stop]
     return umbra
+
 
 def _find_dose(dose_prof, dist):
     """ Return the dose at a distance from a dose-profile. """
@@ -74,6 +76,7 @@ def _find_dose(dose_prof, dist):
         kind='linear')
     dose = dose_func(dist)
     return(dose)
+
 
 def _find_dists(dose_prof, dose):
     """
@@ -106,11 +109,10 @@ def _shift_dose_prof(dose_prof, dist):
     return list(zip(dist_vals, dose_vals))
 
 
-
 # PUBLIC FUNCTIONS ==========================================
 
 def pulse(centre=0.0, center=None, width=10.0,
-                         dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
+          dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
     """
     Return a pulse shaped dose-profile; specified centre, width, and domain.
     """
@@ -142,7 +144,7 @@ def resample(dose_prof, dist_strt=-np.inf, dist_stop=np.inf, dist_step=0.1):
         _get_dose_vals(dose_prof),
         kind='linear')
 
-    ## FIND START AND STOP -------------------
+    # FIND START AND STOP -------------------
     dist_vals = _get_dist_vals(dose_prof)
 
     if not dist_strt:
@@ -176,25 +178,25 @@ def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
     dist_vals_fixed = _get_dist_vals(dose_prof_fixed)
     dose_vals_fixed = _get_dose_vals(dose_prof_fixed)
 
-    ## POSSIBLE OFFSETS --------------------------
+    # POSSIBLE OFFSETS --------------------------
     step = 0.5 * min(min(np.diff(dist_vals_moves)),
                      min(np.diff(dist_vals_fixed)))
     strt = max(min(dist_vals_moves), min(dist_vals_fixed))
     stop = min(max(dist_vals_moves), max(dist_vals_fixed)) + step
     possible_offsets = np.arange(strt, stop, step)
-    ## --------------------------------------------
+    # --------------------------------------------
 
     dose_func_fixed = interpolate.interp1d(dist_vals_fixed, dose_vals_fixed)
 
-    ## DISTANCE VALUES OF FIXED CURVE ------------------------
+    # DISTANCE VALUES OF FIXED CURVE ------------------------
     strt = 3 * min(min(dist_vals_moves), min(dist_vals_fixed))
     stop = 3 * max(max(dist_vals_moves), max(dist_vals_fixed)) + dist_step
     dist_vals_fixed = np.arange(strt, stop, dist_step)
-    ## -------------------------------------------------------
+    # -------------------------------------------------------
 
     dose_vals_fixed = _make_dose_vals(dist_vals_fixed, dose_func_fixed)
 
-    ## EVALUATE FIT AT ALL CANDIDATE SHIFT POSITIONS -----------
+    # EVALUATE FIT AT ALL CANDIDATE SHIFT POSITIONS -----------
     best_fit_qual = 0
     best_offset = -np.inf
     for offset in possible_offsets:
@@ -209,7 +211,7 @@ def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
         if max(fit_qual) > best_fit_qual:
             best_fit_qual = max(fit_qual)
             best_offset = offset
-    ## ----------------------------------------------------------
+    # ----------------------------------------------------------
 
     return best_offset
 
@@ -225,9 +227,11 @@ def normalise_dose(dose_prof, dist=0.0, dose=100.0):
 
     return list(zip(_get_dist_vals(dose_prof), d))
 
+
 def normalize_dose(dose_prof, dist=0.0, dose=100.0):
     """ US Eng -> UK Eng """
     return normalise_dose(dose_prof, dist, dose)
+
 
 def normalise_distance(dose_prof):
     """
@@ -255,6 +259,7 @@ def normalise_distance(dose_prof):
         elif dist > cax:
             result.append((dist/rt_edge, d[i]))
     return result
+
 
 def normalize_distance(dose_prof):
     """ US Eng -> UK Eng """
@@ -294,6 +299,7 @@ def recentre(dose_prof):
     for i, dist in enumerate(dist_vals):
         cent_prof.append((dist - cax, dose_vals[i]))
     return cent_prof
+
 
 def recenter(dose_prof):
     """ US Eng -> UK Eng """
@@ -341,6 +347,7 @@ def symmetrise(dose_prof, dist_step=0.1):
 
     return result
 
+
 def symmetrize(dose_prof, dist_step=0.1):
     """ US Eng -> UK Eng """
     return symmetrise(dose_prof, dist_step)
@@ -353,4 +360,3 @@ def is_wedged(dose_prof):
         return True
     else:
         return False
-

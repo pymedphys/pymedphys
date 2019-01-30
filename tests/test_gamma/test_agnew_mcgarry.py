@@ -38,7 +38,7 @@ given within the following paper:
 """
 
 # pylint: disable=C0103,C1801
-# pytestmark = pytest.mark.skip("too slow on Matt's PC")
+
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/gamma/agnew_mcgarry_images")
@@ -77,6 +77,7 @@ def load_yx_from_dicom(dcm):
     return y, x
 
 
+@pytest.mark.skip("This test is too slow, it needs refactoring")
 def local_gamma(filepath_ref, filepath_eval, result):
     """The results of MU Density calculation should not change
     """
@@ -103,9 +104,11 @@ def local_gamma(filepath_ref, filepath_eval, result):
     assert np.round(gamma_pass, decimals=1) == result
 
 
+@pytest.mark.skip("This test is too slow, it needs refactoring")
 def test_local_gamma_1mm():
     local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6)
 
 
+@pytest.mark.skip("This test is too slow, it needs refactoring")
 def test_local_gamma_0_25mm():
     local_gamma(REF_VMAT_0_25mm, EVAL_VMAT_0_25mm, 96.9)
