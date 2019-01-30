@@ -37,31 +37,6 @@ def cubed(x):
     return np.array(x) ** 3
 
 
-def linear(x):
-    return np.array(x) * 4
-
-
-def test_resample():
-    x = np.arange(-3, 4)
-    profile = DoseProfile(x=x, data=linear(x))
-
-    new_x = x / 2
-
-    assert np.all(profile.x == x)
-    assert np.all(profile.data == linear(x))
-
-    assert ~np.all(profile.x == new_x)
-    assert ~np.all(profile.data == linear(new_x))
-
-    new_profile = profile.resample(new_x)
-
-    assert np.all(new_profile.x == new_x)
-    assert np.all(new_profile.data == linear(new_x))
-
-    assert ~np.all(new_profile.x == x)
-    assert ~np.all(new_profile.data == linear(x))
-
-
 def test_conversion():
     x = range(-3, 4)
     profile = DoseProfile(x=x, data=cubed(x))
