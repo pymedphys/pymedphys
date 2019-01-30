@@ -27,17 +27,9 @@
 import numpy as np
 import os
 
-from pymedphys.dose import pulse
-from pymedphys.dose import resample
-from pymedphys.dose import overlay
-from pymedphys.dose import is_wedged
-from pymedphys.dose import edges
-from pymedphys.dose import normalise_distance
-from pymedphys.dose import normalise_dose
-from pymedphys.dose import recentre
-from pymedphys.dose import flatness
-from pymedphys.dose import symmetry
-from pymedphys.dose import symmetrise
+from pymedphys._labs.paulking.doseprofile import (
+    pulse, resample, overlay, is_wedged, edges, normalise_distance,
+    normalise_dose, recentre, flatness, symmetry, symmetrise)
 
 DATA_DIRECTORY = os.path.abspath(
     os.path.join(os.path.dirname(__file__),
@@ -91,26 +83,33 @@ WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
 def test_pulse():
     assert pulse()[0] == (-20.0, 0.0)
 
+
 def test_resample():
     resampled = resample(PROFILER)
     increments = np.diff([i[0] for i in resampled])
     assert np.allclose(increments, 0.1)
     assert np.allclose(resampled[0], PROFILER[0])
 
+
 def test_overlay():
     assert np.allclose(overlay(PROFILER, WEDGED), 0.2)
+
 
 def test_normalise_dose():
     assert normalise_dose(PROFILER, 0.0)[41][1] == 100.0
 
+
 def test_normalise_distance():
     assert np.isclose(normalise_distance(PROFILER)[0][0], 3.215686274)
+
 
 def test_edges():
     assert np.allclose(edges(PROFILER), (-5.1, 4.9))
 
+
 def test_recentre():
     assert np.allclose(recentre(PROFILER)[0][0], -16.3)
+
 
 def test_flatness():
     assert np.allclose(flatness(PROFILER), 0.03042720)
@@ -119,13 +118,16 @@ def test_flatness():
 def test_symmetry():
     assert np.allclose(symmetry(PROFILER), 0.0253189859)
 
+
 def test_symmetrise():
     symmetric = symmetrise(PROFILER)
     assert symmetric[0][1] == symmetric[-1][1]
 
+
 def test_is_wedged():
     assert not is_wedged(PROFILER)
     assert is_wedged(WEDGED)
+
 
 if __name__ == "__main__":
     test_pulse()

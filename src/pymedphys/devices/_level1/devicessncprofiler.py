@@ -32,7 +32,7 @@ from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def read_profiler_prs(file_name):
+def read_prs(file_name):
     """
     Read native Profiler data file and return dose profiles.
 
