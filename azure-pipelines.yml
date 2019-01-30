@@ -5,7 +5,7 @@ jobs:
     steps:
       - task: CondaEnvironment@1
         inputs:
-          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest
+          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest xarray Pillow
           installOptions: --channel conda-forge
       - task: Bash@3
         displayName: 'install-pymedphys'
@@ -29,7 +29,7 @@ jobs:
     steps:
       - task: CondaEnvironment@1
         inputs:
-          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest
+          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest xarray Pillow
           installOptions: --channel conda-forge
       - task: Bash@3
         displayName: 'install-pymedphys'
@@ -53,7 +53,7 @@ jobs:
     steps:
       - task: CondaEnvironment@1
         inputs:
-          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest
+          packageSpecs: pymedphys nbstripout pylint coverage mypy pytest xarray Pillow
           installOptions: --channel conda-forge
       - task: Bash@3
         displayName: 'install-pymedphys'
