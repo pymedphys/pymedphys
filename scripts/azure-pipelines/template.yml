@@ -8,7 +8,7 @@ steps:
       createOptions: --channel conda-forge
   - bash: source activate pymedphys && pip install -e .
     displayName: 'Install development version of PyMedPhys'
-  - bash: source activate pymedphys && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
+  - bash: source activate pymedphys && echo `which xargs` && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
     displayName: 'Check that notebooks have no included output'
   - bash: source activate pymedphys && python setup.py test
     displayName: 'Run the full pytest suite'
