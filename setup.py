@@ -50,7 +50,7 @@ class PyTest(TestCommand):
         errno = pytest.main([
             "-v", "--pylint", "--pylint-error-types=EF", "--mypy",
             "--doctest-modules", "--doctest-continue-on-failure",
-            "--doctest-plus", "--doctest-rst"])
+            "--doctest-plus", "--doctest-rst", "--junitxml=junit/unit-test.xml"])
         sys.exit(errno)
 
 
