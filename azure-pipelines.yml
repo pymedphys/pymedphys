@@ -1,2 +1,2 @@
 jobs:
-  template: azure-pipelines/macos.yml
+  - template: ./azure-pipelines/macos.yml
