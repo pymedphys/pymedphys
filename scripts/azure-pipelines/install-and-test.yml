@@ -1,7 +1,7 @@
 steps:
-  - bash: echo $PATH && which activate && source activate pymedphys && pip install -e .
+  - bash: ./scripts/azure-pipelines/01-install.sh
     displayName: 'Install development version of PyMedPhys'
-  - bash: source activate pymedphys && which xargs && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
+  - bash: ./scripts/azure-pipelines/02-notebook-output.sh
     displayName: 'Check that notebooks have no included output'
-  - bash: source activate pymedphys && python setup.py test
+  - bash: ./scripts/azure-pipelines/03-pytest.sh
     displayName: 'Run the full pytest suite'
