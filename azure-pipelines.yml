@@ -3,7 +3,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-16.04'
     steps:
-      - bash: echo '/home/vsts/.conda/bin' | cat - /etc/environment > temp && /usr/bin/sudo mv temp /etc/environment
+      - bash: /usr/bin/sudo ls -s /home/vsts/.conda/bin/activate /usr/bin/activate
         displayName: 'Add Conda bin to PATH'
       - template: ./scripts/azure-pipelines/template.yml
 
@@ -17,6 +17,6 @@ jobs:
     pool:
       vmImage: 'macOS-10.13'
     steps:
-      - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && echo '/usr/local/opt/findutils/libexec/gnubin' | cat - /etc/paths > temp && /usr/bin/sudo mv temp /etc/paths
+      - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && /usr/bin/sudo ls -s /usr/local/opt/findutils/libexec/gnubin/xargs /usr/local/bin/xargs
         displayName: 'Install GNU xargs'
       - template: ./scripts/azure-pipelines/template.yml
