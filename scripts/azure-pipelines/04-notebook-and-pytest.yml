@@ -1,5 +1,5 @@
 steps:
-  - bash: ./scripts/azure-pipelines/02-notebook-output.sh
+  - bash: ./02-notebook-output.sh
     displayName: 'Check that notebooks have no included output'
-  - bash: ./scripts/azure-pipelines/03-pytest.sh
+  - bash: ./03-pytest.sh
     displayName: 'Run the full pytest suite'
