@@ -86,12 +86,12 @@ LOGFILE_ZIPS = glob(os.path.abspath(os.path.join(
     DATA_DIRECTORY, '*/lfs-*.zip')))
 
 
+@pytest.mark.skip("Deleted LFS files, need to implement test file storage")
 def test_compare_varian_logfiles_to_dicom():
     for zip_filepath in LOGFILE_ZIPS:
         compare_logfile_within_zip(zip_filepath)
 
 
-@pytest.mark.skip("Deleted LFS files, need to implement test file storage")
 def compare_logfile_within_zip(zip_filepath):
     with open(zip_filepath, 'rb') as input_file:
         data = io.BytesIO(input_file.read())
