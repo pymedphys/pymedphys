@@ -152,7 +152,7 @@ class ClobberCheck:
         >>> try:
         ...     clobberCheck.check(globals(), label="Importing pandas")
         ... except AssertionError as e:
-        ...     print(e)
+        ...     print(e)  # doctest: +SKIP
         Importing pandas clobbered the following:
         ['array', 'unique']
 
