@@ -154,7 +154,7 @@ class ClobberCheck:
         ... except AssertionError as e:
         ...     print(e)
         Importing pandas clobbered the following:
-        ['unique']
+        ['array', 'unique']
 
 
         It can also detect if you yourself have clobbered a global as so:
