@@ -2,4 +2,4 @@
 
 set -ex
 
-python setup.py test
+sudo python setup.py test
