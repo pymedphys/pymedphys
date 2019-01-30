@@ -3,7 +3,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-16.04'
     steps:
-      - bash: /usr/bin/sudo echo '/home/vsts/.conda/bin' | cat - /etc/environment > temp && mv temp /etc/environment
+      - bash: echo '/home/vsts/.conda/bin' | cat - /etc/environment > temp && /usr/bin/sudo mv temp /etc/environment
         displayName: 'Add Conda bin to PATH'
       - template: ./scripts/azure-pipelines/template.yml
 
