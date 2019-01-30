@@ -2,15 +2,6 @@
 
 set -ex
 
-conda config --set always_yes yes --set changeps1 no
-conda config --add channels conda-forge
-conda info -a
-
-conda update -q conda
-
-conda env create -f ./environment.yml
-source activate pymedphys
-
 conda uninstall pymedphys
 conda install -q nbstripout pylint coverage mypy pytest
 
