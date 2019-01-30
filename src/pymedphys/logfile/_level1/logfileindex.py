@@ -96,7 +96,7 @@ def create_index_entry(new_filepath, delivery_details: OISDeliveryDetails,
             **attr.asdict(delivery_details)
         },
         'logfile_header': {
-            **attr.asdict(header)
+            header._asdict()
         },
         'local_time': mosaiq_string_time
     }
@@ -235,8 +235,7 @@ def index_logfiles(config):
     centre_details = config['centres']
 
     sql_server_and_ports = [
-        "{}:{}".format(details['ois_specific_data']['sql_server'],
-                       details['ois_specific_data']['port'])
+        "{}".format(details['ois_specific_data']['sql_server'])
         for _, details in centre_details.items()
     ]
 
