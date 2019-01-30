@@ -1,4 +1,4 @@
-from pymedphys.coll import calc_mu_density, get_grid, display_mu_density
+from pymedphys.mudensity import calc_mu_density, get_grid, display_mu_density
 
 leaf_pair_widths = (5, 5, 5)
 max_leaf_gap = 10

@@ -1,10 +1,2 @@
-data/collapsedcone/*.dcm filter=lfs diff=lfs merge=lfs -text
-*.dcm.xz filter=lfs diff=lfs merge=lfs -text
-
-lfs-*.xz filter=lfs diff=lfs merge=lfs -text
-
-lfs-*.zip filter=lfs diff=lfs merge=lfs -text
-
 *.ipynb filter=nbstripout
-
 *.ipynb diff=ipynb

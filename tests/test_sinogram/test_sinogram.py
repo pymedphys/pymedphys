@@ -25,30 +25,68 @@
 
 
 import os
+import numpy as np
 
-from pymedphys.tomo import unshuffle_sinogram
-from pymedphys.tomo import unshuffle_sinogram_csv
+from pymedphys.sinogram import read_csv_file
+from pymedphys.sinogram import read_bin_file
+from pymedphys.sinogram import crop
+from pymedphys.sinogram import make_histogram
+from pymedphys.sinogram import find_modulation_factor
+from pymedphys.sinogram import unshuffle
 
-SINOGRAM_FILE = os.path.join(
-    os.path.dirname(__file__), "../data/tomo/sinogram.csv")
+SIN_CSV_FILE = os.path.join(
+    os.path.dirname(__file__), "../data/sinogram/sinogram.csv")
+
+SIN_BIN_FILE = os.path.join(
+    os.path.dirname(__file__), "../data/sinogram/MLC_all_test_old_800P.bin")
 
 
-def test_unshuffle_sinogram():
-    """ Compare unshuffle_sinogram results vs expected values """
-    unshuffled = unshuffle_sinogram([[0]*25 + [1.0]*14 + [0]*25]*510)
-    assert len(unshuffled) == 51          # number of angles is 51
-    assert len(unshuffled[0]) == 10       # number of couch increments
-    assert len(unshuffled[0][0]) == 16    # number of visible leaves (is even)
+def test_read_csv_file():
+    pat_id, results = read_csv_file(SIN_CSV_FILE)
+    assert pat_id == '00000 - ANONYMOUS, PATIENT'
+    num_projections = len(results)
+    assert num_projections == 464
+    num_leaves = len(results[0])
+    assert num_leaves == 64
+
+
+def test_read_bin_file():
+    assert read_bin_file(SIN_BIN_FILE).shape == (400, 64)
+# convert this to a nested list
+
+
+def test_crop():
+    STRIP = [[0.0]*31 + [1.0]*2 + [0.0]*31,
+             [0.0]*31 + [1.0]*2 + [0.0]*31]
+    assert crop(STRIP) == [[1.0, 1.0], [1.0, 1.0]]
+
+
+def test_unshuffle():
+    unshuffled = unshuffle([[0]*25 + [1.0]*14 + [0]*25]*510)
+    assert len(unshuffled) == 51          # number of angles
+    assert len(unshuffled[0]) == 10       # number of projections
     assert unshuffled[0][0][0] == 0       # first leaf is closed
 
 
-def test_unshuffle_sinogram_csv():
-    """ Compare unshuffle_sinogram_csv results vs expected """
-    document_id, results = unshuffle_sinogram_csv(SINOGRAM_FILE)
-    assert document_id == '00000 - ANONYMOUS, PATIENT'
-    assert len(results) == 51
+def test_make_histogram():
+    sinogram = read_csv_file(SIN_CSV_FILE)[-1]
+    assert np.allclose(make_histogram(sinogram)[0][0], [0., 0.1])
+    assert make_histogram(sinogram)[0][1] == 25894
+    # [(array([0. , 0.1]), 25894),
+    #  (array([0.1, 0.2]), 0),
+    #  (array([0.2, 0.3]), 11),
+    #  (array([0.3, 0.4]), 3523), ...]
+
+
+def test_find_modulation_factor():
+    sinogram = read_csv_file(SIN_CSV_FILE)[-1]
+    assert np.isclose(find_modulation_factor(sinogram), 2.762391)
 
 
 if __name__ == "__main__":
-    test_unshuffle_sinogram()
-    test_unshuffle_sinogram_csv()
+    test_read_csv_file()
+    test_read_bin_file()
+    test_crop()
+    test_unshuffle()
+    test_make_histogram()
+    test_find_modulation_factor()
