@@ -6,9 +6,9 @@ steps:
       packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip
       updateConda: true
       createOptions: --channel conda-forge
-  - bash: pip install -e .
+  - bash: source activate pymedphys && pip install -e .
     displayName: 'install-pymedphys'
-  - bash: find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
+  - bash: source activate pymedphys && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
     displayName: 'check-nbstripout'
-  - bash: python setup.py test
+  - bash: source activate pymedphys && python setup.py test
     displayName: 'test'
