@@ -5,10 +5,13 @@ jobs:
       matrix:
         linux:
           imageName: 'ubuntu-16.04'
+          testTitle: 'Linux'
         mac:
           imageName: 'macos-10.13'
+          testTitle: 'macOS'
         windows:
           imageName: 'vs2017-win2016'
+          testTitle: 'Windows'
 
     pool:
       vmImage: $(imageName)
@@ -43,5 +46,5 @@ jobs:
       displayName: Publish Test Results
       inputs:
         testResultsFiles: junit/*.xml
-        testRunTitle: 'Library $(variables['Agent.OS'])'
+        testRunTitle: '$(testTitle)'
       condition: succeededOrFailed()
