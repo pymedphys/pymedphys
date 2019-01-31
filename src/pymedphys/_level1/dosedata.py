@@ -110,16 +110,14 @@ class Dose1D(DoseBase):
 
 
 class DoseProfile(Dose1D):
-    def __init__(self, *args, **kwargs):
-        x, data = [], []      ## DoseProfile()
-
-        try:                  ## DoseProfile( x=[0,2,4], data=[1,3,5] )
+    def __init__(self, *args, metadata={}, x=[], data=[], **kwargs):
+        try:  # DoseProfile( x=[0,2,4], data=[1,3,5] )
             x = kwargs.pop('x')
             data = kwargs.pop('data')
         except (KeyError):
             pass
 
-        try:                  ## DoseProfile( [0,2,4], [1,3,5] )
+        try:  # DoseProfile( [0,2,4], [1,3,5] )
             assert (len(args) == 2)
             assert len(args[0]) == len(args[1])
             x = args[0]
@@ -127,7 +125,7 @@ class DoseProfile(Dose1D):
         except (AssertionError, IndexError):
             pass
 
-        try:                  ## DoseProfile( [(0,1),(2,3),(4,5) ]
+        try:  # DoseProfile( [(0,1),(2,3),(4,5) ]
             assert len(args) == 1
             assert len(args[0][0]) == 2
             x = list(list(zip(*args[0]))[0])
@@ -136,10 +134,7 @@ class DoseProfile(Dose1D):
             pass
 
         super().__init__(x, data)
-
-        self.metadata = dict()
-        for key in kwargs:
-            self.metadata[key] = kwargs[key]
+        self.metadata = metadata
 
     def interactive(self):
         pass
@@ -155,7 +150,7 @@ class DoseProfile(Dose1D):
         -----------------
         start : float, optional
             First location included in result, defaults to source end-point
-        stop : float, optional 
+        stop : float, optional
             Last location included in result, defaults to source end-point
         step : float, optional
             Step size used to create result, defaults to 1 mm
@@ -185,7 +180,6 @@ class DoseProfile(Dose1D):
             self.__init__(new_x, new_data)
         else:
             return DoseProfile(new_x, new_data)
-
 
     def dose_normalise(self):
         pass
@@ -219,10 +213,9 @@ class DoseProfile(Dose1D):
     def symmetrise(self):
         pass
 
-class DoseDepth(Dose1D):    ## SHOULD DOSE PROFILE SUPPORT PDD?
-    pass 
 
-
+class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD?
+    pass
 
 
 # # PRIVATE FUNCTIONS ======================================
@@ -294,7 +287,6 @@ class DoseDepth(Dose1D):    ## SHOULD DOSE PROFILE SUPPORT PDD?
 #     return list(zip(dist_vals, dose_vals))
 
 
-
 # # PUBLIC FUNCTIONS ==========================================
 
 # def pulse(centre=0.0, center=None, width=10.0,
@@ -316,7 +308,6 @@ class DoseDepth(Dose1D):    ## SHOULD DOSE PROFILE SUPPORT PDD?
 #     dose_vals = _make_dose_vals(dist_vals, partial(pulse, centre, width))
 #     dose_prof = list(zip(dist_vals, dose_vals))
 #     return dose_prof
-
 
 
 # def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
