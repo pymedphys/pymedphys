@@ -146,7 +146,8 @@ WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
 
 
 def test_DoseProfile_segment():
-    profiler = DoseProfile(PROFILER)
+    profiler = DoseProfile(x=[],data=[])
+    profiler.from_tuples(PROFILER)
     # INVALID RANGE -> NO POINTS
     assert np.array_equal(profiler.segment(start=1, stop=0).x, [])
     assert np.array_equal(profiler.segment(start=1, stop=0).data, [])
@@ -163,14 +164,11 @@ def test_DoseProfile_segment():
 
 
 def test_DoseProfile_resample():
-    profiler = DoseProfile(PROFILER, metadata={'depth': 10, 'medium': 'water'})
+    profiler = DoseProfile([],[])
+    profiler.from_tuples(PROFILER, metadata={'depth': 10, 'medium': 'water'})
     # METADATA
     assert profiler.metadata['depth'] == 10
     assert profiler.metadata['medium'] == 'water'
-    try:
-        profiler.metadata['bogus']
-    except KeyError as k:
-        assert str(k) == "'bogus'"
     # CONSISTENT CONTENTS WITH UPSAMPLING
     assert np.isclose(profiler.interp(0), profiler.resample(0.1).interp(0))
     assert np.isclose(profiler.interp(6.372),
@@ -179,7 +177,7 @@ def test_DoseProfile_resample():
     resampled = profiler.resample(0.1)
     increments = np.diff([i for i in resampled.x])
     assert np.allclose(increments, 0.1)
-    # START LOCATION IS UNCHANGED
+    # START LOCATION UNCHANGED
     assert np.isclose(resampled.data[0], profiler.data[0])
 
 # def test_pulse():

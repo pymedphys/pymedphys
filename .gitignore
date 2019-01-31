@@ -223,3 +223,6 @@ dmypy.json
 tests/data/*.pdf
 tests/data/**/*.pdf
 tests/data/**/**/*.pdf
+Ubuntu_GitHub
+Ubuntu_GitHub.pub
+.gitignore
