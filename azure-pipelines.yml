@@ -1,17 +1,17 @@
-jobs:
-  - job: 'Library PyTest Suite'
+strategy:
+  matrix:
+    linux:
+      imageName: 'ubuntu-16.04'
+      testTitle: 'Linux'
+    mac:
+      imageName: 'macos-10.13'
+      testTitle: 'macOS'
+    windows:
+      imageName: 'vs2017-win2016'
+      testTitle: 'Windows'
 
-    strategy:
-      matrix:
-        linux:
-          imageName: 'ubuntu-16.04'
-          testTitle: 'Linux'
-        mac:
-          imageName: 'macos-10.13'
-          testTitle: 'macOS'
-        windows:
-          imageName: 'vs2017-win2016'
-          testTitle: 'Windows'
+jobs:
+  - job: '$(testTitle)'
 
     pool:
       vmImage: $(imageName)
