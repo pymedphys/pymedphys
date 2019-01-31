@@ -10,35 +10,38 @@ strategy:
 pool:
   vmImage: $(imageName)
 
-steps:
-- task: CondaEnvironment@1
-  inputs:
-    createCustomEnvironment: true
-    environmentName: pymedphys
-    packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip
-    updateConda: true
-    createOptions: --channel conda-forge
+jobs:
+  - job: '$(variables['Agent.OS'])'
 
-- bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ln -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
-  displayName: 'Install Homebrew and GNU xargs'
-  condition: eq( variables['Agent.OS'], 'Darwin' )
+  steps:
+  - task: CondaEnvironment@1
+    inputs:
+      createCustomEnvironment: true
+      environmentName: pymedphys
+      packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip
+      updateConda: true
+      createOptions: --channel conda-forge
 
-- bash: /usr/bin/sudo ln -s /home/vsts/.conda/bin/activate /usr/bin/activate
-  displayName: 'Create activate symbolic link'
-  condition: eq( variables['Agent.OS'], 'Linux' )
+  - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ln -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
+    displayName: 'Install Homebrew and GNU xargs'
+    condition: eq( variables['Agent.OS'], 'Darwin' )
 
-- bash: echo $PATH && source activate pymedphys && pip install -e .
-  displayName: 'Install development version of PyMedPhys'
-- bash: ./azure-pipelines/scripts/matplotlib-backend.sh
-  displayName: 'Set matplotlib backend to Agg'
-- bash: source activate pymedphys && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
-  displayName: 'Check that notebooks have no included output'
-- bash: source activate pymedphys && python setup.py test
-  displayName: 'Run the full pytest suite'
+  - bash: /usr/bin/sudo ln -s /home/vsts/.conda/bin/activate /usr/bin/activate
+    displayName: 'Create activate symbolic link'
+    condition: eq( variables['Agent.OS'], 'Linux' )
 
-- task: PublishTestResults@2
-  displayName: Publish Test Results
-  inputs:
-    testResultsFiles: junit/*.xml
-    testRunTitle: 'Library'
-  condition: succeededOrFailed()
+  - bash: echo $PATH && source activate pymedphys && pip install -e .
+    displayName: 'Install development version of PyMedPhys'
+  - bash: ./azure-pipelines/scripts/matplotlib-backend.sh
+    displayName: 'Set matplotlib backend to Agg'
+  - bash: source activate pymedphys && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
+    displayName: 'Check that notebooks have no included output'
+  - bash: source activate pymedphys && python setup.py test
+    displayName: 'Run the full pytest suite'
+
+  - task: PublishTestResults@2
+    displayName: Publish Test Results
+    inputs:
+      testResultsFiles: junit/*.xml
+      testRunTitle: 'Library $(variables['Agent.OS'])'
+    condition: succeededOrFailed()
