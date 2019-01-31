@@ -119,16 +119,19 @@ class DoseProfile(Dose1D):
         return len(self.x)
 
     def from_tuples(self, list_of_tuples, metadata={}):
-        """ Load dose profile with a list of (x,data) tuples. 
+        """ Load a list of (x,data) tuples. 
         
-        Replaces any existing profile data and metadata.
+        Overwrites any existing dose profile data and metadata.
 
         Arguments
-        -----------------
-        list_of_tuples : float, optional
-            End points for incluion, default to source profile end-points
+        ---------
+        list_of_tuples : list
+            List of (float x, float data) tuples.
 
-        ########### DOCSTRING IS INCOMPLETE
+        Keyword Arguments
+        -----------------
+        metadata : dict, toptional
+            Dictionary of key-value pairs that describe the profile
 
         """
         self.metadata = metadata        
@@ -137,7 +140,7 @@ class DoseProfile(Dose1D):
         super().__init__(x, data)
 
     def interactive(self):
-        pass
+        pass    ### WHAT IS THIS INTENDED TO DO?
 
     def segment(self, start=-np.inf, stop=np.inf, inplace=False):
         """ Part of dose profile between begin and end.
@@ -235,19 +238,8 @@ class DoseProfile(Dose1D):
     def symmetrise(self):
         pass
 
-class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD?
+class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE CLASS?
     pass
-
-
-# # PRIVATE FUNCTIONS ======================================
-
-# def _get_dist_vals(dose_prof):
-#     """ Unzip distance-values from dose-profile. """
-#     return list(list(zip(*dose_prof))[0])
-
-# def _get_dose_vals(dose_prof):
-#     """ Unzip dose-values from dose-profile. """
-#     return list(list(zip(*dose_prof))[1])
 
 
 # def _make_dose_vals(dist_vals, dose_func):
