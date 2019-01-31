@@ -134,46 +134,68 @@ class DoseProfile(Dose1D):
             pass
 
         super().__init__(x, data)
+
         self.metadata = metadata
+
+    def __len__(self):
+        assert len(self.x) == len(self.data)
+        return len(self.x)
 
     def interactive(self):
         pass
 
-    def resample(self, start=-np.inf, stop=np.inf, step=0.1, inplace=False):
-        """ Resample a dose profile at a specified increment.
+    def segment(self, start=-np.inf, stop=np.inf, inplace=False):
+        """ The part of dose profile between begin and end.
 
-        Resulting profile extends between the specified endpoints and
-        has stepsize of the indicated step. Profile is either modified
-        in place or returned as a new profile.
+        Resulting profile is comprised of those points in the source
+        profile whose distance values are not-less-than start and
+        not-greater-than stop.
 
         Keyword Arguments
         -----------------
-        start : float, optional
-            First location included in result, defaults to source end-point
-        stop : float, optional
-            Last location included in result, defaults to source end-point
-        step : float, optional
-            Step size used to create result, defaults to 1 mm
+        start, stop : float, optional
+            End points for incluion, default to source profile end-points
         inplace : boolean, optional
-            Mofify the profile in place, defaults to False, i.e. return result
+            Mofify the profile in place, default -> return result
 
         Returns
         -------
         array_like
-            Resampled dose profile
 
-        Raises
-        ------
-        ValueError
-            For invalid start/stop
+        """
+        start = max(start, min(self.x))
+        stop = min(stop, max(self.x))
+        new_x = self.x[np.logical_and(start <= self.x, stop >= self.x)]
+        new_data = self.interp(new_x)
+
+        if inplace:
+            self.__init__(new_x, new_data)
+        else:
+            return DoseProfile(new_x, new_data)
+
+    def resample(self, step, inplace=False):
+        """ Resample a dose profile at a specified increment.
+
+        Resulting profile has stepsize of the indicated step based on
+        linear interpolation over the points of the source profile.
+
+        Arguments
+        -----------------
+        step : float
+            Sampling increment
+
+        Keyword Arguments
+        -----------------
+        inplace : boolean, optional
+            Mofify the profile in place, default -> return result
+
+        Returns
+        -------
+        array_like
 
         """
 
-        start = max(start, min(self.x))  # extrapolation not supported
-        stop = min(stop, max(self.x))    # & to default to end points
-        if stop <= start:
-            raise ValueError("Bad start|stop for resample")
-        new_x = list(np.arange(start, stop, step))
+        new_x = np.arange(self.x[0], self.x[-1], step)
         new_data = self.interp(new_x)
 
         if inplace:

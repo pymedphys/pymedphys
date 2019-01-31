@@ -60,8 +60,15 @@ def test_conversion():
 
     assert np.array_equal(profile.x, np.array(expected_x))
     assert np.array_equal(profile.data, np.array(expected_data))
+
+    # print(type(expected_pandas.astype(int)))
+    # print(profile.to_pandas().astype(int))
+
+    # ==== FAILS ON Windows10 without '.astype(int)' ==
+    assert expected_pandas.astype(int).equals(profile.to_pandas())
     # assert expected_pandas.equals(profile.to_pandas())
-    # FAILS ASSERTION ON SOME COMPUTERS
+    # =================================================
+
     assert expected_xarray.identical(profile.to_xarray())
     assert DeepDiff(profile.to_dict(), expected_dict) == {}
 
@@ -138,20 +145,42 @@ WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
           (16, 0.31), (16.4, 0.3)]
 
 
+def test_DoseProfile_segment():
+    profiler = DoseProfile(PROFILER)
+    # INVALID RANGE -> NO POINTS
+    assert np.array_equal(profiler.segment(start=1, stop=0).x, [])
+    assert np.array_equal(profiler.segment(start=1, stop=0).data, [])
+    # POINT RANGE -> ONE POINT
+    assert np.array_equal(profiler.segment(start=0, stop=0).x, [0])
+    assert np.array_equal(profiler.segment(start=0, stop=0).data, [45.23])
+    # FULL RANGE -> ALL POINTS
+    assert np.array_equal(profiler.segment().x, profiler.x)
+    assert np.array_equal(profiler.segment().data, profiler.data)
+    # MODIFY IN PLACE
+    profiler.segment(start=1, stop=0, inplace=True)
+    assert np.array_equal(profiler.x, [])
+    assert np.array_equal(profiler.data, [])
+
+
 def test_DoseProfile_resample():
     profiler = DoseProfile(PROFILER, metadata={'depth': 10, 'medium': 'water'})
+    # METADATA
     assert profiler.metadata['depth'] == 10
     assert profiler.metadata['medium'] == 'water'
-    resampled = profiler.resample(step=0.1)
+    try:
+        profiler.metadata['bogus']
+    except KeyError as k:
+        assert str(k) == "'bogus'"
+    # CONSISTENT CONTENTS WITH UPSAMPLING
+    assert np.isclose(profiler.interp(0), profiler.resample(0.1).interp(0))
+    assert np.isclose(profiler.interp(6.372),
+                      profiler.resample(0.1).interp(6.372))
+    # CORRECT RESAMPLE INCREMENTS
+    resampled = profiler.resample(0.1)
     increments = np.diff([i for i in resampled.x])
     assert np.allclose(increments, 0.1)
+    # START LOCATION IS UNCHANGED
     assert np.isclose(resampled.data[0], profiler.data[0])
-
-<<<<<<< HEAD
-# TEST MIGRATION TO GITHUB
-=======
-# PUSH TEST W-10
->>>>>>> refs/remotes/origin/integrate-profile-class
 
 # def test_pulse():
 #     assert pulse()[0] == (-20.0, 0.0)
@@ -190,6 +219,7 @@ if __name__ == "__main__":
     test_conversion()
     test_function_updating_with_shift()
     test_default_interp_function()
+    test_DoseProfile_segment()
     test_DoseProfile_resample()
 #     test_pulse()
 #     test_resample()
