@@ -33,6 +33,7 @@ This module makes use of some of the ideas presented within
 """
 
 import sys
+from typing import Union, Optional
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -52,8 +53,8 @@ def gamma_shell(coords_reference, dose_reference,
                 dose_percent_threshold, distance_mm_threshold,
                 lower_percent_dose_cutoff=20, interp_fraction=10,
                 max_gamma=np.inf, local_gamma=False,
-                global_normalisation=np.nan, skip_once_passed=False,
-                mask_evaluation=False, random_subset=None, ram_available=np.nan,
+                global_normalisation=None, skip_once_passed=False,
+                mask_evaluation=False, random_subset=None, ram_available=None,
                 quiet=False):
     """Compare two dose grids with the gamma index.
 
@@ -127,6 +128,21 @@ def gamma_shell(coords_reference, dose_reference,
         mask_evaluation, random_subset,
         ram_available, quiet)
 
+    if not options.quiet:
+        if options.local_gamma:
+            print('Calcing using local normalisation point for gamma')
+        else:
+            print('Calcing using global normalisation point for gamma')
+        print('Global normalisation set to {} Gy'.format(
+            options.global_normalisation))
+        print('Global dose threshold set to {} Gy ({}%)'.format(
+            options.global_dose_threshold, options.dose_percent_threshold))
+        print('Distance threshold set to {} mm'.format(
+            options.distance_mm_threshold))
+        print('Lower dose cutoff set to {} Gy ({}%)'.format(
+            options.lower_dose_cutoff, lower_percent_dose_cutoff))
+        print('')
+
     current_gamma = gamma_loop(options)
 
     gamma = np.reshape(
@@ -157,27 +173,32 @@ class GammaInternalFixedOptions():
     flat_mesh_coords_reference: np.ndarray
     flat_dose_reference: np.ndarray
     reference_points_to_calc: np.ndarray
-    dose_percent_threshold: float
-    distance_mm_threshold: float
+    dose_percent_threshold: Union[float, np.ndarray]
+    distance_mm_threshold: Union[float, np.ndarray]
     evaluation_interpolation: RegularGridInterpolator
     distance_step_size: float
+    lower_dose_cutoff: float = 0
     maximum_test_distance: float = np.inf
-    global_normalisation: float = np.nan
+    global_normalisation: Optional[float] = None
     local_gamma: bool = False
     skip_once_passed: bool = False
-    ram_available: int = np.nan
+    ram_available: Optional[int] = None
     quiet: bool = False
 
     def __post_init__(self):
         self.set_defaults()
 
     def set_defaults(self):
-        if np.isnan(self.global_normalisation):
+        if self.global_normalisation is None:
             object.__setattr__(
                 self, 'global_normalisation', np.max(self.flat_dose_reference))
 
-        if np.isnan(self.ram_available):
+        if self.ram_available is None:
             object.__setattr__(self, 'ram_available', default_ram())
+
+    @property
+    def global_dose_threshold(self):
+        return self.dose_percent_threshold / 100 * self.global_normalisation
 
     @classmethod
     def from_user_inputs(cls, coords_reference, dose_reference,
@@ -185,32 +206,18 @@ class GammaInternalFixedOptions():
                          dose_percent_threshold, distance_mm_threshold,
                          lower_percent_dose_cutoff=20, interp_fraction=10,
                          max_gamma=np.inf, local_gamma=False,
-                         global_normalisation=np.nan, skip_once_passed=False,
+                         global_normalisation=None, skip_once_passed=False,
                          mask_evaluation=False, random_subset=None,
-                         ram_available=np.nan, quiet=False):
+                         ram_available=None, quiet=False):
 
         coords_reference, coords_evaluation = run_input_checks(
             coords_reference, dose_reference,
             coords_evaluation, dose_evaluation)
 
-        if np.isnan(global_normalisation):
+        if global_normalisation is None:
             global_normalisation = np.max(dose_reference)
 
         lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
-        global_dose_threshold = dose_percent_threshold / 100 * global_normalisation
-
-        if not quiet:
-            if local_gamma:
-                print('Calcing using local normalisation point for gamma')
-            else:
-                print('Calcing using global normalisation point for gamma')
-            print('Global normalisation set to {} Gy'.format(global_normalisation))
-            print('Global dose threshold set to {} Gy ({}%)'.format(
-                global_dose_threshold, dose_percent_threshold))
-            print('Distance threshold set to {} mm'.format(distance_mm_threshold))
-            print('Lower dose cutoff set to {} Gy ({}%)'.format(
-                lower_dose_cutoff, lower_percent_dose_cutoff))
-            print('')
 
         distance_step_size = distance_mm_threshold / interp_fraction
         maximum_test_distance = distance_mm_threshold * max_gamma
@@ -270,6 +277,7 @@ class GammaInternalFixedOptions():
                    reference_points_to_calc, dose_percent_threshold,
                    distance_mm_threshold,
                    evaluation_interpolation, distance_step_size,
+                   lower_dose_cutoff,
                    maximum_test_distance, global_normalisation, local_gamma,
                    skip_once_passed, ram_available, quiet)
 
