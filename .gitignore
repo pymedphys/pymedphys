@@ -223,3 +223,6 @@ dmypy.json
 *.pdf
 
 junit/
+Ubuntu_GitHub
+Ubuntu_GitHub.pub
+.gitignore
