@@ -127,44 +127,7 @@ def gamma_shell(coords_reference, dose_reference,
         mask_evaluation, random_subset,
         ram_available, quiet)
 
-    still_searching_for_gamma = np.ones_like(
-        options.flat_dose_reference).astype(bool)
-    current_gamma = np.inf * np.ones_like(options.flat_dose_reference)
-    distance = 0
-    while distance <= options.maximum_test_distance:
-        to_be_checked = (
-            options.reference_points_to_calc & still_searching_for_gamma)
-
-        if not quiet:
-            sys.stdout.write(
-                '\rCurrent distance: {0:.2f} mm | Number of reference points remaining: {1}'.format(
-                    distance,
-                    np.sum(to_be_checked)))
-        # sys.stdout.flush()
-
-        min_relative_dose_difference = calculate_min_dose_difference(
-            options, distance, to_be_checked)
-
-        gamma_at_distance = np.sqrt(
-            (min_relative_dose_difference / (dose_percent_threshold / 100)) ** 2
-            + (distance / distance_mm_threshold) ** 2)
-
-        current_gamma[to_be_checked] = np.min(
-            np.vstack((
-                gamma_at_distance, current_gamma[to_be_checked]
-            )), axis=0)
-
-        still_searching_for_gamma = (
-            current_gamma > distance / distance_mm_threshold)
-
-        if skip_once_passed:
-            still_searching_for_gamma = (
-                still_searching_for_gamma & (current_gamma >= 1))
-
-        distance += options.distance_step_size
-
-        if np.sum(to_be_checked) == 0:
-            break
+    current_gamma = gamma_loop(options)
 
     gamma = np.reshape(
         current_gamma, np.shape(dose_reference))
@@ -174,7 +137,7 @@ def gamma_shell(coords_reference, dose_reference,
         gamma_greater_than_ref = gamma > max_gamma
         gamma[gamma_greater_than_ref] = max_gamma
 
-    if not quiet:
+    if not options.quiet:
         print('')
 
     return gamma
@@ -190,10 +153,12 @@ def default_ram() -> int:
 
 
 @dataclass(frozen=True)
-class GammaInternalFixedOptions:
+class GammaInternalFixedOptions():
     flat_mesh_coords_reference: np.ndarray
     flat_dose_reference: np.ndarray
     reference_points_to_calc: np.ndarray
+    dose_percent_threshold: float
+    distance_mm_threshold: float
     evaluation_interpolation: RegularGridInterpolator
     distance_step_size: float
     maximum_test_distance: float = np.inf
@@ -302,10 +267,55 @@ class GammaInternalFixedOptions:
         flat_dose_reference = np.ravel(dose_reference)
 
         return cls(flat_mesh_coords_reference, flat_dose_reference,
-                   reference_points_to_calc,
+                   reference_points_to_calc, dose_percent_threshold,
+                   distance_mm_threshold,
                    evaluation_interpolation, distance_step_size,
                    maximum_test_distance, global_normalisation, local_gamma,
                    skip_once_passed, ram_available, quiet)
+
+
+def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
+    still_searching_for_gamma = np.ones_like(
+        options.flat_dose_reference).astype(bool)
+    current_gamma = np.inf * np.ones_like(options.flat_dose_reference)
+    distance = 0.0
+    while distance <= options.maximum_test_distance:
+        to_be_checked = (
+            options.reference_points_to_calc & still_searching_for_gamma)
+
+        if not options.quiet:
+            sys.stdout.write(
+                '\rCurrent distance: {0:.2f} mm | Number of reference points remaining: {1}'.format(
+                    distance,
+                    np.sum(to_be_checked)))
+        # sys.stdout.flush()
+
+        min_relative_dose_difference = calculate_min_dose_difference(
+            options, distance, to_be_checked)
+
+        gamma_at_distance = np.sqrt(
+            (min_relative_dose_difference /
+             (options.dose_percent_threshold / 100)) ** 2
+            + (distance / options.distance_mm_threshold) ** 2)
+
+        current_gamma[to_be_checked] = np.min(
+            np.vstack((
+                gamma_at_distance, current_gamma[to_be_checked]
+            )), axis=0)
+
+        still_searching_for_gamma = (
+            current_gamma > distance / options.distance_mm_threshold)
+
+        if options.skip_once_passed:
+            still_searching_for_gamma = (
+                still_searching_for_gamma & (current_gamma >= 1))
+
+        distance += options.distance_step_size
+
+        if np.sum(to_be_checked) == 0:
+            break
+
+    return current_gamma
 
 
 def calculate_min_dose_difference(options, distance, to_be_checked):
