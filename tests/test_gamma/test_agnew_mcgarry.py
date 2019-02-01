@@ -29,7 +29,6 @@ import pydicom
 import numpy as np
 import os
 import pytest
-import random
 """The tests given here are replicated using pymedphys.gamma from the method
 given within the following paper:
 
@@ -55,6 +54,9 @@ EVAL_VMAT_0_25mm = os.path.abspath(os.path.join(
     DATA_DIRECTORY, 'H&N_VMAT_Evaluated_0_25mmPx.dcm'))
 
 
+RANDOM_SUBSET = 50000
+
+
 def load_dose_from_dicom(dcm):
     pixels = dcm.pixel_array
     dose = pixels * dcm.DoseGridScaling
@@ -78,12 +80,13 @@ def load_yx_from_dicom(dcm):
     return y, x
 
 
-def local_gamma(filepath_ref, filepath_eval, result, random_subset=None):
+def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
+                max_gamma=1.1):
     """The results of MU Density calculation should not change
     """
 
     if random_subset is not None:
-        random.seed(42)
+        np.random.seed(42)
 
     dcm_ref = pydicom.read_file(filepath_ref)
     dcm_eval = pydicom.read_file(filepath_eval)
@@ -100,7 +103,7 @@ def local_gamma(filepath_ref, filepath_eval, result, random_subset=None):
         1, 1,
         lower_percent_dose_cutoff=20,
         interp_fraction=10,
-        max_gamma=1.1, local_gamma=True, skip_once_passed=True,
+        max_gamma=max_gamma, local_gamma=True, skip_once_passed=True,
         random_subset=random_subset)
 
     valid_gamma = gamma[np.invert(np.isnan(gamma))]
@@ -109,9 +112,18 @@ def local_gamma(filepath_ref, filepath_eval, result, random_subset=None):
     assert np.round(gamma_pass, decimals=1) == result
 
 
+def test_max_gamma():
+    local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6,
+                random_subset=RANDOM_SUBSET, max_gamma=1.4)
+
+    local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6,
+                random_subset=RANDOM_SUBSET, max_gamma=1.0001)
+
+
 def test_local_gamma_1mm():
-    local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6, random_subset=14000)
+    local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6, random_subset=RANDOM_SUBSET)
 
 
 def test_local_gamma_0_25mm():
-    local_gamma(REF_VMAT_0_25mm, EVAL_VMAT_0_25mm, 96.9, random_subset=14000)
+    local_gamma(REF_VMAT_0_25mm, EVAL_VMAT_0_25mm,
+                96.9, random_subset=RANDOM_SUBSET)
