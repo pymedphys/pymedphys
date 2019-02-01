@@ -29,7 +29,7 @@ import pydicom
 import numpy as np
 import os
 import pytest
-"""The tests given here are replicated using pymedphys.gamma from the method
+"""The tests given here are a replicated using pymedphys.gamma from the method
 given within the following paper:
 
 > C. Agnew, C. McGarry, A tool to include gamma analysis software into a
@@ -82,8 +82,6 @@ def load_yx_from_dicom(dcm):
 
 def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
                 max_gamma=1.1):
-    """The results of MU Density calculation should not change
-    """
 
     if random_subset is not None:
         np.random.seed(42)
