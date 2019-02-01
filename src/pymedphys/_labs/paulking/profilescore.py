@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 
 import xarray as xr
 
-from .._level0.libutils import get_imports
+from ...libutils import get_imports
 # from .._level1.coreobjects import _PyMedPhysBase
 IMPORTS = get_imports(globals())
 
@@ -119,8 +119,8 @@ class DoseProfile(Dose1D):
         return len(self.x)
 
     def from_tuples(self, list_of_tuples, metadata={}):
-        """ Load a list of (x,data) tuples. 
-        
+        """ Load a list of (x,data) tuples.
+
         Overwrites any existing dose profile data and metadata.
 
         Arguments
@@ -134,13 +134,13 @@ class DoseProfile(Dose1D):
             Dictionary of key-value pairs that describe the profile
 
         """
-        self.metadata = metadata        
+        self.metadata = metadata
         x = list(list(zip(*list_of_tuples))[0])
         data = list(list(zip(*list_of_tuples))[1])
         super().__init__(x, data)
 
     def interactive(self):
-        pass    ### WHAT IS THIS INTENDED TO DO?
+        pass  # WHAT IS THIS INTENDED TO DO?
 
     def segment(self, start=-np.inf, stop=np.inf, inplace=False):
         """ Part of dose profile between begin and end.
@@ -161,13 +161,13 @@ class DoseProfile(Dose1D):
         array_like
 
         """
-        
+
         try:
             start = max(start, min(self.x))
             stop = min(stop, max(self.x))
             new_x = self.x[np.logical_and(self.x >= start, self.x <= stop)]
             new_data = self.interp(new_x)
-        except ValueError: ## empty profile
+        except ValueError:  # empty profile
             new_x = []
             new_data = []
 
@@ -237,6 +237,7 @@ class DoseProfile(Dose1D):
 
     def symmetrise(self):
         pass
+
 
 class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE CLASS?
     pass
