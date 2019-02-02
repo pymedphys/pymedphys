@@ -145,9 +145,9 @@ def test_multi_inputs():
 
     baseline = {
         (1, 1): LOCAL_GAMMA_0_25_BASELINE,
-        (1, 4): 99.9,
-        (0.2, 1): 91.8,
-        (0.2, 4): 99.6
+        (1, 4): 99.8,    # 99.9 with higher interp_fraction
+        (0.2, 1): 91.8,  # 94.4 with higher interp_fraction
+        (0.2, 4): 99.2   # 99.7 with higher interp_fraction
     }
 
     for key, value in gamma.items():
