@@ -148,16 +148,20 @@ def gamma_shell(coords_reference, dose_reference,
     current_gamma = gamma_loop(options)
 
     gamma = {}
-    for key, value in current_gamma.items():
-        gamma_temp = np.reshape(
-            value, np.shape(dose_reference))
-        gamma_temp[np.isinf(gamma_temp)] = np.nan
+    for i, dose_threshold in enumerate(options.dose_percent_threshold):
+        for j, distance_threshold in enumerate(options.distance_mm_threshold):
+            key = (dose_threshold, distance_threshold)
 
-        with np.errstate(invalid='ignore'):
-            gamma_greater_than_ref = gamma_temp > max_gamma
-            gamma_temp[gamma_greater_than_ref] = max_gamma
+            gamma_temp = current_gamma[:, i, j]
+            gamma_temp = np.reshape(
+                gamma_temp, np.shape(dose_reference))
+            gamma_temp[np.isinf(gamma_temp)] = np.nan
 
-        gamma[key] = gamma_temp
+            with np.errstate(invalid='ignore'):
+                gamma_greater_than_ref = gamma_temp > max_gamma
+                gamma_temp[gamma_greater_than_ref] = max_gamma
+
+            gamma[key] = gamma_temp
 
     if not options.quiet:
         print('\nComplete!')
@@ -310,10 +314,13 @@ class GammaInternalFixedOptions():
 def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
     still_searching_for_gamma = np.ones_like(
         options.flat_dose_reference).astype(bool)
-    current_gamma = {
-        key: np.inf * np.ones_like(options.flat_dose_reference)
-        for key in get_dose_distence_combos(options)
-    }
+
+    current_gamma = np.inf * np.ones((
+        len(options.flat_dose_reference),
+        len(options.dose_percent_threshold),
+        len(options.distance_mm_threshold))
+    )
+
     distance = 0.0
     while distance <= options.maximum_test_distance:
         to_be_checked = (
@@ -353,38 +360,38 @@ def multi_thresholds_gamma_calc(options: GammaInternalFixedOptions,
                                 current_gamma,
                                 min_relative_dose_difference,
                                 distance, to_be_checked):
-    still_searching_for_gamma = [
-        np.zeros_like(next(iter(current_gamma.values()))).astype(bool)[None]
-    ]
 
-    for key in get_dose_distence_combos(options):
-        dose_threshold, distance_threshold = key
+    gamma_at_distance = np.sqrt(
+        (
+            min_relative_dose_difference[:, None, None]
+            / (options.dose_percent_threshold[None, :, None] / 100)
+        ) ** 2
+        + (
+            distance / options.distance_mm_threshold[None, None, :]
+        ) ** 2
+    )
 
-        gamma_at_distance = np.sqrt(
-            (min_relative_dose_difference / (dose_threshold / 100)) ** 2
-            + (distance / distance_threshold) ** 2)
+    current_gamma[to_be_checked, :, :] = np.min(
+        np.concatenate(
+            [
+                gamma_at_distance[None, :, :, :],
+                current_gamma[None, to_be_checked, :, :]
+            ],
+            axis=0
+        ), axis=0
+    )
 
-        current_gamma[key][to_be_checked] = np.min(
-            np.vstack((
-                gamma_at_distance, current_gamma[key][to_be_checked]
-            )), axis=0)
+    still_searching_for_gamma = (
+        current_gamma
+        > (distance / options.distance_mm_threshold[None, None, :]))
 
-        still_searching_for_gamma.append(
-            current_gamma[key] > distance / distance_threshold)
+    if options.skip_once_passed:
+        still_searching_for_gamma = (
+            still_searching_for_gamma & (current_gamma >= 1))
 
-        if options.skip_once_passed:
-            still_searching_for_gamma[-1] = (
-                still_searching_for_gamma[-1] & (current_gamma[key] >= 1))
-
-        still_searching_for_gamma[-1] = still_searching_for_gamma[-1][None]
-
-        # print(still_searching_for_gamma)
-
-    still_searching_for_gamma = np.concatenate(
-        still_searching_for_gamma, axis=0)
-
-    # print(still_searching_for_gamma)
-    still_searching_for_gamma = np.any(still_searching_for_gamma, axis=0)
+    still_searching_for_gamma = np.any(np.any(
+        still_searching_for_gamma, axis=-1
+    ), axis=-1)
 
     return current_gamma, still_searching_for_gamma
 
