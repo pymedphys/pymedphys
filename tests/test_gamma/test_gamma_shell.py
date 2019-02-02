@@ -26,7 +26,6 @@
 """Tests for npgamma."""
 
 import numpy as np
-import pytest
 from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
 
 
@@ -93,14 +92,13 @@ class TestGamma():
 
         assert np.all(self.expected_gamma[5, 5, :] == self.gamma1d)
 
-    @pytest.mark.skip("This test is too slow, it needs refactoring")
     def test_coords_stepsize(self):
         """Testing correct stepsize implementation.
 
         Confirm that the the largest distance between one point and any other
         is less than the defined step size
         """
-        distance_step_size = 0.03
+        distance_step_size = 0.1
         num_dimensions = 3
         distance = 1
 
