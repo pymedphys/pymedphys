@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys.gamma import gamma_shell
+from pymedphys.gamma import gamma_shell, convert_to_percent_pass
 import pydicom
 import numpy as np
 import os
@@ -80,8 +80,8 @@ def load_yx_from_dicom(dcm):
     return y, x
 
 
-def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
-                max_gamma=1.1):
+def run_gamma(filepath_ref, filepath_eval, random_subset=None,
+              max_gamma=1.1, dose_threshold=1, distance_threshold=1):
 
     if random_subset is not None:
         np.random.seed(42)
@@ -98,14 +98,22 @@ def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
     gamma = gamma_shell(
         coords_reference, dose_reference,
         coords_evaluation, dose_evaluation,
-        1, 1,
+        dose_threshold, distance_threshold,
         lower_percent_dose_cutoff=20,
         interp_fraction=10,
         max_gamma=max_gamma, local_gamma=True, skip_once_passed=True,
         random_subset=random_subset)
 
-    valid_gamma = gamma[np.invert(np.isnan(gamma))]
-    gamma_pass = 100 * np.sum(valid_gamma <= 1) / len(valid_gamma)
+    return gamma
+
+
+def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
+                max_gamma=1.1, dose_threshold=1, distance_threshold=1):
+
+    gamma = run_gamma(filepath_ref, filepath_eval, random_subset,
+                      max_gamma, dose_threshold, distance_threshold)
+
+    gamma_pass = convert_to_percent_pass(gamma)
 
     assert np.round(gamma_pass, decimals=1) == result
 
@@ -122,6 +130,27 @@ def test_local_gamma_1mm():
     local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6, random_subset=RANDOM_SUBSET)
 
 
+LOCAL_GAMMA_0_25_BASELINE = 96.9
+
+
 def test_local_gamma_0_25mm():
     local_gamma(REF_VMAT_0_25mm, EVAL_VMAT_0_25mm,
-                96.9, random_subset=RANDOM_SUBSET)
+                LOCAL_GAMMA_0_25_BASELINE, random_subset=RANDOM_SUBSET)
+
+
+def test_multi_inputs():
+    gamma = run_gamma(
+        REF_VMAT_0_25mm, EVAL_VMAT_0_25mm, random_subset=RANDOM_SUBSET,
+        max_gamma=1.0001, dose_threshold=[1, 0.2], distance_threshold=[1, 4])
+
+    baseline = {
+        (1, 1): LOCAL_GAMMA_0_25_BASELINE,
+        (1, 4): 99.9,
+        (0.2, 1): 91.8,
+        (0.2, 4): 99.6
+    }
+
+    for key, value in gamma.items():
+        assert (
+            np.round(convert_to_percent_pass(value), decimals=1)
+            == baseline[key])
