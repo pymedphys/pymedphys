@@ -173,8 +173,8 @@ class GammaInternalFixedOptions():
     flat_mesh_coords_reference: np.ndarray
     flat_dose_reference: np.ndarray
     reference_points_to_calc: np.ndarray
-    dose_percent_threshold: Union[float, np.ndarray]
-    distance_mm_threshold: Union[float, np.ndarray]
+    dose_percent_threshold: np.ndarray
+    distance_mm_threshold: np.ndarray
     evaluation_interpolation: RegularGridInterpolator
     distance_step_size: float
     lower_dose_cutoff: float = 0
@@ -214,13 +214,16 @@ class GammaInternalFixedOptions():
             coords_reference, dose_reference,
             coords_evaluation, dose_evaluation)
 
+        dose_percent_threshold = np.array(dose_percent_threshold)
+        distance_mm_threshold = np.array(distance_mm_threshold)
+
         if global_normalisation is None:
             global_normalisation = np.max(dose_reference)
 
         lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
 
         distance_step_size = distance_mm_threshold / interp_fraction
-        maximum_test_distance = distance_mm_threshold * max_gamma
+        maximum_test_distance = np.max(distance_mm_threshold) * max_gamma
 
         evaluation_interpolation = RegularGridInterpolator(
             coords_evaluation, np.array(dose_evaluation),
@@ -296,7 +299,6 @@ def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
                 '\rCurrent distance: {0:.2f} mm | Number of reference points remaining: {1}'.format(
                     distance,
                     np.sum(to_be_checked)))
-        # sys.stdout.flush()
 
         min_relative_dose_difference = calculate_min_dose_difference(
             options, distance, to_be_checked)
