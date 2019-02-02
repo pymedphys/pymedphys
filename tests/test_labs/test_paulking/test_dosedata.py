@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Paul King
+# Copyright (C) 2018 Cancer Care Associates
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -22,9 +22,83 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 import numpy as np
+import pandas as pd
+import xarray as xr
+
+from deepdiff import DeepDiff
+
+# from pymedphys.dosedata import DoseProfile
 from pymedphys._labs.paulking.profilescore import DoseProfile
+
+# pylint: disable = E1102
+
+
+def cubed(x):
+    return np.array(x) ** 3
+
+
+def test_conversion():
+    x = range(-3, 4)
+    profile = DoseProfile(x=x, data=cubed(x))
+
+    expected_x = [-3, -2, -1, 0, 1, 2, 3]
+    expected_data = [-27, -8, -1, 0, 1, 8, 27]
+
+    expected_pandas = pd.Series(
+        expected_data, pd.Index(expected_x, name='x'))
+    expected_xarray = xr.DataArray(
+        expected_data, coords=[('x', expected_x)], name='dose')
+
+    expected_dict = {
+        'coords': {'x': {'data': expected_x,
+                         'dims': ('x',),
+                         'attrs': {}}},
+        'attrs': {},
+        'dims': ('x',),
+        'data': expected_data,
+        'name': 'dose'}
+
+    assert np.array_equal(profile.x, np.array(expected_x))
+    assert np.array_equal(profile.data, np.array(expected_data))
+
+    # print(type(expected_pandas.astype(int)))
+    # print(profile.to_pandas().astype(int))
+
+    # ==== FAILS ON Windows10 without '.astype(int)' ==
+    assert expected_pandas.astype(int).equals(profile.to_pandas())
+    # assert expected_pandas.equals(profile.to_pandas())
+    # =================================================
+
+    assert expected_xarray.identical(profile.to_xarray())
+    assert DeepDiff(profile.to_dict(), expected_dict) == {}
+
+
+def test_function_updating_with_shift():
+    x = np.array([1, 2, 3])
+
+    profile = DoseProfile(x=x, data=x**2)
+    assert np.array_equal(profile.data, [1, 4, 9])
+
+    profile.shift(2, inplace=True)
+    assert np.array_equal(profile.data, [1, 4, 9])
+    assert np.array_equal(profile.x, [3, 4, 5])
+
+    # profile.x = [1, 2, 3]
+    # assert np.array_equal(profile.dose, [1, 0, 1])
+
+    profile.dist = [3, 4, 5]
+    assert np.array_equal(profile.data, [1, 4, 9])
+
+    # profile_copy = profile.shift(2)
+    # assert np.array_equal(profile.dist, [3, 4, 5])
+    # assert np.array_equal(profile_copy.dist, [5, 6, 7])
+
+
+def test_default_interp_function():
+    profile = DoseProfile(x=[-10, 0, 10], data=[3, 8, 2])
+
+    assert np.array_equal(profile.interp([1, 3, 4]), [7.4, 6.2, 5.6])
 
 
 PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28),
@@ -72,80 +146,68 @@ WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
           (16, 0.31), (16.4, 0.3)]
 
 
-# def test_DoseProfile_segment():
-#     profiler = DoseProfile(PROFILER)
-#     # INVALID RANGE -> NO POINTS
-#     assert np.array_equal(profiler.segment(start=1, stop=0).x, [])
-#     assert np.array_equal(profiler.segment(start=1, stop=0).data, [])
-#     # POINT RANGE -> ONE POINT
-#     assert np.array_equal(profiler.segment(start=0, stop=0).x, [0])
-#     assert np.array_equal(profiler.segment(start=0, stop=0).data, [45.23])
-#     # FULL RANGE -> ALL POINTS
-#     assert np.array_equal(profiler.segment().x, profiler.x)
-#     assert np.array_equal(profiler.segment().data, profiler.data)
-#     # MODIFY IN PLACE
-#     profiler.segment(start=1, stop=0, inplace=True)
-#     assert np.array_equal(profiler.x, [])
-#     assert np.array_equal(profiler.data, [])
+def test_DoseProfile_segment():
+    profiler = DoseProfile([],[])
+    profiler.from_tuples(PROFILER)
+    # INVALID RANGE -> NO POINTS
+    assert np.array_equal(profiler.segment(start=1, stop=0).x, [])
+    assert np.array_equal(profiler.segment(start=1, stop=0).data, [])
+    # POINT RANGE -> ONE POINT
+    assert np.array_equal(profiler.segment(start=0, stop=0).x, [0])
+    assert np.array_equal(profiler.segment(start=0, stop=0).data, [45.23])
+    # FULL RANGE -> ALL POINTS
+    assert np.array_equal(profiler.segment().x, profiler.x)
+    assert np.array_equal(profiler.segment().data, profiler.data)
+    # MODIFY IN PLACE
+    profiler.segment(start=1, stop=0, inplace=True)
+    assert np.array_equal(profiler.x, [])
+    assert np.array_equal(profiler.data, [])
 
 
-# def test_DoseProfile_resample():
-#     profiler = DoseProfile(PROFILER, metadata={'depth': 10, 'medium': 'water'})
-#     # METADATA
-#     assert profiler.metadata['depth'] == 10
-#     assert profiler.metadata['medium'] == 'water'
-#     try:
-#         profiler.metadata['bogus']
-#     except KeyError as k:
-#         assert str(k) == "'bogus'"
-#     # CONSISTENT CONTENTS WITH UPSAMPLING
-#     assert np.isclose(profiler.interp(0), profiler.resample(0.1).interp(0))
-#     assert np.isclose(profiler.interp(6.372),
-#                       profiler.resample(0.1).interp(6.372))
-#     # CORRECT RESAMPLE INCREMENTS
-#     resampled = profiler.resample(0.1)
-#     increments = np.diff([i for i in resampled.x])
-#     assert np.allclose(increments, 0.1)
-#     # START LOCATION IS UNCHANGED
-#     assert np.isclose(resampled.data[0], profiler.data[0])
-
+def test_DoseProfile_resample():
+    profiler = DoseProfile([],[])
+    profiler.from_tuples(PROFILER, metadata={'depth': 10, 'medium': 'water'})
+    # METADATA
+    assert profiler.metadata['depth'] == 10
+    assert profiler.metadata['medium'] == 'water'
+    # CONSISTENT CONTENTS WITH UPSAMPLING
+    assert np.isclose(profiler.interp(0), profiler.resample(0.1).interp(0))
+    assert np.isclose(profiler.interp(6.372),
+                      profiler.resample(0.1).interp(6.372))
+    # CORRECT RESAMPLE INCREMENTS
+    resampled = profiler.resample(0.1)
+    increments = np.diff([i for i in resampled.x])
+    assert np.allclose(increments, 0.1)
+    # START LOCATION UNCHANGED
+    assert np.isclose(resampled.data[0], profiler.data[0])
 
 # def test_pulse():
 #     assert pulse()[0] == (-20.0, 0.0)
 
-
 # def test_overlay():
 #     assert np.allclose(overlay(PROFILER, WEDGED), 0.2)
-
 
 # def test_normalise_dose():
 #     assert normalise_dose(PROFILER, 0.0)[41][1] == 100.0
 
-
 # def test_normalise_distance():
 #     assert np.isclose(normalise_distance(PROFILER)[0][0], 3.215686274)
-
 
 # def test_edges():
 #     assert np.allclose(edges(PROFILER), (-5.1, 4.9))
 
-
 # def test_recentre():
 #     assert np.allclose(recentre(PROFILER)[0][0], -16.3)
-
 
 # def test_flatness():
 #     assert np.allclose(flatness(PROFILER), 0.03042720)
 
-
 # def test_symmetry():
 #     assert np.allclose(symmetry(PROFILER), 0.0253189859)
-
 
 # def test_symmetrise():
 #     symmetric = symmetrise(PROFILER)
 #     assert symmetric[0][1] == symmetric[-1][1]
-
 
 # def test_is_wedged():
 #     assert not is_wedged(PROFILER)
@@ -153,19 +215,19 @@ WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
 
 
 if __name__ == "__main__":
-    # test_conversion()
-    # test_function_updating_with_shift()
-    # test_default_interp_function()
+    test_conversion()
+    test_function_updating_with_shift()
+    test_default_interp_function()
     test_DoseProfile_segment()
     test_DoseProfile_resample()
-    # test_pulse()
-    # test_resample()
-    # test_overlay()
-    # test_edges()
-    # test_normalise_dose()
-    # test_normalise_distance()
-    # test_recentre()
-    # test_flatness()
-    # test_symmetry()
-    # test_symmetrise()
-    # test_is_wedged()
+#     test_pulse()
+#     test_resample()
+#     test_overlay()
+#     test_edges()
+#     test_normalise_dose()
+#     test_normalise_distance()
+#     test_recentre()
+#     test_flatness()
+#     test_symmetry()
+#     test_symmetrise()
+#     test_is_wedged()
