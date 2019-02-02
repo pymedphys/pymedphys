@@ -76,7 +76,6 @@ def test_multiple_threshold_inputs():
         [3], [0.3, 0.5], lower_percent_dose_cutoff=0)
 
 
-@pytest.mark.skip("Timing out, need to solve")
 def test_lower_dose_threshold():
     """Verify that the lower dose threshold works as expected"""
     ref = [0, 1, 1.9, 2, 2.1, 3, 4, 5, 10, 10]
