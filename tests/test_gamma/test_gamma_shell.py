@@ -65,13 +65,13 @@ def test_a_set_of_gamma_scaling():
     does_gamma_scale_as_expected(0.6, 20, [2, 3, 4])
 
 
-def test_multiple_distance_inputs():
+def test_multiple_threshold_inputs():
     coords, reference, evaluation, _ = get_dummy_gamma_set()
 
     gamma_shell(
         coords, reference,
         coords, evaluation,
-        3, [0.3, 0.5], lower_percent_dose_cutoff=0)
+        [3], [0.3, 0.5], lower_percent_dose_cutoff=0)
 
 
 def test_lower_dose_threshold():
