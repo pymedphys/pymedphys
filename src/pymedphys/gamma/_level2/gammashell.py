@@ -159,7 +159,7 @@ def gamma_shell(coords_reference, dose_reference,
         gamma[key] = gamma_temp
 
     if not options.quiet:
-        print('')
+        print('\nComplete!')
 
     if len(gamma.keys()) == 1:
         gamma = next(iter(gamma.values()))
