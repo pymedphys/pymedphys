@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Simon Biggs
+# Copyright (C) 2015, 2019 Simon Biggs
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -29,8 +29,62 @@ import numpy as np
 from pymedphys.gamma import gamma_shell, calculate_coordinates_shell
 
 
+def does_gamma_scale_as_expected(init_distance_threshold, threshold_ratio,
+                                 scales_to_test):
+    coords, reference, evaluation, _ = get_dummy_gamma_set()
+
+    all_scales = np.concatenate([[1], scales_to_test])
+
+    distance_thresholds_to_test = init_distance_threshold * all_scales
+    dose_thresholds_to_test = distance_thresholds_to_test * threshold_ratio
+
+    gamma_results = []
+    for dose, distance in zip(dose_thresholds_to_test, distance_thresholds_to_test):
+        gamma_results.append(gamma_shell(
+            coords, reference,
+            coords, evaluation,
+            dose, distance, lower_percent_dose_cutoff=0))
+
+    for i, scale in enumerate(scales_to_test):
+        print(scale)
+
+        abs_diff = np.abs(gamma_results[i+1] - gamma_results[0]/scale)
+        ref = np.where(abs_diff == np.max(abs_diff))
+
+        print(np.max(abs_diff))
+
+        # print(gamma_results[0][ref])
+        # print(gamma_results[i+1][ref])
+
+        assert np.all(abs_diff <= 0.1)
+
+
+def test_a_set_of_gamma_scaling():
+    does_gamma_scale_as_expected(0.6, 10, [2, 3, 4])
+    does_gamma_scale_as_expected(0.6, 15, [2, 3, 4])
+    does_gamma_scale_as_expected(0.6, 20, [2, 3, 4])
+
+
 # def test_multiple_distance_inputs():
-# gamma_shell()
+#     coords, reference, evaluation, _ = get_dummy_gamma_set()
+
+#     gamma_shell(
+#         coords, reference,
+#         coords, evaluation,
+#         3, [0.3, 0.5], lower_percent_dose_cutoff=0)
+
+
+def test_lower_dose_threshold():
+    """Verify that the lower dose threshold works as expected"""
+    ref = [0, 1, 1.9, 2, 2.1, 3, 4, 5, 10, 10]
+    coords_ref = (np.arange(len(ref)),)
+
+    evl = [10]*(len(ref) + 2)
+    coords_evl = (np.arange(len(evl)) - 4,)
+
+    result = gamma_shell(coords_ref, ref, coords_evl, evl, 10, 1)
+
+    assert np.array_equal(ref < 0.2*np.max(ref), np.isnan(result))
 
 
 def get_dummy_gamma_set():
@@ -53,19 +107,6 @@ def get_dummy_gamma_set():
     expected_gamma[3:-2:, 4:-2:, 5:-2:] = 0.5
 
     return coords, reference, evaluation, expected_gamma
-
-
-def test_lower_dose_threshold():
-    """Verify that the lower dose threshold works as expected"""
-    ref = [0, 1, 1.9, 2, 2.1, 3, 4, 5, 10, 10]
-    coords_ref = (np.arange(len(ref)),)
-
-    evl = [10]*(len(ref) + 2)
-    coords_evl = (np.arange(len(evl)) - 4,)
-
-    result = gamma_shell(coords_ref, ref, coords_evl, evl, 10, 1)
-
-    assert np.array_equal(ref < 0.2*np.max(ref), np.isnan(result))
 
 
 def test_regression_of_gamma_3d():
