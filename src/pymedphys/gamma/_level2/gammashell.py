@@ -34,6 +34,7 @@ This module makes use of some of the ideas presented within
 
 import sys
 from typing import Union, Optional
+import itertools
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -145,16 +146,23 @@ def gamma_shell(coords_reference, dose_reference,
 
     current_gamma = gamma_loop(options)
 
-    gamma = np.reshape(
-        current_gamma, np.shape(dose_reference))
-    gamma[np.isinf(gamma)] = np.nan
+    gamma = {}
+    for key, value in current_gamma.items():
+        gamma_temp = np.reshape(
+            value, np.shape(dose_reference))
+        gamma_temp[np.isinf(gamma_temp)] = np.nan
 
-    with np.errstate(invalid='ignore'):
-        gamma_greater_than_ref = gamma > max_gamma
-        gamma[gamma_greater_than_ref] = max_gamma
+        with np.errstate(invalid='ignore'):
+            gamma_greater_than_ref = gamma_temp > max_gamma
+            gamma_temp[gamma_greater_than_ref] = max_gamma
+
+        gamma[key] = gamma_temp
 
     if not options.quiet:
         print('')
+
+    if len(gamma.keys()) == 1:
+        gamma = next(iter(gamma.values()))
 
     return gamma
 
@@ -166,6 +174,19 @@ def default_ram() -> int:
     ram_available = int(total_memory * 0.8)
 
     return ram_available
+
+
+def expand_dims_to_1d(array):
+    array = np.array(array)
+    dims = len(np.shape(array))
+
+    if dims == 0:
+        return array[None]
+
+    if dims == 1:
+        return array
+
+    raise ValueError("Expected a 0-d or 1-d array")
 
 
 @dataclass(frozen=True)
@@ -214,15 +235,15 @@ class GammaInternalFixedOptions():
             coords_reference, dose_reference,
             coords_evaluation, dose_evaluation)
 
-        dose_percent_threshold = np.array(dose_percent_threshold)
-        distance_mm_threshold = np.array(distance_mm_threshold)
+        dose_percent_threshold = expand_dims_to_1d(dose_percent_threshold)
+        distance_mm_threshold = expand_dims_to_1d(distance_mm_threshold)
 
         if global_normalisation is None:
             global_normalisation = np.max(dose_reference)
 
         lower_dose_cutoff = lower_percent_dose_cutoff / 100 * global_normalisation
 
-        distance_step_size = distance_mm_threshold / interp_fraction
+        distance_step_size = np.min(distance_mm_threshold) / interp_fraction
         maximum_test_distance = np.max(distance_mm_threshold) * max_gamma
 
         evaluation_interpolation = RegularGridInterpolator(
@@ -288,7 +309,10 @@ class GammaInternalFixedOptions():
 def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
     still_searching_for_gamma = np.ones_like(
         options.flat_dose_reference).astype(bool)
-    current_gamma = np.inf * np.ones_like(options.flat_dose_reference)
+    current_gamma = {
+        key: np.inf * np.ones_like(options.flat_dose_reference)
+        for key in get_dose_distence_combos(options)
+    }
     distance = 0.0
     while distance <= options.maximum_test_distance:
         to_be_checked = (
@@ -303,22 +327,9 @@ def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
         min_relative_dose_difference = calculate_min_dose_difference(
             options, distance, to_be_checked)
 
-        gamma_at_distance = np.sqrt(
-            (min_relative_dose_difference /
-             (options.dose_percent_threshold / 100)) ** 2
-            + (distance / options.distance_mm_threshold) ** 2)
-
-        current_gamma[to_be_checked] = np.min(
-            np.vstack((
-                gamma_at_distance, current_gamma[to_be_checked]
-            )), axis=0)
-
-        still_searching_for_gamma = (
-            current_gamma > distance / options.distance_mm_threshold)
-
-        if options.skip_once_passed:
-            still_searching_for_gamma = (
-                still_searching_for_gamma & (current_gamma >= 1))
+        current_gamma, still_searching_for_gamma = multi_thresholds_gamma_calc(
+            options, current_gamma, min_relative_dose_difference, distance,
+            to_be_checked)
 
         distance += options.distance_step_size
 
@@ -326,6 +337,42 @@ def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
             break
 
     return current_gamma
+
+
+def get_dose_distence_combos(options: GammaInternalFixedOptions):
+    return itertools.product(
+        options.dose_percent_threshold, options.distance_mm_threshold)
+
+
+def multi_thresholds_gamma_calc(options: GammaInternalFixedOptions,
+                                current_gamma,
+                                min_relative_dose_difference,
+                                distance, to_be_checked):
+    still_searching_for_gamma = []
+
+    for key in get_dose_distence_combos(options):
+        dose_threshold, distance_threshold = key
+
+        gamma_at_distance = np.sqrt(
+            (min_relative_dose_difference / (dose_threshold / 100)) ** 2
+            + (distance / distance_threshold) ** 2)
+
+        current_gamma[key][to_be_checked] = np.min(
+            np.vstack((
+                gamma_at_distance, current_gamma[key][to_be_checked]
+            )), axis=0)
+
+        still_searching_for_gamma.append(
+            current_gamma[key] > distance / distance_threshold)
+
+        if options.skip_once_passed:
+            still_searching_for_gamma[-1] = (
+                still_searching_for_gamma[-1] & (current_gamma[key] >= 1))
+
+    still_searching_for_gamma = np.concatenate(still_searching_for_gamma)
+    still_searching_for_gamma = np.any(still_searching_for_gamma, axis=-1)
+
+    return current_gamma, still_searching_for_gamma
 
 
 def calculate_min_dose_difference(options, distance, to_be_checked):
