@@ -121,7 +121,7 @@ def gamma_shell(coords_reference, dose_reference,
         lower_percent_dose_cutoff, interp_fraction,
         max_gamma, local_gamma,
         global_normalisation, skip_once_passed,
-        mask_evaluation, random_subset,
+        random_subset,
         ram_available, quiet)
 
     if not options.quiet:
@@ -227,7 +227,7 @@ class GammaInternalFixedOptions():
                          lower_percent_dose_cutoff=20, interp_fraction=10,
                          max_gamma=np.inf, local_gamma=False,
                          global_normalisation=None, skip_once_passed=False,
-                         mask_evaluation=False, random_subset=None,
+                         random_subset=None,
                          ram_available=None, quiet=False):
 
         coords_reference, coords_evaluation = run_input_checks(
