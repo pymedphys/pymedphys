@@ -65,13 +65,13 @@ def test_a_set_of_gamma_scaling():
     does_gamma_scale_as_expected(0.6, 20, [2, 3, 4])
 
 
-# def test_multiple_distance_inputs():
-#     coords, reference, evaluation, _ = get_dummy_gamma_set()
+def test_multiple_distance_inputs():
+    coords, reference, evaluation, _ = get_dummy_gamma_set()
 
-#     gamma_shell(
-#         coords, reference,
-#         coords, evaluation,
-#         3, [0.3, 0.5], lower_percent_dose_cutoff=0)
+    gamma_shell(
+        coords, reference,
+        coords, evaluation,
+        3, [0.3, 0.5], lower_percent_dose_cutoff=0)
 
 
 def test_lower_dose_threshold():
@@ -179,7 +179,7 @@ def test_distance_0_gives_1_point():
     Confirm that the the largest distance between one point and any other
     is less than the defined step size
     """
-    distance_step_size = 0.03
+    distance_step_size = 0.1
     num_dimensions = 3
     distance = 0
 
