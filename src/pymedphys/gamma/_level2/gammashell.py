@@ -23,6 +23,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import time
 """Compare two dose grids with the gamma index.
 
 This module is a python implementation of the gamma index.
@@ -336,6 +337,10 @@ def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
         if np.sum(to_be_checked) == 0:
             break
 
+        # print(current_gamma)
+        # print(still_searching_for_gamma)
+        # time.sleep(0.5)
+
     return current_gamma
 
 
@@ -348,7 +353,9 @@ def multi_thresholds_gamma_calc(options: GammaInternalFixedOptions,
                                 current_gamma,
                                 min_relative_dose_difference,
                                 distance, to_be_checked):
-    still_searching_for_gamma = []
+    still_searching_for_gamma = [
+        np.zeros_like(next(iter(current_gamma.values()))).astype(bool)[None]
+    ]
 
     for key in get_dose_distence_combos(options):
         dose_threshold, distance_threshold = key
@@ -369,8 +376,15 @@ def multi_thresholds_gamma_calc(options: GammaInternalFixedOptions,
             still_searching_for_gamma[-1] = (
                 still_searching_for_gamma[-1] & (current_gamma[key] >= 1))
 
-    still_searching_for_gamma = np.concatenate(still_searching_for_gamma)
-    still_searching_for_gamma = np.any(still_searching_for_gamma, axis=-1)
+        still_searching_for_gamma[-1] = still_searching_for_gamma[-1][None]
+
+        # print(still_searching_for_gamma)
+
+    still_searching_for_gamma = np.concatenate(
+        still_searching_for_gamma, axis=0)
+
+    # print(still_searching_for_gamma)
+    still_searching_for_gamma = np.any(still_searching_for_gamma, axis=0)
 
     return current_gamma, still_searching_for_gamma
 
