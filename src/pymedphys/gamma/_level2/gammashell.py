@@ -346,7 +346,7 @@ def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
     return current_gamma
 
 
-def get_dose_distence_combos(options: GammaInternalFixedOptions):
+def get_dose_distance_combos(options: GammaInternalFixedOptions):
     return itertools.product(
         options.dose_percent_threshold, options.distance_mm_threshold)
 
