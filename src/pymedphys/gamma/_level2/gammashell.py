@@ -80,7 +80,7 @@ def gamma_shell(coords_reference, dose_reference,
         match of the coordinates given.
     lower_percent_dose_cutoff : float, optional
         The percent lower dose cutoff below which gamma will not be calculated.
-        By default this is only applied to the reference grid.
+        This is only applied to the reference grid.
     interp_fraction : float, optional
         The fraction which gamma distance threshold is divided into for
         interpolation. Defaults to 10 as recommended within
