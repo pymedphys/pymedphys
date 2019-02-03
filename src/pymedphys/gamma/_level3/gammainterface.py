@@ -28,7 +28,7 @@
 from ...libutils import get_imports
 from ...dcm import coords_and_dose_from_dcm
 
-from .._level1.gammafilter import gamma_filter_numpy, convert_to_percent_pass
+from .._level1.gammafilter import gamma_filter_numpy, calculate_pass_rate
 from .._level2.gammashell import gamma_shell
 
 IMPORTS = get_imports(globals())
@@ -142,7 +142,7 @@ def gamma_percent_pass(dcm_ref_filepath, dcm_eval_filepath,
             dose_percent_threshold, distance_mm_threshold,
             **kwargs)
 
-        percent_pass = convert_to_percent_pass(gamma)
+        percent_pass = calculate_pass_rate(gamma)
 
     elif method == 'filter':
         percent_pass = gamma_filter_numpy(
