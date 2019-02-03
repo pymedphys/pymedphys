@@ -136,7 +136,7 @@ def gamma_shell(coords_reference, dose_reference,
         print('Distance threshold set to {} mm'.format(
             options.distance_mm_threshold))
         print('Lower dose cutoff set to {} Gy ({}%)'.format(
-            options.lower_dose_cutoff, lower_percent_dose_cutoff))
+            options.lower_dose_cutoff, options.lower_percent_dose_cutoff))
         print('')
 
     current_gamma = gamma_loop(options)
