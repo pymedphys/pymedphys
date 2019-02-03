@@ -24,18 +24,21 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys.gamma import gamma_shell, convert_to_percent_pass
-import pydicom
-import numpy as np
-import os
-import pytest
-"""The tests given here are a replicated using pymedphys.gamma from the method
+"""The tests given here are replicated using pymedphys.gamma from the method
 given within the following paper:
 
 > C. Agnew, C. McGarry, A tool to include gamma analysis software into a
 > quality assurance program. Radiotherapy and Oncology (2016),
 > http://dx.doi.org/10.1016/j.radonc.2015.11.034
 """
+
+
+from pymedphys.gamma import gamma_shell, calculate_pass_rate
+import pydicom
+import numpy as np
+import os
+import pytest
+
 
 # pylint: disable=C0103,C1801
 
@@ -113,7 +116,7 @@ def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
     gamma = run_gamma(filepath_ref, filepath_eval, random_subset,
                       max_gamma, dose_threshold, distance_threshold)
 
-    gamma_pass = convert_to_percent_pass(gamma)
+    gamma_pass = calculate_pass_rate(gamma)
 
     assert np.round(gamma_pass, decimals=1) == result
 
@@ -152,5 +155,5 @@ def test_multi_inputs():
 
     for key, value in gamma.items():
         assert (
-            np.round(convert_to_percent_pass(value), decimals=1)
+            np.round(calculate_pass_rate(value), decimals=1)
             == baseline[key])
