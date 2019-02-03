@@ -72,7 +72,7 @@ class DoseBase():
         return deepcopy(self)
 
 
-class Dose1D(XArrayComposition):
+class Dose1D(DoseBase):
     def __init__(self, x, data):
         coords = [('x', x)]
         super().__init__(data, coords)
