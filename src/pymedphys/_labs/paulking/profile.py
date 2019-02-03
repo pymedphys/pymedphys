@@ -130,7 +130,7 @@ class DoseProfile(Dose1D):
 
         Keyword Arguments
         -----------------
-        metadata : dict, toptional
+        metadata : dict, optional
             Dictionary of key-value pairs that describe the profile
 
         """
@@ -239,8 +239,20 @@ class DoseProfile(Dose1D):
         pass
 
 
-class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE CLASS?
-    pass
+class DoseDepth(Dose1D):
+    pass  # SEPARATE CLASS NEEDED?
+
+
+# # PRIVATE FUNCTIONS ======================================
+
+# def _get_dist_vals(dose_prof):
+#     """ Unzip distance-values from dose-profile. """
+#     return list(list(zip(*dose_prof))[0])
+
+
+# def _get_dose_vals(dose_prof):
+#     """ Unzip dose-values from dose-profile. """
+#     return list(list(zip(*dose_prof))[1])
 
 
 # def _make_dose_vals(dist_vals, dose_func):
@@ -253,13 +265,15 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 #             dose_vals.append(0.0)
 #     return dose_vals
 
+
 # def _find_umbra(dose_prof):
 #     """ Return a list of distances over the central 80% a dose profile. """
 #     e = edges(dose_prof)
-#     dist_strt= 0.8 * e[0]
-#     dist_stop= 0.8 * e[-1]
+#     dist_strt = 0.8 * e[0]
+#     dist_stop = 0.8 * e[-1]
 #     umbra = [d for d in dose_prof if d[0] >= dist_strt and d[0] <= dist_stop]
 #     return umbra
+
 
 # def _find_dose(dose_prof, dist):
 #     """ Return the dose at a distance from a dose-profile. """
@@ -269,6 +283,7 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 #         kind='linear')
 #     dose = dose_func(dist)
 #     return(dose)
+
 
 # def _find_dists(dose_prof, dose):
 #     """
@@ -304,7 +319,7 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 # # PUBLIC FUNCTIONS ==========================================
 
 # def pulse(centre=0.0, center=None, width=10.0,
-#                          dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
+#           dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
 #     """
 #     Return a pulse shaped dose-profile; specified centre, width, and domain.
 #     """
@@ -324,6 +339,40 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 #     return dose_prof
 
 
+# def resample(dose_prof, dist_strt=-np.inf, dist_stop=np.inf, dist_step=0.1):
+#     """
+#     Return a dose-profile extending from distance-start to distance-stop,
+#     by resampling a profile at the indicated increment.
+
+#     """
+
+#     dose_func = interpolate.interp1d(
+#         _get_dist_vals(dose_prof),
+#         _get_dose_vals(dose_prof),
+#         kind='linear')
+
+#     # FIND START AND STOP -------------------
+#     dist_vals = _get_dist_vals(dose_prof)
+
+#     if not dist_strt:
+#         dist_strt = -np.inf
+#     dist_strt = max(dist_strt, min(dist_vals))
+
+#     if not dist_stop:
+#         dist_stop = np.inf
+#     dist_stop = min(dist_stop, max(dist_vals))
+
+#     assert dist_stop > dist_strt
+#     # -----------------------------------------
+
+#     dist_vals = np.arange(dist_strt, dist_stop + dist_step, dist_step)
+#     dose_vals = _make_dose_vals(dist_vals, dose_func)
+
+#     resampled = list(zip(dist_vals, dose_vals))
+
+#     return resampled
+
+
 # def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
 #     """
 #     Return as a float, the misalignment between two dose-profiles, i.e. the
@@ -336,25 +385,25 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 #     dist_vals_fixed = _get_dist_vals(dose_prof_fixed)
 #     dose_vals_fixed = _get_dose_vals(dose_prof_fixed)
 
-#     ## POSSIBLE OFFSETS --------------------------
+#     # POSSIBLE OFFSETS --------------------------
 #     step = 0.5 * min(min(np.diff(dist_vals_moves)),
 #                      min(np.diff(dist_vals_fixed)))
 #     strt = max(min(dist_vals_moves), min(dist_vals_fixed))
 #     stop = min(max(dist_vals_moves), max(dist_vals_fixed)) + step
 #     possible_offsets = np.arange(strt, stop, step)
-#     ## --------------------------------------------
+#     # --------------------------------------------
 
 #     dose_func_fixed = interpolate.interp1d(dist_vals_fixed, dose_vals_fixed)
 
-#     ## DISTANCE VALUES OF FIXED CURVE ------------------------
+#     # DISTANCE VALUES OF FIXED CURVE ------------------------
 #     strt = 3 * min(min(dist_vals_moves), min(dist_vals_fixed))
 #     stop = 3 * max(max(dist_vals_moves), max(dist_vals_fixed)) + dist_step
 #     dist_vals_fixed = np.arange(strt, stop, dist_step)
-#     ## -------------------------------------------------------
+#     # -------------------------------------------------------
 
 #     dose_vals_fixed = _make_dose_vals(dist_vals_fixed, dose_func_fixed)
 
-#     ## EVALUATE FIT AT ALL CANDIDATE SHIFT POSITIONS -----------
+#     # EVALUATE FIT AT ALL CANDIDATE SHIFT POSITIONS -----------
 #     best_fit_qual = 0
 #     best_offset = -np.inf
 #     for offset in possible_offsets:
@@ -369,7 +418,7 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 #         if max(fit_qual) > best_fit_qual:
 #             best_fit_qual = max(fit_qual)
 #             best_offset = offset
-#     ## ----------------------------------------------------------
+#     # ----------------------------------------------------------
 
 #     return best_offset
 
@@ -385,9 +434,11 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 
 #     return list(zip(_get_dist_vals(dose_prof), d))
 
+
 # def normalize_dose(dose_prof, dist=0.0, dose=100.0):
 #     """ US Eng -> UK Eng """
 #     return normalise_dose(dose_prof, dist, dose)
+
 
 # def normalise_distance(dose_prof):
 #     """
@@ -415,6 +466,7 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 #         elif dist > cax:
 #             result.append((dist/rt_edge, d[i]))
 #     return result
+
 
 # def normalize_distance(dose_prof):
 #     """ US Eng -> UK Eng """
@@ -454,6 +506,7 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 #     for i, dist in enumerate(dist_vals):
 #         cent_prof.append((dist - cax, dose_vals[i]))
 #     return cent_prof
+
 
 # def recenter(dose_prof):
 #     """ US Eng -> UK Eng """
@@ -500,6 +553,7 @@ class DoseDepth(Dose1D):  # SHOULD DOSE PROFILE SUPPORT PDD WITHOUT A SEPARATE C
 #               for i, _ in enumerate(dose_prof)]
 
 #     return result
+
 
 # def symmetrize(dose_prof, dist_step=0.1):
 #     """ US Eng -> UK Eng """
