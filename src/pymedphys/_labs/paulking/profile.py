@@ -34,6 +34,8 @@ import matplotlib.pyplot as plt
 import xarray as xr
 
 from ...libutils import get_imports
+from ...xarray import XArrayComposition
+
 # from .._level1.coreobjects import _PyMedPhysBase
 IMPORTS = get_imports(globals())
 
@@ -70,7 +72,7 @@ class DoseBase():
         return deepcopy(self)
 
 
-class Dose1D(DoseBase):
+class Dose1D(XArrayComposition):
     def __init__(self, x, data):
         coords = [('x', x)]
         super().__init__(data, coords)
