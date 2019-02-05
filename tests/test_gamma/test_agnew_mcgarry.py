@@ -24,11 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys.gamma import gamma_shell
-import pydicom
-import numpy as np
-import os
-import pytest
 """The tests given here are replicated using pymedphys.gamma from the method
 given within the following paper:
 
@@ -36,6 +31,14 @@ given within the following paper:
 > quality assurance program. Radiotherapy and Oncology (2016),
 > http://dx.doi.org/10.1016/j.radonc.2015.11.034
 """
+
+
+from pymedphys.gamma import gamma_shell, calculate_pass_rate
+import pydicom
+import numpy as np
+import os
+import pytest
+
 
 # pylint: disable=C0103,C1801
 
@@ -80,10 +83,8 @@ def load_yx_from_dicom(dcm):
     return y, x
 
 
-def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
-                max_gamma=1.1):
-    """The results of MU Density calculation should not change
-    """
+def run_gamma(filepath_ref, filepath_eval, random_subset=None,
+              max_gamma=1.1, dose_threshold=1, distance_threshold=1):
 
     if random_subset is not None:
         np.random.seed(42)
@@ -100,14 +101,22 @@ def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
     gamma = gamma_shell(
         coords_reference, dose_reference,
         coords_evaluation, dose_evaluation,
-        1, 1,
+        dose_threshold, distance_threshold,
         lower_percent_dose_cutoff=20,
         interp_fraction=10,
         max_gamma=max_gamma, local_gamma=True, skip_once_passed=True,
         random_subset=random_subset)
 
-    valid_gamma = gamma[np.invert(np.isnan(gamma))]
-    gamma_pass = 100 * np.sum(valid_gamma <= 1) / len(valid_gamma)
+    return gamma
+
+
+def local_gamma(filepath_ref, filepath_eval, result, random_subset=None,
+                max_gamma=1.1, dose_threshold=1, distance_threshold=1):
+
+    gamma = run_gamma(filepath_ref, filepath_eval, random_subset,
+                      max_gamma, dose_threshold, distance_threshold)
+
+    gamma_pass = calculate_pass_rate(gamma)
 
     assert np.round(gamma_pass, decimals=1) == result
 
@@ -124,6 +133,27 @@ def test_local_gamma_1mm():
     local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6, random_subset=RANDOM_SUBSET)
 
 
+LOCAL_GAMMA_0_25_BASELINE = 96.9
+
+
 def test_local_gamma_0_25mm():
     local_gamma(REF_VMAT_0_25mm, EVAL_VMAT_0_25mm,
-                96.9, random_subset=RANDOM_SUBSET)
+                LOCAL_GAMMA_0_25_BASELINE, random_subset=RANDOM_SUBSET)
+
+
+def test_multi_inputs():
+    gamma = run_gamma(
+        REF_VMAT_0_25mm, EVAL_VMAT_0_25mm, random_subset=RANDOM_SUBSET,
+        max_gamma=1.0001, dose_threshold=[1, 0.2], distance_threshold=[1, 4])
+
+    baseline = {
+        (1, 1): LOCAL_GAMMA_0_25_BASELINE,
+        (1, 4): 99.8,    # 99.9 with higher interp_fraction
+        (0.2, 1): 91.8,  # 94.4 with higher interp_fraction
+        (0.2, 4): 99.2   # 99.7 with higher interp_fraction
+    }
+
+    for key, value in gamma.items():
+        assert (
+            np.round(calculate_pass_rate(value), decimals=1)
+            == baseline[key])

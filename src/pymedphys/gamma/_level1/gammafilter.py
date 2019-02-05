@@ -37,7 +37,7 @@ from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def convert_to_percent_pass(gamma_array):
+def calculate_pass_rate(gamma_array):
     valid_gamma = gamma_array[np.invert(np.isnan(gamma_array))]
     percent_pass = 100 * np.sum(valid_gamma < 1) / len(valid_gamma)
 
@@ -88,14 +88,14 @@ def gamma_filter_brute_force(coords_reference, dose_reference,
 
         if counter // 30 == counter / 30:
             percent_pass = str(
-                np.round(convert_to_percent_pass(gamma_array), decimals=1))
+                np.round(calculate_pass_rate(gamma_array), decimals=1))
             sys.stdout.write(
                 '\rPercent Pass: {0}% | Percent Complete: {1:.2f}%'.format(
                     percent_pass,
                     counter / np.shape(eval_index)[1] * 100))
             sys.stdout.flush()
 
-    return convert_to_percent_pass(gamma_array)
+    return calculate_pass_rate(gamma_array)
 
 
 def create_point_combination(coords):
