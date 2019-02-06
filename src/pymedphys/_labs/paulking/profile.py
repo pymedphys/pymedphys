@@ -31,7 +31,7 @@ import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
 
-import xarray as xr
+# import xarray as xr
 
 from ...libutils import get_imports
 from ...xarray import XArrayComposition
@@ -46,79 +46,106 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121
 
 
-class DoseBase():
-    def __init__(self, data, coords=None, dims=None):
-        self._xarray = xr.DataArray(data, coords, dims, name='dose')
+# class DoseBase():
+#     def __init__(self, data, coords=None, dims=None):
+#         self._xarray = xr.DataArray(data, coords, dims, name='dose')
 
-    @property
-    def data(self) -> np.ndarray:
-        return self._xarray.data  # type: ignore
+#     @property
+#     def data(self) -> np.ndarray:
+#         return self._xarray.data  # type: ignore
 
-    @data.setter
-    def data(self, array) -> None:
-        array = np.array(array)
-        self._xarray.data = array
+#     @data.setter
+#     def data(self, array) -> None:
+#         array = np.array(array)
+#         self._xarray.data = array
 
-    def to_xarray(self):
-        return deepcopy(self._xarray)
+#     def to_xarray(self):
+#         return deepcopy(self._xarray)
 
-    def to_pandas(self):
-        return self.to_xarray().to_pandas()
+#     def to_pandas(self):
+#         return self.to_xarray().to_pandas()
 
-    def to_dict(self):
-        return self.to_xarray().to_dict()
+#     def to_dict(self):
+#         return self.to_xarray().to_dict()
 
-    def deepcopy(self):
-        return deepcopy(self)
-
-
-class Dose1D(DoseBase):
-    def __init__(self, x, data):
-        coords = [('x', x)]
-        super().__init__(data, coords)
-
-    @property
-    def x(self) -> np.ndarray:
-        return self._xarray.x.data  # type: ignore
-
-    @x.setter
-    def x(self, array) -> None:
-        array = np.array(array)
-        if len(np.shape(array)) != 1:
-            raise ValueError("`x` must be of one dimension.")
-
-        self._xarray.x.data = array
-
-    @property
-    def interp(self) -> NumpyFunction:
-        return interpolate.interp1d(self.x, self.data)  # type: ignore
-
-    def shift(self, applied_shift, inplace=False):
-        if inplace:
-            adjusted_object = self
-        else:
-            adjusted_object = self.deepcopy()
-
-        adjusted_object.x = adjusted_object.x + applied_shift
-
-        if not inplace:
-            return adjusted_object
-
-    def plot(self):
-        return plt.plot(self.x, self.data, 'o-')
-
-    def interactive(self):
-        pass
+#     def deepcopy(self):
+#         return deepcopy(self)
 
 
-class DoseProfile(Dose1D):
-    def __init__(self, x, data, metadata={}):
+# class Dose1D(DoseBase):
+#     def __init__(self, x, data):
+#         coords = [('x', x)]
+#         super().__init__(data, coords)
+
+#     @property
+#     def x(self) -> np.ndarray:
+#         return self._xarray.x.data  # type: ignore
+
+#     @x.setter
+#     def x(self, array) -> None:
+#         array = np.array(array)
+#         if len(np.shape(array)) != 1:
+#             raise ValueError("`x` must be of one dimension.")
+
+#         self._xarray.x.data = array
+
+#     @property
+#     def interp(self) -> NumpyFunction:
+#         return interpolate.interp1d(self.x, self.data)  # type: ignore
+
+#     def shift(self, applied_shift, inplace=False):
+#         if inplace:
+#             adjusted_object = self
+#         else:
+#             adjusted_object = self.deepcopy()
+
+#         adjusted_object.x = adjusted_object.x + applied_shift
+
+#         if not inplace:
+#             return adjusted_object
+
+#     def plot(self):
+#         return plt.plot(self.x, self.data, 'o-')
+
+#     def interactive(self):
+#         pass
+
+# class DoseProfile(Dose1D):
+#     def __init__(self, x, data, metadata={}):
+#         self.metadata = metadata
+#         super().__init__(x, data)
+
+
+class DoseProfile():
+    def __init__(self, x=[], data=[], metadata={}):
+        self.x = np.array(x)
+        self.data = np.array(data)
         self.metadata = metadata
-        super().__init__(x, data)
+        if len(self.x) < 2:
+            self.interp = None
+        else:
+            self.interp = interpolate.interp1d(self.x, self.data)
 
     def __len__(self):
         assert len(self.x) == len(self.data)
         return len(self.x)
+
+    def __eq__(self, other):
+        if np.array_equal(self.x, other.x) and \
+           np.array_equal(self.data, other.data) and \
+           self.metadata == other.metadata:
+            return True
+        else:
+            return False
+
+    def __copy__(self):
+        return copy.deepcopy(self)
+
+    def from_lists(self, x, data, metadata={}):
+        self.x = np.array(x)
+        self.data = np.array(data)
+        self.__init__(x=x, data=data, metadata=metadata)
+        return(DoseProfile(x=x, data=data, metadata=metadata))
 
     def from_tuples(self, list_of_tuples, metadata={}):
         """ Load a list of (x,data) tuples.
@@ -135,14 +162,27 @@ class DoseProfile(Dose1D):
         metadata : dict, optional
             Dictionary of key-value pairs that describe the profile
 
+        Returns
+        -------
+        array_like
+
         """
-        self.metadata = metadata
         x = list(list(zip(*list_of_tuples))[0])
         data = list(list(zip(*list_of_tuples))[1])
-        super().__init__(x, data)
+        self.__init__(x=x, data=data, metadata=metadata)
+        return DoseProfile(x=x, data=data, metadata=metadata)
 
-    def interactive(self):
-        pass  # WHAT IS THIS INTENDED TO DO?
+    def from_snc_profiler():
+        pass
+
+    def get_dose(self, x):
+        try:
+            return self.interp(x)
+        except ValueError:
+            return np.nan
+
+    def get_distance(self):
+        pass
 
     def segment(self, start=-np.inf, stop=np.inf, inplace=False):
         """ Part of dose profile between begin and end.
@@ -163,7 +203,6 @@ class DoseProfile(Dose1D):
         array_like
 
         """
-
         try:
             start = max(start, min(self.x))
             stop = min(stop, max(self.x))
@@ -178,7 +217,7 @@ class DoseProfile(Dose1D):
         else:
             return DoseProfile(new_x, new_data)
 
-    def resample(self, step, inplace=False):
+    def resample(self, step):
         """ Resample a dose profile at a specified increment.
 
         Resulting profile has stepsize of the indicated step based on
@@ -189,11 +228,6 @@ class DoseProfile(Dose1D):
         step : float
             Sampling increment
 
-        Keyword Arguments
-        -----------------
-        inplace : boolean, optional
-            Mofify the profile in place, default -> return result
-
         Returns
         -------
         array_like
@@ -202,16 +236,26 @@ class DoseProfile(Dose1D):
 
         new_x = np.arange(self.x[0], self.x[-1], step)
         new_data = self.interp(new_x)
+        self.__init__(new_x, new_data, self.metadata)
+        return DoseProfile(new_x, new_data, self.metadata)
 
-        if inplace:
-            self.__init__(new_x, new_data)
-        else:
-            return DoseProfile(new_x, new_data)
+    def normalise_dose(self, x=0.0, data=1.0):
+        """ """
+        norm_factor = data / self.get_dose(x)
+        new_x = self.x
+        new_data = norm_factor * self.data
+        metadata = self.metadata
+        self.__init__(new_x, new_data, self.metadata)
+        return DoseProfile(new_x, new_data)
 
-    def dose_normalise(self):
+    def normalize_dose(self, x=0.0, data=1.0):
+        """ US Eng -> UK Eng """
+        return self.normalise_dose(x=x, data=data)
+
+    def normalise_distance(self):
         pass
 
-    def dist_normalise(self):
+    def normalize_distance(self):
         pass
 
     @property
@@ -240,22 +284,15 @@ class DoseProfile(Dose1D):
     def symmetrise(self):
         pass
 
+    def interactive(self):
+        pass  # WHAT IS THIS INTENDED TO DO?
 
-class DoseDepth(Dose1D):
+
+class DoseDepth():
     pass  # SEPARATE CLASS NEEDED?
 
 
 # # PRIVATE FUNCTIONS ======================================
-
-# def _get_dist_vals(dose_prof):
-#     """ Unzip distance-values from dose-profile. """
-#     return list(list(zip(*dose_prof))[0])
-
-
-# def _get_dose_vals(dose_prof):
-#     """ Unzip dose-values from dose-profile. """
-#     return list(list(zip(*dose_prof))[1])
-
 
 # def _make_dose_vals(dist_vals, dose_func):
 #     """ Return list of dose-vals at distance-vals with generating function. """
@@ -275,16 +312,6 @@ class DoseDepth(Dose1D):
 #     dist_stop = 0.8 * e[-1]
 #     umbra = [d for d in dose_prof if d[0] >= dist_strt and d[0] <= dist_stop]
 #     return umbra
-
-
-# def _find_dose(dose_prof, dist):
-#     """ Return the dose at a distance from a dose-profile. """
-#     dose_func = interpolate.interp1d(
-#         _get_dist_vals(dose_prof),
-#         _get_dose_vals(dose_prof),
-#         kind='linear')
-#     dose = dose_func(dist)
-#     return(dose)
 
 
 # def _find_dists(dose_prof, dose):
@@ -341,40 +368,6 @@ class DoseDepth(Dose1D):
 #     return dose_prof
 
 
-# def resample(dose_prof, dist_strt=-np.inf, dist_stop=np.inf, dist_step=0.1):
-#     """
-#     Return a dose-profile extending from distance-start to distance-stop,
-#     by resampling a profile at the indicated increment.
-
-#     """
-
-#     dose_func = interpolate.interp1d(
-#         _get_dist_vals(dose_prof),
-#         _get_dose_vals(dose_prof),
-#         kind='linear')
-
-#     # FIND START AND STOP -------------------
-#     dist_vals = _get_dist_vals(dose_prof)
-
-#     if not dist_strt:
-#         dist_strt = -np.inf
-#     dist_strt = max(dist_strt, min(dist_vals))
-
-#     if not dist_stop:
-#         dist_stop = np.inf
-#     dist_stop = min(dist_stop, max(dist_vals))
-
-#     assert dist_stop > dist_strt
-#     # -----------------------------------------
-
-#     dist_vals = np.arange(dist_strt, dist_stop + dist_step, dist_step)
-#     dose_vals = _make_dose_vals(dist_vals, dose_func)
-
-#     resampled = list(zip(dist_vals, dose_vals))
-
-#     return resampled
-
-
 # def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
 #     """
 #     Return as a float, the misalignment between two dose-profiles, i.e. the
@@ -423,23 +416,6 @@ class DoseDepth(Dose1D):
 #     # ----------------------------------------------------------
 
 #     return best_offset
-
-
-# def normalise_dose(dose_prof, dist=0.0, dose=100.0):
-#     """
-#     Return a dose-profile, with dose rescaled to yield a dose at distance.
-
-#     """
-
-#     norm_fact = dose / _find_dose(dose_prof, dist)
-#     d = [norm_fact * i for i in _get_dose_vals(dose_prof)]
-
-#     return list(zip(_get_dist_vals(dose_prof), d))
-
-
-# def normalize_dose(dose_prof, dist=0.0, dose=100.0):
-#     """ US Eng -> UK Eng """
-#     return normalise_dose(dose_prof, dist, dose)
 
 
 # def normalise_distance(dose_prof):
