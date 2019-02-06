@@ -104,8 +104,8 @@ if __name__ == '__main__':
     import os
 
     try:
-        test = os.path.join(os.getcwd(), 'tests', 'data',
-                            'tomo', 'sinogram.csv')
+        test = os.path.join(os.getcwd(), 'scripts', 'shareables',
+                            'tomo_sinogram_csv2pdf', 'sinogram.csv')
         tomo_sinogram_csv2pdf(test, show=True, save=True)
     except IOError:
         print('No sinogram csv file.')
