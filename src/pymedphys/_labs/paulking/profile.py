@@ -24,12 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from copy import deepcopy
+# from copy import deepcopy
 from typing import Callable
+import copy
 
 import numpy as np
 from scipy import interpolate
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # import xarray as xr
 
@@ -116,7 +117,7 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 #         super().__init__(x, data)
 
 
-class DoseProfile():
+class Profile():
     def __init__(self, x=[], data=[], metadata={}):
         self.x = np.array(x)
         self.data = np.array(data)
@@ -141,11 +142,18 @@ class DoseProfile():
     def __copy__(self):
         return copy.deepcopy(self)
 
+    def __str__(self):
+        beginning = str(self.__str__).split('of ')[-1].split(' at')[0]
+        middle = ' of length {}'.format(len(self))
+        ending = '>'
+        result = beginning + middle + ending
+        return(result)
+
     def from_lists(self, x, data, metadata={}):
         self.x = np.array(x)
         self.data = np.array(data)
         self.__init__(x=x, data=data, metadata=metadata)
-        return(DoseProfile(x=x, data=data, metadata=metadata))
+        return(Profile(x=x, data=data, metadata=metadata))
 
     def from_tuples(self, list_of_tuples, metadata={}):
         """ Load a list of (x,data) tuples.
@@ -170,21 +178,33 @@ class DoseProfile():
         x = list(list(zip(*list_of_tuples))[0])
         data = list(list(zip(*list_of_tuples))[1])
         self.__init__(x=x, data=data, metadata=metadata)
-        return DoseProfile(x=x, data=data, metadata=metadata)
+        return Profile(x=x, data=data, metadata=metadata)
 
-    def from_snc_profiler():
+    def from_snc_profiler(self):
+        """ """
         pass
 
-    def get_dose(self, x):
+    def get_dose(self, x) -> float:
+        """ Profile dose value at distance.
+
+        Return value based on interpolation of source data.
+
+        Argument
+        -----------------
+        x : float
+            End points for incluion, default to source profile end-points
+
+        Returns
+        -------
+        float
+
+         """
         try:
             return self.interp(x)
         except ValueError:
             return np.nan
 
-    def get_distance(self):
-        pass
-
-    def segment(self, start=-np.inf, stop=np.inf, inplace=False):
+    def segment(self, start=-np.inf, stop=np.inf):
         """ Part of dose profile between begin and end.
 
         Resulting profile is comprised of those points in the source
@@ -194,28 +214,23 @@ class DoseProfile():
         Keyword Arguments
         -----------------
         start, stop : float, optional
-            End points for incluion, default to source profile end-points
-        inplace : boolean, optional
-            Mofify the profile in place, default -> return result
+            Result end points, default to source end-points
 
         Returns
         -------
-        array_like
+        Profile
 
         """
         try:
-            start = max(start, min(self.x))
+            start = max(start, min(self.x))  # default & limit to curve ends
             stop = min(stop, max(self.x))
             new_x = self.x[np.logical_and(self.x >= start, self.x <= stop)]
             new_data = self.interp(new_x)
-        except ValueError:  # empty profile
+        except ValueError:
             new_x = []
             new_data = []
-
-        if inplace:
-            self.__init__(new_x, new_data)
-        else:
-            return DoseProfile(new_x, new_data)
+        self.__init__(new_x, new_data)
+        return Profile(new_x, new_data)
 
     def resample(self, step):
         """ Resample a dose profile at a specified increment.
@@ -230,27 +245,66 @@ class DoseProfile():
 
         Returns
         -------
-        array_like
+        Profile
 
         """
 
         new_x = np.arange(self.x[0], self.x[-1], step)
         new_data = self.interp(new_x)
         self.__init__(new_x, new_data, self.metadata)
-        return DoseProfile(new_x, new_data, self.metadata)
+        return Profile(new_x, new_data, self.metadata)
 
     def normalise_dose(self, x=0.0, data=1.0):
-        """ """
+        """ Renormalise to specified dose at distance.
+
+        Source profile values multiplied by scaling factor to yield the specified dose at
+        the specified distance. If distance is not specified, the central axis value is
+        used. If dose is not specified, then normalization is to unity. With neither
+        specified, resulting curve is the conventional off-center-ratio.
+
+        Keywork Arguments
+        -----------------
+        x : float
+        data : float
+
+        Returns
+        -------
+        DoseProfile
+
+        """
         norm_factor = data / self.get_dose(x)
         new_x = self.x
         new_data = norm_factor * self.data
         metadata = self.metadata
         self.__init__(new_x, new_data, self.metadata)
-        return DoseProfile(new_x, new_data)
+        return Profile(new_x, new_data)
 
     def normalize_dose(self, x=0.0, data=1.0):
         """ US Eng -> UK Eng """
         return self.normalise_dose(x=x, data=data)
+
+    def edges(self, step):
+        """ Edges of a profile, as a tuple.
+
+        Return left and right edges of a profile, identified
+        as the points of greatest positive and greatest negative
+        gradient.
+
+        Arguments
+        -----------------
+        step : float
+            Precision of result
+
+        Returns
+        -------
+        tuple
+
+        """
+        resampled = self.resample(step)
+        dydx = list(np.gradient(self.data, self.x))
+        lt_edge = self.x[dydx.index(max(dydx))]
+        rt_edge = self.x[dydx.index(min(dydx))]
+        return (lt_edge, rt_edge)
 
     def normalise_distance(self):
         pass
@@ -258,26 +312,18 @@ class DoseProfile():
     def normalize_distance(self):
         pass
 
-    @property
     def umbra(self):
         pass
 
-    @property
-    def edges(self):
-        pass
-
-    @property
     def centre(self):
         pass
 
     def shift_to_centre(self):
         pass
 
-    @property
     def flatness(self):
         pass
 
-    @property
     def symmetry(self):
         pass
 
@@ -285,11 +331,11 @@ class DoseProfile():
         pass
 
     def interactive(self):
-        pass  # WHAT IS THIS INTENDED TO DO?
+        pass
 
 
 class DoseDepth():
-    pass  # SEPARATE CLASS NEEDED?
+    pass
 
 
 # # PRIVATE FUNCTIONS ======================================
@@ -449,23 +495,6 @@ class DoseDepth():
 # def normalize_distance(dose_prof):
 #     """ US Eng -> UK Eng """
 #     return normalise_distance(dose_prof)
-
-
-# def edges(dose_prof):
-#     """
-#     Return profile edges as a tuple, distances of greatest + / - gradient.
-#     """
-
-#     resampled = resample(dose_prof)
-
-#     dist_vals = _get_dist_vals(resampled)
-#     dose_vals = _get_dose_vals(resampled)
-
-#     dydx = list(np.gradient(dose_vals, dist_vals))
-#     lt_edge = dist_vals[dydx.index(max(dydx))]
-#     rt_edge = dist_vals[dydx.index(min(dydx))]
-
-#     return (lt_edge, rt_edge)
 
 
 # def recentre(dose_prof):

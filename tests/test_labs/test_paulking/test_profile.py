@@ -23,13 +23,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-import pandas as pd
-import xarray as xr
-import copy
+# import pandas as pd
+# import xarray as xr
+# import copy
 
-from deepdiff import DeepDiff
+# from deepdiff import DeepDiff
 
-from pymedphys._labs.paulking.profile import DoseProfile
+from pymedphys._labs.paulking.profile import Profile
 
 # pylint: disable = E1102
 
@@ -140,39 +140,39 @@ WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
 
 
 def test_init():
-    assert np.allclose(DoseProfile(x=[0], data=[0]).x, [0])
+    assert np.allclose(Profile(x=[0], data=[0]).x, [0])
 
 
 def test_interp():
-    assert DoseProfile().interp == None
-    print(np.isclose(DoseProfile(x=[0, 1], data=[0, 1]).interp(0.5), 0.5))
+    assert Profile().interp == None
+    assert np.isclose(Profile(x=[0, 1], data=[0, 1]).interp(0.5), 0.5)
 
 
 def test_len():
-    assert len(DoseProfile()) == 0
+    assert len(Profile()) == 0
 
 
 def test_eq():
-    assert DoseProfile() == DoseProfile()
-    assert DoseProfile(x=[], data=[]) == DoseProfile()
-    assert DoseProfile(x=[0], data=[0]) != DoseProfile()
+    assert Profile() == Profile()
+    assert Profile(x=[], data=[]) == Profile()
+    assert Profile(x=[0], data=[0]) != Profile()
 
 
 def test_copy():
-    original = DoseProfile()
+    original = Profile()
     a_copy = original
     assert a_copy == original
 
 
 def test_from_lists():
-    empty = DoseProfile()
+    empty = Profile()
     also_empty = empty
     also_empty.from_lists([], [])
     assert empty == also_empty
 
 
 def test_from_tuples():
-    empty = DoseProfile()
+    empty = Profile()
     profiler = empty.from_tuples(PROFILER)
     assert len(profiler.x) == len(PROFILER)
     assert profiler.x[0] == PROFILER[0][0]
@@ -183,36 +183,32 @@ def test_from_snc_profiler():
 
 
 def test_get_dose():
-    empty = DoseProfile()
+    empty = Profile()
     profiler = empty.from_tuples(PROFILER)
     assert np.isclose(profiler.get_dose(0), 45.23)
     assert np.isnan(profiler.get_dose(-100))
 
 
-def test_get_distance():
-    pass
-
-
 def test_DoseProfile_segment():
-    profiler = DoseProfile()
-    profiler.from_tuples(PROFILER)
-    # INVALID RANGE -> NO POINTS
-    assert np.array_equal(profiler.segment(start=1, stop=0).x, [])
-    assert np.array_equal(profiler.segment(start=1, stop=0).data, [])
-    # POINT RANGE -> ONE POINT
-    assert np.array_equal(profiler.segment(start=0, stop=0).x, [0])
-    assert np.array_equal(profiler.segment(start=0, stop=0).data, [45.23])
-    # FULL RANGE -> ALL POINTS
-    assert np.array_equal(profiler.segment().x, profiler.x)
-    assert np.array_equal(profiler.segment().data, profiler.data)
-    # MODIFY IN PLACE
-    profiler.segment(start=1, stop=0, inplace=True)
-    assert np.array_equal(profiler.x, [])
-    assert np.array_equal(profiler.data, [])
+    profiler = Profile().from_tuples(PROFILER)
+    # NO POINTS
+    no_points = profiler.segment(start=1, stop=0)
+    assert np.array_equal(no_points.x, [])
+    assert np.array_equal(no_points.data, [])
+    # ONE POINT
+    profiler = Profile().from_tuples(PROFILER)
+    one_point = profiler.segment(start=0, stop=0)
+    assert np.array_equal(one_point.x, [0])
+    assert np.array_equal(one_point.data, [45.23])
+    # ALL POINTS
+    profiler = Profile().from_tuples(PROFILER)
+    all_points = profiler.segment(start=0, stop=0)
+    assert np.array_equal(all_points.x, profiler.x)
+    assert np.array_equal(all_points.data, profiler.data)
 
 
 def test_DoseProfile_resample():
-    profiler = DoseProfile()
+    profiler = Profile()
     profiler.from_tuples(PROFILER, metadata={'depth': 10, 'medium': 'water'})
     # METADATA
     assert profiler.metadata['depth'] == 10
@@ -230,10 +226,15 @@ def test_DoseProfile_resample():
 
 
 def test_normalise_dose():  # also normalize
-    profiler = DoseProfile().from_tuples(PROFILER)
+    profiler = Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.normalise_dose(x=0).get_dose(0), 1.0)
-    profiler = DoseProfile().from_tuples(PROFILER)
+    profiler = Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.normalize_dose(x=0).get_dose(0), 1.0)
+
+
+def test_edges():
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.allclose(profiler.edges(0.1), (-5.1, 4.9))
 
 
 # def test_normalise_distance():
@@ -249,9 +250,6 @@ def test_normalise_dose():  # also normalize
 # def test_overlay():
 #     assert np.allclose(overlay(PROFILER, WEDGED), 0.2)
 
-# def test_edges():
-#     assert np.allclose(edges(PROFILER), (-5.1, 4.9))
-
 # def test_recentre():
 #     assert np.allclose(recentre(PROFILER)[0][0], -16.3)
 
@@ -266,6 +264,8 @@ def test_normalise_dose():  # also normalize
 # def test_is_wedged():
 #     assert not is_wedged(PROFILER)
 #     assert is_wedged(WEDGED)
+
+
 if __name__ == "__main__":
     # test_conversion()
     # test_function_updating_with_shift()
@@ -282,17 +282,13 @@ if __name__ == "__main__":
     test_DoseProfile_segment()
     test_DoseProfile_resample()
     test_normalise_dose()
-#     test_normalise_dose()
-#     test_normalize_dose()
-#     test_normalise_distance()
-#     test_normalize_distance()
-
-#     test_pulse()
-#     test_resample()
-#     test_overlay()
-#     test_edges()
-#     test_recentre()
-#     test_flatness()
-#     test_symmetry()
-#     test_symmetrise()
-#     test_is_wedged()
+    test_edges()
+    #     test_normalise_distance()
+    #     test_pulse()
+    #     test_overlay()
+    #     test_recentre()
+    #     test_flatness()
+    #     test_symmetry()
+    #     test_symmetrise()
+    #     test_is_wedged()
+    pass
