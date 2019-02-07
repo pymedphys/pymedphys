@@ -164,6 +164,13 @@ def test_copy():
     assert a_copy == original
 
 
+def test_str():
+    profiler = Profile().from_tuples(PROFILER)
+    assert profiler.__str__()
+    # print(profiler)
+    # print(description)
+
+
 def test_from_lists():
     empty = Profile()
     also_empty = empty
@@ -235,14 +242,16 @@ def test_normalise_dose():  # also normalize
 def test_edges():
     profiler = Profile().from_tuples(PROFILER)
     assert np.allclose(profiler.edges(0.1), (-5.1, 4.9))
+    assert len(profiler) == len(PROFILER)
 
 
-# def test_normalise_distance():
-#     assert np.isclose(normalise_distance(PROFILER)[0][0], 3.215686274)
-
-# def test_normalize_distance():
-#     assert np.isclose(normalise_distance(PROFILER)[0][0], 3.215686274)
-
+def test_normalise_distance():  # also normalize
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.isclose(profiler.normalise_distance(0.1).x[0], 3.2156862745)
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.isclose(profiler.normalize_distance(0.1).x[0], 3.2156862745)
+    profiler = Profile().from_tuples(PROFILER)
+    assert len(PROFILER) == len(profiler.normalize_distance(0.1).x)
 
 # def test_pulse():
 #     assert pulse()[0] == (-20.0, 0.0)
@@ -275,6 +284,7 @@ if __name__ == "__main__":
     test_len()
     test_eq()
     test_copy()
+    test_str()
     test_from_lists()
     test_from_tuples()
     test_from_snc_profiler()
@@ -283,7 +293,7 @@ if __name__ == "__main__":
     test_DoseProfile_resample()
     test_normalise_dose()
     test_edges()
-    #     test_normalise_distance()
+    test_normalise_distance()
     #     test_pulse()
     #     test_overlay()
     #     test_recentre()
