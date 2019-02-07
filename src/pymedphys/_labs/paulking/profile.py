@@ -269,7 +269,7 @@ class Profile():
 
         Returns
         -------
-        DoseProfile
+        Profile
 
         """
         norm_factor = data / self.get_dose(x)
@@ -300,17 +300,55 @@ class Profile():
         tuple
 
         """
+
+        unmod = copy.deepcopy(self)
         resampled = self.resample(step)
         dydx = list(np.gradient(self.data, self.x))
         lt_edge = self.x[dydx.index(max(dydx))]
         rt_edge = self.x[dydx.index(min(dydx))]
+
+        self.__init__(x=unmod.x, data=unmod.data, metadata=unmod.metadata)
         return (lt_edge, rt_edge)
 
-    def normalise_distance(self):
-        pass
+    def normalise_distance(self, step):
+        """ Renormalise distance to beam edges.
 
-    def normalize_distance(self):
-        pass
+        Source profile distances multiplied by scaling factor to yield unit distance
+        at beam edges.
+            | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
+                of radiation dose data in a small digital computer
+            | (2) Heintz, King, & Childs, May-95, User Manual,
+                Prowess 3000 CT Treatment Planning
+
+        Arguments
+        -----------------
+        step : float
+            Precision of result
+
+        Returns
+        -------
+        Profile
+
+
+        """
+
+        lt_edge, rt_edge = self.edges(step)
+        cax = 0.5*(lt_edge + rt_edge)
+
+        new_x = []
+        for i, dist in enumerate(self.x):
+            if dist < cax:
+                new_x.append(dist/lt_edge)
+            elif dist > cax:
+                new_x.append(dist/rt_edge)
+            else:
+                new_x.append(0.0)
+
+        self.__init__(new_x, self.data, self.metadata)
+        return Profile(new_x, self.data)
+
+    def normalize_distance(self, step):
+        return self.normalise_distance(step)
 
     def umbra(self):
         pass
@@ -339,16 +377,6 @@ class DoseDepth():
 
 
 # # PRIVATE FUNCTIONS ======================================
-
-# def _make_dose_vals(dist_vals, dose_func):
-#     """ Return list of dose-vals at distance-vals with generating function. """
-#     dose_vals = []
-#     for dist in dist_vals:
-#         try:
-#             dose_vals.append(float(dose_func(dist)))
-#         except ValueError:   # ZERO OUTSIDE DOSE_FUNC'S DOMAIN
-#             dose_vals.append(0.0)
-#     return dose_vals
 
 
 # def _find_umbra(dose_prof):
@@ -462,34 +490,6 @@ class DoseDepth():
 #     # ----------------------------------------------------------
 
 #     return best_offset
-
-
-# def normalise_distance(dose_prof):
-#     """
-#     Return a dose-profile which is  rescaled to 2X/W distance
-#     so as to force the beam edges to distances of +/-1.
-
-#         | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
-#               of radiation dose data in a small digital computer
-#         | (2) Heintz, King, & Childs, May-95, User Manual,
-#               Prowess 3000 CT Treatment Planning
-#     """
-
-#     x = _get_dist_vals(dose_prof)
-#     d = _get_dose_vals(dose_prof)
-
-#     lt_edge, rt_edge = edges(dose_prof)
-#     cax = (lt_edge + rt_edge)/2.0
-
-#     result = []
-#     for i, dist in enumerate(x):
-#         if dist < cax:
-#             result.append((dist/lt_edge, d[i]))
-#         elif dist == cax:
-#             result.append((0.0, d[i]))
-#         elif dist > cax:
-#             result.append((dist/rt_edge, d[i]))
-#     return result
 
 
 # def normalize_distance(dose_prof):
