@@ -21,7 +21,7 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=3 pymedphys nbstripout pylint=2.1 coverage mypy pytest xarray Pillow pip scipy numpy
+        packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip scipy numpy=1.15
         updateConda: true
         createOptions: --channel conda-forge
 
