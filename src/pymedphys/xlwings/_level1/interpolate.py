@@ -23,19 +23,36 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import numpy as np
+from scipy import interpolate
 
-"""
-"""
+import xlwings as xw
 
-# pylint: disable=W0401,W0614
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
-from ..libutils import clean_and_verify_levelled_modules
+@xw.func
+@xw.arg('x', np.array, ndim=1)
+@xw.arg('y', np.array, ndim=1)
+@xw.arg('xnew', np.array, ndim=1)
+@xw.arg('fill_value')
+@xw.ret(expand='table')
+def linear_interpolation(x, y, xnew, fill_value=None):
+    f = interpolate.interp1d(x, y, fill_value=fill_value)
+    ynew = f(xnew)
 
-from ._level1.interpolate import *
-from ._level1.numpy import *
-from ._level1.dicom import *
+    return np.expand_dims(ynew, axis=1)
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.interpolate', '._level1.numpy', '._level1.dicom'
-], package='pymedphys.xlwings')
+
+@xw.func
+@xw.arg('points', np.array, ndim=2)
+@xw.arg('values', np.array, ndim=1)
+@xw.arg('points_new', np.array, ndim=2)
+@xw.ret(expand='table')
+def nd_linear_interpolation(points, values, points_new):
+    func = interpolate.LinearNDInterpolator(points, values)
+
+    values_new = func(points_new)
+
+    return np.expand_dims(values_new, axis=1)
