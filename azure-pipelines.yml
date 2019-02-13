@@ -21,7 +21,7 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip scipy
+        packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip scipy numpy
         updateConda: true
         createOptions: --channel conda-forge
 
@@ -29,21 +29,13 @@ jobs:
       displayName: 'Install Homebrew and GNU xargs'
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: source activate pymedphys >> ~/.bashrc && echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> ~/.bash_profile
-      displayName: 'Activate pymedphys within ~/.bashrc'
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-    # - bash: /usr/bin/sudo sh -c 'echo PATH=/home/vsts/.conda/bin:"$PATH" > /etc/profile.d/conda.sh'
-    #   displayName: 'Add `~/.conda/bin` to path'
-    #   condition: eq( variables['Agent.OS'], 'Linux' )
-
-    - bash: bash -c 'which pip && pip install -e .'
+    - bash: pip install -e .
       displayName: 'Install development version of PyMedPhys'
-    - bash: bash -c './azure-pipelines/scripts/matplotlib-backend.sh'
+    - bash: ./azure-pipelines/scripts/matplotlib-backend.sh
       displayName: 'Set matplotlib backend to Agg'
-    - bash: bash -c 'which nbstripout && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"'
+    - bash: find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
       displayName: 'Check that notebooks have no included output'
-    - bash: bash -c 'which python && python setup.py test'
+    - bash: python setup.py test
       displayName: 'Run the full pytest suite'
 
     - task: PublishTestResults@2
