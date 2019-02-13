@@ -29,6 +29,10 @@ jobs:
       displayName: 'Install Homebrew and GNU xargs'
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
+    - bash: source activate pymedphys >> ~/.bashrc
+      displayName: 'Activate pymedphys within ~/.bashrc'
+      condition: eq( variables['Agent.OS'], 'Windows' )
+
     # - bash: /usr/bin/sudo sh -c 'echo PATH=/home/vsts/.conda/bin:"$PATH" > /etc/profile.d/conda.sh'
     #   displayName: 'Add `~/.conda/bin` to path'
     #   condition: eq( variables['Agent.OS'], 'Linux' )
