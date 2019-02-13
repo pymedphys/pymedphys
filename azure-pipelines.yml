@@ -35,7 +35,7 @@ jobs:
       displayName: 'Set matplotlib backend to Agg'
     - bash: find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
       displayName: 'Check that notebooks have no included output'
-    - bash: python setup.py test
+    - bash: if [[ "$OSTYPE" == "msys" ]]; then source activate pymedphys fi && python setup.py test
       displayName: 'Run the full pytest suite'
 
     - task: PublishTestResults@2
