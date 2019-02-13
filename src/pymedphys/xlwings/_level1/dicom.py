@@ -38,9 +38,9 @@ IMPORTS = get_imports(globals())
 
 
 @xw.func
-@xw.arg('dicom_path', str)
-@xw.arg('depth_adjust', float)
-@xw.arg('averaging_distance', float)
+@xw.arg('dicom_path')
+@xw.arg('depth_adjust')
+@xw.arg('averaging_distance')
 @xw.ret(expand='table')
 def depth_dose(dicom_path, depth_adjust, averaging_distance=0):
     dcm = pydicom.read_file(dicom_path, force=True)
@@ -48,14 +48,14 @@ def depth_dose(dicom_path, depth_adjust, averaging_distance=0):
     depth, depth_dose_values = extract_depth_dose(
         dcm, depth_adjust, averaging_distance)
 
-    return np.concatenate([depth, depth_dose_values]).T
+    return np.vstack([depth, depth_dose_values]).T
 
 
 @xw.func
-@xw.arg('dicom_path', str)
-@xw.arg('depth_adjust', float)
-@xw.arg('depth_lookup', float)
-@xw.arg('averaging_distance', float)
+@xw.arg('dicom_path')
+@xw.arg('depth_adjust')
+@xw.arg('depth_lookup')
+@xw.arg('averaging_distance')
 @xw.ret(expand='table')
 def inplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
     dcm = pydicom.read_file(dicom_path, force=True)
@@ -63,14 +63,14 @@ def inplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0
     inplane, inplane_dose, _, _ = extract_profiles(
         dcm, depth_adjust, depth_lookup, averaging_distance)
 
-    return np.concatenate([inplane, inplane_dose]).T
+    return np.vstack([inplane, inplane_dose]).T
 
 
 @xw.func
-@xw.arg('dicom_path', str)
-@xw.arg('depth_adjust', float)
-@xw.arg('depth_lookup', float)
-@xw.arg('averaging_distance', float)
+@xw.arg('dicom_path')
+@xw.arg('depth_adjust')
+@xw.arg('depth_lookup')
+@xw.arg('averaging_distance')
 @xw.ret(expand='table')
 def crossplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
     dcm = pydicom.read_file(dicom_path, force=True)
@@ -78,4 +78,4 @@ def crossplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distanc
     _, _, crossplane, crossplane_dose = extract_profiles(
         dcm, depth_adjust, depth_lookup, averaging_distance)
 
-    return np.concatenate([crossplane, crossplane_dose]).T
+    return np.vstack([crossplane, crossplane_dose]).T
