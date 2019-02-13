@@ -1,6 +1,8 @@
 set -ex
 
-# source activate pymedphys
+if [[ "$OSTYPE" == "win32" ]]; then
+  source activate pymedphys
+fi
 
 which python
 
