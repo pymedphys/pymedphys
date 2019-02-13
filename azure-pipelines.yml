@@ -29,7 +29,7 @@ jobs:
       displayName: 'Install Homebrew and GNU xargs'
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: /usr/bin/sudo sh -c "echo PATH=/home/vsts/.conda/bin:$PATH > /etc/environment"
+    - bash: /usr/bin/sudo sh -c 'echo PATH=/home/vsts/.conda/bin:"$PATH" > /etc/profile.d/conda.sh'
       displayName: 'Add `~/.conda/bin` to path'
       condition: eq( variables['Agent.OS'], 'Linux' )
 
