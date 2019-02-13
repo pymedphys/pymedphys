@@ -96,7 +96,7 @@ setup(
         'pymssql',
         'keyring',
         'shapely',
-        'xlwings',
+        'xlwings; platform_system != "Linux"',
         'pydicom>=1.0',
         'python-dateutil',
         'Pillow',
