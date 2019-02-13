@@ -29,8 +29,8 @@ jobs:
       displayName: 'Install Homebrew and GNU xargs'
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: /usr/bin/sudo ln -s /home/vsts/.conda/bin/activate /usr/bin/activate
-      displayName: 'Create activate symbolic link'
+    - bash: /usr/bin/sudo echo PATH="/home/vsts/.conda/bin:$PATH" > /etc/environment
+      displayName: 'Add `~/.conda/bin` to path'
       condition: eq( variables['Agent.OS'], 'Linux' )
 
     - bash: echo $PATH && source activate pymedphys && pip install -e .
