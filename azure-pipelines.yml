@@ -21,7 +21,7 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip gfortran
+        packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip libgfortran
         updateConda: true
         createOptions: --channel conda-forge
 
