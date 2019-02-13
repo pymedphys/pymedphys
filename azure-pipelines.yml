@@ -29,7 +29,7 @@ jobs:
       displayName: 'Install Homebrew and GNU xargs'
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: source activate pymedphys >> ~/.bashrc
+    - bash: source activate pymedphys >> ~/.bashrc && echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> ~/.bash_profile
       displayName: 'Activate pymedphys within ~/.bashrc'
       condition: eq( variables['Agent.OS'], 'Windows' )
 
