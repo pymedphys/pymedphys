@@ -25,22 +25,26 @@
 
 import numpy as np
 
-import xlwings as xw
+try:
+    import xlwings as xw
+    HAS_XLWINGS = True
+except ImportError:
+    HAS_XLWINGS = False
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-@xw.func
-@xw.arg('values', np.array, ndim=2)
-@xw.ret(expand='table')
-def npravel(values):
-    return np.expand_dims(np.ravel(values.T), axis=1)
+if HAS_XLWINGS:
+    @xw.func
+    @xw.arg('values', np.array, ndim=2)
+    @xw.ret(expand='table')
+    def npravel(values):
+        return np.expand_dims(np.ravel(values.T), axis=1)
 
-
-@xw.func
-@xw.arg('values', np.array, ndim=2)
-@xw.arg('repeats')
-@xw.ret(expand='table')
-def nprepeat(values, repeats):
-    return np.expand_dims(np.repeat(values, repeats), axis=1)
+    @xw.func
+    @xw.arg('values', np.array, ndim=2)
+    @xw.arg('repeats')
+    @xw.ret(expand='table')
+    def nprepeat(values, repeats):
+        return np.expand_dims(np.repeat(values, repeats), axis=1)
