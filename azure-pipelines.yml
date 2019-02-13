@@ -33,7 +33,7 @@ jobs:
       displayName: 'Add `~/.conda/bin` to path'
       condition: eq( variables['Agent.OS'], 'Linux' )
 
-    - bash: echo $PATH && source activate pymedphys && pip install -e .
+    - bash: echo $PATH && which python && source activate pymedphys && which python && pip install -e .
       displayName: 'Install development version of PyMedPhys'
     - bash: ./azure-pipelines/scripts/matplotlib-backend.sh
       displayName: 'Set matplotlib backend to Agg'
