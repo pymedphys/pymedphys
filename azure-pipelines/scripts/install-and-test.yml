@@ -1,4 +1,6 @@
 steps:
+  - bash: conda config --add channels conda-forge
+    displayName: 'Set conda-forge to top channel'
   - bash: echo $PATH && source activate pymedphys && pip install -e .
     displayName: 'Install development version of PyMedPhys'
   - bash: ./azure-pipelines/scripts/matplotlib-backend.sh
