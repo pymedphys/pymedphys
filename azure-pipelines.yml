@@ -6,12 +6,12 @@ jobs:
         linux:
           imageName: 'ubuntu-16.04'
           testTitle: 'Linux'
-        # mac:
-        #   imageName: 'macos-10.13'
-        #   testTitle: 'macOS'
-        # windows:
-        #   imageName: 'vs2017-win2016'
-        #   testTitle: 'Windows'
+        mac:
+          imageName: 'macos-10.13'
+          testTitle: 'macOS'
+        windows:
+          imageName: 'vs2017-win2016'
+          testTitle: 'Windows'
 
     pool:
       vmImage: $(imageName)
@@ -37,13 +37,13 @@ jobs:
     #   displayName: 'Add `~/.conda/bin` to path'
     #   condition: eq( variables['Agent.OS'], 'Linux' )
 
-    - bash: which pip && pip install -e .
+    - bash: bash -c 'which pip && pip install -e .'
       displayName: 'Install development version of PyMedPhys'
-    - bash: ./azure-pipelines/scripts/matplotlib-backend.sh
+    - bash: bash -c './azure-pipelines/scripts/matplotlib-backend.sh'
       displayName: 'Set matplotlib backend to Agg'
-    - bash: which nbstripout && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
+    - bash: bash -c 'which nbstripout && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"'
       displayName: 'Check that notebooks have no included output'
-    - bash: which python && python setup.py test
+    - bash: bash -c 'which python && python setup.py test'
       displayName: 'Run the full pytest suite'
 
     - task: PublishTestResults@2
