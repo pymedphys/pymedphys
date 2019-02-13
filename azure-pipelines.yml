@@ -29,17 +29,17 @@ jobs:
       displayName: 'Install Homebrew and GNU xargs'
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: /usr/bin/sudo sh -c 'echo PATH=/home/vsts/.conda/bin:"$PATH" > /etc/profile.d/conda.sh'
-      displayName: 'Add `~/.conda/bin` to path'
-      condition: eq( variables['Agent.OS'], 'Linux' )
+    # - bash: /usr/bin/sudo sh -c 'echo PATH=/home/vsts/.conda/bin:"$PATH" > /etc/profile.d/conda.sh'
+    #   displayName: 'Add `~/.conda/bin` to path'
+    #   condition: eq( variables['Agent.OS'], 'Linux' )
 
-    - bash: echo $PATH && which python && source activate pymedphys && which python && pip install -e .
+    - bash: which pip && pip install -e .
       displayName: 'Install development version of PyMedPhys'
     - bash: ./azure-pipelines/scripts/matplotlib-backend.sh
       displayName: 'Set matplotlib backend to Agg'
-    - bash: source activate pymedphys && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
+    - bash: which nbstripout && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- '*ipynb'
       displayName: 'Check that notebooks have no included output'
-    - bash: source activate pymedphys && python setup.py test
+    - bash: which python && python setup.py test
       displayName: 'Run the full pytest suite'
 
     - task: PublishTestResults@2
