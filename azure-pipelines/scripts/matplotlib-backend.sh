@@ -1,6 +1,6 @@
 set -ex
 
-if [[ "$OSTYPE" == "win32" ]]; then
+if [[ "$OSTYPE" == "msys" ]]; then
   source activate pymedphys
 fi
 
