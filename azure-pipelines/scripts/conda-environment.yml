@@ -3,6 +3,6 @@ steps:
     inputs:
       createCustomEnvironment: true
       environmentName: pymedphys
-      packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip
+      packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip xlwings
       updateConda: true
       createOptions: --channel conda-forge
