@@ -31,7 +31,7 @@ jobs:
 
     - bash: source activate pymedphys >> ~/.bashrc && echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> ~/.bash_profile
       displayName: 'Activate pymedphys within ~/.bashrc'
-      condition: eq( variables['Agent.OS'], 'Windows' )
+      condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     # - bash: /usr/bin/sudo sh -c 'echo PATH=/home/vsts/.conda/bin:"$PATH" > /etc/profile.d/conda.sh'
     #   displayName: 'Add `~/.conda/bin` to path'
