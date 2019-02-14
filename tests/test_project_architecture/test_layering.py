@@ -23,13 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import sys
-import pytest
 from layer_linter.cmdline import _main
 
 
-@pytest.mark.skipif(sys.platform.startswith("win"),
-                    reason="layer-linter doesn't yet appear to work on Windows")
 def test_layering():
     errno = _main('pymedphys')
     assert errno == 0
