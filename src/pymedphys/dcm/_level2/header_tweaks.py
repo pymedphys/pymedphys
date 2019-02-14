@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import argparse
+import json
 from copy import deepcopy
 
 import pydicom
@@ -58,10 +58,10 @@ def adjust_machine_name_cli(args):
 def delete_sequence_item_with_matching_key(sequence, key, value):
     new_sequence = deepcopy(sequence)
 
-    for item in sequence:
+    for i, item in reversed(list(enumerate(sequence))):
         try:
             if value == getattr(item, key):
-                new_sequence.remove(item)
+                new_sequence.pop(i)
         except AttributeError:
             pass
 
@@ -106,3 +106,13 @@ def adjust_rel_elec_density(dcm, adjustment_map):
         observation.ROIPhysicalPropertiesSequence = physical_properties
 
     return new_dcm
+
+
+def adjust_rel_elec_density_cli(args):
+    adjustment_map = ' '.join(args.adjustment_map)
+    adjustment_map = json.loads(adjustment_map)
+
+    dcm = pydicom.read_file(args.input_file, force=True)
+    new_dcm = adjust_rel_elec_density(dcm, adjustment_map)
+
+    pydicom.write_file(args.output_file, new_dcm)

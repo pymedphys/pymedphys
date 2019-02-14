@@ -26,6 +26,7 @@
 
 import os
 import subprocess
+import json
 
 import pydicom
 
@@ -34,6 +35,8 @@ from pymedphys.dcm import (
 
 
 HERE = os.path.dirname(__file__)
+ORIGINAL_DICOM_FILENAME = os.path.join(HERE, 'original.dcm')
+ADJUSTED_DICOM_FILENAME = os.path.join(HERE, 'adjusted.dcm')
 
 
 def test_adjust_machine_name():
@@ -66,23 +69,20 @@ def test_adjust_machine_name():
     assert adjusted_dicom_file != original_dicom_file
     assert adjusted_dicom_file == expected_dicom_file
 
-    original_dicom_filename = os.path.join(HERE, 'original.dcm')
-    adjusted_dicom_filename = os.path.join(HERE, 'adjusted.dcm')
-
-    pydicom.write_file(original_dicom_filename, original_dicom_file)
+    pydicom.write_file(ORIGINAL_DICOM_FILENAME, original_dicom_file)
     subprocess.check_output(
         'pymedphys dicom adjust-machine-name {} {} {}'.format(
-            original_dicom_filename, adjusted_dicom_filename, new_name
+            ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME, new_name
         )
     )
 
-    cli_adjusted_dicom_filename = pydicom.read_file(
-        adjusted_dicom_filename, force=True)
+    cli_adjusted_dicom_file = pydicom.read_file(
+        ADJUSTED_DICOM_FILENAME, force=True)
 
-    assert str(cli_adjusted_dicom_filename) == str(expected_dicom_file)
+    assert str(cli_adjusted_dicom_file) == str(expected_dicom_file)
 
-    os.remove(original_dicom_filename)
-    os.remove(adjusted_dicom_filename)
+    os.remove(ORIGINAL_DICOM_FILENAME)
+    os.remove(ADJUSTED_DICOM_FILENAME)
 
 
 def test_electron_density_append():
@@ -183,3 +183,22 @@ def test_electron_density_append():
 
     assert adjusted_dicom_file != original_dicom_file
     assert str(adjusted_dicom_file) == str(expected_dicom_file)
+
+    pydicom.write_file(ORIGINAL_DICOM_FILENAME, original_dicom_file)
+    json_adjustment_map = json.dumps(adjustment_map)
+    json_adjustment_map = json_adjustment_map.replace('"', '\\"')
+
+    subprocess.check_output(
+        'pymedphys dicom adjust-rel-elec-density {} {} "{}"'.format(
+            ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME,
+            json_adjustment_map
+        )
+    )
+
+    cli_adjusted_dicom_file = pydicom.read_file(
+        ADJUSTED_DICOM_FILENAME, force=True)
+
+    assert str(cli_adjusted_dicom_file) == str(expected_dicom_file)
+
+    os.remove(ORIGINAL_DICOM_FILENAME)
+    os.remove(ADJUSTED_DICOM_FILENAME)

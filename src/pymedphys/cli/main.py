@@ -24,9 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import json
 import argparse
 
-from ..dcm import adjust_machine_name_cli
+from ..dcm import adjust_machine_name_cli, adjust_rel_elec_density_cli
 from ..docker import server_cli
 
 
@@ -34,6 +35,14 @@ def pymedphys_cli():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
+    dicom_cli(subparsers)
+    docker_cli(subparsers)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+def dicom_cli(subparsers):
     dicom_parser = subparsers.add_parser('dicom')
     dicom_subparsers = dicom_parser.add_subparsers()
 
@@ -45,6 +54,18 @@ def pymedphys_cli():
     dicom_adjust_machine_name_parser.add_argument('new_machine_name', type=str)
     dicom_adjust_machine_name_parser.set_defaults(func=adjust_machine_name_cli)
 
+    dicom_adjust_rel_elec_density_parser = dicom_subparsers.add_parser(
+        'adjust-rel-elec-density')
+
+    dicom_adjust_rel_elec_density_parser.add_argument('input_file', type=str)
+    dicom_adjust_rel_elec_density_parser.add_argument('output_file', type=str)
+    dicom_adjust_rel_elec_density_parser.add_argument(
+        'adjustment_map', type=str, nargs='+')
+    dicom_adjust_rel_elec_density_parser.set_defaults(
+        func=adjust_rel_elec_density_cli)
+
+
+def docker_cli(subparsers):
     docker_parser = subparsers.add_parser('docker')
     docker_subparsers = docker_parser.add_subparsers()
 
@@ -53,6 +74,3 @@ def pymedphys_cli():
     )
 
     docker_server_parser.set_defaults(func=server_cli)
-
-    args = parser.parse_args()
-    args.func(args)
