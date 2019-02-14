@@ -24,8 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import pydicom
-
 from pymedphys.dcm import (
     dcm_from_dict, adjust_machine_name, adjust_rel_elec_density)
 
@@ -156,4 +154,4 @@ def test_electron_density_append():
         original_dicom_file, adjustment_map)
 
     assert adjusted_dicom_file != original_dicom_file
-    assert adjusted_dicom_file == expected_dicom_file
+    assert str(adjusted_dicom_file) == str(expected_dicom_file)

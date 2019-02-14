@@ -47,11 +47,11 @@ from ..libutils import clean_and_verify_levelled_modules
 
 from ._level1.dcmdose import *
 from ._level1.dcmcreate import *
-from ._level1.header_tweaks import *
+from ._level2.header_tweaks import *
 from ._level2.dcmanonymise import *
 from ._level2.dcmstruct import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.dcmdose', '._level1.dcmcreate', '._level1.header_tweaks',
+    '._level1.dcmdose', '._level1.dcmcreate', '._level2.header_tweaks',
     '._level2.dcmanonymise', '._level2.dcmstruct'
 ], package='pymedphys.dcm')

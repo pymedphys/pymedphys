@@ -28,8 +28,10 @@ from copy import deepcopy
 
 import pydicom
 
-
 from ...libutils import get_imports
+
+from .._level1.dcmcreate import dcm_from_dict
+
 IMPORTS = get_imports(globals())
 
 
@@ -45,6 +47,54 @@ def adjust_machine_name(dcm, new_machine_name):
     return new_dcm
 
 
+def delete_sequence_item_with_matching_key(sequence, key, value):
+    new_sequence = deepcopy(sequence)
+
+    for item in sequence:
+        try:
+            if value == getattr(item, key):
+                new_sequence.remove(item)
+        except AttributeError:
+            pass
+
+    return new_sequence
+
+
 def adjust_rel_elec_density(dcm, adjustment_map):
     """Append or adjust relative electron densities of stuctures
     """
+
+    new_dcm = deepcopy(dcm)
+
+    ROI_name_to_number_map = {
+        structure_set.ROIName: structure_set.ROINumber
+        for structure_set in new_dcm.StructureSetROISequence
+    }
+
+    ROI_number_to_observation_map = {
+        observation.ReferencedROINumber: observation
+        for observation in new_dcm.RTROIObservationsSequence
+    }
+
+    for structure_name, new_red in adjustment_map.items():
+        ROI_number = ROI_name_to_number_map[structure_name]
+        observation = ROI_number_to_observation_map[ROI_number]
+
+        try:
+            physical_properties = observation.ROIPhysicalPropertiesSequence
+        except AttributeError:
+            physical_properties = []
+
+        physical_properties = delete_sequence_item_with_matching_key(
+            physical_properties, 'ROIPhysicalProperty', 'REL_ELEC_DENSITY')
+
+        physical_properties.append(
+            dcm_from_dict({
+                'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
+                'ROIPhysicalPropertyValue': new_red
+            })
+        )
+
+        observation.ROIPhysicalPropertiesSequence = physical_properties
+
+    return new_dcm
