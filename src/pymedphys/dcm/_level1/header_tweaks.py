@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from copy import deepcopy
+
 import pydicom
 
 
@@ -34,3 +36,10 @@ IMPORTS = get_imports(globals())
 def adjust_machine_name(dcm, new_machine_name):
     """Change the machine name within the DICOM header
     """
+
+    new_dcm = deepcopy(dcm)
+
+    for beam in new_dcm.BeamSequence:
+        beam.TreatmentMachineName = new_machine_name
+
+    return new_dcm

@@ -55,21 +55,3 @@ def test_adjust_machine_name():
     adjusted_dicom_file = adjust_machine_name(original_dicom_file, 'new_name')
 
     assert adjusted_dicom_file == expected_dicom_file
-
-# def test_dcm_from_dict():
-#     baseline_dataset = pydicom.Dataset()
-#     baseline_dataset.Manufacturer = 'PyMedPhys'
-#     beam_sequence = pydicom.Dataset()
-#     beam_sequence.Manufacturer = 'PyMedPhys'
-#     baseline_dataset.BeamSequence = [beam_sequence]
-
-#     created_dataset = dcm_from_dict({
-#         'Manufacturer': 'PyMedPhys',
-#         'BeamSequence': [
-#             {
-#                 'Manufacturer': 'PyMedPhys'
-#             }
-#         ]
-#     })
-
-#     assert created_dataset == baseline_dataset
