@@ -24,7 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""
+"""Expose a range of pymedphys, scipy, and numpy functions for use within
+Excel via xlwings udf functionality.
 """
 
 # pylint: disable=W0401,W0614
