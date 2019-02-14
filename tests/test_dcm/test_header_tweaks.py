@@ -26,7 +26,8 @@
 
 import os
 import subprocess
-import json
+
+import numpy as np
 
 import pydicom
 
@@ -87,7 +88,7 @@ def test_adjust_machine_name():
 
 def test_electron_density_append():
     adjustment_map = {
-        'to_be_changed 1': 1,
+        'to_be_changed 1': 1.0,
         'to_be_changed 2': 0.5,
         'to_be_changed 3': 1.5
     }
@@ -185,13 +186,16 @@ def test_electron_density_append():
     assert str(adjusted_dicom_file) == str(expected_dicom_file)
 
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original_dicom_file)
-    json_adjustment_map = json.dumps(adjustment_map)
-    json_adjustment_map = json_adjustment_map.replace('"', '\\"')
+    adjustment_map_as_list = [
+        ['"{}"'.format(key), item] for key, item in adjustment_map.items()
+    ]
+    adjustment_map_flat = np.concatenate(adjustment_map_as_list).tolist()
+    adjustment_map_string = ' '.join(adjustment_map_flat)
 
     subprocess.check_output(
-        'pymedphys dicom adjust-rel-elec-density {} {} "{}"'.format(
+        'pymedphys dicom adjust-rel-elec-density {} {} {}'.format(
             ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME,
-            json_adjustment_map
+            adjustment_map_string
         )
     )
 

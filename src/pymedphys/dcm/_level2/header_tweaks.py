@@ -24,7 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import json
 from copy import deepcopy
 
 import pydicom
@@ -109,8 +108,10 @@ def adjust_rel_elec_density(dcm, adjustment_map):
 
 
 def adjust_rel_elec_density_cli(args):
-    adjustment_map = ' '.join(args.adjustment_map)
-    adjustment_map = json.loads(adjustment_map)
+    adjustment_map = {
+        key: item
+        for key, item in zip(args.adjustment_map[::2], args.adjustment_map[1::2])
+    }
 
     dcm = pydicom.read_file(args.input_file, force=True)
     new_dcm = adjust_rel_elec_density(dcm, adjustment_map)
