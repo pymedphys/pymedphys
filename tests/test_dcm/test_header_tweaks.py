@@ -24,11 +24,21 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import os
+import subprocess
+
+import pydicom
+
 from pymedphys.dcm import (
     dcm_from_dict, adjust_machine_name, adjust_rel_elec_density)
 
 
+HERE = os.path.dirname(__file__)
+
+
 def test_adjust_machine_name():
+    new_name = 'new_name'
+
     original_dicom_file = dcm_from_dict({
         'BeamSequence': [
             {
@@ -43,18 +53,33 @@ def test_adjust_machine_name():
     expected_dicom_file = dcm_from_dict({
         'BeamSequence': [
             {
-                'TreatmentMachineName': 'new_name'
+                'TreatmentMachineName': new_name
             },
             {
-                'TreatmentMachineName': 'new_name'
+                'TreatmentMachineName': new_name
             }
         ]
     })
 
-    adjusted_dicom_file = adjust_machine_name(original_dicom_file, 'new_name')
+    adjusted_dicom_file = adjust_machine_name(original_dicom_file, new_name)
 
     assert adjusted_dicom_file != original_dicom_file
     assert adjusted_dicom_file == expected_dicom_file
+
+    original_dicom_filename = os.path.join(HERE, 'original.dcm')
+    adjusted_dicom_filename = os.path.join(HERE, 'adjusted.dcm')
+
+    pydicom.write_file(original_dicom_filename, original_dicom_file)
+    subprocess.check_output(
+        'pymedphys dicom adjust-machine-name {} {} {}'.format(
+            original_dicom_filename, adjusted_dicom_filename, new_name
+        )
+    )
+
+    cli_adjusted_dicom_filename = pydicom.read_file(
+        adjusted_dicom_filename, force=True)
+
+    assert cli_adjusted_dicom_filename == expected_dicom_file
 
 
 def test_electron_density_append():

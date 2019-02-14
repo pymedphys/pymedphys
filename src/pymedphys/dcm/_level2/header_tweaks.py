@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import argparse
 from copy import deepcopy
 
 import pydicom
@@ -45,6 +46,21 @@ def adjust_machine_name(dcm, new_machine_name):
         beam.TreatmentMachineName = new_machine_name
 
     return new_dcm
+
+
+def adjust_machine_name_cli():
+    parser = argparse.ArgumentParser(
+        description='Adjust machine name within DICOM file.')
+    parser.add_argument('input_file', type=str)
+    parser.add_argument('output_file', type=str)
+    parser.add_argument('new_machine_name', type=str)
+
+    args = parser.parse_args()
+
+    dcm = pydicom.read_file(args.input_file, force=True)
+    new_dcm = adjust_machine_name(dcm, args.new_machine_name)
+
+    pydicom.write_file(args.output_file, new_dcm)
 
 
 def delete_sequence_item_with_matching_key(sequence, key, value):
