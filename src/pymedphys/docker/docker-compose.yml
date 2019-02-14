@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,35 +23,29 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+version: "3.6"
 
-"""A Dicom toolbox built ontop of the pydicom library.
+services:
+  physics-server-orthanc-machine-id-editor:
+    restart: unless-stopped
+    build: orthanc/orthanc-and-miniconda
+    ports: ["34242:4242", "38042:8042"]
 
-Available Functions
--------------------
->>> from pymedphys.dcm import (
-...     anonymise_dicom,
-...     extract_dose,
-...     extract_iec_patient_coords,
-...     extract_iec_fixed_coords,
-...     extract_dicom_patient_coords,
-...     load_dose_from_dicom,
-...     load_xyz_from_dicom,
-...     find_dose_within_structure,
-...     create_dvh,
-...     get_structure_aligned_cube)
-"""
+    volumes:
+      - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
+      - ./orthanc/just_forward.lua:/etc/share/orthanc/scripts/just_forward.lua:ro
+      - ../../../.:/usr/src/pymedphys:ro
+      - pypi-cache:/root/.cache/pip:rw
 
-# pylint: disable=W0401,W0614
+    entrypoint: /bin/bash -c 'pip install /usr/src/pymedphys && /docker-entrypoint.sh'
 
-from ..libutils import clean_and_verify_levelled_modules
+  physics-server-nginx:
+    restart: always
+    image: nginx:1.15
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
 
-from ._level1.dcmdose import *
-from ._level1.dcmcreate import *
-from ._level1.header_tweaks import *
-from ._level2.dcmanonymise import *
-from ._level2.dcmstruct import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.dcmdose', '._level1.dcmcreate', '._level1.header_tweaks',
-    '._level2.dcmanonymise', '._level2.dcmstruct'
-], package='pymedphys.dcm')
+volumes:
+  pypi-cache:

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,34 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Dicom toolbox built ontop of the pydicom library.
+import os
+import subprocess
 
-Available Functions
--------------------
->>> from pymedphys.dcm import (
-...     anonymise_dicom,
-...     extract_dose,
-...     extract_iec_patient_coords,
-...     extract_iec_fixed_coords,
-...     extract_dicom_patient_coords,
-...     load_dose_from_dicom,
-...     load_xyz_from_dicom,
-...     find_dose_within_structure,
-...     create_dvh,
-...     get_structure_aligned_cube)
-"""
 
-# pylint: disable=W0401,W0614
+HERE = os.path.dirname(__file__)
 
-from ..libutils import clean_and_verify_levelled_modules
 
-from ._level1.dcmdose import *
-from ._level1.dcmcreate import *
-from ._level1.header_tweaks import *
-from ._level2.dcmanonymise import *
-from ._level2.dcmstruct import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.dcmdose', '._level1.dcmcreate', '._level1.header_tweaks',
-    '._level2.dcmanonymise', '._level2.dcmstruct'
-], package='pymedphys.dcm')
+def main():
+    subprocess.check_call("docker-compose build", cwd=HERE)
+    subprocess.check_call("docker-compose up", cwd=HERE)
