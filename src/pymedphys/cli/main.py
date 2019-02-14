@@ -24,13 +24,35 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
-import subprocess
+import argparse
+
+from ..dcm import adjust_machine_name_cli
+from ..docker import server_cli
 
 
-HERE = os.path.dirname(__file__)
+def pymedphys_cli():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
 
+    dicom_parser = subparsers.add_parser('dicom')
+    dicom_subparsers = dicom_parser.add_subparsers()
 
-def server_cli(args):
-    subprocess.check_call("docker-compose build", cwd=HERE)
-    subprocess.check_call("docker-compose up", cwd=HERE)
+    dicom_adjust_machine_name_parser = dicom_subparsers.add_parser(
+        'adjust-machine-name')
+
+    dicom_adjust_machine_name_parser.add_argument('input_file', type=str)
+    dicom_adjust_machine_name_parser.add_argument('output_file', type=str)
+    dicom_adjust_machine_name_parser.add_argument('new_machine_name', type=str)
+    dicom_adjust_machine_name_parser.set_defaults(func=adjust_machine_name_cli)
+
+    docker_parser = subparsers.add_parser('docker')
+    docker_subparsers = docker_parser.add_subparsers()
+
+    docker_server_parser = docker_subparsers.add_parser(
+        'server'
+    )
+
+    docker_server_parser.set_defaults(func=server_cli)
+
+    args = parser.parse_args()
+    args.func(args)

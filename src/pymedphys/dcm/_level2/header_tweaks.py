@@ -48,15 +48,7 @@ def adjust_machine_name(dcm, new_machine_name):
     return new_dcm
 
 
-def adjust_machine_name_cli():
-    parser = argparse.ArgumentParser(
-        description='Adjust machine name within DICOM file.')
-    parser.add_argument('input_file', type=str)
-    parser.add_argument('output_file', type=str)
-    parser.add_argument('new_machine_name', type=str)
-
-    args = parser.parse_args()
-
+def adjust_machine_name_cli(args):
     dcm = pydicom.read_file(args.input_file, force=True)
     new_dcm = adjust_machine_name(dcm, args.new_machine_name)
 

@@ -80,7 +80,7 @@ setup(
     entry_points={
         'console_scripts': [
             'trf2csv=pymedphys.entry_points.trf2csv:trf2csv_cli',
-            'pymedphys-dockerserver=pymedphys.docker:main'
+            'pymedphys=pymedphys.cli.main:pymedphys_cli'
         ],
     },
     license='AGPLv3+',

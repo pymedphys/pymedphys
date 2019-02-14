@@ -79,7 +79,10 @@ def test_adjust_machine_name():
     cli_adjusted_dicom_filename = pydicom.read_file(
         adjusted_dicom_filename, force=True)
 
-    assert cli_adjusted_dicom_filename == expected_dicom_file
+    assert str(cli_adjusted_dicom_filename) == str(expected_dicom_file)
+
+    os.remove(original_dicom_filename)
+    os.remove(adjusted_dicom_filename)
 
 
 def test_electron_density_append():
