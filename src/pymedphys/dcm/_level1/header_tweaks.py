@@ -43,3 +43,8 @@ def adjust_machine_name(dcm, new_machine_name):
         beam.TreatmentMachineName = new_machine_name
 
     return new_dcm
+
+
+def adjust_rel_elec_density(dcm, adjustment_map):
+    """Append or adjust relative electron densities of stuctures
+    """

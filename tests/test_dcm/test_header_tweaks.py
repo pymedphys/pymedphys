@@ -26,7 +26,8 @@
 
 import pydicom
 
-from pymedphys.dcm import dcm_from_dict, adjust_machine_name
+from pymedphys.dcm import (
+    dcm_from_dict, adjust_machine_name, adjust_rel_elec_density)
 
 
 def test_adjust_machine_name():
@@ -54,4 +55,105 @@ def test_adjust_machine_name():
 
     adjusted_dicom_file = adjust_machine_name(original_dicom_file, 'new_name')
 
+    assert adjusted_dicom_file != original_dicom_file
+    assert adjusted_dicom_file == expected_dicom_file
+
+
+def test_electron_density_append():
+    adjustment_map = {
+        'to_be_changed 1': 1,
+        'to_be_changed 2': 0.5,
+        'to_be_changed 3': 1.5
+    }
+
+    original_dicom_file = dcm_from_dict({
+        'StructureSetROISequence': [
+            {
+                'ROINumber': 1,
+                'ROIName': 'to_be_changed 1'
+            },
+            {
+                'ROINumber': 2,
+                'ROIName': 'dont_change_me'
+            },
+            {
+                'ROINumber': 10,
+                'ROIName': 'to_be_changed 2'
+            },
+            {
+                'ROINumber': 99,
+                'ROIName': 'to_be_changed 3'
+            },
+        ],
+        'RTROIObservationsSequence': [
+            {
+                'ReferencedROINumber': 1,
+                'ROIPhysicalPropertiesSequence': [
+                    {
+                        'ROIPhysicalProperty': 'EFFECTIVE_Z',
+                        'ROIPhysicalPropertyValue': 6
+                    }
+                ]
+            },
+            {
+                'ReferencedROINumber': 2,
+            },
+            {
+                'ReferencedROINumber': 10,
+            },
+            {
+                'ReferencedROINumber': 99,
+                'ROIPhysicalPropertiesSequence': [
+                    {
+                        'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
+                        'ROIPhysicalPropertyValue': 0
+                    }
+                ]
+            }
+        ]
+    })
+
+    expected_dicom_file = dcm_from_dict({
+        'RTROIObservationsSequence': [
+            {
+                'ReferencedROINumber': 1,
+                'ROIPhysicalPropertiesSequence': [
+                    {
+                        'ROIPhysicalProperty': 'EFFECTIVE_Z',
+                        'ROIPhysicalPropertyValue': 6
+                    },
+                    {
+                        'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
+                        'ROIPhysicalPropertyValue': adjustment_map['to_be_changed 1']
+                    }
+                ]
+            },
+            {
+                'ReferencedROINumber': 2
+            },
+            {
+                'ReferencedROINumber': 10,
+                'ROIPhysicalPropertiesSequence': [
+                    {
+                        'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
+                        'ROIPhysicalPropertyValue': adjustment_map['to_be_changed 2']
+                    }
+                ]
+            },
+            {
+                'ReferencedROINumber': 99,
+                'ROIPhysicalPropertiesSequence': [
+                    {
+                        'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
+                        'ROIPhysicalPropertyValue': adjustment_map['to_be_changed 3']
+                    }
+                ]
+            }
+        ]
+    }, template_dcm=original_dicom_file)
+
+    adjusted_dicom_file = adjust_rel_elec_density(
+        original_dicom_file, adjustment_map)
+
+    assert adjusted_dicom_file != original_dicom_file
     assert adjusted_dicom_file == expected_dicom_file
