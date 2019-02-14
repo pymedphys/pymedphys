@@ -33,11 +33,12 @@ services:
 
     volumes:
       - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
-      - ./orthanc/just_forward.lua:/etc/share/orthanc/scripts/just_forward.lua:ro
+      - ./orthanc/scripts:/etc/share/orthanc/scripts:ro
       - ../../../.:/usr/src/pymedphys:ro
       - pypi-cache:/root/.cache/pip:rw
 
-    entrypoint: /bin/bash -c 'pip install /usr/src/pymedphys && /docker-entrypoint.sh'
+    entrypoint: /bin/bash -c
+    command: ['pip install /usr/src/pymedphys && /docker-entrypoint.sh /etc/orthanc']
 
   physics-server-nginx:
     restart: always

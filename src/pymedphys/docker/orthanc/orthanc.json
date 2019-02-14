@@ -9,6 +9,6 @@
     ]
   },
   "LuaScripts": [
-    "/etc/share/orthanc/scripts/just_forward.lua"
+    "/etc/share/orthanc/scripts/morph_header_and_forward.lua"
   ]
 }
