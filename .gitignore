@@ -219,12 +219,19 @@ dmypy.json
 !.vscode/settings.json
 !.vscode/extensions.json
 
+# Test results
+junit/
+
+# Allow for ignoring by prepending scratch-
+scratch-*
+
+
 # USER DEFINED
 *.pdf
 
-junit/
+# Paul's custom additions
 Ubuntu_GitHub
 Ubuntu_GitHub.pub
-.gitignore
+
 github_W7
 github_W7.pub
