@@ -71,7 +71,7 @@ def test_adjust_machine_name():
     assert adjusted_dicom_file == expected_dicom_file
 
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original_dicom_file)
-    subprocess.check_output(
+    subprocess.check_call(
         'pymedphys dicom adjust-machine-name'.split() +
         [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME, new_name]
     )
@@ -182,24 +182,27 @@ def test_electron_density_append():
         original_dicom_file, adjustment_map)
 
     assert adjusted_dicom_file != original_dicom_file
-    assert str(adjusted_dicom_file) == str(expected_dicom_file)
+    assert str(expected_dicom_file) == str(adjusted_dicom_file)
 
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original_dicom_file)
     adjustment_map_as_list = [
-        ['"{}"'.format(key), item] for key, item in adjustment_map.items()
+        ['{}'.format(key), item] for key, item in adjustment_map.items()
     ]
     adjustment_map_flat = np.concatenate(adjustment_map_as_list).tolist()
-    adjustment_map_string = ' '.join(adjustment_map_flat)
 
-    subprocess.check_output(
-        'pymedphys dicom adjust-rel-elec-density'.split() +
-        [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME, adjustment_map_string]
-    )
+    command = (
+        'pymedphys dicom adjust-rel-elec-density'.split()
+        + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME]
+        + adjustment_map_flat)
+
+    print(command)
+
+    subprocess.check_call(command)
 
     cli_adjusted_dicom_file = pydicom.read_file(
         ADJUSTED_DICOM_FILENAME, force=True)
 
-    assert str(cli_adjusted_dicom_file) == str(expected_dicom_file)
+    assert str(expected_dicom_file) == str(cli_adjusted_dicom_file)
 
     os.remove(ORIGINAL_DICOM_FILENAME)
     os.remove(ADJUSTED_DICOM_FILENAME)
