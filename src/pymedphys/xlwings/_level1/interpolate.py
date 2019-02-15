@@ -60,16 +60,3 @@ if HAS_XLWINGS:
         values_new = func(points_new)
 
         return np.expand_dims(values_new, axis=1)
-
-    @xw.func
-    @xw.arg('values', np.array, ndim=2)
-    @xw.ret(expand='table')
-    def npravel(values):
-        return np.expand_dims(np.ravel(values.T), axis=1)
-
-    @xw.func
-    @xw.arg('values', np.array, ndim=2)
-    @xw.arg('repeats')
-    @xw.ret(expand='table')
-    def nprepeat(values, repeats):
-        return np.expand_dims(np.repeat(values, repeats), axis=1)
