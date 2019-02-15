@@ -10,21 +10,27 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
     local received_filepath = instanceId .. '-received.dcm'
     local converted_filepath = instanceId .. '-converted.dcm'
 
-    if tags['SOPClassUID'] == 'RT Structure Set Storage' or tags['SOPClassUID'] == 'RT Plan Storage' then
+    local plan_UID = '1.2.840.10008.5.1.4.1.1.481.5'
+    local structure_UID = '1.2.840.10008.5.1.4.1.1.481.3'
+
+
+    print(tags['SOPClassUID'])
+
+    if tags['SOPClassUID'] == structure_UID or tags['SOPClassUID'] == plan_UID then
       local target = assert(io.open(received_filepath, 'wb'))
       target:write(dicom)
       target:close()
     end
 
-    if tags['SOPClassUID'] == 'RT Structure Set Storage' then
-      os.execute('pymedphys dicom adjust-rel-elec-density ' .. received_filepath .. ' ' .. converted_filepath .. '"Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
+    if tags['SOPClassUID'] == structure_UID then
+      os.execute('pymedphys dicom adjust-rel-elec-density ' .. received_filepath .. ' ' .. converted_filepath .. ' "Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
 
-    elseif tags['SOPClassUID'] == 'RT Plan Storage' then
-      os.execute('pymedphys dicom adjust-machine-name ' .. received_filepath .. ' ' .. converted_filepath .. '2619')
+    elseif tags['SOPClassUID'] == plan_UID then
+      os.execute('pymedphys dicom adjust-machine-name ' .. received_filepath .. ' ' .. converted_filepath .. ' 2619')
 
     end
 
-    if tags['SOPClassUID'] == 'RT Structure Set Storage' or tags['SOPClassUID'] == 'RT Plan Storage' then
+    if tags['SOPClassUID'] == structure_UID or tags['SOPClassUID'] == plan_UID then
       local source = assert(io.open(converted_filepath, 'rb'))
       local new_dicom = source:read("*all")
       source:close()
