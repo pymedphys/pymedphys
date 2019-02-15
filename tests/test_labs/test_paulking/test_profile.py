@@ -167,8 +167,6 @@ def test_copy():
 def test_str():
     profiler = Profile().from_tuples(PROFILER)
     assert profiler.__str__()
-    # print(profiler)
-    # print(description)
 
 
 def test_from_lists():
@@ -253,6 +251,18 @@ def test_normalise_distance():  # also normalize
     profiler = Profile().from_tuples(PROFILER)
     assert len(PROFILER) == len(profiler.normalize_distance(0.1).x)
 
+
+def test_umbra():
+    profiler = Profile().from_tuples(PROFILER)
+    profiler.resample(0.1)
+    profiler_length = len(profiler)
+    print(len(profiler))
+    umbra = profiler.umbra(0.1)
+    print(len(umbra) < profiler_length)
+    ########
+    pass
+
+
 # def test_pulse():
 #     assert pulse()[0] == (-20.0, 0.0)
 
@@ -294,6 +304,7 @@ if __name__ == "__main__":
     test_normalise_dose()
     test_edges()
     test_normalise_distance()
+    test_umbra()
     #     test_pulse()
     #     test_overlay()
     #     test_recentre()

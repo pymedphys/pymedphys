@@ -35,7 +35,7 @@ from scipy import interpolate
 # import xarray as xr
 
 from ...libutils import get_imports
-from ...xarray import XArrayComposition
+# from ...xarray import XArrayComposition
 
 # from .._level1.coreobjects import _PyMedPhysBase
 IMPORTS = get_imports(globals())
@@ -329,7 +329,6 @@ class Profile():
         -------
         Profile
 
-
         """
 
         lt_edge, rt_edge = self.edges(step)
@@ -345,13 +344,53 @@ class Profile():
                 new_x.append(0.0)
 
         self.__init__(new_x, self.data, self.metadata)
-        return Profile(new_x, self.data)
+        return Profile(new_x, self.data, metadata=self.metadata)
 
     def normalize_distance(self, step):
         return self.normalise_distance(step)
 
-    def umbra(self):
-        pass
+    def umbra(self, step):
+        """ Central 80% of dose profile.
+
+        Source dose profile sliced to include only the central region between beam edges.
+
+        Arguments
+        -----------------
+        step : float
+            Precision of result
+
+        Returns
+        -------
+        Profile
+
+        """
+        lt, rt = self.edges(step)
+        e = (0.8 * lt, rt * 0.8)
+        idx = [i for i, d in enumerate(self.x) if d >= lt and d <= rt]
+        new_x = self.x[idx[0]:idx[-1]+1]
+        new_data = self.data[idx[0]:idx[-1]+1]
+
+        self.__init__(x=new_x, data=new_data, metadata=self.metadata)
+        return Profile(x=new_x, data=new_data, metadata=self.metadata)
+
+    # def flatness(dose_prof):
+    #     """
+    #     Return float flatness of a dose-profile.
+    #     """
+    #     dose = _get_dose_vals(_find_umbra(dose_prof))
+    #     flat = (max(dose)-min(dose))/np.average(dose)
+    #     return flat
+
+
+    # def symmetry(dose_prof):
+    #     """
+    #     Return float symmetry of a dose-profile.
+    #     """
+    #     dose = _get_dose_vals(_find_umbra(dose_prof))
+    #     avg_dose = np.average(dose)
+    #     dose_rev = dose[::-1]
+    #     asymmetry = max(np.abs(np.subtract(dose, dose_rev)/avg_dose))
+    #     return asymmetry
 
     def centre(self):
         pass
@@ -359,11 +398,11 @@ class Profile():
     def shift_to_centre(self):
         pass
 
-    def flatness(self):
-        pass
+    # def flatness(self):
+    #     pass
 
-    def symmetry(self):
-        pass
+    # def symmetry(self):
+    #     pass
 
     def symmetrise(self):
         pass
@@ -492,11 +531,6 @@ class DoseDepth():
 #     return best_offset
 
 
-# def normalize_distance(dose_prof):
-#     """ US Eng -> UK Eng """
-#     return normalise_distance(dose_prof)
-
-
 # def recentre(dose_prof):
 #     """
 #     Return a translated dose-profile in which the central-axis,
@@ -520,24 +554,7 @@ class DoseDepth():
 #     return recentre(dose_prof)
 
 
-# def flatness(dose_prof):
-#     """
-#     Return float flatness of a dose-profile.
-#     """
-#     dose = _get_dose_vals(_find_umbra(dose_prof))
-#     flat = (max(dose)-min(dose))/np.average(dose)
-#     return flat
 
-
-# def symmetry(dose_prof):
-#     """
-#     Return float symmetry of a dose-profile.
-#     """
-#     dose = _get_dose_vals(_find_umbra(dose_prof))
-#     avg_dose = np.average(dose)
-#     dose_rev = dose[::-1]
-#     asymmetry = max(np.abs(np.subtract(dose, dose_rev)/avg_dose))
-#     return asymmetry
 
 
 # def symmetrise(dose_prof, dist_step=0.1):
