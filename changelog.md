@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- ProfileDose object built ontop of xarray. [@SimonBiggs](https://gitlab.com/SimonBiggs).
+- ProfileDose object built ontop of xarray. [@SimonBiggs](https://github.com/SimonBiggs).
 
 ### Changed
 - MU Density related functions are no longer available under the `pymedphys.coll` package, instead they are found within `pymedphys.mudensity` package.
@@ -32,5 +32,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Began keeping record of changes in `changelog.md`
 
 
-[Unreleased]: https://gitlab.com/pymedphys/pymedphys/compare/v0.5.1...master
-[0.5.1]: https://gitlab.com/pymedphys/pymedphys/compare/v0.4.3...v0.5.1
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.5.1...master
+[0.5.1]: https://github.com/pymedphys/pymedphys/compare/v0.4.3...v0.5.1
