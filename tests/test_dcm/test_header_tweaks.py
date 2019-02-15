@@ -72,9 +72,8 @@ def test_adjust_machine_name():
 
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original_dicom_file)
     subprocess.check_output(
-        'pymedphys dicom adjust-machine-name {} {} {}'.format(
-            ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME, new_name
-        )
+        'pymedphys dicom adjust-machine-name'.split() +
+        [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME, new_name]
     )
 
     cli_adjusted_dicom_file = pydicom.read_file(
@@ -193,10 +192,8 @@ def test_electron_density_append():
     adjustment_map_string = ' '.join(adjustment_map_flat)
 
     subprocess.check_output(
-        'pymedphys dicom adjust-rel-elec-density {} {} {}'.format(
-            ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME,
-            adjustment_map_string
-        )
+        'pymedphys dicom adjust-rel-elec-density'.split() +
+        [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME, adjustment_map_string]
     )
 
     cli_adjusted_dicom_file = pydicom.read_file(
