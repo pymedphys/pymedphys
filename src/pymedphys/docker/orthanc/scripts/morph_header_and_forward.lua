@@ -20,12 +20,16 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
       local target = assert(io.open(received_filepath, 'wb'))
       target:write(dicom)
       target:close()
+
+      RestApiDelete('/instances/' .. instanceId)
     end
 
     if tags['SOPClassUID'] == structure_UID then
+      print('Converting a structure set')
       os.execute('pymedphys dicom adjust-rel-elec-density ' .. received_filepath .. ' ' .. converted_filepath .. ' "Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
 
     elseif tags['SOPClassUID'] == plan_UID then
+      print('Converting a plan')
       os.execute('pymedphys dicom adjust-machine-name ' .. received_filepath .. ' ' .. converted_filepath .. ' 2619')
 
     end
@@ -35,18 +39,12 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
       local new_dicom = source:read("*all")
       source:close()
 
-      local new_dicom_instance = ParseJson(RestApiPost('/instances', new_dicom))
-      RestApiDelete('/instances/' .. instanceId)
-      new_dicom_instance_id = new_dicom_instance['ID']
+      RestApiPost('/instances', new_dicom)
 
       os.remove(received_filepath)
       os.remove(converted_filepath)
-
-    else
-      new_dicom_instance_id = instanceId
-
     end
 
-    Delete(SendToModality(new_dicom_instance_id, 'DoseCHECK'))
+    Delete(SendToModality(instanceId, 'DoseCHECK'))
   end
 end
