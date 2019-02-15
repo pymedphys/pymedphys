@@ -27,15 +27,15 @@ of the dependencies without conda
     pip install pymedphys
 
 
-Bleeding edge with GitLab
+Bleeding edge with GitHub
 -------------------------
 
 If you would like to have a bleeding edge installation of pymedphys use the
-following commands to install the master branch from GitLab.
+following commands to install the master branch from GitHub.
 
 .. code:: bash
 
-    git clone https://gitlab.com/pymedphys/pymedphys.git
+    git clone https://github.com/pymedphys/pymedphys.git
     cd pymedphys
 
     conda config --add channels conda-forge

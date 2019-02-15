@@ -101,22 +101,22 @@ Git LFS, and yarn like so:
     choco install git git-lfs yarn
 
 
-GitLab Account
+GitHub Account
 --------------
 
-Make a GitLab account `here <https://gitlab.com/users/sign_in/>`__.
+Make a GitHub account `here <https://github.com/join>`__.
 Once you have an account, you will need commit rights to this
-repository in order to make contributions. Create an issue on GitLab
-within the PyMedPhys repository `here <https://gitlab.com/pymedphys/pymedphys/issues/new/>`__
+repository in order to make contributions. Create an issue on GitHub
+within the PyMedPhys repository `here <https://github.com/pymedphys/pymedphys/issues/new/>`__
 and include "request for commit rights" or similar in your issue's
 content, along with "@SimonBiggs" to ensure it is seen!
 
-Whenever you wish to discuss anything about PyMedPhys, please create an issue on GitLab.
+Whenever you wish to discuss anything about PyMedPhys, please create an issue on GitHub.
 It can be to ask for help, suggest a change, provide feedback, or anything else regarding
 PyMedPhys. Write "@" followed by someone's username if you would like to talk to someone
 specifically.
 
-The real power of GitLab comes from Git itself. A great piece of Git documentation can be found
+The real power of GitHub comes from Git itself. A great piece of Git documentation can be found
 `here <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__. Use this
 documentation to begin to get a feel for what Git is.
 
@@ -136,7 +136,7 @@ The "Don't be afraid to commit" resource will be invaluable for these next few
 steps.
 
 
-Authenticate your computer to be able to access your GitLab account
+Authenticate your computer to be able to access your GitHub account
 -------------------------------------------------------------------
 
 Before setting your SSH keys, I recommend permanently setting your HOME
@@ -147,8 +147,8 @@ running the following where `yourusername` is your Windows domain user name.
 
     setx HOME "C:\Users\yourusername"
 
-Follow `these instructions <https://docs.gitlab.com/ee/ssh/>`__ to create
-and add an SSH key to your GitLab account. Since you already have ssh built into
+Follow `these instructions <https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/>`__ to create
+and add an SSH key to your GitHub account. Since you already have ssh built into
 cmder, you can skip the first steps of the tutorial.
 
 If all has gone well you should be able to run the following without being
@@ -156,7 +156,7 @@ prompted for a password.
 
 .. code:: bash
 
-    git clone git@gitlab.com:pymedphys/pymedphys.git
+    git clone git@github.com:pymedphys/pymedphys.git
     cd pymedphys
 
 This will download all of PyMedPhys to your local machine.
@@ -237,7 +237,7 @@ Once your changes are complete, reopen your cmder and run:
 
 Now, you have successfully sent your branch online.
 
-Now you need to open a merge request. Open one `here <https://gitlab.com/pymedphys/pymedphys/merge_requests/new>`__,
+Now you need to open a merge request. Open one `here <https://github.com/pymedphys/pymedphys/compare>`__,
 select the source branch to be `pymedphys/your-name-edit-contributing-document`
 and set the target branch to be `pymedphys/master`.
 
