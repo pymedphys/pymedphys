@@ -23,6 +23,8 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+from copy import deepcopy
+
 import numpy as np
 
 from pydicom import Dataset
@@ -46,7 +48,7 @@ def dcm_from_dict(input_dict: dict, template_dcm=None):
     if template_dcm is None:
         dataset = Dataset()
     else:
-        dataset = template_dcm
+        dataset = deepcopy(template_dcm)
 
     for key, value in input_dict.items():
         if key not in DICOM_NAMES:

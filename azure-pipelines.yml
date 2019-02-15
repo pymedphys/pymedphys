@@ -29,13 +29,13 @@ jobs:
       displayName: 'Install Homebrew and GNU xargs'
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: pip install -e .
+    - bash: source ./azure-pipelines/scripts/activate.sh && pip install -e .
       displayName: 'Install development version of PyMedPhys'
-    - bash: ./azure-pipelines/scripts/matplotlib-backend.sh
+    - bash: source ./azure-pipelines/scripts/activate.sh && ./azure-pipelines/scripts/matplotlib-backend.sh
       displayName: 'Set matplotlib backend to Agg'
-    - bash: find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
+    - bash: source ./azure-pipelines/scripts/activate.sh && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
       displayName: 'Check that notebooks have no included output'
-    - bash: if [[ "$OSTYPE" == "msys" ]]; then source activate pymedphys; fi && python setup.py test
+    - bash: source ./azure-pipelines/scripts/activate.sh && python setup.py test
       displayName: 'Run the full pytest suite'
 
     - task: PublishTestResults@2

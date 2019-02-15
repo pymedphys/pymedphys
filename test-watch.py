@@ -7,7 +7,7 @@ def main():
     except FileNotFoundError:
         pass
 
-    os.system('ptw -- --testmon')
+    os.system('ptw -- --testmon -vv --maxfail=1')
 
 
 if __name__ == "__main__":
