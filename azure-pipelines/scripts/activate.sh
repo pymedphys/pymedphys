@@ -1,7 +1,5 @@
 set -ex
 
-if [[ "$OSTYPE" != "linux-gnu" ]]; then
+if [[ "$OSTYPE" == "msys" ]]; then
   source activate pymedphys
-else
-  source /home/vsts/.conda/envs/pymedphys/bin/activate pymedphys
 fi
