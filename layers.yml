@@ -28,6 +28,7 @@ Top Level Modules:
     containers:
         - pymedphys
     layers:
+        - xlwings
         - logfile
         - trf
         - msq
