@@ -1,0 +1,14 @@
+{
+  "Name": "DoseCheckRouter",
+  "DicomAet": "DoseCheckRouter",
+  "DicomModalities": {
+    "DoseCHECK": [
+      "SunNuclear_SCP",
+      "rccc-physicssvr",
+      104
+    ]
+  },
+  "LuaScripts": [
+    "/etc/share/orthanc/scripts/morph_header_and_forward.lua"
+  ]
+}
