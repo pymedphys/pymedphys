@@ -23,20 +23,28 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import numpy as np
 
-"""Expose a range of pymedphys, scipy, and numpy functions for use within
-Excel via xlwings udf functionality.
-"""
+try:
+    import xlwings as xw
+    HAS_XLWINGS = True
+except ImportError:
+    HAS_XLWINGS = False
 
-# pylint: disable=W0401,W0614
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
-from ..libutils import clean_and_verify_levelled_modules
+if HAS_XLWINGS:
+    @xw.func
+    @xw.arg('values', np.array, ndim=2)
+    @xw.ret(expand='table')
+    def npravel(values):
+        return np.expand_dims(np.ravel(values.T), axis=1)
 
-from ._level1.interpolate import *
-from ._level1.numpy import *
-from ._level1.dicom import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.interpolate', '._level1.numpy', '._level1.dicom'
-], package='pymedphys.xlwings')
+    @xw.func
+    @xw.arg('values', np.array, ndim=2)
+    @xw.arg('repeats')
+    @xw.ret(expand='table')
+    def nprepeat(values, repeats):
+        return np.expand_dims(np.repeat(values, repeats), axis=1)
