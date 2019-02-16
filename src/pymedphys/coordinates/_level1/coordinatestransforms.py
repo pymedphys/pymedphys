@@ -25,17 +25,26 @@
 
 import numpy as np
 from numpy import sin, cos, pi, radians
-from numpy import linalg as LA
+from numpy.linalg import norm
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
+
+
+def convert_xyz_to_dicom_coords(xyz_tuple):
+    ZZ_image, YY_image, XX_image = np.meshgrid(
+        xyz_tuple[2], xyz_tuple[1], xyz_tuple[0], indexing='ij')
+
+    coords = np.array((XX_image, YY_image, ZZ_image), dtype=np.float64)
+    return coords
+
 
 
 def rotate_about_vector(coords_to_rotate, vector, theta, active=False):
     r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the axis specified by
     `vector`. Transforms can be active (alibi) or passive (alias). Default is passive.
     """
-    unit_vector = vector / LA.norm(vector)
+    unit_vector = vector / norm(vector)
 
     u_x = unit_vector[0]
     u_y = unit_vector[1]

@@ -27,7 +27,6 @@
 """A DICOM RT Dose toolbox"""
 
 import warnings
-from collections import namedtuple
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,11 +40,32 @@ import pydicom.uid
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
-Coords = namedtuple('Coords', 'x y z')
-Dose = namedtuple(
-    'Dose', 'values units type summation heterogeneity_correction')
-
 # pylint: disable=C0103
+
+class DicomDose:
+
+    def __init__(self, dcm_filepath):
+        dcm = pydicom.dcmread(dcm_filepath)
+        if dcm.Modality != "RTDOSE":
+            raise ValueError("The input DICOM file is not an RT Dose file")
+        self.dcm = dcm
+
+        self.values = dcm.pixel_array * dcm.DoseGridScaling
+        self.units = dcm.DoseUnits
+        self.x, self.y, self.z = extract_dicom_patient_xyz(dcm)
+        self.coords = convert_xyz_to_dicom_coords((self.x, self.y, self.z))
+        self.mask = None
+
+    def save_to_dicom(self, filepath):
+        self.dcm.save_as(filepath)
+
+
+def convert_xyz_to_dicom_coords(xyz_tuple):
+    ZZ_image, YY_image, XX_image = np.meshgrid(
+        xyz_tuple[2], xyz_tuple[1], xyz_tuple[0], indexing='ij')
+
+    coords = np.array((XX_image, YY_image, ZZ_image), dtype=np.float64)
+    return coords
 
 
 def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
@@ -74,104 +94,6 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
     dose = pixels * dcm.DoseGridScaling
 
     return dose
-
-
-def extract_dose(dcm):
-    r"""Extract the dose grid of a DICOM RT Dose file along with dose units,
-    dose type, dose summation type and heterogeneity correction technique.
-
-    Parameters
-    ----------
-    dcm
-       A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
-       Must represent a valid DICOM RT Dose file.
-
-    Returns
-    -------
-    Dose(values, units, type, summation, heterogeneity_correction)
-        A `namedtuple` containing the following fields:
-
-        `values`
-            A 3D numpy array containing the dose grid's values in units specified by `dose_units`.
-
-        `units`
-            A string indicating whether the dose grid values are in units of Gray ("GY")
-            or are relative to the implicit reference value ("RELATIVE").
-
-        `type`
-            A string indicating whether dose is physical, biological or differences
-            between desired and planned dose values.
-
-        `summation`
-            A string indicating whether the calculation scope of the dose grid. See Notes.
-
-        `heterogeneity correction`
-            A list of patient heterogeneity characteristics for which the dose was calculated.
-            Multiple entries may exist if beams in the plan have differing correction techniques.
-
-    Notes
-    -----
-    This section heavily draws from DICOM PS3.3 2018c - Information Object Definitions [1]_
-
-
-    Possible values of `type`:
-
-    =========== =============================================
-    `type`      Description
-    =========== =============================================
-    PHYSICAL    Physical dose
-    EFFECTIVE   Physical dose corrected for biological effect
-    ERROR       Difference between desired and planned dose
-    =========== =============================================
-
-
-    Possible values of `summation_type`:
-
-    ================ ==============================================================
-    `summation`      Dose is calculated for:
-    ================ ==============================================================
-    PLAN             All fraction groups of the RT Plan
-    MULTI_PLAN       Multiple RT plans
-    FRACTION         A single fraction group of the RT Plan
-    BEAM             One or more beams of the RT Plan
-    BRACHY           One or more Brachy Application Setups within the RT Plan
-    FRACTION_SESSION A single session of a single Fraction Group
-    BEAM_SESSION     A single session of one or more beams
-    BRACHY_SESSION   A single session of one or more Brachy Application Setups
-    CONTROL_POINT    One or more control points within a beam for a single fraction
-    RECORD           The RT Beams Treatment Record
-    ================ ==============================================================
-
-    Possible values of `heterogeneity_correction`:
-
-    ========================== ================================================================
-    `heterogeneity_correction` Dose is calculated using:
-    ========================== ================================================================
-    IMAGE                      Unaltered image data
-    ROI_OVERRIDE               Image data where one or more ROIs override density
-    WATER                      The entire volume treated as water equivalent
-    UNKNOWN                    The TissueHeterogeneityCorrection tag of the DICOM file is empty
-    ========================== ================================================================
-
-    References
-    ----------
-    .. [1] "C8.8.3 RT Dose Module", DICOM PS3.3 2018c - Information Object Definitions
-       http://dicom.nema.org/medical/dicom/2018c/output/chtml/part03/sect_C.8.8.3.html
-    """
-
-    check_dcmdose(dcm)
-
-    values = dcm.pixel_array * dcm.DoseGridScaling
-    units = dcm.DoseUnits
-    dose_type = dcm.DoseType
-    summation = dcm.DoseSummationType
-
-    if hasattr(dcm, "TissueHeterogeneityCorrection"):
-        heterogeneity_correction = dcm.TissueHeterogeneityCorrection
-    else:
-        heterogeneity_correction = "UNKNOWN"
-
-    return Dose(values, units, dose_type, summation, heterogeneity_correction)
 
 
 def load_xyz_from_dicom(dcm):
@@ -205,7 +127,7 @@ def load_xyz_from_dicom(dcm):
     return x, y, z
 
 
-def extract_iec_patient_coords(dcm):
+def extract_iec_patient_xyz(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
     in the IEC patient coordinate system
 
@@ -217,20 +139,19 @@ def extract_iec_patient_coords(dcm):
 
     Returns
     -------
-    Coords(x, y, z)
-        A `namedtuple` containing three `ndarrays` corresponding to the `x`,
+    (x, y, z)
+        A tuple containing three `ndarrays` corresponding to the `x`,
         `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
         the IEC patient coordinate system [1]_:
 
-        `x`
-            An `ndarray` of coordinates corresponding to the patient's left-right
-            axis and increasing to the left hand side of the patient.
-        `y`
-            An `ndarray` of coordinates corresponding to the patient's superoinferior
-            axis and increasing toward the head of the patient.
-        `z`
-            An `ndarray` of coordinates corresponding to the patient's anteroposterior
-            axis and increasing to the anterior side of the patient.
+        `x` corresponds to the patient's left-right axis and increases toward the
+        left hand side of the patient.
+
+        `y` corresponds to the patient's superoinferior axis and increases toward
+        the head of the patient.
+
+        `z` corresponds to the patient's anteroposterior axis and increases to the
+        anterior side of the patient.
 
     Notes
     -----
@@ -259,7 +180,8 @@ def extract_iec_patient_coords(dcm):
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
-    check_dcmdose(dcm)
+    if dcm.Modality != "RTDOSE":
+        raise ValueError("The input DICOM file is not an RT Dose file")
 
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
@@ -303,10 +225,10 @@ def extract_iec_patient_coords(dcm):
     else:
         y = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
 
-    return Coords(x, y, z)
+    return (x, y, z)
 
 
-def extract_iec_fixed_coords(dcm):
+def extract_iec_fixed_xyz(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
     in the IEC fixed coordinate system.
 
@@ -318,8 +240,8 @@ def extract_iec_fixed_coords(dcm):
 
     Returns
     -------
-    Coords(x, y, z)
-        A `namedtuple` containing three `ndarrays` corresponding to the `x`,
+    (x, y, z)
+        A tuple containing three `ndarrays` corresponding to the `x`,
         `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
         the IEC fixed coordinate system [1]_:
 
@@ -365,7 +287,8 @@ def extract_iec_fixed_coords(dcm):
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
-    check_dcmdose(dcm)
+    if dcm.Modality != "RTDOSE":
+        raise ValueError("The input DICOM file is not an RT Dose file")
 
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
@@ -402,10 +325,10 @@ def extract_iec_fixed_coords(dcm):
 
     y = y_orientation*position[2] + np.array(dcm.GridFrameOffsetVector)
 
-    return Coords(x, y, z)
+    return (x, y, z)
 
 
-def extract_dicom_patient_coords(dcm):
+def extract_dicom_patient_xyz(dcm):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
     in the DICOM patient coordinate system
 
@@ -417,20 +340,19 @@ def extract_dicom_patient_coords(dcm):
 
     Returns
     -------
-    Coords(x, y, z)
-        A `namedtuple` containing three `ndarrays` corresponding to the `x`,
+    (x, y, z)
+        A tuple containing three `ndarrays` corresponding to the `x`,
         `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
         the DICOM patient coordinate system [1]_:
 
-        `x`
-            An `ndarray` of coordinates corresponding to the patient's left-right
-            axis and increasing to the left hand side of the patient.
-        `y`
-            An `ndarray` of coordinates corresponding to the patient's anteroposterior
-            axis and increasing to the posterior side of the patient.
-        `z`
-            An `ndarray` of coordinates corresponding to the patient's superoinferior
-            axis and increasing toward the head of the patient.
+        `x` corresponds to the patient's left-right axis and increases to the
+        left hand side of the patient.
+
+        `y` corresponds to the patient's anteroposterior axis and increases toward
+        the posterior side of the patient.
+
+        `z` corresponds to the patient's superoinferior axis and increases
+        toward the head of the patient.
 
     Notes
     -----
@@ -461,7 +383,8 @@ def extract_dicom_patient_coords(dcm):
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
-    check_dcmdose(dcm)
+    if dcm.Modality != "RTDOSE":
+        raise ValueError("The input DICOM file is not an RT Dose file")
 
     position = np.array(dcm.ImagePositionPatient)
     orientation = np.array(dcm.ImageOrientationPatient)
@@ -508,7 +431,7 @@ def extract_dicom_patient_coords(dcm):
     else:
         z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
 
-    return Coords(x, y, z)
+    return (x, y, z)
 
 
 def coords_and_dose_from_dcm(dcm_filepath):
@@ -735,17 +658,3 @@ def contour_to_points(contours):
     contour_points = np.concatenate(resampled_contours, axis=1)
 
     return contour_points
-
-
-def check_dcmdose(dcm):
-    r"""Checks whether `dcm` is a pydicom dataset and of the RT Dose
-    DICOM modality
-    """
-
-    if not isinstance(dcm, pydicom.dataset.FileDataset):
-        raise TypeError(
-            "The input argument is a member of {}. "
-            "It must be a pydicom FileDataset.".format(type(dcm)))
-
-    if dcm.Modality != "RTDOSE":
-        raise ValueError("The input DICOM file is not an RT Dose file")
