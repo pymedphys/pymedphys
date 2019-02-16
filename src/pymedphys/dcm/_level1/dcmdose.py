@@ -61,10 +61,9 @@ class DicomDose:
 
 
 def convert_xyz_to_dicom_coords(xyz_tuple):
-    ZZ_image, YY_image, XX_image = np.meshgrid(
-        xyz_tuple[2], xyz_tuple[1], xyz_tuple[0], indexing='ij')
+    ZZ, YY, XX = np.meshgrid(xyz_tuple[2], xyz_tuple[1], xyz_tuple[0], indexing='ij')
 
-    coords = np.array((XX_image, YY_image, ZZ_image), dtype=np.float64)
+    coords = np.array((XX, YY, ZZ), dtype=np.float64)
     return coords
 
 
