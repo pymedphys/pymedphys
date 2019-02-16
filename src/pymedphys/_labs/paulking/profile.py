@@ -30,7 +30,7 @@ import copy
 
 import numpy as np
 from scipy import interpolate
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 # import xarray as xr
 
@@ -204,6 +204,11 @@ class Profile():
         except ValueError:
             return np.nan
 
+    def plot(self):
+        plt.plot(self.x, self.data, 'o-')
+        plt.show()
+        return #plt.plot(self.x, self.data, 'o-')
+
     def segment(self, start=-np.inf, stop=np.inf):
         """ Part of dose profile between begin and end.
 
@@ -229,6 +234,7 @@ class Profile():
         except ValueError:
             new_x = []
             new_data = []
+
         self.__init__(new_x, new_data)
         return Profile(new_x, new_data)
 
@@ -251,7 +257,7 @@ class Profile():
 
         new_x = np.arange(self.x[0], self.x[-1], step)
         new_data = self.interp(new_x)
-        self.__init__(new_x, new_data, self.metadata)
+        # self.__init__(new_x, new_data, self.metadata)
         return Profile(new_x, new_data, self.metadata)
 
     def normalise_dose(self, x=0.0, data=1.0):
@@ -276,7 +282,7 @@ class Profile():
         new_x = self.x
         new_data = norm_factor * self.data
         metadata = self.metadata
-        self.__init__(new_x, new_data, self.metadata)
+        # self.__init__(new_x, new_data, self.metadata)
         return Profile(new_x, new_data)
 
     def normalize_dose(self, x=0.0, data=1.0):
@@ -307,7 +313,7 @@ class Profile():
         lt_edge = self.x[dydx.index(max(dydx))]
         rt_edge = self.x[dydx.index(min(dydx))]
 
-        self.__init__(x=unmod.x, data=unmod.data, metadata=unmod.metadata)
+        # self.__init__(x=unmod.x, data=unmod.data, metadata=unmod.metadata)
         return (lt_edge, rt_edge)
 
     def normalise_distance(self, step):
@@ -337,13 +343,13 @@ class Profile():
         new_x = []
         for i, dist in enumerate(self.x):
             if dist < cax:
-                new_x.append(dist/lt_edge)
+                new_x.append(-dist/lt_edge)
             elif dist > cax:
                 new_x.append(dist/rt_edge)
             else:
                 new_x.append(0.0)
 
-        self.__init__(new_x, self.data, self.metadata)
+        # self.__init__(new_x, self.data, self.metadata)
         return Profile(new_x, self.data, metadata=self.metadata)
 
     def normalize_distance(self, step):
@@ -365,32 +371,51 @@ class Profile():
 
         """
         lt, rt = self.edges(step)
-        e = (0.8 * lt, rt * 0.8)
-        idx = [i for i, d in enumerate(self.x) if d >= lt and d <= rt]
+        idx = [i for i, d in enumerate(self.x) if d >= 0.8 * lt and d <= 0.8 * rt]
         new_x = self.x[idx[0]:idx[-1]+1]
         new_data = self.data[idx[0]:idx[-1]+1]
 
-        self.__init__(x=new_x, data=new_data, metadata=self.metadata)
+        # self.__init__(x=new_x, data=new_data, metadata=self.metadata)
         return Profile(x=new_x, data=new_data, metadata=self.metadata)
 
-    # def flatness(dose_prof):
-    #     """
-    #     Return float flatness of a dose-profile.
-    #     """
-    #     dose = _get_dose_vals(_find_umbra(dose_prof))
-    #     flat = (max(dose)-min(dose))/np.average(dose)
-    #     return flat
+    def flatness(self, step):
+        """ Flatness of dose profile.
+
+        Calculated as the dose range normalized to mean dose.
+
+        Arguments
+        -----------------
+        step : float
+            Precision of result
+
+        Returns
+        -------
+        float
+
+        """
+        dose = self.umbra(step).data
+        return (max(dose)-min(dose))/np.average(dose)
 
 
-    # def symmetry(dose_prof):
-    #     """
-    #     Return float symmetry of a dose-profile.
-    #     """
-    #     dose = _get_dose_vals(_find_umbra(dose_prof))
-    #     avg_dose = np.average(dose)
-    #     dose_rev = dose[::-1]
-    #     asymmetry = max(np.abs(np.subtract(dose, dose_rev)/avg_dose))
-    #     return asymmetry
+    def symmetry(self, step):
+        """ Symmetry of dose profile.
+
+        Calculated as the maximum difference between corresponding points
+        on opposite sides of the profile center, relativ to mean dose.
+
+        Arguments
+        -----------------
+        step : float
+            Precision of result
+
+        Returns
+        -------
+        float
+
+        """
+
+        dose = self.umbra(step).data
+        return max(np.abs(np.subtract(dose, dose[::-1])/np.average(dose)))
 
     def centre(self):
         pass
@@ -398,11 +423,6 @@ class Profile():
     def shift_to_centre(self):
         pass
 
-    # def flatness(self):
-    #     pass
-
-    # def symmetry(self):
-    #     pass
 
     def symmetrise(self):
         pass
@@ -413,6 +433,8 @@ class Profile():
 
 class DoseDepth():
     pass
+
+### DEFINE LEN() AS THE distance range?
 
 
 # # PRIVATE FUNCTIONS ======================================
