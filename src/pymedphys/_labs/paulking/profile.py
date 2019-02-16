@@ -143,11 +143,14 @@ class Profile():
         return copy.deepcopy(self)
 
     def __str__(self):
-        beginning = str(self.__str__).split('of ')[-1].split(' at')[0]
-        middle = ' of length {}'.format(len(self))
-        ending = '>'
-        result = beginning + middle + ending
-        return(result)
+        fmt_str = 'Profile object: '
+        fmt_str += '{} pts | x ({} cm -> {} cm) | data ({} -> {})'
+        return  fmt_str.format(len(self),
+                               min(self.x), max(self.x),
+                               min(self.data), max(self.data))
+
+##  CHANGE X,DATA VARIABLE NAMES?
+## reconsider modify in place
 
     def from_lists(self, x, data, metadata={}):
         self.x = np.array(x)
@@ -158,7 +161,7 @@ class Profile():
     def from_tuples(self, list_of_tuples, metadata={}):
         """ Load a list of (x,data) tuples.
 
-        Overwrites any existing dose profile data and metadata.
+        Overwrite any existing dose profile data and metadata.
 
         Arguments
         ---------
@@ -417,6 +420,35 @@ class Profile():
         dose = self.umbra(step).data
         return max(np.abs(np.subtract(dose, dose[::-1])/np.average(dose)))
 
+
+    def symmetrise(self, dist_step=0.1):
+    #     """
+    #     Return a symmetric dose-profile, averaging dose values over
+    #     locations across the CAX, and resampled. Also, symmetrize()
+
+    #     """
+    #     dist_vals = _get_dist_vals(dose_prof)
+
+    #     strt = -min(-dist_vals[0], dist_vals[-1])
+    #     stop = min(-dist_vals[0], dist_vals[-1])
+
+    #     dose_prof = resample(dose_prof, dist_strt=strt,
+    #                          dist_stop=stop, dist_step=dist_step)
+
+    #     rev = dose_prof[::-1]
+
+    #     result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
+    #               for i, _ in enumerate(dose_prof)]
+
+    #     return result
+        pass
+
+    def symmetrize(self, dist_step=0.1):
+    #     """ US Eng -> UK Eng """
+    #     return symmetrise(dose_prof, dist_step)
+        pass
+
+
     def centre(self):
         pass
 
@@ -574,36 +606,6 @@ class DoseDepth():
 # def recenter(dose_prof):
 #     """ US Eng -> UK Eng """
 #     return recentre(dose_prof)
-
-
-
-
-
-# def symmetrise(dose_prof, dist_step=0.1):
-#     """
-#     Return a symmetric dose-profile, averaging dose values over
-#     locations across the CAX, and resampled. Also, symmetrize()
-
-#     """
-#     dist_vals = _get_dist_vals(dose_prof)
-
-#     strt = -min(-dist_vals[0], dist_vals[-1])
-#     stop = min(-dist_vals[0], dist_vals[-1])
-
-#     dose_prof = resample(dose_prof, dist_strt=strt,
-#                          dist_stop=stop, dist_step=dist_step)
-
-#     rev = dose_prof[::-1]
-
-#     result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
-#               for i, _ in enumerate(dose_prof)]
-
-#     return result
-
-
-# def symmetrize(dose_prof, dist_step=0.1):
-#     """ US Eng -> UK Eng """
-#     return symmetrise(dose_prof, dist_step)
 
 
 # def is_wedged(dose_prof):

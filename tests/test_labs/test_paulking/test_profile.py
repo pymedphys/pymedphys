@@ -167,6 +167,7 @@ def test_copy():
 def test_str():
     profiler = Profile().from_tuples(PROFILER)
     assert profiler.__str__()
+    print(profiler.__str__())
 
 
 def test_from_lists():
@@ -264,8 +265,8 @@ def test_flatness():
 def test_symmetry():
     profiler = Profile().from_tuples(PROFILER)
     profiler = profiler.resample(0.1)
-    symmetry = profiler.symmetry()
-    assert np.allclose(symmetry(PROFILER), 0.0253189859)
+    symmetry = profiler.symmetry(0.1)
+    assert np.isclose(symmetry, 0.024152376510553037)
 
 
 # def test_pulse():
