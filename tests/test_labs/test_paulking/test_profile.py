@@ -175,7 +175,6 @@ def test_from_lists():
     also_empty.from_lists([], [])
     assert empty == also_empty
 
-
 def test_from_tuples():
     empty = Profile()
     profiler = empty.from_tuples(PROFILER)
@@ -207,7 +206,7 @@ def test_DoseProfile_segment():
     assert np.array_equal(one_point.data, [45.23])
     # ALL POINTS
     profiler = Profile().from_tuples(PROFILER)
-    all_points = profiler.segment(start=0, stop=0)
+    all_points = profiler.segment()
     assert np.array_equal(all_points.x, profiler.x)
     assert np.array_equal(all_points.data, profiler.data)
 
@@ -229,7 +228,6 @@ def test_DoseProfile_resample():
     # START LOCATION UNCHANGED
     assert np.isclose(resampled.data[0], profiler.data[0])
 
-
 def test_normalise_dose():  # also normalize
     profiler = Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.normalise_dose(x=0).get_dose(0), 1.0)
@@ -239,28 +237,35 @@ def test_normalise_dose():  # also normalize
 
 def test_edges():
     profiler = Profile().from_tuples(PROFILER)
-    assert np.allclose(profiler.edges(0.1), (-5.1, 4.9))
+    assert np.allclose(profiler.edges(0.1), (-5.2, 4.8))
     assert len(profiler) == len(PROFILER)
 
 
 def test_normalise_distance():  # also normalize
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.normalise_distance(0.1).x[0], 3.2156862745)
+    assert np.isclose(profiler.normalise_distance(0.1).x[0], -3.1538461538461533)
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.normalize_distance(0.1).x[0], 3.2156862745)
+    assert np.isclose(profiler.normalize_distance(0.1).x[0], -3.1538461538461533)
     profiler = Profile().from_tuples(PROFILER)
     assert len(PROFILER) == len(profiler.normalize_distance(0.1).x)
 
 
 def test_umbra():
-    profiler = Profile().from_tuples(PROFILER)
-    profiler.resample(0.1)
+    profiler = Profile().from_tuples(PROFILER).resample(0.1)
     profiler_length = len(profiler)
-    print(len(profiler))
     umbra = profiler.umbra(0.1)
-    print(len(umbra) < profiler_length)
-    ########
-    pass
+    assert len(umbra) < profiler_length
+
+def test_flatness():
+    profiler = Profile().from_tuples(PROFILER)
+    profiler = profiler.resample(0.1)
+    assert np.isclose(profiler.flatness(0.1), 0.03042644213284108)
+
+def test_symmetry():
+    profiler = Profile().from_tuples(PROFILER)
+    profiler = profiler.resample(0.1)
+    symmetry = profiler.symmetry()
+    assert np.allclose(symmetry(PROFILER), 0.0253189859)
 
 
 # def test_pulse():
@@ -272,11 +277,6 @@ def test_umbra():
 # def test_recentre():
 #     assert np.allclose(recentre(PROFILER)[0][0], -16.3)
 
-# def test_flatness():
-#     assert np.allclose(flatness(PROFILER), 0.03042720)
-
-# def test_symmetry():
-#     assert np.allclose(symmetry(PROFILER), 0.0253189859)
 # def test_symmetrise():
 #     symmetric = symmetrise(PROFILER)
 #     assert symmetric[0][1] == symmetric[-1][1]
@@ -305,11 +305,12 @@ if __name__ == "__main__":
     test_edges()
     test_normalise_distance()
     test_umbra()
+    test_flatness()
+    test_symmetry()
+
     #     test_pulse()
     #     test_overlay()
     #     test_recentre()
-    #     test_flatness()
-    #     test_symmetry()
     #     test_symmetrise()
     #     test_is_wedged()
     pass
