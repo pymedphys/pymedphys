@@ -109,7 +109,7 @@ Once you have an account, you will need commit rights to this
 repository in order to make contributions. Create an issue on GitHub
 within the PyMedPhys repository `here <https://github.com/pymedphys/pymedphys/issues/new/>`__
 and include "request for commit rights" or similar in your issue's
-content, along with "@SimonBiggs" to ensure it is seen!
+content, along with "@SimonBiggs" and "@Centrus007" to ensure it is seen!
 
 Whenever you wish to discuss anything about PyMedPhys, please create an issue on GitHub.
 It can be to ask for help, suggest a change, provide feedback, or anything else regarding
@@ -241,7 +241,7 @@ Now you need to open a merge request. Open one `here <https://github.com/pymedph
 select the source branch to be `pymedphys/your-name-edit-contributing-document`
 and set the target branch to be `pymedphys/master`.
 
-At that point, I'll get notified and we can begin discussing the changes
+At that point, we'll get notified and we can begin discussing the changes
 you've made.
 
 Thank you! Welcome to the team!
