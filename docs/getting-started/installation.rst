@@ -41,3 +41,10 @@ following commands to install the master branch from GitHub.
     conda config --add channels conda-forge
     conda install pymedphys --only-deps
     pip install -e .
+
+
+To use this method you will need to have git on your machine. Instructions
+for installing git and chocolatey can be found within the
+`relevant section of the contributor docs`_.
+
+.. _`relevant section of the contributor docs`: ../developer/contributing.html#chocolatey
