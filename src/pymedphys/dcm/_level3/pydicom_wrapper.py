@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,35 +24,49 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Dicom toolbox built ontop of the pydicom library.
+from copy import deepcopy
 
-Available Functions
--------------------
->>> from pymedphys.dcm import (
-...     anonymise_dicom,
-...     extract_dose,
-...     extract_iec_patient_coords,
-...     extract_iec_fixed_coords,
-...     extract_dicom_patient_coords,
-...     load_dose_from_dicom,
-...     load_xyz_from_dicom,
-...     find_dose_within_structure,
-...     create_dvh,
-...     get_structure_aligned_cube)
-"""
+import pydicom
 
-# pylint: disable=W0401,W0614
+from .._level1.dcmcreate import dcm_from_dict
+from .._level2.dcmanonymise import anonymise_dicom
 
-from ..libutils import clean_and_verify_levelled_modules
+from ...libutils import get_imports
 
-from ._level1.dcmdose import *
-from ._level1.dcmcreate import *
-from ._level2.header_tweaks import *
-from ._level2.dcmanonymise import *
-from ._level2.dcmstruct import *
-from ._level3.pydicom_wrapper import *
+IMPORTS = get_imports(globals())
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.dcmdose', '._level1.dcmcreate', '._level2.header_tweaks',
-    '._level2.dcmanonymise', '._level2.dcmstruct', '._level3.pydicom_wrapper'
-], package='pymedphys.dcm')
+
+class Dicom():
+    def __init__(self, dcm):
+        self.dcm = dcm
+
+    @classmethod
+    def from_file(cls, filepath):
+        dcm = pydicom.read_file(filepath, force=True)
+
+        return cls(dcm)
+
+    @classmethod
+    def from_dict(cls, dictionary):
+        dcm = dcm_from_dict(dictionary)
+
+        return cls(dcm)
+
+    def __repr__(self):
+        return self._dcm.__repr__()
+
+    @property
+    def dcm(self) -> pydicom.Dataset:
+        return self._dcm
+
+    @dcm.setter
+    def dcm(self, dcm: pydicom.Dataset):
+        self._dcm = deepcopy(dcm)
+
+    def save_as(self, filepath):
+        self._dcm.save_as(filepath)
+
+    def anonymise(self):
+        anonymised = anonymise_dicom(self._dcm)
+
+        return self.__class__(anonymised)
