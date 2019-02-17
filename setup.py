@@ -125,6 +125,5 @@ setup(
         'docs': [
             'numpydoc',
             'sphinx >= 1.4',
-            'sphinx_rtd_theme',
-            'dataclasses']}
+            'sphinx_rtd_theme']}
 )
