@@ -57,7 +57,7 @@ class Dicom():
 
     @property
     def dcm(self) -> pydicom.Dataset:
-        return self._dcm
+        return deepcopy(self._dcm)
 
     @dcm.setter
     def dcm(self, dcm: pydicom.Dataset):
@@ -67,6 +67,6 @@ class Dicom():
         self._dcm.save_as(filepath)
 
     def anonymise(self):
-        anonymised = anonymise_dicom(self._dcm)
+        anonymised = anonymise_dicom(self.dcm)
 
         return self.__class__(anonymised)
