@@ -44,7 +44,7 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
     ----------
     dcm
         The DICOM file to be anonymised. `dcm` must represent a valid
-        DICOM file in the form of a `pydicom FileDataset` - ordinarily
+        DICOM file in the form of a `pydicom Dataset` - ordinarily
         returned by `pydicom.dcmread()`.
 
     delete_private_tags
@@ -64,20 +64,11 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
     Returns
     -------
     dcm_out
-        An anonymised copy of the input DICOM file as a `pydicom FileDataset`
-
-    Raises
-    ------
-    TypeError
-        If `dcm` is not an instance of `pydicom.dataset.FileDataset`
+        An anonymised copy of the input DICOM file as a `pydicom Dataset`
     """
 
     if tags_to_keep is None:
         tags_to_keep = []
-
-    if not isinstance(dcm, pydicom.dataset.FileDataset):
-        raise TypeError("The input argument is a member of {}. "
-                        "It must be a pydicom FileDataset.".format(type(dcm)))
 
     if not ignore_unknown_tags:
         tags_used = list(dcm.keys())
