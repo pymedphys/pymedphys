@@ -26,6 +26,12 @@
     developer/physical-design
     developer/agpl-benefits
 
+.. toctree::
+    :maxdepth: 1
+    :caption: Additional Information
+
+    additional/changelog.rst
+
 
 Indices and tables
 ==================

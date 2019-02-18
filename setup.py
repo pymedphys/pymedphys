@@ -106,23 +106,25 @@ setup(
         'pytest-runner'
     ],
     tests_require=[
-        'pylint',
         'coverage',
+        'deepdiff',
+        'layer-linter'
+        'm2r',
         'mypy',
+        'numpydoc',
+        'pylint',
         'pytest',
         'pytest-pylint',
         'pytest-mypy',
         'pytest-doctestplus',
-        'sphinx-testing',
-        'deepdiff',
-        'numpydoc',
         'sphinx >= 1.4',
         'sphinx_rtd_theme',
-        'layer-linter'
+        'sphinx-testing',
     ],
     cmdclass={"pytest": PyTest},
     extras_require={
         'docs': [
+            'm2r',
             'numpydoc',
             'sphinx >= 1.4',
             'sphinx_rtd_theme']}
