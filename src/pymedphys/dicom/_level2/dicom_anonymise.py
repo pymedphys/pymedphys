@@ -31,20 +31,20 @@ import pydicom
 
 from ...libutils import get_imports
 
-from .._level1.dcmdictbaseline import BaselineDicomDictionary
+from .._level1.dicom_dict_baseline import BaselineDicomDictionary
 
 IMPORTS = get_imports(globals())
 
 
-def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
+def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
                     ignore_unknown_tags=False):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
     ----------
-    dcm
-        The DICOM file to be anonymised. `dcm` must represent a valid
-        DICOM file in the form of a `pydicom FileDataset` - ordinarily
+    ds
+        The DICOM file to be anonymised. `ds` must represent a valid
+        DICOM file in the form of a `pydicom Dataset` - ordinarily
         returned by `pydicom.dcmread()`.
 
     delete_private_tags
@@ -63,24 +63,20 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
 
     Returns
     -------
-    dcm_out
-        An anonymised copy of the input DICOM file as a `pydicom FileDataset`
+    ds_out
+        An anonymised copy of the input DICOM file as a `pydicom Dataset`
 
     Raises
     ------
     TypeError
-        If `dcm` is not an instance of `pydicom.dataset.FileDataset`
+        If `ds` is not an instance of `pydicom.dataset.Dataset`
     """
 
     if tags_to_keep is None:
         tags_to_keep = []
 
-    if not isinstance(dcm, pydicom.dataset.FileDataset):
-        raise TypeError("The input argument is a member of {}. "
-                        "It must be a pydicom FileDataset.".format(type(dcm)))
-
     if not ignore_unknown_tags:
-        tags_used = list(dcm.keys())
+        tags_used = list(ds.keys())
         non_private_tags_used = np.array([
             tag for tag in tags_used if not tag.is_private
         ])
@@ -93,7 +89,7 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
                 np.invert(are_tags_used_in_dict_copy)]
 
             unknown_tag_names = [
-                dcm[tag].keyword
+                ds[tag].keyword
                 for tag in unknown_tags]
 
             raise AssertionError(
@@ -164,11 +160,11 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
                          "InstanceCreationTime",
                          "InstanceCreatorUID"]
 
-    dcm_out = copy.deepcopy(dcm)
+    ds_out = copy.deepcopy(ds)
 
     # Remove private tags from DICOM file unless requested not to.
     if delete_private_tags:
-        dcm_out.remove_private_tags()
+        ds_out.remove_private_tags()
 
     # Exclude tags from anonymisation process that have been requested to remain as is
     for tag in tags_to_keep:
@@ -181,7 +177,7 @@ def anonymise_dicom(dcm, delete_private_tags=True, tags_to_keep=None,
     # Overwrite tags in anonymisation list with an empty string.
     # TODO: Provide alternative overwrite values?
     for tag in tags_to_anonymise:
-        if hasattr(dcm_out, tag):
-            setattr(dcm_out, tag, "")
+        if hasattr(ds_out, tag):
+            setattr(ds_out, tag, "")
 
-    return dcm_out
+    return ds_out

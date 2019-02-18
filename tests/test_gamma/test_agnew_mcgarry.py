@@ -60,25 +60,25 @@ EVAL_VMAT_0_25mm = os.path.abspath(os.path.join(
 RANDOM_SUBSET = 50000
 
 
-def load_dose_from_dicom(dcm):
-    pixels = dcm.pixel_array
-    dose = pixels * dcm.DoseGridScaling
+def load_dose_from_dicom(ds):
+    pixels = ds.pixel_array
+    dose = pixels * ds.DoseGridScaling
 
     return dose
 
 
-def load_yx_from_dicom(dcm):
+def load_yx_from_dicom(ds):
     resolution = np.array(
-        dcm.PixelSpacing).astype(float)
+        ds.PixelSpacing).astype(float)
     dx = resolution[0]
     x = (
-        dcm.ImagePositionPatient[0] +
-        np.arange(0, dcm.Columns * dx, dx))
+        ds.ImagePositionPatient[0] +
+        np.arange(0, ds.Columns * dx, dx))
 
     dy = resolution[1]
     y = (
-        dcm.ImagePositionPatient[1] +
-        np.arange(0, dcm.Rows * dy, dy))
+        ds.ImagePositionPatient[1] +
+        np.arange(0, ds.Rows * dy, dy))
 
     return y, x
 

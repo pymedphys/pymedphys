@@ -38,6 +38,6 @@ class MUDensity(XArrayComposition):
     """
 
     @classmethod
-    def from_dicom(cls, dcm: Dataset):
+    def from_dicom(cls, ds: Dataset):
         """Calculate MU Density when provided with a pydicom dicom object"""
         return cls(None)

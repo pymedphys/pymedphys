@@ -30,7 +30,7 @@
 Available Functions
 -------------------
 >>> from pymedphys.gamma import (
-...     gamma_shell, gamma_dcm, gamma_filter_numpy, gamma_filter_brute_force)
+...     gamma_shell, gamma_dicom, gamma_filter_numpy, gamma_filter_brute_force)
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413
