@@ -45,19 +45,19 @@ IMPORTS = get_imports(globals())
 class DicomDose:
 
     def __init__(self, dcm_filepath):
-        dcm = pydicom.dcmread(dcm_filepath)
-        if dcm.Modality != "RTDOSE":
+        ds = pydicom.dcmread(dcm_filepath)
+        if ds.Modality != "RTDOSE":
             raise ValueError("The input DICOM file is not an RT Dose file")
-        self.dcm = dcm
+        self.ds = ds
 
-        self.values = dcm.pixel_array * dcm.DoseGridScaling
-        self.units = dcm.DoseUnits
-        self.x, self.y, self.z = extract_dicom_patient_xyz(dcm)
+        self.values = ds.pixel_array * ds.DoseGridScaling
+        self.units = ds.DoseUnits
+        self.x, self.y, self.z = extract_dicom_patient_xyz(ds)
         self.coords = convert_xyz_to_dicom_coords((self.x, self.y, self.z))
         self.mask = None
 
     def save_to_dicom(self, filepath):
-        self.dcm.save_as(filepath)
+        self.ds.save_as(filepath)
 
 
 def convert_xyz_to_dicom_coords(xyz_tuple):
@@ -67,7 +67,7 @@ def convert_xyz_to_dicom_coords(xyz_tuple):
     return coords
 
 
-def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
+def load_dose_from_dicom(ds, set_transfer_syntax_uid=True, reshape=True):
     r"""Extract the dose grid from a DICOM RT Dose file.
 
     .. deprecated:: 0.5.0
@@ -77,7 +77,7 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
     """
 
     if set_transfer_syntax_uid:
-        dcm.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+        ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
     if reshape:
         warnings.warn((
@@ -86,16 +86,16 @@ def load_dose_from_dicom(dcm, set_transfer_syntax_uid=True, reshape=True):
             'function without the reshape pass the parameter `reshape=False` '
             'when calling `load_dose_from_dicom`.'), UserWarning)
         pixels = np.transpose(
-            dcm.pixel_array, (1, 2, 0))
+            ds.pixel_array, (1, 2, 0))
     else:
-        pixels = dcm.pixel_array
+        pixels = ds.pixel_array
 
-    dose = pixels * dcm.DoseGridScaling
+    dose = pixels * ds.DoseGridScaling
 
     return dose
 
 
-def load_xyz_from_dicom(dcm):
+def load_xyz_from_dicom(ds):
     r"""Extract the coordinates of a DICOM RT Dose file's dose grid.
 
     .. deprecated:: 0.5.0
@@ -113,26 +113,26 @@ def load_xyz_from_dicom(dcm):
         'It is currently preserved for temporary backwards compatibility.'
     ), UserWarning)
 
-    resolution = np.array(dcm.PixelSpacing).astype(float)
+    resolution = np.array(ds.PixelSpacing).astype(float)
 
     dx = resolution[0]
-    x = (dcm.ImagePositionPatient[0] + np.arange(0, dcm.Columns * dx, dx))
+    x = (ds.ImagePositionPatient[0] + np.arange(0, ds.Columns * dx, dx))
 
     dy = resolution[1]
-    y = (dcm.ImagePositionPatient[1] + np.arange(0, dcm.Rows * dy, dy))
+    y = (ds.ImagePositionPatient[1] + np.arange(0, ds.Rows * dy, dy))
 
-    z = (np.array(dcm.GridFrameOffsetVector) + dcm.ImagePositionPatient[2])
+    z = (np.array(ds.GridFrameOffsetVector) + ds.ImagePositionPatient[2])
 
     return x, y, z
 
 
-def extract_iec_patient_xyz(dcm):
+def extract_iec_patient_xyz(ds):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
     in the IEC patient coordinate system
 
     Parameters
     ----------
-    dcm
+    ds
         A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
         Must represent a valid DICOM RT Dose file.
 
@@ -179,14 +179,14 @@ def extract_iec_patient_xyz(dcm):
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
-    if dcm.Modality != "RTDOSE":
+    if ds.Modality != "RTDOSE":
         raise ValueError("The input DICOM file is not an RT Dose file")
 
-    position = np.array(dcm.ImagePositionPatient)
-    orientation = np.array(dcm.ImageOrientationPatient)
+    position = np.array(ds.ImagePositionPatient)
+    orientation = np.array(ds.ImageOrientationPatient)
 
-    di = float(dcm.PixelSpacing[0])
-    dj = float(dcm.PixelSpacing[1])
+    di = float(ds.PixelSpacing[0])
+    dj = float(ds.PixelSpacing[1])
 
     is_prone_or_supine = np.array_equal(
         np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
@@ -199,16 +199,16 @@ def extract_iec_patient_xyz(dcm):
         zflip = (orientation[4] == 1)
         head_first = (xflip != zflip)
 
-        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
-        z = -(orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj))
+        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
+        z = -(orientation[4]*position[1] + np.arange(0, ds.Rows * dj, dj))
 
     elif is_decubitus:
         xflip = (orientation[3] == -1)
         zflip = (orientation[1] == 1)
         head_first = (xflip == zflip)
 
-        x = -(orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj))
-        z = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
+        x = -(orientation[3]*position[0] + np.arange(0, ds.Rows * dj, dj))
+        z = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
     else:
         raise ValueError(
             "Dose grid orientation is not supported. "
@@ -220,20 +220,20 @@ def extract_iec_patient_xyz(dcm):
         z = np.flip(z)
 
     if head_first:
-        y = position[2] + np.array(dcm.GridFrameOffsetVector)
+        y = position[2] + np.array(ds.GridFrameOffsetVector)
     else:
-        y = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
+        y = np.flip(-position[2] + np.array(ds.GridFrameOffsetVector))
 
     return (x, y, z)
 
 
-def extract_iec_fixed_xyz(dcm):
+def extract_iec_fixed_xyz(ds):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
     in the IEC fixed coordinate system.
 
     Parameters
     ----------
-    dcm
+    ds
         A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
         Must represent a valid DICOM RT Dose file.
 
@@ -286,14 +286,14 @@ def extract_iec_fixed_xyz(dcm):
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
-    if dcm.Modality != "RTDOSE":
+    if ds.Modality != "RTDOSE":
         raise ValueError("The input DICOM file is not an RT Dose file")
 
-    position = np.array(dcm.ImagePositionPatient)
-    orientation = np.array(dcm.ImageOrientationPatient)
+    position = np.array(ds.ImagePositionPatient)
+    orientation = np.array(ds.ImageOrientationPatient)
 
-    di = float(dcm.PixelSpacing[0])
-    dj = float(dcm.PixelSpacing[1])
+    di = float(ds.PixelSpacing[0])
+    dj = float(ds.PixelSpacing[1])
 
     is_prone_or_supine = np.array_equal(
         np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
@@ -307,33 +307,33 @@ def extract_iec_fixed_xyz(dcm):
     if is_prone_or_supine:
         y_orientation = 2*(orientation[0] == orientation[4])-1
 
-        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
+        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
         z = -np.flip(orientation[4]*position[1] +
-                     np.arange(0, dcm.Rows * dj, dj))
+                     np.arange(0, ds.Rows * dj, dj))
 
     elif is_decubitus:
         y_orientation = 2*(orientation[1] != orientation[3])-1
 
         z = -np.flip(orientation[3]*position[0] +
-                     np.arange(0, dcm.Rows * dj, dj))
-        x = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
+                     np.arange(0, ds.Rows * dj, dj))
+        x = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
     else:
         raise ValueError(
             "Dose grid orientation is not supported. "
             "Dose grid slices must be aligned along the superoinferior axis of patient")
 
-    y = y_orientation*position[2] + np.array(dcm.GridFrameOffsetVector)
+    y = y_orientation*position[2] + np.array(ds.GridFrameOffsetVector)
 
     return (x, y, z)
 
 
-def extract_dicom_patient_xyz(dcm):
+def extract_dicom_patient_xyz(ds):
     r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
     in the DICOM patient coordinate system
 
     Parameters
     ----------
-    dcm
+    ds
         A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
         Must represent a valid DICOM RT Dose file.
 
@@ -382,14 +382,14 @@ def extract_dicom_patient_xyz(dcm):
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
-    if dcm.Modality != "RTDOSE":
+    if ds.Modality != "RTDOSE":
         raise ValueError("The input DICOM file is not an RT Dose file")
 
-    position = np.array(dcm.ImagePositionPatient)
-    orientation = np.array(dcm.ImageOrientationPatient)
+    position = np.array(ds.ImagePositionPatient)
+    orientation = np.array(ds.ImageOrientationPatient)
 
-    di = float(dcm.PixelSpacing[0])
-    dj = float(dcm.PixelSpacing[1])
+    di = float(ds.PixelSpacing[0])
+    dj = float(ds.PixelSpacing[1])
 
     is_prone_or_supine = np.array_equal(
         np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
@@ -405,16 +405,16 @@ def extract_dicom_patient_xyz(dcm):
         yflip = (orientation[4] == -1)
         head_first = (xflip == yflip)
 
-        x = orientation[0]*position[0] + np.arange(0, dcm.Columns * di, di)
-        y = orientation[4]*position[1] + np.arange(0, dcm.Rows * dj, dj)
+        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
+        y = orientation[4]*position[1] + np.arange(0, ds.Rows * dj, dj)
 
     elif is_decubitus:
         xflip = (orientation[3] == -1)
         yflip = (orientation[1] == -1)
         head_first = (xflip != yflip)
 
-        x = orientation[3]*position[0] + np.arange(0, dcm.Rows * dj, dj)
-        y = orientation[1]*position[1] + np.arange(0, dcm.Columns * di, di)
+        x = orientation[3]*position[0] + np.arange(0, ds.Rows * dj, dj)
+        y = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
     else:
         raise ValueError(
             "Dose grid orientation is not supported. "
@@ -426,33 +426,33 @@ def extract_dicom_patient_xyz(dcm):
         y = np.flip(y)
 
     if head_first:
-        z = position[2] + np.array(dcm.GridFrameOffsetVector)
+        z = position[2] + np.array(ds.GridFrameOffsetVector)
     else:
-        z = np.flip(-position[2] + np.array(dcm.GridFrameOffsetVector))
+        z = np.flip(-position[2] + np.array(ds.GridFrameOffsetVector))
 
     return (x, y, z)
 
 
 def coords_and_dose_from_dcm(dcm_filepath):
-    dcm = pydicom.read_file(dcm_filepath, force=True)
-    x, y, z = load_xyz_from_dicom(dcm)
+    ds = pydicom.read_file(dcm_filepath, force=True)
+    x, y, z = load_xyz_from_dicom(ds)
     coords = (y, x, z)
-    dose = load_dose_from_dicom(dcm)
+    dose = load_dose_from_dicom(ds)
 
     return coords, dose
 
 
-def load_dicom_data(dcm, depth_adjust):
-    dose = load_dose_from_dicom(dcm)
-    crossplane, vertical, inplane = load_xyz_from_dicom(dcm)
+def load_dicom_data(ds, depth_adjust):
+    dose = load_dose_from_dicom(ds)
+    crossplane, vertical, inplane = load_xyz_from_dicom(ds)
 
     depth = vertical + depth_adjust
 
     return inplane, crossplane, depth, dose
 
 
-def extract_depth_dose(dcm, depth_adjust, averaging_distance=0):
-    inplane, crossplane, depth, dose = load_dicom_data(dcm, depth_adjust)
+def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
+    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
     inplane_ref = abs(inplane) <= averaging_distance
     crossplane_ref = abs(crossplane) <= averaging_distance
@@ -469,9 +469,9 @@ def extract_depth_dose(dcm, depth_adjust, averaging_distance=0):
     return depth, depth_dose
 
 
-def extract_profiles(dcm, depth_adjust, depth_lookup, averaging_distance=0):
+def extract_profiles(ds, depth_adjust, depth_lookup, averaging_distance=0):
 
-    inplane, crossplane, depth, dose = load_dicom_data(dcm, depth_adjust)
+    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
     inplane_ref = abs(inplane) <= averaging_distance
     crossplane_ref = abs(crossplane) <= averaging_distance
@@ -500,23 +500,23 @@ def bounding_vals(test, values):
     return values[lower], values[upper]
 
 
-def average_bounding_profiles(dcm, depth_adjust, depth_lookup,
+def average_bounding_profiles(ds, depth_adjust, depth_lookup,
                               averaging_distance=0):
-    inplane, crossplane, depth, _ = load_dicom_data(dcm, depth_adjust)
+    inplane, crossplane, depth, _ = load_dicom_data(ds, depth_adjust)
 
     if depth_lookup in depth:
         return extract_profiles(
-            dcm, depth_adjust, depth_lookup, averaging_distance)
+            ds, depth_adjust, depth_lookup, averaging_distance)
     else:
         print(
             'Specific depth not found, interpolating from surrounding depths')
         shallower, deeper = bounding_vals(depth_lookup, depth)
 
         _, shallower_inplane, _, shallower_crossplane = np.array(
-            extract_profiles(dcm, depth_adjust, shallower, averaging_distance))
+            extract_profiles(ds, depth_adjust, shallower, averaging_distance))
 
         _, deeper_inplane, _, deeper_crossplane = np.array(
-            extract_profiles(dcm, depth_adjust, deeper, averaging_distance))
+            extract_profiles(ds, depth_adjust, deeper, averaging_distance))
 
         depth_range = deeper - shallower
         shallower_weight = 1 - (depth_lookup - shallower) / depth_range

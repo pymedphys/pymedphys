@@ -35,11 +35,11 @@ from .._level1.dcmcreate import dcm_from_dict
 IMPORTS = get_imports(globals())
 
 
-def adjust_machine_name(dcm, new_machine_name):
+def adjust_machine_name(ds, new_machine_name):
     """Change the machine name within the DICOM header
     """
 
-    new_dcm = deepcopy(dcm)
+    new_dcm = deepcopy(ds)
 
     for beam in new_dcm.BeamSequence:
         beam.TreatmentMachineName = new_machine_name
@@ -48,8 +48,8 @@ def adjust_machine_name(dcm, new_machine_name):
 
 
 def adjust_machine_name_cli(args):
-    dcm = pydicom.read_file(args.input_file, force=True)
-    new_dcm = adjust_machine_name(dcm, args.new_machine_name)
+    ds = pydicom.read_file(args.input_file, force=True)
+    new_dcm = adjust_machine_name(ds, args.new_machine_name)
 
     pydicom.write_file(args.output_file, new_dcm)
 
@@ -67,11 +67,11 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
     return new_sequence
 
 
-def adjust_rel_elec_density(dcm, adjustment_map):
+def adjust_rel_elec_density(ds, adjustment_map):
     """Append or adjust relative electron densities of stuctures
     """
 
-    new_dcm = deepcopy(dcm)
+    new_dcm = deepcopy(ds)
 
     ROI_name_to_number_map = {
         structure_set.ROIName: structure_set.ROINumber
@@ -113,7 +113,7 @@ def adjust_rel_elec_density_cli(args):
         for key, item in zip(args.adjustment_map[::2], args.adjustment_map[1::2])
     }
 
-    dcm = pydicom.read_file(args.input_file, force=True)
-    new_dcm = adjust_rel_elec_density(dcm, adjustment_map)
+    ds = pydicom.read_file(args.input_file, force=True)
+    new_dcm = adjust_rel_elec_density(ds, adjustment_map)
 
     pydicom.write_file(args.output_file, new_dcm)

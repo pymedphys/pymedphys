@@ -106,9 +106,9 @@ def compare_logfile_within_zip(zip_filepath):
 
     with data_zip.open(dicom_file) as file_object:
         dcm_bytes = DicomBytesIO(file_object.read())
-        dcm = pydicom.dcmread(dcm_bytes)
+        ds = pydicom.dcmread(dcm_bytes)
 
-    MUDensity.from_dicom(dcm)
+    MUDensity.from_dicom(ds)
 
 
 def test_from_dicom():
@@ -134,7 +134,7 @@ def test_from_dicom():
         for mu_weight in mu_weights
     ]
 
-    dcm = dcm_from_dict({
+    ds = dcm_from_dict({
         'BeamSequence': [
             {
                 'BeamLimitingDeviceSequence': [
