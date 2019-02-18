@@ -14,7 +14,7 @@
     user/mudensity
     user/gamma
     user/electronfactors
-    user/dcm
+    user/dicom
     user/geometry
 
 .. toctree::

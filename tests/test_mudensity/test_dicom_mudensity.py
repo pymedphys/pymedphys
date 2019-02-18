@@ -38,7 +38,7 @@ import numpy as np
 import pydicom
 from pydicom.filebase import DicomBytesIO
 
-from pymedphys.dcm import dcm_from_dict
+from pymedphys.dicom import dicom_from_dict
 from pymedphys.mudensity import MUDensity
 
 MU = [0, 10, 20]
@@ -134,7 +134,7 @@ def test_from_dicom():
         for mu_weight in mu_weights
     ]
 
-    ds = dcm_from_dict({
+    ds = dicom_from_dict({
         'BeamSequence': [
             {
                 'BeamLimitingDeviceSequence': [

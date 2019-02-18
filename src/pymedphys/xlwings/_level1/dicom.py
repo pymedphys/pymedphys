@@ -34,7 +34,7 @@ try:
 except ImportError:
     HAS_XLWINGS = False
 
-from ...dcm import extract_depth_dose, extract_profiles
+from ...dicom import extract_depth_dose, extract_profiles
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
