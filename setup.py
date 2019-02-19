@@ -86,21 +86,21 @@ setup(
     license='AGPLv3+',
     # data_files=get_data_files(),
     install_requires=[
-        'numpy>=1.12',
-        'scipy',
-        'pandas',
-        'xarray',
-        'matplotlib',
         'attrs',
-        'psutil',
-        'pymssql',
         'keyring',
-        'shapely',
-        'xlwings; platform_system != "Linux"',
-        'pydicom>=1.0',
-        'python-dateutil',
+        'matplotlib',
+        'notebook',
+        'numpy>=1.12',
+        'pandas',
         'Pillow',
-        'notebook'
+        'psutil',
+        'pydicom>=1.0',
+        'pymssql',
+        'python-dateutil',
+        'scipy',
+        'shapely',
+        'xarray',
+        'xlwings; platform_system != "Linux"'
     ],
     setup_requires=[
         'pytest-runner'
@@ -108,7 +108,7 @@ setup(
     tests_require=[
         'coverage',
         'deepdiff',
-        'layer-linter'
+        'layer-linter',
         'm2r',
         'mypy',
         'numpydoc',
@@ -119,7 +119,7 @@ setup(
         'pytest-doctestplus',
         'sphinx >= 1.4',
         'sphinx_rtd_theme',
-        'sphinx-testing',
+        'sphinx-testing'
     ],
     cmdclass={"pytest": PyTest},
     extras_require={
