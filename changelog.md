@@ -2,15 +2,15 @@
 All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-<br/>
+
 
 ## [Unreleased]
 
 ### Added
 - ProfileDose object built ontop of xarray. [@SimonBiggs](https://github.com/SimonBiggs).
 
-### Changed
-- **Breaking Change**: All uses of "dcm" in directory names, module names, function names, etc.
+### Breaking Changes
+- All uses of "dcm" in directory names, module names, function names, etc.
   have been converted to "dicom". Anything that makes use of this code will need to be
   adjusted accordingly. Required changes include:
     - `pymedphys.dcm` --> `pymedphys.dicom`
@@ -33,9 +33,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Safety
 - nil
 
-##### Security
+### Security
 - nil
-<br/>
+
 
 ## [0.5.1] -- 2019/01/05
 
