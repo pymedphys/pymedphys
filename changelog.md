@@ -6,10 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-##### Added
+### Added
 - ProfileDose object built ontop of xarray. [@SimonBiggs](https://github.com/SimonBiggs).
 
-##### Changed
+### Changed
 - **Breaking Change**: All uses of "dcm" in directory names, module names, function names, etc.
   have been converted to "dicom". Anything that makes use of this code will need to be
   adjusted accordingly. Required changes include:
@@ -21,16 +21,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   match PyDicom convention.
 - MU Density related functions are no longer available under the `pymedphys.coll` package, instead they are found within `pymedphys.mudensity` package.
 
-##### Deprecated
+### Deprecated
 - nil
 
-##### Removed
+### Removed
 - nil
 
-##### Fixed
+### Fixed
 - nil
 
-##### Safety
+### Safety
 - nil
 
 ##### Security
@@ -39,7 +39,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.5.1] -- 2019/01/05
 
-##### Added
+### Added
 - Began keeping record of changes in `changelog.md`
 
 
