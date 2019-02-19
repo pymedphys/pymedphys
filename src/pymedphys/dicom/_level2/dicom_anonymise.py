@@ -158,8 +158,8 @@ def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
                          "SeriesTime",
                          "StationName",
                          "StudyDate",
-                         "StudyTime",
                          "StudyID",
+                         "StudyTime",
                          "Time",
                          "VerifyingObserverName"]
 
