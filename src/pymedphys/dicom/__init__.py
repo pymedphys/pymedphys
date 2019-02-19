@@ -44,6 +44,7 @@ Available Functions
 
 from ..libutils import clean_and_verify_levelled_modules
 
+from ._level1.dicom_dict_baseline import *
 from ._level1.dicom_dose import *
 from ._level1.dicom_create import *
 from ._level2.header_tweaks import *
