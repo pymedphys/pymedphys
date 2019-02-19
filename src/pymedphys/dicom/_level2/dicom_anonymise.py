@@ -68,8 +68,9 @@ def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
 
     Raises
     ------
-    TypeError
-        If `ds` is not an instance of `pydicom.dataset.Dataset`
+    AssertionError
+        Raised if `ignore_unknown_tags` is set to False and unrecognised DICOM
+        tags are detected in `ds`
     """
 
     if tags_to_keep is None:
