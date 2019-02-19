@@ -68,9 +68,9 @@ def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
 
     Raises
     ------
-    AssertionError
-        Raised if `ignore_unknown_tags` is set to False and unrecognised DICOM
-        tags are detected in `ds`
+    ValueError
+        Raised if `ignore_unknown_tags` is set to False and unrecognised,
+        non-private DICOM tags are detected in `ds`
     """
 
     if tags_to_keep is None:
@@ -93,73 +93,75 @@ def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
                 ds[tag].keyword
                 for tag in unknown_tags]
 
-            raise AssertionError(
+            raise ValueError(
                 "At least one of the non-private tags within your DICOM file "
-                "is not "
-                "within PyMedPhys's copy of the DICOM dictionary. If this is "
-                "the case there is a small chance an introduced tag might be "
-                "identifying. The unrecognised tags are:\n\n{}\n\n"
-                "To ignore this error, pass a value of True to "
-                "`ignore_unknown_tags` within "
-                "`anonymise_dicom`. Please inform the creators of PyMedPhys "
-                "that the baseline DICOM dictionary is out of date.".format(
-                    unknown_tag_names))
+                "is not within PyMedPhys's copy of the DICOM dictionary. It is "
+                "possible that one or more of these tags contain identifying "
+                "information. The unrecognised tags are:\n\n{}\n\n To ignore "
+                "this error, pass `ignore_unknown_tags=True` to "
+                "`anonymise_dicom()`. Please inform the creators of PyMedPhys "
+                "that the baseline DICOM dictionary is obsolete."
+                .format(unknown_tag_names))
 
-    tags_to_anonymise = ["StudyDate",
-                         "SeriesDate",
+    tags_to_anonymise = ["AccessionNumber",
                          "AcquisitionDate",
-                         "ContentDate",
-                         "OverlayDate",
-                         "CurveDate",
                          "AcquisitionDatetime",
-                         "StudyTime",
-                         "SeriesTime",
                          "AcquisitionTime",
+                         "ContentCreatorName",
+                         "ContentDate",
                          "ContentTime",
-                         "OverlayTime",
-                         "CurveTime",
-                         "AccessionNumber",
-                         "InstitutionName",
-                         "InstitutionAddress",
-                         "ReferringPhysicianName",
-                         "ReferringPhysicianAddress",
-                         "ReferringPhysicianTelephoneNumber",
-                         "ReferringPhysicianIdentificationSequence",
-                         "InstitutionalDepartmentName",
-                         "PhysiciansOfRecord",
-                         "PhysiciansOfRecordIdentificationSequence",
-                         "PerformingPhysicianName",
-                         "PerformingPhysicianIdentificationSequence",
-                         "NameOfPhysiciansReadingStudy",
-                         "PhysiciansReadingStudyIdentificationSequence",
-                         "OperatorsName",
-                         "PatientName",
-                         "PatientID",
-                         "IssuerOfPatientID",
-                         "PatientBirthDate",
-                         "PatientBirthTime",
-                         "PatientSex",
-                         "OtherPatientIDs",
-                         "OtherPatientNames",
-                         "PatientBirthName",
-                         "PatientAge",
-                         "PatientAddress",
-                         "PatientMotherBirthName",
                          "CountryOfResidence",
-                         "RegionOfResidence",
-                         "PatientTelephoneNumbers",
-                         "StudyID",
                          "CurrentPatientLocation",
-                         "PatientInstitutionResidence",
-                         "DateTime",
+                         "CurveDate",
+                         "CurveTime",
                          "Date",
-                         "Time",
-                         "PersonName",
+                         "DateTime",
                          "EthnicGroup",
-                         "StationName",
                          "InstanceCreationDate",
                          "InstanceCreationTime",
-                         "InstanceCreatorUID"]
+                         "InstanceCreatorUID",
+                         "InstitutionAddress",
+                         "InstitutionalDepartmentName",
+                         "InstitutionName",
+                         "IssuerOfPatientID",
+                         "NameOfPhysiciansReadingStudy",
+                         "OperatorsName",
+                         "OtherPatientIDs",
+                         "OtherPatientNames",
+                         "OverlayDate",
+                         "OverlayTime",
+                         "PatientAddress",
+                         "PatientAge",
+                         "PatientBirthDate",
+                         "PatientBirthName",
+                         "PatientBirthTime",
+                         "PatientID",
+                         "PatientInstitutionResidence",
+                         "PatientMotherBirthName",
+                         "PatientName",
+                         "PatientSex",
+                         "PatientTelephoneNumbers",
+                         "PerformingPhysicianIdentificationSequence",
+                         "PerformingPhysicianName",
+                         "PersonName",
+                         "PhysiciansOfRecord",
+                         "PhysiciansOfRecordIdentificationSequence",
+                         "PhysiciansReadingStudyIdentificationSequence",
+                         "ReferringPhysicianAddress",
+                         "ReferringPhysicianIdentificationSequence",
+                         "ReferringPhysicianName",
+                         "ReferringPhysicianTelephoneNumber",
+                         "RegionOfResidence",
+                         "ReviewerName",
+                         "SecondaryReviewerName",
+                         "SeriesDate",
+                         "SeriesTime",
+                         "StationName",
+                         "StudyDate",
+                         "StudyID",
+                         "StudyTime",
+                         "Time",
+                         "VerifyingObserverName"]
 
     ds_out = copy.deepcopy(ds)
 
