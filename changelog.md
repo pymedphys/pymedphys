@@ -14,10 +14,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - **Breaking Change**: All uses of "dcm" in directory names, module names, function names, etc.
   have been converted to "dicom". Anything that makes use of this code will need to be
   adjusted accordingly. Required changes include:
-    - `import pymedphys.dcm`       :raw-html:`&rarr;` `pymedphys.dicom`
-    - `coords_and_dose_from_dcm()` :raw-html:`&rarr;` `coords_and_dose_from_dicom()`
-    - `dcmfromdict()`              :raw-html:`&rarr;` `dicom_from_dict()`
-    - `gamma_dcm()`                :raw-html:`&rarr;` `gamma_dicom()`
+    - `import pymedphys.dcm` --> `pymedphys.dicom`
+    - `coords_and_dose_from_dcm()` --> `coords_and_dose_from_dicom()`
+    - `dcmfromdict()` --> `dicom_from_dict()`
+    - `gamma_dcm()` --> `gamma_dicom()`
 - All uses of `dcm` as a variable name for storing a pydicom Dataset have been converted to `ds` to
   match PyDicom convention.
 - MU Density related functions are no longer available under the `pymedphys.coll` package, instead they are found within `pymedphys.mudensity` package.
