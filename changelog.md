@@ -1,42 +1,46 @@
+.. role:: raw-html(raw)
+    :format: html
 # Release Notes
 All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<br/>
 ## [Unreleased]
-#### Added
+##### Added
 - ProfileDose object built ontop of xarray. [@SimonBiggs](https://github.com/SimonBiggs).
 
-#### Changed
+##### Changed
 - **Breaking Change**: All uses of "dcm" in directory names, module names, function names, etc.
   have been converted to "dicom". Anything that makes use of this code will need to be
   adjusted accordingly. Required changes include:
-    - `import pymedphys.dcm`       &rightarrow; `pymedphys.dicom`
-    - `coords_and_dose_from_dcm()` &rightarrow; `coords_and_dose_from_dicom()`
-    - `dcmfromdict()`              &rightarrow; `dicom_from_dict()`
-    - `gamma_dcm()`                &rightarrow; `gamma_dicom()`
+    - `import pymedphys.dcm`       :raw-html:`&rarr;` `pymedphys.dicom`
+    - `coords_and_dose_from_dcm()` :raw-html:`&rarr;` `coords_and_dose_from_dicom()`
+    - `dcmfromdict()`              :raw-html:`&rarr;` `dicom_from_dict()`
+    - `gamma_dcm()`                :raw-html:`&rarr;` `gamma_dicom()`
 - All uses of `dcm` as a variable name for storing a pydicom Dataset have been converted to `ds` to
   match PyDicom convention.
 - MU Density related functions are no longer available under the `pymedphys.coll` package, instead they are found within `pymedphys.mudensity` package.
 
-#### Deprecated
+##### Deprecated
 - nil
 
-#### Removed
+##### Removed
 - nil
 
-#### Fixed
+##### Fixed
 - nil
 
-#### Safety
+##### Safety
 - nil
 
-#### Security
+##### Security
 - nil
 
-
+<br/>
 ## [0.5.1] -- 2019/01/05
-### Added
+
+##### Added
 - Began keeping record of changes in `changelog.md`
 
 
