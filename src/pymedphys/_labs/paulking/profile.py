@@ -143,14 +143,32 @@ class Profile():
         return copy.deepcopy(self)
 
     def __str__(self):
-        fmt_str = 'Profile object: '
-        fmt_str += '{} pts | x ({} cm -> {} cm) | data ({} -> {})'
-        return  fmt_str.format(len(self),
-                               min(self.x), max(self.x),
-                               min(self.data), max(self.data))
+        try:
+            fmt_str = 'Profile object: '
+            fmt_str += '{} pts | x ({} cm -> {} cm) | data ({} -> {})'
+            return fmt_str.format(len(self),
+                                  min(self.x), max(self.x),
+                                  min(self.data), max(self.data))
+        except:
+            return ''
 
-##  CHANGE X,DATA VARIABLE NAMES?
-## reconsider modify in place
+    def __mul__(self, other):
+        self.data *= other
+        return(self)
+
+    def __rmul__(self, other):
+        self.data *= other
+        return(self)
+
+    def __imul__(self, other):
+        self.data *= other
+        return(self)
+
+
+
+# CHANGE X,DATA VARIABLE NAMES?
+# reconsider modify in place
+
 
     def from_lists(self, x, data, metadata={}):
         self.x = np.array(x)
@@ -210,7 +228,7 @@ class Profile():
     def plot(self):
         plt.plot(self.x, self.data, 'o-')
         plt.show()
-        return #plt.plot(self.x, self.data, 'o-')
+        return  # plt.plot(self.x, self.data, 'o-')
 
     def segment(self, start=-np.inf, stop=np.inf):
         """ Part of dose profile between begin and end.
@@ -374,7 +392,8 @@ class Profile():
 
         """
         lt, rt = self.edges(step)
-        idx = [i for i, d in enumerate(self.x) if d >= 0.8 * lt and d <= 0.8 * rt]
+        idx = [i for i, d in enumerate(
+            self.x) if d >= 0.8 * lt and d <= 0.8 * rt]
         new_x = self.x[idx[0]:idx[-1]+1]
         new_data = self.data[idx[0]:idx[-1]+1]
 
@@ -399,7 +418,6 @@ class Profile():
         dose = self.umbra(step).data
         return (max(dose)-min(dose))/np.average(dose)
 
-
     def symmetry(self, step):
         """ Symmetry of dose profile.
 
@@ -420,41 +438,73 @@ class Profile():
         dose = self.umbra(step).data
         return max(np.abs(np.subtract(dose, dose[::-1])/np.average(dose)))
 
+    def as_pulse(self, centre, width, domain, increment):
+        """
+        NEED DOCSTRING
+        """
+        x_vals = np.arange(domain[0], domain[1] + increment, increment)
+        data = []
+        for x in x_vals:
+            if abs(x) > (centre + width/2.0):
+                data.append(0.0)
+            elif abs(x) < (centre + width/2.0):
+                data.append(1.0)
+            else:
+                data.append(0.5)
+        return Profile().from_lists(x_vals, data)
+
+    # def pulse(centre=0.0, center=None, width=10.0,
+    #           dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
+    #     """
+    #     Return a pulse shaped dose-profile; specified centre, width, and domain.
+    #     """
+    #     if center:  # US Eng -> UK Eng
+    #         centre = center
+
+    #     def pulse(centre, width, dist):
+    #         if abs(dist) > (centre + width/2.0):
+    #             return 0.0
+    #         if abs(dist) < (centre + width/2.0):
+    #             return 1.0
+    #         return 0.5
+
+    #     dist_vals = np.arange(dist_strt, dist_stop + dist_step, dist_step)
+    #     dose_vals = _make_dose_vals(dist_vals, partial(pulse, centre, width))
+    #     dose_prof = list(zip(dist_vals, dose_vals))
+    #     return dose_prof
 
     def symmetrise(self, dist_step=0.1):
-    #     """
-    #     Return a symmetric dose-profile, averaging dose values over
-    #     locations across the CAX, and resampled. Also, symmetrize()
+        #     """
+        #     Return a symmetric dose-profile, averaging dose values over
+        #     locations across the CAX, and resampled. Also, symmetrize()
 
-    #     """
-    #     dist_vals = _get_dist_vals(dose_prof)
+        #     """
+        #     dist_vals = _get_dist_vals(dose_prof)
 
-    #     strt = -min(-dist_vals[0], dist_vals[-1])
-    #     stop = min(-dist_vals[0], dist_vals[-1])
+        #     strt = -min(-dist_vals[0], dist_vals[-1])
+        #     stop = min(-dist_vals[0], dist_vals[-1])
 
-    #     dose_prof = resample(dose_prof, dist_strt=strt,
-    #                          dist_stop=stop, dist_step=dist_step)
+        #     dose_prof = resample(dose_prof, dist_strt=strt,
+        #                          dist_stop=stop, dist_step=dist_step)
 
-    #     rev = dose_prof[::-1]
+        #     rev = dose_prof[::-1]
 
-    #     result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
-    #               for i, _ in enumerate(dose_prof)]
+        #     result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
+        #               for i, _ in enumerate(dose_prof)]
 
-    #     return result
+        #     return result
         pass
 
     def symmetrize(self, dist_step=0.1):
-    #     """ US Eng -> UK Eng """
-    #     return symmetrise(dose_prof, dist_step)
+        #     """ US Eng -> UK Eng """
+        #     return symmetrise(dose_prof, dist_step)
         pass
-
 
     def centre(self):
         pass
 
     def shift_to_centre(self):
         pass
-
 
     def symmetrise(self):
         pass
@@ -466,7 +516,7 @@ class Profile():
 class DoseDepth():
     pass
 
-### DEFINE LEN() AS THE distance range?
+# DEFINE LEN() AS THE distance range?
 
 
 # # PRIVATE FUNCTIONS ======================================
@@ -513,27 +563,6 @@ class DoseDepth():
 
 
 # # PUBLIC FUNCTIONS ==========================================
-
-# def pulse(centre=0.0, center=None, width=10.0,
-#           dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
-#     """
-#     Return a pulse shaped dose-profile; specified centre, width, and domain.
-#     """
-#     if center:  # US Eng -> UK Eng
-#         centre = center
-
-#     def pulse(centre, width, dist):
-#         if abs(dist) > (centre + width/2.0):
-#             return 0.0
-#         if abs(dist) < (centre + width/2.0):
-#             return 1.0
-#         return 0.5
-
-#     dist_vals = np.arange(dist_strt, dist_stop + dist_step, dist_step)
-#     dose_vals = _make_dose_vals(dist_vals, partial(pulse, centre, width))
-#     dose_prof = list(zip(dist_vals, dose_vals))
-#     return dose_prof
-
 
 # def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
 #     """

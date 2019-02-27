@@ -167,7 +167,7 @@ def test_copy():
 def test_str():
     profiler = Profile().from_tuples(PROFILER)
     assert profiler.__str__()
-    print(profiler.__str__())
+    # print(profiler.__str__())
 
 
 def test_from_lists():
@@ -175,6 +175,7 @@ def test_from_lists():
     also_empty = empty
     also_empty.from_lists([], [])
     assert empty == also_empty
+
 
 def test_from_tuples():
     empty = Profile()
@@ -229,6 +230,7 @@ def test_DoseProfile_resample():
     # START LOCATION UNCHANGED
     assert np.isclose(resampled.data[0], profiler.data[0])
 
+
 def test_normalise_dose():  # also normalize
     profiler = Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.normalise_dose(x=0).get_dose(0), 1.0)
@@ -244,9 +246,11 @@ def test_edges():
 
 def test_normalise_distance():  # also normalize
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.normalise_distance(0.1).x[0], -3.1538461538461533)
+    assert np.isclose(profiler.normalise_distance(
+        0.1).x[0], -3.1538461538461533)
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.normalize_distance(0.1).x[0], -3.1538461538461533)
+    assert np.isclose(profiler.normalize_distance(
+        0.1).x[0], -3.1538461538461533)
     profiler = Profile().from_tuples(PROFILER)
     assert len(PROFILER) == len(profiler.normalize_distance(0.1).x)
 
@@ -257,10 +261,12 @@ def test_umbra():
     umbra = profiler.umbra(0.1)
     assert len(umbra) < profiler_length
 
+
 def test_flatness():
     profiler = Profile().from_tuples(PROFILER)
     profiler = profiler.resample(0.1)
     assert np.isclose(profiler.flatness(0.1), 0.03042644213284108)
+
 
 def test_symmetry():
     profiler = Profile().from_tuples(PROFILER)
@@ -269,8 +275,10 @@ def test_symmetry():
     assert np.isclose(symmetry, 0.024152376510553037)
 
 
-# def test_pulse():
-#     assert pulse()[0] == (-20.0, 0.0)
+def test_as_pulse():
+    pulse = 4 * Profile().as_pulse(0.0, 1, (-5, 5), 0.1)
+    assert np.isclose(sum(pulse.data), 40)
+
 
 # def test_overlay():
 #     assert np.allclose(overlay(PROFILER, WEDGED), 0.2)
@@ -308,8 +316,7 @@ if __name__ == "__main__":
     test_umbra()
     test_flatness()
     test_symmetry()
-
-    #     test_pulse()
+    test_as_pulse()
     #     test_overlay()
     #     test_recentre()
     #     test_symmetrise()
