@@ -23,78 +23,9 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-# import pandas as pd
-# import xarray as xr
-# import copy
-
-# from deepdiff import DeepDiff
-
 from pymedphys._labs.paulking.profile import Profile
 
 # pylint: disable = E1102
-
-
-# def cubed(x):
-#     return np.array(x) ** 3
-
-
-# def test_conversion():
-#     x = range(-3, 4)
-#     profile = DoseProfile(x=x, data=cubed(x))
-
-#     expected_x = [-3, -2, -1, 0, 1, 2, 3]
-#     expected_data = [-27, -8, -1, 0, 1, 8, 27]
-
-#     expected_pandas = pd.Series(
-#         expected_data, pd.Index(expected_x, name='x'))
-#     expected_xarray = xr.DataArray(
-#         expected_data, coords=[('x', expected_x)], name='dose')
-
-#     expected_dict = {
-#         'coords': {'x': {'data': expected_x,
-#                          'dims': ('x',),
-#                          'attrs': {}}},
-#         'attrs': {},
-#         'dims': ('x',),
-#         'data': expected_data,
-#         'name': 'dose'}
-
-#     assert np.array_equal(profile.x, np.array(expected_x))
-#     assert np.array_equal(profile.data, np.array(expected_data))
-
-#     # print(type(expected_pandas.astype(int)))
-#     # print(profile.to_pandas().astype(int))
-#     assert expected_pandas.astype(int).equals(profile.to_pandas())
-
-#     assert expected_xarray.identical(profile.to_xarray())
-#     assert DeepDiff(profile.to_dict(), expected_dict) == {}
-
-
-# def test_function_updating_with_shift():
-#     x = np.array([1, 2, 3])
-
-#     profile = DoseProfile(x=x, data=x**2)
-#     assert np.array_equal(profile.data, [1, 4, 9])
-
-#     profile.shift(2, inplace=True)
-#     assert np.array_equal(profile.data, [1, 4, 9])
-#     assert np.array_equal(profile.x, [3, 4, 5])
-
-#     # profile.x = [1, 2, 3]
-#     # assert np.array_equal(profile.dose, [1, 0, 1])
-
-#     profile.dist = [3, 4, 5]
-#     assert np.array_equal(profile.data, [1, 4, 9])
-
-#     # profile_copy = profile.shift(2)
-#     # assert np.array_equal(profile.dist, [3, 4, 5])
-#     # assert np.array_equal(profile_copy.dist, [5, 6, 7])
-
-
-# def test_default_interp_function():
-#     profile = DoseProfile(x=[-10, 0, 10], data=[3, 8, 2])
-
-#     assert np.array_equal(profile.interp([1, 3, 4]), [7.4, 6.2, 5.6])
 
 
 PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28), (-15.2, 0.3),
@@ -148,26 +79,27 @@ def test_interp():
     assert np.isclose(Profile(x=[0, 1], data=[0, 1]).interp(0.5), 0.5)
 
 
-def test_len():
+def test_magic_methods():
+    # __len__
     assert len(Profile()) == 0
-
-
-def test_eq():
+    # __eq__
     assert Profile() == Profile()
     assert Profile(x=[], data=[]) == Profile()
     assert Profile(x=[0], data=[0]) != Profile()
-
-
-def test_copy():
+    # __copy__
     original = Profile()
-    a_copy = original
-    assert a_copy == original
-
-
-def test_str():
+    same = original
+    assert same == original
+    # __str__
     profiler = Profile().from_tuples(PROFILER)
     assert profiler.__str__()
-    # print(profiler.__str__())
+    # __mul__, __rmul__, __imul__
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.isclose(4*sum(profiler.data), sum((4*profiler).data))
+    assert np.isclose(4*sum(profiler.data), sum((profiler*4).data))
+    ref = 4*sum(profiler.data)
+    profiler *= 4
+    assert np.isclose(sum(profiler.data), ref)
 
 
 def test_from_lists():
@@ -184,15 +116,24 @@ def test_from_tuples():
     assert profiler.x[0] == PROFILER[0][0]
 
 
+def test_from_pulse():
+    pulse = 4 * Profile().from_pulse(0.0, 1, (-5, 5), 0.1)
+    assert np.isclose(sum(pulse.data), 40)
+
+
 def test_from_snc_profiler():
     pass
 
 
 def test_get_dose():
-    empty = Profile()
-    profiler = empty.from_tuples(PROFILER)
+    profiler = Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.get_dose(0), 45.23)
     assert np.isnan(profiler.get_dose(-100))
+
+
+def test_get_increment():
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.isclose(profiler._get_increment(), 0.4)
 
 
 def test_DoseProfile_segment():
@@ -214,11 +155,10 @@ def test_DoseProfile_segment():
 
 
 def test_DoseProfile_resample():
-    profiler = Profile()
-    profiler.from_tuples(PROFILER, metadata={'depth': 10, 'medium': 'water'})
+    profiler = Profile().from_tuples(PROFILER, metadata={'depth': 10})
+    profiler
     # METADATA
     assert profiler.metadata['depth'] == 10
-    assert profiler.metadata['medium'] == 'water'
     # CONSISTENT CONTENTS AFTER UPSAMPLING
     assert np.isclose(profiler.interp(0), profiler.resample(0.1).interp(0))
     assert np.isclose(profiler.interp(6.372),
@@ -240,45 +180,47 @@ def test_normalise_dose():  # also normalize
 
 def test_edges():
     profiler = Profile().from_tuples(PROFILER)
-    assert np.allclose(profiler.edges(0.1), (-5.2, 4.8))
+    assert np.allclose(profiler.edges(), (-5.2, 4.8))
     assert len(profiler) == len(PROFILER)
 
 
 def test_normalise_distance():  # also normalize
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.normalise_distance(
-        0.1).x[0], -3.1538461538461533)
+    assert np.isclose(profiler.normalise_distance().x[0], -3.1538461538461533)
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.normalize_distance(
-        0.1).x[0], -3.1538461538461533)
+    assert np.isclose(profiler.normalize_distance().x[0], -3.1538461538461533)
     profiler = Profile().from_tuples(PROFILER)
-    assert len(PROFILER) == len(profiler.normalize_distance(0.1).x)
+    assert len(PROFILER) == len(profiler.normalize_distance().x)
 
 
 def test_umbra():
     profiler = Profile().from_tuples(PROFILER).resample(0.1)
     profiler_length = len(profiler)
-    umbra = profiler.umbra(0.1)
+    umbra = profiler.umbra()
     assert len(umbra) < profiler_length
 
 
 def test_flatness():
     profiler = Profile().from_tuples(PROFILER)
     profiler = profiler.resample(0.1)
-    assert np.isclose(profiler.flatness(0.1), 0.03042644213284108)
+    assert np.isclose(profiler.flatness(), 0.03042644213284108)
 
 
 def test_symmetry():
     profiler = Profile().from_tuples(PROFILER)
     profiler = profiler.resample(0.1)
-    symmetry = profiler.symmetry(0.1)
+    symmetry = profiler.symmetry()
     assert np.isclose(symmetry, 0.024152376510553037)
 
 
-def test_as_pulse():
-    pulse = 4 * Profile().as_pulse(0.0, 1, (-5, 5), 0.1)
-    assert np.isclose(sum(pulse.data), 40)
+def test_symmetrise():
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.isclose(profiler.symmetrize().symmetry(), 0.0)
 
+
+# def test_is_wedged():
+#     assert not is_wedged(PROFILER)
+#     assert is_wedged(WEDGED)
 
 # def test_overlay():
 #     assert np.allclose(overlay(PROFILER, WEDGED), 0.2)
@@ -286,28 +228,17 @@ def test_as_pulse():
 # def test_recentre():
 #     assert np.allclose(recentre(PROFILER)[0][0], -16.3)
 
-# def test_symmetrise():
-#     symmetric = symmetrise(PROFILER)
-#     assert symmetric[0][1] == symmetric[-1][1]
-# def test_is_wedged():
-#     assert not is_wedged(PROFILER)
-#     assert is_wedged(WEDGED)
-
 
 if __name__ == "__main__":
-    # test_conversion()
-    # test_function_updating_with_shift()
-    # test_default_interp_function()
     test_init()
     test_interp()
-    test_len()
-    test_eq()
-    test_copy()
-    test_str()
+    test_magic_methods()
     test_from_lists()
     test_from_tuples()
+    test_from_pulse()
     test_from_snc_profiler()
     test_get_dose()
+    test_get_increment()
     test_DoseProfile_segment()
     test_DoseProfile_resample()
     test_normalise_dose()
@@ -316,9 +247,8 @@ if __name__ == "__main__":
     test_umbra()
     test_flatness()
     test_symmetry()
-    test_as_pulse()
+    test_symmetrise()
     #     test_overlay()
     #     test_recentre()
-    #     test_symmetrise()
     #     test_is_wedged()
     pass

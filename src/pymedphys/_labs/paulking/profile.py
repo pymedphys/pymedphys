@@ -24,98 +24,22 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# from copy import deepcopy
 from typing import Callable
-import copy
-
-import numpy as np
 from scipy import interpolate
+
+import copy
+import numpy as np
 import matplotlib.pyplot as plt
 
-# import xarray as xr
-
 from ...libutils import get_imports
-# from ...xarray import XArrayComposition
 
 # from .._level1.coreobjects import _PyMedPhysBase
 IMPORTS = get_imports(globals())
 
-
 NumpyFunction = Callable[[np.ndarray], np.ndarray]
 
-#
+
 # pylint: disable = C0103, C0121
-
-
-# class DoseBase():
-#     def __init__(self, data, coords=None, dims=None):
-#         self._xarray = xr.DataArray(data, coords, dims, name='dose')
-
-#     @property
-#     def data(self) -> np.ndarray:
-#         return self._xarray.data  # type: ignore
-
-#     @data.setter
-#     def data(self, array) -> None:
-#         array = np.array(array)
-#         self._xarray.data = array
-
-#     def to_xarray(self):
-#         return deepcopy(self._xarray)
-
-#     def to_pandas(self):
-#         return self.to_xarray().to_pandas()
-
-#     def to_dict(self):
-#         return self.to_xarray().to_dict()
-
-#     def deepcopy(self):
-#         return deepcopy(self)
-
-
-# class Dose1D(DoseBase):
-#     def __init__(self, x, data):
-#         coords = [('x', x)]
-#         super().__init__(data, coords)
-
-#     @property
-#     def x(self) -> np.ndarray:
-#         return self._xarray.x.data  # type: ignore
-
-#     @x.setter
-#     def x(self, array) -> None:
-#         array = np.array(array)
-#         if len(np.shape(array)) != 1:
-#             raise ValueError("`x` must be of one dimension.")
-
-#         self._xarray.x.data = array
-
-#     @property
-#     def interp(self) -> NumpyFunction:
-#         return interpolate.interp1d(self.x, self.data)  # type: ignore
-
-#     def shift(self, applied_shift, inplace=False):
-#         if inplace:
-#             adjusted_object = self
-#         else:
-#             adjusted_object = self.deepcopy()
-
-#         adjusted_object.x = adjusted_object.x + applied_shift
-
-#         if not inplace:
-#             return adjusted_object
-
-#     def plot(self):
-#         return plt.plot(self.x, self.data, 'o-')
-
-#     def interactive(self):
-#         pass
-
-# class DoseProfile(Dose1D):
-#     def __init__(self, x, data, metadata={}):
-#         self.metadata = metadata
-#         super().__init__(x, data)
-
 
 class Profile():
     def __init__(self, x=[], data=[], metadata={}):
@@ -125,13 +49,14 @@ class Profile():
         if len(self.x) < 2:
             self.interp = None
         else:
-            self.interp = interpolate.interp1d(self.x, self.data)
+            self.interp = interpolate.interp1d(self.x, self.data,
+                                               bounds_error=False, fill_value=np.nan)
 
-    def __len__(self):
+    def __len__(self):  # NUMBER OF DATA POINTS
         assert len(self.x) == len(self.data)
         return len(self.x)
 
-    def __eq__(self, other):
+    def __eq__(self, other):  # SAME DATA POINTS
         if np.array_equal(self.x, other.x) and \
            np.array_equal(self.data, other.data) and \
            self.metadata == other.metadata:
@@ -152,23 +77,18 @@ class Profile():
         except:
             return ''
 
-    def __mul__(self, other):
+    def __mul__(self, other):  # SCALE PROFILE DOSE
         self.data *= other
         return(self)
+    __rmul__ = __mul__
+    __imul__ = __mul__
 
-    def __rmul__(self, other):
-        self.data *= other
-        return(self)
-
-    def __imul__(self, other):
-        self.data *= other
-        return(self)
-
-
-
+# CONSIDER DIVIDE AS RESAMPLE
 # CHANGE X,DATA VARIABLE NAMES?
-# reconsider modify in place
-
+# CONSIDER +/- AS SHIFT RIGHT/LEFT
+# CONSIDER DIVIDE AS RESAMPLE
+# CONSIDER ASCII GRAPH AS PRINT
+# CONSIDER LEN AS X EXTENT OF GRAPH
 
     def from_lists(self, x, data, metadata={}):
         self.x = np.array(x)
@@ -201,6 +121,43 @@ class Profile():
         self.__init__(x=x, data=data, metadata=metadata)
         return Profile(x=x, data=data, metadata=metadata)
 
+    def from_pulse(self, centre, width, domain, increment, metadata={}):
+        """ Create of unit height from pulse function parameters
+
+        Overwrite any existing dose profile data and metadata.
+
+        Arguments
+        ---------
+        centre : float
+            Location of pulse mid-point
+        width : float
+            Width of pulse (cm)
+        domain : tuple
+            (leftmost distance, rightmost distance)
+        increment : float
+            Profile distance spacing
+
+        Keyword Arguments
+        -----------------
+        metadata : dict, optional
+            Dictionary of key-value pairs that describe the profile
+
+        Returns
+        -------
+        array_like
+
+        """
+        x_vals = np.arange(domain[0], domain[1] + increment, increment)
+        data = []
+        for x in x_vals:
+            if abs(x) > (centre + width/2.0):
+                data.append(0.0)
+            elif abs(x) < (centre + width/2.0):
+                data.append(1.0)
+            else:
+                data.append(0.5)
+        return Profile().from_lists(x_vals, data)
+
     def from_snc_profiler(self):
         """ """
         pass
@@ -224,6 +181,13 @@ class Profile():
             return self.interp(x)
         except ValueError:
             return np.nan
+
+    def _get_increment(self):
+        steps = np.diff(self.x)
+        if np.isclose(steps.min(), steps.mean()):
+            return steps.mean()
+        else:
+            return steps.min()
 
     def plot(self):
         plt.plot(self.x, self.data, 'o-')
@@ -259,7 +223,7 @@ class Profile():
         self.__init__(new_x, new_data)
         return Profile(new_x, new_data)
 
-    def resample(self, step):
+    def resample(self, step):  # convert this to magic divide?
         """ Resample a dose profile at a specified increment.
 
         Resulting profile has stepsize of the indicated step based on
@@ -303,14 +267,13 @@ class Profile():
         new_x = self.x
         new_data = norm_factor * self.data
         metadata = self.metadata
-        # self.__init__(new_x, new_data, self.metadata)
-        return Profile(new_x, new_data)
+        return Profile(new_x, new_data)  # USE THE MAGIC METHOD!
 
     def normalize_dose(self, x=0.0, data=1.0):
         """ US Eng -> UK Eng """
         return self.normalise_dose(x=x, data=data)
 
-    def edges(self, step):
+    def edges(self):
         """ Edges of a profile, as a tuple.
 
         Return left and right edges of a profile, identified
@@ -327,7 +290,7 @@ class Profile():
         tuple
 
         """
-
+        step = self._get_increment()
         unmod = copy.deepcopy(self)
         resampled = self.resample(step)
         dydx = list(np.gradient(self.data, self.x))
@@ -337,7 +300,7 @@ class Profile():
         # self.__init__(x=unmod.x, data=unmod.data, metadata=unmod.metadata)
         return (lt_edge, rt_edge)
 
-    def normalise_distance(self, step):
+    def normalise_distance(self):
         """ Renormalise distance to beam edges.
 
         Source profile distances multiplied by scaling factor to yield unit distance
@@ -358,7 +321,7 @@ class Profile():
 
         """
 
-        lt_edge, rt_edge = self.edges(step)
+        lt_edge, rt_edge = self.edges()
         cax = 0.5*(lt_edge + rt_edge)
 
         new_x = []
@@ -370,13 +333,12 @@ class Profile():
             else:
                 new_x.append(0.0)
 
-        # self.__init__(new_x, self.data, self.metadata)
         return Profile(new_x, self.data, metadata=self.metadata)
 
-    def normalize_distance(self, step):
-        return self.normalise_distance(step)
+    def normalize_distance(self):
+        return self.normalise_distance()
 
-    def umbra(self, step):
+    def umbra(self):
         """ Central 80% of dose profile.
 
         Source dose profile sliced to include only the central region between beam edges.
@@ -391,16 +353,15 @@ class Profile():
         Profile
 
         """
-        lt, rt = self.edges(step)
+        lt, rt = self.edges()
         idx = [i for i, d in enumerate(
             self.x) if d >= 0.8 * lt and d <= 0.8 * rt]
         new_x = self.x[idx[0]:idx[-1]+1]
         new_data = self.data[idx[0]:idx[-1]+1]
 
-        # self.__init__(x=new_x, data=new_data, metadata=self.metadata)
         return Profile(x=new_x, data=new_data, metadata=self.metadata)
 
-    def flatness(self, step):
+    def flatness(self):
         """ Flatness of dose profile.
 
         Calculated as the dose range normalized to mean dose.
@@ -415,10 +376,11 @@ class Profile():
         float
 
         """
-        dose = self.umbra(step).data
+        step = self._get_increment()
+        dose = self.umbra().data
         return (max(dose)-min(dose))/np.average(dose)
 
-    def symmetry(self, step):
+    def symmetry(self):
         """ Symmetry of dose profile.
 
         Calculated as the maximum difference between corresponding points
@@ -434,101 +396,48 @@ class Profile():
         float
 
         """
-
-        dose = self.umbra(step).data
+        step = self._get_increment()
+        dose = self.umbra().data
         return max(np.abs(np.subtract(dose, dose[::-1])/np.average(dose)))
 
-    def as_pulse(self, centre, width, domain, increment):
-        """
-        NEED DOCSTRING
-        """
-        x_vals = np.arange(domain[0], domain[1] + increment, increment)
-        data = []
-        for x in x_vals:
-            if abs(x) > (centre + width/2.0):
-                data.append(0.0)
-            elif abs(x) < (centre + width/2.0):
-                data.append(1.0)
-            else:
-                data.append(0.5)
-        return Profile().from_lists(x_vals, data)
-
-    # def pulse(centre=0.0, center=None, width=10.0,
-    #           dist_strt=-20.0, dist_stop=20.0, dist_step=0.1):
-    #     """
-    #     Return a pulse shaped dose-profile; specified centre, width, and domain.
-    #     """
-    #     if center:  # US Eng -> UK Eng
-    #         centre = center
-
-    #     def pulse(centre, width, dist):
-    #         if abs(dist) > (centre + width/2.0):
-    #             return 0.0
-    #         if abs(dist) < (centre + width/2.0):
-    #             return 1.0
-    #         return 0.5
-
-    #     dist_vals = np.arange(dist_strt, dist_stop + dist_step, dist_step)
-    #     dose_vals = _make_dose_vals(dist_vals, partial(pulse, centre, width))
-    #     dose_prof = list(zip(dist_vals, dose_vals))
-    #     return dose_prof
-
-    def symmetrise(self, dist_step=0.1):
-        #     """
-        #     Return a symmetric dose-profile, averaging dose values over
-        #     locations across the CAX, and resampled. Also, symmetrize()
-
-        #     """
-        #     dist_vals = _get_dist_vals(dose_prof)
-
-        #     strt = -min(-dist_vals[0], dist_vals[-1])
-        #     stop = min(-dist_vals[0], dist_vals[-1])
-
-        #     dose_prof = resample(dose_prof, dist_strt=strt,
-        #                          dist_stop=stop, dist_step=dist_step)
-
-        #     rev = dose_prof[::-1]
-
-        #     result = [(dose_prof[i][0], (dose_prof[i][1]+rev[i][1])/2.0)
-        #               for i, _ in enumerate(dose_prof)]
-
-        #     return result
-        pass
-
-    def symmetrize(self, dist_step=0.1):
-        #     """ US Eng -> UK Eng """
-        #     return symmetrise(dose_prof, dist_step)
-        pass
-
-    def centre(self):
-        pass
-
-    def shift_to_centre(self):
-        pass
-
     def symmetrise(self):
-        pass
+        """ Symmetric copy of dose profile.
 
-    def interactive(self):
-        pass
+        Created by averaging over corresponding +/- distances,
+        except at the endpoints.
 
+        Returns
+        -------
+        Profile
+
+        """
+
+        reflected = Profile(x=-self.x[::-1], data=self.data[::-1])
+
+        step = self._get_increment()
+        new_x = np.arange(min(self.x), max(self.x), step)
+        new_data = [self.data[0]]
+        for n in new_x[1:-1]:  # TO AVOID EXTRAPOLATION
+            new_data.append(0.5*self.interp(n) + 0.5*reflected.interp(n))
+        new_data.append(reflected.data[0])
+
+        return Profile(x=new_x, data=new_data, metadata=self.metadata)
+
+    def symmetrize(self):
+        """ US Eng -> UK Eng """
+        return self.symmetrise()
+
+
+#############
+
+    # def centre(self):
+    #     pass
+
+    # def shift_to_centre(self):
+    #     pass
 
 class DoseDepth():
     pass
-
-# DEFINE LEN() AS THE distance range?
-
-
-# # PRIVATE FUNCTIONS ======================================
-
-
-# def _find_umbra(dose_prof):
-#     """ Return a list of distances over the central 80% a dose profile. """
-#     e = edges(dose_prof)
-#     dist_strt = 0.8 * e[0]
-#     dist_stop = 0.8 * e[-1]
-#     umbra = [d for d in dose_prof if d[0] >= dist_strt and d[0] <= dist_stop]
-#     return umbra
 
 
 # def _find_dists(dose_prof, dose):
@@ -551,7 +460,6 @@ class DoseDepth():
 #             dists.append(val)
 #     return dists
 
-
 # def _shift_dose_prof(dose_prof, dist):
 #     """
 #     Return a dose-profile whose distances are shifted by a specified distance.
@@ -560,9 +468,6 @@ class DoseDepth():
 #     dose_vals = list(list(zip(*dose_prof))[1])
 #     dose_vals = _get_dose_vals(dose_prof)
 #     return list(zip(dist_vals, dose_vals))
-
-
-# # PUBLIC FUNCTIONS ==========================================
 
 # def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
 #     """
