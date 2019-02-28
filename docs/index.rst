@@ -14,7 +14,7 @@
     user/mudensity
     user/gamma
     user/electronfactors
-    user/dcm
+    user/dicom
     user/geometry
 
 .. toctree::
@@ -25,6 +25,12 @@
     developer/documentation
     developer/physical-design
     developer/agpl-benefits
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Additional Information
+
+    additional/changelog.rst
 
 
 Indices and tables

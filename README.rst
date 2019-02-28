@@ -13,7 +13,7 @@ is inspired by our physics peers in astronomy and their `Astropy Project`_.
 .. _`Astropy Project`: http://www.astropy.org/
 
 This package is available on PyPi (https://pypi.org/project/pymedphys/),
-GitLab (https://gitlab.com/pymedphys/pymedphys), and conda-forge
+GitHub (https://github.com/pymedphys/pymedphys), and conda-forge
 (https://anaconda.org/conda-forge/pymedphys). Documentation is at
 https://pymedphys.com.
 
@@ -26,41 +26,41 @@ currently active developers and maintainers of PyMedPhys are given below:
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
 
-.. _`Simon Biggs`: https://gitlab.com/SimonBiggs
+.. _`Simon Biggs`: https://github.com/SimonBiggs
 
 
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
 
-.. _`Matthew Jennings`: https://gitlab.com/centrus
+.. _`Matthew Jennings`: https://github.com/centrus007
 
 
 * `Paul King`_
     * `Anderson Regional Cancer Center`_, United States
 
-.. _`Paul King`: https://gitlab.com/kingrpaul
+.. _`Paul King`: https://github.com/kingrpaul
 
 
 * `Matthew Sobolewski`_
     * `Riverina Cancer Care Centre`_, Australia
     * `Northern Beaches Cancer Care`_, Australia
 
-.. _`Matthew Sobolewski`: https://gitlab.com/msobolewski
+.. _`Matthew Sobolewski`: https://github.com/msobolewski
 
 
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
     :width: 500 px
 
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png
     :target: `Royal Adelaide Hospital`_
     :width: 500 px
 
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
     :target: `Anderson Regional Cancer Center`_
     :width: 500 px
 
-.. image:: https://gitlab.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
     :width: 500 px
 

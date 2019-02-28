@@ -26,7 +26,7 @@
 # import matplotlib.pyplot as plt
 
 from ...libutils import get_imports
-from ...dcm import coords_and_dose_from_dcm
+from ...dicom import coords_and_dose_from_dicom
 
 from .._level1.gammafilter import gamma_filter_numpy, calculate_pass_rate
 from .._level2.gammashell import gamma_shell
@@ -34,14 +34,14 @@ from .._level2.gammashell import gamma_shell
 IMPORTS = get_imports(globals())
 
 
-def gamma_dcm(dcm_ref_filepath, dcm_eval_filepath,
+def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
               dose_percent_threshold, distance_mm_threshold,
               **kwargs):
 
-    coords_reference, dose_reference = coords_and_dose_from_dcm(
-        dcm_ref_filepath)
-    coords_evaluation, dose_evaluation = coords_and_dose_from_dcm(
-        dcm_eval_filepath)
+    coords_reference, dose_reference = coords_and_dose_from_dicom(
+        dicom_ref_filepath)
+    coords_evaluation, dose_evaluation = coords_and_dose_from_dicom(
+        dicom_eval_filepath)
 
     gamma = gamma_shell(
         coords_reference, dose_reference,
@@ -57,9 +57,9 @@ def gamma_dcm(dcm_ref_filepath, dcm_eval_filepath,
 #                        **kwargs):
 #     """Prototype reporting of gamma. Needs to be reworked before merge.
 #     """
-#     coords_reference, dose_reference = coords_and_dose_from_dcm(
+#     coords_reference, dose_reference = coords_and_dose_from_dicom(
 #         dcm_ref_filepath)
-#     coords_evaluation, dose_evaluation = coords_and_dose_from_dcm(
+#     coords_evaluation, dose_evaluation = coords_and_dose_from_dicom(
 #         dcm_eval_filepath)
 
 #     gamma = gamma_shell(
@@ -130,9 +130,9 @@ def gamma_percent_pass(dcm_ref_filepath, dcm_eval_filepath,
                        dose_percent_threshold, distance_mm_threshold,
                        method='shell', **kwargs):
 
-    coords_reference, dose_reference = coords_and_dose_from_dcm(
+    coords_reference, dose_reference = coords_and_dose_from_dicom(
         dcm_ref_filepath)
-    coords_evaluation, dose_evaluation = coords_and_dose_from_dcm(
+    coords_evaluation, dose_evaluation = coords_and_dose_from_dicom(
         dcm_eval_filepath)
 
     if method == 'shell':
