@@ -24,7 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""
+"""Expose a range of pymedphys, scipy, and numpy functions for use within
+Excel via xlwings udf functionality.
 """
 
 # pylint: disable=W0401,W0614
@@ -32,8 +33,10 @@
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from ._level1.udf import *
+from ._level1.interpolate import *
+from ._level1.numpy import *
+from ._level1.dicom import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.udf'
+    '._level1.interpolate', '._level1.numpy', '._level1.dicom'
 ], package='pymedphys.xlwings')
