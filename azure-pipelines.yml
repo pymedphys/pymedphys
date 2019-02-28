@@ -1,2 +1,46 @@
 jobs:
-  - template: ./azure-pipelines/macos.yml
+  - job: 'PyTest'
+
+    strategy:
+      matrix:
+        linux:
+          imageName: 'ubuntu-16.04'
+          testTitle: 'Linux'
+        mac:
+          imageName: 'macos-10.13'
+          testTitle: 'macOS'
+        windows:
+          imageName: 'vs2017-win2016'
+          testTitle: 'Windows'
+
+    pool:
+      vmImage: $(imageName)
+
+    steps:
+    - task: CondaEnvironment@1
+      inputs:
+        createCustomEnvironment: true
+        environmentName: pymedphys
+        packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip scipy numpy=1.15
+        updateConda: true
+        createOptions: --channel conda-forge
+
+    - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ln -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
+      displayName: 'Install Homebrew and GNU xargs'
+      condition: eq( variables['Agent.OS'], 'Darwin' )
+
+    - bash: source ./azure-pipelines/scripts/activate.sh && pip install -e .
+      displayName: 'Install development version of PyMedPhys'
+    - bash: source ./azure-pipelines/scripts/activate.sh && ./azure-pipelines/scripts/matplotlib-backend.sh
+      displayName: 'Set matplotlib backend to Agg'
+    - bash: source ./azure-pipelines/scripts/activate.sh && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
+      displayName: 'Check that notebooks have no included output'
+    - bash: source ./azure-pipelines/scripts/activate.sh && python setup.py test
+      displayName: 'Run the full pytest suite'
+
+    - task: PublishTestResults@2
+      displayName: Publish Test Results
+      inputs:
+        testResultsFiles: junit/*.xml
+        testRunTitle: '$(testTitle)'
+      condition: succeededOrFailed()
