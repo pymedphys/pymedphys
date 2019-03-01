@@ -53,7 +53,6 @@ class Profile():
                                                bounds_error=False, fill_value=np.nan)
 
     def __len__(self):  # NUMBER OF DATA POINTS
-        assert len(self.x) == len(self.data)
         return len(self.x)
 
     def __eq__(self, other):  # SAME DATA POINTS
@@ -71,13 +70,25 @@ class Profile():
         try:
             fmt_str = 'Profile object: '
             fmt_str += '{} pts | x ({} cm -> {} cm) | data ({} -> {})'
-            return fmt_str.format(len(self),
+            return fmt_str.format(len(self.x),
                                   min(self.x), max(self.x),
                                   min(self.data), max(self.data))
         except:
             return ''
 
-    def __mul__(self, other):  # SCALE PROFILE DOSE
+    def __add__(self, other):  # SHIFT RIGHT
+        self.x += other
+        return(Profile(x=self.x, data=self.data, metadata=self.metadata))
+    __radd__ = __add__
+    __iadd__ = __add__
+
+    def __sub__(self, other):  # SHIFT LEFT
+        self.x -= other
+        return(Profile(x=self.x, data=self.data, metadata=self.metadata))
+    __rsub__ = __sub__
+    __isub__ = __sub__
+
+    def __mul__(self, other):  # SCALE DOSE
         self.data *= other
         return(self)
     __rmul__ = __mul__
@@ -86,7 +97,6 @@ class Profile():
 # CONSIDER DIVIDE AS RESAMPLE
 # CHANGE X,DATA VARIABLE NAMES?
 # CONSIDER +/- AS SHIFT RIGHT/LEFT
-# CONSIDER DIVIDE AS RESAMPLE
 # CONSIDER ASCII GRAPH AS PRINT
 # CONSIDER LEN AS X EXTENT OF GRAPH
 
@@ -427,6 +437,23 @@ class Profile():
         """ US Eng -> UK Eng """
         return self.symmetrise()
 
+    def recentre(self):
+        """ Centered copy of dose profile.
+
+        Created by shifting the profile based on edge locations.
+
+        Returns
+        -------
+        Profile
+
+        """
+
+        return self - np.average(self.edges())
+
+    def recenter(self):
+        """ US Eng -> UK Eng """
+        return self.recentre()
+
 
 #############
 
@@ -460,14 +487,6 @@ class DoseDepth():
 #             dists.append(val)
 #     return dists
 
-# def _shift_dose_prof(dose_prof, dist):
-#     """
-#     Return a dose-profile whose distances are shifted by a specified distance.
-#     """
-#     dist_vals = np.add(_get_dist_vals(dose_prof), dist)
-#     dose_vals = list(list(zip(*dose_prof))[1])
-#     dose_vals = _get_dose_vals(dose_prof)
-#     return list(zip(dist_vals, dose_vals))
 
 # def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
 #     """
@@ -517,29 +536,6 @@ class DoseDepth():
 #     # ----------------------------------------------------------
 
 #     return best_offset
-
-
-# def recentre(dose_prof):
-#     """
-#     Return a translated dose-profile in which the central-axis,
-#     midway between the edges, is defined as zero distance.
-#     Also, recenter().
-
-#     """
-
-#     dist_vals = _get_dist_vals(dose_prof)
-#     dose_vals = _get_dose_vals(dose_prof)
-#     cax = np.mean(edges(dose_prof))
-
-#     cent_prof = []
-#     for i, dist in enumerate(dist_vals):
-#         cent_prof.append((dist - cax, dose_vals[i]))
-#     return cent_prof
-
-
-# def recenter(dose_prof):
-#     """ US Eng -> UK Eng """
-#     return recentre(dose_prof)
 
 
 # def is_wedged(dose_prof):
