@@ -81,6 +81,7 @@ def test_interp():
 
 def test_magic_methods():
     # __len__
+    profiler = Profile().from_tuples(PROFILER)
     assert len(Profile()) == 0
     # __eq__
     assert Profile() == Profile()
@@ -93,6 +94,14 @@ def test_magic_methods():
     # __str__
     profiler = Profile().from_tuples(PROFILER)
     assert profiler.__str__()
+    # __add__, __radd__, __iadd__
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.isclose(profiler.get_dose(0),
+                      (profiler+2).get_dose(2))
+    # __sub__, __rsub__, __isub__
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.isclose(profiler.get_dose(0),
+                      (profiler-2).get_dose(-2))
     # __mul__, __rmul__, __imul__
     profiler = Profile().from_tuples(PROFILER)
     assert np.isclose(4*sum(profiler.data), sum((4*profiler).data))
@@ -218,15 +227,17 @@ def test_symmetrise():
     assert np.isclose(profiler.symmetrize().symmetry(), 0.0)
 
 
+def test_recentre():
+    profiler = Profile().from_tuples(PROFILER)
+    assert np.isclose(np.sum(profiler.recentre().edges()), 0.0)
+
+
 # def test_is_wedged():
 #     assert not is_wedged(PROFILER)
 #     assert is_wedged(WEDGED)
 
 # def test_overlay():
 #     assert np.allclose(overlay(PROFILER, WEDGED), 0.2)
-
-# def test_recentre():
-#     assert np.allclose(recentre(PROFILER)[0][0], -16.3)
 
 
 if __name__ == "__main__":
@@ -248,7 +259,7 @@ if __name__ == "__main__":
     test_flatness()
     test_symmetry()
     test_symmetrise()
+    test_recentre()
     #     test_overlay()
-    #     test_recentre()
     #     test_is_wedged()
     pass
