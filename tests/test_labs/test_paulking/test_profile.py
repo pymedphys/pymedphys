@@ -262,4 +262,3 @@ if __name__ == "__main__":
     test_recentre()
     #     test_overlay()
     #     test_is_wedged()
-    pass

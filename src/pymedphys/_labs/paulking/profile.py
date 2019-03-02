@@ -96,9 +96,7 @@ class Profile():
 
 # CONSIDER DIVIDE AS RESAMPLE
 # CHANGE X,DATA VARIABLE NAMES?
-# CONSIDER +/- AS SHIFT RIGHT/LEFT
 # CONSIDER ASCII GRAPH AS PRINT
-# CONSIDER LEN AS X EXTENT OF GRAPH
 
     def from_lists(self, x, data, metadata={}):
         self.x = np.array(x)
@@ -202,7 +200,7 @@ class Profile():
     def plot(self):
         plt.plot(self.x, self.data, 'o-')
         plt.show()
-        return  # plt.plot(self.x, self.data, 'o-')
+        return
 
     def segment(self, start=-np.inf, stop=np.inf):
         """ Part of dose profile between begin and end.
@@ -252,7 +250,6 @@ class Profile():
 
         new_x = np.arange(self.x[0], self.x[-1], step)
         new_data = self.interp(new_x)
-        # self.__init__(new_x, new_data, self.metadata)
         return Profile(new_x, new_data, self.metadata)
 
     def normalise_dose(self, x=0.0, data=1.0):
@@ -306,8 +303,6 @@ class Profile():
         dydx = list(np.gradient(self.data, self.x))
         lt_edge = self.x[dydx.index(max(dydx))]
         rt_edge = self.x[dydx.index(min(dydx))]
-
-        # self.__init__(x=unmod.x, data=unmod.data, metadata=unmod.metadata)
         return (lt_edge, rt_edge)
 
     def normalise_distance(self):
