@@ -399,10 +399,10 @@ def calculate_min_dose_difference(options, distance, to_be_checked,
 
     num_points_in_shell = np.shape(coordinates_at_distance_shell)[1]
 
-    estimated_ram_needed = (num_points_in_shell
-                            * np.sum(to_be_checked)
-                            * 32
-                            * num_dimensions
+    estimated_ram_needed = (np.uint64(num_points_in_shell)
+                            * np.sum(to_be_checked).astype(np.uint64)
+                            * np.uint64(32)
+                            * np.uint64(num_dimensions)
                             * np.uint64(2))
 
     num_slices = np.floor(
