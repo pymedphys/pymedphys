@@ -283,8 +283,8 @@ class GammaInternalFixedOptions():
 
 
 def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
-    still_searching_for_gamma = np.ones_like(
-        options.flat_dose_reference).astype(bool)
+    still_searching_for_gamma = np.full_like(
+        options.flat_dose_reference, True, dtype=bool)
 
     current_gamma = np.inf * np.ones((
         len(options.flat_dose_reference),
@@ -422,7 +422,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked,
     ]
 
     for current_slice in sorted_sliced:
-        to_be_checked_sliced = np.zeros_like(to_be_checked).astype(bool)
+        to_be_checked_sliced = np.full_like(to_be_checked, False, dtype=bool)
         to_be_checked_sliced[all_checks[current_slice]] = True
 
         assert np.all(to_be_checked[to_be_checked_sliced])
@@ -456,8 +456,8 @@ def interpolate_evaluation_dose_at_distance(
     each reference coordinate.
     """
     if to_be_checked is None:
-        to_be_checked = np.ones_like(
-            options.flat_mesh_coords_reference[0]).astype(bool)
+        to_be_checked = np.full_like(
+            options.flat_mesh_coords_reference[0], True, dtype=bool)
 
     all_points = add_shells_to_eval_coords(
         options.flat_mesh_coords_reference, coordinates_at_distance_shell,
