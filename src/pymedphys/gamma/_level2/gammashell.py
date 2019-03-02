@@ -265,8 +265,8 @@ class GammaInternalFixedOptions():
             to_calc_index = np.where(reference_points_to_calc)[0]
 
             np.random.shuffle(to_calc_index)
-            random_subset_to_calc = np.zeros_like(
-                reference_points_to_calc).astype(bool)
+            random_subset_to_calc = np.full_like(
+                reference_points_to_calc, False, dtype=bool)
             random_subset_to_calc[to_calc_index[0:random_subset]] = True
 
             reference_points_to_calc = random_subset_to_calc
@@ -399,14 +399,14 @@ def calculate_min_dose_difference(options, distance, to_be_checked,
 
     num_points_in_shell = np.shape(coordinates_at_distance_shell)[1]
 
-    estimated_ram_needed = (np.uint64(num_points_in_shell)
-                            * np.sum(to_be_checked).astype(np.uint64)
-                            * np.uint64(32)
-                            * np.uint64(num_dimensions)
+    estimated_ram_needed = (num_points_in_shell
+                            * np.sum(to_be_checked)
+                            * 32
+                            * num_dimensions
                             * np.uint64(2))
 
     num_slices = np.floor(
-        estimated_ram_needed / options.ram_available).astype(np.uint64) + 1
+        estimated_ram_needed / options.ram_available).astype(int) + 1
 
     if not options.quiet:
         sys.stdout.write(' | Points tested per reference point: {} | RAM split count: {}'.format(
@@ -477,7 +477,7 @@ def add_shells_to_eval_coords(flat_mesh_coords_reference,
     for shell_coord, eval_coord in zip(coordinates_at_distance_shell,
                                        flat_mesh_coords_reference):
 
-        coordinates_at_distance.append(np.array(
+        coordinates_at_distance.append((
             eval_coord[to_be_checked][None, :] +
             shell_coord[:, None])[:, :, None])
 
