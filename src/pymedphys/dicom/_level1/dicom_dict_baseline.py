@@ -4377,3 +4377,8 @@ RepeatersDictionary = {
     '7Fxx0030': ('OW', '1', "Variable Coefficients SDHN", 'Retired', 'VariableCoefficientsSDHN'),  # noqa
     '7Fxx0040': ('OW', '1', "Variable Coefficients SDDN", 'Retired', 'VariableCoefficientsSDDN')  # noqa
 }
+
+    
+BASELINE_KEYWORD_VR_DICT = dict([(BaselineDicomDictionary[tag][4],
+                                  BaselineDicomDictionary[tag][0])
+                                  for tag in BaselineDicomDictionary])
