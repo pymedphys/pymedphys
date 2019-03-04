@@ -50,7 +50,7 @@ class Profile():
             self.interp = None
         else:
             self.interp = interpolate.interp1d(self.x, self.data,
-                                               bounds_error=False, fill_value=np.nan)
+                                               bounds_error=False, fill_value=0.0)
 
     def __len__(self):  # NUMBER OF DATA POINTS
         return len(self.x)
@@ -77,8 +77,9 @@ class Profile():
             return ''
 
     def __add__(self, other):  # SHIFT RIGHT
-        self.x += other
-        return(Profile(x=self.x, data=self.data, metadata=self.metadata))
+        new_x = self.x + other
+        # self.x += other
+        return(Profile(x=new_x, data=self.data, metadata=self.metadata))
     __radd__ = __add__
     __iadd__ = __add__
 
@@ -250,6 +251,7 @@ class Profile():
 
         new_x = np.arange(self.x[0], self.x[-1], step)
         new_data = self.interp(new_x)
+        # self.__init__(new_x, new_data, self.metadata)
         return Profile(new_x, new_data, self.metadata)
 
     def normalise_dose(self, x=0.0, data=1.0):
@@ -449,18 +451,54 @@ class Profile():
         """ US Eng -> UK Eng """
         return self.recentre()
 
+    def overlay(self, other):
+        """
+
+        ### NEEDS TO BE TIGHTENED AND ADD DOCSTRING ##
+
+        """
+
+        dist_step = min(self._get_increment(), other._get_increment())
+
+        # FIXED CURVE -------------------------------------------
+        min_x = min(list(self.x) + list(other.x))
+        max_x = max(list(self.x) + list(other.x))
+        dist_vals_fixed = np.arange(-3*np.abs(min_x),
+                                    3*np.abs(max_x),
+                                    dist_step)
+        dose_vals_fixed = other.interp(dist_vals_fixed)
+        fixed = Profile(x=dist_vals_fixed, data=dose_vals_fixed)
+
+        # POSSIBLE OFFSETS --------------------------
+        step = dist_step
+        strt = max(min(self.x), min(other.x))
+        stop = min(max(other.x), max(self.x)) + step
+        possible_offsets = np.arange(strt, stop, step)
+
+        # EVALUATE FIT AT ALL CANDIDATE SHIFT POSITIONS -----------
+        best_fit_qual = 0
+        best_offset = -np.inf
+        for offset in possible_offsets:
+            moved_profile = self + offset
+            moved_dist_vals = moved_profile.x
+            moved_dose_vals = moved_profile.data
+            dose_func_moves = interpolate.interp1d(moved_dist_vals,
+                                                   moved_dose_vals,
+                                                   bounds_error=False,
+                                                   fill_value=0.0)
+            fit_qual = np.correlate(
+                dose_vals_fixed,
+                dose_func_moves(fixed.x))
+
+            if max(fit_qual) > best_fit_qual:
+                best_fit_qual = max(fit_qual)
+                best_offset = offset
+        # ----------------------------------------------------------
+
+        return self + best_offset
+
 
 #############
-
-    # def centre(self):
-    #     pass
-
-    # def shift_to_centre(self):
-    #     pass
-
-class DoseDepth():
-    pass
-
 
 # def _find_dists(dose_prof, dose):
 #     """
@@ -483,7 +521,15 @@ class DoseDepth():
 #     return dists
 
 
-# def overlay(dose_prof_moves, dose_prof_fixed, dist_step=0.1):
+# def is_wedged(dose_prof):
+#     """ Return True iff dose-profile has significant gradient in the umbra. """
+#     wedginess = np.average(np.diff(_get_dose_vals(_find_umbra(dose_prof))))
+#     if wedginess > 0.05:  # 'magic number'
+#         return True
+#     else:
+#         return False
+
+# def overlay(self, dose_prof_moves, dose_prof_fixed, dist_step=0.1):
 #     """
 #     Return as a float, the misalignment between two dose-profiles, i.e. the
 #     distance by which one would need to move to align to the other.
@@ -503,7 +549,8 @@ class DoseDepth():
 #     possible_offsets = np.arange(strt, stop, step)
 #     # --------------------------------------------
 
-#     dose_func_fixed = interpolate.interp1d(dist_vals_fixed, dose_vals_fixed)
+#     dose_func_fixed = interpolate.interp1d(
+#         dist_vals_fixed, dose_vals_fixed)
 
 #     # DISTANCE VALUES OF FIXED CURVE ------------------------
 #     strt = 3 * min(min(dist_vals_moves), min(dist_vals_fixed))
@@ -531,12 +578,3 @@ class DoseDepth():
 #     # ----------------------------------------------------------
 
 #     return best_offset
-
-
-# def is_wedged(dose_prof):
-#     """ Return True iff dose-profile has significant gradient in the umbra. """
-#     wedginess = np.average(np.diff(_get_dose_vals(_find_umbra(dose_prof))))
-#     if wedginess > 0.05:  # 'magic number'
-#         return True
-#     else:
-#         return False
