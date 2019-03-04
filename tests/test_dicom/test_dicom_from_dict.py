@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,33 +24,25 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Dicom toolbox built ontop of the pydicom library.
+import pydicom
 
-Available Functions
--------------------
->>> from pymedphys.dcm import (
-...     anonymise_dicom,
-...     extract_iec_patient_xyz,
-...     extract_iec_fixed_xyz,
-...     extract_dicom_patient_xyz,
-...     load_dose_from_dicom,
-...     load_xyz_from_dicom,
-...     find_dose_within_structure,
-...     create_dvh,
-...     get_structure_aligned_cube)
-"""
+from pymedphys.dicom import dicom_from_dict
 
-# pylint: disable=W0401,W0614
 
-from ..libutils import clean_and_verify_levelled_modules
+def test_dicom_from_dict():
+    baseline_dataset = pydicom.Dataset()
+    baseline_dataset.Manufacturer = 'PyMedPhys'
+    beam_sequence = pydicom.Dataset()
+    beam_sequence.Manufacturer = 'PyMedPhys'
+    baseline_dataset.BeamSequence = [beam_sequence]
 
-from ._level1.dcmdose import *
-from ._level1.dcmcreate import *
-from ._level2.header_tweaks import *
-from ._level2.dcmanonymise import *
-from ._level2.dcmstruct import *
+    created_dataset = dicom_from_dict({
+        'Manufacturer': 'PyMedPhys',
+        'BeamSequence': [
+            {
+                'Manufacturer': 'PyMedPhys'
+            }
+        ]
+    })
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.dcmdose', '._level1.dcmcreate', '._level2.header_tweaks',
-    '._level2.dcmanonymise', '._level2.dcmstruct'
-], package='pymedphys.dcm')
+    assert created_dataset == baseline_dataset

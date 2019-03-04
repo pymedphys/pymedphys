@@ -30,28 +30,28 @@ import pydicom
 
 from ...libutils import get_imports
 
-from .._level1.dcmcreate import dcm_from_dict
+from .._level1.dicom_create import dicom_from_dict
 
 IMPORTS = get_imports(globals())
 
 
-def adjust_machine_name(dcm, new_machine_name):
+def adjust_machine_name(ds, new_machine_name):
     """Change the machine name within the DICOM header
     """
 
-    new_dcm = deepcopy(dcm)
+    new_ds = deepcopy(ds)
 
-    for beam in new_dcm.BeamSequence:
+    for beam in new_ds.BeamSequence:
         beam.TreatmentMachineName = new_machine_name
 
-    return new_dcm
+    return new_ds
 
 
 def adjust_machine_name_cli(args):
-    dcm = pydicom.read_file(args.input_file, force=True)
-    new_dcm = adjust_machine_name(dcm, args.new_machine_name)
+    ds = pydicom.read_file(args.input_file, force=True)
+    new_ds = adjust_machine_name(ds, args.new_machine_name)
 
-    pydicom.write_file(args.output_file, new_dcm)
+    pydicom.write_file(args.output_file, new_ds)
 
 
 def delete_sequence_item_with_matching_key(sequence, key, value):
@@ -67,20 +67,20 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
     return new_sequence
 
 
-def adjust_rel_elec_density(dcm, adjustment_map):
+def adjust_rel_elec_density(ds, adjustment_map):
     """Append or adjust relative electron densities of stuctures
     """
 
-    new_dcm = deepcopy(dcm)
+    new_ds = deepcopy(ds)
 
     ROI_name_to_number_map = {
         structure_set.ROIName: structure_set.ROINumber
-        for structure_set in new_dcm.StructureSetROISequence
+        for structure_set in new_ds.StructureSetROISequence
     }
 
     ROI_number_to_observation_map = {
         observation.ReferencedROINumber: observation
-        for observation in new_dcm.RTROIObservationsSequence
+        for observation in new_ds.RTROIObservationsSequence
     }
 
     for structure_name, new_red in adjustment_map.items():
@@ -96,7 +96,7 @@ def adjust_rel_elec_density(dcm, adjustment_map):
             physical_properties, 'ROIPhysicalProperty', 'REL_ELEC_DENSITY')
 
         physical_properties.append(
-            dcm_from_dict({
+            dicom_from_dict({
                 'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
                 'ROIPhysicalPropertyValue': new_red
             })
@@ -104,7 +104,7 @@ def adjust_rel_elec_density(dcm, adjustment_map):
 
         observation.ROIPhysicalPropertiesSequence = physical_properties
 
-    return new_dcm
+    return new_ds
 
 
 def adjust_rel_elec_density_cli(args):
@@ -113,7 +113,7 @@ def adjust_rel_elec_density_cli(args):
         for key, item in zip(args.adjustment_map[::2], args.adjustment_map[1::2])
     }
 
-    dcm = pydicom.read_file(args.input_file, force=True)
-    new_dcm = adjust_rel_elec_density(dcm, adjustment_map)
+    ds = pydicom.read_file(args.input_file, force=True)
+    new_ds = adjust_rel_elec_density(ds, adjustment_map)
 
-    pydicom.write_file(args.output_file, new_dcm)
+    pydicom.write_file(args.output_file, new_ds)

@@ -34,7 +34,7 @@ try:
 except ImportError:
     HAS_XLWINGS = False
 
-from ...dcm import extract_depth_dose, extract_profiles
+from ...dicom import extract_depth_dose, extract_profiles
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
@@ -47,10 +47,10 @@ if HAS_XLWINGS:
     @xw.arg('averaging_distance')
     @xw.ret(expand='table')
     def depth_dose(dicom_path, depth_adjust, averaging_distance=0):
-        dcm = pydicom.read_file(dicom_path, force=True)
+        ds = pydicom.read_file(dicom_path, force=True)
 
         depth, depth_dose_values = extract_depth_dose(
-            dcm, depth_adjust, averaging_distance)
+            ds, depth_adjust, averaging_distance)
 
         return np.vstack([depth, depth_dose_values]).T
 
@@ -61,10 +61,10 @@ if HAS_XLWINGS:
     @xw.arg('averaging_distance')
     @xw.ret(expand='table')
     def inplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
-        dcm = pydicom.read_file(dicom_path, force=True)
+        ds = pydicom.read_file(dicom_path, force=True)
 
         inplane, inplane_dose, _, _ = extract_profiles(
-            dcm, depth_adjust, depth_lookup, averaging_distance)
+            ds, depth_adjust, depth_lookup, averaging_distance)
 
         return np.vstack([inplane, inplane_dose]).T
 
@@ -75,9 +75,9 @@ if HAS_XLWINGS:
     @xw.arg('averaging_distance')
     @xw.ret(expand='table')
     def crossplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
-        dcm = pydicom.read_file(dicom_path, force=True)
+        ds = pydicom.read_file(dicom_path, force=True)
 
         _, _, crossplane, crossplane_dose = extract_profiles(
-            dcm, depth_adjust, depth_lookup, averaging_distance)
+            ds, depth_adjust, depth_lookup, averaging_distance)
 
         return np.vstack([crossplane, crossplane_dose]).T
