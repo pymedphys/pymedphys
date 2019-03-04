@@ -24,8 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: skip-file
-
 import numpy as np
 
 from ...utilities import get_filepath, get_gantry_tolerance
@@ -363,40 +361,55 @@ def get_comparison_results(mosaiq_mu_density_bygantry,
     return comparison_results
 
 
+def get_mu_densities_for_file_hashes(index, config, cursor, file_hashes):
+    field_ids = {
+        index[file_hash]['delivery_details']['field_id']
+        for file_hash in file_hashes
+    }
+
+    assert len(field_ids) == 1
+    field_id = field_ids.pop()
+
+    logfile_groups = group_consecutive_logfiles(file_hashes, index)
+    logfile_groups = [
+        tuple(group)
+        for group in logfile_groups
+    ]
+
+    mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(cursor, field_id)
+    mosaiq_gantry_angles = np.unique(mosaiq_delivery_data.gantry)
+
+    logfile_delivery_data_bygantry = get_logfile_delivery_data_bygantry(
+        index, config, logfile_groups, mosaiq_gantry_angles)
+    logfile_mu_density_bygantry = get_logfile_mu_density_bygantry(
+        logfile_groups, mosaiq_gantry_angles, logfile_delivery_data_bygantry)
+    mosaiq_delivery_data_bygantry = get_mosaiq_delivery_data_bygantry(
+        mosaiq_delivery_data)
+    mosaiq_mu_density_bygantry = get_mosaiq_mu_density_bygantry(
+        mosaiq_delivery_data_bygantry)
+
+    normalisation = calc_normalisation(mosaiq_delivery_data)
+
+    return (
+        mosaiq_mu_density_bygantry, logfile_mu_density_bygantry,
+        normalisation)
+
+
+def get_mu_densities_for_field_id(index, config, cursor, field_id, field_id_grouped_hashes):
+    file_hashes = np.array(field_id_grouped_hashes[field_id])
+    mu_densities = get_mu_densities_for_file_hashes(index, config, cursor, file_hashes)
+
+    return mu_densities
+
+
 def get_comparisons_byfield(index, config, cursor, field_ids,
                             field_id_grouped_hashes):
-    mosaiq_delivery_data_byfield = dict()
-
-    for field_id in field_ids:
-        mosaiq_delivery_data_byfield[field_id] = multi_fetch_and_verify_mosaiq(
-            cursor, field_id)
-
     comparisons_byfield = dict()
 
     for field_id in field_ids:
-        keys = np.array(field_id_grouped_hashes[field_id])
-        logfile_groups = group_consecutive_logfiles(keys, index)
-        logfile_groups = [
-            tuple(group)
-            for group in logfile_groups
-        ]
-
-        mosaiq_delivery_data = mosaiq_delivery_data_byfield[field_id]
-        mosaiq_gantry_angles = np.unique(mosaiq_delivery_data.gantry)
-
-        logfile_delivery_data_bygantry = get_logfile_delivery_data_bygantry(
-            index, config, logfile_groups, mosaiq_gantry_angles)
-        logfile_mu_density_bygantry = get_logfile_mu_density_bygantry(
-            logfile_groups, mosaiq_gantry_angles, logfile_delivery_data_bygantry)
-        mosaiq_delivery_data_bygantry = get_mosaiq_delivery_data_bygantry(
-            mosaiq_delivery_data)
-        mosaiq_mu_density_bygantry = get_mosaiq_mu_density_bygantry(
-            mosaiq_delivery_data_bygantry)
-
-        normalisation = calc_normalisation(mosaiq_delivery_data)
-        comparison_results = get_comparison_results(
-            mosaiq_mu_density_bygantry, logfile_mu_density_bygantry,
-            normalisation)
+        mu_densities = get_mu_densities_for_field_id(
+            index, config, cursor, field_id, field_id_grouped_hashes)
+        comparison_results = get_comparison_results(*mu_densities)
 
         comparisons_byfield[field_id] = comparison_results
 
