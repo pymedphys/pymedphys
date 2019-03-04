@@ -2,7 +2,7 @@ Internal Levelled Modules:
     containers:
         - pymedphys.coll
         - pymedphys.coordinates
-        - pymedphys.dcm
+        - pymedphys.dicom
         - pymedphys.deliverydata
         - pymedphys.electronfactors
         - pymedphys.filehash
@@ -39,7 +39,7 @@ Top Level Modules:
         - electronfactors
         - film
         - sinogram
-        - dcm
+        - dicom
         - utilities
         - deliverydata
         - geometry

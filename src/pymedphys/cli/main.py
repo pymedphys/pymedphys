@@ -27,7 +27,7 @@
 import json
 import argparse
 
-from ..dcm import adjust_machine_name_cli, adjust_rel_elec_density_cli
+from ..dicom import adjust_machine_name_cli, adjust_rel_elec_density_cli
 from ..docker import server_cli
 
 
