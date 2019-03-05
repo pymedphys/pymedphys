@@ -61,6 +61,10 @@ def dicom_cli(subparsers):
     dicom_adjust_rel_elec_density_parser.add_argument('output_file', type=str)
     dicom_adjust_rel_elec_density_parser.add_argument(
         'adjustment_map', type=str, nargs='+')
+
+    dicom_adjust_rel_elec_density_parser.add_argument('-i', '--ignore_missing_structure',
+                                                      action='store_true')
+
     dicom_adjust_rel_elec_density_parser.set_defaults(
         func=adjust_rel_elec_density_cli)
 

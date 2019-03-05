@@ -26,7 +26,7 @@
 
 import pydicom
 
-from pymedphys.dicom import dicom_from_dict
+from pymedphys.dicom import ds_from_dict
 
 
 def test_dicom_from_dict():
@@ -36,7 +36,7 @@ def test_dicom_from_dict():
     beam_sequence.Manufacturer = 'PyMedPhys'
     baseline_dataset.BeamSequence = [beam_sequence]
 
-    created_dataset = dicom_from_dict({
+    created_dataset = ds_from_dict({
         'Manufacturer': 'PyMedPhys',
         'BeamSequence': [
             {
