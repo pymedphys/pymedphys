@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+# pylint: skip-file
+
 import numpy as np
 
 from ...utilities import get_filepath, get_gantry_tolerance
@@ -397,7 +399,8 @@ def get_mu_densities_for_file_hashes(index, config, cursor, file_hashes):
 
 def get_mu_densities_for_field_id(index, config, cursor, field_id, field_id_grouped_hashes):
     file_hashes = np.array(field_id_grouped_hashes[field_id])
-    mu_densities = get_mu_densities_for_file_hashes(index, config, cursor, file_hashes)
+    mu_densities = get_mu_densities_for_file_hashes(
+        index, config, cursor, file_hashes)
 
     return mu_densities
 
