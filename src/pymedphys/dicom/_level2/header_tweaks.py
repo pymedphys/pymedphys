@@ -30,7 +30,7 @@ import pydicom
 
 from ...libutils import get_imports
 
-from .._level1.dicom_create import dicom_from_dict
+from .._level1.dicom_create import ds_from_dict
 
 IMPORTS = get_imports(globals())
 
@@ -67,7 +67,7 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
     return new_sequence
 
 
-def adjust_rel_elec_density(ds, adjustment_map):
+def adjust_rel_elec_density(ds, adjustment_map, ignore_missing_structure=False):
     """Append or adjust relative electron densities of stuctures
     """
 
@@ -84,7 +84,14 @@ def adjust_rel_elec_density(ds, adjustment_map):
     }
 
     for structure_name, new_red in adjustment_map.items():
-        ROI_number = ROI_name_to_number_map[structure_name]
+        try:
+            ROI_number = ROI_name_to_number_map[structure_name]
+        except KeyError:
+            if ignore_missing_structure:
+                continue
+            else:
+                raise
+
         observation = ROI_number_to_observation_map[ROI_number]
 
         try:
@@ -96,7 +103,7 @@ def adjust_rel_elec_density(ds, adjustment_map):
             physical_properties, 'ROIPhysicalProperty', 'REL_ELEC_DENSITY')
 
         physical_properties.append(
-            dicom_from_dict({
+            ds_from_dict({
                 'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
                 'ROIPhysicalPropertyValue': new_red
             })
@@ -114,6 +121,7 @@ def adjust_rel_elec_density_cli(args):
     }
 
     ds = pydicom.read_file(args.input_file, force=True)
-    new_ds = adjust_rel_elec_density(ds, adjustment_map)
+    new_ds = adjust_rel_elec_density(
+        ds, adjustment_map, ignore_missing_structure=args.ignore_missing_structure)
 
     pydicom.write_file(args.output_file, new_ds)
