@@ -208,7 +208,7 @@ def test_electron_density_append():
         'pymedphys dicom adjust-rel-elec-density -i '.split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME]
         + excess_adjustment_map_flat)
-#
+
     subprocess.check_call(command)
 
     cli_adjusted_dicom_file = pydicom.read_file(
