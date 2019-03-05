@@ -26,7 +26,7 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
 
     if tags['SOPClassUID'] == structure_UID then
       print('Converting a structure set')
-      os.execute('pymedphys dicom adjust-rel-elec-density ' .. received_filepath .. ' ' .. converted_filepath .. ' "Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
+      os.execute('pymedphys dicom adjust-rel-elec-density -i ' .. received_filepath .. ' ' .. converted_filepath .. ' "Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
 
     elseif tags['SOPClassUID'] == plan_UID then
       print('Converting a plan')
