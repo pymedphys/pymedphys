@@ -26,10 +26,11 @@ import numpy as np
 from pymedphys._labs.paulking.profile import Profile
 
 # pylint: disable = E1102
+# pylint: disable = C0111
 
 
 PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28), (-15.2, 0.3),
-            (-14.8, 0.36), (-14.4, 0.38),  (-14, 0.41), (-13.6, 0.45),
+            (-14.8, 0.36), (-14.4, 0.38), (-14, 0.41), (-13.6, 0.45),
             (-13.2, 0.47), (-12.8, 0.51), (-12.4, 0.55), (-12, 0.62),
             (-11.6, 0.67), (-11.2, 0.74), (-10.8, 0.81), (-10.4, 0.91),
             (-10, 0.97), (-9.6, 1.12), (-9.2, 1.24), (-8.8, 1.4),
@@ -75,7 +76,7 @@ def test_init():
 
 
 def test_interp():
-    assert Profile().interp == None
+    assert Profile().interp is None
     assert np.isclose(Profile(x=[0, 1], data=[0, 1]).interp(0.5), 0.5)
 
 
@@ -145,7 +146,7 @@ def test_get_increment():
     assert np.isclose(profiler._get_increment(), 0.4)
 
 
-def test_DoseProfile_segment():
+def test_dose_profile_segment():
     profiler = Profile().from_tuples(PROFILER)
     # NO POINTS
     no_points = profiler.segment(start=1, stop=0)
@@ -165,7 +166,6 @@ def test_DoseProfile_segment():
 
 def test_DoseProfile_resample():
     profiler = Profile().from_tuples(PROFILER, metadata={'depth': 10})
-    profiler
     # METADATA
     assert profiler.metadata['depth'] == 10
     # CONSISTENT CONTENTS AFTER UPSAMPLING
@@ -234,10 +234,7 @@ def test_recentre():
 
 def test_overlay():
     profiler = Profile().from_tuples(PROFILER)
-    # shifted =
-    print(np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2))
-    # assert np.allclose(overlay(PROFILER, WEDGED), 0.2)
-
+    assert np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2)
 
 # def test_is_wedged():
 #     assert not is_wedged(PROFILER)
@@ -254,7 +251,7 @@ if __name__ == "__main__":
     test_from_snc_profiler()
     test_get_dose()
     test_get_increment()
-    test_DoseProfile_segment()
+    test_dose_profile_segment()
     test_DoseProfile_resample()
     test_normalise_dose()
     test_edges()
@@ -266,4 +263,3 @@ if __name__ == "__main__":
     test_recentre()
     test_overlay()
     #     test_is_wedged()
-    pass
