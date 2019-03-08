@@ -276,7 +276,7 @@ def test_structure_name_based_RED_append():
     assert str(expected_dicom_file) == str(adjusted_dicom_file)
 
     command = (
-        'pymedphys dicom structure-name-RED-adjust'.split()
+        'pymedphys dicom structure-name-red-adjust'.split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME])
 
     compare_dicom_cli(command, original_dicom_file, expected_dicom_file)
