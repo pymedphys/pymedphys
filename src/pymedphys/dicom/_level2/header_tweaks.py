@@ -30,7 +30,7 @@ import pydicom
 
 from ...libutils import get_imports
 
-from .._level1.dicom_create import ds_from_dict
+from .._level1.dicom_create import dicom_dataset_from_dict
 
 IMPORTS = get_imports(globals())
 
@@ -103,7 +103,7 @@ def adjust_rel_elec_density(ds, adjustment_map, ignore_missing_structure=False):
             physical_properties, 'ROIPhysicalProperty', 'REL_ELEC_DENSITY')
 
         physical_properties.append(
-            ds_from_dict({
+            dicom_dataset_from_dict({
                 'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
                 'ROIPhysicalPropertyValue': new_red
             })

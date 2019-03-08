@@ -43,7 +43,7 @@ def convert_nparray_and_set_key_value_in_dataset(dataset, key, value):
     setattr(dataset, key, value)
 
 
-def ds_from_dict(input_dict: dict, template_ds=None):
+def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
     """Create a pydicom DICOM object from a dictionary"""
     if template_ds is None:
         dataset = Dataset()
@@ -56,13 +56,13 @@ def ds_from_dict(input_dict: dict, template_ds=None):
                 "{} is not within the DICOM dictionary.".format(key))
 
         if isinstance(value, dict):
-            setattr(dataset, key, ds_from_dict(value))
+            setattr(dataset, key, dicom_dataset_from_dict(value))
         elif isinstance(value, list):
             if np.all([not isinstance(item, dict) for item in value]):
                 convert_nparray_and_set_key_value_in_dataset(
                     dataset, key, value)
             elif np.all([isinstance(item, dict) for item in value]):
-                setattr(dataset, key, [ds_from_dict(item) for item in value])
+                setattr(dataset, key, [dicom_dataset_from_dict(item) for item in value])
             else:
                 raise ValueError(
                     "{} should contain either only dictionaries, or no "
