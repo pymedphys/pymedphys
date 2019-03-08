@@ -23,11 +23,11 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import copy
 
 from typing import Callable
 from scipy import interpolate
 
-import copy
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -79,19 +79,19 @@ class Profile():
     def __add__(self, other):  # SHIFT RIGHT
         new_x = self.x + other
         # self.x += other
-        return(Profile(x=new_x, data=self.data, metadata=self.metadata))
+        return Profile(x=new_x, data=self.data, metadata=self.metadata)
     __radd__ = __add__
     __iadd__ = __add__
 
     def __sub__(self, other):  # SHIFT LEFT
         self.x -= other
-        return(Profile(x=self.x, data=self.data, metadata=self.metadata))
+        return Profile(x=self.x, data=self.data, metadata=self.metadata)
     __rsub__ = __sub__
     __isub__ = __sub__
 
     def __mul__(self, other):  # SCALE DOSE
         self.data *= other
-        return(self)
+        return self
     __rmul__ = __mul__
     __imul__ = __mul__
 
@@ -103,7 +103,7 @@ class Profile():
         self.x = np.array(x)
         self.data = np.array(data)
         self.__init__(x=x, data=data, metadata=metadata)
-        return(Profile(x=x, data=data, metadata=metadata))
+        return Profile(x=x, data=data, metadata=metadata)
 
     def from_tuples(self, list_of_tuples, metadata={}):
         """ Load a list of (x,data) tuples.
@@ -165,7 +165,7 @@ class Profile():
                 data.append(1.0)
             else:
                 data.append(0.5)
-        return Profile().from_lists(x_vals, data)
+        return Profile().from_lists(x_vals, data, metadata=metadata)
 
     def from_snc_profiler(self):
         """ """
@@ -275,8 +275,9 @@ class Profile():
         norm_factor = data / self.get_dose(x)
         new_x = self.x
         new_data = norm_factor * self.data
-        metadata = self.metadata
-        return Profile(new_x, new_data)  # USE THE MAGIC METHOD!
+        # metadata = self.metadata
+        # USE THE MAGIC METHOD!
+        return Profile(new_x, new_data, metadata=self.metadata)
 
     def normalize_dose(self, x=0.0, data=1.0):
         """ US Eng -> UK Eng """
@@ -299,9 +300,9 @@ class Profile():
         tuple
 
         """
-        step = self._get_increment()
-        unmod = copy.deepcopy(self)
-        resampled = self.resample(step)
+        # step = self._get_increment()
+        # unmod = copy.deepcopy(self)
+        # resampled = self.resample(step)
         dydx = list(np.gradient(self.data, self.x))
         lt_edge = self.x[dydx.index(max(dydx))]
         rt_edge = self.x[dydx.index(min(dydx))]
@@ -332,7 +333,7 @@ class Profile():
         cax = 0.5*(lt_edge + rt_edge)
 
         new_x = []
-        for i, dist in enumerate(self.x):
+        for _, dist in enumerate(self.x):
             if dist < cax:
                 new_x.append(-dist/lt_edge)
             elif dist > cax:
@@ -383,7 +384,7 @@ class Profile():
         float
 
         """
-        step = self._get_increment()
+        # step = self._get_increment()
         dose = self.umbra().data
         return (max(dose)-min(dose))/np.average(dose)
 
