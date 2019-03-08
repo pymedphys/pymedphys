@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,7 +32,7 @@ import numpy as np
 import pydicom
 
 from pymedphys.dicom import (
-    dicom_from_dict, adjust_machine_name, adjust_rel_elec_density)
+    dicom_dataset_from_dict, adjust_machine_name, adjust_rel_elec_density)
 
 
 HERE = os.path.dirname(__file__)
@@ -43,7 +43,7 @@ ADJUSTED_DICOM_FILENAME = os.path.join(HERE, 'adjusted.dcm')
 def test_adjust_machine_name():
     new_name = 'new_name'
 
-    original_dicom_file = dicom_from_dict({
+    original_dicom_file = dicom_dataset_from_dict({
         'BeamSequence': [
             {
                 'TreatmentMachineName': 'hello'
@@ -54,7 +54,7 @@ def test_adjust_machine_name():
         ]
     })
 
-    expected_dicom_file = dicom_from_dict({
+    expected_dicom_file = dicom_dataset_from_dict({
         'BeamSequence': [
             {
                 'TreatmentMachineName': new_name
@@ -92,7 +92,14 @@ def test_electron_density_append():
         'to_be_changed 3': 1.5
     }
 
-    original_dicom_file = dicom_from_dict({
+    excess_adjustment_map = {
+        **adjustment_map,
+        **{
+            'this_structure_doesnt_exist': 1.0
+        }
+    }
+
+    original_dicom_file = dicom_dataset_from_dict({
         'StructureSetROISequence': [
             {
                 'ROINumber': 1,
@@ -139,7 +146,7 @@ def test_electron_density_append():
         ]
     })
 
-    expected_dicom_file = dicom_from_dict({
+    expected_dicom_file = dicom_dataset_from_dict({
         'RTROIObservationsSequence': [
             {
                 'ReferencedROINumber': 1,
@@ -184,18 +191,23 @@ def test_electron_density_append():
     assert adjusted_dicom_file != original_dicom_file
     assert str(expected_dicom_file) == str(adjusted_dicom_file)
 
+    adjusted_with_excess_dicom_file = adjust_rel_elec_density(
+        original_dicom_file, excess_adjustment_map, ignore_missing_structure=True)
+
+    assert adjusted_with_excess_dicom_file != original_dicom_file
+    assert str(expected_dicom_file) == str(adjusted_with_excess_dicom_file)
+
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original_dicom_file)
-    adjustment_map_as_list = [
-        ['{}'.format(key), item] for key, item in adjustment_map.items()
+    excess_adjustment_map_as_list = [
+        ['{}'.format(key), item] for key, item in excess_adjustment_map.items()
     ]
-    adjustment_map_flat = np.concatenate(adjustment_map_as_list).tolist()
+    excess_adjustment_map_flat = np.concatenate(
+        excess_adjustment_map_as_list).tolist()
 
     command = (
-        'pymedphys dicom adjust-rel-elec-density'.split()
+        'pymedphys dicom adjust-rel-elec-density -i '.split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME]
-        + adjustment_map_flat)
-
-    print(command)
+        + excess_adjustment_map_flat)
 
     subprocess.check_call(command)
 

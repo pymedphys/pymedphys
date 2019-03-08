@@ -31,73 +31,85 @@ import pydicom
 
 from ...libutils import get_imports
 
-from .._level1.dicom_dict_baseline import BaselineDicomDictionary
+from .._level1.dicom_dict_baseline import BaselineDicomDictionary, BASELINE_KEYWORD_VR_DICT
 
 IMPORTS = get_imports(globals())
 
 
-IDENTIFYING_TAGS = ("AccessionNumber",
-                    "AcquisitionDate",
-                    "AcquisitionDateTime",
-                    "AcquisitionTime",
-                    "ContentCreatorName",
-                    "ContentDate",
-                    "ContentTime",
-                    "CountryOfResidence",
-                    "CurrentPatientLocation",
-                    "CurveDate",
-                    "CurveTime",
-                    "Date",
-                    "DateTime",
-                    "EthnicGroup",
-                    "InstanceCreationDate",
-                    "InstanceCreationTime",
-                    "InstanceCreatorUID",
-                    "InstitutionAddress",
-                    "InstitutionalDepartmentName",
-                    "InstitutionName",
-                    "IssuerOfPatientID",
-                    "NameOfPhysiciansReadingStudy",
-                    "OperatorsName",
-                    "OtherPatientIDs",
-                    "OtherPatientNames",
-                    "OverlayDate",
-                    "OverlayTime",
-                    "PatientAddress",
-                    "PatientAge",
-                    "PatientBirthDate",
-                    "PatientBirthName",
-                    "PatientBirthTime",
-                    "PatientID",
-                    "PatientInstitutionResidence",
-                    "PatientMotherBirthName",
-                    "PatientName",
-                    "PatientSex",
-                    "PatientTelephoneNumbers",
-                    "PerformingPhysicianIdentificationSequence",
-                    "PerformingPhysicianName",
-                    "PersonName",
-                    "PhysiciansOfRecord",
-                    "PhysiciansOfRecordIdentificationSequence",
-                    "PhysiciansReadingStudyIdentificationSequence",
-                    "ReferringPhysicianAddress",
-                    "ReferringPhysicianIdentificationSequence",
-                    "ReferringPhysicianName",
-                    "ReferringPhysicianTelephoneNumbers",
-                    "RegionOfResidence",
-                    "ReviewerName",
-                    "SecondaryReviewerName",
-                    "SeriesDate",
-                    "SeriesTime",
-                    "StationName",
-                    "StudyDate",
-                    "StudyID",
-                    "StudyTime",
-                    "Time",
-                    "VerifyingObserverName")
+IDENTIFYING_KEYWORDS = ("AccessionNumber",
+                        "AcquisitionDate",
+                        "AcquisitionDateTime",
+                        "AcquisitionTime",
+                        "ContentCreatorName",
+                        "ContentDate",
+                        "ContentTime",
+                        "CountryOfResidence",
+                        "CurrentPatientLocation",
+                        "CurveDate",
+                        "CurveTime",
+                        "Date",
+                        "DateTime",
+                        "EthnicGroup",
+                        "InstanceCreationDate",
+                        "InstanceCreationTime",
+                        "InstanceCreatorUID",
+                        "InstitutionAddress",
+                        "InstitutionalDepartmentName",
+                        "InstitutionName",
+                        "IssuerOfPatientID",
+                        "NameOfPhysiciansReadingStudy",
+                        "OperatorsName",
+                        "OtherPatientIDs",
+                        "OtherPatientNames",
+                        "OverlayDate",
+                        "OverlayTime",
+                        "PatientAddress",
+                        "PatientAge",
+                        "PatientBirthDate",
+                        "PatientBirthName",
+                        "PatientBirthTime",
+                        "PatientID",
+                        "PatientInstitutionResidence",
+                        "PatientMotherBirthName",
+                        "PatientName",
+                        "PatientSex",
+                        "PatientTelephoneNumbers",
+                        "PerformingPhysicianIdentificationSequence",
+                        "PerformingPhysicianName",
+                        "PersonName",
+                        "PhysiciansOfRecord",
+                        "PhysiciansOfRecordIdentificationSequence",
+                        "PhysiciansReadingStudyIdentificationSequence",
+                        "ReferringPhysicianAddress",
+                        "ReferringPhysicianIdentificationSequence",
+                        "ReferringPhysicianName",
+                        "ReferringPhysicianTelephoneNumbers",
+                        "RegionOfResidence",
+                        "ReviewerName",
+                        "SecondaryReviewerName",
+                        "SeriesDate",
+                        "SeriesTime",
+                        "StationName",
+                        "StudyDate",
+                        "StudyID",
+                        "StudyTime",
+                        "Time",
+                        "VerifyingObserverName")
 
 
-def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
+VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
+                                       'CS': "ANON",
+                                       'DA': "20190303",
+                                       'DT': "20190303000900.000000",
+                                       'LO': "Anonymous",
+                                       'PN': "Anonymous",
+                                       'SH': "Anonymous",
+                                       'SQ': ["Anonymous"],
+                                       'ST': "Anonymous",
+                                       'TM': "000900.000000",
+                                       'UI': "12345678"}
+
+def anonymise_dicom(ds, replace_values=True, delete_private_tags=True, keywords_to_keep=None,
                     ignore_unknown_tags=False):
     r"""A simple tool to anonymise a DICOM file.
 
@@ -108,23 +120,29 @@ def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
         DICOM file in the form of a `pydicom Dataset` - ordinarily
         returned by `pydicom.dcmread()`.
 
-    delete_private_tags
+    replace_values : bool, optional
+        If set to `True`, anonymised tag values will be replaced with dummy
+        "anonymous" values. This is often required for successful reading of 
+        anonymised DICOM files in commercial software. If set to False,
+        anonymised tags are simply given empty string values. Defaults to `True`.
+
+    delete_private_tags : bool, optional
         A boolean to flag whether or not to remove all private
         (non-standard) DICOM tags from the DICOM file. These may
         also contain identifying information. Defaults to `True`.
 
-    tags_to_keep
-        A sequence of DICOM tags to exclude from anonymisation. Empty by
-        default.
+    keywords_to_keep : sequence, optional
+        A sequence of DICOM keywords (corresponding to tags) to exclude from
+        anonymisation. Empty by default.
 
-    ignore_unknown_tags
+    ignore_unknown_tags : bool, optional
         If `pydicom` has updated its DICOM dictionary, this function will raise an
         error since a new identifying tag may have been introduced. Set to `True` to
         ignore this error. Defaults to `False`.
 
     Returns
     -------
-    ds_out
+    ds_anon
         An anonymised copy of the input DICOM file as a `pydicom Dataset`
 
     Raises
@@ -134,8 +152,8 @@ def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
         non-private DICOM tags are detected in `ds`
     """
 
-    if tags_to_keep is None:
-        tags_to_keep = []
+    if keywords_to_keep is None:
+        keywords_to_keep = []
 
     if not ignore_unknown_tags:
         tags_used = list(ds.keys())
@@ -164,25 +182,32 @@ def anonymise_dicom(ds, delete_private_tags=True, tags_to_keep=None,
                 "that the baseline DICOM dictionary is obsolete."
                 .format(unknown_tag_names))
 
-    ds_out = copy.deepcopy(ds)
-    tags_to_anonymise = list(IDENTIFYING_TAGS)
+    ds_anon = copy.deepcopy(ds)
+    keywords_to_anonymise = list(IDENTIFYING_KEYWORDS)
 
     # Remove private tags from DICOM file unless requested not to.
     if delete_private_tags:
-        ds_out.remove_private_tags()
+        ds_anon.remove_private_tags()
 
     # Exclude tags from anonymisation process that have been requested to remain as is
-    for tag in tags_to_keep:
+    for keyword in keywords_to_keep:
         try:
-            tags_to_anonymise.remove(tag)
+            keywords_to_anonymise.remove(keyword)
         except ValueError:
             # Value not in list. TODO: Warn?
             pass
 
     # Overwrite tags in anonymisation list with an empty string.
-    # TODO: Provide alternative overwrite values?
-    for tag in tags_to_anonymise:
-        if hasattr(ds_out, tag):
-            setattr(ds_out, tag, "")
+    for keyword in keywords_to_anonymise:
+        if hasattr(ds_anon, keyword):
+            if replace_values:
+                replacement_value = _get_anonymous_replacement_value(keyword)
+            else:
+                replacement_value = ''
+            setattr(ds_anon, keyword, replacement_value)
 
-    return ds_out
+    return ds_anon
+
+def _get_anonymous_replacement_value(keyword):
+    vr = BASELINE_KEYWORD_VR_DICT[keyword]
+    return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
