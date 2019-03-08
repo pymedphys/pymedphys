@@ -27,7 +27,9 @@
 import json
 import argparse
 
-from ..dicom import adjust_machine_name_cli, adjust_rel_elec_density_cli
+from ..dicom import (
+    adjust_machine_name_cli, adjust_rel_elec_density_cli,
+    structure_name_RED_adjust_cli)
 from ..docker import server_cli
 
 
@@ -67,6 +69,15 @@ def dicom_cli(subparsers):
 
     dicom_adjust_rel_elec_density_parser.set_defaults(
         func=adjust_rel_elec_density_cli)
+
+    dicom_structure_name_RED_adjust = dicom_subparsers.add_parser(
+        'structure-name-RED-adjust')
+
+    dicom_structure_name_RED_adjust.add_argument('input_file', type=str)
+    dicom_structure_name_RED_adjust.add_argument('output_file', type=str)
+
+    dicom_structure_name_RED_adjust.set_defaults(
+        func=structure_name_RED_adjust_cli)
 
 
 def docker_cli(subparsers):
