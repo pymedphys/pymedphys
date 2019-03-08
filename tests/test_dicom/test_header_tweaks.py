@@ -32,7 +32,7 @@ import numpy as np
 import pydicom
 
 from pymedphys.dicom import (
-    ds_from_dict, adjust_machine_name, adjust_rel_elec_density)
+    dicom_dataset_from_dict, adjust_machine_name, adjust_rel_elec_density)
 
 
 HERE = os.path.dirname(__file__)
@@ -43,7 +43,7 @@ ADJUSTED_DICOM_FILENAME = os.path.join(HERE, 'adjusted.dcm')
 def test_adjust_machine_name():
     new_name = 'new_name'
 
-    original_dicom_file = ds_from_dict({
+    original_dicom_file = dicom_dataset_from_dict({
         'BeamSequence': [
             {
                 'TreatmentMachineName': 'hello'
@@ -54,7 +54,7 @@ def test_adjust_machine_name():
         ]
     })
 
-    expected_dicom_file = ds_from_dict({
+    expected_dicom_file = dicom_dataset_from_dict({
         'BeamSequence': [
             {
                 'TreatmentMachineName': new_name
@@ -99,7 +99,7 @@ def test_electron_density_append():
         }
     }
 
-    original_dicom_file = ds_from_dict({
+    original_dicom_file = dicom_dataset_from_dict({
         'StructureSetROISequence': [
             {
                 'ROINumber': 1,
@@ -146,7 +146,7 @@ def test_electron_density_append():
         ]
     })
 
-    expected_dicom_file = ds_from_dict({
+    expected_dicom_file = dicom_dataset_from_dict({
         'RTROIObservationsSequence': [
             {
                 'ReferencedROINumber': 1,
