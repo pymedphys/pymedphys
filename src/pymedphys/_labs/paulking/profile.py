@@ -73,7 +73,7 @@ class Profile():
             return fmt_str.format(len(self.x),
                                   min(self.x), max(self.x),
                                   min(self.data), max(self.data))
-        except:
+        except ValueError:  # EMPTY PROFILE
             return ''
 
     def __add__(self, other):  # SHIFT RIGHT
@@ -94,10 +94,6 @@ class Profile():
         return self
     __rmul__ = __mul__
     __imul__ = __mul__
-
-# CONSIDER DIVIDE AS RESAMPLE
-# CHANGE X,DATA VARIABLE NAMES?
-# CONSIDER ASCII GRAPH AS PRINT
 
     def from_lists(self, x, data, metadata={}):
         self.x = np.array(x)
@@ -199,6 +195,7 @@ class Profile():
             return steps.min()
 
     def plot(self):
+        """ """
         plt.plot(self.x, self.data, 'o-')
         plt.show()
         return
@@ -232,7 +229,7 @@ class Profile():
         self.__init__(new_x, new_data)
         return Profile(new_x, new_data)
 
-    def resample(self, step):  # convert this to magic divide?
+    def resample(self, step):
         """ Resample a dose profile at a specified increment.
 
         Resulting profile has stepsize of the indicated step based on
@@ -251,7 +248,6 @@ class Profile():
 
         new_x = np.arange(self.x[0], self.x[-1], step)
         new_data = self.interp(new_x)
-        # self.__init__(new_x, new_data, self.metadata)
         return Profile(new_x, new_data, self.metadata)
 
     def normalise_dose(self, x=0.0, data=1.0):
@@ -275,8 +271,6 @@ class Profile():
         norm_factor = data / self.get_dose(x)
         new_x = self.x
         new_data = norm_factor * self.data
-        # metadata = self.metadata
-        # USE THE MAGIC METHOD!
         return Profile(new_x, new_data, metadata=self.metadata)
 
     def normalize_dose(self, x=0.0, data=1.0):
@@ -300,9 +294,6 @@ class Profile():
         tuple
 
         """
-        # step = self._get_increment()
-        # unmod = copy.deepcopy(self)
-        # resampled = self.resample(step)
         dydx = list(np.gradient(self.data, self.x))
         lt_edge = self.x[dydx.index(max(dydx))]
         rt_edge = self.x[dydx.index(min(dydx))]
@@ -384,7 +375,6 @@ class Profile():
         float
 
         """
-        # step = self._get_increment()
         dose = self.umbra().data
         return (max(dose)-min(dose))/np.average(dose)
 
@@ -404,7 +394,6 @@ class Profile():
         float
 
         """
-        step = self._get_increment()
         dose = self.umbra().data
         return max(np.abs(np.subtract(dose, dose[::-1])/np.average(dose)))
 
@@ -453,129 +442,43 @@ class Profile():
         return self.recentre()
 
     def overlay(self, other):
-        """
+        """ Copy of dose profile, shifted to align to target profile.
 
-        ### NEEDS TO BE TIGHTENED AND ADD DOCSTRING ##
+        Calculated using shift that produces greates peak correlation between
+        the curves
+
+        Arguments
+        -----------------
+        other : Profile
+            Target profile being shifted to
+
+        Returns
+        -------
+        Profile
 
         """
 
         dist_step = min(self._get_increment(), other._get_increment())
 
-        # FIXED CURVE -------------------------------------------
-        min_x = min(list(self.x) + list(other.x))
-        max_x = max(list(self.x) + list(other.x))
-        dist_vals_fixed = np.arange(-3*np.abs(min_x),
-                                    3*np.abs(max_x),
-                                    dist_step)
+        dist_vals_fixed = np.arange(
+            -3*abs(min(list(self.x) + list(other.x))),
+            3*abs(max(list(self.x) + list(other.x))),
+            dist_step)
         dose_vals_fixed = other.interp(dist_vals_fixed)
         fixed = Profile(x=dist_vals_fixed, data=dose_vals_fixed)
 
-        # POSSIBLE OFFSETS --------------------------
-        step = dist_step
-        strt = max(min(self.x), min(other.x))
-        stop = min(max(other.x), max(self.x)) + step
-        possible_offsets = np.arange(strt, stop, step)
+        possible_offsets = np.arange(
+            max(min(self.x), min(other.x)),
+            min(max(other.x), max(self.x)) + dist_step,
+            dist_step)
 
-        # EVALUATE FIT AT ALL CANDIDATE SHIFT POSITIONS -----------
-        best_fit_qual = 0
-        best_offset = -np.inf
+        best_fit_qual, best_offset = 0, -np.inf
         for offset in possible_offsets:
-            moved_profile = self + offset
-            moved_dist_vals = moved_profile.x
-            moved_dose_vals = moved_profile.data
-            dose_func_moves = interpolate.interp1d(moved_dist_vals,
-                                                   moved_dose_vals,
-                                                   bounds_error=False,
-                                                   fill_value=0.0)
-            fit_qual = np.correlate(
+            fit_qual = max(np.correlate(
                 dose_vals_fixed,
-                dose_func_moves(fixed.x))
-
-            if max(fit_qual) > best_fit_qual:
-                best_fit_qual = max(fit_qual)
+                (self + offset).interp(fixed.x)))
+            if fit_qual > best_fit_qual:
+                best_fit_qual = fit_qual
                 best_offset = offset
-        # ----------------------------------------------------------
 
         return self + best_offset
-
-
-#############
-
-# def _find_dists(dose_prof, dose):
-#     """
-#     Return a list of distances where a dose-profile has value of dose.
-
-#     """
-
-#     x = _get_dist_vals(dose_prof)
-#     y = _get_dose_vals(dose_prof)
-#     dists = []
-#     for i in range(1, len(x)):
-#         val = None
-#         if y[i] != y[i-1]:
-#             if (y[i]-dose)*(y[i-1]-dose) < 0:
-#                 val = (x[i]-((y[i]-dose)/(y[i]-y[i-1]))*(x[i]-x[i-1]))
-#         elif y[i] == dose:
-#             val = x[i]
-#         if val and (val not in dists):
-#             dists.append(val)
-#     return dists
-
-
-# def is_wedged(dose_prof):
-#     """ Return True iff dose-profile has significant gradient in the umbra. """
-#     wedginess = np.average(np.diff(_get_dose_vals(_find_umbra(dose_prof))))
-#     if wedginess > 0.05:  # 'magic number'
-#         return True
-#     else:
-#         return False
-
-# def overlay(self, dose_prof_moves, dose_prof_fixed, dist_step=0.1):
-#     """
-#     Return as a float, the misalignment between two dose-profiles, i.e. the
-#     distance by which one would need to move to align to the other.
-
-#     """
-
-#     dist_vals_moves = _get_dist_vals(dose_prof_moves)
-
-#     dist_vals_fixed = _get_dist_vals(dose_prof_fixed)
-#     dose_vals_fixed = _get_dose_vals(dose_prof_fixed)
-
-#     # POSSIBLE OFFSETS --------------------------
-#     step = 0.5 * min(min(np.diff(dist_vals_moves)),
-#                      min(np.diff(dist_vals_fixed)))
-#     strt = max(min(dist_vals_moves), min(dist_vals_fixed))
-#     stop = min(max(dist_vals_moves), max(dist_vals_fixed)) + step
-#     possible_offsets = np.arange(strt, stop, step)
-#     # --------------------------------------------
-
-#     dose_func_fixed = interpolate.interp1d(
-#         dist_vals_fixed, dose_vals_fixed)
-
-#     # DISTANCE VALUES OF FIXED CURVE ------------------------
-#     strt = 3 * min(min(dist_vals_moves), min(dist_vals_fixed))
-#     stop = 3 * max(max(dist_vals_moves), max(dist_vals_fixed)) + dist_step
-#     dist_vals_fixed = np.arange(strt, stop, dist_step)
-#     # -------------------------------------------------------
-
-#     dose_vals_fixed = _make_dose_vals(dist_vals_fixed, dose_func_fixed)
-
-#     # EVALUATE FIT AT ALL CANDIDATE SHIFT POSITIONS -----------
-#     best_fit_qual = 0
-#     best_offset = -np.inf
-#     for offset in possible_offsets:
-#         moved_profile = _shift_dose_prof(dose_prof_moves, offset)
-#         moved_dist_vals = _get_dist_vals(moved_profile)
-#         moved_dose_vals = _get_dose_vals(moved_profile)
-#         dose_func_moves = interpolate.interp1d(moved_dist_vals,
-#                                                moved_dose_vals)
-#         fit_qual = np.correlate(
-#             dose_vals_fixed,
-#             _make_dose_vals(dist_vals_fixed, dose_func_moves))
-#         if max(fit_qual) > best_fit_qual:
-#             best_fit_qual = max(fit_qual)
-#             best_offset = offset
-#     # ----------------------------------------------------------
-
-#     return best_offset

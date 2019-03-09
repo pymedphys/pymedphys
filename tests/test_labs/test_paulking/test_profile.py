@@ -81,9 +81,9 @@ def test_interp():
 
 
 def test_magic_methods():
+    assert not Profile()
     # __len__
-    profiler = Profile().from_tuples(PROFILER)
-    assert len(Profile()) == 0
+    assert len(Profile().from_tuples(PROFILER)) == 83
     # __eq__
     assert Profile() == Profile()
     assert Profile(x=[], data=[]) == Profile()
@@ -93,6 +93,8 @@ def test_magic_methods():
     same = original
     assert same == original
     # __str__
+    empty_profile = Profile()
+    print(empty_profile)
     profiler = Profile().from_tuples(PROFILER)
     assert profiler.__str__()
     # __add__, __radd__, __iadd__
@@ -164,7 +166,7 @@ def test_dose_profile_segment():
     assert np.array_equal(all_points.data, profiler.data)
 
 
-def test_DoseProfile_resample():
+def test_dose_profile_resample():
     profiler = Profile().from_tuples(PROFILER, metadata={'depth': 10})
     # METADATA
     assert profiler.metadata['depth'] == 10
@@ -236,10 +238,6 @@ def test_overlay():
     profiler = Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2)
 
-# def test_is_wedged():
-#     assert not is_wedged(PROFILER)
-#     assert is_wedged(WEDGED)
-
 
 if __name__ == "__main__":
     test_init()
@@ -252,7 +250,7 @@ if __name__ == "__main__":
     test_get_dose()
     test_get_increment()
     test_dose_profile_segment()
-    test_DoseProfile_resample()
+    test_dose_profile_resample()
     test_normalise_dose()
     test_edges()
     test_normalise_distance()
@@ -262,4 +260,3 @@ if __name__ == "__main__":
     test_symmetrise()
     test_recentre()
     test_overlay()
-    #     test_is_wedged()
