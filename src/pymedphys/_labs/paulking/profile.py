@@ -118,7 +118,7 @@ class Profile():
 
         Returns
         -------
-        array_like
+        Profile
 
         """
         x = list(list(zip(*list_of_tuples))[0])
@@ -127,7 +127,7 @@ class Profile():
         return Profile(x=x, data=data, metadata=metadata)
 
     def from_pulse(self, centre, width, domain, increment, metadata={}):
-        """ Create of unit height from pulse function parameters
+        """ Create profile of unit height from pulse function parameters
 
         Overwrite any existing dose profile data and metadata.
 
@@ -149,7 +149,7 @@ class Profile():
 
         Returns
         -------
-        array_like
+        Profile
 
         """
         x_vals = np.arange(domain[0], domain[1] + increment, increment)
@@ -163,9 +163,40 @@ class Profile():
                 data.append(0.5)
         return Profile().from_lists(x_vals, data, metadata=metadata)
 
-    def from_snc_profiler(self):
-        """ """
-        pass
+    def from_snc_profiler(self, file_name):
+        """
+        Return dose profiles from native profiler data file.
+
+        Arguments
+        ----------
+        file_name : string
+            long file name of Profiler file
+
+        Returns
+        -------
+        (Profile, Profile)
+            transverse & radial
+
+        """
+
+        with open(file_name) as profiler_file:
+            for row in profiler_file.readlines():
+                contents = row
+                if contents[:11] == "Calibration" and "File" not in contents:
+                    calibs = np.array(contents.split())[1:].astype(float)
+                elif contents[:5] == "Data:":
+                    counts = np.array(contents.split()[5:145]).astype(float)
+                elif contents[:15] == "Dose Per Count:":
+                    dose_per_count = (float(contents.split()[-1]))
+        dose = counts * dose_per_count * calibs
+
+        x_vals = [-11.2 + 0.4*i for i in range(57)]
+        x_prof = list(zip(x_vals, dose[:57]))
+        y_vals = [-16.4 + 0.4*i for i in range(83)]
+        y_prof = list(zip(y_vals, dose[57:]))
+
+        return (Profile().from_tuples(x_prof), Profile().from_tuples(y_prof))
+    # NEED TO READ METADATA
 
     def get_dose(self, x):
         """ Profile dose value at distance.
