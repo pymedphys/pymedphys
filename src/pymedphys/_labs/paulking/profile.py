@@ -167,7 +167,7 @@ class Profile():
         """ """
         pass
 
-    def get_dose(self, x) -> float:
+    def get_dose(self, x):
         """ Profile dose value at distance.
 
         Return value based on interpolation of source data.
