@@ -23,6 +23,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
+import os
 from pymedphys._labs.paulking.profile import Profile
 
 # pylint: disable = E1102
@@ -134,7 +135,11 @@ def test_from_pulse():
 
 
 def test_from_snc_profiler():
-    pass
+    DATA_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+    file_name = os.path.join(DATA_DIRECTORY, 'test_varian_open.prs')
+    x_profile, y_profile = Profile().from_snc_profiler(file_name)
+    assert np.isclose(x_profile.get_dose(0), 45.50562901780488)
+    assert np.isclose(y_profile.get_dose(0), 45.50562901780488)
 
 
 def test_get_dose():
