@@ -23,6 +23,8 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+""" A dose profile tool box. """
+
 import copy
 
 from typing import Callable
@@ -30,6 +32,11 @@ from scipy import interpolate
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+# from PIL import Image
+import PIL
+# import matplotlib
+import matplotlib.image as mpimg
 
 from ...libutils import get_imports
 
@@ -39,9 +46,24 @@ IMPORTS = get_imports(globals())
 NumpyFunction = Callable[[np.ndarray], np.ndarray]
 
 
-# pylint: disable = C0103, C0121
+# pylint: disable = C0103, C0121, W0102
 
 class Profile():
+    """  One-dimensional distribution of dose or intensity information.
+
+    Includes methods for import, analysis, and export.
+
+    Attributes
+    ----------
+    x : np.array
+        Displacement, +/- in cm
+    data : np.array
+        Intensity, units unspecified
+    data : dict, optional
+        Context-dependent, unspecified descriptors of the dataset.
+
+    """
+
     def __init__(self, x=[], data=[], metadata={}):
         self.x = np.array(x)
         self.data = np.array(data)
@@ -96,13 +118,35 @@ class Profile():
     __imul__ = __mul__
 
     def from_lists(self, x, data, metadata={}):
+        """  Create profile from a x-list and y-list .
+
+        Overwrite any existing dose profile data and metadata.
+
+        Arguments
+        ---------
+        x : list
+            List of float x values
+        data : list
+            List of float data values
+
+        Keyword Arguments
+        -----------------
+        metadata : dict, optional
+            Dictionary of key-value pairs that describe the profile
+
+        Returns
+        -------
+        Profile
+
+        """
+
         self.x = np.array(x)
         self.data = np.array(data)
         self.__init__(x=x, data=data, metadata=metadata)
         return Profile(x=x, data=data, metadata=metadata)
 
     def from_tuples(self, list_of_tuples, metadata={}):
-        """ Load a list of (x,data) tuples.
+        """  Create profile from a list of (x,data) tuples.
 
         Overwrite any existing dose profile data and metadata.
 
@@ -163,6 +207,7 @@ class Profile():
                 data.append(0.5)
         return Profile().from_lists(x_vals, data, metadata=metadata)
 
+    # CONSIDER "AXIS" AND RETURN OF ONLY ONE PROFILE
     def from_snc_profiler(self, file_name):
         """
         Return dose profiles from native profiler data file.
@@ -210,6 +255,77 @@ class Profile():
         return (Profile().from_tuples(x_prof, metadata=metadata),
                 Profile().from_tuples(y_prof, metadata=metadata))
 
+    def from_narrow_png(self, file_name, step_size=0.1):
+        """  Extract a an relative-density profilee from a narrow png file.
+
+        Source file is a full color PNG that is sufficiently narrow that
+        density is uniform along its short dimension. The image density along
+        its long dimension is reflective of a dose distribution. Requires
+        Python PIL.
+
+        Arguments
+        ---------
+        file_name : str
+
+        Keyword Arguments
+        -----------------
+        step-size : float, optional
+            Distance output increment in cm, defaults to 1 mm
+
+        Returns
+        -------
+        Profile
+
+        Raises
+        ------
+        ValueError
+            Image is not narrow, i.e. aspect ratio <= 5
+        AssertionError
+            step_size is too small, i.e. step_size <= 12.7 / dpi
+
+        """
+        image_file = PIL.Image.open(file_name)
+        assert image_file.mode == 'RGB'
+        dpi_horiz, dpi_vert = image_file.info['dpi']
+
+        image_array = mpimg.imread(file_name)
+
+        # DIMENSIONS TO AVG ACROSS DIFFERENT FOR HORIZ VS VERT IMG
+        if image_array.shape[0] > 5*image_array.shape[1]:    # VERT
+            image_vector = np.average(image_array, axis=(1, 2))
+            pixel_size_in_cm = (2.54 / dpi_vert)
+        elif image_array.shape[1] > 5*image_array.shape[0]:  # HORIZ
+            image_vector = np.average(image_array, axis=(0, 2))
+            pixel_size_in_cm = (2.54 / dpi_horiz)
+        else:
+            raise ValueError('The PNG file is not a narrow strip.')
+        assert step_size > 5 * pixel_size_in_cm, "step size too small"
+
+        if image_vector.shape[0] % 2 == 0:
+            image_vector = image_vector[:-1]  # SO ZERO DISTANCE IS MID-PIXEL
+
+        length_in_cm = image_vector.shape[0] * pixel_size_in_cm
+        full_resolution_distances = np.arange(-length_in_cm/2,
+                                              length_in_cm/2,
+                                              pixel_size_in_cm)
+
+        # TO MOVE FROM FILM RESOLUTION TO DESIRED PROFILE RESOLUTION
+        num_pixels_to_avg_over = int(step_size/pixel_size_in_cm)
+        sample_indices = np.arange(num_pixels_to_avg_over/2,
+                                   len(full_resolution_distances),
+                                   num_pixels_to_avg_over).astype(int)
+        downsampled_distances = list(full_resolution_distances[sample_indices])
+
+        downsampled_density = []
+        for idx in sample_indices:  # AVERAGE OVER THE SAMPLING WINDOW
+            avg_density = np.average(
+                image_vector[int(idx - num_pixels_to_avg_over / 2):
+                             int(idx + num_pixels_to_avg_over / 2)])
+            downsampled_density.append(avg_density)
+
+        zipped_profile = list(zip(downsampled_distances, downsampled_density))
+        return Profile().from_tuples(zipped_profile)
+
     def get_dose(self, x):
         """ Profile dose value at distance.
 
@@ -230,7 +346,17 @@ class Profile():
         except ValueError:
             return np.nan
 
-    def _get_increment(self):
+    def get_increment(self):
+        """ The profile's step-size increment .
+
+        Calculated at the minimum value, if variable, or as the mean value if
+        all increments are close.
+
+        Returns
+        -------
+        increment : float
+
+        """
         steps = np.diff(self.x)
         if np.isclose(steps.min(), steps.mean()):
             return steps.mean()
@@ -238,7 +364,7 @@ class Profile():
             return steps.min()
 
     def plot(self):
-        """ """
+        """ Present a plot of the profile. """
         plt.plot(self.x, self.data, 'o-')
         plt.show()
         return
@@ -378,6 +504,7 @@ class Profile():
         return Profile(new_x, self.data, metadata=self.metadata)
 
     def normalize_distance(self):
+        """ US Eng -> UK Eng """
         return self.normalise_distance()
 
     def umbra(self):
@@ -454,7 +581,7 @@ class Profile():
 
         reflected = Profile(x=-self.x[::-1], data=self.data[::-1])
 
-        step = self._get_increment()
+        step = self.get_increment()
         new_x = np.arange(min(self.x), max(self.x), step)
         new_data = [self.data[0]]
         for n in new_x[1:-1]:  # TO AVOID EXTRAPOLATION
@@ -501,7 +628,7 @@ class Profile():
 
         """
 
-        dist_step = min(self._get_increment(), other._get_increment())
+        dist_step = min(self.get_increment(), other.get_increment())
 
         dist_vals_fixed = np.arange(
             -3*abs(min(list(self.x) + list(other.x))),
