@@ -22,12 +22,13 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import numpy as np
+""" Test profile. """
+
 import os
+import numpy as np
 from pymedphys._labs.paulking.profile import Profile
 
-# pylint: disable = E1102
-# pylint: disable = C0111
+# pylint: disable = E1102, C0111
 
 
 PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28), (-15.2, 0.3),
@@ -135,23 +136,31 @@ def test_from_pulse():
 
 
 def test_from_snc_profiler():
-    DATA_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
-    file_name = os.path.join(DATA_DIRECTORY, 'test_varian_open.prs')
+    data_directory = os.path.abspath(os.path.dirname(__file__))
+    data_directory = os.path.join(data_directory, 'data')
+    file_name = os.path.join(data_directory, 'test_varian_open.prs')
     x_profile, y_profile = Profile().from_snc_profiler(file_name)
     assert np.isclose(x_profile.get_dose(0), 45.50562901780488)
     assert np.isclose(y_profile.get_dose(0), 45.50562901780488)
     assert x_profile.metadata['SSD'] == y_profile.metadata['SSD']
 
 
+def test_from_narrow_png():
+    data_directory = os.path.abspath(os.path.dirname(__file__))
+    data_directory = os.path.join(data_directory, 'data')
+    file_name = os.path.join(data_directory, 'FilmCalib_EBT_vert_strip.png')
+    png = Profile().from_narrow_png(file_name)
+    assert np.isclose(png.get_dose(0), 0.609074819347117)
+
+
 def test_get_dose():
     profiler = Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.get_dose(0), 45.23)
-    # assert np.isnan(profiler.get_dose(-100))
 
 
 def test_get_increment():
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler._get_increment(), 0.4)
+    assert np.isclose(profiler.get_increment(), 0.4)
 
 
 def test_dose_profile_segment():
@@ -253,6 +262,7 @@ if __name__ == "__main__":
     test_from_tuples()
     test_from_pulse()
     test_from_snc_profiler()
+    test_from_narrow_png()
     test_get_dose()
     test_get_increment()
     test_dose_profile_segment()
