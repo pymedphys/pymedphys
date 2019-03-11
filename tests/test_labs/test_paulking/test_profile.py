@@ -140,6 +140,7 @@ def test_from_snc_profiler():
     x_profile, y_profile = Profile().from_snc_profiler(file_name)
     assert np.isclose(x_profile.get_dose(0), 45.50562901780488)
     assert np.isclose(y_profile.get_dose(0), 45.50562901780488)
+    assert x_profile.metadata['SSD'] == y_profile.metadata['SSD']
 
 
 def test_get_dose():

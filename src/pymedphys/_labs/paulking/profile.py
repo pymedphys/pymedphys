@@ -180,14 +180,26 @@ class Profile():
         """
 
         with open(file_name) as profiler_file:
+            munge = '\n'.join(profiler_file.readlines())
+            munge = munge.replace('\t', '').replace(': ', ':')
+            munge = munge.replace(' Time:', '\nTime:')  # BREAK 2-ITEM ROWS
+            munge = munge.replace(' Revision:', '\nRevision:')
+            munge = munge.replace('Energy:', '\nEnergy:')
+            munge = munge.replace('Dose:', '\nDose:')
+            munge = munge.replace('Collimator Angle:', '\nCollimator Angle:')
+            munge = munge.split('TYPE')[0].split('\n')  # DISCARD NON-METADATA
+            munge = [i.split(':', 1) for i in munge if i and ':' in i]
+            munge = [i for i in munge if i[1]]  # DISCARD EMPTY ITEMS
+            metadata = dict(munge)
+
+        with open(file_name) as profiler_file:
             for row in profiler_file.readlines():
-                contents = row
-                if contents[:11] == "Calibration" and "File" not in contents:
-                    calibs = np.array(contents.split())[1:].astype(float)
-                elif contents[:5] == "Data:":
-                    counts = np.array(contents.split()[5:145]).astype(float)
-                elif contents[:15] == "Dose Per Count:":
-                    dose_per_count = (float(contents.split()[-1]))
+                if row[:11] == "Calibration" and "File" not in row:
+                    calibs = np.array(row.split())[1:].astype(float)
+                elif row[:5] == "Data:":
+                    counts = np.array(row.split()[5:145]).astype(float)
+                elif row[:15] == "Dose Per Count:":
+                    dose_per_count = (float(row.split()[-1]))
         dose = counts * dose_per_count * calibs
 
         x_vals = [-11.2 + 0.4*i for i in range(57)]
@@ -195,8 +207,8 @@ class Profile():
         y_vals = [-16.4 + 0.4*i for i in range(83)]
         y_prof = list(zip(y_vals, dose[57:]))
 
-        return (Profile().from_tuples(x_prof), Profile().from_tuples(y_prof))
-    # NEED TO READ METADATA
+        return (Profile().from_tuples(x_prof, metadata=metadata),
+                Profile().from_tuples(y_prof, metadata=metadata))
 
     def get_dose(self, x):
         """ Profile dose value at distance.
