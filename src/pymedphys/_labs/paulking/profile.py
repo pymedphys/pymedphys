@@ -371,26 +371,20 @@ class Profile():
 
          """
 
-        # dose_step = (max(self.data)-min(self.data)) / 100
-        # print(dose_step)
-        # resampled = self.resample_data(dose_step)
+        dose_step = (max(self.data)-min(self.data)) / 100
 
-        try:
-            x = self.x
-            y = self.data
-            dists = []
-            for i in range(1, len(x)):
-                val = None
-                if not np.isclose(y[i], y[i-1]):
-                    if (y[i]-data)*(y[i-1]-data) < 0:
-                        val = (x[i]-((y[i]-data)/(y[i]-y[i-1]))*(x[i]-x[i-1]))
-                elif np.isclose(y[i], data):
-                    val = x[i]
-                if val and (val not in dists):
-                    dists.append(val)
-            return tuple(dists)
-        except ValueError:
-            return None
+        x = self.resample_data(dose_step).x
+        y = self.resample_data(dose_step).data
+        dists = []
+        for i in range(1, len(x)):
+            val = None
+            if (y[i]-data)*(y[i-1]-data) < 0:
+                val = (x[i]-((y[i]-data)/(y[i]-y[i-1]))*(x[i]-x[i-1]))
+            elif np.isclose(y[i], data):
+                val = x[i]
+            if val and (val not in dists):
+                dists.append(val)
+        return tuple(dists)
 
     def get_increment(self):
         """ The profile's step-size increment .
