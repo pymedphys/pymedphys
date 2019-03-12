@@ -371,6 +371,10 @@ class Profile():
 
          """
 
+        # dose_step = (max(self.data)-min(self.data)) / 100
+        # print(dose_step)
+        # resampled = self.resample_data(dose_step)
+
         try:
             x = self.x
             y = self.data
@@ -440,7 +444,7 @@ class Profile():
         self.__init__(new_x, new_data)
         return Profile(new_x, new_data)
 
-    def resample(self, step):
+    def resample_x(self, step):
         """ Resample a dose profile at a specified increment.
 
         Resulting profile has stepsize of the indicated step based on
@@ -460,6 +464,43 @@ class Profile():
         new_x = np.arange(self.x[0], self.x[-1], step)
         new_data = self.interp(new_x)
         return Profile(new_x, new_data, self.metadata)
+
+    def resample_data(self, step):
+        """ Resample a dose profile at specified dose increment.
+
+        Resulting profile has nonuniform step-size, but each step
+        represents and approximately equal step in dose.
+
+        Arguments
+        -----------------
+        step : float
+            Sampling increment
+
+        Returns
+        -------
+        Profile
+
+        """
+
+        temp_x = np.arange(min(self.x), max(self.x), 0.01*self.get_increment())
+        temp_y = self.interp(temp_x)
+
+        resamp_x = [temp_x[0]]
+        resamp_y = [temp_y[0]]
+
+        last_y = temp_y[0]
+
+        for i in range(len(temp_x)):
+            if np.abs(temp_y[i] - last_y) >= step:
+                resamp_x.append(temp_x[i])
+                resamp_y.append(temp_y[i])
+                last_y = temp_y[i]
+
+        if temp_x[-1] not in resamp_x:
+            resamp_x.append(temp_x[-1])
+            resamp_y.append(temp_y[-1])
+
+        return Profile().from_lists(resamp_x, resamp_y, metadata=self.metadata)
 
     def normalise_dose(self, x=0.0, data=1.0):
         """ Renormalise to specified dose at distance.
