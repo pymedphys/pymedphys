@@ -169,7 +169,7 @@ def test_get_increment():
     assert np.isclose(profiler.get_increment(), 0.4)
 
 
-def test_dose_profile_segment():
+def test_segment():
     profiler = Profile().from_tuples(PROFILER)
     # NO POINTS
     no_points = profiler.segment(start=1, stop=0)
@@ -187,97 +187,98 @@ def test_dose_profile_segment():
     assert np.array_equal(all_points.data, profiler.data)
 
 
-def test_dose_profile_resample():
+def test_resample_x():
     profiler = Profile().from_tuples(PROFILER, metadata={'depth': 10})
-    # METADATA
     assert profiler.metadata['depth'] == 10
-    # CONSISTENT CONTENTS AFTER UPSAMPLING
-    assert np.isclose(profiler.interp(0), profiler.resample(0.1).interp(0))
+    assert np.isclose(profiler.interp(0), profiler.resample_x(0.1).interp(0))
     assert np.isclose(profiler.interp(6.372),
-                      profiler.resample(0.1).interp(6.372))
-    # CORRECT RESAMPLE INCREMENTS
-    resampled = profiler.resample(0.1)
+                      profiler.resample_x(0.1).interp(6.372))
+    resampled = profiler.resample_x(0.1)
     increments = np.diff([i for i in resampled.x])
     assert np.allclose(increments, 0.1)
-    # START LOCATION UNCHANGED
     assert np.isclose(resampled.data[0], profiler.data[0])
 
 
+def test_resample_data():
+    profiler = Profile().from_tuples(PROFILER)
+    assert len(profiler.resample_data(0.5)) > len(profiler.resample_data(1)))
+
+
 def test_normalise_dose():  # also normalize
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.normalise_dose(x=0).get_data(0), 1.0)
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.normalize_dose(x=0).get_data(0), 1.0)
 
 
 def test_edges():
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.allclose(profiler.edges(), (-5.2, 4.8))
     assert len(profiler) == len(PROFILER)
 
 
 def test_normalise_distance():  # also normalize
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.normalise_distance().x[0], -3.1538461538461533)
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.normalize_distance().x[0], -3.1538461538461533)
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert len(PROFILER) == len(profiler.normalize_distance().x)
 
 
 def test_umbra():
-    profiler = Profile().from_tuples(PROFILER).resample(0.1)
-    profiler_length = len(profiler)
-    umbra = profiler.umbra()
+    profiler=Profile().from_tuples(PROFILER).resample_x(0.1)
+    profiler_length=len(profiler)
+    umbra=profiler.umbra()
     assert len(umbra) < profiler_length
 
 
 def test_penumbra():
-    profiler = Profile().from_tuples(PROFILER).resample(0.1)
+    profiler=Profile().from_tuples(PROFILER).resample_x(0.1)
     profiler.penumbra()
     ############
 
 
 def test_flatness():
-    profiler = Profile().from_tuples(PROFILER)
-    profiler = profiler.resample(0.1)
+    profiler=Profile().from_tuples(PROFILER)
+    profiler=profiler.resample_x(0.1)
     assert np.isclose(profiler.flatness(), 0.03042644213284108)
 
 
 def test_symmetry():
-    profiler = Profile().from_tuples(PROFILER)
-    profiler = profiler.resample(0.1)
-    symmetry = profiler.symmetry()
+    profiler=Profile().from_tuples(PROFILER)
+    profiler=profiler.resample_x(0.1)
+    symmetry=profiler.symmetry()
     assert np.isclose(symmetry, 0.024152376510553037)
 
 
 def test_symmetrise():
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.symmetrize().symmetry(), 0.0)
 
 
 def test_recentre():
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.isclose(np.sum(profiler.recentre().edges()), 0.0)
 
 
 def test_reversed():
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.get_data(3), profiler.reversed().get_data(-3))
 
 
 def test_overlay():
-    profiler = Profile().from_tuples(PROFILER)
+    profiler=Profile().from_tuples(PROFILER)
     assert np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2)
 
 
 def test_create_calibration():
-    data_directory = os.path.abspath(os.path.dirname(__file__))
-    data_directory = os.path.join(data_directory, 'data')
-    reference_file_name = os.path.join(data_directory, 'FilmCalib.prs')
-    measured_file_name = os.path.join(
+    data_directory=os.path.abspath(os.path.dirname(__file__))
+    data_directory=os.path.join(data_directory, 'data')
+    reference_file_name=os.path.join(data_directory, 'FilmCalib.prs')
+    measured_file_name=os.path.join(
         data_directory, 'FilmCalib_EBT_vert_strip.png')
-    a = Profile().create_calibration(reference_file_name, measured_file_name)
+    a=Profile().create_calibration(reference_file_name, measured_file_name)
     # ERRONEOUSLY CREATES A CLOSED CURVE
 
 
@@ -293,8 +294,9 @@ if __name__ == "__main__":
     test_get_data()
     test_get_x()
     test_get_increment()
-    test_dose_profile_segment()
-    test_dose_profile_resample()
+    test_segment()
+    test_resample_x()
+    test_resample_data()
     test_normalise_dose()
     test_edges()
     test_normalise_distance()
