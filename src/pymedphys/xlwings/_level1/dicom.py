@@ -86,8 +86,9 @@ if HAS_XLWINGS:
     @xw.func
     @xw.arg('dicom_path')
     @xw.arg('depth_adjust')
-    @xw.arg('depth_lookup')
-    @xw.arg('averaging_distance')
+    @xw.arg('inplane')
+    @xw.arg('crossplane')
+    @xw.arg('depth')
     @xw.ret(expand='table')
     def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
         ds = pydicom.read_file(dicom_path, force=True)
