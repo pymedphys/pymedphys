@@ -326,15 +326,15 @@ class Profile():
         zipped_profile = list(zip(downsampled_distances, downsampled_density))
         return Profile().from_tuples(zipped_profile)
 
-    def get_dose(self, x):
+    def get_data(self, x):
         """ Profile dose value at distance.
 
-        Return value based on interpolation of source data.
+        Return a data value based on interpolation of source data for a
+        supplied distance.
 
         Argument
         -----------------
         x : float
-            End points for incluion, default to source profile end-points
 
         Returns
         -------
@@ -345,6 +345,40 @@ class Profile():
             return self.interp(x)
         except ValueError:
             return np.nan
+
+    def get_x(self, data):
+        """ Distance at which profile takes on data value.
+
+        Return a distance value based on interpolation of source data for a
+        supplied data value.
+
+        Argument
+        -----------------
+        data : float
+
+        Returns
+        -------
+        tuple
+
+
+         """
+        print(data in self.data)
+        try:
+            x = self.x
+            y = self.data
+            dists = []
+            for i in range(1, len(x)):
+                val = None
+                if not np.isclose(y[i], y[i-1]):
+                    if (y[i]-data)*(y[i-1]-data) < 0:
+                        val = (x[i]-((y[i]-data)/(y[i]-y[i-1]))*(x[i]-x[i-1]))
+                elif np.isclose(y[i], data):
+                    val = x[i]
+                if val and (val not in dists):
+                    dists.append(val)
+            return tuple(dists)
+        except ValueError:
+            return None
 
     def get_increment(self):
         """ The profile's step-size increment .
@@ -437,7 +471,7 @@ class Profile():
         Profile
 
         """
-        norm_factor = data / self.get_dose(x)
+        norm_factor = data / self.get_data(x)
         new_x = self.x
         new_data = norm_factor * self.data
         return Profile(new_x, new_data, metadata=self.metadata)
@@ -530,6 +564,11 @@ class Profile():
 
         return Profile(x=new_x, data=new_data, metadata=self.metadata)
 
+    def penumbra(self):
+        """ Does things """
+        pass
+        ###########
+
     def flatness(self):
         """ Flatness of dose profile.
 
@@ -610,6 +649,19 @@ class Profile():
     def recenter(self):
         """ US Eng -> UK Eng """
         return self.recentre()
+
+    def reversed(self):
+        """ Flipped copy of dose profile.
+
+        Created by reversing the sequence of data values.
+
+        Returns
+        -------
+        Profile
+
+        """
+
+        return Profile(x=self.x, data=self.data[::-1], metadata=self.metadata)
 
     def overlay(self, other):
         """ Copy of dose profile, shifted to align to target profile.
@@ -692,9 +744,7 @@ class Profile():
             min(max(measured.x), max(reference.x)),
             max(reference.get_increment(), measured.get_increment()))
 
-        calib_curve = [(measured.get_dose(i), reference.get_dose(i))
+        calib_curve = [(measured.get_data(i), reference.get_data(i))
                        for i in dist_vals]
-
-        Profile().from_tuples(calib_curve).plot()
 
         return Profile().from_tuples(calib_curve)
