@@ -368,11 +368,9 @@ class Profile():
         -------
         tuple
 
-
          """
 
         dose_step = (max(self.data)-min(self.data)) / 100
-
         x = self.resample_data(dose_step).x
         y = self.resample_data(dose_step).data
         dists = []
