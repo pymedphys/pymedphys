@@ -459,11 +459,11 @@ def interpolating_profile_extract(ds, depth_adjust, inplane_ref, crossplane_ref,
     inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
     interpolation_function = RegularGridInterpolator(
-        (crossplane, inplane, depth), dose)
+        (depth, crossplane, inplane), dose)
     points = [
-        (a_crossplane_val, an_inplane_val, a_depth_val)
-        for an_inplane_val, a_crossplane_val, a_depth_val
-        in zip(inplane_ref, crossplane_ref, depth_ref)
+        (a_depth_val, a_crossplane_val, an_inplane_val)
+        for a_depth_val, a_crossplane_val, an_inplane_val
+        in zip(depth_ref, crossplane_ref, inplane_ref)
     ]
 
     interpolated_dose = interpolation_function(points)
