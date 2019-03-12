@@ -25,6 +25,7 @@
 
 """ A dose profile tool box. """
 
+import os
 import copy
 
 from typing import Callable
@@ -32,11 +33,10 @@ from scipy import interpolate
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 # from PIL import Image
 import PIL
-# import matplotlib
-import matplotlib.image as mpimg
 
 from ...libutils import get_imports
 
@@ -652,3 +652,49 @@ class Profile():
                 best_offset = offset
 
         return self + best_offset
+
+    def create_calibration(self, reference_file_name, measured_file_name):
+        """ Calibration curve from profiler and film data.
+
+        Calculated by overlaying intensity curves and observing values at
+        corresponding points.
+
+        Arguments
+        -----------------
+        reference_file_name : string
+            long file name of Profiler file, extension .prs
+        measured_file_name : string
+            long file name of png file, extension .png
+
+        Returns
+        -------
+        Profile
+
+        """
+
+        _, ext = os.path.splitext(reference_file_name)
+        assert ext == '.prs'
+        reference = Profile().from_snc_profiler(
+            reference_file_name)[1]
+        # bogosity, need to supply rad/tvs as argument to from_snc_profiler()?
+        reference = Profile().from_lists(
+            reference.x, reference.data[::-1])
+        # bogosity, need to add flip() method and call it from overlay()
+        # the plot forms a closed shape, need to reject high-gradient points?
+
+        _, ext = os.path.splitext(measured_file_name)
+        assert ext == '.png'
+        measured = Profile().from_narrow_png(measured_file_name)
+        # print(measured)
+
+        dist_vals = np.arange(
+            max(min(measured.x), min(reference.x)),
+            min(max(measured.x), max(reference.x)),
+            max(reference.get_increment(), measured.get_increment()))
+
+        calib_curve = [(measured.get_dose(i), reference.get_dose(i))
+                       for i in dist_vals]
+
+        Profile().from_tuples(calib_curve).plot()
+
+        return Profile().from_tuples(calib_curve)
