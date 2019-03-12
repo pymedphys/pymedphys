@@ -254,6 +254,17 @@ def test_overlay():
     assert np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2)
 
 
+def test_create_calibration():
+    data_directory = os.path.abspath(os.path.dirname(__file__))
+    data_directory = os.path.join(data_directory, 'data')
+    reference_file_name = os.path.join(data_directory, 'FilmCalib.prs')
+    measured_file_name = os.path.join(
+        data_directory, 'FilmCalib_EBT_vert_strip.png')
+    ##
+    a = Profile().create_calibration(reference_file_name, measured_file_name)
+    # print(a)
+
+
 if __name__ == "__main__":
     test_init()
     test_interp()
@@ -276,3 +287,4 @@ if __name__ == "__main__":
     test_symmetrise()
     test_recentre()
     test_overlay()
+    test_create_calibration()
