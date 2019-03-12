@@ -24,16 +24,15 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
+
 from scipy.optimize import basinhopping
+from scipy.interpolate import splprep, splev
 
 import pydicom
 
 from ...libutils import get_imports
 from ...geometry import (
     cubify_cube_definition, cube_vertices, cube_vectors)
-
-from .._level1.dicom_dose import (
-    pull_structure, contour_to_points)
 
 IMPORTS = get_imports(globals())
 
@@ -184,3 +183,65 @@ def create_minimise(structure_name, dcm_struct):
         return np.sum(min_dist_squared)
 
     return minimise
+
+
+def list_structures(dcm_struct):
+    return [item.ROIName for item in dcm_struct.StructureSetROISequence]
+
+
+def resample_contour(contour, n=50):
+    tck, u = splprep(
+        [contour[0], contour[1], contour[2]], s=0, k=1)
+    new_points = splev(np.arange(0, 1, 1/n), tck)
+
+    return new_points
+
+
+def resample_contour_set(contours, n=50):
+
+    resampled_contours = [
+        resample_contour([x, y, z], n)
+        for x, y, z in zip(*contours)
+    ]
+
+    return resampled_contours
+
+
+def contour_to_points(contours):
+    resampled_contours = resample_contour_set([
+        contours[1], contours[0], contours[2]])
+    contour_points = np.concatenate(resampled_contours, axis=1)
+
+    return contour_points
+
+
+def pull_structure_by_number(number, dcm_struct):
+    contours_by_slice_raw = [
+        item.ContourData
+        for item in dcm_struct.ROIContourSequence[number].ContourSequence
+    ]
+    x = [
+        np.array(item[0::3])
+        for item in contours_by_slice_raw]
+    y = [
+        np.array(item[1::3])
+        for item in contours_by_slice_raw]
+    z = [
+        np.array(item[2::3])
+        for item in contours_by_slice_raw]
+
+    return x, y, z
+
+
+def pull_structure(string, dcm_struct):
+    structure_names = np.array(
+        [item.ROIName for item in dcm_struct.StructureSetROISequence])
+    reference = structure_names == string
+    if np.all(reference == False):  # pylint: disable=C0121
+        raise Exception("Structure not found (case sensitive)")
+
+    index = int(np.where(reference)[0])
+    x, y, z = pull_structure_by_number(
+        index, dcm_struct)
+
+    return x, y, z
