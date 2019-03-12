@@ -160,9 +160,7 @@ def test_get_data():
 
 def test_get_x():
     profiler = Profile().from_tuples(PROFILER)
-    # assert np.allclose(profiler.get_x(10), (-5.17742830712, 5.1740693196))
-    print(profiler.get_x(max(profiler.data)))
-    ##################
+    assert np.allclose(profiler.get_x(10), (-5.17742830712, 5.1740693196))
 
 
 def test_get_increment():
@@ -269,7 +267,10 @@ def test_reversed():
 
 def test_overlay():
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2)
+    # assert np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2)
+    profiler.plot()
+    profiler.reversed().plot()
+    profiler.reversed().overlay(profiler).plot()
 
 
 def test_create_calibration():
