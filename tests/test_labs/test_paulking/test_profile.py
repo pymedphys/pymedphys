@@ -139,7 +139,8 @@ def test_from_snc_profiler():
     data_directory = os.path.abspath(os.path.dirname(__file__))
     data_directory = os.path.join(data_directory, 'data')
     file_name = os.path.join(data_directory, 'test_varian_open.prs')
-    x_profile, y_profile = Profile().from_snc_profiler(file_name)
+    x_profile = Profile().from_snc_profiler(file_name, 'x')
+    y_profile = Profile().from_snc_profiler(file_name, 'y')
     assert np.isclose(x_profile.get_data(0), 45.50562901780488)
     assert np.isclose(y_profile.get_data(0), 45.50562901780488)
     assert x_profile.metadata['SSD'] == y_profile.metadata['SSD']
@@ -267,10 +268,7 @@ def test_reversed():
 
 def test_overlay():
     profiler = Profile().from_tuples(PROFILER)
-    # assert np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2)
-    profiler.plot()
-    profiler.reversed().plot()
-    profiler.reversed().overlay(profiler).plot()
+    assert np.isclose(profiler.overlay(profiler+(2)).x[0], profiler.x[0] + 2)
 
 
 def test_create_calibration():
@@ -279,9 +277,8 @@ def test_create_calibration():
     reference_file_name = os.path.join(data_directory, 'FilmCalib.prs')
     measured_file_name = os.path.join(
         data_directory, 'FilmCalib_EBT_vert_strip.png')
-    ##
     a = Profile().create_calibration(reference_file_name, measured_file_name)
-    # print(a)
+    # ERRONEOUSLY CREATES A CLOSED CURVE
 
 
 if __name__ == "__main__":
