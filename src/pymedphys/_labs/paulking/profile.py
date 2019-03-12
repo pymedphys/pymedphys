@@ -362,7 +362,7 @@ class Profile():
 
 
          """
-        print(data in self.data)
+
         try:
             x = self.x
             y = self.data
@@ -666,8 +666,8 @@ class Profile():
     def overlay(self, other):
         """ Copy of dose profile, shifted to align to target profile.
 
-        Calculated using shift that produces greates peak correlation between
-        the curves
+        Calculated using shift that produces greatest peak correlation between
+        the curves. Flips the curve left-to-right, if this creates a better fit.
 
         Arguments
         -----------------
@@ -694,16 +694,30 @@ class Profile():
             min(max(other.x), max(self.x)) + dist_step,
             dist_step)
 
-        best_fit_qual, best_offset = 0, -np.inf
+        best_fit_qual, best_offset, flipped = 0, -np.inf, False
         for offset in possible_offsets:
-            fit_qual = max(np.correlate(
+            fit_qual_norm = max(np.correlate(
                 dose_vals_fixed,
                 (self + offset).interp(fixed.x)))
-            if fit_qual > best_fit_qual:
-                best_fit_qual = fit_qual
-                best_offset = offset
+            fit_qual_flip = max(np.correlate(
+                dose_vals_fixed,
+                (self.reversed() + offset).interp(fixed.x)))
 
-        return self + best_offset
+            if fit_qual_norm > best_fit_qual:
+                best_fit_qual = fit_qual_norm
+                best_offset = offset
+                flipped = False
+            if fit_qual_flip > best_fit_qual:
+                best_fit_qual = fit_qual_flip
+                best_offset = offset
+                flipped = True
+
+        print(best_fit_qual, best_offset, flipped)
+
+        if flipped:
+            return self.reversed() + best_offset
+        else:
+            return self + best_offset
 
     def create_calibration(self, reference_file_name, measured_file_name):
         """ Calibration curve from profiler and film data.
