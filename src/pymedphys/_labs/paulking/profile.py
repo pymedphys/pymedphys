@@ -207,8 +207,7 @@ class Profile():
                 data.append(0.5)
         return Profile().from_lists(x_vals, data, metadata=metadata)
 
-    # CONSIDER "AXIS" AND RETURN OF ONLY ONE PROFILE
-    def from_snc_profiler(self, file_name):
+    def from_snc_profiler(self, file_name, axis):
         """
         Return dose profiles from native profiler data file.
 
@@ -216,11 +215,13 @@ class Profile():
         ----------
         file_name : string
             long file name of Profiler file
+        axis : string
+            'x' or 'y'
 
         Returns
         -------
-        (Profile, Profile)
-            transverse & radial
+        Profile
+
 
         """
 
@@ -252,8 +253,15 @@ class Profile():
         y_vals = [-16.4 + 0.4*i for i in range(83)]
         y_prof = list(zip(y_vals, dose[57:]))
 
-        return (Profile().from_tuples(x_prof, metadata=metadata),
-                Profile().from_tuples(y_prof, metadata=metadata))
+        # return (Profile().from_tuples(x_prof, metadata=metadata),
+        #         Profile().from_tuples(y_prof, metadata=metadata))
+
+        if axis == 'x':
+            return Profile().from_tuples(x_prof, metadata=metadata)
+        elif axis == 'y':
+            return Profile().from_tuples(y_prof, metadata=metadata)
+        else:
+            raise TypeError("axis must be 'x' or 'y'")
 
     def from_narrow_png(self, file_name, step_size=0.1):
         """  Extract a an relative-density profilee from a narrow png file.
@@ -712,8 +720,6 @@ class Profile():
                 best_offset = offset
                 flipped = True
 
-        print(best_fit_qual, best_offset, flipped)
-
         if flipped:
             return self.reversed() + best_offset
         else:
@@ -740,8 +746,7 @@ class Profile():
 
         _, ext = os.path.splitext(reference_file_name)
         assert ext == '.prs'
-        reference = Profile().from_snc_profiler(
-            reference_file_name)[1]
+        reference = Profile().from_snc_profiler(reference_file_name, 'y')
         # bogosity, need to supply rad/tvs as argument to from_snc_profiler()?
         reference = Profile().from_lists(
             reference.x, reference.data[::-1])
