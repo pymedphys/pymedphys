@@ -71,7 +71,7 @@ def dicom_cli(subparsers):
         func=adjust_rel_elec_density_cli)
 
     dicom_structure_name_RED_adjust = dicom_subparsers.add_parser(
-        'structure-name-red-adjust')
+        'structure-name-RED-adjust')
 
     dicom_structure_name_RED_adjust.add_argument('input_file', type=str)
     dicom_structure_name_RED_adjust.add_argument('output_file', type=str)
