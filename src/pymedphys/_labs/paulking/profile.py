@@ -403,9 +403,9 @@ class Profile():
         else:
             return steps.min()
 
-    def plot(self):
+    def plot(self, marker='o-'):
         """ Present a plot of the profile. """
-        plt.plot(self.x, self.data, 'o-')
+        plt.plot(self.x, self.data, marker)
         plt.show()
         return
 
@@ -828,7 +828,8 @@ class Profile():
         """ Calibration curve from profiler and film data.
 
         Calculated by overlaying intensity curves and observing values at
-        corresponding points.
+        corresponding points. Note that the result is an unsmoothed, collection
+        of points.
 
         Arguments
         -----------------
@@ -846,10 +847,10 @@ class Profile():
         _, ext = os.path.splitext(reference_file_name)
         assert ext == '.prs'
         reference = Profile().from_snc_profiler(reference_file_name, 'y')
-        # the plot forms a closed shape, need to reject high-gradient points?
         _, ext = os.path.splitext(measured_file_name)
         assert ext == '.png'
         measured = Profile().from_narrow_png(measured_file_name)
+        measured = measured.overlay(reference)
 
         dist_vals = np.arange(
             max(min(measured.x), min(reference.x)),
