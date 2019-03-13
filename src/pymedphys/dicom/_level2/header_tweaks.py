@@ -129,7 +129,9 @@ def adjust_rel_elec_density_cli(args):
 
 
 def RED_adjustment_map_from_structure_names(structure_names):
-    pattern = re.compile(r'^.*RED=(\d+\.?\d*)$')
+
+    pattern = re.compile(
+        r'^.*RED\s*[=:]\s*(\d+\.?\d*)\s*$', flags=re.IGNORECASE)
 
     adjustment_map = {
         structure: float(pattern.match(structure).group(1))
