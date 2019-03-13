@@ -244,7 +244,9 @@ def test_penumbra():
 
 def test_shoulders():
     profiler = Profile().from_tuples(PROFILER).resample_x(0.1)
-    profiler.shoulders()
+    lt_should, rt_should = profiler.shoulders()
+    assert np.all(lt_should.x < min(rt_should.x))
+    assert np.all(rt_should.x > max(lt_should.x))
 
 
 def test_tails():

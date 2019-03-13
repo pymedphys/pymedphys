@@ -634,8 +634,29 @@ class Profile():
         return (lt_penum, rt_penum)
 
     def shoulders(self):
-        """ Does things """
-        pass
+        """ Shoulders of dose profile, between the umbra and the penumbra.
+
+        Source dose profile sliced to include only the profile shoulders,
+        outside the central 80% of of the profile but inside the region bounded
+        by the 20-80% transition.
+
+        Returns
+        -------
+        tuple
+            (left shoulder Profile, right shoulder Profile)
+
+        """
+
+        lt_start = self.penumbra()[0].x[0]
+        lt_stop = self.umbra().x[0]
+
+        rt_start = self.umbra().x[-1]
+        rt_stop = self.penumbra()[-1].x[-1]
+
+        lt_should = self.segment(start=lt_start, stop=lt_stop)
+        rt_should = self.segment(start=rt_start, stop=rt_stop)
+
+        return (lt_should, rt_should)
 
     def tails(self):
         """ Does things """
