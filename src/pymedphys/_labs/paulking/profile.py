@@ -85,6 +85,8 @@ class Profile():
         else:
             return False
 
+    # CONSIDER IMPLEMENTING > < AS "TO THE LEFT OF AND "TO THE RIGHT OF"
+
     def __copy__(self):
         return copy.deepcopy(self)
 
@@ -433,7 +435,6 @@ class Profile():
             new_x = []
             new_data = []
 
-        self.__init__(new_x, new_data)
         return Profile(new_x, new_data)
 
     def resample_x(self, step):
@@ -482,7 +483,7 @@ class Profile():
 
         last_y = temp_y[0]
 
-        for i in range(len(temp_x)):
+        for i, _ in enumerate(temp_x):
             if np.abs(temp_y[i] - last_y) >= step:
                 resamp_x.append(temp_x[i])
                 resamp_y.append(temp_y[i])
@@ -606,9 +607,39 @@ class Profile():
         return Profile(x=new_x, data=new_data, metadata=self.metadata)
 
     def penumbra(self):
+        """ Penumbra of dose profile, 20-80%
+
+        Source dose profile sliced to include only the penumbral edges, where the dose
+        transitions from 20% - 80% of the umbra dose, as precent at the umbra edge,
+        to support wedged profiles.
+
+        Returns
+        -------
+        tuple
+            (left penumbra Profile, right penumbra Profile)
+
+        """
+
+        not_umbra = {'lt': self.segment(stop=self.umbra().x[0]),
+                     'rt': self.segment(start=self.umbra().x[-1])}
+
+        lt_80pct = not_umbra['lt'].get_x(0.8 * not_umbra['lt'].data[-1])[-1]
+        lt_20pct = not_umbra['lt'].get_x(0.2 * not_umbra['lt'].data[-1])[-1]
+        lt_penum = self.segment(start=lt_20pct, stop=lt_80pct)
+
+        rt_80pct = not_umbra['rt'].get_x(0.8 * not_umbra['rt'].data[0])[-1]
+        rt_20pct = not_umbra['rt'].get_x(0.2 * not_umbra['rt'].data[0])[-1]
+        rt_penum = self.segment(start=rt_80pct, stop=rt_20pct)
+
+        return (lt_penum, rt_penum)
+
+    def shoulders(self):
         """ Does things """
         pass
-        ###########
+
+    def tails(self):
+        """ Does things """
+        pass
 
     def flatness(self):
         """ Flatness of dose profile.
@@ -780,16 +811,10 @@ class Profile():
         _, ext = os.path.splitext(reference_file_name)
         assert ext == '.prs'
         reference = Profile().from_snc_profiler(reference_file_name, 'y')
-        # bogosity, need to supply rad/tvs as argument to from_snc_profiler()?
-        reference = Profile().from_lists(
-            reference.x, reference.data[::-1])
-        # bogosity, need to add flip() method and call it from overlay()
         # the plot forms a closed shape, need to reject high-gradient points?
-
         _, ext = os.path.splitext(measured_file_name)
         assert ext == '.png'
         measured = Profile().from_narrow_png(measured_file_name)
-        # print(measured)
 
         dist_vals = np.arange(
             max(min(measured.x), min(reference.x)),

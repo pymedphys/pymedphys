@@ -161,7 +161,6 @@ def test_get_data():
 
 def test_get_x():
     profiler = Profile().from_tuples(PROFILER)
-    print(profiler.get_x(0.5))
     assert np.allclose(profiler.get_x(10), (-5.17742830712, 5.1740693196))
 
 
@@ -236,8 +235,21 @@ def test_umbra():
 
 def test_penumbra():
     profiler = Profile().from_tuples(PROFILER).resample_x(0.1)
-    profiler.penumbra()
-    ############
+    lt_penum, rt_penum = profiler.penumbra()
+    assert np.all(lt_penum.x < 0)
+    assert np.all(rt_penum.x > 0)
+    assert np.all(lt_penum.data < profiler.get_data(0))
+    assert np.all(rt_penum.data < profiler.get_data(0))
+
+
+def test_shoulders():
+    profiler = Profile().from_tuples(PROFILER).resample_x(0.1)
+    profiler.shoulders()
+
+
+def test_tails():
+    profiler = Profile().from_tuples(PROFILER).resample_x(0.1)
+    profiler.tails()
 
 
 def test_flatness():
@@ -303,6 +315,8 @@ if __name__ == "__main__":
     test_normalise_distance()
     test_umbra()
     test_penumbra()
+    test_shoulders()
+    test_tails()
     test_flatness()
     test_symmetry()
     test_symmetrise()
