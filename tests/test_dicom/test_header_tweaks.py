@@ -218,10 +218,16 @@ def test_electron_density_append():
 
 
 def test_structure_name_parse():
-    structure_names = ['a RED=1', 'b', 'c', 'd RED=2.2']
+    structure_names = [
+        'a RED=1', 'b', 'c', 'd RED=2.2', 'e red = 3', 'f', 'g Red: 4.7',
+        'h  RED=0.5  '
+    ]
     expected_adjustment_map = {
         'a RED=1': 1,
-        'd RED=2.2': 2.2
+        'd RED=2.2': 2.2,
+        'e red = 3': 3,
+        'g Red: 4.7': 4.7,
+        'h  RED=0.5  ': 0.5
     }
 
     adjustment_map = RED_adjustment_map_from_structure_names(structure_names)
