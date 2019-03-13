@@ -659,18 +659,32 @@ class Profile():
         return (lt_should, rt_should)
 
     def tails(self):
-        """ Does things """
-        pass
+        """ Tails of dose profile, beyond the penumbra.
+
+        Source dose profile sliced to include only the profile tail,
+        outside the beam penumbra.
+
+        Returns
+        -------
+        tuple
+            (left tail Profile, right tail Profile)
+
+        """
+        lt_start = self.x[0]
+        lt_stop = self.penumbra()[0].x[0]
+
+        rt_start = self.penumbra()[-1].x[-1]
+        rt_stop = self.x[-1]
+
+        lt_tail = self.segment(start=lt_start, stop=lt_stop)
+        rt_tail = self.segment(start=rt_start, stop=rt_stop)
+
+        return (lt_tail, rt_tail)
 
     def flatness(self):
         """ Flatness of dose profile.
 
         Calculated as the dose range normalized to mean dose.
-
-        Arguments
-        -----------------
-        step : float
-            Precision of result
 
         Returns
         -------
