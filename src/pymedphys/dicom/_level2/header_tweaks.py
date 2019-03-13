@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import re
 from copy import deepcopy
 
 import pydicom
@@ -123,5 +124,42 @@ def adjust_rel_elec_density_cli(args):
     ds = pydicom.read_file(args.input_file, force=True)
     new_ds = adjust_rel_elec_density(
         ds, adjustment_map, ignore_missing_structure=args.ignore_missing_structure)
+
+    pydicom.write_file(args.output_file, new_ds)
+
+
+def RED_adjustment_map_from_structure_names(structure_names):
+
+    pattern = re.compile(
+        r'^.*RED\s*[=:]\s*(\d+\.?\d*)\s*$', flags=re.IGNORECASE)
+
+    adjustment_map = {
+        structure: float(pattern.match(structure).group(1))
+        for structure in structure_names
+        if pattern.match(structure)
+    }
+
+    return adjustment_map
+
+
+def structure_name_RED_adjust(ds):
+    """Adjust the structure electron density based on structure name.
+    """
+
+    structure_names = [
+        structure_set.ROIName
+        for structure_set in ds.StructureSetROISequence
+    ]
+
+    adjustment_map = RED_adjustment_map_from_structure_names(structure_names)
+
+    adjusted_ds = adjust_rel_elec_density(ds, adjustment_map)
+
+    return adjusted_ds
+
+
+def structure_name_RED_adjust_cli(args):
+    ds = pydicom.read_file(args.input_file, force=True)
+    new_ds = structure_name_RED_adjust(ds)
 
     pydicom.write_file(args.output_file, new_ds)
