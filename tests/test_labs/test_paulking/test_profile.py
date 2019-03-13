@@ -295,8 +295,10 @@ def test_create_calibration():
     reference_file_name = os.path.join(data_directory, 'FilmCalib.prs')
     measured_file_name = os.path.join(
         data_directory, 'FilmCalib_EBT_vert_strip.png')
-    a = Profile().create_calibration(reference_file_name, measured_file_name)
-    # ERRONEOUSLY CREATES A CLOSED CURVE
+    cal_curve = Profile().create_calibration(
+        reference_file_name, measured_file_name)
+    assert(min(cal_curve.x) <= 1)
+    assert(max(cal_curve.x) >= 0)
 
 
 if __name__ == "__main__":
