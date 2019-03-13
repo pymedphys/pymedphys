@@ -251,7 +251,9 @@ def test_shoulders():
 
 def test_tails():
     profiler = Profile().from_tuples(PROFILER).resample_x(0.1)
-    profiler.tails()
+    lt_tail, rt_tail = profiler.tails()
+    assert np.all(lt_tail.x < min(rt_tail.x))
+    assert np.all(rt_tail.x > max(lt_tail.x))
 
 
 def test_flatness():
