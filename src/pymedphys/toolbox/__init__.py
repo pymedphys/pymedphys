@@ -26,4 +26,4 @@
 
 # pylint: disable=C0111
 
-from ..gamma import gamma_dcm as gamma
+from ..gamma import gamma_dicom as gamma

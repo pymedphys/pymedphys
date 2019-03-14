@@ -79,7 +79,7 @@ def get_field_type(cursor, field_id):
 
 
 def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
-                                field_name) -> OISDeliveryDetails:
+                                field_name, buffer=0) -> OISDeliveryDetails:
     """Identifies the patient details for a given delivery time.
 
     Args:
@@ -131,13 +131,14 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
             TrackTreatment.FLD_ID = TxField.FLD_ID AND
             Staff.Staff_ID = TrackTreatment.Machine_ID_Staff_ID AND
             REPLACE(Staff.Last_Name, ' ', '') = %(machine)s AND
-            TrackTreatment.Create_DtTm <= %(delivery_time)s AND
-            TrackTreatment.Edit_DtTm >= %(delivery_time)s AND
+            TrackTreatment.Create_DtTm <= DATEADD(second, %(buffer)d, %(delivery_time)s) AND
+            TrackTreatment.Edit_DtTm >= DATEADD(second, -%(buffer)d, %(delivery_time)s) AND
             TxField.Field_Label = %(field_label)s AND
             TxField.Field_Name = %(field_name)s
         """
 
     parameters = {
+        'buffer': buffer,
         'machine': machine,
         'delivery_time': delivery_time,
         'field_label': field_label,
@@ -149,6 +150,10 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
     if len(sql_result) > 1:
         for result in sql_result[1::]:
             if result != sql_result[0]:
+                if buffer != 0:
+                    return get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
+                                                       field_name, buffer=0)
+
                 raise MultipleMosaiqEntries("Disagreeing entries were found.")
 
     if not sql_result:
