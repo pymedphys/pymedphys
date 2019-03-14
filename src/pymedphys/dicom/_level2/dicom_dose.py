@@ -32,15 +32,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
 
-from scipy.interpolate import splprep, splev
+from scipy.interpolate import RegularGridInterpolator
 
 import pydicom
 import pydicom.uid
+
+from .._level1.dicom_struct import pull_structure
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 # pylint: disable=C0103
+
 
 class DicomDose:
 
@@ -61,7 +64,8 @@ class DicomDose:
 
 
 def convert_xyz_to_dicom_coords(xyz_tuple):
-    ZZ, YY, XX = np.meshgrid(xyz_tuple[2], xyz_tuple[1], xyz_tuple[0], indexing='ij')
+    ZZ, YY, XX = np.meshgrid(
+        xyz_tuple[2], xyz_tuple[1], xyz_tuple[0], indexing='ij')
 
     coords = np.array((XX, YY, ZZ), dtype=np.float64)
     return coords
@@ -451,6 +455,22 @@ def load_dicom_data(ds, depth_adjust):
     return inplane, crossplane, depth, dose
 
 
+def arbitrary_profile_from_dicom_dose(ds, depth_adjust, inplane_ref, crossplane_ref, depth_ref):
+    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
+
+    interpolation_function = RegularGridInterpolator(
+        (depth, crossplane, inplane), dose)
+    points = [
+        (a_depth_val, a_crossplane_val, an_inplane_val)
+        for a_depth_val, a_crossplane_val, an_inplane_val
+        in zip(depth_ref, crossplane_ref, inplane_ref)
+    ]
+
+    interpolated_dose = interpolation_function(points)
+
+    return interpolated_dose
+
+
 def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
     inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
@@ -532,38 +552,6 @@ def average_bounding_profiles(ds, depth_adjust, depth_lookup,
         return inplane, inplane_dose, crossplane, crossplane_dose
 
 
-def pull_structure_by_number(number, dcm_struct):
-    contours_by_slice_raw = [
-        item.ContourData
-        for item in dcm_struct.ROIContourSequence[number].ContourSequence
-    ]
-    x = [
-        np.array(item[0::3])
-        for item in contours_by_slice_raw]
-    y = [
-        np.array(item[1::3])
-        for item in contours_by_slice_raw]
-    z = [
-        np.array(item[2::3])
-        for item in contours_by_slice_raw]
-
-    return x, y, z
-
-
-def pull_structure(string, dcm_struct):
-    structure_names = np.array(
-        [item.ROIName for item in dcm_struct.StructureSetROISequence])
-    reference = structure_names == string
-    if np.all(reference == False):  # pylint: disable=C0121
-        raise Exception("Structure not found (case sensitive)")
-
-    index = int(np.where(reference)[0])
-    x, y, z = pull_structure_by_number(
-        index, dcm_struct)
-
-    return x, y, z
-
-
 def _get_index(z_list, z_val):
     indices = np.array([item[0] for item in z_list])
     # This will error if more than one contour exists on a given slice
@@ -627,33 +615,3 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     plt.title('DVH')
     plt.xlabel('Dose (Gy)')
     plt.ylabel('Relative Volume (%)')
-
-
-def list_structures(dcm_struct):
-    return [item.ROIName for item in dcm_struct.StructureSetROISequence]
-
-
-def resample_contour(contour, n=50):
-    tck, u = splprep(
-        [contour[0], contour[1], contour[2]], s=0, k=1)
-    new_points = splev(np.arange(0, 1, 1/n), tck)
-
-    return new_points
-
-
-def resample_contour_set(contours, n=50):
-
-    resampled_contours = [
-        resample_contour([x, y, z], n)
-        for x, y, z in zip(*contours)
-    ]
-
-    return resampled_contours
-
-
-def contour_to_points(contours):
-    resampled_contours = resample_contour_set([
-        contours[1], contours[0], contours[2]])
-    contour_points = np.concatenate(resampled_contours, axis=1)
-
-    return contour_points
