@@ -69,7 +69,7 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
 
 
 def adjust_rel_elec_density(ds, adjustment_map, ignore_missing_structure=False):
-    """Append or adjust relative electron densities of stuctures
+    """Append or adjust relative electron densities of structures
     """
 
     new_ds = deepcopy(ds)
@@ -128,15 +128,10 @@ def adjust_RED_cli(args):
     pydicom.write_file(args.output_file, new_ds)
 
 
-def extract_RED_from_structure_name_regex():
-    pattern = re.compile(
-        r'^.*RED\s*[=:]\s*(\d+\.?\d*)\s*$', flags=re.IGNORECASE)
-
-    return pattern
-
-
 def RED_adjustment_map_from_structure_names(structure_names):
-    pattern = extract_RED_from_structure_name_regex()
+    structure_name_containing_RED_regex = r'^.*RED\s*[=:]\s*(\d+\.?\d*)\s*$'
+    pattern = re.compile(
+        structure_name_containing_RED_regex, flags=re.IGNORECASE)
 
     adjustment_map = {
         structure: float(pattern.match(structure).group(1))
