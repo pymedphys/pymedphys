@@ -25,7 +25,7 @@
 
 import numpy as np
 from numpy import sin, cos, pi, radians
-from numpy import linalg as LA
+from numpy.linalg import norm
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
@@ -35,7 +35,7 @@ def rotate_about_vector(coords_to_rotate, vector, theta, active=False):
     r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the axis specified by
     `vector`. Transforms can be active (alibi) or passive (alias). Default is passive.
     """
-    unit_vector = vector / LA.norm(vector)
+    unit_vector = vector / norm(vector)
 
     u_x = unit_vector[0]
     u_y = unit_vector[1]
