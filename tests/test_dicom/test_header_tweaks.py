@@ -33,7 +33,7 @@ import pydicom
 
 from pymedphys.dicom import (
     dicom_dataset_from_dict, adjust_machine_name, adjust_rel_elec_density,
-    structure_name_RED_adjust, RED_adjustment_map_from_structure_names)
+    adjust_RED_by_structure_name, RED_adjustment_map_from_structure_names)
 
 
 HERE = os.path.dirname(__file__)
@@ -45,10 +45,10 @@ def compare_dicom_cli(command, original, expected):
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
     subprocess.check_call(command)
 
-    cli_adjusted_dicom_file = pydicom.read_file(
+    cli_adjusted_ds = pydicom.read_file(
         ADJUSTED_DICOM_FILENAME, force=True)
 
-    assert str(cli_adjusted_dicom_file) == str(expected)
+    assert str(cli_adjusted_ds) == str(expected)
 
     os.remove(ORIGINAL_DICOM_FILENAME)
     os.remove(ADJUSTED_DICOM_FILENAME)
@@ -57,7 +57,7 @@ def compare_dicom_cli(command, original, expected):
 def test_adjust_machine_name():
     new_name = 'new_name'
 
-    original_dicom_file = dicom_dataset_from_dict({
+    original_ds = dicom_dataset_from_dict({
         'BeamSequence': [
             {
                 'TreatmentMachineName': 'hello'
@@ -68,7 +68,7 @@ def test_adjust_machine_name():
         ]
     })
 
-    expected_dicom_file = dicom_dataset_from_dict({
+    expected_ds = dicom_dataset_from_dict({
         'BeamSequence': [
             {
                 'TreatmentMachineName': new_name
@@ -79,16 +79,16 @@ def test_adjust_machine_name():
         ]
     })
 
-    adjusted_dicom_file = adjust_machine_name(original_dicom_file, new_name)
+    adjusted_ds = adjust_machine_name(original_ds, new_name)
 
-    assert adjusted_dicom_file != original_dicom_file
-    assert adjusted_dicom_file == expected_dicom_file
+    assert adjusted_ds != original_ds
+    assert adjusted_ds == expected_ds
 
     command = (
         'pymedphys dicom adjust-machine-name'.split() +
         [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME, new_name])
 
-    compare_dicom_cli(command, original_dicom_file, expected_dicom_file)
+    compare_dicom_cli(command, original_ds, expected_ds)
 
 
 def test_electron_density_append():
@@ -105,7 +105,7 @@ def test_electron_density_append():
         }
     }
 
-    original_dicom_file = dicom_dataset_from_dict({
+    original_ds = dicom_dataset_from_dict({
         'StructureSetROISequence': [
             {
                 'ROINumber': 1,
@@ -152,7 +152,7 @@ def test_electron_density_append():
         ]
     })
 
-    expected_dicom_file = dicom_dataset_from_dict({
+    expected_ds = dicom_dataset_from_dict({
         'RTROIObservationsSequence': [
             {
                 'ReferencedROINumber': 1,
@@ -189,19 +189,19 @@ def test_electron_density_append():
                 ]
             }
         ]
-    }, template_ds=original_dicom_file)
+    }, template_ds=original_ds)
 
-    adjusted_dicom_file = adjust_rel_elec_density(
-        original_dicom_file, adjustment_map)
+    adjusted_ds = adjust_rel_elec_density(
+        original_ds, adjustment_map)
 
-    assert adjusted_dicom_file != original_dicom_file
-    assert str(expected_dicom_file) == str(adjusted_dicom_file)
+    assert adjusted_ds != original_ds
+    assert str(expected_ds) == str(adjusted_ds)
 
-    adjusted_with_excess_dicom_file = adjust_rel_elec_density(
-        original_dicom_file, excess_adjustment_map, ignore_missing_structure=True)
+    adjusted_with_excess_ds = adjust_rel_elec_density(
+        original_ds, excess_adjustment_map, ignore_missing_structure=True)
 
-    assert adjusted_with_excess_dicom_file != original_dicom_file
-    assert str(expected_dicom_file) == str(adjusted_with_excess_dicom_file)
+    assert adjusted_with_excess_ds != original_ds
+    assert str(expected_ds) == str(adjusted_with_excess_ds)
 
     excess_adjustment_map_as_list = [
         ['{}'.format(key), item] for key, item in excess_adjustment_map.items()
@@ -214,7 +214,7 @@ def test_electron_density_append():
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME]
         + excess_adjustment_map_flat)
 
-    compare_dicom_cli(command, original_dicom_file, expected_dicom_file)
+    compare_dicom_cli(command, original_ds, expected_ds)
 
 
 def test_structure_name_parse():
@@ -238,7 +238,7 @@ def test_structure_name_parse():
 def test_structure_name_based_RED_append():
     electron_density_to_use = 0.5
 
-    original_dicom_file = dicom_dataset_from_dict({
+    original_ds = dicom_dataset_from_dict({
         'StructureSetROISequence': [
             {
                 'ROINumber': 1,
@@ -259,7 +259,7 @@ def test_structure_name_based_RED_append():
         ]
     })
 
-    expected_dicom_file = dicom_dataset_from_dict({
+    expected_ds = dicom_dataset_from_dict({
         'RTROIObservationsSequence': [
             {
                 'ReferencedROINumber': 1,
@@ -274,15 +274,15 @@ def test_structure_name_based_RED_append():
                 'ReferencedROINumber': 2
             },
         ]
-    }, template_ds=original_dicom_file)
+    }, template_ds=original_ds)
 
-    adjusted_dicom_file = structure_name_RED_adjust(original_dicom_file)
+    adjusted_ds = adjust_RED_by_structure_name(original_ds)
 
-    assert adjusted_dicom_file != original_dicom_file
-    assert str(expected_dicom_file) == str(adjusted_dicom_file)
+    assert adjusted_ds != original_ds
+    assert str(expected_ds) == str(adjusted_ds)
 
     command = (
         'pymedphys dicom structure-name-RED-adjust'.split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME])
 
-    compare_dicom_cli(command, original_dicom_file, expected_dicom_file)
+    compare_dicom_cli(command, original_ds, expected_ds)
