@@ -1,5 +1,5 @@
-Collimator Toolbox
-==================
+MU Density
+==========
 
 .. automodule:: pymedphys.mudensity
     :no-members:
