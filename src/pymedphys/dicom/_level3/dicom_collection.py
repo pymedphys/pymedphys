@@ -24,8 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from copy import deepcopy
-
+import numpy as np
 import pydicom
 
 from .._level1.create import dicom_dataset_from_dict
@@ -44,18 +43,6 @@ class DicomBase:
     def __init__(self, dataset):
         self.dataset = dataset
 
-    @property
-    def dataset(self) -> pydicom.Dataset:
-        return deepcopy(self._dataset)
-
-    @dataset.setter
-    def dataset(self, dataset: pydicom.Dataset):
-        self._dataset = deepcopy(dataset)
-        self.after_assigning_dataset()
-
-    def after_assigning_dataset(self):
-        pass
-
     @classmethod
     def from_file(cls, filepath):
         dataset = pydicom.read_file(filepath, force=True)
@@ -69,10 +56,10 @@ class DicomBase:
         return cls(dataset)
 
     def __repr__(self):
-        return self._dataset.__repr__()
+        return self.dataset.__repr__()
 
     def save_as(self, filepath):
-        self._dataset.save_as(filepath)
+        self.dataset.save_as(filepath)
 
     def anonymise(self):
         anonymised = anonymise_dicom_dataset(self.dataset)
@@ -81,17 +68,54 @@ class DicomBase:
 
 
 class DicomDose(DicomBase):
-    def after_assigning_dataset(self):
-        self.values = self._dataset.pixel_array * self._dataset.DoseGridScaling
-        self.units = self._dataset.DoseUnits
 
-        self.x, self.y, self.z = extract_dicom_patient_xyz(self._dataset)
-        self.coords = convert_xyz_to_dicom_coords((self.x, self.y, self.z))
+    def __init__(self, dataset):
+        super().__init__(dataset)
+
         self.mask = None
 
+    @property
+    def values(self) -> np.ndarray:
+        return self.dataset.pixel_array * self.dataset.DoseGridScaling
 
-class DicomCT(DicomBase):
+    @property
+    def units(self):
+        return self.dataset.DoseUnits
+
+    @units.setter
+    def units(self, units_used):
+        self.dataset.DoseUnits = units_used
+
+    # TODO: Need to refactor the following to still be a view to the dataset
+    # but not needlessly call the entire function.
+    @property
+    def x(self):
+        x_value, _, _ = extract_dicom_patient_xyz(self.dataset)
+        return x_value
+
+    @property
+    def y(self):
+        _, y_value, _ = extract_dicom_patient_xyz(self.dataset)
+        return y_value
+
+    @property
+    def z(self):
+        _, _, z_value = extract_dicom_patient_xyz(self.dataset)
+        return z_value
+
+    @property
+    def coords(self):
+        x, y, z = extract_dicom_patient_xyz(self.dataset)
+        return convert_xyz_to_dicom_coords((x, y, z))
+
+
+class DicomImage(DicomBase):
     pass
+
+
+class DicomSeries:
+    """A series of DicomImages within the same study set.
+    """
 
 
 class DicomStructure(DicomBase):
