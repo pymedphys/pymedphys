@@ -23,7 +23,8 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-""" A dose profile tool box. """
+""" For importing, analyzing, and comparing dose or intensity profiles
+    from different sources."""
 
 import os
 import copy
@@ -55,13 +56,12 @@ class Profile():
 
     Attributes
     ----------
-    x : np.array
+    x    : np.array
         Displacement, +/- in cm
     data : np.array
         Intensity, units unspecified
     data : dict, optional
         Context-dependent, unspecified descriptors of the dataset.
-
     """
 
     def __init__(self, x=[], data=[], metadata={}):
@@ -84,8 +84,6 @@ class Profile():
             return True
         else:
             return False
-
-    # CONSIDER IMPLEMENTING > < AS "TO THE LEFT OF AND "TO THE RIGHT OF"
 
     def __copy__(self):
         return copy.deepcopy(self)

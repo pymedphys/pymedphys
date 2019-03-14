@@ -32,6 +32,12 @@
 
     additional/changelog.rst
 
+.. toctree::
+    :maxdepth: 1
+    :caption: Labs
+
+    _labs/paulking/profile.rst
+
 
 Indices and tables
 ==================
