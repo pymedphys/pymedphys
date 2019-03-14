@@ -44,6 +44,18 @@ class DicomBase:
     def __init__(self, dataset):
         self.dataset = dataset
 
+    @property
+    def dataset(self) -> pydicom.Dataset:
+        return deepcopy(self._dataset)
+
+    @dataset.setter
+    def dataset(self, dataset: pydicom.Dataset):
+        self._dataset = deepcopy(dataset)
+        self.after_assigning_dataset()
+
+    def after_assigning_dataset(self):
+        pass
+
     @classmethod
     def from_file(cls, filepath):
         dataset = pydicom.read_file(filepath, force=True)
@@ -58,18 +70,6 @@ class DicomBase:
 
     def __repr__(self):
         return self._dataset.__repr__()
-
-    @property
-    def dataset(self) -> pydicom.Dataset:
-        return deepcopy(self._dataset)
-
-    @dataset.setter
-    def dataset(self, dataset: pydicom.Dataset):
-        self._dataset = deepcopy(dataset)
-        self.after_assigning_dataset()
-
-    def after_assigning_dataset(self):
-        pass
 
     def save_as(self, filepath):
         self._dataset.save_as(filepath)
