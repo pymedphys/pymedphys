@@ -24,12 +24,11 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import json
 import argparse
 
 from ..dicom import (
-    adjust_machine_name_cli, adjust_rel_elec_density_cli,
-    structure_name_RED_adjust_cli)
+    adjust_machine_name_cli, adjust_RED_cli,
+    adjust_RED_by_structure_name_cli)
 from ..docker import server_cli
 
 
@@ -68,7 +67,7 @@ def dicom_cli(subparsers):
                                                       action='store_true')
 
     dicom_adjust_rel_elec_density_parser.set_defaults(
-        func=adjust_rel_elec_density_cli)
+        func=adjust_RED_cli)
 
     dicom_structure_name_RED_adjust = dicom_subparsers.add_parser(
         'structure-name-RED-adjust')
@@ -77,7 +76,7 @@ def dicom_cli(subparsers):
     dicom_structure_name_RED_adjust.add_argument('output_file', type=str)
 
     dicom_structure_name_RED_adjust.set_defaults(
-        func=structure_name_RED_adjust_cli)
+        func=adjust_RED_by_structure_name_cli)
 
 
 def docker_cli(subparsers):
