@@ -45,24 +45,6 @@ IMPORTS = get_imports(globals())
 # pylint: disable=C0103
 
 
-class DicomDose:
-
-    def __init__(self, dcm_filepath):
-        ds = pydicom.dcmread(dcm_filepath)
-        if ds.Modality != "RTDOSE":
-            raise ValueError("The input DICOM file is not an RT Dose file")
-        self.ds = ds
-
-        self.values = ds.pixel_array * ds.DoseGridScaling
-        self.units = ds.DoseUnits
-        self.x, self.y, self.z = extract_dicom_patient_xyz(ds)
-        self.coords = convert_xyz_to_dicom_coords((self.x, self.y, self.z))
-        self.mask = None
-
-    def save_to_dicom(self, filepath):
-        self.ds.save_as(filepath)
-
-
 def convert_xyz_to_dicom_coords(xyz_tuple):
     ZZ, YY, XX = np.meshgrid(
         xyz_tuple[2], xyz_tuple[1], xyz_tuple[0], indexing='ij')

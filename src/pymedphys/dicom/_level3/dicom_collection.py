@@ -30,13 +30,17 @@ import pydicom
 
 from .._level1.create import dicom_dataset_from_dict
 from .._level2.anonymise import anonymise_dicom_dataset
+from .._level2.dose import (
+    extract_dicom_patient_xyz, convert_xyz_to_dicom_coords)
 
 from ...libutils import get_imports
 
 IMPORTS = get_imports(globals())
 
+# pylint: disable=W0201
 
-class DicomBase():
+
+class DicomBase:
     def __init__(self, dataset):
         self.dataset = dataset
 
@@ -62,6 +66,10 @@ class DicomBase():
     @dataset.setter
     def dataset(self, dataset: pydicom.Dataset):
         self._dataset = deepcopy(dataset)
+        self.after_assigning_dataset()
+
+    def after_assigning_dataset(self):
+        pass
 
     def save_as(self, filepath):
         self._dataset.save_as(filepath)
@@ -70,3 +78,34 @@ class DicomBase():
         anonymised = anonymise_dicom_dataset(self.dataset)
 
         return self.__class__(anonymised)
+
+
+class DicomDose(DicomBase):
+    def after_assigning_dataset(self):
+        self.values = self._dataset.pixel_array * self._dataset.DoseGridScaling
+        self.units = self._dataset.DoseUnits
+
+        self.x, self.y, self.z = extract_dicom_patient_xyz(self._dataset)
+        self.coords = convert_xyz_to_dicom_coords((self.x, self.y, self.z))
+        self.mask = None
+
+
+class DicomCT(DicomBase):
+    pass
+
+
+class DicomStructure(DicomBase):
+    pass
+
+
+class DicomPlan(DicomBase):
+    pass
+
+
+class DicomCollection:
+    """A DICOM collection can hold one DICOM CT, one DICOM structure, one
+    DICOM plan and one DICOM dose. These DICOM files must align via UID
+    declaration.
+
+    Not all types are required to create a DicomCollection.
+    """
