@@ -126,10 +126,15 @@ class DicomPlan(DicomBase):
     pass
 
 
-class DicomCollection:
-    """A DICOM collection can hold one DICOM CT, one DICOM structure, one
+class DicomStudy:
+    """A DICOM study can hold one DICOM CT, one DICOM structure, one
     DICOM plan and one DICOM dose. These DICOM files must align via UID
     declaration.
 
-    Not all types are required to create a DicomCollection.
+    Not all types are required to create a DicomStudy.
+    """
+
+
+class DicomCollection:
+    """A DicomCollection can hold an arbitrary number of DicomStudy objects.
     """
