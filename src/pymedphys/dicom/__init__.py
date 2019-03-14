@@ -45,13 +45,13 @@ Available Functions
 from ..libutils import clean_and_verify_levelled_modules
 
 from ._level1.dicom_dict_baseline import *
-from ._level1.dicom_dose import *
+from ._level1.dicom_struct import *
 from ._level1.dicom_create import *
 from ._level2.header_tweaks import *
 from ._level2.dicom_anonymise import *
-from ._level2.dicom_struct import *
+from ._level2.dicom_dose import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.dicom_dose', '._level1.dicom_create', '._level2.header_tweaks',
-    '._level2.dicom_anonymise', '._level2.dicom_struct'
+    '._level2.dicom_dose', '._level1.dicom_create', '._level2.header_tweaks',
+    '._level2.dicom_anonymise', '._level1.dicom_struct'
 ], package='pymedphys.dicom')
