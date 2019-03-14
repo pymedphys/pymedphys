@@ -35,7 +35,7 @@ except ImportError:
     HAS_XLWINGS = False
 
 from ...dicom import (
-    extract_depth_dose, extract_profiles, interpolating_profile_extract)
+    extract_depth_dose, extract_profiles, arbitrary_profile_extract_from_ds)
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
@@ -93,7 +93,7 @@ if HAS_XLWINGS:
     def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
         ds = pydicom.read_file(dicom_path, force=True)
 
-        dose = interpolating_profile_extract(
+        dose = arbitrary_profile_extract_from_ds(
             ds, depth_adjust, inplane, crossplane, depth)
 
         return np.vstack([dose]).T

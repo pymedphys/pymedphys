@@ -455,7 +455,7 @@ def load_dicom_data(ds, depth_adjust):
     return inplane, crossplane, depth, dose
 
 
-def interpolating_profile_extract(ds, depth_adjust, inplane_ref, crossplane_ref, depth_ref):
+def arbitrary_profile_extract_from_ds(ds, depth_adjust, inplane_ref, crossplane_ref, depth_ref):
     inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
     interpolation_function = RegularGridInterpolator(
