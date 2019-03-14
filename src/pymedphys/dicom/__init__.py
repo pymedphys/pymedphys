@@ -49,11 +49,11 @@ from ._level1.structure import *
 from ._level1.create import *
 from ._level2.header_tweaks import *
 from ._level2.anonymise import *
-from ._level3.pydicom_wrapper import *
-from ._level4.dose import *
+from ._level2.dose import *
+from ._level3.dicom_collection import *
+
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.structure', '._level1.create', '._level2.header_tweaks',
-    '._level2.anonymise', '._level3.pydicom_wrapper',
-    '._level4.dose'
+    '._level2.anonymise', '._level2.dose', '._level3.dicom_collection'
 ], package='pymedphys.dicom')
