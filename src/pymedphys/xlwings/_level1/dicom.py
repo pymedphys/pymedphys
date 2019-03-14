@@ -86,14 +86,28 @@ if HAS_XLWINGS:
     @xw.func
     @xw.arg('dicom_path')
     @xw.arg('depth_adjust')
-    @xw.arg('inplane')
-    @xw.arg('crossplane')
-    @xw.arg('depth')
+    @xw.arg('inplane', empty=np.nan)
+    @xw.arg('crossplane', empty=np.nan)
+    @xw.arg('depth', empty=np.nan)
     @xw.ret(expand='table')
     def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
+        inplane = np.array(inplane)
+        crossplane = np.array(crossplane)
+        depth = np.array(depth)
+
+        inplane_ref = np.invert(np.isnan(inplane))
+        crossplane_ref = np.invert(np.isnan(crossplane))
+        depth_ref = np.invert(np.isnan(depth))
+
+        reference = inplane_ref & crossplane_ref & depth_ref
+
         ds = pydicom.read_file(dicom_path, force=True)
 
         dose = extract_arbitrary_profile_from_ds(
-            ds, depth_adjust, inplane, crossplane, depth)
+            ds, depth_adjust, inplane[reference], crossplane[reference],
+            depth[reference])
 
-        return np.vstack([dose]).T
+        result = np.ones_like(inplane) * np.nan
+        result[reference] = dose
+
+        return np.vstack([result]).T
