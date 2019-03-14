@@ -69,7 +69,7 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
 
 
 def adjust_rel_elec_density(ds, adjustment_map, ignore_missing_structure=False):
-    """Append or adjust relative electron densities of stuctures
+    """Append or adjust relative electron densities of structures
     """
 
     new_ds = deepcopy(ds)
@@ -115,7 +115,7 @@ def adjust_rel_elec_density(ds, adjustment_map, ignore_missing_structure=False):
     return new_ds
 
 
-def adjust_rel_elec_density_cli(args):
+def adjust_RED_cli(args):
     adjustment_map = {
         key: item
         for key, item in zip(args.adjustment_map[::2], args.adjustment_map[1::2])
@@ -129,9 +129,9 @@ def adjust_rel_elec_density_cli(args):
 
 
 def RED_adjustment_map_from_structure_names(structure_names):
-
+    structure_name_containing_RED_regex = r'^.*RED\s*[=:]\s*(\d+\.?\d*)\s*$'
     pattern = re.compile(
-        r'^.*RED\s*[=:]\s*(\d+\.?\d*)\s*$', flags=re.IGNORECASE)
+        structure_name_containing_RED_regex, flags=re.IGNORECASE)
 
     adjustment_map = {
         structure: float(pattern.match(structure).group(1))
@@ -142,7 +142,7 @@ def RED_adjustment_map_from_structure_names(structure_names):
     return adjustment_map
 
 
-def structure_name_RED_adjust(ds):
+def adjust_RED_by_structure_name(ds):
     """Adjust the structure electron density based on structure name.
     """
 
@@ -158,8 +158,8 @@ def structure_name_RED_adjust(ds):
     return adjusted_ds
 
 
-def structure_name_RED_adjust_cli(args):
+def adjust_RED_by_structure_name_cli(args):
     ds = pydicom.read_file(args.input_file, force=True)
-    new_ds = structure_name_RED_adjust(ds)
+    new_ds = adjust_RED_by_structure_name(ds)
 
     pydicom.write_file(args.output_file, new_ds)
