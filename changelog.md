@@ -36,13 +36,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - `gamma_dcm()` --> `gamma_dicom()`
 - MU Density related functions are no longer available under the `pymedphys.coll` package,
   instead they are found within `pymedphys.mudensity` package.
-- The DICOM coordinate extraction functions:
-    - `extract_dicom_patient_xyz()`,
-    - `extract_iec_patient_xyz()` and
-    - `extract_iec_fixed_xyz()`
-
-  now return simple tuples rather than `Coords` namedtuples.
-
+- The DICOM coordinate extraction functions now return simple tuples rather than `Coords` namedtuples:
+    - `extract_dicom_patient_xyz()`
+    - `extract_iec_patient_xyz()`
+    - `extract_iec_fixed_xyz()` 
 
 ### New Features
 - DICOM anonymisation now permits replacing deidentified values with suitable "dummy" values. This helps to
