@@ -24,10 +24,25 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-FILEMAP = {
-    'dicom-dose-orientation': 'https://doi.org/10.5281/zenodo.2594425',
-    'elekta-log-files': 'https://doi.org/10.5281/zenodo.2594333',
-    'varian-log-files': 'https://doi.org/10.5281/zenodo.2594289',
-    'gamma-regression-dicom-dose': 'https://doi.org/10.5281/zenodo.2594181',
-    'dicom-water-phantom': 'https://doi.org/10.5281/zenodo.2594105'
+FILE_URL_MAP = {
+    'DICOM-orientation.zip': {
+        'url': 'https://doi.org/10.5281/zenodo.2594425',
+        'md5': '8bb3cdb5403a534c437f4f542add6e47'
+    },
+    'elekta_logfiles.zip': {
+        'url': 'https://doi.org/10.5281/zenodo.2594333',
+        'md5': 'ce5e189db51366ada3b6b829d01fff2f'
+    },
+    'varian-logfiles.zip': {
+        'url': 'https://doi.org/10.5281/zenodo.2594289',
+        'md5': '276abe5f04987f4de472cdfe6b2f3bf8'
+    },
+    'gamma_regression_dicom_dose.zip': {
+        'url': 'https://doi.org/10.5281/zenodo.2594181',
+        'md5': '98698bb4ae166dcb9dbd02d669bad404'
+    },
+    'water-phantom.zip': {
+        'url': 'https://doi.org/10.5281/zenodo.2594436',
+        'md5': 'ec1c859537b7a64392b86db29a679f7a'
+    }
 }
