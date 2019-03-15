@@ -1,7 +1,7 @@
 {
   "name": "pymedphys",
   "description": "A description goes here.",
-  "version": "0.5.2-dev3",
+  "version": "0.6.0",
   "license": "AGPL-3.0+",
   "homepage": "./",
   "author": {
