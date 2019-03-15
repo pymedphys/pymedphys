@@ -37,9 +37,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - MU Density related functions are no longer available under the `pymedphys.coll` package,
   instead they are found within `pymedphys.mudensity` package.
 - The DICOM coordinate extraction functions:
-    - `extract_dicom_patient_xyz()`
-    - `extract_iec_patient_xyz()`
+    - `extract_dicom_patient_xyz()`,
+    - `extract_iec_patient_xyz()` and
     - `extract_iec_fixed_xyz()`
+
   now return simple tuples rather than `Coords` namedtuples.
 
 
