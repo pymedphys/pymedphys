@@ -32,13 +32,27 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   adjusted accordingly. Required changes include:
     - `pymedphys.dcm` --> `pymedphys.dicom`
     - `coords_and_dose_from_dcm()` --> `coords_and_dose_from_dicom()`
-    - `dcmfromdict()` --> `dicom_from_dict()`
+    - `dcmfromdict()` --> `dicom_dataset_from_dict()`
     - `gamma_dcm()` --> `gamma_dicom()`
 - MU Density related functions are no longer available under the `pymedphys.coll` package,
   instead they are found within `pymedphys.mudensity` package.
+- The DICOM coordinate extraction functions:
+    - `extract_dicom_patient_xyz()`
+    - `extract_iec_patient_xyz()`
+    - `extract_iec_fixed_xyz()`
+  now return simple tuples rather than `Coords` namedtuples.
+
+
+### New Features
+- DICOM anonymisation now permits replacing deidentified values with suitable "dummy" values. This helps to
+  maintain compatibility with DICOM software that includes checks (beyond those specified in the DICOM Standard)
+  of valid DICOM tag values. Replacing tags with dummy values upon anonymisation is now the default behaviour.
+- A set of 3D coordinate transformation functions, including rotations (passive or active) and translations.
+  Transformations may be applied to a single coordinate triplet (an `ndarray`) or a list of arbitrarily many
+  coordinate triplets (a 3 x n `ndarray`). **NB**: Documentation forthcoming. 
 
 ### Code Refactoring
-- All uses of `dcm` as a variable name for storing a PyDicom Dataset have been converted to `ds` to
+- All uses of `dcm` as a variable name for instances of PyDicom Datasets have been converted to `ds` to
   match PyDicom convention.
 
 <br/>
