@@ -16,7 +16,7 @@ PyMedPhys
 .. image:: https://img.shields.io/pypi/pyversions/pymedphys.svg
     :target: https://pypi.org/project/pymedphys
 
-..image:: https://img.shields.io/pypi/l/pymedphys.svg
+.. image:: https://img.shields.io/pypi/l/pymedphys.svg
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
