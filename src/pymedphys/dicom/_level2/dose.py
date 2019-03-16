@@ -37,30 +37,12 @@ from scipy.interpolate import RegularGridInterpolator
 import pydicom
 import pydicom.uid
 
-from .._level1.dicom_struct import pull_structure
+from .._level1.structure import pull_structure
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 # pylint: disable=C0103
-
-
-class DicomDose:
-
-    def __init__(self, dcm_filepath):
-        ds = pydicom.dcmread(dcm_filepath)
-        if ds.Modality != "RTDOSE":
-            raise ValueError("The input DICOM file is not an RT Dose file")
-        self.ds = ds
-
-        self.values = ds.pixel_array * ds.DoseGridScaling
-        self.units = ds.DoseUnits
-        self.x, self.y, self.z = extract_dicom_patient_xyz(ds)
-        self.coords = convert_xyz_to_dicom_coords((self.x, self.y, self.z))
-        self.mask = None
-
-    def save_to_dicom(self, filepath):
-        self.ds.save_as(filepath)
 
 
 def convert_xyz_to_dicom_coords(xyz_tuple):

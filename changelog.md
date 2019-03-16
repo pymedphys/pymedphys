@@ -8,10 +8,30 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Breaking Changes
-- nil
+- `anonymise_dicom` has been renamed to `anonymise_dicom_dataset`
 
 ### New Features
-- nil
+- Implementing a suite of Dicom objects, currently a work in progress:
+  - `DicomBase`, a base DICOM class that wraps `pydicom`'s `Dataset` object.
+    This class includes additions such as an anonymisation method.
+  - `DicomImage`, designed to hold a single DICOM image slice. Might someday
+    contain methods such as `resample` and the like.
+  - `DicomSeries`, a series of `DicomImage` objects creating a CT dataset.
+  - `DicomStructure`, designed to house DICOM structure datasets.
+  - `DicomPlan`, a class that holds RT plan DICOM datasets.
+  - `DicomDose`, a class that to hold RT DICOM dose datasets. It has helper
+    functions and parameters such as coordinate transforms built into it.
+  - `DicomStudy`, a class designed to hold an interrelated set of `DicomDose`,
+    `DicomPlan`, `DicomStructure`, and `DicomSeries`. Not every type is
+    required to create a `DicomStudy`. Certain methods will be
+    available on `DicomStudy` depending what is housed within it. For example
+    having both `DicomDose` and `DicomStructure` should enable DVH based
+    methods.
+  - `DicomCollection`, a class that can hold multiple studies, interrelated or
+    not. A common use case that will likely be implemented is
+    `DicomCollection.from_directory(directory_path)` which would pull all DICOM
+    files nested within a directory and sort them into `DicomStudy` objects
+    based on their header UIDs.
 
 ### Bug Fixes
 - nil
@@ -39,7 +59,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The DICOM coordinate extraction functions now return simple tuples rather than `Coords` namedtuples:
     - `extract_dicom_patient_xyz()`
     - `extract_iec_patient_xyz()`
-    - `extract_iec_fixed_xyz()` 
+    - `extract_iec_fixed_xyz()`
 
 ### New Features
 - DICOM anonymisation now permits replacing deidentified values with suitable "dummy" values. This helps to
@@ -47,7 +67,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   of valid DICOM tag values. Replacing tags with dummy values upon anonymisation is now the default behaviour.
 - A set of 3D coordinate transformation functions, including rotations (passive or active) and translations.
   Transformations may be applied to a single coordinate triplet (an `ndarray`) or a list of arbitrarily many
-  coordinate triplets (a 3 x n `ndarray`). **NB**: Documentation forthcoming. 
+  coordinate triplets (a 3 x n `ndarray`). **NB**: Documentation forthcoming.
 
 ### Code Refactoring
 - All uses of `dcm` as a variable name for instances of PyDicom Datasets have been converted to `ds` to
