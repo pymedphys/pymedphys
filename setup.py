@@ -101,7 +101,8 @@ setup(
         'scipy',
         'shapely',
         'xarray',
-        'xlwings; platform_system != "Linux"'
+        'xlwings; platform_system != "Linux"',
+        'dataclasses; python_version=="3.6"'
     ],
     setup_requires=[
         'pytest-runner'
