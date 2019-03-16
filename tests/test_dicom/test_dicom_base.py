@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import io
+
 from pymedphys.dicom import DicomBase, dicom_dataset_from_dict
 
 
@@ -65,3 +67,18 @@ def test_anonymise():
     dicom.anonymise(inplace=True)
 
     assert dicom.dataset == expected_dataset
+
+
+def test_to_and_from_file():
+    temp_file = io.BytesIO()
+
+    dicom = DicomBase.from_dict({
+        'Manufacturer': 'PyMedPhys',
+        'PatientName': 'Python^Monte'
+    })
+
+    dicom.to_file(temp_file)
+
+    new_dicom = DicomBase.from_file(temp_file)
+
+    assert new_dicom == dicom
