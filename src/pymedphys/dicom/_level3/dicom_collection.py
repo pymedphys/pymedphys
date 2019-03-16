@@ -62,7 +62,7 @@ class DicomBase:
 
     @classmethod
     def from_file(cls, filepath):
-        dataset = pydicom.read_file(filepath, force=True)
+        dataset = pydicom.dcmread(filepath, force=True)
 
         return cls(dataset)
 
@@ -103,10 +103,6 @@ class DicomDose(DicomBase):
     @property
     def units(self):
         return self.dataset.DoseUnits
-
-    @units.setter
-    def units(self, units_used):
-        self.dataset.DoseUnits = units_used
 
     # TODO: Need to refactor the following to still be a view to the dataset
     # but not needlessly call the entire function.

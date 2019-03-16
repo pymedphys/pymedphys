@@ -119,6 +119,7 @@ setup(
         'pytest-pylint',
         'pytest-mypy',
         'pytest-doctestplus',
+        'pytest-cov',
         'sphinx >= 1.4',
         'sphinx_rtd_theme',
         'sphinx-testing'
