@@ -92,6 +92,9 @@ jobs:
       vmImage: 'ubuntu-16.04'
 
     steps:
+    - script: "python -m pip install pip setuptools"
+      displayName: Upgrade pip and setuptools
+
     - script: "python -m pip install nbstripout"
       displayName: Install nbstripout
 
