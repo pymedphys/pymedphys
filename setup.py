@@ -37,21 +37,6 @@ def read(*names, **kwargs):
     ).read()
 
 
-# https://docs.pytest.org/en/latest/goodpractices.html#manual-integration
-class PyTest(TestCommand):
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-
-    def run_tests(self):
-
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-
-        errno = pytest.main([
-            "-v", "--junitxml=junit/unit-test.xml", "--durations=0"])
-        sys.exit(errno)
-
-
 setup(
     name="pymedphys",
     version=version,
@@ -101,10 +86,6 @@ setup(
         'xlwings; platform_system != "Linux"',
         'dataclasses; python_version=="3.6"'
     ],
-    setup_requires=[
-        'pytest-runner'
-    ],
-    cmdclass={"pytest": PyTest},
     extras_require={
         'docs': [
             'm2r',
