@@ -86,7 +86,7 @@ jobs:
       condition: succeededOrFailed()
 
 
-  - job: Notebook_Outputs
+  - job: Notebook-Outputs
 
     pool:
       vmImage: 'ubuntu-16.04'
