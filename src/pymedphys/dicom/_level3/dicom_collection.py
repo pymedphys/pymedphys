@@ -46,6 +46,12 @@ class DicomBase:
         if copy:
             dataset = deepcopy(dataset)
 
+        if dataset.is_little_endian is None:
+            dataset.is_little_endian = True
+
+        if dataset.is_implicit_VR is None:
+            dataset.is_implicit_VR = True
+
         self.dataset = dataset
 
     @classmethod
@@ -63,7 +69,10 @@ class DicomBase:
     def __repr__(self):
         return self.dataset.__repr__()
 
-    def save_as(self, filepath):
+    def __eq__(self, other):
+        return self.dataset.__eq__(other.dataset)
+
+    def to_file(self, filepath):
         self.dataset.save_as(filepath)
 
     def anonymise(self, inplace=False):
