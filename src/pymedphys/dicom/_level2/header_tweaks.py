@@ -31,28 +31,29 @@ import pydicom
 
 from ...libutils import get_imports
 
-from .._level1.dicom_create import dicom_dataset_from_dict
+from .._level1.create import dicom_dataset_from_dict
 
 IMPORTS = get_imports(globals())
 
 
-def adjust_machine_name(ds, new_machine_name):
+def adjust_machine_name(dicom_dataset, new_machine_name):
     """Change the machine name within the DICOM header
     """
 
-    new_ds = deepcopy(ds)
+    new_dicom_dataset = deepcopy(dicom_dataset)
 
-    for beam in new_ds.BeamSequence:
+    for beam in new_dicom_dataset.BeamSequence:
         beam.TreatmentMachineName = new_machine_name
 
-    return new_ds
+    return new_dicom_dataset
 
 
 def adjust_machine_name_cli(args):
-    ds = pydicom.read_file(args.input_file, force=True)
-    new_ds = adjust_machine_name(ds, args.new_machine_name)
+    dicom_dataset = pydicom.read_file(args.input_file, force=True)
+    new_dicom_dataset = adjust_machine_name(
+        dicom_dataset, args.new_machine_name)
 
-    pydicom.write_file(args.output_file, new_ds)
+    pydicom.write_file(args.output_file, new_dicom_dataset)
 
 
 def delete_sequence_item_with_matching_key(sequence, key, value):
@@ -68,20 +69,21 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
     return new_sequence
 
 
-def adjust_rel_elec_density(ds, adjustment_map, ignore_missing_structure=False):
+def adjust_rel_elec_density(dicom_dataset, adjustment_map,
+                            ignore_missing_structure=False):
     """Append or adjust relative electron densities of structures
     """
 
-    new_ds = deepcopy(ds)
+    new_dicom_dataset = deepcopy(dicom_dataset)
 
     ROI_name_to_number_map = {
         structure_set.ROIName: structure_set.ROINumber
-        for structure_set in new_ds.StructureSetROISequence
+        for structure_set in new_dicom_dataset.StructureSetROISequence
     }
 
     ROI_number_to_observation_map = {
         observation.ReferencedROINumber: observation
-        for observation in new_ds.RTROIObservationsSequence
+        for observation in new_dicom_dataset.RTROIObservationsSequence
     }
 
     for structure_name, new_red in adjustment_map.items():
@@ -112,20 +114,22 @@ def adjust_rel_elec_density(ds, adjustment_map, ignore_missing_structure=False):
 
         observation.ROIPhysicalPropertiesSequence = physical_properties
 
-    return new_ds
+    return new_dicom_dataset
 
 
 def adjust_RED_cli(args):
     adjustment_map = {
         key: item
-        for key, item in zip(args.adjustment_map[::2], args.adjustment_map[1::2])
+        for key, item in zip(
+            args.adjustment_map[::2], args.adjustment_map[1::2])
     }
 
-    ds = pydicom.read_file(args.input_file, force=True)
-    new_ds = adjust_rel_elec_density(
-        ds, adjustment_map, ignore_missing_structure=args.ignore_missing_structure)
+    dicom_dataset = pydicom.read_file(args.input_file, force=True)
+    new_dicom_dataset = adjust_rel_elec_density(
+        dicom_dataset, adjustment_map,
+        ignore_missing_structure=args.ignore_missing_structure)
 
-    pydicom.write_file(args.output_file, new_ds)
+    pydicom.write_file(args.output_file, new_dicom_dataset)
 
 
 def RED_adjustment_map_from_structure_names(structure_names):
@@ -142,24 +146,24 @@ def RED_adjustment_map_from_structure_names(structure_names):
     return adjustment_map
 
 
-def adjust_RED_by_structure_name(ds):
+def adjust_RED_by_structure_name(dicom_dataset):
     """Adjust the structure electron density based on structure name.
     """
-
     structure_names = [
         structure_set.ROIName
-        for structure_set in ds.StructureSetROISequence
+        for structure_set in dicom_dataset.StructureSetROISequence
     ]
 
     adjustment_map = RED_adjustment_map_from_structure_names(structure_names)
 
-    adjusted_ds = adjust_rel_elec_density(ds, adjustment_map)
+    adjusted_dicom_dataset = adjust_rel_elec_density(
+        dicom_dataset, adjustment_map)
 
-    return adjusted_ds
+    return adjusted_dicom_dataset
 
 
 def adjust_RED_by_structure_name_cli(args):
-    ds = pydicom.read_file(args.input_file, force=True)
-    new_ds = adjust_RED_by_structure_name(ds)
+    dicom_dataset = pydicom.read_file(args.input_file, force=True)
+    new_dicom_dataset = adjust_RED_by_structure_name(dicom_dataset)
 
-    pydicom.write_file(args.output_file, new_ds)
+    pydicom.write_file(args.output_file, new_dicom_dataset)
