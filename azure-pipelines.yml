@@ -7,52 +7,52 @@ jobs:
           image_name: 'ubuntu-16.04'
           test_title: 'Pylint'
           toxenv: pylint
-          python: py37
+          python: 3.7
         docs:
           image_name: 'ubuntu-16.04'
           test_title: 'Docs'
           toxenv: docs
-          python: py37
+          python: 3.7
         layer-lint:
           image_name: 'ubuntu-16.04'
           test_title: 'Layer-Lint'
           toxenv: layer_lint
-          python: py37
+          python: 3.7
         mypy:
           image_name: 'ubuntu-16.04'
           test_title: 'mypy'
           toxenv: mypy
-          python: py37
+          python: 3.7
         linux-py36:
           image_name: 'ubuntu-16.04'
           test_title: 'Linux py36'
           toxenv: py36
-          python: py36
+          python: 3.6
         linux-py37:
           image_name: 'ubuntu-16.04'
           test_title: 'Linux py37'
           toxenv: py37
-          python: py37
+          python: 3.7
         mac-py36:
           image_name: 'macos-10.13'
           test_title: 'macOS py36'
           toxenv: py36
-          python: py36
+          python: 3.6
         mac-py37:
           image_name: 'macos-10.13'
           test_title: 'macOS py37'
           toxenv: py37
-          python: py37
+          python: 3.7
         windows-py36:
           image_name: 'vs2017-win2016'
           test_title: 'Windows'
           toxenv: py36
-          python: py36
+          python: 3.6
         windows-py37:
           image_name: 'vs2017-win2016'
           test_title: 'Windows'
           toxenv: py37
-          python: py37
+          python: 3.7
 
     pool:
       vmImage: $(image_name)
