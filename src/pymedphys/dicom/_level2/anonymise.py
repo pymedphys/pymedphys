@@ -108,8 +108,9 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'UI': "12345678"}
 
 
-def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True, keywords_to_keep=None,
-                            ignore_unknown_tags=False):
+def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
+                            keywords_to_keep=None, ignore_unknown_tags=False,
+                            copy=True):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
@@ -181,7 +182,11 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True, k
                 "that the baseline DICOM dictionary is obsolete."
                 .format(unknown_tag_names))
 
-    ds_anon = copy.deepcopy(ds)
+    if copy:
+        ds_anon = copy.deepcopy(ds)
+    else:
+        ds_anon = ds
+
     keywords_to_anonymise = list(IDENTIFYING_KEYWORDS)
 
     # Remove private tags from DICOM file unless requested not to.
