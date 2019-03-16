@@ -66,10 +66,10 @@ jobs:
     - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
-    - script: "python -m pip install -U pip setuptools --user -v"
+    - script: "python -m pip install pip setuptools"
       displayName: Upgrade pip and setuptools
 
-    - script: "python -m pip install -U tox --user -v"
+    - script: "python -m pip install tox"
       displayName: Install tox
 
     - script: python -m tox -e $TOXENV --notest
@@ -92,7 +92,7 @@ jobs:
       vmImage: 'ubuntu-16.04'
 
     steps:
-    - script: "python -m pip install -U nbstripout"
+    - script: "python -m pip install nbstripout"
       displayName: Install nbstripout
 
     - bash:  find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
