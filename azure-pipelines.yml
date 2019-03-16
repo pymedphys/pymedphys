@@ -3,34 +3,34 @@ jobs:
 
     strategy:
       matrix:
-        pylint:
+        Pylint:
           image_name: 'ubuntu-16.04'
           test_title: 'Pylint'
           toxenv: pylint
           python: 3.7
-        docs:
+        Docs:
           image_name: 'ubuntu-16.04'
           test_title: 'Docs'
           toxenv: docs
           python: 3.7
-        layer-lint:
+        Layer-Lint:
           image_name: 'ubuntu-16.04'
           test_title: 'Layer-Lint'
           toxenv: layer_lint
           python: 3.7
-        mypy:
+        Mypy:
           image_name: 'ubuntu-16.04'
           test_title: 'mypy'
           toxenv: mypy
           python: 3.7
-        linux-py36:
+        Linux-Py36:
           image_name: 'ubuntu-16.04'
-          test_title: 'Linux py36'
+          test_title: 'Linux Py36'
           toxenv: py36
           python: 3.6
-        linux-py37:
+        Linux-Py37:
           image_name: 'ubuntu-16.04'
-          test_title: 'Linux py37'
+          test_title: 'Linux Py37'
           toxenv: py37
           python: 3.7
         # mac-py36:
