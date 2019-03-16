@@ -69,7 +69,7 @@ jobs:
     - script: "python -m pip install -U pip setuptools --user -v"
       displayName: Upgrade pip and setuptools
 
-    - script: "python -m pip install -U tox --pre --user -v"
+    - script: "python -m pip install -U tox --user -v"
       displayName: Install tox
 
     - script: python -m tox -e $TOXENV --notest
