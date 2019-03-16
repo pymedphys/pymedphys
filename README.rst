@@ -1,8 +1,8 @@
 PyMedPhys
 =========
 
-.. image:: https://img.shields.io/azure-devops/build/pymedphys/pymedphys/4.svg
-    :target: https://dev.azure.com/pymedphys/pymedphys/_build?definitionId=4/
+.. image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
+    :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
 
 .. image:: https://readthedocs.org/projects/pymedphys/badge/?version=latest
     :target: https://pymedphys.com/
