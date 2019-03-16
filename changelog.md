@@ -13,7 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### New Features
 - Implementing a suite of Dicom objects, currently a work in progress:
   - `DicomBase`, a base DICOM class that wraps `pydicom`'s `Dataset` object.
-    This class includes aditions such as an anonymisation method.
+    This class includes additions such as an anonymisation method.
   - `DicomImage`, designed to hold a single DICOM image slice. Might someday
     contain methods such as `resample` and the like.
   - `DicomSeries`, a series of `DicomImage` objects creating a CT dataset.
@@ -21,13 +21,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - `DicomPlan`, a class that holds RT plan DICOM datasets.
   - `DicomDose`, a class that to hold RT DICOM dose datasets. It has helper
     functions and parameters such as coordinate transforms built into it.
-  - `DicomStudy`, a class designed to hold an interelated set of `DicomDose`,
+  - `DicomStudy`, a class designed to hold an interrelated set of `DicomDose`,
     `DicomPlan`, `DicomStructure`, and `DicomSeries`. Not every type is
     required to create a `DicomStudy`. Certain methods will be
     available on `DicomStudy` depending what is housed within it. For example
     having both `DicomDose` and `DicomStructure` should enable DVH based
     methods.
-  - `DicomCollection`, a class that can hold multiple studies, interellated or
+  - `DicomCollection`, a class that can hold multiple studies, interrelated or
     not. A common use case that will likely be implemented is
     `DicomCollection.from_directory(directory_path)` which would pull all DICOM
     files nested within a directory and sort them into `DicomStudy` objects
