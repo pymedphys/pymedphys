@@ -1,56 +1,56 @@
 jobs:
-  - job: 'Tox'
+  - job: Tox
 
     strategy:
       matrix:
         Pylint:
-          image_name: 'ubuntu-16.04'
-          test_title: 'Pylint'
+          image_name: ubuntu-16.04
+          test_title: Pylint
           toxenv: pylint
           python: 3.7
         Docs:
-          image_name: 'ubuntu-16.04'
-          test_title: 'Docs'
+          image_name: ubuntu-16.04
+          test_title: Docs
           toxenv: docs
           python: 3.7
         Layer-Lint:
-          image_name: 'ubuntu-16.04'
-          test_title: 'Layer-Lint'
+          image_name: ubuntu-16.04
+          test_title: Layer-Lint
           toxenv: layer_lint
           python: 3.7
         Mypy:
-          image_name: 'ubuntu-16.04'
-          test_title: 'mypy'
+          image_name: ubuntu-16.04
+          test_title: mypy
           toxenv: mypy
           python: 3.7
         Linux-Py36:
-          image_name: 'ubuntu-16.04'
-          test_title: 'Linux Py36'
+          image_name: ubuntu-16.04
+          test_title: Linux Py36
           toxenv: py36
           python: 3.6
         Linux-Py37:
-          image_name: 'ubuntu-16.04'
-          test_title: 'Linux Py37'
+          image_name: ubuntu-16.04
+          test_title: Linux Py37
           toxenv: py37
           python: 3.7
         # mac-py36:
-        #   image_name: 'macos-10.13'
-        #   test_title: 'macOS py36'
+        #   image_name: macos-10.13
+        #   test_title: macOS py36
         #   toxenv: py36
         #   python: 3.6
         # mac-py37:
-        #   image_name: 'macos-10.13'
-        #   test_title: 'macOS py37'
+        #   image_name: macos-10.13
+        #   test_title: macOS py37
         #   toxenv: py37
         #   python: 3.7
         # windows-py36:
-        #   image_name: 'vs2017-win2016'
-        #   test_title: 'Windows'
+        #   image_name: vs2017-win2016
+        #   test_title: Windows
         #   toxenv: py36
         #   python: 3.6
         # windows-py37:
-        #   image_name: 'vs2017-win2016'
-        #   test_title: 'Windows'
+        #   image_name: vs2017-win2016
+        #   test_title: Windows
         #   toxenv: py37
         #   python: 3.7
 
