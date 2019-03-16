@@ -4,6 +4,13 @@ PyMedPhys
 .. image:: https://readthedocs.org/projects/pymedphys/badge/?version=latest
     :target: https://pymedphys.com/
 
+.. image:: https://badge.fury.io/py/pymedphys.svg
+    :target: https://pypi.org/project/pymedphys
+
+.. image:: https://img.shields.io/conda/vn/conda-forge/pymedphys.svg
+    :target: https://anaconda.org/conda-forge/pymedphys
+
+
 Description
 -----------
 The PyMedPhys Project aims to develop a common core package for Medical Physics

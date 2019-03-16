@@ -41,6 +41,12 @@ IMPORTS = get_imports(globals())
 # pylint: disable=W0201
 
 
+# Many thanks to the Medical Connections for offering free
+# valid UIDs (http://www.medicalconnections.co.uk/FreeUID.html)
+# Their service was used to obtain the following root UID for PyMedPhys:
+PYMEDPHYS_ROOT_UID = '1.2.826.0.1.3680043.10.188'
+
+
 class DicomBase:
     def __init__(self, dataset, copy=True):
         if copy:
@@ -60,6 +66,9 @@ class DicomBase:
 
         return cls(dataset)
 
+    def to_file(self, filepath):
+        self.dataset.save_as(filepath)
+
     @classmethod
     def from_dict(cls, dictionary):
         dataset = dicom_dataset_from_dict(dictionary)
@@ -71,9 +80,6 @@ class DicomBase:
 
     def __eq__(self, other):
         return self.dataset.__eq__(other.dataset)
-
-    def to_file(self, filepath):
-        self.dataset.save_as(filepath)
 
     def anonymise(self, inplace=False):
         to_copy = not inplace
