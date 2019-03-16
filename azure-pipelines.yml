@@ -1,46 +1,96 @@
 jobs:
-  - job: 'PyTest'
+  - job: 'Tox'
 
     strategy:
       matrix:
-        linux:
-          imageName: 'ubuntu-16.04'
-          testTitle: 'Linux'
-        mac:
-          imageName: 'macos-10.13'
-          testTitle: 'macOS'
-        windows:
-          imageName: 'vs2017-win2016'
-          testTitle: 'Windows'
+        pylint:
+          image_name: 'ubuntu-16.04'
+          test_title: 'Pylint'
+          toxenv: pylint
+          python: py37
+        docs:
+          image_name: 'ubuntu-16.04'
+          test_title: 'Docs'
+          toxenv: docs
+          python: py37
+        layer-lint:
+          image_name: 'ubuntu-16.04'
+          test_title: 'Layer-Lint'
+          toxenv: layer_lint
+          python: py37
+        mypy:
+          image_name: 'ubuntu-16.04'
+          test_title: 'mypy'
+          toxenv: mypy
+          python: py37
+        linux-py36:
+          image_name: 'ubuntu-16.04'
+          test_title: 'Linux py36'
+          toxenv: py36
+          python: py36
+        linux-py37:
+          image_name: 'ubuntu-16.04'
+          test_title: 'Linux py37'
+          toxenv: py37
+          python: py37
+        mac-py36:
+          image_name: 'macos-10.13'
+          test_title: 'macOS py36'
+          toxenv: py36
+          python: py36
+        mac-py37:
+          image_name: 'macos-10.13'
+          test_title: 'macOS py37'
+          toxenv: py37
+          python: py37
+        windows-py36:
+          image_name: 'vs2017-win2016'
+          test_title: 'Windows'
+          toxenv: py36
+          python: py36
+        windows-py37:
+          image_name: 'vs2017-win2016'
+          test_title: 'Windows'
+          toxenv: py37
+          python: py37
 
     pool:
-      vmImage: $(imageName)
+      vmImage: $(image_name)
 
     steps:
-    - task: CondaEnvironment@1
+    - task: UsePythonVersion@0
+      displayName: setup python
       inputs:
-        createCustomEnvironment: true
-        environmentName: pymedphys
-        packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip scipy numpy=1.15
-        updateConda: true
-        createOptions: --channel conda-forge
+        versionSpec: $(python)
 
-    - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ln -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
-      displayName: 'Install Homebrew and GNU xargs'
-      condition: eq( variables['Agent.OS'], 'Darwin' )
+    - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+      displayName: show python information
 
-    - bash: source ./azure-pipelines/scripts/activate.sh && pip install -e .
-      displayName: 'Install development version of PyMedPhys'
-    - bash: source ./azure-pipelines/scripts/activate.sh && ./azure-pipelines/scripts/matplotlib-backend.sh
-      displayName: 'Set matplotlib backend to Agg'
-    - bash: source ./azure-pipelines/scripts/activate.sh && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
-      displayName: 'Check that notebooks have no included output'
-    - bash: source ./azure-pipelines/scripts/activate.sh && python setup.py test
-      displayName: 'Run the full pytest suite'
+    - script: "python -m pip install -U pip setuptools --user -v"
+      displayName: upgrade pip and setuptools
+
+    - script: "python -m pip install -U tox --pre --user -v"
+      displayName: install tox
+
+    - script: python -m tox -e $TOXENV --notest
+      displayName: install test dependencies
+
+    - script: python -m tox -e $TOXENV
+      displayName: run tests
 
     - task: PublishTestResults@2
       displayName: Publish Test Results
       inputs:
         testResultsFiles: junit/*.xml
-        testRunTitle: '$(testTitle)'
+        testRunTitle: '$(test_title)'
       condition: succeededOrFailed()
+
+
+  - job: NotebookOutputs
+
+    pool:
+      vmImage: 'ubuntu-16.04'
+
+    steps:
+    - bash: source ./azure-pipelines/scripts/activate.sh && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
+      displayName: 'Check that notebooks have no included output'
