@@ -81,4 +81,4 @@ def test_to_and_from_file():
 
     new_dicom = DicomBase.from_file(temp_file)
 
-    assert new_dicom == dicom
+    assert new_dicom.dataset == dicom.dataset
