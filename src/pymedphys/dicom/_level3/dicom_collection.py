@@ -74,8 +74,8 @@ class DicomBase:
 
 class DicomDose(DicomBase):
 
-    def __init__(self, dataset):
-        super().__init__(dataset)
+    def __init__(self, dataset, copy=True):
+        super().__init__(dataset, copy=copy)
 
         self.mask = None
 
