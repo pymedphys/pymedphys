@@ -67,7 +67,8 @@ class DicomBase:
         self.dataset.save_as(filepath)
 
     def anonymise(self, inplace=False):
-        anonymised = anonymise_dicom_dataset(self.dataset, copy=not(inplace))
+        to_copy = not inplace
+        anonymised = anonymise_dicom_dataset(self.dataset, copy=to_copy)
 
         if not inplace:
             return self.__class__(anonymised)
