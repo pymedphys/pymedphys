@@ -64,19 +64,19 @@ jobs:
         versionSpec: $(python)
 
     - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
-      displayName: show python information
+      displayName: Show python information
 
     - script: "python -m pip install -U pip setuptools --user -v"
-      displayName: upgrade pip and setuptools
+      displayName: Upgrade pip and setuptools
 
     - script: "python -m pip install -U tox --pre --user -v"
-      displayName: install tox
+      displayName: Install tox
 
     - script: python -m tox -e $TOXENV --notest
-      displayName: install test dependencies
+      displayName: Install test dependencies
 
     - script: python -m tox -e $TOXENV
-      displayName: run tests
+      displayName: Run tests
 
     - task: PublishTestResults@2
       displayName: Publish Test Results
@@ -92,5 +92,8 @@ jobs:
       vmImage: 'ubuntu-16.04'
 
     steps:
-    - bash: source ./azure-pipelines/scripts/activate.sh && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
-      displayName: 'Check that notebooks have no included output'
+    - script: "python -m pip install -U nbstripout"
+      displayName: Install nbstripout
+
+    - bash:  find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
+      displayName: Check that notebooks have no included output
