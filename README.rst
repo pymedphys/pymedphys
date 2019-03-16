@@ -1,14 +1,22 @@
 PyMedPhys
 =========
 
+.. image:: https://img.shields.io/azure-devops/build/pymedphys/pymedphys/4.svg
+    :target: https://dev.azure.com/pymedphys/pymedphys/_build?definitionId=4
+
 .. image:: https://readthedocs.org/projects/pymedphys/badge/?version=latest
     :target: https://pymedphys.com/
 
-.. image:: https://badge.fury.io/py/pymedphys.svg
+.. image:: https://img.shields.io/pypi/v/pymedphys.svg
     :target: https://pypi.org/project/pymedphys
 
 .. image:: https://img.shields.io/conda/vn/conda-forge/pymedphys.svg
     :target: https://anaconda.org/conda-forge/pymedphys
+
+.. image:: https://img.shields.io/pypi/pyversions/pymedphys.svg
+
+..image:: https://img.shields.io/pypi/l/pymedphys.svg
+    :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
 Description
