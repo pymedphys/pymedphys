@@ -48,10 +48,7 @@ class PyTest(TestCommand):
         import pytest
 
         errno = pytest.main([
-            "-v", "--pylint", "--pylint-error-types=EF", "--mypy",
-            "--doctest-modules", "--doctest-continue-on-failure",
-            "--doctest-plus", "--doctest-rst", "--junitxml=junit/unit-test.xml",
-            "--durations=0"])
+            "-v", "--junitxml=junit/unit-test.xml", "--durations=0"])
         sys.exit(errno)
 
 
@@ -91,11 +88,11 @@ setup(
         'keyring',
         'matplotlib',
         'notebook',
-        'numpy>=1.12',
+        'numpy <1.16, >=1.12',
         'pandas',
         'Pillow',
         'psutil',
-        'pydicom>=1.0',
+        'pydicom >= 1.0',
         'pymssql',
         'python-dateutil',
         'scipy',
@@ -107,28 +104,18 @@ setup(
     setup_requires=[
         'pytest-runner'
     ],
-    tests_require=[
-        'coverage',
-        'deepdiff',
-        'layer-linter',
-        'm2r',
-        'mypy',
-        'numpydoc',
-        'pylint',
-        'pytest',
-        'pytest-pylint',
-        'pytest-mypy',
-        'pytest-doctestplus',
-        'pytest-cov',
-        'sphinx >= 1.4',
-        'sphinx_rtd_theme',
-        'sphinx-testing'
-    ],
     cmdclass={"pytest": PyTest},
     extras_require={
         'docs': [
             'm2r',
             'numpydoc',
             'sphinx >= 1.4',
-            'sphinx_rtd_theme']}
+            'sphinx_rtd_theme'
+        ],
+        'testing': [
+            'deepdiff',
+            'pytest',
+            'pytest-cov'
+        ]
+    }
 )

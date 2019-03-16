@@ -24,6 +24,7 @@
 
 """A test suite for the DICOM RT Dose toolbox"""
 import json
+import uuid
 from os import remove
 from os.path import abspath, basename, dirname, join as pjoin
 from zipfile import ZipFile
@@ -132,8 +133,10 @@ def test_extract_dicom_patient_xyz():
 def test_DicomDose_constancy():
     save_new_baseline = False
 
+    wedge_basline_filename = "wedge_dose_baseline.json"
+
     baseline_dicom_dose_dict_filepath = pjoin(
-        DATA_DIRECTORY, "wedge_dose_baseline.json")
+        DATA_DIRECTORY, wedge_basline_filename)
     baseline_dicom_dose_dict_zippath = pjoin(
         DATA_DIRECTORY, "lfs-wedge_dose_baseline.zip")
 
@@ -158,10 +161,9 @@ def test_DicomDose_constancy():
         remove(baseline_dicom_dose_dict_filepath)
     else:
         with ZipFile(baseline_dicom_dose_dict_zippath, 'r') as zip_ref:
-            zip_ref.extractall(DATA_DIRECTORY)
-        with open(baseline_dicom_dose_dict_filepath, 'r') as fp:
-            expected_dicom_dose_dict = json.load(fp)
-        remove(baseline_dicom_dose_dict_filepath)
+            with zip_ref.open(wedge_basline_filename) as a_file:
+                expected_dicom_dose_dict = json.load(a_file)
+
         assert np.allclose(test_dicom_dose.values, np.array(
             expected_dicom_dose_dict['values']))
         assert test_dicom_dose.units == expected_dicom_dose_dict['units']
