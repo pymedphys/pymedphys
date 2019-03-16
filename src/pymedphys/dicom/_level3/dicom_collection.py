@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from copy import deepcopy
+
 import numpy as np
 import pydicom
 
@@ -40,7 +42,10 @@ IMPORTS = get_imports(globals())
 
 
 class DicomBase:
-    def __init__(self, dataset):
+    def __init__(self, dataset, copy=True):
+        if copy:
+            dataset = deepcopy(dataset)
+
         self.dataset = dataset
 
     @classmethod
