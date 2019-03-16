@@ -49,3 +49,19 @@ def test_copy():
 
     assert dataset_to_be_copied.Manufacturer == dont_change_string
     assert dataset_to_be_viewed.Manufacturer == new_manufactuer
+
+
+def test_anonymise():
+    expected_dataset = dicom_dataset_from_dict({
+        'Manufacturer': 'PyMedPhys',
+        'PatientName': 'Anonymous'
+    })
+
+    dicom = DicomBase.from_dict({
+        'Manufacturer': 'PyMedPhys',
+        'PatientName': 'Python^Monte'
+    })
+
+    dicom.anonymise(inplace=True)
+
+    assert dicom.dataset == expected_dataset
