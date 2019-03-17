@@ -27,11 +27,9 @@ import copy
 
 import numpy as np
 
-import pydicom
-
 from ...libutils import get_imports
 
-from .._level1.dicom_dict_baseline import BaselineDicomDictionary, BASELINE_KEYWORD_VR_DICT
+from .._level1.dict_baseline import BaselineDicomDictionary, BASELINE_KEYWORD_VR_DICT
 
 IMPORTS = get_imports(globals())
 
@@ -109,8 +107,10 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'TM': "000900.000000",
                                        'UI': "12345678"}
 
-def anonymise_dicom(ds, replace_values=True, delete_private_tags=True, keywords_to_keep=None,
-                    ignore_unknown_tags=False):
+
+def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
+                            keywords_to_keep=None, ignore_unknown_tags=False,
+                            copy=True):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
@@ -122,7 +122,7 @@ def anonymise_dicom(ds, replace_values=True, delete_private_tags=True, keywords_
 
     replace_values : bool, optional
         If set to `True`, anonymised tag values will be replaced with dummy
-        "anonymous" values. This is often required for successful reading of 
+        "anonymous" values. This is often required for successful reading of
         anonymised DICOM files in commercial software. If set to False,
         anonymised tags are simply given empty string values. Defaults to `True`.
 
@@ -182,7 +182,11 @@ def anonymise_dicom(ds, replace_values=True, delete_private_tags=True, keywords_
                 "that the baseline DICOM dictionary is obsolete."
                 .format(unknown_tag_names))
 
-    ds_anon = copy.deepcopy(ds)
+    if copy:
+        ds_anon = copy.deepcopy(ds)
+    else:
+        ds_anon = ds
+
     keywords_to_anonymise = list(IDENTIFYING_KEYWORDS)
 
     # Remove private tags from DICOM file unless requested not to.
@@ -207,6 +211,7 @@ def anonymise_dicom(ds, replace_values=True, delete_private_tags=True, keywords_
             setattr(ds_anon, keyword, replacement_value)
 
     return ds_anon
+
 
 def _get_anonymous_replacement_value(keyword):
     vr = BASELINE_KEYWORD_VR_DICT[keyword]
