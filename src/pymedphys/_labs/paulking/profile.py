@@ -546,11 +546,9 @@ class Profile():
         """ Renormalise distance to beam edges.
 
         Source profile distances multiplied by scaling factor to yield unit distance
-        at beam edges.
-            | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
-                of radiation dose data in a small digital computer
-            | (2) Heintz, King, & Childs, May-95, User Manual,
-                Prowess 3000 CT Treatment Planning
+        at beam edges. Refs: (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
+        of radiation dose data in a small digital computer (2) Heintz, King, & Childs,
+        May-95, User Manual, Prowess 3000 CT Treatment Planning
 
         Arguments
         -----------------
