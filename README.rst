@@ -1,8 +1,24 @@
 PyMedPhys
 =========
 
+.. image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
+    :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
+
 .. image:: https://readthedocs.org/projects/pymedphys/badge/?version=latest
     :target: https://pymedphys.com/
+
+.. image:: https://img.shields.io/pypi/v/pymedphys.svg
+    :target: https://pypi.org/project/pymedphys/
+
+.. image:: https://img.shields.io/conda/vn/conda-forge/pymedphys.svg
+    :target: https://anaconda.org/conda-forge/pymedphys/
+
+.. image:: https://img.shields.io/pypi/pyversions/pymedphys.svg
+    :target: https://pypi.org/project/pymedphys/
+
+.. image:: https://img.shields.io/pypi/l/pymedphys.svg
+    :target: https://choosealicense.com/licenses/agpl-3.0/
+
 
 Description
 -----------
@@ -21,24 +37,13 @@ Our Team
 --------
 
 PyMedPhys is what it is today due to its maintainers and developers. The
-currently active developers and maintainers of PyMedPhys are given below:
-
-* `Simon Biggs`_
-    * `Riverina Cancer Care Centre`_, Australia
-
-.. _`Simon Biggs`: https://github.com/SimonBiggs
-
+currently active developers and maintainers of PyMedPhys are given below
+in alphabetical order along with their affiliation:
 
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
 
 .. _`Matthew Jennings`: https://github.com/centrus007
-
-
-* `Paul King`_
-    * `Anderson Regional Cancer Center`_, United States
-
-.. _`Paul King`: https://github.com/kingrpaul
 
 
 * `Matthew Sobolewski`_
@@ -48,13 +53,17 @@ currently active developers and maintainers of PyMedPhys are given below:
 .. _`Matthew Sobolewski`: https://github.com/msobolewski
 
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
-    :target: `Riverina Cancer Care Centre`_
-    :width: 500 px
+* `Paul King`_
+    * `Anderson Regional Cancer Center`_, United States
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png
-    :target: `Royal Adelaide Hospital`_
-    :width: 500 px
+.. _`Paul King`: https://github.com/kingrpaul
+
+
+* `Simon Biggs`_
+    * `Riverina Cancer Care Centre`_, Australia
+
+.. _`Simon Biggs`: https://github.com/SimonBiggs
+
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
     :target: `Anderson Regional Cancer Center`_
@@ -62,6 +71,14 @@ currently active developers and maintainers of PyMedPhys are given below:
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
+    :width: 500 px
+
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
+    :target: `Riverina Cancer Care Centre`_
+    :width: 500 px
+
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png
+    :target: `Royal Adelaide Hospital`_
     :width: 500 px
 
 

@@ -65,7 +65,7 @@ def run_xyz_function_tests(xyz_function, save_new_baseline=False):
         assert set(expected_xyz.keys()) == set(ORIENTATIONS_SUPPORTED)
 
     test_ds_dict = {key: dcm.dcmread(get_data_file(key))
-                 for key in ORIENTATIONS_SUPPORTED}
+                    for key in ORIENTATIONS_SUPPORTED}
 
     for orient, dicom in test_ds_dict.items():
         test_xyz = xyz_function(dicom)
@@ -130,14 +130,15 @@ def test_extract_dicom_patient_xyz():
 
 
 def test_DicomDose_constancy():
-
     save_new_baseline = False
 
-    baseline_dicom_dose_dict_filepath = pjoin(DATA_DIRECTORY, "wedge_dose_baseline.json")
-    baseline_dicom_dose_dict_zippath = pjoin(DATA_DIRECTORY, "lfs-wedge_dose_baseline.zip")
+    baseline_dicom_dose_dict_filepath = pjoin(
+        DATA_DIRECTORY, "wedge_dose_baseline.json")
+    baseline_dicom_dose_dict_zippath = pjoin(
+        DATA_DIRECTORY, "lfs-wedge_dose_baseline.zip")
 
     test_dicom_dose_filepath = pjoin(DATA_DIRECTORY, "RD.wedge.dcm")
-    test_dicom_dose = DicomDose(test_dicom_dose_filepath)
+    test_dicom_dose = DicomDose.from_file(test_dicom_dose_filepath)
 
     if save_new_baseline:
         # tolist() required for jsonification
@@ -153,7 +154,7 @@ def test_DicomDose_constancy():
         with open(baseline_dicom_dose_dict_filepath, 'w') as fp:
             json.dump(expected_dicom_dose_dict, fp)
         ZipFile(baseline_dicom_dose_dict_zippath, 'w').write(baseline_dicom_dose_dict_filepath,
-                                                          basename(baseline_dicom_dose_dict_filepath))
+                                                             basename(baseline_dicom_dose_dict_filepath))
         remove(baseline_dicom_dose_dict_filepath)
     else:
         with ZipFile(baseline_dicom_dose_dict_zippath, 'r') as zip_ref:
@@ -161,9 +162,14 @@ def test_DicomDose_constancy():
         with open(baseline_dicom_dose_dict_filepath, 'r') as fp:
             expected_dicom_dose_dict = json.load(fp)
         remove(baseline_dicom_dose_dict_filepath)
-        assert np.allclose(test_dicom_dose.values, np.array(expected_dicom_dose_dict['values']))
+        assert np.allclose(test_dicom_dose.values, np.array(
+            expected_dicom_dose_dict['values']))
         assert test_dicom_dose.units == expected_dicom_dose_dict['units']
-        assert np.allclose(test_dicom_dose.x, np.array(expected_dicom_dose_dict['x']))
-        assert np.allclose(test_dicom_dose.y, np.array(expected_dicom_dose_dict['y']))
-        assert np.allclose(test_dicom_dose.z, np.array(expected_dicom_dose_dict['z']))
-        assert np.allclose(test_dicom_dose.coords, np.array(expected_dicom_dose_dict['coords']))
+        assert np.allclose(test_dicom_dose.x, np.array(
+            expected_dicom_dose_dict['x']))
+        assert np.allclose(test_dicom_dose.y, np.array(
+            expected_dicom_dose_dict['y']))
+        assert np.allclose(test_dicom_dose.z, np.array(
+            expected_dicom_dose_dict['z']))
+        assert np.allclose(test_dicom_dose.coords, np.array(
+            expected_dicom_dose_dict['coords']))
