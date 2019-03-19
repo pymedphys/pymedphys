@@ -69,6 +69,7 @@ class Profile():
 
     ``profiler.cross_calibrate(film).plot(marker='o')``
 
+    .. image:: calib_curve.png
 
     Notes
     -----
