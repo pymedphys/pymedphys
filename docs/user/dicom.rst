@@ -1,4 +1,4 @@
-Dicom Toolbox
+DICOM Toolbox
 =============
 
 .. automodule:: pymedphys.dicom

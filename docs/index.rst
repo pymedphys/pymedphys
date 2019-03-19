@@ -16,6 +16,7 @@
     user/electronfactors
     user/dicom
     user/geometry
+    user/xlwings
 
 .. toctree::
     :maxdepth: 1
