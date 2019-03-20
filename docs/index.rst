@@ -37,7 +37,7 @@
     :maxdepth: 1
     :caption: Labs
 
-    _labs/paulking/profile.rst
+    labs/paulking/profile.rst
 
 
 Indices and tables
