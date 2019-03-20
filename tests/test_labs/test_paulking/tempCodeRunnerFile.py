@@ -1,1 +1,1 @@
-   x_profile = Profile().from_snc_profiler(file_name, 'tvs')
+from pymedphys._labs.paulking.profile import Profile
