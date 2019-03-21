@@ -35,7 +35,7 @@
 
 .. toctree::
     :maxdepth: 1
-    :caption: Labs
+    :caption: Labs [pre-release]
 
     labs/paulking/profile.rst
 
