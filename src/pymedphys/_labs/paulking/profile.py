@@ -239,7 +239,7 @@ class Profile():
         Parameters
         ----------
         file_name : string
-            file name with path,  *.prs
+            file name with path, .prs
         axis : string
             'tvs' or 'rad'
 
@@ -566,7 +566,7 @@ class Profile():
         """ normalised to distance at edges
 
         Source profile distances multiplied by scaling factor to yield unit distance
-        at beam edges.
+        at beam edges. [1]_ [2]_
 
         Returns
         -------
