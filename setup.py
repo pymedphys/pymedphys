@@ -113,7 +113,7 @@ setup(
         'layer-linter',
         'm2r',
         'mypy',
-        'numpydoc',
+        'sphinxcontrib-napoleon',
         'pylint',
         'pytest',
         'pytest-pylint',
@@ -128,7 +128,7 @@ setup(
     extras_require={
         'docs': [
             'm2r',
-            'numpydoc',
+            'sphinxcontrib-napoleon',
             'sphinx >= 1.4',
             'sphinx_rtd_theme']}
 )
