@@ -40,7 +40,8 @@ Available Functions
 from ..libutils import clean_and_verify_levelled_modules
 
 from ._level1.electronfactors import *
+from ._level2.visualisation import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.electronfactors'
+    '._level1.electronfactors', '._level2.visualisation'
 ], package='pymedphys.electronfactors')
