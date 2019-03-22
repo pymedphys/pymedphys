@@ -25,6 +25,7 @@
 
 
 import os
+import pathlib
 import shutil
 from glob import glob
 
@@ -32,7 +33,7 @@ from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def fetch_system_diagnostics(ip, storage_directory):
+def fetch_system_diagnostics(ip, storage_directory, other_directory=None):
     r"""Fetches and stores locally Linac system diagnositc files.
 
     For an Elekta Linac the system diagnostic backups are stored at
@@ -47,12 +48,53 @@ def fetch_system_diagnostics(ip, storage_directory):
     diagnostic_file_search = "{}\\SDD+*.zip".format(backup_share_path)
     diagnostic_filepaths = glob(diagnostic_file_search)
 
-    storage_filepaths = [
-        os.path.join(storage_directory, os.path.basename(filepath))
-        for filepath in diagnostic_filepaths
-    ]
+    if other_directory is None:
+        other_directory = storage_directory
 
-    for nss_filepath, storage_filepath in zip(diagnostic_filepaths,
-                                              storage_filepaths):
-        if not os.path.exists(storage_filepath):
+    for nss_filepath in diagnostic_filepaths:
+        basename = os.path.basename(nss_filepath)
+        storage_filepath = os.path.join(storage_directory, basename)
+        other_filepath = os.path.join(other_directory, basename)
+
+        doesnt_exist_in_either_directory = (
+            not os.path.exists(storage_filepath)
+            and not os.path.exists(other_filepath)
+        )
+
+        if doesnt_exist_in_either_directory:
             shutil.copyfile(nss_filepath, storage_filepath)
+
+
+def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
+                                         to_be_indexed='to_be_indexed',
+                                         already_indexed='already_indexed'):
+    """Run `fetch_system_diagnostics` for a set of machines and corresponding
+    IPs.
+
+    Won't redownload the diagnostic files if that diagnostics zip filename
+    exists in either to_be_indexed or already_indexed.
+
+    Example
+    -------
+
+    machine_ip_map = {
+        '2619': '10.0.0.1',
+        '2694': '10.0.0.2'
+    }
+
+    storage_directory = 'path/to/diagnostics/storage'
+
+    fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory)
+    """
+
+    for machine, ip in machine_ip_map.items():
+        machine_storage_directory = os.path.join(
+            storage_directory, to_be_indexed, machine)
+        already_indexed_directory = os.path.join(
+            storage_directory, already_indexed, machine)
+
+        pathlib.Path(machine_storage_directory).mkdir(
+            parents=True, exist_ok=True)
+
+        fetch_system_diagnostics(
+            ip, machine_storage_directory, already_indexed_directory)
