@@ -27,6 +27,7 @@
 import os
 import pathlib
 import shutil
+import zipfile
 from glob import glob
 
 from ...libutils import get_imports
@@ -98,3 +99,7 @@ def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
 
         fetch_system_diagnostics(
             ip, machine_storage_directory, already_indexed_directory)
+
+
+def get_datetime_range_of_diagnostics(diagnostics_zip):
+    pass
