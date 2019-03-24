@@ -101,5 +101,33 @@ def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
             ip, machine_storage_directory, already_indexed_directory)
 
 
-def get_datetime_range_of_diagnostics(diagnostics_zip):
-    pass
+def extract_diagnostic_zips_and_archive(logfile_data_directory):
+    diagnostics_directory = os.path.join(logfile_data_directory, 'diagnostics')
+    diagnostics_to_be_indexed = os.path.join(
+        diagnostics_directory, 'to_be_indexed')
+    diagnostics_already_indexed = os.path.join(
+        diagnostics_directory, 'already_indexed')
+
+    logfiles_to_be_indexed = os.path.join(
+        logfile_data_directory, 'to_be_indexed')
+
+    diagnostics_search_string = os.path.join(
+        diagnostics_to_be_indexed, '*', '*.zip')
+
+    diagnostics_filepaths = glob(diagnostics_search_string)
+
+    for diagnostic_filepath in diagnostics_filepaths:
+        machine_and_zip_filepath = os.path.relpath(
+            diagnostic_filepath, logfiles_to_be_indexed)
+
+        path_to_be_moved_to = os.path.join(
+            diagnostics_already_indexed, machine_and_zip_filepath)
+
+        with zipfile.ZipFile(diagnostic_filepath, 'r') as zip_file:
+            for file_name in zip_file.namelist():
+                if file_name.endswith('.trf'):
+                    zip_file.extract(file_name, logfiles_to_be_indexed)
+
+        pathlib.Path(os.path.dirname(path_to_be_moved_to)).mkdir(
+            parents=True, exist_ok=True)
+        shutil.move(diagnostic_filepath, path_to_be_moved_to)

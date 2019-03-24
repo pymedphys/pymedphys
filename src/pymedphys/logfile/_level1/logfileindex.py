@@ -217,8 +217,8 @@ def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
             to_be_indexed_dict[filehash], abs_new_filepath))
 
 
-def index_logfiles(config):
-    data_directory = config['linac_logfile_data_directory']
+def index_logfiles(centre_map, machine_map, logfile_data_directory):
+    data_directory = logfile_data_directory
     index_filepath = os.path.abspath(
         os.path.join(data_directory, 'index.json'))
     to_be_indexed_directory = os.path.abspath(
@@ -232,10 +232,10 @@ def index_logfiles(config):
     no_field_label_in_logfile = os.path.abspath(
         os.path.join(data_directory, 'no_field_label_in_logfile'))
     machine_map = config['machine_map']
-    centre_details = config['centres']
+    centre_details = centre_map
 
     sql_server_and_ports = [
-        "{}".format(details['ois_specific_data']['sql_server'])
+        "{}".format(details['mosaiq_sql_server'])
         for _, details in centre_details.items()
     ]
 
