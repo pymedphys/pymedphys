@@ -142,7 +142,7 @@ def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
                              unknown_error_in_logfile, no_mosaiq_record_found,
                              no_field_label_in_logfile,
                              indexed_directory, index_filepath, index,
-                             machine_map, centre_details, config):
+                             machine_map, centre_details, centre_server_map):
     for filehash in filehash_list:
         logfile_basename = os.path.basename(to_be_indexed_dict[filehash])
 
@@ -158,7 +158,7 @@ def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
                 continue
 
             centre = machine_map[header.machine]['centre']
-            server = get_sql_servers(config)[centre]
+            server = centre_server_map[centre]
 
             mosaiq_string_time, path_string_time = date_convert(
                 header.date, centre_details[centre]['timezone'])
@@ -231,8 +231,13 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
         os.path.join(data_directory, 'unknown_error_in_logfile'))
     no_field_label_in_logfile = os.path.abspath(
         os.path.join(data_directory, 'no_field_label_in_logfile'))
-    machine_map = config['machine_map']
+    # machine_map = config['machine_map']
     centre_details = centre_map
+
+    centre_server_map = {
+        centre: centre_lookup['mosaiq_sql_server']
+        for centre, centre_lookup in centre_map.items()
+    }
 
     sql_server_and_ports = [
         "{}".format(details['mosaiq_sql_server'])
@@ -285,6 +290,6 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
                 unknown_error_in_logfile, no_mosaiq_record_found,
                 no_field_label_in_logfile,
                 indexed_directory, index_filepath, index,
-                machine_map, centre_details, config
+                machine_map, centre_details, centre_server_map
             )
     print('Complete')
