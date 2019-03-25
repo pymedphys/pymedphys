@@ -43,6 +43,18 @@ from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
+def wildcard_dicom_file(glob_search_string):
+    filepaths = glob(glob_search_string)
+    if len(filepaths) < 1:
+        raise FileNotFoundError("No file found that matches the provided path")
+    elif len(filepaths) > 1:
+        raise TypeError("More than one file found that matches the search string")
+
+    found_filepath = filepaths[0]
+
+    return found_filepath
+
+
 if HAS_XLWINGS:
     @xw.func
     @xw.arg('dicom_path')
@@ -50,7 +62,9 @@ if HAS_XLWINGS:
     @xw.arg('averaging_distance')
     @xw.ret(expand='table')
     def depth_dose(dicom_path, depth_adjust, averaging_distance=0):
-        ds = pydicom.read_file(dicom_path, force=True)
+        dicom_path_found = wildcard_dicom_file(dicom_path)
+
+        ds = pydicom.read_file(dicom_path_found, force=True)
 
         depth, depth_dose_values = extract_depth_dose(
             ds, depth_adjust, averaging_distance)
@@ -64,7 +78,9 @@ if HAS_XLWINGS:
     @xw.arg('averaging_distance')
     @xw.ret(expand='table')
     def inplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
-        ds = pydicom.read_file(dicom_path, force=True)
+        dicom_path_found = wildcard_dicom_file(dicom_path)
+
+        ds = pydicom.read_file(dicom_path_found, force=True)
 
         inplane, inplane_dose, _, _ = extract_profiles(
             ds, depth_adjust, depth_lookup, averaging_distance)
@@ -78,7 +94,9 @@ if HAS_XLWINGS:
     @xw.arg('averaging_distance')
     @xw.ret(expand='table')
     def crossplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
-        ds = pydicom.read_file(dicom_path, force=True)
+        dicom_path_found = wildcard_dicom_file(dicom_path)
+
+        ds = pydicom.read_file(dicom_path_found, force=True)
 
         _, _, crossplane, crossplane_dose = extract_profiles(
             ds, depth_adjust, depth_lookup, averaging_distance)
@@ -93,13 +111,7 @@ if HAS_XLWINGS:
     @xw.arg('depth', empty=np.nan)
     @xw.ret(expand='table')
     def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
-        dicom_paths = glob(dicom_path)
-        if len(dicom_paths) < 1:
-            raise FileNotFoundError("No file found that matches the provided path")
-        elif len(dicom_path) > 1:
-            raise TypeError("More than one file found that matches the search string")
-
-        dicom_path_found = dicom_paths[0]
+        dicom_path_found = wildcard_dicom_file(dicom_path)
 
         inplane = np.array(inplane)
         crossplane = np.array(crossplane)
