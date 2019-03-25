@@ -24,8 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from glob import glob
-
 import numpy as np
 
 import pydicom
@@ -92,16 +90,12 @@ def crossplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distanc
 @xw.func
 @xw.arg('dicom_path')
 @xw.arg('depth_adjust')
-@xw.arg('inplane', empty=np.nan)
-@xw.arg('crossplane', empty=np.nan)
-@xw.arg('depth', empty=np.nan)
+@xw.arg('inplane', np.array, empty=np.nan)
+@xw.arg('crossplane', np.array, empty=np.nan)
+@xw.arg('depth', np.array, empty=np.nan)
 @xw.ret(expand='table')
 def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
     dicom_path_found = wildcard_file_resolution(dicom_path)
-
-    inplane = np.array(inplane)
-    crossplane = np.array(crossplane)
-    depth = np.array(depth)
 
     inplane_ref = np.invert(np.isnan(inplane))
     crossplane_ref = np.invert(np.isnan(crossplane))

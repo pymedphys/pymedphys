@@ -22,3 +22,27 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+
+import numpy as np
+
+import pydicom
+import xlwings as xw
+
+from ...utilities import wildcard_file_resolution
+from ...mephysto import load_single_item
+
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
+
+
+@xw.func
+@xw.arg('mephysto_path')
+@xw.arg('index')
+@xw.ret(expand='table')
+def mephysto(filepath, index):
+    filepath_found = wildcard_file_resolution(filepath)
+
+    results = load_single_item(filepath_found, index)
+
+    return np.vstack(results).T
