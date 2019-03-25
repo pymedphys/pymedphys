@@ -37,6 +37,15 @@ from .._level1.csvoutput import file_output
 IMPORTS = get_imports(globals())
 
 
+def load_single_item(filepath, index):
+    distance, relative_dose, scan_curvetype, scan_depth = load_mephysto(
+        filepath)
+
+    return (
+        distance[index], relative_dose[index],
+        scan_curvetype[index], scan_depth[index])
+
+
 def load_mephysto(filepath, output_to_file=False, output_directory=None,
                   sort=True):
     """Input the filepath of a mephysto .mcc file and return the data of the
