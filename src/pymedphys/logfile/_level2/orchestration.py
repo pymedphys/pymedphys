@@ -82,7 +82,7 @@ def orchestration(mosaiq_sql, linac_details, logfile_data_directory):
 
     diagnostics_directory = os.path.join(logfile_data_directory, 'diagnostics')
 
-    print('Fetching diagnostics files from Linacs...')
+    print('Fetching diagnostic zip files from Linacs...')
     fetch_system_diagnostics_multi_linac(machine_ip_map, diagnostics_directory)
 
     print('Extracting trf logfiles from diagnostics zip files...')

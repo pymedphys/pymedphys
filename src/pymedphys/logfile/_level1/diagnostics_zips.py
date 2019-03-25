@@ -49,6 +49,8 @@ def fetch_system_diagnostics(ip, storage_directory, other_directory=None):
     diagnostic_file_search = "{}\\SDD+*.zip".format(backup_share_path)
     diagnostic_filepaths = glob(diagnostic_file_search)
 
+    print("Found {} diagnostic zip files:".format(len(diagnostic_filepaths)))
+
     if other_directory is None:
         other_directory = storage_directory
 
@@ -63,7 +65,11 @@ def fetch_system_diagnostics(ip, storage_directory, other_directory=None):
         )
 
         if doesnt_exist_in_either_directory:
+            print("    Copying {}...".format(basename))
             shutil.copyfile(nss_filepath, storage_filepath)
+        else:
+            print(
+                "    {} has already been copied.".format(basename))
 
 
 def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
@@ -89,6 +95,8 @@ def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
     """
 
     for machine, ip in machine_ip_map.items():
+        print('\nFetching diagnostic zip files from {} @ {}'.format(
+            machine, ip))
         machine_storage_directory = os.path.join(
             storage_directory, to_be_indexed, machine)
         already_indexed_directory = os.path.join(
@@ -99,6 +107,8 @@ def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
 
         fetch_system_diagnostics(
             ip, machine_storage_directory, already_indexed_directory)
+
+    print("")
 
 
 def already_indexed_path(current_location, to_be_indexed, already_indexed):
@@ -125,6 +135,9 @@ def extract_diagnostic_zips_and_archive(logfile_data_directory):
 
     diagnostics_filepaths = glob(diagnostics_search_string)
 
+    print("There are {} diagnostic zips which need to be extracted".format(
+        len(diagnostics_filepaths)))
+
     for diagnostic_filepath in diagnostics_filepaths:
         path_to_be_moved_to = already_indexed_path(
             diagnostic_filepath, diagnostics_to_be_indexed,
@@ -132,6 +145,8 @@ def extract_diagnostic_zips_and_archive(logfile_data_directory):
 
         pathlib.Path(os.path.dirname(path_to_be_moved_to)).mkdir(
             parents=True, exist_ok=True)
+
+        print("    Extracting {}".format(diagnostic_filepath))
 
         with zipfile.ZipFile(diagnostic_filepath, 'r') as zip_file:
             for file_name in zip_file.namelist():
