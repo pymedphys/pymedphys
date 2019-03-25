@@ -33,43 +33,37 @@ def dicom_cli(subparsers):
     dicom_parser = subparsers.add_parser('dicom')
     dicom_subparsers = dicom_parser.add_subparsers()
 
-    dicom_adjust_machine_name_cli(dicom_subparsers)
+    dicom_adjust_machine_name(dicom_subparsers)
     dicom_adjust_rel_elec_density(dicom_subparsers)
-    dicom_structure_name_RED_adjust_cli(dicom_subparsers)
+    dicom_structure_name_RED_adjust(dicom_subparsers)
 
 
-def dicom_adjust_machine_name_cli(dicom_subparsers):
-    dicom_adjust_machine_name_parser = dicom_subparsers.add_parser(
-        'adjust-machine-name')
+def dicom_adjust_machine_name(dicom_subparsers):
+    parser = dicom_subparsers.add_parser('adjust-machine-name')
 
-    dicom_adjust_machine_name_parser.add_argument('input_file', type=str)
-    dicom_adjust_machine_name_parser.add_argument('output_file', type=str)
-    dicom_adjust_machine_name_parser.add_argument('new_machine_name', type=str)
-    dicom_adjust_machine_name_parser.set_defaults(func=adjust_machine_name_cli)
+    parser.add_argument('input_file', type=str)
+    parser.add_argument('output_file', type=str)
+    parser.add_argument('new_machine_name', type=str)
+    parser.set_defaults(func=adjust_machine_name_cli)
 
 
 def dicom_adjust_rel_elec_density(dicom_subparsers):
-    dicom_adjust_rel_elec_density_parser = dicom_subparsers.add_parser(
-        'adjust-rel-elec-density')
+    parser = dicom_subparsers.add_parser('adjust-rel-elec-density')
 
-    dicom_adjust_rel_elec_density_parser.add_argument('input_file', type=str)
-    dicom_adjust_rel_elec_density_parser.add_argument('output_file', type=str)
-    dicom_adjust_rel_elec_density_parser.add_argument(
-        'adjustment_map', type=str, nargs='+')
+    parser.add_argument('input_file', type=str)
+    parser.add_argument('output_file', type=str)
+    parser.add_argument('adjustment_map', type=str, nargs='+')
 
-    dicom_adjust_rel_elec_density_parser.add_argument(
-        '-i', '--ignore_missing_structure', action='store_true')
+    parser.add_argument('-i', '--ignore_missing_structure',
+                        action='store_true')
 
-    dicom_adjust_rel_elec_density_parser.set_defaults(
-        func=adjust_RED_cli)
+    parser.set_defaults(func=adjust_RED_cli)
 
 
-def dicom_structure_name_RED_adjust_cli(dicom_subparsers):
-    dicom_structure_name_RED_adjust = dicom_subparsers.add_parser(
-        'structure-name-RED-adjust')
+def dicom_structure_name_RED_adjust(dicom_subparsers):
+    parser = dicom_subparsers.add_parser('structure-name-RED-adjust')
 
-    dicom_structure_name_RED_adjust.add_argument('input_file', type=str)
-    dicom_structure_name_RED_adjust.add_argument('output_file', type=str)
+    parser.add_argument('input_file', type=str)
+    parser.add_argument('output_file', type=str)
 
-    dicom_structure_name_RED_adjust.set_defaults(
-        func=adjust_RED_by_structure_name_cli)
+    parser.set_defaults(func=adjust_RED_by_structure_name_cli)
