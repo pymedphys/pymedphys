@@ -29,12 +29,7 @@ from glob import glob
 import numpy as np
 
 import pydicom
-
-try:
-    import xlwings as xw
-    HAS_XLWINGS = True
-except ImportError:
-    HAS_XLWINGS = False
+import xlwings as xw
 
 from ...utilities import wildcard_file_resolution
 from ...dicom import (
@@ -44,81 +39,83 @@ from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-if HAS_XLWINGS:
-    @xw.func
-    @xw.arg('dicom_path')
-    @xw.arg('depth_adjust')
-    @xw.arg('averaging_distance')
-    @xw.ret(expand='table')
-    def depth_dose(dicom_path, depth_adjust, averaging_distance=0):
-        dicom_path_found = wildcard_file_resolution(dicom_path)
+@xw.func
+@xw.arg('dicom_path')
+@xw.arg('depth_adjust')
+@xw.arg('averaging_distance')
+@xw.ret(expand='table')
+def depth_dose(dicom_path, depth_adjust, averaging_distance=0):
+    dicom_path_found = wildcard_file_resolution(dicom_path)
 
-        ds = pydicom.read_file(dicom_path_found, force=True)
+    ds = pydicom.read_file(dicom_path_found, force=True)
 
-        depth, depth_dose_values = extract_depth_dose(
-            ds, depth_adjust, averaging_distance)
+    depth, depth_dose_values = extract_depth_dose(
+        ds, depth_adjust, averaging_distance)
 
-        return np.vstack([depth, depth_dose_values]).T
+    return np.vstack([depth, depth_dose_values]).T
 
-    @xw.func
-    @xw.arg('dicom_path')
-    @xw.arg('depth_adjust')
-    @xw.arg('depth_lookup')
-    @xw.arg('averaging_distance')
-    @xw.ret(expand='table')
-    def inplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
-        dicom_path_found = wildcard_file_resolution(dicom_path)
 
-        ds = pydicom.read_file(dicom_path_found, force=True)
+@xw.func
+@xw.arg('dicom_path')
+@xw.arg('depth_adjust')
+@xw.arg('depth_lookup')
+@xw.arg('averaging_distance')
+@xw.ret(expand='table')
+def inplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
+    dicom_path_found = wildcard_file_resolution(dicom_path)
 
-        inplane, inplane_dose, _, _ = extract_profiles(
-            ds, depth_adjust, depth_lookup, averaging_distance)
+    ds = pydicom.read_file(dicom_path_found, force=True)
 
-        return np.vstack([inplane, inplane_dose]).T
+    inplane, inplane_dose, _, _ = extract_profiles(
+        ds, depth_adjust, depth_lookup, averaging_distance)
 
-    @xw.func
-    @xw.arg('dicom_path')
-    @xw.arg('depth_adjust')
-    @xw.arg('depth_lookup')
-    @xw.arg('averaging_distance')
-    @xw.ret(expand='table')
-    def crossplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
-        dicom_path_found = wildcard_file_resolution(dicom_path)
+    return np.vstack([inplane, inplane_dose]).T
 
-        ds = pydicom.read_file(dicom_path_found, force=True)
 
-        _, _, crossplane, crossplane_dose = extract_profiles(
-            ds, depth_adjust, depth_lookup, averaging_distance)
+@xw.func
+@xw.arg('dicom_path')
+@xw.arg('depth_adjust')
+@xw.arg('depth_lookup')
+@xw.arg('averaging_distance')
+@xw.ret(expand='table')
+def crossplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
+    dicom_path_found = wildcard_file_resolution(dicom_path)
 
-        return np.vstack([crossplane, crossplane_dose]).T
+    ds = pydicom.read_file(dicom_path_found, force=True)
 
-    @xw.func
-    @xw.arg('dicom_path')
-    @xw.arg('depth_adjust')
-    @xw.arg('inplane', empty=np.nan)
-    @xw.arg('crossplane', empty=np.nan)
-    @xw.arg('depth', empty=np.nan)
-    @xw.ret(expand='table')
-    def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
-        dicom_path_found = wildcard_file_resolution(dicom_path)
+    _, _, crossplane, crossplane_dose = extract_profiles(
+        ds, depth_adjust, depth_lookup, averaging_distance)
 
-        inplane = np.array(inplane)
-        crossplane = np.array(crossplane)
-        depth = np.array(depth)
+    return np.vstack([crossplane, crossplane_dose]).T
 
-        inplane_ref = np.invert(np.isnan(inplane))
-        crossplane_ref = np.invert(np.isnan(crossplane))
-        depth_ref = np.invert(np.isnan(depth))
 
-        reference = inplane_ref & crossplane_ref & depth_ref
+@xw.func
+@xw.arg('dicom_path')
+@xw.arg('depth_adjust')
+@xw.arg('inplane', empty=np.nan)
+@xw.arg('crossplane', empty=np.nan)
+@xw.arg('depth', empty=np.nan)
+@xw.ret(expand='table')
+def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
+    dicom_path_found = wildcard_file_resolution(dicom_path)
 
-        ds = pydicom.read_file(dicom_path_found, force=True)
+    inplane = np.array(inplane)
+    crossplane = np.array(crossplane)
+    depth = np.array(depth)
 
-        dose = arbitrary_profile_from_dicom_dose(
-            ds, depth_adjust, inplane[reference], crossplane[reference],
-            depth[reference])
+    inplane_ref = np.invert(np.isnan(inplane))
+    crossplane_ref = np.invert(np.isnan(crossplane))
+    depth_ref = np.invert(np.isnan(depth))
 
-        result = np.ones_like(inplane) * np.nan
-        result[reference] = dose
+    reference = inplane_ref & crossplane_ref & depth_ref
 
-        return np.vstack([result]).T
+    ds = pydicom.read_file(dicom_path_found, force=True)
+
+    dose = arbitrary_profile_from_dicom_dose(
+        ds, depth_adjust, inplane[reference], crossplane[reference],
+        depth[reference])
+
+    result = np.ones_like(inplane) * np.nan
+    result[reference] = dose
+
+    return np.vstack([result]).T
