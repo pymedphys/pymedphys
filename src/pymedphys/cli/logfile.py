@@ -24,20 +24,23 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import argparse
-
-from .dicom import dicom_cli
-from .docker import docker_cli
-from .logfile import logfile_cli
+from ..logfile import orchestration_cli
 
 
-def pymedphys_cli():
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
+def logfile_cli(subparsers):
+    logfile_parser = subparsers.add_parser('logfile')
+    logfile_subparsers = logfile_parser.add_subparsers()
 
-    dicom_cli(subparsers)
-    docker_cli(subparsers)
-    logfile_cli(subparsers)
+    logfile_orchestration(logfile_subparsers)
 
-    args = parser.parse_args()
-    args.func(args)
+
+def logfile_orchestration(logfile_subparsers):
+    parser = logfile_subparsers.add_parser('orchestration')
+
+    parser.add_argument('-m', '--mosaiq_sql', type=str,
+                        default='config_mosaiq_sql.csv')
+    parser.add_argument('-l', '--linac_details', type=str,
+                        default='config_linac_details.csv')
+    parser.add_argument('-d', '--data_directory', type=str, default='.')
+
+    parser.set_defaults(func=orchestration_cli)

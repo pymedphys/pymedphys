@@ -34,6 +34,8 @@ is run.
 
 import os
 
+import pandas as pd
+
 from .._level1.logfileindex import index_logfiles
 from .._level1.diagnostics_zips import (
     fetch_system_diagnostics_multi_linac, extract_diagnostic_zips_and_archive,)
@@ -42,21 +44,21 @@ from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def orchestration(centre_map, machine_map, logfile_data_directory):
+def orchestration(mosaiq_sql, linac_details, logfile_data_directory):
     """Accepts a data directory for organising the log files as well as a
     machine map.
 
     Example
     -------
 
-    centre_map = {
+    mosaiq_sql = {
         "rccc": {
             "timezone": "Australia/Sydney",
             "mosaiq_sql_server": "mosaiq:1433"
         }
     }
 
-    machine_map = {
+    linac_details = {
         "2619": {
             "centre": "rccc",
             "ip": "10.0.0.1"
@@ -69,12 +71,12 @@ def orchestration(centre_map, machine_map, logfile_data_directory):
 
     data_directory = "path/to/logfile/storage"
 
-    orchestration(centre_map, machine_map, data_directory)
+    orchestration(mosaiq_sql, linac_details, data_directory)
     """
 
     machine_ip_map = {
         machine: machine_lookup['ip']
-        for machine, machine_lookup in machine_map.items()
+        for machine, machine_lookup in linac_details.items()
     }
 
     diagnostics_directory = os.path.join(logfile_data_directory, 'diagnostics')
@@ -82,8 +84,27 @@ def orchestration(centre_map, machine_map, logfile_data_directory):
     fetch_system_diagnostics_multi_linac(machine_ip_map, diagnostics_directory)
     extract_diagnostic_zips_and_archive(logfile_data_directory)
 
-    index_logfiles(centre_map, machine_map, logfile_data_directory)
+    index_logfiles(mosaiq_sql, linac_details, logfile_data_directory)
 
 
-def ochestration_cli(args):
-    pass
+def orchestration_cli(args):
+    mosaiq_sql_table = pd.read_csv(args.mosaiq_sql, index_col=0)
+    linac_details_table = pd.read_csv(args.linac_details, index_col=0)
+
+    mosaiq_sql = {
+        str(centre): {
+            "timezone": row['Timezone'],
+            "mosaiq_sql_server": row['Mosaiq SQL Server (Hostname:Port)']
+        }
+        for centre, row in mosaiq_sql_table.iterrows()
+    }
+
+    linac_details = {
+        str(machine): {
+            "centre": row["Centre"],
+            "ip": row["IP"]
+        }
+        for machine, row in linac_details_table.iterrows()
+    }
+
+    orchestration(mosaiq_sql, linac_details, args.data_directory)
