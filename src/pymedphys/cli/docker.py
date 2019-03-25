@@ -24,22 +24,16 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import argparse
 
-from .dicom import dicom_cli
-from .docker import docker_cli
+from ..docker import server_cli
 
 
-def pymedphys_cli():
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
+def docker_cli(subparsers):
+    docker_parser = subparsers.add_parser('docker')
+    docker_subparsers = docker_parser.add_subparsers()
 
-    dicom_cli(subparsers)
-    docker_cli(subparsers)
+    docker_server_parser = docker_subparsers.add_parser(
+        'server'
+    )
 
-    args = parser.parse_args()
-    args.func(args)
-
-
-def logfile_cli(subparsers):
-    pass
+    docker_server_parser.set_defaults(func=server_cli)

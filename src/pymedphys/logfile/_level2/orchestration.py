@@ -83,3 +83,7 @@ def orchestration(centre_map, machine_map, logfile_data_directory):
     extract_diagnostic_zips_and_archive(logfile_data_directory)
 
     index_logfiles(centre_map, machine_map, logfile_data_directory)
+
+
+def ochestration_cli(args):
+    pass
