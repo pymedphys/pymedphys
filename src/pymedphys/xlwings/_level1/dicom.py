@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from glob import glob
+
 import numpy as np
 
 import pydicom
@@ -91,6 +93,14 @@ if HAS_XLWINGS:
     @xw.arg('depth', empty=np.nan)
     @xw.ret(expand='table')
     def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
+        dicom_paths = glob(dicom_path)
+        if len(dicom_paths) < 1:
+            raise FileNotFoundError("No file found that matches the provided path")
+        elif len(dicom_path) > 1:
+            raise TypeError("More than one file found that matches the search string")
+
+        dicom_path_found = dicom_paths[0]
+
         inplane = np.array(inplane)
         crossplane = np.array(crossplane)
         depth = np.array(depth)
@@ -101,7 +111,7 @@ if HAS_XLWINGS:
 
         reference = inplane_ref & crossplane_ref & depth_ref
 
-        ds = pydicom.read_file(dicom_path, force=True)
+        ds = pydicom.read_file(dicom_path_found, force=True)
 
         dose = arbitrary_profile_from_dicom_dose(
             ds, depth_adjust, inplane[reference], crossplane[reference],
