@@ -37,10 +37,11 @@ def logfile_cli(subparsers):
 def logfile_orchestration(logfile_subparsers):
     parser = logfile_subparsers.add_parser('orchestration')
 
+    parser.add_argument('data_directory', type=str)
+
     parser.add_argument('-m', '--mosaiq_sql', type=str,
-                        default='config_mosaiq_sql.csv')
+                        default=None)
     parser.add_argument('-l', '--linac_details', type=str,
-                        default='config_linac_details.csv')
-    parser.add_argument('-d', '--data_directory', type=str, default='.')
+                        default=None)
 
     parser.set_defaults(func=orchestration_cli)

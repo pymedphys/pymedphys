@@ -33,6 +33,7 @@ is run.
 """
 
 import os
+import json
 
 import pandas as pd
 
@@ -81,15 +82,35 @@ def orchestration(mosaiq_sql, linac_details, logfile_data_directory):
 
     diagnostics_directory = os.path.join(logfile_data_directory, 'diagnostics')
 
+    print('Fetching diagnostics files from Linacs...')
     fetch_system_diagnostics_multi_linac(machine_ip_map, diagnostics_directory)
+
+    print('Extracting trf logfiles from diagnostics zip files...')
     extract_diagnostic_zips_and_archive(logfile_data_directory)
 
+    print('Indexing logfiles...')
     index_logfiles(mosaiq_sql, linac_details, logfile_data_directory)
 
 
 def orchestration_cli(args):
-    mosaiq_sql_table = pd.read_csv(args.mosaiq_sql, index_col=0)
-    linac_details_table = pd.read_csv(args.linac_details, index_col=0)
+    data_directory = args.data_directory
+
+    if args.mosaiq_sql is None:
+        mosaiq_sql_path = os.path.join(data_directory, 'config_mosaiq_sql.csv')
+    else:
+        mosaiq_sql_path = args.mosaiq_sql
+
+    if args.linac_details is None:
+        linac_details_path = os.path.join(data_directory,
+                                          'config_linac_details.csv')
+
+    else:
+        linac_details_path = args.linac_details
+
+    mosaiq_sql_table = pd.read_csv(mosaiq_sql_path, index_col=0)
+    linac_details_table = pd.read_csv(linac_details_path, index_col=0)
+
+    print("Data directory used:\n    {}\n".format(data_directory))
 
     mosaiq_sql = {
         str(centre): {
@@ -99,6 +120,9 @@ def orchestration_cli(args):
         for centre, row in mosaiq_sql_table.iterrows()
     }
 
+    print("Mosaiq SQL configuration used:\n{}\n".format(
+        json.dumps(mosaiq_sql, indent=4)))
+
     linac_details = {
         str(machine): {
             "centre": row["Centre"],
@@ -107,4 +131,7 @@ def orchestration_cli(args):
         for machine, row in linac_details_table.iterrows()
     }
 
-    orchestration(mosaiq_sql, linac_details, args.data_directory)
+    print("Linac configuration used:\n{}\n".format(
+        json.dumps(linac_details, indent=4)))
+
+    orchestration(mosaiq_sql, linac_details, data_directory)
