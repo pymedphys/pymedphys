@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,23 +24,20 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A range of utility functions.
+from glob import glob
 
-Examples:
-    >>> from pymedphys.utilities import get_filepath
-"""
-
-# pylint: disable=W0401,W0614,C0103,C0413
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
-from ..libutils import clean_and_verify_levelled_modules
+def wildcard_file_resolution(glob_search_string):
+    filepaths = glob(glob_search_string)
+    if len(filepaths) < 1:
+        raise FileNotFoundError("No file found that matches the provided path")
+    elif len(filepaths) > 1:
+        raise TypeError(
+            "More than one file found that matches the search string")
 
-from ._level1.utilitiescompression import *
-from ._level1.utilitiesconfig import *
-from ._level1.utilitiesfilesystem import *
-from ._level1.file_search import *
+    found_filepath = filepaths[0]
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.utilitiesconfig', '._level1.utilitiesfilesystem',
-    '._level1.utilitiescompression', '._level1.file_search'
-], package='pymedphys.utilities')
+    return found_filepath
