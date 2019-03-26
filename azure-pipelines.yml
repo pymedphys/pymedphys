@@ -1,5 +1,5 @@
 jobs:
-  - job: ToxWithPip
+  - job: Tox
 
     strategy:
       matrix:
@@ -66,7 +66,54 @@ jobs:
       condition: succeededOrFailed()
 
 
-  - job: ToxWithConda
+#   - job: ToxWithConda
+
+#     strategy:
+#       matrix:
+#         windows-py36:
+#           image_name: vs2017-win2016
+#           test_title: Windows py36
+#           toxenv: py36
+#           python: 3.6
+#         windows-py37:
+#           image_name: vs2017-win2016
+#           test_title: Windows py37
+#           toxenv: py37
+#           python: 3.7
+
+#     pool:
+#       vmImage: $(image_name)
+
+#     steps:
+#     - task: CondaEnvironment@1
+#       inputs:
+#         createCustomEnvironment: true
+#         environmentName: pymedphys
+#         packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql
+#         updateConda: true
+#         createOptions: --channel conda-forge
+
+#     - bash: "source activate pymedphys && python -c \"import sys; print(sys.version); print(sys.executable)\""
+#       displayName: Show python information
+
+#     - bash: "source activate pymedphys && python -m pip install -U tox --user"
+#       displayName: Install tox
+
+#     - bash: "source activate pymedphys && python -m tox -e $TOXENV --notest"
+#       displayName: Install test dependencies
+
+#     - bash: "source activate pymedphys && python -m tox -e $TOXENV"
+#       displayName: Run tests
+
+#     - task: PublishTestResults@2
+#       displayName: Publish test results
+#       inputs:
+#         testResultsFiles: junit/*.xml
+#         testRunTitle: '$(test_title)'
+#       condition: succeededOrFailed()
+
+
+  - job: Conda
 
     strategy:
       matrix:
@@ -80,43 +127,6 @@ jobs:
           test_title: Windows py37
           toxenv: py37
           python: 3.7
-
-    pool:
-      vmImage: $(image_name)
-
-    steps:
-    - task: CondaEnvironment@1
-      inputs:
-        createCustomEnvironment: true
-        environmentName: pymedphys
-        packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql
-        updateConda: true
-        createOptions: --channel conda-forge
-
-    - bash: "source activate pymedphys && python -c \"import sys; print(sys.version); print(sys.executable)\""
-      displayName: Show python information
-
-    - bash: "source activate pymedphys && python -m pip install -U tox --user"
-      displayName: Install tox
-
-    - bash: "source activate pymedphys && python -m tox -e $TOXENV --notest"
-      displayName: Install test dependencies
-
-    - bash: "source activate pymedphys && python -m tox -e $TOXENV"
-      displayName: Run tests
-
-    - task: PublishTestResults@2
-      displayName: Publish test results
-      inputs:
-        testResultsFiles: junit/*.xml
-        testRunTitle: '$(test_title)'
-      condition: succeededOrFailed()
-
-
-  - job: CondaOnly
-
-    strategy:
-      matrix:
         mac-py36:
           image_name: macos-10.13
           test_title: macOS py36
@@ -140,13 +150,13 @@ jobs:
         updateConda: true
         createOptions: --channel conda-forge
 
-    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+    - bash: "source activate pymedphys && python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
-    - bash: "pip install -e .[testing]"
+    - bash: "source activate pymedphys && pip install -e .[testing]"
       displayName: Install development version of PyMedPhys
 
-    - bash: "pytest -v"
+    - bash: "source activate pymedphys && pytest -v"
       displayName: Run tests
 
     - task: PublishTestResults@2
