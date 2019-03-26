@@ -173,7 +173,7 @@ def file_ready_to_be_indexed(cursors, filehash_list, to_be_indexed_dict,
         try:
             delivery_details = get_mosaiq_delivery_details(
                 cursors[server], header.machine, mosaiq_string_time,
-                header.field_label, header.field_name, buffer=120)
+                header.field_label, header.field_name, buffer=240)
         except NoMosaiqEntries as e:
             print(e)
             new_filepath = os.path.join(
