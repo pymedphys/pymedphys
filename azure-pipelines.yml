@@ -70,16 +70,6 @@ jobs:
 
     strategy:
       matrix:
-        mac-py36:
-          image_name: macos-10.13
-          test_title: macOS py36
-          toxenv: py36
-          python: 3.6
-        mac-py37:
-          image_name: macos-10.13
-          test_title: macOS py37
-          toxenv: py37
-          python: 3.7
         windows-py36:
           image_name: vs2017-win2016
           test_title: Windows py36
@@ -99,7 +89,7 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql Cython freetds
+        packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql
         updateConda: true
         createOptions: --channel conda-forge
 
@@ -113,6 +103,50 @@ jobs:
       displayName: Install test dependencies
 
     - bash: "source activate pymedphys && python -m tox -e $TOXENV"
+      displayName: Run tests
+
+    - task: PublishTestResults@2
+      displayName: Publish test results
+      inputs:
+        testResultsFiles: junit/*.xml
+        testRunTitle: '$(test_title)'
+      condition: succeededOrFailed()
+
+
+  - job: CondaOnly
+
+    strategy:
+      matrix:
+        mac-py36:
+          image_name: macos-10.13
+          test_title: macOS py36
+          toxenv: py36
+          python: 3.6
+        mac-py37:
+          image_name: macos-10.13
+          test_title: macOS py37
+          toxenv: py37
+          python: 3.7
+
+    pool:
+      vmImage: $(image_name)
+
+    steps:
+    - task: CondaEnvironment@1
+      inputs:
+        createCustomEnvironment: true
+        environmentName: pymedphys
+        packageSpecs: python=$(python) pip pymedphys
+        updateConda: true
+        createOptions: --channel conda-forge
+
+    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+      displayName: Show python information
+
+    - bash: "pip install -e .[testing]"
+      displayName: Install development version of PyMedPhys
+
+    - bash: "pytest -v"
       displayName: Run tests
 
     - task: PublishTestResults@2
