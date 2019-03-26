@@ -63,19 +63,19 @@ jobs:
       inputs:
         versionSpec: $(python)
 
-    - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
-    - script: "python -m pip install -U pip setuptools --user"
+    - bash: "python -m pip install -U pip setuptools --user"
       displayName: Upgrade pip and setuptools
 
-    - script: "python -m pip install -U tox --user"
+    - bash: "python -m pip install -U tox --user"
       displayName: Install tox
 
-    - script: python -m tox -e $TOXENV --notest
+    - bash: python -m tox -e $TOXENV --notest
       displayName: Install test dependencies
 
-    - script: python -m tox -e $TOXENV
+    - bash: python -m tox -e $TOXENV
       displayName: Run tests
 
     - task: PublishTestResults@2
