@@ -33,26 +33,26 @@ jobs:
           test_title: Linux Py37
           toxenv: py37
           python: 3.7
-        # mac-py36:
-        #   image_name: macos-10.13
-        #   test_title: macOS py36
-        #   toxenv: py36
-        #   python: 3.6
-        # mac-py37:
-        #   image_name: macos-10.13
-        #   test_title: macOS py37
-        #   toxenv: py37
-        #   python: 3.7
-        # windows-py36:
-        #   image_name: vs2017-win2016
-        #   test_title: Windows
-        #   toxenv: py36
-        #   python: 3.6
-        # windows-py37:
-        #   image_name: vs2017-win2016
-        #   test_title: Windows
-        #   toxenv: py37
-        #   python: 3.7
+        mac-py36:
+          image_name: macos-10.13
+          test_title: macOS py36
+          toxenv: py36
+          python: 3.6
+        mac-py37:
+          image_name: macos-10.13
+          test_title: macOS py37
+          toxenv: py37
+          python: 3.7
+        windows-py36:
+          image_name: vs2017-win2016
+          test_title: Windows
+          toxenv: py36
+          python: 3.6
+        windows-py37:
+          image_name: vs2017-win2016
+          test_title: Windows
+          toxenv: py37
+          python: 3.7
 
     pool:
       vmImage: $(image_name)
