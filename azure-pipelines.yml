@@ -29,7 +29,7 @@ jobs:
       displayName: 'Install Homebrew and GNU xargs'
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: source ./azure-pipelines/scripts/activate.sh && pip install -e .
+    - bash: source ./azure-pipelines/scripts/activate.sh && INSTALL_ON_LINUX=1 && pip install -e .
       displayName: 'Install development version of PyMedPhys'
     - bash: source ./azure-pipelines/scripts/activate.sh && ./azure-pipelines/scripts/matplotlib-backend.sh
       displayName: 'Set matplotlib backend to Agg'
