@@ -59,7 +59,7 @@ jobs:
       displayName: Run tests
 
     - task: PublishTestResults@2
-      displayName: Publish Test Results
+      displayName: Publish test results
       inputs:
         testResultsFiles: junit/*.xml
         testRunTitle: '$(test_title)'
@@ -103,20 +103,20 @@ jobs:
         updateConda: true
         createOptions: --channel conda-forge
 
-    - bash: "source ./azure-pipelines/scripts/activate.sh && python -c \"import sys; print(sys.version); print(sys.executable)\""
+    - bash: "source activate pymedphys && python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
-    - bash: "source ./azure-pipelines/scripts/activate.sh && python -m pip install -U tox --user"
+    - bash: "source activate pymedphys && python -m pip install -U tox --user"
       displayName: Install tox
 
-    - bash: "source ./azure-pipelines/scripts/activate.sh && python -m tox -e $TOXENV --notest"
+    - bash: "source activate pymedphys && python -m tox -e $TOXENV --notest"
       displayName: Install test dependencies
 
-    - bash: "source ./azure-pipelines/scripts/activate.sh && python -m tox -e $TOXENV"
+    - bash: "source activate pymedphys && python -m tox -e $TOXENV"
       displayName: Run tests
 
     - task: PublishTestResults@2
-      displayName: Publish Test Results
+      displayName: Publish test results
       inputs:
         testResultsFiles: junit/*.xml
         testRunTitle: '$(test_title)'
