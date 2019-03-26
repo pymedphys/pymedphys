@@ -99,7 +99,7 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql
+        packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql Cython freetds
         updateConda: true
         createOptions: --channel conda-forge
 
