@@ -46,11 +46,29 @@ def mephysto(filepath, index):
         axis, reading, scan_curvetype, scan_depth
     ) = load_single_item(filepath_found, int(index))
 
-    first_column = np.concatenate([
-        ["Type: {}".format(scan_curvetype)],
-        ["Measurement Axis (mm)"], axis])
-    second_column = np.concatenate([
-        ["Depth = {} mm".format(scan_depth)],
-        ["Reading"], reading])
+    second_column_header = ["Reading"]
+
+    if scan_curvetype == "PDD":
+        first_column_header = [
+            "Depth Profile", "Depth (mm)"
+        ]
+        second_column_header = [np.nan] + second_column_header
+    elif scan_curvetype == "INPLANE_PROFILE":
+        first_column_header = [
+            "Inplane Profile", "y (mm)"
+        ]
+        second_column_header = (
+            ["Depth = {} mm".format(scan_depth)] + second_column_header)
+    elif scan_curvetype == "CROSSPLANE_PROFILE":
+        first_column_header = [
+            "Crossplane Profile", "x (mm)"
+        ]
+        second_column_header = (
+            ["Depth = {} mm".format(scan_depth)] + second_column_header)
+    else:
+        raise ValueError("Unexpected Profile Type")
+
+    first_column = np.concatenate([first_column_header, axis])
+    second_column = np.concatenate([second_column_header, reading])
 
     return np.vstack([first_column, second_column]).T
