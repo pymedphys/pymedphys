@@ -52,7 +52,7 @@ def mephysto(filepath, index):
         first_column_header = [
             "Depth Profile", "Depth (mm)"
         ]
-        second_column_header = [np.nan] + second_column_header
+        second_column_header = [None] + second_column_header
     elif scan_curvetype == "INPLANE_PROFILE":
         first_column_header = [
             "Inplane Profile", "y (mm)"
