@@ -26,7 +26,6 @@
 
 import numpy as np
 
-import pydicom
 import xlwings as xw
 
 from ...utilities import wildcard_file_resolution
@@ -37,12 +36,21 @@ IMPORTS = get_imports(globals())
 
 
 @xw.func
-@xw.arg('mephysto_path')
+@xw.arg('filepath')
 @xw.arg('index')
 @xw.ret(expand='table')
 def mephysto(filepath, index):
     filepath_found = wildcard_file_resolution(filepath)
 
-    results = load_single_item(filepath_found, index)
+    (
+        axis, reading, scan_curvetype, scan_depth
+    ) = load_single_item(filepath_found, int(index))
 
-    return np.vstack(results).T
+    first_column = np.concatenate([
+        ["Type: {}".format(scan_curvetype)],
+        ["Measurement Axis (mm)"], axis])
+    second_column = np.concatenate([
+        ["Depth = {} mm".format(scan_depth)],
+        ["Reading"], reading])
+
+    return np.vstack([first_column, second_column]).T
