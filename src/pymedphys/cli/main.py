@@ -26,65 +26,24 @@
 
 import argparse
 
-from ..dicom import (
-    adjust_machine_name_cli, adjust_RED_cli,
-    adjust_RED_by_structure_name_cli)
-from ..docker import server_cli
+from .dicom import dicom_cli
+from .docker import docker_cli
+from .logfile import logfile_cli
 
 
-def pymedphys_cli():
+def define_parser():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
     dicom_cli(subparsers)
     docker_cli(subparsers)
+    logfile_cli(subparsers)
+
+    return parser
+
+
+def pymedphys_cli():
+    parser = define_parser()
 
     args = parser.parse_args()
     args.func(args)
-
-
-def dicom_cli(subparsers):
-    dicom_parser = subparsers.add_parser('dicom')
-    dicom_subparsers = dicom_parser.add_subparsers()
-
-    dicom_adjust_machine_name_parser = dicom_subparsers.add_parser(
-        'adjust-machine-name')
-
-    dicom_adjust_machine_name_parser.add_argument('input_file', type=str)
-    dicom_adjust_machine_name_parser.add_argument('output_file', type=str)
-    dicom_adjust_machine_name_parser.add_argument('new_machine_name', type=str)
-    dicom_adjust_machine_name_parser.set_defaults(func=adjust_machine_name_cli)
-
-    dicom_adjust_rel_elec_density_parser = dicom_subparsers.add_parser(
-        'adjust-rel-elec-density')
-
-    dicom_adjust_rel_elec_density_parser.add_argument('input_file', type=str)
-    dicom_adjust_rel_elec_density_parser.add_argument('output_file', type=str)
-    dicom_adjust_rel_elec_density_parser.add_argument(
-        'adjustment_map', type=str, nargs='+')
-
-    dicom_adjust_rel_elec_density_parser.add_argument('-i', '--ignore_missing_structure',
-                                                      action='store_true')
-
-    dicom_adjust_rel_elec_density_parser.set_defaults(
-        func=adjust_RED_cli)
-
-    dicom_structure_name_RED_adjust = dicom_subparsers.add_parser(
-        'structure-name-RED-adjust')
-
-    dicom_structure_name_RED_adjust.add_argument('input_file', type=str)
-    dicom_structure_name_RED_adjust.add_argument('output_file', type=str)
-
-    dicom_structure_name_RED_adjust.set_defaults(
-        func=adjust_RED_by_structure_name_cli)
-
-
-def docker_cli(subparsers):
-    docker_parser = subparsers.add_parser('docker')
-    docker_subparsers = docker_parser.add_subparsers()
-
-    docker_server_parser = docker_subparsers.add_parser(
-        'server'
-    )
-
-    docker_server_parser.set_defaults(func=server_cli)

@@ -3,7 +3,6 @@
   "python.linting.mypyEnabled": true,
   "files.trimTrailingWhitespace": true,
   "editor.formatOnSave": true,
-  "restructuredtext.confPath": "${workspaceFolder}\\docs",
   "editor.detectIndentation": false,
   "editor.insertSpaces": true,
   "editor.tabSize": 2,
@@ -12,5 +11,8 @@
   },
   "[yaml]": {
     "editor.tabSize": 4
-  }
+  },
+  "editor.rulers": [
+    79
+  ]
 }
