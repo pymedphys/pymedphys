@@ -9,6 +9,12 @@
 
 .. toctree::
     :maxdepth: 1
+    :caption: Additional Information
+
+    additional/changelog.rst
+
+.. toctree::
+    :maxdepth: 1
     :caption: User Guide
 
     user/mudensity
@@ -29,15 +35,9 @@
 
 .. toctree::
     :maxdepth: 1
-    :caption: Additional Information
+    :caption: Labs
 
-    additional/changelog.rst
-
-.. toctree::
-    :maxdepth: 1
-    :caption: Labs [pre-release]
-
-    labs/paulking/profile.rst
+    labs/labs.rst
 
 
 Indices and tables
