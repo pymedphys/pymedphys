@@ -30,29 +30,32 @@ from ..dicom import (
 
 
 def dicom_cli(subparsers):
-    dicom_parser = subparsers.add_parser('dicom')
+    dicom_parser = subparsers.add_parser('dicom', help='dicom help')
     dicom_subparsers = dicom_parser.add_subparsers()
 
     dicom_adjust_machine_name(dicom_subparsers)
     dicom_adjust_rel_elec_density(dicom_subparsers)
     dicom_structure_name_RED_adjust(dicom_subparsers)
 
+    return dicom_parser
+
 
 def dicom_adjust_machine_name(dicom_subparsers):
     parser = dicom_subparsers.add_parser('adjust-machine-name')
 
-    parser.add_argument('input_file', type=str)
-    parser.add_argument('output_file', type=str)
-    parser.add_argument('new_machine_name', type=str)
+    parser.add_argument('input_file', type=str, help='input_file')
+    parser.add_argument('output_file', type=str, help='output_file')
+    parser.add_argument('new_machine_name', type=str, help='new_machine_name')
     parser.set_defaults(func=adjust_machine_name_cli)
 
 
 def dicom_adjust_rel_elec_density(dicom_subparsers):
-    parser = dicom_subparsers.add_parser('adjust-rel-elec-density')
+    parser = dicom_subparsers.add_parser('adjust-RED')
 
-    parser.add_argument('input_file', type=str)
-    parser.add_argument('output_file', type=str)
-    parser.add_argument('adjustment_map', type=str, nargs='+')
+    parser.add_argument('input_file', type=str, help='input_file')
+    parser.add_argument('output_file', type=str, help='output_file')
+    parser.add_argument('adjustment_map', type=str,
+                        nargs='+', help='adjustment_map')
 
     parser.add_argument('-i', '--ignore_missing_structure',
                         action='store_true')
@@ -61,9 +64,9 @@ def dicom_adjust_rel_elec_density(dicom_subparsers):
 
 
 def dicom_structure_name_RED_adjust(dicom_subparsers):
-    parser = dicom_subparsers.add_parser('structure-name-RED-adjust')
+    parser = dicom_subparsers.add_parser('adjust-RED-by-structure-name')
 
-    parser.add_argument('input_file', type=str)
-    parser.add_argument('output_file', type=str)
+    parser.add_argument('input_file', type=str, help='input_file')
+    parser.add_argument('output_file', type=str, help='output_file')
 
     parser.set_defaults(func=adjust_RED_by_structure_name_cli)

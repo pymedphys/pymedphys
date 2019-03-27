@@ -31,7 +31,7 @@ from .docker import docker_cli
 from .logfile import logfile_cli
 
 
-def pymedphys_cli():
+def define_parser():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
@@ -39,5 +39,13 @@ def pymedphys_cli():
     docker_cli(subparsers)
     logfile_cli(subparsers)
 
+    return parser
+
+
+def pymedphys_cli():
+    parser = define_parser()
+
     args = parser.parse_args()
     args.func(args)
+
+    return parser

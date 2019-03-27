@@ -213,7 +213,7 @@ def test_electron_density_append():
         excess_adjustment_map_as_list).tolist()
 
     command = (
-        'pymedphys dicom adjust-rel-elec-density -i '.split()
+        'pymedphys dicom adjust-RED -i '.split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME]
         + excess_adjustment_map_flat)
 
@@ -285,7 +285,7 @@ def test_structure_name_based_RED_append():
     assert str(expected_ds) == str(adjusted_ds)
 
     command = (
-        'pymedphys dicom structure-name-RED-adjust'.split()
+        'pymedphys dicom adjust-RED-by-structure-name'.split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME])
 
     compare_dicom_cli(command, original_ds, expected_ds)
