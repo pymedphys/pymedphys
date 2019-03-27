@@ -47,5 +47,3 @@ def pymedphys_cli():
 
     args = parser.parse_args()
     args.func(args)
-
-    return parser

@@ -46,15 +46,16 @@ ADJUSTED_DICOM_FILENAME = os.path.join(
 
 def compare_dicom_cli(command, original, expected):
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
-    subprocess.check_call(command)
 
-    cli_adjusted_ds = pydicom.read_file(
-        ADJUSTED_DICOM_FILENAME, force=True)
+    try:
+        subprocess.check_call(command)
+        cli_adjusted_ds = pydicom.read_file(
+            ADJUSTED_DICOM_FILENAME, force=True)
 
-    assert str(cli_adjusted_ds) == str(expected)
-
-    os.remove(ORIGINAL_DICOM_FILENAME)
-    os.remove(ADJUSTED_DICOM_FILENAME)
+        assert str(cli_adjusted_ds) == str(expected)
+    finally:
+        os.remove(ORIGINAL_DICOM_FILENAME)
+        os.remove(ADJUSTED_DICOM_FILENAME)
 
 
 def test_adjust_machine_name():
