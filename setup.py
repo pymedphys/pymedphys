@@ -37,24 +37,6 @@ def read(*names, **kwargs):
     ).read()
 
 
-# https://docs.pytest.org/en/latest/goodpractices.html#manual-integration
-class PyTest(TestCommand):
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-
-    def run_tests(self):
-
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-
-        errno = pytest.main([
-            "-v", "--pylint", "--pylint-error-types=EF", "--mypy",
-            "--doctest-modules", "--doctest-continue-on-failure",
-            "--doctest-plus", "--doctest-rst", "--junitxml=junit/unit-test.xml",
-            "--durations=0"])
-        sys.exit(errno)
-
-
 setup(
     name="pymedphys",
     version=version,
@@ -91,11 +73,11 @@ setup(
         'keyring',
         'matplotlib',
         'notebook',
-        'numpy>=1.12',
+        'numpy <1.16, >=1.12',
         'pandas',
         'Pillow',
         'psutil',
-        'pydicom>=1.0',
+        'pydicom >= 1.0',
         'pymssql',
         'python-dateutil',
         'scipy',
@@ -104,31 +86,17 @@ setup(
         'xlwings; platform_system != "Linux"',
         'dataclasses; python_version=="3.6"'
     ],
-    setup_requires=[
-        'pytest-runner'
-    ],
-    tests_require=[
-        'coverage',
-        'deepdiff',
-        'layer-linter',
-        'm2r',
-        'mypy',
-        'sphinxcontrib-napoleon',
-        'pylint',
-        'pytest',
-        'pytest-pylint',
-        'pytest-mypy',
-        'pytest-doctestplus',
-        'pytest-cov',
-        'sphinx >= 1.4',
-        'sphinx_rtd_theme',
-        'sphinx-testing'
-    ],
-    cmdclass={"pytest": PyTest},
     extras_require={
         'docs': [
             'm2r',
             'sphinxcontrib-napoleon',
             'sphinx >= 1.4',
-            'sphinx_rtd_theme']}
+            'sphinx_rtd_theme'
+        ],
+        'testing': [
+            'deepdiff',
+            'pytest',
+            'pytest-cov'
+        ]
+    }
 )
