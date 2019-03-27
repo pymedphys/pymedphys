@@ -57,6 +57,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.autosummary',
     'sphinx.ext.graphviz',
+    'sphinxarg.ext',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.napoleon',
     'm2r'

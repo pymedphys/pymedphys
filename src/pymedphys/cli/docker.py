@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,24 +24,16 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A logfile toolbox.
 
-Examples:
-    >>> from pymedphys.logfile import index_logfiles
-"""
+from ..docker import server_cli
 
-# pylint: disable=W0401,W0614,C0103,C0413
 
-from ..libutils import clean_and_verify_levelled_modules
+def docker_cli(subparsers):
+    docker_parser = subparsers.add_parser('docker')
+    docker_subparsers = docker_parser.add_subparsers()
 
-from ._level1.logfileanalyse import *
-from ._level1.diagnostics_zips import *
-from ._level1.logfileindex import *
-from ._level2.logfilebygantry import *
-from ._level2.orchestration import *
+    docker_server_parser = docker_subparsers.add_parser(
+        'server'
+    )
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.logfileanalyse', '._level1.diagnostics_zips',
-    '._level1.logfileindex', '._level2.logfilebygantry',
-    '._level2.orchestration'
-], package='pymedphys.logfile')
+    docker_server_parser.set_defaults(func=server_cli)

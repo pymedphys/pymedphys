@@ -91,7 +91,8 @@ setup(
             'm2r',
             'sphinxcontrib-napoleon',
             'sphinx >= 1.4',
-            'sphinx_rtd_theme'
+            'sphinx_rtd_theme',
+            'sphinx-argparse'
         ],
         'testing': [
             'deepdiff',
