@@ -40,7 +40,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   editor tools.
 - Added a range of xlwings tools that allow the use of PyMedPhys functions
   within Excel
-- Added the rudementry code enabling the pulling of profiles from Mephysto
+- Added rudimentary code to pull profiles from Mephysto
   files.
 
 <!-- ### Bug Fixes
