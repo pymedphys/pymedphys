@@ -25,6 +25,7 @@
 
 
 import os
+import uuid
 import subprocess
 
 import numpy as np
@@ -37,8 +38,10 @@ from pymedphys.dicom import (
 
 
 HERE = os.path.dirname(__file__)
-ORIGINAL_DICOM_FILENAME = os.path.join(HERE, 'original.dcm')
-ADJUSTED_DICOM_FILENAME = os.path.join(HERE, 'adjusted.dcm')
+ORIGINAL_DICOM_FILENAME = os.path.join(
+    HERE, 'original-{}.dcm'.format(str(uuid.uuid4())))
+ADJUSTED_DICOM_FILENAME = os.path.join(
+    HERE, 'adjusted-{}.dcm'.format(str(uuid.uuid4())))
 
 
 def compare_dicom_cli(command, original, expected):
