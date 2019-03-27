@@ -36,7 +36,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     `DicomCollection.from_directory(directory_path)` which would pull all DICOM
     files nested within a directory and sort them into `DicomStudy` objects
     based on their header UIDs.
-- Added CLI commands for a WIP docker server, logfile orchetration, and DICOM
+- Added CLI commands for a WIP docker server, logfile orchestration, and DICOM
   editor tools.
 - Added a range of xlwings tools that allow the use of PyMedPhys functions
   within Excel
