@@ -15,14 +15,24 @@
 
 .. toctree::
     :maxdepth: 1
-    :caption: User Guide
+    :caption: Python Library User Guide
 
-    user/mudensity
-    user/gamma
-    user/electronfactors
-    user/dicom
-    user/geometry
-    user/xlwings
+    user-library/mudensity
+    user-library/gamma
+    user-library/logfile
+    user-library/trf
+    user-library/electronfactors
+    user-library/dicom
+    user-library/geometry
+    user-library/xlwings
+
+.. toctree::
+    :maxdepth: 1
+    :caption: CLI User Guide
+
+    user-cli/dicom
+    user-cli/logfile
+    user-cli/docker
 
 .. toctree::
     :maxdepth: 1

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,24 +24,21 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A logfile toolbox.
+import os
+from pymedphys.logfile import already_indexed_path
 
-Examples:
-    >>> from pymedphys.logfile import index_logfiles
-"""
 
-# pylint: disable=W0401,W0614,C0103,C0413
+def test_file_logic():
+    diagnostics = '/a/path/to/diagnostics'
+    to_be_indexed = os.path.join(diagnostics, 'to_be_indexed')
+    already_indexed = os.path.join(diagnostics, 'already_indexed')
 
-from ..libutils import clean_and_verify_levelled_modules
+    machine_zip_file_path = 'machine/archive.zip'
+    current_location = os.path.join(to_be_indexed, machine_zip_file_path)
+    expected_new = os.path.abspath(
+        os.path.join(already_indexed, machine_zip_file_path))
 
-from ._level1.logfileanalyse import *
-from ._level1.diagnostics_zips import *
-from ._level1.logfileindex import *
-from ._level2.logfilebygantry import *
-from ._level2.orchestration import *
+    converted = already_indexed_path(
+        current_location, to_be_indexed, already_indexed)
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.logfileanalyse', '._level1.diagnostics_zips',
-    '._level1.logfileindex', '._level2.logfilebygantry',
-    '._level2.orchestration'
-], package='pymedphys.logfile')
+    assert converted == expected_new

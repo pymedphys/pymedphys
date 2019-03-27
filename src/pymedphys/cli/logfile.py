@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,24 +24,24 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A logfile toolbox.
+from ..logfile import orchestration_cli
 
-Examples:
-    >>> from pymedphys.logfile import index_logfiles
-"""
 
-# pylint: disable=W0401,W0614,C0103,C0413
+def logfile_cli(subparsers):
+    logfile_parser = subparsers.add_parser('logfile')
+    logfile_subparsers = logfile_parser.add_subparsers()
 
-from ..libutils import clean_and_verify_levelled_modules
+    logfile_orchestration(logfile_subparsers)
 
-from ._level1.logfileanalyse import *
-from ._level1.diagnostics_zips import *
-from ._level1.logfileindex import *
-from ._level2.logfilebygantry import *
-from ._level2.orchestration import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.logfileanalyse', '._level1.diagnostics_zips',
-    '._level1.logfileindex', '._level2.logfilebygantry',
-    '._level2.orchestration'
-], package='pymedphys.logfile')
+def logfile_orchestration(logfile_subparsers):
+    parser = logfile_subparsers.add_parser('orchestration')
+
+    parser.add_argument('data_directory', type=str)
+
+    parser.add_argument('-m', '--mosaiq_sql', type=str,
+                        default=None)
+    parser.add_argument('-l', '--linac_details', type=str,
+                        default=None)
+
+    parser.set_defaults(func=orchestration_cli)
