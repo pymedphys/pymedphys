@@ -89,7 +89,7 @@ setup(
     extras_require={
         'docs': [
             'm2r',
-            'numpydoc',
+            'sphinxcontrib-napoleon',
             'sphinx >= 1.4',
             'sphinx_rtd_theme'
         ],
