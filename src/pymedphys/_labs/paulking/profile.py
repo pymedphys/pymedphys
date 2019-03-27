@@ -23,7 +23,8 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-""" A dose profile tool box. """
+""" For importing, analyzing, and comparing dose or intensity profiles
+    from different sources."""
 
 import os
 import copy
@@ -49,181 +50,207 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121, W0102
 
 class Profile():
-    """  One-dimensional distribution of dose or intensity information.
-
-    Includes methods for import, analysis, and export.
+    """  One-dimensional distribution of intensity vs position.
 
     Attributes
     ----------
     x : np.array
-        Displacement, +/- in cm
-    data : np.array
-        Intensity, units unspecified
-    data : dict, optional
-        Context-dependent, unspecified descriptors of the dataset.
+        position, +/- in cm
+    y : np.array
+        intensity in unspecified units
+    meta : dict, optional
+        metadata
+
+    Examples
+    --------
+    ``profiler = Profile().from_profiler("C:\\profiler.prs")``
+
+    ``film = Profile().from_narrow_png("C:\\image.png")``
+
+    ``profiler.cross_calibrate(film).plot(marker='o')``
+
+    .. image:: calib_curve.png
+
+    Notes
+    -----
+    Requires Python PIL.
 
     """
 
-    def __init__(self, x=[], data=[], metadata={}):
+    def __init__(self, x=np.array([]),
+                 y=np.array([]), meta={}):
+        """ create profile
+
+        Parameters
+        ----------
+        x : np.array, optional
+        y : np.array, optional
+        meta : dict, optional
+
+        Notes
+        -----
+        Normally created empty, then filled using a method, which returns
+        a new Profile.
+
+        """
         self.x = np.array(x)
-        self.data = np.array(data)
-        self.metadata = metadata
+        self.y = np.array(y)
+        self.meta = meta
         if len(self.x) < 2:
             self.interp = None
         else:
-            self.interp = interpolate.interp1d(self.x, self.data,
+            self.interp = interpolate.interp1d(self.x, self.y,
                                                bounds_error=False, fill_value=0.0)
 
-    def __len__(self):  # NUMBER OF DATA POINTS
+    def __len__(self):
+        """ # data points  """
         return len(self.x)
 
     def __eq__(self, other):  # SAME DATA POINTS
+        """ same data points """
         if np.array_equal(self.x, other.x) and \
-           np.array_equal(self.data, other.data) and \
-           self.metadata == other.metadata:
+           np.array_equal(self.y, other.y) and \
+           self.meta == other.meta:
             return True
         else:
             return False
 
-    # CONSIDER IMPLEMENTING > < AS "TO THE LEFT OF AND "TO THE RIGHT OF"
-
     def __copy__(self):
+        """ deep copy """
         return copy.deepcopy(self)
 
     def __str__(self):
+        """
+        Examples
+        --------
+        ``Profile object: 83 pts | x (-16.4 cm -> 16.4 cm) | y (0.22 -> 45.54)``
+
+        """
         try:
             fmt_str = 'Profile object: '
-            fmt_str += '{} pts | x ({} cm -> {} cm) | data ({} -> {})'
+            fmt_str += '{} pts | x ({} cm -> {} cm) | y ({} -> {})'
             return fmt_str.format(len(self.x),
                                   min(self.x), max(self.x),
-                                  min(self.data), max(self.data))
-        except ValueError:  # EMPTY PROFILE
-            return ''
+                                  min(self.y), max(self.y))
+        except ValueError:
+            return ''  # EMPTY PROFILE
 
-    def __add__(self, other):  # SHIFT RIGHT
+    def __add__(self, other):
+        """ shift right """
         new_x = self.x + other
-        # self.x += other
-        return Profile(x=new_x, data=self.data, metadata=self.metadata)
+        return Profile(x=new_x, y=self.y, meta=self.meta)
     __radd__ = __add__
     __iadd__ = __add__
 
-    def __sub__(self, other):  # SHIFT LEFT
+    def __sub__(self, other):
+        """ shift left """
         self.x -= other
-        return Profile(x=self.x, data=self.data, metadata=self.metadata)
+        return Profile(x=self.x, y=self.y, meta=self.meta)
     __rsub__ = __sub__
     __isub__ = __sub__
 
-    def __mul__(self, other):  # SCALE DOSE
-        self.data *= other
+    def __mul__(self, other):
+        """ scale y """
+        self.y *= other
         return self
     __rmul__ = __mul__
     __imul__ = __mul__
 
-    def from_lists(self, x, data, metadata={}):
-        """  Create profile from a x-list and y-list .
+    def from_lists(self, x, y, meta={}):
+        """  import x and y lists
 
-        Overwrite any existing dose profile data and metadata.
-
-        Arguments
-        ---------
+        Parameters
+        ----------
         x : list
             List of float x values
-        data : list
-            List of float data values
-
-        Keyword Arguments
-        -----------------
-        metadata : dict, optional
-            Dictionary of key-value pairs that describe the profile
+        y : list
+            List of float y values
+        meta : dict, optional
 
         Returns
         -------
         Profile
+
+        Examples
+        --------
+        ``profile = Profile().fron_lists(x_list,data_list)``
 
         """
 
         self.x = np.array(x)
-        self.data = np.array(data)
-        self.__init__(x=x, data=data, metadata=metadata)
-        return Profile(x=x, data=data, metadata=metadata)
+        self.y = np.array(y)
+        self.__init__(x=x, y=y, meta=meta)
+        return Profile(x=x, y=y, meta=meta)
 
-    def from_tuples(self, list_of_tuples, metadata={}):
-        """  Create profile from a list of (x,data) tuples.
+    def from_tuples(self, list_of_tuples, meta={}):
+        """  import list of (x,y) tuples
 
-        Overwrite any existing dose profile data and metadata.
-
-        Arguments
-        ---------
-        list_of_tuples : list
-            List of (float x, float data) tuples.
-
-        Keyword Arguments
-        -----------------
-        metadata : dict, optional
-            Dictionary of key-value pairs that describe the profile
+        Parameters
+        ----------
+        list_of_tuples : [(float x, float y), ...]
+        meta : dict, optional
 
         Returns
         -------
         Profile
+
+        Examples
+        --------
+        ``profile = Profile().fron_lists(list_of_tuples)``
 
         """
         x = list(list(zip(*list_of_tuples))[0])
-        data = list(list(zip(*list_of_tuples))[1])
-        self.__init__(x=x, data=data, metadata=metadata)
-        return Profile(x=x, data=data, metadata=metadata)
+        y = list(list(zip(*list_of_tuples))[1])
+        self.__init__(x=x, y=y, meta=meta)
+        return Profile(x=x, y=y, meta=meta)
 
-    def from_pulse(self, centre, width, domain, increment, metadata={}):
-        """ Create profile of unit height from pulse function parameters
+    def from_pulse(self, centre, width, domain, increment, meta={}):
+        """ create pulse of unit height
 
-        Overwrite any existing dose profile data and metadata.
-
-        Arguments
-        ---------
+        Parameters
+        ----------
         centre : float
-            Location of pulse mid-point
         width : float
-            Width of pulse (cm)
         domain : tuple
-            (leftmost distance, rightmost distance)
+            (x_left, x_right)
         increment : float
-            Profile distance spacing
-
-        Keyword Arguments
-        -----------------
-        metadata : dict, optional
-            Dictionary of key-value pairs that describe the profile
+        meta : dict, optional
 
         Returns
         -------
         Profile
+
 
         """
         x_vals = np.arange(domain[0], domain[1] + increment, increment)
-        data = []
+        y = []
         for x in x_vals:
             if abs(x) > (centre + width/2.0):
-                data.append(0.0)
+                y.append(0.0)
             elif abs(x) < (centre + width/2.0):
-                data.append(1.0)
+                y.append(1.0)
             else:
-                data.append(0.5)
-        return Profile().from_lists(x_vals, data, metadata=metadata)
+                y.append(0.5)
+        return Profile().from_lists(x_vals, y, meta=meta)
 
     def from_snc_profiler(self, file_name, axis):
-        """
-        Return dose profiles from native profiler data file.
+        """ import profile form SNC Profiler file
 
-        Arguments
+        Parameters
         ----------
         file_name : string
-            long file name of Profiler file
+            file name with path, .prs
         axis : string
-            'x' or 'y'
+            'tvs' or 'rad'
 
         Returns
         -------
         Profile
 
+        Raises
+        ------
+        TypeError
+            if axis invalid
 
         """
 
@@ -238,7 +265,7 @@ class Profile():
             munge = munge.split('TYPE')[0].split('\n')  # DISCARD NON-METADATA
             munge = [i.split(':', 1) for i in munge if i and ':' in i]
             munge = [i for i in munge if i[1]]  # DISCARD EMPTY ITEMS
-            metadata = dict(munge)
+            meta = dict(munge)
 
         with open(file_name) as profiler_file:
             for row in profiler_file.readlines():
@@ -255,32 +282,24 @@ class Profile():
         y_vals = [-16.4 + 0.4*i for i in range(83)]
         y_prof = list(zip(y_vals, dose[57:]))
 
-        # return (Profile().from_tuples(x_prof, metadata=metadata),
-        #         Profile().from_tuples(y_prof, metadata=metadata))
-
-        if axis == 'x':
-            return Profile().from_tuples(x_prof, metadata=metadata)
-        elif axis == 'y':
-            return Profile().from_tuples(y_prof, metadata=metadata)
+        if axis == 'tvs':
+            return Profile().from_tuples(x_prof, meta=meta)
+        elif axis == 'rad':
+            return Profile().from_tuples(y_prof, meta=meta)
         else:
-            raise TypeError("axis must be 'x' or 'y'")
+            raise TypeError("axis must be 'tvs' or 'rad'")
 
     def from_narrow_png(self, file_name, step_size=0.1):
-        """  Extract a an relative-density profilee from a narrow png file.
+        """ import from png file
 
-        Source file is a full color PNG that is sufficiently narrow that
+        Source file is a full color PNG, sufficiently narrow that
         density is uniform along its short dimension. The image density along
-        its long dimension is reflective of a dose distribution. Requires
-        Python PIL.
+        its long dimension is reflective of a dose distribution.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         file_name : str
-
-        Keyword Arguments
-        -----------------
         step-size : float, optional
-            Distance output increment in cm, defaults to 1 mm
 
         Returns
         -------
@@ -289,9 +308,9 @@ class Profile():
         Raises
         ------
         ValueError
-            Image is not narrow, i.e. aspect ratio <= 5
+            if aspect ratio <= 5, i.e. not narrow
         AssertionError
-            step_size is too small, i.e. step_size <= 12.7 / dpi
+            if step_size <= 12.7 over dpi, i.e. small
 
         """
         image_file = PIL.Image.open(file_name)
@@ -336,61 +355,58 @@ class Profile():
         zipped_profile = list(zip(downsampled_distances, downsampled_density))
         return Profile().from_tuples(zipped_profile)
 
-    def get_data(self, x):
-        """ Profile dose value at distance.
+    def get_y(self, x):
+        """ y-value at distance x
 
-        Return a data value based on interpolation of source data for a
+        Return a y value based on interpolation of source data for a
         supplied distance.
 
-        Argument
-        -----------------
+        Parameters
+        ----------
         x : float
 
         Returns
         -------
         float
 
-         """
+        """
         try:
             return self.interp(x)
         except ValueError:
             return np.nan
 
-    def get_x(self, data):
-        """ Distance at which profile takes on data value.
+    def get_x(self, y):
+        """ tuple of x-values at intensity y
 
-        Return a distance value based on interpolation of source data for a
-        supplied data value.
+        Return distance values based on interpolation of source data for a
+        supplied y value.
 
-        Argument
-        -----------------
-        data : float
+        Parameters
+        ----------
+        y : float
 
         Returns
         -------
-        tuple
+        tuple : (x1, x2, ...)
 
          """
 
-        dose_step = (max(self.data)-min(self.data)) / 100
-        x = self.resample_data(dose_step).x
-        y = self.resample_data(dose_step).data
+        dose_step = (max(self.y)-min(self.y)) / 100
+        x_ = self.resample_y(dose_step).x
+        y_ = self.resample_y(dose_step).y
         dists = []
-        for i in range(1, len(x)):
+        for i in range(1, len(x_)):
             val = None
-            if (y[i]-data)*(y[i-1]-data) < 0:
-                val = (x[i]-((y[i]-data)/(y[i]-y[i-1]))*(x[i]-x[i-1]))
-            elif np.isclose(y[i], data):
-                val = x[i]
+            if (y_[i]-y)*(y_[i-1]-y) < 0:
+                val = (x_[i]-((y_[i]-y)/(y_[i]-y_[i-1]))*(x_[i]-x_[i-1]))
+            elif np.isclose(y_[i], y):
+                val = x_[i]
             if val and (val not in dists):
                 dists.append(val)
         return tuple(dists)
 
     def get_increment(self):
-        """ The profile's step-size increment .
-
-        Calculated at the minimum value, if variable, or as the mean value if
-        all increments are close.
+        """ minimum step-size increment
 
         Returns
         -------
@@ -404,22 +420,32 @@ class Profile():
             return steps.min()
 
     def plot(self, marker='o-'):
-        """ Present a plot of the profile. """
-        plt.plot(self.x, self.data, marker)
+        """ profile plot
+
+        Parameters
+        ----------
+        marker : string, optional
+
+        Returns
+        -------
+        None
+
+        """
+        plt.plot(self.x, self.y, marker)
         plt.show()
         return
 
-    def segment(self, start=-np.inf, stop=np.inf):
-        """ Part of dose profile between begin and end.
+    def slice_segment(self, start=-np.inf, stop=np.inf):
+        """ slice between given end-points
 
         Resulting profile is comprised of those points in the source
         profile whose distance values are not-less-than start and
         not-greater-than stop.
 
-        Keyword Arguments
-        -----------------
-        start, stop : float, optional
-            Result end points, default to source end-points
+        Parameters
+        ----------
+        start : float, optional
+        stop : float, optional
 
         Returns
         -------
@@ -430,23 +456,23 @@ class Profile():
             start = max(start, min(self.x))  # default & limit to curve ends
             stop = min(stop, max(self.x))
             new_x = self.x[np.logical_and(self.x >= start, self.x <= stop)]
-            new_data = self.interp(new_x)
+            new_y = self.interp(new_x)
         except ValueError:
             new_x = []
-            new_data = []
+            new_y = []
 
-        return Profile(new_x, new_data)
+        return Profile(new_x, new_y)
 
     def resample_x(self, step):
-        """ Resample a dose profile at a specified increment.
+        """ resampled x-values at a given increment
 
         Resulting profile has stepsize of the indicated step based on
         linear interpolation over the points of the source profile.
 
-        Arguments
-        -----------------
+        Parameters
+        ----------
         step : float
-            Sampling increment
+            sampling increment
 
         Returns
         -------
@@ -455,19 +481,19 @@ class Profile():
         """
 
         new_x = np.arange(self.x[0], self.x[-1], step)
-        new_data = self.interp(new_x)
-        return Profile(new_x, new_data, self.metadata)
+        new_y = self.interp(new_x)
+        return Profile(new_x, new_y, self.meta)
 
-    def resample_data(self, step):
-        """ Resample a dose profile at specified dose increment.
+    def resample_y(self, step):
+        """ resampled y-values at a given increment
 
         Resulting profile has nonuniform step-size, but each step
         represents and approximately equal step in dose.
 
-        Arguments
-        -----------------
+        Parameters
+        ----------
         step : float
-            Sampling increment
+            sampling increment
 
         Returns
         -------
@@ -475,7 +501,8 @@ class Profile():
 
         """
 
-        temp_x = np.arange(min(self.x), max(self.x), 0.01*self.get_increment())
+        temp_x = np.arange(min(self.x), max(self.x),
+                           0.01*self.get_increment())
         temp_y = self.interp(temp_x)
 
         resamp_x = [temp_x[0]]
@@ -493,79 +520,69 @@ class Profile():
             resamp_x.append(temp_x[-1])
             resamp_y.append(temp_y[-1])
 
-        return Profile().from_lists(resamp_x, resamp_y, metadata=self.metadata)
+        return Profile().from_lists(resamp_x, resamp_y, meta=self.meta)
 
-    def normalise_dose(self, x=0.0, data=1.0):
-        """ Renormalise to specified dose at distance.
+    def make_normal_y(self, x=0.0, y=1.0):
+        """ normalised to dose at distance
 
         Source profile values multiplied by scaling factor to yield the specified dose at
         the specified distance. If distance is not specified, the central axis value is
         used. If dose is not specified, then normalization is to unity. With neither
         specified, resulting curve is the conventional off-center-ratio.
 
-        Keywork Arguments
-        -----------------
-        x : float
-        data : float
+        Parameters
+        ----------
+        x : float, optional
+        y : float, optional
 
         Returns
         -------
         Profile
 
         """
-        norm_factor = data / self.get_data(x)
+        norm_factor = y / self.get_y(x)
         new_x = self.x
-        new_data = norm_factor * self.data
-        return Profile(new_x, new_data, metadata=self.metadata)
+        new_y = norm_factor * self.y
+        return Profile(new_x, new_y, meta=self.meta)
 
-    def normalize_dose(self, x=0.0, data=1.0):
-        """ US Eng -> UK Eng """
-        return self.normalise_dose(x=x, data=data)
+    def get_edges(self):
+        """ x-values of profile edges (left, right)
 
-    def edges(self):
-        """ Edges of a profile, as a tuple.
-
-        Return left and right edges of a profile, identified
-        as the points of greatest positive and greatest negative
-        gradient.
-
-        Arguments
-        -----------------
-        step : float
-            Precision of result
+        Notes
+        -----
+        Points of greatest positive and greatest negative gradient.
 
         Returns
         -------
         tuple
 
         """
-        dydx = list(np.gradient(self.data, self.x))
+        dydx = list(np.gradient(self.y, self.x))
         lt_edge = self.x[dydx.index(max(dydx))]
         rt_edge = self.x[dydx.index(min(dydx))]
         return (lt_edge, rt_edge)
 
-    def normalise_distance(self):
-        """ Renormalise distance to beam edges.
+    def make_normal_x(self):
+        """ normalised to distance at edges
 
         Source profile distances multiplied by scaling factor to yield unit distance
-        at beam edges.
-            | (1) Milan & Bentley, BJR Feb-74, The Storage and manipulation
-                of radiation dose data in a small digital computer
-            | (2) Heintz, King, & Childs, May-95, User Manual,
-                Prowess 3000 CT Treatment Planning
-
-        Arguments
-        -----------------
-        step : float
-            Precision of result
+        at beam edges. [1]_ [2]_
 
         Returns
         -------
         Profile
 
+
+        References
+        ----------
+        .. [1] Milan & Bentley, BJR Feb-74, The Storage and manipulationof radiation dose data
+           in a small digital computer
+        .. [2] Heintz, King, & Childs, May-95, User Manual, Prowess 3000 CT Treatment Planning
+
+
         """
 
-        lt_edge, rt_edge = self.edges()
+        lt_edge, rt_edge = self.get_edges()
         cax = 0.5*(lt_edge + rt_edge)
 
         new_x = []
@@ -577,37 +594,28 @@ class Profile():
             else:
                 new_x.append(0.0)
 
-        return Profile(new_x, self.data, metadata=self.metadata)
+        return Profile(new_x, self.y, meta=self.meta)
 
-    def normalize_distance(self):
-        """ US Eng -> UK Eng """
-        return self.normalise_distance()
-
-    def umbra(self):
-        """ Central 80% of dose profile.
+    def slice_umbra(self):
+        """ umbra central 80%
 
         Source dose profile sliced to include only the central region between beam edges.
-
-        Arguments
-        -----------------
-        step : float
-            Precision of result
 
         Returns
         -------
         Profile
 
         """
-        lt, rt = self.edges()
+        lt, rt = self.get_edges()
         idx = [i for i, d in enumerate(
             self.x) if d >= 0.8 * lt and d <= 0.8 * rt]
         new_x = self.x[idx[0]:idx[-1]+1]
-        new_data = self.data[idx[0]:idx[-1]+1]
+        new_y = self.y[idx[0]:idx[-1]+1]
 
-        return Profile(x=new_x, data=new_data, metadata=self.metadata)
+        return Profile(x=new_x, y=new_y, meta=self.meta)
 
-    def penumbra(self):
-        """ Penumbra of dose profile, 20-80%
+    def slice_penumbra(self):
+        """ penumbra (20 -> 80%, 80 -> 20%)
 
         Source dose profile sliced to include only the penumbral edges, where the dose
         transitions from 20% - 80% of the umbra dose, as precent at the umbra edge,
@@ -620,21 +628,21 @@ class Profile():
 
         """
 
-        not_umbra = {'lt': self.segment(stop=self.umbra().x[0]),
-                     'rt': self.segment(start=self.umbra().x[-1])}
+        not_umbra = {'lt': self.slice_segment(stop=self.slice_umbra().x[0]),
+                     'rt': self.slice_segment(start=self.slice_umbra().x[-1])}
 
-        lt_80pct = not_umbra['lt'].get_x(0.8 * not_umbra['lt'].data[-1])[-1]
-        lt_20pct = not_umbra['lt'].get_x(0.2 * not_umbra['lt'].data[-1])[-1]
-        lt_penum = self.segment(start=lt_20pct, stop=lt_80pct)
+        lt_80pct = not_umbra['lt'].get_x(0.8 * not_umbra['lt'].y[-1])[-1]
+        lt_20pct = not_umbra['lt'].get_x(0.2 * not_umbra['lt'].y[-1])[-1]
+        lt_penum = self.slice_segment(start=lt_20pct, stop=lt_80pct)
 
-        rt_80pct = not_umbra['rt'].get_x(0.8 * not_umbra['rt'].data[0])[-1]
-        rt_20pct = not_umbra['rt'].get_x(0.2 * not_umbra['rt'].data[0])[-1]
-        rt_penum = self.segment(start=rt_80pct, stop=rt_20pct)
+        rt_80pct = not_umbra['rt'].get_x(0.8 * not_umbra['rt'].y[0])[-1]
+        rt_20pct = not_umbra['rt'].get_x(0.2 * not_umbra['rt'].y[0])[-1]
+        rt_penum = self.slice_segment(start=rt_80pct, stop=rt_20pct)
 
         return (lt_penum, rt_penum)
 
-    def shoulders(self):
-        """ Shoulders of dose profile, between the umbra and the penumbra.
+    def slice_shoulders(self):
+        """ shoulders (penumbra -> umbra, umbra -> penumbra)
 
         Source dose profile sliced to include only the profile shoulders,
         outside the central 80% of of the profile but inside the region bounded
@@ -647,19 +655,19 @@ class Profile():
 
         """
 
-        lt_start = self.penumbra()[0].x[0]
-        lt_stop = self.umbra().x[0]
+        lt_start = self.slice_penumbra()[0].x[0]
+        lt_stop = self.slice_umbra().x[0]
 
-        rt_start = self.umbra().x[-1]
-        rt_stop = self.penumbra()[-1].x[-1]
+        rt_start = self.slice_umbra().x[-1]
+        rt_stop = self.slice_penumbra()[-1].x[-1]
 
-        lt_should = self.segment(start=lt_start, stop=lt_stop)
-        rt_should = self.segment(start=rt_start, stop=rt_stop)
+        lt_should = self.slice_segment(start=lt_start, stop=lt_stop)
+        rt_should = self.slice_segment(start=rt_start, stop=rt_stop)
 
         return (lt_should, rt_should)
 
-    def tails(self):
-        """ Tails of dose profile, beyond the penumbra.
+    def slice_tails(self):
+        """ tails (-> penumbra, penumbra ->)
 
         Source dose profile sliced to include only the profile tail,
         outside the beam penumbra.
@@ -671,18 +679,18 @@ class Profile():
 
         """
         lt_start = self.x[0]
-        lt_stop = self.penumbra()[0].x[0]
+        lt_stop = self.slice_penumbra()[0].x[0]
 
-        rt_start = self.penumbra()[-1].x[-1]
+        rt_start = self.slice_penumbra()[-1].x[-1]
         rt_stop = self.x[-1]
 
-        lt_tail = self.segment(start=lt_start, stop=lt_stop)
-        rt_tail = self.segment(start=rt_start, stop=rt_stop)
+        lt_tail = self.slice_segment(start=lt_start, stop=lt_stop)
+        rt_tail = self.slice_segment(start=rt_start, stop=rt_stop)
 
         return (lt_tail, rt_tail)
 
-    def flatness(self):
-        """ Flatness of dose profile.
+    def get_flatness(self):
+        """ dose range relative to mean
 
         Calculated as the dose range normalized to mean dose.
 
@@ -691,30 +699,25 @@ class Profile():
         float
 
         """
-        dose = self.umbra().data
+        dose = self.slice_umbra().y
         return (max(dose)-min(dose))/np.average(dose)
 
-    def symmetry(self):
-        """ Symmetry of dose profile.
+    def get_symmetry(self):
+        """ max point diff relative to mean
 
         Calculated as the maximum difference between corresponding points
-        on opposite sides of the profile center, relativ to mean dose.
-
-        Arguments
-        -----------------
-        step : float
-            Precision of result
+        on opposite sides of the profile center, relative to mean dose.
 
         Returns
         -------
         float
 
         """
-        dose = self.umbra().data
+        dose = self.slice_umbra().y
         return max(np.abs(np.subtract(dose, dose[::-1])/np.average(dose)))
 
-    def symmetrise(self):
-        """ Symmetric copy of dose profile.
+    def make_symmetric(self):
+        """ avg of corresponding points
 
         Created by averaging over corresponding +/- distances,
         except at the endpoints.
@@ -725,23 +728,19 @@ class Profile():
 
         """
 
-        reflected = Profile(x=-self.x[::-1], data=self.data[::-1])
+        reflected = Profile(x=-self.x[::-1], y=self.y[::-1])
 
         step = self.get_increment()
         new_x = np.arange(min(self.x), max(self.x), step)
-        new_data = [self.data[0]]
-        for n in new_x[1:-1]:  # TO AVOID EXTRAPOLATION
-            new_data.append(0.5*self.interp(n) + 0.5*reflected.interp(n))
-        new_data.append(reflected.data[0])
+        new_y = [self.y[0]]
+        for n in new_x[1:-1]:  # AVOID EXTRAPOLATION
+            new_y.append(0.5*self.interp(n) + 0.5*reflected.interp(n))
+        new_y.append(reflected.y[0])
 
-        return Profile(x=new_x, data=new_data, metadata=self.metadata)
+        return Profile(x=new_x, y=new_y, meta=self.meta)
 
-    def symmetrize(self):
-        """ US Eng -> UK Eng """
-        return self.symmetrise()
-
-    def recentre(self):
-        """ Centered copy of dose profile.
+    def make_centered(self):
+        """ shift to align edges
 
         Created by shifting the profile based on edge locations.
 
@@ -751,16 +750,12 @@ class Profile():
 
         """
 
-        return self - np.average(self.edges())
+        return self - np.average(self.get_edges())
 
-    def recenter(self):
-        """ US Eng -> UK Eng """
-        return self.recentre()
+    def make_flipped(self):
+        """ flip L -> R
 
-    def reversed(self):
-        """ Flipped copy of dose profile.
-
-        Created by reversing the sequence of data values.
+        Created by reversing the sequence of y values.
 
         Returns
         -------
@@ -768,18 +763,18 @@ class Profile():
 
         """
 
-        return Profile(x=self.x, data=self.data[::-1], metadata=self.metadata)
+        return Profile(x=self.x, y=self.y[::-1], meta=self.meta)
 
-    def overlay(self, other):
-        """ Copy of dose profile, shifted to align to target profile.
+    def align_to(self, other):
+        """ shift self to align to other
 
         Calculated using shift that produces greatest peak correlation between
         the curves. Flips the curve left-to-right, if this creates a better fit.
 
-        Arguments
-        -----------------
+        Parameters
+        ----------
         other : Profile
-            Target profile being shifted to
+            profile to be be shifted to
 
         Returns
         -------
@@ -794,7 +789,7 @@ class Profile():
             3*abs(max(list(self.x) + list(other.x))),
             dist_step)
         dose_vals_fixed = other.interp(dist_vals_fixed)
-        fixed = Profile(x=dist_vals_fixed, data=dose_vals_fixed)
+        fixed = Profile(x=dist_vals_fixed, y=dose_vals_fixed)
 
         possible_offsets = np.arange(
             max(min(self.x), min(other.x)),
@@ -808,7 +803,7 @@ class Profile():
                 (self + offset).interp(fixed.x)))
             fit_qual_flip = max(np.correlate(
                 dose_vals_fixed,
-                (self.reversed() + offset).interp(fixed.x)))
+                (self.make_flipped() + offset).interp(fixed.x)))
 
             if fit_qual_norm > best_fit_qual:
                 best_fit_qual = fit_qual_norm
@@ -820,23 +815,22 @@ class Profile():
                 flipped = True
 
         if flipped:
-            return self.reversed() + best_offset
+            return self.make_flipped() + best_offset
         else:
             return self + best_offset
 
-    def create_calibration(self, reference_file_name, measured_file_name):
-        """ Calibration curve from profiler and film data.
+    def cross_calibrate(self, reference, measured):
+        """ density mapping, reference -> measured
 
         Calculated by overlaying intensity curves and observing values at
         corresponding points. Note that the result is an unsmoothed, collection
         of points.
 
-        Arguments
-        -----------------
-        reference_file_name : string
-            long file name of Profiler file, extension .prs
-        measured_file_name : string
-            long file name of png file, extension .png
+        Parameters
+        ----------
+        reference : string
+        measured : string
+            file names with path
 
         Returns
         -------
@@ -844,20 +838,20 @@ class Profile():
 
         """
 
-        _, ext = os.path.splitext(reference_file_name)
+        _, ext = os.path.splitext(reference)
         assert ext == '.prs'
-        reference = Profile().from_snc_profiler(reference_file_name, 'y')
-        _, ext = os.path.splitext(measured_file_name)
+        reference = Profile().from_snc_profiler(reference, 'rad')
+        _, ext = os.path.splitext(measured)
         assert ext == '.png'
-        measured = Profile().from_narrow_png(measured_file_name)
-        measured = measured.overlay(reference)
+        measured = Profile().from_narrow_png(measured)
+        measured = measured.align_to(reference)
 
         dist_vals = np.arange(
             max(min(measured.x), min(reference.x)),
             min(max(measured.x), max(reference.x)),
             max(reference.get_increment(), measured.get_increment()))
 
-        calib_curve = [(measured.get_data(i), reference.get_data(i))
+        calib_curve = [(measured.get_y(i), reference.get_y(i))
                        for i in dist_vals]
 
         return Profile().from_tuples(calib_curve)

@@ -58,9 +58,11 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.graphviz',
     'matplotlib.sphinxext.plot_directive',
-    'numpydoc',
+    'sphinxcontrib.napoleon',
     'm2r'
 ]
+
+napoleon_google_docstring = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
