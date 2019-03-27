@@ -166,7 +166,7 @@ jobs:
     - bash: "python -m pip install -U pip setuptools --user"
       displayName: Upgrade pip and setuptools
 
-    - bash: "python -m pip install -U nbstripout --user"
+    - bash: "python -m pip install -U nbstripout==0.3.3 --user"
       displayName: Install nbstripout
 
     - bash: find . -iname \*.ipynb | xargs -d "\n" python -m nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
