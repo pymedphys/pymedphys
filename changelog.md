@@ -1,16 +1,20 @@
+<!-- markdownlint-disable MD033 MD024 -->
+
 # Release Notes
+
 All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 <br/>
 
-
 ## [Unreleased]
 
 ### Breaking Changes
+
 - `anonymise_dicom` has been renamed to `anonymise_dicom_dataset`
 
 ### New Features
+
 - Implementing a suite of Dicom objects, currently a work in progress:
   - `DicomBase`, a base DICOM class that wraps `pydicom`'s `Dataset` object.
     This class includes additions such as an anonymisation method.
@@ -32,36 +36,47 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     `DicomCollection.from_directory(directory_path)` which would pull all DICOM
     files nested within a directory and sort them into `DicomStudy` objects
     based on their header UIDs.
+- Added CLI commands for a WIP docker server, logfile orchetration, and DICOM
+  editor tools.
+- Added a range of xlwings tools that allow the use of PyMedPhys functions
+  within Excel
+- Added the rudementry code enabling the pulling of profiles from Mephysto
+  files.
 
-### Bug Fixes
+<!-- ### Bug Fixes
+
 - nil
 
 ### Code Refactoring
+
 - nil
 
 ### Performance Improvements
-- nil
-<br/>
 
+- nil -->
+
+<br/>
 
 ## [0.6.0] -- 2019/03/15
 
 ### Breaking Changes
+
 - All uses of "dcm" in directory names, module names, function names, etc.
   have been converted to "dicom". Anything that makes use of this code will need to be
   adjusted accordingly. Required changes include:
-    - `pymedphys.dcm` --> `pymedphys.dicom`
-    - `coords_and_dose_from_dcm()` --> `coords_and_dose_from_dicom()`
-    - `dcmfromdict()` --> `dicom_dataset_from_dict()`
-    - `gamma_dcm()` --> `gamma_dicom()`
+  - `pymedphys.dcm` --> `pymedphys.dicom`
+  - `coords_and_dose_from_dcm()` --> `coords_and_dose_from_dicom()`
+  - `dcmfromdict()` --> `dicom_dataset_from_dict()`
+  - `gamma_dcm()` --> `gamma_dicom()`
 - MU Density related functions are no longer available under the `pymedphys.coll` package,
   instead they are found within `pymedphys.mudensity` package.
 - The DICOM coordinate extraction functions now return simple tuples rather than `Coords` namedtuples:
-    - `extract_dicom_patient_xyz()`
-    - `extract_iec_patient_xyz()`
-    - `extract_iec_fixed_xyz()`
+  - `extract_dicom_patient_xyz()`
+  - `extract_iec_patient_xyz()`
+  - `extract_iec_fixed_xyz()`
 
 ### New Features
+
 - DICOM anonymisation now permits replacing deidentified values with suitable "dummy" values. This helps to
   maintain compatibility with DICOM software that includes checks (beyond those specified in the DICOM Standard)
   of valid DICOM tag values. Replacing tags with dummy values upon anonymisation is now the default behaviour.
@@ -70,6 +85,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   coordinate triplets (a 3 x n `ndarray`). **NB**: Documentation forthcoming.
 
 ### Code Refactoring
+
 - All uses of `dcm` as a variable name for instances of PyDicom Datasets have been converted to `ds` to
   match PyDicom convention.
 
@@ -78,8 +94,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.5.1] -- 2019/01/05
 
 ### New Features
-- Began keeping record of changes in `changelog.md`
 
+- Began keeping record of changes in `changelog.md`
 
 [Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.6.0...master
 [0.6.0]: https://github.com/pymedphys/pymedphys/compare/v0.5.1...v0.6.0
