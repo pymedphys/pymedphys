@@ -228,7 +228,7 @@ def extract_iec_fixed_xyz(ds):
     (x, y, z)
         A tuple containing three `ndarrays` corresponding to the `x`,
         `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the IEC fixed coordinate system [1]_:
+        the IEC fixed coordinate system [3]_:
 
             `x`
                 An `np.ndarray` of coordinates on the horizontal plane that runs
@@ -247,7 +247,7 @@ def extract_iec_fixed_xyz(ds):
 
     Notes
     -----
-    Supported scan orientations [2]_:
+    Supported scan orientations [4]_:
 
     =========================== =======================
     Orientation                 ImageOrientationPatient
@@ -264,9 +264,9 @@ def extract_iec_fixed_xyz(ds):
 
     References
     ----------
-    .. [1] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
+    .. [3] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
 
-    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
+    .. [4] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
        (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
        treatment plans", arXiv:1406.0014, Table 1,
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
@@ -328,7 +328,7 @@ def extract_dicom_patient_xyz(ds):
     (x, y, z)
         A tuple containing three `ndarrays` corresponding to the `x`,
         `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the DICOM patient coordinate system [1]_:
+        the DICOM patient coordinate system [5]_:
 
         `x` corresponds to the patient's left-right axis and increases to the
         left hand side of the patient.
@@ -341,7 +341,7 @@ def extract_dicom_patient_xyz(ds):
 
     Notes
     -----
-    Supported scan orientations [2]_:
+    Supported scan orientations [6]_:
 
     =========================== =======================
     Orientation                 ImageOrientationPatient
@@ -358,11 +358,11 @@ def extract_dicom_patient_xyz(ds):
 
     References
     ----------
-    .. [1] "C.7.6.2.1.1 Image Position and Image Orientation",
+    .. [5] "C.7.6.2.1.1 Image Position and Image Orientation",
        "DICOM PS3.3 2016a - Information Object Definitions",
        http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
 
-    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
+    .. [6] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
        (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
        treatment plans", arXiv:1406.0014, Table 1,
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
