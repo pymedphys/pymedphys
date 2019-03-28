@@ -37,6 +37,8 @@ version = ''
 # The full version, including alpha/beta/rc tags
 release = pymedphys.__version__
 
+branch = 'documentation-work'
+
 
 # -- General configuration ---------------------------------------------------
 
@@ -93,6 +95,25 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
 
+
+# This is processed by Jinja2 and inserted before each notebook
+nbsphinx_prolog = r"""
+{% set docname = env.doc2path(env.docname, base='doc').replace('\\', '/') %}
+
+.. only:: html
+
+    .. role:: raw-html(raw)
+
+        :format: html
+
+    .. nbinfo::
+
+        This page was generated from `{{ docname }}`__.
+        Interactive online version:
+        :raw-html:`<a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/{{ env.config.branch }}?filepath={{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>`
+    __ https://github.com/pymedphys/pymedphys/blob/
+        {{ env.config.branch }}/{{ docname }}
+"""
 
 # -- Options for HTML output -------------------------------------------------
 
