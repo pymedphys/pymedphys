@@ -27,8 +27,8 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
 
     if tags['SOPClassUID'] == structure_UID then
       print('Converting a structure set')
-      os.execute('pymedphys dicom adjust-rel-elec-density -i ' .. received_filepath .. ' ' .. intermediate_filepath .. ' "Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
-      os.execute('pymedphys dicom structure-name-RED-adjust ' .. intermediate_filepath .. ' ' .. converted_filepath)
+      os.execute('pymedphys dicom adjust-RED -i ' .. received_filepath .. ' ' .. intermediate_filepath .. ' "Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
+      os.execute('pymedphys dicom adjust-RED-by-structure-name ' .. intermediate_filepath .. ' ' .. converted_filepath)
 
       os.remove(intermediate_filepath)
 
