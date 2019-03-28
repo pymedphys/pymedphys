@@ -92,7 +92,8 @@ setup(
             'sphinxcontrib-napoleon',
             'sphinx >= 1.4',
             'sphinx_rtd_theme',
-            'sphinx-argparse'
+            'sphinx-argparse',
+            'nbsphinx'
         ],
         'testing': [
             'deepdiff',

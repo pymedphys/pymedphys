@@ -28,6 +28,12 @@
 
 .. toctree::
     :maxdepth: 1
+    :caption: Examples
+
+    examples/trf_mudensity
+
+.. toctree::
+    :maxdepth: 1
     :caption: CLI User Guide
 
     user-cli/dicom
