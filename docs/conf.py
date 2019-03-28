@@ -33,11 +33,9 @@ copyright = '2015-2019, the PyMedPhys contributors'
 author = 'Simon Biggs, Matt Jennings, Paul King, Matthew Sobolewski'
 
 # The short X.Y version
-version = ''
+version = 'documentation-work'
 # The full version, including alpha/beta/rc tags
 release = pymedphys.__version__
-
-branch = 'documentation-work'
 
 
 # -- General configuration ---------------------------------------------------
@@ -98,7 +96,7 @@ pygments_style = None
 
 # This is processed by Jinja2 and inserted before each notebook
 nbsphinx_prolog = r"""
-{% set docname = env.doc2path(env.docname, base='doc').replace('\\', '/') %}
+{% set docname = env.doc2path(env.docname, base='docs').replace('\\', '/') %}
 
 .. only:: html
 
@@ -110,9 +108,9 @@ nbsphinx_prolog = r"""
 
         This page was generated from `{{ docname }}`__.
         Interactive online version:
-        :raw-html:`<a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/{{ env.config.branch }}?filepath={{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>`
+        :raw-html:`<a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/{{ env.config.version }}?filepath={{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>`
     __ https://github.com/pymedphys/pymedphys/blob/
-        {{ env.config.branch }}/{{ docname }}
+        {{ env.config.version }}/{{ docname }}
 """
 
 # -- Options for HTML output -------------------------------------------------
