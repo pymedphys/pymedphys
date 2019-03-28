@@ -24,14 +24,16 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: skip-file
-
 import numpy as np
 
 from ...utilities import get_filepath, get_gantry_tolerance
 
+from ...deliverydata import (
+    extract_angle_from_delivery_data, find_relevant_control_points)
+
 from ...mudensity import (
-    find_relevant_control_points, calc_mu_density_return_grid)
+    calc_mu_density, calc_mu_density_return_grid,
+    calc_mu_density_bygantry_return_grid)
 from ...msq import multi_fetch_and_verify_mosaiq
 from ...trf import delivery_data_from_logfile
 
@@ -97,27 +99,6 @@ def assert_array_agreement(unique_logfile_gantry_angles, mosaiq_gantry_angles,
             mosaiq_gantry_angles, difference_matrix, agreement_matrix))
 
 
-def extract_angle_from_delivery_data(delivery_data, gantry_angle,
-                                     gantry_tolerance=0):
-    moniter_units = np.array(delivery_data.monitor_units)
-    relevant_control_points = find_relevant_control_points(moniter_units)
-
-    mu = moniter_units[relevant_control_points]
-    mlc = np.array(delivery_data.mlc)[relevant_control_points]
-    jaw = np.array(delivery_data.jaw)[relevant_control_points]
-    gantry_angles = np.array(delivery_data.gantry)[relevant_control_points]
-
-    gantry_angle_within_tolerance = (
-        np.abs(gantry_angles - gantry_angle) <= gantry_tolerance)
-    diff_mu = np.concatenate([[0], np.diff(mu)])[gantry_angle_within_tolerance]
-    mu = np.cumsum(diff_mu)
-
-    mlc = mlc[gantry_angle_within_tolerance]
-    jaw = jaw[gantry_angle_within_tolerance]
-
-    return mu, mlc, jaw
-
-
 def get_field_id_from_logfile_group(index, logfile_group):
     field_ids = []
 
@@ -132,25 +113,16 @@ def get_field_id_from_logfile_group(index, logfile_group):
 
 
 def calc_normalisation(mosaiq_delivery_data):
-    all_gantry_angles = calc_mu_density_return_grid(
+    all_gantry_angles = calc_mu_density(
         mosaiq_delivery_data.monitor_units, mosaiq_delivery_data.mlc,
         mosaiq_delivery_data.jaw
     )
     mosaiq_gantry_angles = np.unique(mosaiq_delivery_data.gantry)
     number_of_gantry_angles = len(mosaiq_gantry_angles)
 
-    normalisation = np.sum(all_gantry_angles[2]) / number_of_gantry_angles
+    normalisation = np.sum(all_gantry_angles) / number_of_gantry_angles
 
     return normalisation
-
-
-def calc_mu_density_bygantry(delivery_data, gantry_angle, grid_resolution=1):
-    mu_density = calc_mu_density_return_grid(
-        grid_resolution=grid_resolution,
-        *extract_angle_from_delivery_data(delivery_data, gantry_angle)
-    )
-
-    return mu_density
 
 
 def calc_logfile_mu_density_bygantry(index, config, logfile_group,
@@ -185,7 +157,7 @@ def compare_logfile_group_bygantry(index, config, cursor, logfile_group,
 
     mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(cursor, field_id)
 
-    mosaiq_mu_density = calc_mu_density_bygantry(
+    mosaiq_mu_density = calc_mu_density_bygantry_return_grid(
         mosaiq_delivery_data, gantry_angle)
     normalisation = calc_normalisation(mosaiq_delivery_data)
 

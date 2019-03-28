@@ -24,8 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: skip-file
-
 """Converts a trf file into a csv file.
 """
 
@@ -50,7 +48,7 @@ def trf2csv(trf_filepath, skip_if_exists=False):
     table_csv_filepath = "{}_table.csv".format(extension_removed)
 
     # Skip if conversion has already occured
-    if not skip_if_exists or not os.path.exists(csv_filepath):
+    if not skip_if_exists or not os.path.exists(table_csv_filepath):
         print("Converting {}".format(trf_filepath))
         header, table = trf2pandas(trf_filepath)
 
