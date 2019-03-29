@@ -67,7 +67,8 @@ def dicom_adjust_rel_elec_density(dicom_subparsers):
         help=(
             'An alternating list of structure name and then its associated '
             'RED. For example, '
-            '``pymedphys dicom adjust-RED input.dcm output.dcm struct_name 1.5 another_struct_name 0.2``'
+            '``pymedphys dicom adjust-RED`` ``input.dcm output.dcm`` '
+            '``struct_name 1.5 another_struct_name 0.2``'
         ))
 
     parser.add_argument(
