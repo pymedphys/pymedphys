@@ -42,13 +42,13 @@ def trf_cli(subparsers):
 def trf_to_csv(dicom_subparsers):
     parser = dicom_subparsers.add_parser(
         'to-csv',
-        help='Convert ``.trf`` files to ``.csv`` table and header files.')
+        help='Converts ``.trf`` files to ``.csv`` table and header files.')
 
     parser.add_argument(
         'filepaths', type=str, nargs='+',
         help=(
             'A list of ``.trf`` filepaths that you wish to convert to ``.csv``. '
-            'Use of the glob wildcard * is enabled, which means that running'
+            'Use of the glob wildcard * is enabled, which means that running '
             '``pymedphys trf to-csv *.trf`` will convert all logfiles in the '
             'current directory to csv files.'))
 

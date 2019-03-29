@@ -30,7 +30,9 @@ from ..dicom import (
 
 
 def dicom_cli(subparsers):
-    dicom_parser = subparsers.add_parser('dicom', help='dicom help')
+    dicom_parser = subparsers.add_parser(
+        'dicom',
+        help='A toolbox for the manipulation of DICOM files.')
     dicom_subparsers = dicom_parser.add_subparsers(dest='dicom')
 
     dicom_adjust_machine_name(dicom_subparsers)
@@ -41,30 +43,46 @@ def dicom_cli(subparsers):
 
 
 def dicom_adjust_machine_name(dicom_subparsers):
-    parser = dicom_subparsers.add_parser('adjust-machine-name')
+    parser = dicom_subparsers.add_parser(
+        'adjust-machine-name',
+        help='Change the machine name in an RT plan DICOM file')
 
-    parser.add_argument('input_file', type=str, help='input_file')
-    parser.add_argument('output_file', type=str, help='output_file')
-    parser.add_argument('new_machine_name', type=str, help='new_machine_name')
+    parser.add_argument('input_file', type=str)
+    parser.add_argument('output_file', type=str)
+    parser.add_argument('new_machine_name', type=str)
     parser.set_defaults(func=adjust_machine_name_cli)
 
 
 def dicom_adjust_rel_elec_density(dicom_subparsers):
-    parser = dicom_subparsers.add_parser('adjust-RED')
+    parser = dicom_subparsers.add_parser(
+        'adjust-RED',
+        help='Adjust the RED of structures within an RT structure DICOM file')
 
-    parser.add_argument('input_file', type=str, help='input_file')
-    parser.add_argument('output_file', type=str, help='output_file')
-    parser.add_argument('adjustment_map', type=str,
-                        nargs='+', help='adjustment_map')
+    parser.add_argument('input_file', type=str)
+    parser.add_argument('output_file', type=str)
+    parser.add_argument(
+        'adjustment_map', type=str, nargs='+',
+        help=(
+            'An alternating list of structure name and then its associated '
+            'RED. For example, '
+            ' ``pymedphys dicom adjust-RED "structure with space" 1.5 another-struct 0.2``'
+        ))
 
-    parser.add_argument('-i', '--ignore_missing_structure',
-                        action='store_true')
+    parser.add_argument(
+        '-i', '--ignore_missing_structure', action='store_true',
+        help=(
+            "By default if a provided structure name doesn't exist an error "
+            "will be raised. This flag makes this error be ignored."
+        ))
 
     parser.set_defaults(func=adjust_RED_cli)
 
 
 def dicom_structure_name_RED_adjust(dicom_subparsers):
-    parser = dicom_subparsers.add_parser('adjust-RED-by-structure-name')
+    parser = dicom_subparsers.add_parser(
+        'adjust-RED-by-structure-name',
+        help='Use structure name '
+    )
 
     parser.add_argument('input_file', type=str, help='input_file')
     parser.add_argument('output_file', type=str, help='output_file')

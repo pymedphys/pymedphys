@@ -23,6 +23,7 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import sys
 import argparse
 
 from .dicom import dicom_cli
@@ -31,8 +32,15 @@ from .logfile import logfile_cli
 from .trf import trf_cli
 
 
+class DefaultHelpParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+
 def define_parser():
-    parser = argparse.ArgumentParser(prog='pymedphys')
+    parser = DefaultHelpParser(prog='pymedphys')
     subparsers = parser.add_subparsers()
 
     dicom_cli(subparsers)
