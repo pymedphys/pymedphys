@@ -62,7 +62,6 @@ setup(
     package_data={'pymedphys': []},
     entry_points={
         'console_scripts': [
-            'trf2csv=pymedphys.entry_points.trf2csv:trf2csv_cli',
             'pymedphys=pymedphys.cli.main:pymedphys_cli'
         ],
     },

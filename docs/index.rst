@@ -38,6 +38,7 @@
     :caption: CLI User Guide
 
     user-cli/dicom
+    user-cli/trf
     user-cli/logfile
     user-cli/docker
 

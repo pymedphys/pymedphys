@@ -24,32 +24,31 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import argparse
-
-from .dicom import dicom_cli
-from .docker import docker_cli
-from .logfile import logfile_cli
-from .trf import trf_cli
+from ..trf import trf2csv_cli
 
 
-def define_parser():
-    parser = argparse.ArgumentParser(prog='pymedphys')
-    subparsers = parser.add_subparsers()
+def trf_cli(subparsers):
+    trf_parser = subparsers.add_parser(
+        'trf',
+        help=(
+            'A toolbox to work with the Elekta Linac .trf binary log files.'
+        ))
+    trf_subparsers = trf_parser.add_subparsers()
+    trf_to_csv(trf_subparsers)
 
-    dicom_cli(subparsers)
-    docker_cli(subparsers)
-    logfile_cli(subparsers)
-    trf_cli(subparsers)
-
-    return parser
+    return trf_parser
 
 
-def pymedphys_cli():
-    parser = define_parser()
+def trf_to_csv(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        'to-csv', help='Convert trf files to table and header csv files.')
 
-    args = parser.parse_args()
+    parser.add_argument(
+        'filepaths', type=str, nargs='+',
+        help=(
+            'A list of .trf filepaths that you wish to convert to .csv. '
+            'Glob expansion is enabled, for example '
+            'pymedphys trf to-csv *.trf will convert all logfiles in the '
+            'current directory.'))
 
-    if hasattr(args, 'func'):
-        args.func(args)
-    else:
-        parser.print_help()
+    parser.set_defaults(func=trf2csv_cli)
