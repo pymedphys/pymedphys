@@ -20,3 +20,7 @@ a {
      overflow: visible !important;
   }
 }
+
+.label {
+  white-space: nowrap !important;
+}
