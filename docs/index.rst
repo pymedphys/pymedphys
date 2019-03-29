@@ -35,8 +35,9 @@
 
 .. toctree::
     :maxdepth: 1
-    :caption: CLI User Guide
+    :caption: Command Line User Guide
 
+    user-cli/overview
     user-cli/dicom
     user-cli/trf
     user-cli/logfile

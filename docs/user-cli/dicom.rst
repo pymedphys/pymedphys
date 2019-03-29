@@ -1,5 +1,8 @@
-DICOM CLI
-=========
+DICOM Header Manipulation
+=========================
+
+.. automodule:: pymedphys.cli.dicom
+    :no-members:
 
 .. argparse::
    :ref: pymedphys.cli.main.define_parser

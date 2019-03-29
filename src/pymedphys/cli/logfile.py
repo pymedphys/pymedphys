@@ -24,18 +24,30 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+"""A command line interface for the management of log files.
+"""
+
+
 from ..logfile import orchestration_cli
 
 
 def logfile_cli(subparsers):
-    logfile_parser = subparsers.add_parser('logfile')
+    logfile_parser = subparsers.add_parser(
+        'logfile', help="A toolbox for managing logfiles.")
     logfile_subparsers = logfile_parser.add_subparsers(dest='logfile')
 
     logfile_orchestration(logfile_subparsers)
 
 
 def logfile_orchestration(logfile_subparsers):
-    parser = logfile_subparsers.add_parser('orchestration')
+    parser = logfile_subparsers.add_parser(
+        'orchestration',
+        help=(
+            "Manages the orchestration of Elekta Linac fetching and indexing. "
+            "Designed to be scheduled to run nightly. Requires two "
+            "configuration csv files to be created, one for Mosaiq SQL "
+            "configuration and the other for logfile configuration."
+        ))
 
     parser.add_argument('data_directory', type=str)
 

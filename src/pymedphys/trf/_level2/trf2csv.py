@@ -59,13 +59,6 @@ def trf2csv(trf_filepath, skip_if_exists=False):
 
 
 def trf2csv_cli(args):
-    # if len(sys.argv) == 1:
-    #     print(
-    #         "=============================================================\n"
-    #         "Need to provide filename(s).\n\n"
-    #         "Example usage for converting all files in current directory:\n"
-    #         "    trf2csv *.trf\n"
-    #         "=============================================================")
 
     for glob_string in args.filepaths:
         glob_string = glob_string.replace('[', '<[>')

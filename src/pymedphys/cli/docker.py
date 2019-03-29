@@ -24,6 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+"""Creates a Docker server.
+
+In the future this shall be easily configurable. In its current form it is
+mostly only usable in one configuration. Watch this space for further
+information.
+"""
+
+
 from ..docker import server_cli
 
 

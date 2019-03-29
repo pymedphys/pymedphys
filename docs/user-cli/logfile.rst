@@ -1,5 +1,8 @@
-Logfile CLI
-===========
+Logfile Management
+==================
+
+.. automodule:: pymedphys.cli.logfile
+    :no-members:
 
 .. argparse::
    :ref: pymedphys.cli.main.define_parser

@@ -24,6 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+"""A command line interface for the conversion of Elekta binary log files.
+"""
+
+
 from ..trf import trf2csv_cli
 
 

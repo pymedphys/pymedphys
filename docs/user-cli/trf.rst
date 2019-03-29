@@ -1,5 +1,8 @@
-TRF CLI
-===========
+Elekta Binary Logfiles
+======================
+
+.. automodule:: pymedphys.cli.trf
+    :no-members:
 
 .. argparse::
    :ref: pymedphys.cli.main.define_parser
