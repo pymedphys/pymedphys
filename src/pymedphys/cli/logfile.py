@@ -29,7 +29,7 @@ from ..logfile import orchestration_cli
 
 def logfile_cli(subparsers):
     logfile_parser = subparsers.add_parser('logfile')
-    logfile_subparsers = logfile_parser.add_subparsers()
+    logfile_subparsers = logfile_parser.add_subparsers(dest='logfile')
 
     logfile_orchestration(logfile_subparsers)
 

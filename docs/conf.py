@@ -141,6 +141,12 @@ html_static_path = ['_static']
 #
 # html_sidebars = {}
 
+html_context = {
+    'css_files': [
+        '_static/theme_overrides.css',
+    ],
+}
+
 
 # -- Options for HTMLHelp output ---------------------------------------------
 

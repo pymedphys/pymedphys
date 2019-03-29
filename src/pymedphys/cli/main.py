@@ -23,7 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 import argparse
 
 from .dicom import dicom_cli
@@ -52,4 +51,17 @@ def pymedphys_cli():
     if hasattr(args, 'func'):
         args.func(args)
     else:
-        parser.print_help()
+        subparser_names = [
+            attribute for attribute in dir(args)
+            if not attribute.startswith('_')
+        ]
+
+        if not subparser_names:
+            parser.print_help()
+        else:
+            assert len(subparser_names) == 1
+
+            subparser_name = subparser_names[0]
+            assert getattr(args, subparser_name) is None
+
+            parser.parse_args([subparser_name, '--help'])

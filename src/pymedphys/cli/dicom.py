@@ -31,7 +31,7 @@ from ..dicom import (
 
 def dicom_cli(subparsers):
     dicom_parser = subparsers.add_parser('dicom', help='dicom help')
-    dicom_subparsers = dicom_parser.add_subparsers()
+    dicom_subparsers = dicom_parser.add_subparsers(dest='dicom')
 
     dicom_adjust_machine_name(dicom_subparsers)
     dicom_adjust_rel_elec_density(dicom_subparsers)
