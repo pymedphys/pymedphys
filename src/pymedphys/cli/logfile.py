@@ -25,6 +25,28 @@
 
 
 """A command line interface for the management of log files.
+
+Requires two configuration csv files detailed as following:
+
+``config_mosaiq_sql.csv``
+-------------------------
+
+::
+
+                  , Timezone        , Mosaiq SQL Server (Hostname:Port)
+    a_centre      , Australia/Sydney, mosaiq:1433
+    another_centre, Australia/Sydney, another-mosaiq:1433
+
+
+``config_linac_details.csv``
+----------------------------
+
+::
+
+        , Centre        , IP
+    1234, a_centre      , 192.168.150.40
+    1236, a_centre      , 192.168.150.41
+    1238, another_centre, 10.0.0.40
 """
 
 
@@ -43,17 +65,33 @@ def logfile_orchestration(logfile_subparsers):
     parser = logfile_subparsers.add_parser(
         'orchestration',
         help=(
-            "Manages the orchestration of Elekta Linac fetching and indexing. "
-            "Designed to be scheduled to run nightly. Requires two "
+            "Manages the orchestration of Elekta Linac fetching logfiles "
+            "from their backup directories and then indexing the collected "
+            "files via Mosaiq SQL queries. "
+            "Designed to be scheduled to run nightly or manually after an "
+            "unscheduled backup. Requires two "
             "configuration csv files to be created, one for Mosaiq SQL "
-            "configuration and the other for logfile configuration."
+            "configuration and the other for logfile configuration. See "
+            "documentation for specification of the configuration files."
         ))
 
-    parser.add_argument('data_directory', type=str)
+    parser.add_argument(
+        'data_directory', type=str,
+        help="The path for storing the indexed log files.")
 
-    parser.add_argument('-m', '--mosaiq_sql', type=str,
-                        default=None)
-    parser.add_argument('-l', '--linac_details', type=str,
-                        default=None)
+    parser.add_argument(
+        '-m', '--mosaiq_sql', type=str, default=None,
+        help=(
+            "Define a custom path for the Mosaiq SQL configuration file. "
+            "Defaults to ``{data_directory}/config_mosaiq_sql.csv``"
+        )
+    )
+    parser.add_argument(
+        '-l', '--linac_details', type=str, default=None,
+        help=(
+            "Define a custom path for the Linac configuration file. "
+            "Defaults to ``{data_directory}/config_linac_details.csv``"
+        )
+    )
 
     parser.set_defaults(func=orchestration_cli)
