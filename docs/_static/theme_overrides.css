@@ -2,8 +2,6 @@ a {
   overflow-wrap: break-word;
   word-wrap: break-word;
 
-  word-break: break-word;
-
   hyphens: auto;
 }
 
@@ -19,8 +17,4 @@ a {
   .wy-table-responsive {
      overflow: visible !important;
   }
-}
-
-.label {
-  white-space: nowrap !important;
 }
