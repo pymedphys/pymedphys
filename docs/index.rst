@@ -31,6 +31,7 @@
     :caption: Examples
 
     examples/trf_mudensity
+    examples/gamma_from_dicom
 
 .. toctree::
     :maxdepth: 1
