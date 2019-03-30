@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Paul King, Simon Biggs
+# Copyright (C) 2019 Paul King
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -36,16 +36,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-# from PIL import Image
 import PIL
 
-from ...libutils import get_imports
-
-# from .._level1.coreobjects import _PyMedPhysBase
-IMPORTS = get_imports(globals())
+if "dosepro\dosepro" not in __file__:
+    from ...libutils import get_imports
+    IMPORTS = get_imports(globals())
 
 NumpyFunction = Callable[[np.ndarray], np.ndarray]
-
 
 # pylint: disable = C0103, C0121, W0102
 
