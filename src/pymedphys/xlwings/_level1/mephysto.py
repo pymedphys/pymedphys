@@ -23,24 +23,52 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
 import numpy as np
 
 import xlwings as xw
+
+from ...utilities import wildcard_file_resolution
+from ...mephysto import load_single_item
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
 @xw.func
-@xw.arg('values', np.array, ndim=2)
+@xw.arg('filepath')
+@xw.arg('index')
 @xw.ret(expand='table')
-def npravel(values):
-    return np.expand_dims(np.ravel(values.T), axis=1)
+def mephysto(filepath, index):
+    filepath_found = wildcard_file_resolution(filepath)
 
+    (
+        axis, reading, scan_curvetype, scan_depth
+    ) = load_single_item(filepath_found, int(index))
 
-@xw.func
-@xw.arg('values', np.array, ndim=2)
-@xw.arg('repeats')
-@xw.ret(expand='table')
-def nprepeat(values, repeats):
-    return np.expand_dims(np.repeat(values, repeats), axis=1)
+    second_column_header = ["Reading"]
+
+    if scan_curvetype == "PDD":
+        first_column_header = [
+            "Depth Profile", "Depth (mm)"
+        ]
+        second_column_header = [None] + second_column_header
+    elif scan_curvetype == "INPLANE_PROFILE":
+        first_column_header = [
+            "Inplane Profile", "y (mm)"
+        ]
+        second_column_header = (
+            ["Depth = {} mm".format(scan_depth)] + second_column_header)
+    elif scan_curvetype == "CROSSPLANE_PROFILE":
+        first_column_header = [
+            "Crossplane Profile", "x (mm)"
+        ]
+        second_column_header = (
+            ["Depth = {} mm".format(scan_depth)] + second_column_header)
+    else:
+        raise ValueError("Unexpected Profile Type")
+
+    first_column = np.concatenate([first_column_header, axis])
+    second_column = np.concatenate([second_column_header, reading])
+
+    return np.vstack([first_column, second_column]).T
