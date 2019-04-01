@@ -7,12 +7,17 @@ from os.path import basename
 from os.path import dirname
 from os.path import splitext
 
+import platform
+
 from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
 # XLWINGS FLAG
 # https://github.com/ZoomerAnalytics/xlwings/pull/1052
-os.environ["INSTALL_ON_LINUX"] = "1"
+if platform.system() == 'Linux':
+    # This workaround will only work on sdist installs, not wheels installs
+    # https://stackoverflow.com/questions/54467648/python-setup-py-set-environment-variable-prior-to-running-install-requires
+    os.system("export INSTALL_ON_LINUX=1")  # For xlwings
 
 basename = os.path.basename
 dirname = os.path.dirname
