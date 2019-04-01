@@ -66,6 +66,9 @@ extensions = [
 
 napoleon_google_docstring = False
 
+# Remove this once decode_trf docs are live
+nbsphinx_allow_errors = True
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
