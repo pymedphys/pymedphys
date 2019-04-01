@@ -24,23 +24,21 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Expose a range of pymedphys, scipy, and numpy functions for use within
-Excel via xlwings udf functionality.
+"""A Mephysto toolbox.
+
+Examples:
+    >>> from pymedphys.mephysto import load_mephysto
 """
 
-# pylint: disable=W0401,W0614
-
+# pylint: disable=W0401,W0614,C0103,C0413
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from ._level1.interpolate import *
-from ._level1.numpy import *
-from ._level1.dicom import *
-from ._level1.mephysto import *
-from ._level1.os_path import *
-
+from ._level1.csvoutput import *
+from ._level1.mccread import *
+from ._level2.load_mephysto import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.interpolate', '._level1.numpy', '._level1.dicom',
-    '._level1.mephysto', '._level1.os_path'
-], package='pymedphys.xlwings')
+    '._level1.csvoutput', '._level1.mccread',
+    '._level2.load_mephysto'
+], package='pymedphys.mephysto')

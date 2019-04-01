@@ -24,23 +24,20 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Expose a range of pymedphys, scipy, and numpy functions for use within
-Excel via xlwings udf functionality.
-"""
+from glob import glob
 
-# pylint: disable=W0401,W0614
-
-
-from ..libutils import clean_and_verify_levelled_modules
-
-from ._level1.interpolate import *
-from ._level1.numpy import *
-from ._level1.dicom import *
-from ._level1.mephysto import *
-from ._level1.os_path import *
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.interpolate', '._level1.numpy', '._level1.dicom',
-    '._level1.mephysto', '._level1.os_path'
-], package='pymedphys.xlwings')
+def wildcard_file_resolution(glob_search_string):
+    filepaths = glob(glob_search_string)
+    if len(filepaths) < 1:
+        raise FileNotFoundError("No file found that matches the provided path")
+    elif len(filepaths) > 1:
+        raise TypeError(
+            "More than one file found that matches the search string")
+
+    found_filepath = filepaths[0]
+
+    return found_filepath
