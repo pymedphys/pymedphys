@@ -4,14 +4,11 @@
     :maxdepth: 1
     :caption: Getting Started
 
+    getting-started/overview
     getting-started/installation
     getting-started/licensing-notes
-
-.. toctree::
-    :maxdepth: 1
-    :caption: Additional Information
-
-    additional/changelog.rst
+    getting-started/faq
+    getting-started/changelog
 
 .. toctree::
     :maxdepth: 1
