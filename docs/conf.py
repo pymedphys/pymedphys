@@ -113,7 +113,7 @@ nbsphinx_prolog = r"""
 
         This page was generated from `{{ docname }}`__.
         Interactive online version:
-        :raw-html:`<a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/{{ env.config.version }}?filepath={{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>`
+        :raw-html:`<a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/{{ env.config.version }}?urlpath=/lab/tree/{{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>`
     __ https://github.com/pymedphys/pymedphys/blob/
         {{ env.config.version }}/{{ docname }}
 """
