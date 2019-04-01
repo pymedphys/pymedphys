@@ -10,14 +10,7 @@ from os.path import splitext
 import platform
 
 from setuptools import setup, find_packages
-from setuptools.command.test import test as TestCommand
 
-# XLWINGS FLAG
-# https://github.com/ZoomerAnalytics/xlwings/pull/1052
-if platform.system() == 'Linux':
-    # This workaround will only work on sdist installs, not wheels installs
-    # https://stackoverflow.com/questions/54467648/python-setup-py-set-environment-variable-prior-to-running-install-requires
-    os.system("export INSTALL_ON_LINUX=1")  # For xlwings
 
 basename = os.path.basename
 dirname = os.path.dirname
@@ -75,7 +68,6 @@ setup(
         ],
     },
     license='AGPLv3+',
-    # data_files=get_data_files(),
     install_requires=[
         'attrs',
         'keyring',
@@ -91,7 +83,7 @@ setup(
         'scipy',
         'shapely',
         'xarray',
-        'xlwings >= 0.15.4',
+        'xlwings; platform_system != "Linux"',
         'dataclasses; python_version=="3.6"'
     ],
     extras_require={
@@ -106,7 +98,8 @@ setup(
         'testing': [
             'deepdiff',
             'pytest',
-            'pytest-cov'
+            'pytest-cov',
+            'xlwings >= 0.15.4'
         ]
     }
 )
