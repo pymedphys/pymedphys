@@ -10,6 +10,10 @@ from os.path import splitext
 from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
+# XLWINGS FLAG
+# https://github.com/ZoomerAnalytics/xlwings/pull/1052
+os.environ["INSTALL_ON_LINUX"] = "1"
+
 basename = os.path.basename
 dirname = os.path.dirname
 splitext = os.path.splitext
@@ -82,7 +86,7 @@ setup(
         'scipy',
         'shapely',
         'xarray',
-        'xlwings; platform_system != "Linux"',
+        'xlwings >= 0.15.4',
         'dataclasses; python_version=="3.6"'
     ],
     extras_require={

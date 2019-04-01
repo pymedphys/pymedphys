@@ -23,24 +23,14 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import os
+import xlwings as xw
 
-"""Expose a range of pymedphys, scipy, and numpy functions for use within
-Excel via xlwings udf functionality.
-"""
-
-# pylint: disable=W0401,W0614
-
-
-from ..libutils import clean_and_verify_levelled_modules
-
-from ._level1.interpolate import *
-from ._level1.numpy import *
-from ._level1.dicom import *
-from ._level1.mephysto import *
-from ._level1.os_path import *
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.interpolate', '._level1.numpy', '._level1.dicom',
-    '._level1.mephysto', '._level1.os_path'
-], package='pymedphys.xlwings')
+@xw.func
+def current_directory():
+    wb = xw.Book.caller()
+    return os.path.dirname(wb.fullname)
