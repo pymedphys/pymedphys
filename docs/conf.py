@@ -33,7 +33,9 @@ copyright = '2015-2019, the PyMedPhys contributors'
 author = 'Simon Biggs, Matt Jennings, Paul King, Matthew Sobolewski'
 
 # The short X.Y version
-version = 'documentation-work'
+# Currently being used to create mybinder link -- potentially need to rethink
+# this logic.
+version = 'unreleased-docs'
 # The full version, including alpha/beta/rc tags
 release = pymedphys.__version__
 
