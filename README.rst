@@ -65,14 +65,6 @@ in alphabetical order along with their affiliation:
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
-    :target: `Anderson Regional Cancer Center`_
-    :width: 500 px
-
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
-    :target: `Northern Beaches Cancer Care`_
-    :width: 500 px
-
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
     :width: 500 px
@@ -81,6 +73,13 @@ in alphabetical order along with their affiliation:
     :target: `Royal Adelaide Hospital`_
     :width: 500 px
 
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
+    :target: `Anderson Regional Cancer Center`_
+    :width: 500 px
+
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
+    :target: `Northern Beaches Cancer Care`_
+    :width: 500 px
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
