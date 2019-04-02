@@ -1,5 +1,5 @@
-DICOM Toolbox
-=============
+DICOM files
+===========
 
 .. automodule:: pymedphys.dicom
     :no-members:

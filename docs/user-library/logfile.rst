@@ -1,5 +1,5 @@
-Logfile Toolbox
-===============
+Logfile Management
+==================
 
 .. automodule:: pymedphys.logfile
     :no-members:

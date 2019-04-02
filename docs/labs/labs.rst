@@ -21,4 +21,5 @@ Each experimental module is organised by author below:
 .. toctree::
     :maxdepth: 1
 
-    paulking/paulking.rst
+    paulking/paulking
+    simonbiggs/simonbiggs

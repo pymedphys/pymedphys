@@ -16,8 +16,8 @@
 
     user-library/mudensity
     user-library/gamma
-    user-library/logfile
     user-library/trf
+    user-library/logfile
     user-library/electronfactors
     user-library/dicom
     user-library/geometry
@@ -29,6 +29,12 @@
 
     examples/trf_mudensity
     examples/gamma_from_dicom
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Projects
+
+    projects/elekta-logfiles
 
 .. toctree::
     :maxdepth: 1

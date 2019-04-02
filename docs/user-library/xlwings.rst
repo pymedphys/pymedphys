@@ -1,5 +1,5 @@
-xlwings Toolbox
-===============
+Excel integration with xlwings
+==============================
 
 xlwings is a powerful tool for implementing python script within Microsoft Excel.
 
