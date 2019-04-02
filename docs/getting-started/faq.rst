@@ -61,7 +61,7 @@ code in question to be fairly and proportionally represented.
 
 In reality relicensing PyMedPhys goes against its aim to create an open
 toolbox that we can all have access to and build upon, sharing the improvements
-with each other. But please don't let the fear of non-comercial viability stop you
+with each other. But please don't let the fear of non-commercial viability stop you
 using the code, instead just contact us at (developers@pymedphys.com) and we may
 be able to come to an agreement.
 
