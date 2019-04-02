@@ -43,6 +43,9 @@ jobs:
       inputs:
         versionSpec: $(python)
 
+    - bash: sudo apt install pandoc
+      displayName: Install Pandoc, need to make this only on doc run
+
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
