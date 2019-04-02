@@ -59,7 +59,7 @@ jobs:
     - bash: export INSTALL_ON_LINUX=1; python -m tox -e $TOXENV --notest
       displayName: Install test dependencies
 
-    - bash: export HOME=/home/vsts; python -m tox -e $TOXENV
+    - bash: python -m tox -e $TOXENV
       displayName: Run tests
 
     - task: PublishTestResults@2
