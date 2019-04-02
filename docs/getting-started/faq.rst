@@ -3,8 +3,8 @@ Frequently Asked Questions (FAQ)
 ================================
 
 
-I need help, how do I ask a question?
--------------------------------------
+I need help, how do I ask for help?
+-----------------------------------
 
 If you are having trouble we would be more than happy to help. Please raise an
 issue within the `PyMedPhys repo issues section`_ on GitHub. To do this you
@@ -38,3 +38,22 @@ We would love to have you be a part of the team. There is a guide to help
 developers onboard to help contributing. See the `PyMedPhys contributor documentation`_.
 
 .. _`PyMedPhys contributor documentation`: ../developer/contributing.html
+
+
+How do I decode Elekta TRF logfiles?
+------------------------------------
+
+If all you want to do is convert the ``.trf`` format to a human readable ``.csv``
+format then using the trf command line interface (CLI) tool should be sufficient.
+You'll initially need to install PyMedPhys with help from the `PyMedPhys installation documentation`_
+and then you can open a command prompt and use the `Elekta Binary logfile to csv CLI`_.
+
+.. _`PyMedPhys installation documentation`: installation.html
+
+.. _`Elekta binary logfile to csv CLI`: ../user-cli/trf.html#to-csv
+
+There is a greater project that involves not only decoding these logfiles, but then
+also indexing them by patient name and achieving other QA related tasks. To
+see an overview of that project itself see the `Elekta lofgile decoding and indexing project`_.
+
+.. _`Elekta lofgile decoding and indexing project`: ../projects/elekta-logfiles.html
