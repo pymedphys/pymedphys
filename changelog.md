@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 MD024 -->
 
-# PyMedPhys Changelog
+# Release Notes
 
 All notable changes to this project will be documented in this file.
 
