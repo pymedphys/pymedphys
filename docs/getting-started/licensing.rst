@@ -2,8 +2,19 @@
 Licensing
 =========
 
-The Licence Agreement
----------------------
+PyMedPhys is a copyrighted work. Usage and distribution of PyMedPhys needs to
+comply with the license it is distributed under. The license of PyMedPhys is the AGPL-3.0+ with
+additional terms from the Apache 2.0. In practice this means that you are free
+to download and use the code, you are free to distribute the code, but when you
+distribute the code you must also release the source code of the licensed work
+as well as any of your own modifications.
+
+For more information on what is required of you, when you use or distribute PyMedPhys see
+https://choosealicense.com/licenses/agpl-3.0/
+
+
+Licensing Header
+----------------
 
 Copyright (C) 2018 PyMedPhys Contributors
 

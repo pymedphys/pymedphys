@@ -40,6 +40,32 @@ developers onboard to help contributing. See the `PyMedPhys contributor document
 .. _`PyMedPhys contributor documentation`: ../developer/contributing.html
 
 
+Can I do whatever I like with PyMedPhys?
+----------------------------------------
+
+No. PyMedPhys is licensed under the AGPLv3+ license. Any usage or distribution
+of PyMedPhys must comply with this license. See `PyMedPhys licensing documentation`_
+for more information.
+
+.. _`PyMedPhys licensing documentation`: licensing.html
+
+
+Can I develop and sell closed source proprietary code that is a derivative of PyMedPhys?
+----------------------------------------------------------------------------------------
+
+Not under PyMedPhys' current license you can't however the
+contributors of PyMedPhys may be open to relicensing on a case-by-case basis.
+This however may come at a fee, and if it does come at a fee there would need to be
+a structure created that enables all contributors and stake-holders of the
+code in question to be fairly and proportionally represented.
+
+In reality relicensing PyMedPhys goes against its aim to create an open
+toolbox that we can all have access to and build upon, sharing the improvements
+with each other. But please don't let the fear of non-comercial viability stop you
+using the code, instead just contact us at (developers@pymedphys.com) and we may
+be able to come to an agreement.
+
+
 How do I decode Elekta TRF logfiles?
 ------------------------------------
 
