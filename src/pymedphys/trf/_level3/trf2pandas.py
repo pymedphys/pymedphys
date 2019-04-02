@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,28 +24,47 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A toolbox for handling trf files.
-
-Examples:
-    >>> from pymedphys.trf import identify_logfile
-    >>> from pymedphys.trf import delivery_data_from_logfile
-    >>> from pymedphys.trf import decode_header_from_file
+"""Decodes trf file.
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
+import pandas as pd
 
-from ..libutils import clean_and_verify_levelled_modules
+from .._level1.trfheader import decode_header, determine_header_length, Header
+from .._level2.trftable import decode_trf_table
 
-from ._level1.trfconstants import *
-from ._level1.trfheader import *
-from ._level2.trf2csv import *
-from ._level2.trfidentify import *
-from ._level2.trftable import *
-from ._level3.trf2pandas import *
-from ._level4.trf2deliverydata import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.trfconstants', '._level1.trfheader', '._level2.trf2csv',
-    '._level2.trfidentify', '._level2.trftable', '._level3.trf2pandas',
-    '._level4.trf2deliverydata'
-], package='pymedphys.trf')
+def trf2pandas(filepath):
+    with open(filepath, 'rb') as file:
+        trf_contents = file.read()
+
+    trf_header_contents, trf_table_contents = split_into_header_table(
+        trf_contents)
+
+    header_dataframe = header_as_dataframe(trf_header_contents)
+
+    table_dataframe = decode_trf_table(trf_table_contents)
+
+    return header_dataframe, table_dataframe
+
+
+def split_into_header_table(trf_contents):
+    header_length = determine_header_length(trf_contents)
+
+    trf_header_contents = trf_contents[0:header_length]
+    trf_table_contents = trf_contents[header_length::]
+
+    return trf_header_contents, trf_table_contents
+
+
+def header_as_dataframe(trf_header_contents):
+    header = decode_header(trf_header_contents)
+
+    return pd.DataFrame([header], columns=Header._fields)
+
+
+def decode_trf(filepath):
+    """DEPRECATED
+    """
+    _, table_dataframe = trf2pandas(filepath)
+
+    return table_dataframe
