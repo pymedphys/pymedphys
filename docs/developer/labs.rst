@@ -1,5 +1,5 @@
-Here be Dragons
-===============
+Labs
+====
 
 .. CAUTION::
 
@@ -21,5 +21,5 @@ Each experimental module is organised by author below:
 .. toctree::
     :maxdepth: 1
 
-    paulking/paulking
-    simonbiggs/simonbiggs
+    labs/paulking
+    labs/simonbiggs
