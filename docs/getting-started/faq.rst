@@ -20,8 +20,8 @@ it might be worth making a comment that the question and response should belong
 within this FAQ document.
 
 
-How can I report a bug, provide feedback?
------------------------------------------
+How can I report a bug or provide feedback?
+-------------------------------------------
 
 You can raise an issue on GitHub within the `PyMedPhys repo issues section`_.
 Please use this as opposed to emailing contributors if possible as this means
