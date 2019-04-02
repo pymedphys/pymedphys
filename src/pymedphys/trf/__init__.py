@@ -38,14 +38,14 @@ from ..libutils import clean_and_verify_levelled_modules
 
 from ._level1.trfconstants import *
 from ._level1.trfheader import *
-from ._level2.trf2csv import *
 from ._level2.trfidentify import *
 from ._level2.trftable import *
 from ._level3.trf2pandas import *
 from ._level4.trf2deliverydata import *
+from ._level4.trf2csv import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.trfconstants', '._level1.trfheader', '._level2.trf2csv',
+    '._level1.trfconstants', '._level1.trfheader',
     '._level2.trfidentify', '._level2.trftable', '._level3.trf2pandas',
-    '._level4.trf2deliverydata'
+    '._level4.trf2deliverydata', '._level4.trf2csv'
 ], package='pymedphys.trf')
