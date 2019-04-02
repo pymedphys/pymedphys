@@ -23,6 +23,17 @@ Linac for every patient and fraction.
      sufficient verification.
 
 
+Presentations Related to this Project
+-------------------------------------
+
+Portions of this project have been presented and are scheduled to be presented
+in the future. The links below provide downloads of the respective slides.
+
+* `Comparing the Reported MLC and Jaw Positions Between Mosaiq and Elekta Linac Delivery at EPSM 2018`_.
+* Open source tools for converting 40 ms resolution trf Elekta log files into DICOM RT Plan format for log file-derived dose reconstruction at ICCR 2019.
+
+.. _`Comparing the Reported MLC and Jaw Positions Between Mosaiq and Elekta Linac Delivery at EPSM 2018`: http://simonbiggs.net/epsm2018
+
 Details
 -------
 The diagnostic backups of an Elekta Linac contain the trf logfiles which detail
@@ -31,6 +42,12 @@ every Linac delivery for the previous 8 days to a time resolution of 40 Hz.
 A portion of an example decoded logfile looks like the following:
 
 .. image:: ../img/logfile_example.png
+
+The logfiles contain information such as MLC and Jaw positions, MU delivered, gantry
+couch and collimator angles, and more. For a full list of the column names in the logfiles
+see the `logfile config code`_.
+
+.. _`logfile config code`: https://github.com/pymedphys/pymedphys/blob/b6d2c0500ee90af1eb189ba44d96e0c5cf242e80/src/pymedphys/trf/_data/config.json#L25-L376
 
 These logfiles can be extracted and then associated to a patient's record
 using Mosaiq SQL. This is achieved by aligning the logfile to the recorded delivery time as well
