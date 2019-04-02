@@ -90,7 +90,7 @@ setup(
         'docs': [
             'm2r',
             'sphinxcontrib-napoleon',
-            'sphinx >= 1.4',
+            'sphinx >= 1.4, < 1.8',
             'sphinx_rtd_theme',
             'sphinx-argparse',
             'nbsphinx'
