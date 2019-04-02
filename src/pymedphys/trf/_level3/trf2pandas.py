@@ -32,6 +32,9 @@ import pandas as pd
 from .._level1.trfheader import decode_header, determine_header_length, Header
 from .._level2.trftable import decode_trf_table
 
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 def trf2pandas(filepath):
     with open(filepath, 'rb') as file:

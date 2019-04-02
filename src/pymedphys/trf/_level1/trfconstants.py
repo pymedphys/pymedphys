@@ -27,9 +27,12 @@
 import os
 import json
 
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
+
 
 CONFIG_FILEPATH = os.path.join(
-    os.path.dirname(__file__), 'config.json')
+    os.path.dirname(__file__), '../_data/config.json')
 
 with open(CONFIG_FILEPATH) as json_data_file:
     CONFIG = json.load(json_data_file)

@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from pymedphys.deliverydata import DeliveryData
+from ...deliverydata import DeliveryData
 
 from .._level1.trfconstants import (
     GANTRY_NAME, COLLIMATOR_NAME,
@@ -33,6 +33,9 @@ from .._level1.trfconstants import (
     JAW_NAMES
 )
 from .._level3.trf2pandas import decode_trf
+
+from ...libutils import get_imports
+IMPORTS = get_imports(globals())
 
 
 def delivery_data_from_logfile(logfile_path):
