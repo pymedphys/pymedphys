@@ -33,12 +33,7 @@
     developer/documentation
     developer/physical-design
     developer/agpl-benefits
-
-.. toctree::
-    :maxdepth: 1
-    :caption: Labs
-
-    labs/labs.rst
+    developer/labs.rst
 
 
 Indices and tables

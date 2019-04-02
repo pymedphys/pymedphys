@@ -10,8 +10,6 @@ itself. Below is the documentation for a range of these libraries.
 
     library/mudensity
     library/gamma
-    library/trf
-    library/logfile
     library/electronfactors
     library/dicom
     library/geometry

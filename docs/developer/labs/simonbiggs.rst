@@ -4,4 +4,4 @@ Simon Biggs
 .. toctree::
     :maxdepth: 1
 
-    nist_interactions
+    simonbiggs/nist_interactions

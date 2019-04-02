@@ -12,10 +12,6 @@ Labs
     breaks code that depends on it. Changes within the labs are not tracked
     within the changelogs.
 
-
-Experimental Modules
---------------------
-
 Each experimental module is organised by author below:
 
 .. toctree::
