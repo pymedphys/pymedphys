@@ -43,8 +43,9 @@ jobs:
       inputs:
         versionSpec: $(python)
 
-    - bash: sudo apt install pandoc
+    - bash: sudo apt-get install -y pandoc
       displayName: Install Pandoc, need to make this only on doc run
+      condition: eq( variables['TOXENV'], 'docs' )
 
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
