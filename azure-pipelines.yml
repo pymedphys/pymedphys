@@ -11,7 +11,6 @@ jobs:
         Docs:
           image_name: ubuntu-16.04
           test_title: Docs
-          home: /home/vsts
           toxenv: docs
           python: 3.7
         Layer-Lint:
@@ -60,7 +59,7 @@ jobs:
     - bash: export INSTALL_ON_LINUX=1; python -m tox -e $TOXENV --notest
       displayName: Install test dependencies
 
-    - bash: python -m tox -e $TOXENV
+    - bash: export HOME=/home/vsts; python -m tox -e $TOXENV
       displayName: Run tests
 
     - task: PublishTestResults@2
