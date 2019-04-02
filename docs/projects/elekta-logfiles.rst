@@ -23,43 +23,46 @@ Linac for every patient and fraction.
      sufficient verification.
 
 
-Overview
---------
-The logfiles themselves are extracted from the Linac diagnostics backups, they
-are then indexed according to patient name and ID using the delivery record within
-Mosaiq. This extracting and indexing is set to run at a regular interval.
+Details
+-------
+The diagnostic backups of an Elekta Linac contain the trf logfiles which detail
+every Linac delivery for the previous 8 days to a time resolution of 40 Hz.
 
-Once these logfiles are indexed they can be decoded into csv format for human
-reading, or an MU Density can be calculated, or they can be mapped to a DICOM
+A portion of an example decoded logfile looks like the following:
+
+.. image:: ../img/logfile_example.png
+
+These logfiles can be extracted and then associated to a patient's record
+using Mosaiq SQL. This is achieved by aligning the logfile to the recorded delivery time as well
+as other parameters such as field ID and description the logfile is aligned to
+Patient Name and ID. Example SQL to achieve this looks like the following:
+
+.. image:: ../img/sql_example.png
+
+An index is then created, at this current time the index is json file, but this
+has issues when the index becomes large. It is expected that a backwards
+incompatible change will occur in the near future converting the index json
+format into SQLite. An example entry within this index looks like the following:
+
+.. image:: ../img/index_example.png
+
+This process of extracting and indexing can be set to run at a regular interval
+so that an up to date logfile index is available.
+
+Post indexing these logfiles can be decoded into csv format for human
+reading, an MU Density can be calculated, or they can be mapped to a DICOM
 file for the recalculation of dose.
 
 
-Retrieving Logfiles from the Linac
-----------------------------------
-
-
-Indexing the Logfiles
----------------------
-
-
-Orchestrating the process
--------------------------
-
-
-Decoding Logfiles
------------------
-
-
-Including MU Density
+Basic Implementation
 --------------------
 
 
-Mapping logfiles to RT DICOM plan
----------------------------------
 
 
-Setting up a system to span multiple sites
-------------------------------------------
+Advanced Implementation
+-----------------------
+
 
 
 
