@@ -53,17 +53,25 @@ for more information.
 Can I develop and sell closed source proprietary code that is a derivative of PyMedPhys?
 ----------------------------------------------------------------------------------------
 
-Not under PyMedPhys' current license you can't however the
-contributors of PyMedPhys may be open to relicensing on a case-by-case basis.
-This however may come at a fee, and if it does come at a fee there would need to be
-a structure created that enables all contributors and stake-holders of the
-code in question to be fairly and proportionally represented.
+You certainly can sell whatever you build on top of PyMedPhys. But the
+requirement of any distribution (selling or for free), is that you also release
+the source code of PyMedPhys and any derivative of
+PyMedPhys under an AGPLv3.0+ license. So, because you have asked to distribute a **closed source** proprietary
+derivative of PyMedPhys, the answer is no.
 
-In reality relicensing PyMedPhys goes against its aim to create an open
-toolbox that we can all have access to and build upon, sharing the improvements
-with each other. But please don't let the fear of non-commercial viability stop you
-using the code, instead just contact us at (developers@pymedphys.com) and we may
-be able to come to an agreement.
+PyMedPhys was licensed in this way because one of the main aims of this project is
+that we wish to create a toolbox which we all have access to today, and
+we also all have access to whatever it becomes in the future. For further
+information on this decision please see the `benefits of open source`_.
+
+.. _`benefits of open source`: ../developer/agpl-benefits.html
+
+It is understood however that this potentially may impede the uptake of PyMedPhys
+for people who wish to build tools they might like to sell in a closed source
+fashion one day. If you are in this boat, please reach out to the PyMedPhys
+developers at developers@pymedphys.com. We also want PyMedPhys to be as useful
+to as many people as it can be, and an arangement may be possible where the
+aims of PyMedPhys are met, as well as your own.
 
 
 How do I decode Elekta TRF logfiles?
