@@ -1,38 +1,30 @@
 .. include:: ../README.rst
+   :end-before: .. END_OF_FRONTPAGE_IMPORT
 
 .. toctree::
     :maxdepth: 1
     :caption: Getting Started
 
+    getting-started/about
     getting-started/installation
-    getting-started/licensing-notes
+    getting-started/licensing
+    getting-started/faq
+    getting-started/changelog
+    getting-started/roadmap
 
 .. toctree::
     :maxdepth: 1
-    :caption: Additional Information
+    :caption: User Guide
 
-    additional/changelog.rst
-
-.. toctree::
-    :maxdepth: 1
-    :caption: Python Library User Guide
-
-    user-library/mudensity
-    user-library/gamma
-    user-library/logfile
-    user-library/trf
-    user-library/electronfactors
-    user-library/dicom
-    user-library/geometry
-    user-library/xlwings
+    user/interfaces
+    user/library
+    user/examples
 
 .. toctree::
     :maxdepth: 1
-    :caption: CLI User Guide
+    :caption: Projects
 
-    user-cli/dicom
-    user-cli/logfile
-    user-cli/docker
+    projects/elekta-logfiles
 
 .. toctree::
     :maxdepth: 1
@@ -42,12 +34,7 @@
     developer/documentation
     developer/physical-design
     developer/agpl-benefits
-
-.. toctree::
-    :maxdepth: 1
-    :caption: Labs
-
-    labs/labs.rst
+    developer/labs.rst
 
 
 Indices and tables

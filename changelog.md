@@ -12,6 +12,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Breaking Changes
 
 - `anonymise_dicom` has been renamed to `anonymise_dicom_dataset`
+- The CLI interface `trf2csv` has been replaced with `pymedphys trf to-csv`.
+  This has the same usage, just a changed name to come in line with the rest of the CLI interfaces exposed by PyMedPhys.
 
 ### New Features
 
@@ -42,6 +44,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   within Excel
 - Added rudimentary code to pull profiles from Mephysto
   files.
+- The previously separate `decodetrf` library is now distributed within
+  PyMedPhys. You can now simply install PyMedPhys and run
+  `pymedphys trf to-csv` within the command line to convert `.trf` files into
+  `.csv` files.
+
 
 <!-- ### Bug Fixes
 

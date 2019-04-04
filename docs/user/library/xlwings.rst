@@ -1,5 +1,6 @@
-xlwings Toolbox
-===============
+=============================
+Excel integration via xlwings
+=============================
 
 xlwings is a powerful tool for implementing python script within Microsoft Excel.
 
@@ -32,4 +33,4 @@ was saved functions running python within Excel may return false responses.
 This is usually cleared by re-running a few functions which should trigger
 the rest within the workbook to update.
 
-.. image:: ../img/xlwings_01_config.png
+.. image:: ../../img/xlwings_01_config.png
