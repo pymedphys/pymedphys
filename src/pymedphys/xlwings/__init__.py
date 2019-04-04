@@ -31,16 +31,23 @@ Excel via xlwings udf functionality.
 # pylint: disable=W0401,W0614
 
 
-from ..libutils import clean_and_verify_levelled_modules
-
-from ._level1.interpolate import *
-from ._level1.numpy import *
-from ._level1.dicom import *
-from ._level1.mephysto import *
-from ._level1.os_path import *
+try:
+    import xlwings as _
+    HAS_XLWINGS = True
+except ImportError:
+    HAS_XLWINGS = False
 
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.interpolate', '._level1.numpy', '._level1.dicom',
-    '._level1.mephysto', '._level1.os_path'
-], package='pymedphys.xlwings')
+if HAS_XLWINGS:
+    from ..libutils import clean_and_verify_levelled_modules
+
+    from ._level1.interpolate import *
+    from ._level1.numpy import *
+    from ._level1.dicom import *
+    from ._level1.mephysto import *
+    from ._level1.os_path import *
+
+    clean_and_verify_levelled_modules(globals(), [
+        '._level1.interpolate', '._level1.numpy', '._level1.dicom',
+        '._level1.mephysto', '._level1.os_path'
+    ], package='pymedphys.xlwings')

@@ -33,7 +33,9 @@ copyright = '2015-2019, the PyMedPhys contributors'
 author = 'Simon Biggs, Matt Jennings, Paul King, Matthew Sobolewski'
 
 # The short X.Y version
-version = ''
+# Currently being used to create mybinder link -- potentially need to rethink
+# this logic.
+version = 'unreleased-docs'
 # The full version, including alpha/beta/rc tags
 release = pymedphys.__version__
 
@@ -60,7 +62,8 @@ extensions = [
     'sphinxarg.ext',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.napoleon',
-    'm2r'
+    'm2r',
+    'nbsphinx'
 ]
 
 napoleon_google_docstring = False
@@ -87,11 +90,31 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db',
+                    '.DS_Store', '**.ipynb_checkpoints', '**.dcm']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
 
+
+# This is processed by Jinja2 and inserted before each notebook
+nbsphinx_prolog = r"""
+{% set docname = env.doc2path(env.docname, base='docs').replace('\\', '/') %}
+
+.. only:: html
+
+    .. role:: raw-html(raw)
+
+        :format: html
+
+    .. nbinfo::
+
+        This page was generated from `{{ docname }}`__.
+        Interactive online version:
+        :raw-html:`<a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/{{ env.config.version }}?urlpath=/lab/tree/{{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>`
+    __ https://github.com/pymedphys/pymedphys/blob/
+        {{ env.config.version }}/{{ docname }}
+"""
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -120,6 +143,12 @@ html_static_path = ['_static']
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
+
+html_context = {
+    'css_files': [
+        '_static/theme_overrides.css',
+    ],
+}
 
 
 # -- Options for HTMLHelp output ---------------------------------------------

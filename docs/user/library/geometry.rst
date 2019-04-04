@@ -1,5 +1,5 @@
-Geometry Toolbox
-================
+Geometry Utilities
+==================
 
 .. automodule:: pymedphys.geometry
     :no-members:

@@ -30,8 +30,6 @@ from glob import glob
 import os
 from contextlib import contextmanager
 
-import pytest
-
 import numpy as np
 import pandas as pd
 
@@ -42,11 +40,6 @@ TABLE_TAG = '_table'
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/trf")
-
-
-pytest.skip(
-    "Skipping decode_trf tests, the library can't be made public.",
-    allow_module_level=True)
 
 
 # TODO need to include header test
@@ -124,25 +117,12 @@ def test_conversions():
         os.path.join(DATA_DIRECTORY, 'elekta_reference', '*.trf'))
 
     for filepath in reference_files:
-        try:
-            convert_and_check(filepath)
-        except NotImplementedError:
-            pytest.skip(
-                "`decode_trf` doesn't appear to be installed, skipping this "
-                "test."
-            )
+        convert_and_check(filepath)
 
     integrity4_files = glob(
         os.path.join(DATA_DIRECTORY, 'integrity4', '*.trf'))
 
     for filepath in integrity4_files:
-        try:
-            _, converted_filepaths = get_filepaths(filepath)
-            with files_teardown(converted_filepaths):
-                trf2csv(filepath)
-
-        except NotImplementedError:
-            pytest.skip(
-                "`decode_trf` doesn't appear to be installed, skipping this "
-                "test."
-            )
+        _, converted_filepaths = get_filepaths(filepath)
+        with files_teardown(converted_filepaths):
+            trf2csv(filepath)

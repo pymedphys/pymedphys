@@ -24,19 +24,16 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: skip-file
-
 """Converts a trf file into a csv file.
 """
 
 
-import sys
 import os
 from glob import glob
 
 from ...libutils import get_imports
 
-from .._level1.trfdecode import trf2pandas
+from .._level3.trf2pandas import trf2pandas
 
 IMPORTS = get_imports(globals())
 
@@ -50,7 +47,7 @@ def trf2csv(trf_filepath, skip_if_exists=False):
     table_csv_filepath = "{}_table.csv".format(extension_removed)
 
     # Skip if conversion has already occured
-    if not skip_if_exists or not os.path.exists(csv_filepath):
+    if not skip_if_exists or not os.path.exists(table_csv_filepath):
         print("Converting {}".format(trf_filepath))
         header, table = trf2pandas(trf_filepath)
 
@@ -60,17 +57,9 @@ def trf2csv(trf_filepath, skip_if_exists=False):
     #     print("Skipping {}".format(trf_filepath))
 
 
-def trf2csv_cli():
-    if len(sys.argv) == 1:
-        print(
-            "=============================================================\n"
-            "Need to provide filename(s).\n\n"
-            "Example usage for converting all files in current directory:\n"
-            "    trf2csv *.trf\n"
-            "=============================================================")
+def trf2csv_cli(args):
 
-    glob_strings = sys.argv[1::]
-    for glob_string in glob_strings:
+    for glob_string in args.filepaths:
         glob_string = glob_string.replace('[', '<[>')
         glob_string = glob_string.replace(']', '<]>')
         glob_string = glob_string.replace('?', '[?]')
