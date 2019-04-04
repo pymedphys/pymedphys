@@ -44,8 +44,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   within Excel
 - Added rudimentary code to pull profiles from Mephysto
   files.
-- The previously separate `decodetrf` library is now distributed as part of
-  `PyMedPhys`. In particular, now by installing `PyMedPhys` alone one can run
+- The previously separate `decodetrf` library is now distributed within
+  PyMedPhys. You can now simply install PyMedPhys and run
   `pymedphys trf to-csv` within the command line to convert `.trf` files into
   `.csv` files.
 
