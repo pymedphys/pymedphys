@@ -33,13 +33,13 @@ by our physics peers in astronomy and their `Astropy Project`_.
 PyMedPhys aims to become not just a library, but instead a Medical Physics
 open source `monorepo`_ where we can all store, review, use, and learn off of
 each other's code. It is structured and glued together with Python, but
-certainly not limited to Python alone.
+certainly not limited to one programming language.
 
 .. _`Astropy Project`: http://www.astropy.org/
 
 .. _`monorepo`: https://cacm.acm.org/magazines/2016/7/204032-why-google-stores-billions-of-lines-of-code-in-a-single-repository/fulltext
 
-This package is available on PyPi (https://pypi.org/project/pymedphys/),
+This package is available on PyPI (https://pypi.org/project/pymedphys/),
 GitHub (https://github.com/pymedphys/pymedphys), and conda-forge
 (https://anaconda.org/conda-forge/pymedphys). Documentation is at
 https://pymedphys.com.
@@ -146,6 +146,9 @@ For the definitions of where the definition of License is taken to be the
 AGPLv3+ with additional terms from the Apache 2.0. The definitions of
 Contributor, You, and Work for this clause are as defined within the
 Apache 2.0 license.
+
+
+.. END_OF_FRONTPAGE_IMPORT
 
 
 Installation

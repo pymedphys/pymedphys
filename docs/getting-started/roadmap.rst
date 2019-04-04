@@ -2,7 +2,7 @@
 Roadmap
 =======
 
-Here will be recorded the roadmap for future development of PyMedPhys.
+Here will be recorded the roadmap for the future development of PyMedPhys.
 
 
 Graphical User Interface (GUI)
