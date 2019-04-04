@@ -49,7 +49,7 @@ Our Team
 
 PyMedPhys is what it is today due to its maintainers and developers. The
 currently active developers and maintainers of PyMedPhys are given below
-in alphabetical order along with their affiliation:
+along with their affiliation:
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
