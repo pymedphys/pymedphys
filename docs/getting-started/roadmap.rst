@@ -9,13 +9,13 @@ Graphical User Interface (GUI)
 ------------------------------
 
 A goal of the graphical user interface is to have it customisable, and
-expandable. It is envisioned that the not yet released
-`JupyterLab Dashboarding`_ might provide a perfect environment for building
+expandable. We envision that the as yet unreleased
+`JupyterLab Dashboarding`_ could provide a perfect environment for building
 GUIs that can be easily extended by the community.
 
-To progress in this direction we need to begin building `Jupyter Widgets`_ that
-would become the dashboarding building blocks. An example of one of these
-widgets that could be expanded on are the `ITK Jupyter Widgets`_.
+To progress in this direction, we need to begin building `Jupyter Widgets`_ that
+serve as the building blocks of JupyterLab Dashboarding. See the `ITK Jupyter Widgets`_
+for a nice example of this approach.
 
 
 .. _`JupyterLab Dashboarding`: https://github.com/jupyterlab/jupyterlab/issues/1640#issuecomment-464945774
