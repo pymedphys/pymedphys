@@ -1,32 +1,43 @@
-PyMedPhys
-=========
+==========================================================
+PyMedPhys |build| |docs| |pypi| |conda| |python| |license|
+==========================================================
 
-.. image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
+.. |build| image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
     :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
 
-.. image:: https://readthedocs.org/projects/pymedphys/badge/?version=latest
+.. |docs| image:: https://readthedocs.org/projects/pymedphys/badge/?version=latest
     :target: https://pymedphys.com/
 
-.. image:: https://img.shields.io/pypi/v/pymedphys.svg
+.. |pypi| image:: https://img.shields.io/pypi/v/pymedphys.svg
     :target: https://pypi.org/project/pymedphys/
 
-.. image:: https://img.shields.io/conda/vn/conda-forge/pymedphys.svg
+.. |conda| image:: https://img.shields.io/conda/vn/conda-forge/pymedphys.svg
     :target: https://anaconda.org/conda-forge/pymedphys/
 
-.. image:: https://img.shields.io/pypi/pyversions/pymedphys.svg
+.. |python| image:: https://img.shields.io/pypi/pyversions/pymedphys.svg
     :target: https://pypi.org/project/pymedphys/
 
-.. image:: https://img.shields.io/pypi/l/pymedphys.svg
+.. |license| image:: https://img.shields.io/pypi/l/pymedphys.svg
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
 Description
 -----------
-The PyMedPhys Project aims to develop a common core package for Medical Physics
-in Python and foster an ecosystem of interoperable Medical Physics packages. It
-is inspired by our physics peers in astronomy and their `Astropy Project`_.
+
+.. START_OF_ABOUT_IMPORT
+
+PyMedPhys is a toolbox for Medical Physicists that we all have access to, and
+we will all have access to whatever it becomes in the future. It is inspired
+by our physics peers in astronomy and their `Astropy Project`_.
+
+PyMedPhys aims to become not just a library, but instead a Medical Physics
+open source `monorepo`_ where we can all store, review, use, and learn off of
+each other's code. It is structured and glued together with Python, but
+certainly not limited to Python alone.
 
 .. _`Astropy Project`: http://www.astropy.org/
+
+.. _`monorepo`: https://cacm.acm.org/magazines/2016/7/204032-why-google-stores-billions-of-lines-of-code-in-a-single-repository/fulltext
 
 This package is available on PyPi (https://pypi.org/project/pymedphys/),
 GitHub (https://github.com/pymedphys/pymedphys), and conda-forge
@@ -40,10 +51,22 @@ PyMedPhys is what it is today due to its maintainers and developers. The
 currently active developers and maintainers of PyMedPhys are given below
 in alphabetical order along with their affiliation:
 
+* `Simon Biggs`_
+    * `Riverina Cancer Care Centre`_, Australia
+
+.. _`Simon Biggs`: https://github.com/SimonBiggs
+
+
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
 
 .. _`Matthew Jennings`: https://github.com/centrus007
+
+
+* `Paul King`_
+    * `Anderson Regional Cancer Center`_, United States
+
+.. _`Paul King`: https://github.com/kingrpaul
 
 
 * `Matthew Sobolewski`_
@@ -53,16 +76,10 @@ in alphabetical order along with their affiliation:
 .. _`Matthew Sobolewski`: https://github.com/msobolewski
 
 
-* `Paul King`_
-    * `Anderson Regional Cancer Center`_, United States
-
-.. _`Paul King`: https://github.com/kingrpaul
-
-
-* `Simon Biggs`_
+* `Jacob McAloney`_
     * `Riverina Cancer Care Centre`_, Australia
 
-.. _`Simon Biggs`: https://github.com/SimonBiggs
+.. _`Jacob McAloney`: https://github.com/JacobMcAloney
 
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
@@ -102,6 +119,9 @@ to maintain the copyright on their contributions. All code is licensed under
 the AGPLv3+ with additional terms from the Apache-2.0 license.
 
 
+.. END_OF_ABOUT_IMPORT
+
+
 Beta stage development
 ----------------------
 
@@ -122,9 +142,10 @@ hold:
     any and all other commercial damages or losses), even if such Contributor
     has been advised of the possibility of such damages.
 
-For the definitions of where the definition of License is taken to be the AGPLv3+
-with additional terms from the Apache 2.0. The definitions of Contributor, You,
-and Work for this clause are as defined within the Apache 2.0 license.
+For the definitions of where the definition of License is taken to be the
+AGPLv3+ with additional terms from the Apache 2.0. The definitions of
+Contributor, You, and Work for this clause are as defined within the
+Apache 2.0 license.
 
 
 Installation

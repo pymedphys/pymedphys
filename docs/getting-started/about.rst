@@ -2,5 +2,6 @@
 About PyMedPhys
 ===============
 
-PyMedPhys is a toolbox for Medical Physicists that we all have access to, and
-we will all have access to whatever it becomes in the future.
+.. include:: ../../README.rst
+   :start-after: .. START_OF_ABOUT_IMPORT
+   :end-before: .. END_OF_ABOUT_IMPORT
