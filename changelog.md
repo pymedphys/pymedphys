@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 <br/>
 
-## [Unreleased]
+## [0.7.0] -- 2019/05/05
 
 ### Breaking Changes
 
@@ -104,6 +104,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.6.0...master
+[0.7.0]: https://github.com/pymedphys/pymedphys/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/pymedphys/pymedphys/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/pymedphys/pymedphys/compare/v0.4.3...v0.5.1
