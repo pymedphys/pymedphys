@@ -28,6 +28,4 @@ API
 
 .. autofunction:: pymedphys.mudensity.get_grid
 
-.. autofunction:: pymedphys.mudensity.find_relevant_control_points
-
 .. autofunction:: pymedphys.mudensity.display_mu_density

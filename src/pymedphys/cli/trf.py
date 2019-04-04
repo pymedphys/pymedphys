@@ -23,53 +23,37 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import sys
-import argparse
 
-from .dicom import dicom_cli
-from .docker import docker_cli
-from .logfile import logfile_cli
-from .trf import trf_cli
+"""A command line interface for the conversion of Elekta binary log files.
+"""
 
 
-class DefaultHelpParser(argparse.ArgumentParser):
-    def error(self, message):
-        sys.stderr.write('error: %s\n' % message)
-        self.print_help()
-        sys.exit(2)
+from ..trf import trf2csv_cli
 
 
-def define_parser():
-    parser = DefaultHelpParser(prog='pymedphys')
-    subparsers = parser.add_subparsers()
+def trf_cli(subparsers):
+    trf_parser = subparsers.add_parser(
+        'trf',
+        help=(
+            'A toolbox to work with the Elekta Linac ``.trf`` binary log files.'
+        ))
+    trf_subparsers = trf_parser.add_subparsers(dest='trf')
+    trf_to_csv(trf_subparsers)
 
-    dicom_cli(subparsers)
-    docker_cli(subparsers)
-    logfile_cli(subparsers)
-    trf_cli(subparsers)
-
-    return parser
+    return trf_parser
 
 
-def pymedphys_cli():
-    parser = define_parser()
+def trf_to_csv(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        'to-csv',
+        help='Converts ``.trf`` files to ``.csv`` table and header files.')
 
-    args = parser.parse_args()
+    parser.add_argument(
+        'filepaths', type=str, nargs='+',
+        help=(
+            'A list of ``.trf`` filepaths that you wish to convert to ``.csv``. '
+            'Use of the glob wildcard * is enabled, which means that running '
+            '``pymedphys trf to-csv *.trf`` will convert all logfiles in the '
+            'current directory to csv files.'))
 
-    if hasattr(args, 'func'):
-        args.func(args)
-    else:
-        subparser_names = [
-            attribute for attribute in dir(args)
-            if not attribute.startswith('_')
-        ]
-
-        if not subparser_names:
-            parser.print_help()
-        else:
-            assert len(subparser_names) == 1
-
-            subparser_name = subparser_names[0]
-            assert getattr(args, subparser_name) is None
-
-            parser.parse_args([subparser_name, '--help'])
+    parser.set_defaults(func=trf2csv_cli)
