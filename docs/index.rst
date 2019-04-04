@@ -1,4 +1,5 @@
 .. include:: ../README.rst
+   :end-before: .. END_OF_FRONTPAGE_IMPORT
 
 .. toctree::
     :maxdepth: 1
