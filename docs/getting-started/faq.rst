@@ -50,16 +50,6 @@ for more information.
 .. _`PyMedPhys licensing documentation`: licensing.html
 
 
-Can I develop and sell closed source proprietary code that is a derivative of PyMedPhys?
-----------------------------------------------------------------------------------------
-
-No, the current PyMedPhys' license prohibits this. **However**, the
-PyMedPhys contributors may be open to re-licensing on a case-by-case basis.
-This would require negotiation and, likely, a suitable financial arrangement. Such an 
-arrangement would need to be structured to enable all contributors and stake-holders of the
-code in question to be fairly and proportionally represented.
-
-
 How do I decode Elekta TRF logfiles?
 ------------------------------------
 

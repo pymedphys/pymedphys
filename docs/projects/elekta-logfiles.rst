@@ -74,13 +74,15 @@ file for the recalculation of dose.
 Basic Implementation
 --------------------
 
-
+Details on how to set up automated logfile exporting and indexing are to be
+detailed here. Watch this space.
 
 
 Advanced Implementation
 -----------------------
 
-
+Further details that expand the above implementation to multiple sites are to
+be detailed here. Watch this space.
 
 
 References
