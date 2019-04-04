@@ -142,7 +142,7 @@ hold:
     any and all other commercial damages or losses), even if such Contributor
     has been advised of the possibility of such damages.
 
-For the definitions of where the definition of License is taken to be the
+Where the definition of License is taken to be the
 AGPLv3+ with additional terms from the Apache 2.0. The definitions of
 Contributor, You, and Work for this clause are as defined within the
 Apache 2.0 license.
