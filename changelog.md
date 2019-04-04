@@ -12,6 +12,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Breaking Changes
 
 - `anonymise_dicom` has been renamed to `anonymise_dicom_dataset`
+- The CLI interface `trf2csv` has been replaced with `pymedphys trf to-csv`.
+  This has the same usage, just a changed name to come in line with the rest of the CLI interfaces exposed by PyMedPhys.
 
 ### New Features
 

@@ -58,6 +58,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ...deliverydata import (
+    extract_angle_from_delivery_data, remove_irrelevant_control_points)
 from ...plt import pcolormesh_grid
 from ...coll import AGILITY
 
@@ -261,7 +263,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
             "gap."
         )
 
-    mu, mlc, jaw = _remove_irrelevant_control_points(mu, mlc, jaw)
+    mu, mlc, jaw = remove_irrelevant_control_points(mu, mlc, jaw)
 
     full_grid = get_grid(
         max_leaf_gap, grid_resolution, leaf_pair_widths)
@@ -488,22 +490,6 @@ def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
     return grid
 
 
-def find_relevant_control_points(mu):
-    """Removes control points that will not contribute to the MU Density.
-    """
-    mu_diff = np.diff(mu)
-    no_change = mu_diff == 0
-    no_change_before = no_change[0:-1]
-    no_change_after = no_change[1::]
-
-    no_change_before_and_after = no_change_before & no_change_after
-    irrelevant_control_point = np.hstack(
-        [no_change[0], no_change_before_and_after, no_change[-1]])
-    relevant_control_points = np.invert(irrelevant_control_point)
-
-    return relevant_control_points
-
-
 def display_mu_density(grid, mu_density, grid_resolution=None):
     """Prints a colour plot of the MU Density.
 
@@ -522,6 +508,31 @@ def display_mu_density(grid, mu_density, grid_resolution=None):
     plt.ylabel('Jaw direction (mm)')
     plt.axis('equal')
     plt.gca().invert_yaxis()
+
+
+def calc_mu_density_bygantry(delivery_data, gantry_angle, grid_resolution=1,
+                             gantry_tolerance=0):
+    mu_density = calc_mu_density(
+        grid_resolution=grid_resolution,
+        *extract_angle_from_delivery_data(
+            delivery_data, gantry_angle, gantry_tolerance)
+    )
+
+    return mu_density
+
+
+def calc_mu_density_bygantry_return_grid(delivery_data, gantry_angle,
+                                         grid_resolution=1,
+                                         gantry_tolerance=0):
+    """DEPRECATED. This is a temporary helper function to provide the old api.
+    """
+    mu_density = calc_mu_density_return_grid(
+        grid_resolution=grid_resolution,
+        *extract_angle_from_delivery_data(
+            delivery_data, gantry_angle, gantry_tolerance)
+    )
+
+    return mu_density
 
 
 def _calc_blocked_t(travel_diff, grid_resolution):
@@ -672,22 +683,6 @@ def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
     ).astype('float')
 
     return grid, adjusted_grid_leaf_map, adjusted_mlc
-
-
-def _remove_irrelevant_control_points(mu, mlc, jaw):
-    assert len(mu) > 0, "No control points found"
-
-    mu = np.array(mu)
-    mlc = np.array(mlc)
-    jaw = np.array(jaw)
-
-    control_points_to_use = find_relevant_control_points(mu)
-
-    mu = mu[control_points_to_use]
-    mlc = mlc[control_points_to_use, :, :]
-    jaw = jaw[control_points_to_use, :]
-
-    return mu, mlc, jaw
 
 
 def _convert_to_full_grid(grid, full_grid, mu_density):

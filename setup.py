@@ -7,12 +7,10 @@ from os.path import basename
 from os.path import dirname
 from os.path import splitext
 
-from setuptools import setup, find_packages
-from setuptools.command.test import test as TestCommand
+import platform
 
-# XLWINGS FLAG
-# https://github.com/ZoomerAnalytics/xlwings/pull/1052
-os.environ["INSTALL_ON_LINUX"] = "1"
+from setuptools import setup, find_packages
+
 
 basename = os.path.basename
 dirname = os.path.dirname
@@ -66,12 +64,10 @@ setup(
     package_data={'pymedphys': []},
     entry_points={
         'console_scripts': [
-            'trf2csv=pymedphys.entry_points.trf2csv:trf2csv_cli',
             'pymedphys=pymedphys.cli.main:pymedphys_cli'
         ],
     },
     license='AGPLv3+',
-    # data_files=get_data_files(),
     install_requires=[
         'attrs',
         'keyring',
@@ -87,21 +83,23 @@ setup(
         'scipy',
         'shapely',
         'xarray',
-        'xlwings >= 0.15.4',
+        'xlwings; platform_system != "Linux"',
         'dataclasses; python_version=="3.6"'
     ],
     extras_require={
         'docs': [
             'm2r',
             'sphinxcontrib-napoleon',
-            'sphinx >= 1.4',
+            'sphinx >= 1.4, < 1.8',
             'sphinx_rtd_theme',
-            'sphinx-argparse'
+            'sphinx-argparse',
+            'nbsphinx'
         ],
         'testing': [
             'deepdiff',
             'pytest',
-            'pytest-cov'
+            'pytest-cov',
+            'xlwings >= 0.15.4'
         ]
     }
 )

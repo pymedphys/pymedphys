@@ -65,14 +65,6 @@ in alphabetical order along with their affiliation:
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
-    :target: `Anderson Regional Cancer Center`_
-    :width: 500 px
-
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
-    :target: `Northern Beaches Cancer Care`_
-    :width: 500 px
-
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
     :width: 500 px
@@ -81,6 +73,13 @@ in alphabetical order along with their affiliation:
     :target: `Royal Adelaide Hospital`_
     :width: 500 px
 
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
+    :target: `Anderson Regional Cancer Center`_
+    :width: 500 px
+
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
+    :target: `Northern Beaches Cancer Care`_
+    :width: 500 px
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
@@ -91,10 +90,11 @@ in alphabetical order along with their affiliation:
 .. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
 
 
-We want you on this list. We want you, clinical Medical Physicist, to join our
+We want you on this list. We want you, whether you are a  clinical Medical
+Physicist, PhD or Masters student, researcher, or even just someone with an
+interest in Python to join our
 team. We want you if you have a desire to create and validate a toolbox we can
-all use. We want you even if all you feel comfortable contributing to is
-documentation.
+all use to improve how we care for our patients.
 
 The aim of PyMedPhys is that it will be developed by an open community of
 contributors. We use a shared copyright model that enables all contributors
@@ -121,6 +121,10 @@ hold:
     for loss of goodwill, work stoppage, computer failure or malfunction, or
     any and all other commercial damages or losses), even if such Contributor
     has been advised of the possibility of such damages.
+
+For the definitions of where the definition of License is taken to be the AGPLv3+
+with additional terms from the Apache 2.0. The definitions of Contributor, You,
+and Work for this clause are as defined within the Apache 2.0 license.
 
 
 Installation
