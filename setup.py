@@ -103,7 +103,8 @@ setup(
         ],
         'pylint': [
             'numpy < 1.16, >= 1.12',
-            'pylint'
+            'pylint',
+            'xlwings >= 0.15.4'
         ]
     }
 )
