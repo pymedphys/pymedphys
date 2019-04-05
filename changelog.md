@@ -9,6 +9,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.7.1] -- 2019/05/05
 
+### Dependency changes
+
+- Removed numpy version upperlimit
+
+## [0.7.1] -- 2019/05/05
+
 ### Performance Improvements
 
 - reduced PyPI package size by removing unnessesary development testing files.
@@ -110,7 +116,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-
+[0.7.2]: https://github.com/pymedphys/pymedphys/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/pymedphys/pymedphys/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/pymedphys/pymedphys/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/pymedphys/pymedphys/compare/v0.5.1...v0.6.0

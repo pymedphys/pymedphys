@@ -70,10 +70,11 @@ setup(
     license='AGPLv3+',
     install_requires=[
         'attrs',
+        'dataclasses; python_version=="3.6"',
         'keyring',
         'matplotlib',
         'notebook',
-        'numpy <1.16, >=1.12',
+        'numpy >= 1.12',
         'pandas',
         'Pillow',
         'psutil',
@@ -83,20 +84,20 @@ setup(
         'scipy',
         'shapely',
         'xarray',
-        'xlwings; platform_system != "Linux"',
-        'dataclasses; python_version=="3.6"'
+        'xlwings; platform_system != "Linux"'
     ],
     extras_require={
         'docs': [
             'm2r',
+            'nbsphinx',
             'sphinxcontrib-napoleon',
             'sphinx >= 1.4, < 1.8',
             'sphinx_rtd_theme',
-            'sphinx-argparse',
-            'nbsphinx'
+            'sphinx-argparse'
         ],
         'testing': [
             'deepdiff',
+            'numpy <1.16, >=1.12',
             'pytest',
             'pytest-cov',
             'xlwings >= 0.15.4'
