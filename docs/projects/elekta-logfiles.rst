@@ -37,7 +37,7 @@ in the future. The links below provide downloads of the respective slides.
 Details
 -------
 The diagnostic backups of an Elekta Linac contain the trf logfiles which detail
-every Linac delivery for the previous 8 days to a time resolution of 40 Hz.
+every Linac delivery for the previous 8 days to a time resolution of 25 Hz.
 
 A portion of an example decoded logfile looks like the following:
 
