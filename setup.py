@@ -97,10 +97,13 @@ setup(
         ],
         'testing': [
             'deepdiff',
-            'numpy <1.16, >=1.12',
             'pytest',
             'pytest-cov',
             'xlwings >= 0.15.4'
+        ],
+        'pylint': [
+            'numpy < 1.16, >= 1.12',
+            'pylint'
         ]
     }
 )
