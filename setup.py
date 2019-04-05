@@ -74,7 +74,7 @@ setup(
         'keyring',
         'matplotlib',
         'notebook',
-        'numpy >= 1.12',
+        'numpy < 1.16, >= 1.12',
         'pandas',
         'Pillow',
         'psutil',
@@ -99,11 +99,6 @@ setup(
             'deepdiff',
             'pytest',
             'pytest-cov',
-            'xlwings >= 0.15.4'
-        ],
-        'pylint': [
-            'numpy < 1.16, >= 1.12',
-            'pylint',
             'xlwings >= 0.15.4'
         ]
     }
