@@ -12,7 +12,7 @@ assistance from us is to raise an issue within the
 on GitHub. You will need to make a GitHub account to do this, but making an
 account is very easy and almost certainly worth your while.
 
-GitHub issues are preferable to email coorespondence, since other people may
+GitHub issues are preferable to email correspondence, since other people may
 have similar questions. They might be able to get help from the same
 answers/guidance that we provide to you.
 
