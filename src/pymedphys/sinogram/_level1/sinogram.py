@@ -86,9 +86,7 @@ def read_csv_file(file_name):
 
 
 def read_bin_file(file_name):
-
-
-""" read sinogram from binary file
+    """ read sinogram from binary file
 
     Return sinogram np.array produced by reading an Accuray sinogram
     BIN file with the provided file name.
