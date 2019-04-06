@@ -7,8 +7,10 @@ from os.path import basename
 from os.path import dirname
 from os.path import splitext
 
+import platform
+
 from setuptools import setup, find_packages
-from setuptools.command.test import test as TestCommand
+
 
 basename = os.path.basename
 dirname = os.path.dirname
@@ -62,18 +64,17 @@ setup(
     package_data={'pymedphys': []},
     entry_points={
         'console_scripts': [
-            'trf2csv=pymedphys.entry_points.trf2csv:trf2csv_cli',
             'pymedphys=pymedphys.cli.main:pymedphys_cli'
         ],
     },
     license='AGPLv3+',
-    # data_files=get_data_files(),
     install_requires=[
         'attrs',
+        'dataclasses; python_version=="3.6"',
         'keyring',
         'matplotlib',
         'notebook',
-        'numpy <1.16, >=1.12',
+        'numpy < 1.16, >= 1.12',
         'pandas',
         'Pillow',
         'psutil',
@@ -83,21 +84,22 @@ setup(
         'scipy',
         'shapely',
         'xarray',
-        'xlwings; platform_system != "Linux"',
-        'dataclasses; python_version=="3.6"'
+        'xlwings; platform_system != "Linux"'
     ],
     extras_require={
         'docs': [
             'm2r',
+            'nbsphinx',
             'sphinxcontrib-napoleon',
-            'sphinx >= 1.4',
+            'sphinx >= 1.4, < 1.8',
             'sphinx_rtd_theme',
             'sphinx-argparse'
         ],
         'testing': [
             'deepdiff',
             'pytest',
-            'pytest-cov'
+            'pytest-cov',
+            'xlwings >= 0.15.4'
         ]
     }
 )

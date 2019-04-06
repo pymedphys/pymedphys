@@ -24,16 +24,24 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+"""Creates a Docker server.
+
+In the future this shall be easily configurable. In its current form it is
+mostly only usable in one configuration. Watch this space for further
+information.
+"""
+
 
 from ..docker import server_cli
 
 
 def docker_cli(subparsers):
-    docker_parser = subparsers.add_parser('docker')
-    docker_subparsers = docker_parser.add_subparsers()
+    docker_parser = subparsers.add_parser(
+        'docker', help="Interface for creating a preconfigured docker server")
+    docker_subparsers = docker_parser.add_subparsers(dest='docker')
 
     docker_server_parser = docker_subparsers.add_parser(
-        'server'
+        'server', help="Creates a preconfigured docker server."
     )
 
     docker_server_parser.set_defaults(func=server_cli)
