@@ -23,9 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import copy
 from glob import glob
 from os.path import basename, dirname, join as pjoin
+from copy import deepcopy
 
 import numpy as np
 import pydicom
@@ -110,9 +110,21 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'UI': "12345678"}
 
 
+def check_if_all_tags_are_in_baseline(dataset):
+    tags_used = list(dataset.keys())
+    non_private_tags_used = np.array([
+        tag for tag in tags_used if not tag.is_private
+    ])
+    are_tags_used_in_dict_copy = [
+        key in BaselineDicomDictionary.keys()
+        for key in non_private_tags_used]
+
+    return non_private_tags_used, are_tags_used_in_dict_copy
+
+
 def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
                             keywords_to_keep=None, ignore_unknown_tags=False,
-                            copy_dataset=True):
+                            copy_dataset=True, delete_unknown_tags=False):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
@@ -161,13 +173,9 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
         keywords_to_keep = []
 
     if not ignore_unknown_tags:
-        tags_used = list(ds.keys())
-        non_private_tags_used = np.array([
-            tag for tag in tags_used if not tag.is_private
-        ])
-        are_tags_used_in_dict_copy = [
-            key in BaselineDicomDictionary.keys()
-            for key in non_private_tags_used]
+        (
+            non_private_tags_used, are_tags_used_in_dict_copy
+        ) = check_if_all_tags_are_in_baseline(ds)
 
         if not np.all(are_tags_used_in_dict_copy):
             unknown_tags = non_private_tags_used[
@@ -177,18 +185,30 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
                 ds[tag].keyword
                 for tag in unknown_tags]
 
-            raise ValueError(
-                "At least one of the non-private tags within your DICOM file "
-                "is not within PyMedPhys's copy of the DICOM dictionary. It is "
-                "possible that one or more of these tags contain identifying "
-                "information. The unrecognised tags are:\n\n{}\n\n To ignore "
-                "this error, pass `ignore_unknown_tags=True` to "
-                "`anonymise_dicom()`. Please inform the creators of PyMedPhys "
-                "that the baseline DICOM dictionary is obsolete."
-                .format(unknown_tag_names))
+            if delete_unknown_tags:
+                for tag in unknown_tags:
+                    del ds[tag]
+
+                (
+                    non_private_tags_used, are_tags_used_in_dict_copy
+                ) = check_if_all_tags_are_in_baseline(ds)
+
+                assert np.all(are_tags_used_in_dict_copy)
+            else:
+                raise ValueError(
+                    "At least one of the non-private tags within your DICOM file "
+                    "is not within PyMedPhys's copy of the DICOM dictionary. It is "
+                    "possible that one or more of these tags contain identifying "
+                    "information. The unrecognised tags are:\n\n{}\n\nTo ignore "
+                    "this error, pass `ignore_unknown_tags=True` to "
+                    "`anonymise_dicom_dataset()`. To delete these unknown tags, pass "
+                    "`delete_unknown_tags=True` to `anonymise_dicom_dataset()`. "
+                    "If this is an error within PyMedPhys please raise an issue on "
+                    "GitHub at https://github.com/pymedphys/pymedphys/issues."
+                    "".format(unknown_tag_names))
 
     if copy_dataset:
-        ds_anon = copy.deepcopy(ds)
+        ds_anon = deepcopy(ds)
     else:
         ds_anon = ds
 
