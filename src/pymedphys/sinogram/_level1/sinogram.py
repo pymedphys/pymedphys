@@ -118,115 +118,115 @@ def read_bin_file(file_name):
 def crop(sinogram):
     """ crop sinogram
 
-     Return a symmetrically cropped sinogram, such that always-closed
-     leaves are excluded and the sinogram center is maintained.
+    Return a symmetrically cropped sinogram, such that always-closed
+    leaves are excluded and the sinogram center is maintained.
 
-     Parameters
-     ----------
-     sinogram : np.array
+    Parameters
+    ----------
+    sinogram : np.array
 
-     Returns
-     -------
-     sinogram : np.array
+    Returns
+    -------
+    sinogram : np.array
 
-     """
+    """
 
-      include = [False for f in range(64)]
-       for i, projection in enumerate(sinogram):
-            for j, leaf in enumerate(projection):
-                if sinogram[i][j] > 0.0:
-                    include[j] = True
-        include = include or include[::-1]
-        idx = [i for i, yes in enumerate(include) if yes]
-        sinogram = [[projection[i] for i in idx] for projection in sinogram]
-        return sinogram
+    include = [False for f in range(64)]
+    for i, projection in enumerate(sinogram):
+        for j, leaf in enumerate(projection):
+            if sinogram[i][j] > 0.0:
+                include[j] = True
+    include = include or include[::-1]
+    idx = [i for i, yes in enumerate(include) if yes]
+    sinogram = [[projection[i] for i in idx] for projection in sinogram]
+    return sinogram
 
 
 def unshuffle(sinogram):
     """ unshuffle singram by angle
 
-     Return a list of 51 sinograms, by unshuffling the provided
-     sinogram; so that all projections in the result correspond
-     to the same gantry rotation angle, analogous to a fluence map.
+    Return a list of 51 sinograms, by unshuffling the provided
+    sinogram; so that all projections in the result correspond
+    to the same gantry rotation angle, analogous to a fluence map.
 
-     Parameters
-     ----------
-     sinogram : np.array
+    Parameters
+    ----------
+    sinogram : np.array
 
-     Returns
-     -------
-     unshuffled: list of sinograms
+    Returns
+    -------
+    unshuffled: list of sinograms
 
-     """
-      unshufd = [[] for i in range(51)]
-       idx = 0
-        for prj in sinogram:
-            unshufd[idx].append(prj)
-            idx = (idx + 1) % 51
-        return unshufd
+    """
+    unshufd = [[] for i in range(51)]
+    idx = 0
+    for prj in sinogram:
+        unshufd[idx].append(prj)
+        idx = (idx + 1) % 51
+    return unshufd
 
 
 def make_histogram(sinogram, num_bins=10):
     """ make a leaf-open-time histogram
 
-     Return a histogram of leaf-open-times for the provided sinogram
-     comprised of the specified number of bins, in the form of a list
-     of tuples: [(bin, count)...] where bin is a 2-element array setting
-     the bounds and count in the number leaf-open-times in the bin.
+    Return a histogram of leaf-open-times for the provided sinogram
+    comprised of the specified number of bins, in the form of a list
+    of tuples: [(bin, count)...] where bin is a 2-element array setting
+    the bounds and count in the number leaf-open-times in the bin.
 
-     Parameters
-     ----------
-     sinogram : np.array
-     num_bins : int
+    Parameters
+    ----------
+    sinogram : np.array
+    num_bins : int
 
-     Returns
-     -------
-     histogram : list of tuples: [(bin, count)...]
-         bin is a 2-element array
+    Returns
+    -------
+    histogram : list of tuples: [(bin, count)...]
+        bin is a 2-element array
 
-     """
+    """
 
-      lfts = sinogram.flatten()
+    lfts = sinogram.flatten()
 
-       bin_inc = (max(lfts) - min(lfts)) / num_bins
-        bin_min = min(lfts)
-        bin_max = max(lfts)
+    bin_inc = (max(lfts) - min(lfts)) / num_bins
+    bin_min = min(lfts)
+    bin_max = max(lfts)
 
-        bins_strt = np.arange(bin_min, bin_max,  bin_inc)
-        bins_stop = np.arange(bin_inc, bin_max+bin_inc, bin_inc)
-        bins = np.dstack((bins_strt, bins_stop))[0]
+    bins_strt = np.arange(bin_min, bin_max,  bin_inc)
+    bins_stop = np.arange(bin_inc, bin_max+bin_inc, bin_inc)
+    bins = np.dstack((bins_strt, bins_stop))[0]
 
-        counts = [0 for b in bins]
+    counts = [0 for b in bins]
 
-        for lft in lfts:
-            for idx, bin in enumerate(bins):
-                if lft >= bin[0] and lft < bin[1]:
-                    counts[idx] = counts[idx] + 1
+    for lft in lfts:
+        for idx, bin in enumerate(bins):
+            if lft >= bin[0] and lft < bin[1]:
+                counts[idx] = counts[idx] + 1
 
-        histogram = list(zip(bins, counts))
+    histogram = list(zip(bins, counts))
 
-        return histogram
+    return histogram
 
 
 def find_modulation_factor(sinogram):
     """ read sinogram from csv file
 
-     Calculate the ratio of the maximum leaf open time (assumed
-     fully open) to the mean leaf open time, as determined over all
-     non-zero leaf open times, where zero is interpreted as blocked
-     versus modulated.
+    Calculate the ratio of the maximum leaf open time (assumed
+    fully open) to the mean leaf open time, as determined over all
+    non-zero leaf open times, where zero is interpreted as blocked
+    versus modulated.
 
-     Parameters
-     ----------
-     sinogram : np.array
+    Parameters
+    ----------
+    sinogram : np.array
 
-     Returns
-     -------
-     modulation factor : float
+    Returns
+    -------
+    modulation factor : float
 
-     """
+    """
 
-      lfts = [lft for lft in sinogram.flatten() if lft > 0.0]
-       modulation_factor = max(lfts) / np.mean(lfts)
+    lfts = [lft for lft in sinogram.flatten() if lft > 0.0]
+    modulation_factor = max(lfts) / np.mean(lfts)
 
-        return modulation_factor
+    return modulation_factor
