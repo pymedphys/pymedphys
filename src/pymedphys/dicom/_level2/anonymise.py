@@ -24,11 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import copy
+from glob import glob
+from os.path import basename, dirname, join as pjoin
 
 import numpy as np
+import pydicom
 
 from ...libutils import get_imports
-
 from .._level1.dict_baseline import BaselineDicomDictionary, BASELINE_KEYWORD_VR_DICT
 
 IMPORTS = get_imports(globals())
@@ -110,7 +112,7 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
 
 def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
                             keywords_to_keep=None, ignore_unknown_tags=False,
-                            copy=True):
+                            copy_dataset=True):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
@@ -136,9 +138,12 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
         anonymisation. Empty by default.
 
     ignore_unknown_tags : bool, optional
-        If `pydicom` has updated its DICOM dictionary, this function will raise an
-        error since a new identifying tag may have been introduced. Set to `True` to
-        ignore this error. Defaults to `False`.
+        If `pydicom` has updated its DICOM dictionary, anonymise_dicom_dataset()
+        will raise an error since a new identifying tag may have been introduced.
+        Set to `True` to ignore this error. Defaults to `False`.
+
+    copy_dataset : bool, optional
+        If True, then a copy of `ds` is returned.
 
     Returns
     -------
@@ -182,7 +187,7 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
                 "that the baseline DICOM dictionary is obsolete."
                 .format(unknown_tag_names))
 
-    if copy:
+    if copy_dataset:
         ds_anon = copy.deepcopy(ds)
     else:
         ds_anon = ds
@@ -211,6 +216,36 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
             setattr(ds_anon, keyword, replacement_value)
 
     return ds_anon
+
+
+def anonymise_dicom_file(dicom_filepath, replace_values=True, delete_private_tags=True,
+                         keywords_to_keep=None, ignore_unknown_tags=False,
+                         overwrite_file=False):
+
+    ds = pydicom.dcmread(dicom_filepath)
+
+    if overwrite_file:
+        dicom_anon_filepath = dicom_filepath
+    else:
+        dicom_anon_filepath = pjoin(dirname(dicom_filepath),
+                                    'Anonymised_' + basename(dicom_filepath))
+
+    ds_anon = anonymise_dicom_dataset(ds, replace_values, delete_private_tags,
+                                      keywords_to_keep, ignore_unknown_tags, copy_dataset=False)
+    
+    ds_anon.save_as(dicom_anon_filepath)
+
+
+def anonymise_dicom_files_in_folder(folder, replace_values=True, delete_private_tags=True,
+                                    keywords_to_keep=None, ignore_unknown_tags=False,
+                                    overwrite_files=False):
+
+    for dicom_filepath in glob(folder+'/**/*.dcm'):
+        anonymise_dicom_file(dicom_filepath, replace_values, delete_private_tags,
+                             keywords_to_keep, ignore_unknown_tags, overwrite_files)
+
+
+# def anonymise_dicom_files_cli(args):
 
 
 def _get_anonymous_replacement_value(keyword):
