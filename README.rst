@@ -23,9 +23,6 @@ PyMedPhys
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
-Description
------------
-
 .. START_OF_ABOUT_IMPORT
 
 PyMedPhys is a toolbox for Medical Physicists that we all have access to, and
