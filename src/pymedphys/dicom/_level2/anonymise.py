@@ -124,7 +124,7 @@ def check_if_all_tags_are_in_baseline(dataset):
 
 def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
                             keywords_to_keep=None, ignore_unknown_tags=False,
-                            copy_dataset=True, delete_unknown_tags=False):
+                            delete_unknown_tags=False, copy_dataset=True):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
@@ -136,7 +136,7 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
 
     replace_values : bool, optional
         If set to `True`, anonymised tag values will be replaced with dummy
-        "anonymous" values. This is often required for successful reading of
+        "anonymous" values. This is often required for the successful reading of
         anonymised DICOM files in commercial software. If set to False,
         anonymised tags are simply given empty string values. Defaults to `True`.
 
@@ -153,6 +153,10 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
         If `pydicom` has updated its DICOM dictionary, anonymise_dicom_dataset()
         will raise an error since a new identifying tag may have been introduced.
         Set to `True` to ignore this error. Defaults to `False`.
+
+    delete_unknown_tags : bool, optional
+        If True, all tags that are not present in PyMedPhys` copy of `pydicom`'s
+        DICOM dictionary are deleted. Defaults to `False`.
 
     copy_dataset : bool, optional
         If True, then a copy of `ds` is returned.
@@ -173,27 +177,21 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
         keywords_to_keep = []
 
     if not ignore_unknown_tags:
-        (
-            non_private_tags_used, are_tags_used_in_dict_copy
-        ) = check_if_all_tags_are_in_baseline(ds)
+        (non_private_tags_used, are_tags_used_in_dict_copy) = check_if_all_tags_are_in_baseline(ds)
 
         if not np.all(are_tags_used_in_dict_copy):
-            unknown_tags = non_private_tags_used[
-                np.invert(are_tags_used_in_dict_copy)]
+            unknown_tags = non_private_tags_used[np.invert(are_tags_used_in_dict_copy)]
 
-            unknown_tag_names = [
-                ds[tag].keyword
-                for tag in unknown_tags]
+            unknown_tag_names = [ds[tag].keyword for tag in unknown_tags]
 
             if delete_unknown_tags:
                 for tag in unknown_tags:
                     del ds[tag]
 
-                (
-                    non_private_tags_used, are_tags_used_in_dict_copy
-                ) = check_if_all_tags_are_in_baseline(ds)
+                _, are_tags_used_in_dict_copy = check_if_all_tags_are_in_baseline(ds)
 
-                assert np.all(are_tags_used_in_dict_copy)
+                if not np.all(are_tags_used_in_dict_copy):
+                    raise AssertionError("Could not delete all unknown tags.")
             else:
                 raise ValueError(
                     "At least one of the non-private tags within your DICOM file "
@@ -238,9 +236,9 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
     return ds_anon
 
 
-def anonymise_dicom_file(dicom_filepath, replace_values=True, delete_private_tags=True,
-                         keywords_to_keep=None, ignore_unknown_tags=False,
-                         overwrite_file=False):
+def anonymise_dicom_file(dicom_filepath, overwrite_file=False, replace_values=True,
+                         delete_private_tags=True, keywords_to_keep=None,
+                         ignore_unknown_tags=False, delete_unknown_tags=False):
 
     ds = pydicom.dcmread(dicom_filepath)
 
@@ -250,19 +248,19 @@ def anonymise_dicom_file(dicom_filepath, replace_values=True, delete_private_tag
         dicom_anon_filepath = pjoin(dirname(dicom_filepath),
                                     'Anonymised_' + basename(dicom_filepath))
 
-    ds_anon = anonymise_dicom_dataset(ds, replace_values, delete_private_tags,
-                                      keywords_to_keep, ignore_unknown_tags, copy_dataset=False)
+    ds_anon = anonymise_dicom_dataset(ds, replace_values, delete_private_tags, keywords_to_keep,
+                                      ignore_unknown_tags, delete_unknown_tags, copy_dataset=False)
     
     ds_anon.save_as(dicom_anon_filepath)
 
 
-def anonymise_dicom_files_in_folder(folder, replace_values=True, delete_private_tags=True,
-                                    keywords_to_keep=None, ignore_unknown_tags=False,
-                                    overwrite_files=False):
+def anonymise_dicom_files_in_folder(folder, overwrite_files=False, replace_values=True,
+                                    delete_private_tags=True, keywords_to_keep=None,
+                                    ignore_unknown_tags=False, delete_unknown_tags=False):
 
-    for dicom_filepath in glob(folder+'/**/*.dcm'):
-        anonymise_dicom_file(dicom_filepath, replace_values, delete_private_tags,
-                             keywords_to_keep, ignore_unknown_tags, overwrite_files)
+    for dicom_filepath in glob(folder + '/**/*.dcm', recursive=True):
+        anonymise_dicom_file(dicom_filepath, overwrite_files, replace_values, delete_private_tags,
+                             keywords_to_keep, ignore_unknown_tags, delete_unknown_tags)
 
 
 # def anonymise_dicom_files_cli(args):
