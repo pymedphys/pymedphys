@@ -1,6 +1,8 @@
-==========================================================
-PyMedPhys |build| |docs| |pypi| |conda| |python| |license|
-==========================================================
+=========
+PyMedPhys
+=========
+
+|build| |docs| |pypi| |conda| |python| |license|
 
 .. |build| image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
     :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
@@ -20,9 +22,6 @@ PyMedPhys |build| |docs| |pypi| |conda| |python| |license|
 .. |license| image:: https://img.shields.io/pypi/l/pymedphys.svg
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
-
-Description
------------
 
 .. START_OF_ABOUT_IMPORT
 
@@ -155,11 +154,11 @@ Installation
 ------------
 
 For instructions on how to install see the documentation at
-https://pymedphys.com/en/latest/getting-started/installation.html.
+https://pymedphys.com/en/stable/getting-started/installation.html.
 
 
 Contributing
 ------------
 
-See the contributor documentation at https://pymedphys.com/en/latest/developer/contributing.html
+See the contributor documentation at https://pymedphys.com/en/stable/developer/contributing.html
 if you wish to create and validate open source Medical Physics tools together.
