@@ -176,6 +176,9 @@ def anonymise_dicom_dataset(ds, replace_values=True, delete_private_tags=True,
     if keywords_to_keep is None:
         keywords_to_keep = []
 
+    if ignore_unknown_tags and delete_unknown_tags:
+        raise ValueError('Cannot both ignore and delete unknown tags.')
+
     if not ignore_unknown_tags:
         (non_private_tags_used, are_tags_used_in_dict_copy) = check_if_all_tags_are_in_baseline(ds)
 
