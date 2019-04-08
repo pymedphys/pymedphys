@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Paul King, Simon Biggs
+# Copyright (C) 2019 Paul King
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -26,10 +26,19 @@
 
 import os
 import numpy as np
-from pymedphys._labs.paulking.profile import Profile
+import sys
+
+# from pymedphys._labs.paulking.profile import Profile
+
+if "pymedphys" not in __file__:
+    add_path = os.path.abspath(os.path.join(__file__, '..', '..'))
+    add_path = os.path.join(add_path, 'src')
+    sys.path.insert(0, add_path)
+    from profile import Profile
+else:
+    from pymedphys._labs.paulking.profile import Profile
 
 # pylint: disable = E1102, C0111
-
 
 PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28), (-15.2, 0.3),
             (-14.8, 0.36), (-14.4, 0.38), (-14, 0.41), (-13.6, 0.45),
@@ -74,7 +83,7 @@ WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
 
 
 def test_init():
-    assert np.allclose(Profile(x=[0], y=[0]).x, [0])
+    assert np.allclose(Profile(x=np.array([0]), y=np.array([0])).x, [0])
 
 
 def test_interp():
