@@ -143,8 +143,7 @@ hold:
 
 Where the definition of License is taken to be the
 AGPLv3+ with additional terms from the Apache 2.0. The definitions of
-Contributor, You, and Work for this clause are as defined within the
-Apache 2.0 license.
+Contributor, You, and Work are as defined within the Apache 2.0 license.
 
 
 .. END_OF_FRONTPAGE_IMPORT
