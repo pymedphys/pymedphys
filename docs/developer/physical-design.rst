@@ -1,6 +1,21 @@
 Physical File Structure and Design
 ==================================
 
+The Layout of PyMedPhys
+-----------------------
+
+All source code for PyMedPhys is contained within `src/pymedphys`. Within this
+directory are a range of package groups or in Python speak, modules. These
+modules internally are levelled to inforce a non-cyclic dependency tree.
+
+The interdependencies between the modules are also levelled in a package group
+hierachy, in such a way that the modules themselves also fall into a levelled
+structure. This is enforced using the layer-linter Python package.
+
+For further information on the philosphy behind levelling dependencies see the
+below sections.
+
+
 John Lakos and Physical Design
 ------------------------------
 
@@ -53,21 +68,3 @@ In this case, it might be able to be solved by appropriately dividing the
 components up into differently structured packages:
 
 .. image:: ../img/group_tree.png
-
-
-The Layout of PyMedPhys
------------------------
-
-All source code for PyMedPhys is contained within `src/pymedphys`. Packages
-are levelled and placed with respect to their dependency level by directory
-name. The packages within _pack1 only depend on external packages, packages
-within _pack2 only depend on _pack1 or external, and so on.
-
-Inside each package, the component files are split up into directories by
-level1, level2, level3. Once again level1 can only depend on either an external
-dependency or a lower package. Those within level2 can depend on lower
-pacakges, external dependencies, or level1, and so on.
-
-So that the api to PyMedPhys doesn't vary with the physical structure of the
-dependencies, each package is imported out to be directly accessable within
-the top namespace of `src/pymedphys`.

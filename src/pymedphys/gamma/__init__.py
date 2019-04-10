@@ -24,7 +24,9 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A range of functions for calculating gamma.
+"""A range of functions for calculating gamma. In its current form only the
+gamma shell function is the most mature, nevertheless even gamma shell is
+still undergoing the process of verification and refinement.
 
 
 Available Functions

@@ -1,6 +1,6 @@
 from pprint import pprint
 from pydicom import datadict
-from pymedphys.dicom import anonymise_dicom, IDENTIFYING_KEYWORDS
+from pymedphys.dicom import anonymise_dicom_dataset, IDENTIFYING_KEYWORDS
 from pymedphys.dicom import BaselineDicomDictionary
 
 

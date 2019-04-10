@@ -209,7 +209,7 @@ dmypy.json
 
 
 # TestMon
-.testmondata
+.testmon*
 .tmontmp/*
 
 
@@ -235,3 +235,5 @@ Ubuntu_GitHub.pub
 
 github_W7
 github_W7.pub
+
+*.dcm

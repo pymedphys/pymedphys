@@ -35,10 +35,13 @@ Examples:
 from ..libutils import clean_and_verify_levelled_modules
 
 from ._level1.logfileanalyse import *
+from ._level1.diagnostics_zips import *
 from ._level1.logfileindex import *
 from ._level2.logfilebygantry import *
+from ._level2.orchestration import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.logfileanalyse', '._level1.logfileindex',
-    '._level2.logfilebygantry',
+    '._level1.logfileanalyse', '._level1.diagnostics_zips',
+    '._level1.logfileindex', '._level2.logfilebygantry',
+    '._level2.orchestration'
 ], package='pymedphys.logfile')

@@ -25,6 +25,7 @@
 
 
 import os
+import uuid
 import subprocess
 
 import numpy as np
@@ -37,21 +38,24 @@ from pymedphys.dicom import (
 
 
 HERE = os.path.dirname(__file__)
-ORIGINAL_DICOM_FILENAME = os.path.join(HERE, 'original.dcm')
-ADJUSTED_DICOM_FILENAME = os.path.join(HERE, 'adjusted.dcm')
+ORIGINAL_DICOM_FILENAME = os.path.join(
+    HERE, 'original-{}.dcm'.format(str(uuid.uuid4())))
+ADJUSTED_DICOM_FILENAME = os.path.join(
+    HERE, 'adjusted-{}.dcm'.format(str(uuid.uuid4())))
 
 
 def compare_dicom_cli(command, original, expected):
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
-    subprocess.check_call(command)
 
-    cli_adjusted_ds = pydicom.read_file(
-        ADJUSTED_DICOM_FILENAME, force=True)
+    try:
+        subprocess.check_call(command)
+        cli_adjusted_ds = pydicom.read_file(
+            ADJUSTED_DICOM_FILENAME, force=True)
 
-    assert str(cli_adjusted_ds) == str(expected)
-
-    os.remove(ORIGINAL_DICOM_FILENAME)
-    os.remove(ADJUSTED_DICOM_FILENAME)
+        assert str(cli_adjusted_ds) == str(expected)
+    finally:
+        os.remove(ORIGINAL_DICOM_FILENAME)
+        os.remove(ADJUSTED_DICOM_FILENAME)
 
 
 def test_adjust_machine_name():
@@ -210,7 +214,7 @@ def test_electron_density_append():
         excess_adjustment_map_as_list).tolist()
 
     command = (
-        'pymedphys dicom adjust-rel-elec-density -i '.split()
+        'pymedphys dicom adjust-RED -i '.split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME]
         + excess_adjustment_map_flat)
 
@@ -282,7 +286,7 @@ def test_structure_name_based_RED_append():
     assert str(expected_ds) == str(adjusted_ds)
 
     command = (
-        'pymedphys dicom structure-name-RED-adjust'.split()
+        'pymedphys dicom adjust-RED-by-structure-name'.split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME])
 
     compare_dicom_cli(command, original_ds, expected_ds)
