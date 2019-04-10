@@ -216,8 +216,8 @@ def anonymise_dicom_dataset(ds, replace_values=True, keywords_to_leave_unchanged
 
 
 def anonymise_dicom_file(dicom_filepath, overwrite_file=False, replace_values=True,
-                         delete_private_tags=True, keywords_to_keep=None,
-                         ignore_unknown_tags=False, delete_unknown_tags=False):
+                         keywords_to_leave_unchanged=None, delete_private_tags=True,
+                         delete_unknown_tags=None):
 
     ds = pydicom.dcmread(dicom_filepath)
 
@@ -228,19 +228,27 @@ def anonymise_dicom_file(dicom_filepath, overwrite_file=False, replace_values=Tr
                                     "{}.{}_Anonymised".format(basename(dicom_filepath)[0:2],
                                                               ds.SOPInstanceUID))
 
-    ds_anon = anonymise_dicom_dataset(ds, replace_values, delete_private_tags, keywords_to_keep,
-                                      ignore_unknown_tags, delete_unknown_tags, copy_dataset=False)
+    ds_anon = anonymise_dicom_dataset(ds=ds,
+                                      replace_values=replace_values,
+                                      keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+                                      delete_private_tags=delete_private_tags,
+                                      delete_unknown_tags=delete_unknown_tags,
+                                      copy_dataset=False)
 
     ds_anon.save_as(dicom_anon_filepath)
 
 
 def anonymise_dicom_files_in_folder(folder, overwrite_files=False, replace_values=True,
-                                    delete_private_tags=True, keywords_to_keep=None,
-                                    ignore_unknown_tags=False, delete_unknown_tags=False):
+                                    keywords_to_leave_unchanged=None, delete_private_tags=True,
+                                    delete_unknown_tags=None):
 
     for dicom_filepath in glob(folder + '/**/*.dcm', recursive=True):
-        anonymise_dicom_file(dicom_filepath, overwrite_files, replace_values, delete_private_tags,
-                             keywords_to_keep, ignore_unknown_tags, delete_unknown_tags)
+        anonymise_dicom_file(dicom_filepath,
+                             overwrite_file=overwrite_files,
+                             replace_values=replace_values,
+                             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+                             delete_private_tags=delete_private_tags,
+                             delete_unknown_tags=delete_unknown_tags)
 
 
 # def anonymise_dicom_files_cli(args):
