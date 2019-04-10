@@ -1,0 +1,355 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Gamma Calculation &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Electron Factor Modelling" href="electronfactors.html" />
+    <link rel="prev" title="MU Density" href="mudensity.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../interfaces.html">Interfaces</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../library.html">Library</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="mudensity.html">MU Density</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Gamma Calculation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#available-functions">Available Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="electronfactors.html">Electron Factor Modelling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dicom.html">DICOM files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html">Geometry Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xlwings.html">Excel integration via xlwings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sinogram.html">Sinogram</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/physical-design.html">Physical File Structure and Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../library.html">Library</a> &raquo;</li>
+        
+      <li>Gamma Calculation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/user/library/gamma.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="module-pymedphys.gamma">
+<span id="gamma-calculation"></span><h1>Gamma Calculation<a class="headerlink" href="#module-pymedphys.gamma" title="Permalink to this headline">¶</a></h1>
+<p>A range of functions for calculating gamma. In its current form only the
+gamma shell function is the most mature, nevertheless even gamma shell is
+still undergoing the process of verification and refinement.</p>
+<div class="section" id="available-functions">
+<h2>Available Functions<a class="headerlink" href="#available-functions" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.gamma</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">gamma_shell</span><span class="p">,</span> <span class="n">gamma_dicom</span><span class="p">,</span> <span class="n">gamma_filter_numpy</span><span class="p">,</span> <span class="n">gamma_filter_brute_force</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="pymedphys.gamma.gamma_shell">
+<code class="descclassname">pymedphys.gamma.</code><code class="descname">gamma_shell</code><span class="sig-paren">(</span><em>coords_reference</em>, <em>dose_reference</em>, <em>coords_evaluation</em>, <em>dose_evaluation</em>, <em>dose_percent_threshold</em>, <em>distance_mm_threshold</em>, <em>lower_percent_dose_cutoff=20</em>, <em>interp_fraction=10</em>, <em>max_gamma=inf</em>, <em>local_gamma=False</em>, <em>global_normalisation=None</em>, <em>skip_once_passed=False</em>, <em>random_subset=None</em>, <em>ram_available=None</em>, <em>quiet=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/gamma/_level2/gammashell.html#gamma_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.gamma.gamma_shell" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare two dose grids with the gamma index.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>coords_reference</strong> (<em>tuple</em>) – The reference coordinates.</li>
+<li><strong>dose_reference</strong> (<em>np.array</em>) – The reference dose grid. Each point in the reference grid becomes the
+centre of a Gamma ellipsoid. For each point of the reference, nearby
+evaluation points are searched at increasing distances.</li>
+<li><strong>coords_evaluation</strong> (<em>tuple</em>) – The evaluation coordinates.</li>
+<li><strong>dose_evaluation</strong> (<em>np.array</em>) – The evaluation dose grid. Evaluation here is defined as the grid which
+is interpolated and searched over at increasing distances away from
+each reference point.</li>
+<li><strong>dose_percent_threshold</strong> (<em>float</em>) – The percent dose threshold</li>
+<li><strong>distance_mm_threshold</strong> (<em>float</em>) – The gamma distance threshold. Units must
+match of the coordinates given.</li>
+<li><strong>lower_percent_dose_cutoff</strong> (<em>float</em><em>, </em><em>optional</em>) – The percent lower dose cutoff below which gamma will not be calculated.
+This is only applied to the reference grid.</li>
+<li><strong>interp_fraction</strong> (<em>float</em><em>, </em><em>optional</em>) – The fraction which gamma distance threshold is divided into for
+interpolation. Defaults to 10 as recommended within
+&lt;<a class="reference external" href="http://dx.doi.org/10.1118/1.2721657">http://dx.doi.org/10.1118/1.2721657</a>&gt;. If a 3 mm distance threshold is chosen
+this default value would mean that the evaluation grid is interpolated at
+a step size of 0.3 mm.</li>
+<li><strong>max_gamma</strong> (<em>float</em><em>, </em><em>optional</em>) – The maximum gamma searched for. This can be used to speed up
+calculation, once a search distance is reached that would give gamma
+values larger than this parameter, the search stops. Defaults to <code class="xref py py-obj docutils literal notranslate"><span class="pre">np.inf</span></code></li>
+<li><strong>local_gamma</strong> – Designates local gamma should be used instead of global. Defaults to
+False.</li>
+<li><strong>global_normalisation</strong> (<em>float</em><em>, </em><em>optional</em>) – The dose normalisation value that the percent inputs calculate from.
+Defaults to the maximum value of <code class="xref py py-obj docutils literal notranslate"><span class="pre">dose_reference</span></code>.</li>
+<li><strong>random_subset</strong> (<em>int</em><em>, </em><em>optional</em>) – Used to only calculate a random subset of the reference grid. The
+number chosen is how many random points to calculate.</li>
+<li><strong>ram_available</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of bytes of RAM available for use by this function. Defaults
+to 0.8 times your total RAM as determined by psutil.</li>
+<li><strong>quiet</strong> (<em>bool</em><em>, </em><em>optional</em>) – Used to quiet informational printing during function usage. Defaults to
+False.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>gamma</strong> – The array of gamma values the same shape as that
+given by the reference coordinates and dose.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">np.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="electronfactors.html" class="btn btn-neutral float-right" title="Electron Factor Modelling" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="mudensity.html" class="btn btn-neutral" title="MU Density" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

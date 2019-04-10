@@ -1,0 +1,788 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pymedphys.gamma._level2.gammashell &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/physical-design.html">Physical File Structure and Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>pymedphys.gamma._level2.gammashell</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pymedphys.gamma._level2.gammashell</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2015-2018 Simon Biggs</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU Affero General Public License as published</span>
+<span class="c1"># by the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version (the &quot;AGPL-3.0+&quot;).</span>
+
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the</span>
+<span class="c1"># GNU Affero General Public License and the additional terms for more</span>
+<span class="c1"># details.</span>
+
+<span class="c1"># You should have received a copy of the GNU Affero General Public License</span>
+<span class="c1"># along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="c1"># ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU</span>
+<span class="c1"># Affero General Public License. These additional terms are Sections 1, 5,</span>
+<span class="c1"># 6, 7, 8, and 9 from the Apache License, Version 2.0 (the &quot;Apache-2.0&quot;)</span>
+<span class="c1"># where all references to the definition &quot;License&quot; are instead defined to</span>
+<span class="c1"># mean the AGPL-3.0+.</span>
+
+<span class="c1"># You should have received a copy of the Apache-2.0 along with this</span>
+<span class="c1"># program. If not, see &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;.</span>
+
+
+<span class="sd">&quot;&quot;&quot;Compare two dose grids with the gamma index.</span>
+
+<span class="sd">This module is a python implementation of the gamma index.</span>
+<span class="sd">It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while</span>
+<span class="sd">interpolating on the fly.</span>
+<span class="sd">This module makes use of some of the ideas presented within</span>
+<span class="sd">&lt;http://dx.doi.org/10.1118/1.2721657&gt;.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Optional</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="k">import</span> <span class="n">dataclass</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="k">import</span> <span class="n">RegularGridInterpolator</span>
+
+<span class="kn">import</span> <span class="nn">psutil</span>
+
+<span class="kn">from</span> <span class="nn">...libutils</span> <span class="k">import</span> <span class="n">get_imports</span>
+
+<span class="kn">from</span> <span class="nn">.._level1.gammainputcheck</span> <span class="k">import</span> <span class="n">run_input_checks</span>
+
+<span class="n">IMPORTS</span> <span class="o">=</span> <span class="n">get_imports</span><span class="p">(</span><span class="nb">globals</span><span class="p">())</span>
+
+
+<div class="viewcode-block" id="gamma_shell"><a class="viewcode-back" href="../../../../user/library/gamma.html#pymedphys.gamma.gamma_shell">[docs]</a><span class="k">def</span> <span class="nf">gamma_shell</span><span class="p">(</span><span class="n">coords_reference</span><span class="p">,</span> <span class="n">dose_reference</span><span class="p">,</span>
+                <span class="n">coords_evaluation</span><span class="p">,</span> <span class="n">dose_evaluation</span><span class="p">,</span>
+                <span class="n">dose_percent_threshold</span><span class="p">,</span> <span class="n">distance_mm_threshold</span><span class="p">,</span>
+                <span class="n">lower_percent_dose_cutoff</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">interp_fraction</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                <span class="n">max_gamma</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">local_gamma</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">global_normalisation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_once_passed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">random_subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ram_available</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">quiet</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compare two dose grids with the gamma index.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    coords_reference : tuple</span>
+<span class="sd">        The reference coordinates.</span>
+<span class="sd">    dose_reference : np.array</span>
+<span class="sd">        The reference dose grid. Each point in the reference grid becomes the</span>
+<span class="sd">        centre of a Gamma ellipsoid. For each point of the reference, nearby</span>
+<span class="sd">        evaluation points are searched at increasing distances.</span>
+<span class="sd">    coords_evaluation : tuple</span>
+<span class="sd">        The evaluation coordinates.</span>
+<span class="sd">    dose_evaluation : np.array</span>
+<span class="sd">        The evaluation dose grid. Evaluation here is defined as the grid which</span>
+<span class="sd">        is interpolated and searched over at increasing distances away from</span>
+<span class="sd">        each reference point.</span>
+<span class="sd">    dose_percent_threshold : float</span>
+<span class="sd">        The percent dose threshold</span>
+<span class="sd">    distance_mm_threshold : float</span>
+<span class="sd">        The gamma distance threshold. Units must</span>
+<span class="sd">        match of the coordinates given.</span>
+<span class="sd">    lower_percent_dose_cutoff : float, optional</span>
+<span class="sd">        The percent lower dose cutoff below which gamma will not be calculated.</span>
+<span class="sd">        This is only applied to the reference grid.</span>
+<span class="sd">    interp_fraction : float, optional</span>
+<span class="sd">        The fraction which gamma distance threshold is divided into for</span>
+<span class="sd">        interpolation. Defaults to 10 as recommended within</span>
+<span class="sd">        &lt;http://dx.doi.org/10.1118/1.2721657&gt;. If a 3 mm distance threshold is chosen</span>
+<span class="sd">        this default value would mean that the evaluation grid is interpolated at</span>
+<span class="sd">        a step size of 0.3 mm.</span>
+<span class="sd">    max_gamma : float, optional</span>
+<span class="sd">        The maximum gamma searched for. This can be used to speed up</span>
+<span class="sd">        calculation, once a search distance is reached that would give gamma</span>
+<span class="sd">        values larger than this parameter, the search stops. Defaults to :obj:`np.inf`</span>
+<span class="sd">    local_gamma</span>
+<span class="sd">        Designates local gamma should be used instead of global. Defaults to</span>
+<span class="sd">        False.</span>
+<span class="sd">    global_normalisation : float, optional</span>
+<span class="sd">        The dose normalisation value that the percent inputs calculate from.</span>
+<span class="sd">        Defaults to the maximum value of :obj:`dose_reference`.</span>
+<span class="sd">    random_subset : int, optional</span>
+<span class="sd">        Used to only calculate a random subset of the reference grid. The</span>
+<span class="sd">        number chosen is how many random points to calculate.</span>
+<span class="sd">    ram_available : int, optional</span>
+<span class="sd">        The number of bytes of RAM available for use by this function. Defaults</span>
+<span class="sd">        to 0.8 times your total RAM as determined by psutil.</span>
+<span class="sd">    quiet : bool, optional</span>
+<span class="sd">        Used to quiet informational printing during function usage. Defaults to</span>
+<span class="sd">        False.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    gamma : np.ndarray</span>
+<span class="sd">        The array of gamma values the same shape as that</span>
+<span class="sd">        given by the reference coordinates and dose.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">options</span> <span class="o">=</span> <span class="n">GammaInternalFixedOptions</span><span class="o">.</span><span class="n">from_user_inputs</span><span class="p">(</span>
+        <span class="n">coords_reference</span><span class="p">,</span> <span class="n">dose_reference</span><span class="p">,</span>
+        <span class="n">coords_evaluation</span><span class="p">,</span> <span class="n">dose_evaluation</span><span class="p">,</span>
+        <span class="n">dose_percent_threshold</span><span class="p">,</span> <span class="n">distance_mm_threshold</span><span class="p">,</span>
+        <span class="n">lower_percent_dose_cutoff</span><span class="p">,</span> <span class="n">interp_fraction</span><span class="p">,</span>
+        <span class="n">max_gamma</span><span class="p">,</span> <span class="n">local_gamma</span><span class="p">,</span>
+        <span class="n">global_normalisation</span><span class="p">,</span> <span class="n">skip_once_passed</span><span class="p">,</span>
+        <span class="n">random_subset</span><span class="p">,</span>
+        <span class="n">ram_available</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">quiet</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">local_gamma</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Calcing using local normalisation point for gamma&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Calcing using global normalisation point for gamma&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Global normalisation set to </span><span class="si">{}</span><span class="s1"> Gy&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">global_normalisation</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Global dose threshold set to </span><span class="si">{}</span><span class="s1"> Gy (</span><span class="si">{}</span><span class="s1">%)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">global_dose_threshold</span><span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">dose_percent_threshold</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Distance threshold set to </span><span class="si">{}</span><span class="s1"> mm&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">distance_mm_threshold</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Lower dose cutoff set to </span><span class="si">{}</span><span class="s1"> Gy (</span><span class="si">{}</span><span class="s1">%)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">lower_dose_cutoff</span><span class="p">,</span> <span class="n">lower_percent_dose_cutoff</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="n">current_gamma</span> <span class="o">=</span> <span class="n">gamma_loop</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+
+    <span class="n">gamma</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">dose_threshold</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">dose_percent_threshold</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">distance_threshold</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">distance_mm_threshold</span><span class="p">):</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">dose_threshold</span><span class="p">,</span> <span class="n">distance_threshold</span><span class="p">)</span>
+
+            <span class="n">gamma_temp</span> <span class="o">=</span> <span class="n">current_gamma</span><span class="p">[:,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+            <span class="n">gamma_temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="n">gamma_temp</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">))</span>
+            <span class="n">gamma_temp</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">gamma_temp</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+            <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">invalid</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+                <span class="n">gamma_greater_than_ref</span> <span class="o">=</span> <span class="n">gamma_temp</span> <span class="o">&gt;</span> <span class="n">max_gamma</span>
+                <span class="n">gamma_temp</span><span class="p">[</span><span class="n">gamma_greater_than_ref</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_gamma</span>
+
+            <span class="n">gamma</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">gamma_temp</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">quiet</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Complete!&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">gamma</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">gamma</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">gamma</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+
+    <span class="k">return</span> <span class="n">gamma</span></div>
+
+
+<span class="k">def</span> <span class="nf">default_ram</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="n">memory</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()</span>
+    <span class="n">total_memory</span> <span class="o">=</span> <span class="n">memory</span><span class="o">.</span><span class="n">total</span>
+
+    <span class="n">ram_available</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">total_memory</span> <span class="o">*</span> <span class="mf">0.3</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ram_available</span>
+
+
+<span class="k">def</span> <span class="nf">expand_dims_to_1d</span><span class="p">(</span><span class="n">array</span><span class="p">):</span>
+    <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+    <span class="n">dims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">array</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">dims</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">array</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">dims</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">array</span>
+
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Expected a 0-d or 1-d array&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">GammaInternalFixedOptions</span><span class="p">():</span>
+    <span class="n">flat_mesh_coords_reference</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">flat_dose_reference</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">reference_points_to_calc</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">dose_percent_threshold</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">distance_mm_threshold</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">evaluation_interpolation</span><span class="p">:</span> <span class="n">RegularGridInterpolator</span>
+    <span class="n">interp_fraction</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">max_gamma</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">lower_dose_cutoff</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">maximum_test_distance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+    <span class="n">global_normalisation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">local_gamma</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">skip_once_passed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">ram_available</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">quiet</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_defaults</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">set_defaults</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_normalisation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;global_normalisation&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flat_dose_reference</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ram_available</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;ram_available&#39;</span><span class="p">,</span> <span class="n">default_ram</span><span class="p">())</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">global_dose_threshold</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dose_percent_threshold</span> <span class="o">/</span> <span class="mi">100</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_normalisation</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_user_inputs</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">coords_reference</span><span class="p">,</span> <span class="n">dose_reference</span><span class="p">,</span>
+                         <span class="n">coords_evaluation</span><span class="p">,</span> <span class="n">dose_evaluation</span><span class="p">,</span>
+                         <span class="n">dose_percent_threshold</span><span class="p">,</span> <span class="n">distance_mm_threshold</span><span class="p">,</span>
+                         <span class="n">lower_percent_dose_cutoff</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">interp_fraction</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                         <span class="n">max_gamma</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">local_gamma</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                         <span class="n">global_normalisation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">skip_once_passed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                         <span class="n">random_subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">ram_available</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+        <span class="n">coords_reference</span><span class="p">,</span> <span class="n">coords_evaluation</span> <span class="o">=</span> <span class="n">run_input_checks</span><span class="p">(</span>
+            <span class="n">coords_reference</span><span class="p">,</span> <span class="n">dose_reference</span><span class="p">,</span>
+            <span class="n">coords_evaluation</span><span class="p">,</span> <span class="n">dose_evaluation</span><span class="p">)</span>
+
+        <span class="n">dose_percent_threshold</span> <span class="o">=</span> <span class="n">expand_dims_to_1d</span><span class="p">(</span><span class="n">dose_percent_threshold</span><span class="p">)</span>
+        <span class="n">distance_mm_threshold</span> <span class="o">=</span> <span class="n">expand_dims_to_1d</span><span class="p">(</span><span class="n">distance_mm_threshold</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">global_normalisation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">global_normalisation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">)</span>
+
+        <span class="n">lower_dose_cutoff</span> <span class="o">=</span> <span class="n">lower_percent_dose_cutoff</span> <span class="o">/</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">global_normalisation</span>
+
+        <span class="n">maximum_test_distance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">distance_mm_threshold</span><span class="p">)</span> <span class="o">*</span> <span class="n">max_gamma</span>
+
+        <span class="n">evaluation_interpolation</span> <span class="o">=</span> <span class="n">RegularGridInterpolator</span><span class="p">(</span>
+            <span class="n">coords_evaluation</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dose_evaluation</span><span class="p">),</span>
+            <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="p">)</span>
+
+        <span class="n">dose_reference</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">)</span>
+        <span class="n">reference_dose_above_threshold</span> <span class="o">=</span> <span class="n">dose_reference</span> <span class="o">&gt;=</span> <span class="n">lower_dose_cutoff</span>
+
+        <span class="n">mesh_coords_reference</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="o">*</span><span class="n">coords_reference</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">)</span>
+        <span class="n">flat_mesh_coords_reference</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">mesh_coords_reference</span><span class="p">]</span>
+
+        <span class="n">reference_points_to_calc</span> <span class="o">=</span> <span class="n">reference_dose_above_threshold</span>
+        <span class="n">reference_points_to_calc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">reference_points_to_calc</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">random_subset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">to_calc_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">reference_points_to_calc</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">to_calc_index</span><span class="p">)</span>
+            <span class="n">random_subset_to_calc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span>
+                <span class="n">reference_points_to_calc</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">random_subset_to_calc</span><span class="p">[</span><span class="n">to_calc_index</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">random_subset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="n">reference_points_to_calc</span> <span class="o">=</span> <span class="n">random_subset_to_calc</span>
+
+        <span class="n">flat_dose_reference</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">dose_reference</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">flat_mesh_coords_reference</span><span class="p">,</span> <span class="n">flat_dose_reference</span><span class="p">,</span>
+                   <span class="n">reference_points_to_calc</span><span class="p">,</span> <span class="n">dose_percent_threshold</span><span class="p">,</span>
+                   <span class="n">distance_mm_threshold</span><span class="p">,</span>
+                   <span class="n">evaluation_interpolation</span><span class="p">,</span> <span class="n">interp_fraction</span><span class="p">,</span> <span class="n">max_gamma</span><span class="p">,</span>
+                   <span class="n">lower_dose_cutoff</span><span class="p">,</span>
+                   <span class="n">maximum_test_distance</span><span class="p">,</span> <span class="n">global_normalisation</span><span class="p">,</span> <span class="n">local_gamma</span><span class="p">,</span>
+                   <span class="n">skip_once_passed</span><span class="p">,</span> <span class="n">ram_available</span><span class="p">,</span> <span class="n">quiet</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">gamma_loop</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="n">GammaInternalFixedOptions</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="n">still_searching_for_gamma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">flat_dose_reference</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="n">current_gamma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">flat_dose_reference</span><span class="p">),</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">dose_percent_threshold</span><span class="p">),</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">distance_mm_threshold</span><span class="p">)))</span>
+
+    <span class="n">distance_step_size</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">distance_mm_threshold</span><span class="p">)</span> <span class="o">/</span> <span class="n">options</span><span class="o">.</span><span class="n">interp_fraction</span><span class="p">)</span>
+
+    <span class="n">to_be_checked</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">reference_points_to_calc</span> <span class="o">&amp;</span> <span class="n">still_searching_for_gamma</span><span class="p">)</span>
+
+    <span class="n">distance</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="n">force_search_distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">distance_mm_threshold</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">distance</span> <span class="o">&lt;=</span> <span class="n">options</span><span class="o">.</span><span class="n">maximum_test_distance</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">quiet</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                <span class="s1">&#39;</span><span class="se">\r</span><span class="s1">Current distance: </span><span class="si">{0:.2f}</span><span class="s1"> mm | Number of reference points remaining: </span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">distance</span><span class="p">,</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">to_be_checked</span><span class="p">)))</span>
+
+        <span class="n">min_relative_dose_difference</span> <span class="o">=</span> <span class="n">calculate_min_dose_difference</span><span class="p">(</span>
+            <span class="n">options</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">to_be_checked</span><span class="p">,</span> <span class="n">distance_step_size</span><span class="p">)</span>
+
+        <span class="n">current_gamma</span><span class="p">,</span> <span class="n">still_searching_for_gamma_all</span> <span class="o">=</span> <span class="n">multi_thresholds_gamma_calc</span><span class="p">(</span>
+            <span class="n">options</span><span class="p">,</span> <span class="n">current_gamma</span><span class="p">,</span> <span class="n">min_relative_dose_difference</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span>
+            <span class="n">to_be_checked</span><span class="p">)</span>
+
+        <span class="n">still_searching_for_gamma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span>
+            <span class="n">still_searching_for_gamma_all</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">to_be_checked</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">reference_points_to_calc</span> <span class="o">&amp;</span> <span class="n">still_searching_for_gamma</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">to_be_checked</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">break</span>
+
+        <span class="n">relevant_distances</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">distance_mm_threshold</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span>
+                <span class="n">options</span><span class="o">.</span><span class="n">reference_points_to_calc</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+                <span class="o">&amp;</span> <span class="n">still_searching_for_gamma_all</span><span class="p">,</span>
+                <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)]</span>
+
+        <span class="n">distance_step_size</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">relevant_distances</span><span class="p">)</span> <span class="o">/</span> <span class="n">options</span><span class="o">.</span><span class="n">interp_fraction</span><span class="p">)</span>
+
+        <span class="n">distance_step_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span>
+            <span class="n">distance</span> <span class="o">/</span> <span class="n">options</span><span class="o">.</span><span class="n">interp_fraction</span> <span class="o">/</span> <span class="n">options</span><span class="o">.</span><span class="n">max_gamma</span><span class="p">,</span>
+            <span class="n">distance_step_size</span><span class="p">])</span>
+
+        <span class="n">distance</span> <span class="o">+=</span> <span class="n">distance_step_size</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">force_search_distances</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">distance</span> <span class="o">&gt;=</span> <span class="n">force_search_distances</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="n">distance</span> <span class="o">=</span> <span class="n">force_search_distances</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">force_search_distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">force_search_distances</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">current_gamma</span>
+
+
+<span class="k">def</span> <span class="nf">multi_thresholds_gamma_calc</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="n">GammaInternalFixedOptions</span><span class="p">,</span>
+                                <span class="n">current_gamma</span><span class="p">,</span>
+                                <span class="n">min_relative_dose_difference</span><span class="p">,</span>
+                                <span class="n">distance</span><span class="p">,</span> <span class="n">to_be_checked</span><span class="p">):</span>
+
+    <span class="n">gamma_at_distance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+        <span class="p">(</span>
+            <span class="n">min_relative_dose_difference</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+            <span class="o">/</span> <span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">dose_percent_threshold</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="o">+</span> <span class="p">(</span>
+            <span class="n">distance</span> <span class="o">/</span> <span class="n">options</span><span class="o">.</span><span class="n">distance_mm_threshold</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="p">)</span>
+
+    <span class="n">current_gamma</span><span class="p">[</span><span class="n">to_be_checked</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">gamma_at_distance</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:],</span>
+                <span class="n">current_gamma</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="n">to_be_checked</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+            <span class="p">],</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">)</span>
+
+    <span class="n">still_searching_for_gamma</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">current_gamma</span>
+        <span class="o">&gt;</span> <span class="p">(</span><span class="n">distance</span> <span class="o">/</span> <span class="n">options</span><span class="o">.</span><span class="n">distance_mm_threshold</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]))</span>
+
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">skip_once_passed</span><span class="p">:</span>
+        <span class="n">still_searching_for_gamma</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">still_searching_for_gamma</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">current_gamma</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">current_gamma</span><span class="p">,</span> <span class="n">still_searching_for_gamma</span>
+
+
+<span class="k">def</span> <span class="nf">calculate_min_dose_difference</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">distance</span><span class="p">,</span> <span class="n">to_be_checked</span><span class="p">,</span>
+                                  <span class="n">distance_step_size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Determine the minimum dose difference.</span>
+
+<span class="sd">    Calculated for a given distance from each reference point.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">min_relative_dose_difference</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">flat_dose_reference</span><span class="p">[</span><span class="n">to_be_checked</span><span class="p">])</span>
+
+    <span class="n">num_dimensions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">flat_mesh_coords_reference</span><span class="p">)</span>
+
+    <span class="n">coordinates_at_distance_shell</span> <span class="o">=</span> <span class="n">calculate_coordinates_shell</span><span class="p">(</span>
+        <span class="n">distance</span><span class="p">,</span> <span class="n">num_dimensions</span><span class="p">,</span> <span class="n">distance_step_size</span><span class="p">)</span>
+
+    <span class="n">num_points_in_shell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">coordinates_at_distance_shell</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">estimated_ram_needed</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">(</span><span class="n">num_points_in_shell</span><span class="p">)</span>
+                            <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">to_be_checked</span><span class="p">))</span>
+                            <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span>
+                            <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">(</span><span class="n">num_dimensions</span><span class="p">)</span>
+                            <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="n">num_slices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span>
+        <span class="n">estimated_ram_needed</span> <span class="o">/</span> <span class="n">options</span><span class="o">.</span><span class="n">ram_available</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">quiet</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39; | Points tested per reference point: </span><span class="si">{}</span><span class="s1"> | RAM split count: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">num_points_in_shell</span><span class="p">,</span> <span class="n">num_slices</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+    <span class="n">all_checks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">to_be_checked</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">all_checks</span><span class="p">))</span>
+    <span class="n">sliced</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_split</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">num_slices</span><span class="p">)</span>
+
+    <span class="n">sorted_sliced</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">current_slice</span><span class="p">)</span> <span class="k">for</span> <span class="n">current_slice</span> <span class="ow">in</span> <span class="n">sliced</span>
+    <span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">current_slice</span> <span class="ow">in</span> <span class="n">sorted_sliced</span><span class="p">:</span>
+        <span class="n">to_be_checked_sliced</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">to_be_checked</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">to_be_checked_sliced</span><span class="p">[</span><span class="n">all_checks</span><span class="p">[</span><span class="n">current_slice</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">to_be_checked</span><span class="p">[</span><span class="n">to_be_checked_sliced</span><span class="p">])</span>
+
+        <span class="n">evaluation_dose</span> <span class="o">=</span> <span class="n">interpolate_evaluation_dose_at_distance</span><span class="p">(</span>
+            <span class="n">options</span><span class="p">,</span> <span class="n">coordinates_at_distance_shell</span><span class="p">,</span> <span class="n">to_be_checked_sliced</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">local_gamma</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+                <span class="n">relative_dose_difference</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">evaluation_dose</span> <span class="o">-</span>
+                    <span class="n">options</span><span class="o">.</span><span class="n">flat_dose_reference</span><span class="p">[</span><span class="n">to_be_checked_sliced</span><span class="p">][</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="p">)</span> <span class="o">/</span> <span class="p">(</span>
+                    <span class="n">options</span><span class="o">.</span><span class="n">flat_dose_reference</span><span class="p">[</span><span class="n">to_be_checked_sliced</span><span class="p">][</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">relative_dose_difference</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">evaluation_dose</span> <span class="o">-</span>
+                <span class="n">options</span><span class="o">.</span><span class="n">flat_dose_reference</span><span class="p">[</span><span class="n">to_be_checked_sliced</span><span class="p">][</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
+            <span class="p">)</span> <span class="o">/</span> <span class="n">options</span><span class="o">.</span><span class="n">global_normalisation</span>
+
+        <span class="n">min_relative_dose_difference</span><span class="p">[</span><span class="n">current_slice</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">relative_dose_difference</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">min_relative_dose_difference</span>
+
+
+<span class="k">def</span> <span class="nf">interpolate_evaluation_dose_at_distance</span><span class="p">(</span>
+        <span class="n">options</span><span class="p">,</span> <span class="n">coordinates_at_distance_shell</span><span class="p">,</span> <span class="n">to_be_checked</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Determine the evaluation dose for the points a given distance away for</span>
+<span class="sd">    each reference coordinate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">to_be_checked</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">to_be_checked</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">flat_mesh_coords_reference</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="n">all_points</span> <span class="o">=</span> <span class="n">add_shells_to_eval_coords</span><span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">flat_mesh_coords_reference</span><span class="p">,</span> <span class="n">coordinates_at_distance_shell</span><span class="p">,</span>
+        <span class="n">to_be_checked</span><span class="p">)</span>
+
+    <span class="n">evaluation_dose</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">evaluation_interpolation</span><span class="p">(</span><span class="n">all_points</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">evaluation_dose</span>
+
+
+<span class="k">def</span> <span class="nf">add_shells_to_eval_coords</span><span class="p">(</span><span class="n">flat_mesh_coords_reference</span><span class="p">,</span>
+                              <span class="n">coordinates_at_distance_shell</span><span class="p">,</span> <span class="n">to_be_checked</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add the distance shells to each evaluation coordinate to make a set of</span>
+<span class="sd">    points to be tested for this given distance&quot;&quot;&quot;</span>
+
+    <span class="n">coordinates_at_distance</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">shell_coord</span><span class="p">,</span> <span class="n">eval_coord</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">coordinates_at_distance_shell</span><span class="p">,</span>
+                                       <span class="n">flat_mesh_coords_reference</span><span class="p">):</span>
+
+        <span class="n">coordinates_at_distance</span><span class="o">.</span><span class="n">append</span><span class="p">((</span>
+            <span class="n">eval_coord</span><span class="p">[</span><span class="n">to_be_checked</span><span class="p">][</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span>
+            <span class="n">shell_coord</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">])[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">])</span>
+
+    <span class="n">all_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">coordinates_at_distance</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">all_points</span>
+
+
+<span class="k">def</span> <span class="nf">calculate_coordinates_shell</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">num_dimensions</span><span class="p">,</span> <span class="n">distance_step_size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create the shell of coordinate shifts for the given testing distance.</span>
+
+<span class="sd">    Coordinate shifts are determined to check the evaluation dose for a</span>
+<span class="sd">    given distance, dimension, and step size</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">num_dimensions</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">calculate_coordinates_shell_1d</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">num_dimensions</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">calculate_coordinates_shell_2d</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">distance_step_size</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">num_dimensions</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">calculate_coordinates_shell_3d</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">distance_step_size</span><span class="p">)</span>
+
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;No valid dimension&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">calculate_coordinates_shell_1d</span><span class="p">(</span><span class="n">distance</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Output the two points that are of the defined distance in one-dimension</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">distance</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">x_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">x_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">distance</span><span class="p">,</span> <span class="o">-</span><span class="n">distance</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">x_coords</span><span class="p">,)</span>
+
+
+<span class="k">def</span> <span class="nf">calculate_coordinates_shell_2d</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">distance_step_size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create points along the circumference of a circle. The spacing</span>
+<span class="sd">    between points is not larger than the defined distance_step_size</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">amount_to_check</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span>
+        <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">distance</span> <span class="o">/</span> <span class="n">distance_step_size</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">amount_to_check</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">x_coords</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+    <span class="n">y_coords</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">x_coords</span><span class="p">,</span> <span class="n">y_coords</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">calculate_coordinates_shell_3d</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="n">distance_step_size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create points along the surface of a sphere (a shell) where no gap</span>
+<span class="sd">    between points is larger than the defined distance_step_size&quot;&quot;&quot;</span>
+
+    <span class="n">number_of_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">distance</span> <span class="o">/</span> <span class="n">distance_step_size</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="n">elevation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">number_of_rows</span><span class="p">)</span>
+    <span class="n">row_radii</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">elevation</span><span class="p">)</span>
+    <span class="n">row_circumference</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">row_radii</span>
+    <span class="n">amount_in_row</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span>
+        <span class="n">row_circumference</span> <span class="o">/</span> <span class="n">distance_step_size</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="n">x_coords</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">y_coords</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">z_coords</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">phi</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">elevation</span><span class="p">):</span>
+        <span class="n">azimuth</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">amount_in_row</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">x_coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">distance</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">azimuth</span><span class="p">))</span>
+        <span class="n">y_coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">distance</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">azimuth</span><span class="p">))</span>
+        <span class="n">z_coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">distance</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">azimuth</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">x_coords</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">y_coords</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">z_coords</span><span class="p">))</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

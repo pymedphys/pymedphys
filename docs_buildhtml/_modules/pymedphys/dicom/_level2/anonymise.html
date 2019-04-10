@@ -1,0 +1,452 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pymedphys.dicom._level2.anonymise &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/physical-design.html">Physical File Structure and Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>pymedphys.dicom._level2.anonymise</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pymedphys.dicom._level2.anonymise</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2018 Matthew Jennings, Simon Biggs</span>
+
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU Affero General Public License as published</span>
+<span class="c1"># by the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version (the &quot;AGPL-3.0+&quot;).</span>
+
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the</span>
+<span class="c1"># GNU Affero General Public License and the additional terms for more</span>
+<span class="c1"># details.</span>
+
+<span class="c1"># You should have received a copy of the GNU Affero General Public License</span>
+<span class="c1"># along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="c1"># ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU</span>
+<span class="c1"># Affero General Public License. These additional terms are Sections 1, 5,</span>
+<span class="c1"># 6, 7, 8, and 9 from the Apache License, Version 2.0 (the &quot;Apache-2.0&quot;)</span>
+<span class="c1"># where all references to the definition &quot;License&quot; are instead defined to</span>
+<span class="c1"># mean the AGPL-3.0+.</span>
+
+<span class="c1"># You should have received a copy of the Apache-2.0 along with this</span>
+<span class="c1"># program. If not, see &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;.</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">...libutils</span> <span class="k">import</span> <span class="n">get_imports</span>
+
+<span class="kn">from</span> <span class="nn">.._level1.dict_baseline</span> <span class="k">import</span> <span class="n">BaselineDicomDictionary</span><span class="p">,</span> <span class="n">BASELINE_KEYWORD_VR_DICT</span>
+
+<span class="n">IMPORTS</span> <span class="o">=</span> <span class="n">get_imports</span><span class="p">(</span><span class="nb">globals</span><span class="p">())</span>
+
+
+<span class="n">IDENTIFYING_KEYWORDS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;AccessionNumber&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;AcquisitionDate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;AcquisitionDateTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;AcquisitionTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;ContentCreatorName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;ContentDate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;ContentTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;CountryOfResidence&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;CurrentPatientLocation&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;CurveDate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;CurveTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Date&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;DateTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;EthnicGroup&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;InstanceCreationDate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;InstanceCreationTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;InstanceCreatorUID&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;InstitutionAddress&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;InstitutionalDepartmentName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;InstitutionName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;IssuerOfPatientID&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;NameOfPhysiciansReadingStudy&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;OperatorsName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;OtherPatientIDs&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;OtherPatientNames&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;OverlayDate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;OverlayTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientAddress&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientAge&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientBirthDate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientBirthName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientBirthTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientID&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientInstitutionResidence&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientMotherBirthName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientSex&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PatientTelephoneNumbers&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PerformingPhysicianIdentificationSequence&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PerformingPhysicianName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PersonName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PhysiciansOfRecord&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PhysiciansOfRecordIdentificationSequence&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;PhysiciansReadingStudyIdentificationSequence&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;ReferringPhysicianAddress&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;ReferringPhysicianIdentificationSequence&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;ReferringPhysicianName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;ReferringPhysicianTelephoneNumbers&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;RegionOfResidence&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;ReviewerName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;SecondaryReviewerName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;SeriesDate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;SeriesTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;StationName&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;StudyDate&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;StudyID&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;StudyTime&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Time&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;VerifyingObserverName&quot;</span><span class="p">)</span>
+
+
+<span class="n">VR_ANONYMOUS_REPLACEMENT_VALUE_DICT</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;AS&#39;</span><span class="p">:</span> <span class="s2">&quot;100Y&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;CS&#39;</span><span class="p">:</span> <span class="s2">&quot;ANON&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;DA&#39;</span><span class="p">:</span> <span class="s2">&quot;20190303&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;DT&#39;</span><span class="p">:</span> <span class="s2">&quot;20190303000900.000000&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;LO&#39;</span><span class="p">:</span> <span class="s2">&quot;Anonymous&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;PN&#39;</span><span class="p">:</span> <span class="s2">&quot;Anonymous&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;SH&#39;</span><span class="p">:</span> <span class="s2">&quot;Anonymous&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;SQ&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Anonymous&quot;</span><span class="p">],</span>
+                                       <span class="s1">&#39;ST&#39;</span><span class="p">:</span> <span class="s2">&quot;Anonymous&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;TM&#39;</span><span class="p">:</span> <span class="s2">&quot;000900.000000&quot;</span><span class="p">,</span>
+                                       <span class="s1">&#39;UI&#39;</span><span class="p">:</span> <span class="s2">&quot;12345678&quot;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="anonymise_dicom_dataset"><a class="viewcode-back" href="../../../../user/library/dicom.html#pymedphys.dicom.anonymise_dicom_dataset">[docs]</a><span class="k">def</span> <span class="nf">anonymise_dicom_dataset</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">replace_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">delete_private_tags</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">keywords_to_keep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ignore_unknown_tags</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                            <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;A simple tool to anonymise a DICOM file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds</span>
+<span class="sd">        The DICOM file to be anonymised. `ds` must represent a valid</span>
+<span class="sd">        DICOM file in the form of a `pydicom Dataset` - ordinarily</span>
+<span class="sd">        returned by `pydicom.dcmread()`.</span>
+
+<span class="sd">    replace_values : bool, optional</span>
+<span class="sd">        If set to `True`, anonymised tag values will be replaced with dummy</span>
+<span class="sd">        &quot;anonymous&quot; values. This is often required for successful reading of</span>
+<span class="sd">        anonymised DICOM files in commercial software. If set to False,</span>
+<span class="sd">        anonymised tags are simply given empty string values. Defaults to `True`.</span>
+
+<span class="sd">    delete_private_tags : bool, optional</span>
+<span class="sd">        A boolean to flag whether or not to remove all private</span>
+<span class="sd">        (non-standard) DICOM tags from the DICOM file. These may</span>
+<span class="sd">        also contain identifying information. Defaults to `True`.</span>
+
+<span class="sd">    keywords_to_keep : sequence, optional</span>
+<span class="sd">        A sequence of DICOM keywords (corresponding to tags) to exclude from</span>
+<span class="sd">        anonymisation. Empty by default.</span>
+
+<span class="sd">    ignore_unknown_tags : bool, optional</span>
+<span class="sd">        If `pydicom` has updated its DICOM dictionary, this function will raise an</span>
+<span class="sd">        error since a new identifying tag may have been introduced. Set to `True` to</span>
+<span class="sd">        ignore this error. Defaults to `False`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ds_anon</span>
+<span class="sd">        An anonymised copy of the input DICOM file as a `pydicom Dataset`</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        Raised if `ignore_unknown_tags` is set to False and unrecognised,</span>
+<span class="sd">        non-private DICOM tags are detected in `ds`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">keywords_to_keep</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">keywords_to_keep</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_unknown_tags</span><span class="p">:</span>
+        <span class="n">tags_used</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">non_private_tags_used</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tags_used</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">tag</span><span class="o">.</span><span class="n">is_private</span>
+        <span class="p">])</span>
+        <span class="n">are_tags_used_in_dict_copy</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">key</span> <span class="ow">in</span> <span class="n">BaselineDicomDictionary</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">non_private_tags_used</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">are_tags_used_in_dict_copy</span><span class="p">):</span>
+            <span class="n">unknown_tags</span> <span class="o">=</span> <span class="n">non_private_tags_used</span><span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">are_tags_used_in_dict_copy</span><span class="p">)]</span>
+
+            <span class="n">unknown_tag_names</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">ds</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">.</span><span class="n">keyword</span>
+                <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">unknown_tags</span><span class="p">]</span>
+
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;At least one of the non-private tags within your DICOM file &quot;</span>
+                <span class="s2">&quot;is not within PyMedPhys&#39;s copy of the DICOM dictionary. It is &quot;</span>
+                <span class="s2">&quot;possible that one or more of these tags contain identifying &quot;</span>
+                <span class="s2">&quot;information. The unrecognised tags are:</span><span class="se">\n\n</span><span class="si">{}</span><span class="se">\n\n</span><span class="s2"> To ignore &quot;</span>
+                <span class="s2">&quot;this error, pass `ignore_unknown_tags=True` to &quot;</span>
+                <span class="s2">&quot;`anonymise_dicom()`. Please inform the creators of PyMedPhys &quot;</span>
+                <span class="s2">&quot;that the baseline DICOM dictionary is obsolete.&quot;</span>
+                <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">unknown_tag_names</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
+        <span class="n">ds_anon</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ds_anon</span> <span class="o">=</span> <span class="n">ds</span>
+
+    <span class="n">keywords_to_anonymise</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">IDENTIFYING_KEYWORDS</span><span class="p">)</span>
+
+    <span class="c1"># Remove private tags from DICOM file unless requested not to.</span>
+    <span class="k">if</span> <span class="n">delete_private_tags</span><span class="p">:</span>
+        <span class="n">ds_anon</span><span class="o">.</span><span class="n">remove_private_tags</span><span class="p">()</span>
+
+    <span class="c1"># Exclude tags from anonymisation process that have been requested to remain as is</span>
+    <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">keywords_to_keep</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">keywords_to_anonymise</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">keyword</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="c1"># Value not in list. TODO: Warn?</span>
+            <span class="k">pass</span>
+
+    <span class="c1"># Overwrite tags in anonymisation list with an empty string.</span>
+    <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">keywords_to_anonymise</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">ds_anon</span><span class="p">,</span> <span class="n">keyword</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">replace_values</span><span class="p">:</span>
+                <span class="n">replacement_value</span> <span class="o">=</span> <span class="n">_get_anonymous_replacement_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">replacement_value</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">ds_anon</span><span class="p">,</span> <span class="n">keyword</span><span class="p">,</span> <span class="n">replacement_value</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ds_anon</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_anonymous_replacement_value</span><span class="p">(</span><span class="n">keyword</span><span class="p">):</span>
+    <span class="n">vr</span> <span class="o">=</span> <span class="n">BASELINE_KEYWORD_VR_DICT</span><span class="p">[</span><span class="n">keyword</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">VR_ANONYMOUS_REPLACEMENT_VALUE_DICT</span><span class="p">[</span><span class="n">vr</span><span class="p">]</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

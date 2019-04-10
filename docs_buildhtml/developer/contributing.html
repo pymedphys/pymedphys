@@ -1,0 +1,477 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Recommended Setup for Contribution &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Editing documentation" href="documentation.html" />
+    <link rel="prev" title="Elekta Logfile Decoding and Indexing" href="../projects/elekta-logfiles.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Recommended Setup for Contribution</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#assumptions">Assumptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#your-mission">Your mission</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#python-anaconda">Python &amp; Anaconda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#text-editor">Text Editor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#a-command-prompt">A Command Prompt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#chocolatey">Chocolatey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#git-git-lfs-and-yarn">Git, Git LFS, and Yarn</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#github-account">GitHub Account</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#some-useful-resources">Some useful resources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#authenticate-your-computer-to-be-able-to-access-your-github-account">Authenticate your computer to be able to access your GitHub account</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#set-up-nbstripout">Set up nbstripout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-the-development-version-of-pymedphys">Install the development version of PyMedPhys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#update-this-document">Update this document</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physical-design.html">Physical File Structure and Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Recommended Setup for Contribution</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/developer/contributing.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="recommended-setup-for-contribution">
+<h1>Recommended Setup for Contribution<a class="headerlink" href="#recommended-setup-for-contribution" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="assumptions">
+<h2>Assumptions<a class="headerlink" href="#assumptions" title="Permalink to this headline">¶</a></h2>
+<p>These instructions assume that you are using a Windows machine and that
+you have administrator rights on your machine. Although this document
+is tailored to Windows users, PyMedPhys itself works on Windows, macOS
+and Linux.</p>
+</div>
+<div class="section" id="your-mission">
+<h2>Your mission<a class="headerlink" href="#your-mission" title="Permalink to this headline">¶</a></h2>
+<p>Your mission, should you choose to accept it, is to complete all the tasks within
+this document. While doing so, please take notes of the pain points. Write down
+what feedback you have. By the end, instead of you emailing that feedback to me,
+we’d like you to use your new set up to edit this file and submit a merge request!</p>
+</div>
+<div class="section" id="python-anaconda">
+<h2>Python &amp; Anaconda<a class="headerlink" href="#python-anaconda" title="Permalink to this headline">¶</a></h2>
+<p>Anaconda is a free, open source, optimized Python (and R) distrubution. It includes:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://conda.io/docs/index.html">conda</a>, a powerful package and environment management system.</li>
+<li>Python</li>
+<li>Over 100 automatically installed scientific packages (<cite>numpy</cite>, <cite>scipy</cite>, etc.) that have been tested to work well together, along with their dependencies.</li>
+</ul>
+<p>Download the latest Anaconda Python <strong>3</strong> version from <a class="reference external" href="https://www.anaconda.com/download/">here</a></p>
+<p>When installing Anaconda make sure to install it for your user only, and tick
+the option “add to path”.</p>
+<img alt="../_images/add_anaconda_to_path.png" src="../_images/add_anaconda_to_path.png" />
+<p>You might notice that Microsoft VS Code is available to be installed via the Anaconda
+installation. However, we recommend installing VS Code from its official install location
+as outlined below in <a class="reference internal" href="#text-editor-section"><span class="std std-ref">Text Editor</span></a>. The Anaconda installer
+does not provide the opportunity to tick the “Open with Code” boxes detailed below.</p>
+<p>Once you have installed Anaconda, add the conda-forge channel to your machine using
+the following command in a new command prompt:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda config --add channels conda-forge
+</pre></div>
+</div>
+</div>
+<div class="section" id="text-editor">
+<span id="text-editor-section"></span><h2>Text Editor<a class="headerlink" href="#text-editor" title="Permalink to this headline">¶</a></h2>
+<p>Visual Studio Code is an excellent, free, open-source code editor. It comes with many great
+features for both Python and Git. You can download the official release <a class="reference external" href="https://code.visualstudio.com/">here</a>.</p>
+<p>When installing VS Code, make sure to tick the “Open with Code” boxes:</p>
+<img alt="../_images/open_with_code.png" src="../_images/open_with_code.png" />
+<p>You will need to install a few extensions in VS Code to complete your set up. This is very easy
+to do via the Extensions Marketplace once VS Code is installed. With VS Code running, access
+the marketplace by clicking this symbol on the left toolbar:</p>
+<img alt="../_images/vscode_extensions.png" src="../_images/vscode_extensions.png" />
+<p>Search for the “Anaconda Extension Pack” and install it. Reload VS Code when installation has
+finished and you’re ready to go with Python in VS Code!</p>
+<p>We also recommend the “GitLens” extension to further enhance your VS Code experience! It comes
+with a number of useful tools for using Git within VS Code itself.</p>
+</div>
+<div class="section" id="a-command-prompt">
+<h2>A Command Prompt<a class="headerlink" href="#a-command-prompt" title="Permalink to this headline">¶</a></h2>
+<p>Cmder is a good command prompt that fills the massive gap on Windows machines.
+One would think that syntax highlighting, copy/paste, and window resizing would
+be commonplace in terminals everywhere - but apparently not! Nevertheless, cmder
+to the rescue. Install the mini version of cmder from <a class="reference external" href="http://cmder.net/">here</a>.</p>
+<p>Once you’ve downloaded cmder, follow the steps given <a class="reference external" href="https://github.com/cmderdev/cmder#shortcut-to-open-cmder-in-a-chosen-folder">here</a>
+to obtain the ability to open a terminal in any directory by right clicking in
+the file browser.</p>
+</div>
+<div class="section" id="chocolatey">
+<h2>Chocolatey<a class="headerlink" href="#chocolatey" title="Permalink to this headline">¶</a></h2>
+<p>Chocolatey is a package manager for Windows. It makes installing software
+development tools quite a breeze. Follow <a class="reference external" href="https://chocolatey.org/install">these instructions</a>
+to install Chocolatey.</p>
+</div>
+<div class="section" id="git-git-lfs-and-yarn">
+<h2>Git, Git LFS, and Yarn<a class="headerlink" href="#git-git-lfs-and-yarn" title="Permalink to this headline">¶</a></h2>
+<p>Use Chocolatey within an administrator command prompt to install Git,
+Git LFS, and yarn like so:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>choco install git git-lfs yarn
+</pre></div>
+</div>
+</div>
+<div class="section" id="github-account">
+<h2>GitHub Account<a class="headerlink" href="#github-account" title="Permalink to this headline">¶</a></h2>
+<p>Make a GitHub account <a class="reference external" href="https://github.com/join">here</a>.
+Once you have an account, you will need commit rights to this
+repository in order to make contributions. Create an issue on GitHub
+within the PyMedPhys repository <a class="reference external" href="https://github.com/pymedphys/pymedphys/issues/new/">here</a>
+and include “request for commit rights” or similar in your issue’s
+content, along with “&#64;SimonBiggs” and “&#64;Centrus007” to ensure it is seen!</p>
+<p>Whenever you wish to discuss anything about PyMedPhys, please create an issue on GitHub.
+It can be to ask for help, suggest a change, provide feedback, or anything else regarding
+PyMedPhys. Write “&#64;” followed by someone’s username if you would like to talk to someone
+specifically.</p>
+<p>The real power of GitHub comes from Git itself. A great piece of Git documentation can be found
+<a class="reference external" href="https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html">here</a>. Use this
+documentation to begin to get a feel for what Git is.</p>
+</div>
+<div class="section" id="some-useful-resources">
+<h2>Some useful resources<a class="headerlink" href="#some-useful-resources" title="Permalink to this headline">¶</a></h2>
+<p>At this point you might find some of the following resources useful:</p>
+<blockquote>
+<div><ul class="simple">
+<li><a class="reference external" href="https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html">Numpy for Matlab users (Scipy.org)</a>.</li>
+<li><a class="reference external" href="http://mathesaurus.sourceforge.net/matlab-numpy.html">NumPy for MATLAB users (Mathesaurus)</a>.</li>
+<li><a class="reference external" href="https://github.com/trekhleb/learn-python">Playground and cheatsheet for learning Python</a>.</li>
+<li><a class="reference external" href="https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html">Don’t be afraid to commit: Git and GitHub</a>.</li>
+<li>Chapter 2 of <a class="reference external" href="https://www.nceclusters.no/globalassets/filer/nce/diverse/the-pragmatic-programmer.pdf">The Pragmatic Programmer</a>.</li>
+</ul>
+</div></blockquote>
+<p>The “Don’t be afraid to commit” resource will be invaluable for these next few
+steps.</p>
+</div>
+<div class="section" id="authenticate-your-computer-to-be-able-to-access-your-github-account">
+<h2>Authenticate your computer to be able to access your GitHub account<a class="headerlink" href="#authenticate-your-computer-to-be-able-to-access-your-github-account" title="Permalink to this headline">¶</a></h2>
+<p>Before setting your SSH keys, I recommend permanently setting your HOME
+variable. This can clear up some potentially confusing issues. Do this by
+running the following where <cite>yourusername</cite> is your Windows domain user name.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>setx HOME <span class="s2">&quot;C:\Users\yourusername&quot;</span>
+</pre></div>
+</div>
+<p>Follow <a class="reference external" href="https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/">these instructions</a> to create
+and add an SSH key to your GitHub account. Since you already have ssh built into
+cmder, you can skip the first steps of the tutorial.</p>
+<p>If all has gone well you should be able to run the following without being
+prompted for a password.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone git@github.com:pymedphys/pymedphys.git
+<span class="nb">cd</span> pymedphys
+</pre></div>
+</div>
+<p>This will download all of PyMedPhys to your local machine.</p>
+</div>
+<div class="section" id="set-up-nbstripout">
+<h2>Set up nbstripout<a class="headerlink" href="#set-up-nbstripout" title="Permalink to this headline">¶</a></h2>
+<p><cite>nbstripout</cite> is used to make it so that you do not post Jupyter Notebook
+outputs online. Depending on how you use notebooks these outputs may
+contain private and/or sensitive information.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">In the event that you uninstall Python, it is possible that <cite>nbstripout</cite>
+ends up disabled. Stay prudent, and be extra cautious when working with
+sensitive information stored within a notebook in a Git repository.</p>
+</div>
+<p>To install <cite>nbstripout</cite> run the following within the pymedphys directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install nbstripout
+nbstripout --install
+nbstripout --status
+</pre></div>
+</div>
+<p>Make sure that the output of <cite>nbstipout –status</cite> starts with:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`bash</span>
+<span class="pre">nbstripout</span> <span class="pre">is</span> <span class="pre">installed</span> <span class="pre">in</span> <span class="pre">repository</span>
+<span class="pre">`</span></code></p>
+</div>
+<div class="section" id="install-the-development-version-of-pymedphys">
+<h2>Install the development version of PyMedPhys<a class="headerlink" href="#install-the-development-version-of-pymedphys" title="Permalink to this headline">¶</a></h2>
+<p>Begin by installing the dependencies of the online version of PyMedPhys with
+conda. With cmder open in the pymedphys directory, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda install pymedphys --only-deps
+pip install -e .
+</pre></div>
+</div>
+</div>
+<div class="section" id="update-this-document">
+<h2>Update this document<a class="headerlink" href="#update-this-document" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you’ve made it this far, well done!</p>
+</div>
+<p>Now that you’ve got this far, you have a copy of the code on your machine.</p>
+<p>First thing’s first: make a branch. If you don’t know what that is, head on
+back over to <a class="reference external" href="https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html">Don’t be afraid to commit</a>
+and scrub up on your terminology.</p>
+<p>To make a branch, open cmder in the pymedphys directory and run the following:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git checkout -b your-name-edit-contributing-document
+</pre></div>
+</div>
+<p>Once you’ve run that you are now free to make some changes.</p>
+<p>Right click on the top level pymedphys directory, and press
+“Open with Code”. This document that you’re reading is located at
+<cite>docs/developer/contributing.rst</cite>. Use VS Code to navigate to that file and
+begin making your changes.</p>
+<p>Once your changes are complete, reopen your cmder and run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git add -A
+git commit -m <span class="s2">&quot;my first commit&quot;</span>
+git push --set-upstream origin your-name-edit-contributing-document
+</pre></div>
+</div>
+<p>Now, you have successfully sent your branch online.</p>
+<p>Now you need to open a merge request. Open one <a class="reference external" href="https://github.com/pymedphys/pymedphys/compare">here</a>,
+select the source branch to be <cite>pymedphys/your-name-edit-contributing-document</cite>
+and set the target branch to be <cite>pymedphys/master</cite>.</p>
+<p>At that point, we’ll get notified and we can begin discussing the changes
+you’ve made.</p>
+<p>Thank you! Welcome to the team!</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="documentation.html" class="btn btn-neutral float-right" title="Editing documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../projects/elekta-logfiles.html" class="btn btn-neutral" title="Elekta Logfile Decoding and Indexing" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
