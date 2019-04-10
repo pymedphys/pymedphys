@@ -255,16 +255,17 @@ def anonymise_dicom_files_in_folder(folder, overwrite_files=False, replace_value
 
 
 def non_private_tags_in_dicom_dataset(ds):
-    non_private_tags = [tag for tag in ds if tag.is_private]
+    non_private_tags = [elem.tag for elem in ds if not elem.tag.is_private]
     return non_private_tags
 
 
 def unknown_tags_in_dicom_dataset(ds):
 
-    non_private_tags_in_dataset = non_private_tags_in_dicom_dataset(ds)
+    non_private_tags_in_dataset = np.array(non_private_tags_in_dicom_dataset(ds))
     are_non_private_tags_in_dict_baseline = [tag in BaselineDicomDictionary.keys()
                                              for tag in non_private_tags_in_dataset]
-    unknown_tags = non_private_tags_in_dataset[np.invert(are_non_private_tags_in_dict_baseline)]
+    unknown_tags = list(non_private_tags_in_dataset[
+        np.invert(are_non_private_tags_in_dict_baseline)])
 
     return unknown_tags
 
