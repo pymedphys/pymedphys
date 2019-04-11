@@ -164,17 +164,17 @@ This will download all of PyMedPhys to your local machine.
 Set up nbstripout
 -----------------
 
-`nbstripout` is used to make it so that you do not post Jupyter Notebook
+``nbstripout`` is used to make it so that you do not post Jupyter Notebook
 outputs online. Depending on how you use notebooks these outputs may
 contain private and/or sensitive information.
 
 .. WARNING::
 
-    In the event that you uninstall Python, it is possible that `nbstripout`
+    In the event that you uninstall Python, it is possible that ``nbstripout``
     ends up disabled. Stay prudent, and be extra cautious when working with
     sensitive information stored within a notebook in a Git repository.
 
-To install `nbstripout` run the following within the pymedphys directory:
+To install ``nbstripout`` run the following within the pymedphys directory:
 
 .. code:: bash
 
@@ -182,11 +182,12 @@ To install `nbstripout` run the following within the pymedphys directory:
     nbstripout --install
     nbstripout --status
 
-Make sure that the output of `nbstripout --status` starts with:
+Make sure that the output of ``nbstripout --status`` starts with:
 
-```bash
-nbstripout is installed in repository
-```
+.. code:: bash
+
+    nbstripout is installed in repository
+
 
 
 Install the development version of PyMedPhys

@@ -19,8 +19,8 @@ PyMedPhys documentation by running the following command in your terminal:
 
     pip install -e .[docs]
 
-NB: these packages are not installed if you only run :code:`pip install -e .`
-or :code:`conda install pymedphys`.
+NB: these packages are not installed if you only run ``pip install -e .``
+or ``conda install pymedphys``.
 
 
 Starting a live update documentation server
@@ -29,9 +29,9 @@ Within the root pymedphys directory run the following command:
 
 .. code:: bash
 
-    sphinx-autobuild docs docs/_build/html
+    sphinx-autobuild -p 7070 docs docs/_build/html
 
-Then within a web browser go to http://127.0.0.1:8000
+Then within a web browser go to http://127.0.0.1:7070
 
 You may now edit the documentation within the docs directory and see the
 changes live update within your browser.

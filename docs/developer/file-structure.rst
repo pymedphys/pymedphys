@@ -35,10 +35,10 @@ The PyMedPhys repository is generally structured as follows:
 The PyMedPhys Source Code Package
 ---------------------------------
 
-All source code for PyMedPhys is contained within `src/pymedphys`. Within this
-directory, the code is organised into a range of categories, such as `dicom`,
-`gamma`, etc. These correspond to Python modules. Finally, code within these
-categories are organised into levels:
+All source code for PyMedPhys is contained within ``src/pymedphys``. Within
+this directory, the code is organised into a range of categories, such as
+``dicom``, ``gamma``, etc. These correspond to Python modules. Finally, code
+within these categories are organised into levels:
 
 .. code-block:: bash
 
@@ -49,8 +49,9 @@ categories are organised into levels:
    |   |   |-- __init__.py
    |   |   |
    |   |   |-- _level1/
-   |   |   |   |-- file111.txt
-   |   |   |   |-- file112.txt
+   |   |   |   |-- __init__.py
+   |   |   |   |-- a_python_source_code_file.py
+   |   |   |   |-- another_python_source_code_file.py
    |   |   |
    |   |   |-- _level2/
    |   |   |
@@ -62,8 +63,8 @@ categories are organised into levels:
    |   |   |-- __init__.py
    |   |   |
    |   |   |-- _level1/
-   |   |   |   |   file111.txt
-   |   |   |   |   file112.txt
+   |   |   |   |-- __init__.py
+   |   |   |   |   and_yet_even_more_python_code.py
    |   |   |
    |   |   |-- _level2/
    |   |   |
@@ -75,8 +76,8 @@ categories are organised into levels:
 
 
 This levelling helps to prevent a cyclical code dependency tree. PyMedPhys'
-automated test suite includes a Python package called `layer-linter` that helps
-to enforce this structure. The following sections further explain the
+automated test suite includes a Python package called ``layer-linter`` that
+helps to enforce this structure. The following sections further explain the
 philosophy behind levelling dependencies.
 
 
