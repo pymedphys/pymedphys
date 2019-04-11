@@ -2,7 +2,7 @@ Directory & File Structure
 ==================================
 
 The PyMedPhys Repository
----------------------------------------
+------------------------
 
 The PyMedPhys repository is generally structured as follows:
 
@@ -27,16 +27,18 @@ The PyMedPhys repository is generally structured as follows:
    |
    |-- ...
 
+
+
 .. TODO: Explain further (e.g. top-level files and purpose of directories).
 
 
 The PyMedPhys Source Code Package
----------------------------------------------
+---------------------------------
 
 All source code for PyMedPhys is contained within `src/pymedphys`. Within this
 directory, the code is organised into a range of categories, such as `dicom`,
 `gamma`, etc. These correspond to Python modules. Finally, code within these
-categories are organised into `level`s:
+categories are organised into levels:
 
 .. code-block:: bash
 
