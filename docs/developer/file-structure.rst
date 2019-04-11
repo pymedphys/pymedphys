@@ -72,11 +72,10 @@ categories are organised into `level`s:
    |   |-- ...
 
 
-This levelling helps to prevent a
-(confusingly) cyclic code dependency tree. PyMedPhys' automated test suite
-includes a Python package called `layer-linter` that helps to enforce this
-structure. The following sections further explain the philosophy behind levelling
-dependencies.
+This levelling helps to prevent a cyclical code dependency tree. PyMedPhys'
+automated test suite includes a Python package called `layer-linter` that helps
+to enforce this structure. The following sections further explain the
+philosophy behind levelling dependencies.
 
 
 John Lakos and Physical Design
