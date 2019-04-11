@@ -31,8 +31,8 @@
     :caption: Developer Guide
 
     developer/contributing
+    developer/file-structure
     developer/documentation
-    developer/physical-design
     developer/agpl-benefits
     developer/labs.rst
 
