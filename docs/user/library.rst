@@ -14,4 +14,4 @@ itself. Below is the documentation for a range of these libraries.
     library/dicom
     library/geometry
     library/xlwings
-    library/sinogram
+
