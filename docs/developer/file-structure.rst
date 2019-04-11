@@ -64,7 +64,7 @@ within these categories are organised into levels:
    |   |   |
    |   |   |-- _level1/
    |   |   |   |-- __init__.py
-   |   |   |   |   and_yet_even_more_python_code.py
+   |   |   |   |-- and_yet_even_more_python_code.py
    |   |   |
    |   |   |-- _level2/
    |   |   |
