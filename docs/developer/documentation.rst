@@ -4,16 +4,23 @@ Editing documentation
 This documentation site uses a toolbox called Sphinx. This particular document
 aims to help contributors to improve the PyMedPhys documentation.
 
-It presumes you have gone through the base contributing documentation.
+We recommend that you first read the `recommended setup for contribution`_ and
+`file structure`_ documentation pages before you proceed..
+
+.. _`recommended setup for contribution`: /developer/contributing.html
+.. _`file structure`: /developer/file-structure.html
 
 Prerequisites
 -------------
-To work on the documentation on your machine you will need the following extra
-libraries installed:
+You can install all of the additional dependencies required to edit the
+PyMedPhys documentation by running the following command in your terminal:
 
 .. code:: bash
 
-    pip install sphinx sphinx-autobuild numpydoc sphinx_rtd_theme
+    pip install -e .[docs]
+
+NB: these packages are not installed if you only run ``pip install -e .``
+or ``conda install pymedphys``.
 
 
 Starting a live update documentation server
@@ -22,9 +29,9 @@ Within the root pymedphys directory run the following command:
 
 .. code:: bash
 
-    sphinx-autobuild docs docs/_build/html
+    sphinx-autobuild -W -p 7070 docs docs/_build/html
 
-Then within a web browser go to http://127.0.0.1:8000
+Then within a web browser go to http://127.0.0.1:7070
 
 You may now edit the documentation within the docs directory and see the
 changes live update within your browser.
