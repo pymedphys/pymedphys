@@ -182,7 +182,7 @@ To install `nbstripout` run the following within the pymedphys directory:
     nbstripout --install
     nbstripout --status
 
-Make sure that the output of `nbstipout --status` starts with:
+Make sure that the output of `nbstripout --status` starts with:
 
 ```bash
 nbstripout is installed in repository
@@ -218,7 +218,7 @@ To make a branch, open cmder in the pymedphys directory and run the following:
 
 .. code:: bash
 
-    git checkout -b your-name-edit-contributing-document
+    git checkout -b yourinitials-edit-contributing-document
 
 Once you've run that you are now free to make some changes.
 

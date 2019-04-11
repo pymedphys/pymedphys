@@ -4,7 +4,11 @@ Editing documentation
 This documentation site uses a toolbox called Sphinx. This particular document
 aims to help contributors to improve the PyMedPhys documentation.
 
-It presumes you have gone through the base contributing documentation.
+We recommend that you first read the `recommended setup for contribution`_ and
+`file structure`_ documentation pages before you proceed..
+
+.. _`recommended setup for contribution`: /developer/contributing.html
+.. _`file structure`: /developer/file-structure.html
 
 Prerequisites
 -------------
