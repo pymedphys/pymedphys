@@ -12,12 +12,15 @@ We recommend that you first read the `recommended setup for contribution`_ and
 
 Prerequisites
 -------------
-To work on the documentation on your machine you will need the following extra
-libraries installed:
+You can install all of the additional dependencies required to edit the
+PyMedPhys documentation by running the following command in your terminal:
 
 .. code:: bash
 
-    pip install sphinx sphinx-autobuild numpydoc sphinx_rtd_theme
+    pip install -e .[docs]
+
+NB: these packages are not installed if you only run `pip install -e .` or
+`conda install pymedphys`.
 
 
 Starting a live update documentation server
