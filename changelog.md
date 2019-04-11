@@ -32,19 +32,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-## [0.7.2] -- 2019/05/05
+## [0.7.2] -- 2019/04/05
 
 ### Dependency changes
 
 - Removed numpy version upperlimit
 
-## [0.7.1] -- 2019/05/05
+## [0.7.1] -- 2019/04/05
 
 ### Performance Improvements
 
 - reduced PyPI package size by removing unnessesary development testing files.
 
-## [0.7.0] -- 2019/05/05
+## [0.7.0] -- 2019/04/05
 
 ### Breaking Changes
 
