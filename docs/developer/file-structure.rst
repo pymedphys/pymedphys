@@ -4,17 +4,17 @@ Directory & File Structure
 The PyMedPhys Repository
 ---------------------------------------
 
-The PyMedPhys repository follows the following general structure:
+The PyMedPhys repository is generally structured as follows:
 
 .. code-block:: bash
 
    pymedphys/
-   │   README.md
+   |   README.md
    |   changelog.md
    |   LICENSE
-   │   setup.py
-   │   ...
-   │
+   |   setup.py
+   |   ...
+   |
    |-- docs/
    |
    |-- notebooks/
