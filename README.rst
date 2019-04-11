@@ -25,18 +25,17 @@ PyMedPhys
 
 .. START_OF_ABOUT_IMPORT
 
-PyMedPhys is a toolbox for Medical Physicists that we all have access to, and
-we will all have access to whatever it becomes in the future. It is inspired
-by our physics peers in astronomy and their `Astropy Project`_.
+PyMedPhys aims to be a Medical Physics open source `monorepo`_ where we can all store, review, use, and learn off of each other's code. It is a library of tools that we all have access to and, because of its license, will all have access to whatever it becomes in the future. It is inspired by the collaborative work of our physics peers in astronomy and their `Astropy Project`_.
 
-PyMedPhys aims to become not just a library, but instead a Medical Physics
-open source `monorepo`_ where we can all store, review, use, and learn off of
-each other's code. It is structured and glued together with Python, but
-certainly not limited to one programming language.
+It is structured and glued together with Python, but certainly not limited to one programming language. A great place to begin sharing is the labs, a range of experimental modules where you can learn to use git and begin the process of code sharing and review. For example, feel free to submit to the labs your favorite MatLab scripts which we can help you glue together with Python using `oct2py`_.
+
+.. _`oct2py`: http://blink1073.github.io/oct2py/
 
 .. _`Astropy Project`: http://www.astropy.org/
 
 .. _`monorepo`: https://cacm.acm.org/magazines/2016/7/204032-why-google-stores-billions-of-lines-of-code-in-a-single-repository/fulltext
+
+
 
 This package is available on PyPI (https://pypi.org/project/pymedphys/),
 GitHub (https://github.com/pymedphys/pymedphys), and conda-forge
@@ -143,8 +142,7 @@ hold:
 
 Where the definition of License is taken to be the
 AGPLv3+ with additional terms from the Apache 2.0. The definitions of
-Contributor, You, and Work for this clause are as defined within the
-Apache 2.0 license.
+Contributor, You, and Work are as defined within the Apache 2.0 license.
 
 
 .. END_OF_FRONTPAGE_IMPORT
