@@ -1,19 +1,82 @@
-Physical File Structure and Design
+Directory & File Structure
 ==================================
 
-The Layout of PyMedPhys
------------------------
+The PyMedPhys Repository
+---------------------------------------
+
+The PyMedPhys repository follows the following general structure:
+
+.. code-block:: bash
+
+   pymedphys/
+   │   README.md
+   |   changelog.md
+   |   LICENSE
+   │   setup.py
+   │   ...
+   │
+   |-- docs/
+   |
+   |-- notebooks/
+   |
+   |-- scripts/
+   |
+   |-- src/pymedphys/
+   |
+   |-- tests/
+   |
+   |-- ...
+
+.. TODO: Explain further (e.g. top-level files and purpose of directories).
+
+
+The PyMedPhys Source Code Package
+---------------------------------------------
 
 All source code for PyMedPhys is contained within `src/pymedphys`. Within this
-directory are a range of package groups or in Python speak, modules. These
-modules internally are levelled to inforce a non-cyclic dependency tree.
+directory, the code is organised into a range of categories, such as `dicom`,
+`gamma`, etc. These correspond to Python modules. Finally, code within these
+categories are organised into `level`s:
 
-The interdependencies between the modules are also levelled in a package group
-hierachy, in such a way that the modules themselves also fall into a levelled
-structure. This is enforced using the layer-linter Python package.
+.. code-block:: bash
 
-For further information on the philosphy behind levelling dependencies see the
-below sections.
+   pymedphys/
+   |-- src/pymedphys
+   |   |
+   |   |-- dicom/
+   |   |   |-- __init__.py
+   |   |   |
+   |   |   |-- _level1/
+   |   |   |   |-- file111.txt
+   |   |   |   |-- file112.txt
+   |   |   |
+   |   |   |-- _level2/
+   |   |   |
+   |   |   |-- _level3/
+   |   |   |
+   |   |   |-- _level4/
+   |   |
+   |   |-- gamma/
+   |   |   |-- __init__.py
+   |   |   |
+   |   |   |-- _level1/
+   |   |   |   |   file111.txt
+   |   |   |   |   file112.txt
+   |   |   |
+   |   |   |-- _level2/
+   |   |   |
+   |   |   |-- _level3/
+   |   |   |
+   |   |   |-- _level4/
+   |   |
+   |   |-- ...
+
+
+This levelling helps to prevent a
+(confusingly) cyclic code dependency tree. PyMedPhys' automated test suite
+includes a Python package called `layer-linter` that helps to enforce this
+structure. The following sections further explain the philosophy behind levelling
+dependencies.
 
 
 John Lakos and Physical Design
