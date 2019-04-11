@@ -19,8 +19,8 @@ PyMedPhys documentation by running the following command in your terminal:
 
     pip install -e .[docs]
 
-NB: these packages are not installed if you only run `pip install -e .` or
-`conda install pymedphys`.
+NB: these packages are not installed if you only run :code:`pip install -e .`
+or :code:`conda install pymedphys`.
 
 
 Starting a live update documentation server
