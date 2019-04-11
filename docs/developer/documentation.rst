@@ -29,7 +29,7 @@ Within the root pymedphys directory run the following command:
 
 .. code:: bash
 
-    sphinx-autobuild -p 7070 docs docs/_build/html
+    sphinx-autobuild -W -p 7070 docs docs/_build/html
 
 Then within a web browser go to http://127.0.0.1:7070
 
