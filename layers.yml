@@ -15,7 +15,6 @@ Internal Levelled Modules:
         - pymedphys.mudensity
         - pymedphys.profiles
         - pymedphys.plt
-        - pymedphys.sinogram
         - pymedphys.trf
         - pymedphys.utilities
         - pymedphys.xarray
