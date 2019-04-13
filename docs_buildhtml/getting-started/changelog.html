@@ -1,0 +1,447 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Release Notes &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Roadmap" href="roadmap.html" />
+    <link rel="prev" title="Frequently Asked Questions (FAQ)" href="faq.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Release Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">Unreleased</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">0.7.2 – 2019/04/05</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dependency-changes">Dependency changes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">0.7.1 – 2019/04/05</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#performance-improvements">Performance Improvements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id7">0.7.0 – 2019/04/05</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#breaking-changes">Breaking Changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#new-features">New Features</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id9">0.6.0 – 2019/03/15</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id10">Breaking Changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">New Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#code-refactoring">Code Refactoring</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id13">0.5.1 – 2019/01/05</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id14">New Features</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Release Notes</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/getting-started/changelog.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<!-- markdownlint-disable MD033 MD024 --><div class="section" id="release-notes">
+<h1>Release Notes<a class="headerlink" href="#release-notes" title="Permalink to this headline">¶</a></h1>
+<p>All notable changes to this project will be documented in this file.</p>
+<p>This project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.
+<span class="raw-html-m2r"><br/></span></p>
+<!--  Template
+## [Unreleased]
+
+### Breaking Changes
+
+- nil
+
+### New Features
+
+- nil
+
+### Bug Fixes
+
+- nil
+
+### Code Refactoring
+
+- nil
+
+### Performance Improvements
+
+- nil --><div class="section" id="id1">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.7.2...master">Unreleased</a><a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="id3">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.7.1...v0.7.2">0.7.2</a> – 2019/04/05<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="dependency-changes">
+<h3>Dependency changes<a class="headerlink" href="#dependency-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Removed numpy version upperlimit</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id5">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.7.0...v0.7.1">0.7.1</a> – 2019/04/05<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="performance-improvements">
+<h3>Performance Improvements<a class="headerlink" href="#performance-improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>reduced PyPI package size by removing unnessesary development testing files.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id7">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.6.0...v0.7.0">0.7.0</a> – 2019/04/05<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="breaking-changes">
+<h3>Breaking Changes<a class="headerlink" href="#breaking-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">anonymise_dicom</span></code> has been renamed to <code class="docutils literal notranslate"><span class="pre">anonymise_dicom_dataset</span></code></li>
+<li>The CLI interface <code class="docutils literal notranslate"><span class="pre">trf2csv</span></code> has been replaced with <code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">trf</span> <span class="pre">to-csv</span></code>.
+This has the same usage, just a changed name to come in line with the rest of the CLI interfaces exposed by PyMedPhys.</li>
+</ul>
+</div>
+<div class="section" id="new-features">
+<h3>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Implementing a suite of Dicom objects, currently a work in progress:<ul>
+<li><code class="docutils literal notranslate"><span class="pre">DicomBase</span></code>, a base DICOM class that wraps <code class="docutils literal notranslate"><span class="pre">pydicom</span></code>’s <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> object.
+This class includes additions such as an anonymisation method.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DicomImage</span></code>, designed to hold a single DICOM image slice. Might someday
+contain methods such as <code class="docutils literal notranslate"><span class="pre">resample</span></code> and the like.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DicomSeries</span></code>, a series of <code class="docutils literal notranslate"><span class="pre">DicomImage</span></code> objects creating a CT dataset.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DicomStructure</span></code>, designed to house DICOM structure datasets.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DicomPlan</span></code>, a class that holds RT plan DICOM datasets.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DicomDose</span></code>, a class that to hold RT DICOM dose datasets. It has helper
+functions and parameters such as coordinate transforms built into it.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DicomStudy</span></code>, a class designed to hold an interrelated set of <code class="docutils literal notranslate"><span class="pre">DicomDose</span></code>,
+<code class="docutils literal notranslate"><span class="pre">DicomPlan</span></code>, <code class="docutils literal notranslate"><span class="pre">DicomStructure</span></code>, and <code class="docutils literal notranslate"><span class="pre">DicomSeries</span></code>. Not every type is
+required to create a <code class="docutils literal notranslate"><span class="pre">DicomStudy</span></code>. Certain methods will be
+available on <code class="docutils literal notranslate"><span class="pre">DicomStudy</span></code> depending what is housed within it. For example
+having both <code class="docutils literal notranslate"><span class="pre">DicomDose</span></code> and <code class="docutils literal notranslate"><span class="pre">DicomStructure</span></code> should enable DVH based
+methods.</li>
+<li><code class="docutils literal notranslate"><span class="pre">DicomCollection</span></code>, a class that can hold multiple studies, interrelated or
+not. A common use case that will likely be implemented is
+<code class="docutils literal notranslate"><span class="pre">DicomCollection.from_directory(directory_path)</span></code> which would pull all DICOM
+files nested within a directory and sort them into <code class="docutils literal notranslate"><span class="pre">DicomStudy</span></code> objects
+based on their header UIDs.</li>
+</ul>
+</li>
+<li>Added CLI commands for a WIP docker server, logfile orchestration, and DICOM
+editor tools.</li>
+<li>Added a range of xlwings tools that allow the use of PyMedPhys functions
+within Excel</li>
+<li>Added rudimentary code to pull profiles from Mephysto
+files.</li>
+<li>The previously separate <code class="docutils literal notranslate"><span class="pre">decodetrf</span></code> library is now distributed within
+PyMedPhys. You can now simply install PyMedPhys and run
+<code class="docutils literal notranslate"><span class="pre">pymedphys</span> <span class="pre">trf</span> <span class="pre">to-csv</span></code> within the command line to convert <code class="docutils literal notranslate"><span class="pre">.trf</span></code> files into
+<code class="docutils literal notranslate"><span class="pre">.csv</span></code> files.</li>
+</ul>
+<p><span class="raw-html-m2r"><br/></span></p>
+</div>
+</div>
+<div class="section" id="id9">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.5.1...v0.6.0">0.6.0</a> – 2019/03/15<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id10">
+<h3>Breaking Changes<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>All uses of “dcm” in directory names, module names, function names, etc.
+have been converted to “dicom”. Anything that makes use of this code will need to be
+adjusted accordingly. Required changes include:<ul>
+<li><code class="docutils literal notranslate"><span class="pre">pymedphys.dcm</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">pymedphys.dicom</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">coords_and_dose_from_dcm()</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">coords_and_dose_from_dicom()</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">dcmfromdict()</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">dicom_dataset_from_dict()</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">gamma_dcm()</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">gamma_dicom()</span></code></li>
+</ul>
+</li>
+<li>MU Density related functions are no longer available under the <code class="docutils literal notranslate"><span class="pre">pymedphys.coll</span></code> package,
+instead they are found within <code class="docutils literal notranslate"><span class="pre">pymedphys.mudensity</span></code> package.</li>
+<li>The DICOM coordinate extraction functions now return simple tuples rather than <code class="docutils literal notranslate"><span class="pre">Coords</span></code> namedtuples:<ul>
+<li><code class="docutils literal notranslate"><span class="pre">extract_dicom_patient_xyz()</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">extract_iec_patient_xyz()</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">extract_iec_fixed_xyz()</span></code></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="id11">
+<h3>New Features<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>DICOM anonymisation now permits replacing deidentified values with suitable “dummy” values. This helps to
+maintain compatibility with DICOM software that includes checks (beyond those specified in the DICOM Standard)
+of valid DICOM tag values. Replacing tags with dummy values upon anonymisation is now the default behaviour.</li>
+<li>A set of 3D coordinate transformation functions, including rotations (passive or active) and translations.
+Transformations may be applied to a single coordinate triplet (an <code class="docutils literal notranslate"><span class="pre">ndarray</span></code>) or a list of arbitrarily many
+coordinate triplets (a 3 x n <code class="docutils literal notranslate"><span class="pre">ndarray</span></code>). <strong>NB</strong>: Documentation forthcoming.</li>
+</ul>
+</div>
+<div class="section" id="code-refactoring">
+<h3>Code Refactoring<a class="headerlink" href="#code-refactoring" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>All uses of <code class="docutils literal notranslate"><span class="pre">dcm</span></code> as a variable name for instances of PyDicom Datasets have been converted to <code class="docutils literal notranslate"><span class="pre">ds</span></code> to
+match PyDicom convention.</li>
+</ul>
+<p><span class="raw-html-m2r"><br/></span></p>
+</div>
+</div>
+<div class="section" id="id13">
+<h2><a class="reference external" href="https://github.com/pymedphys/pymedphys/compare/v0.4.3...v0.5.1">0.5.1</a> – 2019/01/05<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id14">
+<h3>New Features<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Began keeping record of changes in <code class="docutils literal notranslate"><span class="pre">changelog.md</span></code></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="roadmap.html" class="btn btn-neutral float-right" title="Roadmap" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="faq.html" class="btn btn-neutral" title="Frequently Asked Questions (FAQ)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

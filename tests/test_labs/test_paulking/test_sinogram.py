@@ -27,18 +27,19 @@
 import os
 import numpy as np
 
-from pymedphys.sinogram import read_csv_file
-from pymedphys.sinogram import read_bin_file
-from pymedphys.sinogram import crop
-from pymedphys.sinogram import make_histogram
-from pymedphys.sinogram import find_modulation_factor
-from pymedphys.sinogram import unshuffle
+from pymedphys._labs.paulking.sinogram import read_csv_file
+from pymedphys._labs.paulking.sinogram import read_bin_file
+from pymedphys._labs.paulking.sinogram import crop
+from pymedphys._labs.paulking.sinogram import make_histogram
+from pymedphys._labs.paulking.sinogram import find_modulation_factor
+from pymedphys._labs.paulking.sinogram import unshuffle
+
 
 SIN_CSV_FILE = os.path.join(
-    os.path.dirname(__file__), "../data/sinogram/sinogram.csv")
+    os.path.dirname(__file__), "./data/sinogram.csv")
 
 SIN_BIN_FILE = os.path.join(
-    os.path.dirname(__file__), "../data/sinogram/MLC_all_test_old_800P.bin")
+    os.path.dirname(__file__), "./data/MLC_all_test_old_800P.bin")
 
 
 def test_read_csv_file():

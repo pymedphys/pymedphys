@@ -1,0 +1,1013 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Profile Class &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Sinogram" href="sinogram.html" />
+    <link rel="prev" title="Paul King" href="../paulking.html" /> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../labs.html">Labs</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../paulking.html">Paul King</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Profile Class</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sinogram.html">Sinogram</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../simonbiggs.html">Simon Biggs</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../labs.html">Labs</a> &raquo;</li>
+        
+          <li><a href="../paulking.html">Paul King</a> &raquo;</li>
+        
+      <li>Profile Class</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../../_sources/developer/labs/paulking/profile.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="profile-class">
+<h1>Profile Class<a class="headerlink" href="#profile-class" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="pymedphys._labs.paulking.profile.Profile">
+<em class="property">class </em><code class="descclassname">pymedphys._labs.paulking.profile.</code><code class="descname">Profile</code><span class="sig-paren">(</span><em>x=array([]</em>, <em>dtype=float64)</em>, <em>y=array([]</em>, <em>dtype=float64)</em>, <em>meta={}</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile" title="Permalink to this definition">¶</a></dt>
+<dd><p>One-dimensional distribution of intensity vs position.</p>
+<dl class="attribute">
+<dt id="pymedphys._labs.paulking.profile.Profile.x">
+<code class="descname">x</code><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.x" title="Permalink to this definition">¶</a></dt>
+<dd><p>position, +/- in cm</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">np.array</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pymedphys._labs.paulking.profile.Profile.y">
+<code class="descname">y</code><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.y" title="Permalink to this definition">¶</a></dt>
+<dd><p>intensity in unspecified units</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">np.array</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pymedphys._labs.paulking.profile.Profile.meta">
+<code class="descname">meta</code><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.meta" title="Permalink to this definition">¶</a></dt>
+<dd><p>metadata</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body">dict, optional</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p class="rubric">Examples</p>
+<p><code class="docutils literal notranslate"><span class="pre">profiler</span> <span class="pre">=</span> <span class="pre">Profile().from_profiler(&quot;C:\profiler.prs&quot;)</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">film</span> <span class="pre">=</span> <span class="pre">Profile().from_narrow_png(&quot;C:\image.png&quot;)</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">profiler.cross_calibrate(film).plot(marker='o')</span></code></p>
+<img alt="../../../_images/calib_curve.png" src="../../../_images/calib_curve.png" />
+<p class="rubric">Notes</p>
+<p>Requires Python PIL.</p>
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__add__">
+<code class="descname">__add__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.__add__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__add__" title="Permalink to this definition">¶</a></dt>
+<dd><p>shift right</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__copy__">
+<code class="descname">__copy__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.__copy__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__copy__" title="Permalink to this definition">¶</a></dt>
+<dd><p>deep copy</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__eq__">
+<code class="descname">__eq__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.__eq__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__eq__" title="Permalink to this definition">¶</a></dt>
+<dd><p>same data points</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__iadd__">
+<code class="descname">__iadd__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__iadd__" title="Permalink to this definition">¶</a></dt>
+<dd><p>shift right</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__imul__">
+<code class="descname">__imul__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__imul__" title="Permalink to this definition">¶</a></dt>
+<dd><p>scale y</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>x=array([]</em>, <em>dtype=float64)</em>, <em>y=array([]</em>, <em>dtype=float64)</em>, <em>meta={}</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>create profile</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>x</strong> (<em>np.array</em><em>, </em><em>optional</em>) – </li>
+<li><strong>y</strong> (<em>np.array</em><em>, </em><em>optional</em>) – </li>
+<li><strong>meta</strong> (<em>dict</em><em>, </em><em>optional</em>) – </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>Normally created empty, then filled using a method, which returns
+a new Profile.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__isub__">
+<code class="descname">__isub__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__isub__" title="Permalink to this definition">¶</a></dt>
+<dd><p>shift left</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__len__">
+<code class="descname">__len__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.__len__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__len__" title="Permalink to this definition">¶</a></dt>
+<dd><p># data points</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__mul__">
+<code class="descname">__mul__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.__mul__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__mul__" title="Permalink to this definition">¶</a></dt>
+<dd><p>scale y</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__radd__">
+<code class="descname">__radd__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__radd__" title="Permalink to this definition">¶</a></dt>
+<dd><p>shift right</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__rmul__">
+<code class="descname">__rmul__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__rmul__" title="Permalink to this definition">¶</a></dt>
+<dd><p>scale y</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__rsub__">
+<code class="descname">__rsub__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__rsub__" title="Permalink to this definition">¶</a></dt>
+<dd><p>shift left</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__str__">
+<code class="descname">__str__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.__str__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__str__" title="Permalink to this definition">¶</a></dt>
+<dd><p class="rubric">Examples</p>
+<p><code class="docutils literal notranslate"><span class="pre">Profile</span> <span class="pre">object:</span> <span class="pre">83</span> <span class="pre">pts</span> <span class="pre">|</span> <span class="pre">x</span> <span class="pre">(-16.4</span> <span class="pre">cm</span> <span class="pre">-&gt;</span> <span class="pre">16.4</span> <span class="pre">cm)</span> <span class="pre">|</span> <span class="pre">y</span> <span class="pre">(0.22</span> <span class="pre">-&gt;</span> <span class="pre">45.54)</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.__sub__">
+<code class="descname">__sub__</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.__sub__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__sub__" title="Permalink to this definition">¶</a></dt>
+<dd><p>shift left</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pymedphys._labs.paulking.profile.Profile.__weakref__">
+<code class="descname">__weakref__</code><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.align_to">
+<code class="descname">align_to</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.align_to"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.align_to" title="Permalink to this definition">¶</a></dt>
+<dd><p>shift self to align to other</p>
+<p>Calculated using shift that produces greatest peak correlation between
+the curves. Flips the curve left-to-right, if this creates a better fit.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile"><em>Profile</em></a>) – profile to be be shifted to</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.cross_calibrate">
+<code class="descname">cross_calibrate</code><span class="sig-paren">(</span><em>reference</em>, <em>measured</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.cross_calibrate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.cross_calibrate" title="Permalink to this definition">¶</a></dt>
+<dd><p>density mapping, reference -&gt; measured</p>
+<p>Calculated by overlaying intensity curves and observing values at
+corresponding points. Note that the result is an unsmoothed, collection
+of points.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>reference</strong> (<em>string</em>) – </li>
+<li><strong>measured</strong> (<em>string</em>) – file names with path</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.from_lists">
+<code class="descname">from_lists</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>meta={}</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.from_lists"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.from_lists" title="Permalink to this definition">¶</a></dt>
+<dd><p>import x and y lists</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x</strong> (<em>list</em>) – List of float x values</li>
+<li><strong>y</strong> (<em>list</em>) – List of float y values</li>
+<li><strong>meta</strong> (<em>dict</em><em>, </em><em>optional</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p><code class="docutils literal notranslate"><span class="pre">profile</span> <span class="pre">=</span> <span class="pre">Profile().fron_lists(x_list,data_list)</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.from_narrow_png">
+<code class="descname">from_narrow_png</code><span class="sig-paren">(</span><em>file_name</em>, <em>step_size=0.1</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.from_narrow_png"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.from_narrow_png" title="Permalink to this definition">¶</a></dt>
+<dd><p>import from png file</p>
+<p>Source file is a full color PNG, sufficiently narrow that
+density is uniform along its short dimension. The image density along
+its long dimension is reflective of a dose distribution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>file_name</strong> (<em>str</em>) – </li>
+<li><strong>step-size</strong> (<em>float</em><em>, </em><em>optional</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ValueError</strong> – if aspect ratio &lt;= 5, i.e. not narrow</li>
+<li><strong>AssertionError</strong> – if step_size &lt;= 12.7 over dpi, i.e. small</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.from_pulse">
+<code class="descname">from_pulse</code><span class="sig-paren">(</span><em>centre</em>, <em>width</em>, <em>domain</em>, <em>increment</em>, <em>meta={}</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.from_pulse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.from_pulse" title="Permalink to this definition">¶</a></dt>
+<dd><p>create pulse of unit height</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>centre</strong> (<em>float</em>) – </li>
+<li><strong>width</strong> (<em>float</em>) – </li>
+<li><strong>domain</strong> (<em>tuple</em>) – (x_left, x_right)</li>
+<li><strong>increment</strong> (<em>float</em>) – </li>
+<li><strong>meta</strong> (<em>dict</em><em>, </em><em>optional</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.from_snc_profiler">
+<code class="descname">from_snc_profiler</code><span class="sig-paren">(</span><em>file_name</em>, <em>axis</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.from_snc_profiler"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.from_snc_profiler" title="Permalink to this definition">¶</a></dt>
+<dd><p>import profile form SNC Profiler file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>file_name</strong> (<em>string</em>) – file name with path, .prs</li>
+<li><strong>axis</strong> (<em>string</em>) – ‘tvs’ or ‘rad’</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><strong>TypeError</strong> – if axis invalid</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.from_tuples">
+<code class="descname">from_tuples</code><span class="sig-paren">(</span><em>list_of_tuples</em>, <em>meta={}</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.from_tuples"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.from_tuples" title="Permalink to this definition">¶</a></dt>
+<dd><p>import list of (x,y) tuples</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>list_of_tuples</strong> (<em>[</em><em>(</em><em>float x</em><em>, </em><em>float y</em><em>)</em><em>, </em><em>..</em><em>]</em>) – </li>
+<li><strong>meta</strong> (<em>dict</em><em>, </em><em>optional</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p><code class="docutils literal notranslate"><span class="pre">profile</span> <span class="pre">=</span> <span class="pre">Profile().fron_lists(list_of_tuples)</span></code></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.get_edges">
+<code class="descname">get_edges</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.get_edges"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.get_edges" title="Permalink to this definition">¶</a></dt>
+<dd><p>x-values of profile edges (left, right)</p>
+<p class="rubric">Notes</p>
+<p>Points of greatest positive and greatest negative gradient.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">tuple</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.get_flatness">
+<code class="descname">get_flatness</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.get_flatness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.get_flatness" title="Permalink to this definition">¶</a></dt>
+<dd><p>dose range relative to mean</p>
+<p>Calculated as the dose range normalized to mean dose.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.get_increment">
+<code class="descname">get_increment</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.get_increment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.get_increment" title="Permalink to this definition">¶</a></dt>
+<dd><p>minimum step-size increment</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>increment</strong></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.get_symmetry">
+<code class="descname">get_symmetry</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.get_symmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.get_symmetry" title="Permalink to this definition">¶</a></dt>
+<dd><p>max point diff relative to mean</p>
+<p>Calculated as the maximum difference between corresponding points
+on opposite sides of the profile center, relative to mean dose.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.get_x">
+<code class="descname">get_x</code><span class="sig-paren">(</span><em>y</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.get_x"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.get_x" title="Permalink to this definition">¶</a></dt>
+<dd><p>tuple of x-values at intensity y</p>
+<p>Return distance values based on interpolation of source data for a
+supplied y value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>y</strong> (<em>float</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>tuple</strong></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">(x1, x2, ..)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.get_y">
+<code class="descname">get_y</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.get_y"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.get_y" title="Permalink to this definition">¶</a></dt>
+<dd><p>y-value at distance x</p>
+<p>Return a y value based on interpolation of source data for a
+supplied distance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>x</strong> (<em>float</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.make_centered">
+<code class="descname">make_centered</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.make_centered"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.make_centered" title="Permalink to this definition">¶</a></dt>
+<dd><p>shift to align edges</p>
+<p>Created by shifting the profile based on edge locations.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.make_flipped">
+<code class="descname">make_flipped</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.make_flipped"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.make_flipped" title="Permalink to this definition">¶</a></dt>
+<dd><p>flip L -&gt; R</p>
+<p>Created by reversing the sequence of y values.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.make_normal_x">
+<code class="descname">make_normal_x</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.make_normal_x"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.make_normal_x" title="Permalink to this definition">¶</a></dt>
+<dd><p>normalised to distance at edges</p>
+<p>Source profile distances multiplied by scaling factor to yield unit distance
+at beam edges. <a class="footnote-reference" href="#id3" id="id1">[1]</a> <a class="footnote-reference" href="#id4" id="id2">[2]</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">References</p>
+<table class="docutils footnote" frame="void" id="id3" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Milan &amp; Bentley, BJR Feb-74, The Storage and manipulationof radiation dose data
+in a small digital computer</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id4" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Heintz, King, &amp; Childs, May-95, User Manual, Prowess 3000 CT Treatment Planning</td></tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.make_normal_y">
+<code class="descname">make_normal_y</code><span class="sig-paren">(</span><em>x=0.0</em>, <em>y=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.make_normal_y"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.make_normal_y" title="Permalink to this definition">¶</a></dt>
+<dd><p>normalised to dose at distance</p>
+<p>Source profile values multiplied by scaling factor to yield the specified dose at
+the specified distance. If distance is not specified, the central axis value is
+used. If dose is not specified, then normalization is to unity. With neither
+specified, resulting curve is the conventional off-center-ratio.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x</strong> (<em>float</em><em>, </em><em>optional</em>) – </li>
+<li><strong>y</strong> (<em>float</em><em>, </em><em>optional</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.make_symmetric">
+<code class="descname">make_symmetric</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.make_symmetric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.make_symmetric" title="Permalink to this definition">¶</a></dt>
+<dd><p>avg of corresponding points</p>
+<p>Created by averaging over corresponding +/- distances,
+except at the endpoints.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.plot">
+<code class="descname">plot</code><span class="sig-paren">(</span><em>marker='o-'</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>profile plot</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>marker</strong> (<em>string</em><em>, </em><em>optional</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.resample_x">
+<code class="descname">resample_x</code><span class="sig-paren">(</span><em>step</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.resample_x"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.resample_x" title="Permalink to this definition">¶</a></dt>
+<dd><p>resampled x-values at a given increment</p>
+<p>Resulting profile has stepsize of the indicated step based on
+linear interpolation over the points of the source profile.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>step</strong> (<em>float</em>) – sampling increment</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.resample_y">
+<code class="descname">resample_y</code><span class="sig-paren">(</span><em>step</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.resample_y"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.resample_y" title="Permalink to this definition">¶</a></dt>
+<dd><p>resampled y-values at a given increment</p>
+<p>Resulting profile has nonuniform step-size, but each step
+represents and approximately equal step in dose.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>step</strong> (<em>float</em>) – sampling increment</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.slice_penumbra">
+<code class="descname">slice_penumbra</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.slice_penumbra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.slice_penumbra" title="Permalink to this definition">¶</a></dt>
+<dd><p>penumbra (20 -&gt; 80%, 80 -&gt; 20%)</p>
+<p>Source dose profile sliced to include only the penumbral edges, where the dose
+transitions from 20% - 80% of the umbra dose, as precent at the umbra edge,
+to support wedged profiles.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">(left penumbra Profile, right penumbra Profile)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">tuple</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.slice_segment">
+<code class="descname">slice_segment</code><span class="sig-paren">(</span><em>start=-inf</em>, <em>stop=inf</em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.slice_segment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.slice_segment" title="Permalink to this definition">¶</a></dt>
+<dd><p>slice between given end-points</p>
+<p>Resulting profile is comprised of those points in the source
+profile whose distance values are not-less-than start and
+not-greater-than stop.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>start</strong> (<em>float</em><em>, </em><em>optional</em>) – </li>
+<li><strong>stop</strong> (<em>float</em><em>, </em><em>optional</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.slice_shoulders">
+<code class="descname">slice_shoulders</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.slice_shoulders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.slice_shoulders" title="Permalink to this definition">¶</a></dt>
+<dd><p>shoulders (penumbra -&gt; umbra, umbra -&gt; penumbra)</p>
+<p>Source dose profile sliced to include only the profile shoulders,
+outside the central 80% of of the profile but inside the region bounded
+by the 20-80% transition.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">(left shoulder Profile, right shoulder Profile)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">tuple</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.slice_tails">
+<code class="descname">slice_tails</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.slice_tails"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.slice_tails" title="Permalink to this definition">¶</a></dt>
+<dd><p>tails (-&gt; penumbra, penumbra -&gt;)</p>
+<p>Source dose profile sliced to include only the profile tail,
+outside the beam penumbra.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">(left tail Profile, right tail Profile)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">tuple</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pymedphys._labs.paulking.profile.Profile.slice_umbra">
+<code class="descname">slice_umbra</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/pymedphys/_labs/paulking/profile.html#Profile.slice_umbra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys._labs.paulking.profile.Profile.slice_umbra" title="Permalink to this definition">¶</a></dt>
+<dd><p>umbra central 80%</p>
+<p>Source dose profile sliced to include only the central region between beam edges.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#pymedphys._labs.paulking.profile.Profile" title="pymedphys._labs.paulking.profile.Profile">Profile</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="sinogram.html" class="btn btn-neutral float-right" title="Sinogram" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../paulking.html" class="btn btn-neutral" title="Paul King" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

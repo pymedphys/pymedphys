@@ -1,0 +1,833 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pymedphys.dicom._level2.dose &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>pymedphys.dicom._level2.dose</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pymedphys.dicom._level2.dose</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2016-2019 Matthew Jennings and Simon Biggs</span>
+
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU Affero General Public License as published</span>
+<span class="c1"># by the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version (the &quot;AGPL-3.0+&quot;).</span>
+
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the</span>
+<span class="c1"># GNU Affero General Public License and the additional terms for more</span>
+<span class="c1"># details.</span>
+
+<span class="c1"># You should have received a copy of the GNU Affero General Public License</span>
+<span class="c1"># along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="c1"># ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU</span>
+<span class="c1"># Affero General Public License. These additional terms are Sections 1, 5,</span>
+<span class="c1"># 6, 7, 8, and 9 from the Apache License, Version 2.0 (the &quot;Apache-2.0&quot;)</span>
+<span class="c1"># where all references to the definition &quot;License&quot; are instead defined to</span>
+<span class="c1"># mean the AGPL-3.0+.</span>
+
+<span class="c1"># You should have received a copy of the Apache-2.0 along with this</span>
+<span class="c1"># program. If not, see &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;.</span>
+
+
+<span class="sd">&quot;&quot;&quot;A DICOM RT Dose toolbox&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="k">import</span> <span class="n">path</span>
+
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="k">import</span> <span class="n">RegularGridInterpolator</span>
+
+<span class="kn">import</span> <span class="nn">pydicom</span>
+<span class="kn">import</span> <span class="nn">pydicom.uid</span>
+
+<span class="kn">from</span> <span class="nn">.._level1.structure</span> <span class="k">import</span> <span class="n">pull_structure</span>
+
+<span class="kn">from</span> <span class="nn">...libutils</span> <span class="k">import</span> <span class="n">get_imports</span>
+<span class="n">IMPORTS</span> <span class="o">=</span> <span class="n">get_imports</span><span class="p">(</span><span class="nb">globals</span><span class="p">())</span>
+
+<span class="c1"># pylint: disable=C0103</span>
+
+
+<span class="k">def</span> <span class="nf">convert_xyz_to_dicom_coords</span><span class="p">(</span><span class="n">xyz_tuple</span><span class="p">):</span>
+    <span class="n">ZZ</span><span class="p">,</span> <span class="n">YY</span><span class="p">,</span> <span class="n">XX</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span>
+        <span class="n">xyz_tuple</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">xyz_tuple</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">xyz_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">)</span>
+
+    <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">XX</span><span class="p">,</span> <span class="n">YY</span><span class="p">,</span> <span class="n">ZZ</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">coords</span>
+
+
+<div class="viewcode-block" id="load_dose_from_dicom"><a class="viewcode-back" href="../../../../user/library/dicom.html#pymedphys.dicom.load_dose_from_dicom">[docs]</a><span class="k">def</span> <span class="nf">load_dose_from_dicom</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">set_transfer_syntax_uid</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reshape</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Extract the dose grid from a DICOM RT Dose file.</span>
+
+<span class="sd">    .. deprecated:: 0.5.0</span>
+<span class="sd">            `load_dose_from_dicom` will be removed in a future version of PyMedPhys.</span>
+<span class="sd">            It is replaced by `extract_dose`, which provides additional dose-related</span>
+<span class="sd">            information and conforms to a new coordinate system handling convention.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">set_transfer_syntax_uid</span><span class="p">:</span>
+        <span class="n">ds</span><span class="o">.</span><span class="n">file_meta</span><span class="o">.</span><span class="n">TransferSyntaxUID</span> <span class="o">=</span> <span class="n">pydicom</span><span class="o">.</span><span class="n">uid</span><span class="o">.</span><span class="n">ImplicitVRLittleEndian</span>
+
+    <span class="k">if</span> <span class="n">reshape</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">((</span>
+            <span class="s1">&#39;`load_dose_from_dicom` currently reshapes the dose grid. In a &#39;</span>
+            <span class="s1">&#39;future version this will no longer occur. To begin using this &#39;</span>
+            <span class="s1">&#39;function without the reshape pass the parameter `reshape=False` &#39;</span>
+            <span class="s1">&#39;when calling `load_dose_from_dicom`.&#39;</span><span class="p">),</span> <span class="ne">UserWarning</span><span class="p">)</span>
+        <span class="n">pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span>
+            <span class="n">ds</span><span class="o">.</span><span class="n">pixel_array</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pixels</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">pixel_array</span>
+
+    <span class="n">dose</span> <span class="o">=</span> <span class="n">pixels</span> <span class="o">*</span> <span class="n">ds</span><span class="o">.</span><span class="n">DoseGridScaling</span>
+
+    <span class="k">return</span> <span class="n">dose</span></div>
+
+
+<div class="viewcode-block" id="load_xyz_from_dicom"><a class="viewcode-back" href="../../../../user/library/dicom.html#pymedphys.dicom.load_xyz_from_dicom">[docs]</a><span class="k">def</span> <span class="nf">load_xyz_from_dicom</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Extract the coordinates of a DICOM RT Dose file&#39;s dose grid.</span>
+
+<span class="sd">    .. deprecated:: 0.5.0</span>
+<span class="sd">            `load_xyz_from_dicom` will be removed in a future version of PyMedPhys.</span>
+<span class="sd">            It is replaced by `extract_dicom_patient_coords`, `extract_iec_patient_coords`</span>
+<span class="sd">            and `extract_iec_fixed_coords`, which explicitly work in their respective</span>
+<span class="sd">            coordinate systems.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">((</span>
+        <span class="s1">&#39;`load_xyz_from_dicom` returns x, y &amp; z values in the DICOM patient &#39;</span>
+        <span class="s1">&#39;coordinate system and presumes the patient</span><span class="se">\&#39;</span><span class="s1">s orientation is HFS. &#39;</span>
+        <span class="s1">&#39;This presumption may not be correct and so the function may return &#39;</span>
+        <span class="s1">&#39;incorrect x, y, z values. In the future, this function will be removed. &#39;</span>
+        <span class="s1">&#39;It is currently preserved for temporary backwards compatibility.&#39;</span>
+    <span class="p">),</span> <span class="ne">UserWarning</span><span class="p">)</span>
+
+    <span class="n">resolution</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PixelSpacing</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="n">dx</span> <span class="o">=</span> <span class="n">resolution</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">ImagePositionPatient</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Columns</span> <span class="o">*</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dx</span><span class="p">))</span>
+
+    <span class="n">dy</span> <span class="o">=</span> <span class="n">resolution</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">ImagePositionPatient</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Rows</span> <span class="o">*</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dy</span><span class="p">))</span>
+
+    <span class="n">z</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">GridFrameOffsetVector</span><span class="p">)</span> <span class="o">+</span> <span class="n">ds</span><span class="o">.</span><span class="n">ImagePositionPatient</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span></div>
+
+
+<div class="viewcode-block" id="extract_iec_patient_xyz"><a class="viewcode-back" href="../../../../user/library/dicom.html#pymedphys.dicom.extract_iec_patient_xyz">[docs]</a><span class="k">def</span> <span class="nf">extract_iec_patient_xyz</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns the x, y and z coordinates of a DICOM RT Dose file&#39;s dose grid</span>
+<span class="sd">    in the IEC patient coordinate system</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds</span>
+<span class="sd">        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.</span>
+<span class="sd">        Must represent a valid DICOM RT Dose file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (x, y, z)</span>
+<span class="sd">        A tuple containing three `ndarrays` corresponding to the `x`,</span>
+<span class="sd">        `y` and `z` coordinates of the DICOM RT Dose file&#39;s dose grid in</span>
+<span class="sd">        the IEC patient coordinate system [1]_:</span>
+
+<span class="sd">        `x` corresponds to the patient&#39;s left-right axis and increases toward the</span>
+<span class="sd">        left hand side of the patient.</span>
+
+<span class="sd">        `y` corresponds to the patient&#39;s superoinferior axis and increases toward</span>
+<span class="sd">        the head of the patient.</span>
+
+<span class="sd">        `z` corresponds to the patient&#39;s anteroposterior axis and increases to the</span>
+<span class="sd">        anterior side of the patient.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Supported scan orientations [2]_:</span>
+
+<span class="sd">    =========================== =======================</span>
+<span class="sd">    Orientation                 ImageOrientationPatient</span>
+<span class="sd">    =========================== =======================</span>
+<span class="sd">    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]</span>
+<span class="sd">    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]</span>
+<span class="sd">    Feet First Prone            [1, 0, 0, 0, -1, 0]</span>
+<span class="sd">    Feet First Supine           [-1, 0, 0, 0, 1, 0]</span>
+<span class="sd">    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]</span>
+<span class="sd">    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]</span>
+<span class="sd">    Head First Prone            [-1, 0, 0, 0, -1, 0]</span>
+<span class="sd">    Head First Supine           [1, 0, 0, 0, 1, 0]</span>
+<span class="sd">    =========================== =======================</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] &quot;IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales&quot;</span>
+
+<span class="sd">    .. [2] O. McNoleg, &quot;Generalized coordinate transformations for Monte Carlo</span>
+<span class="sd">       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy</span>
+<span class="sd">       treatment plans&quot;, arXiv:1406.0014, Table 1,</span>
+<span class="sd">       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">ds</span><span class="o">.</span><span class="n">Modality</span> <span class="o">!=</span> <span class="s2">&quot;RTDOSE&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The input DICOM file is not an RT Dose file&quot;</span><span class="p">)</span>
+
+    <span class="n">position</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">ImagePositionPatient</span><span class="p">)</span>
+    <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">ImageOrientationPatient</span><span class="p">)</span>
+
+    <span class="n">di</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PixelSpacing</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">dj</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PixelSpacing</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">is_prone_or_supine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">orientation</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]))</span>
+
+    <span class="n">is_decubitus</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">orientation</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]))</span>
+
+    <span class="k">if</span> <span class="n">is_prone_or_supine</span><span class="p">:</span>
+        <span class="n">xflip</span> <span class="o">=</span> <span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">zflip</span> <span class="o">=</span> <span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">head_first</span> <span class="o">=</span> <span class="p">(</span><span class="n">xflip</span> <span class="o">!=</span> <span class="n">zflip</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Columns</span> <span class="o">*</span> <span class="n">di</span><span class="p">,</span> <span class="n">di</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Rows</span> <span class="o">*</span> <span class="n">dj</span><span class="p">,</span> <span class="n">dj</span><span class="p">))</span>
+
+    <span class="k">elif</span> <span class="n">is_decubitus</span><span class="p">:</span>
+        <span class="n">xflip</span> <span class="o">=</span> <span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">zflip</span> <span class="o">=</span> <span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">head_first</span> <span class="o">=</span> <span class="p">(</span><span class="n">xflip</span> <span class="o">==</span> <span class="n">zflip</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Rows</span> <span class="o">*</span> <span class="n">dj</span><span class="p">,</span> <span class="n">dj</span><span class="p">))</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Columns</span> <span class="o">*</span> <span class="n">di</span><span class="p">,</span> <span class="n">di</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Dose grid orientation is not supported. &quot;</span>
+            <span class="s2">&quot;Dose grid slices must be aligned along the superoinferior axis of patient&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">xflip</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">zflip</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">head_first</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">GridFrameOffsetVector</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="o">-</span><span class="n">position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">GridFrameOffsetVector</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="extract_iec_fixed_xyz"><a class="viewcode-back" href="../../../../user/library/dicom.html#pymedphys.dicom.extract_iec_fixed_xyz">[docs]</a><span class="k">def</span> <span class="nf">extract_iec_fixed_xyz</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns the x, y and z coordinates of a DICOM RT Dose file&#39;s dose grid</span>
+<span class="sd">    in the IEC fixed coordinate system.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds</span>
+<span class="sd">        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.</span>
+<span class="sd">        Must represent a valid DICOM RT Dose file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (x, y, z)</span>
+<span class="sd">        A tuple containing three `ndarrays` corresponding to the `x`,</span>
+<span class="sd">        `y` and `z` coordinates of the DICOM RT Dose file&#39;s dose grid in</span>
+<span class="sd">        the IEC fixed coordinate system [3]_:</span>
+
+<span class="sd">            `x`</span>
+<span class="sd">                An `np.ndarray` of coordinates on the horizontal plane that runs</span>
+<span class="sd">                orthogonal to the gantry axis of rotation. The x axis increases</span>
+<span class="sd">                towards a viewer&#39;s right hand side when facing the gantry standing</span>
+<span class="sd">                at the isocentre. The isocentre has an x value of 0.</span>
+<span class="sd">            `y`</span>
+<span class="sd">                An `np.ndarray` of coordinates on the horizontal plane that runs</span>
+<span class="sd">                parallel to the gantry axis of rotation. The positive direction</span>
+<span class="sd">                of the y axis travels from the isocentre to the gantry. The</span>
+<span class="sd">                isocentre has a y value of 0.</span>
+<span class="sd">            `z`</span>
+<span class="sd">                An `np.ndarray` of coordinates aligned vertically and passing through</span>
+<span class="sd">                the isocentre. The positive direction of the z axis travels upwards</span>
+<span class="sd">                and the isocentre has a z value of 0.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Supported scan orientations [4]_:</span>
+
+<span class="sd">    =========================== =======================</span>
+<span class="sd">    Orientation                 ImageOrientationPatient</span>
+<span class="sd">    =========================== =======================</span>
+<span class="sd">    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]</span>
+<span class="sd">    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]</span>
+<span class="sd">    Feet First Prone            [1, 0, 0, 0, -1, 0]</span>
+<span class="sd">    Feet First Supine           [-1, 0, 0, 0, 1, 0]</span>
+<span class="sd">    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]</span>
+<span class="sd">    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]</span>
+<span class="sd">    Head First Prone            [-1, 0, 0, 0, -1, 0]</span>
+<span class="sd">    Head First Supine           [1, 0, 0, 0, 1, 0]</span>
+<span class="sd">    =========================== =======================</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [3] &quot;IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales&quot;</span>
+
+<span class="sd">    .. [4] O. McNoleg, &quot;Generalized coordinate transformations for Monte Carlo</span>
+<span class="sd">       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy</span>
+<span class="sd">       treatment plans&quot;, arXiv:1406.0014, Table 1,</span>
+<span class="sd">       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">ds</span><span class="o">.</span><span class="n">Modality</span> <span class="o">!=</span> <span class="s2">&quot;RTDOSE&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The input DICOM file is not an RT Dose file&quot;</span><span class="p">)</span>
+
+    <span class="n">position</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">ImagePositionPatient</span><span class="p">)</span>
+    <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">ImageOrientationPatient</span><span class="p">)</span>
+
+    <span class="n">di</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PixelSpacing</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">dj</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PixelSpacing</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">is_prone_or_supine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">orientation</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]))</span>
+
+    <span class="n">is_decubitus</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">orientation</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]))</span>
+
+    <span class="c1"># Only proceed if the DICOM RT Dose file has a supported orientation.</span>
+    <span class="c1"># I.e. no pitch, yaw or non-cardinal roll angle exists between the dose</span>
+    <span class="c1"># grid and the &#39;patient&#39;</span>
+    <span class="k">if</span> <span class="n">is_prone_or_supine</span><span class="p">:</span>
+        <span class="n">y_orientation</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Columns</span> <span class="o">*</span> <span class="n">di</span><span class="p">,</span> <span class="n">di</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span>
+                     <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Rows</span> <span class="o">*</span> <span class="n">dj</span><span class="p">,</span> <span class="n">dj</span><span class="p">))</span>
+
+    <span class="k">elif</span> <span class="n">is_decubitus</span><span class="p">:</span>
+        <span class="n">y_orientation</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span>
+
+        <span class="n">z</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span>
+                     <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Rows</span> <span class="o">*</span> <span class="n">dj</span><span class="p">,</span> <span class="n">dj</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Columns</span> <span class="o">*</span> <span class="n">di</span><span class="p">,</span> <span class="n">di</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Dose grid orientation is not supported. &quot;</span>
+            <span class="s2">&quot;Dose grid slices must be aligned along the superoinferior axis of patient&quot;</span><span class="p">)</span>
+
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y_orientation</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">GridFrameOffsetVector</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="extract_dicom_patient_xyz"><a class="viewcode-back" href="../../../../user/library/dicom.html#pymedphys.dicom.extract_dicom_patient_xyz">[docs]</a><span class="k">def</span> <span class="nf">extract_dicom_patient_xyz</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns the x, y and z coordinates of a DICOM RT Dose file&#39;s dose grid</span>
+<span class="sd">    in the DICOM patient coordinate system</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds</span>
+<span class="sd">        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.</span>
+<span class="sd">        Must represent a valid DICOM RT Dose file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (x, y, z)</span>
+<span class="sd">        A tuple containing three `ndarrays` corresponding to the `x`,</span>
+<span class="sd">        `y` and `z` coordinates of the DICOM RT Dose file&#39;s dose grid in</span>
+<span class="sd">        the DICOM patient coordinate system [5]_:</span>
+
+<span class="sd">        `x` corresponds to the patient&#39;s left-right axis and increases to the</span>
+<span class="sd">        left hand side of the patient.</span>
+
+<span class="sd">        `y` corresponds to the patient&#39;s anteroposterior axis and increases toward</span>
+<span class="sd">        the posterior side of the patient.</span>
+
+<span class="sd">        `z` corresponds to the patient&#39;s superoinferior axis and increases</span>
+<span class="sd">        toward the head of the patient.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Supported scan orientations [6]_:</span>
+
+<span class="sd">    =========================== =======================</span>
+<span class="sd">    Orientation                 ImageOrientationPatient</span>
+<span class="sd">    =========================== =======================</span>
+<span class="sd">    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]</span>
+<span class="sd">    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]</span>
+<span class="sd">    Feet First Prone            [1, 0, 0, 0, -1, 0]</span>
+<span class="sd">    Feet First Supine           [-1, 0, 0, 0, 1, 0]</span>
+<span class="sd">    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]</span>
+<span class="sd">    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]</span>
+<span class="sd">    Head First Prone            [-1, 0, 0, 0, -1, 0]</span>
+<span class="sd">    Head First Supine           [1, 0, 0, 0, 1, 0]</span>
+<span class="sd">    =========================== =======================</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [5] &quot;C.7.6.2.1.1 Image Position and Image Orientation&quot;,</span>
+<span class="sd">       &quot;DICOM PS3.3 2016a - Information Object Definitions&quot;,</span>
+<span class="sd">       http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1</span>
+
+<span class="sd">    .. [6] O. McNoleg, &quot;Generalized coordinate transformations for Monte Carlo</span>
+<span class="sd">       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy</span>
+<span class="sd">       treatment plans&quot;, arXiv:1406.0014, Table 1,</span>
+<span class="sd">       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">ds</span><span class="o">.</span><span class="n">Modality</span> <span class="o">!=</span> <span class="s2">&quot;RTDOSE&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The input DICOM file is not an RT Dose file&quot;</span><span class="p">)</span>
+
+    <span class="n">position</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">ImagePositionPatient</span><span class="p">)</span>
+    <span class="n">orientation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">ImageOrientationPatient</span><span class="p">)</span>
+
+    <span class="n">di</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PixelSpacing</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">dj</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PixelSpacing</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">is_prone_or_supine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">orientation</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]))</span>
+
+    <span class="n">is_decubitus</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">orientation</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]))</span>
+
+    <span class="c1"># Only proceed if the DICOM RT Dose file has a supported orientation.</span>
+    <span class="c1"># I.e. no pitch, yaw or non-cardinal roll angle exists between the dose</span>
+    <span class="c1"># grid and the &#39;patient&#39;</span>
+    <span class="k">if</span> <span class="n">is_prone_or_supine</span><span class="p">:</span>
+        <span class="n">xflip</span> <span class="o">=</span> <span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">yflip</span> <span class="o">=</span> <span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">head_first</span> <span class="o">=</span> <span class="p">(</span><span class="n">xflip</span> <span class="o">==</span> <span class="n">yflip</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Columns</span> <span class="o">*</span> <span class="n">di</span><span class="p">,</span> <span class="n">di</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Rows</span> <span class="o">*</span> <span class="n">dj</span><span class="p">,</span> <span class="n">dj</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">is_decubitus</span><span class="p">:</span>
+        <span class="n">xflip</span> <span class="o">=</span> <span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">yflip</span> <span class="o">=</span> <span class="p">(</span><span class="n">orientation</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">head_first</span> <span class="o">=</span> <span class="p">(</span><span class="n">xflip</span> <span class="o">!=</span> <span class="n">yflip</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Rows</span> <span class="o">*</span> <span class="n">dj</span><span class="p">,</span> <span class="n">dj</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">orientation</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">Columns</span> <span class="o">*</span> <span class="n">di</span><span class="p">,</span> <span class="n">di</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Dose grid orientation is not supported. &quot;</span>
+            <span class="s2">&quot;Dose grid slices must be aligned along the superoinferior axis of patient&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">xflip</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">yflip</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">head_first</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">GridFrameOffsetVector</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="o">-</span><span class="n">position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">GridFrameOffsetVector</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">coords_and_dose_from_dicom</span><span class="p">(</span><span class="n">dicom_filepath</span><span class="p">):</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">pydicom</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="n">dicom_filepath</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">load_xyz_from_dicom</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">coords</span> <span class="o">=</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    <span class="n">dose</span> <span class="o">=</span> <span class="n">load_dose_from_dicom</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">coords</span><span class="p">,</span> <span class="n">dose</span>
+
+
+<span class="k">def</span> <span class="nf">load_dicom_data</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">):</span>
+    <span class="n">dose</span> <span class="o">=</span> <span class="n">load_dose_from_dicom</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">crossplane</span><span class="p">,</span> <span class="n">vertical</span><span class="p">,</span> <span class="n">inplane</span> <span class="o">=</span> <span class="n">load_xyz_from_dicom</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+
+    <span class="n">depth</span> <span class="o">=</span> <span class="n">vertical</span> <span class="o">+</span> <span class="n">depth_adjust</span>
+
+    <span class="k">return</span> <span class="n">inplane</span><span class="p">,</span> <span class="n">crossplane</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">dose</span>
+
+
+<span class="k">def</span> <span class="nf">arbitrary_profile_from_dicom_dose</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">,</span> <span class="n">inplane_ref</span><span class="p">,</span> <span class="n">crossplane_ref</span><span class="p">,</span> <span class="n">depth_ref</span><span class="p">):</span>
+    <span class="n">inplane</span><span class="p">,</span> <span class="n">crossplane</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">dose</span> <span class="o">=</span> <span class="n">load_dicom_data</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">)</span>
+
+    <span class="n">interpolation_function</span> <span class="o">=</span> <span class="n">RegularGridInterpolator</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="n">crossplane</span><span class="p">,</span> <span class="n">inplane</span><span class="p">),</span> <span class="n">dose</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">a_depth_val</span><span class="p">,</span> <span class="n">a_crossplane_val</span><span class="p">,</span> <span class="n">an_inplane_val</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">a_depth_val</span><span class="p">,</span> <span class="n">a_crossplane_val</span><span class="p">,</span> <span class="n">an_inplane_val</span>
+        <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">depth_ref</span><span class="p">,</span> <span class="n">crossplane_ref</span><span class="p">,</span> <span class="n">inplane_ref</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="n">interpolated_dose</span> <span class="o">=</span> <span class="n">interpolation_function</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">interpolated_dose</span>
+
+
+<span class="k">def</span> <span class="nf">extract_depth_dose</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">,</span> <span class="n">averaging_distance</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">inplane</span><span class="p">,</span> <span class="n">crossplane</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">dose</span> <span class="o">=</span> <span class="n">load_dicom_data</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">)</span>
+
+    <span class="n">inplane_ref</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">inplane</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">averaging_distance</span>
+    <span class="n">crossplane_ref</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">crossplane</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">averaging_distance</span>
+
+    <span class="n">sheet_dose</span> <span class="o">=</span> <span class="n">dose</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">inplane_ref</span><span class="p">]</span>
+    <span class="n">column_dose</span> <span class="o">=</span> <span class="n">sheet_dose</span><span class="p">[:,</span> <span class="n">crossplane_ref</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">depth_dose</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">column_dose</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+    <span class="c1"># uncertainty = np.std(column_dose, axis=(1, 2)) / depth_dose</span>
+    <span class="c1"># assert np.all(uncertainty &lt; 0.01),</span>
+    <span class="c1"># &quot;Shouldn&#39;t average over more than 1% uncertainty&quot;</span>
+
+    <span class="k">return</span> <span class="n">depth</span><span class="p">,</span> <span class="n">depth_dose</span>
+
+
+<span class="k">def</span> <span class="nf">extract_profiles</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">,</span> <span class="n">depth_lookup</span><span class="p">,</span> <span class="n">averaging_distance</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+    <span class="n">inplane</span><span class="p">,</span> <span class="n">crossplane</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">dose</span> <span class="o">=</span> <span class="n">load_dicom_data</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">)</span>
+
+    <span class="n">inplane_ref</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">inplane</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">averaging_distance</span>
+    <span class="n">crossplane_ref</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">crossplane</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">averaging_distance</span>
+
+    <span class="n">depth_reference</span> <span class="o">=</span> <span class="n">depth</span> <span class="o">==</span> <span class="n">depth_lookup</span>
+
+    <span class="n">dose_at_depth</span> <span class="o">=</span> <span class="n">dose</span><span class="p">[</span><span class="n">depth_reference</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+    <span class="n">inplane_dose</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dose_at_depth</span><span class="p">[:,</span> <span class="n">crossplane_ref</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">crossplane_dose</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dose_at_depth</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">inplane_ref</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">inplane</span><span class="p">,</span> <span class="n">inplane_dose</span><span class="p">,</span> <span class="n">crossplane</span><span class="p">,</span> <span class="n">crossplane_dose</span>
+
+
+<span class="k">def</span> <span class="nf">nearest_negative</span><span class="p">(</span><span class="n">diff</span><span class="p">):</span>
+    <span class="n">neg_diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>
+    <span class="n">neg_diff</span><span class="p">[</span><span class="n">neg_diff</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">neg_diff</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">bounding_vals</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+    <span class="n">npvalues</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">npvalues</span> <span class="o">-</span> <span class="n">test</span>
+    <span class="n">upper</span> <span class="o">=</span> <span class="n">nearest_negative</span><span class="p">(</span><span class="o">-</span><span class="n">diff</span><span class="p">)</span>
+    <span class="n">lower</span> <span class="o">=</span> <span class="n">nearest_negative</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">values</span><span class="p">[</span><span class="n">lower</span><span class="p">],</span> <span class="n">values</span><span class="p">[</span><span class="n">upper</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">average_bounding_profiles</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">,</span> <span class="n">depth_lookup</span><span class="p">,</span>
+                              <span class="n">averaging_distance</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">inplane</span><span class="p">,</span> <span class="n">crossplane</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">load_dicom_data</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">depth_lookup</span> <span class="ow">in</span> <span class="n">depth</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">extract_profiles</span><span class="p">(</span>
+            <span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">,</span> <span class="n">depth_lookup</span><span class="p">,</span> <span class="n">averaging_distance</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s1">&#39;Specific depth not found, interpolating from surrounding depths&#39;</span><span class="p">)</span>
+        <span class="n">shallower</span><span class="p">,</span> <span class="n">deeper</span> <span class="o">=</span> <span class="n">bounding_vals</span><span class="p">(</span><span class="n">depth_lookup</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">shallower_inplane</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">shallower_crossplane</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="n">extract_profiles</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">,</span> <span class="n">shallower</span><span class="p">,</span> <span class="n">averaging_distance</span><span class="p">))</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">deeper_inplane</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">deeper_crossplane</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="n">extract_profiles</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">depth_adjust</span><span class="p">,</span> <span class="n">deeper</span><span class="p">,</span> <span class="n">averaging_distance</span><span class="p">))</span>
+
+        <span class="n">depth_range</span> <span class="o">=</span> <span class="n">deeper</span> <span class="o">-</span> <span class="n">shallower</span>
+        <span class="n">shallower_weight</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">depth_lookup</span> <span class="o">-</span> <span class="n">shallower</span><span class="p">)</span> <span class="o">/</span> <span class="n">depth_range</span>
+        <span class="n">deeper_weight</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">deeper</span> <span class="o">-</span> <span class="n">depth_lookup</span><span class="p">)</span> <span class="o">/</span> <span class="n">depth_range</span>
+
+        <span class="n">inplane_dose</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">shallower_weight</span> <span class="o">*</span> <span class="n">shallower_inplane</span> <span class="o">+</span>
+            <span class="n">deeper_weight</span> <span class="o">*</span> <span class="n">deeper_inplane</span><span class="p">)</span>
+        <span class="n">crossplane_dose</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">shallower_weight</span> <span class="o">*</span> <span class="n">shallower_crossplane</span> <span class="o">+</span>
+            <span class="n">deeper_weight</span> <span class="o">*</span> <span class="n">deeper_crossplane</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">inplane</span><span class="p">,</span> <span class="n">inplane_dose</span><span class="p">,</span> <span class="n">crossplane</span><span class="p">,</span> <span class="n">crossplane_dose</span>
+
+
+<span class="k">def</span> <span class="nf">_get_index</span><span class="p">(</span><span class="n">z_list</span><span class="p">,</span> <span class="n">z_val</span><span class="p">):</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">z_list</span><span class="p">])</span>
+    <span class="c1"># This will error if more than one contour exists on a given slice</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">indices</span> <span class="o">==</span> <span class="n">z_val</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="c1"># Multiple contour sets per slice not yet implemented</span>
+
+    <span class="k">return</span> <span class="n">index</span>
+
+
+<div class="viewcode-block" id="find_dose_within_structure"><a class="viewcode-back" href="../../../../user/library/dicom.html#pymedphys.dicom.find_dose_within_structure">[docs]</a><span class="k">def</span> <span class="nf">find_dose_within_structure</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">dcm_struct</span><span class="p">,</span> <span class="n">dcm_dose</span><span class="p">):</span>
+    <span class="n">x_dose</span><span class="p">,</span> <span class="n">y_dose</span><span class="p">,</span> <span class="n">z_dose</span> <span class="o">=</span> <span class="n">load_xyz_from_dicom</span><span class="p">(</span><span class="n">dcm_dose</span><span class="p">)</span>
+    <span class="n">dose</span> <span class="o">=</span> <span class="n">load_dose_from_dicom</span><span class="p">(</span><span class="n">dcm_dose</span><span class="p">)</span>
+
+    <span class="n">xx_dose</span><span class="p">,</span> <span class="n">yy_dose</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x_dose</span><span class="p">,</span> <span class="n">y_dose</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">xx_dose</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">yy_dose</span><span class="o">.</span><span class="n">ravel</span><span class="p">()]),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">x_structure</span><span class="p">,</span> <span class="n">y_structure</span><span class="p">,</span> <span class="n">z_structure</span> <span class="o">=</span> <span class="n">pull_structure</span><span class="p">(</span>
+        <span class="n">structure</span><span class="p">,</span> <span class="n">dcm_struct</span><span class="p">)</span>
+    <span class="n">structure_z_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">z_structure</span><span class="p">])</span>
+
+    <span class="n">structure_dose_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+
+    <span class="k">for</span> <span class="n">z_val</span> <span class="ow">in</span> <span class="n">structure_z_values</span><span class="p">:</span>
+        <span class="n">structure_index</span> <span class="o">=</span> <span class="n">_get_index</span><span class="p">(</span><span class="n">z_structure</span><span class="p">,</span> <span class="n">z_val</span><span class="p">)</span>
+        <span class="n">dose_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">z_dose</span> <span class="o">==</span> <span class="n">z_val</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">assert</span> <span class="n">z_structure</span><span class="p">[</span><span class="n">structure_index</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">z_dose</span><span class="p">[</span><span class="n">dose_index</span><span class="p">]</span>
+
+        <span class="n">structure_polygon</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">Path</span><span class="p">([</span>
+            <span class="p">(</span>
+                <span class="n">x_structure</span><span class="p">[</span><span class="n">structure_index</span><span class="p">][</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">y_structure</span><span class="p">[</span><span class="n">structure_index</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x_structure</span><span class="p">[</span><span class="n">structure_index</span><span class="p">]))</span>
+        <span class="p">])</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">structure_polygon</span><span class="o">.</span><span class="n">contains_points</span><span class="p">(</span><span class="n">points</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">y_dose</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_dose</span><span class="p">))</span>
+        <span class="n">masked_dose</span> <span class="o">=</span> <span class="n">dose</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">dose_index</span><span class="p">]</span>
+        <span class="n">structure_dose_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">structure_dose_values</span><span class="p">,</span> <span class="n">masked_dose</span><span class="p">[</span><span class="n">mask</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">structure_dose_values</span></div>
+
+
+<div class="viewcode-block" id="create_dvh"><a class="viewcode-back" href="../../../../user/library/dicom.html#pymedphys.dicom.create_dvh">[docs]</a><span class="k">def</span> <span class="nf">create_dvh</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span> <span class="n">dcm_struct</span><span class="p">,</span> <span class="n">dcm_dose</span><span class="p">):</span>
+    <span class="n">structure_dose_values</span> <span class="o">=</span> <span class="n">find_dose_within_structure</span><span class="p">(</span>
+        <span class="n">structure</span><span class="p">,</span> <span class="n">dcm_struct</span><span class="p">,</span> <span class="n">dcm_dose</span><span class="p">)</span>
+    <span class="n">hist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">structure_dose_values</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="n">freq</span> <span class="o">=</span> <span class="n">hist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">bin_edge</span> <span class="o">=</span> <span class="n">hist</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">bin_mid</span> <span class="o">=</span> <span class="p">(</span><span class="n">bin_edge</span><span class="p">[</span><span class="mi">1</span><span class="p">::]</span> <span class="o">+</span> <span class="n">bin_edge</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">:])</span><span class="o">/</span><span class="mi">2</span>
+
+    <span class="n">cumulative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">freq</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">cumulative</span> <span class="o">=</span> <span class="n">cumulative</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">bin_mid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">bin_mid</span><span class="p">)</span>
+
+    <span class="n">cumulative</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cumulative</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cumulative</span><span class="p">)</span>
+    <span class="n">percent_cumulative</span> <span class="o">=</span> <span class="n">cumulative</span> <span class="o">/</span> <span class="n">cumulative</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">bin_mid</span><span class="p">,</span> <span class="n">percent_cumulative</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">structure</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;DVH&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Dose (Gy)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Relative Volume (%)&#39;</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

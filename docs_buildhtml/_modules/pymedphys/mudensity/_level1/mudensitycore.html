@@ -1,0 +1,936 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pymedphys.mudensity._level1.mudensitycore &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>pymedphys.mudensity._level1.mudensitycore</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pymedphys.mudensity._level1.mudensitycore</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2018 Simon Biggs</span>
+
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU Affero General Public License as published</span>
+<span class="c1"># by the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version (the &quot;AGPL-3.0+&quot;).</span>
+
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the</span>
+<span class="c1"># GNU Affero General Public License and the additional terms for more</span>
+<span class="c1"># details.</span>
+
+<span class="c1"># You should have received a copy of the GNU Affero General Public License</span>
+<span class="c1"># along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="c1"># ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU</span>
+<span class="c1"># Affero General Public License. These additional terms are Sections 1, 5,</span>
+<span class="c1"># 6, 7, 8, and 9 from the Apache License, Version 2.0 (the &quot;Apache-2.0&quot;)</span>
+<span class="c1"># where all references to the definition &quot;License&quot; are instead defined to</span>
+<span class="c1"># mean the AGPL-3.0+.</span>
+
+<span class="c1"># You should have received a copy of the Apache-2.0 along with this</span>
+<span class="c1"># program. If not, see &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;.</span>
+
+<span class="sd">&quot;&quot;&quot;Calculate the MU Density given mu, mlc, and jaw control points.</span>
+
+<span class="sd">.. WARNING::</span>
+<span class="sd">   Although this is a useful tool in the toolbox for patient specific IMRT QA,</span>
+<span class="sd">   in and of itself it is not a sufficient stand in replacement. This tool does</span>
+<span class="sd">   not verify that the reported dose within the treatment planning system is</span>
+<span class="sd">   delivered by the Linac.</span>
+
+<span class="sd">   Deficiencies or limitations in the agreement between the treatment planning</span>
+<span class="sd">   system&#39;s beam model and the Linac delivery will not be able to be</span>
+<span class="sd">   highlighted by this tool. An example might be an overly modulated beam with</span>
+<span class="sd">   many thin sweeping strips, the Linac may deliver those control points with</span>
+<span class="sd">   positional accuracy but if the beam model in the TPS cannot sufficiently</span>
+<span class="sd">   accurately model the dose effects of those MLC control points the dose</span>
+<span class="sd">   delivery will not sufficiently agree with the treatment plan. In this case</span>
+<span class="sd">   however, this tool will say everything is in agreement.</span>
+
+<span class="sd">   It also may be the case that due to a hardware or calibration fault the</span>
+<span class="sd">   Linac itself may be incorrectly reporting its MLC and/or Jaw postions. In</span>
+<span class="sd">   this case the logfile record can agree exactly with the planned positions</span>
+<span class="sd">   while the true real world positions be in significant deviation.</span>
+
+<span class="sd">   The impact of these issues may be able to be limited by including with this</span>
+<span class="sd">   tool an automated independent IMRT 3-D dose calculation tool as well as a</span>
+<span class="sd">   daily automated MLC/jaw logfile to EPI to baseline agreement test that</span>
+<span class="sd">   moves the EPI so as to measure the full set of leaf pairs and the full range</span>
+<span class="sd">   of MLC and Jaw travel.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="c1"># pylint: disable=C0103,C1801</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">...deliverydata</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">extract_angle_from_delivery_data</span><span class="p">,</span> <span class="n">remove_irrelevant_control_points</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">...plt</span> <span class="k">import</span> <span class="n">pcolormesh_grid</span>
+<span class="kn">from</span> <span class="nn">...coll</span> <span class="k">import</span> <span class="n">AGILITY</span>
+
+<span class="kn">from</span> <span class="nn">...libutils</span> <span class="k">import</span> <span class="n">get_imports</span>
+<span class="n">IMPORTS</span> <span class="o">=</span> <span class="n">get_imports</span><span class="p">(</span><span class="nb">globals</span><span class="p">())</span>
+
+
+<span class="n">__DEFAULT_LEAF_PAIR_WIDTHS</span> <span class="o">=</span> <span class="n">AGILITY</span>
+<span class="n">__DEFAULT_GRID_RESOLUTION</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">__DEFAULT_MAX_LEAF_GAP</span> <span class="o">=</span> <span class="mi">400</span>
+<span class="n">__DEFAULT_MIN_STEP_PER_PIXEL</span> <span class="o">=</span> <span class="mi">10</span>
+
+
+<div class="viewcode-block" id="calc_mu_density"><a class="viewcode-back" href="../../../../user/library/mudensity.html#pymedphys.mudensity.calc_mu_density">[docs]</a><span class="k">def</span> <span class="nf">calc_mu_density</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="o">=</span><span class="n">__DEFAULT_GRID_RESOLUTION</span><span class="p">,</span>
+                    <span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">__DEFAULT_MAX_LEAF_GAP</span><span class="p">,</span>
+                    <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">__DEFAULT_LEAF_PAIR_WIDTHS</span><span class="p">,</span>
+                    <span class="n">min_step_per_pixel</span><span class="o">=</span><span class="n">__DEFAULT_MIN_STEP_PER_PIXEL</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Determine the MU Density.</span>
+
+<span class="sd">    Both jaw and mlc positions are defined in bipolar format for each control</span>
+<span class="sd">    point. A negative value indicates travel over the isocentre. All positional</span>
+<span class="sd">    arguments are defined at the isocentre projection with the units of mm.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mu : numpy.ndarray</span>
+<span class="sd">        1-D array containing an MU value for each control point.</span>
+<span class="sd">    mlc : numpy.ndarray</span>
+<span class="sd">        3-D array containing the MLC positions</span>
+
+<span class="sd">            | axis 0: control point</span>
+<span class="sd">            | axis 1: mlc pair</span>
+<span class="sd">            | axis 2: leaf bank</span>
+
+<span class="sd">    jaw : numpy.ndarray</span>
+<span class="sd">        2-D array containing the jaw positions.</span>
+
+<span class="sd">            | axis 0: control point</span>
+<span class="sd">            | axis 1: diaphragm</span>
+
+<span class="sd">    grid_resolution : float, optional</span>
+<span class="sd">        The calc grid resolution. Defaults to 1 mm.</span>
+
+<span class="sd">    max_leaf_gap : float, optional</span>
+<span class="sd">        The maximum possible distance between opposing leaves. Defaults to</span>
+<span class="sd">        400 mm.</span>
+
+<span class="sd">    leaf_pair_widths : tuple, optional</span>
+<span class="sd">        The widths of each leaf pair in the</span>
+<span class="sd">        MLC limiting device. The number of entries in the tuples defines</span>
+<span class="sd">        the number of leaf pairs. Each entry itself defines that particular</span>
+<span class="sd">        leaf pair width. Defaults to 80 leaf pairs each 5 mm wide.</span>
+
+<span class="sd">    min_step_per_pixel : int, optional</span>
+<span class="sd">        The minimum number of time steps</span>
+<span class="sd">        used per pixel for each control point. Defaults to 10.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mu_density : numpy.ndarray</span>
+<span class="sd">        2-D array containing the calculated mu density.</span>
+
+<span class="sd">            | axis 0: jaw direction</span>
+<span class="sd">            | axis 1: mlc direction</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; from pymedphys.mudensity import (</span>
+<span class="sd">    ...     calc_mu_density, get_grid, display_mu_density)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; leaf_pair_widths = (5, 5, 5)</span>
+<span class="sd">    &gt;&gt;&gt; max_leaf_gap = 10</span>
+<span class="sd">    &gt;&gt;&gt; mu = np.array([0, 2, 5, 10])</span>
+<span class="sd">    &gt;&gt;&gt; mlc = np.array([</span>
+<span class="sd">    ...     [</span>
+<span class="sd">    ...         [1, 1],</span>
+<span class="sd">    ...         [2, 2],</span>
+<span class="sd">    ...         [3, 3]</span>
+<span class="sd">    ...     ],</span>
+<span class="sd">    ...     [</span>
+<span class="sd">    ...         [2, 2],</span>
+<span class="sd">    ...         [3, 3],</span>
+<span class="sd">    ...         [4, 4]</span>
+<span class="sd">    ...     ],</span>
+<span class="sd">    ...     [</span>
+<span class="sd">    ...         [-2, 3],</span>
+<span class="sd">    ...         [-2, 4],</span>
+<span class="sd">    ...         [-2, 5]</span>
+<span class="sd">    ...     ],</span>
+<span class="sd">    ...     [</span>
+<span class="sd">    ...         [0, 0],</span>
+<span class="sd">    ...         [0, 0],</span>
+<span class="sd">    ...         [0, 0]</span>
+<span class="sd">    ...     ]</span>
+<span class="sd">    ... ])</span>
+<span class="sd">    &gt;&gt;&gt; jaw = np.array([</span>
+<span class="sd">    ...     [7.5, 7.5],</span>
+<span class="sd">    ...     [7.5, 7.5],</span>
+<span class="sd">    ...     [-2, 7.5],</span>
+<span class="sd">    ...     [0, 0]</span>
+<span class="sd">    ... ])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; grid = get_grid(</span>
+<span class="sd">    ...    max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths)</span>
+<span class="sd">    &gt;&gt;&gt; grid[&#39;mlc&#39;]</span>
+<span class="sd">    array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; grid[&#39;jaw&#39;]</span>
+<span class="sd">    array([-8., -7., -6., -5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,</span>
+<span class="sd">            5.,  6.,  7.,  8.])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; mu_density = calc_mu_density(</span>
+<span class="sd">    ...    mu, mlc, jaw, max_leaf_gap=max_leaf_gap,</span>
+<span class="sd">    ...    leaf_pair_widths=leaf_pair_widths)</span>
+<span class="sd">    &gt;&gt;&gt; display_mu_density(grid, mu_density)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; np.round(mu_density, 1)</span>
+<span class="sd">    array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],</span>
+<span class="sd">           [0. , 0. , 0. , 0.3, 1.9, 2.2, 1.9, 0.4, 0. , 0. , 0. ],</span>
+<span class="sd">           [0. , 0. , 0. , 0.4, 2.2, 2.5, 2.2, 0.6, 0. , 0. , 0. ],</span>
+<span class="sd">           [0. , 0. , 0. , 0.4, 2.4, 2.8, 2.5, 0.8, 0. , 0. , 0. ],</span>
+<span class="sd">           [0. , 0. , 0. , 0.4, 2.5, 3.1, 2.8, 1. , 0. , 0. , 0. ],</span>
+<span class="sd">           [0. , 0. , 0. , 0.4, 2.5, 3.4, 3.1, 1.3, 0. , 0. , 0. ],</span>
+<span class="sd">           [0. , 0. , 0.4, 2.3, 3.2, 3.7, 3.7, 3.5, 1.6, 0. , 0. ],</span>
+<span class="sd">           [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4. , 3.8, 1.9, 0.1, 0. ],</span>
+<span class="sd">           [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4.3, 4.1, 2.3, 0.1, 0. ],</span>
+<span class="sd">           [0. , 0. , 0.4, 2.3, 3.2, 3.9, 5.2, 4.7, 2.6, 0.2, 0. ],</span>
+<span class="sd">           [0. , 0. , 0.4, 2.3, 3.2, 3.8, 5.4, 6.6, 3.8, 0.5, 0. ],</span>
+<span class="sd">           [0. , 0.3, 2.2, 3. , 3.5, 4. , 5.1, 7.5, 6.7, 3.9, 0.5],</span>
+<span class="sd">           [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.7, 6.9, 6.7, 3.9, 0.5],</span>
+<span class="sd">           [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 6.3, 6.4, 3.9, 0.5],</span>
+<span class="sd">           [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.6, 5.7, 3.8, 0.5],</span>
+<span class="sd">           [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.1, 5.1, 3.3, 0.5],</span>
+<span class="sd">           [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])</span>
+
+
+<span class="sd">    MU Density from a Mosaiq record</span>
+
+<span class="sd">    &gt;&gt;&gt; from pymedphys.mudensity import (</span>
+<span class="sd">    ...     calc_mu_density, get_grid, display_mu_density)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; from pymedphys.msq import (</span>
+<span class="sd">    ...     mosaiq_connect, multi_fetch_and_verify_mosaiq)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; def mu_density_from_mosaiq(msq_server_name, field_id):</span>
+<span class="sd">    ...     with mosaiq_connect(msq_server_name) as cursor:</span>
+<span class="sd">    ...         delivery_data = multi_fetch_and_verify_mosaiq(</span>
+<span class="sd">    ...             cursor, field_id)</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     mu = delivery_data.monitor_units</span>
+<span class="sd">    ...     mlc = delivery_data.mlc</span>
+<span class="sd">    ...     jaw = delivery_data.jaw</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     grid = get_grid()</span>
+<span class="sd">    ...     mu_density = calc_mu_density(mu, mlc, jaw)</span>
+<span class="sd">    ...     display_mu_density(grid, mu_density)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; mu_density_from_mosaiq(&#39;a_server_name&#39;, 11111) # doctest: +SKIP</span>
+
+
+<span class="sd">    MU Density from a logfile at a given filepath</span>
+
+<span class="sd">    &gt;&gt;&gt; from pymedphys.mudensity import (</span>
+<span class="sd">    ...     calc_mu_density, get_grid, display_mu_density)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; from pymedphys.trf import delivery_data_from_logfile</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; def mu_density_from_logfile(filepath):</span>
+<span class="sd">    ...     delivery_data = delivery_data_from_logfile(filepath)</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     mu = delivery_data.monitor_units</span>
+<span class="sd">    ...     mlc = delivery_data.mlc</span>
+<span class="sd">    ...     jaw = delivery_data.jaw</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     grid = get_grid()</span>
+<span class="sd">    ...     mu_density = calc_mu_density(mu, mlc, jaw)</span>
+<span class="sd">    ...     display_mu_density(grid, mu_density)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; mu_density_from_logfile(r&quot;a/path/goes/here&quot;) # doctest: +SKIP</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">divisibility_of_max_leaf_gap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">max_leaf_gap</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">grid_resolution</span><span class="p">)</span>
+    <span class="n">max_leaf_gap_is_divisible</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">divisibility_of_max_leaf_gap</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">==</span>
+        <span class="n">divisibility_of_max_leaf_gap</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">max_leaf_gap_is_divisible</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;The grid resolution needs to exaclty divide half of the max leaf &quot;</span>
+            <span class="s2">&quot;gap&quot;</span><span class="p">)</span>
+
+    <span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">mlc</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">max_leaf_gap</span> <span class="o">/</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;The mlc should not travel further out than half the maximum leaf &quot;</span>
+            <span class="s2">&quot;gap.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span> <span class="o">=</span> <span class="n">remove_irrelevant_control_points</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">)</span>
+
+    <span class="n">full_grid</span> <span class="o">=</span> <span class="n">get_grid</span><span class="p">(</span>
+        <span class="n">max_leaf_gap</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="p">)</span>
+
+    <span class="n">mu_density</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">full_grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">]),</span> <span class="nb">len</span><span class="p">(</span><span class="n">full_grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">])))</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">control_point_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">current_mlc</span> <span class="o">=</span> <span class="n">mlc</span><span class="p">[</span><span class="n">control_point_slice</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">current_jaw</span> <span class="o">=</span> <span class="n">jaw</span><span class="p">[</span><span class="n">control_point_slice</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">delivered_mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">mu</span><span class="p">[</span><span class="n">control_point_slice</span><span class="p">])</span>
+
+        <span class="n">grid</span><span class="p">,</span> <span class="n">mu_density_of_slice</span> <span class="o">=</span> <span class="n">calc_single_control_point</span><span class="p">(</span>
+            <span class="n">current_mlc</span><span class="p">,</span> <span class="n">current_jaw</span><span class="p">,</span> <span class="n">delivered_mu</span><span class="p">,</span>
+            <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="o">=</span><span class="n">grid_resolution</span><span class="p">,</span>
+            <span class="n">min_step_per_pixel</span><span class="o">=</span><span class="n">min_step_per_pixel</span><span class="p">)</span>
+        <span class="n">full_grid_mu_density_of_slice</span> <span class="o">=</span> <span class="n">_convert_to_full_grid</span><span class="p">(</span>
+            <span class="n">grid</span><span class="p">,</span> <span class="n">full_grid</span><span class="p">,</span> <span class="n">mu_density_of_slice</span><span class="p">)</span>
+
+        <span class="n">mu_density</span> <span class="o">+=</span> <span class="n">full_grid_mu_density_of_slice</span>
+
+    <span class="k">return</span> <span class="n">mu_density</span></div>
+
+
+<div class="viewcode-block" id="calc_single_control_point"><a class="viewcode-back" href="../../../../user/library/mudensity.html#pymedphys.mudensity.calc_single_control_point">[docs]</a><span class="k">def</span> <span class="nf">calc_single_control_point</span><span class="p">(</span><span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">delivered_mu</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                              <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">__DEFAULT_LEAF_PAIR_WIDTHS</span><span class="p">,</span>
+                              <span class="n">grid_resolution</span><span class="o">=</span><span class="n">__DEFAULT_GRID_RESOLUTION</span><span class="p">,</span>
+                              <span class="n">min_step_per_pixel</span><span class="o">=</span><span class="n">__DEFAULT_MIN_STEP_PER_PIXEL</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Calculate the MU Density for a single control point.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt; from pymedphys.mudensity import (</span>
+<span class="sd">    ...     calc_single_control_point, display_mu_density)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; leaf_pair_widths = (2, 2)</span>
+<span class="sd">    &gt;&gt;&gt; mlc = np.array([</span>
+<span class="sd">    ...     [</span>
+<span class="sd">    ...         [1, 1],</span>
+<span class="sd">    ...         [2, 2],</span>
+<span class="sd">    ...     ],</span>
+<span class="sd">    ...     [</span>
+<span class="sd">    ...         [2, 2],</span>
+<span class="sd">    ...         [3, 3],</span>
+<span class="sd">    ...     ]</span>
+<span class="sd">    ... ])</span>
+<span class="sd">    &gt;&gt;&gt; jaw = np.array([</span>
+<span class="sd">    ...     [1.5, 1.2],</span>
+<span class="sd">    ...     [1.5, 1.2]</span>
+<span class="sd">    ... ])</span>
+<span class="sd">    &gt;&gt;&gt; grid, mu_density = calc_single_control_point(</span>
+<span class="sd">    ...     mlc, jaw, leaf_pair_widths=leaf_pair_widths)</span>
+<span class="sd">    &gt;&gt;&gt; display_mu_density(grid, mu_density)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; grid[&#39;mlc&#39;]</span>
+<span class="sd">    array([-3., -2., -1.,  0.,  1.,  2.,  3.])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; grid[&#39;jaw&#39;]</span>
+<span class="sd">    array([-1.5, -0.5,  0.5,  1.5])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; np.round(mu_density, 2)</span>
+<span class="sd">    array([[0.  , 0.07, 0.43, 0.5 , 0.43, 0.07, 0.  ],</span>
+<span class="sd">           [0.  , 0.14, 0.86, 1.  , 0.86, 0.14, 0.  ],</span>
+<span class="sd">           [0.14, 0.86, 1.  , 1.  , 1.  , 0.86, 0.14],</span>
+<span class="sd">           [0.03, 0.17, 0.2 , 0.2 , 0.2 , 0.17, 0.03]])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+    <span class="n">leaf_division</span> <span class="o">=</span> <span class="n">leaf_pair_widths</span> <span class="o">/</span> <span class="n">grid_resolution</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">leaf_division</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">==</span> <span class="n">leaf_division</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;The grid resolution needs to exactly divide every leaf pair &quot;</span>
+            <span class="s2">&quot;width.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">jaw</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;The jaw should not travel further out than the maximum leaf &quot;</span>
+            <span class="s2">&quot;limits.&quot;</span><span class="p">)</span>
+
+    <span class="p">(</span>
+        <span class="n">grid</span><span class="p">,</span> <span class="n">grid_leaf_map</span><span class="p">,</span> <span class="n">mlc</span>
+    <span class="p">)</span> <span class="o">=</span> <span class="n">_determine_calc_grid_and_adjustments</span><span class="p">(</span>
+        <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span>
+        <span class="n">leaf_pair_widths</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">)</span>
+
+    <span class="n">positions</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;mlc&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="mi">1</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="n">mlc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="n">mlc</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]),</span>  <span class="c1"># left</span>
+            <span class="o">-</span><span class="mi">1</span><span class="p">:</span> <span class="p">(</span><span class="n">mlc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">mlc</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">])</span>  <span class="c1"># right</span>
+        <span class="p">},</span>
+        <span class="s1">&#39;jaw&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="mi">1</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="n">jaw</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="n">jaw</span><span class="p">[</span><span class="mi">1</span><span class="p">::,</span> <span class="mi">0</span><span class="p">]),</span>  <span class="c1"># bot</span>
+            <span class="o">-</span><span class="mi">1</span><span class="p">:</span> <span class="p">(</span><span class="n">jaw</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">jaw</span><span class="p">[</span><span class="mi">1</span><span class="p">::,</span> <span class="mi">1</span><span class="p">])</span>  <span class="c1"># top</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="n">time_steps</span> <span class="o">=</span> <span class="n">_calc_time_steps</span><span class="p">(</span>
+        <span class="n">positions</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">,</span> <span class="n">min_step_per_pixel</span><span class="p">)</span>
+    <span class="n">blocked_by_device</span> <span class="o">=</span> <span class="n">_calc_blocked_by_device</span><span class="p">(</span>
+        <span class="n">grid</span><span class="p">,</span> <span class="n">positions</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">,</span> <span class="n">time_steps</span><span class="p">)</span>
+    <span class="n">device_open</span> <span class="o">=</span> <span class="n">_calc_device_open</span><span class="p">(</span><span class="n">blocked_by_device</span><span class="p">)</span>
+    <span class="n">mlc_open</span><span class="p">,</span> <span class="n">jaw_open</span> <span class="o">=</span> <span class="n">_remap_mlc_and_jaw</span><span class="p">(</span><span class="n">device_open</span><span class="p">,</span> <span class="n">grid_leaf_map</span><span class="p">)</span>
+    <span class="n">open_fraction</span> <span class="o">=</span> <span class="n">_calc_open_fraction</span><span class="p">(</span><span class="n">mlc_open</span><span class="p">,</span> <span class="n">jaw_open</span><span class="p">)</span>
+
+    <span class="n">mu_density</span> <span class="o">=</span> <span class="n">open_fraction</span> <span class="o">*</span> <span class="n">delivered_mu</span>
+
+    <span class="k">return</span> <span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span></div>
+
+
+<div class="viewcode-block" id="single_mlc_pair"><a class="viewcode-back" href="../../../../user/library/mudensity.html#pymedphys.mudensity.single_mlc_pair">[docs]</a><span class="k">def</span> <span class="nf">single_mlc_pair</span><span class="p">(</span><span class="n">left_mlc</span><span class="p">,</span> <span class="n">right_mlc</span><span class="p">,</span>
+                    <span class="n">grid_resolution</span><span class="o">=</span><span class="n">__DEFAULT_GRID_RESOLUTION</span><span class="p">,</span>
+                    <span class="n">min_step_per_pixel</span><span class="o">=</span><span class="n">__DEFAULT_MIN_STEP_PER_PIXEL</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Calculate the MU Density of a single leaf pair.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt; import matplotlib.pyplot as plt</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; from pymedphys.mudensity import single_mlc_pair</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; mlc_left = (-2.3, 3.1)  # (start position, end position)</span>
+<span class="sd">    &gt;&gt;&gt; mlc_right = (0, 7.7)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; x, mu_density = single_mlc_pair(mlc_left, mlc_right)</span>
+<span class="sd">    &gt;&gt;&gt; fig = plt.plot(x, mu_density, &#39;-o&#39;)</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; x</span>
+<span class="sd">    array([-2., -1.,  0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.])</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; np.round(mu_density, 3)</span>
+<span class="sd">    array([0.064, 0.244, 0.408, 0.475, 0.53 , 0.572, 0.481, 0.352, 0.224,</span>
+<span class="sd">           0.096, 0.004])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="p">[</span><span class="n">grid_resolution</span><span class="p">]</span>
+    <span class="n">jaw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">[</span><span class="n">grid_resolution</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="o">/</span><span class="mi">2</span><span class="p">],</span>
+        <span class="p">[</span><span class="n">grid_resolution</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="o">/</span><span class="mi">2</span><span class="p">]</span>
+    <span class="p">])</span>
+    <span class="n">mlc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">[</span>
+            <span class="p">[</span><span class="o">-</span><span class="n">left_mlc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">right_mlc</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span>
+        <span class="p">],</span>
+        <span class="p">[</span>
+            <span class="p">[</span><span class="o">-</span><span class="n">left_mlc</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">right_mlc</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span>
+        <span class="p">]</span>
+    <span class="p">])</span>
+
+    <span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_single_control_point</span><span class="p">(</span>
+        <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">,</span>
+        <span class="n">grid_resolution</span><span class="o">=</span><span class="n">grid_resolution</span><span class="p">,</span> <span class="n">min_step_per_pixel</span><span class="o">=</span><span class="n">min_step_per_pixel</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">],</span> <span class="n">mu_density</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span></div>
+
+
+<span class="k">def</span> <span class="nf">calc_mu_density_return_grid</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span>
+                                <span class="n">grid_resolution</span><span class="o">=</span><span class="n">__DEFAULT_GRID_RESOLUTION</span><span class="p">,</span>
+                                <span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">__DEFAULT_MAX_LEAF_GAP</span><span class="p">,</span>
+                                <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">__DEFAULT_LEAF_PAIR_WIDTHS</span><span class="p">,</span>
+                                <span class="n">min_step_per_pixel</span><span class="o">=</span><span class="n">__DEFAULT_MIN_STEP_PER_PIXEL</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;DEPRECATED. This is a temporary helper function to provide the old</span>
+<span class="sd">    api.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+    <span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_mu_density</span><span class="p">(</span>
+        <span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="o">=</span><span class="n">grid_resolution</span><span class="p">,</span>
+        <span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">max_leaf_gap</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">,</span>
+        <span class="n">min_step_per_pixel</span><span class="o">=</span><span class="n">min_step_per_pixel</span><span class="p">)</span>
+
+    <span class="n">full_grid</span> <span class="o">=</span> <span class="n">get_grid</span><span class="p">(</span>
+        <span class="n">max_leaf_gap</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="p">)</span>
+
+    <span class="n">grid_xx</span><span class="p">,</span> <span class="n">grid_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">full_grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">],</span> <span class="n">full_grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">grid_xx</span><span class="p">,</span> <span class="n">grid_yy</span><span class="p">,</span> <span class="n">mu_density</span>
+
+
+<div class="viewcode-block" id="get_grid"><a class="viewcode-back" href="../../../../user/library/mudensity.html#pymedphys.mudensity.get_grid">[docs]</a><span class="k">def</span> <span class="nf">get_grid</span><span class="p">(</span><span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">__DEFAULT_MAX_LEAF_GAP</span><span class="p">,</span>
+             <span class="n">grid_resolution</span><span class="o">=</span><span class="n">__DEFAULT_GRID_RESOLUTION</span><span class="p">,</span>
+             <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">__DEFAULT_LEAF_PAIR_WIDTHS</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the MU Density grid for plotting purposes.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    See `pymedphys.mudensity.calc_mu_density`_.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+
+    <span class="n">grid</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+        <span class="o">-</span><span class="n">max_leaf_gap</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">max_leaf_gap</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="n">grid_resolution</span><span class="p">,</span>
+        <span class="n">grid_resolution</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">top_of_reference_leaf</span> <span class="o">=</span> <span class="n">_determine_leaf_centres</span><span class="p">(</span>
+        <span class="n">leaf_pair_widths</span><span class="p">)</span>
+    <span class="n">grid_reference_position</span> <span class="o">=</span> <span class="n">_determine_reference_grid_position</span><span class="p">(</span>
+        <span class="n">top_of_reference_leaf</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">)</span>
+
+    <span class="c1"># It might be better to use round instead of ceil here.</span>
+    <span class="n">total_leaf_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+    <span class="n">top_grid_pos</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">total_leaf_widths</span><span class="o">/</span><span class="mi">2</span> <span class="o">-</span> <span class="n">grid_reference_position</span><span class="p">)</span>
+            <span class="o">/</span> <span class="n">grid_resolution</span><span class="p">)</span> <span class="o">*</span>
+        <span class="n">grid_resolution</span> <span class="o">+</span> <span class="n">grid_reference_position</span><span class="p">)</span>
+
+    <span class="n">bot_grid_pos</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">grid_reference_position</span> <span class="o">-</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">total_leaf_widths</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="n">grid_reference_position</span><span class="p">)</span>
+            <span class="o">/</span> <span class="n">grid_resolution</span><span class="p">)</span> <span class="o">*</span>
+        <span class="n">grid_resolution</span><span class="p">)</span>
+
+    <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+        <span class="n">bot_grid_pos</span><span class="p">,</span> <span class="n">top_grid_pos</span> <span class="o">+</span> <span class="n">grid_resolution</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">grid</span></div>
+
+
+<div class="viewcode-block" id="display_mu_density"><a class="viewcode-back" href="../../../../user/library/mudensity.html#pymedphys.mudensity.display_mu_density">[docs]</a><span class="k">def</span> <span class="nf">display_mu_density</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Prints a colour plot of the MU Density.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    See `pymedphys.mudensity.calc_mu_density`_.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">grid_resolution</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">grid_resolution</span> <span class="o">=</span> <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">pcolormesh_grid</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">],</span> <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">],</span> <span class="n">grid_resolution</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;MU density&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;MLC direction (mm)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Jaw direction (mm)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">invert_yaxis</span><span class="p">()</span></div>
+
+
+<span class="k">def</span> <span class="nf">calc_mu_density_bygantry</span><span class="p">(</span><span class="n">delivery_data</span><span class="p">,</span> <span class="n">gantry_angle</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                             <span class="n">gantry_tolerance</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_mu_density</span><span class="p">(</span>
+        <span class="n">grid_resolution</span><span class="o">=</span><span class="n">grid_resolution</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">extract_angle_from_delivery_data</span><span class="p">(</span>
+            <span class="n">delivery_data</span><span class="p">,</span> <span class="n">gantry_angle</span><span class="p">,</span> <span class="n">gantry_tolerance</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mu_density</span>
+
+
+<span class="k">def</span> <span class="nf">calc_mu_density_bygantry_return_grid</span><span class="p">(</span><span class="n">delivery_data</span><span class="p">,</span> <span class="n">gantry_angle</span><span class="p">,</span>
+                                         <span class="n">grid_resolution</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                         <span class="n">gantry_tolerance</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;DEPRECATED. This is a temporary helper function to provide the old api.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_mu_density_return_grid</span><span class="p">(</span>
+        <span class="n">grid_resolution</span><span class="o">=</span><span class="n">grid_resolution</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">extract_angle_from_delivery_data</span><span class="p">(</span>
+            <span class="n">delivery_data</span><span class="p">,</span> <span class="n">gantry_angle</span><span class="p">,</span> <span class="n">gantry_tolerance</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mu_density</span>
+
+
+<span class="k">def</span> <span class="nf">_calc_blocked_t</span><span class="p">(</span><span class="n">travel_diff</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">):</span>
+    <span class="n">blocked_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">travel_diff</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="n">fully_blocked</span> <span class="o">=</span> <span class="n">travel_diff</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="n">grid_resolution</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">fully_open</span> <span class="o">=</span> <span class="n">travel_diff</span> <span class="o">&gt;=</span> <span class="n">grid_resolution</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">blocked_t</span><span class="p">[</span><span class="n">fully_blocked</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">blocked_t</span><span class="p">[</span><span class="n">fully_open</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">transient</span> <span class="o">=</span> <span class="o">~</span><span class="n">fully_blocked</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">fully_open</span>
+
+    <span class="n">blocked_t</span><span class="p">[</span><span class="n">transient</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="o">-</span><span class="n">travel_diff</span><span class="p">[</span><span class="n">transient</span><span class="p">]</span> <span class="o">+</span> <span class="n">grid_resolution</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span>
+        <span class="n">grid_resolution</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">blocked_t</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">blocked_t</span>
+
+
+<span class="k">def</span> <span class="nf">_calc_time_steps</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">,</span> <span class="n">min_step_per_pixel</span><span class="p">):</span>
+    <span class="n">maximum_travel</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">positions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">maximum_travel</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)))</span>
+
+    <span class="n">maximum_travel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">maximum_travel</span><span class="p">)</span>
+    <span class="n">number_of_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">maximum_travel</span> <span class="o">/</span> <span class="n">grid_resolution</span><span class="p">)</span>
+    <span class="n">time_steps</span> <span class="o">=</span> <span class="n">number_of_pixels</span> <span class="o">*</span> <span class="n">min_step_per_pixel</span>
+
+    <span class="k">if</span> <span class="n">time_steps</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="n">time_steps</span> <span class="o">=</span> <span class="mi">10</span>
+
+    <span class="k">return</span> <span class="n">time_steps</span>
+
+
+<span class="k">def</span> <span class="nf">_calc_blocked_by_device</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">positions</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">,</span>
+                            <span class="n">time_steps</span><span class="p">):</span>
+    <span class="n">blocked_by_device</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">device</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">positions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">blocked_by_device</span><span class="p">[</span><span class="n">device</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">multiplier</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">dt</span> <span class="o">=</span> <span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">time_steps</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">travel</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">start</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">time_steps</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">dt</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="n">travel_diff</span> <span class="o">=</span> <span class="n">multiplier</span> <span class="o">*</span> <span class="p">(</span>
+                <span class="n">grid</span><span class="p">[</span><span class="n">device</span><span class="p">][</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">travel</span><span class="p">[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">])</span>
+
+            <span class="n">blocked_by_device</span><span class="p">[</span><span class="n">device</span><span class="p">][</span><span class="n">multiplier</span><span class="p">]</span> <span class="o">=</span> <span class="n">_calc_blocked_t</span><span class="p">(</span>
+                <span class="n">travel_diff</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">blocked_by_device</span>
+
+
+<span class="k">def</span> <span class="nf">_calc_device_open</span><span class="p">(</span><span class="n">blocked_by_device</span><span class="p">):</span>
+    <span class="n">device_open</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">device</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">blocked_by_device</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">device_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">blocked</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">blocked</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">device_open</span><span class="p">[</span><span class="n">device</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">device_sum</span>
+
+    <span class="k">return</span> <span class="n">device_open</span>
+
+
+<span class="k">def</span> <span class="nf">_remap_mlc_and_jaw</span><span class="p">(</span><span class="n">device_open</span><span class="p">,</span> <span class="n">grid_leaf_map</span><span class="p">):</span>
+    <span class="n">mlc_open</span> <span class="o">=</span> <span class="n">device_open</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">][:,</span> <span class="n">grid_leaf_map</span><span class="p">,</span> <span class="p">:]</span>
+    <span class="n">jaw_open</span> <span class="o">=</span> <span class="n">device_open</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="k">return</span> <span class="n">mlc_open</span><span class="p">,</span> <span class="n">jaw_open</span>
+
+
+<span class="k">def</span> <span class="nf">_calc_open_fraction</span><span class="p">(</span><span class="n">mlc_open</span><span class="p">,</span> <span class="n">jaw_open</span><span class="p">):</span>
+    <span class="n">open_t</span> <span class="o">=</span> <span class="n">mlc_open</span> <span class="o">*</span> <span class="n">jaw_open</span><span class="p">[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">open_fraction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">open_t</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">open_fraction</span>
+
+
+<span class="k">def</span> <span class="nf">_determine_leaf_centres</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">):</span>
+    <span class="n">total_leaf_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+    <span class="n">leaf_centres</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">leaf_pair_widths</span><span class="p">)</span> <span class="o">-</span>
+        <span class="n">leaf_pair_widths</span><span class="o">/</span><span class="mi">2</span> <span class="o">-</span> <span class="n">total_leaf_widths</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">reference_leaf_index</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">leaf_centres</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
+
+    <span class="n">top_of_reference_leaf</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">leaf_centres</span><span class="p">[</span><span class="n">reference_leaf_index</span><span class="p">]</span> <span class="o">+</span>
+        <span class="n">leaf_pair_widths</span><span class="p">[</span><span class="n">reference_leaf_index</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">leaf_centres</span><span class="p">,</span> <span class="n">top_of_reference_leaf</span>
+
+
+<span class="k">def</span> <span class="nf">_determine_reference_grid_position</span><span class="p">(</span><span class="n">top_of_reference_leaf</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">):</span>
+    <span class="n">grid_reference_position</span> <span class="o">=</span> <span class="n">top_of_reference_leaf</span> <span class="o">-</span> <span class="n">grid_resolution</span><span class="o">/</span><span class="mi">2</span>
+
+    <span class="k">return</span> <span class="n">grid_reference_position</span>
+
+
+<span class="k">def</span> <span class="nf">_determine_calc_grid_and_adjustments</span><span class="p">(</span><span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="p">,</span>
+                                         <span class="n">grid_resolution</span><span class="p">):</span>
+    <span class="n">min_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="o">-</span><span class="n">jaw</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="n">max_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">jaw</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">leaf_centres</span><span class="p">,</span> <span class="n">top_of_reference_leaf</span> <span class="o">=</span> <span class="n">_determine_leaf_centres</span><span class="p">(</span>
+        <span class="n">leaf_pair_widths</span><span class="p">)</span>
+    <span class="n">grid_reference_position</span> <span class="o">=</span> <span class="n">_determine_reference_grid_position</span><span class="p">(</span>
+        <span class="n">top_of_reference_leaf</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">)</span>
+
+    <span class="n">top_grid_pos</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">((</span><span class="n">max_y</span> <span class="o">-</span> <span class="n">grid_reference_position</span><span class="p">)</span> <span class="o">/</span> <span class="n">grid_resolution</span><span class="p">))</span> <span class="o">*</span>
+        <span class="n">grid_resolution</span> <span class="o">+</span> <span class="n">grid_reference_position</span><span class="p">)</span>
+
+    <span class="n">bot_grid_pos</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">grid_reference_position</span> <span class="o">-</span>
+        <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">((</span><span class="o">-</span><span class="n">min_y</span> <span class="o">+</span> <span class="n">grid_reference_position</span><span class="p">)</span> <span class="o">/</span> <span class="n">grid_resolution</span><span class="p">))</span> <span class="o">*</span>
+        <span class="n">grid_resolution</span><span class="p">)</span>
+
+    <span class="n">grid</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+        <span class="n">bot_grid_pos</span><span class="p">,</span> <span class="n">top_grid_pos</span> <span class="o">+</span> <span class="n">grid_resolution</span><span class="p">,</span> <span class="n">grid_resolution</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+
+    <span class="n">grid_leaf_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">][:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">leaf_centres</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">adjusted_grid_leaf_map</span> <span class="o">=</span> <span class="n">grid_leaf_map</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">grid_leaf_map</span><span class="p">)</span>
+
+    <span class="n">leaves_to_be_calced</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">grid_leaf_map</span><span class="p">)</span>
+    <span class="n">adjusted_mlc</span> <span class="o">=</span> <span class="n">mlc</span><span class="p">[:,</span> <span class="n">leaves_to_be_calced</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="n">min_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="o">-</span><span class="n">adjusted_mlc</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">grid_resolution</span><span class="p">)</span> <span class="o">*</span> <span class="n">grid_resolution</span>
+    <span class="n">max_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">adjusted_mlc</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">grid_resolution</span><span class="p">)</span> <span class="o">*</span> <span class="n">grid_resolution</span>
+
+    <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+        <span class="n">min_x</span><span class="p">,</span> <span class="n">max_x</span> <span class="o">+</span> <span class="n">grid_resolution</span><span class="p">,</span> <span class="n">grid_resolution</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">grid</span><span class="p">,</span> <span class="n">adjusted_grid_leaf_map</span><span class="p">,</span> <span class="n">adjusted_mlc</span>
+
+
+<span class="k">def</span> <span class="nf">_convert_to_full_grid</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">full_grid</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">):</span>
+    <span class="n">grid_xx</span><span class="p">,</span> <span class="n">grid_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">],</span> <span class="n">grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">])</span>
+    <span class="n">full_grid_xx</span><span class="p">,</span> <span class="n">full_grid_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span>
+        <span class="n">full_grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">],</span> <span class="n">full_grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">])</span>
+
+    <span class="n">xx_from</span><span class="p">,</span> <span class="n">xx_to</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">full_grid_xx</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">grid_xx</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">0.0001</span><span class="p">)</span>
+    <span class="n">yy_from</span><span class="p">,</span> <span class="n">yy_to</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">full_grid_yy</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">grid_yy</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">0.0001</span><span class="p">)</span>
+
+    <span class="n">full_grid_mu_density</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">full_grid_xx</span><span class="p">)</span>
+    <span class="n">full_grid_mu_density</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">yy_to</span><span class="p">,</span> <span class="n">xx_to</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">mu_density</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ix_</span><span class="p">(</span><span class="n">yy_from</span><span class="p">,</span> <span class="n">xx_from</span><span class="p">)])</span>
+
+    <span class="k">return</span> <span class="n">full_grid_mu_density</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

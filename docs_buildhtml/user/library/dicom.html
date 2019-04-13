@@ -1,0 +1,707 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>DICOM files &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Geometry Utilities" href="geometry.html" />
+    <link rel="prev" title="Electron Factor Modelling" href="electronfactors.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../interfaces.html">Interfaces</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../library.html">Library</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="mudensity.html">MU Density</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gamma.html">Gamma Calculation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="electronfactors.html">Electron Factor Modelling</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">DICOM files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#available-functions">Available Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html">Geometry Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xlwings.html">Excel integration via xlwings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../library.html">Library</a> &raquo;</li>
+        
+      <li>DICOM files</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/user/library/dicom.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="module-pymedphys.dicom">
+<span id="dicom-files"></span><h1>DICOM files<a class="headerlink" href="#module-pymedphys.dicom" title="Permalink to this headline">¶</a></h1>
+<p>A Dicom toolbox built ontop of the pydicom library.</p>
+<div class="section" id="available-functions">
+<h2>Available Functions<a class="headerlink" href="#available-functions" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.dicom</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">anonymise_dicom_dataset</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">extract_iec_patient_xyz</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">extract_iec_fixed_xyz</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">extract_dicom_patient_xyz</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">load_dose_from_dicom</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">load_xyz_from_dicom</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">find_dose_within_structure</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">create_dvh</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">get_structure_aligned_cube</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="pymedphys.dicom.anonymise_dicom_dataset">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">anonymise_dicom_dataset</code><span class="sig-paren">(</span><em>ds</em>, <em>replace_values=True</em>, <em>delete_private_tags=True</em>, <em>keywords_to_keep=None</em>, <em>ignore_unknown_tags=False</em>, <em>copy=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level2/anonymise.html#anonymise_dicom_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.anonymise_dicom_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple tool to anonymise a DICOM file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>ds</strong> – The DICOM file to be anonymised. <cite>ds</cite> must represent a valid
+DICOM file in the form of a <cite>pydicom Dataset</cite> - ordinarily
+returned by <cite>pydicom.dcmread()</cite>.</li>
+<li><strong>replace_values</strong> (<em>bool</em><em>, </em><em>optional</em>) – If set to <cite>True</cite>, anonymised tag values will be replaced with dummy
+“anonymous” values. This is often required for successful reading of
+anonymised DICOM files in commercial software. If set to False,
+anonymised tags are simply given empty string values. Defaults to <cite>True</cite>.</li>
+<li><strong>delete_private_tags</strong> (<em>bool</em><em>, </em><em>optional</em>) – A boolean to flag whether or not to remove all private
+(non-standard) DICOM tags from the DICOM file. These may
+also contain identifying information. Defaults to <cite>True</cite>.</li>
+<li><strong>keywords_to_keep</strong> (<em>sequence</em><em>, </em><em>optional</em>) – A sequence of DICOM keywords (corresponding to tags) to exclude from
+anonymisation. Empty by default.</li>
+<li><strong>ignore_unknown_tags</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <cite>pydicom</cite> has updated its DICOM dictionary, this function will raise an
+error since a new identifying tag may have been introduced. Set to <cite>True</cite> to
+ignore this error. Defaults to <cite>False</cite>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">An anonymised copy of the input DICOM file as a <cite>pydicom Dataset</cite></p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">ds_anon</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><strong>ValueError</strong> – Raised if <cite>ignore_unknown_tags</cite> is set to False and unrecognised,
+    non-private DICOM tags are detected in <cite>ds</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.dicom.extract_iec_patient_xyz">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">extract_iec_patient_xyz</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level2/dose.html#extract_iec_patient_xyz"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.extract_iec_patient_xyz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the x, y and z coordinates of a DICOM RT Dose file’s dose grid
+in the IEC patient coordinate system</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ds</strong> – A <cite>pydicom Dataset</cite> - ordinarily returned by <cite>pydicom.dcmread()</cite>.
+Must represent a valid DICOM RT Dose file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A tuple containing three <cite>ndarrays</cite> corresponding to the <cite>x</cite>,
+<cite>y</cite> and <cite>z</cite> coordinates of the DICOM RT Dose file’s dose grid in
+the IEC patient coordinate system <a class="footnote-reference" href="#id3" id="id1">[1]</a>:<p><cite>x</cite> corresponds to the patient’s left-right axis and increases toward the
+left hand side of the patient.</p>
+<p><cite>y</cite> corresponds to the patient’s superoinferior axis and increases toward
+the head of the patient.</p>
+<p><cite>z</cite> corresponds to the patient’s anteroposterior axis and increases to the
+anterior side of the patient.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">(x, y, z)</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>Supported scan orientations <a class="footnote-reference" href="#id4" id="id2">[2]</a>:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="54%" />
+<col width="46%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Orientation</th>
+<th class="head">ImageOrientationPatient</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Feet First Decubitus Left</td>
+<td>[0, 1, 0, 1, 0, 0]</td>
+</tr>
+<tr class="row-odd"><td>Feet First Decubitus Right</td>
+<td>[0, -1, 0, -1, 0, 0]</td>
+</tr>
+<tr class="row-even"><td>Feet First Prone</td>
+<td>[1, 0, 0, 0, -1, 0]</td>
+</tr>
+<tr class="row-odd"><td>Feet First Supine</td>
+<td>[-1, 0, 0, 0, 1, 0]</td>
+</tr>
+<tr class="row-even"><td>Head First Decubitus Left</td>
+<td>[0, -1, 0, 1, 0, 0]</td>
+</tr>
+<tr class="row-odd"><td>Head First Decubitus Right</td>
+<td>[0, 1, 0, -1, 0, 0]</td>
+</tr>
+<tr class="row-even"><td>Head First Prone</td>
+<td>[-1, 0, 0, 0, -1, 0]</td>
+</tr>
+<tr class="row-odd"><td>Head First Supine</td>
+<td>[1, 0, 0, 0, 1, 0]</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">References</p>
+<table class="docutils footnote" frame="void" id="id3" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>“IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales”</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id4" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>O. McNoleg, “Generalized coordinate transformations for Monte Carlo
+(DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
+treatment plans”, arXiv:1406.0014, Table 1,
+https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf</td></tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.dicom.extract_iec_fixed_xyz">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">extract_iec_fixed_xyz</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level2/dose.html#extract_iec_fixed_xyz"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.extract_iec_fixed_xyz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the x, y and z coordinates of a DICOM RT Dose file’s dose grid
+in the IEC fixed coordinate system.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ds</strong> – A <cite>pydicom Dataset</cite> - ordinarily returned by <cite>pydicom.dcmread()</cite>.
+Must represent a valid DICOM RT Dose file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A tuple containing three <cite>ndarrays</cite> corresponding to the <cite>x</cite>,
+<cite>y</cite> and <cite>z</cite> coordinates of the DICOM RT Dose file’s dose grid in
+the IEC fixed coordinate system <a class="footnote-reference" href="#id7" id="id5">[3]</a>:<blockquote>
+<div><dl class="docutils">
+<dt><cite>x</cite></dt>
+<dd>An <cite>np.ndarray</cite> of coordinates on the horizontal plane that runs
+orthogonal to the gantry axis of rotation. The x axis increases
+towards a viewer’s right hand side when facing the gantry standing
+at the isocentre. The isocentre has an x value of 0.</dd>
+<dt><cite>y</cite></dt>
+<dd>An <cite>np.ndarray</cite> of coordinates on the horizontal plane that runs
+parallel to the gantry axis of rotation. The positive direction
+of the y axis travels from the isocentre to the gantry. The
+isocentre has a y value of 0.</dd>
+<dt><cite>z</cite></dt>
+<dd>An <cite>np.ndarray</cite> of coordinates aligned vertically and passing through
+the isocentre. The positive direction of the z axis travels upwards
+and the isocentre has a z value of 0.</dd>
+</dl>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">(x, y, z)</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>Supported scan orientations <a class="footnote-reference" href="#id8" id="id6">[4]</a>:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="54%" />
+<col width="46%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Orientation</th>
+<th class="head">ImageOrientationPatient</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Feet First Decubitus Left</td>
+<td>[0, 1, 0, 1, 0, 0]</td>
+</tr>
+<tr class="row-odd"><td>Feet First Decubitus Right</td>
+<td>[0, -1, 0, -1, 0, 0]</td>
+</tr>
+<tr class="row-even"><td>Feet First Prone</td>
+<td>[1, 0, 0, 0, -1, 0]</td>
+</tr>
+<tr class="row-odd"><td>Feet First Supine</td>
+<td>[-1, 0, 0, 0, 1, 0]</td>
+</tr>
+<tr class="row-even"><td>Head First Decubitus Left</td>
+<td>[0, -1, 0, 1, 0, 0]</td>
+</tr>
+<tr class="row-odd"><td>Head First Decubitus Right</td>
+<td>[0, 1, 0, -1, 0, 0]</td>
+</tr>
+<tr class="row-even"><td>Head First Prone</td>
+<td>[-1, 0, 0, 0, -1, 0]</td>
+</tr>
+<tr class="row-odd"><td>Head First Supine</td>
+<td>[1, 0, 0, 0, 1, 0]</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">References</p>
+<table class="docutils footnote" frame="void" id="id7" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[3]</a></td><td>“IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales”</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id8" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id6">[4]</a></td><td>O. McNoleg, “Generalized coordinate transformations for Monte Carlo
+(DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
+treatment plans”, arXiv:1406.0014, Table 1,
+https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf</td></tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.dicom.extract_dicom_patient_xyz">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">extract_dicom_patient_xyz</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level2/dose.html#extract_dicom_patient_xyz"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.extract_dicom_patient_xyz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the x, y and z coordinates of a DICOM RT Dose file’s dose grid
+in the DICOM patient coordinate system</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ds</strong> – A <cite>pydicom Dataset</cite> - ordinarily returned by <cite>pydicom.dcmread()</cite>.
+Must represent a valid DICOM RT Dose file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A tuple containing three <cite>ndarrays</cite> corresponding to the <cite>x</cite>,
+<cite>y</cite> and <cite>z</cite> coordinates of the DICOM RT Dose file’s dose grid in
+the DICOM patient coordinate system <a class="footnote-reference" href="#id11" id="id9">[5]</a>:<p><cite>x</cite> corresponds to the patient’s left-right axis and increases to the
+left hand side of the patient.</p>
+<p><cite>y</cite> corresponds to the patient’s anteroposterior axis and increases toward
+the posterior side of the patient.</p>
+<p><cite>z</cite> corresponds to the patient’s superoinferior axis and increases
+toward the head of the patient.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">(x, y, z)</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>Supported scan orientations <a class="footnote-reference" href="#id12" id="id10">[6]</a>:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="54%" />
+<col width="46%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Orientation</th>
+<th class="head">ImageOrientationPatient</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Feet First Decubitus Left</td>
+<td>[0, 1, 0, 1, 0, 0]</td>
+</tr>
+<tr class="row-odd"><td>Feet First Decubitus Right</td>
+<td>[0, -1, 0, -1, 0, 0]</td>
+</tr>
+<tr class="row-even"><td>Feet First Prone</td>
+<td>[1, 0, 0, 0, -1, 0]</td>
+</tr>
+<tr class="row-odd"><td>Feet First Supine</td>
+<td>[-1, 0, 0, 0, 1, 0]</td>
+</tr>
+<tr class="row-even"><td>Head First Decubitus Left</td>
+<td>[0, -1, 0, 1, 0, 0]</td>
+</tr>
+<tr class="row-odd"><td>Head First Decubitus Right</td>
+<td>[0, 1, 0, -1, 0, 0]</td>
+</tr>
+<tr class="row-even"><td>Head First Prone</td>
+<td>[-1, 0, 0, 0, -1, 0]</td>
+</tr>
+<tr class="row-odd"><td>Head First Supine</td>
+<td>[1, 0, 0, 0, 1, 0]</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">References</p>
+<table class="docutils footnote" frame="void" id="id11" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id9">[5]</a></td><td>“C.7.6.2.1.1 Image Position and Image Orientation”,
+“DICOM PS3.3 2016a - Information Object Definitions”,
+<a class="reference external" href="http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1">http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1</a></td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id12" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id10">[6]</a></td><td>O. McNoleg, “Generalized coordinate transformations for Monte Carlo
+(DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
+treatment plans”, arXiv:1406.0014, Table 1,
+https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf</td></tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.dicom.load_dose_from_dicom">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">load_dose_from_dicom</code><span class="sig-paren">(</span><em>ds</em>, <em>set_transfer_syntax_uid=True</em>, <em>reshape=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level2/dose.html#load_dose_from_dicom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.load_dose_from_dicom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract the dose grid from a DICOM RT Dose file.</p>
+<div class="deprecated">
+<p><span class="versionmodified">Deprecated since version 0.5.0: </span><cite>load_dose_from_dicom</cite> will be removed in a future version of PyMedPhys.
+It is replaced by <cite>extract_dose</cite>, which provides additional dose-related
+information and conforms to a new coordinate system handling convention.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.dicom.load_xyz_from_dicom">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">load_xyz_from_dicom</code><span class="sig-paren">(</span><em>ds</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level2/dose.html#load_xyz_from_dicom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.load_xyz_from_dicom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract the coordinates of a DICOM RT Dose file’s dose grid.</p>
+<div class="deprecated">
+<p><span class="versionmodified">Deprecated since version 0.5.0: </span><cite>load_xyz_from_dicom</cite> will be removed in a future version of PyMedPhys.
+It is replaced by <cite>extract_dicom_patient_coords</cite>, <cite>extract_iec_patient_coords</cite>
+and <cite>extract_iec_fixed_coords</cite>, which explicitly work in their respective
+coordinate systems.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.dicom.find_dose_within_structure">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">find_dose_within_structure</code><span class="sig-paren">(</span><em>structure</em>, <em>dcm_struct</em>, <em>dcm_dose</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level2/dose.html#find_dose_within_structure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.find_dose_within_structure" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.dicom.create_dvh">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">create_dvh</code><span class="sig-paren">(</span><em>structure</em>, <em>dcm_struct</em>, <em>dcm_dose</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level2/dose.html#create_dvh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.create_dvh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.dicom.get_structure_aligned_cube">
+<code class="descclassname">pymedphys.dicom.</code><code class="descname">get_structure_aligned_cube</code><span class="sig-paren">(</span><em>x0: numpy.ndarray</em>, <em>structure_name: str</em>, <em>dcm_struct: pydicom.dataset.FileDataset</em>, <em>quiet=False</em>, <em>niter=10</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/dicom/_level1/structure.html#get_structure_aligned_cube"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.dicom.get_structure_aligned_cube" title="Permalink to this definition">¶</a></dt>
+<dd><p>Align a cube to a dicom structure set.</p>
+<p>Designed to allow arbitrary references frames within a dicom file to be
+extracted via contouring a cube.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x0</strong> – A 3x3 array with each row defining a 3-D point in space.
+These three points are used as initial conditions to search for
+a cube that fits the contours. Choosing initial values close to the
+structure set, and in the desired orientation will allow consistent
+results. See examples within
+<a class="reference external" href="geometry.html#pymedphys.geometry.cubify_cube_definition">pymedphys.geometry.cubify_cube_definition</a> on what the effects
+of each of the three points are on the resulting cube.</li>
+<li><strong>structure_name</strong> – The DICOM label of the cube structure</li>
+<li><strong>dcm_struct</strong> – The pydicom reference to the DICOM structure file.</li>
+<li><strong>quiet</strong> (<em>bool</em>) – Tell the function to not print anything. Defaults to False.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><em>cube_definition_array</em> – Four 3-D points the define the vertices of the cube.</li>
+<li><em>vectors</em> – The vectors between the points that can be used to traverse the cube.</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pydicom</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.dicom</span> <span class="k">import</span> <span class="n">get_structure_aligned_cube</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">struct_path</span> <span class="o">=</span> <span class="s1">&#39;tests/data/dicom_struct/example_structures.dcm&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dcm_struct</span> <span class="o">=</span> <span class="n">pydicom</span><span class="o">.</span><span class="n">dcmread</span><span class="p">(</span><span class="n">struct_path</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="o">-</span><span class="mi">270</span><span class="p">,</span> <span class="o">-</span><span class="mi">35</span><span class="p">,</span> <span class="o">-</span><span class="mi">20</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="o">-</span><span class="mi">270</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="o">-</span><span class="mi">20</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="o">-</span><span class="mi">260</span><span class="p">,</span> <span class="o">-</span><span class="mi">35</span><span class="p">,</span> <span class="mi">40</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">structure_name</span> <span class="o">=</span> <span class="s1">&#39;ANT Box&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cube_definition_array</span><span class="p">,</span> <span class="n">vectors</span> <span class="o">=</span> <span class="n">get_structure_aligned_cube</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">x0</span><span class="p">,</span> <span class="n">structure_name</span><span class="p">,</span> <span class="n">dcm_struct</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">niter</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">cube_definition_array</span><span class="p">)</span>
+<span class="go">array([[-276.,  -31.,  -16.],</span>
+<span class="go">       [-275.,   29.,  -17.],</span>
+<span class="go">       [-266.,  -31.,   43.],</span>
+<span class="go">       [-217.,  -32.,  -26.]])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">vectors</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="go">array([[ 0.7, 59.9, -0.5],</span>
+<span class="go">       [ 9.7,  0.4, 59.1],</span>
+<span class="go">       [59.1, -0.8, -9.7]])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="geometry.html" class="btn btn-neutral float-right" title="Geometry Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="electronfactors.html" class="btn btn-neutral" title="Electron Factor Modelling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,371 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Benefits of AGPL-3.0+ for Medical Physics &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Labs" href="labs.html" />
+    <link rel="prev" title="Editing documentation" href="documentation.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Editing documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Benefits of AGPL-3.0+ for Medical Physics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#software-is-less-dependent-on-a-single-software-developer">Software is less dependent on a single software developer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#safer-and-higher-quality-software">Safer and higher quality software</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#software-that-is-more-compatible-with-a-wide-range-of-systems">Software that is more compatible with a wide range of systems</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#still-possible-to-potentially-monetise">Still possible to potentially monetise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#protection-against-another-actor-creating-a-closed-source-competitor">Protection against another actor creating a closed source competitor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#improving-our-work-as-physicists">Improving our work as Physicists</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#improving-the-programming-skill-of-employees-through-community-feedback">Improving the programming skill of employees through community feedback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#software-that-has-more-applications-and-more-features">Software that has more applications and more features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#improvements-will-by-default-be-in-a-compatible-format">Improvements will by default be in a compatible format</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Benefits of AGPL-3.0+ for Medical Physics</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/developer/agpl-benefits.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="benefits-of-agpl-3-0-for-medical-physics">
+<h1>Benefits of AGPL-3.0+ for Medical Physics<a class="headerlink" href="#benefits-of-agpl-3-0-for-medical-physics" title="Permalink to this headline">¶</a></h1>
+<p>The aim of this document is to outline some of the benefits of Medical Physics
+code being released under an open source license. In particular the benefits
+of the AGPL-3.0+ licence. An example of a well known code base that uses this
+open source licence is EGSnrc
+(<a class="reference external" href="https://www.nrc-cnrc.gc.ca/eng/solutions/advisory/egsnrc_index.html">https://www.nrc-cnrc.gc.ca/eng/solutions/advisory/egsnrc_index.html</a>).</p>
+<p>A summary of this license and what it entails is available at
+<a class="reference external" href="https://choosealicense.com/licenses/agpl-3.0/">https://choosealicense.com/licenses/agpl-3.0/</a>.</p>
+<div class="section" id="software-is-less-dependent-on-a-single-software-developer">
+<h2>Software is less dependent on a single software developer<a class="headerlink" href="#software-is-less-dependent-on-a-single-software-developer" title="Permalink to this headline">¶</a></h2>
+<p>A significant issue with software that is built by a small software development team is the “bus
+factor”. In the event that key team members are lost the software is no longer able to be easily
+maintained. By opening the code up to the community the number of people who understand the
+code base is increased. This reduces the dependence on any single employee for the ongoing
+maintenance of the code packages.</p>
+<p>Additionally software development by single developers carry any weaknesses that developer has as
+a programmer and its only strengths will be limited to those of that programmer. Medical Physicists
+are generally not trained software engineers, and when it comes to programming we often have
+many weaknesses that need a light shined upon.</p>
+<p>This was the justification provided by the radiation therapy QATrack+ team
+(<a class="reference external" href="http://qatrackplus.com/">http://qatrackplus.com/</a>) for open sourcing their tools
+(<a class="reference external" href="http://randlet.com/static/downloads/papers/QATrack+%20Odette%20Cancer%20Centre.pdf">http://randlet.com/static/downloads/papers/QATrack+%20Odette%20Cancer%20Centre.pdf</a>).</p>
+</div>
+<div class="section" id="safer-and-higher-quality-software">
+<h2>Safer and higher quality software<a class="headerlink" href="#safer-and-higher-quality-software" title="Permalink to this headline">¶</a></h2>
+<p>By leveraging the community in software production there will be more minds, more programmers,
+and more readers of the code. Together there will be more combined time to implement software
+engineering best practices and there are physicists in the community who are keen to support best
+practice software engineering. The community will be able to fix bugs, implement programmatic
+testing, highlight security issues, and generally all round produce safer and higher quality software
+than a sole physicist turned programmer ever could.</p>
+</div>
+<div class="section" id="software-that-is-more-compatible-with-a-wide-range-of-systems">
+<h2>Software that is more compatible with a wide range of systems<a class="headerlink" href="#software-that-is-more-compatible-with-a-wide-range-of-systems" title="Permalink to this headline">¶</a></h2>
+<p>Users of open source code who are also programmers who have systems which differ to the author’s
+will be able to improve compatibility issues themselves. This iterative process with the community
+makes it so that the software has a more seamless interaction with the range of systems in use.</p>
+<p>An example of this is the Pylinac quality assurance tool
+(<a class="reference external" href="http://pylinac.readthedocs.io/en/latest/index.html">http://pylinac.readthedocs.io/en/latest/index.html</a>). It was built by a
+physicist who works at a Varian site. Another physicist submitted code
+improvements to make the software tool compatible
+with Elekta (<a class="reference external" href="https://github.com/jrkerns/pylinac/pull/67">https://github.com/jrkerns/pylinac/pull/67</a>).</p>
+</div>
+<div class="section" id="still-possible-to-potentially-monetise">
+<h2>Still possible to potentially monetise<a class="headerlink" href="#still-possible-to-potentially-monetise" title="Permalink to this headline">¶</a></h2>
+<p>The AGPL-3.0+ requires that code include programmatic build and installation instructions. This
+means that users who are also programmers will likely be able to put in the work to get the software
+running by themselves without payment to the authors. However in this case there is no one being
+paid to provide user support and the default is no included warranty.</p>
+<p>As a result there still is likely a market for providing the full toolset in a user friendly, warranty
+included, batteries included, fully supported package. An example of a product and company that
+uses exactly this business model is the medical imaging DICOM server Orthanc which offers
+commercial services through the company Osimis (<a class="reference external" href="http://www.osimis.io/en/products.html">http://www.osimis.io/en/products.html</a>).</p>
+<p>There is also the opportunity for advertising revenue.</p>
+</div>
+<div class="section" id="protection-against-another-actor-creating-a-closed-source-competitor">
+<h2>Protection against another actor creating a closed source competitor<a class="headerlink" href="#protection-against-another-actor-creating-a-closed-source-competitor" title="Permalink to this headline">¶</a></h2>
+<p>By releasing the code under the AGPL-3.0+ license any future work that makes use of the open
+source code must also be released under the same license. This means that should another actor
+create a competing product to the original author’s should they ever distribute the code
+they must also release all changes under the AGPL-3.0+ license along with that distribution. In
+effect unless that company is willing to release all of their own code that is bundled with the
+author’s code to the community they cannot use the original source code to compete.</p>
+</div>
+<div class="section" id="improving-our-work-as-physicists">
+<h2>Improving our work as Physicists<a class="headerlink" href="#improving-our-work-as-physicists" title="Permalink to this headline">¶</a></h2>
+<p>The software we write is written for the purpose of improving our work as physicists. Having the
+community improve the software we write directly improves the quality of the work we undergo.</p>
+</div>
+<div class="section" id="improving-the-programming-skill-of-employees-through-community-feedback">
+<h2>Improving the programming skill of employees through community feedback<a class="headerlink" href="#improving-the-programming-skill-of-employees-through-community-feedback" title="Permalink to this headline">¶</a></h2>
+<p>Programming skills are significantly benefited by having competent programmers read the code and
+provide feedback. Community feedback on code itself is invaluable for improving the skill of the
+programmers writing the original code. The depth and breadth of feedback from the community on
+programming practices would unable to be matched within a small team.</p>
+</div>
+<div class="section" id="software-that-has-more-applications-and-more-features">
+<h2>Software that has more applications and more features<a class="headerlink" href="#software-that-has-more-applications-and-more-features" title="Permalink to this headline">¶</a></h2>
+<p>As members of the community have needs those with programming skill may extend the code that is
+provided to meet those needs. This results in the code having more applications and features than
+would be possible should the code be kept in house.</p>
+</div>
+<div class="section" id="improvements-will-by-default-be-in-a-compatible-format">
+<h2>Improvements will by default be in a compatible format<a class="headerlink" href="#improvements-will-by-default-be-in-a-compatible-format" title="Permalink to this headline">¶</a></h2>
+<p>Should the community create code built on top of the released software tools, those improvements
+will built on top of the format that is already implemented. This allows those improvements to be
+integrated within already implemented systems with minimal friction.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="labs.html" class="btn btn-neutral float-right" title="Labs" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="documentation.html" class="btn btn-neutral" title="Editing documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

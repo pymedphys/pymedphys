@@ -1,0 +1,411 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>PyMedPhys &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="About PyMedPhys" href="getting-started/about.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="#" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#">Docs</a> &raquo;</li>
+        
+      <li>PyMedPhys</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="pymedphys">
+<h1>PyMedPhys<a class="headerlink" href="#pymedphys" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&amp;branchName=master"><img alt="build" src="https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master" /></a> <a class="reference external" href="https://pymedphys.com/"><img alt="docs" src="https://readthedocs.org/projects/pymedphys/badge/?version=latest" /></a> <a class="reference external" href="https://pypi.org/project/pymedphys/"><img alt="pypi" src="https://img.shields.io/pypi/v/pymedphys.svg" /></a> <a class="reference external" href="https://anaconda.org/conda-forge/pymedphys/"><img alt="conda" src="https://img.shields.io/conda/vn/conda-forge/pymedphys.svg" /></a> <a class="reference external" href="https://pypi.org/project/pymedphys/"><img alt="python" src="https://img.shields.io/pypi/pyversions/pymedphys.svg" /></a> <a class="reference external" href="https://choosealicense.com/licenses/agpl-3.0/"><img alt="license" src="https://img.shields.io/pypi/l/pymedphys.svg" /></a></p>
+<p>PyMedPhys aims to be a Medical Physics open source <a class="reference external" href="https://cacm.acm.org/magazines/2016/7/204032-why-google-stores-billions-of-lines-of-code-in-a-single-repository/fulltext">monorepo</a> where we can all store, review, use, and learn off of each other’s code. It is a library of tools that we all have access to and, because of its license, will all have access to whatever it becomes in the future. It is inspired by the collaborative work of our physics peers in astronomy and their <a class="reference external" href="http://www.astropy.org/">Astropy Project</a>.</p>
+<p>It is structured and glued together with Python, but certainly not limited to one programming language. A great place to begin sharing is the labs, a range of experimental modules where you can learn to use git and begin the process of code sharing and review. For example, feel free to submit to the labs your favorite MatLab scripts which we can help you glue together with Python using <a class="reference external" href="http://blink1073.github.io/oct2py/">oct2py</a>.</p>
+<p>This package is available on PyPI (<a class="reference external" href="https://pypi.org/project/pymedphys/">https://pypi.org/project/pymedphys/</a>),
+GitHub (<a class="reference external" href="https://github.com/pymedphys/pymedphys">https://github.com/pymedphys/pymedphys</a>), and conda-forge
+(<a class="reference external" href="https://anaconda.org/conda-forge/pymedphys">https://anaconda.org/conda-forge/pymedphys</a>). Documentation is at
+<a class="reference external" href="https://pymedphys.com">https://pymedphys.com</a>.</p>
+<div class="section" id="our-team">
+<h2>Our Team<a class="headerlink" href="#our-team" title="Permalink to this headline">¶</a></h2>
+<p>PyMedPhys is what it is today due to its maintainers and developers. The
+currently active developers and maintainers of PyMedPhys are given below
+along with their affiliation:</p>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt><a class="reference external" href="https://github.com/SimonBiggs">Simon Biggs</a></dt>
+<dd><ul class="first last">
+<li><a class="reference external" href="http://www.riverinacancercare.com.au/">Riverina Cancer Care Centre</a>, Australia</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt><a class="reference external" href="https://github.com/centrus007">Matthew Jennings</a></dt>
+<dd><ul class="first last">
+<li><a class="reference external" href="http://www.rah.sa.gov.au/">Royal Adelaide Hospital</a>, Australia</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt><a class="reference external" href="https://github.com/kingrpaul">Paul King</a></dt>
+<dd><ul class="first last">
+<li><a class="reference external" href="http://www.andersonregional.org/CancerCenter.aspx">Anderson Regional Cancer Center</a>, United States</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt><a class="reference external" href="https://github.com/msobolewski">Matthew Sobolewski</a></dt>
+<dd><ul class="first last">
+<li><a class="reference external" href="http://www.riverinacancercare.com.au/">Riverina Cancer Care Centre</a>, Australia</li>
+<li><a class="reference external" href="http://www.northernbeachescancercare.com.au/">Northern Beaches Cancer Care</a>, Australia</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt><a class="reference external" href="https://github.com/JacobMcAloney">Jacob McAloney</a></dt>
+<dd><ul class="first last">
+<li><a class="reference external" href="http://www.riverinacancercare.com.au/">Riverina Cancer Care Centre</a>, Australia</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<a class="reference external image-reference" href="http://www.riverinacancercare.com.au/"><img alt="https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png" src="https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png" style="width: 500px;" /></a>
+<a class="reference external image-reference" href="http://www.rah.sa.gov.au/"><img alt="https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png" src="https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png" style="width: 500px;" /></a>
+<a class="reference external image-reference" href="http://www.andersonregional.org/CancerCenter.aspx"><img alt="https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png" src="https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png" style="width: 500px;" /></a>
+<a class="reference external image-reference" href="http://www.northernbeachescancercare.com.au/"><img alt="https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png" src="https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png" style="width: 500px;" /></a>
+<p>We want you on this list. We want you, whether you are a  clinical Medical
+Physicist, PhD or Masters student, researcher, or even just someone with an
+interest in Python to join our
+team. We want you if you have a desire to create and validate a toolbox we can
+all use to improve how we care for our patients.</p>
+<p>The aim of PyMedPhys is that it will be developed by an open community of
+contributors. We use a shared copyright model that enables all contributors
+to maintain the copyright on their contributions. All code is licensed under
+the AGPLv3+ with additional terms from the Apache-2.0 license.</p>
+</div>
+<div class="section" id="beta-stage-development">
+<h2>Beta stage development<a class="headerlink" href="#beta-stage-development" title="Permalink to this headline">¶</a></h2>
+<p>These libraries are currently under beta level development.
+Be prudent with the code in this library.</p>
+<p>Throughout the lifetime of this library the following disclaimer will always
+hold:</p>
+<blockquote>
+<div>In no event and under no legal theory, whether in tort
+(including negligence), contract, or otherwise, unless required by
+applicable law (such as deliberate and grossly negligent acts) or agreed
+to in writing, shall any Contributor be liable to You for damages,
+including any direct, indirect, special, incidental, or consequential
+damages of any character arising as a result of this License or out of
+the use or inability to use the Work (including but not limited to damages
+for loss of goodwill, work stoppage, computer failure or malfunction, or
+any and all other commercial damages or losses), even if such Contributor
+has been advised of the possibility of such damages.</div></blockquote>
+<p>Where the definition of License is taken to be the
+AGPLv3+ with additional terms from the Apache 2.0. The definitions of
+Contributor, You, and Work are as defined within the Apache 2.0 license.</p>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user/examples.html">Examples</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/labs.html">Labs</a></li>
+</ul>
+</div>
+<div class="section" id="indices-and-tables">
+<h3>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="getting-started/about.html" class="btn btn-neutral float-right" title="About PyMedPhys" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'./',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

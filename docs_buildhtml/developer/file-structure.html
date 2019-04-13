@@ -1,0 +1,383 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Directory &amp; File Structure &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Editing documentation" href="documentation.html" />
+    <link rel="prev" title="Recommended Setup for Contribution" href="contributing.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Directory &amp; File Structure</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-pymedphys-repository">The PyMedPhys Repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-pymedphys-source-code-package">The PyMedPhys Source Code Package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#john-lakos-and-physical-design">John Lakos and Physical Design</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Directory &amp; File Structure</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/developer/file-structure.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="directory-file-structure">
+<h1>Directory &amp; File Structure<a class="headerlink" href="#directory-file-structure" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="the-pymedphys-repository">
+<h2>The PyMedPhys Repository<a class="headerlink" href="#the-pymedphys-repository" title="Permalink to this headline">¶</a></h2>
+<p>The PyMedPhys repository is generally structured as follows:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pymedphys/
+<span class="p">|</span>   README.md
+<span class="p">|</span>   changelog.md
+<span class="p">|</span>   LICENSE
+<span class="p">|</span>   setup.py
+<span class="p">|</span>   ...
+<span class="p">|</span>
+<span class="p">|</span>-- docs/
+<span class="p">|</span>
+<span class="p">|</span>-- notebooks/
+<span class="p">|</span>
+<span class="p">|</span>-- scripts/
+<span class="p">|</span>
+<span class="p">|</span>-- src/pymedphys/
+<span class="p">|</span>
+<span class="p">|</span>-- tests/
+<span class="p">|</span>
+<span class="p">|</span>-- ...
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-pymedphys-source-code-package">
+<h2>The PyMedPhys Source Code Package<a class="headerlink" href="#the-pymedphys-source-code-package" title="Permalink to this headline">¶</a></h2>
+<p>All source code for PyMedPhys is contained within <code class="docutils literal notranslate"><span class="pre">src/pymedphys</span></code>. Within
+this directory, the code is organised into a range of categories, such as
+<code class="docutils literal notranslate"><span class="pre">dicom</span></code>, <code class="docutils literal notranslate"><span class="pre">gamma</span></code>, etc. These correspond to Python modules. Finally, code
+within these categories are organised into levels:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pymedphys/
+<span class="p">|</span>-- src/pymedphys
+<span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>-- dicom/
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- __init__.py
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- _level1/
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- __init__.py
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- a_python_source_code_file.py
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- another_python_source_code_file.py
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- _level2/
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- _level3/
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- _level4/
+<span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>-- gamma/
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- __init__.py
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- _level1/
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- __init__.py
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- and_yet_even_more_python_code.py
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- _level2/
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- _level3/
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>   <span class="p">|</span>-- _level4/
+<span class="p">|</span>   <span class="p">|</span>
+<span class="p">|</span>   <span class="p">|</span>-- ...
+</pre></div>
+</div>
+<p>This levelling helps to prevent a cyclical code dependency tree. PyMedPhys’
+automated test suite includes a Python package called <code class="docutils literal notranslate"><span class="pre">layer-linter</span></code> that
+helps to enforce this structure. The following sections further explain the
+philosophy behind levelling dependencies.</p>
+</div>
+<div class="section" id="john-lakos-and-physical-design">
+<h2>John Lakos and Physical Design<a class="headerlink" href="#john-lakos-and-physical-design" title="Permalink to this headline">¶</a></h2>
+<p>The physical design of PyMedPhys is inspired by
+John Lakos at Bloomberg, writer of Large-Scale C++ Software Design. He
+describes this methodology in a talk he gave which is available on YouTube:</p>
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+    <iframe src="https://www.youtube.com/embed/QjFpKJ8Xx78?t=39m10s" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+</div></br><p>The aim is to have an easy to understand hierarchy of component and package
+dependencies that continues to be easy to hold in ones head even when there are
+a very large number of these items.</p>
+<p>This is achieved by levelling. The idea is that in each type of aggregation
+there are only three levels, and each level can only depend on the levels lower
+than it. Never those higher, nor those the same level. So as such, Level 1
+components or packages can only depend on external dependencies. Level 2 can
+depend on Level 1 or external, and then Level3 can depend ong Level 1, Level 2,
+or external.</p>
+<p>John Lakos uses three aggregation terms, component, package, and package group.
+Primarily PyMedPhys avoids object oriented programming choosing functional
+methods where appropriate. However within Python, a single python file itself
+can act as a module object. This module object contains public and private
+functions (or methods) and largely acts like an object in the object oriented
+paradime. So the physical and logical component within PyMedPhys is being
+interpreted as a single <cite>.py</cite> file that contains a range of functions.
+A set of related components are levelled and grouped together in a package,
+and then the set of these packages make up the package group of PyMedPhys
+itself.</p>
+<p>He presents the following diagram:</p>
+<img alt="../_images/physical_aggregation.png" src="../_images/physical_aggregation.png" />
+<p>It is important that the packages themselves are levelled. See in the following
+image, even though the individual components themselves form a nice dependency
+tree, the packages to which those components belong end up interdepending on
+one another:</p>
+<img alt="../_images/group_cycle.png" src="../_images/group_cycle.png" />
+<p>In this case, it might be able to be solved by appropriately dividing the
+components up into differently structured packages:</p>
+<img alt="../_images/group_tree.png" src="../_images/group_tree.png" />
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="documentation.html" class="btn btn-neutral float-right" title="Editing documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="contributing.html" class="btn btn-neutral" title="Recommended Setup for Contribution" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

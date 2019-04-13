@@ -1,0 +1,626 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>NIST photon interaction data &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="prev" title="Simon Biggs" href="../simonbiggs.html" /> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../labs.html">Labs</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../paulking.html">Paul King</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../simonbiggs.html">Simon Biggs</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">NIST photon interaction data</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../labs.html">Labs</a> &raquo;</li>
+        
+          <li><a href="../simonbiggs.html">Simon Biggs</a> &raquo;</li>
+        
+      <li>NIST photon interaction data</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../../_sources/developer/labs/simonbiggs/nist_interactions.ipynb.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput,
+div.nbinput div.prompt,
+div.nbinput div.input_area,
+div.nbinput div[class*=highlight],
+div.nbinput div[class*=highlight] pre,
+div.nboutput,
+div.nbinput div.prompt,
+div.nbinput div.output_area,
+div.nboutput div[class*=highlight],
+div.nboutput div[class*=highlight] pre {
+    background: none;
+    border: none;
+    padding: 0 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* avoid gaps between output lines */
+div.nboutput div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput,
+div.nboutput {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput,
+    div.nboutput {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput div.prompt,
+div.nboutput div.prompt {
+    min-width: 5ex;
+    padding-top: 0.4em;
+    padding-right: 0.4em;
+    text-align: right;
+    flex: 0;
+}
+@media (max-width: 540px) {
+    div.nbinput div.prompt,
+    div.nboutput div.prompt {
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput div.prompt.empty {
+        padding: 0;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput div.prompt pre,
+div.nboutput div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput div.input_area,
+div.nboutput div.output_area {
+    padding: 0.4em;
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput div.input_area,
+    div.nboutput div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    background: #f5f5f5;
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="admonition note">
+This page was generated from <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/master/docs/developer/labs/simonbiggs/nist_interactions.ipynb">docs/developer/labs/simonbiggs/nist_interactions.ipynb</a>.
+Interactive online version:
+<span class="raw-html"><a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/master?urlpath=/lab/tree/docs/developer/labs/simonbiggs/nist_interactions.ipynb"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a></span></div>
+<div class="section" id="NIST-photon-interaction-data">
+<h1>NIST photon interaction data<a class="headerlink" href="#NIST-photon-interaction-data" title="Permalink to this headline">¶</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1"># Data from https://physics.nist.gov/PhysRefData/Xcom/html/xcom1.html</span>
+<span class="n">H2O_NIST_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">1.000E-03</span><span class="p">,</span> <span class="mf">1.372E+00</span><span class="p">,</span> <span class="mf">1.319E-02</span><span class="p">,</span> <span class="mf">4.076E+03</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">4.077E+03</span><span class="p">,</span> <span class="mf">4.076E+03</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.500E-03</span><span class="p">,</span> <span class="mf">1.269E+00</span><span class="p">,</span> <span class="mf">2.673E-02</span><span class="p">,</span> <span class="mf">1.374E+03</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.376E+03</span><span class="p">,</span> <span class="mf">1.374E+03</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.000E-03</span><span class="p">,</span> <span class="mf">1.150E+00</span><span class="p">,</span> <span class="mf">4.184E-02</span><span class="p">,</span> <span class="mf">6.162E+02</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">6.173E+02</span><span class="p">,</span> <span class="mf">6.162E+02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.000E-03</span><span class="p">,</span> <span class="mf">9.087E-01</span><span class="p">,</span> <span class="mf">7.075E-02</span><span class="p">,</span> <span class="mf">1.919E+02</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.928E+02</span><span class="p">,</span> <span class="mf">1.919E+02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">4.000E-03</span><span class="p">,</span> <span class="mf">7.082E-01</span><span class="p">,</span> <span class="mf">9.430E-02</span><span class="p">,</span> <span class="mf">8.197E+01</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">8.277E+01</span><span class="p">,</span> <span class="mf">8.207E+01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.000E-03</span><span class="p">,</span> <span class="mf">5.579E-01</span><span class="p">,</span> <span class="mf">1.123E-01</span><span class="p">,</span> <span class="mf">4.192E+01</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">4.259E+01</span><span class="p">,</span> <span class="mf">4.203E+01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">6.000E-03</span><span class="p">,</span> <span class="mf">4.489E-01</span><span class="p">,</span> <span class="mf">1.259E-01</span><span class="p">,</span> <span class="mf">2.407E+01</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">2.464E+01</span><span class="p">,</span> <span class="mf">2.419E+01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">8.000E-03</span><span class="p">,</span> <span class="mf">3.102E-01</span><span class="p">,</span> <span class="mf">1.440E-01</span><span class="p">,</span> <span class="mf">9.919E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.037E+01</span><span class="p">,</span> <span class="mf">1.006E+01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.000E-02</span><span class="p">,</span> <span class="mf">2.305E-01</span><span class="p">,</span> <span class="mf">1.550E-01</span><span class="p">,</span> <span class="mf">4.944E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">5.330E+00</span><span class="p">,</span> <span class="mf">5.099E+00</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.500E-02</span><span class="p">,</span> <span class="mf">1.333E-01</span><span class="p">,</span> <span class="mf">1.699E-01</span><span class="p">,</span> <span class="mf">1.369E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.672E+00</span><span class="p">,</span> <span class="mf">1.539E+00</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.000E-02</span><span class="p">,</span> <span class="mf">8.856E-02</span><span class="p">,</span> <span class="mf">1.774E-01</span><span class="p">,</span> <span class="mf">5.439E-01</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">8.098E-01</span><span class="p">,</span> <span class="mf">7.213E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.000E-02</span><span class="p">,</span> <span class="mf">4.694E-02</span><span class="p">,</span> <span class="mf">1.829E-01</span><span class="p">,</span> <span class="mf">1.458E-01</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">3.756E-01</span><span class="p">,</span> <span class="mf">3.286E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">4.000E-02</span><span class="p">,</span> <span class="mf">2.874E-02</span><span class="p">,</span> <span class="mf">1.827E-01</span><span class="p">,</span> <span class="mf">5.680E-02</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">2.683E-01</span><span class="p">,</span> <span class="mf">2.395E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.000E-02</span><span class="p">,</span> <span class="mf">1.936E-02</span><span class="p">,</span> <span class="mf">1.803E-01</span><span class="p">,</span> <span class="mf">2.725E-02</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">2.269E-01</span><span class="p">,</span> <span class="mf">2.076E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">6.000E-02</span><span class="p">,</span> <span class="mf">1.392E-02</span><span class="p">,</span> <span class="mf">1.770E-01</span><span class="p">,</span> <span class="mf">1.493E-02</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">2.059E-01</span><span class="p">,</span> <span class="mf">1.920E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">8.000E-02</span><span class="p">,</span> <span class="mf">8.165E-03</span><span class="p">,</span> <span class="mf">1.697E-01</span><span class="p">,</span> <span class="mf">5.770E-03</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.837E-01</span><span class="p">,</span> <span class="mf">1.755E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.000E-01</span><span class="p">,</span> <span class="mf">5.349E-03</span><span class="p">,</span> <span class="mf">1.626E-01</span><span class="p">,</span> <span class="mf">2.763E-03</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.707E-01</span><span class="p">,</span> <span class="mf">1.654E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.500E-01</span><span class="p">,</span> <span class="mf">2.442E-03</span><span class="p">,</span> <span class="mf">1.474E-01</span><span class="p">,</span> <span class="mf">7.308E-04</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.505E-01</span><span class="p">,</span> <span class="mf">1.481E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.000E-01</span><span class="p">,</span> <span class="mf">1.388E-03</span><span class="p">,</span> <span class="mf">1.353E-01</span><span class="p">,</span> <span class="mf">2.887E-04</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.370E-01</span><span class="p">,</span> <span class="mf">1.356E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.000E-01</span><span class="p">,</span> <span class="mf">6.215E-04</span><span class="p">,</span> <span class="mf">1.179E-01</span><span class="p">,</span> <span class="mf">8.160E-05</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.186E-01</span><span class="p">,</span> <span class="mf">1.180E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">4.000E-01</span><span class="p">,</span> <span class="mf">3.506E-04</span><span class="p">,</span> <span class="mf">1.058E-01</span><span class="p">,</span> <span class="mf">3.493E-05</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">1.061E-01</span><span class="p">,</span> <span class="mf">1.058E-01</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.000E-01</span><span class="p">,</span> <span class="mf">2.247E-04</span><span class="p">,</span> <span class="mf">9.663E-02</span><span class="p">,</span> <span class="mf">1.883E-05</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">9.687E-02</span><span class="p">,</span> <span class="mf">9.665E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">6.000E-01</span><span class="p">,</span> <span class="mf">1.561E-04</span><span class="p">,</span> <span class="mf">8.939E-02</span><span class="p">,</span> <span class="mf">1.173E-05</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">8.956E-02</span><span class="p">,</span> <span class="mf">8.940E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">8.000E-01</span><span class="p">,</span> <span class="mf">8.790E-05</span><span class="p">,</span> <span class="mf">7.856E-02</span><span class="p">,</span> <span class="mf">5.920E-06</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">7.866E-02</span><span class="p">,</span> <span class="mf">7.857E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.000E+00</span><span class="p">,</span> <span class="mf">5.627E-05</span><span class="p">,</span> <span class="mf">7.066E-02</span><span class="p">,</span> <span class="mf">3.681E-06</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">7.072E-02</span><span class="p">,</span> <span class="mf">7.066E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.022E+00</span><span class="p">,</span> <span class="mf">5.388E-05</span><span class="p">,</span> <span class="mf">6.991E-02</span><span class="p">,</span> <span class="mf">3.430E-06</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">6.997E-02</span><span class="p">,</span> <span class="mf">6.991E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.250E+00</span><span class="p">,</span> <span class="mf">3.603E-05</span><span class="p">,</span> <span class="mf">6.318E-02</span><span class="p">,</span> <span class="mf">2.329E-06</span><span class="p">,</span> <span class="mf">1.777E-05</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">6.323E-02</span><span class="p">,</span> <span class="mf">6.320E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.500E+00</span><span class="p">,</span> <span class="mf">2.501E-05</span><span class="p">,</span> <span class="mf">5.742E-02</span><span class="p">,</span> <span class="mf">1.690E-06</span><span class="p">,</span> <span class="mf">9.820E-05</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">5.754E-02</span><span class="p">,</span> <span class="mf">5.752E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.000E+00</span><span class="p">,</span> <span class="mf">1.407E-05</span><span class="p">,</span> <span class="mf">4.901E-02</span><span class="p">,</span> <span class="mf">1.063E-06</span><span class="p">,</span> <span class="mf">3.908E-04</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">4.942E-02</span><span class="p">,</span> <span class="mf">4.940E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.044E+00</span><span class="p">,</span> <span class="mf">1.347E-05</span><span class="p">,</span> <span class="mf">4.839E-02</span><span class="p">,</span> <span class="mf">1.028E-06</span><span class="p">,</span> <span class="mf">4.212E-04</span><span class="p">,</span> <span class="mf">0.000E+00</span><span class="p">,</span> <span class="mf">4.883E-02</span><span class="p">,</span> <span class="mf">4.881E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.000E+00</span><span class="p">,</span> <span class="mf">6.255E-06</span><span class="p">,</span> <span class="mf">3.855E-02</span><span class="p">,</span> <span class="mf">5.937E-07</span><span class="p">,</span> <span class="mf">1.117E-03</span><span class="p">,</span> <span class="mf">1.349E-05</span><span class="p">,</span> <span class="mf">3.969E-02</span><span class="p">,</span> <span class="mf">3.968E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">4.000E+00</span><span class="p">,</span> <span class="mf">3.519E-06</span><span class="p">,</span> <span class="mf">3.216E-02</span><span class="p">,</span> <span class="mf">4.075E-07</span><span class="p">,</span> <span class="mf">1.812E-03</span><span class="p">,</span> <span class="mf">5.507E-05</span><span class="p">,</span> <span class="mf">3.403E-02</span><span class="p">,</span> <span class="mf">3.402E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.000E+00</span><span class="p">,</span> <span class="mf">2.252E-06</span><span class="p">,</span> <span class="mf">2.777E-02</span><span class="p">,</span> <span class="mf">3.090E-07</span><span class="p">,</span> <span class="mf">2.431E-03</span><span class="p">,</span> <span class="mf">1.097E-04</span><span class="p">,</span> <span class="mf">3.031E-02</span><span class="p">,</span> <span class="mf">3.031E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">6.000E+00</span><span class="p">,</span> <span class="mf">1.564E-06</span><span class="p">,</span> <span class="mf">2.454E-02</span><span class="p">,</span> <span class="mf">2.484E-07</span><span class="p">,</span> <span class="mf">2.987E-03</span><span class="p">,</span> <span class="mf">1.685E-04</span><span class="p">,</span> <span class="mf">2.770E-02</span><span class="p">,</span> <span class="mf">2.770E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">7.000E+00</span><span class="p">,</span> <span class="mf">1.149E-06</span><span class="p">,</span> <span class="mf">2.206E-02</span><span class="p">,</span> <span class="mf">2.075E-07</span><span class="p">,</span> <span class="mf">3.482E-03</span><span class="p">,</span> <span class="mf">2.272E-04</span><span class="p">,</span> <span class="mf">2.577E-02</span><span class="p">,</span> <span class="mf">2.577E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">8.000E+00</span><span class="p">,</span> <span class="mf">8.796E-07</span><span class="p">,</span> <span class="mf">2.008E-02</span><span class="p">,</span> <span class="mf">1.780E-07</span><span class="p">,</span> <span class="mf">3.927E-03</span><span class="p">,</span> <span class="mf">2.843E-04</span><span class="p">,</span> <span class="mf">2.429E-02</span><span class="p">,</span> <span class="mf">2.429E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">9.000E+00</span><span class="p">,</span> <span class="mf">6.951E-07</span><span class="p">,</span> <span class="mf">1.846E-02</span><span class="p">,</span> <span class="mf">1.559E-07</span><span class="p">,</span> <span class="mf">4.334E-03</span><span class="p">,</span> <span class="mf">3.389E-04</span><span class="p">,</span> <span class="mf">2.313E-02</span><span class="p">,</span> <span class="mf">2.313E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.000E+01</span><span class="p">,</span> <span class="mf">5.630E-07</span><span class="p">,</span> <span class="mf">1.710E-02</span><span class="p">,</span> <span class="mf">1.386E-07</span><span class="p">,</span> <span class="mf">4.699E-03</span><span class="p">,</span> <span class="mf">3.910E-04</span><span class="p">,</span> <span class="mf">2.219E-02</span><span class="p">,</span> <span class="mf">2.219E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.100E+01</span><span class="p">,</span> <span class="mf">4.652E-07</span><span class="p">,</span> <span class="mf">1.595E-02</span><span class="p">,</span> <span class="mf">1.248E-07</span><span class="p">,</span> <span class="mf">5.034E-03</span><span class="p">,</span> <span class="mf">4.404E-04</span><span class="p">,</span> <span class="mf">2.142E-02</span><span class="p">,</span> <span class="mf">2.142E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.200E+01</span><span class="p">,</span> <span class="mf">3.909E-07</span><span class="p">,</span> <span class="mf">1.496E-02</span><span class="p">,</span> <span class="mf">1.134E-07</span><span class="p">,</span> <span class="mf">5.341E-03</span><span class="p">,</span> <span class="mf">4.872E-04</span><span class="p">,</span> <span class="mf">2.079E-02</span><span class="p">,</span> <span class="mf">2.079E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.300E+01</span><span class="p">,</span> <span class="mf">3.331E-07</span><span class="p">,</span> <span class="mf">1.409E-02</span><span class="p">,</span> <span class="mf">1.039E-07</span><span class="p">,</span> <span class="mf">5.627E-03</span><span class="p">,</span> <span class="mf">5.315E-04</span><span class="p">,</span> <span class="mf">2.025E-02</span><span class="p">,</span> <span class="mf">2.025E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.400E+01</span><span class="p">,</span> <span class="mf">2.872E-07</span><span class="p">,</span> <span class="mf">1.333E-02</span><span class="p">,</span> <span class="mf">9.591E-08</span><span class="p">,</span> <span class="mf">5.893E-03</span><span class="p">,</span> <span class="mf">5.737E-04</span><span class="p">,</span> <span class="mf">1.980E-02</span><span class="p">,</span> <span class="mf">1.980E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.500E+01</span><span class="p">,</span> <span class="mf">2.502E-07</span><span class="p">,</span> <span class="mf">1.266E-02</span><span class="p">,</span> <span class="mf">8.906E-08</span><span class="p">,</span> <span class="mf">6.141E-03</span><span class="p">,</span> <span class="mf">6.135E-04</span><span class="p">,</span> <span class="mf">1.941E-02</span><span class="p">,</span> <span class="mf">1.941E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.600E+01</span><span class="p">,</span> <span class="mf">2.199E-07</span><span class="p">,</span> <span class="mf">1.205E-02</span><span class="p">,</span> <span class="mf">8.311E-08</span><span class="p">,</span> <span class="mf">6.376E-03</span><span class="p">,</span> <span class="mf">6.519E-04</span><span class="p">,</span> <span class="mf">1.908E-02</span><span class="p">,</span> <span class="mf">1.908E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.800E+01</span><span class="p">,</span> <span class="mf">1.737E-07</span><span class="p">,</span> <span class="mf">1.102E-02</span><span class="p">,</span> <span class="mf">7.331E-08</span><span class="p">,</span> <span class="mf">6.803E-03</span><span class="p">,</span> <span class="mf">7.230E-04</span><span class="p">,</span> <span class="mf">1.854E-02</span><span class="p">,</span> <span class="mf">1.854E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.000E+01</span><span class="p">,</span> <span class="mf">1.407E-07</span><span class="p">,</span> <span class="mf">1.016E-02</span><span class="p">,</span> <span class="mf">6.555E-08</span><span class="p">,</span> <span class="mf">7.186E-03</span><span class="p">,</span> <span class="mf">7.878E-04</span><span class="p">,</span> <span class="mf">1.813E-02</span><span class="p">,</span> <span class="mf">1.813E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.200E+01</span><span class="p">,</span> <span class="mf">1.163E-07</span><span class="p">,</span> <span class="mf">9.435E-03</span><span class="p">,</span> <span class="mf">5.930E-08</span><span class="p">,</span> <span class="mf">7.535E-03</span><span class="p">,</span> <span class="mf">8.480E-04</span><span class="p">,</span> <span class="mf">1.782E-02</span><span class="p">,</span> <span class="mf">1.782E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.400E+01</span><span class="p">,</span> <span class="mf">9.775E-08</span><span class="p">,</span> <span class="mf">8.817E-03</span><span class="p">,</span> <span class="mf">5.412E-08</span><span class="p">,</span> <span class="mf">7.853E-03</span><span class="p">,</span> <span class="mf">9.033E-04</span><span class="p">,</span> <span class="mf">1.757E-02</span><span class="p">,</span> <span class="mf">1.757E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.600E+01</span><span class="p">,</span> <span class="mf">8.329E-08</span><span class="p">,</span> <span class="mf">8.278E-03</span><span class="p">,</span> <span class="mf">4.978E-08</span><span class="p">,</span> <span class="mf">8.143E-03</span><span class="p">,</span> <span class="mf">9.548E-04</span><span class="p">,</span> <span class="mf">1.738E-02</span><span class="p">,</span> <span class="mf">1.738E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.800E+01</span><span class="p">,</span> <span class="mf">7.180E-08</span><span class="p">,</span> <span class="mf">7.809E-03</span><span class="p">,</span> <span class="mf">4.607E-08</span><span class="p">,</span> <span class="mf">8.412E-03</span><span class="p">,</span> <span class="mf">1.003E-03</span><span class="p">,</span> <span class="mf">1.722E-02</span><span class="p">,</span> <span class="mf">1.722E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.000E+01</span><span class="p">,</span> <span class="mf">6.255E-08</span><span class="p">,</span> <span class="mf">7.396E-03</span><span class="p">,</span> <span class="mf">4.289E-08</span><span class="p">,</span> <span class="mf">8.661E-03</span><span class="p">,</span> <span class="mf">1.048E-03</span><span class="p">,</span> <span class="mf">1.710E-02</span><span class="p">,</span> <span class="mf">1.710E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">4.000E+01</span><span class="p">,</span> <span class="mf">3.519E-08</span><span class="p">,</span> <span class="mf">5.875E-03</span><span class="p">,</span> <span class="mf">3.186E-08</span><span class="p">,</span> <span class="mf">9.674E-03</span><span class="p">,</span> <span class="mf">1.237E-03</span><span class="p">,</span> <span class="mf">1.679E-02</span><span class="p">,</span> <span class="mf">1.679E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.000E+01</span><span class="p">,</span> <span class="mf">2.252E-08</span><span class="p">,</span> <span class="mf">4.906E-03</span><span class="p">,</span> <span class="mf">2.534E-08</span><span class="p">,</span> <span class="mf">1.045E-02</span><span class="p">,</span> <span class="mf">1.385E-03</span><span class="p">,</span> <span class="mf">1.674E-02</span><span class="p">,</span> <span class="mf">1.674E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">6.000E+01</span><span class="p">,</span> <span class="mf">1.564E-08</span><span class="p">,</span> <span class="mf">4.225E-03</span><span class="p">,</span> <span class="mf">2.104E-08</span><span class="p">,</span> <span class="mf">1.106E-02</span><span class="p">,</span> <span class="mf">1.505E-03</span><span class="p">,</span> <span class="mf">1.679E-02</span><span class="p">,</span> <span class="mf">1.679E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">8.000E+01</span><span class="p">,</span> <span class="mf">8.796E-09</span><span class="p">,</span> <span class="mf">3.333E-03</span><span class="p">,</span> <span class="mf">1.571E-08</span><span class="p">,</span> <span class="mf">1.199E-02</span><span class="p">,</span> <span class="mf">1.693E-03</span><span class="p">,</span> <span class="mf">1.702E-02</span><span class="p">,</span> <span class="mf">1.702E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.000E+02</span><span class="p">,</span> <span class="mf">5.630E-09</span><span class="p">,</span> <span class="mf">2.767E-03</span><span class="p">,</span> <span class="mf">1.253E-08</span><span class="p">,</span> <span class="mf">1.267E-02</span><span class="p">,</span> <span class="mf">1.834E-03</span><span class="p">,</span> <span class="mf">1.727E-02</span><span class="p">,</span> <span class="mf">1.727E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.500E+02</span><span class="p">,</span> <span class="mf">2.502E-09</span><span class="p">,</span> <span class="mf">1.970E-03</span><span class="p">,</span> <span class="mf">8.317E-09</span><span class="p">,</span> <span class="mf">1.380E-02</span><span class="p">,</span> <span class="mf">2.081E-03</span><span class="p">,</span> <span class="mf">1.785E-02</span><span class="p">,</span> <span class="mf">1.785E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.000E+02</span><span class="p">,</span> <span class="mf">1.407E-09</span><span class="p">,</span> <span class="mf">1.545E-03</span><span class="p">,</span> <span class="mf">6.228E-09</span><span class="p">,</span> <span class="mf">1.450E-02</span><span class="p">,</span> <span class="mf">2.243E-03</span><span class="p">,</span> <span class="mf">1.829E-02</span><span class="p">,</span> <span class="mf">1.829E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.000E+02</span><span class="p">,</span> <span class="mf">6.255E-10</span><span class="p">,</span> <span class="mf">1.095E-03</span><span class="p">,</span> <span class="mf">4.142E-09</span><span class="p">,</span> <span class="mf">1.534E-02</span><span class="p">,</span> <span class="mf">2.453E-03</span><span class="p">,</span> <span class="mf">1.888E-02</span><span class="p">,</span> <span class="mf">1.888E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">4.000E+02</span><span class="p">,</span> <span class="mf">3.519E-10</span><span class="p">,</span> <span class="mf">8.574E-04</span><span class="p">,</span> <span class="mf">3.105E-09</span><span class="p">,</span> <span class="mf">1.583E-02</span><span class="p">,</span> <span class="mf">2.584E-03</span><span class="p">,</span> <span class="mf">1.927E-02</span><span class="p">,</span> <span class="mf">1.927E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.000E+02</span><span class="p">,</span> <span class="mf">2.251E-10</span><span class="p">,</span> <span class="mf">7.099E-04</span><span class="p">,</span> <span class="mf">2.482E-09</span><span class="p">,</span> <span class="mf">1.615E-02</span><span class="p">,</span> <span class="mf">2.675E-03</span><span class="p">,</span> <span class="mf">1.954E-02</span><span class="p">,</span> <span class="mf">1.954E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">6.000E+02</span><span class="p">,</span> <span class="mf">1.564E-10</span><span class="p">,</span> <span class="mf">6.079E-04</span><span class="p">,</span> <span class="mf">2.068E-09</span><span class="p">,</span> <span class="mf">1.639E-02</span><span class="p">,</span> <span class="mf">2.742E-03</span><span class="p">,</span> <span class="mf">1.974E-02</span><span class="p">,</span> <span class="mf">1.974E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">8.000E+02</span><span class="p">,</span> <span class="mf">8.796E-11</span><span class="p">,</span> <span class="mf">4.747E-04</span><span class="p">,</span> <span class="mf">1.550E-09</span><span class="p">,</span> <span class="mf">1.670E-02</span><span class="p">,</span> <span class="mf">2.838E-03</span><span class="p">,</span> <span class="mf">2.002E-02</span><span class="p">,</span> <span class="mf">2.002E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.000E+03</span><span class="p">,</span> <span class="mf">5.630E-11</span><span class="p">,</span> <span class="mf">3.905E-04</span><span class="p">,</span> <span class="mf">1.240E-09</span><span class="p">,</span> <span class="mf">1.691E-02</span><span class="p">,</span> <span class="mf">2.902E-03</span><span class="p">,</span> <span class="mf">2.020E-02</span><span class="p">,</span> <span class="mf">2.020E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.500E+03</span><span class="p">,</span> <span class="mf">2.502E-11</span><span class="p">,</span> <span class="mf">2.727E-04</span><span class="p">,</span> <span class="mf">8.260E-10</span><span class="p">,</span> <span class="mf">1.721E-02</span><span class="p">,</span> <span class="mf">2.999E-03</span><span class="p">,</span> <span class="mf">2.048E-02</span><span class="p">,</span> <span class="mf">2.048E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.000E+03</span><span class="p">,</span> <span class="mf">1.407E-11</span><span class="p">,</span> <span class="mf">2.111E-04</span><span class="p">,</span> <span class="mf">6.194E-10</span><span class="p">,</span> <span class="mf">1.738E-02</span><span class="p">,</span> <span class="mf">3.054E-03</span><span class="p">,</span> <span class="mf">2.064E-02</span><span class="p">,</span> <span class="mf">2.064E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.000E+03</span><span class="p">,</span> <span class="mf">6.255E-12</span><span class="p">,</span> <span class="mf">1.467E-04</span><span class="p">,</span> <span class="mf">4.129E-10</span><span class="p">,</span> <span class="mf">1.755E-02</span><span class="p">,</span> <span class="mf">3.114E-03</span><span class="p">,</span> <span class="mf">2.082E-02</span><span class="p">,</span> <span class="mf">2.082E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">4.000E+03</span><span class="p">,</span> <span class="mf">3.519E-12</span><span class="p">,</span> <span class="mf">1.133E-04</span><span class="p">,</span> <span class="mf">3.096E-10</span><span class="p">,</span> <span class="mf">1.765E-02</span><span class="p">,</span> <span class="mf">3.150E-03</span><span class="p">,</span> <span class="mf">2.091E-02</span><span class="p">,</span> <span class="mf">2.091E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.000E+03</span><span class="p">,</span> <span class="mf">2.251E-12</span><span class="p">,</span> <span class="mf">9.264E-05</span><span class="p">,</span> <span class="mf">2.477E-10</span><span class="p">,</span> <span class="mf">1.771E-02</span><span class="p">,</span> <span class="mf">3.172E-03</span><span class="p">,</span> <span class="mf">2.097E-02</span><span class="p">,</span> <span class="mf">2.097E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">6.000E+03</span><span class="p">,</span> <span class="mf">1.564E-12</span><span class="p">,</span> <span class="mf">7.856E-05</span><span class="p">,</span> <span class="mf">2.064E-10</span><span class="p">,</span> <span class="mf">1.776E-02</span><span class="p">,</span> <span class="mf">3.188E-03</span><span class="p">,</span> <span class="mf">2.102E-02</span><span class="p">,</span> <span class="mf">2.102E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">8.000E+03</span><span class="p">,</span> <span class="mf">8.796E-13</span><span class="p">,</span> <span class="mf">6.050E-05</span><span class="p">,</span> <span class="mf">1.548E-10</span><span class="p">,</span> <span class="mf">1.781E-02</span><span class="p">,</span> <span class="mf">3.208E-03</span><span class="p">,</span> <span class="mf">2.108E-02</span><span class="p">,</span> <span class="mf">2.108E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.000E+04</span><span class="p">,</span> <span class="mf">5.630E-13</span><span class="p">,</span> <span class="mf">4.939E-05</span><span class="p">,</span> <span class="mf">1.238E-10</span><span class="p">,</span> <span class="mf">1.784E-02</span><span class="p">,</span> <span class="mf">3.222E-03</span><span class="p">,</span> <span class="mf">2.111E-02</span><span class="p">,</span> <span class="mf">2.111E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.500E+04</span><span class="p">,</span> <span class="mf">2.502E-13</span><span class="p">,</span> <span class="mf">3.414E-05</span><span class="p">,</span> <span class="mf">8.254E-11</span><span class="p">,</span> <span class="mf">1.789E-02</span><span class="p">,</span> <span class="mf">3.240E-03</span><span class="p">,</span> <span class="mf">2.117E-02</span><span class="p">,</span> <span class="mf">2.117E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">2.000E+04</span><span class="p">,</span> <span class="mf">1.407E-13</span><span class="p">,</span> <span class="mf">2.625E-05</span><span class="p">,</span> <span class="mf">6.191E-11</span><span class="p">,</span> <span class="mf">1.792E-02</span><span class="p">,</span> <span class="mf">3.250E-03</span><span class="p">,</span> <span class="mf">2.120E-02</span><span class="p">,</span> <span class="mf">2.120E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.000E+04</span><span class="p">,</span> <span class="mf">6.255E-14</span><span class="p">,</span> <span class="mf">1.811E-05</span><span class="p">,</span> <span class="mf">4.129E-11</span><span class="p">,</span> <span class="mf">1.795E-02</span><span class="p">,</span> <span class="mf">3.260E-03</span><span class="p">,</span> <span class="mf">2.123E-02</span><span class="p">,</span> <span class="mf">2.123E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">4.000E+04</span><span class="p">,</span> <span class="mf">3.519E-14</span><span class="p">,</span> <span class="mf">1.390E-05</span><span class="p">,</span> <span class="mf">3.096E-11</span><span class="p">,</span> <span class="mf">1.796E-02</span><span class="p">,</span> <span class="mf">3.267E-03</span><span class="p">,</span> <span class="mf">2.124E-02</span><span class="p">,</span> <span class="mf">2.124E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">5.000E+04</span><span class="p">,</span> <span class="mf">2.251E-14</span><span class="p">,</span> <span class="mf">1.132E-05</span><span class="p">,</span> <span class="mf">2.476E-11</span><span class="p">,</span> <span class="mf">1.797E-02</span><span class="p">,</span> <span class="mf">3.270E-03</span><span class="p">,</span> <span class="mf">2.125E-02</span><span class="p">,</span> <span class="mf">2.125E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">6.000E+04</span><span class="p">,</span> <span class="mf">1.564E-14</span><span class="p">,</span> <span class="mf">9.568E-06</span><span class="p">,</span> <span class="mf">2.064E-11</span><span class="p">,</span> <span class="mf">1.798E-02</span><span class="p">,</span> <span class="mf">3.273E-03</span><span class="p">,</span> <span class="mf">2.126E-02</span><span class="p">,</span> <span class="mf">2.126E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">8.000E+04</span><span class="p">,</span> <span class="mf">8.796E-15</span><span class="p">,</span> <span class="mf">7.337E-06</span><span class="p">,</span> <span class="mf">1.548E-11</span><span class="p">,</span> <span class="mf">1.798E-02</span><span class="p">,</span> <span class="mf">3.275E-03</span><span class="p">,</span> <span class="mf">2.127E-02</span><span class="p">,</span> <span class="mf">2.127E-02</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.000E+05</span><span class="p">,</span> <span class="mf">5.630E-15</span><span class="p">,</span> <span class="mf">5.967E-06</span><span class="p">,</span> <span class="mf">1.238E-11</span><span class="p">,</span> <span class="mf">1.799E-02</span><span class="p">,</span> <span class="mf">3.278E-03</span><span class="p">,</span> <span class="mf">2.127E-02</span><span class="p">,</span> <span class="mf">2.127E-02</span><span class="p">]])</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">photon_energy</span> <span class="o">=</span> <span class="n">H2O_NIST_data</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">coherent</span> <span class="o">=</span> <span class="n">H2O_NIST_data</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">incoherent</span> <span class="o">=</span> <span class="n">H2O_NIST_data</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span>
+<span class="n">pe</span> <span class="o">=</span> <span class="n">H2O_NIST_data</span><span class="p">[:,</span><span class="mi">3</span><span class="p">]</span>
+<span class="n">pp</span> <span class="o">=</span> <span class="n">H2O_NIST_data</span><span class="p">[:,</span><span class="mi">4</span><span class="p">]</span> <span class="o">+</span> <span class="n">H2O_NIST_data</span><span class="p">[:,</span><span class="mi">5</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">photon_energy</span><span class="p">,</span> <span class="n">coherent</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Rayleigh&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">photon_energy</span><span class="p">,</span> <span class="n">incoherent</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Compton&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">photon_energy</span><span class="p">,</span> <span class="n">pe</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Photo Electric&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">photon_energy</span><span class="p">,</span> <span class="n">pp</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Pair Production&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+<span class="c1"># plt.xlim([0.001, 0.1])</span>
+<span class="c1"># plt.ylim([0.001, 10000])</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../../_images/developer_labs_simonbiggs_nist_interactions_4_0.png" src="../../../_images/developer_labs_simonbiggs_nist_interactions_4_0.png" />
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../simonbiggs.html" class="btn btn-neutral" title="Simon Biggs" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

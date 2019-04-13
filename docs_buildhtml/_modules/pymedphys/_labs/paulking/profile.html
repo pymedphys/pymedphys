@@ -1,0 +1,1091 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pymedphys._labs.paulking.profile &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+
+  
+  <script src="../../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../../index.html">Module code</a> &raquo;</li>
+        
+      <li>pymedphys._labs.paulking.profile</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pymedphys._labs.paulking.profile</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2019 Paul King, Simon Biggs</span>
+
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU Affero General Public License as published</span>
+<span class="c1"># by the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version (the &quot;AGPL-3.0+&quot;).</span>
+
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the</span>
+<span class="c1"># GNU Affero General Public License and the additional terms for more</span>
+<span class="c1"># details.</span>
+
+<span class="c1"># You should have received a copy of the GNU Affero General Public License</span>
+<span class="c1"># along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="c1"># ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU</span>
+<span class="c1"># Affero General Public License. These additional terms are Sections 1, 5,</span>
+<span class="c1"># 6, 7, 8, and 9 from the Apache License, Version 2.0 (the &quot;Apache-2.0&quot;)</span>
+<span class="c1"># where all references to the definition &quot;License&quot; are instead defined to</span>
+<span class="c1"># mean the AGPL-3.0+.</span>
+
+<span class="c1"># You should have received a copy of the Apache-2.0 along with this</span>
+<span class="c1"># program. If not, see &lt;http://www.apache.org/licenses/LICENSE-2.0&gt;.</span>
+
+<span class="sd">&quot;&quot;&quot; For importing, analyzing, and comparing dose or intensity profiles</span>
+<span class="sd">    from different sources.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Callable</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">interpolate</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">matplotlib.image</span> <span class="k">as</span> <span class="nn">mpimg</span>
+
+<span class="c1"># from PIL import Image</span>
+<span class="kn">import</span> <span class="nn">PIL</span>
+
+<span class="kn">from</span> <span class="nn">...libutils</span> <span class="k">import</span> <span class="n">get_imports</span>
+
+<span class="c1"># from .._level1.coreobjects import _PyMedPhysBase</span>
+<span class="n">IMPORTS</span> <span class="o">=</span> <span class="n">get_imports</span><span class="p">(</span><span class="nb">globals</span><span class="p">())</span>
+
+<span class="n">NumpyFunction</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+
+
+<span class="c1"># pylint: disable = C0103, C0121, W0102</span>
+
+<div class="viewcode-block" id="Profile"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile">[docs]</a><span class="k">class</span> <span class="nc">Profile</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;  One-dimensional distribution of intensity vs position.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : np.array</span>
+<span class="sd">        position, +/- in cm</span>
+<span class="sd">    y : np.array</span>
+<span class="sd">        intensity in unspecified units</span>
+<span class="sd">    meta : dict, optional</span>
+<span class="sd">        metadata</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    ``profiler = Profile().from_profiler(&quot;C:\\profiler.prs&quot;)``</span>
+
+<span class="sd">    ``film = Profile().from_narrow_png(&quot;C:\\image.png&quot;)``</span>
+
+<span class="sd">    ``profiler.cross_calibrate(film).plot(marker=&#39;o&#39;)``</span>
+
+<span class="sd">    .. image:: calib_curve.png</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Requires Python PIL.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Profile.__init__"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span>
+                 <span class="n">y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span> <span class="n">meta</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="sd">&quot;&quot;&quot; create profile</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : np.array, optional</span>
+<span class="sd">        y : np.array, optional</span>
+<span class="sd">        meta : dict, optional</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Normally created empty, then filled using a method, which returns</span>
+<span class="sd">        a new Profile.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">meta</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">interp</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">interp</span> <span class="o">=</span> <span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span>
+                                               <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.__len__"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.__len__">[docs]</a>    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; # data points  &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.__eq__"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.__eq__">[docs]</a>    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>  <span class="c1"># SAME DATA POINTS</span>
+        <span class="sd">&quot;&quot;&quot; same data points &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="ow">and</span> \
+           <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">y</span><span class="p">)</span> <span class="ow">and</span> \
+           <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">meta</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="Profile.__copy__"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.__copy__">[docs]</a>    <span class="k">def</span> <span class="nf">__copy__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; deep copy &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.__str__"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.__str__">[docs]</a>    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        ``Profile object: 83 pts | x (-16.4 cm -&gt; 16.4 cm) | y (0.22 -&gt; 45.54)``</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fmt_str</span> <span class="o">=</span> <span class="s1">&#39;Profile object: &#39;</span>
+            <span class="n">fmt_str</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> pts | x (</span><span class="si">{}</span><span class="s1"> cm -&gt; </span><span class="si">{}</span><span class="s1"> cm) | y (</span><span class="si">{}</span><span class="s1"> -&gt; </span><span class="si">{}</span><span class="s1">)&#39;</span>
+            <span class="k">return</span> <span class="n">fmt_str</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span>
+                                  <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span>
+                                  <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;&#39;</span>  <span class="c1"># EMPTY PROFILE</span></div>
+
+<div class="viewcode-block" id="Profile.__add__"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.__add__">[docs]</a>    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; shift right &quot;&quot;&quot;</span>
+        <span class="n">new_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">other</span>
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">new_x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+    <span class="fm">__radd__</span> <span class="o">=</span> <span class="fm">__add__</span>
+    <span class="fm">__iadd__</span> <span class="o">=</span> <span class="fm">__add__</span>
+
+<div class="viewcode-block" id="Profile.__sub__"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.__sub__">[docs]</a>    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; shift left &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">-=</span> <span class="n">other</span>
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+    <span class="fm">__rsub__</span> <span class="o">=</span> <span class="fm">__sub__</span>
+    <span class="fm">__isub__</span> <span class="o">=</span> <span class="fm">__sub__</span>
+
+<div class="viewcode-block" id="Profile.__mul__"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.__mul__">[docs]</a>    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; scale y &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">*=</span> <span class="n">other</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+    <span class="fm">__rmul__</span> <span class="o">=</span> <span class="fm">__mul__</span>
+    <span class="fm">__imul__</span> <span class="o">=</span> <span class="fm">__mul__</span>
+
+<div class="viewcode-block" id="Profile.from_lists"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.from_lists">[docs]</a>    <span class="k">def</span> <span class="nf">from_lists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="sd">&quot;&quot;&quot;  import x and y lists</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : list</span>
+<span class="sd">            List of float x values</span>
+<span class="sd">        y : list</span>
+<span class="sd">            List of float y values</span>
+<span class="sd">        meta : dict, optional</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        ``profile = Profile().fron_lists(x_list,data_list)``</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.from_tuples"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.from_tuples">[docs]</a>    <span class="k">def</span> <span class="nf">from_tuples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_of_tuples</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="sd">&quot;&quot;&quot;  import list of (x,y) tuples</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        list_of_tuples : [(float x, float y), ...]</span>
+<span class="sd">        meta : dict, optional</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        ``profile = Profile().fron_lists(list_of_tuples)``</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">list_of_tuples</span><span class="p">))[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">list_of_tuples</span><span class="p">))[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.from_pulse"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.from_pulse">[docs]</a>    <span class="k">def</span> <span class="nf">from_pulse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">centre</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">increment</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="sd">&quot;&quot;&quot; create pulse of unit height</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        centre : float</span>
+<span class="sd">        width : float</span>
+<span class="sd">        domain : tuple</span>
+<span class="sd">            (x_left, x_right)</span>
+<span class="sd">        increment : float</span>
+<span class="sd">        meta : dict, optional</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">domain</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">domain</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">increment</span><span class="p">,</span> <span class="n">increment</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">x_vals</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">centre</span> <span class="o">+</span> <span class="n">width</span><span class="o">/</span><span class="mf">2.0</span><span class="p">):</span>
+                <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">centre</span> <span class="o">+</span> <span class="n">width</span><span class="o">/</span><span class="mf">2.0</span><span class="p">):</span>
+                <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">()</span><span class="o">.</span><span class="n">from_lists</span><span class="p">(</span><span class="n">x_vals</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.from_snc_profiler"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.from_snc_profiler">[docs]</a>    <span class="k">def</span> <span class="nf">from_snc_profiler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; import profile form SNC Profiler file</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        file_name : string</span>
+<span class="sd">            file name with path, .prs</span>
+<span class="sd">        axis : string</span>
+<span class="sd">            &#39;tvs&#39; or &#39;rad&#39;</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        TypeError</span>
+<span class="sd">            if axis invalid</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">profiler_file</span><span class="p">:</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">profiler_file</span><span class="o">.</span><span class="n">readlines</span><span class="p">())</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="n">munge</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;: &#39;</span><span class="p">,</span> <span class="s1">&#39;:&#39;</span><span class="p">)</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="n">munge</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; Time:&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Time:&#39;</span><span class="p">)</span>  <span class="c1"># BREAK 2-ITEM ROWS</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="n">munge</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; Revision:&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Revision:&#39;</span><span class="p">)</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="n">munge</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Energy:&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Energy:&#39;</span><span class="p">)</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="n">munge</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Dose:&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Dose:&#39;</span><span class="p">)</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="n">munge</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Collimator Angle:&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Collimator Angle:&#39;</span><span class="p">)</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="n">munge</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;TYPE&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>  <span class="c1"># DISCARD NON-METADATA</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">munge</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">and</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">munge</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">munge</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>  <span class="c1"># DISCARD EMPTY ITEMS</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">munge</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">profiler_file</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">profiler_file</span><span class="o">.</span><span class="n">readlines</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">row</span><span class="p">[:</span><span class="mi">11</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Calibration&quot;</span> <span class="ow">and</span> <span class="s2">&quot;File&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">row</span><span class="p">:</span>
+                    <span class="n">calibs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">split</span><span class="p">())[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">row</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Data:&quot;</span><span class="p">:</span>
+                    <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">5</span><span class="p">:</span><span class="mi">145</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">row</span><span class="p">[:</span><span class="mi">15</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Dose Per Count:&quot;</span><span class="p">:</span>
+                    <span class="n">dose_per_count</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">dose</span> <span class="o">=</span> <span class="n">counts</span> <span class="o">*</span> <span class="n">dose_per_count</span> <span class="o">*</span> <span class="n">calibs</span>
+
+        <span class="n">x_vals</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mf">11.2</span> <span class="o">+</span> <span class="mf">0.4</span><span class="o">*</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">57</span><span class="p">)]</span>
+        <span class="n">x_prof</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">x_vals</span><span class="p">,</span> <span class="n">dose</span><span class="p">[:</span><span class="mi">57</span><span class="p">]))</span>
+        <span class="n">y_vals</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mf">16.4</span> <span class="o">+</span> <span class="mf">0.4</span><span class="o">*</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">83</span><span class="p">)]</span>
+        <span class="n">y_prof</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">y_vals</span><span class="p">,</span> <span class="n">dose</span><span class="p">[</span><span class="mi">57</span><span class="p">:]))</span>
+
+        <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="s1">&#39;tvs&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Profile</span><span class="p">()</span><span class="o">.</span><span class="n">from_tuples</span><span class="p">(</span><span class="n">x_prof</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">axis</span> <span class="o">==</span> <span class="s1">&#39;rad&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Profile</span><span class="p">()</span><span class="o">.</span><span class="n">from_tuples</span><span class="p">(</span><span class="n">y_prof</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;axis must be &#39;tvs&#39; or &#39;rad&#39;&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.from_narrow_png"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.from_narrow_png">[docs]</a>    <span class="k">def</span> <span class="nf">from_narrow_png</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_name</span><span class="p">,</span> <span class="n">step_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; import from png file</span>
+
+<span class="sd">        Source file is a full color PNG, sufficiently narrow that</span>
+<span class="sd">        density is uniform along its short dimension. The image density along</span>
+<span class="sd">        its long dimension is reflective of a dose distribution.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        file_name : str</span>
+<span class="sd">        step-size : float, optional</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            if aspect ratio &lt;= 5, i.e. not narrow</span>
+<span class="sd">        AssertionError</span>
+<span class="sd">            if step_size &lt;= 12.7 over dpi, i.e. small</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">image_file</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">image_file</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;RGB&#39;</span>
+        <span class="n">dpi_horiz</span><span class="p">,</span> <span class="n">dpi_vert</span> <span class="o">=</span> <span class="n">image_file</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;dpi&#39;</span><span class="p">]</span>
+
+        <span class="n">image_array</span> <span class="o">=</span> <span class="n">mpimg</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+
+        <span class="c1"># DIMENSIONS TO AVG ACROSS DIFFERENT FOR HORIZ VS VERT IMG</span>
+        <span class="k">if</span> <span class="n">image_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="o">*</span><span class="n">image_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>    <span class="c1"># VERT</span>
+            <span class="n">image_vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">image_array</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">pixel_size_in_cm</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.54</span> <span class="o">/</span> <span class="n">dpi_vert</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">image_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="o">*</span><span class="n">image_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>  <span class="c1"># HORIZ</span>
+            <span class="n">image_vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">image_array</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">pixel_size_in_cm</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.54</span> <span class="o">/</span> <span class="n">dpi_horiz</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The PNG file is not a narrow strip.&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">step_size</span> <span class="o">&gt;</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">pixel_size_in_cm</span><span class="p">,</span> <span class="s2">&quot;step size too small&quot;</span>
+
+        <span class="k">if</span> <span class="n">image_vector</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">image_vector</span> <span class="o">=</span> <span class="n">image_vector</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># SO ZERO DISTANCE IS MID-PIXEL</span>
+
+        <span class="n">length_in_cm</span> <span class="o">=</span> <span class="n">image_vector</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">pixel_size_in_cm</span>
+        <span class="n">full_resolution_distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">length_in_cm</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                                              <span class="n">length_in_cm</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                                              <span class="n">pixel_size_in_cm</span><span class="p">)</span>
+
+        <span class="c1"># TO MOVE FROM FILM RESOLUTION TO DESIRED PROFILE RESOLUTION</span>
+        <span class="n">num_pixels_to_avg_over</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">step_size</span><span class="o">/</span><span class="n">pixel_size_in_cm</span><span class="p">)</span>
+        <span class="n">sample_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_pixels_to_avg_over</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                                   <span class="nb">len</span><span class="p">(</span><span class="n">full_resolution_distances</span><span class="p">),</span>
+                                   <span class="n">num_pixels_to_avg_over</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">downsampled_distances</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">full_resolution_distances</span><span class="p">[</span><span class="n">sample_indices</span><span class="p">])</span>
+
+        <span class="n">downsampled_density</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">sample_indices</span><span class="p">:</span>  <span class="c1"># AVERAGE OVER THE SAMPLING WINDOW</span>
+            <span class="n">avg_density</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span>
+                <span class="n">image_vector</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">idx</span> <span class="o">-</span> <span class="n">num_pixels_to_avg_over</span> <span class="o">/</span> <span class="mi">2</span><span class="p">):</span>
+                             <span class="nb">int</span><span class="p">(</span><span class="n">idx</span> <span class="o">+</span> <span class="n">num_pixels_to_avg_over</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)])</span>
+            <span class="n">downsampled_density</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">avg_density</span><span class="p">)</span>
+
+        <span class="n">zipped_profile</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">downsampled_distances</span><span class="p">,</span> <span class="n">downsampled_density</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">()</span><span class="o">.</span><span class="n">from_tuples</span><span class="p">(</span><span class="n">zipped_profile</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.get_y"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.get_y">[docs]</a>    <span class="k">def</span> <span class="nf">get_y</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; y-value at distance x</span>
+
+<span class="sd">        Return a y value based on interpolation of source data for a</span>
+<span class="sd">        supplied distance.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : float</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span></div>
+
+<div class="viewcode-block" id="Profile.get_x"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.get_x">[docs]</a>    <span class="k">def</span> <span class="nf">get_x</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; tuple of x-values at intensity y</span>
+
+<span class="sd">        Return distance values based on interpolation of source data for a</span>
+<span class="sd">        supplied y value.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        y : float</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple : (x1, x2, ...)</span>
+
+<span class="sd">         &quot;&quot;&quot;</span>
+
+        <span class="n">dose_step</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span><span class="o">-</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">))</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="n">x_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resample_y</span><span class="p">(</span><span class="n">dose_step</span><span class="p">)</span><span class="o">.</span><span class="n">x</span>
+        <span class="n">y_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resample_y</span><span class="p">(</span><span class="n">dose_step</span><span class="p">)</span><span class="o">.</span><span class="n">y</span>
+        <span class="n">dists</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_</span><span class="p">)):</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">y_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">y</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">y_</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">y</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="p">((</span><span class="n">y_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">y</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">y_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">y_</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span><span class="o">*</span><span class="p">(</span><span class="n">x_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">x_</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">y_</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">y</span><span class="p">):</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">x_</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">val</span> <span class="ow">and</span> <span class="p">(</span><span class="n">val</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dists</span><span class="p">):</span>
+                <span class="n">dists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">dists</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.get_increment"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.get_increment">[docs]</a>    <span class="k">def</span> <span class="nf">get_increment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; minimum step-size increment</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        increment : float</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">steps</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">steps</span><span class="o">.</span><span class="n">mean</span><span class="p">()):</span>
+            <span class="k">return</span> <span class="n">steps</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">steps</span><span class="o">.</span><span class="n">min</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Profile.plot"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o-&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; profile plot</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        marker : string, optional</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">marker</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="Profile.slice_segment"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.slice_segment">[docs]</a>    <span class="k">def</span> <span class="nf">slice_segment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="o">=-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; slice between given end-points</span>
+
+<span class="sd">        Resulting profile is comprised of those points in the source</span>
+<span class="sd">        profile whose distance values are not-less-than start and</span>
+<span class="sd">        not-greater-than stop.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        start : float, optional</span>
+<span class="sd">        stop : float, optional</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">))</span>  <span class="c1"># default &amp; limit to curve ends</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">stop</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">))</span>
+            <span class="n">new_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">&lt;=</span> <span class="n">stop</span><span class="p">)]</span>
+            <span class="n">new_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">new_x</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">new_x</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">new_y</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">new_x</span><span class="p">,</span> <span class="n">new_y</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.resample_x"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.resample_x">[docs]</a>    <span class="k">def</span> <span class="nf">resample_x</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; resampled x-values at a given increment</span>
+
+<span class="sd">        Resulting profile has stepsize of the indicated step based on</span>
+<span class="sd">        linear interpolation over the points of the source profile.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        step : float</span>
+<span class="sd">            sampling increment</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">new_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">step</span><span class="p">)</span>
+        <span class="n">new_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">new_x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">new_x</span><span class="p">,</span> <span class="n">new_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.resample_y"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.resample_y">[docs]</a>    <span class="k">def</span> <span class="nf">resample_y</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; resampled y-values at a given increment</span>
+
+<span class="sd">        Resulting profile has nonuniform step-size, but each step</span>
+<span class="sd">        represents and approximately equal step in dose.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        step : float</span>
+<span class="sd">            sampling increment</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">temp_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span>
+                           <span class="mf">0.01</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">get_increment</span><span class="p">())</span>
+        <span class="n">temp_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">temp_x</span><span class="p">)</span>
+
+        <span class="n">resamp_x</span> <span class="o">=</span> <span class="p">[</span><span class="n">temp_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="n">resamp_y</span> <span class="o">=</span> <span class="p">[</span><span class="n">temp_y</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="n">last_y</span> <span class="o">=</span> <span class="n">temp_y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">temp_x</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">temp_y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">last_y</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">step</span><span class="p">:</span>
+                <span class="n">resamp_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp_x</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="n">resamp_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp_y</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="n">last_y</span> <span class="o">=</span> <span class="n">temp_y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">temp_x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">resamp_x</span><span class="p">:</span>
+            <span class="n">resamp_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp_x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">resamp_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp_y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">()</span><span class="o">.</span><span class="n">from_lists</span><span class="p">(</span><span class="n">resamp_x</span><span class="p">,</span> <span class="n">resamp_y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.make_normal_y"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.make_normal_y">[docs]</a>    <span class="k">def</span> <span class="nf">make_normal_y</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; normalised to dose at distance</span>
+
+<span class="sd">        Source profile values multiplied by scaling factor to yield the specified dose at</span>
+<span class="sd">        the specified distance. If distance is not specified, the central axis value is</span>
+<span class="sd">        used. If dose is not specified, then normalization is to unity. With neither</span>
+<span class="sd">        specified, resulting curve is the conventional off-center-ratio.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : float, optional</span>
+<span class="sd">        y : float, optional</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">norm_factor</span> <span class="o">=</span> <span class="n">y</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_y</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">new_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span>
+        <span class="n">new_y</span> <span class="o">=</span> <span class="n">norm_factor</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span>
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">new_x</span><span class="p">,</span> <span class="n">new_y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.get_edges"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.get_edges">[docs]</a>    <span class="k">def</span> <span class="nf">get_edges</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x-values of profile edges (left, right)</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Points of greatest positive and greatest negative gradient.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dydx</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">lt_edge</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">dydx</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">dydx</span><span class="p">))]</span>
+        <span class="n">rt_edge</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">dydx</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">dydx</span><span class="p">))]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">lt_edge</span><span class="p">,</span> <span class="n">rt_edge</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.make_normal_x"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.make_normal_x">[docs]</a>    <span class="k">def</span> <span class="nf">make_normal_x</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; normalised to distance at edges</span>
+
+<span class="sd">        Source profile distances multiplied by scaling factor to yield unit distance</span>
+<span class="sd">        at beam edges. [1]_ [2]_</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        .. [1] Milan &amp; Bentley, BJR Feb-74, The Storage and manipulationof radiation dose data</span>
+<span class="sd">           in a small digital computer</span>
+<span class="sd">        .. [2] Heintz, King, &amp; Childs, May-95, User Manual, Prowess 3000 CT Treatment Planning</span>
+
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">lt_edge</span><span class="p">,</span> <span class="n">rt_edge</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_edges</span><span class="p">()</span>
+        <span class="n">cax</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">lt_edge</span> <span class="o">+</span> <span class="n">rt_edge</span><span class="p">)</span>
+
+        <span class="n">new_x</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">dist</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">dist</span> <span class="o">&lt;</span> <span class="n">cax</span><span class="p">:</span>
+                <span class="n">new_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">-</span><span class="n">dist</span><span class="o">/</span><span class="n">lt_edge</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">dist</span> <span class="o">&gt;</span> <span class="n">cax</span><span class="p">:</span>
+                <span class="n">new_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dist</span><span class="o">/</span><span class="n">rt_edge</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">new_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.slice_umbra"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.slice_umbra">[docs]</a>    <span class="k">def</span> <span class="nf">slice_umbra</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; umbra central 80%</span>
+
+<span class="sd">        Source dose profile sliced to include only the central region between beam edges.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lt</span><span class="p">,</span> <span class="n">rt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_edges</span><span class="p">()</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">d</span> <span class="o">&gt;=</span> <span class="mf">0.8</span> <span class="o">*</span> <span class="n">lt</span> <span class="ow">and</span> <span class="n">d</span> <span class="o">&lt;=</span> <span class="mf">0.8</span> <span class="o">*</span> <span class="n">rt</span><span class="p">]</span>
+        <span class="n">new_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">idx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">new_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">idx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">new_x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">new_y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.slice_penumbra"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.slice_penumbra">[docs]</a>    <span class="k">def</span> <span class="nf">slice_penumbra</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; penumbra (20 -&gt; 80%, 80 -&gt; 20%)</span>
+
+<span class="sd">        Source dose profile sliced to include only the penumbral edges, where the dose</span>
+<span class="sd">        transitions from 20% - 80% of the umbra dose, as precent at the umbra edge,</span>
+<span class="sd">        to support wedged profiles.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            (left penumbra Profile, right penumbra Profile)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">not_umbra</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lt&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_segment</span><span class="p">(</span><span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">slice_umbra</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                     <span class="s1">&#39;rt&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_segment</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">slice_umbra</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])}</span>
+
+        <span class="n">lt_80pct</span> <span class="o">=</span> <span class="n">not_umbra</span><span class="p">[</span><span class="s1">&#39;lt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_x</span><span class="p">(</span><span class="mf">0.8</span> <span class="o">*</span> <span class="n">not_umbra</span><span class="p">[</span><span class="s1">&#39;lt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">lt_20pct</span> <span class="o">=</span> <span class="n">not_umbra</span><span class="p">[</span><span class="s1">&#39;lt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_x</span><span class="p">(</span><span class="mf">0.2</span> <span class="o">*</span> <span class="n">not_umbra</span><span class="p">[</span><span class="s1">&#39;lt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">lt_penum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_segment</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">lt_20pct</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">lt_80pct</span><span class="p">)</span>
+
+        <span class="n">rt_80pct</span> <span class="o">=</span> <span class="n">not_umbra</span><span class="p">[</span><span class="s1">&#39;rt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_x</span><span class="p">(</span><span class="mf">0.8</span> <span class="o">*</span> <span class="n">not_umbra</span><span class="p">[</span><span class="s1">&#39;rt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">rt_20pct</span> <span class="o">=</span> <span class="n">not_umbra</span><span class="p">[</span><span class="s1">&#39;rt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_x</span><span class="p">(</span><span class="mf">0.2</span> <span class="o">*</span> <span class="n">not_umbra</span><span class="p">[</span><span class="s1">&#39;rt&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">rt_penum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_segment</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">rt_80pct</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">rt_20pct</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">lt_penum</span><span class="p">,</span> <span class="n">rt_penum</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.slice_shoulders"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.slice_shoulders">[docs]</a>    <span class="k">def</span> <span class="nf">slice_shoulders</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; shoulders (penumbra -&gt; umbra, umbra -&gt; penumbra)</span>
+
+<span class="sd">        Source dose profile sliced to include only the profile shoulders,</span>
+<span class="sd">        outside the central 80% of of the profile but inside the region bounded</span>
+<span class="sd">        by the 20-80% transition.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            (left shoulder Profile, right shoulder Profile)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">lt_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_penumbra</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">lt_stop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_umbra</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">rt_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_umbra</span><span class="p">()</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">rt_stop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_penumbra</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">lt_should</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_segment</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">lt_start</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">lt_stop</span><span class="p">)</span>
+        <span class="n">rt_should</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_segment</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">rt_start</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">rt_stop</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">lt_should</span><span class="p">,</span> <span class="n">rt_should</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.slice_tails"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.slice_tails">[docs]</a>    <span class="k">def</span> <span class="nf">slice_tails</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; tails (-&gt; penumbra, penumbra -&gt;)</span>
+
+<span class="sd">        Source dose profile sliced to include only the profile tail,</span>
+<span class="sd">        outside the beam penumbra.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            (left tail Profile, right tail Profile)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lt_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">lt_stop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_penumbra</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">rt_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_penumbra</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">rt_stop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">lt_tail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_segment</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">lt_start</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">lt_stop</span><span class="p">)</span>
+        <span class="n">rt_tail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_segment</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">rt_start</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">rt_stop</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">lt_tail</span><span class="p">,</span> <span class="n">rt_tail</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.get_flatness"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.get_flatness">[docs]</a>    <span class="k">def</span> <span class="nf">get_flatness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; dose range relative to mean</span>
+
+<span class="sd">        Calculated as the dose range normalized to mean dose.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dose</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_umbra</span><span class="p">()</span><span class="o">.</span><span class="n">y</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">dose</span><span class="p">)</span><span class="o">-</span><span class="nb">min</span><span class="p">(</span><span class="n">dose</span><span class="p">))</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">dose</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.get_symmetry"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.get_symmetry">[docs]</a>    <span class="k">def</span> <span class="nf">get_symmetry</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; max point diff relative to mean</span>
+
+<span class="sd">        Calculated as the maximum difference between corresponding points</span>
+<span class="sd">        on opposite sides of the profile center, relative to mean dose.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dose</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slice_umbra</span><span class="p">()</span><span class="o">.</span><span class="n">y</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="n">dose</span><span class="p">,</span> <span class="n">dose</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">dose</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="Profile.make_symmetric"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.make_symmetric">[docs]</a>    <span class="k">def</span> <span class="nf">make_symmetric</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; avg of corresponding points</span>
+
+<span class="sd">        Created by averaging over corresponding +/- distances,</span>
+<span class="sd">        except at the endpoints.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">reflected</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=-</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_increment</span><span class="p">()</span>
+        <span class="n">new_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="n">step</span><span class="p">)</span>
+        <span class="n">new_y</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">new_x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>  <span class="c1"># AVOID EXTRAPOLATION</span>
+            <span class="n">new_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">reflected</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+        <span class="n">new_y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reflected</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">new_x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">new_y</span><span class="p">,</span> <span class="n">meta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.make_centered"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.make_centered">[docs]</a>    <span class="k">def</span> <span class="nf">make_centered</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; shift to align edges</span>
+
+<span class="sd">        Created by shifting the profile based on edge locations.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_edges</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="Profile.make_flipped"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.make_flipped">[docs]</a>    <span class="k">def</span> <span class="nf">make_flipped</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; flip L -&gt; R</span>
+
+<span class="sd">        Created by reversing the sequence of y values.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">meta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Profile.align_to"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.align_to">[docs]</a>    <span class="k">def</span> <span class="nf">align_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; shift self to align to other</span>
+
+<span class="sd">        Calculated using shift that produces greatest peak correlation between</span>
+<span class="sd">        the curves. Flips the curve left-to-right, if this creates a better fit.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        other : Profile</span>
+<span class="sd">            profile to be be shifted to</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">dist_step</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_increment</span><span class="p">(),</span> <span class="n">other</span><span class="o">.</span><span class="n">get_increment</span><span class="p">())</span>
+
+        <span class="n">dist_vals_fixed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+            <span class="o">-</span><span class="mi">3</span><span class="o">*</span><span class="nb">abs</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">x</span><span class="p">))),</span>
+            <span class="mi">3</span><span class="o">*</span><span class="nb">abs</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">x</span><span class="p">))),</span>
+            <span class="n">dist_step</span><span class="p">)</span>
+        <span class="n">dose_vals_fixed</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">dist_vals_fixed</span><span class="p">)</span>
+        <span class="n">fixed</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">dist_vals_fixed</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">dose_vals_fixed</span><span class="p">)</span>
+
+        <span class="n">possible_offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+            <span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">x</span><span class="p">)),</span>
+            <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">))</span> <span class="o">+</span> <span class="n">dist_step</span><span class="p">,</span>
+            <span class="n">dist_step</span><span class="p">)</span>
+
+        <span class="n">best_fit_qual</span><span class="p">,</span> <span class="n">best_offset</span><span class="p">,</span> <span class="n">flipped</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">possible_offsets</span><span class="p">:</span>
+            <span class="n">fit_qual_norm</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">correlate</span><span class="p">(</span>
+                <span class="n">dose_vals_fixed</span><span class="p">,</span>
+                <span class="p">(</span><span class="bp">self</span> <span class="o">+</span> <span class="n">offset</span><span class="p">)</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">fixed</span><span class="o">.</span><span class="n">x</span><span class="p">)))</span>
+            <span class="n">fit_qual_flip</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">correlate</span><span class="p">(</span>
+                <span class="n">dose_vals_fixed</span><span class="p">,</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">make_flipped</span><span class="p">()</span> <span class="o">+</span> <span class="n">offset</span><span class="p">)</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">fixed</span><span class="o">.</span><span class="n">x</span><span class="p">)))</span>
+
+            <span class="k">if</span> <span class="n">fit_qual_norm</span> <span class="o">&gt;</span> <span class="n">best_fit_qual</span><span class="p">:</span>
+                <span class="n">best_fit_qual</span> <span class="o">=</span> <span class="n">fit_qual_norm</span>
+                <span class="n">best_offset</span> <span class="o">=</span> <span class="n">offset</span>
+                <span class="n">flipped</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="n">fit_qual_flip</span> <span class="o">&gt;</span> <span class="n">best_fit_qual</span><span class="p">:</span>
+                <span class="n">best_fit_qual</span> <span class="o">=</span> <span class="n">fit_qual_flip</span>
+                <span class="n">best_offset</span> <span class="o">=</span> <span class="n">offset</span>
+                <span class="n">flipped</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">flipped</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_flipped</span><span class="p">()</span> <span class="o">+</span> <span class="n">best_offset</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span> <span class="o">+</span> <span class="n">best_offset</span></div>
+
+<div class="viewcode-block" id="Profile.cross_calibrate"><a class="viewcode-back" href="../../../../developer/labs/paulking/profile.html#pymedphys._labs.paulking.profile.Profile.cross_calibrate">[docs]</a>    <span class="k">def</span> <span class="nf">cross_calibrate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span> <span class="n">measured</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; density mapping, reference -&gt; measured</span>
+
+<span class="sd">        Calculated by overlaying intensity curves and observing values at</span>
+<span class="sd">        corresponding points. Note that the result is an unsmoothed, collection</span>
+<span class="sd">        of points.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        reference : string</span>
+<span class="sd">        measured : string</span>
+<span class="sd">            file names with path</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Profile</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.prs&#39;</span>
+        <span class="n">reference</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">()</span><span class="o">.</span><span class="n">from_snc_profiler</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="s1">&#39;rad&#39;</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">measured</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.png&#39;</span>
+        <span class="n">measured</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">()</span><span class="o">.</span><span class="n">from_narrow_png</span><span class="p">(</span><span class="n">measured</span><span class="p">)</span>
+        <span class="n">measured</span> <span class="o">=</span> <span class="n">measured</span><span class="o">.</span><span class="n">align_to</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
+
+        <span class="n">dist_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+            <span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">measured</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">reference</span><span class="o">.</span><span class="n">x</span><span class="p">)),</span>
+            <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">measured</span><span class="o">.</span><span class="n">x</span><span class="p">),</span> <span class="nb">max</span><span class="p">(</span><span class="n">reference</span><span class="o">.</span><span class="n">x</span><span class="p">)),</span>
+            <span class="nb">max</span><span class="p">(</span><span class="n">reference</span><span class="o">.</span><span class="n">get_increment</span><span class="p">(),</span> <span class="n">measured</span><span class="o">.</span><span class="n">get_increment</span><span class="p">()))</span>
+
+        <span class="n">calib_curve</span> <span class="o">=</span> <span class="p">[(</span><span class="n">measured</span><span class="o">.</span><span class="n">get_y</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">reference</span><span class="o">.</span><span class="n">get_y</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+                       <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">dist_vals</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">Profile</span><span class="p">()</span><span class="o">.</span><span class="n">from_tuples</span><span class="p">(</span><span class="n">calib_curve</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

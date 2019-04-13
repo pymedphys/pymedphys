@@ -1,0 +1,649 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>MU Density &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Gamma Calculation" href="gamma.html" />
+    <link rel="prev" title="Library" href="../library.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../interfaces.html">Interfaces</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../library.html">Library</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">MU Density</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#available-functions">Available Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">MU Density</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gamma.html">Gamma Calculation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="electronfactors.html">Electron Factor Modelling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dicom.html">DICOM files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html">Geometry Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xlwings.html">Excel integration via xlwings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../library.html">Library</a> &raquo;</li>
+        
+      <li>MU Density</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/user/library/mudensity.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="module-pymedphys.mudensity">
+<span id="mu-density"></span><h1>MU Density<a class="headerlink" href="#module-pymedphys.mudensity" title="Permalink to this headline">¶</a></h1>
+<p>Determine MU Density given a range of formats.</p>
+<div class="section" id="available-functions">
+<h2>Available Functions<a class="headerlink" href="#available-functions" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.mudensity</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>   <span class="n">calc_mu_density</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>MU Density<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-pymedphys.mudensity._level1.mudensitycore"></span><p>Calculate the MU Density given mu, mlc, and jaw control points.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p>Although this is a useful tool in the toolbox for patient specific IMRT QA,
+in and of itself it is not a sufficient stand in replacement. This tool does
+not verify that the reported dose within the treatment planning system is
+delivered by the Linac.</p>
+<p>Deficiencies or limitations in the agreement between the treatment planning
+system’s beam model and the Linac delivery will not be able to be
+highlighted by this tool. An example might be an overly modulated beam with
+many thin sweeping strips, the Linac may deliver those control points with
+positional accuracy but if the beam model in the TPS cannot sufficiently
+accurately model the dose effects of those MLC control points the dose
+delivery will not sufficiently agree with the treatment plan. In this case
+however, this tool will say everything is in agreement.</p>
+<p>It also may be the case that due to a hardware or calibration fault the
+Linac itself may be incorrectly reporting its MLC and/or Jaw postions. In
+this case the logfile record can agree exactly with the planned positions
+while the true real world positions be in significant deviation.</p>
+<p class="last">The impact of these issues may be able to be limited by including with this
+tool an automated independent IMRT 3-D dose calculation tool as well as a
+daily automated MLC/jaw logfile to EPI to baseline agreement test that
+moves the EPI so as to measure the full set of leaf pairs and the full range
+of MLC and Jaw travel.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pymedphys.mudensity</span> <span class="kn">import</span> <span class="n">calc_mu_density</span><span class="p">,</span> <span class="n">get_grid</span><span class="p">,</span> <span class="n">display_mu_density</span>
+
+<span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="n">max_leaf_gap</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="n">mu</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>
+<span class="n">mlc</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">]],</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]]</span>
+
+<span class="n">jaw</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="mf">7.5</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">7.5</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="p">]</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="n">get_grid</span><span class="p">(</span><span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">max_leaf_gap</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+
+<span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_mu_density</span><span class="p">(</span>
+    <span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">max_leaf_gap</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+
+<span class="n">display_mu_density</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(<a class="reference external" href="../../pyplots/mudensity.py">Source code</a>, <a class="reference external" href="../../pyplots/mudensity.png">png</a>, <a class="reference external" href="../../pyplots/mudensity.hires.png">hires.png</a>, <a class="reference external" href="../../pyplots/mudensity.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="../../_images/mudensity.png" src="../../_images/mudensity.png" />
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">pymedphys.mudensity</span> <span class="kn">import</span> <span class="n">single_mlc_pair</span>
+
+<span class="n">mlc_left</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.3</span><span class="p">,</span> <span class="mf">3.1</span><span class="p">)</span>  <span class="c1"># (start position, end position)</span>
+<span class="n">mlc_right</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">7.7</span><span class="p">)</span>
+
+<span class="n">x</span><span class="p">,</span> <span class="n">mu_density</span> <span class="o">=</span> <span class="n">single_mlc_pair</span><span class="p">(</span><span class="n">mlc_left</span><span class="p">,</span> <span class="n">mlc_right</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">,</span> <span class="s1">&#39;-o&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;A single MLC&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;MLC direction (mm)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Open fraction&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>(<a class="reference external" href="../../pyplots/single_leaf.py">Source code</a>, <a class="reference external" href="../../pyplots/single_leaf.png">png</a>, <a class="reference external" href="../../pyplots/single_leaf.hires.png">hires.png</a>, <a class="reference external" href="../../pyplots/single_leaf.pdf">pdf</a>)</p>
+<div class="figure">
+<img alt="../../_images/single_leaf.png" src="../../_images/single_leaf.png" />
+</div>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="pymedphys.mudensity.calc_mu_density">
+<code class="descclassname">pymedphys.mudensity.</code><code class="descname">calc_mu_density</code><span class="sig-paren">(</span><em>mu</em>, <em>mlc</em>, <em>jaw</em>, <em>grid_resolution=1</em>, <em>max_leaf_gap=400</em>, <em>leaf_pair_widths=(5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5)</em>, <em>min_step_per_pixel=10</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/mudensity/_level1/mudensitycore.html#calc_mu_density"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.mudensity.calc_mu_density" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the MU Density.</p>
+<p>Both jaw and mlc positions are defined in bipolar format for each control
+point. A negative value indicates travel over the isocentre. All positional
+arguments are defined at the isocentre projection with the units of mm.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>mu</strong> (<em>numpy.ndarray</em>) – 1-D array containing an MU value for each control point.</li>
+<li><strong>mlc</strong> (<em>numpy.ndarray</em>) – <p>3-D array containing the MLC positions</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">axis 0: control point</div>
+<div class="line">axis 1: mlc pair</div>
+<div class="line">axis 2: leaf bank</div>
+</div>
+</div></blockquote>
+</li>
+<li><strong>jaw</strong> (<em>numpy.ndarray</em>) – <p>2-D array containing the jaw positions.</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">axis 0: control point</div>
+<div class="line">axis 1: diaphragm</div>
+</div>
+</div></blockquote>
+</li>
+<li><strong>grid_resolution</strong> (<em>float</em><em>, </em><em>optional</em>) – The calc grid resolution. Defaults to 1 mm.</li>
+<li><strong>max_leaf_gap</strong> (<em>float</em><em>, </em><em>optional</em>) – The maximum possible distance between opposing leaves. Defaults to
+400 mm.</li>
+<li><strong>leaf_pair_widths</strong> (<em>tuple</em><em>, </em><em>optional</em>) – The widths of each leaf pair in the
+MLC limiting device. The number of entries in the tuples defines
+the number of leaf pairs. Each entry itself defines that particular
+leaf pair width. Defaults to 80 leaf pairs each 5 mm wide.</li>
+<li><strong>min_step_per_pixel</strong> (<em>int</em><em>, </em><em>optional</em>) – The minimum number of time steps
+used per pixel for each control point. Defaults to 10.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p><strong>mu_density</strong> –</p>
+<p>2-D array containing the calculated mu density.</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">axis 0: jaw direction</div>
+<div class="line">axis 1: mlc direction</div>
+</div>
+</div></blockquote>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">numpy.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.mudensity</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">calc_mu_density</span><span class="p">,</span> <span class="n">get_grid</span><span class="p">,</span> <span class="n">display_mu_density</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">max_leaf_gap</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mlc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jaw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">7.5</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">7.5</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mf">7.5</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span> <span class="o">=</span> <span class="n">get_grid</span><span class="p">(</span>
+<span class="gp">... </span>   <span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">max_leaf_gap</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">]</span>
+<span class="go">array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">]</span>
+<span class="go">array([-8., -7., -6., -5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,</span>
+<span class="go">        5.,  6.,  7.,  8.])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_mu_density</span><span class="p">(</span>
+<span class="gp">... </span>   <span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">max_leaf_gap</span><span class="o">=</span><span class="n">max_leaf_gap</span><span class="p">,</span>
+<span class="gp">... </span>   <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">display_mu_density</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">mu_density</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="go">array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.3, 1.9, 2.2, 1.9, 0.4, 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.4, 2.2, 2.5, 2.2, 0.6, 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.4, 2.4, 2.8, 2.5, 0.8, 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.4, 2.5, 3.1, 2.8, 1. , 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0. , 0.4, 2.5, 3.4, 3.1, 1.3, 0. , 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.7, 3.7, 3.5, 1.6, 0. , 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4. , 3.8, 1.9, 0.1, 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.8, 4.3, 4.1, 2.3, 0.1, 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.9, 5.2, 4.7, 2.6, 0.2, 0. ],</span>
+<span class="go">       [0. , 0. , 0.4, 2.3, 3.2, 3.8, 5.4, 6.6, 3.8, 0.5, 0. ],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 5.1, 7.5, 6.7, 3.9, 0.5],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.7, 6.9, 6.7, 3.9, 0.5],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 6.3, 6.4, 3.9, 0.5],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.6, 5.7, 3.8, 0.5],</span>
+<span class="go">       [0. , 0.3, 2.2, 3. , 3.5, 4. , 4.5, 5.1, 5.1, 3.3, 0.5],</span>
+<span class="go">       [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])</span>
+</pre></div>
+</div>
+<p>MU Density from a Mosaiq record</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.mudensity</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">calc_mu_density</span><span class="p">,</span> <span class="n">get_grid</span><span class="p">,</span> <span class="n">display_mu_density</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.msq</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">mosaiq_connect</span><span class="p">,</span> <span class="n">multi_fetch_and_verify_mosaiq</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">mu_density_from_mosaiq</span><span class="p">(</span><span class="n">msq_server_name</span><span class="p">,</span> <span class="n">field_id</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="n">mosaiq_connect</span><span class="p">(</span><span class="n">msq_server_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">delivery_data</span> <span class="o">=</span> <span class="n">multi_fetch_and_verify_mosaiq</span><span class="p">(</span>
+<span class="gp">... </span>            <span class="n">cursor</span><span class="p">,</span> <span class="n">field_id</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="n">mu</span> <span class="o">=</span> <span class="n">delivery_data</span><span class="o">.</span><span class="n">monitor_units</span>
+<span class="gp">... </span>    <span class="n">mlc</span> <span class="o">=</span> <span class="n">delivery_data</span><span class="o">.</span><span class="n">mlc</span>
+<span class="gp">... </span>    <span class="n">jaw</span> <span class="o">=</span> <span class="n">delivery_data</span><span class="o">.</span><span class="n">jaw</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="n">grid</span> <span class="o">=</span> <span class="n">get_grid</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_mu_density</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">display_mu_density</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mu_density_from_mosaiq</span><span class="p">(</span><span class="s1">&#39;a_server_name&#39;</span><span class="p">,</span> <span class="mi">11111</span><span class="p">)</span> 
+</pre></div>
+</div>
+<p>MU Density from a logfile at a given filepath</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.mudensity</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">calc_mu_density</span><span class="p">,</span> <span class="n">get_grid</span><span class="p">,</span> <span class="n">display_mu_density</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.trf</span> <span class="k">import</span> <span class="n">delivery_data_from_logfile</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">mu_density_from_logfile</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">delivery_data</span> <span class="o">=</span> <span class="n">delivery_data_from_logfile</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="n">mu</span> <span class="o">=</span> <span class="n">delivery_data</span><span class="o">.</span><span class="n">monitor_units</span>
+<span class="gp">... </span>    <span class="n">mlc</span> <span class="o">=</span> <span class="n">delivery_data</span><span class="o">.</span><span class="n">mlc</span>
+<span class="gp">... </span>    <span class="n">jaw</span> <span class="o">=</span> <span class="n">delivery_data</span><span class="o">.</span><span class="n">jaw</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="n">grid</span> <span class="o">=</span> <span class="n">get_grid</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_mu_density</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">display_mu_density</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mu_density_from_logfile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;a/path/goes/here&quot;</span><span class="p">)</span> 
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.mudensity.calc_single_control_point">
+<code class="descclassname">pymedphys.mudensity.</code><code class="descname">calc_single_control_point</code><span class="sig-paren">(</span><em>mlc</em>, <em>jaw</em>, <em>delivered_mu=1</em>, <em>leaf_pair_widths=(5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5)</em>, <em>grid_resolution=1</em>, <em>min_step_per_pixel=10</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/mudensity/_level1/mudensitycore.html#calc_single_control_point"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.mudensity.calc_single_control_point" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the MU Density for a single control point.</p>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.mudensity</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">calc_single_control_point</span><span class="p">,</span> <span class="n">display_mu_density</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">leaf_pair_widths</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mlc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+<span class="gp">... </span>        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jaw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span> <span class="o">=</span> <span class="n">calc_single_control_point</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">mlc</span><span class="p">,</span> <span class="n">jaw</span><span class="p">,</span> <span class="n">leaf_pair_widths</span><span class="o">=</span><span class="n">leaf_pair_widths</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">display_mu_density</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;mlc&#39;</span><span class="p">]</span>
+<span class="go">array([-3., -2., -1.,  0.,  1.,  2.,  3.])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">grid</span><span class="p">[</span><span class="s1">&#39;jaw&#39;</span><span class="p">]</span>
+<span class="go">array([-1.5, -0.5,  0.5,  1.5])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">mu_density</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="go">array([[0.  , 0.07, 0.43, 0.5 , 0.43, 0.07, 0.  ],</span>
+<span class="go">       [0.  , 0.14, 0.86, 1.  , 0.86, 0.14, 0.  ],</span>
+<span class="go">       [0.14, 0.86, 1.  , 1.  , 1.  , 0.86, 0.14],</span>
+<span class="go">       [0.03, 0.17, 0.2 , 0.2 , 0.2 , 0.17, 0.03]])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.mudensity.single_mlc_pair">
+<code class="descclassname">pymedphys.mudensity.</code><code class="descname">single_mlc_pair</code><span class="sig-paren">(</span><em>left_mlc</em>, <em>right_mlc</em>, <em>grid_resolution=1</em>, <em>min_step_per_pixel=10</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/mudensity/_level1/mudensitycore.html#single_mlc_pair"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.mudensity.single_mlc_pair" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the MU Density of a single leaf pair.</p>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.mudensity</span> <span class="k">import</span> <span class="n">single_mlc_pair</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mlc_left</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.3</span><span class="p">,</span> <span class="mf">3.1</span><span class="p">)</span>  <span class="c1"># (start position, end position)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mlc_right</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">7.7</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span><span class="p">,</span> <span class="n">mu_density</span> <span class="o">=</span> <span class="n">single_mlc_pair</span><span class="p">(</span><span class="n">mlc_left</span><span class="p">,</span> <span class="n">mlc_right</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mu_density</span><span class="p">,</span> <span class="s1">&#39;-o&#39;</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span>
+<span class="go">array([-2., -1.,  0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.])</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">mu_density</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="go">array([0.064, 0.244, 0.408, 0.475, 0.53 , 0.572, 0.481, 0.352, 0.224,</span>
+<span class="go">       0.096, 0.004])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.mudensity.get_grid">
+<code class="descclassname">pymedphys.mudensity.</code><code class="descname">get_grid</code><span class="sig-paren">(</span><em>max_leaf_gap=400</em>, <em>grid_resolution=1</em>, <em>leaf_pair_widths=(5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5</em>, <em>5)</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/mudensity/_level1/mudensitycore.html#get_grid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.mudensity.get_grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the MU Density grid for plotting purposes.</p>
+<p class="rubric">Examples</p>
+<p>See <a class="reference internal" href="#pymedphys.mudensity.calc_mu_density">pymedphys.mudensity.calc_mu_density</a>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.mudensity.display_mu_density">
+<code class="descclassname">pymedphys.mudensity.</code><code class="descname">display_mu_density</code><span class="sig-paren">(</span><em>grid</em>, <em>mu_density</em>, <em>grid_resolution=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/mudensity/_level1/mudensitycore.html#display_mu_density"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.mudensity.display_mu_density" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints a colour plot of the MU Density.</p>
+<p class="rubric">Examples</p>
+<p>See <a class="reference internal" href="#pymedphys.mudensity.calc_mu_density">pymedphys.mudensity.calc_mu_density</a>.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="gamma.html" class="btn btn-neutral float-right" title="Gamma Calculation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../library.html" class="btn btn-neutral" title="Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

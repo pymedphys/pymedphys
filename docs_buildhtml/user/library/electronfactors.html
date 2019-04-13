@@ -1,0 +1,456 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Electron Factor Modelling &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="DICOM files" href="dicom.html" />
+    <link rel="prev" title="Gamma Calculation" href="gamma.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../interfaces.html">Interfaces</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../library.html">Library</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="mudensity.html">MU Density</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gamma.html">Gamma Calculation</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Electron Factor Modelling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#available-functions">Available Functions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api">API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="dicom.html">DICOM files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="geometry.html">Geometry Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xlwings.html">Excel integration via xlwings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../library.html">Library</a> &raquo;</li>
+        
+      <li>Electron Factor Modelling</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/user/library/electronfactors.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="module-pymedphys.electronfactors">
+<span id="electron-factor-modelling"></span><h1>Electron Factor Modelling<a class="headerlink" href="#module-pymedphys.electronfactors" title="Permalink to this headline">¶</a></h1>
+<p>Model insert factors and parameterise inserts as equivalent ellipses.</p>
+<div class="section" id="available-functions">
+<h2>Available Functions<a class="headerlink" href="#available-functions" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pymedphys.electronfactors</span> <span class="k">import</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameterise_insert</span><span class="p">,</span> <span class="n">spline_model</span><span class="p">,</span> <span class="n">calculate_deformability</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">spline_model_with_deformability</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">calculate_percent_prediction_differences</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">visual_alignment_of_equivalent_ellipse</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="api">
+<h2>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="pymedphys.electronfactors.parameterise_insert">
+<code class="descclassname">pymedphys.electronfactors.</code><code class="descname">parameterise_insert</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>callback=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/electronfactors/_level1/electronfactors.html#parameterise_insert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.electronfactors.parameterise_insert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the parameterisation of an insert given x and y coords.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.electronfactors.spline_model">
+<code class="descclassname">pymedphys.electronfactors.</code><code class="descname">spline_model</code><span class="sig-paren">(</span><em>width_test</em>, <em>ratio_perim_area_test</em>, <em>width_data</em>, <em>ratio_perim_area_data</em>, <em>factor_data</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/electronfactors/_level1/electronfactors.html#spline_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.electronfactors.spline_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the result of the spline model.</p>
+<p>The bounding box is chosen so as to allow extrapolation. The spline orders
+are two in the width direction and one in the perimeter/area direction. For
+justification on using this method for modelling electron insert factors
+see the <em>Methods: Bivariate spline model</em> section within
+&lt;<a class="reference external" href="http://dx.doi.org/10.1016/j.ejmp.2015.11.002">http://dx.doi.org/10.1016/j.ejmp.2015.11.002</a>&gt;.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>width_test</strong> (<em>np.ndarray</em>) – The width point(s) which are to have the electron insert factor
+interpolated.</li>
+<li><strong>ratio_perim_area_test</strong> (<em>np.ndarray</em>) – The perimeter/area which are to have the electron insert factor
+interpolated.</li>
+<li><strong>width_data</strong> (<em>np.ndarray</em>) – The width data points for the relevant applicator, energy and ssd.</li>
+<li><strong>ratio_perim_area_data</strong> (<em>np.ndarray</em>) – The perimeter/area data points for the relevant applicator, energy and
+ssd.</li>
+<li><strong>factor_data</strong> (<em>np.ndarray</em>) – The insert factor data points for the relevant applicator, energy and
+ssd.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>result</strong> – The interpolated electron insert factors for width_test and
+ratio_perim_area_test.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">np.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.electronfactors.calculate_deformability">
+<code class="descclassname">pymedphys.electronfactors.</code><code class="descname">calculate_deformability</code><span class="sig-paren">(</span><em>x_test</em>, <em>y_test</em>, <em>x_data</em>, <em>y_data</em>, <em>z_data</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/electronfactors/_level1/electronfactors.html#calculate_deformability"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.electronfactors.calculate_deformability" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the result of the deformability test.</p>
+<p>This function takes an array of test points and loops over
+<code class="docutils literal notranslate"><span class="pre">_single_calculate_deformability</span></code>.</p>
+<p>The deformability test applies a shift to the spline to determine whether
+or not sufficient information for modelling is available. For further
+details on the deformability test see the <em>Methods: Defining valid
+prediction regions of the spline</em> section within
+&lt;<a class="reference external" href="http://dx.doi.org/10.1016/j.ejmp.2015.11.002">http://dx.doi.org/10.1016/j.ejmp.2015.11.002</a>&gt;.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>x_test</strong> (<em>np.ndarray</em>) – The x coordinate of the point(s) to test</li>
+<li><strong>y_test</strong> (<em>np.ndarray</em>) – The y coordinate of the point(s) to test</li>
+<li><strong>x_data</strong> (<em>np.ndarray</em>) – The x coordinate of the model data to test</li>
+<li><strong>y_data</strong> (<em>np.ndarray</em>) – The y coordinate of the model data to test</li>
+<li><strong>z_data</strong> (<em>np.ndarray</em>) – The z coordinate of the model data to test</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>deformability</strong> – The resulting deformability between 0 and 1
+representing the ratio of deviation the spline model underwent at
+the point in question by introducing an outlier at the point in
+question.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.electronfactors.spline_model_with_deformability">
+<code class="descclassname">pymedphys.electronfactors.</code><code class="descname">spline_model_with_deformability</code><span class="sig-paren">(</span><em>width_test</em>, <em>ratio_perim_area_test</em>, <em>width_data</em>, <em>ratio_perim_area_data</em>, <em>factor_data</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/electronfactors/_level1/electronfactors.html#spline_model_with_deformability"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.electronfactors.spline_model_with_deformability" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the spline model for points with sufficient deformability.</p>
+<p>Calls both <code class="docutils literal notranslate"><span class="pre">spline_model</span></code> and <code class="docutils literal notranslate"><span class="pre">calculate_deformabilty</span></code> and then adjusts
+the result so that points with  deformability greater than 0.5 return
+<code class="docutils literal notranslate"><span class="pre">np.nan</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>width_test</strong> (<em>np.ndarray</em>) – The width point(s) which are to have the
+electron insert factor interpolated.</li>
+<li><strong>ratio_perim_area_test</strong> (<em>np.ndarray</em>) – The perimeter/area which are to
+have the electron insert factor interpolated.</li>
+<li><strong>width_data</strong> (<em>np.ndarray</em>) – The width data points for the relevant
+applicator, energy and ssd.</li>
+<li><strong>ratio_perim_area_data</strong> (<em>np.ndarray</em>) – The perimeter/area data points for
+the relevant applicator, energy and ssd.</li>
+<li><strong>factor_data</strong> (<em>np.ndarray</em>) – The insert factor data points for the
+relevant applicator, energy and ssd.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>model_factor</strong> – The interpolated electron insert factors for width_test
+and ratio_perim_area_test with points outside the valid prediction
+region set to <code class="docutils literal notranslate"><span class="pre">np.nan</span></code>.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">np.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.electronfactors.calculate_percent_prediction_differences">
+<code class="descclassname">pymedphys.electronfactors.</code><code class="descname">calculate_percent_prediction_differences</code><span class="sig-paren">(</span><em>width_data</em>, <em>ratio_perim_area_data</em>, <em>factor_data</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/electronfactors/_level1/electronfactors.html#calculate_percent_prediction_differences"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.electronfactors.calculate_percent_prediction_differences" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the percent prediction differences.</p>
+<p>Calculates the model factor for each data point with that point removed
+from the data set. Used to determine an estimated uncertainty for
+prediction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>width_data</strong> (<em>np.ndarray</em>) – The width data points for a specific
+applicator, energy and ssd.</li>
+<li><strong>ratio_perim_area_data</strong> (<em>np.ndarray</em>) – The perimeter/area data points for
+a specific applicator, energy and ssd.</li>
+<li><strong>factor_data</strong> (<em>np.ndarray</em>) – The insert factor data points for a specific
+applicator, energy and ssd.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>percent_prediction_differences</strong> – The predicted electron insert factors for each data point
+with that given data point removed.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">np.ndarray</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse">
+<code class="descclassname">pymedphys.electronfactors.</code><code class="descname">visual_alignment_of_equivalent_ellipse</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>width</em>, <em>length</em>, <em>callback</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/pymedphys/electronfactors/_level1/electronfactors.html#visual_alignment_of_equivalent_ellipse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pymedphys.electronfactors.visual_alignment_of_equivalent_ellipse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visually align the equivalent ellipse to the insert.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="dicom.html" class="btn btn-neutral float-right" title="DICOM files" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="gamma.html" class="btn btn-neutral" title="Gamma Calculation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

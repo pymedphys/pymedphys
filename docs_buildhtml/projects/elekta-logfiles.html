@@ -1,0 +1,357 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Elekta Logfile Decoding and Indexing &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Recommended Setup for Contribution" href="../developer/contributing.html" />
+    <link rel="prev" title="Gamma from DICOM" href="../user/examples/gamma_from_dicom.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Elekta Logfile Decoding and Indexing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#project-aim">Project aim</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#presentations-related-to-this-project">Presentations Related to this Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#details">Details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-implementation">Basic Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-implementation">Advanced Implementation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../developer/contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/documentation.html">Editing documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer/labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Elekta Logfile Decoding and Indexing</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/projects/elekta-logfiles.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="elekta-logfile-decoding-and-indexing">
+<h1>Elekta Logfile Decoding and Indexing<a class="headerlink" href="#elekta-logfile-decoding-and-indexing" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="project-aim">
+<h2>Project aim<a class="headerlink" href="#project-aim" title="Permalink to this headline">¶</a></h2>
+<p>The aim of this project is to have an automated machine record based delivery
+check between the treatment planning system, the information system, and the
+Linac for every patient and fraction.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p><strong>It is not the intent of this project to replace patient specific QA
+measurements</strong>. Some reasons this is likely not a sufficient replacement:</p>
+<ul class="last simple">
+<li>Linac reported MLC and Jaw positions are not independent from the machine and
+a fault resulting in mispositioning of the collimation may not be reported
+within the logfiles.</li>
+<li>The treatment planning system beam models (as well as potentially any
+independent calculation software) may not accurately model the MLCs <a class="footnote-reference" href="#id2" id="id1">[1]</a>, and
+therefore, checking leaf positon, without a dose measurement, may not be
+sufficient verification.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="presentations-related-to-this-project">
+<h2>Presentations Related to this Project<a class="headerlink" href="#presentations-related-to-this-project" title="Permalink to this headline">¶</a></h2>
+<p>Portions of this project have been presented and are scheduled to be presented
+in the future. The links below provide downloads of the respective slides.</p>
+<ul class="simple">
+<li><a class="reference external" href="http://simonbiggs.net/epsm2018">Comparing the Reported MLC and Jaw Positions Between Mosaiq and Elekta Linac Delivery at EPSM 2018</a>.</li>
+<li>Open source tools for converting 40 ms resolution trf Elekta log files into DICOM RT Plan format for log file-derived dose reconstruction at ICCR 2019.</li>
+</ul>
+</div>
+<div class="section" id="details">
+<h2>Details<a class="headerlink" href="#details" title="Permalink to this headline">¶</a></h2>
+<p>The diagnostic backups of an Elekta Linac contain the trf logfiles which detail
+every Linac delivery for the previous 8 days to a time resolution of 25 Hz.</p>
+<p>A portion of an example decoded logfile looks like the following:</p>
+<img alt="../_images/logfile_example.png" src="../_images/logfile_example.png" />
+<p>The logfiles contain information such as MLC and Jaw positions, MU delivered, gantry
+couch and collimator angles, and more. For a full list of the column names in the logfiles
+see the <a class="reference external" href="https://github.com/pymedphys/pymedphys/blob/b6d2c0500ee90af1eb189ba44d96e0c5cf242e80/src/pymedphys/trf/_data/config.json#L25-L376">logfile config code</a>.</p>
+<p>These logfiles can be extracted and then associated to a patient’s record
+using Mosaiq SQL. This is achieved by aligning the logfile to the recorded delivery time as well
+as other parameters such as field ID and description the logfile is aligned to
+Patient Name and ID. Example SQL to achieve this looks like the following:</p>
+<img alt="../_images/sql_example.png" src="../_images/sql_example.png" />
+<p>An index is then created, at this current time the index is json file, but this
+has issues when the index becomes large. It is expected that a backwards
+incompatible change will occur in the near future converting the index json
+format into SQLite. An example entry within this index looks like the following:</p>
+<img alt="../_images/index_example.png" src="../_images/index_example.png" />
+<p>This process of extracting and indexing can be set to run at a regular interval
+so that an up to date logfile index is available.</p>
+<p>Post indexing these logfiles can be decoded into csv format for human
+reading, an MU Density can be calculated, or they can be mapped to a DICOM
+file for the recalculation of dose.</p>
+</div>
+<div class="section" id="basic-implementation">
+<h2>Basic Implementation<a class="headerlink" href="#basic-implementation" title="Permalink to this headline">¶</a></h2>
+<p>Details on how to set up automated logfile exporting and indexing are to be
+detailed here. Watch this space.</p>
+</div>
+<div class="section" id="advanced-implementation">
+<h2>Advanced Implementation<a class="headerlink" href="#advanced-implementation" title="Permalink to this headline">¶</a></h2>
+<p>Further details that expand the above implementation to multiple sites are to
+be detailed here. Watch this space.</p>
+</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Gholampourkashi, Sara, et al. “Monte Carlo and analytic modeling of an Elekta
+Infinity linac with Agility MLC: Investigating the significance of accurate
+model parameters for small radiation fields.”
+<em>Journal of Applied Clinical Medical Physics</em> 20.1 (2019): 55-67. <a class="reference external" href="https://doi.org/10.1002/acm2.12485">https://doi.org/10.1002/acm2.12485</a>.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../developer/contributing.html" class="btn btn-neutral float-right" title="Recommended Setup for Contribution" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../user/examples/gamma_from_dicom.html" class="btn btn-neutral" title="Gamma from DICOM" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

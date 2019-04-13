@@ -1,0 +1,324 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Editing documentation &mdash; PyMedPhys 0.8.0dev0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Benefits of AGPL-3.0+ for Medical Physics" href="agpl-benefits.html" />
+    <link rel="prev" title="Directory &amp; File Structure" href="file-structure.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> PyMedPhys
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                master
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/about.html">About PyMedPhys</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/licensing.html">Licensing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/changelog.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/roadmap.html">Roadmap</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user/interfaces.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/library.html">Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user/examples.html">Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Projects</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../projects/elekta-logfiles.html">Elekta Logfile Decoding and Indexing</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Recommended Setup for Contribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="file-structure.html">Directory &amp; File Structure</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Editing documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#starting-a-live-update-documentation-server">Starting a live update documentation server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#docstring-extraction">Docstring extraction</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="agpl-benefits.html">Benefits of AGPL-3.0+ for Medical Physics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="labs.html">Labs</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">PyMedPhys</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Editing documentation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/developer/documentation.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="editing-documentation">
+<h1>Editing documentation<a class="headerlink" href="#editing-documentation" title="Permalink to this headline">¶</a></h1>
+<p>This documentation site uses a toolbox called Sphinx. This particular document
+aims to help contributors to improve the PyMedPhys documentation.</p>
+<p>We recommend that you first read the <a class="reference external" href="/developer/contributing.html">recommended setup for contribution</a> and
+<a class="reference external" href="/developer/file-structure.html">file structure</a> documentation pages before you proceed..</p>
+<div class="section" id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<p>You can install all of the additional dependencies required to edit the
+PyMedPhys documentation by running the following command in your terminal:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install -e .<span class="o">[</span>docs<span class="o">]</span>
+</pre></div>
+</div>
+<p>NB: these packages are not installed if you only run <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span></code>
+or <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">pymedphys</span></code>.</p>
+</div>
+<div class="section" id="starting-a-live-update-documentation-server">
+<h2>Starting a live update documentation server<a class="headerlink" href="#starting-a-live-update-documentation-server" title="Permalink to this headline">¶</a></h2>
+<p>Within the root pymedphys directory run the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sphinx-autobuild -W -p <span class="m">7070</span> docs docs/_build/html
+</pre></div>
+</div>
+<p>Then within a web browser go to <a class="reference external" href="http://127.0.0.1:7070">http://127.0.0.1:7070</a></p>
+<p>You may now edit the documentation within the docs directory and see the
+changes live update within your browser.</p>
+</div>
+<div class="section" id="docstring-extraction">
+<h2>Docstring extraction<a class="headerlink" href="#docstring-extraction" title="Permalink to this headline">¶</a></h2>
+<p>Some documentation is best written right within a given function itself. This
+type of documentation is called a <strong>docstring</strong>. However, this documentation should
+also be available in the main documentation and it is exceptionally important that
+this isn’t written more than once. Duplicating documentation increases
+<a class="reference external" href="https://en.wikipedia.org/wiki/Software_entropy">software entropy</a>. As time goes by,
+documentation updates may result in one or more copies being missed and becoming
+obsolete or inconsistent with the up-to-date copy. Even if all copies are updated correctly,
+unnecessary duplication adds to ongoing maintenance requirements. See the <a class="reference external" href="https://en.wikipedia.org/wiki/Don%27t_repeat_yourself">DRY programming
+philosophy</a> for more on this.</p>
+<p>To solve this problem, most of PyMedPhys’ documentation is written as docstrings,
+which are then automatically extracted into the main documentation pages. For this
+to work properly, docstrings need to be formatted according to the numpy style. See
+the following sites for examples of how to conform to that style:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html#example-numpy">Napoleon Docs - Example NumPy Style Python Docstrings</a></li>
+<li><a class="reference external" href="https://numpydoc.readthedocs.io/en/latest/format.html">numpydoc docstring guide</a></li>
+</ul>
+<p>See existing examples within PyMedPhys for how to include new function docstrings
+into the main PyMedPhys documentation.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="agpl-benefits.html" class="btn btn-neutral float-right" title="Benefits of AGPL-3.0+ for Medical Physics" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="file-structure.html" class="btn btn-neutral" title="Directory &amp; File Structure" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015-2019, the PyMedPhys contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'../',
+              VERSION:'0.8.0dev0',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
