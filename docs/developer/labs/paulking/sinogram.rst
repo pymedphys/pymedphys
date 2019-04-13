@@ -1,7 +1,7 @@
 Sinogram
 ========
 
-.. automodule:: pymedphys.sinogram
+.. automodule:: pymedphys._labs.paulking.sinogram
     :no-members:
 
 API
