@@ -39,7 +39,6 @@ Top Level Modules:
         - coll
         - electronfactors
         - film
-        - sinogram
         - dicom
         - utilities
         - deliverydata
