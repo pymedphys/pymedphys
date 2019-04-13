@@ -36,7 +36,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
 import numpy as np
 
-from pymedphys.sinogram import unshuffle, crop
+from pymedphys._labs.paulking.sinogram import unshuffle, crop
 
 
 def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
