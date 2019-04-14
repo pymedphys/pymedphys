@@ -25,6 +25,8 @@
 
 
 """
+Sinogram Toolbox
+
 @author: king.r.paul@gmail.com
 """
 
