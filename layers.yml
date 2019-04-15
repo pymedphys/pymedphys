@@ -15,7 +15,6 @@ Internal Levelled Modules:
         - pymedphys.mudensity
         - pymedphys.profiles
         - pymedphys.plt
-        - pymedphys.sinogram
         - pymedphys.trf
         - pymedphys.utilities
         - pymedphys.xarray
@@ -39,7 +38,6 @@ Top Level Modules:
         - coll
         - electronfactors
         - film
-        - sinogram
         - dicom
         - utilities
         - deliverydata
