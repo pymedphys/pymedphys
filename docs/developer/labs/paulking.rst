@@ -5,3 +5,4 @@ Paul King
     :maxdepth: 1
 
     paulking/profile
+    paulking/sinogram
