@@ -25,6 +25,8 @@
 
 
 """
+Sinogram Toolbox
+
 @author: king.r.paul@gmail.com
 """
 
@@ -39,22 +41,34 @@ IMPORTS = get_imports(globals())
 
 
 def read_csv_file(file_name):
-    # Temporarily disabling docstring due to "Unexpected indentation"
-    # error within Sphinx build
+    """ read sinogram from csv file
 
-    # """
-    # Return patient ID and sinogram array produced by reading a RayStation sinogram
-    # CSV file with the provided file name.
+    Return patient ID and sinogram array produced by reading a RayStation
+    sinogram CSV file with the provided file name.
 
-    # Files are produced by ExportTomoSinogram.py, Brandon Merz,
-    # RaySearch customer forum, 1/18/2018.
+    Parameters
+    ----------
+    file_name : str
+        long file name of csv file
 
-    #     Format:
-    #         First row contains demographics. Subsequent rows correspond to couch positions.
-    #         Leaf-open time range from zero to one.
-    #             "Patient name: ANONYMOUS^PATIENT, ID: 00000",,,,,,,,,
-    #             ,0,0,0,0,0,0,0,0,0,0,0,0,0.39123373,0.366435635 ...
-    # """
+    Returns
+    -------
+    document_id, array
+
+    Notes
+    -----
+    Files are produced by ExportTomoSinogram.py, Brandon Merz,
+    RaySearch customer forum, 1/18/2018.
+    File first row contains demographics.
+    Subsequent rows correspond to couch positions.
+    Leaf-open time range from zero to one.
+
+    Examples
+    --------
+    "Patient name: ANONYMOUS^PATIENT, ID: 00000",,,,,,,,,
+    ,0,0,0,0,0,0,0,0,0,0,0,0,0.39123373,0.366435635 ...
+
+    """
 
     with open(file_name, 'r') as csvfile:
 
@@ -74,14 +88,28 @@ def read_csv_file(file_name):
 
 
 def read_bin_file(file_name):
-    """
+    """ read sinogram from binary file
+
     Return sinogram np.array produced by reading an Accuray sinogram
-    BIN file with the provided file name. BIN files are sinograms
-    stored in binary format used in Tomotherapy calibration plans.
+    BIN file with the provided file name.
+
+    Parameters
+    ----------
+    file_name : str
+        long file name of csv file
+
+    Returns
+    -------
+    sinogram : np.array
+
+    Notes
+    -----
+    BIN files are sinograms stored in binary format used in
+    Tomotherapy calibration plans.
 
     """
-    leaf_open_times = np.fromfile(file_name, dtype=float,
-                                  count=-1, sep='')
+
+    leaf_open_times = np.fromfile(file_name, dtype=float, count=-1, sep='')
     num_leaves = 64
     num_projections = int(len(leaf_open_times)/num_leaves)
     sinogram = np.reshape(leaf_open_times, (num_projections, num_leaves))
@@ -90,11 +118,21 @@ def read_bin_file(file_name):
 
 
 def crop(sinogram):
-    """
+    """ crop sinogram
+
     Return a symmetrically cropped sinogram, such that always-closed
     leaves are excluded and the sinogram center is maintained.
 
+    Parameters
+    ----------
+    sinogram : np.array
+
+    Returns
+    -------
+    sinogram : np.array
+
     """
+
     include = [False for f in range(64)]
     for i, projection in enumerate(sinogram):
         for j, leaf in enumerate(projection):
@@ -107,10 +145,19 @@ def crop(sinogram):
 
 
 def unshuffle(sinogram):
-    """
+    """ unshuffle singram by angle
+
     Return a list of 51 sinograms, by unshuffling the provided
     sinogram; so that all projections in the result correspond
-    to the same gantry rotation angle.
+    to the same gantry rotation angle, analogous to a fluence map.
+
+    Parameters
+    ----------
+    sinogram : np.array
+
+    Returns
+    -------
+    unshuffled: list of sinograms
 
     """
     unshufd = [[] for i in range(51)]
@@ -122,11 +169,22 @@ def unshuffle(sinogram):
 
 
 def make_histogram(sinogram, num_bins=10):
-    """
+    """ make a leaf-open-time histogram
+
     Return a histogram of leaf-open-times for the provided sinogram
     comprised of the specified number of bins, in the form of a list
     of tuples: [(bin, count)...] where bin is a 2-element array setting
     the bounds and count in the number leaf-open-times in the bin.
+
+    Parameters
+    ----------
+    sinogram : np.array
+    num_bins : int
+
+    Returns
+    -------
+    histogram : list of tuples: [(bin, count)...]
+        bin is a 2-element array
 
     """
 
@@ -153,13 +211,23 @@ def make_histogram(sinogram, num_bins=10):
 
 
 def find_modulation_factor(sinogram):
-    """
-    Return as float the ratio of the maximum leaf open time (assumed
+    """ read sinogram from csv file
+
+    Calculate the ratio of the maximum leaf open time (assumed
     fully open) to the mean leaf open time, as determined over all
     non-zero leaf open times, where zero is interpreted as blocked
     versus modulated.
 
+    Parameters
+    ----------
+    sinogram : np.array
+
+    Returns
+    -------
+    modulation factor : float
+
     """
+
     lfts = [lft for lft in sinogram.flatten() if lft > 0.0]
     modulation_factor = max(lfts) / np.mean(lfts)
 
