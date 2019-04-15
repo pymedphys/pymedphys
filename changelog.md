@@ -7,11 +7,50 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 <br/>
 
+<!--  Template
 ## [Unreleased]
 
 ### Breaking Changes
 
+- nil
+
+### New Features
+
+- nil
+
+### Bug Fixes
+
+- nil
+
+### Code Refactoring
+
+- nil
+
+### Performance Improvements
+
+- nil -->
+
+## [Unreleased]
+
+## [0.7.2] -- 2019/04/05
+
+### Dependency changes
+
+- Removed numpy version upperlimit
+
+## [0.7.1] -- 2019/04/05
+
+### Performance Improvements
+
+- reduced PyPI package size by removing unnessesary development testing files.
+
+## [0.7.0] -- 2019/04/05
+
+### Breaking Changes
+
 - `anonymise_dicom` has been renamed to `anonymise_dicom_dataset`
+- The CLI interface `trf2csv` has been replaced with `pymedphys trf to-csv`.
+  This has the same usage, just a changed name to come in line with the rest of the CLI interfaces exposed by PyMedPhys.
 
 ### New Features
 
@@ -42,18 +81,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   within Excel
 - Added rudimentary code to pull profiles from Mephysto
   files.
-
-<!-- ### Bug Fixes
-
-- nil
-
-### Code Refactoring
-
-- nil
-
-### Performance Improvements
-
-- nil -->
+- The previously separate `decodetrf` library is now distributed within
+  PyMedPhys. You can now simply install PyMedPhys and run
+  `pymedphys trf to-csv` within the command line to convert `.trf` files into
+  `.csv` files.
 
 <br/>
 
@@ -97,6 +128,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.6.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.7.2...master
+[0.7.2]: https://github.com/pymedphys/pymedphys/compare/v0.7.1...v0.7.2
+[0.7.1]: https://github.com/pymedphys/pymedphys/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/pymedphys/pymedphys/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/pymedphys/pymedphys/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/pymedphys/pymedphys/compare/v0.4.3...v0.5.1
