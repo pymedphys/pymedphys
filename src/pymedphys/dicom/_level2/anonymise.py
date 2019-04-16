@@ -307,6 +307,8 @@ def anonymise_file(
     if delete_original_file:
         remove_file(dicom_filepath)
 
+    return dicom_anon_filepath
+
 
 def anonymise_directory(
         dicom_dirpath,
@@ -393,7 +395,7 @@ def anonymise_directory(
 # def anonymise_files_cli(args):
 
 
-def is_anonymised_dataset(ds):
+def is_anonymised_dataset(ds, ignore_private_tags=False):
     r"""Checks whether a DICOM dataset has been (fully) anonymised.
     """
     is_anonymised = True
@@ -403,20 +405,23 @@ def is_anonymised_dataset(ds):
             dummy_value = _get_anonymous_replacement_value(elem.keyword)
             if not (elem.value == '' or elem.value == dummy_value):
                 is_anonymised = False
+                # print(elem.value)
                 break
+        elif elem.tag.is_private and not ignore_private_tags:
+            is_anonymised = False
 
     return is_anonymised
 
 
-def is_anonymised_file(filepath):
+def is_anonymised_file(filepath, ignore_private_tags=False):
     r"""Checks whether a DICOM file has been (fully) anonymised.
     """
     ds = pydicom.dcmread(filepath)
 
-    return is_anonymised_dataset(ds)
+    return is_anonymised_dataset(ds, ignore_private_tags=ignore_private_tags)
 
 
-def is_anonymised_directory(dirpath):
+def is_anonymised_directory(dirpath, ignore_private_tags=False):
     r"""Checks whether all DICOM files in a directory have been (fully)
     anonymised.
     """
@@ -424,8 +429,10 @@ def is_anonymised_directory(dirpath):
     dicom_filepaths = glob(dirpath + '/**/*.dcm', recursive=True)
 
     for dicom_filepath in dicom_filepaths:
-        if not is_anonymised_file(dicom_filepath):
+        if not is_anonymised_file(dicom_filepath,
+                                  ignore_private_tags=ignore_private_tags):
             is_anonymised = False
+            # print(dicom_filepath)
             break
 
     return is_anonymised
