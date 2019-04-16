@@ -4387,9 +4387,6 @@ BASELINE_KEYWORD_VR_DICT = dict([(BaselineDicomDictionary[tag][4],
                                  for tag in BaselineDicomDictionary])
 
 
-DICOM_NAMES = [item[-1] for _, item in DicomDictionary.items()]
-
-
 DICOM_SOP_CLASS_NAMES_MODE_PREFIXES = {
     'CT Image Storage': 'CT',
     'Enhanced CT Image Storage': 'CTE',
