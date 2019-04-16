@@ -23,6 +23,11 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
+import operator
+from functools import reduce
+from collections import namedtuple
+
 import numpy as np
 
 from scipy.optimize import basinhopping
@@ -38,6 +43,34 @@ IMPORTS = get_imports(globals())
 
 
 # pylint: disable=C0103
+
+
+Structure = namedtuple('Structure', ['name', 'number', 'coords'])
+
+
+def concatenate_a_contour_slice(x, y, z):
+    return reduce(operator.add, [
+        [str(x_i), str(y_i), str(z_i)]
+        for x_i, y_i, z_i in zip(x, y, z)
+    ])
+
+
+def create_contour_sequence_dict(structure: Structure):
+    merged_contours = [
+        concatenate_a_contour_slice(x, y, z)
+        for x, y, z in structure.coords
+    ]
+
+    return {
+        'ReferencedROINumber': structure.number,
+        'ContourSequence': [
+            {
+                'ContourData': merged_contour
+            }
+            for merged_contour in merged_contours
+        ]
+    }
+
 
 def pull_coords_from_contour_sequence(contour_sequence):
     contours_by_slice_raw = [
@@ -71,7 +104,7 @@ def pull_structure(structure_name, dcm_struct):
     try:
         ROI_number = ROI_name_to_number_map[structure_name]
     except KeyError:
-        raise ValueError("Structure not found (case sensitive)")
+        raise ValueError("Structure name not found (case sensitive)")
 
     contour_sequence = ROI_number_to_contour_map[ROI_number]
     x, y, z = pull_coords_from_contour_sequence(contour_sequence)
@@ -83,10 +116,10 @@ def list_structures(dcm_struct):
     return [item.ROIName for item in dcm_struct.StructureSetROISequence]
 
 
-def resample_contour(contour, n=50):
+def resample_contour(contour, n=51):
     tck, u = splprep(
         [contour[0], contour[1], contour[2]], s=0, k=1)
-    new_points = splev(np.arange(0, 1, 1/n), tck)
+    new_points = splev(np.linspace(0, 1, n), tck)
 
     return new_points
 
@@ -109,9 +142,9 @@ def contour_to_points(contours):
     return contour_points
 
 
-def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
+def get_structure_aligned_cube(structure_name: str,
                                dcm_struct: pydicom.dataset.FileDataset,
-                               quiet=False, niter=10):
+                               quiet=False, niter=10, x0=None):
     """Align a cube to a dicom structure set.
 
     Designed to allow arbitrary references frames within a dicom file to be
@@ -119,7 +152,13 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
 
     Parameters
     ----------
-    x0
+    structure_name
+        The DICOM label of the cube structure
+    dcm_struct
+        The pydicom reference to the DICOM structure file.
+    quiet : ``bool``
+        Tell the function to not print anything. Defaults to False.
+    x0 : ``np.ndarray``, optional
         A 3x3 array with each row defining a 3-D point in space.
         These three points are used as initial conditions to search for
         a cube that fits the contours. Choosing initial values close to the
@@ -127,12 +166,8 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
         results. See examples within
         `pymedphys.geometry.cubify_cube_definition`_ on what the effects
         of each of the three points are on the resulting cube.
-    structure_name
-        The DICOM label of the cube structure
-    dcm_struct
-        The pydicom reference to the DICOM structure file.
-    quiet : bool
-        Tell the function to not print anything. Defaults to False.
+        By default this parameter is defined using the min/max values of
+        the contour structure.
 
     Returns
     -------
@@ -150,29 +185,47 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
     >>>
     >>> struct_path = 'tests/data/dicom_struct/example_structures.dcm'
     >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
-    >>>
-    >>> x0 = np.array([
-    ...     -270, -35, -20,
-    ...     -270, 30, -20,
-    ...     -260, -35, 40
-    ... ])
-    >>>
     >>> structure_name = 'ANT Box'
     >>> cube_definition_array, vectors = get_structure_aligned_cube(
-    ...     x0, structure_name, dcm_struct, quiet=True, niter=1)
+    ...     structure_name, dcm_struct, quiet=True, niter=1)
     >>> np.round(cube_definition_array)
-    array([[-276.,  -31.,  -16.],
-           [-275.,   29.,  -17.],
-           [-266.,  -31.,   43.],
-           [-217.,  -32.,  -26.]])
+    array([[-266.,  -31.,   43.],
+           [-266.,   29.,   42.],
+           [-207.,  -31.,   33.],
+           [-276.,  -31.,  -16.]])
     >>>
     >>> np.round(vectors, 1)
-    array([[ 0.7, 59.9, -0.5],
-           [ 9.7,  0.4, 59.1],
-           [59.1, -0.8, -9.7]])
+    array([[  0.7,  59.9,  -0.5],
+           [ 59.2,  -0.7,  -9.7],
+           [ -9.7,  -0.4, -59.2]])
     """
 
-    to_minimise = create_minimise(structure_name, dcm_struct)
+    contours = pull_structure(structure_name, dcm_struct)
+    contour_points = contour_to_points(contours)
+
+    def to_minimise(cube):
+        cube_definition = cubify_cube_definition(
+            [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
+        )
+        min_dist_squared = calc_min_distance(cube_definition, contour_points)
+        return np.sum(min_dist_squared)
+
+    if x0 is None:
+        concatenated_contours = [
+            np.concatenate(contour_coord)
+            for contour_coord in contours
+        ]
+
+        bounds = [
+            (np.min(concatenated_contour), np.max(concatenated_contour))
+            for concatenated_contour in concatenated_contours
+        ]
+
+        x0 = np.array([
+            (bounds[1][0], bounds[0][0], bounds[2][1]),
+            (bounds[1][0], bounds[0][1], bounds[2][1]),
+            (bounds[1][1], bounds[0][0], bounds[2][1])
+        ])
 
     if quiet:
         def print_fun(x, f, accepted):
@@ -238,17 +291,3 @@ def calc_min_distance(cube_definition, contours):
     min_dist_squared = np.min(distance_to_planes**2, axis=0)
 
     return min_dist_squared
-
-
-def create_minimise(structure_name, dcm_struct):
-    contours = pull_structure(structure_name, dcm_struct)
-    contour_points = contour_to_points(contours)
-
-    def minimise(cube):
-        cube_definition = cubify_cube_definition(
-            [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
-        )
-        min_dist_squared = calc_min_distance(cube_definition, contour_points)
-        return np.sum(min_dist_squared)
-
-    return minimise

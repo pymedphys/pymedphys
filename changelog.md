@@ -32,6 +32,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Breaking changes
+
+- `pymedphys.dicom.get_structure_aligned_cube` has had its `x0` paremeter
+  changed from required to optional. It is no longer the first parameter
+  passed to the function. By default `x0` is now determined using the min/max
+  bounds of the structure.
+
 ## [0.7.2] -- 2019/04/05
 
 ### Dependency changes

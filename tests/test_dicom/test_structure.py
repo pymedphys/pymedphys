@@ -24,17 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import operator
-from functools import reduce
-from collections import namedtuple
-
 import numpy as np
 
 from pymedphys.dicom import (
-    dicom_dataset_from_dict, find_dose_within_structure, pull_structure)
+    dicom_dataset_from_dict, find_dose_within_structure, pull_structure,
+    create_contour_sequence_dict, Structure)
 
-
-Structure = namedtuple('Structure', ['name', 'number', 'coords'])
 
 A_STRUCTURE = Structure(
     'A Structure Name', 10, [
@@ -75,30 +70,6 @@ ANOTHER_STRUCTURE = Structure(
         ]
     ]
 )
-
-
-def concatenate_a_contour_slice(x, y, z):
-    return reduce(operator.add, [
-        [str(x_i), str(y_i), str(z_i)]
-        for x_i, y_i, z_i in zip(x, y, z)
-    ])
-
-
-def create_contour_sequence_dict(structure: Structure):
-    merged_contours = [
-        concatenate_a_contour_slice(x, y, z)
-        for x, y, z in structure.coords
-    ]
-
-    return {
-        'ReferencedROINumber': structure.number,
-        'ContourSequence': [
-            {
-                'ContourData': merged_contour
-            }
-            for merged_contour in merged_contours
-        ]
-    }
 
 
 def test_pull_structure():

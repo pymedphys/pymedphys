@@ -543,18 +543,17 @@ def _get_index(z_list, z_val):
     return index
 
 
-def find_dose_within_structure(structure, dcm_struct, dcm_dose):
+def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
     x_dose, y_dose, z_dose = load_xyz_from_dicom(dcm_dose)
-    dose = load_dose_from_dicom(dcm_dose)
 
     xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
 
     x_structure, y_structure, z_structure = pull_structure(
-        structure, dcm_struct)
+        structure_name, dcm_struct)
     structure_z_values = np.array([item[0] for item in z_structure])
 
-    structure_dose_values = np.array([])
+    mask = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
 
     for z_val in structure_z_values:
         structure_index = _get_index(z_structure, z_val)
@@ -569,13 +568,18 @@ def find_dose_within_structure(structure, dcm_struct, dcm_dose):
             )
             for i in range(len(x_structure[structure_index]))
         ])
-        mask = structure_polygon.contains_points(points).reshape(
-            len(y_dose), len(x_dose))
-        masked_dose = dose[:, :, dose_index]
-        structure_dose_values = np.append(
-            structure_dose_values, masked_dose[mask])
+        mask[:, :, dose_index] = (
+            structure_polygon.contains_points(points).reshape(
+                len(y_dose), len(x_dose)))
 
-    return structure_dose_values
+    return mask
+
+
+def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
+    dose = load_dose_from_dicom(dcm_dose)
+    mask = get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose)
+
+    return dose[mask]
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
