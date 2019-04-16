@@ -27,8 +27,7 @@ from copy import deepcopy
 
 import numpy as np
 from pydicom import Dataset
-
-from pymedphys.dicom import DICOM_NAMES
+from pydicom.datadict import DicomDictionary
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
