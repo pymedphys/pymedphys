@@ -32,6 +32,7 @@ import pydicom
 
 from ...libutils import get_imports
 from .._level1.dict_baseline import BaselineDicomDictionary, BASELINE_KEYWORD_VR_DICT
+from pymedphys.utilities import remove_file
 
 IMPORTS = get_imports(globals())
 
@@ -110,10 +111,10 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'UI': "12345678"}
 
 
-def anonymise_dicom_dataset(ds, replace_values=True, keywords_to_leave_unchanged=None,
+def anonymise_dicom_dataset(ds, replace_values=True, keywords_to_leave_unchanged=(),
                             delete_private_tags=True, delete_unknown_tags=None,
                             copy_dataset=True):
-    r"""A simple tool to anonymise a DICOM file.
+    r"""A simple tool to anonymise a DICOM dataset.
 
     Parameters
     ----------
@@ -151,9 +152,6 @@ def anonymise_dicom_dataset(ds, replace_values=True, keywords_to_leave_unchanged
     ds_anon : pydicom.dataset.Dataset
         An anonymised version of the input DICOM dataset.
     """
-
-    if keywords_to_leave_unchanged is None:
-        keywords_to_leave_unchanged = []
 
     if copy_dataset:
         ds_anon = deepcopy(ds)
@@ -215,18 +213,68 @@ def anonymise_dicom_dataset(ds, replace_values=True, keywords_to_leave_unchanged
     return ds_anon
 
 
-def anonymise_dicom_file(dicom_filepath, overwrite_file=False, replace_values=True,
-                         keywords_to_leave_unchanged=None, delete_private_tags=True,
-                         delete_unknown_tags=None):
+def anonymise_dicom_file(dicom_filepath, delete_original_file=False, anonymise_filename=True,
+                         replace_values=True, keywords_to_leave_unchanged=(),
+                         delete_private_tags=True, delete_unknown_tags=None):
+    r"""A simple tool to anonymise a DICOM file.
+
+    Parameters
+    ----------
+    dicom_filepath : str
+        The path to the DICOM file to be anonymised.
+
+    delete_original_file : bool, optional
+        If True and anonymisation completes successfully, then the original
+        DICOM is deleted. Defaults to False.
+
+    anonymise_filename : bool, optional
+        If True, the DICOM filename is replaced by a filename of the form:
+        "<two character DICOM modality>.<SOP Instance UID>_Anonymised.dcm". E.g:
+
+        "RP.2.16.840.1.113669.2.931128.513403853.20190307160403.439526_Anonymised.dcm"
+
+        This ensures that the filename contains no identifying information. If
+        False, `anonymise_dicom_file()` simply appends "_Anonymised" to the
+        original DICOM filename. Defaults to True.
+
+    replace_values : bool, optional
+        If set to `True`, anonymised tag values will be replaced with dummy
+        "anonymous" values. This is often required for the successful reading of
+        anonymised DICOM files in commercial software. If set to `False`,
+        anonymised tags are simply given empty string values. Defaults to `True`.
+
+    keywords_to_leave_unchanged : sequence, optional
+        A sequence of DICOM keywords (corresponding to tags) to exclude from
+        anonymisation. Private and unknown tags can be supplied. Empty by default.
+
+    delete_private_tags : bool, optional
+        A boolean to flag whether or not to remove all private
+        (non-standard) DICOM tags from the DICOM file. These may
+        also contain identifying information. Defaults to `True`.
+
+    delete_unknown_tags : bool, pseudo-optional
+        If left as the default value of `None` and `ds` contains tags that are not present in
+        PyMedPhys` copy of `pydicom`'s DICOM dictionary, `anonymise_dicom_dataset()` will raise an
+        error. The user must then either pass `True` or `False` to proceed. If set to `True`, all
+        unrecognised tags that haven't been listed in `keywords_to_leave_unchanged` will be deleted.
+        If set to `False`, these tags are simply ignored. Pass `False` with caution, since
+        unrecognised tags may contain identifying information.
+    """
 
     ds = pydicom.dcmread(dicom_filepath)
 
-    if overwrite_file:
-        dicom_anon_filepath = dicom_filepath
-    else:
+    if anonymise_filename:
+        # Implement more carefully by reading DICOM?
+        two_char_modality = basename(dicom_filepath)[0:2]
+
         dicom_anon_filepath = pjoin(dirname(dicom_filepath),
-                                    "{}.{}_Anonymised".format(basename(dicom_filepath)[0:2],
-                                                              ds.SOPInstanceUID))
+                                    "{}.{}_Anonymised.dcm".format(two_char_modality,
+                                                                  ds.SOPInstanceUID))
+    else:
+        basename_without_filetype = '.'.join(basename(dicom_filepath).split('.')[:-1])
+
+        dicom_anon_filepath = pjoin(dirname(dicom_filepath),
+                                    "{}_Anonymised.dcm".format(basename_without_filetype))
 
     ds_anon = anonymise_dicom_dataset(ds=ds,
                                       replace_values=replace_values,
@@ -237,18 +285,74 @@ def anonymise_dicom_file(dicom_filepath, overwrite_file=False, replace_values=Tr
 
     ds_anon.save_as(dicom_anon_filepath)
 
+    if delete_original_file:
+        remove_file(dicom_filepath)
 
-def anonymise_dicom_files_in_folder(folder, overwrite_files=False, replace_values=True,
-                                    keywords_to_leave_unchanged=None, delete_private_tags=True,
-                                    delete_unknown_tags=None):
 
-    for dicom_filepath in glob(folder + '/**/*.dcm', recursive=True):
+def anonymise_dicom_directory(dicom_dirpath, delete_original_files=False, anonymise_filenames=True,
+                              replace_values=True, keywords_to_leave_unchanged=(),
+                              delete_private_tags=True, delete_unknown_tags=None):
+    r"""A simple tool to anonymise all DICOM files in a directory and its subdirectories.
+
+    Parameters
+    ----------
+    dicom_dirpath : str
+        The path to the directory containing DICOM files to be anonymised.
+
+    delete_original_files : bool, optional
+        If True and anonymisation completes successfully, then the original
+        DICOM files are deleted. Defaults to False.
+
+    anonymise_filenames : bool, optional
+        If True, the DICOM filenames are replaced by filenames of the form:
+        "<two character DICOM modality>.<SOP Instance UID>_Anonymised.dcm". E.g:
+
+        "RP.2.16.840.1.113669.2.931128.513403853.20190307160403.439526_Anonymised.dcm"
+
+        This ensures that the filenames contain no identifying information. If
+        `False`, `anonymise_dicom_directory()` simply appends "_Anonymised" to the
+        original DICOM filenames. Defaults to True.
+
+    replace_values : bool, optional
+        If set to `True`, anonymised tag values will be replaced with dummy
+        "anonymous" values. This is often required for the successful reading of
+        anonymised DICOM files in commercial software. If set to `False`,
+        anonymised tags are simply given empty string values. Defaults to `True`.
+
+    keywords_to_leave_unchanged : sequence, optional
+        A sequence of DICOM keywords (corresponding to tags) to exclude from
+        anonymisation. Private and unknown tags can be supplied. Empty by default.
+
+    delete_private_tags : bool, optional
+        A boolean to flag whether or not to remove all private
+        (non-standard) DICOM tags from the DICOM file. These may
+        also contain identifying information. Defaults to `True`.
+
+    delete_unknown_tags : bool, pseudo-optional
+        If left as the default value of `None` and `ds` contains tags that are not present in
+        PyMedPhys` copy of `pydicom`'s DICOM dictionary, `anonymise_dicom_dataset()` will raise an
+        error. The user must then either pass `True` or `False` to proceed. If set to `True`, all
+        unrecognised tags that haven't been listed in `keywords_to_leave_unchanged` will be deleted.
+        If set to `False`, these tags are simply ignored. Pass `False` with caution, since
+        unrecognised tags may contain identifying information.
+    """
+    dicom_filepaths = glob(dicom_dirpath + '/**/*.dcm', recursive=True)
+
+    for dicom_filepath in dicom_filepaths:
         anonymise_dicom_file(dicom_filepath,
-                             overwrite_file=overwrite_files,
+                             delete_original_file=False,
+                             anonymise_filename=anonymise_filenames
                              replace_values=replace_values,
                              keywords_to_leave_unchanged=keywords_to_leave_unchanged,
                              delete_private_tags=delete_private_tags,
                              delete_unknown_tags=delete_unknown_tags)
+
+    # Separate loop provides the ability to raise Exceptions from the unsuccessful
+    # deletion of the original DICOM files while preventing these Exceptions from
+    # interrupting the batch anonymisation.
+    if delete_original_files:
+        for dicom_filepath in dicom_filepaths:
+            remove_file(filepath)
 
 
 # def anonymise_dicom_files_cli(args):

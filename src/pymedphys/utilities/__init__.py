@@ -35,10 +35,10 @@ Examples:
 
 from ..libutils import clean_and_verify_levelled_modules
 
+from ._level1.file_search import *
 from ._level1.utilitiescompression import *
 from ._level1.utilitiesconfig import *
 from ._level1.utilitiesfilesystem import *
-from ._level1.file_search import *
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.utilitiesconfig', '._level1.utilitiesfilesystem',
