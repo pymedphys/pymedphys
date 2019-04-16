@@ -182,10 +182,10 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
         [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
     )
 
-    cube_definition_array = [
+    cube_definition_array = np.array([
         np.array(list(item))
         for item in cube_definition
-    ]
+    ])
 
     vectors = [
         cube_definition_array[1] - cube_definition_array[0],
