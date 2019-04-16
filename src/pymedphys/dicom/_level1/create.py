@@ -26,14 +26,12 @@
 from copy import deepcopy
 
 import numpy as np
-
 from pydicom import Dataset
-from pydicom.datadict import DicomDictionary
+
+from pymedphys.dicom import DICOM_NAMES
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
-
-DICOM_NAMES = [item[-1] for _, item in DicomDictionary.items()]
 
 
 def convert_nparray_and_set_key_value_in_dataset(dataset, key, value):

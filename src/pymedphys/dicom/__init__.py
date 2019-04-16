@@ -29,9 +29,9 @@
 Available Functions
 -------------------
 >>> from pymedphys.dicom import (
-...     anonymise_dicom_dataset,
-...     anonymise_dicom_file,
-...     anonymise_dicom_directory,
+...     anonymise_dataset,
+...     anonymise_file,
+...     anonymise_directory,
 ...     extract_iec_patient_xyz,
 ...     extract_iec_fixed_xyz,
 ...     extract_dicom_patient_xyz,
@@ -46,7 +46,7 @@ Available Functions
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from ._level1.dict_baseline import *
+from ._level1.constants import *
 from ._level1.structure import *
 from ._level1.create import *
 from ._level2.header_tweaks import *

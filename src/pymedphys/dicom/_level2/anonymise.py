@@ -33,10 +33,13 @@ import pydicom
 from pymedphys.utilities import remove_file
 
 from ...libutils import get_imports
-from .._level1.dict_baseline import (
-    BaselineDicomDictionary, BASELINE_KEYWORD_VR_DICT)
+from .._level1.constants import (
+    BaselineDicomDictionary,
+    BASELINE_KEYWORD_VR_DICT,
+    DICOM_SOP_CLASS_NAMES_MODE_PREFIXES)
 
 IMPORTS = get_imports(globals())
+
 
 IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "AcquisitionDate",
@@ -112,7 +115,7 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'UI': "12345678"}
 
 
-def anonymise_dicom_dataset(
+def anonymise_dataset(
         ds,
         replace_values=True,
         keywords_to_leave_unchanged=(),
@@ -146,7 +149,7 @@ def anonymise_dicom_dataset(
     delete_unknown_tags : bool, pseudo-optional
         If left as the default value of `None` and `ds` contains tags
         that are not present in PyMedPhys` copy of `pydicom`'s DICOM
-        dictionary, `anonymise_dicom_dataset()` will raise an error. The
+        dictionary, `anonymise_dataset()` will raise an error. The
         user must then either pass `True` or `False` to proceed. If set
         to `True`, all unrecognised tags that haven't been listed in
         `keywords_to_leave_unchanged` will be deleted. If set to
@@ -214,7 +217,7 @@ def anonymise_dicom_dataset(
     return ds_anon
 
 
-def anonymise_dicom_file(
+def anonymise_file(
         dicom_filepath,
         delete_original_file=False,
         anonymise_filename=True,
@@ -242,7 +245,7 @@ def anonymise_dicom_file(
         E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
 
         This ensures that the filename contains no identifying
-        information. If set to `False`, `anonymise_dicom_file()` simply
+        information. If set to `False`, `anonymise_file()` simply
         appends "_Anonymised" to the original DICOM filename. Defaults
         to True.
 
@@ -266,7 +269,7 @@ def anonymise_dicom_file(
     delete_unknown_tags : bool, pseudo-optional
         If left as the default value of `None` and `ds` contains tags
         that are not present in PyMedPhys` copy of `pydicom`'s DICOM
-        dictionary, `anonymise_dicom_dataset()` will raise an error. The
+        dictionary, `anonymise_dataset()` will raise an error. The
         user must then either pass `True` or `False` to proceed. If set
         to `True`, all unrecognised tags that haven't been listed in
         `keywords_to_leave_unchanged` will be deleted. If set to
@@ -278,14 +281,11 @@ def anonymise_dicom_file(
     ds = pydicom.dcmread(dicom_filepath)
 
     if anonymise_filename:
-        # Implement more carefully by reading DICOM?
-        two_char_modality = basename(dicom_filepath)[0:2]
+        mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds.SOPClassUID.name]
 
         dicom_anon_filepath = pjoin(
             dirname(dicom_filepath),
-            "{}.{}_Anonymised.dcm".format(
-                two_char_modality,
-                ds.SOPInstanceUID))
+            "{}.{}_Anonymised.dcm".format(mode_prefix, ds.SOPInstanceUID))
     else:
         basename_without_filetype = '.'.join(
             basename(dicom_filepath).split('.')[:-1])
@@ -294,7 +294,7 @@ def anonymise_dicom_file(
             dirname(dicom_filepath),
             "{}_Anonymised.dcm".format(basename_without_filetype))
 
-    ds_anon = anonymise_dicom_dataset(
+    ds_anon = anonymise_dataset(
         ds=ds,
         replace_values=replace_values,
         keywords_to_leave_unchanged=keywords_to_leave_unchanged,
@@ -308,7 +308,7 @@ def anonymise_dicom_file(
         remove_file(dicom_filepath)
 
 
-def anonymise_dicom_directory(
+def anonymise_directory(
         dicom_dirpath,
         delete_original_files=False,
         anonymise_filenames=True,
@@ -338,7 +338,7 @@ def anonymise_dicom_directory(
         E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
 
         This ensures that the filenames contain no identifying
-        information. If `False`, `anonymise_dicom_directory()` simply
+        information. If `False`, `anonymise_directory()` simply
         appends "_Anonymised" to the original DICOM filenames. Defaults
         to True.
 
@@ -362,7 +362,7 @@ def anonymise_dicom_directory(
     delete_unknown_tags : bool, pseudo-optional
         If left as the default value of `None` and `ds` contains tags
         that are not present in PyMedPhys` copy of `pydicom`'s DICOM
-        dictionary, `anonymise_dicom_dataset()` will raise an error. The
+        dictionary, `anonymise_dataset()` will raise an error. The
         user must then either pass `True` or `False` to proceed. If set
         to `True`, all unrecognised tags that haven't been listed in
         `keywords_to_leave_unchanged` will be deleted. If set to
@@ -373,7 +373,7 @@ def anonymise_dicom_directory(
     dicom_filepaths = glob(dicom_dirpath + '/**/*.dcm', recursive=True)
 
     for dicom_filepath in dicom_filepaths:
-        anonymise_dicom_file(
+        anonymise_file(
             dicom_filepath,
             delete_original_file=False,
             anonymise_filename=anonymise_filenames,
@@ -390,7 +390,7 @@ def anonymise_dicom_directory(
             remove_file(dicom_filepath)
 
 
-# def anonymise_dicom_files_cli(args):
+# def anonymise_files_cli(args):
 
 
 def non_private_tags_in_dicom_dataset(ds):
