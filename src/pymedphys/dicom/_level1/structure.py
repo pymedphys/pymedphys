@@ -39,10 +39,10 @@ IMPORTS = get_imports(globals())
 
 # pylint: disable=C0103
 
-def pull_structure_by_number(number, dcm_struct):
+def pull_coords_from_contour_sequence(contour_sequence):
     contours_by_slice_raw = [
         item.ContourData
-        for item in dcm_struct.ROIContourSequence[number].ContourSequence
+        for item in contour_sequence
     ]
     x = [
         np.array(item[0::3])
@@ -57,16 +57,24 @@ def pull_structure_by_number(number, dcm_struct):
     return x, y, z
 
 
-def pull_structure(string, dcm_struct):
-    structure_names = np.array(
-        [item.ROIName for item in dcm_struct.StructureSetROISequence])
-    reference = structure_names == string
-    if np.all(reference == False):  # pylint: disable=C0121
-        raise Exception("Structure not found (case sensitive)")
+def pull_structure(structure_name, dcm_struct):
+    ROI_name_to_number_map = {
+        structure_set.ROIName: structure_set.ROINumber
+        for structure_set in dcm_struct.StructureSetROISequence
+    }
 
-    index = int(np.where(reference)[0])
-    x, y, z = pull_structure_by_number(
-        index, dcm_struct)
+    ROI_number_to_contour_map = {
+        contour.ReferencedROINumber: contour.ContourSequence
+        for contour in dcm_struct.ROIContourSequence
+    }
+
+    try:
+        ROI_number = ROI_name_to_number_map[structure_name]
+    except KeyError:
+        raise ValueError("Structure not found (case sensitive)")
+
+    contour_sequence = ROI_number_to_contour_map[ROI_number]
+    x, y, z = pull_coords_from_contour_sequence(contour_sequence)
 
     return x, y, z
 

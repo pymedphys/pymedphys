@@ -79,7 +79,7 @@ ANOTHER_STRUCTURE = Structure(
 
 def concatenate_a_contour_slice(x, y, z):
     return reduce(operator.add, [
-        [x_i, y_i, z_i]
+        [str(x_i), str(y_i), str(z_i)]
         for x_i, y_i, z_i in zip(x, y, z)
     ])
 
@@ -91,7 +91,7 @@ def create_contour_sequence_dict(structure: Structure):
     ]
 
     return {
-        'ROINumber': structure.number,
+        'ReferencedROINumber': structure.number,
         'ContourSequence': [
             {
                 'ContourData': merged_contour
