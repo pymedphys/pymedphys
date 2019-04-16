@@ -8,7 +8,7 @@ your workstation. Although not essential, we recommend that you install the
 found `here`_.
 
 .. _`Anaconda Python distribution`: https://www.anaconda.com/distribution/
-.. _`here`: /developer/contributing.html#python-anaconda
+.. _`here`: ../developer/contributing.html#python-anaconda
 
 Once you have a suitable Python installation, you can install the latest stable
 version of PyMedPhys via conda or pip as follows:
