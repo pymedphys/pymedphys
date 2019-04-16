@@ -11,6 +11,10 @@ API
 
 .. autofunction:: pymedphys.dicom.anonymise_dicom_dataset
 
+.. autofunction:: pymedphys.dicom.anonymise_dicom_file
+
+.. autofunction:: pymedphys.dicom.anonymise_dicom_directory
+
 .. autofunction:: pymedphys.dicom.extract_iec_patient_xyz
 
 .. autofunction:: pymedphys.dicom.extract_iec_fixed_xyz

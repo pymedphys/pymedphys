@@ -30,9 +30,10 @@ from copy import deepcopy
 import numpy as np
 import pydicom
 
+from pymedphys.utilities import remove_file
+
 from ...libutils import get_imports
 from .._level1.dict_baseline import BaselineDicomDictionary, BASELINE_KEYWORD_VR_DICT
-from pymedphys.utilities import remove_file
 
 IMPORTS = get_imports(globals())
 
@@ -229,9 +230,10 @@ def anonymise_dicom_file(dicom_filepath, delete_original_file=False, anonymise_f
 
     anonymise_filename : bool, optional
         If True, the DICOM filename is replaced by a filename of the form:
+
         "<two character DICOM modality>.<SOP Instance UID>_Anonymised.dcm". E.g:
 
-        "RP.2.16.840.1.113669.2.931128.513403853.20190307160403.439526_Anonymised.dcm"
+        "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
 
         This ensures that the filename contains no identifying information. If
         False, `anonymise_dicom_file()` simply appends "_Anonymised" to the
@@ -307,7 +309,7 @@ def anonymise_dicom_directory(dicom_dirpath, delete_original_files=False, anonym
         If True, the DICOM filenames are replaced by filenames of the form:
         "<two character DICOM modality>.<SOP Instance UID>_Anonymised.dcm". E.g:
 
-        "RP.2.16.840.1.113669.2.931128.513403853.20190307160403.439526_Anonymised.dcm"
+        "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
 
         This ensures that the filenames contain no identifying information. If
         `False`, `anonymise_dicom_directory()` simply appends "_Anonymised" to the
@@ -341,7 +343,7 @@ def anonymise_dicom_directory(dicom_dirpath, delete_original_files=False, anonym
     for dicom_filepath in dicom_filepaths:
         anonymise_dicom_file(dicom_filepath,
                              delete_original_file=False,
-                             anonymise_filename=anonymise_filenames
+                             anonymise_filename=anonymise_filenames,
                              replace_values=replace_values,
                              keywords_to_leave_unchanged=keywords_to_leave_unchanged,
                              delete_private_tags=delete_private_tags,
@@ -352,7 +354,7 @@ def anonymise_dicom_directory(dicom_dirpath, delete_original_files=False, anonym
     # interrupting the batch anonymisation.
     if delete_original_files:
         for dicom_filepath in dicom_filepaths:
-            remove_file(filepath)
+            remove_file(dicom_filepath)
 
 
 # def anonymise_dicom_files_cli(args):
