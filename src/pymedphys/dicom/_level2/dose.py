@@ -534,13 +534,13 @@ def average_bounding_profiles(ds, depth_adjust, depth_lookup,
         return inplane, inplane_dose, crossplane, crossplane_dose
 
 
-def _get_index(z_list, z_val):
+def _get_indices(z_list, z_val):
     indices = np.array([item[0] for item in z_list])
     # This will error if more than one contour exists on a given slice
-    index = int(np.where(indices == z_val)[0])
+    desired_indices = np.where(indices == z_val)[0]
     # Multiple contour sets per slice not yet implemented
 
-    return index
+    return desired_indices
 
 
 def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
@@ -556,21 +556,23 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
     mask = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
 
     for z_val in structure_z_values:
-        structure_index = _get_index(z_structure, z_val)
-        dose_index = int(np.where(z_dose == z_val)[0])
+        structure_indices = _get_indices(z_structure, z_val)
 
-        assert z_structure[structure_index][0] == z_dose[dose_index]
+        for structure_index in structure_indices:
+            dose_index = int(np.where(z_dose == z_val)[0])
 
-        structure_polygon = path.Path([
-            (
-                x_structure[structure_index][i],
-                y_structure[structure_index][i]
-            )
-            for i in range(len(x_structure[structure_index]))
-        ])
-        mask[:, :, dose_index] = (
-            structure_polygon.contains_points(points).reshape(
-                len(y_dose), len(x_dose)))
+            assert z_structure[structure_index][0] == z_dose[dose_index]
+
+            structure_polygon = path.Path([
+                (
+                    x_structure[structure_index][i],
+                    y_structure[structure_index][i]
+                )
+                for i in range(len(x_structure[structure_index]))
+            ])
+            mask[:, :, dose_index] = mask[:, :, dose_index] | (
+                structure_polygon.contains_points(points).reshape(
+                    len(y_dose), len(x_dose)))
 
     return mask
 

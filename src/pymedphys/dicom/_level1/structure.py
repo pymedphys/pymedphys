@@ -125,7 +125,6 @@ def resample_contour(contour, n=51):
 
 
 def resample_contour_set(contours, n=50):
-
     resampled_contours = [
         resample_contour([x, y, z], n)
         for x, y, z in zip(*contours)
