@@ -203,28 +203,13 @@ def anonymise_dicom_dataset(
                 raise AssertionError(
                     "Could not delete all unwanted, unknown tags.")
 
-    keywords_to_anonymise = list(IDENTIFYING_KEYWORDS)
-
     if delete_private_tags:
         ds_anon.remove_private_tags()
 
-    # Exclude tags from anonymisation process that have been requested to
-    # remain as is
-    for keyword in keywords_to_leave_unchanged:
-        try:
-            keywords_to_anonymise.remove(keyword)
-        except ValueError:
-            # Value not in list. TODO: Warn?
-            pass
+    keywords_to_anonymise = _filter_identifying_keywords(
+        keywords_to_leave_unchanged)
 
-    # Overwrite tags in anonymisation list with an empty string.
-    for keyword in keywords_to_anonymise:
-        if hasattr(ds_anon, keyword):
-            if replace_values:
-                replacement_value = _get_anonymous_replacement_value(keyword)
-            else:
-                replacement_value = ''
-            setattr(ds_anon, keyword, replacement_value)
+    ds_anon = _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values)
 
     return ds_anon
 
@@ -426,6 +411,35 @@ def unknown_tags_in_dicom_dataset(ds):
         np.invert(are_non_private_tags_in_dict_baseline)])
 
     return unknown_tags
+
+
+def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
+
+    for keyword in keywords_to_anonymise:
+        if hasattr(ds_anon, keyword):
+            if replace_values:
+                replacement_value = _get_anonymous_replacement_value(keyword)
+            else:
+                replacement_value = ''
+            setattr(ds_anon, keyword, replacement_value)
+
+    return ds_anon
+
+
+def _filter_identifying_keywords(keywords_to_leave_unchanged):
+    r"""Removes DICOM keywords that the user desires to leave unchanged
+    from the list of known DICOM identifying keywords and returns the
+    resulting keyword list.
+    """
+    keywords_filtered = list(IDENTIFYING_KEYWORDS)
+    for keyword in keywords_to_leave_unchanged:
+        try:
+            keywords_filtered.remove(keyword)
+        except ValueError:
+            # Value not in list. TODO: Warn?
+            pass
+
+    return keywords_filtered
 
 
 def _get_anonymous_replacement_value(keyword):
