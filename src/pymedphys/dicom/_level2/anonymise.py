@@ -130,11 +130,11 @@ def anonymise_dataset(
         The DICOM dataset to be anonymised.
 
     replace_values : bool, optional
-        If set to `True`, anonymised tag values will be replaced with
-        dummy "anonymous" values. This is often required for the
-        successful reading of anonymised DICOM files in commercial
-        software. If set to `False`, anonymised tags are simply given
-        empty string values. Defaults to `True`.
+        If set to `True`, DICOM tags will be anonymised using dummy
+        "anonymous" values. This is often required for commercial
+        software to successfully read anonymised DICOM files. If set to
+        `False`, anonymised tags are simply given empty string values.
+        Defaults to `True`.
 
     keywords_to_leave_unchanged : sequence, optional
         A sequence of DICOM keywords (corresponding to tags) to exclude
@@ -250,11 +250,11 @@ def anonymise_file(
         to True.
 
     replace_values : bool, optional
-        If set to `True`, anonymised tag values will be replaced with
-        dummy "anonymous" values. This is often required for the
-        successful reading of anonymised DICOM files in commercial
-        software. If set to `False`, anonymised tags are simply given
-        empty string values. Defaults to `True`.
+        If set to `True`, DICOM tags will be anonymised using dummy
+        "anonymous" values. This is often required for commercial
+        software to successfully read anonymised DICOM files. If set to
+        `False`, anonymised tags are simply given empty string values.
+        Defaults to `True`.
 
     keywords_to_leave_unchanged : sequence, optional
         A sequence of DICOM keywords (corresponding to tags) to exclude
@@ -343,11 +343,11 @@ def anonymise_directory(
         to True.
 
     replace_values : bool, optional
-        If set to `True`, anonymised tag values will be replaced with
-        dummy "anonymous" values. This is often required for the
-        successful reading of anonymised DICOM files in commercial
-        software. If set to `False`, anonymised tags are simply given
-        empty string values. Defaults to `True`.
+        If set to `True`, DICOM tags will be anonymised using dummy
+        "anonymous" values. This is often required for commercial
+        software to successfully read anonymised DICOM files. If set to
+        `False`, anonymised tags are simply given empty string values.
+        Defaults to `True`.
 
     keywords_to_leave_unchanged : sequence, optional
         A sequence of DICOM keywords (corresponding to tags) to exclude
@@ -391,6 +391,44 @@ def anonymise_directory(
 
 
 # def anonymise_files_cli(args):
+
+
+def is_anonymised_dataset(ds):
+    r"""Checks whether a DICOM dataset has been (fully) anonymised.
+    """
+    is_anonymised = True
+
+    for elem in ds:
+        if elem.keyword in IDENTIFYING_KEYWORDS:
+            dummy_value = _get_anonymous_replacement_value(elem.keyword)
+            if not (elem.value == '' or elem.value == dummy_value):
+                is_anonymised = False
+                break
+
+    return is_anonymised
+
+
+def is_anonymised_file(filepath):
+    r"""Checks whether a DICOM file has been (fully) anonymised.
+    """
+    ds = pydicom.dcmread(filepath)
+
+    return is_anonymised_dataset(ds)
+
+
+def is_anonymised_directory(dirpath):
+    r"""Checks whether all DICOM files in a directory have been (fully)
+    anonymised.
+    """
+    is_anonymised = True
+    dicom_filepaths = glob(dirpath + '/**/*.dcm', recursive=True)
+
+    for dicom_filepath in dicom_filepaths:
+        if not is_anonymised_file(dicom_filepath):
+            is_anonymised = False
+            break
+
+    return is_anonymised
 
 
 def non_private_tags_in_dicom_dataset(ds):
