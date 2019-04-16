@@ -90,6 +90,7 @@ setup(
         'docs': [
             'm2r',
             'nbsphinx',
+            'sphinx-autobuild',
             'sphinxcontrib-napoleon',
             'sphinx >= 1.4, < 1.8',
             'sphinx_rtd_theme',
@@ -100,6 +101,10 @@ setup(
             'pytest',
             'pytest-cov',
             'xlwings >= 0.15.4'
+        ],
+        'formatting': [
+            'autopep8',
+            'pylint'
         ]
     }
 )
