@@ -191,11 +191,12 @@ contrast code in ``g2a.py`` *cannot* depend on code in ``g2b.py`` (which is in
 the same level), ``g3a.py`` or ``g4a.py`` (which are in higher-numbered
 levels).
 
-*This philosophy applies across modules as well.* For example, although
-``g2a.py`` is in level 2 of the ``gamma`` module, its code can can depend on
-code in ``d1a.py`` of the ``dicom`` module, because ``d1a.py`` is in level 1.
-Similarly, ``g2a.py`` cannot depend on code in ``d2a.py`` of ``dicom`` level 2,
-nor ``d3a.py`` and ``d4a.py`` of ``dicom`` levels 3 and 4.
+*This philosophy applies for modules themselves as well.* It's not as explictly
+clear from the module name which level it belongs in, but there exists a file
+``setup.cfg`` which details which level each module belongs to. Once at module
+level the levelling within modules no longer matters, however if a package
+within a level 2 module is to import from another module it can only import
+from a level 1 or level 0 module.
 
 Note that, in practice, *"depend on"* really means *"import code from"* using
 Python's ``import`` statement. Thus, we are able to programatically check for
