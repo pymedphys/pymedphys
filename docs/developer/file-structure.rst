@@ -101,13 +101,16 @@ omitted from this page in the interest of brevity.
 .. _`The PyMedPhys Source Code Package`: /developer/file-structure.html#id1
 .. _`continuous integration`: https://en.wikipedia.org/wiki/Continuous_integration
 
+
+
 The PyMedPhys Source Code Package
 ---------------------------------
 
 All library source code for PyMedPhys is contained within ``src/pymedphys``.
 Within this directory, the code is organised into a range of categories, such
 as ``dicom``, ``gamma``, etc. These correspond to Python modules. Finally, code
-within these categories is organised into levels:
+within these categories is organised into levels. Levelling the source code
+helps to prevent circular code dependencies. See diagram below:
 
 .. code-block:: bash
 
@@ -120,38 +123,85 @@ within these categories is organised into levels:
    |   |   |
    |   |   |-- _level1/
    |   |   |   |-- __init__.py
-   |   |   |   |-- a_python_source_code_file.py
-   |   |   |   |-- another_python_source_code_file.py
+   |   |   |   |-- d1a.py
+   |   |   |   |-- d1b.py
    |   |   |
    |   |   |-- _level2/
+   |   |   |   |-- __init__.py
+   |   |   |   |-- d2a.py
+   |   |   |   |-- d2b.py
    |   |   |
    |   |   |-- _level3/
+   |   |   |   |-- __init__.py
+   |   |   |   |-- d3a.py
    |   |   |
    |   |   |-- _level4/
+   |   |   |   |-- __init__.py
+   |   |   |   |-- d4a.py
    |   |
    |   |-- gamma/
    |   |   |-- __init__.py
    |   |   |
    |   |   |-- _level1/
    |   |   |   |-- __init__.py
-   |   |   |   |-- and_yet_even_more_python_code.py
+   |   |   |   |-- g1a.py
    |   |   |
    |   |   |-- _level2/
+   |   |   |   |-- __init__.py
+   |   |   |   |-- g2a.py
+   |   |   |   |-- g2b.py
+   |   |   |   |-- g2c.py
    |   |   |
    |   |   |-- _level3/
+   |   |   |   |-- __init__.py
+   |   |   |   |-- g3a.py
    |   |   |
    |   |   |-- _level4/
+   |   |   |   |-- __init__.py
+   |   |   |   |-- g4a.py
    |   |
    |   |-- ...
    |   
    |-- ...
 
+Python files within the source code should have descriptive names indicating
+the functions of the code within them. For example, ``dose.py`` in level 1 of
+``dicom`` is so-named because it contains code that interacts with DICOM RT
+Dose files. However, in order to illustrate how levelling works in PyMedPhys,
+the files in the above diagram have been named according to their level and
+module like so:
 
-This levelling helps to prevent a cyclical code dependency tree. PyMedPhys'
-automated test suite includes a Python package called ``layer-linter`` that
-helps to enforce this structure. The following sections further explain the
-philosophy behind levelling dependencies.
+``<first-letter-of-module><level number><letter-to-differentiate-files-in-the-same-module-and-level>``
 
+E.g. ``g2a.py`` is the first file in level 2 of the ``gamma`` module in the
+above diagram.
+
+The key to levelling is this: **The code contained in files of a particular
+level should only depend on code in files of lower-numbered levels. Code should
+never depend on code within files of the same level, not of higher-numbered
+levels.**
+
+For example, ``g2a.py`` is in level 2, so code in ``g2a.py`` can depend on code
+in ``g1a.py``, because ``g1a.py`` is in level 1 (a lower-numbered level). In
+contrast code in ``g2a.py`` *cannot* depend on code in ``g2b.py`` (which is in
+the same level), ``g3a.py`` or ``g4a.py`` (which are in higher-numbered
+levels).
+
+This philosophy applies across modules as well. For example, although
+``g2a.py`` is in level 2 of the ``gamma`` module, its code can can depend on
+code in ``d1a.py`` of the ``dicom`` module, because ``d1a.py`` is in level 1.
+Similarly, ``g2a.py`` cannot depend on code in ``d2a.py`` of ``dicom`` level 2,
+nor ``d3a.py`` and ``d4a.py`` of ``dicom`` levels 3 and 4.
+
+Note that, in practice, *"depend on"* really means *"import code from"* using
+Python's ``import`` statement. Thus, we are able to programatically check for
+any improper file levelling. PyMedPhys' automated test suite includes a Python
+package called ``layer-linter``, which does just that!
+
+For a further, in-depth explanation of the philosophy behind levelling
+dependencies, see the `John Lakos and Physical Design`_ section.
+
+.. _`John Lakos and Physical Design`: /developer/file-structure.html#id2
 
 John Lakos and Physical Design
 ------------------------------
