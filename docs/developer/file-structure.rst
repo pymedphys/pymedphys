@@ -164,6 +164,11 @@ helps to prevent circular code dependencies. See diagram below:
    |   
    |-- ...
 
+For the most part, the many ``__init__.py`` files just tell Python to treat
+directories containing the files as *packages*. They forms part of how
+PyMedPhys' many modules are brought together as an installable package or
+library whose modules can be imported.
+
 Python files within the source code should have descriptive names indicating
 the functions of the code within them. For example, ``dose.py`` in level 1 of
 ``dicom`` is so-named because it contains code that interacts with DICOM RT
