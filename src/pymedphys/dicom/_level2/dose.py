@@ -112,39 +112,43 @@ def load_xyz_from_dicom(ds):
     return x, y, z
 
 
-def extract_iec_patient_xyz(ds):
-    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-    in the IEC patient coordinate system
+def xyz_from_dataset(ds, coord_system="DICOM"):
+    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's 
+    dose grid in the specified coordinate system
 
     Parameters
     ----------
-    ds
-        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
-        Must represent a valid DICOM RT Dose file.
+    ds : pydicom.dataset.Dataset
+        A DICOM RT Dose dataset.
+
+    coord_system : str, optional
+        The coordinate system in which to return the `x`, `y` and `z`
+        coordinates of the DICOM RT Dose file. The accepted values of
+        `coord_system` are:
+
+        'DICOM' or 'D':
+            Return the coordinates in the DICOM coordinate system.
+
+        'PATIENT', 'IEC PATIENT' or 'P':
+            Return the coordinates in the IEC patient coordinate system.
+
+        'FIXED', 'IEC FIXED' or 'F':
+            Return the coordinates in the IEC fixed coordinate system.
 
     Returns
     -------
     (x, y, z)
         A tuple containing three `ndarrays` corresponding to the `x`,
         `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the IEC patient coordinate system [1]_:
-
-        `x` corresponds to the patient's left-right axis and increases toward the
-        left hand side of the patient.
-
-        `y` corresponds to the patient's superoinferior axis and increases toward
-        the head of the patient.
-
-        `z` corresponds to the patient's anteroposterior axis and increases to the
-        anterior side of the patient.
+        the specified coordinate system.
 
     Notes
     -----
-    Supported scan orientations [2]_:
+    Supported scan orientations [1]_:
 
-    =========================== =======================
-    Orientation                 ImageOrientationPatient
-    =========================== =======================
+    =========================== ==========================
+    Orientation                 ds.ImageOrientationPatient
+    =========================== ==========================
     Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
     Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
     Feet First Prone            [1, 0, 0, 0, -1, 0]
@@ -153,15 +157,13 @@ def extract_iec_patient_xyz(ds):
     Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
     Head First Prone            [-1, 0, 0, 0, -1, 0]
     Head First Supine           [1, 0, 0, 0, 1, 0]
-    =========================== =======================
+    =========================== ==========================
 
     References
     ----------
-    .. [1] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
-
-    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
+    .. [1] O. McNoleg, "Generalized coordinate transformations for Monte
+       Carlo (DOSXYZnrc and VMC++) verifications of DICOM compatible
+       radiotherapy treatment plans", arXiv:1406.0014, Table 1,
        https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
     """
 
@@ -169,252 +171,59 @@ def extract_iec_patient_xyz(ds):
         raise ValueError("The input DICOM file is not an RT Dose file")
 
     position = np.array(ds.ImagePositionPatient)
-    orientation = np.array(ds.ImageOrientationPatient)
 
     di = float(ds.PixelSpacing[0])
     dj = float(ds.PixelSpacing[1])
+    
+    x_f = position[0] + np.arange(0, ds.Columns * di, di)
+    y_f = position[1] + np.arange(0, ds.Rows * dj, dj)
+    z_f = position[2] + np.array(ds.GridFrameOffsetVector) 
 
-    is_prone_or_supine = np.array_equal(
-        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
+    if coord_system.upper() in ("FIXED", "IEC FIXED", "F"):
+        x = x_f
+        y = y_f
+        z = z_f
 
-    is_decubitus = np.array_equal(
-        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
+    elif coord_system.upper() in ("DICOM", "D", "PATIENT", "IEC PATIENT", "P"):        
+        orientation = np.array(ds.ImageOrientationPatient)
 
-    if is_prone_or_supine:
-        xflip = (orientation[0] == -1)
-        zflip = (orientation[4] == 1)
-        head_first = (xflip != zflip)
+        if orientation[0] == 1:
+            x = x_f
+        elif orientation[0] == -1:
+            x = -np.flip(x_f)
+        elif orientation[1] == 1:
+            y_d = x_f
+        elif orientation[1] == -1:
+            y_d = -np.flip(x_f)
+        else:
+            raise ValueError("Dose grid orientation is not supported. "
+                             "Dose grid slices must be aligned along "
+                             "the superoinferior axis of patient.")
 
-        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
-        z = -(orientation[4]*position[1] + np.arange(0, ds.Rows * dj, dj))
+        if orientation[4] == 1:
+            y_d = y_f
+        elif orientation[4] == -1:
+            y_d = -np.flip(y_f)
+        elif orientation[3] == 1:
+            x = y_f
+        elif orientation[3] == -1:
+            x = -np.flip(y_f)
+        else:
+            raise ValueError("Dose grid orientation is not supported. "
+                             "Dose grid slices must be aligned along "
+                             "the superoinferior axis of patient.")
 
-    elif is_decubitus:
-        xflip = (orientation[3] == -1)
-        zflip = (orientation[1] == 1)
-        head_first = (xflip == zflip)
+        if np.sum(orientation) == 0:
+            z_d = np.flip(-z_f)
+        else:
+            z_d = z_f
 
-        x = -(orientation[3]*position[0] + np.arange(0, ds.Rows * dj, dj))
-        z = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
-    else:
-        raise ValueError(
-            "Dose grid orientation is not supported. "
-            "Dose grid slices must be aligned along the superoinferior axis of patient")
-
-    if xflip:
-        x = np.flip(x)
-    if zflip:
-        z = np.flip(z)
-
-    if head_first:
-        y = position[2] + np.array(ds.GridFrameOffsetVector)
-    else:
-        y = np.flip(-position[2] + np.array(ds.GridFrameOffsetVector))
-
-    return (x, y, z)
-
-
-def extract_iec_fixed_xyz(ds):
-    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-    in the IEC fixed coordinate system.
-
-    Parameters
-    ----------
-    ds
-        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
-        Must represent a valid DICOM RT Dose file.
-
-    Returns
-    -------
-    (x, y, z)
-        A tuple containing three `ndarrays` corresponding to the `x`,
-        `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the IEC fixed coordinate system [3]_:
-
-            `x`
-                An `np.ndarray` of coordinates on the horizontal plane that runs
-                orthogonal to the gantry axis of rotation. The x axis increases
-                towards a viewer's right hand side when facing the gantry standing
-                at the isocentre. The isocentre has an x value of 0.
-            `y`
-                An `np.ndarray` of coordinates on the horizontal plane that runs
-                parallel to the gantry axis of rotation. The positive direction
-                of the y axis travels from the isocentre to the gantry. The
-                isocentre has a y value of 0.
-            `z`
-                An `np.ndarray` of coordinates aligned vertically and passing through
-                the isocentre. The positive direction of the z axis travels upwards
-                and the isocentre has a z value of 0.
-
-    Notes
-    -----
-    Supported scan orientations [4]_:
-
-    =========================== =======================
-    Orientation                 ImageOrientationPatient
-    =========================== =======================
-    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
-    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
-    Feet First Prone            [1, 0, 0, 0, -1, 0]
-    Feet First Supine           [-1, 0, 0, 0, 1, 0]
-    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
-    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
-    Head First Prone            [-1, 0, 0, 0, -1, 0]
-    Head First Supine           [1, 0, 0, 0, 1, 0]
-    =========================== =======================
-
-    References
-    ----------
-    .. [3] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
-
-    .. [4] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
-       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
-    """
-
-    if ds.Modality != "RTDOSE":
-        raise ValueError("The input DICOM file is not an RT Dose file")
-
-    position = np.array(ds.ImagePositionPatient)
-    orientation = np.array(ds.ImageOrientationPatient)
-
-    di = float(ds.PixelSpacing[0])
-    dj = float(ds.PixelSpacing[1])
-
-    is_prone_or_supine = np.array_equal(
-        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
-
-    is_decubitus = np.array_equal(
-        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
-
-    # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
-    # grid and the 'patient'
-    if is_prone_or_supine:
-        y_orientation = 2*(orientation[0] == orientation[4])-1
-
-        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
-        z = -np.flip(orientation[4]*position[1] +
-                     np.arange(0, ds.Rows * dj, dj))
-
-    elif is_decubitus:
-        y_orientation = 2*(orientation[1] != orientation[3])-1
-
-        z = -np.flip(orientation[3]*position[0] +
-                     np.arange(0, ds.Rows * dj, dj))
-        x = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
-    else:
-        raise ValueError(
-            "Dose grid orientation is not supported. "
-            "Dose grid slices must be aligned along the superoinferior axis of patient")
-
-    y = y_orientation*position[2] + np.array(ds.GridFrameOffsetVector)
-
-    return (x, y, z)
-
-
-def extract_dicom_patient_xyz(ds):
-    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-    in the DICOM patient coordinate system
-
-    Parameters
-    ----------
-    ds
-        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
-        Must represent a valid DICOM RT Dose file.
-
-    Returns
-    -------
-    (x, y, z)
-        A tuple containing three `ndarrays` corresponding to the `x`,
-        `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the DICOM patient coordinate system [5]_:
-
-        `x` corresponds to the patient's left-right axis and increases to the
-        left hand side of the patient.
-
-        `y` corresponds to the patient's anteroposterior axis and increases toward
-        the posterior side of the patient.
-
-        `z` corresponds to the patient's superoinferior axis and increases
-        toward the head of the patient.
-
-    Notes
-    -----
-    Supported scan orientations [6]_:
-
-    =========================== =======================
-    Orientation                 ImageOrientationPatient
-    =========================== =======================
-    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
-    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
-    Feet First Prone            [1, 0, 0, 0, -1, 0]
-    Feet First Supine           [-1, 0, 0, 0, 1, 0]
-    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
-    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
-    Head First Prone            [-1, 0, 0, 0, -1, 0]
-    Head First Supine           [1, 0, 0, 0, 1, 0]
-    =========================== =======================
-
-    References
-    ----------
-    .. [5] "C.7.6.2.1.1 Image Position and Image Orientation",
-       "DICOM PS3.3 2016a - Information Object Definitions",
-       http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
-
-    .. [6] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
-       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
-    """
-
-    if ds.Modality != "RTDOSE":
-        raise ValueError("The input DICOM file is not an RT Dose file")
-
-    position = np.array(ds.ImagePositionPatient)
-    orientation = np.array(ds.ImageOrientationPatient)
-
-    di = float(ds.PixelSpacing[0])
-    dj = float(ds.PixelSpacing[1])
-
-    is_prone_or_supine = np.array_equal(
-        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
-
-    is_decubitus = np.array_equal(
-        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
-
-    # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
-    # grid and the 'patient'
-    if is_prone_or_supine:
-        xflip = (orientation[0] == -1)
-        yflip = (orientation[4] == -1)
-        head_first = (xflip == yflip)
-
-        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
-        y = orientation[4]*position[1] + np.arange(0, ds.Rows * dj, dj)
-
-    elif is_decubitus:
-        xflip = (orientation[3] == -1)
-        yflip = (orientation[1] == -1)
-        head_first = (xflip != yflip)
-
-        x = orientation[3]*position[0] + np.arange(0, ds.Rows * dj, dj)
-        y = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
-    else:
-        raise ValueError(
-            "Dose grid orientation is not supported. "
-            "Dose grid slices must be aligned along the superoinferior axis of patient")
-
-    if xflip:
-        x = np.flip(x)
-    if yflip:
-        y = np.flip(y)
-
-    if head_first:
-        z = position[2] + np.array(ds.GridFrameOffsetVector)
-    else:
-        z = np.flip(-position[2] + np.array(ds.GridFrameOffsetVector))
+        if coord_system.upper() in ("DICOM", "D"):
+            y = y_d
+            z = z_d
+        elif coord_system.upper() in ("PATIENT", "IEC PATIENT", "P"):
+            y = z_d
+            z = -np.flip(y_d)
 
     return (x, y, z)
 
