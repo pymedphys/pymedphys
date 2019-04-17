@@ -55,7 +55,7 @@ top-level files. These include:
 
 :``layers.yml``: A configuration file for PyMedPhys' file dependency heirarchy.
                  *layers.yml* assigns modules to 'levels' that determine which
-                 module can import from which other modules. More on this in
+                 modules can import from which other modules. More on this in
                  :ref:`source-code`.
 
 
