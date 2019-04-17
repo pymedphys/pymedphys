@@ -1,24 +1,9 @@
-import io
-import sys
 from glob import glob
-
-import os
-from os.path import basename
-from os.path import dirname
-from os.path import splitext
-
-import platform
-
+import io
+from os.path import abspath, basename, dirname, join as pjoin, splitext
 from setuptools import setup, find_packages
 
-
-basename = os.path.basename
-dirname = os.path.dirname
-splitext = os.path.splitext
-
-isfile = os.path.isfile
-pjoin = os.path.join
-repo_root = os.path.dirname(os.path.abspath(__file__))
+repo_root = dirname(abspath(__file__))
 
 
 def execfile(fname, globs, locs=None):
@@ -26,17 +11,17 @@ def execfile(fname, globs, locs=None):
     exec(compile(open(fname).read(), fname, "exec"), globs, locs)
 
 
-version_ns = {}  # type: ignore
-execfile(pjoin(repo_root, 'src', 'pymedphys', '_version.py'), version_ns)
-
-version = version_ns['__version__']
-
-
 def read(*names, **kwargs):
     return io.open(
         pjoin(dirname(__file__), *names),
         encoding=kwargs.get('encoding', 'utf8')
     ).read()
+
+
+version_ns = {}  # type: ignore
+execfile(pjoin(repo_root, 'src', 'pymedphys', '_version.py'), version_ns)
+
+version = version_ns['__version__']
 
 
 setup(
@@ -90,6 +75,7 @@ setup(
         'docs': [
             'm2r',
             'nbsphinx',
+            'sphinx-autobuild',
             'sphinxcontrib-napoleon',
             'sphinx >= 1.4, < 1.8',
             'sphinx_rtd_theme',
@@ -100,6 +86,10 @@ setup(
             'pytest',
             'pytest-cov',
             'xlwings >= 0.15.4'
+        ],
+        'formatting': [
+            'autopep8',
+            'pylint'
         ]
     }
 )
