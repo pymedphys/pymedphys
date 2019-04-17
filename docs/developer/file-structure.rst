@@ -183,7 +183,7 @@ above diagram.
 
 The key to levelling is this: **The code contained in files of a particular
 level should only depend on code in files of lower-numbered levels. Code should
-never depend on code within files of the same level, not of higher-numbered
+never depend on code within files of the same level, nor of higher-numbered
 levels.**
 
 For example, ``g2a.py`` is in level 2, so code in ``g2a.py`` can depend on code
@@ -192,7 +192,7 @@ contrast code in ``g2a.py`` *cannot* depend on code in ``g2b.py`` (which is in
 the same level), ``g3a.py`` or ``g4a.py`` (which are in higher-numbered
 levels).
 
-This philosophy applies across modules as well. For example, although
+*This philosophy applies across modules as well.* For example, although
 ``g2a.py`` is in level 2 of the ``gamma`` module, its code can can depend on
 code in ``d1a.py`` of the ``dicom`` module, because ``d1a.py`` is in level 1.
 Similarly, ``g2a.py`` cannot depend on code in ``d2a.py`` of ``dicom`` level 2,
