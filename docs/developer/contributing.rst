@@ -9,38 +9,47 @@ you have administrator rights on your machine. Although this document
 is tailored to Windows users, PyMedPhys itself works on Windows, macOS
 and Linux.
 
+
+
 Your mission
 ------------
 
-Your mission, should you choose to accept it, is to complete all the tasks within
-this document. While doing so, please take notes of the pain points. Write down
-what feedback you have. By the end, instead of you emailing that feedback to me,
-we'd like you to use your new set up to edit this file and submit a merge request!
+Your mission, should you choose to accept it, is to complete all of the tasks
+within this document. While doing so, please take notes of the pain points.
+Write down what feedback you have. By the end, instead of you emailing that
+feedback to us, we'd like you to use your new set up to edit this file and
+submit a merge request!
 
 
-Python & Anaconda
------------------
 
-Anaconda is a free, open source, optimized Python (and R) distrubution. It includes:
+Get Python & Anaconda
+---------------------
 
-- `conda <https://conda.io/docs/index.html>`__, a powerful package and environment management system.
+Anaconda is a free, open source, optimized Python (and R) distrubution. It
+includes:
+
+- `conda <https://conda.io/docs/index.html>`__, a powerful package and
+  environment management system.
 - Python
-- Over 100 automatically installed scientific packages (`numpy`, `scipy`, etc.) that have been tested to work well together, along with their dependencies.
+- Over 100 automatically installed scientific packages (`numpy`, `scipy`, etc.)
+  that have been tested to work well together, along with their dependencies.
 
-Download the latest Anaconda Python **3** version from `here <https://www.anaconda.com/download/>`__
+Download the latest Anaconda Python **3** version from
+`here <https://www.anaconda.com/download/>`__
 
 When installing Anaconda make sure to install it for your user only, and tick
 the option “add to path”.
 
 .. image:: ../img/add_anaconda_to_path.png
 
-You might notice that Microsoft VS Code is available to be installed via the Anaconda
-installation. However, we recommend installing VS Code from its official install location
-as outlined below in :ref:`text-editor-section`. The Anaconda installer
-does not provide the opportunity to tick the “Open with Code” boxes detailed below.
+You might notice that Microsoft Visual Studio Code (VS Code) can be installed
+via the Anaconda installation. However, we recommend installing VS Code from
+its official install distribution as outlined below in
+:ref:`text-editor-section`. The Anaconda installer does not provide the
+opportunity to tick the “Open with Code” boxes detailed below.
 
-Once you have installed Anaconda, add the conda-forge channel to your machine using
-the following command in a new command prompt:
+Once you have installed Anaconda, add the conda-forge channel to your machine
+using the following command in a new command prompt:
 
 .. code:: bash
 
@@ -48,50 +57,61 @@ the following command in a new command prompt:
 
 .. _text-editor-section:
 
-Text Editor
------------
 
-Visual Studio Code is an excellent, free, open-source code editor. It comes with many great
-features for both Python and Git. You can download the official release `here <https://code.visualstudio.com/>`__.
+
+Get a text editor - VS Code
+---------------------------
+
+Microsoft's Visual Studio Code is an excellent, free, open-source code editor.
+It comes with many great features for both Python and Git. You can download
+the official release `here <https://code.visualstudio.com/>`__.
 
 When installing VS Code, make sure to tick the “Open with Code” boxes:
 
 .. image:: ../img/open_with_code.png
 
-You will need to install a few extensions in VS Code to complete your set up. This is very easy
-to do via the Extensions Marketplace once VS Code is installed. With VS Code running, access
-the marketplace by clicking this symbol on the left toolbar:
+You will need to install a few extensions in VS Code to complete your set up.
+This is very easy to do via the Extensions Marketplace once VS Code is
+installed. With VS Code running, access the marketplace by clicking this symbol
+on the left toolbar:
 
 .. image:: ../img/vscode_extensions.png
 
-Search for the "Anaconda Extension Pack" and install it. Reload VS Code when installation has
-finished and you're ready to go with Python in VS Code!
+Search for the "Anaconda Extension Pack" and install it. Reload VS Code when
+installation has finished and you're ready to go with Python in VS Code!
 
-We also recommend the "GitLens" extension to further enhance your VS Code experience! It comes
-with a number of useful tools for using Git within VS Code itself.
+We also recommend the "GitLens" extension to further enhance your VS Code
+experience! It comes with a number of useful tools for using Git within VS
+Code itself.
 
-A Command Prompt
-----------------
 
-Cmder is a good command prompt that fills the massive gap on Windows machines.
+
+Get a (good) terminal - Cmder
+-----------------------------
+
+Cmder is a great terminal that fills the massive gap on Windows machines.
 One would think that syntax highlighting, copy/paste, and window resizing would
-be commonplace in terminals everywhere - but apparently not! Nevertheless, cmder
-to the rescue. Install the mini version of cmder from `here <http://cmder.net/>`__.
+be commonplace in terminals everywhere - but apparently not! Cmder to the
+rescue! Install the mini version of cmder from `here <http://cmder.net/>`__.
 
-Once you've downloaded cmder, follow the steps given `here <https://github.com/cmderdev/cmder#shortcut-to-open-cmder-in-a-chosen-folder>`__
+Once you've downloaded cmder, follow the steps given
+`here <https://github.com/cmderdev/cmder#shortcut-to-open-cmder-in-a-chosen-folder>`__
 to obtain the ability to open a terminal in any directory by right clicking in
 the file browser.
 
-Chocolatey
-----------
+
+
+Get a package manager (for Windows users) - Chocolatey
+------------------------------------------------------
 
 Chocolatey is a package manager for Windows. It makes installing software
-development tools quite a breeze. Follow `these instructions <https://chocolatey.org/install>`__
-to install Chocolatey.
+development tools quite a breeze. Follow
+`these instructions <https://chocolatey.org/install>`__ to install Chocolatey.
 
 
-Git, Git LFS, and Yarn
-----------------------
+
+Get a version control system - Git, Git LFS, and Yarn
+-----------------------------------------------------
 
 Use Chocolatey within an administrator command prompt to install Git,
 Git LFS, and yarn like so:
@@ -101,28 +121,30 @@ Git LFS, and yarn like so:
     choco install git git-lfs yarn
 
 
-GitHub Account
---------------
 
-Make a GitHub account `here <https://github.com/join>`__.
-Once you have an account, you will need commit rights to this
-repository in order to make contributions. Create an issue on GitHub
-within the PyMedPhys repository `here <https://github.com/pymedphys/pymedphys/issues/new/>`__
-and include "request for commit rights" or similar in your issue's
-content, along with "@SimonBiggs" and "@Centrus007" to ensure it is seen!
+Get a GitHub account
+--------------------
 
-Whenever you wish to discuss anything about PyMedPhys, please create an issue on GitHub.
-It can be to ask for help, suggest a change, provide feedback, or anything else regarding
-PyMedPhys. Write "@" followed by someone's username if you would like to talk to someone
-specifically.
+Make a GitHub account `here <https://github.com/join>`__. Once you have an
+account, you will need commit rights to this repository in order to make
+contributions. Create an issue on GitHub within the PyMedPhys repository
+`here <https://github.com/pymedphys/pymedphys/issues/new/>`__
+and include "request for commit rights" or similar in your issue's content,
+along with "@SimonBiggs" and "@Centrus007" to ensure it is seen!
 
-The real power of GitHub comes from Git itself. A great piece of Git documentation can be found
-`here <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__. Use this
-documentation to begin to get a feel for what Git is.
+Whenever you wish to discuss anything about PyMedPhys, please create an issue
+on GitHub. It can be to ask for help, suggest a change, provide feedback, or
+anything else regarding PyMedPhys. Write "@" followed by someone's username if
+you would like to talk to someone specifically.
+
+The real power of GitHub comes from Git itself. A great piece of Git 
+documentation can be found
+`here <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__.
+Use this documentation to begin to get a feel for what Git is.
 
 
-Some useful resources
----------------------
+Peruse some useful resources
+----------------------------
 
 At this point you might find some of the following resources useful:
 
@@ -136,6 +158,7 @@ The "Don't be afraid to commit" resource will be invaluable for these next few
 steps.
 
 
+
 Authenticate your computer to be able to access your GitHub account
 -------------------------------------------------------------------
 
@@ -147,9 +170,9 @@ running the following where `yourusername` is your Windows domain user name.
 
     setx HOME "C:\Users\yourusername"
 
-Follow `these instructions <https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/>`__ to create
-and add an SSH key to your GitHub account. Since you already have ssh built into
-cmder, you can skip the first steps of the tutorial.
+Follow `these instructions <https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/>`__
+to create and add an SSH key to your GitHub account. Since you already have ssh
+built into cmder, you can skip the first steps of the tutorial.
 
 If all has gone well you should be able to run the following without being
 prompted for a password.
@@ -212,7 +235,8 @@ Update this document
 Now that you've got this far, you have a copy of the code on your machine.
 
 First thing's first: make a branch. If you don't know what that is, head on
-back over to `Don't be afraid to commit <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__
+back over to
+`Don't be afraid to commit <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__
 and scrub up on your terminology.
 
 To make a branch, open cmder in the pymedphys directory and run the following:
@@ -223,9 +247,9 @@ To make a branch, open cmder in the pymedphys directory and run the following:
 
 Once you've run that you are now free to make some changes.
 
-Right click on the top level pymedphys directory, and press
-"Open with Code". This document that you're reading is located at
-`docs/developer/contributing.rst`. Use VS Code to navigate to that file and
+Right click on the top level pymedphys directory, and press "Open with Code".
+This document that you're reading is located at
+``docs/developer/contributing.rst``. Use VS Code to navigate to that file and
 begin making your changes.
 
 Once your changes are complete, reopen your cmder and run:
@@ -238,9 +262,10 @@ Once your changes are complete, reopen your cmder and run:
 
 Now, you have successfully sent your branch online.
 
-Now you need to open a merge request. Open one `here <https://github.com/pymedphys/pymedphys/compare>`__,
-select the source branch to be `pymedphys/your-name-edit-contributing-document`
-and set the target branch to be `pymedphys/master`.
+Now you need to open a merge request. Open one
+`here <https://github.com/pymedphys/pymedphys/compare>`__, select the source
+branch to be ``pymedphys/your-name-edit-contributing-document`` and set the
+target branch to be ``pymedphys/master``.
 
 At that point, we'll get notified and we can begin discussing the changes
 you've made.
