@@ -1,4 +1,4 @@
-Internal Levelled Modules:
+Internal Levelled Packages:
     containers:
         - pymedphys.coll
         - pymedphys.coordinates
@@ -13,6 +13,7 @@ Internal Levelled Modules:
         - pymedphys.logfile
         - pymedphys.msq
         - pymedphys.mudensity
+        - pymedphys.plancompare
         - pymedphys.profiles
         - pymedphys.plt
         - pymedphys.trf
@@ -24,26 +25,92 @@ Internal Levelled Modules:
         - (_level2)
         - _level1
 
+
+# Alphabetical order per module level
 Top Level Modules:
     containers:
         - pymedphys
     layers:
-        - xlwings
+        # Module Level 4
         - logfile
+
+        # Module Level 3
+        - gamma
+        - plancompare
         - trf
+        - xlwings
+
+        # Module Level 2
+        - dicom
+        - film
         - msq
         - mudensity
         - profiles
-        - gamma
+
+        # Module Level 1
         - coll
-        - electronfactors
-        - film
-        - dicom
-        - utilities
+        - coordinates
         - deliverydata
+        - electronfactors
+        - filehash
         - geometry
         - plt
-        - coordinates
-        - filehash
+        - utilities
         - xarray
+
+        # Module Level 0
         - libutils
+
+
+Module Level 0:
+    containers:
+        - pymedphys
+    layers:
+        - libutils
+
+
+# In reverse alphabetical order to force independence of
+# modules on the same level.
+# Will replace this with independent layers when import-linter is up and
+# running.
+Module Level 1:
+    containers:
+        - pymedphys
+    layers:
+        - xarray
+        - utilities
+        - plt
+        - geometry
+        - filehash
+        - electronfactors
+        - deliverydata
+        - coordinates
+        - coll
+
+
+Module Level 2:
+    containers:
+        - pymedphys
+    layers:
+        - profiles
+        - mudensity
+        - msq
+        - film
+        - dicom
+
+
+Module Level 3:
+    containers:
+        - pymedphys
+    layers:
+        - xlwings
+        - trf
+        - plancompare
+        - gamma
+
+
+Module Level 4:
+    containers:
+        - pymedphys
+    layers:
+        - logfile
