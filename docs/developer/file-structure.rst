@@ -14,6 +14,7 @@ The PyMedPhys repository has the following general structure:
    |   Apache-2.0
    |   changelog.md
    |   setup.py
+   |   layers.yml
    |   ...
    |
    |-- docs/
@@ -51,6 +52,12 @@ top-level files. These include:
 
 :``setup.py``: A Python script that facilitates easy installation of the
                PyMedPhys library as a package for users and contributors alike.
+
+:``layers.yml``: A configuration file for PyMedPhys' file dependency heirarchy.
+                 *layers.yml* assigns modules to 'levels' that determine which
+                 module can import from which other modules. More on this in
+                 :ref:`source-code`.
+
 
 You'll quickly note from a cursory look through PyMedPhys that there are
 actually many more top-level files. Most of these help configure specific
