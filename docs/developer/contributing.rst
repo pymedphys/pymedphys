@@ -23,7 +23,7 @@ submit a merge request!
 
 
 Get Python & Anaconda
------------------
+---------------------
 
 Anaconda is a free, open source, optimized Python (and R) distrubution. It
 includes:
@@ -60,7 +60,7 @@ using the following command in a new command prompt:
 
 
 Get a text editor - VS Code
------------
+---------------------------
 
 Microsoft's Visual Studio Code is an excellent, free, open-source code editor.
 It comes with many great features for both Python and Git. You can download
@@ -87,7 +87,7 @@ Code itself.
 
 
 Get a (good) terminal - Cmder
-----------------
+-----------------------------
 
 Cmder is a great terminal that fills the massive gap on Windows machines.
 One would think that syntax highlighting, copy/paste, and window resizing would
@@ -102,7 +102,7 @@ the file browser.
 
 
 Get a package manager (for Windows users) - Chocolatey
-----------
+------------------------------------------------------
 
 Chocolatey is a package manager for Windows. It makes installing software
 development tools quite a breeze. Follow
@@ -111,7 +111,7 @@ development tools quite a breeze. Follow
 
 
 Get a version control system - Git, Git LFS, and Yarn
-----------------------
+-----------------------------------------------------
 
 Use Chocolatey within an administrator command prompt to install Git,
 Git LFS, and yarn like so:
@@ -123,7 +123,7 @@ Git LFS, and yarn like so:
 
 
 Get a GitHub account
---------------
+--------------------
 
 Make a GitHub account `here <https://github.com/join>`__. Once you have an
 account, you will need commit rights to this repository in order to make
@@ -144,7 +144,7 @@ Use this documentation to begin to get a feel for what Git is.
 
 
 Peruse some useful resources
----------------------
+----------------------------
 
 At this point you might find some of the following resources useful:
 
