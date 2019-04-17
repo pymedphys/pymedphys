@@ -249,7 +249,7 @@ Once you've run that you are now free to make some changes.
 
 Right click on the top level pymedphys directory, and press "Open with Code".
 This document that you're reading is located at
-`docs/developer/contributing.rst`. Use VS Code to navigate to that file and
+``docs/developer/contributing.rst``. Use VS Code to navigate to that file and
 begin making your changes.
 
 Once your changes are complete, reopen your cmder and run:
@@ -264,8 +264,8 @@ Now, you have successfully sent your branch online.
 
 Now you need to open a merge request. Open one
 `here <https://github.com/pymedphys/pymedphys/compare>`__, select the source
-branch to be `pymedphys/your-name-edit-contributing-document` and set the
-target branch to be `pymedphys/master`.
+branch to be ``pymedphys/your-name-edit-contributing-document`` and set the
+target branch to be ``pymedphys/master``.
 
 At that point, we'll get notified and we can begin discussing the changes
 you've made.
