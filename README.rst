@@ -38,10 +38,14 @@ It is structured and glued together with Python, but certainly not limited to on
 .. _`license`: https://choosealicense.com/licenses/agpl-3.0/
 
 
-This package is available on PyPI (https://pypi.org/project/pymedphys/),
-GitHub (https://github.com/pymedphys/pymedphys), and conda-forge
-(https://anaconda.org/conda-forge/pymedphys). Documentation is at
-https://pymedphys.com.
+This package is available on `PyPI`_, `GitHub`_ and `conda-forge`_. You can 
+access the Documentation `here <https://pymedphys.com>`__.
+
+
+.. _`PyPI`: https://pypi.org/project/pymedphys/
+.. _`GitHub`: https://github.com/pymedphys/pymedphys
+.. _`conda-forge`: https://anaconda.org/conda-forge/pymedphys
+
 
 Our Team
 --------
