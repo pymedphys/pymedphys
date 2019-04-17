@@ -81,9 +81,8 @@ omitted from this page in the interest of brevity.
                      Code within this constitutes "PyMedPhys proper". In theory
                      (though not yet in practice), this code has been tested
                      and documented. Changes to code in this folder are tracked
-                     in ``changelog.md``. See `The PyMedPhys Source Code
-                     Package`_ section below for further details, especially on
-                     structure.
+                     in ``changelog.md``. See :ref:`source-code` section below
+                     for further details, especially on structure.
 
 :``tests/``: Contains the PyMedPhys suite of automated tests. Any code present
              in *src/pymedphys/* should be covered by tests in this directory.
@@ -96,12 +95,12 @@ omitted from this page in the interest of brevity.
 
 
 .. _`the PyMedPhys GitHub page`: https://github.com/pymedphys/pymedphys
-.. _`Release Notes`: /getting-started/changelog.html
+.. _`Release Notes`: ../getting-started/changelog.html
 .. _`Jupyter notebooks`: https://realpython.com/jupyter-notebook-introduction/
-.. _`The PyMedPhys Source Code Package`: /developer/file-structure.html#id1
 .. _`continuous integration`: https://en.wikipedia.org/wiki/Continuous_integration
 
 
+.. _source-code:
 
 The PyMedPhys Source Code Package
 ---------------------------------
@@ -204,9 +203,9 @@ any improper file levelling. PyMedPhys' automated test suite includes a Python
 package called ``layer-linter``, which does just that!
 
 For a further, in-depth explanation of the philosophy behind levelling
-dependencies, see the `John Lakos and Physical Design`_ section.
+dependencies, see the :ref:`john-lakos` section.
 
-.. _`John Lakos and Physical Design`: /developer/file-structure.html#id2
+.. _john-lakos:
 
 John Lakos and Physical Design
 ------------------------------
