@@ -32,7 +32,7 @@ import pydicom
 from .._level1.create import dicom_dataset_from_dict
 from .._level2.anonymise import anonymise_dicom_dataset
 from .._level2.dose import (
-    extract_dicom_patient_xyz, convert_xyz_to_dicom_coords)
+    xyz_from_dataset, convert_xyz_to_dicom_coords)
 
 from ...libutils import get_imports
 
@@ -108,22 +108,22 @@ class DicomDose(DicomBase):
     # but not needlessly call the entire function.
     @property
     def x(self):
-        x_value, _, _ = extract_dicom_patient_xyz(self.dataset)
+        x_value, _, _ = xyz_from_dataset(self.dataset, 'DICOM')
         return x_value
 
     @property
     def y(self):
-        _, y_value, _ = extract_dicom_patient_xyz(self.dataset)
+        _, y_value, _ = xyz_from_dataset(self.dataset, 'DICOM')
         return y_value
 
     @property
     def z(self):
-        _, _, z_value = extract_dicom_patient_xyz(self.dataset)
+        _, _, z_value = xyz_from_dataset(self.dataset, 'DICOM')
         return z_value
 
     @property
     def coords(self):
-        x, y, z = extract_dicom_patient_xyz(self.dataset)
+        x, y, z = xyz_from_dataset(self.dataset, 'DICOM')
         return convert_xyz_to_dicom_coords((x, y, z))
 
 

@@ -30,9 +30,7 @@ Available Functions
 -------------------
 >>> from pymedphys.dicom import (
 ...     anonymise_dicom_dataset,
-...     extract_iec_patient_xyz,
-...     extract_iec_fixed_xyz,
-...     extract_dicom_patient_xyz,
+...     xyz_from_dataset,
 ...     load_dose_from_dicom,
 ...     load_xyz_from_dicom,
 ...     find_dose_within_structure,

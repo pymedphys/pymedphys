@@ -34,9 +34,7 @@ import pydicom as dcm
 
 from pymedphys.dicom import (
     DicomDose,
-    extract_iec_patient_xyz,
-    extract_iec_fixed_xyz,
-    extract_dicom_patient_xyz)
+    xyz_from_dataset)
 
 HERE = dirname(abspath(__file__))
 DATA_DIRECTORY = pjoin(dirname(HERE), 'data', 'dicom_dose')
@@ -50,12 +48,13 @@ def get_data_file(orientation_key):
     return pjoin(DATA_DIRECTORY, filename)
 
 
-def run_xyz_function_tests(xyz_function, save_new_baseline=False):
+def run_xyz_function_tests(coord_system, save_new_baseline=False):
     r"""Run the xyz extraction test sequence for a given
     xyz extraction function"""
 
-    expected_xyz_filename = "expected_{}.json".format(
-        '_'.join(xyz_function.__name__.split('_')[1:]))
+    print_ = True
+
+    expected_xyz_filename = "expected_{}_xyz.json".format(coord_system.lower())
 
     if save_new_baseline:
         expected_xyz = {}
@@ -67,11 +66,11 @@ def run_xyz_function_tests(xyz_function, save_new_baseline=False):
 
     test_ds_dict = {key: dcm.dcmread(get_data_file(key))
                     for key in ORIENTATIONS_SUPPORTED}
-
+    print()
     for orient, dicom in test_ds_dict.items():
-        test_xyz = xyz_function(dicom)
+        test_xyz = xyz_from_dataset(dicom, coord_system)
 
-        if save_new_baseline:
+        if save_new_baseline or print_:
             print(orient)
             print("{}, {}".format(test_xyz[0][0], test_xyz[0][-1]))
             print("{}, {}".format(test_xyz[1][0], test_xyz[1][-1]))
@@ -119,15 +118,15 @@ def save_xyz_baseline(filename, xyz_dict):
 
 
 def test_extract_iec_patient_xyz():
-    run_xyz_function_tests(extract_iec_patient_xyz)
+    run_xyz_function_tests('PATIENT')
 
 
 def test_extract_iec_fixed_xyz():
-    run_xyz_function_tests(extract_iec_fixed_xyz)
+    run_xyz_function_tests('FIXED')
 
 
 def test_extract_dicom_patient_xyz():
-    run_xyz_function_tests(extract_dicom_patient_xyz)
+    run_xyz_function_tests('DICOM')
 
 
 def test_DicomDose_constancy():
