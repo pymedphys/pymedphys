@@ -13,6 +13,7 @@ Internal Levelled Packages:
         - pymedphys.logfile
         - pymedphys.msq
         - pymedphys.mudensity
+        - pymedphys.plancompare
         - pymedphys.profiles
         - pymedphys.plt
         - pymedphys.trf
@@ -24,36 +25,37 @@ Internal Levelled Packages:
         - (_level2)
         - _level1
 
+
+# Alphabetical order per module level
 Top Level Modules:
     containers:
         - pymedphys
     layers:
-        # Module Level 5
+        # Module Level 4
         - logfile
 
-        # Module Level 4
-        - trf
-
         # Module Level 3
-        - xlwings
-        - msq
         - gamma
+        - plancompare
+        - trf
+        - xlwings
 
         # Module Level 2
+        - dicom
+        - film
+        - msq
         - mudensity
         - profiles
-        - film
-        - dicom
 
         # Module Level 1
         - coll
-        - electronfactors
-        - utilities
+        - coordinates
         - deliverydata
+        - electronfactors
+        - filehash
         - geometry
         - plt
-        - coordinates
-        - filehash
+        - utilities
         - xarray
 
         # Module Level 0
@@ -67,7 +69,8 @@ Module Level 0:
         - libutils
 
 
-# In reverse order to force independence of of modules on the same level.
+# In reverse alphabetical order to force independence of
+# modules on the same level.
 # Will replace this with independent layers when import-linter is up and
 # running.
 Module Level 1:
@@ -75,13 +78,13 @@ Module Level 1:
         - pymedphys
     layers:
         - xarray
-        - filehash
-        - coordinates
+        - utilities
         - plt
         - geometry
-        - deliverydata
-        - utilities
+        - filehash
         - electronfactors
+        - deliverydata
+        - coordinates
         - coll
 
 
@@ -89,29 +92,24 @@ Module Level 2:
     containers:
         - pymedphys
     layers:
-        - dicom
-        - film
         - profiles
         - mudensity
+        - msq
+        - film
+        - dicom
 
 
 Module Level 3:
     containers:
         - pymedphys
     layers:
-        - gamma
-        - msq
         - xlwings
+        - trf
+        - plancompare
+        - gamma
 
 
 Module Level 4:
-    containers:
-        - pymedphys
-    layers:
-        - trf
-
-
-Module Level 5:
     containers:
         - pymedphys
     layers:

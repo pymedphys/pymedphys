@@ -28,6 +28,9 @@ from pydicom import Dataset
 
 from ...libutils import get_imports
 from ...xarray import XArrayComposition
+from ...deliverydata import get_delivery_parameters
+
+from .._level1.mudensitycore import calc_mu_density
 
 IMPORTS = get_imports(globals())
 
@@ -41,3 +44,10 @@ class MUDensity(XArrayComposition):
     def from_dicom(cls, ds: Dataset):
         """Calculate MU Density when provided with a pydicom dicom object"""
         return cls(None)
+
+
+def mu_density_from_delivery_data(delivery_data):
+    mu, mlc, jaw = get_delivery_parameters(delivery_data)
+    xx, yy, mu_density = calc_mu_density(mu, mlc, jaw)
+
+    return xx, yy, mu_density

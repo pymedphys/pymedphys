@@ -30,7 +30,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
-## [Unreleased]
+### Breaking Changes
+
+- `mu_density_from_delivery_data` moved from the `msq` module to the
+  `mudensity` module.
+- `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
+  module.
 
 ## [0.7.2] -- 2019/04/05
 

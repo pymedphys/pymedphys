@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Compare fields using MU Density
+"""Compare Mosaiq fields using MU Density
 """
 
 import itertools
@@ -34,20 +34,10 @@ import matplotlib.pyplot as plt
 
 from ...libutils import get_imports
 
-from ...deliverydata import get_delivery_parameters
-from ...mudensity import calc_mu_density
-
-from .._level1.msqconnect import multi_mosaiq_connect
-from .._level2.msqdelivery import delivery_data_from_mosaiq
+from ...msq import multi_mosaiq_connect, delivery_data_from_mosaiq
+from ...mudensity import mu_density_from_delivery_data
 
 IMPORTS = get_imports(globals())
-
-
-def mu_density_from_delivery_data(delivery_data):
-    mu, mlc, jaw = get_delivery_parameters(delivery_data)
-    xx, yy, mu_density = calc_mu_density(mu, mlc, jaw)
-
-    return xx, yy, mu_density
 
 
 def plot_mu_densities(labels, mu_density_results):
