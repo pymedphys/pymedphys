@@ -194,16 +194,16 @@ contrast, code in ``g2a.py`` *cannot* import code from ``g2b.py`` (which is in
 the same level), ``g3a.py`` or ``g4a.py`` (which are in higher-numbered
 levels).
 
-*This philosophy applies for modules themselves as well.* Each module has an
-assigned level. The level for a module is flexible and can be adjusted as
-need be. To find out what level a module is currently see the file 
-``layers.yml``. Higher level modules can import from lower level modules,
-but same level modules cannot import from each other and lower cannot import
-from higher. For example at the time of writing ``dicom`` is a level 2 module,
+*This philosophy applies for modules as well:* each module has an assigned
+level. A module's level is flexible; it can be adjusted as needed. Modules are
+assigned levels in the file ``layers.yml``. View this file to see the currently
+assigned level of a given module. Just as with files, modules of a given level
+can import from lower level modules, but not from modules of the same or higher
+levels. For example, at the time of writing, ``dicom`` is a level 2 module,
 and ``gamma`` is a ``level 3`` module. This means that any file within 
-``gamma`` such as ``g1a.py`` is free to import from any file within ``dicom``
-such as ``d4a.py``, but no file within ``dicom`` is allowed to import from any
-file in ``gamma``.
+``gamma``, such as ``g1a.py``, is free to import from any file within
+``dicom``, such as ``d4a.py``, but no file within ``dicom`` is allowed to
+import from any file in ``gamma``.
 
 We are able to programatically check for any improper file levelling.
 PyMedPhys' automated test suite includes a Python package called
