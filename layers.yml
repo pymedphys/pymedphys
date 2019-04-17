@@ -1,4 +1,4 @@
-Internal Levelled Modules:
+Internal Levelled Packages:
     containers:
         - pymedphys.coll
         - pymedphys.coordinates
@@ -28,17 +28,26 @@ Top Level Modules:
     containers:
         - pymedphys
     layers:
-        - xlwings
+        # Module Level 5
         - logfile
+
+        # Module Level 4
         - trf
+
+        # Module Level 3
+        - xlwings
         - msq
+        - gamma
+
+        # Module Level 2
         - mudensity
         - profiles
-        - gamma
-        - coll
-        - electronfactors
         - film
         - dicom
+
+        # Module Level 1
+        - coll
+        - electronfactors
         - utilities
         - deliverydata
         - geometry
@@ -46,4 +55,64 @@ Top Level Modules:
         - coordinates
         - filehash
         - xarray
+
+        # Module Level 0
         - libutils
+
+
+Module Level 0:
+    containers:
+        - pymedphys
+    layers:
+        - libutils
+
+
+# In reverse order to force independence of of modules on the same level.
+# Will replace this with independent layers when import-linter is up and
+# running.
+Module Level 1:
+    containers:
+        - pymedphys
+    layers:
+        - xarray
+        - filehash
+        - coordinates
+        - plt
+        - geometry
+        - deliverydata
+        - utilities
+        - electronfactors
+        - coll
+
+
+Module Level 2:
+    containers:
+        - pymedphys
+    layers:
+        - dicom
+        - film
+        - profiles
+        - mudensity
+
+
+Module Level 3:
+    containers:
+        - pymedphys
+    layers:
+        - gamma
+        - msq
+        - xlwings
+
+
+Module Level 4:
+    containers:
+        - pymedphys
+    layers:
+        - trf
+
+
+Module Level 5:
+    containers:
+        - pymedphys
+    layers:
+        - logfile

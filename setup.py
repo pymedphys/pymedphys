@@ -90,10 +90,6 @@ setup(
         'formatting': [
             'autopep8',
             'pylint'
-        ],
-        'layer-linting': [
-            'layer-linter',
-            'import-linter'
         ]
     }
 )
