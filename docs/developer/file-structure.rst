@@ -32,10 +32,10 @@ The PyMedPhys repository has the following general structure:
 Just like most Python libraries, PyMedPhys contains a series of standard, 
 top-level files. These include:
 
-:``README.rst``: A simple text file containing general information on the
-                 PyMedPhys repository with links to important sections. On 
-                 `the PyMedPhys GitHub page`_, *README.rst* determines the text
-                 you see below the file structure.
+:``README.rst``: A text file containing general information on the PyMedPhys
+                 repository with links to important sections. On `the PyMedPhys
+                 GitHub page`_, *README.rst* determines the text you see below
+                 the file structure.
 
 :``LICENSE``: A text file that contains a full copy of the AGPL-3.0 license.
               Since PyMedPhys is licensed under the AGPL-3.0 (with additional
@@ -81,9 +81,9 @@ omitted from this page in the interest of brevity.
                      Code within this constitutes "PyMedPhys proper". In theory
                      (though not yet in practice), this code has been tested
                      and documented. Changes to code in this folder are tracked
-                     in ``changelog.md``. See
-                     `The PyMedPhys Source Code Package`_ section below for
-                     further details, especially structure.
+                     in ``changelog.md``. See `The PyMedPhys Source Code
+                     Package`_ section below for further details, especially on
+                     structure.
 
 :``tests/``: Contains the PyMedPhys suite of automated tests. Any code present
              in *src/pymedphys/* should be covered by tests in this directory.
