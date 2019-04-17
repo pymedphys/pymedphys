@@ -185,9 +185,12 @@ level should only depend on code in files of lower-numbered levels. Code should
 never depend on code within files of the same level, nor of higher-numbered
 levels.**
 
-For example, ``g2a.py`` is in level 2, so code in ``g2a.py`` can depend on code
-in ``g1a.py``, because ``g1a.py`` is in level 1 (a lower-numbered level). In
-contrast code in ``g2a.py`` *cannot* depend on code in ``g2b.py`` (which is in
+Note that, in practice, *"depend on"* really means *"import code from"* using
+Python's ``import`` statement. 
+
+In our example, ``g2a.py`` is in level 2, so code in ``g2a.py`` can import code
+from ``g1a.py``, because ``g1a.py`` is in level 1 (a lower-numbered level). In
+contrast, code in ``g2a.py`` *cannot* import code from ``g2b.py`` (which is in
 the same level), ``g3a.py`` or ``g4a.py`` (which are in higher-numbered
 levels).
 
@@ -202,10 +205,9 @@ and ``gamma`` is a ``level 3`` module. This means that any file within
 such as ``d4a.py``, but no file within ``dicom`` is allowed to import from any
 file in ``gamma``.
 
-Note that, in practice, *"depend on"* really means *"import code from"* using
-Python's ``import`` statement. Thus, we are able to programatically check for
-any improper file levelling. PyMedPhys' automated test suite includes a Python
-package called ``layer-linter``, which does just that!
+We are able to programatically check for any improper file levelling.
+PyMedPhys' automated test suite includes a Python package called
+``layer-linter``, which does just that!
 
 For a further, in-depth explanation of the philosophy behind levelling
 dependencies, see the :ref:`john-lakos` section.
