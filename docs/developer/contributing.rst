@@ -29,10 +29,10 @@ Anaconda is a free, open source, optimized Python (and R) distrubution. It
 includes:
 
 - `conda <https://conda.io/docs/index.html>`__, a powerful package and
-environment management system.
+  environment management system.
 - Python
 - Over 100 automatically installed scientific packages (`numpy`, `scipy`, etc.)
-that have been tested to work well together, along with their dependencies.
+  that have been tested to work well together, along with their dependencies.
 
 Download the latest Anaconda Python **3** version from
 `here <https://www.anaconda.com/download/>`__
