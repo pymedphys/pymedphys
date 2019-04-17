@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,22 +24,15 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Mosaiq toolbox.
-
-Examples:
-    >>> from pymedphys.msq import mosaiq_connect
+"""
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413
 
 from ..libutils import clean_and_verify_levelled_modules
 
-from ._level1.msqconnect import *
-from ._level1.msqdictionaries import *
-from ._level2.msqdelivery import *
-from ._level2.msqhelpers import *
+from ._level1.compare_mosaiq import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.msqconnect', '._level1.msqdictionaries',
-    '._level2.msqdelivery', '._level2.msqhelpers'
-], package='pymedphys.msq')
+    '._level1.compare_mosaiq'
+], package='pymedphys.rtplan')
