@@ -77,6 +77,7 @@ setup(
             'notebook < 5.7.0',
             'jupyter_client < 5.2.4',
             'tornado < 6.0',
+            'jedi < 0.13.0',
             'm2r',
             'nbsphinx',
             'sphinx-autobuild',
