@@ -12,6 +12,8 @@ form.
 Three distinct problems were provided with the aim to cater to different
 skill levels of the attendees.
 
+Pre-reading https://colab.research.google.com/github/jakevdp/PythonDataScienceHandbook/blob/master/notebooks/Index.ipynb
+
 
 .. toctree::
     :maxdepth: 1
