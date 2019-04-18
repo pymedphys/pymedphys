@@ -58,6 +58,7 @@ setup(
         'dataclasses; python_version=="3.6"',
         'keyring',
         'matplotlib',
+        'notebook',
         'numpy < 1.16, >= 1.12',
         'pandas',
         'Pillow',
@@ -72,14 +73,6 @@ setup(
     ],
     extras_require={
         'docs': [
-            'ipython < 7.0.0',
-            'ipykernel < 5.0.0',
-            'notebook < 5.7.0',
-            'jupyter_client < 5.2.4',
-            'tornado < 6.0',
-            'jedi < 0.13.0',
-            'jsonschema < 3.0.0',
-            'pyzmq < 18.0.0',
             'm2r',
             'nbsphinx',
             'sphinx-autobuild',
