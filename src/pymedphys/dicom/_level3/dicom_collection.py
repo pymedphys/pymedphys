@@ -30,7 +30,7 @@ import numpy as np
 import pydicom
 
 from .._level1.create import dicom_dataset_from_dict
-from .._level2.anonymise import anonymise_dicom_dataset
+from .._level2.anonymise import anonymise_dataset
 from .._level2.dose import (
     extract_dicom_patient_xyz, convert_xyz_to_dicom_coords)
 
@@ -83,7 +83,7 @@ class DicomBase:
 
     def anonymise(self, inplace=False):
         to_copy = not inplace
-        anonymised = anonymise_dicom_dataset(self.dataset, copy=to_copy)
+        anonymised = anonymise_dataset(self.dataset, copy_dataset=to_copy)
 
         if not inplace:
             return self.__class__(anonymised)

@@ -9,7 +9,11 @@ API
 
 .. _`pymedphys.geometry.cubify_cube_definition`: geometry.html#pymedphys.geometry.cubify_cube_definition
 
-.. autofunction:: pymedphys.dicom.anonymise_dicom_dataset
+.. autofunction:: pymedphys.dicom.anonymise_dataset
+
+.. autofunction:: pymedphys.dicom.anonymise_file
+
+.. autofunction:: pymedphys.dicom.anonymise_directory
 
 .. autofunction:: pymedphys.dicom.extract_iec_patient_xyz
 

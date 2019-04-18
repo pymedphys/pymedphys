@@ -34,10 +34,24 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Breaking Changes
 
+- `anonymise_dicom_dataset()` has been renamed to `anonymise_dataset()` to
+  remove redundant labelling.
 - `mu_density_from_delivery_data` moved from the `msq` module to the
   `mudensity` module.
 - `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
   module.
+
+### New Features
+
+- `anonymise_file()` and `anonymise_directory()`:
+  - two new DICOM anonymisation
+    wrapper functions that take a DICOM file and a directory as respective
+    arguments.
+- `is_anonymised_dataset()`, `is_anonymised_file()` and
+  `is_anonymised_directory()`:
+  - three new functions that check whether a pydicom
+    dataset, a DICOM file or all files within a directory have been anonymised,
+    respectively.
 
 ## [0.7.2] -- 2019/04/05
 

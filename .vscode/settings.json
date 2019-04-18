@@ -13,6 +13,8 @@
     "editor.tabSize": 4
   },
   "editor.rulers": [
-    79
-  ]
+    72,
+    79,
+    119
+  ],
 }
