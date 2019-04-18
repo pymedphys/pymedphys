@@ -26,7 +26,6 @@
 from copy import deepcopy
 
 import numpy as np
-
 from pydicom import Dataset
 from pydicom.datadict import DicomDictionary
 
