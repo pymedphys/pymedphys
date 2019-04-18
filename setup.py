@@ -76,6 +76,7 @@ setup(
             'ipython < 7.0.0',
             'ipykernel < 5.0.0',
             'notebook < 5.7.0',
+            'jupyter_client < 5.2.4',
             'm2r',
             'nbsphinx',
             'sphinx-autobuild',
