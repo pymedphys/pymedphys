@@ -73,7 +73,7 @@ setup(
     ],
     extras_require={
         'docs': [
-            'ipykernel < 7.0.0',
+            'ipython < 7.0.0',
             'm2r',
             'nbsphinx',
             'sphinx-autobuild',
