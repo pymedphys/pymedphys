@@ -75,6 +75,7 @@ setup(
         'docs': [
             'ipython < 7.0.0',
             'ipykernel < 5.0.0',
+            'notebook < 5.7.0',
             'm2r',
             'nbsphinx',
             'sphinx-autobuild',
