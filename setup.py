@@ -78,6 +78,7 @@ setup(
             'jupyter_client < 5.2.4',
             'tornado < 6.0',
             'jedi < 0.13.0',
+            'jsonschema < 3.0.0',
             'm2r',
             'nbsphinx',
             'sphinx-autobuild',
