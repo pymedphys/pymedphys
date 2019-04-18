@@ -25,6 +25,8 @@
     :caption: Projects
 
     projects/elekta-logfiles
+    projects/workshops/index
+
 
 .. toctree::
     :maxdepth: 1
