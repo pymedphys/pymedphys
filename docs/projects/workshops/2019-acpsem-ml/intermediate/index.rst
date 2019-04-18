@@ -2,9 +2,8 @@
 Intermediate
 ============
 
+* Given a set of DICOM tags that should be removed from a DICOM file
+* Create a DICOM anonymisation tool
 
 
-Problem description goes here.
-
-
-Links to example notebooks goes here.
+Links to example notebooks go here
