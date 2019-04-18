@@ -1,6 +1,8 @@
 
 from os import makedirs, replace
 from os.path import abspath, basename, dirname, join as pjoin
+import shutil
+from uuid import uuid4
 
 import pydicom
 from pymedphys.dicom import (
@@ -68,18 +70,21 @@ def test_is_anonymised_directory():
     dirpath_expected_to_fail = DATA_DIR
     assert not is_anonymised_directory(dirpath_expected_to_fail)
 
+    dirpath_expected_to_pass = pjoin(DATA_DIR, 'Anonymous_{}'.format(uuid4()))
+
     anonymous_filepath = anonymise_file(dicom_test_filepath)
-    dirpath_expected_to_pass = pjoin(DATA_DIR, 'Anonymous')
-    anonymous_filepath_moved = pjoin(dirpath_expected_to_pass,
-                                     basename(anonymous_filepath))
+    anonymous_filepath_copied = pjoin(dirpath_expected_to_pass,
+                                      basename(anonymous_filepath))
 
     try:
         makedirs(dirpath_expected_to_pass, exist_ok=True)
-        replace(anonymous_filepath, anonymous_filepath_moved)
+        replace(anonymous_filepath, anonymous_filepath_copied)
 
         assert is_anonymised_directory(dirpath_expected_to_pass)
+
     finally:
-        remove_file(anonymous_filepath_moved)
+        remove_file(anonymous_filepath)
+        remove_file(anonymous_filepath_copied)
         remove_dir(dirpath_expected_to_pass)
 
 
