@@ -36,6 +36,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - `anonymise_dicom_dataset()` has been renamed to `anonymise_dataset()` to
   remove redundant labelling.
+- `mu_density_from_delivery_data` moved from the `msq` module to the
+  `mudensity` module.
+- `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
+  module.
 
 ### New Features
 
