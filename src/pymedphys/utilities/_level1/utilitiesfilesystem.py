@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import string
-from os import remove
+from os import remove, rmdir
 
 from ...libutils import get_imports
 IMPORTS = get_imports(globals())
@@ -46,5 +46,14 @@ def remove_file(filepath):
     """Remove a file. Suppress error if the file does not exist."""
     try:
         remove(filepath)
+    except FileNotFoundError:
+        pass
+
+
+def remove_dir(dirpath):
+    """Remove a directory. Suppress error if the directory does not
+    exist."""
+    try:
+        rmdir(dirpath)
     except FileNotFoundError:
         pass

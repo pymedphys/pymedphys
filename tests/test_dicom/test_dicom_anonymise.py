@@ -1,5 +1,5 @@
 
-from os import makedirs, replace, remove, rmdir
+from os import makedirs, replace
 from os.path import abspath, basename, dirname, join as pjoin
 
 import pydicom
@@ -13,6 +13,7 @@ from pymedphys.dicom import (
     is_anonymised_directory,
     is_anonymised_file
 )
+from pymedphys.utilities import remove_file, remove_dir
 
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(dirname(HERE), 'data', 'dicom_anonymise')
@@ -72,13 +73,14 @@ def test_is_anonymised_directory():
     anonymous_filepath_moved = pjoin(dirpath_expected_to_pass,
                                      basename(anonymous_filepath))
 
-    makedirs(dirpath_expected_to_pass, exist_ok=True)
-    replace(anonymous_filepath, anonymous_filepath_moved)
+    try:
+        makedirs(dirpath_expected_to_pass, exist_ok=True)
+        replace(anonymous_filepath, anonymous_filepath_moved)
 
-    assert is_anonymised_directory(dirpath_expected_to_pass)
-
-    remove(anonymous_filepath_moved)
-    rmdir(dirpath_expected_to_pass)
+        assert is_anonymised_directory(dirpath_expected_to_pass)
+    finally:
+        remove_file(anonymous_filepath_moved)
+        remove_dir(dirpath_expected_to_pass)
 
 
 def test_tags_to_anonymise_in_dicom_dict_baseline():
