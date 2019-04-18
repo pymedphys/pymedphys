@@ -58,7 +58,6 @@ setup(
         'dataclasses; python_version=="3.6"',
         'keyring',
         'matplotlib',
-        'notebook',
         'numpy < 1.16, >= 1.12',
         'pandas',
         'Pillow',
