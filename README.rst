@@ -38,7 +38,7 @@ It is structured and glued together with Python, but certainly not limited to on
 .. _`license`: https://choosealicense.com/licenses/agpl-3.0/
 
 
-This package is available on `PyPI`_, `GitHub`_ and `conda-forge`_. You can 
+This package is available on `PyPI`_, `GitHub`_ and `conda-forge`_. You can
 access the Documentation `here <https://pymedphys.com>`__.
 
 
@@ -87,19 +87,23 @@ along with their affiliation:
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
-    :width: 500 px
+    :width: 400 px
+
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png
     :target: `Royal Adelaide Hospital`_
-    :width: 500 px
+    :width: 400 px
+
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
     :target: `Anderson Regional Cancer Center`_
-    :width: 500 px
+    :width: 400 px
+
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
-    :width: 500 px
+    :width: 400 px
+
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
