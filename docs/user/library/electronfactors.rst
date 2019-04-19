@@ -1,11 +1,19 @@
-Electron Factor Modelling
-=========================
+#######################
+Electron Cutout Factors
+#######################
+
+*******
+Summary
+*******
 
 .. automodule:: pymedphys.electronfactors
     :no-members:
 
+|
+
+***
 API
----
+***
 
 .. autofunction:: pymedphys.electronfactors.parameterise_insert
 

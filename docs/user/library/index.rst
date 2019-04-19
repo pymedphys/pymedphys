@@ -8,10 +8,10 @@ itself. Below is the documentation for a range of these libraries.
 .. toctree::
     :maxdepth: 1
 
-    library/mudensity
-    library/gamma
-    library/electronfactors
-    library/dicom
-    library/geometry
-    library/xlwings
+    dicom
+    gamma
+    mudensity
+    electronfactors
+    geometry
+    xlwings
 

@@ -36,9 +36,9 @@ This presents what to write into the command prompt to use that CLI command.
 .. toctree::
     :maxdepth: 1
 
-    interfaces/cli/dicom
-    interfaces/cli/trf
-    interfaces/cli/logfile
-    interfaces/cli/docker
+    cli/dicom
+    cli/trf
+    cli/logfile
+    cli/docker
 
 
