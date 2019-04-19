@@ -2,21 +2,25 @@
 DICOM Module
 ############
 
+*******
+Summary
+*******
+
 .. automodule:: pymedphys.dicom
     :no-members:
 
 |
 
-###
+***
 API
-###
-
+***
 
 General
 -------
 A suite of functions that apply DICOM datasets of any modality
 
-.. _`pymedphys.geometry.cubify_cube_definition`: geometry.html#pymedphys.geometry.cubify_cube_definition
+.. _`pymedphys.geometry.cubify_cube_definition`:
+   geometry.html#pymedphys.geometry.cubify_cube_definition
 
 .. autofunction:: pymedphys.dicom.anonymise_dataset
 
@@ -58,7 +62,8 @@ A suite of functions that apply to DICOM RT Structure sets
 
 Multiple DICOM Modality Combinations
 ------------------------------------
-A suite of functions that apply to some combination of two or more different DICOM modalities
+A suite of functions that apply to some combination of two or more different
+DICOM modalities
 
 .. autofunction:: pymedphys.dicom.find_dose_within_structure
 

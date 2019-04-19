@@ -45,8 +45,7 @@
 ...
 ...     # Functions using a combination of DICOM Modalities
 ...     find_dose_within_structure,
-...     create_dvh
-)
+...     create_dvh)
 """
 
 # pylint: disable=W0401,W0614
