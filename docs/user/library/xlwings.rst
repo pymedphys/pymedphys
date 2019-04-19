@@ -15,6 +15,8 @@ Download and install the latest Anaconda Python 3 version from `here
 the installation. Follow xlwings' `guide on enabling UDFs within Excel
 <https://docs.xlwings.org/en/stable/udfs.html>`__.
 
+|
+
 Setting up xlwings
 ------------------
 
