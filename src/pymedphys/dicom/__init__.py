@@ -23,46 +23,27 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 """A DICOM toolbox. Available functions include:
 
-General
--------
 >>> from pymedphys.dicom import (
+...
+...     # General functions
 ...     anonymise_dataset,
 ...     anonymise_file,
 ...     anonymise_directory,
 ...     is_anonymised_dataset,
 ...     is_anonymised_file,
-...     is_anonymised_directory
-)
-
-
-RT Dose
--------
-Functions related to manipulating or extracting information from DICOM
-RT Dose datasets.
->>> from pymedphys.dicom import (
+...     is_anonymised_directory,
+...
+...     # RT Dose related functions
 ...     extract_iec_patient_xyz,
 ...     extract_iec_fixed_xyz,
-...     extract_dicom_patient_xyz
-)
-
-
-RT Structure
-------------
-Functions related to manipulating or extracting information from DICOM
-RT Structure datasets.
->>> from pymedphys.dicom import (
-...     get_structure_aligned_cube
-)
-
-
-DICOM RT Combinations
----------------------
-Functions that extracting information from a combination of DICOM
-datasets, e.g. an RT Structure set and an RT Dose dataset.
->>> from pymedphys.dicom import (
+...     extract_dicom_patient_xyz,
+...
+...     # RT Structure related functions
+...     get_structure_aligned_cube,
+...
+...     # Functions using a combination of DICOM Modalities
 ...     find_dose_within_structure,
 ...     create_dvh
 )
