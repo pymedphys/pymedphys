@@ -201,16 +201,25 @@ To install ``nbstripout`` run the following within the pymedphys directory:
 
 .. code:: bash
 
+    conda create --name pmp python=3.7 # Optional.
+    conda activate pmp # Optional
     conda install nbstripout
     nbstripout --install
     nbstripout --status
 
-Make sure that the output of ``nbstripout --status`` starts with:
+The optional commands create an isolated conda environment called "*pmp*"
+within which you can safely work without breaking other python installations
+or running into python package incompatibilities. For more on working with
+conda environments, see `*Managing environments*`_ in the Conda docs.
+
+.. _`*Managing environments*`: https://conda-forge.org/
+
+Before you proceed, make sure that the output of ``nbstripout --status`` starts
+with:
 
 .. code:: bash
 
     nbstripout is installed in repository
-
 
 
 Install the development version of PyMedPhys
