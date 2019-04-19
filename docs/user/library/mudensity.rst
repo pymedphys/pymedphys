@@ -1,30 +1,33 @@
+##########
 MU Density
-==========
+##########
+
+*******
+Summary
+*******
 
 .. automodule:: pymedphys.mudensity
     :no-members:
 
-MU Density
-----------
-
-.. automodule:: pymedphys.mudensity._level1.mudensitycore
-    :no-members:
-
 .. plot:: pyplots/mudensity.py
-   :include-source:
 
 .. plot:: pyplots/single_leaf.py
-   :include-source:
 
+|
 
+***
 API
----
+***
 
 .. autofunction:: pymedphys.mudensity.calc_mu_density
+
+.. plot:: pyplots/mudensity.py
 
 .. autofunction:: pymedphys.mudensity.calc_single_control_point
 
 .. autofunction:: pymedphys.mudensity.single_mlc_pair
+
+.. plot:: pyplots/single_leaf.py
 
 .. autofunction:: pymedphys.mudensity.get_grid
 

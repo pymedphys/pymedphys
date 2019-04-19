@@ -17,5 +17,5 @@ Each experimental module is organised by author below:
 .. toctree::
     :maxdepth: 1
 
-    labs/paulking
-    labs/simonbiggs
+    paulking/index
+    simonbiggs/index

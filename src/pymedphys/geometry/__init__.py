@@ -24,11 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A geometry toolbox.
+"""A toolbox containing some useful geometry functions. Available
+functions include:
 
-Available Functions
--------------------
->>> from pymedphys.geometry import cubify_cube_definition, plot_cube
+>>> from pymedphys.geometry import (
+...     cubify_cube_definition,
+...     plot_cube)
 """
 
 # pylint: disable=W0401, W0614
