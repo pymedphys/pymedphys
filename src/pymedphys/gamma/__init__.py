@@ -23,16 +23,18 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""A range of functions for calculating the gamma index. Available
+functions include:
 
-"""A range of functions for calculating gamma. In its current form only the
-gamma shell function is the most mature, nevertheless even gamma shell is
-still undergoing the process of verification and refinement.
-
-
-Available Functions
--------------------
 >>> from pymedphys.gamma import (
-...     gamma_shell, gamma_dicom, gamma_filter_numpy, gamma_filter_brute_force)
+...     gamma_shell,
+...     gamma_dicom,
+...     gamma_filter_numpy,
+...     gamma_filter_brute_force)
+
+Note that all of these functions are still in the process of
+verification and refinement. The gamma shell function is the most
+mature.
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413
