@@ -6,6 +6,7 @@ DICOM Module
     :no-members:
 
 |
+
 ###
 API
 ###
@@ -30,6 +31,7 @@ A suite of functions that apply DICOM datasets of any modality
 .. autofunction:: pymedphys.dicom.is_anonymised_directory
 
 |
+
 RT Dose
 -------
 A suite of functions that apply to DICOM RT Dose datasets
@@ -45,6 +47,7 @@ A suite of functions that apply to DICOM RT Dose datasets
 .. autofunction:: pymedphys.dicom.load_xyz_from_dicom
 
 |
+
 RT Structure
 ------------
 A suite of functions that apply to DICOM RT Structure sets
@@ -52,6 +55,7 @@ A suite of functions that apply to DICOM RT Structure sets
 .. autofunction:: pymedphys.dicom.get_structure_aligned_cube
 
 |
+
 Multiple DICOM Modality Combinations
 ------------------------------------
 A suite of functions that apply to some combination of two or more different DICOM modalities
