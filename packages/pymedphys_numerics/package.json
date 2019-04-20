@@ -1,5 +1,5 @@
 {
-  "name": "pymedphys_utilities",
+  "name": "pymedphys_numerics",
   "private": true,
   "scripts": {
     "install": "pip install -e ."

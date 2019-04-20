@@ -1,6 +1,11 @@
 {
   "private": true,
+  "scripts": {
+    "boo": "lerna init",
+    "install": "lerna run install"
+  },
   "devDependencies": {
     "lerna": "^3.13.3"
-  }
+  },
+  "name": "pymedphys"
 }

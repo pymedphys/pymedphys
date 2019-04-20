@@ -18,16 +18,26 @@ def read(*names, **kwargs):
     ).read()
 
 
+packages = find_packages('src')
+root_packages = [
+    package
+    for package in packages
+    if "." not in package
+]
+
+assert len(root_packages) == 1
+package = root_packages[0]
+
 version_ns = {}  # type: ignore
 version_filepath = glob(
-    pjoin(root, 'src', 'pymedphys*', '_version.py'))[0]
+    pjoin(root, 'src', package, '_version.py'))[0]
 execfile(version_filepath, version_ns)
 
 version = version_ns['__version__']
 
 
 setup(
-    name="pymedphys",
+    name=package,
     version=version,
     author="PyMedPhys Contributors",
     author_email="developers@pymedphys.com",
@@ -44,7 +54,7 @@ setup(
         'Intended Audience :: Science/Research',
         'Intended Audience :: Healthcare Industry'
     ],
-    packages=find_packages('src'),
+    packages=packages,
     package_dir={'': 'src'},
     include_package_data=True,
     package_data={'pymedphys': []},
