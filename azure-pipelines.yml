@@ -43,6 +43,9 @@ jobs:
       inputs:
         versionSpec: $(python)
 
+    - bash: yarn
+      displayName: Run yarn
+
     - bash: sudo apt-get install -y pandoc
       displayName: Install Pandoc, need to make this only on doc run
       condition: eq( variables['TOXENV'], 'docs' )
@@ -146,6 +149,9 @@ jobs:
 
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
+
+    - bash: yarn
+      displayName: Run yarn
 
     - bash: "pip install -e .[testing]"
       displayName: Install development version of PyMedPhys
