@@ -23,7 +23,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-from pymedphys.coordinates import (
+from pymedphys_numerics.coordinates import (
     rotate_about_vector, rotate_about_x, rotate_about_y, rotate_about_z, translate)
 
 
@@ -54,7 +54,6 @@ def test_rotate_about_vector():
     y_m = test_coords_multi[1]
     z_m = test_coords_multi[2]
 
-
     rotation_vector = np.array((2, 2, 2))
 
     # Rotation of coords about own axis yields no change
@@ -64,7 +63,7 @@ def test_rotate_about_vector():
                        np.array((1, 1, 1)))
 
     # Rotation of coords about each cardinal axis yields same result as axis rotation functions
-        # Singles
+    # Singles
     assert np.allclose(rotate_about_vector(test_coords_single, np.array((1, 0, 0)), 27),
                        rotate_about_x(test_coords_single, 27))
     assert np.allclose(rotate_about_vector(test_coords_single, np.array((1, 0, 0)), 27, active=True),
@@ -77,7 +76,7 @@ def test_rotate_about_vector():
                        rotate_about_z(test_coords_single, 182))
     assert np.allclose(rotate_about_vector(test_coords_single, np.array((0, 0, 1)), 182, active=True),
                        rotate_about_z(test_coords_single, 182, active=True))
-        # Multis
+    # Multis
     assert np.allclose(rotate_about_vector(test_coords_multi, np.array((1, 0, 0)), 27),
                        rotate_about_x(test_coords_multi, 27))
     assert np.allclose(rotate_about_vector(test_coords_multi, np.array((1, 0, 0)), 27, active=True),

@@ -28,7 +28,7 @@
 
 Available Functions
 -------------------
->>> from pymedphys.coordinates import (
+>>> from pymedphys_numerics.coordinates import (
 ...     rotate_about_z,
 ...     translate)
 """
@@ -41,4 +41,4 @@ from ._level1.coordinatestransforms import *
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.coordinatestransforms'
-], package='pymedphys.coordinates')
+], package='pymedphys_numerics.coordinates')
