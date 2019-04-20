@@ -1,8 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "boo": "lerna init",
-    "install": "lerna run install"
+    "install": "lerna bootstrap"
   },
   "devDependencies": {
     "lerna": "^3.13.3"
