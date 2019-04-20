@@ -1,7 +1,8 @@
-
 install_requires = [
-    'numpy',
+    'numpy < 1.16, >= 1.12',
     'scipy',
     'pandas',
-    'matplotlib'
+    'matplotlib',
+    'pymedphys_numerics',
+    'pymedphys_sql'  # TODO remove this dependency
 ]
