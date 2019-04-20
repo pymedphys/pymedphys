@@ -48,7 +48,7 @@ jobs:
       inputs:
         versionSpec: $(python)
 
-    - bash: yarn
+    - bash: export INSTALL_ON_LINUX=1; yarn
       displayName: Run yarn
 
     - bash: sudo apt-get install -y pandoc
@@ -129,11 +129,11 @@ jobs:
 
     strategy:
       matrix:
-        mac-py36:
-          image_name: macos-10.13
-          test_title: macOS py36
-          toxenv: py36
-          python: 3.6
+        # mac-py36:
+        #   image_name: macos-10.13
+        #   test_title: macOS py36
+        #   toxenv: py36
+        #   python: 3.6
         mac-py37:
           image_name: macos-10.13
           test_title: macOS py37
