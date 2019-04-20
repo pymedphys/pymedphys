@@ -13,11 +13,11 @@ jobs:
           test_title: Pylint Subpackages
           toxenv: analysis,dicom,fileformats,labs,logfiles,numerics,shapes,sql,utilities,workshops,wrappers,xlwings
           python: 3.7
-        # Docs:
-        #   image_name: ubuntu-16.04
-        #   test_title: Docs
-        #   toxenv: docs
-        #   python: 3.7
+        Docs:
+          image_name: ubuntu-16.04
+          test_title: Docs
+          toxenv: docs
+          python: 3.7
         # Layer-Lint:
         #   image_name: ubuntu-16.04
         #   test_title: Layer-Lint
