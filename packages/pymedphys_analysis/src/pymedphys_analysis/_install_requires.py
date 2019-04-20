@@ -3,7 +3,7 @@ install_requires = [
     'pymedphys_numerics',
     'Pillow',
     'scipy',
-    'numpy',
+    'numpy < 1.16, >= 1.12',
     'pandas',
     'matplotlib'
 ]
