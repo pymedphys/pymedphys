@@ -1,76 +1,81 @@
 jobs:
-#   - job: Tox
+  - job: Tox
 
-#     strategy:
-#       matrix:
-#         Pylint:
-#           image_name: ubuntu-16.04
-#           test_title: Pylint
-#           toxenv: pylint
-#           python: 3.7
-#         Docs:
-#           image_name: ubuntu-16.04
-#           test_title: Docs
-#           toxenv: docs
-#           python: 3.7
-#         Layer-Lint:
-#           image_name: ubuntu-16.04
-#           test_title: Layer-Lint
-#           toxenv: layer_lint
-#           python: 3.7
-#         mypy:
-#           image_name: ubuntu-16.04
-#           test_title: mypy
-#           toxenv: mypy
-#           python: 3.7
-#         Linux-Py36:
-#           image_name: ubuntu-16.04
-#           test_title: Linux Py36
-#           toxenv: py36
-#           python: 3.6
-#         Linux-Py37:
-#           image_name: ubuntu-16.04
-#           test_title: Linux Py37
-#           toxenv: py37
-#           python: 3.7
+    strategy:
+      matrix:
+        Pylint-All:
+          image_name: ubuntu-16.04
+          test_title: Pylint All
+          toxenv: pylint
+          python: 3.7
+        Pylint-Subpackages:
+          image_name: ubuntu-16.04
+          test_title: Pylint Subpackages
+          toxenv: analysis,dicom,fileformats,labs,logfiles,numerics,shapes,sql,utilities,workshops,wrappers,xlwings
+          python: 3.7
+        # Docs:
+        #   image_name: ubuntu-16.04
+        #   test_title: Docs
+        #   toxenv: docs
+        #   python: 3.7
+        # Layer-Lint:
+        #   image_name: ubuntu-16.04
+        #   test_title: Layer-Lint
+        #   toxenv: layer_lint
+        #   python: 3.7
+        # mypy:
+        #   image_name: ubuntu-16.04
+        #   test_title: mypy
+        #   toxenv: mypy
+        #   python: 3.7
+        # Linux-Py36:
+        #   image_name: ubuntu-16.04
+        #   test_title: Linux Py36
+        #   toxenv: py36
+        #   python: 3.6
+        Linux-Py37:
+          image_name: ubuntu-16.04
+          test_title: Linux Py37
+          toxenv: py37
+          python: 3.7
 
-#     pool:
-#       vmImage: $(image_name)
+    pool:
+      vmImage: $(image_name)
 
-#     steps:
-#     - task: UsePythonVersion@0
-#       displayName: setup python
-#       inputs:
-#         versionSpec: $(python)
+    steps:
+    - task: UsePythonVersion@0
+      displayName: setup python
+      inputs:
+        versionSpec: $(python)
 
-#     - bash: yarn
-#       displayName: Run yarn
+    - bash: yarn
+      displayName: Run yarn
 
-#     - bash: sudo apt-get install -y pandoc
-#       displayName: Install Pandoc, need to make this only on doc run
-#       condition: eq( variables['TOXENV'], 'docs' )
+    - bash: sudo apt-get install -y pandoc
+      displayName: Install Pandoc, need to make this only on doc run
+      condition: eq( variables['TOXENV'], 'docs' )
 
-#     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
-#       displayName: Show python information
+    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+      displayName: Show python information
 
-#     - bash: "python -m pip install -U pip setuptools --user"
-#       displayName: Upgrade pip and setuptools
+    - bash: "python -m pip install -U pip setuptools --user"
+      displayName: Upgrade pip and setuptools
 
-#     - bash: "python -m pip install -U tox --user"
-#       displayName: Install tox
+    - bash: "python -m pip install -U tox --user"
+      displayName: Install tox
 
-#     - bash: export INSTALL_ON_LINUX=1; python -m tox -e $TOXENV --notest
-#       displayName: Install test dependencies
+    - bash: export INSTALL_ON_LINUX=1; python -m tox -e $TOXENV --notest
+      displayName: Install test dependencies
 
-#     - bash: python -m tox -e $TOXENV
-#       displayName: Run tests
+    - bash: python -m tox -e $TOXENV -p 8 -o
+      displayName: Run tests
 
-#     - task: PublishTestResults@2
-#       displayName: Publish test results
-#       inputs:
-#         testResultsFiles: junit/*.xml
-#         testRunTitle: '$(test_title)'
-#       condition: succeededOrFailed()
+    - task: PublishTestResults@2
+      displayName: Publish test results
+      inputs:
+        testResultsFiles: junit/*.xml
+        testRunTitle: '$(test_title)'
+      condition: succeededOrFailed()
 
 
 #   - job: ToxWithConda
