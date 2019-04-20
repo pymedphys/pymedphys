@@ -24,27 +24,28 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import os
+
 import numpy as np
 
-from pymedphys_fileformats.mapcheck import read_mapcheck_txt
+from pymedphys_fileformats.profiler import read_prs
 
-DATA_DIRECTORY = os.path.abspath(
-    os.path.join(os.path.dirname(__file__),
-                 os.pardir, 'data', 'devices', 'mapcheck'))
-
-
-def test_read_mapcheck_txt():
-    """ Test for successful read of mapcheck file with consistent results.  """
-    file_name = os.path.join(DATA_DIRECTORY, 'tomo_mapcheck_test.txt')
-    result = read_mapcheck_txt(file_name)
-    assert result.dose.shape == (len(result.x), len(result.y))  # x,y -> (x,y)
-    assert result.x[0] < result.x[-1]                          # x ascending
-    assert result.y[0] < result.y[-1]                          # y ascending
-    assert len(set(result.x)) == len(set(result.x))            # x vals unique
-    assert len(set(result.y)) == len(set(result.y))            # y vals unique
-    assert np.all([i >= 0 for i in result.dose.flatten()])     # doses >= 0
-    assert np.allclose(result.dose[20][20], 92.03876716076289)
+DATA_DIRECTORY = os.path.join(
+    os.path.dirname(__file__), "data", "profiler")
 
 
-if __name__ == "__main__":
-    test_read_mapcheck_txt()
+def test_read_prs():
+
+    file_name = os.path.join(DATA_DIRECTORY, 'test_varian_open.prs')
+    assert np.allclose(read_prs(file_name).cax, 45.50562901780488)
+    assert np.allclose(read_prs(file_name).x[0][1], 0.579460838649598)
+    assert np.allclose(read_prs(file_name).y[0][1], 0.2910764234184594)
+
+    file_name = os.path.join(DATA_DIRECTORY, 'test_varian_wedge.prs')
+    assert np.allclose(read_prs(file_name).cax, 21.863167869662274)
+    assert np.allclose(read_prs(file_name).x[0][1], 0.5626051581458927)
+    assert np.allclose(read_prs(file_name).y[0][1], 0.260042064635505)
+
+    file_name = os.path.join(DATA_DIRECTORY, 'test_tomo_50mm.prs')
+    assert np.allclose(read_prs(file_name).cax, 784.320114110518)
+    assert np.allclose(read_prs(file_name).x[0][1], 563.4064789252321)
+    assert np.allclose(read_prs(file_name).y[0][1], 1.8690221773721463)

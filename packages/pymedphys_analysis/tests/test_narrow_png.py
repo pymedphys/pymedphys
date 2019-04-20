@@ -29,8 +29,7 @@ import numpy as np
 from pymedphys_analysis.film import read_narrow_png
 
 DATA_DIRECTORY = os.path.abspath(
-    os.path.join(os.path.dirname(__file__),
-                 os.pardir, 'data', 'devices', 'film'))
+    os.path.join(os.path.dirname(__file__), 'data'))
 
 
 def test_read_narrow_png():
