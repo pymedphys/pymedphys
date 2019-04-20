@@ -5,5 +5,6 @@ install_requires = [
     'pandas',
     'xlwings',
     'pymedphys_dicom',
-    'pymedphys_fileformats'
+    'pymedphys_fileformats',
+    'pymedphys_utilities'
 ]

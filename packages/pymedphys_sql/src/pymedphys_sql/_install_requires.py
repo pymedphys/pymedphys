@@ -5,5 +5,6 @@ install_requires = [
     'scipy',
     'numpy < 1.16, >= 1.12',
     'pandas',
-    'pymedphys_numerics'
+    'pymedphys_numerics',
+    'pymedphys_utilities'
 ]
