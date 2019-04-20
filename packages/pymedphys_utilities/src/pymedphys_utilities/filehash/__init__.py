@@ -35,4 +35,4 @@ from ._level1.filehash import *
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.filehash'
-], package='pymedphys.filehash')
+], package='pymedphys_utilities.filehash')
