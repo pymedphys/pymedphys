@@ -35,4 +35,4 @@ from ._level1.compare_mosaiq import *
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.compare_mosaiq'
-], package='pymedphys.rtplan')
+], package='pymedphys_wrappers.plancompare')
