@@ -48,8 +48,8 @@ jobs:
       inputs:
         versionSpec: $(python)
 
-    - bash: export INSTALL_ON_LINUX=1; yarn
-      displayName: Run yarn
+    # - bash: export INSTALL_ON_LINUX=1; yarn
+    #   displayName: Run yarn
 
     - bash: sudo apt-get install -y pandoc
       displayName: Install Pandoc, need to make this only on doc run
