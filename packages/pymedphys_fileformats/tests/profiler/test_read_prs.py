@@ -30,7 +30,7 @@ import numpy as np
 from pymedphys_fileformats.profiler import read_prs
 
 DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "data", "profiler")
+    os.path.dirname(__file__), "data")
 
 
 def test_read_prs():
