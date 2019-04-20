@@ -24,26 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pydicom import Dataset
-
 from ...libutils import get_imports
-from ...xarray import XArrayComposition
 from ...deliverydata import get_delivery_parameters
 
 from .._level1.mudensitycore import calc_mu_density
 
 IMPORTS = get_imports(globals())
-
-
-class MUDensity(XArrayComposition):
-    """Wrapper object for the calculation of MU Density given a range of
-    formats
-    """
-
-    @classmethod
-    def from_dicom(cls, ds: Dataset):
-        """Calculate MU Density when provided with a pydicom dicom object"""
-        return cls(None)
 
 
 def mu_density_from_delivery_data(delivery_data):
