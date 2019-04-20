@@ -38,8 +38,8 @@ import numpy as np
 import pydicom
 from pydicom.filebase import DicomBytesIO
 
-from pymedphys.dicom import dicom_dataset_from_dict
-from pymedphys.mudensity import MUDensity
+from pymedphys_dicom.dicom import dicom_dataset_from_dict
+from pymedphys_analysis.mudensity import MUDensity
 
 MU = [0, 10, 20]
 

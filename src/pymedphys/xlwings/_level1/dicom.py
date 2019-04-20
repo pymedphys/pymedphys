@@ -30,7 +30,7 @@ import pydicom
 import xlwings as xw
 
 from pymedphys_utilities.utilities import wildcard_file_resolution
-from ...dicom import (
+from pymedphys_dicom.dicom import (
     extract_depth_dose, extract_profiles, arbitrary_profile_from_dicom_dose)
 
 from pymedphys_utilities.libutils import get_imports

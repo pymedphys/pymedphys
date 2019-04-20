@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""The tests given here are replicated using pymedphys.gamma from the method
+"""The tests given here are replicated using pymedphys_analysis.gamma from the method
 given within the following paper:
 
 > C. Agnew, C. McGarry, A tool to include gamma analysis software into a
@@ -33,7 +33,7 @@ given within the following paper:
 """
 
 
-from pymedphys.gamma import gamma_shell, calculate_pass_rate
+from pymedphys_analysis.gamma import gamma_shell, calculate_pass_rate
 import pydicom
 import numpy as np
 import os

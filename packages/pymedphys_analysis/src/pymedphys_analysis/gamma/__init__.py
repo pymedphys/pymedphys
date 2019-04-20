@@ -26,7 +26,7 @@
 """A range of functions for calculating the gamma index. Available
 functions include:
 
->>> from pymedphys.gamma import (
+>>> from pymedphys_analysis.gamma import (
 ...     gamma_shell,
 ...     gamma_dicom,
 ...     gamma_filter_numpy,
@@ -48,4 +48,4 @@ from ._level3.gammainterface import *
 clean_and_verify_levelled_modules(globals(), [
     '._level1.gammafilter', '._level2.gammashell',
     '._level3.gammainterface'
-], package='pymedphys.gamma')
+], package='pymedphys_analysis.gamma')

@@ -26,7 +26,7 @@
 
 import pydicom
 
-from pymedphys.dicom import dicom_dataset_from_dict
+from pymedphys_dicom.dicom import dicom_dataset_from_dict
 
 
 def test_dicom_from_dict():

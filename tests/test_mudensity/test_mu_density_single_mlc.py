@@ -32,7 +32,7 @@
 
 import numpy as np
 
-from pymedphys.mudensity import single_mlc_pair
+from pymedphys_analysis.mudensity import single_mlc_pair
 
 
 def test_minimal_variance_with_resolution():

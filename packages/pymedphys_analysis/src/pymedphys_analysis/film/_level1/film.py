@@ -27,7 +27,7 @@
 import numpy as np
 
 from pymedphys_utilities.libutils import get_imports
-from ...geometry import (
+from pymedphys_analysis.geometry import (
     cubify_cube_definition, cube_vertices, get_bounding_box, test_if_in_cube,
     plot_cube
 )

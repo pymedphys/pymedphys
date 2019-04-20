@@ -56,7 +56,7 @@ def cubify_cube_definition(cube_definition):
     Examples
     --------
     >>> import numpy as np
-    >>> from pymedphys.geometry import cubify_cube_definition
+    >>> from pymedphys_analysis.geometry import cubify_cube_definition
     >>>
     >>> cube_definition = [(0, 0, 0), (0, 1, 0), (0, 0, 1)]
     >>> np.array(cubify_cube_definition(cube_definition))

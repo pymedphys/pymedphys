@@ -26,7 +26,7 @@
 # import matplotlib.pyplot as plt
 
 from pymedphys_utilities.libutils import get_imports
-from ...dicom import coords_and_dose_from_dicom
+from pymedphys_dicom.dicom import coords_and_dose_from_dicom
 
 from .._level1.gammafilter import gamma_filter_numpy, calculate_pass_rate
 from .._level2.gammashell import gamma_shell
@@ -35,8 +35,8 @@ IMPORTS = get_imports(globals())
 
 
 def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
-              dose_percent_threshold, distance_mm_threshold,
-              **kwargs):
+                dose_percent_threshold, distance_mm_threshold,
+                **kwargs):
 
     coords_reference, dose_reference = coords_and_dose_from_dicom(
         dicom_ref_filepath)

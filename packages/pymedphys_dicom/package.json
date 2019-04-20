@@ -1,0 +1,7 @@
+{
+  "name": "pymedphys_dicom",
+  "private": true,
+  "scripts": {
+    "install": "pip install -e ."
+  }
+}

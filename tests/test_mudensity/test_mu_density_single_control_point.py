@@ -32,7 +32,7 @@
 
 import numpy as np
 
-from pymedphys.mudensity import calc_single_control_point
+from pymedphys_analysis.mudensity import calc_single_control_point
 
 MLC = np.array([
     [

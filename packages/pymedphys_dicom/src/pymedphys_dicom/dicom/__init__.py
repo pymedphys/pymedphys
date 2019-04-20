@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,21 +23,45 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""A DICOM toolbox. Available functions include:
 
-"""A toolbox containing some useful geometry functions. Available
-functions include:
-
->>> from pymedphys.geometry import (
-...     cubify_cube_definition,
-...     plot_cube)
+>>> from pymedphys_dicom.dicom import (
+...
+...     # General functions
+...     anonymise_dataset,
+...     anonymise_file,
+...     anonymise_directory,
+...     is_anonymised_dataset,
+...     is_anonymised_file,
+...     is_anonymised_directory,
+...
+...     # RT Dose related functions
+...     extract_iec_patient_xyz,
+...     extract_iec_fixed_xyz,
+...     extract_dicom_patient_xyz,
+...
+...     # RT Structure related functions
+...     get_structure_aligned_cube,
+...
+...     # Functions using a combination of DICOM Modalities
+...     find_dose_within_structure,
+...     create_dvh)
 """
 
-# pylint: disable=W0401, W0614
+# pylint: disable=W0401,W0614
 
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.geometry import *
+from ._level1.constants import *
+from ._level1.structure import *
+from ._level1.create import *
+from ._level2.header_tweaks import *
+from ._level2.anonymise import *
+from ._level2.dose import *
+from ._level3.dicom_collection import *
+
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.geometry'
-], package='pymedphys.geometry')
+    '._level1.structure', '._level1.create', '._level2.header_tweaks',
+    '._level2.anonymise', '._level2.dose', '._level3.dicom_collection'
+], package='pymedphys_dicom.dicom')

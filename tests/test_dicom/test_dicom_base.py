@@ -26,7 +26,7 @@
 
 import io
 
-from pymedphys.dicom import DicomBase, dicom_dataset_from_dict
+from pymedphys_dicom.dicom import DicomBase, dicom_dataset_from_dict
 
 
 def test_copy():

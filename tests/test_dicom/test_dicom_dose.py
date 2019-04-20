@@ -32,7 +32,7 @@ from zipfile import ZipFile
 import numpy as np
 import pydicom as dcm
 
-from pymedphys.dicom import (
+from pymedphys_dicom.dicom import (
     DicomDose,
     extract_iec_patient_xyz,
     extract_iec_fixed_xyz,

@@ -27,7 +27,7 @@
 """Matplotlib toolbox.
 
 Example:
-    >>> from pymedphys.plt import pcolormesh_grid
+    >>> from pymedphys_analysis.plt import pcolormesh_grid
 """
 
 # pylint: disable=W0401,W0614
@@ -39,4 +39,4 @@ from ._level1.plthelpers import *
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.plthelpers'
-], package='pymedphys.plt')
+], package='pymedphys_analysis.plt')

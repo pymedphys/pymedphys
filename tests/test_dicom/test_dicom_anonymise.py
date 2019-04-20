@@ -5,7 +5,7 @@ import shutil
 from uuid import uuid4
 
 import pydicom
-from pymedphys.dicom import (
+from pymedphys_dicom.dicom import (
     anonymise_dataset,
     anonymise_directory,
     anonymise_file,
