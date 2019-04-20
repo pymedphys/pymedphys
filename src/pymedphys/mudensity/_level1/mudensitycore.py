@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 from ...deliverydata import (
     extract_angle_from_delivery_data, remove_irrelevant_control_points)
 from ...plt import pcolormesh_grid
-from ...coll import AGILITY
+from pymedphys_utilities.coll import AGILITY
 
 from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())

@@ -26,7 +26,7 @@
 import numpy as np
 # import pytest
 
-from pymedphys.coll import mlc_equivalent_square_fs, A_LEAF_TYPE, AGILITY
+from pymedphys_utilities.coll import mlc_equivalent_square_fs, A_LEAF_TYPE, AGILITY
 
 
 def test_equivalent_mlc():

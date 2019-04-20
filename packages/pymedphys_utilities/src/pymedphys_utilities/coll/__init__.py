@@ -27,7 +27,7 @@
 
 Available Functions
 -------------------
->>> from pymedphys.coll import (
+>>> from pymedphys_utilities.coll import (
 ...    mlc_equivalent_square_fs)
 """
 
@@ -40,4 +40,4 @@ from ._level1.collequivalent import *
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.collmlctypes', '._level1.collequivalent'
-], package='pymedphys.coll')
+], package='pymedphys_utilities.coll')
