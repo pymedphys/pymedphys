@@ -103,7 +103,7 @@ along with their affiliation:
 
 |
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/logos/GOSA_logo2.png
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo2.png
     :target: `Royal Adelaide Hospital`_
     :align: center
     :width: 200 px
