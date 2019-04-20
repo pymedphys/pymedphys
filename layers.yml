@@ -54,6 +54,7 @@ Top Level Modules:
         - electronfactors
         - filehash
         - geometry
+        - mephysto
         - plt
         - utilities
         - xarray
@@ -80,6 +81,7 @@ Module Level 1:
         - xarray
         - utilities
         - plt
+        - mephysto
         - geometry
         - filehash
         - electronfactors
