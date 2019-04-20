@@ -32,7 +32,7 @@ import pandas as pd
 from .._level1.trfconstants import CONFIG
 from .._level1.trfheader import determine_header_length
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 GROUPING_OPTIONS = {

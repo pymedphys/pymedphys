@@ -28,7 +28,7 @@ import lzma
 
 from glob import glob
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

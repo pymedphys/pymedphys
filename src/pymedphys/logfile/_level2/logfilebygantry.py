@@ -40,7 +40,7 @@ from ...trf import delivery_data_from_logfile
 from .._level1.logfileanalyse import calc_comparison, plot_results
 
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

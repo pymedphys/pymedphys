@@ -25,7 +25,7 @@
 # import numpy as np
 # import matplotlib.pyplot as plt
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 from ...dicom import coords_and_dose_from_dicom
 
 from .._level1.gammafilter import gamma_filter_numpy, calculate_pass_rate

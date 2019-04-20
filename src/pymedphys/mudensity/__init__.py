@@ -63,7 +63,7 @@ formats:
 
 # pylint: disable=W0401,W0614,C0413,W0611
 
-from ..libutils import clean_and_verify_levelled_modules
+from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
 from ._level1.mudensitycore import *
 from ._level2.mudensityapi import *

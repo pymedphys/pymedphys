@@ -30,7 +30,7 @@ import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 from ...xarray import XArrayComposition
 IMPORTS = get_imports(globals())
 

@@ -33,7 +33,7 @@ from ...deliverydata import (
 from ...plt import pcolormesh_grid
 from ...coll import AGILITY
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

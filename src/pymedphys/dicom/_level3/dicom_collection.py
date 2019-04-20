@@ -34,7 +34,7 @@ from .._level2.anonymise import anonymise_dataset
 from .._level2.dose import (
     extract_dicom_patient_xyz, convert_xyz_to_dicom_coords)
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 
 IMPORTS = get_imports(globals())
 

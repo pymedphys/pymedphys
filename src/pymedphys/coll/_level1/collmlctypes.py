@@ -25,7 +25,7 @@
 
 # import warnings
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 A_LEAF_TYPE = (10,)*10 + (5,)*40 + (10,)*10

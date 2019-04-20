@@ -36,7 +36,7 @@ import csv
 
 import numpy as np
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

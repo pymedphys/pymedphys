@@ -27,7 +27,7 @@ import numpy as np
 from numpy import sin, cos, pi, radians
 from numpy.linalg import norm
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

@@ -27,7 +27,7 @@
 from datetime import datetime
 from dateutil import tz
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 from ...msq import (
     get_mosaiq_delivery_details, OISDeliveryDetails)
 

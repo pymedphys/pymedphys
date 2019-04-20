@@ -32,7 +32,7 @@ from .._level1.electronfactors import (
     parameterise_insert_with_visual_alignment
 )
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

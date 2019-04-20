@@ -28,7 +28,7 @@ import os
 
 import numpy as np
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 
 from .._level1.mccread import (
     pull_mephysto_item, pull_mephysto_number, pull_mephysto_data)

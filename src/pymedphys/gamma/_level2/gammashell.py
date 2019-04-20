@@ -42,7 +42,7 @@ from scipy.interpolate import RegularGridInterpolator
 
 import psutil
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 
 from .._level1.gammainputcheck import run_input_checks
 

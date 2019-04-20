@@ -34,7 +34,7 @@ from .._level1.trfconstants import (
 )
 from .._level3.trf2pandas import decode_trf
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

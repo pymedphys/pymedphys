@@ -33,7 +33,7 @@ from ...utilities import wildcard_file_resolution
 from ...dicom import (
     extract_depth_dose, extract_profiles, arbitrary_profile_from_dicom_dose)
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

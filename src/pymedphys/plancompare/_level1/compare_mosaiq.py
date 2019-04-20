@@ -32,7 +32,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 
 from ...msq import multi_mosaiq_connect, delivery_data_from_mosaiq
 from ...mudensity import mu_density_from_delivery_data

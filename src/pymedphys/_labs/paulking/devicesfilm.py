@@ -28,7 +28,7 @@ from PIL import Image
 import numpy as np
 import matplotlib.image as mpimg
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 
 IMPORTS = get_imports(globals())
 

@@ -27,7 +27,7 @@ import numpy as np
 
 import xlwings as xw
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

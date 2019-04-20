@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A suite of functions that model electron insert/cutout factors by 
+"""A suite of functions that model electron insert/cutout factors by
 parameterising them as equivalent ellipses. Available functions include:
 
 >>> from pymedphys.electronfactors import (
@@ -38,7 +38,7 @@ parameterising them as equivalent ellipses. Available functions include:
 
 # pylint: disable=W0401,W0614
 
-from ..libutils import clean_and_verify_levelled_modules
+from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
 from ._level1.electronfactors import *
 from ._level2.visualisation import *

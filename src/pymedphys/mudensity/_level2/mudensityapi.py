@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 from ...deliverydata import get_delivery_parameters
 
 from .._level1.mudensitycore import calc_mu_density

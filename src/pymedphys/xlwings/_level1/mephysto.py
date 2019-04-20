@@ -31,7 +31,7 @@ import xlwings as xw
 from ...utilities import wildcard_file_resolution
 from ...mephysto import load_single_item
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

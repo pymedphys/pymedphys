@@ -34,7 +34,7 @@ functions include:
 
 # pylint: disable=W0401, W0614
 
-from ..libutils import clean_and_verify_levelled_modules
+from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
 from ._level1.geometry import *
 

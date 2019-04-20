@@ -34,7 +34,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 from ...deliverydata import get_delivery_parameters
 from ...utilities import (
     get_cache_filepaths, get_mu_density_parameters,

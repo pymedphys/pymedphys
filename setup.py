@@ -3,7 +3,7 @@ import io
 from os.path import abspath, basename, dirname, join as pjoin, splitext
 from setuptools import setup, find_packages
 
-repo_root = dirname(abspath(__file__))
+root = dirname(abspath(__file__))
 
 
 def execfile(fname, globs, locs=None):
@@ -19,7 +19,9 @@ def read(*names, **kwargs):
 
 
 version_ns = {}  # type: ignore
-execfile(pjoin(repo_root, 'src', 'pymedphys', '_version.py'), version_ns)
+version_filepath = glob(
+    pjoin(root, 'src', 'pymedphys*', '_version.py'))[0]
+execfile(version_filepath, version_ns)
 
 version = version_ns['__version__']
 
@@ -27,8 +29,8 @@ version = version_ns['__version__']
 setup(
     name="pymedphys",
     version=version,
-    author="Simon Biggs",
-    author_email="me@simonbiggs.net",
+    author="PyMedPhys Contributors",
+    author_email="developers@pymedphys.com",
     description='Medical Physics python modules',
     long_description=read('README.rst'),
     long_description_content_type='text/x-rst',
@@ -44,7 +46,6 @@ setup(
     ],
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     include_package_data=True,
     package_data={'pymedphys': []},
     entry_points={

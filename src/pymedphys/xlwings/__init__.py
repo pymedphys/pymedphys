@@ -39,7 +39,7 @@ except ImportError:
 
 
 if HAS_XLWINGS:
-    from ..libutils import clean_and_verify_levelled_modules
+    from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
     from ._level1.interpolate import *
     from ._level1.numpy import *

@@ -26,7 +26,7 @@
 import string
 from os import remove, rmdir
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

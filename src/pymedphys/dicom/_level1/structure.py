@@ -30,7 +30,7 @@ from scipy.interpolate import splprep, splev
 
 import pydicom
 
-from ...libutils import get_imports
+from pymedphys_utilities.libutils import get_imports
 from ...geometry import (
     cubify_cube_definition, cube_vertices, cube_vectors)
 
