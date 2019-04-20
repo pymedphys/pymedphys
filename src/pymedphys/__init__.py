@@ -7,7 +7,7 @@ import pymedphys_labs as _labs
 import pymedphys_logfiles as logfiles
 import pymedphys_numerics as numerics
 import pymedphys_shapes as shapes
-import pymedphys_sql as shapes
+import pymedphys_sql as sql
 import pymedphys_utilities as utilities
 import pymedphys_workshops as workshops
 import pymedphys_wrappers as wrappers
