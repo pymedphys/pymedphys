@@ -27,7 +27,7 @@
 """Model insert factors and parameterise inserts as equivalent ellipses.
 
 Example:
-    >>> from pymedphys.deliverydata import DeliveryData
+    >>> from pymedphys_numerics.deliverydata import DeliveryData
 """
 
 # pylint: disable=W0401,W0614
@@ -39,4 +39,4 @@ from ._level1.deliverydatacore import *
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.deliverydatacore'
-], package='pymedphys.deliverydata')
+], package='pymedphys_numerics.deliverydata')
