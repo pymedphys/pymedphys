@@ -25,9 +25,19 @@ PyMedPhys
 
 .. START_OF_ABOUT_IMPORT
 
-PyMedPhys aims to be a Medical Physics open source `monorepo`_ where we can all store, review, use, and learn off of each other's code. It is a library of tools that we all have access to and, because of its `license`_, will all have access to whatever it becomes in the future. It is inspired by the collaborative work of our physics peers in astronomy and their `Astropy Project`_.
+PyMedPhys aims to be a Medical Physics open source `monorepo`_ where we
+can all store, review, use, and learn off of each other's code. It is a
+library of tools that we all have access to and, because of its
+`license`_, will all have access to whatever it becomes in the future.
+It is inspired by the collaborative work of our physics peers in
+astronomy and their `Astropy Project`_.
 
-It is structured and glued together with Python, but certainly not limited to one programming language. A great place to begin sharing is the labs, a range of experimental modules where you can learn to use git and begin the process of code sharing and review. For example, feel free to submit to the labs your favorite MatLab scripts which we can help you glue together with Python using `oct2py`_.
+It is structured and glued together with Python, but certainly not
+limited to one programming language. A great place to begin sharing is
+the labs, a range of experimental modules where you can learn to use git
+and begin the process of code sharing and review. For example, feel free
+to submit to the labs your most useful MatLab scripts which we can help
+you glue together with Python using `oct2py`_.
 
 .. _`oct2py`: http://blink1073.github.io/oct2py/
 
@@ -38,8 +48,8 @@ It is structured and glued together with Python, but certainly not limited to on
 .. _`license`: https://choosealicense.com/licenses/agpl-3.0/
 
 
-This package is available on `PyPI`_, `GitHub`_ and `conda-forge`_. You can
-access the Documentation `here <https://pymedphys.com>`__.
+This package is available on `PyPI`_, `GitHub`_ and `conda-forge`_. You
+can access the Documentation `here <https://pymedphys.com>`__.
 
 
 .. _`PyPI`: https://pypi.org/project/pymedphys/
@@ -114,16 +124,17 @@ along with their affiliation:
 .. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
 
 
-We want you on this list. We want you, whether you are a  clinical Medical
-Physicist, PhD or Masters student, researcher, or even just someone with an
-interest in Python to join our
-team. We want you if you have a desire to create and validate a toolbox we can
-all use to improve how we care for our patients.
+We want you on this list. We want you, whether you are a  clinical
+Medical Physicist, PhD or Masters student, researcher, or even just
+someone with an interest in Python to join our team. We want you if you
+have a desire to create and validate a toolbox we can all use to improve
+how we care for our patients.
 
-The aim of PyMedPhys is that it will be developed by an open community of
-contributors. We use a shared copyright model that enables all contributors
-to maintain the copyright on their contributions. All code is licensed under
-the AGPLv3+ with additional terms from the Apache-2.0 license.
+The aim of PyMedPhys is that it will be developed by an open community
+of contributors. We use a shared copyright model that enables all
+contributors to maintain the copyright on their contributions. All code
+is licensed under the AGPLv3+ with additional terms from the Apache-2.0
+license.
 
 
 .. END_OF_ABOUT_IMPORT
@@ -135,19 +146,20 @@ Beta stage development
 These libraries are currently under beta level development.
 Be prudent with the code in this library.
 
-Throughout the lifetime of this library the following disclaimer will always
-hold:
+Throughout the lifetime of this library the following disclaimer will
+always hold:
 
-    In no event and under no legal theory, whether in tort
-    (including negligence), contract, or otherwise, unless required by
-    applicable law (such as deliberate and grossly negligent acts) or agreed
-    to in writing, shall any Contributor be liable to You for damages,
-    including any direct, indirect, special, incidental, or consequential
-    damages of any character arising as a result of this License or out of
-    the use or inability to use the Work (including but not limited to damages
-    for loss of goodwill, work stoppage, computer failure or malfunction, or
-    any and all other commercial damages or losses), even if such Contributor
-    has been advised of the possibility of such damages.
+    In no event and under no legal theory, whether in tort (including
+    negligence), contract, or otherwise, unless required by applicable
+    law (such as deliberate and grossly negligent acts) or agreed to in
+    writing, shall any Contributor be liable to You for damages,
+    including any direct, indirect, special, incidental, or
+    consequential damages of any character arising as a result of this
+    License or out of the use or inability to use the Work (including
+    but not limited to damages for loss of goodwill, work stoppage,
+    computer failure or malfunction, or any and all other commercial
+    damages or losses), even if such Contributor has been advised of the
+    possibility of such damages.
 
 Where the definition of License is taken to be the
 AGPLv3+ with additional terms from the Apache 2.0. The definitions of
@@ -167,5 +179,7 @@ https://pymedphys.com/en/stable/getting-started/installation.html.
 Contributing
 ------------
 
-See the contributor documentation at https://pymedphys.com/en/stable/developer/contributing.html
-if you wish to create and validate open source Medical Physics tools together.
+See the contributor documentation at
+https://pymedphys.com/en/stable/developer/contributing.html
+if you wish to create and validate open source Medical Physics tools
+together.
