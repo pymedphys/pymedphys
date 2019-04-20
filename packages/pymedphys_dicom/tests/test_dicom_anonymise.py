@@ -18,7 +18,7 @@ from pymedphys_dicom.dicom import (
 from pymedphys_utilities.utilities import remove_file, remove_dir
 
 HERE = dirname(abspath(__file__))
-DATA_DIR = pjoin(dirname(HERE), 'data', 'dicom_anonymise')
+DATA_DIR = pjoin(HERE, 'data', 'anonymise')
 dicom_test_filepath = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
 
 

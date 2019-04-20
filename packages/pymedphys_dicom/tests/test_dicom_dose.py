@@ -22,7 +22,7 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""A test suite for the DICOM RT Dose toolbox"""
+"""A test suite for the DICOM RT Dose toolbox."""
 import json
 import uuid
 from os import remove
@@ -39,7 +39,7 @@ from pymedphys_dicom.dicom import (
     extract_dicom_patient_xyz)
 
 HERE = dirname(abspath(__file__))
-DATA_DIRECTORY = pjoin(dirname(HERE), 'data', 'dicom_dose')
+DATA_DIRECTORY = pjoin(HERE, 'data', 'dose')
 ORIENTATIONS_SUPPORTED = ['FFDL', 'FFDR', 'FFP', 'FFS',
                           'HFDL', 'HFDR', 'HFP', 'HFS']
 

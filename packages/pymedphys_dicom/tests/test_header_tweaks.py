@@ -39,9 +39,9 @@ from pymedphys_dicom.dicom import (
 
 HERE = os.path.dirname(__file__)
 ORIGINAL_DICOM_FILENAME = os.path.join(
-    HERE, 'original-{}.dcm'.format(str(uuid.uuid4())))
+    HERE, 'scratch', 'original-{}.dcm'.format(str(uuid.uuid4())))
 ADJUSTED_DICOM_FILENAME = os.path.join(
-    HERE, 'adjusted-{}.dcm'.format(str(uuid.uuid4())))
+    HERE, 'scratch', 'adjusted-{}.dcm'.format(str(uuid.uuid4())))
 
 
 def compare_dicom_cli(command, original, expected):
