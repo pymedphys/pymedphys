@@ -94,26 +94,35 @@ along with their affiliation:
 
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
 
+|
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
+    :align: center
     :width: 400 px
 
+|
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo.png
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/logos/GOSA_logo2.png
     :target: `Royal Adelaide Hospital`_
-    :width: 400 px
+    :align: center
+    :width: 200 px
 
+|
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
     :target: `Anderson Regional Cancer Center`_
+    :align: center
     :width: 400 px
 
+|
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
+    :align: center
     :width: 400 px
 
+|
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
