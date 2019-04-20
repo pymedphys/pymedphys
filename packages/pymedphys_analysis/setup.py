@@ -48,7 +48,7 @@ setup(
     package_dir={'': 'src'},
     license='AGPL-3.0-or-later',
     install_requires=[
-        'numpy',
+        'numpy < 1.16, >= 1.12',
         'scipy',
         'pandas',
         'matplotlib'

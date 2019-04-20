@@ -28,6 +28,7 @@
 """
 
 import struct
+
 import attr
 import numpy as np
 

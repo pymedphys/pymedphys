@@ -46,5 +46,13 @@ setup(
     ],
     packages=packages,
     package_dir={'': 'src'},
-    license='AGPL-3.0-or-later'
+    license='AGPL-3.0-or-later',
+    install_requires=[
+        'pydicom',
+        'xlwings',
+        'numpy < 1.16, >= 1.12',
+        'scipy',
+        'pandas',
+        'matplotlib'
+    ]
 )

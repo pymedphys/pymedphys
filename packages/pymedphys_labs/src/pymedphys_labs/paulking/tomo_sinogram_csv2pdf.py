@@ -36,7 +36,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib import pyplot as plt
 import numpy as np
 
-from pymedphys._labs.paulking.sinogram import unshuffle, crop
+from .sinogram import unshuffle, crop
 
 
 def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     try:
         test = os.path.join(os.getcwd(), 'src', 'pymedphys',
-                '_labs', 'paulking', 'sinogram.csv')
+                            '_labs', 'paulking', 'sinogram.csv')
         tomo_sinogram_csv2pdf(test, show=True, save=True)
     except IOError:
         print('No sinogram csv file.')

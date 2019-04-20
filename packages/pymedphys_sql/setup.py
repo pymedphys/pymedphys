@@ -48,9 +48,10 @@ setup(
     package_dir={'': 'src'},
     license='AGPL-3.0-or-later',
     install_requires=[
-        'numpy',
-        'scipy',
+        'attrs',
+        'keyring',
         'pandas',
-        'matplotlib'
+        'pymssql',
+        'scipy'
     ]
 )
