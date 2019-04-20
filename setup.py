@@ -18,7 +18,7 @@ def read(*names, **kwargs):
     ).read()
 
 
-package_dir = pjoin('packages', 'pymedphys', 'src')
+package_dir = 'src'
 packages = find_packages(package_dir)
 root_packages = [
     package
@@ -66,6 +66,18 @@ setup(
     },
     license='AGPL-3.0-or-later',
     install_requires=[
+        'pymedphys_analysis',
+        'pymedphys_dicom',
+        'pymedphys_fileformats',
+        'pymedphys_labs',
+        'pymedphys_logfiles',
+        'pymedphys_numerics',
+        'pymedphys_shapes',
+        'pymedphys_sql',
+        'pymedphys_utilities',
+        'pymedphys_workshops',
+        'pymedphys_wrappers',
+        'pymedphys_xlwings',
         'attrs',
         'dataclasses; python_version=="3.6"',
         'keyring',
