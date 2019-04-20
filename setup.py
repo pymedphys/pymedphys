@@ -76,7 +76,9 @@ setup(
         'pymedphys_utilities',
         'pymedphys_workshops',
         'pymedphys_wrappers',
-        'pymedphys_xlwings'
+        'pymedphys_xlwings',
+        'notebook',
+        'jinja2'
     ],
     extras_require={
         'docs': [
