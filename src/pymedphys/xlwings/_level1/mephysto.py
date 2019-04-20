@@ -28,7 +28,7 @@ import numpy as np
 
 import xlwings as xw
 
-from ...utilities import wildcard_file_resolution
+from pymedphys_utilities.utilities import wildcard_file_resolution
 from ...mephysto import load_single_item
 
 from pymedphys_utilities.libutils import get_imports

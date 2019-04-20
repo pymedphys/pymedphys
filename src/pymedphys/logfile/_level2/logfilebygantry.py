@@ -26,7 +26,7 @@
 
 import numpy as np
 
-from ...utilities import get_filepath, get_gantry_tolerance
+from pymedphys_utilities.utilities import get_filepath, get_gantry_tolerance
 
 from ...deliverydata import (
     extract_angle_from_delivery_data, find_relevant_control_points)

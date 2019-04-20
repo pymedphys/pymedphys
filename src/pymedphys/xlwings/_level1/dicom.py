@@ -29,7 +29,7 @@ import numpy as np
 import pydicom
 import xlwings as xw
 
-from ...utilities import wildcard_file_resolution
+from pymedphys_utilities.utilities import wildcard_file_resolution
 from ...dicom import (
     extract_depth_dose, extract_profiles, arbitrary_profile_from_dicom_dose)
 

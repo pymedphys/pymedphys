@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 
 from pymedphys_utilities.libutils import get_imports
 from ...deliverydata import get_delivery_parameters
-from ...utilities import (
+from pymedphys_utilities.utilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath

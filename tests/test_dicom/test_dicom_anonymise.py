@@ -15,7 +15,7 @@ from pymedphys.dicom import (
     is_anonymised_directory,
     is_anonymised_file
 )
-from pymedphys.utilities import remove_file, remove_dir
+from pymedphys_utilities.utilities import remove_file, remove_dir
 
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(dirname(HERE), 'data', 'dicom_anonymise')
