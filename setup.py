@@ -48,7 +48,6 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering :: Medical Science Apps.',
         'Topic :: Scientific/Engineering :: Physics',
@@ -77,23 +76,7 @@ setup(
         'pymedphys_utilities',
         'pymedphys_workshops',
         'pymedphys_wrappers',
-        'pymedphys_xlwings',
-        'attrs',
-        'dataclasses; python_version=="3.6"',
-        'keyring',
-        'matplotlib',
-        'notebook',
-        'numpy < 1.16, >= 1.12',
-        'pandas',
-        'Pillow',
-        'psutil',
-        'pydicom >= 1.0',
-        'pymssql',
-        'python-dateutil',
-        'scipy',
-        'shapely',
-        'xarray',
-        'xlwings; platform_system != "Linux"'
+        'pymedphys_xlwings'
     ],
     extras_require={
         'docs': [
