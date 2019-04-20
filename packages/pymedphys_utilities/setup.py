@@ -1,5 +1,5 @@
 from glob import glob
-from os.path import abspath, basename, dirname, join as pjoin, splitext
+from os.path import abspath, dirname, join as pjoin
 from setuptools import setup, find_packages
 
 root = dirname(abspath(__file__))
@@ -10,16 +10,26 @@ def execfile(fname, globs, locs=None):
     exec(compile(open(fname).read(), fname, "exec"), globs, locs)
 
 
+packages = find_packages('src')
+root_packages = [
+    package
+    for package in packages
+    if "." not in package
+]
+
+assert len(root_packages) == 1
+package = root_packages[0]
+
 version_ns = {}  # type: ignore
 version_filepath = glob(
-    pjoin(root, 'src', 'pymedphys*', '_version.py'))[0]
+    pjoin(root, 'src', package, '_version.py'))[0]
 execfile(version_filepath, version_ns)
 
 version = version_ns['__version__']
 
 
 setup(
-    name="pymedphys_utilities",
+    name=package,
     version=version,
     author="PyMedPhys Contributors",
     author_email="developers@pymedphys.com",
@@ -34,7 +44,7 @@ setup(
         'Intended Audience :: Science/Research',
         'Intended Audience :: Healthcare Industry'
     ],
-    packages=find_packages('src'),
+    packages=packages,
     package_dir={'': 'src'},
-    license='AGPLv3+'
+    license='AGPL-3.0-or-later'
 )

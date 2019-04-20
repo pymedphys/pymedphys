@@ -53,7 +53,7 @@ setup(
             'pymedphys=pymedphys.cli.main:pymedphys_cli'
         ],
     },
-    license='AGPLv3+',
+    license='AGPL-3.0-or-later',
     install_requires=[
         'attrs',
         'dataclasses; python_version=="3.6"',
