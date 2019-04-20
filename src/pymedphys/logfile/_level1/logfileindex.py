@@ -42,7 +42,7 @@ from ...msq import (
     multi_mosaiq_connect, get_mosaiq_delivery_details, OISDeliveryDetails,
     NoMosaiqEntries)
 
-from ...trf import Header, decode_header_from_file, date_convert
+from pymedphys_fileformats.trf import Header, decode_header_from_file, date_convert
 
 
 IMPORTS = get_imports(globals())

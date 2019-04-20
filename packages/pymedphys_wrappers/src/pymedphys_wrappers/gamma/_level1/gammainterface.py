@@ -22,14 +22,16 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
 # import numpy as np
 # import matplotlib.pyplot as plt
 
 from pymedphys_utilities.libutils import get_imports
 from pymedphys_dicom.dicom import coords_and_dose_from_dicom
 
-from .._level1.gammafilter import gamma_filter_numpy, calculate_pass_rate
-from .._level2.gammashell import gamma_shell
+from pymedphys_analysis.gamma import (
+    gamma_filter_numpy, calculate_pass_rate, gamma_shell)
+
 
 IMPORTS = get_imports(globals())
 

@@ -43,7 +43,7 @@ from pymedphys_utilities.utilities import (
 )
 from ...msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
 from pymedphys_analysis.mudensity import calc_mu_density
-from ...trf import delivery_data_from_logfile
+from pymedphys_fileformats.trf import delivery_data_from_logfile
 
 
 IMPORTS = get_imports(globals())

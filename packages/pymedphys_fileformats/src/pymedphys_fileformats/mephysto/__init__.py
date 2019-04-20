@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,25 +24,21 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A suite of functions that model electron insert/cutout factors by
-parameterising them as equivalent ellipses. Available functions include:
+"""A Mephysto toolbox.
 
->>> from pymedphys.electronfactors import (
-...     parameterise_insert,
-...     spline_model,
-...     calculate_deformability,
-...     spline_model_with_deformability,
-...     calculate_percent_prediction_differences,
-...     visual_alignment_of_equivalent_ellipse)
+Examples:
+    >>> from pymedphys.mephysto import load_mephysto
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401,W0614,C0103,C0413
 
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.electronfactors import *
-from ._level2.visualisation import *
+from ._level1.csvoutput import *
+from ._level1.mccread import *
+from ._level2.load_mephysto import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.electronfactors', '._level2.visualisation'
-], package='pymedphys.electronfactors')
+    '._level1.csvoutput', '._level1.mccread',
+    '._level2.load_mephysto'
+], package='pymedphys_fileformats.mephysto')

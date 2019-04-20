@@ -34,7 +34,6 @@ This module makes use of some of the ideas presented within
 
 import sys
 from typing import Optional
-import itertools
 from dataclasses import dataclass
 
 import numpy as np

@@ -26,7 +26,7 @@
 from collections import namedtuple
 
 import numpy as np
-from scipy.interpolate import interp1d
+# from scipy.interpolate import interp1d
 
 from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
@@ -181,20 +181,21 @@ def write_prs(x_prof, y_prof,file_name=None,
             [str(int(1000*i[1])) for i in x_prof + y_prof] + \
             ['0', '0', '0', '0\n']
 
+    else:
+        raise ValueError("invalid x and y coords provided")
+    # else:  # INTERPOLATE X,Y COORDINATES ONTO DETECTOR POSITIONS
+    #     interpolator = interp1d([i[0] for i in x_prof], [i[1] for i in x_prof])
+    #     # counts_x = []
+    #     counts_x = [float(i) for i in list(map(interpolator, x_vals))]
 
-    else:  # INTERPOLATE X,Y COORDINATES ONTO DETECTOR POSITIONS
-        interpolator = interp1d([i[0] for i in x_prof], [i[1] for i in x_prof])
-        # counts_x = []
-        counts_x = [float(i) for i in list(map(interpolator, x_vals))]
+    #     interpolator = interp1d([i[0] for i in y_prof], [i[1] for i in y_prof])
+    #     # counts_y = []
+    #     counts_y = [float(i) for i in list(map(interpolator, y_vals))]
 
-        interpolator = interp1d([i[0] for i in y_prof], [i[1] for i in y_prof])
-        # counts_y = []
-        counts_y = [float(i) for i in list(map(interpolator, y_vals))]
-
-        # 1000 COUNTS PER CGY
-        counts = ['Data:', '0', '0', '0', '0'] + \
-            [str(int(1000*i)) for i in counts_x + counts_y] + \
-            ['0', '0', '0', '0\n']
+    #     # 1000 COUNTS PER CGY
+    #     counts = ['Data:', '0', '0', '0', '0'] + \
+    #         [str(int(1000*i)) for i in counts_x + counts_y] + \
+    #         ['0', '0', '0', '0\n']
 
 
 

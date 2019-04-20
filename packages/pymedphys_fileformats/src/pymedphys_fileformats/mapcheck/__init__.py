@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Paul King
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,16 +24,15 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-# pylint: disable=W0401,W0614
+"""
+"""
+
+# pylint: disable=W0401,W0614,C0103,C0413
 
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.devicessncprofiler import *
-from ._level1.devicessncmapcheck import *
-from ._level1.devicesfilm import *
+from ._level1.mapcheck_txt import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.devicessncprofiler',
-    '._level1.devicessncmapcheck',
-    '._level1.devicesfilm'
-], package='pymedphys.devices')
+    '._level1.mapcheck_txt'
+], package='pymedphys_fileformats.mapcheck')

@@ -26,7 +26,7 @@
 """A film toolbox.
 
 Example:
-    >>> from pymedphys.film import get_interpolated_dose
+    >>> from pymedphys_analysis.film import get_interpolated_dose
 """
 
 # pylint: disable=W0401,W0614
@@ -34,7 +34,8 @@ Example:
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
 from ._level1.film import *
+from ._level1.narrow_png import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.film'
-], package='pymedphys.film')
+    '._level1.film', '._level1.narrow_png'
+], package='pymedphys_analysis.film')

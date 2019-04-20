@@ -27,7 +27,7 @@ import os
 
 import numpy as np
 
-from pymedphys.devices import write_prs
+from pymedphys_fileformats.profiler import write_prs
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "../data/devices/profiler")

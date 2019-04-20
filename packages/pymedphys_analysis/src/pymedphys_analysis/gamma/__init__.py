@@ -28,7 +28,6 @@ functions include:
 
 >>> from pymedphys_analysis.gamma import (
 ...     gamma_shell,
-...     gamma_dicom,
 ...     gamma_filter_numpy,
 ...     gamma_filter_brute_force)
 
@@ -43,9 +42,7 @@ from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
 from ._level1.gammafilter import *
 from ._level2.gammashell import *
-from ._level3.gammainterface import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.gammafilter', '._level2.gammashell',
-    '._level3.gammainterface'
+    '._level1.gammafilter', '._level2.gammashell'
 ], package='pymedphys_analysis.gamma')

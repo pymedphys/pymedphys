@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Cancer Care Associates
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,21 +24,15 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A Mephysto toolbox.
-
-Examples:
-    >>> from pymedphys.mephysto import load_mephysto
+"""
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413
 
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.csvoutput import *
-from ._level1.mccread import *
-from ._level2.load_mephysto import *
+from ._level1.profiler_prs import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.csvoutput', '._level1.mccread',
-    '._level2.load_mephysto'
-], package='pymedphys.mephysto')
+    '._level1.profiler_prs'
+], package='pymedphys_fileformats.profiler')

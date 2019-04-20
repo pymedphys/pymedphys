@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Paul King
+# Copyright (C) 2018 PyMedPhys Contributors
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,29 +23,15 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import os
+"""
+"""
 
-import numpy as np
+# pylint: disable=W0401,W0614,C0413,W0611
 
-from pymedphys_fileformats.profiler import read_prs
+from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../data/devices/profiler")
+from ._level1.gammainterface import *
 
-
-def test_read_prs():
-
-    file_name = os.path.join(DATA_DIRECTORY, 'test_varian_open.prs')
-    assert np.allclose(read_prs(file_name).cax, 45.50562901780488)
-    assert np.allclose(read_prs(file_name).x[0][1], 0.579460838649598)
-    assert np.allclose(read_prs(file_name).y[0][1], 0.2910764234184594)
-
-    file_name = os.path.join(DATA_DIRECTORY, 'test_varian_wedge.prs')
-    assert np.allclose(read_prs(file_name).cax, 21.863167869662274)
-    assert np.allclose(read_prs(file_name).x[0][1], 0.5626051581458927)
-    assert np.allclose(read_prs(file_name).y[0][1], 0.260042064635505)
-
-    file_name = os.path.join(DATA_DIRECTORY, 'test_tomo_50mm.prs')
-    assert np.allclose(read_prs(file_name).cax, 784.320114110518)
-    assert np.allclose(read_prs(file_name).x[0][1], 563.4064789252321)
-    assert np.allclose(read_prs(file_name).y[0][1], 1.8690221773721463)
+clean_and_verify_levelled_modules(globals(), [
+    '._level1.gamma'
+], package='pymedphys_wrappers.gamma')
