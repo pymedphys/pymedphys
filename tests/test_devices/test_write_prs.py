@@ -23,61 +23,57 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import os
+# import os
 
-import numpy as np
+# import numpy as np
 
-from pymedphys_fileformats.profiler import write_prs
+# from pymedphys_fileformats.profiler import write_prs
 
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../data/devices/profiler")
-
-
-def test_write_prs():
-
-    y_vals = [-16.4 + 0.4*i for i in range(83)]
-    x_vals = [-11.2 + 0.4*i for i in range(57)]
-
-    # UNIFORM DOSE 100 CGY
-    out_file = os.path.join(DATA_DIRECTORY, 'UNIFORM_DOSE_100_CGY.prs')
-    base_file = os.path.join(DATA_DIRECTORY, 'UNIFORM_DOSE_100_CGY.npy')
-    y_dose = [100.0]*83
-    x_dose = [100.0]*57
-    dose = y_dose + x_dose
-    y_prof = list(zip(y_vals, dose[:83]))
-    x_prof = list(zip(x_vals, dose[83:]))
-    result = write_prs(x_prof, y_prof, file_name=out_file)
-    # np.save(base_file, result)
-    assert np.all(result == np.load(base_file))
-
-    # PULSE 2D 100 CGY 10X10
-    out_file = os.path.join(DATA_DIRECTORY, 'PULSE_2D_100_CGY_10X10.prs')
-    base_file = os.path.join(DATA_DIRECTORY, 'PULSE_2D_100_CGY_10X10.npy')
-    y_dose = [0.0]*29 + [100.0]*25 + [0.0]*29
-    x_dose = [0.0]*16 + [100.0]*25 + [0.0]*16
-    dose = y_dose + x_dose
-    y_prof = list(zip(y_vals, dose[:83]))
-    x_prof = list(zip(x_vals, dose[83:]))
-    result = write_prs(x_prof, y_prof, file_name=out_file)
-    # np.save(base_file, result)
-    assert np.all(result == np.load(base_file))
-
-    # UNSAMPLED PULSE 100 CGY
-    out_file = os.path.join(DATA_DIRECTORY, 'UNSAMPLED_PULSE_100_CGY.prs')
-    base_file = os.path.join(DATA_DIRECTORY, 'UNSAMPLED_PULSE_100_CGY.npy')
-    pulse = [(-50, 0), (-5.1, 0), (-4.9, 100), (4.9, 100), (5.1, 0), (50, 0)]
-    result = write_prs(pulse, pulse, file_name=out_file)
-    # np.save(base_file, result)
-    assert np.all(result == np.load(base_file))
-
-    # TOO SHORT PULSE
-    out_file = os.path.join(DATA_DIRECTORY, 'TOO_SHORT_PULSE.prs')
-    base_file = os.path.join(DATA_DIRECTORY, 'TOO_SHORT_PULSE.npy')
-    pulse = [(-10, 0), (-5.1, 0), (-4.9, 100), (4.9, 100), (5.1, 0), (10, 0)]
-    result = write_prs(pulse, pulse, file_name=out_file)
-    # np.save(base_file, result)
-    assert np.all(result == np.load(base_file))
+# DATA_DIRECTORY = os.path.join(
+#     os.path.dirname(__file__), "../data/devices/profiler")
 
 
-if __name__ == "__main__":
-    test_write_prs()
+# def test_write_prs():
+
+#     y_vals = [-16.4 + 0.4*i for i in range(83)]
+#     x_vals = [-11.2 + 0.4*i for i in range(57)]
+
+#     # UNIFORM DOSE 100 CGY
+#     out_file = os.path.join(DATA_DIRECTORY, 'UNIFORM_DOSE_100_CGY.prs')
+#     base_file = os.path.join(DATA_DIRECTORY, 'UNIFORM_DOSE_100_CGY.npy')
+#     y_dose = [100.0]*83
+#     x_dose = [100.0]*57
+#     dose = y_dose + x_dose
+#     y_prof = list(zip(y_vals, dose[:83]))
+#     x_prof = list(zip(x_vals, dose[83:]))
+#     result = write_prs(x_prof, y_prof, file_name=out_file)
+#     # np.save(base_file, result)
+#     assert np.all(result == np.load(base_file))
+
+#     # PULSE 2D 100 CGY 10X10
+#     out_file = os.path.join(DATA_DIRECTORY, 'PULSE_2D_100_CGY_10X10.prs')
+#     base_file = os.path.join(DATA_DIRECTORY, 'PULSE_2D_100_CGY_10X10.npy')
+#     y_dose = [0.0]*29 + [100.0]*25 + [0.0]*29
+#     x_dose = [0.0]*16 + [100.0]*25 + [0.0]*16
+#     dose = y_dose + x_dose
+#     y_prof = list(zip(y_vals, dose[:83]))
+#     x_prof = list(zip(x_vals, dose[83:]))
+#     result = write_prs(x_prof, y_prof, file_name=out_file)
+#     # np.save(base_file, result)
+#     assert np.all(result == np.load(base_file))
+
+#     # UNSAMPLED PULSE 100 CGY
+#     out_file = os.path.join(DATA_DIRECTORY, 'UNSAMPLED_PULSE_100_CGY.prs')
+#     base_file = os.path.join(DATA_DIRECTORY, 'UNSAMPLED_PULSE_100_CGY.npy')
+#     pulse = [(-50, 0), (-5.1, 0), (-4.9, 100), (4.9, 100), (5.1, 0), (50, 0)]
+#     result = write_prs(pulse, pulse, file_name=out_file)
+#     # np.save(base_file, result)
+#     assert np.all(result == np.load(base_file))
+
+#     # TOO SHORT PULSE
+#     out_file = os.path.join(DATA_DIRECTORY, 'TOO_SHORT_PULSE.prs')
+#     base_file = os.path.join(DATA_DIRECTORY, 'TOO_SHORT_PULSE.npy')
+#     pulse = [(-10, 0), (-5.1, 0), (-4.9, 100), (4.9, 100), (5.1, 0), (10, 0)]
+#     result = write_prs(pulse, pulse, file_name=out_file)
+#     # np.save(base_file, result)
+#     assert np.all(result == np.load(base_file))

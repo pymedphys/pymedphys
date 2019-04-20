@@ -34,7 +34,7 @@ from pymedphys_numerics.deliverydata import (
 from pymedphys_analysis.mudensity import (
     calc_mu_density, calc_mu_density_return_grid,
     calc_mu_density_bygantry_return_grid)
-from ...msq import multi_fetch_and_verify_mosaiq
+from pymedphys_sql.msq import multi_fetch_and_verify_mosaiq
 from pymedphys_fileformats.trf import delivery_data_from_logfile
 
 from .._level1.logfileanalyse import calc_comparison, plot_results

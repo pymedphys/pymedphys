@@ -173,7 +173,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     >>> from pymedphys_analysis.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
-    >>> from pymedphys.msq import (
+    >>> from pymedphys_sql.msq import (
     ...     mosaiq_connect, multi_fetch_and_verify_mosaiq)
     >>>
     >>> def mu_density_from_mosaiq(msq_server_name, field_id):
@@ -198,7 +198,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     >>> from pymedphys_analysis.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
-    >>> from pymedphys.trf import delivery_data_from_logfile
+    >>> from pymedphys_fileformats.trf import delivery_data_from_logfile
     >>>
     >>> def mu_density_from_logfile(filepath):
     ...     delivery_data = delivery_data_from_logfile(filepath)

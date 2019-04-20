@@ -41,7 +41,7 @@ from pymedphys_utilities.utilities import (
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath
 )
-from ...msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
+from pymedphys_sql.msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
 from pymedphys_analysis.mudensity import calc_mu_density
 from pymedphys_fileformats.trf import delivery_data_from_logfile
 

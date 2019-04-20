@@ -27,9 +27,9 @@
 """A toolbox for handling trf files.
 
 Examples:
-    >>> from pymedphys.trf import identify_logfile
-    >>> from pymedphys.trf import delivery_data_from_logfile
-    >>> from pymedphys.trf import decode_header_from_file
+    >>> from pymedphys_fileformats.trf import identify_logfile
+    >>> from pymedphys_fileformats.trf import delivery_data_from_logfile
+    >>> from pymedphys_fileformats.trf import decode_header_from_file
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413
@@ -48,4 +48,4 @@ clean_and_verify_levelled_modules(globals(), [
     '._level1.trfconstants', '._level1.trfheader',
     '._level2.trfidentify', '._level2.trftable', '._level3.trf2pandas',
     '._level4.trf2deliverydata', '._level4.trf2csv'
-], package='pymedphys.trf')
+], package='pymedphys_fileformats.trf')
