@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "pymedphys_workshops"
-version = "0.1.0"
+name = "pymedphys"
+version = "0.8.0.dev0"
 description = ""
 authors = ["PyMedPhys Contributors <developers@pymedphys.com>"]
 license = "AGPL-3.0-or-later"

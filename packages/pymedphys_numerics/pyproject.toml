@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "pymedphys_workshops"
+name = "pymedphys_numerics"
 version = "0.1.0"
 description = ""
 authors = ["PyMedPhys Contributors <developers@pymedphys.com>"]
