@@ -9,7 +9,7 @@ import json
 try:
     HERE = os.path.dirname(__file__)
 except NameError:
-    HERE = os.path.join('src', 'pymedphys')
+    HERE = os.path.join('packages', 'pymedphys', 'src', 'pymedphys')
 
 with open(os.path.join(HERE, 'gui', 'package.json')) as file:
     data = json.load(file)

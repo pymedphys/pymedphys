@@ -18,7 +18,8 @@ def read(*names, **kwargs):
     ).read()
 
 
-packages = find_packages('src')
+package_dir = pjoin('packages', 'pymedphys', 'src')
+packages = find_packages(package_dir)
 root_packages = [
     package
     for package in packages
@@ -30,7 +31,7 @@ package = root_packages[0]
 
 version_ns = {}  # type: ignore
 version_filepath = glob(
-    pjoin(root, 'src', package, '_version.py'))[0]
+    pjoin(root, package_dir, package, '_version.py'))[0]
 execfile(version_filepath, version_ns)
 
 version = version_ns['__version__']
@@ -55,7 +56,7 @@ setup(
         'Intended Audience :: Healthcare Industry'
     ],
     packages=packages,
-    package_dir={'': 'src'},
+    package_dir={'': package_dir},
     include_package_data=True,
     package_data={'pymedphys': []},
     entry_points={

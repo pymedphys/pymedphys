@@ -1,7 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "install": "lerna bootstrap"
+    "install": "lerna bootstrap",
+    "postinstall": "pip install -e ."
   },
   "devDependencies": {
     "lerna": "^3.13.3"

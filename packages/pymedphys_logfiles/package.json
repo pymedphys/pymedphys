@@ -1,0 +1,7 @@
+{
+  "name": "pymedphys_logfiles",
+  "private": true,
+  "scripts": {
+    "install": "pip install -e ."
+  }
+}
