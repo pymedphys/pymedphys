@@ -27,7 +27,7 @@
 """A logfile toolbox.
 
 Examples:
-    >>> from pymedphys.logfile import index_logfiles
+    >>> from pymedphys_logfiles.logfile import index_logfiles
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413
@@ -44,4 +44,4 @@ clean_and_verify_levelled_modules(globals(), [
     '._level1.logfileanalyse', '._level1.diagnostics_zips',
     '._level1.logfileindex', '._level2.logfilebygantry',
     '._level2.orchestration'
-], package='pymedphys.logfile')
+], package='pymedphys_logfiles.logfile')

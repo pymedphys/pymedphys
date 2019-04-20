@@ -1,9 +1,7 @@
-"""Module docstring
-"""
+"""Module docstring."""
 
 
 import pymedphys_analysis as analysis
-import pymedphys_dicom as dicom
 import pymedphys_fileformats as fileformats
 import pymedphys_labs as _labs
 import pymedphys_logfiles as logfiles

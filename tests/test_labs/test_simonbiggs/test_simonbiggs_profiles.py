@@ -28,7 +28,7 @@ import xarray as xr
 
 from deepdiff import DeepDiff
 
-from pymedphys._labs.simonbiggs.profilescore import DoseProfile
+from pymedphys_labs.simonbiggs.profilescore import DoseProfile
 
 
 def linear(x):
