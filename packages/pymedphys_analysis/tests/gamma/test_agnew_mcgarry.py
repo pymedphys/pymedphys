@@ -24,12 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""The tests given here are replicated using pymedphys_analysis.gamma from the method
-given within the following paper:
+"""The tests given here are replicated using pymedphys_analysis.gamma from the
+method given within the following paper:
 
 > C. Agnew, C. McGarry, A tool to include gamma analysis software into a
-> quality assurance program. Radiotherapy and Oncology (2016),
-> http://dx.doi.org/10.1016/j.radonc.2015.11.034
+> quality assurance program. Radiotherapy and Oncology (2016), >
+http://dx.doi.org/10.1016/j.radonc.2015.11.034
 """
 
 
@@ -44,7 +44,7 @@ import pytest
 
 
 DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "../data/gamma/agnew_mcgarry_images")
+    os.path.dirname(__file__), "data", "agnew_mcgarry_images")
 
 REF_VMAT_1mm = os.path.abspath(os.path.join(
     DATA_DIRECTORY, 'H&N_VMAT_Reference_1mmPx.dcm'))
