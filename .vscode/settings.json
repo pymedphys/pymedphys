@@ -7,14 +7,20 @@
   "editor.insertSpaces": true,
   "editor.tabSize": 2,
   "[python]": {
-    "editor.tabSize": 4
+    "editor.tabSize": 4,
+    "editor.rulers": [
+      72,
+      79,
+      119
+    ]
   },
   "[yaml]": {
     "editor.tabSize": 4
   },
-  "editor.rulers": [
-    72,
-    79,
-    119
-  ],
+  "[rst]": {
+    "editor.rulers": [
+      79,
+      119
+    ]
+  },
 }
