@@ -50,4 +50,4 @@ if HAS_XLWINGS:
     clean_and_verify_levelled_modules(globals(), [
         '._level1.interpolate', '._level1.numpy', '._level1.dicom',
         '._level1.mephysto', '._level1.os_path'
-    ], package='pymedphys.xlwings')
+    ], package='pymedphys_xlwings.xlwings')
