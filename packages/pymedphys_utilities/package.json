@@ -3,5 +3,6 @@
   "private": true,
   "scripts": {
     "install": "pip install -e ."
-  }
+  },
+  "version": "0.0.0"
 }

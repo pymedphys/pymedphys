@@ -8,5 +8,6 @@
     "pymedphys_utilities": "^0.0.0",
     "pymedphys_numerics": "^0.0.0",
     "pymedphys_sql": "^0.0.0"
-  }
+  },
+  "version": "0.0.0"
 }
