@@ -6,7 +6,7 @@ Gamma Index
 Summary
 *******
 
-.. automodule:: pymedphys.gamma
+.. automodule:: pymedphys_analysis.gamma
     :no-members:
 
 |
