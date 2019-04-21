@@ -33,5 +33,5 @@ from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 from ._level1.gammainterface import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.gamma'
+    '._level1.gammainterface'
 ], package='pymedphys_wrappers.gamma')
