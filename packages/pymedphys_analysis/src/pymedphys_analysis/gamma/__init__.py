@@ -26,7 +26,7 @@
 """A range of functions for calculating the gamma index. Available
 functions include:
 
->>> from pymedphys_analysis.gamma import (
+>>> from pymedphys.gamma import (
 ...     gamma_shell,
 ...     gamma_filter_numpy,
 ...     gamma_filter_brute_force)

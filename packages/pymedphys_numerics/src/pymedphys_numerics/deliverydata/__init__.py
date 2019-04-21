@@ -27,7 +27,7 @@
 """Model insert factors and parameterise inserts as equivalent ellipses.
 
 Example:
-    >>> from pymedphys_numerics.deliverydata import DeliveryData
+    >>> from pymedphys.deliverydata import DeliveryData
 """
 
 # pylint: disable=W0401,W0614

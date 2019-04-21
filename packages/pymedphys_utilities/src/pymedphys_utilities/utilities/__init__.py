@@ -27,7 +27,7 @@
 """A range of utility functions.
 
 Examples:
-    >>> from pymedphys_utilities.utilities import get_filepath
+    >>> from pymedphys.utilities import get_filepath
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413

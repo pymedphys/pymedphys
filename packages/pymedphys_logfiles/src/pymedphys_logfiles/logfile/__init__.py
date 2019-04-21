@@ -27,7 +27,7 @@
 """A logfile toolbox.
 
 Examples:
-    >>> from pymedphys_logfiles.logfile import index_logfiles
+    >>> from pymedphys.logfile import index_logfiles
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413

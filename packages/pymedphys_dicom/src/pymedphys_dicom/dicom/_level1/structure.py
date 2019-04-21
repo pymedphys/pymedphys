@@ -117,7 +117,7 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
         a cube that fits the contours. Choosing initial values close to the
         structure set, and in the desired orientation will allow consistent
         results. See examples within
-        `pymedphys_analysis.geometry.cubify_cube_definition`_ on what the effects
+        `pymedphys.geometry.cubify_cube_definition`_ on what the effects
         of each of the three points are on the resulting cube.
     structure_name
         The DICOM label of the cube structure
@@ -138,7 +138,7 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
     --------
     >>> import numpy as np
     >>> import pydicom
-    >>> from pymedphys_dicom.dicom import get_structure_aligned_cube
+    >>> from pymedphys.geometry import get_structure_aligned_cube
     >>>
     >>> struct_path = 'tests/data/dicom_struct/example_structures.dcm'
     >>> dcm_struct = pydicom.dcmread(struct_path, force=True)

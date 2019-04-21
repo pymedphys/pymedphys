@@ -27,7 +27,7 @@
 """A suite of functions that model electron insert/cutout factors by
 parameterising them as equivalent ellipses. Available functions include:
 
->>> from pymedphys_shapes.electronfactors import (
+>>> from pymedphys.electronfactors import (
 ...     parameterise_insert,
 ...     spline_model,
 ...     calculate_deformability,

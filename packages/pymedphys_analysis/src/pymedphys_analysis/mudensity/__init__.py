@@ -26,7 +26,7 @@
 """A suite of functions to determine the MU Density for a range of
 formats:
 
->>> from pymedphys_analysis.mudensity import (
+>>> from pymedphys.mudensity import (
 ...    calc_mu_density
 ...    calc_single_control_point
 ...    single_mlc_pair

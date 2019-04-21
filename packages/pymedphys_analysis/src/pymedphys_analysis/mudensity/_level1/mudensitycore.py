@@ -422,7 +422,7 @@ def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
 
     Examples
     --------
-    See `pymedphys_analysis.mudensity.calc_mu_density`_.
+    See `pymedphys.mudensity.calc_mu_density`_.
     """
 
     leaf_pair_widths = np.array(leaf_pair_widths)
@@ -465,7 +465,7 @@ def display_mu_density(grid, mu_density, grid_resolution=None):
 
     Examples
     --------
-    See `pymedphys_analysis.mudensity.calc_mu_density`_.
+    See `pymedphys.mudensity.calc_mu_density`_.
     """
     if grid_resolution is None:
         grid_resolution = grid['mlc'][1] - grid['mlc'][0]

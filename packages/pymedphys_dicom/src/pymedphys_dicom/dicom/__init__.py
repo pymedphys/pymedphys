@@ -25,7 +25,7 @@
 
 """A DICOM toolbox. Available functions include:
 
->>> from pymedphys_dicom.dicom import (
+>>> from pymedphys.dicom import (
 ...
 ...     # General functions
 ...     anonymise_dataset,

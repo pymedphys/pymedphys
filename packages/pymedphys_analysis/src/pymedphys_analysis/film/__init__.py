@@ -26,7 +26,7 @@
 """A film toolbox.
 
 Example:
-    >>> from pymedphys_analysis.film import get_interpolated_dose
+    >>> from pymedphys.film import get_interpolated_dose
 """
 
 # pylint: disable=W0401,W0614

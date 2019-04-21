@@ -28,7 +28,7 @@
 
 Available Functions
 -------------------
->>> from pymedphys_numerics.coordinates import (
+>>> from pymedphys.coordinates import (
 ...     rotate_about_z,
 ...     translate)
 """

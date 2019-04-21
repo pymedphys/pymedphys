@@ -27,7 +27,7 @@
 """A Mosaiq toolbox.
 
 Examples:
-    >>> from pymedphys_sql.msq import mosaiq_connect
+    >>> from pymedphys.msq import mosaiq_connect
 """
 
 # pylint: disable=W0401,W0614,C0103,C0413

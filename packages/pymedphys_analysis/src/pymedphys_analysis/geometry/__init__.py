@@ -27,7 +27,7 @@
 """A toolbox containing some useful geometry functions. Available
 functions include:
 
->>> from pymedphys_analysis.geometry import (
+>>> from pymedphys.geometry import (
 ...     cubify_cube_definition,
 ...     plot_cube)
 """
