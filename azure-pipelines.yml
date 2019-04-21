@@ -18,6 +18,11 @@ jobs:
           test_title: Docs
           toxenv: docs
           python: 3.7
+        Docs:
+          image_name: ubuntu-16.04
+          test_title: Pytest with Docstrings Included
+          toxenv: doctest
+          python: 3.7
         # Layer-Lint:
         #   image_name: ubuntu-16.04
         #   test_title: Layer-Lint
