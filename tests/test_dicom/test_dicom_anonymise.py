@@ -1,7 +1,5 @@
-
 from os import makedirs, replace
 from os.path import abspath, basename, dirname, join as pjoin
-import shutil
 from uuid import uuid4
 
 import pydicom
@@ -30,13 +28,16 @@ def test_is_anonymised_dataset():
     ds_anon_manual = ds
     ds_anon_manual.PatientName = "Anonymous"
 
+
     ds_anon_func = anonymise_dataset(ds, delete_private_tags=False,
                                      copy_dataset=True)
 
     # Patient Name should've been the only non-anonymous value. If not,
     # test data has been changed
     for elem_manual, elem_func in zip(ds_anon_manual, ds_anon_func):
-        assert elem_manual.value == elem_func.value
+        # Assumes all non-private, identifying tags are top-level
+        if elem_manual.VR != 'SQ':
+            assert elem_manual == elem_func
 
     assert not is_anonymised_dataset(ds_anon_manual, ignore_private_tags=False)
     assert not is_anonymised_dataset(ds_anon_func, ignore_private_tags=False)
