@@ -439,11 +439,16 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
 
 
 def non_private_tags_in_dicom_dataset(ds):
+    """Return all non-private tags from a DICOM dataset.
+    """
     non_private_tags = [elem.tag for elem in ds if not elem.tag.is_private]
     return non_private_tags
 
 
 def unknown_tags_in_dicom_dataset(ds):
+    """Return all non-private tags from a DICOM dataset that do not
+    exist in the PyMedPhys copy of the DICOM dictionary.
+    """
 
     non_private_tags_in_dataset = np.array(
         non_private_tags_in_dicom_dataset(ds))
@@ -459,7 +464,8 @@ def unknown_tags_in_dicom_dataset(ds):
 
 
 def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
-
+    """Anonymise all desired DICOM elements. 
+    """
     for keyword in keywords_to_anonymise:
         if hasattr(ds_anon, keyword):
             if replace_values:
@@ -488,5 +494,8 @@ def _filter_identifying_keywords(keywords_to_leave_unchanged):
 
 
 def _get_anonymous_replacement_value(keyword):
+    """Get an appropriate dummy anonymisation value for a DICOM element
+    based on its value representation (VR)
+    """
     vr = BASELINE_KEYWORD_VR_DICT[keyword]
     return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
