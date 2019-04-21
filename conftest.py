@@ -18,5 +18,5 @@ def pytest_ignore_collect(path, config):
     return (
         relative_path.startswith('notebooks') or
         relative_path.startswith(build_dir) or
-        relative_path.startswith('node_modules')
+        'node_modules' in relative_path
     )
