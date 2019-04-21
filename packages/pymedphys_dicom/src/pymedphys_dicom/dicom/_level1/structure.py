@@ -140,7 +140,7 @@ def get_structure_aligned_cube(x0: np.ndarray, structure_name: str,
     >>> import pydicom
     >>> from pymedphys.geometry import get_structure_aligned_cube
     >>>
-    >>> struct_path = 'tests/data/dicom_struct/example_structures.dcm'
+    >>> struct_path = 'packages/pymedphys_dicom/tests/data/struct/example_structures.dcm'
     >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
     >>>
     >>> x0 = np.array([
