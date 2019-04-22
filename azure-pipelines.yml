@@ -1,46 +1,193 @@
 jobs:
-  - job: 'PyTest'
+  - job: Tox
 
     strategy:
       matrix:
-        linux:
-          imageName: 'ubuntu-16.04'
-          testTitle: 'Linux'
-        mac:
-          imageName: 'macos-10.13'
-          testTitle: 'macOS'
-        windows:
-          imageName: 'vs2017-win2016'
-          testTitle: 'Windows'
+        Pylint-All:
+          image_name: ubuntu-16.04
+          test_title: Pylint All
+          toxenv: pylint
+          python: 3.7
+        Pylint-Subpackages:
+          image_name: ubuntu-16.04
+          test_title: Pylint Subpackages
+          toxenv: analysis,dicom,fileformats,labs,logfiles,numerics,shapes,sql,utilities,workshops,wrappers,xlwings
+          python: 3.7
+        Docs:
+          image_name: ubuntu-16.04
+          test_title: Docs
+          toxenv: docs
+          python: 3.7
+        Pytest-DoctestModules:
+          image_name: ubuntu-16.04
+          test_title: Pytest with Docstrings Included
+          toxenv: doctest
+          python: 3.7
+        # Layer-Lint:
+        #   image_name: ubuntu-16.04
+        #   test_title: Layer-Lint
+        #   toxenv: layer_lint
+        #   python: 3.7
+        # mypy:
+        #   image_name: ubuntu-16.04
+        #   test_title: mypy
+        #   toxenv: mypy
+        #   python: 3.7
+        # Linux-Py36:
+        #   image_name: ubuntu-16.04
+        #   test_title: Linux Py36
+        #   toxenv: py36
+        #   python: 3.6
+        Linux-Py37:
+          image_name: ubuntu-16.04
+          test_title: Linux Py37
+          toxenv: py37
+          python: 3.7
 
     pool:
-      vmImage: $(imageName)
+      vmImage: $(image_name)
+
+    steps:
+    - task: UsePythonVersion@0
+      displayName: setup python
+      inputs:
+        versionSpec: $(python)
+
+    # - bash: export INSTALL_ON_LINUX=1; yarn
+    #   displayName: Run yarn
+
+    - bash: sudo apt-get install -y pandoc
+      displayName: Install Pandoc, need to make this only on doc run
+      condition: eq( variables['TOXENV'], 'docs' )
+
+    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+      displayName: Show python information
+
+    - bash: "python -m pip install -U pip setuptools --user"
+      displayName: Upgrade pip and setuptools
+
+    - bash: "python -m pip install -U tox --user"
+      displayName: Install tox
+
+    - bash: export INSTALL_ON_LINUX=1; python -m tox -e $TOXENV -p 8 -o --notest
+      displayName: Install test dependencies
+
+    - bash: python -m tox -e $TOXENV -p 8 -o
+      displayName: Run tests
+
+    - task: PublishTestResults@2
+      displayName: Publish test results
+      inputs:
+        testResultsFiles: junit/*.xml
+        testRunTitle: '$(test_title)'
+      condition: succeededOrFailed()
+
+
+#   - job: ToxWithConda
+
+#     strategy:
+#       matrix:
+#         windows-py36:
+#           image_name: vs2017-win2016
+#           test_title: Windows py36
+#           toxenv: py36
+#           python: 3.6
+#         windows-py37:
+#           image_name: vs2017-win2016
+#           test_title: Windows py37
+#           toxenv: py37
+#           python: 3.7
+
+#     pool:
+#       vmImage: $(image_name)
+
+#     steps:
+#     - task: CondaEnvironment@1
+#       inputs:
+#         createCustomEnvironment: true
+#         environmentName: pymedphys
+#         packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql
+#         updateConda: true
+#         createOptions: --channel conda-forge
+
+#     - bash: "source activate pymedphys && python -c \"import sys; print(sys.version); print(sys.executable)\""
+#       displayName: Show python information
+
+#     - bash: "source activate pymedphys && python -m pip install -U tox --user"
+#       displayName: Install tox
+
+#     - bash: "source activate pymedphys && python -m tox -e $TOXENV --notest"
+#       displayName: Install test dependencies
+
+#     - bash: "source activate pymedphys && python -m tox -e $TOXENV"
+#       displayName: Run tests
+
+#     - task: PublishTestResults@2
+#       displayName: Publish test results
+#       inputs:
+#         testResultsFiles: junit/*.xml
+#         testRunTitle: '$(test_title)'
+#       condition: succeededOrFailed()
+
+
+  - job: Conda
+
+    strategy:
+      matrix:
+        # mac-py36:
+        #   image_name: macos-10.13
+        #   test_title: macOS py36
+        #   toxenv: py36
+        #   python: 3.6
+        mac-py37:
+          image_name: macos-10.13
+          test_title: macOS py37
+          toxenv: py37
+          python: 3.7
+
+    pool:
+      vmImage: $(image_name)
 
     steps:
     - task: CondaEnvironment@1
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=3 pymedphys nbstripout pylint coverage mypy pytest xarray Pillow pip scipy numpy=1.15
+        packageSpecs: python=$(python) pip pymedphys
         updateConda: true
         createOptions: --channel conda-forge
 
-    - bash: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && brew install findutils && ln -s /usr/local/opt/findutils/libexec/gnubin/xargs /Users/vsts/.conda/envs/pymedphys/bin/xargs
-      displayName: 'Install Homebrew and GNU xargs'
-      condition: eq( variables['Agent.OS'], 'Darwin' )
+    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+      displayName: Show python information
 
-    - bash: source ./azure-pipelines/scripts/activate.sh && pip install -e .
-      displayName: 'Install development version of PyMedPhys'
-    - bash: source ./azure-pipelines/scripts/activate.sh && ./azure-pipelines/scripts/matplotlib-backend.sh
-      displayName: 'Set matplotlib backend to Agg'
-    - bash: source ./azure-pipelines/scripts/activate.sh && find . -iname \*.ipynb | xargs -d "\n" nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
-      displayName: 'Check that notebooks have no included output'
-    - bash: source ./azure-pipelines/scripts/activate.sh && python setup.py test
-      displayName: 'Run the full pytest suite'
+    - bash: yarn
+      displayName: Run yarn
+
+    - bash: "pip install -e .[testing]"
+      displayName: Install development version of PyMedPhys
+
+    - bash: "pytest -v"
+      displayName: Run tests
 
     - task: PublishTestResults@2
-      displayName: Publish Test Results
+      displayName: Publish test results
       inputs:
         testResultsFiles: junit/*.xml
-        testRunTitle: '$(testTitle)'
+        testRunTitle: '$(test_title)'
       condition: succeededOrFailed()
+
+
+  - job: NotebookOutputs
+
+    pool:
+      vmImage: 'ubuntu-16.04'
+
+    steps:
+    - bash: "python -m pip install -U pip setuptools --user"
+      displayName: Upgrade pip and setuptools
+
+    - bash: python -m pip install -U "nbstripout>=0.3.5" --user
+      displayName: Install nbstripout
+
+    - bash: find . -iname \*.ipynb | xargs -d "\n" python -m nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
+      displayName: Check that notebooks have no included output

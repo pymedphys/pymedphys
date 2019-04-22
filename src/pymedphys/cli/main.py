@@ -23,54 +23,53 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-import json
+import sys
 import argparse
 
-from ..dicom import adjust_machine_name_cli, adjust_rel_elec_density_cli
-from ..docker import server_cli
+from .dicom import dicom_cli
+from .docker import docker_cli
+from .logfile import logfile_cli
+from .trf import trf_cli
 
 
-def pymedphys_cli():
-    parser = argparse.ArgumentParser()
+class DefaultHelpParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+
+def define_parser():
+    parser = DefaultHelpParser(prog='pymedphys')
     subparsers = parser.add_subparsers()
 
     dicom_cli(subparsers)
     docker_cli(subparsers)
+    logfile_cli(subparsers)
+    trf_cli(subparsers)
+
+    return parser
+
+
+def pymedphys_cli():
+    parser = define_parser()
 
     args = parser.parse_args()
-    args.func(args)
 
+    if hasattr(args, 'func'):
+        args.func(args)
+    else:
+        subparser_names = [
+            attribute for attribute in dir(args)
+            if not attribute.startswith('_')
+        ]
 
-def dicom_cli(subparsers):
-    dicom_parser = subparsers.add_parser('dicom')
-    dicom_subparsers = dicom_parser.add_subparsers()
+        if not subparser_names:
+            parser.print_help()
+        else:
+            assert len(subparser_names) == 1
 
-    dicom_adjust_machine_name_parser = dicom_subparsers.add_parser(
-        'adjust-machine-name')
+            subparser_name = subparser_names[0]
+            assert getattr(args, subparser_name) is None
 
-    dicom_adjust_machine_name_parser.add_argument('input_file', type=str)
-    dicom_adjust_machine_name_parser.add_argument('output_file', type=str)
-    dicom_adjust_machine_name_parser.add_argument('new_machine_name', type=str)
-    dicom_adjust_machine_name_parser.set_defaults(func=adjust_machine_name_cli)
-
-    dicom_adjust_rel_elec_density_parser = dicom_subparsers.add_parser(
-        'adjust-rel-elec-density')
-
-    dicom_adjust_rel_elec_density_parser.add_argument('input_file', type=str)
-    dicom_adjust_rel_elec_density_parser.add_argument('output_file', type=str)
-    dicom_adjust_rel_elec_density_parser.add_argument(
-        'adjustment_map', type=str, nargs='+')
-    dicom_adjust_rel_elec_density_parser.set_defaults(
-        func=adjust_rel_elec_density_cli)
-
-
-def docker_cli(subparsers):
-    docker_parser = subparsers.add_parser('docker')
-    docker_subparsers = docker_parser.add_subparsers()
-
-    docker_server_parser = docker_subparsers.add_parser(
-        'server'
-    )
-
-    docker_server_parser.set_defaults(func=server_cli)
+            parser.parse_args([subparser_name, '--help'])

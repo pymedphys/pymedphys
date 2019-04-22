@@ -1,19 +1,29 @@
 Editing documentation
 =====================
 
-This documentation site uses a toolbox called Sphinx. This particular document
-aims to help contributors to improve the PyMedPhys documentation.
+This documentation site uses a toolbox called Sphinx. This particular
+document aims to help contributors to improve the PyMedPhys
+documentation.
 
-It presumes you have gone through the base contributing documentation.
+We recommend that you first read the `recommended setup for
+contribution`_ and `file structure`_ documentation pages before you
+proceed.
+
+.. _`recommended setup for contribution`: /developer/contributing.html
+.. _`file structure`: /developer/file-structure.html
 
 Prerequisites
 -------------
-To work on the documentation on your machine you will need the following extra
-libraries installed:
+You can install all of the additional dependencies required to edit the
+PyMedPhys documentation by running the following command in your
+terminal:
 
 .. code:: bash
 
-    pip install sphinx sphinx-autobuild numpydoc sphinx_rtd_theme
+    pip install -e .[docs]
+
+NB: these packages are not installed if you only run
+``pip install -e .`` or ``conda install pymedphys``.
 
 
 Starting a live update documentation server
@@ -22,9 +32,9 @@ Within the root pymedphys directory run the following command:
 
 .. code:: bash
 
-    sphinx-autobuild docs docs/_build/html
+    sphinx-autobuild -W -p 7070 docs docs/_build/html
 
-Then within a web browser go to http://127.0.0.1:8000
+Then within a web browser go to http://127.0.0.1:7070
 
 You may now edit the documentation within the docs directory and see the
 changes live update within your browser.
@@ -32,23 +42,30 @@ changes live update within your browser.
 
 Docstring extraction
 --------------------
-Some documentation is best written right within a given function itself. This
-type of documentation is called a **docstring**. However, this documentation should
-also be available in the main documentation and it is exceptionally important that
-this isn't written more than once. Duplicating documentation increases
-`software entropy <https://en.wikipedia.org/wiki/Software_entropy>`__. As time goes by,
-documentation updates may result in one or more copies being missed and becoming
-obsolete or inconsistent with the up-to-date copy. Even if all copies are updated correctly,
-unnecessary duplication adds to ongoing maintenance requirements. See the `DRY programming
-philosophy <https://en.wikipedia.org/wiki/Don%27t_repeat_yourself>`__ for more on this.
 
-To solve this problem, most of PyMedPhys' documentation is written as docstrings,
-which are then automatically extracted into the main documentation pages. For this
-to work properly, docstrings need to be formatted according to the numpy style. See
-the following sites for examples of how to conform to that style:
+Some documentation is best written right within a given function itself.
+This type of documentation is called a **docstring**. However, this
+documentation should also be available in the main documentation and it
+is exceptionally important that this isn't written more than once.
+Duplicating documentation increases `software entropy
+<https://en.wikipedia.org/wiki/Software_entropy>`__. As time goes by,
+documentation updates may result in one or more copies being missed and
+becoming obsolete or inconsistent with the up-to-date copy. Even if all
+copies are updated correctly, unnecessary duplication adds to ongoing
+maintenance requirements. See the `DRY programming philosophy
+<https://en.wikipedia.org/wiki/Don%27t_repeat_yourself>`__ for more on
+this.
 
-- `Napoleon Docs - Example NumPy Style Python Docstrings <https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html#example-numpy>`__
-- `numpydoc docstring guide <https://numpydoc.readthedocs.io/en/latest/format.html>`__
+To solve this problem, most of PyMedPhys' documentation is written as
+docstrings, which are then automatically extracted into the main
+documentation pages. For this to work properly, docstrings need to be
+formatted according to the numpy style. See the following sites for
+examples of how to conform to that style:
 
-See existing examples within PyMedPhys for how to include new function docstrings
-into the main PyMedPhys documentation.
+- `Napoleon Docs - Example NumPy Style Python Docstrings
+  <https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html#example-numpy>`__
+- `numpydoc docstring guide
+  <https://numpydoc.readthedocs.io/en/latest/format.html>`__
+
+See existing examples within PyMedPhys for how to include new function
+docstrings into the main PyMedPhys documentation.

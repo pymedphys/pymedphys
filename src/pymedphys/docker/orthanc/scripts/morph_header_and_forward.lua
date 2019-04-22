@@ -8,6 +8,7 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
 
     -- Write the DICOM content to some temporary file
     local received_filepath = instanceId .. '-received.dcm'
+    local intermediate_filepath = instanceId .. '-intermediate.dcm'
     local converted_filepath = instanceId .. '-converted.dcm'
 
     local plan_UID = '1.2.840.10008.5.1.4.1.1.481.5'
@@ -26,7 +27,10 @@ function OnStoredInstance(instanceId, tags, metadata, origin)
 
     if tags['SOPClassUID'] == structure_UID then
       print('Converting a structure set')
-      os.execute('pymedphys dicom adjust-rel-elec-density ' .. received_filepath .. ' ' .. converted_filepath .. ' "Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
+      os.execute('pymedphys dicom adjust-RED -i ' .. received_filepath .. ' ' .. intermediate_filepath .. ' "Couch Edge" 1.1 "Couch Foam Half Couch" 0.06 "Couch Outer Half Couch" 0.5')
+      os.execute('pymedphys dicom adjust-RED-by-structure-name ' .. intermediate_filepath .. ' ' .. converted_filepath)
+
+      os.remove(intermediate_filepath)
 
     elseif tags['SOPClassUID'] == plan_UID then
       print('Converting a plan')
