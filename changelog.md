@@ -34,14 +34,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Breaking Changes
 
-- In preparation for eventually stabilising the API a large number of
-  functions that were previously exposed have now been made private. No
-  function that was within the documentation has been removed. If there is a
-  function that you were using, and you want it to be exposed again please
-  let us know via the
-  [GitHub issues page](https://github.com/pymedphys/pymedphys/issues)
-  and we will be more than happy to expose it also. Bear in mind however that
-  the entire API that is currently exposed will likely change before a 1.0.0
+- A large number of functions that were previously exposed have now been made
+  private in preparation for eventually stabilising the API. No function that
+  was within the documentation has been removed. If there is a function that
+  you were using that you would like to be exposed via `import` again, please
+  let us know by
+  [opening an issue on GitHub](https://github.com/pymedphys/pymedphys/issues)
+  and we will happily re-expose it! However, please bear in mind that the
+  entire API that is currently exposed will likely change before a 1.0.0
   release.
 - `anonymise_dicom_dataset()` has been renamed to `anonymise_dataset()` to
   remove redundant labelling.
