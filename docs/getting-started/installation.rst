@@ -8,7 +8,7 @@ your workstation. Although not essential, we recommend that you install the
 found `here`_.
 
 .. _`Anaconda Python distribution`: https://www.anaconda.com/distribution/
-.. _`here`: /developer/contributing.html#python-anaconda
+.. _`here`: ../developer/contributing.html#python-anaconda
 
 Once you have a suitable Python installation, you can install the latest stable
 version of PyMedPhys via conda or pip as follows:
@@ -24,8 +24,16 @@ following commands in your terminal:
 .. code:: bash
 
     conda config --add channels conda-forge
+    conda create --name pmp python=3.7 # Optional.
+    conda activate pmp # Optional
     conda install pymedphys
 
+The optional commands create an isolated conda environment called "*pmp*"
+within which you can safely work without breaking other python installations
+or running into python package incompatibilities. For more on working with
+conda environments, see `*Managing environments*`_ in the Conda docs.
+
+.. _`*Managing environments*`: https://conda-forge.org/
 
 Installing via pip from PyPI
 ----------------------------
@@ -54,6 +62,8 @@ using the following commands from within a terminal:
     cd pymedphys
 
     conda config --add channels conda-forge
+    conda create --name pmp python=3.7 # Optional.
+    conda activate pmp # Optional
     conda install pymedphys --only-deps
     pip install -e .
 

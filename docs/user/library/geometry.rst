@@ -1,11 +1,19 @@
+##################
 Geometry Utilities
-==================
+##################
 
-.. automodule:: pymedphys.geometry
+*******
+Summary
+*******
+
+.. automodule:: pymedphys_analysis.geometry
     :no-members:
 
+|
+
+***
 API
----
+***
 
 .. autofunction:: pymedphys.geometry.cubify_cube_definition
 
