@@ -7,3 +7,7 @@ python:
   use_system_site_packages: true
   extra_requirements:
     - docs
+
+requirements_file: requirements.txt
+
+formats: []
