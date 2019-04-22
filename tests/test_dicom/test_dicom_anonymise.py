@@ -34,8 +34,8 @@ def test_is_anonymised_dataset():
                                      copy_dataset=True)
 
     elems_manual = sorted(list(ds_anon_manual.iterall()), key = lambda x: x.tag)
-    elems_func = sorted(list(ds_anon_func.iterall()), key = lambda x: x.tag)
-    assert elems_manual == elems_func
+    elems_anon_func = sorted(list(ds_anon_func.iterall()), key = lambda x: x.tag)
+    assert elems_anon_manual == elems_anon_func
 
     assert not is_anonymised_dataset(ds_anon_manual, ignore_private_tags=False)
     assert not is_anonymised_dataset(ds_anon_func, ignore_private_tags=False)
