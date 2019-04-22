@@ -100,21 +100,25 @@ def test_equal():
     })
     assert dicom1 == dicom2 # Equality from dict
 
-    fp1 = DicomBytesIO()
-    dicom1.to_file(fp1)
-    fp2 = DicomBytesIO()
-    dicom2.to_file(fp2)
+    try:
+        fp1 = DicomBytesIO()
+        dicom1.to_file(fp1)
+        fp2 = DicomBytesIO()
+        dicom2.to_file(fp2)
 
-    dicom1_from_file = DicomBase.from_file(fp1)
-    dicom2_from_file = DicomBase.from_file(fp2)
-     # Equality from file (implicitly also from dataset)
-    assert dicom1_from_file == dicom2_from_file
+        dicom1_from_file = DicomBase.from_file(fp1)
+        dicom2_from_file = DicomBase.from_file(fp2)
+        # Equality from file (implicitly also from dataset)
+        assert dicom1_from_file == dicom2_from_file
 
-    dicom1_from_file.dataset.PatientName = 'test^PatientName change'
-    assert dicom1_from_file != dicom2_from_file # Negative case
+        dicom1_from_file.dataset.PatientName = 'test^PatientName change'
+        assert dicom1_from_file != dicom2_from_file # Negative case
 
-    dicom1_from_file.dataset.PatientName = 'Python^Monte'
-    assert dicom1_from_file == dicom2_from_file # Equality post re-assignment
+        dicom1_from_file.dataset.PatientName = 'Python^Monte'
+        assert dicom1_from_file == dicom2_from_file # Equality post re-assignment
 
-    dicom1_from_file_copied = deepcopy(dicom1_from_file)
-    assert dicom1_from_file == dicom1_from_file_copied # Equality from deepcopy
+        dicom1_from_file_copied = deepcopy(dicom1_from_file)
+        assert dicom1_from_file == dicom1_from_file_copied # Equality from deepcopy
+    finally:
+        fp1.close()
+        fp2.close()
