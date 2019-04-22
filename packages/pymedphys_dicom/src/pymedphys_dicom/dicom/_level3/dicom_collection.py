@@ -62,22 +62,37 @@ class DicomBase:
         self.dataset = dataset
 
     @classmethod
-    def from_file(cls, filepath):
-        dataset = pydicom.dcmread(filepath, force=True)
+    def from_file(cls, fp):
+        """Instantiate a DicomBase instance from a filepath or file-like
+        object.
+        """
+        dataset = pydicom.dcmread(fp, force=True)
 
         return cls(dataset)
 
-    def to_file(self, filepath):
-        self.dataset.save_as(filepath)
+    def to_file(self, fp):
+        """Write the DicomBase instance's dataset to a file denoted by
+        a filepath or file-like object.
+        """
+        self.dataset.save_as(fp)
 
     @classmethod
     def from_dict(cls, dictionary):
+        """Instantiate a DicomBase instance from a dictionary of
+        DICOM keyword/value pairs.
+        """
         dataset = dicom_dataset_from_dict(dictionary)
 
         return cls(dataset)
 
+
+    def _pydicom_eq(self, other):
+        return self.dataset == other.dataset
+
+
     def __repr__(self):
         return self.dataset.__repr__()
+
 
     def __eq__(self, other):
         if version.parse(pydicom.__version__) <= version.parse("1.2.1"):
@@ -87,8 +102,16 @@ class DicomBase:
                                  key=lambda x: x.tag)
             return self_elems == other_elems
         else:
-            # TODO: Fix for pydicom>=1.2.2?
-            return self.dataset == other.dataset
+            # TODO: Change for pydicom>=1.2.2?
+            self_elems = sorted(list(self.dataset.iterall()),
+                                key=lambda x: x.tag)
+            other_elems = sorted(list(other.dataset.iterall()),
+                                 key=lambda x: x.tag)
+            return self_elems == other_elems
+
+    def __ne__(self, other):
+        return not self == other
+
 
     def anonymise(self, inplace=False):
         to_copy = not inplace
