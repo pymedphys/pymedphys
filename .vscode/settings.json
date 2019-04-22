@@ -28,7 +28,5 @@
       79,
       119
     ]
-  },
-  "python.pythonPath": "C:\\Users\\Centr\\Anaconda3\\envs\\pmp\\python.exe",
-  "python.linting.pylintEnabled": true,
+  }
 }
