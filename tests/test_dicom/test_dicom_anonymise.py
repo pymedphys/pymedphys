@@ -3,6 +3,7 @@ from os.path import abspath, basename, dirname, join as pjoin
 from uuid import uuid4
 
 import pydicom
+
 from pymedphys.dicom import (
     anonymise_dataset,
     anonymise_directory,
@@ -32,12 +33,9 @@ def test_is_anonymised_dataset():
     ds_anon_func = anonymise_dataset(ds, delete_private_tags=False,
                                      copy_dataset=True)
 
-    # Patient Name should've been the only non-anonymous value. If not,
-    # test data has been changed
-    for elem_manual, elem_func in zip(ds_anon_manual, ds_anon_func):
-        # Assumes all non-private, identifying tags are top-level
-        if elem_manual.VR != 'SQ':
-            assert elem_manual == elem_func
+    elems_anon_manual = sorted(list(ds_anon_manual.iterall()), key = lambda x: x.tag)
+    elems_anon_func = sorted(list(ds_anon_func.iterall()), key = lambda x: x.tag)
+    assert elems_anon_manual == elems_anon_func
 
     assert not is_anonymised_dataset(ds_anon_manual, ignore_private_tags=False)
     assert not is_anonymised_dataset(ds_anon_func, ignore_private_tags=False)
