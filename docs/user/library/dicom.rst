@@ -6,7 +6,7 @@ DICOM Module
 Summary
 *******
 
-.. automodule:: pymedphys.dicom
+.. automodule:: pymedphys_dicom.dicom
     :no-members:
 
 |
