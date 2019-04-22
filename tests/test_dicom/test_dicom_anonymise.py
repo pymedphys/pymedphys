@@ -29,6 +29,7 @@ def test_is_anonymised_dataset():
     ds_anon_manual = ds
     ds_anon_manual.PatientName = "Anonymous"
 
+
     ds_anon_func = anonymise_dataset(ds, delete_private_tags=False,
                                      copy_dataset=True)
 
