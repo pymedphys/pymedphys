@@ -25,6 +25,7 @@
 
 
 from copy import deepcopy
+from packaging import version
 
 import numpy as np
 import pydicom
@@ -79,7 +80,15 @@ class DicomBase:
         return self.dataset.__repr__()
 
     def __eq__(self, other):
-        return self.dataset.__eq__(other.dataset)
+        if version.parse(pydicom.__version__) <= version.parse("1.2.1"):
+            self_elems = sorted(list(self.dataset.iterall()),
+                                key=lambda x: x.tag)
+            other_elems = sorted(list(other.dataset.iterall()),
+                                 key=lambda x: x.tag)
+            return self_elems == other_elems
+        else:
+            # TODO: Fix for pydicom>=1.2.2?
+            return self.dataset == other.dataset
 
     def anonymise(self, inplace=False):
         to_copy = not inplace
