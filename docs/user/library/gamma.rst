@@ -1,10 +1,18 @@
-Gamma Calculation
-=================
+###########
+Gamma Index
+###########
 
-.. automodule:: pymedphys.gamma
+*******
+Summary
+*******
+
+.. automodule:: pymedphys_analysis.gamma
     :no-members:
 
+|
+
+***
 API
----
+***
 
 .. autofunction:: pymedphys.gamma.gamma_shell
