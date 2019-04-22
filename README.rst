@@ -63,7 +63,7 @@ stay in this stage until the version number leaves ``0.x.x`` and enters
 stable from one release to the next.** In fact, it is very likely that the
 entire API will change multiple times before a ``1.0.0`` release. In practice,
 this means that upgrading ``pymedphys`` to a new version will possibly break
-any code that was using the old version of pymedphys. We try to abreast of
+any code that was using the old version of pymedphys. We try to be abreast of
 this by providing details of any breaking changes from one release to the next
 within the `Release Notes
 <http://pymedphys.com/en/stable/getting-started/changelog.html>`__.
