@@ -6,8 +6,14 @@
   "editor.detectIndentation": true,
   "editor.insertSpaces": true,
   "editor.rulers": [
-    72,
     79,
     119
-  ]
+  ],
+  "[python]": {
+    "editor.rulers": [
+      72,
+      79,
+      119
+    ]
+  },
 }
