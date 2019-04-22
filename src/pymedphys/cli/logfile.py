@@ -50,7 +50,7 @@ Requires two configuration csv files detailed as following:
 """
 
 
-from ..logfile import orchestration_cli
+from pymedphys_logfiles.logfile import orchestration_cli
 
 
 def logfile_cli(subparsers):
