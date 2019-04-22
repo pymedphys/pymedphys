@@ -6,7 +6,7 @@ Geometry Utilities
 Summary
 *******
 
-.. automodule:: pymedphys.geometry
+.. automodule:: pymedphys_analysis.geometry
     :no-members:
 
 |
