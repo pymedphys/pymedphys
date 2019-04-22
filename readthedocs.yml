@@ -5,9 +5,7 @@ python:
   version: 3.7
   setup_py_install: true
   use_system_site_packages: true
-  extra_requirements:
-    - docs
 
-requirements_file: requirements.txt
+requirements_file: requirements-docs.txt
 
 formats: []
