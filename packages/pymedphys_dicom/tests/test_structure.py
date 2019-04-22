@@ -26,8 +26,8 @@
 
 import numpy as np
 
-from pymedphys.dicom import (
-    dicom_dataset_from_dict, find_dose_within_structure, pull_structure,
+from pymedphys_dicom.dicom import (
+    dicom_dataset_from_dict, pull_structure,
     create_contour_sequence_dict, Structure)
 
 
