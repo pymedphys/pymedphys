@@ -4,7 +4,7 @@
     "install": "pip install -r requirements-development.txt",
     "nbstripout:install": "conda install -y nbstripout; nbstripout --install",
     "conda:install-deps": "conda install -y pymedphys --only-deps",
-    "conda:create-env": "conda create -y --name pmp python=3.7 & conda activate pmp & yarn conda:installdeps & yarn nbstripout:install & yarn"
+    "conda:create-env": "conda create -y --name pmp python=3.7 & conda activate pmp & yarn conda:install-deps & yarn nbstripout:install & yarn"
   },
   "name": "pymedphys"
 }
