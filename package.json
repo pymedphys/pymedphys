@@ -9,6 +9,7 @@
     "dependencies:linux": "export INSTALL_ON_LINUX=1 && pip install -r requirements-dependencies-only.txt",
     "conda:create": "conda create -y --name pmp python=3.7 && yarn conda:activate && yarn bootstrap",
     "conda:delete": "conda env remove -y --name pmp",
+    "conda:reinstall": "yarn conda:delete && yarn conda:create",
     "conda:activate": "conda activate pmp"
   },
   "cross-os": {
