@@ -1,0 +1,12 @@
+{
+  "name": "pymedphys_databases",
+  "private": true,
+  "scripts": {
+    "install": "pip install -e ."
+  },
+  "dependencies": {
+    "pymedphys_utilities": "^0.0.0",
+    "pymedphys_coordsandscales": "^0.0.0"
+  },
+  "version": "0.0.0"
+}
