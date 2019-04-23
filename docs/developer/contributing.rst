@@ -231,8 +231,7 @@ conda. With cmder open in the pymedphys directory, run:
 
 .. code:: bash
 
-    conda install pymedphys --only-deps
-    yarn
+    yarn bootstrap
 
 |
 
