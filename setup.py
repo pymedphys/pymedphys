@@ -97,6 +97,9 @@ setup(
             'tox',
             'xlwings >= 0.15.4'
         ],
+        'pylint':[
+            'pylint'
+        ]
         'formatting': [
             'autopep8',
             'pylint',
