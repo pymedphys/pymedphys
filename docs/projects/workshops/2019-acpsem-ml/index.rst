@@ -13,10 +13,11 @@ Three distinct problems were provided with the aim to cater to different
 skill levels of the attendees.
 
 
+
 .. toctree::
     :maxdepth: 1
 
-    prereading/Index
+    prereading
     novice/index
     intermediate/index
     experienced/index

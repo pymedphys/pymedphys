@@ -16,7 +16,8 @@ def pytest_ignore_collect(path, config):
     build_dir = os.path.join('docs', '_build')
 
     return (
-        relative_path.startswith('experimentation') or
+        relative_path.startswith('notebooks') or
         relative_path.startswith(build_dir) or
-        relative_path.startswith('test_all')
+        'node_modules' in relative_path or
+        'xlwings' in relative_path
     )

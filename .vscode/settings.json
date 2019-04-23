@@ -3,18 +3,17 @@
   "python.linting.mypyEnabled": true,
   "files.trimTrailingWhitespace": true,
   "editor.formatOnSave": true,
-  "editor.detectIndentation": false,
+  "editor.detectIndentation": true,
   "editor.insertSpaces": true,
-  "editor.tabSize": 2,
-  "[python]": {
-    "editor.tabSize": 4
-  },
-  "[yaml]": {
-    "editor.tabSize": 4
-  },
   "editor.rulers": [
-    72,
     79,
     119
   ],
+  "[python]": {
+    "editor.rulers": [
+      72,
+      79,
+      119
+    ]
+  },
 }

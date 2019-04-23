@@ -3,7 +3,7 @@ import io
 from os.path import abspath, basename, dirname, join as pjoin, splitext
 from setuptools import setup, find_packages
 
-repo_root = dirname(abspath(__file__))
+root = dirname(abspath(__file__))
 
 
 def execfile(fname, globs, locs=None):
@@ -18,33 +18,44 @@ def read(*names, **kwargs):
     ).read()
 
 
+package_dir = 'src'
+packages = find_packages(package_dir)
+root_packages = [
+    package
+    for package in packages
+    if "." not in package
+]
+
+assert len(root_packages) == 1
+package = root_packages[0]
+
 version_ns = {}  # type: ignore
-execfile(pjoin(repo_root, 'src', 'pymedphys', '_version.py'), version_ns)
+version_filepath = glob(
+    pjoin(root, package_dir, package, '_version.py'))[0]
+execfile(version_filepath, version_ns)
 
 version = version_ns['__version__']
 
 
 setup(
-    name="pymedphys",
+    name=package,
     version=version,
-    author="Simon Biggs",
-    author_email="me@simonbiggs.net",
+    author="PyMedPhys Contributors",
+    author_email="developers@pymedphys.com",
     description='Medical Physics python modules',
     long_description=read('README.rst'),
     long_description_content_type='text/x-rst',
     classifiers=[
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering :: Medical Science Apps.',
         'Topic :: Scientific/Engineering :: Physics',
         'Intended Audience :: Science/Research',
         'Intended Audience :: Healthcare Industry'
     ],
-    packages=find_packages('src'),
-    package_dir={'': 'src'},
-    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
+    packages=packages,
+    package_dir={'': package_dir},
     include_package_data=True,
     package_data={'pymedphys': []},
     entry_points={
@@ -52,23 +63,22 @@ setup(
             'pymedphys=pymedphys.cli.main:pymedphys_cli'
         ],
     },
-    license='AGPLv3+',
+    license='AGPL-3.0-or-later',
     install_requires=[
-        'attrs',
-        'dataclasses; python_version=="3.6"',
-        'keyring',
-        'matplotlib',
-        'numpy < 1.16, >= 1.12',
-        'pandas',
-        'Pillow',
-        'psutil',
-        'pydicom >= 1.0',
-        'pymssql',
-        'python-dateutil',
-        'scipy',
-        'shapely',
-        'xarray',
-        'xlwings; platform_system != "Linux"'
+        'pymedphys_analysis',
+        'pymedphys_dicom',
+        'pymedphys_fileformats',
+        'pymedphys_labs',
+        'pymedphys_logfiles',
+        'pymedphys_numerics',
+        'pymedphys_shapes',
+        'pymedphys_sql',
+        'pymedphys_utilities',
+        'pymedphys_workshops',
+        'pymedphys_wrappers',
+        'pymedphys_xlwings',
+        'notebook',
+        'jinja2'
     ],
     extras_require={
         'docs': [
@@ -93,6 +103,9 @@ setup(
             'pytest',
             'pytest-cov',
             'xlwings >= 0.15.4'
+        ],
+        'pylint': [
+            'pylint'
         ],
         'formatting': [
             'autopep8',
