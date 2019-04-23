@@ -1,0 +1,8 @@
+{
+  "name": "pymedphys_utilities",
+  "private": true,
+  "scripts": {
+    "install": "pip install -e ."
+  },
+  "version": "0.0.0"
+}

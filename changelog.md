@@ -32,6 +32,36 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- A large number of functions that were previously exposed have now been made
+  private in preparation for eventually stabilising the API. No function that
+  was within the documentation has been removed. If there is a function that
+  you were using that you would like to be exposed via `import` again, please
+  let us know by
+  [opening an issue on GitHub](https://github.com/pymedphys/pymedphys/issues)
+  and we will happily re-expose it! However, please bear in mind that the
+  entire API that is currently exposed will likely change before a 1.0.0
+  release.
+- `anonymise_dicom_dataset()` has been renamed to `anonymise_dataset()` to
+  remove redundant labelling.
+- `mu_density_from_delivery_data` moved from the `msq` module to the
+  `mudensity` module.
+- `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
+  module.
+
+### New Features
+
+- `anonymise_file()` and `anonymise_directory()`:
+  - two new DICOM anonymisation
+    wrapper functions that take a DICOM file and a directory as respective
+    arguments.
+- `is_anonymised_dataset()`, `is_anonymised_file()` and
+  `is_anonymised_directory()`:
+  - three new functions that check whether a pydicom
+    dataset, a DICOM file or all files within a directory have been anonymised,
+    respectively.
+
 ## [0.7.2] -- 2019/04/05
 
 ### Dependency changes
@@ -50,7 +80,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - `anonymise_dicom` has been renamed to `anonymise_dicom_dataset`
 - The CLI interface `trf2csv` has been replaced with `pymedphys trf to-csv`.
-  This has the same usage, just a changed name to come in line with the rest of the CLI interfaces exposed by PyMedPhys.
+  This has the same usage, just a changed name to come in line with the rest of
+  the CLI interfaces exposed by PyMedPhys.
 
 ### New Features
 
@@ -93,32 +124,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Breaking Changes
 
 - All uses of "dcm" in directory names, module names, function names, etc.
-  have been converted to "dicom". Anything that makes use of this code will need to be
-  adjusted accordingly. Required changes include:
+  have been converted to "dicom". Anything that makes use of this code will
+  need to be adjusted accordingly. Required changes include:
   - `pymedphys.dcm` --> `pymedphys.dicom`
   - `coords_and_dose_from_dcm()` --> `coords_and_dose_from_dicom()`
   - `dcmfromdict()` --> `dicom_dataset_from_dict()`
   - `gamma_dcm()` --> `gamma_dicom()`
-- MU Density related functions are no longer available under the `pymedphys.coll` package,
-  instead they are found within `pymedphys.mudensity` package.
-- The DICOM coordinate extraction functions now return simple tuples rather than `Coords` namedtuples:
+- MU Density related functions are no longer available under the
+  `pymedphys.coll` package, instead they are found within `pymedphys.mudensity`
+  package.
+- The DICOM coordinate extraction functions now return simple tuples rather
+  than `Coords` namedtuples:
   - `extract_dicom_patient_xyz()`
   - `extract_iec_patient_xyz()`
   - `extract_iec_fixed_xyz()`
 
 ### New Features
 
-- DICOM anonymisation now permits replacing deidentified values with suitable "dummy" values. This helps to
-  maintain compatibility with DICOM software that includes checks (beyond those specified in the DICOM Standard)
-  of valid DICOM tag values. Replacing tags with dummy values upon anonymisation is now the default behaviour.
-- A set of 3D coordinate transformation functions, including rotations (passive or active) and translations.
-  Transformations may be applied to a single coordinate triplet (an `ndarray`) or a list of arbitrarily many
-  coordinate triplets (a 3 x n `ndarray`). **NB**: Documentation forthcoming.
+- DICOM anonymisation now permits replacing deidentified values with suitable
+  "dummy" values. This helps to maintain compatibility with DICOM software that
+  includes checks (beyond those specified in the DICOM Standard) of valid DICOM
+  tag values. Replacing tags with dummy values upon anonymisation is now the
+  default behaviour.
+- A set of 3D coordinate transformation functions, including rotations (passive
+  or active) and translations. Transformations may be applied to a single
+  coordinate triplet (an `ndarray`) or a list of arbitrarily many coordinate
+  triplets (a 3 x n `ndarray`). **NB**: Documentation forthcoming.
 
 ### Code Refactoring
 
-- All uses of `dcm` as a variable name for instances of PyDicom Datasets have been converted to `ds` to
-  match PyDicom convention.
+- All uses of `dcm` as a variable name for instances of PyDicom Datasets have
+  been converted to `ds` to match PyDicom convention.
 
 <br/>
 

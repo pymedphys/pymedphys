@@ -16,9 +16,9 @@
     :maxdepth: 1
     :caption: User Guide
 
-    user/interfaces
-    user/library
-    user/examples
+    user/interfaces/index
+    user/library/index
+    user/examples/index
 
 .. toctree::
     :maxdepth: 1
@@ -34,7 +34,7 @@
     developer/file-structure
     developer/documentation
     developer/agpl-benefits
-    developer/labs.rst
+    developer/labs/index
 
 
 Indices and tables
