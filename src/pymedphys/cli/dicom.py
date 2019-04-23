@@ -26,7 +26,7 @@
 """Provides a various set of tools for DICOM header manipulation.
 """
 
-from ..dicom import (
+from pymedphys_dicom.dicom import (
     adjust_machine_name_cli, adjust_RED_cli,
     adjust_RED_by_structure_name_cli)
 
