@@ -1,7 +1,10 @@
 {
   "private": true,
   "scripts": {
-    "install": "pip install -r requirements-development.txt"
+    "install": "pip install -r requirements-development.txt",
+    "nbstripout:install": "conda install -y nbstripout; nbstripout --install",
+    "conda:installdeps": "conda install -y pymedphys --only-deps",
+    "condaenv:create": "conda create -y --name pmp python=3.7; conda activate pmp; yarn conda:installdeps; yarn nbstripout:install; yarn"
   },
   "name": "pymedphys"
 }
