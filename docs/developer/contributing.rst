@@ -273,8 +273,8 @@ Once your changes are complete, reopen your cmder and run:
 
 Now, you have successfully sent your branch online.
 
-Now you need to open a merge request. Open one
-`here <https://github.com/pymedphys/pymedphys/compare>`__, select the source
+Now you need to open a pull request. Open one `here
+<https://github.com/pymedphys/pymedphys/compare>`__, select the source
 branch to be ``pymedphys/your-name-edit-contributing-document`` and set the
 target branch to be ``pymedphys/master``.
 
