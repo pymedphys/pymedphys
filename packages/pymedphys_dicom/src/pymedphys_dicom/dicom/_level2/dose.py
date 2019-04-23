@@ -113,7 +113,7 @@ def load_xyz_from_dicom(ds):
 
 
 def xyz_from_dataset(ds, coord_system="DICOM"):
-    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's 
+    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's
     dose grid in the specified coordinate system
 
     Parameters
@@ -171,107 +171,119 @@ def xyz_from_dataset(ds, coord_system="DICOM"):
         raise ValueError("The input DICOM file is not an RT Dose file")
 
     position = np.array(ds.ImagePositionPatient)
+    orientation = np.array(ds.ImageOrientationPatient)
 
-    di = float(ds.PixelSpacing[0])
-    dj = float(ds.PixelSpacing[1])
-    
-    x_f = position[0] + np.arange(0, ds.Columns * di, di)
-    y_f = position[1] + np.arange(0, ds.Rows * dj, dj)
-    z_f = position[2] + np.array(ds.GridFrameOffsetVector) 
+    if not np.array_equal(np.abs(orientation), np.array([1, 0, 0, 0, 1, 0]))
+            or np.array_equal(np.abs(orientation), np.array([0, 1, 0, 1, 0, 0])):
+        raise ValueError("Dose grid orientation is not supported. Dose "
+                         "grid slices must be aligned along the "
+                         "superoinferior axis of patient.")
+
+    is_decubitis=orientation[0] == 0
+    is_head_first=_is_head_first(orientation, is_decubitis)
+
+    di=float(ds.PixelSpacing[0])
+    dj=float(ds.PixelSpacing[1])
+
+    col_range=np.arange(0, ds.Columns * di, di)
+    row_range=np.arange(0, ds.Rows * dj, dj)
+
+    if is_decubitis:
+        x_dicom_fixed=orientation[1] * position[1] + col_range
+        y_dicom_fixed=orientation[3] * position[0] + row_range
+    else:
+        x_dicom_fixed=orientation[0] * position[0] + col_range
+        y_dicom_fixed=orientation[4] * position[1] + row_range
+
+    if is_head_first:
+        z_dicom_fixed=position[2] + np.array(ds.GridFrameOffsetVector)
+    else:
+        z_dicom_fixed=-position[2] + np.array(ds.GridFrameOffsetVector)
 
     if coord_system.upper() in ("FIXED", "IEC FIXED", "F"):
-        x = x_f
-        y = y_f
-        z = z_f
+        x=x_dicom_fixed
+        y=z_dicom_fixed
+        z=-np.flip(y_dicom_fixed)
 
-    elif coord_system.upper() in ("DICOM", "D", "PATIENT", "IEC PATIENT", "P"):        
-        orientation = np.array(ds.ImageOrientationPatient)
+    elif coord_system.upper() in ("DICOM", "D", "PATIENT", "IEC PATIENT", "P"):
 
         if orientation[0] == 1:
-            x = x_f
+            x=x_dicom_fixed
         elif orientation[0] == -1:
-            x = -np.flip(x_f)
+            x=np.flip(x_dicom_fixed)
         elif orientation[1] == 1:
-            y_d = x_f
+            y_d=x_dicom_fixed
         elif orientation[1] == -1:
-            y_d = -np.flip(x_f)
-        else:
-            raise ValueError("Dose grid orientation is not supported. "
-                             "Dose grid slices must be aligned along "
-                             "the superoinferior axis of patient.")
+            y_d=np.flip(x_dicom_fixed)
 
         if orientation[4] == 1:
-            y_d = y_f
+            y_d=y_dicom_fixed
         elif orientation[4] == -1:
-            y_d = -np.flip(y_f)
+            y_d=np.flip(y_dicom_fixed)
         elif orientation[3] == 1:
-            x = y_f
+            x=y_dicom_fixed
         elif orientation[3] == -1:
-            x = -np.flip(y_f)
-        else:
-            raise ValueError("Dose grid orientation is not supported. "
-                             "Dose grid slices must be aligned along "
-                             "the superoinferior axis of patient.")
+            x=np.flip(y_dicom_fixed)
 
-        if np.sum(orientation) == 0:
-            z_d = np.flip(-z_f)
+        if not is_head_first:
+            z_d=np.flip(z_dicom_fixed)
         else:
-            z_d = z_f
+            z_d=z_dicom_fixed
 
         if coord_system.upper() in ("DICOM", "D"):
-            y = y_d
-            z = z_d
+            y=y_dicom
+            z=z_dicom
         elif coord_system.upper() in ("PATIENT", "IEC PATIENT", "P"):
-            y = z_d
-            z = -np.flip(y_d)
+            y=z_dicom
+            z=-np.flip(y_dicom)
 
     return (x, y, z)
 
 
 def coords_and_dose_from_dicom(dicom_filepath):
-    ds = pydicom.read_file(dicom_filepath, force=True)
-    x, y, z = load_xyz_from_dicom(ds)
-    coords = (y, x, z)
-    dose = load_dose_from_dicom(ds)
+    ds=pydicom.read_file(dicom_filepath, force=True)
+    x, y, z=load_xyz_from_dicom(ds)
+    coords=(y, x, z)
+    dose=load_dose_from_dicom(ds)
 
     return coords, dose
 
 
 def load_dicom_data(ds, depth_adjust):
-    dose = load_dose_from_dicom(ds)
-    crossplane, vertical, inplane = load_xyz_from_dicom(ds)
+    dose=load_dose_from_dicom(ds)
+    crossplane, vertical, inplane=load_xyz_from_dicom(ds)
 
-    depth = vertical + depth_adjust
+    depth=vertical + depth_adjust
 
     return inplane, crossplane, depth, dose
 
 
 def arbitrary_profile_from_dicom_dose(ds, depth_adjust, inplane_ref, crossplane_ref, depth_ref):
-    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
+    inplane, crossplane, depth, dose=load_dicom_data(ds, depth_adjust)
 
-    interpolation_function = RegularGridInterpolator(
+    interpolation_function=RegularGridInterpolator(
         (depth, crossplane, inplane), dose)
-    points = [
+    points=[
         (a_depth_val, a_crossplane_val, an_inplane_val)
         for a_depth_val, a_crossplane_val, an_inplane_val
         in zip(depth_ref, crossplane_ref, inplane_ref)
     ]
 
-    interpolated_dose = interpolation_function(points)
+    interpolated_dose=interpolation_function(points)
 
     return interpolated_dose
 
 
 def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
-    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
+    inplane, crossplane, depth, dose=load_dicom_data(ds, depth_adjust)
 
-    inplane_ref = abs(inplane) <= averaging_distance
-    crossplane_ref = abs(crossplane) <= averaging_distance
+    inplane_ref=abs(inplane) <= averaging_distance
+    crossplane_ref=abs(crossplane) <= averaging_distance
 
-    sheet_dose = dose[:, :, inplane_ref]
-    column_dose = sheet_dose[:, crossplane_ref, :]
+    sheet_dose=dose[:, :, inplane_ref]
+    column_dose=sheet_dose[:, crossplane_ref, :]
 
-    depth_dose = np.mean(column_dose, axis=(1, 2))
+    depth_dose=np.mean(column_dose, axis=(1, 2))
 
     # uncertainty = np.std(column_dose, axis=(1, 2)) / depth_dose
     # assert np.all(uncertainty < 0.01),
@@ -282,38 +294,38 @@ def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
 
 def extract_profiles(ds, depth_adjust, depth_lookup, averaging_distance=0):
 
-    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
+    inplane, crossplane, depth, dose=load_dicom_data(ds, depth_adjust)
 
-    inplane_ref = abs(inplane) <= averaging_distance
-    crossplane_ref = abs(crossplane) <= averaging_distance
+    inplane_ref=abs(inplane) <= averaging_distance
+    crossplane_ref=abs(crossplane) <= averaging_distance
 
-    depth_reference = depth == depth_lookup
+    depth_reference=depth == depth_lookup
 
-    dose_at_depth = dose[depth_reference, :, :]
-    inplane_dose = np.mean(dose_at_depth[:, crossplane_ref, :], axis=(0, 1))
-    crossplane_dose = np.mean(dose_at_depth[:, :, inplane_ref], axis=(0, 2))
+    dose_at_depth=dose[depth_reference, :, :]
+    inplane_dose=np.mean(dose_at_depth[:, crossplane_ref, :], axis=(0, 1))
+    crossplane_dose=np.mean(dose_at_depth[:, :, inplane_ref], axis=(0, 2))
 
     return inplane, inplane_dose, crossplane, crossplane_dose
 
 
 def nearest_negative(diff):
-    neg_diff = np.copy(diff)
-    neg_diff[neg_diff > 0] = -np.inf
+    neg_diff=np.copy(diff)
+    neg_diff[neg_diff > 0]=-np.inf
     return np.argmax(neg_diff)
 
 
 def bounding_vals(test, values):
-    npvalues = np.array(values).astype('float')
-    diff = npvalues - test
-    upper = nearest_negative(-diff)
-    lower = nearest_negative(diff)
+    npvalues=np.array(values).astype('float')
+    diff=npvalues - test
+    upper=nearest_negative(-diff)
+    lower=nearest_negative(diff)
 
     return values[lower], values[upper]
 
 
 def average_bounding_profiles(ds, depth_adjust, depth_lookup,
                               averaging_distance=0):
-    inplane, crossplane, depth, _ = load_dicom_data(ds, depth_adjust)
+    inplane, crossplane, depth, _=load_dicom_data(ds, depth_adjust)
 
     if depth_lookup in depth:
         return extract_profiles(
@@ -321,22 +333,22 @@ def average_bounding_profiles(ds, depth_adjust, depth_lookup,
     else:
         print(
             'Specific depth not found, interpolating from surrounding depths')
-        shallower, deeper = bounding_vals(depth_lookup, depth)
+        shallower, deeper=bounding_vals(depth_lookup, depth)
 
-        _, shallower_inplane, _, shallower_crossplane = np.array(
+        _, shallower_inplane, _, shallower_crossplane=np.array(
             extract_profiles(ds, depth_adjust, shallower, averaging_distance))
 
-        _, deeper_inplane, _, deeper_crossplane = np.array(
+        _, deeper_inplane, _, deeper_crossplane=np.array(
             extract_profiles(ds, depth_adjust, deeper, averaging_distance))
 
-        depth_range = deeper - shallower
-        shallower_weight = 1 - (depth_lookup - shallower) / depth_range
-        deeper_weight = 1 - (deeper - depth_lookup) / depth_range
+        depth_range=deeper - shallower
+        shallower_weight=1 - (depth_lookup - shallower) / depth_range
+        deeper_weight=1 - (deeper - depth_lookup) / depth_range
 
-        inplane_dose = (
+        inplane_dose=(
             shallower_weight * shallower_inplane +
             deeper_weight * deeper_inplane)
-        crossplane_dose = (
+        crossplane_dose=(
             shallower_weight * shallower_crossplane +
             deeper_weight * deeper_crossplane)
 
@@ -344,65 +356,72 @@ def average_bounding_profiles(ds, depth_adjust, depth_lookup,
 
 
 def _get_index(z_list, z_val):
-    indices = np.array([item[0] for item in z_list])
+    indices=np.array([item[0] for item in z_list])
     # This will error if more than one contour exists on a given slice
-    index = int(np.where(indices == z_val)[0])
+    index=int(np.where(indices == z_val)[0])
     # Multiple contour sets per slice not yet implemented
 
     return index
 
 
 def find_dose_within_structure(structure, dcm_struct, dcm_dose):
-    x_dose, y_dose, z_dose = load_xyz_from_dicom(dcm_dose)
-    dose = load_dose_from_dicom(dcm_dose)
+    x_dose, y_dose, z_dose=load_xyz_from_dicom(dcm_dose)
+    dose=load_dose_from_dicom(dcm_dose)
 
-    xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
-    points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
+    xx_dose, yy_dose=np.meshgrid(x_dose, y_dose)
+    points=np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
 
-    x_structure, y_structure, z_structure = pull_structure(
+    x_structure, y_structure, z_structure=pull_structure(
         structure, dcm_struct)
-    structure_z_values = np.array([item[0] for item in z_structure])
+    structure_z_values=np.array([item[0] for item in z_structure])
 
-    structure_dose_values = np.array([])
+    structure_dose_values=np.array([])
 
     for z_val in structure_z_values:
-        structure_index = _get_index(z_structure, z_val)
-        dose_index = int(np.where(z_dose == z_val)[0])
+        structure_index=_get_index(z_structure, z_val)
+        dose_index=int(np.where(z_dose == z_val)[0])
 
         assert z_structure[structure_index][0] == z_dose[dose_index]
 
-        structure_polygon = path.Path([
+        structure_polygon=path.Path([
             (
                 x_structure[structure_index][i],
                 y_structure[structure_index][i]
             )
             for i in range(len(x_structure[structure_index]))
         ])
-        mask = structure_polygon.contains_points(points).reshape(
+        mask=structure_polygon.contains_points(points).reshape(
             len(y_dose), len(x_dose))
-        masked_dose = dose[:, :, dose_index]
-        structure_dose_values = np.append(
+        masked_dose=dose[:, :, dose_index]
+        structure_dose_values=np.append(
             structure_dose_values, masked_dose[mask])
 
     return structure_dose_values
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = find_dose_within_structure(
+    structure_dose_values=find_dose_within_structure(
         structure, dcm_struct, dcm_dose)
-    hist = np.histogram(structure_dose_values, 100)
-    freq = hist[0]
-    bin_edge = hist[1]
-    bin_mid = (bin_edge[1::] + bin_edge[:-1:])/2
+    hist=np.histogram(structure_dose_values, 100)
+    freq=hist[0]
+    bin_edge=hist[1]
+    bin_mid=(bin_edge[1::] + bin_edge[:-1:]) / 2
 
-    cumulative = np.cumsum(freq[::-1])
-    cumulative = cumulative[::-1]
-    bin_mid = np.append([0], bin_mid)
+    cumulative=np.cumsum(freq[::-1])
+    cumulative=cumulative[::-1]
+    bin_mid=np.append([0], bin_mid)
 
-    cumulative = np.append(cumulative[0], cumulative)
-    percent_cumulative = cumulative / cumulative[0] * 100
+    cumulative=np.append(cumulative[0], cumulative)
+    percent_cumulative=cumulative / cumulative[0] * 100
 
     plt.plot(bin_mid, percent_cumulative, label=structure)
     plt.title('DVH')
     plt.xlabel('Dose (Gy)')
     plt.ylabel('Relative Volume (%)')
+
+
+def _is_head_first(orientation, is_decubitis):
+    if is_decubitis:
+        return np.abs(np.sum(orientation)) != 2
+    else:
+        return np.abs(np.sum(orientation)) == 2
