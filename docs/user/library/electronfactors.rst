@@ -6,7 +6,7 @@ Electron Cutout Factors
 Summary
 *******
 
-.. automodule:: pymedphys_shapes.electronfactors
+.. automodule:: pymedphys_electronfactors.electronfactors
     :no-members:
 
 |

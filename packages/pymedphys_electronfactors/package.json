@@ -1,5 +1,5 @@
 {
-  "name": "pymedphys_shapes",
+  "name": "pymedphys_electronfactors",
   "private": true,
   "scripts": {
     "install": "pip install -e ."

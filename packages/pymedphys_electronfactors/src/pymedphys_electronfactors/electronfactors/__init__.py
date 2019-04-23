@@ -45,4 +45,4 @@ from ._level2.visualisation import *
 
 clean_and_verify_levelled_modules(globals(), [
     '._level1.electronfactors', '._level2.visualisation'
-], package='pymedphys_shapes.electronfactors')
+], package='pymedphys_electronfactors.electronfactors')

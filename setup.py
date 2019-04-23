@@ -71,7 +71,7 @@ setup(
         'pymedphys_labs',
         'pymedphys_logfiles',
         'pymedphys_coordsandscales',
-        'pymedphys_shapes',
+        'pymedphys_electronfactors',
         'pymedphys_sql',
         'pymedphys_utilities',
         'pymedphys_workshops',

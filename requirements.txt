@@ -8,7 +8,7 @@
 # Level 1
 ./packages/pymedphys_coordsandscales
 ./packages/pymedphys_labs
-./packages/pymedphys_shapes
+./packages/pymedphys_electronfactors
 ./packages/pymedphys_workshops
 
 # Level 2
