@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,16 +24,19 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys_utilities.libutils import get_imports
-from pymedphys_coordsandscales.deliverydata import get_delivery_parameters
+"""Model insert factors and parameterise inserts as equivalent ellipses.
 
-from .._level1.mudensitycore import calc_mu_density
+Example:
+    >>> from pymedphys.deliverydata import DeliveryData
+"""
 
-IMPORTS = get_imports(globals())
+# pylint: disable=W0401,W0614
 
 
-def mu_density_from_delivery_data(delivery_data):
-    mu, mlc, jaw = get_delivery_parameters(delivery_data)
-    xx, yy, mu_density = calc_mu_density(mu, mlc, jaw)
+from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-    return xx, yy, mu_density
+from ._level1.deliverydatacore import *
+
+clean_and_verify_levelled_modules(globals(), [
+    '._level1.deliverydatacore'
+], package='pymedphys_coordsandscales.deliverydata')
