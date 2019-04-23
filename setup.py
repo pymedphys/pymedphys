@@ -99,7 +99,7 @@ setup(
         ],
         'pylint':[
             'pylint'
-        ]
+        ],
         'formatting': [
             'autopep8',
             'pylint',
