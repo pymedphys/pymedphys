@@ -4,6 +4,8 @@
   "scripts": {
     "bootstrap": "yarn && yarn conda:forge && yarn dependencies && yarn nbstripout:install && yarn install:dev",
     "lerna:bootstrap": "lerna bootstrap && pip install -e .",
+    "lerna:build": "lerna run build",
+    "lerna:upload": "lerna run upload",
     "install:dev": "pip install -r requirements-development.txt",
     "install:prod": "pip install -r requirements.txt",
     "nbstripout:install": "pip install nbstripout && nbstripout --install",

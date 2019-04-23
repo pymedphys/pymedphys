@@ -2,7 +2,9 @@
   "name": "pymedphys_analysis",
   "private": true,
   "scripts": {
-    "install": "pip install -e ."
+    "install": "pip install -e .",
+    "build": "python setup.py sdist bdist_wheel",
+    "upload": "twine upload dist/"
   },
   "dependencies": {
     "pymedphys_coordsandscales": "^0.0.0",
