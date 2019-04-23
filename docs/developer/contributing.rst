@@ -118,7 +118,7 @@ Git LFS, and yarn like so:
 
 .. code:: bash
 
-    choco install git git-lfs yarn
+    choco install git yarn nodejs
 
 |
 
