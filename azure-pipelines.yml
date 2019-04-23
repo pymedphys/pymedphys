@@ -160,7 +160,7 @@ jobs:
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
-    - bash: yarn bootstrap
+    - bash: yarn install:prod
       displayName: Run yarn
 
     - bash: "pip install -e .[testing]"
