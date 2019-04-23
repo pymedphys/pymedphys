@@ -2,3 +2,7 @@
 # yarn lockfile v1
 
 
+run-script-os@^1.0.5:
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/run-script-os/-/run-script-os-1.0.5.tgz#2cf188122bc6ee2ad8faa4f2e53d0aa8be08116f"
+  integrity sha512-uDMVaOAB9M4Q8KcQRVgt7jTZlGNIrlTPbEO+wEA+7kTTMsrL6/JYTkrRWuGF7VpZHHKLreTd/FN7J+EYEaUvhQ==

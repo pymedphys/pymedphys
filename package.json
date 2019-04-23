@@ -3,10 +3,15 @@
   "scripts": {
     "install": "pip install -r requirements-development.txt",
     "nbstripout:install": "conda install -y nbstripout & nbstripout --install",
-    "conda:deps": "INSTALL_ON_LINUX=1 & conda install --file requirements-dependencies-only.txt",
+    "conda:deps": "run-script-os",
+    "conda:deps:darwin:win32": "conda install -r requirements-dependencies-only.txt",
+    "conda:deps:linux": "export INSTALL_ON_LINUX=1 & pip install -r requirements-dependencies-only.txt",
     "conda:create": "conda create -y --name pmp python=3.7 & yarn conda:activate & yarn conda:deps & yarn nbstripout:install & yarn",
     "conda:delete": "conda env remove -y --name pmp",
     "conda:activate": "conda activate pmp"
   },
-  "name": "pymedphys"
+  "name": "pymedphys",
+  "devDependencies": {
+    "run-script-os": "^1.0.5"
+  }
 }
