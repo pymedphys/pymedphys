@@ -18,8 +18,14 @@
       "linux": "yarn dependencies:linux"
     }
   },
+  "husky": {
+    "hooks": {
+      "pre-commit": "nbstripout --is-installed"
+    }
+  },
   "name": "pymedphys",
   "devDependencies": {
-    "cross-os": "1.3.0"
+    "cross-os": "1.3.0",
+    "husky": "^1.3.1"
   }
 }
