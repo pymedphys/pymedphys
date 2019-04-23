@@ -1,4 +1,4 @@
-Recommended Setup for Contribution
+Recommended Setup
 ========================================
 
 Assumptions
@@ -9,7 +9,7 @@ you have administrator rights on your machine. Although this document
 is tailored to Windows users, PyMedPhys itself works on Windows, macOS
 and Linux.
 
-
+|
 
 Your mission
 ------------
@@ -20,7 +20,7 @@ Write down what feedback you have. By the end, instead of you emailing that
 feedback to us, we'd like you to use your new set up to edit this file and
 submit a merge request!
 
-
+|
 
 Get Python & Anaconda
 ---------------------
@@ -55,9 +55,9 @@ using the following command in a new command prompt:
 
     conda config --add channels conda-forge
 
+|
+
 .. _text-editor-section:
-
-
 
 Get a text editor - VS Code
 ---------------------------
@@ -84,7 +84,7 @@ We also recommend the "GitLens" extension to further enhance your VS Code
 experience! It comes with a number of useful tools for using Git within VS
 Code itself.
 
-
+|
 
 Get a (good) terminal - Cmder
 -----------------------------
@@ -99,7 +99,7 @@ Once you've downloaded cmder, follow the steps given
 to obtain the ability to open a terminal in any directory by right clicking in
 the file browser.
 
-
+|
 
 Get a package manager (for Windows users) - Chocolatey
 ------------------------------------------------------
@@ -118,9 +118,9 @@ Git LFS, and yarn like so:
 
 .. code:: bash
 
-    choco install git git-lfs yarn
+    choco install git yarn nodejs
 
-
+|
 
 Get a GitHub account
 --------------------
@@ -137,11 +137,12 @@ on GitHub. It can be to ask for help, suggest a change, provide feedback, or
 anything else regarding PyMedPhys. Write "@" followed by someone's username if
 you would like to talk to someone specifically.
 
-The real power of GitHub comes from Git itself. A great piece of Git 
+The real power of GitHub comes from Git itself. A great piece of Git
 documentation can be found
 `here <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__.
 Use this documentation to begin to get a feel for what Git is.
 
+|
 
 Peruse some useful resources
 ----------------------------
@@ -157,7 +158,7 @@ At this point you might find some of the following resources useful:
 The "Don't be afraid to commit" resource will be invaluable for these next few
 steps.
 
-
+|
 
 Authenticate your computer to be able to access your GitHub account
 -------------------------------------------------------------------
@@ -184,8 +185,10 @@ prompted for a password.
 
 This will download all of PyMedPhys to your local machine.
 
-Set up nbstripout
------------------
+|
+
+Set up *nbstripout*
+-------------------
 
 ``nbstripout`` is used to make it so that you do not post Jupyter Notebook
 outputs online. Depending on how you use notebooks these outputs may
@@ -197,30 +200,28 @@ contain private and/or sensitive information.
     ends up disabled. Stay prudent, and be extra cautious when working with
     sensitive information stored within a notebook in a Git repository.
 
-To install ``nbstripout`` run the following within the pymedphys directory:
+To install ``nbstripout``, run the following within the pymedphys directory:
 
 .. code:: bash
 
-    conda create --name pmp python=3.7 # Optional.
-    conda activate pmp # Optional
-    conda install nbstripout
-    nbstripout --install
-    nbstripout --status
+    λ conda create --name pmp python=3.7 # Optional.
+    λ conda activate pmp # Optional
+    λ conda install nbstripout
+    λ nbstripout --install
+    λ nbstripout --is-installed && echo Success!
+    Success!
+
+Make sure that ``"Success!"`` was actually printed after running the last
+command. If nothing printed, ``nbstripout`` did not successfully install.
 
 The optional commands create an isolated conda environment called "*pmp*"
 within which you can safely work without breaking other python installations
 or running into python package incompatibilities. For more on working with
-conda environments, see `*Managing environments*`_ in the Conda docs.
+conda environments, see `Managing environments`_ in the Conda docs.
 
-.. _`*Managing environments*`: https://conda-forge.org/
+.. _`Managing environments`: https://conda-forge.org/
 
-Before you proceed, make sure that the output of ``nbstripout --status`` starts
-with:
-
-.. code:: bash
-
-    nbstripout is installed in repository
-
+|
 
 Install the development version of PyMedPhys
 --------------------------------------------
@@ -230,9 +231,9 @@ conda. With cmder open in the pymedphys directory, run:
 
 .. code:: bash
 
-    conda install pymedphys --only-deps
-    pip install -e .
+    yarn bootstrap
 
+|
 
 Update this document
 --------------------
@@ -271,8 +272,8 @@ Once your changes are complete, reopen your cmder and run:
 
 Now, you have successfully sent your branch online.
 
-Now you need to open a merge request. Open one
-`here <https://github.com/pymedphys/pymedphys/compare>`__, select the source
+Now you need to open a pull request. Open one `here
+<https://github.com/pymedphys/pymedphys/compare>`__, select the source
 branch to be ``pymedphys/your-name-edit-contributing-document`` and set the
 target branch to be ``pymedphys/master``.
 
