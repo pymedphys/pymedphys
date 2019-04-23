@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2018 PyMedPhys Contributors
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,17 +23,15 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""
+"""
 
-from pymedphys_utilities.libutils import get_imports
-from pymedphys_coordsandscales.deliverydata import get_delivery_parameters
+# pylint: disable=W0401,W0614,C0413,W0611
 
-from .._level1.mudensitycore import calc_mu_density
+from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-IMPORTS = get_imports(globals())
+from ._level1.gammainterface import *
 
-
-def mu_density_from_delivery_data(delivery_data):
-    mu, mlc, jaw = get_delivery_parameters(delivery_data)
-    xx, yy, mu_density = calc_mu_density(mu, mlc, jaw)
-
-    return xx, yy, mu_density
+clean_and_verify_levelled_modules(globals(), [
+    '._level1.gammainterface'
+], package='pymedphys_toolbox.gamma')
