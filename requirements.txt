@@ -13,7 +13,7 @@
 
 # Level 2
 ./packages/pymedphys_analysis
-./packages/pymedphys_sql
+./packages/pymedphys_databases
 
 # Level 3
 ./packages/pymedphys_dicom

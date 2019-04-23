@@ -5,5 +5,5 @@ install_requires = [
     'matplotlib',
     'pymedphys_coordsandscales',
     'pymedphys_utilities',
-    'pymedphys_sql'  # TODO remove this dependency
+    'pymedphys_databases'  # TODO remove this dependency
 ]

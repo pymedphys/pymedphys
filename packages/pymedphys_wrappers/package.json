@@ -7,7 +7,7 @@
   "dependencies": {
     "pymedphys_utilities": "^0.0.0",
     "pymedphys_analysis": "^0.0.0",
-    "pymedphys_sql": "^0.0.0",
+    "pymedphys_databases": "^0.0.0",
     "pymedphys_dicom": "^0.0.0"
   },
   "version": "0.0.0"

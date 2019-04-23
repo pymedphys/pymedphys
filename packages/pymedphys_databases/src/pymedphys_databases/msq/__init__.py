@@ -42,4 +42,4 @@ from ._level2.msqhelpers import *
 clean_and_verify_levelled_modules(globals(), [
     '._level1.msqconnect', '._level1.msqdictionaries',
     '._level2.msqdelivery', '._level2.msqhelpers'
-], package='pymedphys_sql.msq')
+], package='pymedphys_databases.msq')

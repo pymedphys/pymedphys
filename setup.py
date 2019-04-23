@@ -72,7 +72,7 @@ setup(
         'pymedphys_logfiles',
         'pymedphys_coordsandscales',
         'pymedphys_electronfactors',
-        'pymedphys_sql',
+        'pymedphys_databases',
         'pymedphys_utilities',
         'pymedphys_workshops',
         'pymedphys_wrappers',

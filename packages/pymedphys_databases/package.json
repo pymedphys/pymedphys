@@ -1,5 +1,5 @@
 {
-  "name": "pymedphys_sql",
+  "name": "pymedphys_databases",
   "private": true,
   "scripts": {
     "install": "pip install -e ."
