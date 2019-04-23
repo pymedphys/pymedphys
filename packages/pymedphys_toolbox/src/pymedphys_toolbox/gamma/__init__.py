@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Cancer Care Associates
+# Copyright (C) 2018 PyMedPhys Contributors
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,16 +23,15 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 """
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
+# pylint: disable=W0401,W0614,C0413,W0611
 
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.compare_mosaiq import *
+from ._level1.gammainterface import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.compare_mosaiq'
-], package='pymedphys_wrappers.plancompare')
+    '._level1.gammainterface'
+], package='pymedphys_toolbox.gamma')

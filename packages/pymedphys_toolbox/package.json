@@ -1,5 +1,5 @@
 {
-  "name": "pymedphys_wrappers",
+  "name": "pymedphys_toolbox",
   "private": true,
   "scripts": {
     "install": "pip install -e ."

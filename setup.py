@@ -75,7 +75,7 @@ setup(
         'pymedphys_databases',
         'pymedphys_utilities',
         'pymedphys_workshops',
-        'pymedphys_wrappers',
+        'pymedphys_toolbox',
         'pymedphys_xlwings',
         'notebook',
         'jinja2'
