@@ -2,12 +2,7 @@
 # yarn lockfile v1
 
 
-cross-os@^1.3.0:
+cross-os@1.3.0:
   version "1.3.0"
   resolved "https://registry.yarnpkg.com/cross-os/-/cross-os-1.3.0.tgz#2a5488c4bdd72768a10d3ce81dfee03f9eb05fb2"
   integrity sha512-9kViqCcAwlPLTeSDPlyC2FdMQ5UVPtGZUnGV8vYDcBA3olJ/hDR7H6IfrNJft2DlKONleHf8CMhD+7Uv2tBnEw==
-
-run-script-os@1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/run-script-os/-/run-script-os-1.0.5.tgz#2cf188122bc6ee2ad8faa4f2e53d0aa8be08116f"
-  integrity sha512-uDMVaOAB9M4Q8KcQRVgt7jTZlGNIrlTPbEO+wEA+7kTTMsrL6/JYTkrRWuGF7VpZHHKLreTd/FN7J+EYEaUvhQ==

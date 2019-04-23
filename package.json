@@ -1,8 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "bootstrap": "yarn dependencies && yarn nbstripout:install && yarn development",
-    "development": "yarn && pip install -r requirements-development.txt",
+    "bootstrap": "yarn && yarn dependencies && yarn nbstripout:install && yarn development",
+    "development": "pip install -r requirements-development.txt",
     "nbstripout:install": "conda install -y nbstripout && nbstripout --install",
     "dependencies": "cross-os dependencies",
     "dependencies:darwin:win32": "conda install --file requirements-dependencies-only.txt",
@@ -20,6 +20,6 @@
   },
   "name": "pymedphys",
   "devDependencies": {
-    "cross-os": "^1.3.0"
+    "cross-os": "1.3.0"
   }
 }
