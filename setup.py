@@ -94,6 +94,7 @@ setup(
             'deepdiff',
             'pytest',
             'pytest-cov',
+            'tox',
             'xlwings >= 0.15.4'
         ],
         'formatting': [
