@@ -1,13 +1,14 @@
 {
   "private": true,
   "scripts": {
-    "bootstrap": "yarn && yarn dependencies && yarn nbstripout:install && yarn install:dev",
+    "bootstrap": "yarn && yarn conda:forge && yarn dependencies && yarn nbstripout:install && yarn install:dev",
     "install:dev": "pip install -r requirements-development.txt",
     "install:prod": "pip install -r requirements.txt",
     "nbstripout:install": "pip install nbstripout && nbstripout --install",
     "dependencies": "cross-os dependencies",
     "dependencies:darwin:win32": "conda install -y --file requirements-dependencies-only.txt",
     "dependencies:linux": "export INSTALL_ON_LINUX=1 && pip install -r requirements-dependencies-only.txt",
+    "conda:forge": "conda config --add channels conda-forge",
     "conda:create": "conda create -y --name pmp python=3.7 && yarn conda:activate && yarn bootstrap",
     "conda:delete": "conda env remove -y --name pmp",
     "conda:reinstall": "yarn conda:delete && yarn conda:create",
