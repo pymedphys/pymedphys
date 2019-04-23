@@ -23,7 +23,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-from pymedphys_numerics.coordinates import (
+from pymedphys_coordsandscales.coordinates import (
     rotate_about_vector, rotate_about_x, rotate_about_y, rotate_about_z, translate)
 
 

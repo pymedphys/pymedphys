@@ -6,7 +6,7 @@
 -e ./packages/pymedphys_utilities
 
 # Level 1
--e ./packages/pymedphys_numerics
+-e ./packages/pymedphys_coordsandscales
 -e ./packages/pymedphys_labs
 -e ./packages/pymedphys_shapes
 -e ./packages/pymedphys_workshops

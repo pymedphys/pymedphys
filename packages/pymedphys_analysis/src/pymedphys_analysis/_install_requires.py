@@ -1,6 +1,6 @@
 install_requires = [
     'psutil',
-    'pymedphys_numerics',
+    'pymedphys_coordsandscales',
     'pymedphys_utilities',
     'Pillow',
     'scipy',

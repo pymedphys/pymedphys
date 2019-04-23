@@ -1,7 +1,7 @@
 install_requires = [
     'pymedphys_utilities',
     'pymedphys_fileformats',
-    'pymedphys_numerics',
+    'pymedphys_coordsandscales',
     'pymedphys_sql',
     'pymedphys_analysis',
     'attrs',

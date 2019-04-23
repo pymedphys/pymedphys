@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from pymedphys_numerics.deliverydata import DeliveryData
+from pymedphys_coordsandscales.deliverydata import DeliveryData
 
 from .._level1.trfconstants import (
     GANTRY_NAME, COLLIMATOR_NAME,

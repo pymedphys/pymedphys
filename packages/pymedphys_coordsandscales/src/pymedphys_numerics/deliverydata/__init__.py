@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Matthew Jennings
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,21 +24,19 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""A coordinates toolbox.
+"""Model insert factors and parameterise inserts as equivalent ellipses.
 
-Available Functions
--------------------
->>> from pymedphys.coordinates import (
-...     rotate_about_z,
-...     translate)
+Example:
+    >>> from pymedphys.deliverydata import DeliveryData
 """
 
 # pylint: disable=W0401,W0614
 
+
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.coordinatestransforms import *
+from ._level1.deliverydatacore import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.coordinatestransforms'
-], package='pymedphys_numerics.coordinates')
+    '._level1.deliverydatacore'
+], package='pymedphys_coordsandscales.deliverydata')

@@ -28,7 +28,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_numerics.deliverydata import (
+from pymedphys_coordsandscales.deliverydata import (
     extract_angle_from_delivery_data, remove_irrelevant_control_points)
 from pymedphys_analysis.plt import pcolormesh_grid
 from pymedphys_utilities.coll import AGILITY

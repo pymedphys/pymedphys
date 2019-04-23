@@ -70,7 +70,7 @@ setup(
         'pymedphys_fileformats',
         'pymedphys_labs',
         'pymedphys_logfiles',
-        'pymedphys_numerics',
+        'pymedphys_coordsandscales',
         'pymedphys_shapes',
         'pymedphys_sql',
         'pymedphys_utilities',

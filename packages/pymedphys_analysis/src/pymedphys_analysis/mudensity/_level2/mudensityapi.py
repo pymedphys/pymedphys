@@ -25,7 +25,7 @@
 
 
 from pymedphys_utilities.libutils import get_imports
-from pymedphys_numerics.deliverydata import get_delivery_parameters
+from pymedphys_coordsandscales.deliverydata import get_delivery_parameters
 
 from .._level1.mudensitycore import calc_mu_density
 
