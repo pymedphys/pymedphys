@@ -101,7 +101,8 @@ setup(
         ],
         'formatting': [
             'autopep8',
-            'pylint'
+            'pylint',
+            'mypy'
         ]
     }
 )
