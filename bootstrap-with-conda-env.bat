@@ -1,3 +1,3 @@
 yarn conda:create &&^
-conda activate pmp &&^
+call conda activate pmp &&^
 yarn bootstrap
