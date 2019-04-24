@@ -1,11 +1,41 @@
 {
+  "name": "pymedphys",
   "private": true,
   "scripts": {
-    "install": "lerna bootstrap",
-    "postinstall": "pip install -e ."
+    "bootstrap": "yarn && yarn conda:forge && yarn dependencies && yarn nbstripout:install && yarn install:dev",
+    "conda:activate": "conda activate pmp",
+    "conda:create": "conda create -y --name pmp python=3.7 && yarn conda:activate && yarn bootstrap",
+    "conda:delete": "conda env remove -y --name pmp",
+    "conda:forge": "conda config --add channels conda-forge",
+    "conda:reinstall": "yarn conda:delete && yarn conda:create",
+    "dependencies": "cross-os dependencies",
+    "dependencies:darwin:win32": "conda install -y --file requirements-dependencies-only.txt",
+    "dependencies:linux": "export INSTALL_ON_LINUX=1 && pip install -r requirements-dependencies-only.txt",
+    "git:clean": "git clean -fxd",
+    "install:dev": "pip install -r requirements-development.txt",
+    "install:prod": "pip install -r requirements.txt",
+    "lerna:bootstrap": "lerna bootstrap && pip install -e .",
+    "lerna:build": "lerna run build",
+    "lerna:upload": "lerna run upload",
+    "nbstripout:install": "pip install nbstripout && nbstripout --install",
+    "pypi:build": "python setup.py sdist bdist_wheel",
+    "pypi:upload": "twine upload dist/*"
+  },
+  "cross-os": {
+    "dependencies": {
+      "win32": "yarn dependencies:darwin:win32",
+      "darwin": "yarn dependencies:darwin:win32",
+      "linux": "yarn dependencies:linux"
+    }
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "nbstripout --is-installed"
+    }
   },
   "devDependencies": {
+    "cross-os": "1.3.0",
+    "husky": "^1.3.1",
     "lerna": "^3.13.3"
-  },
-  "name": "pymedphys"
+  }
 }

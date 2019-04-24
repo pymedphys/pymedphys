@@ -38,7 +38,7 @@ import attr
 from pymedphys_utilities.libutils import get_imports
 from pymedphys_utilities.filehash import hash_file
 from pymedphys_utilities.utilities import get_sql_servers, make_a_valid_directory_name
-from pymedphys_sql.msq import (
+from pymedphys_databases.msq import (
     multi_mosaiq_connect, get_mosaiq_delivery_details, OISDeliveryDetails,
     NoMosaiqEntries)
 
