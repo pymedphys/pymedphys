@@ -4,6 +4,7 @@
   "scripts": {
     "bootstrap": "yarn && yarn conda:forge && yarn dependencies && yarn nbstripout:install && yarn install:dev",
     "conda:activate": "conda activate pmp",
+    "conda:create:stable": "conda create -y --name pmp-stable python=3.7 && conda activate pmp-stable && pip install pymedphys==0.8.0rc0",
     "conda:create": "conda create -y --name pmp python=3.7 && yarn conda:activate && yarn bootstrap",
     "conda:delete": "conda env remove -y --name pmp",
     "conda:forge": "conda config --add channels conda-forge",
