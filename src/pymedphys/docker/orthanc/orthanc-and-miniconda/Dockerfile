@@ -5,7 +5,7 @@ FROM osimis/orthanc:19.1.1
 ENV PATH /opt/conda/bin:$PATH
 
 RUN apt-get update --fix-missing && \
-  apt-get install -y wget bzip2 ca-certificates curl git apt-transport-https && \
+  apt-get install -y wget bzip2 ca-certificates curl git apt-transport-https python-software-properties && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
@@ -19,11 +19,14 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86
 
 RUN conda update -n base -c defaults conda
 RUN conda config --add channels conda-forge
-RUN conda install pymedphys
+RUN conda install pymedphys && \
+  conda clean -tipsy
+
+RUN curl -sL https://deb.nodesource.com/setup_10.x | -E bash -
 
 RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
 RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 RUN apt-get update --fix-missing && \
-  apt-get install -y yarn && \
+  apt-get install -y --no-install-recommends yarn && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
