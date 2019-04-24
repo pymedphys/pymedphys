@@ -38,7 +38,7 @@ services:
       - pypi-cache:/root/.cache/pip:rw
 
     entrypoint: /bin/bash -c
-    command: ['pushd /usr/src/pymedphys && yarn bootstrap && popd && /docker-entrypoint.sh --verbose /etc/orthanc']
+    command: ['pushd /usr/src/pymedphys && yarn docker:internal && popd && /docker-entrypoint.sh --verbose /etc/orthanc']
 
   physics-server-nginx:
     restart: always
