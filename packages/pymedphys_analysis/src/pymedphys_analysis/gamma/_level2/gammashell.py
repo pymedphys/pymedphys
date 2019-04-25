@@ -253,9 +253,9 @@ class GammaInternalFixedOptions():
         reference_dose_above_threshold = dose_reference >= lower_dose_cutoff
 
         mesh_coords_reference = np.meshgrid(*coords_reference, indexing='ij')
-        flat_mesh_coords_reference = [
+        flat_mesh_coords_reference = np.array([
             np.ravel(item)
-            for item in mesh_coords_reference]
+            for item in mesh_coords_reference])
 
         reference_points_to_calc = reference_dose_above_threshold
         reference_points_to_calc = np.ravel(reference_points_to_calc)
@@ -391,7 +391,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked,
     min_relative_dose_difference = np.nan * np.ones_like(
         options.flat_dose_reference[to_be_checked])
 
-    num_dimensions = len(options.flat_mesh_coords_reference)
+    num_dimensions = np.shape(options.flat_mesh_coords_reference)[0]
 
     coordinates_at_distance_shell = calculate_coordinates_shell(
         distance, num_dimensions, distance_step_size)
@@ -426,8 +426,12 @@ def calculate_min_dose_difference(options, distance, to_be_checked,
 
         assert np.all(to_be_checked[to_be_checked_sliced])
 
+        coords_reference_to_be_checked = (
+            options.flat_mesh_coords_reference[:, to_be_checked_sliced])
+
         evaluation_dose = interpolate_evaluation_dose_at_distance(
-            options, coordinates_at_distance_shell, to_be_checked_sliced)
+            options.evaluation_interpolation, coords_reference_to_be_checked,
+            coordinates_at_distance_shell)
 
         if options.local_gamma:
             with np.errstate(divide='ignore'):
@@ -450,35 +454,30 @@ def calculate_min_dose_difference(options, distance, to_be_checked,
 
 
 def interpolate_evaluation_dose_at_distance(
-        options, coordinates_at_distance_shell, to_be_checked=None):
+        evaluation_interpolation, coords_reference_to_be_checked,
+        coordinates_at_distance_shell):
     """Determine the evaluation dose for the points a given distance away for
     each reference coordinate.
     """
-    if to_be_checked is None:
-        to_be_checked = np.full_like(
-            options.flat_mesh_coords_reference[0], True, dtype=bool)
+    all_points = add_shells_to_ref_coords(
+        coords_reference_to_be_checked, coordinates_at_distance_shell)
 
-    all_points = add_shells_to_eval_coords(
-        options.flat_mesh_coords_reference, coordinates_at_distance_shell,
-        to_be_checked)
-
-    evaluation_dose = options.evaluation_interpolation(all_points)
+    evaluation_dose = evaluation_interpolation(all_points)
 
     return evaluation_dose
 
 
-def add_shells_to_eval_coords(flat_mesh_coords_reference,
-                              coordinates_at_distance_shell, to_be_checked):
-    """Add the distance shells to each evaluation coordinate to make a set of
+def add_shells_to_ref_coords(coords_reference_to_be_checked,
+                             coordinates_at_distance_shell):
+    """Add the distance shells to each reference coordinate to make a set of
     points to be tested for this given distance"""
 
     coordinates_at_distance = []
-    for shell_coord, eval_coord in zip(coordinates_at_distance_shell,
-                                       flat_mesh_coords_reference):
+    for shell_coord, ref_coord in zip(coordinates_at_distance_shell,
+                                      coords_reference_to_be_checked):
 
-        coordinates_at_distance.append((
-            eval_coord[to_be_checked][None, :] +
-            shell_coord[:, None])[:, :, None])
+        coordinates_at_distance.append(np.array(
+            ref_coord[None, :] + shell_coord[:, None])[:, :, None])
 
     all_points = np.concatenate(coordinates_at_distance, axis=2)
 
