@@ -10,6 +10,7 @@
     "dependencies": "cross-os dependencies",
     "dependencies:darwin:win32": "conda install -y --file requirements-dependencies-only.txt",
     "dependencies:linux": "export INSTALL_ON_LINUX=1 && pip install -r requirements-dependencies-only.txt",
+    "docker:internal": "yarn dependencies:linux && yarn install:prod && pip install .",
     "git:clean": "git clean -fxd",
     "git:undo": "git reset --soft HEAD~1",
     "install:dev": "pip install -r requirements-development.txt",
