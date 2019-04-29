@@ -29,6 +29,7 @@ from copy import deepcopy
 
 import numpy as np
 import pydicom
+from pydicom.dataset import Dataset
 
 from pymedphys_utilities.utilities import remove_file
 from pymedphys_utilities.libutils import get_imports
@@ -109,7 +110,7 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'LO': "Anonymous",
                                        'PN': "Anonymous",
                                        'SH': "Anonymous",
-                                       'SQ': ["Anonymous"],
+                                       'SQ': [Dataset()],
                                        'ST': "Anonymous",
                                        'TM': "000900.000000",
                                        'UI': "12345678"}
@@ -442,10 +443,12 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
 
     for elem in ds:
         if elem.keyword in IDENTIFYING_KEYWORDS:
-            dummy_value = _get_anonymous_replacement_value(elem.keyword)
-            if not (elem.value == '' or elem.value == dummy_value):
+            dummy_value = get_anonymous_replacement_value(elem.keyword)
+            if elem.VR == 'SQ':
+                if not (elem.value == [] or elem.value == dummy_value):
+                    is_anonymised = False
+            elif not (elem.value == '' or elem.value == dummy_value):
                 is_anonymised = False
-                # print(elem.value)
                 break
         elif elem.tag.is_private and not ignore_private_tags:
             is_anonymised = False
@@ -557,7 +560,7 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
     for keyword in keywords_to_anonymise:
         if hasattr(ds_anon, keyword):
             if replace_values:
-                replacement_value = _get_anonymous_replacement_value(keyword)
+                replacement_value = get_anonymous_replacement_value(keyword)
             else:
                 replacement_value = ''
             setattr(ds_anon, keyword, replacement_value)
@@ -581,7 +584,7 @@ def _filter_identifying_keywords(keywords_to_leave_unchanged):
     return keywords_filtered
 
 
-def _get_anonymous_replacement_value(keyword):
+def get_anonymous_replacement_value(keyword):
     """Get an appropriate dummy anonymisation value for a DICOM element
     based on its value representation (VR)
     """
