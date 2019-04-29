@@ -158,7 +158,7 @@ def anonymise_dataset(
         information.
 
     copy_dataset : bool, optional
-        If True, then a copy of `ds` is returned.
+        If `True`, then a copy of `ds` is returned.
 
     Returns
     -------
@@ -233,8 +233,8 @@ def anonymise_file(
         The path to the DICOM file to be anonymised.
 
     delete_original_file : bool, optional
-        If True and anonymisation completes successfully, then the
-        original DICOM is deleted. Defaults to False.
+        If `True` and anonymisation completes successfully, then the
+        original DICOM is deleted. Defaults to `False`.
 
     anonymise_filename : bool, optional
         If `True`, the DICOM filename is replaced by a filename of the
@@ -247,7 +247,7 @@ def anonymise_file(
         This ensures that the filename contains no identifying
         information. If set to `False`, `anonymise_file()` simply
         appends "_Anonymised" to the original DICOM filename. Defaults
-        to True.
+        to `True`.
 
     replace_values : bool, optional
         If set to `True`, DICOM tags will be anonymised using dummy
@@ -328,11 +328,11 @@ def anonymise_directory(
         anonymised.
 
     delete_original_files : bool, optional
-        If True and anonymisation completes successfully, then the
-        original DICOM files are deleted. Defaults to False.
+        If set to `True` and anonymisation completes successfully, then
+        the original DICOM files are deleted. Defaults to `False`.
 
     anonymise_filenames : bool, optional
-        If True, the DICOM filenames are replaced by filenames of the
+        If `True`, the DICOM filenames are replaced by filenames of the
         form:
 
         "<2 char DICOM modality>.<SOP Instance UID>_Anonymised.dcm".
@@ -342,7 +342,7 @@ def anonymise_directory(
         This ensures that the filenames contain no identifying
         information. If `False`, `anonymise_directory()` simply
         appends "_Anonymised" to the original DICOM filenames. Defaults
-        to True.
+        to `True`.
 
     replace_values : bool, optional
         If set to `True`, DICOM tags will be anonymised using dummy
@@ -396,7 +396,29 @@ def anonymise_directory(
 
 
 def is_anonymised_dataset(ds, ignore_private_tags=False):
-    r"""Checks whether a DICOM dataset has been (fully) anonymised.
+    r"""Check whether a DICOM dataset has been (fully) anonymised.
+
+    This function specifically checks whether the dataset has been
+    anonymised using a PyMedPhys anonymiser. It is very likely that it
+    will return `False` for an anonymous dataset that was anonymised
+    using a different tool.
+
+    Parameters
+    ----------
+    ds : pydicom.dataset.Dataset
+        The DICOM dataset to check for anonymity
+
+    ignore_private_tags : bool, optional
+        If set to `False`, `is_anonymised_dataset()` will return `False`
+        if any private (non-standard) DICOM tags exist in `ds`. Set
+        to `True` to ignore private tags when checking for
+        anonymity. Do so with caution, since private tags may contain
+        identifying information. Defaults to `False`.
+
+    Returns
+    -------
+    is_anonymised : bool
+        `True` if `ds` has been anonymised, `False` otherwise.
     """
     is_anonymised = True
 
@@ -414,7 +436,30 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
 
 
 def is_anonymised_file(filepath, ignore_private_tags=False):
-    r"""Checks whether a DICOM file has been (fully) anonymised.
+    r"""Check whether a DICOM file has been (fully) anonymised.
+
+    This function specifically checks whether the DICOM file has been
+    anonymised using a PyMedPhys anonymiser. It is very likely that it
+    will return `False` for an anonymous DICOM file that was anonymised
+    using a different tool.
+
+    Parameters
+    ----------
+    filepath : str
+        The path to the DICOM file to check for anonymity.
+
+    ignore_private_tags : bool, optional
+        If set to `False`, `is_anonymised_file()` will return `False`
+        if any private (non-standard) DICOM tags exist in the DICOM
+        file. Set to `True` to ignore private tags when checking for
+        anonymity. Do so with caution, since private tags may contain
+        identifying information. Defaults to `False`.
+
+    Returns
+    -------
+    is_anonymised : bool
+        `True` if the DICOM dataset read from `filepath` has been
+        anonymised, `False` otherwise.
     """
     ds = pydicom.dcmread(filepath)
 
@@ -422,8 +467,33 @@ def is_anonymised_file(filepath, ignore_private_tags=False):
 
 
 def is_anonymised_directory(dirpath, ignore_private_tags=False):
-    r"""Checks whether all DICOM files in a directory have been (fully)
+    r"""Check whether all DICOM files in a directory have been (fully)
     anonymised.
+
+    This function specifically checks whether the DICOM files have been
+    anonymised using a PyMedPhys anonymiser. It is very likely that it
+    will return `False` for an anonymous DICOM file that was anonymised
+    using a different tool.
+
+    Parameters
+    ----------
+    dirpath : str
+        The path to the directory containing DICOM files to check for
+        anonymity.
+
+    ignore_private_tags : bool, optional
+        If set to `False`, `is_anonymised_directory()` will return
+        `False` if any private (non-standard) DICOM tags exist in any of
+        the DICOM files in `dirpath`. Set to `True` to ignore private
+        tags when checking for anonymity. Do so with caution, since
+        private tags may contain identifying information. Defaults to
+        `False`.
+
+    Returns
+    -------
+    is_anonymised : bool
+        `True` if all of the DICOM datasets read from `dirpath` have
+        been anonymised, `False` otherwise.
     """
     is_anonymised = True
     dicom_filepaths = glob(dirpath + '/**/*.dcm', recursive=True)
@@ -464,7 +534,7 @@ def unknown_tags_in_dicom_dataset(ds):
 
 
 def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
-    """Anonymise all desired DICOM elements. 
+    """Anonymise all desired DICOM elements.
     """
     for keyword in keywords_to_anonymise:
         if hasattr(ds_anon, keyword):
