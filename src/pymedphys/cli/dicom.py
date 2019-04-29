@@ -132,6 +132,12 @@ def dicom_anonymise_directory(dicom_subparsers):
               "as opposed to replacing them with 'dummy' values."))
 
     parser.add_argument(
+        '-k', '--keywords_to_leave_unchanged', type=str, nargs='*',
+        help=("A space-separated list of DICOM keywords (e.g. "
+              "'PatientName') to exclude from anonymisation and "
+              "error checking."))
+
+    parser.add_argument(
         '-p', '--keep_private_tags',
         action='store_true',
         help=("Use this flag to preserve private tags in the "
