@@ -1,5 +1,3 @@
--r requirements.txt
-
 m2r
 nbsphinx
 sphinx-autobuild

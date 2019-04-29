@@ -6,20 +6,20 @@
 -e ./packages/pymedphys_utilities
 
 # Level 1
--e ./packages/pymedphys_numerics
+-e ./packages/pymedphys_coordsandscales
 -e ./packages/pymedphys_labs
--e ./packages/pymedphys_shapes
+-e ./packages/pymedphys_electronfactors
 -e ./packages/pymedphys_workshops
 
 # Level 2
 -e ./packages/pymedphys_analysis
--e ./packages/pymedphys_sql
+-e ./packages/pymedphys_databases
 
 # Level 3
 -e ./packages/pymedphys_dicom
 -e ./packages/pymedphys_fileformats
 
 # Level 4
--e ./packages/pymedphys_wrappers
+-e ./packages/pymedphys_toolbox
 -e ./packages/pymedphys_xlwings
 -e ./packages/pymedphys_logfiles
