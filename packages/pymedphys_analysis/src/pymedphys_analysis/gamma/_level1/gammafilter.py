@@ -33,6 +33,8 @@ import sys
 
 import numpy as np
 
+from pymedphys.dicom import coords_from_xyz_axes
+
 from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
@@ -44,17 +46,17 @@ def calculate_pass_rate(gamma_array):
     return percent_pass
 
 
-def gamma_filter_brute_force(coords_reference, dose_reference,
-                             coords_evaluation, dose_evaluation,
+def gamma_filter_brute_force(axes_reference, dose_reference,
+                             axes_evaluation, dose_evaluation,
                              distance_mm_threshold, dose_threshold,
                              lower_dose_cutoff=0, **kwargs):
 
-    xx_ref, yy_ref, zz_ref = np.meshgrid(*coords_reference, indexing='ij')
+    coords = coords_from_xyz_axes(axes_reference)
     gamma_array = np.ones_like(dose_evaluation).astype(np.float) * np.nan
 
     mesh_index = np.meshgrid(*[
         np.arange(len(coord_eval))
-        for coord_eval in coords_evaluation
+        for coord_eval in axes_evaluation
     ])
 
     eval_index = np.reshape(np.array(mesh_index), (3, -1))
@@ -65,24 +67,24 @@ def gamma_filter_brute_force(coords_reference, dose_reference,
 
     for counter, point_index in enumerate(run_index):
         i, j, k = eval_index[:, point_index]
-        eval_x = coords_evaluation[0][i]
-        eval_y = coords_evaluation[1][j]
-        eval_z = coords_evaluation[2][k]
+        eval_x = axes_evaluation[0][i]
+        eval_y = axes_evaluation[1][j]
+        eval_z = axes_evaluation[2][k]
 
         if dose_evaluation[i, j, k] < lower_dose_cutoff:
             continue
 
         distance = np.sqrt(
-            (xx_ref - eval_x)**2 +
-            (yy_ref - eval_y)**2 +
-            (zz_ref - eval_z)**2
+            (coords[0] - eval_x)**2 +
+            (coords[1] - eval_y)**2 +
+            (coords[2] - eval_z)**2
         )
 
         dose_diff = dose_evaluation[i, j, k] - dose_reference
 
         gamma = np.min(
-            np.sqrt((dose_diff/dose_threshold)**2 +
-                    (distance/distance_mm_threshold)**2))
+            np.sqrt((dose_diff / dose_threshold)**2 +
+                    (distance / distance_mm_threshold)**2))
 
         gamma_array[i, j, k] = gamma
 
@@ -114,14 +116,14 @@ def convert_to_ravel_index(points):
     return ravel_index
 
 
-def gamma_filter_numpy(coords_reference, dose_reference,
-                       coords_evaluation, dose_evaluation,
+def gamma_filter_numpy(axes_reference, dose_reference,
+                       axes_evaluation, dose_evaluation,
                        distance_mm_threshold, dose_threshold,
                        lower_dose_cutoff=0, **kwargs):
 
     coord_diffs = [
         coord_ref[:, None] - coord_eval[None, :]
-        for coord_ref, coord_eval in zip(coords_reference, coords_evaluation)
+        for coord_ref, coord_eval in zip(axes_reference, axes_evaluation)
     ]
 
     all_in_vicinity = [
