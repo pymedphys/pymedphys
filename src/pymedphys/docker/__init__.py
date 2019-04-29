@@ -33,4 +33,4 @@ HERE = os.path.dirname(__file__)
 
 def server_cli(args):
     subprocess.check_call("docker-compose build", cwd=HERE)
-    subprocess.check_call("docker-compose up --remove-orphans", cwd=HERE)
+    subprocess.check_call("docker-compose up", cwd=HERE)
