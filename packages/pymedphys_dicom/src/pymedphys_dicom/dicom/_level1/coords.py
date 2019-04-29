@@ -31,14 +31,14 @@ from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 
-def coords_from_xyz_axes(xyz):
+def coords_from_xyz_axes(xyz_axes):
     """Converts a set of x, y and z axes of a regular grid (e.g. a DICOM
     pixel array) into an array of three grids whose voxels correspond to
     and contain the `x`, `y`, and `z` coordinates of the original grid.
 
     Parameters
     ----------
-    xyz : tuple
+    xyz_axes : tuple
         A tuple containing three `ndarrays` corresponding to the `x`,
         `y` and `z` axes of a given 3D grid - usually a DICOM dataset's
         pixel array.
