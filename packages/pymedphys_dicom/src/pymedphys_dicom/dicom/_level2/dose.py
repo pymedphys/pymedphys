@@ -73,13 +73,12 @@ def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
     return dose
 
 
-def coords_and_dose_from_dicom(dicom_filepath):
+def axes_and_dose_from_dicom(dicom_filepath):
     ds = pydicom.dcmread(dicom_filepath, force=True)
     axes = xyz_axes_from_dataset(ds)
-    coords = coords_from_xyz_axes(axes)
     dose = dose_from_dataset(ds)
 
-    return coords, dose
+    return axes, dose
 
 
 def load_dicom_data(ds, depth_adjust):
