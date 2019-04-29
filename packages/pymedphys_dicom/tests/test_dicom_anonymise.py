@@ -14,7 +14,6 @@ from pymedphys_dicom.dicom import (
     BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,
     dicom_dataset_from_dict,
-    get_anonymous_replacement_value,
     IDENTIFYING_KEYWORDS,
     is_anonymised_dataset,
     is_anonymised_directory,
@@ -103,7 +102,7 @@ def test_anonymise_and_is_anonymised_dataset():
                                                delete_unknown_tags=True)
     assert is_anonymised_dataset(ds_anon_delete_unknown)
     with pytest.raises(AttributeError) as e_info:
-        ds_anon_delete_unknown.PatientName = ''
+        ds_anon_delete_unknown.PatientName
     assert str(e_info).count("'Dataset' object has no attribute "
                              "'PatientName'")
 
