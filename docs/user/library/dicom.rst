@@ -34,17 +34,15 @@ A suite of functions that apply DICOM datasets of any modality
 
 .. autofunction:: pymedphys.dicom.is_anonymised_directory
 
+.. autofunction:: pymedphys.dicom.coords_from_xyz_axes
+
+.. autofunction:: pymedphys.dicom.xyz_axes_from_dataset
+
 |
 
 RT Dose
 -------
 A suite of functions that apply to DICOM RT Dose datasets
-
-.. autofunction:: pymedphys.dicom.extract_iec_patient_xyz
-
-.. autofunction:: pymedphys.dicom.extract_iec_fixed_xyz
-
-.. autofunction:: pymedphys.dicom.extract_dicom_patient_xyz
 
 .. autofunction:: pymedphys.dicom.dose_from_dataset
 
