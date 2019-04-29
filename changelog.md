@@ -49,6 +49,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `mudensity` module.
 - `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
   module.
+- The DICOM coordinate extraction functions - `extract_dicom_patient_xyz()`,
+  `extract_iec_patient_xyz()` and `extract_iec_fixed_xyz()` - have been
+  combined into a single function called `xyz_from_dataset()`. The x, y, z axes
+  can still be returned in either the DICOM, IEC FIXED or IEX PATIENT
+  coordinate systems by passing `coord_system='D'` (`F` or `P`) to the
+  function.
 
 ### New Features
 
@@ -61,6 +67,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - three new functions that check whether a pydicom
     dataset, a DICOM file or all files within a directory have been anonymised,
     respectively.
+- `coords_from_xyz_axes()` is a previously internal function that has now been
+  exposed in the API. It converts x, y, z axes returned by `xyz_from_dataset()`
+  into a full grid of coordinate triplets that correspond to the original grid
+  (pixel array or dose grid).
 
 ## [0.7.2] -- 2019/04/05
 
