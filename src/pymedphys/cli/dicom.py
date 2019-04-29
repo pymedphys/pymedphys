@@ -103,8 +103,8 @@ def dicom_structure_name_RED_adjust(dicom_subparsers):
 def dicom_anonymise_directory(dicom_subparsers):
     parser = dicom_subparsers.add_parser(
         'anonymise-directory',
-        help='Anonymise all DICOM files in a directory and its '
-             'subdirectories')
+        help=('Anonymise all DICOM files in a directory and its '
+              'subdirectories'))
 
     parser.add_argument('dirpath', type=str)
 
@@ -132,7 +132,10 @@ def dicom_anonymise_directory(dicom_subparsers):
               "as opposed to replacing them with 'dummy' values."))
 
     parser.add_argument(
-        '-k', '--keywords_to_leave_unchanged', type=str, nargs='*',
+        '-k', '--keywords_to_leave_unchanged',
+        metavar='KEYWORD',
+        type=str,
+        nargs='*',
         help=("A space-separated list of DICOM keywords (e.g. "
               "'PatientName') to exclude from anonymisation and "
               "error checking."))
