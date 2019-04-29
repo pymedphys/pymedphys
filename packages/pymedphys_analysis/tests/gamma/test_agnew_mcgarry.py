@@ -60,7 +60,7 @@ EVAL_VMAT_0_25mm = os.path.abspath(os.path.join(
 RANDOM_SUBSET = 50000
 
 
-def load_dose_from_dicom(ds):
+def dose_from_dataset(ds):
     pixels = ds.pixel_array
     dose = pixels * ds.DoseGridScaling
 
@@ -89,14 +89,14 @@ def run_gamma(filepath_ref, filepath_eval, random_subset=None,
     if random_subset is not None:
         np.random.seed(42)
 
-    dcm_ref = pydicom.read_file(filepath_ref)
-    dcm_eval = pydicom.read_file(filepath_eval)
+    ds_ref = pydicom.read_file(filepath_ref)
+    ds_eval = pydicom.read_file(filepath_eval)
 
-    coords_reference = load_yx_from_dicom(dcm_ref)
-    dose_reference = load_dose_from_dicom(dcm_ref)
+    coords_reference = load_yx_from_dicom(ds_ref)
+    dose_reference = dose_from_dataset(ds_ref)
 
-    coords_evaluation = load_yx_from_dicom(dcm_eval)
-    dose_evaluation = load_dose_from_dicom(dcm_eval)
+    coords_evaluation = load_yx_from_dicom(ds_eval)
+    dose_evaluation = dose_from_dataset(ds_eval)
 
     gamma = gamma_shell(
         coords_reference, dose_reference,

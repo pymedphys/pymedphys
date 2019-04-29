@@ -46,9 +46,7 @@ A suite of functions that apply to DICOM RT Dose datasets
 
 .. autofunction:: pymedphys.dicom.extract_dicom_patient_xyz
 
-.. autofunction:: pymedphys.dicom.load_dose_from_dicom
-
-.. autofunction:: pymedphys.dicom.load_xyz_from_dicom
+.. autofunction:: pymedphys.dicom.dose_from_dataset
 
 |
 

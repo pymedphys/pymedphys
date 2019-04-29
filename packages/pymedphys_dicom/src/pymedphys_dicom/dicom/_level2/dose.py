@@ -40,18 +40,18 @@ import pydicom.uid
 from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
+from .._level1.coords import coords_from_xyz_axes, xyz_axes_from_dataset
 from .._level1.structure import pull_structure
 
 # pylint: disable=C0103
 
 
-def load_dose_from_dicom(ds, set_transfer_syntax_uid=True, reshape=True):
+def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
     r"""Extract the dose grid from a DICOM RT Dose file.
 
     .. deprecated:: 0.5.0
-            `load_dose_from_dicom` will be removed in a future version of PyMedPhys.
-            It is replaced by `extract_dose`, which provides additional dose-related
-            information and conforms to a new coordinate system handling convention.
+            `dose_from_dataset` will be removed in a future version of
+            PyMedPhys in favour of a new & improved API.
     """
 
     if set_transfer_syntax_uid:
@@ -59,10 +59,10 @@ def load_dose_from_dicom(ds, set_transfer_syntax_uid=True, reshape=True):
 
     if reshape:
         warnings.warn((
-            '`load_dose_from_dicom` currently reshapes the dose grid. In a '
+            '`dose_from_dataset` currently reshapes the dose grid. In a '
             'future version this will no longer occur. To begin using this '
             'function without the reshape pass the parameter `reshape=False` '
-            'when calling `load_dose_from_dicom`.'), UserWarning)
+            'when calling `dose_from_dataset`.'), UserWarning)
         pixels = np.transpose(
             ds.pixel_array, (1, 2, 0))
     else:
@@ -73,49 +73,18 @@ def load_dose_from_dicom(ds, set_transfer_syntax_uid=True, reshape=True):
     return dose
 
 
-def load_xyz_from_dicom(ds):
-    r"""Extract the coordinates of a DICOM RT Dose file's dose grid.
-
-    .. deprecated:: 0.5.0
-            `load_xyz_from_dicom` will be removed in a future version of PyMedPhys.
-            It is replaced by `extract_dicom_patient_coords`, `extract_iec_patient_coords`
-            and `extract_iec_fixed_coords`, which explicitly work in their respective
-            coordinate systems.
-    """
-
-    warnings.warn(
-        ('`load_xyz_from_dicom` returns x, y & z values in the DICOM patient '
-         'coordinate system and presumes the patient\'s orientation is HFS. '
-         'This presumption may not be correct and so the function may return '
-         'incorrect x, y, z values. In the future, this function will be removed. '
-         'It is currently preserved for temporary backwards compatibility.'),
-        UserWarning)
-
-    resolution = np.array(ds.PixelSpacing).astype(float)
-
-    dx = resolution[0]
-    x = (ds.ImagePositionPatient[0] + np.arange(0, ds.Columns * dx, dx))
-
-    dy = resolution[1]
-    y = (ds.ImagePositionPatient[1] + np.arange(0, ds.Rows * dy, dy))
-
-    z = (np.array(ds.GridFrameOffsetVector) + ds.ImagePositionPatient[2])
-
-    return x, y, z
-
-
 def coords_and_dose_from_dicom(dicom_filepath):
-    ds = pydicom.read_file(dicom_filepath, force=True)
-    x, y, z = load_xyz_from_dicom(ds)
-    coords = (y, x, z)
-    dose = load_dose_from_dicom(ds)
+    ds = pydicom.dcmread(dicom_filepath, force=True)
+    axes = xyz_axes_from_dataset(ds)
+    coords = coords_from_xyz_axes(axes)
+    dose = dose_from_dataset(ds)
 
     return coords, dose
 
 
 def load_dicom_data(ds, depth_adjust):
-    dose = load_dose_from_dicom(ds)
-    crossplane, vertical, inplane = load_xyz_from_dicom(ds)
+    dose = dose_from_dataset(ds)
+    crossplane, vertical, inplane = xyz_axes_from_dataset(ds)
 
     depth = vertical + depth_adjust
 
@@ -234,8 +203,8 @@ def _get_index(z_list, z_val):
 
 
 def find_dose_within_structure(structure, dcm_struct, dcm_dose):
-    x_dose, y_dose, z_dose = load_xyz_from_dicom(dcm_dose)
-    dose = load_dose_from_dicom(dcm_dose)
+    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dcm_dose)
+    dose = dose_from_dataset(dcm_dose)
 
     xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
