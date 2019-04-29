@@ -34,9 +34,8 @@
 ...     is_anonymised_dataset,
 ...     is_anonymised_file,
 ...     is_anonymised_directory,
-...
-...     # RT Dose related functions
-...     xyz_from_dataset,
+...     coords_from_xyz_axes
+...     xyz_axes_from_dataset,
 ...
 ...     # RT Structure related functions
 ...     get_structure_aligned_cube,
@@ -51,8 +50,9 @@
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
 from ._level1.constants import *
-from ._level1.structure import *
+from ._level1.coords import *
 from ._level1.create import *
+from ._level1.structure import *
 from ._level2.header_tweaks import *
 from ._level2.anonymise import *
 from ._level2.dose import *
@@ -60,6 +60,11 @@ from ._level3.dicom_collection import *
 
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.structure', '._level1.create', '._level2.header_tweaks',
-    '._level2.anonymise', '._level2.dose', '._level3.dicom_collection'
+    '._level1.coords',
+    '._level1.create',
+    '._level2.header_tweaks',
+    '._level1.structure',
+    '._level2.anonymise',
+    '._level2.dose',
+    '._level3.dicom_collection'
 ], package='pymedphys_dicom.dicom')
