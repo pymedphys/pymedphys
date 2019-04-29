@@ -27,22 +27,26 @@
 
 >>> from pymedphys.dicom import (
 ...
-...     # General functions
+...     # Anonymisation functions
 ...     anonymise_dataset,
 ...     anonymise_file,
 ...     anonymise_directory,
 ...     is_anonymised_dataset,
 ...     is_anonymised_file,
 ...     is_anonymised_directory,
+...
+...     # Coordinate functions
 ...     coords_from_xyz_axes
 ...     xyz_axes_from_dataset,
 ...
-...     # RT Structure related functions
-...     get_structure_aligned_cube,
+...     # Dose related functions
+...     create_dvh
+...     dose_from_dataset
+...     find_dose_within_structure
 ...
-...     # Functions using a combination of DICOM Modalities
-...     find_dose_within_structure,
-...     create_dvh)
+...     # RT Structure related functions
+...     get_structure_aligned_cube
+...     )
 """
 
 # pylint: disable=W0401,W0614

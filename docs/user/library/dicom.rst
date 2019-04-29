@@ -51,11 +51,11 @@ Dose
 -------
 A suite of functions for manipulating dose in a DICOM context.
 
+.. autofunction:: pymedphys.dicom.create_dvh
+
 .. autofunction:: pymedphys.dicom.dose_from_dataset
 
 .. autofunction:: pymedphys.dicom.find_dose_within_structure
-
-.. autofunction:: pymedphys.dicom.create_dvh
 
 |
 
