@@ -15,9 +15,9 @@ Summary
 API
 ***
 
-General
--------
-A suite of functions that apply DICOM datasets of any modality
+Anonymisation
+-------------
+A suite of functions related to DICOM dataset anonymisation.
 
 .. _`pymedphys.geometry.cubify_cube_definition`:
    geometry.html#pymedphys.geometry.cubify_cube_definition
@@ -34,34 +34,34 @@ A suite of functions that apply DICOM datasets of any modality
 
 .. autofunction:: pymedphys.dicom.is_anonymised_directory
 
+|
+
+Coordinates
+-----------
+A suite of functions assist with coordinate handling for DICOM datasets of a
+relevant modality, such as 'CT' or 'RTDOSE'.
+
 .. autofunction:: pymedphys.dicom.coords_from_xyz_axes
 
 .. autofunction:: pymedphys.dicom.xyz_axes_from_dataset
 
 |
 
-RT Dose
+Dose
 -------
-A suite of functions that apply to DICOM RT Dose datasets
+A suite of functions for manipulating dose in a DICOM context.
 
 .. autofunction:: pymedphys.dicom.dose_from_dataset
+
+.. autofunction:: pymedphys.dicom.find_dose_within_structure
+
+.. autofunction:: pymedphys.dicom.create_dvh
 
 |
 
 RT Structure
 ------------
-A suite of functions that apply to DICOM RT Structure sets
+A suite of functions that apply specifically to DICOM RT Structure sets
 
 .. autofunction:: pymedphys.dicom.get_structure_aligned_cube
-
-|
-
-Multiple DICOM Modality Combinations
-------------------------------------
-A suite of functions that apply to some combination of two or more different
-DICOM modalities
-
-.. autofunction:: pymedphys.dicom.find_dose_within_structure
-
-.. autofunction:: pymedphys.dicom.create_dvh
 
