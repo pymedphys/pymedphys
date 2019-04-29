@@ -92,15 +92,15 @@ def run_gamma(filepath_ref, filepath_eval, random_subset=None,
     ds_ref = pydicom.read_file(filepath_ref)
     ds_eval = pydicom.read_file(filepath_eval)
 
-    coords_reference = load_yx_from_dicom(ds_ref)
+    axes_reference = load_yx_from_dicom(ds_ref)
     dose_reference = dose_from_dataset(ds_ref)
 
-    coords_evaluation = load_yx_from_dicom(ds_eval)
+    axes_evaluation = load_yx_from_dicom(ds_eval)
     dose_evaluation = dose_from_dataset(ds_eval)
 
     gamma = gamma_shell(
-        coords_reference, dose_reference,
-        coords_evaluation, dose_evaluation,
+        axes_reference, dose_reference,
+        axes_evaluation, dose_evaluation,
         dose_threshold, distance_threshold,
         lower_percent_dose_cutoff=20,
         interp_fraction=10,
