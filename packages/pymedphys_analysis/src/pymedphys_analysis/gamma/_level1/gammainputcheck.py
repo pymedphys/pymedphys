@@ -34,44 +34,38 @@ def run_input_checks(
         axes_evaluation, dose_evaluation):
     """Check user inputs."""
 
-    if (
-            not isinstance(axes_evaluation, tuple) or
-            not isinstance(axes_reference, tuple)):
-        if (
-                isinstance(axes_evaluation, np.ndarray) and
-                isinstance(axes_reference, np.ndarray)):
+    if (not isinstance(axes_evaluation, tuple)
+            or not isinstance(axes_reference, tuple)):
 
-            print(axes_evaluation.shape)
-            print(axes_reference.shape)
-            if (
-                    len(np.shape(axes_evaluation)) == 1 and
-                    len(np.shape(axes_reference)) == 1):
+        if (isinstance(axes_evaluation, np.ndarray)
+                and isinstance(axes_reference, np.ndarray)):
+
+            if (len(np.shape(axes_evaluation)) == 1
+                    and len(np.shape(axes_reference)) == 1):
 
                 axes_evaluation = (axes_evaluation,)
                 axes_reference = (axes_reference,)
 
             else:
-                raise Exception(
-                    "Can only use numpy arrays as input for one dimensional "
-                    "gamma."
-                )
+                raise Exception("Can only use numpy arrays as input "
+                                "for one dimensional gamma.")
         else:
             raise Exception(
                 "Input coordinates must be inputted as a tuple, for "
-                "one dimension input is (x,), for two dimensions, (x, y),  "
-                "for three dimensions input is (x, y, z).")
+                "one dimension input is (x,), for two dimensions, "
+                "(x, y), for three dimensions input is (x, y, z).")
 
     reference_coords_shape = tuple([len(item) for item in axes_reference])
     if reference_coords_shape != np.shape(dose_reference):
         raise Exception(
-            "Length of items in axes_reference does not match the shape of "
-            "dose_reference")
+            "Length of items in axes_reference does not match the "
+            "shape of dose_reference")
 
     evaluation_coords_shape = tuple([len(item) for item in axes_evaluation])
     if evaluation_coords_shape != np.shape(dose_evaluation):
         raise Exception(
-            "Length of items in axes_evaluation does not match the shape of "
-            "dose_evaluation")
+            "Length of items in axes_evaluation does not match the "
+            "shape of dose_evaluation")
 
     if not (len(np.shape(dose_evaluation)) ==
             len(np.shape(dose_reference)) ==

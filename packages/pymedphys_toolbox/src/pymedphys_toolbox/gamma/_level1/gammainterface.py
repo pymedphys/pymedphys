@@ -45,9 +45,6 @@ def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
     axes_evaluation, dose_evaluation = axes_and_dose_from_dicom(
         dicom_eval_filepath)
 
-    print(type(axes_reference))
-    print(type(dose_reference))
-
     gamma = gamma_shell(
         axes_reference, dose_reference,
         axes_evaluation, dose_evaluation,
