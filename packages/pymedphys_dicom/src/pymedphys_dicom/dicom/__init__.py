@@ -36,13 +36,13 @@
 ...     is_anonymised_directory,
 ...
 ...     # Coordinate functions
-...     coords_from_xyz_axes
+...     coords_from_xyz_axes,
 ...     xyz_axes_from_dataset,
 ...
 ...     # Dose related functions
-...     create_dvh
-...     dose_from_dataset
-...     find_dose_within_structure
+...     create_dvh,
+...     dose_from_dataset,
+...     find_dose_within_structure,
 ...
 ...     # RT Structure related functions
 ...     get_structure_aligned_cube
