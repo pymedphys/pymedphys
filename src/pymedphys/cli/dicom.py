@@ -30,7 +30,7 @@ from pymedphys_dicom.dicom import (
     adjust_machine_name_cli,
     adjust_RED_cli,
     adjust_RED_by_structure_name_cli,
-    anonymise_directory)
+    anonymise_directory_cli)
 
 
 def dicom_cli(subparsers):
@@ -106,7 +106,7 @@ def dicom_anonymise_directory(dicom_subparsers):
         help=('Anonymise all DICOM files in a directory and its '
               'subdirectories'))
 
-    parser.add_argument('dirpath', type=str)
+    parser.add_argument('dirpath', type=str, help='Input directory')
 
     parser.add_argument(
         '-d', '--delete_original_files',
@@ -158,4 +158,4 @@ def dicom_anonymise_directory(dicom_subparsers):
         help=("Use this flag to ignore any unrecognised tags in the "
               "anonymised DICOM files."))
 
-    parser.set_defaults(func=anonymise_directory)
+    parser.set_defaults(func=anonymise_directory_cli)
