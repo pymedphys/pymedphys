@@ -28,7 +28,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_numerics.deliverydata import (
+from pymedphys_coordsandscales.deliverydata import (
     extract_angle_from_delivery_data, remove_irrelevant_control_points)
 from pymedphys_analysis.plt import pcolormesh_grid
 from pymedphys_utilities.coll import AGILITY
@@ -173,7 +173,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     >>> from pymedphys_analysis.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
-    >>> from pymedphys_sql.msq import (
+    >>> from pymedphys_databases.msq import (
     ...     mosaiq_connect, multi_fetch_and_verify_mosaiq)
     >>>
     >>> def mu_density_from_mosaiq(msq_server_name, field_id):

@@ -2,7 +2,9 @@
   "name": "pymedphys_utilities",
   "private": true,
   "scripts": {
-    "install": "pip install -e ."
+    "install": "pip install -e .",
+    "build": "python setup.py sdist bdist_wheel",
+    "upload": "twine upload dist/*"
   },
   "version": "0.0.0"
 }
