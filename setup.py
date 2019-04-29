@@ -65,20 +65,20 @@ setup(
     },
     license='AGPL-3.0-or-later',
     install_requires=[
+        'jinja2',
+        'notebook',
         'pymedphys_analysis',
+        'pymedphys_coordsandscales',
+        'pymedphys_databases',
         'pymedphys_dicom',
+        'pymedphys_electronfactors',
         'pymedphys_fileformats',
         'pymedphys_labs',
         'pymedphys_logfiles',
-        'pymedphys_numerics',
-        'pymedphys_shapes',
-        'pymedphys_sql',
+        'pymedphys_toolbox',
         'pymedphys_utilities',
         'pymedphys_workshops',
-        'pymedphys_wrappers',
-        'pymedphys_xlwings',
-        'notebook',
-        'jinja2'
+        'pymedphys_xlwings'
     ],
     extras_require={
         'docs': [
@@ -101,7 +101,8 @@ setup(
         ],
         'formatting': [
             'autopep8',
-            'pylint'
+            'pylint',
+            'mypy'
         ]
     }
 )

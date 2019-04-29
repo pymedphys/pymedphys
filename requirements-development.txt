@@ -1,0 +1,6 @@
+-r requirements-editable.txt
+-r requirements-docs.txt
+-r requirements-testing.txt
+-r requirements-linting.txt
+
+-e .

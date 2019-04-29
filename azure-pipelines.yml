@@ -8,11 +8,11 @@ jobs:
           test_title: Pylint All
           toxenv: pylint
           python: 3.7
-        Pylint-Subpackages:
-          image_name: ubuntu-16.04
-          test_title: Pylint Subpackages
-          toxenv: analysis,dicom,fileformats,labs,logfiles,numerics,shapes,sql,utilities,workshops,wrappers,xlwings
-          python: 3.7
+        # Pylint-Subpackages:
+        #   image_name: ubuntu-16.04
+        #   test_title: Pylint Subpackages
+        #   toxenv: analysis,dicom,fileformats,labs,logfiles,coordsandscales,electronfactors,databases,utilities,workshops,toolbox,xlwings
+        #   python: 3.7
         Docs:
           image_name: ubuntu-16.04
           test_title: Docs
@@ -160,7 +160,7 @@ jobs:
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
-    - bash: yarn
+    - bash: yarn install:prod
       displayName: Run yarn
 
     - bash: "pip install -e .[testing]"
