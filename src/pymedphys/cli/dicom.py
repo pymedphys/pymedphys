@@ -27,8 +27,10 @@
 """
 
 from pymedphys_dicom.dicom import (
-    adjust_machine_name_cli, adjust_RED_cli,
-    adjust_RED_by_structure_name_cli)
+    adjust_machine_name_cli,
+    adjust_RED_cli,
+    adjust_RED_by_structure_name_cli,
+    anonymise_directory)
 
 
 def dicom_cli(subparsers):
@@ -40,6 +42,8 @@ def dicom_cli(subparsers):
     dicom_adjust_machine_name(dicom_subparsers)
     dicom_adjust_rel_elec_density(dicom_subparsers)
     dicom_structure_name_RED_adjust(dicom_subparsers)
+
+    dicom_anonymise_directory(dicom_subparsers)
 
     return dicom_parser
 
@@ -94,3 +98,55 @@ def dicom_structure_name_RED_adjust(dicom_subparsers):
     parser.add_argument('output_file', type=str, help='output_file')
 
     parser.set_defaults(func=adjust_RED_by_structure_name_cli)
+
+
+def dicom_anonymise_directory(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        'anonymise-directory',
+        help='Anonymise all DICOM files in a directory and its '
+             'subdirectories')
+
+    parser.add_argument('dirpath', type=str)
+
+    parser.add_argument(
+        '-d', '--delete_original_files',
+        action='store_true',
+        help=("Use this flag to delete the original, non-anonymised "
+              "files in the processed directory. The original files "
+              "will only be deleted if anonymisation completes "
+              "successfully."))
+
+    parser.add_argument(
+        '-f', '--preserve_filenames',
+        action='store_true',
+        help=("Use this flag to preserve the original filenames in the "
+              "anonymised DICOM filenames. Note that '_Anonymised.dcm' "
+              "will still be appended. Use with caution, since DICOM "
+              "filenames may contain identifying information"))
+
+    parser.add_argument(
+        '-c', '--clear_values',
+        action='store_true',
+        help=("Use this flag to simply clear the values of all of the "
+              "identifying elements in the anonymised DICOM files, "
+              "as opposed to replacing them with 'dummy' values."))
+
+    parser.add_argument(
+        '-p', '--keep_private_tags',
+        action='store_true',
+        help=("Use this flag to preserve private tags in the "
+              "anonymised DICOM files."))
+
+    unknown_tags_group = parser.add_mutually_exclusive_group()
+    unknown_tags_group.add_argument(
+        '-u', '--delete_unknown_tags',
+        action='store_true',
+        help=("Use this flag to delete any unrecognised tags from the "
+              "anonymised DICOM files."))
+    unknown_tags_group.add_argument(
+        '-i', '--ignore_unknown_tags',
+        action='store_true',
+        help=("Use this flag to ignore any unrecognised tags in the "
+              "anonymised DICOM files."))
+
+    parser.set_defaults(func=anonymise_directory)

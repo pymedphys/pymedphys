@@ -392,7 +392,20 @@ def anonymise_directory(
             remove_file(dicom_filepath)
 
 
-# def anonymise_files_cli(args):
+def anonymise_directory_cli(args):
+    if args.delete_unknown_tags:
+        handle_unknown_tags = True
+    elif args.ignore_unknown_tags:
+        handle_unknown_tags = False
+
+    anonymise_directory(
+        dicom_dirpath=args.dicom_dirpath,
+        delete_original_files=args.delete_original_files,
+        anonymise_filenames=not args.preserve_filenames,
+        replace_values=not args.clear_values,
+        keywords_to_leave_unchanged=args.keywords_to_leave_unchanged,
+        delete_private_tags=not args.keep_private_tags,
+        delete_unknown_tags=handle_unknown_tags)
 
 
 def is_anonymised_dataset(ds, ignore_private_tags=False):
