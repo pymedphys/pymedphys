@@ -397,13 +397,18 @@ def anonymise_directory_cli(args):
         handle_unknown_tags = True
     elif args.ignore_unknown_tags:
         handle_unknown_tags = False
+    else:
+        handle_unknown_tags = False
+
+    if not args.keywords_to_leave_unchanged:
+        keywords_to_leave_unchanged = ()
 
     anonymise_directory(
-        dicom_dirpath=args.dicom_dirpath,
+        dicom_dirpath=args.dirpath,
         delete_original_files=args.delete_original_files,
         anonymise_filenames=not args.preserve_filenames,
         replace_values=not args.clear_values,
-        keywords_to_leave_unchanged=args.keywords_to_leave_unchanged,
+        keywords_to_leave_unchanged=keywords_to_leave_unchanged,
         delete_private_tags=not args.keep_private_tags,
         delete_unknown_tags=handle_unknown_tags)
 
