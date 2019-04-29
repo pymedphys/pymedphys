@@ -31,8 +31,8 @@ import numpy as np
 import pydicom
 
 from pymedphys_utilities.utilities import remove_file
-
 from pymedphys_utilities.libutils import get_imports
+
 from .._level1.constants import (
     BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,

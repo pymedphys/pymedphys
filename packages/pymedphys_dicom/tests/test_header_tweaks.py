@@ -35,6 +35,7 @@ import pydicom
 from pymedphys_dicom.dicom import (
     dicom_dataset_from_dict, adjust_machine_name, adjust_rel_elec_density,
     adjust_RED_by_structure_name, RED_adjustment_map_from_structure_names)
+from pymedphys_utilities.utilities import remove_file
 
 
 HERE = os.path.dirname(__file__)
@@ -54,8 +55,8 @@ def compare_dicom_cli(command, original, expected):
 
         assert str(cli_adjusted_ds) == str(expected)
     finally:
-        os.remove(ORIGINAL_DICOM_FILENAME)
-        os.remove(ADJUSTED_DICOM_FILENAME)
+        remove_file(ORIGINAL_DICOM_FILENAME)
+        remove_file(ADJUSTED_DICOM_FILENAME)
 
 
 def test_adjust_machine_name():
