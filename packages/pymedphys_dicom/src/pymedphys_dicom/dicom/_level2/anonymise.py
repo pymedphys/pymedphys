@@ -400,11 +400,11 @@ def anonymise_directory(
             if not dicom_filepath in failing_filepaths:
                 remove_file(dicom_filepath)
 
-    for i, path in enumerate(failing_filepaths):
+    for i, filepath in enumerate(failing_filepaths):
         raise Exception("Could not complete anonymisation of {}; a {} "
                         "error was raised. For more details, try "
                         "anonymising {} individually.\n"
-                        .format(path, type(errors[i]), path))
+                        .format(filepath, type(errors[i]), filepath))
 
 
 def anonymise_cli(args):
