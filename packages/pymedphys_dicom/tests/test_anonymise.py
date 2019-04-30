@@ -1,6 +1,6 @@
 from copy import deepcopy
 from os import makedirs
-from os.path import abspath, basename, dirname, join as pjoin
+from os.path import abspath, basename, dirname, exists, join as pjoin
 from shutil import copyfile
 from uuid import uuid4
 
@@ -26,10 +26,12 @@ from pymedphys_utilities.utilities import remove_file, remove_dir
 
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(HERE, 'data', 'anonymise')
-dicom_test_filepath = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
-file_meta = read_file_meta_info(dicom_test_filepath)
-temp_dicom_dirpath = pjoin(DATA_DIR, 'temp_{}'.format(uuid4()))
-temp_dicom_filepath = pjoin(temp_dicom_dirpath, "test.dcm")
+test_filepath = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
+baseline_anon_test_basename = \
+    "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm"
+file_meta = read_file_meta_info(test_filepath)
+temp_dirpath = pjoin(DATA_DIR, 'temp_{}'.format(uuid4()))
+temp_filepath = pjoin(temp_dirpath, "test.dcm")
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     'AS': "1Y",
@@ -45,37 +47,37 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     'UI': "11111118"}
 
 
+def _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=True,
+                                              ignore_private_tags=False):
+    try:
+        makedirs(temp_dirpath, exist_ok=True)
+        ds.is_little_endian = True
+        ds.is_implicit_VR = True
+        ds.file_meta = file_meta
+        ds.save_as(temp_filepath, write_like_original=False)
+
+        if anon_is_expected:
+            assert is_anonymised_dataset(ds, ignore_private_tags)
+            assert is_anonymised_file(temp_filepath, ignore_private_tags)
+            assert is_anonymised_directory(temp_dirpath,
+                                           ignore_private_tags)
+        else:
+            assert not is_anonymised_dataset(ds, ignore_private_tags)
+            assert not is_anonymised_file(temp_filepath,
+                                          ignore_private_tags)
+            assert not is_anonymised_directory(temp_dirpath,
+                                               ignore_private_tags)
+    finally:
+        remove_file(temp_filepath)
+        remove_dir(temp_dirpath)
+
+
 def _get_non_anonymous_replacement_value(keyword):
     """Get an appropriate dummy anonymisation value for a DICOM element
     based on its value representation (VR)
     """
     vr = BASELINE_KEYWORD_VR_DICT[keyword]
     return VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
-
-
-def _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=True,
-                                              ignore_private_tags=False):
-    try:
-        makedirs(temp_dicom_dirpath, exist_ok=True)
-        ds.is_little_endian = True
-        ds.is_implicit_VR = True
-        ds.file_meta = file_meta
-        ds.save_as(temp_dicom_filepath, write_like_original=False)
-
-        if anon_is_expected:
-            assert is_anonymised_dataset(ds, ignore_private_tags)
-            assert is_anonymised_file(temp_dicom_filepath, ignore_private_tags)
-            assert is_anonymised_directory(temp_dicom_dirpath,
-                                           ignore_private_tags)
-        else:
-            assert not is_anonymised_dataset(ds, ignore_private_tags)
-            assert not is_anonymised_file(temp_dicom_filepath,
-                                          ignore_private_tags)
-            assert not is_anonymised_directory(temp_dicom_dirpath,
-                                               ignore_private_tags)
-    finally:
-        remove_file(temp_dicom_filepath)
-        remove_dir(temp_dicom_dirpath)
 
 
 def test_anonymise_dataset_and_all_is_anonymised_functions():
@@ -163,45 +165,87 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
 
 
 def test_anonymise_file():
-    assert not is_anonymised_file(dicom_test_filepath)
+    assert not is_anonymised_file(test_filepath)
 
     try:
-        dicom_anon_filepath = anonymise_file(dicom_test_filepath,
-                                             delete_private_tags=False)
-        assert not is_anonymised_file(dicom_anon_filepath,
+        # Private tag handling
+        anon_private_filepath = anonymise_file(test_filepath,
+                                               delete_private_tags=False)
+        assert not is_anonymised_file(anon_private_filepath,
                                       ignore_private_tags=False)
-        assert is_anonymised_file(dicom_anon_filepath,
+        assert is_anonymised_file(anon_private_filepath,
                                   ignore_private_tags=True)
 
-        dicom_anon_filepath = anonymise_file(dicom_test_filepath,
-                                             delete_private_tags=True)
-        assert is_anonymised_file(dicom_anon_filepath,
+        anon_private_filepath = anonymise_file(test_filepath,
+                                               delete_private_tags=True)
+        assert is_anonymised_file(anon_private_filepath,
                                   ignore_private_tags=False)
+
+        # Filename is anonymised?
+        assert basename(anon_private_filepath) == baseline_anon_test_basename
+
+        # Deletion of original file
+        temp_basename = "{}_{}.dcm".format(
+            '.'.join(test_filepath.split('.')[:-1]),
+            uuid4())
+        temp_filepath = pjoin(dirname(test_filepath), temp_basename)
+        copyfile(test_filepath, temp_filepath)
+
+        anon_filepath_orig = anonymise_file(temp_filepath,
+                                            delete_original_file=True)
+        assert is_anonymised_file(anon_filepath_orig)
+        assert not exists(temp_filepath)
+
+        # Preservation of filename if desired
+        expected_filepath = "{}_Anonymised.dcm".format(
+            '.'.join(test_filepath.split('.')[:-1]))
+        anon_filepath_pres = anonymise_file(test_filepath,
+                                            anonymise_filename=False)
+        assert anon_filepath_pres == expected_filepath
+
     finally:
-        remove_file(dicom_anon_filepath)
+        remove_file(temp_filepath)
+        remove_file(anon_private_filepath)
+        remove_file(anon_filepath_orig)
+        remove_file(anon_filepath_pres)
 
 
 def test_anonymise_directory():
-    temp_anon_filepath = anonymised_dicom_filepath(temp_dicom_filepath,
+    temp_anon_filepath = anonymised_dicom_filepath(temp_filepath,
                                                    preserve_original=True)
     try:
-        makedirs(temp_dicom_dirpath, exist_ok=True)
-        copyfile(dicom_test_filepath, temp_dicom_filepath)
-        assert not is_anonymised_directory(temp_dicom_dirpath)
+        makedirs(temp_dirpath, exist_ok=True)
+        copyfile(test_filepath, temp_filepath)
+        assert not is_anonymised_directory(temp_dirpath)
 
-        anonymise_directory(temp_dicom_dirpath, delete_original_files=True,
+        # Test file deletion
+        anonymise_directory(temp_dirpath, delete_original_files=False,
                             anonymise_filenames=False)
-        assert is_anonymised_directory(temp_dicom_dirpath)
+        # # File should be anonymised but not dir, since original file
+        # # is still present.
+        assert is_anonymised_file(temp_anon_filepath)
+        assert exists(temp_filepath)
+        assert not is_anonymised_directory(temp_dirpath)
+
+        remove_file(temp_anon_filepath)
+        anonymise_directory(temp_dirpath, delete_original_files=True,
+                            anonymise_filenames=False)
+        # # File and dir should be anonymised since original file should
+        # # have been deleted.
+        assert is_anonymised_file(temp_anon_filepath)
+        assert not exists(temp_filepath)
+        assert is_anonymised_directory(temp_dirpath)
 
     finally:
         remove_file(temp_anon_filepath)
-        remove_dir(temp_dicom_dirpath)
+        remove_dir(temp_dirpath)
 
 
-def test_anonymise_directory_cli():
+def test_anonymise_cli():
     pass
 
 
 def test_tags_to_anonymise_in_dicom_dict_baseline():
-    baseline_keywords = [val[4] for val in BaselineDicomDictionary.values()]
+    baseline_keywords = [
+        val[4] for val in BaselineDicomDictionary.values()]
     assert set(IDENTIFYING_KEYWORDS).issubset(baseline_keywords)
