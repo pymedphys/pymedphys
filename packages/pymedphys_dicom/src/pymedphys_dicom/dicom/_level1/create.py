@@ -60,8 +60,8 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
                 convert_nparray_and_set_key_value_in_dataset(
                     dataset, key, value)
             elif np.all([isinstance(item, dict) for item in value]):
-                setattr(dataset, key, [dicom_dataset_from_dict(item)
-                                       for item in value])
+                setattr(dataset, key,
+                        [dicom_dataset_from_dict(item) for item in value])
             else:
                 raise ValueError(
                     "{} should contain either only dictionaries, or no "
@@ -71,3 +71,6 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
             convert_nparray_and_set_key_value_in_dataset(dataset, key, value)
 
     return dataset
+
+
+# def structure
