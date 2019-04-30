@@ -49,6 +49,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `mudensity` module.
 - `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
   module.
+- `pymedphys.dicom.get_structure_aligned_cube` has had its `x0` paremeter
+  changed from required to optional. It is no longer the first parameter
+  passed to the function. By default `x0` is now determined using the min/max
+  bounds of the structure.
 - The DICOM coordinate extraction functions - `extract_dicom_patient_xyz()`,
   `extract_iec_patient_xyz()` and `extract_iec_fixed_xyz()` - have been
   combined into a single function called `xyz_from_dataset()`. The x, y, z axes

@@ -26,6 +26,8 @@
 
 """A DICOM RT Dose toolbox"""
 
+from .._level1.structure import pull_structure
+from .._level1.coords import coords_from_xyz_axes, xyz_axes_from_dataset
 import warnings
 
 import numpy as np
@@ -40,8 +42,6 @@ import pydicom.uid
 from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
-from .._level1.coords import coords_from_xyz_axes, xyz_axes_from_dataset
-from .._level1.structure import pull_structure
 
 # pylint: disable=C0103
 
@@ -192,16 +192,16 @@ def average_bounding_profiles(ds, depth_adjust, depth_lookup,
         return inplane, inplane_dose, crossplane, crossplane_dose
 
 
-def _get_index(z_list, z_val):
+def _get_indices(z_list, z_val):
     indices = np.array([item[0] for item in z_list])
     # This will error if more than one contour exists on a given slice
-    index = int(np.where(indices == z_val)[0])
+    desired_indices = np.where(indices == z_val)[0]
     # Multiple contour sets per slice not yet implemented
 
-    return index
+    return desired_indices
 
 
-def find_dose_within_structure(structure, dcm_struct, dcm_dose):
+def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
     x_dose, y_dose, z_dose = xyz_axes_from_dataset(dcm_dose)
     dose = dose_from_dataset(dcm_dose)
 
@@ -209,31 +209,38 @@ def find_dose_within_structure(structure, dcm_struct, dcm_dose):
     points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
 
     x_structure, y_structure, z_structure = pull_structure(
-        structure, dcm_struct)
+        structure_name, dcm_struct)
     structure_z_values = np.array([item[0] for item in z_structure])
 
-    structure_dose_values = np.array([])
+    mask = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
 
     for z_val in structure_z_values:
-        structure_index = _get_index(z_structure, z_val)
-        dose_index = int(np.where(z_dose == z_val)[0])
+        structure_indices = _get_indices(z_structure, z_val)
 
-        assert z_structure[structure_index][0] == z_dose[dose_index]
+        for structure_index in structure_indices:
+            dose_index = int(np.where(z_dose == z_val)[0])
 
-        structure_polygon = path.Path([
-            (
-                x_structure[structure_index][i],
-                y_structure[structure_index][i]
-            )
-            for i in range(len(x_structure[structure_index]))
-        ])
-        mask = structure_polygon.contains_points(points).reshape(
-            len(y_dose), len(x_dose))
-        masked_dose = dose[:, :, dose_index]
-        structure_dose_values = np.append(
-            structure_dose_values, masked_dose[mask])
+            assert z_structure[structure_index][0] == z_dose[dose_index]
 
-    return structure_dose_values
+            structure_polygon = path.Path([
+                (
+                    x_structure[structure_index][i],
+                    y_structure[structure_index][i]
+                )
+                for i in range(len(x_structure[structure_index]))
+            ])
+            mask[:, :, dose_index] = mask[:, :, dose_index] | (
+                structure_polygon.contains_points(points).reshape(
+                    len(y_dose), len(x_dose)))
+
+    return mask
+
+
+def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
+    dose = dose_from_dataset(dcm_dose)
+    mask = get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose)
+
+    return dose[mask]
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
