@@ -1,6 +1,6 @@
-=======================
-Supporters of PyMedPhys
-=======================
+==================
+Current Supporters
+==================
 
 PyMedPhys is only able to be what it is today with the help of its supporters.
 Please visit the websites of our supporters as a way of saying thank you to
