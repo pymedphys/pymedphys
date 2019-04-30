@@ -308,8 +308,8 @@ def anonymise_file(
 
     if delete_original_file:
         remove_file(dicom_filepath)
-    else:
-        return dicom_anon_filepath
+
+    return dicom_anon_filepath
 
 
 def anonymise_directory(
