@@ -75,9 +75,9 @@ def gamma_filter_brute_force(axes_reference, dose_reference,
             continue
 
         distance = np.sqrt(
-            (coords[0] - eval_x)**2 +
-            (coords[1] - eval_y)**2 +
-            (coords[2] - eval_z)**2
+            (xx_ref - eval_x)**2 +
+            (yy_ref - eval_y)**2 +
+            (zz_ref - eval_z)**2
         )
 
         dose_diff = dose_evaluation[i, j, k] - dose_reference
