@@ -2,7 +2,7 @@
 PyMedPhys
 =========
 
-|build| |docs| |pypi| |conda| |python| |license|
+|build| |pypi| |conda| |python| |license|
 
 .. |build| image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
     :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
