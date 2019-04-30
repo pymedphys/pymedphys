@@ -49,17 +49,13 @@ Structure = namedtuple('Structure', ['name', 'number', 'coords'])
 
 
 def concatenate_a_contour_slice(x, y, z):
-    return reduce(operator.add, [
-        [str(x_i), str(y_i), str(z_i)]
-        for x_i, y_i, z_i in zip(x, y, z)
-    ])
+    return reduce(operator.add, [[str(x_i), str(y_i), str(z_i)]
+                                 for x_i, y_i, z_i in zip(x, y, z)])
 
 
 def create_contour_sequence_dict(structure: Structure):
-    merged_contours = [
-        concatenate_a_contour_slice(x, y, z)
-        for x, y, z in structure.coords
-    ]
+    merged_contours = [concatenate_a_contour_slice(x, y, z)
+                       for x, y, z in structure.coords]
 
     return {
         'ReferencedROINumber': structure.number,
@@ -73,19 +69,11 @@ def create_contour_sequence_dict(structure: Structure):
 
 
 def pull_coords_from_contour_sequence(contour_sequence):
-    contours_by_slice_raw = [
-        item.ContourData
-        for item in contour_sequence
-    ]
-    x = [
-        np.array(item[0::3])
-        for item in contours_by_slice_raw]
-    y = [
-        np.array(item[1::3])
-        for item in contours_by_slice_raw]
-    z = [
-        np.array(item[2::3])
-        for item in contours_by_slice_raw]
+    contours_by_slice_raw = [item.ContourData for item in contour_sequence]
+
+    x = [np.array(item[0::3]) for item in contours_by_slice_raw]
+    y = [np.array(item[1::3]) for item in contours_by_slice_raw]
+    z = [np.array(item[2::3]) for item in contours_by_slice_raw]
 
     return x, y, z
 
@@ -117,18 +105,15 @@ def list_structures(dcm_struct):
 
 
 def resample_contour(contour, n=51):
-    tck, u = splprep(
-        [contour[0], contour[1], contour[2]], s=0, k=1)
+    tck, u = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
     new_points = splev(np.linspace(0, 1, n), tck)
 
     return new_points
 
 
 def resample_contour_set(contours, n=50):
-    resampled_contours = [
-        resample_contour([x, y, z], n)
-        for x, y, z in zip(*contours)
-    ]
+    resampled_contours = [resample_contour([x, y, z], n)
+                          for x, y, z in zip(*contours)]
 
     return resampled_contours
 
@@ -146,8 +131,8 @@ def get_structure_aligned_cube(structure_name: str,
                                quiet=False, niter=10, x0=None):
     """Align a cube to a dicom structure set.
 
-    Designed to allow arbitrary references frames within a dicom file to be
-    extracted via contouring a cube.
+    Designed to allow arbitrary references frames within a dicom file
+    to be extracted via contouring a cube.
 
     Parameters
     ----------
@@ -160,13 +145,13 @@ def get_structure_aligned_cube(structure_name: str,
     x0 : ``np.ndarray``, optional
         A 3x3 array with each row defining a 3-D point in space.
         These three points are used as initial conditions to search for
-        a cube that fits the contours. Choosing initial values close to the
-        structure set, and in the desired orientation will allow consistent
-        results. See examples within
-        `pymedphys.geometry.cubify_cube_definition`_ on what the effects
-        of each of the three points are on the resulting cube.
-        By default this parameter is defined using the min/max values of
-        the contour structure.
+        a cube that fits the contours. Choosing initial values close to
+        the structure set, and in the desired orientation will allow
+        consistent results. See examples within
+        `pymedphys.geometry.cubify_cube_definition`_ on what the
+        effects of each of the three points are on the resulting cube.
+        By default, this parameter is defined using the min/max values
+        of the contour structure.
 
     Returns
     -------
@@ -260,10 +245,7 @@ def calc_min_distance(cube_definition, contours):
     vertices = cube_vertices(cube_definition)
 
     vectors = cube_vectors(cube_definition)
-    unit_vectors = [
-        vector / np.linalg.norm(vector)
-        for vector in vectors
-    ]
+    unit_vectors = [vector / np.linalg.norm(vector) for vector in vectors]
 
     plane_norms = np.array([
         unit_vectors[1],
@@ -285,8 +267,9 @@ def calc_min_distance(cube_definition, contours):
 
     plane_origin_dist = -np.sum(plane_points * plane_norms, axis=1)
 
-    distance_to_planes = np.dot(
-        plane_norms, contours) + plane_origin_dist[:, None]
+    distance_to_planes = np.dot(plane_norms, contours) \
+        + plane_origin_dist[:, None]
+
     min_dist_squared = np.min(distance_to_planes**2, axis=0)
 
     return min_dist_squared
