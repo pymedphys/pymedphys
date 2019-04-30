@@ -73,7 +73,7 @@ def _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=True,
 
 
 def _get_non_anonymous_replacement_value(keyword):
-    """Get an appropriate dummy anonymisation value for a DICOM element
+    """Get an appropriate dummy non-anonymised value for a DICOM element
     based on its value representation (VR)
     """
     vr = BASELINE_KEYWORD_VR_DICT[keyword]
