@@ -90,33 +90,35 @@ def test_anonymise_and_is_anonymised_dataset():
     # Test handling of unknown tags by removing PatientName from
     # baseline dict
     patient_name_tag = tag_for_keyword('PatientName')
-    patient_name = BaselineDicomDictionary.pop(patient_name_tag)
 
-    with pytest.raises(ValueError) as e_info:
-        anonymise_dataset(ds_non_anon)
-    assert str(e_info).count("At least one of the non-private tags "
-                             "within your DICOM file is not within "
-                             "PyMedPhys's copy of the DICOM dictionary.")
+    try:
+        patient_name = BaselineDicomDictionary.pop(patient_name_tag)
 
-    ds_anon_delete_unknown = anonymise_dataset(ds_non_anon,
-                                               delete_unknown_tags=True)
-    assert is_anonymised_dataset(ds_anon_delete_unknown)
-    with pytest.raises(AttributeError) as e_info:
-        ds_anon_delete_unknown.PatientName
-    assert str(e_info).count("'Dataset' object has no attribute "
-                             "'PatientName'")
+        with pytest.raises(ValueError) as e_info:
+            anonymise_dataset(ds_non_anon)
+        assert str(e_info).count("At least one of the non-private tags "
+                                 "within your DICOM file is not within "
+                                 "PyMedPhys's copy of the DICOM dictionary.")
 
-    ds_anon_ignore_unknown = anonymise_dataset(ds_non_anon,
-                                               delete_unknown_tags=False)
-    assert is_anonymised_dataset(ds_anon_ignore_unknown)
-    assert patient_name_tag in ds_anon_ignore_unknown
+        ds_anon_delete_unknown = anonymise_dataset(ds_non_anon,
+                                                   delete_unknown_tags=True)
+        assert is_anonymised_dataset(ds_anon_delete_unknown)
+        with pytest.raises(AttributeError) as e_info:
+            ds_anon_delete_unknown.PatientName
+        assert str(e_info).count("'Dataset' object has no attribute "
+                                 "'PatientName'")
 
-    patient_name = BaselineDicomDictionary.setdefault(patient_name_tag,
-                                                      patient_name)
+        ds_anon_ignore_unknown = anonymise_dataset(ds_non_anon,
+                                                   delete_unknown_tags=False)
+        assert is_anonymised_dataset(ds_anon_ignore_unknown)
+        assert patient_name_tag in ds_anon_ignore_unknown
+
+    finally:
+        patient_name = BaselineDicomDictionary.setdefault(patient_name_tag,
+                                                          patient_name)
 
     # Test copy_dataset=False:
-    ds_anon_uncopied = anonymise_dataset(ds_non_anon, copy_dataset=False)
-    assert is_anonymised_dataset(ds_anon_uncopied)
+    anonymise_dataset(ds_non_anon, copy_dataset=False)
     assert is_anonymised_dataset(ds_non_anon)
 
 
