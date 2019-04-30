@@ -30,50 +30,48 @@ IMPORTS = get_imports(globals())
 
 
 def run_input_checks(
-        coords_reference, dose_reference,
-        coords_evaluation, dose_evaluation):
+        axes_reference, dose_reference,
+        axes_evaluation, dose_evaluation):
     """Check user inputs."""
-    if (
-            not isinstance(coords_evaluation, tuple) or
-            not isinstance(coords_reference, tuple)):
-        if (
-                isinstance(coords_evaluation, np.ndarray) and
-                isinstance(coords_reference, np.ndarray)):
-            if (
-                    len(np.shape(coords_evaluation)) == 1 and
-                    len(np.shape(coords_reference)) == 1):
 
-                coords_evaluation = (coords_evaluation,)
-                coords_reference = (coords_reference,)
+    if (not isinstance(axes_evaluation, tuple)
+            or not isinstance(axes_reference, tuple)):
+
+        if (isinstance(axes_evaluation, np.ndarray)
+                and isinstance(axes_reference, np.ndarray)):
+
+            if (len(np.shape(axes_evaluation)) == 1
+                    and len(np.shape(axes_reference)) == 1):
+
+                axes_evaluation = (axes_evaluation,)
+                axes_reference = (axes_reference,)
 
             else:
-                raise Exception(
-                    "Can only use numpy arrays as input for one dimensional "
-                    "gamma."
-                )
+                raise Exception("Can only use numpy arrays as input "
+                                "for one dimensional gamma.")
         else:
             raise Exception(
                 "Input coordinates must be inputted as a tuple, for "
-                "one dimension input is (x,), for two dimensions, (x, y),  "
-                "for three dimensions input is (x, y, z).")
+                "one dimension input is (x,), for two dimensions, "
+                "(x, y), for three dimensions input is (x, y, z).")
 
-    reference_coords_shape = tuple([len(item) for item in coords_reference])
+    reference_coords_shape = tuple([len(item) for item in axes_reference])
     if reference_coords_shape != np.shape(dose_reference):
         raise Exception(
-            "Length of items in coords_reference does not match the shape of "
-            "dose_reference")
+            "Length of items in axes_reference does not match the "
+            "shape of dose_reference")
 
-    evaluation_coords_shape = tuple([len(item) for item in coords_evaluation])
+    evaluation_coords_shape = tuple([len(item) for item in axes_evaluation])
     if evaluation_coords_shape != np.shape(dose_evaluation):
         raise Exception(
-            "Length of items in coords_evaluation does not match the shape of "
-            "dose_evaluation")
+            "Length of items in axes_evaluation does not match the "
+            "shape of dose_evaluation")
 
     if not (len(np.shape(dose_evaluation)) ==
             len(np.shape(dose_reference)) ==
-            len(coords_evaluation) ==
-            len(coords_reference)):
+            len(axes_evaluation) ==
+            len(axes_reference)):
         raise Exception(
             "The dimensions of the input data do not match")
 
-    return coords_reference, coords_evaluation
+    return axes_reference, axes_evaluation
