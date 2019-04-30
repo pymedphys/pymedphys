@@ -51,7 +51,7 @@ def gamma_filter_brute_force(axes_reference, dose_reference,
                              distance_mm_threshold, dose_threshold,
                              lower_dose_cutoff=0, **kwargs):
 
-    coords = coords_from_xyz_axes(axes_reference)
+    xx_ref, yy_ref, zz_ref = np.meshgrid(*axes_reference, indexing='ij')
     gamma_array = np.ones_like(dose_evaluation).astype(np.float) * np.nan
 
     mesh_index = np.meshgrid(*[

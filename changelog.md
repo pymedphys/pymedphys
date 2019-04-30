@@ -52,9 +52,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The DICOM coordinate extraction functions - `extract_dicom_patient_xyz()`,
   `extract_iec_patient_xyz()` and `extract_iec_fixed_xyz()` - have been
   combined into a single function called `xyz_from_dataset()`. The x, y, z axes
-  can still be returned in either the DICOM, IEC FIXED or IEX PATIENT
-  coordinate systems by passing `coord_system='D'` (`F` or `P`) to the
-  function.
+  can still be returned in either the DICOM, IEC fixed or IEC patient
+  coordinate systems by passing the following case-insensitive strings to the
+  `coord_system=` parameter of `xyz_from_dataset()`:
+  - DICOM: `'d'` or `'DICOM'`
+  - IEC fixed: `'f'`, `'fixed'` or `'IEC fixed'`
+  - IEC patient: `'p'`, `'patient'` or `'IEC patient'`
 
 ### New Features
 

@@ -79,16 +79,16 @@ def xyz_axes_from_dataset(ds, coord_system="DICOM"):
 
     coord_system : str, optional
         The coordinate system in which to return the `x`, `y` and `z`
-        axes of the DICOM dataset. The accepted values of `coord_system`
-        are:
+        axes of the DICOM dataset. The accepted, case-insensitive
+        values of `coord_system` are:
 
-        'DICOM' or 'D':
+        'DICOM' or 'd':
             Return axes in the DICOM coordinate system.
 
-        'PATIENT', 'IEC PATIENT' or 'P':
+        'patient', 'IEC patient' or 'p':
             Return axes in the IEC patient coordinate system.
 
-        'FIXED', 'IEC FIXED' or 'F':
+        'fixed', 'IEC fixed' or 'f':
             Return axes in the IEC fixed coordinate system.
 
     Returns
