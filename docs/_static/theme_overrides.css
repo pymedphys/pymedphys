@@ -72,7 +72,7 @@ THE SOFTWARE. */
 }
 
 .wy-nav-side {
-    background: #fcfcfc !important;
+    background: #f9f9f9!important;
 }
 
 .wy-side-nav-search>a, .wy-side-nav-search .wy-dropdown>a {
@@ -84,7 +84,7 @@ THE SOFTWARE. */
 }
 
 .wy-side-nav-search {
-   background-color: white !important;
+   background-color: #f9f9f9 !important;
 }
 
 .section {
