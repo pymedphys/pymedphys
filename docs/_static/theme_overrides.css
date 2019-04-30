@@ -68,10 +68,15 @@ THE SOFTWARE. */
     color: #333 !important;
 }
 
-.reference.internal.current:not(:hover):not(:active){
+/* .reference.internal.current:not(:hover):not(:active){ */
     /* color: #f2f2f2 !important; */
     /* background-image: linear-gradient(to right, #3679b0 , #366a96); */
-    background-image: linear-gradient(to right, #ffe873 , #ffc836) !important;
+    /* background-image: linear-gradient(to right, #ffe873 , #ffc836) !important; */
+/* } */
+
+.wy-menu-vertical li.toctree-l1.current>a {
+    border-bottom: solid 1px #333 !important;
+    border-top: solid 1px #333 !important;
 }
 
 .wy-menu-vertical a:hover,
@@ -84,16 +89,16 @@ THE SOFTWARE. */
     padding-bottom: 0 !important;
 }
 
+.wy-side-nav-search {
+    background-color: #f9f9f9 !important;
+}
+
 .wy-side-nav-search>a, .wy-side-nav-search .wy-dropdown>a {
     color: #3f7cad !important
 }
 
 .version {
     color: #3f7cad !important;
-}
-
-.wy-side-nav-search {
-   background-color: #f9f9f9 !important;
 }
 
 .section {
