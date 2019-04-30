@@ -2,13 +2,10 @@
 PyMedPhys
 =========
 
-|build| |docs| |pypi| |conda| |python| |license|
+|build| |pypi| |conda| |python| |license|
 
 .. |build| image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
     :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
-
-.. |docs| image:: https://readthedocs.org/projects/pymedphys/badge/?version=latest
-    :target: https://pymedphys.com/
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pymedphys.svg
     :target: https://pypi.org/project/pymedphys/
@@ -66,7 +63,7 @@ this means that upgrading ``pymedphys`` to a new version will possibly break
 any code that was using the old version of pymedphys. We try to be abreast of
 this by providing details of any breaking changes from one release to the next
 within the `Release Notes
-<http://pymedphys.com/en/stable/getting-started/changelog.html>`__.
+<http://pymedphys.com/getting-started/changelog.html>`__.
 
 
 Our Team
@@ -194,13 +191,13 @@ Installation
 ------------
 
 For instructions on how to install see the documentation at
-https://pymedphys.com/en/stable/getting-started/installation.html.
+https://pymedphys.com/getting-started/installation.html.
 
 
 Contributing
 ------------
 
 See the contributor documentation at
-https://pymedphys.com/en/stable/developer/contributing.html
+https://pymedphys.com/developer/contributing.html
 if you wish to create and validate open source Medical Physics tools
 together.
