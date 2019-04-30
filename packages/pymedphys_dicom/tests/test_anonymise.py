@@ -136,9 +136,9 @@ def test_anonymise_and_is_anonymised_file():
 
     try:
         dicom_anon_filepath = anonymise_file(dicom_test_filepath,
-                                         delete_private_tags=True)
+                                             delete_private_tags=True)
         assert is_anonymised_file(dicom_anon_filepath,
-                              ignore_private_tags=False)
+                                  ignore_private_tags=False)
     finally:
         remove_file(dicom_anon_filepath)
 
@@ -157,7 +157,7 @@ def test_anonymise_and_is_anonymised_directory():
         assert not is_anonymised_directory(temp_dirpath)
 
         anonymise_directory(temp_dirpath, delete_original_files=True,
-            anonymise_filenames=False)
+                            anonymise_filenames=False)
         assert is_anonymised_directory(temp_dirpath)
 
     finally:
