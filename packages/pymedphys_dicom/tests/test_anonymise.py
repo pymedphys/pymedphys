@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from pydicom.datadict import tag_for_keyword
 from pydicom.dataset import Dataset, DataElement
+from pydicom.filereader import read_file_meta_info
 import pytest
 
 from pymedphys_dicom.dicom import (
@@ -26,6 +27,9 @@ from pymedphys_utilities.utilities import remove_file, remove_dir
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(HERE, 'data', 'anonymise')
 dicom_test_filepath = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
+file_meta = read_file_meta_info(dicom_test_filepath)
+temp_dicom_dirpath = pjoin(DATA_DIR, 'temp_{}'.format(uuid4()))
+temp_dicom_filepath = pjoin(temp_dicom_dirpath, "test.dcm")
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     'AS': "1Y",
@@ -49,7 +53,32 @@ def _get_non_anonymous_replacement_value(keyword):
     return VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
 
 
-def test_anonymise_and_is_anonymised_dataset():
+def _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=True,
+                                              ignore_private_tags=False):
+    try:
+        makedirs(temp_dicom_dirpath, exist_ok=True)
+        ds.is_little_endian = True
+        ds.is_implicit_VR = True
+        ds.file_meta = file_meta
+        ds.save_as(temp_dicom_filepath, write_like_original=False)
+
+        if anon_is_expected:
+            assert is_anonymised_dataset(ds, ignore_private_tags)
+            assert is_anonymised_file(temp_dicom_filepath, ignore_private_tags)
+            assert is_anonymised_directory(temp_dicom_dirpath,
+                                           ignore_private_tags)
+        else:
+            assert not is_anonymised_dataset(ds, ignore_private_tags)
+            assert not is_anonymised_file(temp_dicom_filepath,
+                                          ignore_private_tags)
+            assert not is_anonymised_directory(temp_dicom_dirpath,
+                                               ignore_private_tags)
+    finally:
+        remove_file(temp_dicom_filepath)
+        remove_dir(temp_dicom_dirpath)
+
+
+def test_anonymise_dataset_and_all_is_anonymised_functions():
 
     # Create dict with one instance of every identifying keyword and
     # run basic anonymisation tests
@@ -58,11 +87,11 @@ def test_anonymise_and_is_anonymised_dataset():
     for key in non_anon_dict:
         non_anon_dict[key] = _get_non_anonymous_replacement_value(key)
 
-    ds_non_anon = dicom_dataset_from_dict(non_anon_dict)
-    assert not is_anonymised_dataset(ds_non_anon)
+    ds = dicom_dataset_from_dict(non_anon_dict)
+    _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=False)
 
-    ds_anon = anonymise_dataset(ds_non_anon)
-    assert is_anonymised_dataset(ds_anon)
+    ds_anon = anonymise_dataset(ds)
+    _check_is_anonymised_dataset_file_and_dir(ds_anon, anon_is_expected=True)
 
     # Test anonymisation (and check thereof) for each identifying
     # element individually.
@@ -71,23 +100,30 @@ def test_anonymise_and_is_anonymised_dataset():
         setattr(ds_single_non_anon_value,
                 elem.keyword,
                 _get_non_anonymous_replacement_value(elem.keyword))
-        assert not is_anonymised_dataset(ds_single_non_anon_value)
+        _check_is_anonymised_dataset_file_and_dir(ds_single_non_anon_value,
+                                                  anon_is_expected=False)
 
         ds_single_anon = anonymise_dataset(ds_single_non_anon_value)
-        assert is_anonymised_dataset(ds_single_anon)
+        _check_is_anonymised_dataset_file_and_dir(ds_single_anon,
+                                                  anon_is_expected=True)
 
     # Test correct handling of private tags
     ds_anon.add(DataElement(0x0043102b, 'SS', [4, 4, 0, 0]))
-    assert not is_anonymised_dataset(ds_anon, ignore_private_tags=False)
-    assert is_anonymised_dataset(ds_anon, ignore_private_tags=True)
+    _check_is_anonymised_dataset_file_and_dir(ds_anon, anon_is_expected=False,
+                                              ignore_private_tags=False)
+    _check_is_anonymised_dataset_file_and_dir(ds_anon, anon_is_expected=True,
+                                              ignore_private_tags=True)
 
     ds_anon.remove_private_tags()
-    assert is_anonymised_dataset(ds_anon, ignore_private_tags=False)
+    _check_is_anonymised_dataset_file_and_dir(ds_anon, anon_is_expected=True,
+                                              ignore_private_tags=False)
 
     # Test blank anonymisation
-    assert not is_anonymised_dataset(ds_non_anon)  # Sanity check
-    ds_anon_blank = anonymise_dataset(ds_non_anon, replace_values=False)
-    assert is_anonymised_dataset(ds_anon_blank)
+    # # Sanity check
+    _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=False)
+
+    ds_anon_blank = anonymise_dataset(ds, replace_values=False)
+    _check_is_anonymised_dataset_file_and_dir(ds_anon_blank, anon_is_expected=True)
 
     # Test handling of unknown tags by removing PatientName from
     # baseline dict
@@ -97,22 +133,24 @@ def test_anonymise_and_is_anonymised_dataset():
         patient_name = BaselineDicomDictionary.pop(patient_name_tag)
 
         with pytest.raises(ValueError) as e_info:
-            anonymise_dataset(ds_non_anon)
+            anonymise_dataset(ds)
         assert str(e_info).count("At least one of the non-private tags "
                                  "within your DICOM file is not within "
                                  "PyMedPhys's copy of the DICOM dictionary.")
 
-        ds_anon_delete_unknown = anonymise_dataset(ds_non_anon,
+        ds_anon_delete_unknown = anonymise_dataset(ds,
                                                    delete_unknown_tags=True)
-        assert is_anonymised_dataset(ds_anon_delete_unknown)
+        _check_is_anonymised_dataset_file_and_dir(ds_anon_delete_unknown,
+                                                  anon_is_expected=True)
         with pytest.raises(AttributeError) as e_info:
             ds_anon_delete_unknown.PatientName
         assert str(e_info).count("'Dataset' object has no attribute "
                                  "'PatientName'")
 
-        ds_anon_ignore_unknown = anonymise_dataset(ds_non_anon,
+        ds_anon_ignore_unknown = anonymise_dataset(ds,
                                                    delete_unknown_tags=False)
-        assert is_anonymised_dataset(ds_anon_ignore_unknown)
+        _check_is_anonymised_dataset_file_and_dir(ds_anon_ignore_unknown,
+                                                  anon_is_expected=True)
         assert patient_name_tag in ds_anon_ignore_unknown
 
     finally:
@@ -120,21 +158,21 @@ def test_anonymise_and_is_anonymised_dataset():
                                                           patient_name)
 
     # Test copy_dataset=False:
-    anonymise_dataset(ds_non_anon, copy_dataset=False)
-    assert is_anonymised_dataset(ds_non_anon)
+    anonymise_dataset(ds, copy_dataset=False)
+    assert is_anonymised_dataset(ds)
 
 
-def test_anonymise_and_is_anonymised_file():
+def test_anonymise_file():
     assert not is_anonymised_file(dicom_test_filepath)
 
-    dicom_anon_filepath = anonymise_file(dicom_test_filepath,
-                                         delete_private_tags=False)
-    assert not is_anonymised_file(dicom_anon_filepath,
-                                  ignore_private_tags=False)
-    assert is_anonymised_file(dicom_anon_filepath,
-                              ignore_private_tags=True)
-
     try:
+        dicom_anon_filepath = anonymise_file(dicom_test_filepath,
+                                             delete_private_tags=False)
+        assert not is_anonymised_file(dicom_anon_filepath,
+                                      ignore_private_tags=False)
+        assert is_anonymised_file(dicom_anon_filepath,
+                                  ignore_private_tags=True)
+
         dicom_anon_filepath = anonymise_file(dicom_test_filepath,
                                              delete_private_tags=True)
         assert is_anonymised_file(dicom_anon_filepath,
@@ -143,27 +181,21 @@ def test_anonymise_and_is_anonymised_file():
         remove_file(dicom_anon_filepath)
 
 
-
-def test_anonymise_and_is_anonymised_directory():
-    temp_dirpath = pjoin(DATA_DIR, 'temp_{}'.format(uuid4()))
-    temp_test_filepath = pjoin(temp_dirpath, basename(dicom_test_filepath))
-
-    temp_anon_filepath = anonymised_dicom_filepath(
-        temp_test_filepath, preserve_original=True)
-
+def test_anonymise_directory():
+    temp_anon_filepath = anonymised_dicom_filepath(temp_dicom_filepath,
+                                                   preserve_original=True)
     try:
-        makedirs(temp_dirpath, exist_ok=True)
-        copyfile(dicom_test_filepath, temp_test_filepath)
-        assert not is_anonymised_directory(temp_dirpath)
+        makedirs(temp_dicom_dirpath, exist_ok=True)
+        copyfile(dicom_test_filepath, temp_dicom_filepath)
+        assert not is_anonymised_directory(temp_dicom_dirpath)
 
-        anonymise_directory(temp_dirpath, delete_original_files=True,
+        anonymise_directory(temp_dicom_dirpath, delete_original_files=True,
                             anonymise_filenames=False)
-        assert is_anonymised_directory(temp_dirpath)
+        assert is_anonymised_directory(temp_dicom_dirpath)
 
     finally:
-        print(temp_anon_filepath)
         remove_file(temp_anon_filepath)
-        remove_dir(temp_dirpath)
+        remove_dir(temp_dicom_dirpath)
 
 
 def test_anonymise_directory_cli():
