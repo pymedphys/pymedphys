@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 from glob import glob
-from os.path import basename, dirname, join as pjoin
+from os.path import basename, dirname, isdir, isfile, join as pjoin
 from copy import deepcopy
 
 import numpy as np
@@ -393,7 +393,7 @@ def anonymise_directory(
             remove_file(dicom_filepath)
 
 
-def anonymise_directory_cli(args):
+def anonymise_cli(args):
     if args.delete_unknown_tags:
         handle_unknown_tags = True
     elif args.ignore_unknown_tags:
@@ -404,14 +404,29 @@ def anonymise_directory_cli(args):
     if not args.keywords_to_leave_unchanged:
         keywords_to_leave_unchanged = ()
 
-    anonymise_directory(
-        dicom_dirpath=args.dirpath,
-        delete_original_files=args.delete_original_files,
-        anonymise_filenames=not args.preserve_filenames,
-        replace_values=not args.clear_values,
-        keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-        delete_private_tags=not args.keep_private_tags,
-        delete_unknown_tags=handle_unknown_tags)
+    if isfile(args.input_path):
+        anonymise_file(
+            dicom_filepath=args.input_path,
+            delete_original_file=args.delete_original_files,
+            anonymise_filename=not args.preserve_filenames,
+            replace_values=not args.clear_values,
+            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+            delete_private_tags=not args.keep_private_tags,
+            delete_unknown_tags=handle_unknown_tags)
+
+    elif isdir(args.input_path):
+        anonymise_directory(
+            dicom_dirpath=args.dirpath,
+            delete_original_files=args.delete_original_files,
+            anonymise_filenames=not args.preserve_filenames,
+            replace_values=not args.clear_values,
+            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+            delete_private_tags=not args.keep_private_tags,
+            delete_unknown_tags=handle_unknown_tags)
+
+    else:
+        raise FileNotFoundError("No file or directory was found at the "
+                                "supplied input path.")
 
 
 def is_anonymised_dataset(ds, ignore_private_tags=False):
