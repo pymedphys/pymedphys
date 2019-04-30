@@ -298,7 +298,7 @@ def anonymise_file(
             dirname(dicom_filepath),
             "{}_Anonymised.dcm".format(basename_without_filetype))
 
-    ds_anon = anonymise_dataset(
+    anonymise_dataset(
         ds=ds,
         replace_values=replace_values,
         keywords_to_leave_unchanged=keywords_to_leave_unchanged,
@@ -306,7 +306,7 @@ def anonymise_file(
         delete_unknown_tags=delete_unknown_tags,
         copy_dataset=False)
 
-    ds_anon.save_as(dicom_anon_filepath)
+    ds.save_as(dicom_anon_filepath)
 
     if delete_original_file:
         remove_file(dicom_filepath)
