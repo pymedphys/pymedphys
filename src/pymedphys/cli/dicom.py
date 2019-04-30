@@ -115,9 +115,9 @@ def anonymise(dicom_subparsers):
         '-d', '--delete_original_files',
         action='store_true',
         help=("Use this flag to delete the original, non-anonymised "
-              "files in the processed directory. The original files "
-              "will only be deleted if anonymisation completes "
-              "successfully."))
+              "files in the processed directory. Each original file "
+              "will only be deleted if anonymisation completed "
+              "successfully for that file."))
 
     parser.add_argument(
         '-f', '--preserve_filenames',

@@ -378,23 +378,36 @@ def anonymise_directory(
         information.
     """
     dicom_filepaths = glob(dicom_dirpath + '/**/*.dcm', recursive=True)
+    failing_filepaths = []
+    errors = []
 
     for dicom_filepath in dicom_filepaths:
-        anonymise_file(
-            dicom_filepath,
-            delete_original_file=False,
-            anonymise_filename=anonymise_filenames,
-            replace_values=replace_values,
-            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-            delete_private_tags=delete_private_tags,
-            delete_unknown_tags=delete_unknown_tags)
+        try:
+            anonymise_file(
+                dicom_filepath,
+                delete_original_file=False,
+                anonymise_filename=anonymise_filenames,
+                replace_values=replace_values,
+                keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+                delete_private_tags=delete_private_tags,
+                delete_unknown_tags=delete_unknown_tags)
+        except Exception as e:
+            failing_filepaths.append(dicom_filepath)
+            errors.append(e)
 
     # Separate loop provides the ability to raise Exceptions from the
     # unsuccessful deletion of the original DICOM files while preventing
     # these Exceptions from interrupting the batch anonymisation.
     if delete_original_files:
         for dicom_filepath in dicom_filepaths:
-            remove_file(dicom_filepath)
+            if not dicom_filepath in failing_filepaths:
+                remove_file(dicom_filepath)
+
+    for i, path in enumerate(failing_filepaths):
+        raise Exception("Could not complete anonymisation of {}; a {} "
+                        "error was raised. For more details, try "
+                        "anonymising {} individually.\n"
+                        .format(path, type(errors[i]), path))
 
 
 def anonymise_cli(args):
