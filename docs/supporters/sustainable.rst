@@ -13,7 +13,7 @@ to use these quality free tools provided by it. As Medical Physicists are
 attracted to the platform, we serve non-intrusive relevent advertising on
 behalf of our `supporters <supporters.html>`_. This produces revenue for
 PyMedPhys, revenue which is fed back into directly supporting the PyMedPhys
-community in ways which allow more Medical Physicsits to contribute quality
+community in ways which allow more Medical Physicists to contribute quality
 code.
 
 More quality code |rarr| More users |rarr| More support & contributors |rarr|
