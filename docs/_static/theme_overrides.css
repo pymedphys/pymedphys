@@ -68,14 +68,14 @@ THE SOFTWARE. */
     color: #333 !important;
 }
 
-.reference.internal.current:not(:hover){
-    color: #f2f2f2 !important;
-    background-image: linear-gradient(to right, #3679b0 , #366a96);
+.reference.internal.current:not(:hover):not(:active){
+    /* color: #f2f2f2 !important; */
+    /* background-image: linear-gradient(to right, #3679b0 , #366a96); */
+    background-image: linear-gradient(to right, #ffe873 , #ffc836) !important;
 }
 
 .wy-menu-vertical a:hover,
-.wy-menu-vertical a:active,
-.wy-menu-vertical a:focus {
+.wy-menu-vertical a:active {
     background-image: linear-gradient(to right, #ffe873 , #ffc836) !important;
 }
 
