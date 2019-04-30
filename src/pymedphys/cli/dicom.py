@@ -27,10 +27,10 @@
 """
 
 from pymedphys_dicom.dicom import (
+    anonymise_cli,
     adjust_machine_name_cli,
     adjust_RED_cli,
-    adjust_RED_by_structure_name_cli,
-    anonymise_cli)
+    adjust_RED_by_structure_name_cli)
 
 
 def dicom_cli(subparsers):
@@ -39,10 +39,10 @@ def dicom_cli(subparsers):
         help='A toolbox for the manipulation of DICOM files.')
     dicom_subparsers = dicom_parser.add_subparsers(dest='dicom')
 
+    anonymise(dicom_subparsers)
     adjust_machine_name(dicom_subparsers)
     adjust_rel_elec_density(dicom_subparsers)
     adjust_RED_by_structure_name(dicom_subparsers)
-    anonymise(dicom_subparsers)
 
     return dicom_parser
 

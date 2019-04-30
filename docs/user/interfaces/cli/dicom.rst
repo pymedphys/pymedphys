@@ -1,5 +1,5 @@
-DICOM Header Manipulation
-=========================
+DICOM Files
+===========
 
 .. automodule:: pymedphys.cli.dicom
     :no-members:
