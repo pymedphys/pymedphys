@@ -237,7 +237,7 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
 
 
 def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
-    dose = load_dose_from_dicom(dcm_dose)
+    dose = dose_from_dataset(dcm_dose)
     mask = get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose)
 
     return dose[mask]
