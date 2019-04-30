@@ -74,10 +74,10 @@ THE SOFTWARE. */
     /* background-image: linear-gradient(to right, #ffe873 , #ffc836) !important; */
 /* } */
 
-.wy-menu-vertical li.toctree-l1.current>a {
+/* .wy-menu-vertical li.toctree-l1.current>a {
     border-bottom: solid 1px #333 !important;
     border-top: solid 1px #333 !important;
-}
+} */
 
 .wy-menu-vertical a:hover,
 .wy-menu-vertical a:active {
