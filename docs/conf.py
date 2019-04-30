@@ -118,8 +118,6 @@ nbsphinx_prolog = r"""
 
 # -- Options for HTML output -------------------------------------------------
 
-github_url = 'https://github.com/pymedphys/pymedphys'
-
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
@@ -155,6 +153,10 @@ html_context = {
     'css_files': [
         '_static/theme_overrides.css',
     ],
+    'display_github': True,
+    'github_user': 'pymedphys',
+    'github_repo': 'pymedphys',
+    'github_version': 'master/docs/'
 }
 
 
