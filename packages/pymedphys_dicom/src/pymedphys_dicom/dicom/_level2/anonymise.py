@@ -116,6 +116,18 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'UI': "12345678"}
 
 
+def anonymised_dicom_filepath(filepath, ds=None, preserve_original=False):
+    if preserve_original:
+        basename_anon = "{}_Anonymised.dcm".format('.'.join(
+            basename(filepath).split('.')[:-1]))
+    else:
+        mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds.SOPClassUID.name]
+        basename_anon = "{}.{}_Anonymised.dcm".format(
+            mode_prefix, ds.SOPInstanceUID)
+
+    return pjoin(dirname(filepath), basename_anon)
+
+
 def anonymise_dataset(
         ds,
         replace_values=True,
@@ -284,20 +296,6 @@ def anonymise_file(
 
     ds = pydicom.dcmread(dicom_filepath)
 
-    if anonymise_filename:
-        mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds.SOPClassUID.name]
-
-        dicom_anon_filepath = pjoin(
-            dirname(dicom_filepath),
-            "{}.{}_Anonymised.dcm".format(mode_prefix, ds.SOPInstanceUID))
-    else:
-        basename_without_filetype = '.'.join(
-            basename(dicom_filepath).split('.')[:-1])
-
-        dicom_anon_filepath = pjoin(
-            dirname(dicom_filepath),
-            "{}_Anonymised.dcm".format(basename_without_filetype))
-
     anonymise_dataset(
         ds=ds,
         replace_values=replace_values,
@@ -306,6 +304,8 @@ def anonymise_file(
         delete_unknown_tags=delete_unknown_tags,
         copy_dataset=False)
 
+    dicom_anon_filepath = anonymised_dicom_filepath(
+        dicom_filepath, ds=ds, preserve_original=not anonymise_filename)
     ds.save_as(dicom_anon_filepath)
 
     if delete_original_file:

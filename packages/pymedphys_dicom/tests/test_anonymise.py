@@ -1,6 +1,7 @@
 from copy import deepcopy
-from os import makedirs, replace
+from os import makedirs
 from os.path import abspath, basename, dirname, join as pjoin
+from shutil import copyfile
 from uuid import uuid4
 
 from pydicom.datadict import tag_for_keyword
@@ -11,6 +12,7 @@ from pymedphys_dicom.dicom import (
     anonymise_dataset,
     anonymise_directory,
     anonymise_file,
+    anonymised_dicom_filepath,
     BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,
     dicom_dataset_from_dict,
@@ -125,42 +127,43 @@ def test_anonymise_and_is_anonymised_dataset():
 def test_anonymise_and_is_anonymised_file():
     assert not is_anonymised_file(dicom_test_filepath)
 
-    # anonymous_filepath = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
-
     dicom_anon_filepath = anonymise_file(dicom_test_filepath,
                                          delete_private_tags=False)
-
     assert not is_anonymised_file(dicom_anon_filepath,
                                   ignore_private_tags=False)
     assert is_anonymised_file(dicom_anon_filepath,
                               ignore_private_tags=True)
 
-    dicom_anon_filepath = anonymise_file(dicom_test_filepath,
+    try:
+        dicom_anon_filepath = anonymise_file(dicom_test_filepath,
                                          delete_private_tags=True)
-    assert is_anonymised_file(dicom_anon_filepath,
+        assert is_anonymised_file(dicom_anon_filepath,
                               ignore_private_tags=False)
+    finally:
+        remove_file(dicom_anon_filepath)
+
 
 
 def test_anonymise_and_is_anonymised_directory():
-    dirpath_expected_to_fail = DATA_DIR
-    assert not is_anonymised_directory(dirpath_expected_to_fail)
+    temp_dirpath = pjoin(DATA_DIR, 'temp_{}'.format(uuid4()))
+    temp_test_filepath = pjoin(temp_dirpath, basename(dicom_test_filepath))
 
-    dirpath_expected_to_pass = pjoin(DATA_DIR, 'Anonymous_{}'.format(uuid4()))
-
-    anonymous_filepath = anonymise_file(dicom_test_filepath)
-    anonymous_filepath_copied = pjoin(dirpath_expected_to_pass,
-                                      basename(anonymous_filepath))
+    temp_anon_filepath = anonymised_dicom_filepath(
+        temp_test_filepath, preserve_original=True)
 
     try:
-        makedirs(dirpath_expected_to_pass, exist_ok=True)
-        replace(anonymous_filepath, anonymous_filepath_copied)
+        makedirs(temp_dirpath, exist_ok=True)
+        copyfile(dicom_test_filepath, temp_test_filepath)
+        assert not is_anonymised_directory(temp_dirpath)
 
-        assert is_anonymised_directory(dirpath_expected_to_pass)
+        anonymise_directory(temp_dirpath, delete_original_files=True,
+            anonymise_filenames=False)
+        assert is_anonymised_directory(temp_dirpath)
 
     finally:
-        remove_file(anonymous_filepath)
-        remove_file(anonymous_filepath_copied)
-        remove_dir(dirpath_expected_to_pass)
+        print(temp_anon_filepath)
+        remove_file(temp_anon_filepath)
+        remove_dir(temp_dirpath)
 
 
 def test_anonymise_directory_cli():
