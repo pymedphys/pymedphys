@@ -215,7 +215,10 @@ def anonymise_dataset(
 
     ds_anon = _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values)
 
-    return ds_anon
+    if copy_dataset:
+        return ds_anon
+    else:
+        return None
 
 
 def anonymise_file(
@@ -307,8 +310,9 @@ def anonymise_file(
 
     if delete_original_file:
         remove_file(dicom_filepath)
-
-    return dicom_anon_filepath
+        return None
+    else:
+        return dicom_anon_filepath
 
 
 def anonymise_directory(
