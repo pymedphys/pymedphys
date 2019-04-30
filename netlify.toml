@@ -1,4 +1,3 @@
 [build]
   command = "yarn netlify"
   publish = "docs/_build/html"
-  nvironment = { PYTHON_VERSION = "3.7.2" }
