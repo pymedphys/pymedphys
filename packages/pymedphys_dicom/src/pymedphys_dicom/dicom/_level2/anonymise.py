@@ -217,8 +217,6 @@ def anonymise_dataset(
 
     if copy_dataset:
         return ds_anon
-    else:
-        return None
 
 
 def anonymise_file(
@@ -310,7 +308,6 @@ def anonymise_file(
 
     if delete_original_file:
         remove_file(dicom_filepath)
-        return None
     else:
         return dicom_anon_filepath
 
