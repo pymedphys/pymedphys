@@ -27,7 +27,7 @@
 # import matplotlib.pyplot as plt
 
 from pymedphys_utilities.libutils import get_imports
-from pymedphys_dicom.dicom import coords_and_dose_from_dicom
+from pymedphys_dicom.dicom import axes_and_dose_from_dicom
 
 from pymedphys_analysis.gamma import (
     gamma_filter_numpy, calculate_pass_rate, gamma_shell)
@@ -40,14 +40,14 @@ def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
                 dose_percent_threshold, distance_mm_threshold,
                 **kwargs):
 
-    coords_reference, dose_reference = coords_and_dose_from_dicom(
+    axes_reference, dose_reference = axes_and_dose_from_dicom(
         dicom_ref_filepath)
-    coords_evaluation, dose_evaluation = coords_and_dose_from_dicom(
+    axes_evaluation, dose_evaluation = axes_and_dose_from_dicom(
         dicom_eval_filepath)
 
     gamma = gamma_shell(
-        coords_reference, dose_reference,
-        coords_evaluation, dose_evaluation,
+        axes_reference, dose_reference,
+        axes_evaluation, dose_evaluation,
         dose_percent_threshold, distance_mm_threshold,
         **kwargs)
 
@@ -59,14 +59,14 @@ def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
 #                        **kwargs):
 #     """Prototype reporting of gamma. Needs to be reworked before merge.
 #     """
-#     coords_reference, dose_reference = coords_and_dose_from_dicom(
+#     axes_reference, dose_reference = axes_and_dose_from_dicom(
 #         dcm_ref_filepath)
-#     coords_evaluation, dose_evaluation = coords_and_dose_from_dicom(
+#     axes_evaluation, dose_evaluation = axes_and_dose_from_dicom(
 #         dcm_eval_filepath)
 
 #     gamma = gamma_shell(
-#         coords_reference, dose_reference,
-#         coords_evaluation, dose_evaluation,
+#         axes_reference, dose_reference,
+#         axes_evaluation, dose_evaluation,
 #         dose_percent_threshold, distance_mm_threshold,
 #         **kwargs)
 
@@ -80,8 +80,8 @@ def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
 
 #     print(np.sum(valid_gamma <= 1) / len(valid_gamma))
 
-#     x_reference, y_reference, z_reference = coords_reference
-#     x_evaluation, y_evaluation, z_evaluation = coords_evaluation
+#     x_reference, y_reference, z_reference = axes_reference
+#     x_evaluation, y_evaluation, z_evaluation = axes_evaluation
 
 #     relevant_slice = (
 #         np.max(dose_evaluation, axis=(0, 1)) > 0)  # TODO fix hacky prototyping
@@ -132,15 +132,15 @@ def gamma_percent_pass(dcm_ref_filepath, dcm_eval_filepath,
                        dose_percent_threshold, distance_mm_threshold,
                        method='shell', **kwargs):
 
-    coords_reference, dose_reference = coords_and_dose_from_dicom(
+    axes_reference, dose_reference = axes_and_dose_from_dicom(
         dcm_ref_filepath)
-    coords_evaluation, dose_evaluation = coords_and_dose_from_dicom(
+    axes_evaluation, dose_evaluation = axes_and_dose_from_dicom(
         dcm_eval_filepath)
 
     if method == 'shell':
         gamma = gamma_shell(
-            coords_reference, dose_reference,
-            coords_evaluation, dose_evaluation,
+            axes_reference, dose_reference,
+            axes_evaluation, dose_evaluation,
             dose_percent_threshold, distance_mm_threshold,
             **kwargs)
 
@@ -148,8 +148,8 @@ def gamma_percent_pass(dcm_ref_filepath, dcm_eval_filepath,
 
     elif method == 'filter':
         percent_pass = gamma_filter_numpy(
-            coords_reference, dose_reference,
-            coords_evaluation, dose_evaluation,
+            axes_reference, dose_reference,
+            axes_evaluation, dose_evaluation,
             dose_percent_threshold, distance_mm_threshold,
             **kwargs)
     else:
