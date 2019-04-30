@@ -25,6 +25,9 @@ a {
   }
 }
 
+.supporting {
+  padding: 20px;
+}
 
 
 /* Made heavy use of pydicom's css file:
@@ -72,7 +75,8 @@ THE SOFTWARE. */
 }
 
 .wy-nav-side {
-    background: #f9f9f9!important;
+    background: #f9f9f9 !important;
+    padding-bottom: 0 !important;
 }
 
 .wy-side-nav-search>a, .wy-side-nav-search .wy-dropdown>a {
