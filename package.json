@@ -18,7 +18,7 @@
     "netlify:build": "sphinx-build docs docs/_build/html",
     "install:dev": "pip install -r requirements-development.txt",
     "install:docs": "pip install -r requirements-docs.txt",
-    "install:prod": "pip install -r requirements.txt",
+    "install:prod": "pip install -r requirements-prod.txt",
     "lerna:bootstrap": "lerna bootstrap && pip install -e .",
     "lerna:build": "lerna run build",
     "lerna:upload": "lerna run upload",
