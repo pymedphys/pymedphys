@@ -27,7 +27,9 @@
 """
 
 from pymedphys_dicom.dicom import (
-    adjust_machine_name_cli, adjust_RED_cli,
+    anonymise_cli,
+    adjust_machine_name_cli,
+    adjust_RED_cli,
     adjust_RED_by_structure_name_cli)
 
 
@@ -37,14 +39,15 @@ def dicom_cli(subparsers):
         help='A toolbox for the manipulation of DICOM files.')
     dicom_subparsers = dicom_parser.add_subparsers(dest='dicom')
 
-    dicom_adjust_machine_name(dicom_subparsers)
-    dicom_adjust_rel_elec_density(dicom_subparsers)
-    dicom_structure_name_RED_adjust(dicom_subparsers)
+    anonymise(dicom_subparsers)
+    adjust_machine_name(dicom_subparsers)
+    adjust_rel_elec_density(dicom_subparsers)
+    adjust_RED_by_structure_name(dicom_subparsers)
 
     return dicom_parser
 
 
-def dicom_adjust_machine_name(dicom_subparsers):
+def adjust_machine_name(dicom_subparsers):
     parser = dicom_subparsers.add_parser(
         'adjust-machine-name',
         help='Change the machine name in an RT plan DICOM file')
@@ -55,7 +58,7 @@ def dicom_adjust_machine_name(dicom_subparsers):
     parser.set_defaults(func=adjust_machine_name_cli)
 
 
-def dicom_adjust_rel_elec_density(dicom_subparsers):
+def adjust_rel_elec_density(dicom_subparsers):
     parser = dicom_subparsers.add_parser(
         'adjust-RED',
         help='Adjust the RED of structures within an RT structure DICOM file')
@@ -81,16 +84,81 @@ def dicom_adjust_rel_elec_density(dicom_subparsers):
     parser.set_defaults(func=adjust_RED_cli)
 
 
-def dicom_structure_name_RED_adjust(dicom_subparsers):
+def adjust_RED_by_structure_name(dicom_subparsers):
     parser = dicom_subparsers.add_parser(
         'adjust-RED-by-structure-name',
-        help=(
-            'Use structure naming conventions to automatically adjust the'
-            'DICOM RED in the header. For example, naming a structure '
-            '``a_structure_name RED=1.15`` will cause that structure to have '
-            'an override of 1.15 applied.'))
+        help=('Use structure naming conventions to automatically '
+              'adjust the relative electron density of a structure '
+              'within a DICOM RT Structure set. For example, naming '
+              'a structure ``a_structure_name RED=1.15`` will cause '
+              'that structure to have an override of 1.15 applied.'))
 
     parser.add_argument('input_file', type=str, help='input_file')
     parser.add_argument('output_file', type=str, help='output_file')
 
     parser.set_defaults(func=adjust_RED_by_structure_name_cli)
+
+
+def anonymise(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        'anonymise',
+        help=("Anonymise DICOM files."))
+
+    parser.add_argument(
+        'input_path',
+        type=str,
+        help=("Input file or directory path. If a directory is "
+              "supplied, all DICOM files within the directory and its "
+              "subdirectories will be anonymised"))
+
+    parser.add_argument(
+        '-d', '--delete_original_files',
+        action='store_true',
+        help=("Use this flag to delete the original, non-anonymised "
+              "files in the processed directory. Each original file "
+              "will only be deleted if anonymisation completed "
+              "successfully for that file."))
+
+    parser.add_argument(
+        '-f', '--preserve_filenames',
+        action='store_true',
+        help=("Use this flag to preserve the original filenames in the "
+              "anonymised DICOM filenames. Note that '_Anonymised.dcm' "
+              "will still be appended. Use with caution, since DICOM "
+              "filenames may contain identifying information"))
+
+    parser.add_argument(
+        '-c', '--clear_values',
+        action='store_true',
+        help=("Use this flag to simply clear the values of all of the "
+              "identifying elements in the anonymised DICOM files, "
+              "as opposed to replacing them with 'dummy' values."))
+
+    parser.add_argument(
+        '-k', '--keywords_to_leave_unchanged',
+        metavar='KEYWORD',
+        type=str,
+        nargs='*',
+        help=("A space-separated list of DICOM keywords (e.g. "
+              "'PatientName') to exclude from anonymisation and "
+              "error checking."))
+
+    parser.add_argument(
+        '-p', '--keep_private_tags',
+        action='store_true',
+        help=("Use this flag to preserve private tags in the "
+              "anonymised DICOM files."))
+
+    unknown_tags_group = parser.add_mutually_exclusive_group()
+    unknown_tags_group.add_argument(
+        '-u', '--delete_unknown_tags',
+        action='store_true',
+        help=("Use this flag to delete any unrecognised tags from the "
+              "anonymised DICOM files."))
+    unknown_tags_group.add_argument(
+        '-i', '--ignore_unknown_tags',
+        action='store_true',
+        help=("Use this flag to ignore any unrecognised tags in the "
+              "anonymised DICOM files."))
+
+    parser.set_defaults(func=anonymise_cli)
