@@ -285,6 +285,8 @@ levelling. PyMedPhys' automated test suite includes a Python package called
 For a further, in-depth explanation of the philosophy behind levelling
 dependencies, see the :ref:`john-lakos` section.
 
+|
+
 .. _john-lakos:
 
 John Lakos and Physical Design
