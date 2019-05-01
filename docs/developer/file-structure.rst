@@ -10,8 +10,8 @@ The PyMedPhys repository has the following general structure:
 
    pymedphys/
    |   README.rst
-   |   LICENSE
-   |   Apache-2.0
+   |   LICENSE-AGPL-3.0-or-later
+   |   LICENSE-Apache-2.0
    |   changelog.md
    |   setup.py
    |   layers.yml
@@ -61,8 +61,9 @@ top-level files. These include:
 
 You'll quickly note from a cursory look through PyMedPhys that there are
 actually many more top-level files. Most of these help configure specific
-tasks, such as automated testing. They are probably less critical and have been
-omitted from this page in the interest of brevity.
+tasks, such as installation & automated testing. They are probably less
+critical to understand in detail in order to comprehend PyMedPhys' structure,
+so we'll disregard them for now in the interest of brevity.
 
 (Most of) the rest of PyMedPhys is arranged in the following directories:
 
@@ -83,16 +84,21 @@ omitted from this page in the interest of brevity.
                  notebooks, permitting both remote and collaborative raw
                  development.
 
-:``packages/``: Contains the bulk of the PyMedPhys source code library. Code
-                within this directory constitutes "PyMedPhys proper". In theory
-                (though not yet in practice), this code has been thoroughly
-                tested and documented. Changes to code in this folder are
-                tracked in ``changelog.md``. Note that the code withing
-                *packages/* is arranged into a set of subdirectories, such as
-                *pymedphys_analysis* and *pymedphys_dicom*, which constitute
-                PyMedPhys' *subpackages*. Usually, these subpackages will be
-                invisible to users; their purpose is to help manage code
-                dependencies within the monorepo as well as deployments. See
+:``packages/``: The PyMedPhys source code library is separated into a set of
+                *subpackages*, from which the main PyMedPhys package draws.
+                Strictly speaking, users are able to install any of these
+                subpackages, but most users will install the main PyMedPhys
+                package (for which instructions are given in `Installation`_).
+                Their intended purpose is not for user installation, but
+                instead is to help manage (the very complex) code dependencies
+                within the monorepo, as well as deployments.
+
+                Along with the code in *src/pymedphys/*, the code within
+                *packages/* constitutes "PyMedPhys proper". In theory (though
+                not yet in practice), this code has been thoroughly tested
+                and documented. Changes to code in *packages/* are tracked in
+                ``changelog.md``. Each subpackage in this directory has its
+                own subdirectories; e.g. *pymedphys_analysis*.  See
                 the :ref:`source-code` section below for further details.
 
 :``src/pympedhys/``: Contains code that determines which modules, classes,
@@ -110,6 +116,8 @@ omitted from this page in the interest of brevity.
 
 
 .. _`the PyMedPhys GitHub page`: https://github.com/pymedphys/pymedphys
+.. _`examples in docs`: ../user/examples/index.html
+.. _`Installation`: ../getting-started/installation.html
 .. _`Release Notes`: ../getting-started/changelog.html
 .. _`Jupyter notebooks`: https://realpython.com/jupyter-notebook-introduction/
 .. _`continuous integration`: https://en.wikipedia.org/wiki/Continuous_integration
