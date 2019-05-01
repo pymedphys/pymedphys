@@ -430,7 +430,7 @@ def anonymise_cli(args):
 
     elif isdir(args.input_path):
         anonymise_directory(
-            dicom_dirpath=args.dirpath,
+            dicom_dirpath=args.input_path,
             delete_original_files=args.delete_original_files,
             anonymise_filenames=not args.preserve_filenames,
             replace_values=not args.clear_values,
