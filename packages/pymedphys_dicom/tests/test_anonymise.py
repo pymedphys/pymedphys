@@ -15,14 +15,14 @@ from pymedphys_dicom.dicom import (
     anonymise_dataset,
     anonymise_directory,
     anonymise_file,
-    anonymised_dicom_filepath,
     BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,
     dicom_dataset_from_dict,
     IDENTIFYING_KEYWORDS,
     is_anonymised_dataset,
     is_anonymised_directory,
-    is_anonymised_file
+    is_anonymised_file,
+    label_dicom_filepath_as_anonymised
 )
 from pymedphys_utilities.utilities import remove_file, remove_dir
 
@@ -214,8 +214,7 @@ def test_anonymise_file():
 
 
 def test_anonymise_directory():
-    temp_anon_filepath = anonymised_dicom_filepath(temp_filepath,
-                                                   preserve_original=True)
+    temp_anon_filepath = label_dicom_filepath_as_anonymised(temp_filepath)
     try:
         makedirs(temp_dirpath, exist_ok=True)
         copyfile(test_filepath, temp_filepath)
@@ -249,6 +248,7 @@ def test_anonymise_cli():
     # Basic file anonymisation
     assert not is_anonymised_file(test_filepath)
     assert not exists(test_anon_filepath)
+
     anon_file_command = ('pymedphys dicom anonymise'.split() + [test_filepath])
     try:
         subprocess.check_call(anon_file_command)
@@ -259,9 +259,10 @@ def test_anonymise_cli():
 
     # File anonymisation - preserve filenames
     assert not is_anonymised_file(test_filepath)
-    expected_anon_filepath = anonymised_dicom_filepath(test_filepath,
-                                                       preserve_original=True)
+
+    expected_anon_filepath = label_dicom_filepath_as_anonymised(test_filepath)
     assert not exists(expected_anon_filepath)
+
     anon_file_pres_command = ('pymedphys dicom anonymise -f'.split()
                               + [test_filepath])
     try:
@@ -274,6 +275,7 @@ def test_anonymise_cli():
     # File anonymisation - clear values
     assert not is_anonymised_file(test_filepath)
     assert not exists(test_anon_filepath)
+
     anon_file_clear_command = ('pymedphys dicom anonymise -c'.split()
                                + [test_filepath])
     try:
@@ -287,6 +289,7 @@ def test_anonymise_cli():
     # File anonymisation - leave keywords unchanged
     assert not is_anonymised_file(test_filepath)
     assert not exists(test_anon_filepath)
+
     anon_file_keep_command = ('pymedphys dicom anonymise'.split()
                               + [test_filepath]
                               + '-k PatientName'.split())
@@ -303,6 +306,7 @@ def test_anonymise_cli():
     # File anonymisation - private tag handling
     assert not is_anonymised_file(test_filepath)
     assert not exists(test_anon_filepath)
+
     anon_file_private_command = ('pymedphys dicom anonymise -p'.split()
                                  + [test_filepath])
     try:
@@ -320,6 +324,7 @@ def test_anonymise_cli():
     # Basic dir anonymisation
     assert not is_anonymised_directory(DATA_DIR)
     assert not exists(test_anon_filepath)
+
     anon_dir_command = ('pymedphys dicom anonymise'.split() + [DATA_DIR])
     try:
         subprocess.check_call(anon_dir_command)
