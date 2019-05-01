@@ -65,6 +65,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### New Features
 
+- A DICOM anonymsation CLI! See
+  [the DICOM Files CLI docs](../user/interfaces/cli/dicom.rst).
 - `anonymise_file()` and `anonymise_directory()`:
   - two new DICOM anonymisation
     wrapper functions that take a DICOM file and a directory as respective
@@ -78,6 +80,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   exposed in the API. It converts x, y, z axes returned by `xyz_from_dataset()`
   into a full grid of coordinate triplets that correspond to the original grid
   (pixel array or dose grid).
+
 
 ## [0.7.2] -- 2019/04/05
 
