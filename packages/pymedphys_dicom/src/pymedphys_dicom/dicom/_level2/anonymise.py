@@ -302,12 +302,12 @@ def anonymise_file(
         copy_dataset=False)
 
     if anonymise_filename:
-        path = create_filename_from_dataset(ds,
-                                            dirpath=dirname(dicom_filepath))
-        dicom_anon_filepath = label_dicom_filepath_as_anonymised(path)
+        filepath_used = create_filename_from_dataset(
+            ds, dirpath=dirname(dicom_filepath))
     else:
-        dicom_anon_filepath = label_dicom_filepath_as_anonymised(
-            dicom_filepath)
+        filepath_used = dicom_filepath
+
+    dicom_anon_filepath = label_dicom_filepath_as_anonymised(filepath_used)
 
     ds.save_as(dicom_anon_filepath)
 
