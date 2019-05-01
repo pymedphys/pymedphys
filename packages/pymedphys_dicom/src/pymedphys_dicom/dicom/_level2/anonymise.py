@@ -413,10 +413,12 @@ def anonymise_cli(args):
     elif args.ignore_unknown_tags:
         handle_unknown_tags = False
     else:
-        handle_unknown_tags = False
+        handle_unknown_tags = None
 
     if not args.keywords_to_leave_unchanged:
         keywords_to_leave_unchanged = ()
+    else:
+        keywords_to_leave_unchanged = args.keywords_to_leave_unchanged
 
     if isfile(args.input_path):
         anonymise_file(
@@ -552,7 +554,6 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
         if not is_anonymised_file(dicom_filepath,
                                   ignore_private_tags=ignore_private_tags):
             is_anonymised = False
-            # print(dicom_filepath)
             break
 
     return is_anonymised
