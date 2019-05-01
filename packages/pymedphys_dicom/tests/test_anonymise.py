@@ -5,6 +5,7 @@ from shutil import copyfile
 import subprocess
 from uuid import uuid4
 
+import pydicom
 from pydicom.datadict import tag_for_keyword
 from pydicom.dataset import Dataset, DataElement
 from pydicom.filereader import read_file_meta_info
@@ -159,8 +160,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
         assert patient_name_tag in ds_anon_ignore_unknown
 
     finally:
-        patient_name = BaselineDicomDictionary.setdefault(patient_name_tag,
-                                                          patient_name)
+        BaselineDicomDictionary.setdefault(patient_name_tag, patient_name)
 
     # Test copy_dataset=False:
     anonymise_dataset(ds, copy_dataset=False)
@@ -256,6 +256,66 @@ def test_anonymise_cli():
         assert exists(test_filepath)
     finally:
         remove_file(test_anon_filepath)
+
+    # File anonymisation - preserve filenames
+    assert not is_anonymised_file(test_filepath)
+    expected_anon_filepath = anonymised_dicom_filepath(test_filepath,
+                                                       preserve_original=True)
+    assert not exists(expected_anon_filepath)
+    anon_file_pres_command = ('pymedphys dicom anonymise -f'.split()
+                              + [test_filepath])
+    try:
+        subprocess.check_call(anon_file_pres_command)
+        assert is_anonymised_file(expected_anon_filepath)
+        assert exists(test_filepath)
+    finally:
+        remove_file(expected_anon_filepath)
+
+    # File anonymisation - clear values
+    assert not is_anonymised_file(test_filepath)
+    assert not exists(test_anon_filepath)
+    anon_file_clear_command = ('pymedphys dicom anonymise -c'.split()
+                               + [test_filepath])
+    try:
+        subprocess.check_call(anon_file_clear_command)
+        assert is_anonymised_file(test_anon_filepath)
+        assert pydicom.dcmread(test_anon_filepath).PatientName == ''
+        assert exists(test_filepath)
+    finally:
+        remove_file(test_anon_filepath)
+
+    # File anonymisation - leave keywords unchanged
+    assert not is_anonymised_file(test_filepath)
+    assert not exists(test_anon_filepath)
+    anon_file_keep_command = ('pymedphys dicom anonymise'.split()
+                              + [test_filepath]
+                              + '-k PatientName'.split())
+    try:
+        subprocess.check_call(anon_file_keep_command)
+        assert not is_anonymised_file(test_anon_filepath)
+        ds = pydicom.dcmread(test_anon_filepath)
+        ds.PatientName = "Anonymous"
+        assert is_anonymised_dataset(ds)
+        assert exists(test_filepath)
+    finally:
+        remove_file(test_anon_filepath)
+
+    # File anonymisation - private tag handling
+    assert not is_anonymised_file(test_filepath)
+    assert not exists(test_anon_filepath)
+    anon_file_private_command = ('pymedphys dicom anonymise -p'.split()
+                                 + [test_filepath])
+    try:
+        subprocess.check_call(anon_file_private_command)
+        assert not is_anonymised_file(test_anon_filepath)
+        assert is_anonymised_file(test_anon_filepath,
+                                  ignore_private_tags=True)
+        assert exists(test_filepath)
+    finally:
+        remove_file(test_anon_filepath)
+
+    # TODO: File anonymisation - unknown tag handling
+    # # Calling a subprocess reloads BaselineDicomDictionary...
 
     # Basic dir anonymisation
     assert not is_anonymised_directory(DATA_DIR)
