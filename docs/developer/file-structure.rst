@@ -84,26 +84,53 @@ so we'll disregard them for now in the interest of brevity.
                  permitting both remote and collaborative raw development.
 
 :``packages/``: The PyMedPhys source code library is separated into a set of
-                *subpackages*, from which the main PyMedPhys package draws.
-                Strictly speaking, users are able to install any of these
-                subpackages, but most users will install the main PyMedPhys
-                package (for which instructions are given in `Installation`_).
-                Their intended purpose is not for user installation, but
-                instead is to help manage (the very complex) code dependencies
-                within the monorepo, as well as deployments.
+                **subpackages**, from which the main PyMedPhys package draws.
+                Users are strictly able to install any of these subpackages,
+                but almost all will instead install the main PyMedPhys
+                package. The instructions given in `Installation`_ apply to the
+                main PyMedPhys package. Subpackages are not really intended for
+                user installation, but rather to help manage (the very complex)
+                code dependencies within the PyMedPhys monorepo. They also
+                assist with app deployments.
 
                 Along with the code in *src/pymedphys/*, the code within
                 *packages/* constitutes "PyMedPhys proper". In theory (though
                 not yet in practice), this code has been thoroughly tested
                 and documented. Changes to code in *packages/* are tracked in
-                ``changelog.md``. Each subpackage in this directory has its
-                own subdirectories; e.g. *pymedphys_analysis*.  For more
-                details on the source code structure, especially within the
-                subpackages, see the :ref:`source-code` section below.
+                ``changelog.md``. Each PyMedPhys subpackage - such as
+                *pymedphys_analysis* - corresponds to a subdirectory in
+                *packages/*. For more details on the source code structure,
+                especially within the subpackages, see the :ref:`source-code`
+                section below.
 
-:``src/pympedhys/``: Contains code that determines which modules, classes,
-                     functions, etc. in *packages/* is exposed to the user via
-                     the main installable ``pymedphys`` library package.
+:``src/pympedhys/``: The main PyMedPhys package. Code within this directory
+                     is separated into modules (just like the subpackages - see
+                     :ref:`source-code`). However, these modules simply import
+                     code from *packages/*; no *library* code is written here.
+                     Hence, these module files simply determine which classes,
+                     functions etc. in *packages/* are exposed to the user.
+
+                     E.g., if the user has installed *pymedphys* and wishes
+                     to import the ``anonymise_dataset`` function, they would
+                     include
+
+                     ``from pymedphys.dicom import anonymise_dataset``
+
+                     in their python file's list of imports. To the user, it
+                     would simply appear that ``anonymise_dataset`` is a
+                     function inside of a module called ``dicom`` that is
+                     contained in `pymedphys/src/pymedphys`. However, under the
+                     hood, ``anonymise_dataset`` is actually a function in
+                     a file called `anonymise.py` in level 2 of the
+                     `pymedphys_dicom` subpackage, or:
+
+                     *pymedphys/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/_level2/anonymise.py*
+
+                     Thankfully, this long path is invisible to the user due to
+                     the imports included in the modules of *pymedphys* main.
+                     For more details on code structure and PyMedPhys'
+                     dependency handling, see :ref:`source-code`.
+
 
 
 .. _`the PyMedPhys GitHub page`: https://github.com/pymedphys/pymedphys
@@ -120,14 +147,19 @@ so we'll disregard them for now in the interest of brevity.
 The PyMedPhys Source Code
 -------------------------
 
-All *library* source code for PyMedPhys is contained within
-``pymedphys/packages/``. Within this directory, the code is organised into a
-set of subpackages, such as ``pymedphys_analysis`` and ``pymedphys_dicom``.
-From there, each subpackage contains a directory named `src/<package_name>`,
-within which code is further arranged into categories, such as `gamma` and
-`mudensity`. These correspond to Python modules. Finally, code within these
-category directories is organised into levels. Levels define the dependency
-hierarchy of code within modules. See diagram below:
+Almost all users will access the PyMedPhys library of source code via the
+main `pymedphys` package (*pymedphys/src/pymedphys/*). However no library code
+actually exists within *pymedphys/src/pymedphys/*. Instead, library code is
+contained within *pymedphys/packages/* and redirected through
+*pymedphys/src/pymedphys/* via a set of python imports.
+
+Within *pymedphys/packages/*, code is organised into a set of subpackages,
+such as ``pymedphys_analysis`` and ``pymedphys_dicom``. From there, each
+subpackage contains a directory named `src/<package_name>`. Within each
+`src/<package_name>`, code is further arranged into categories, such as
+`gamma` and `mudensity`. These correspond to Python modules. Finally, code
+within these category directories is organised into levels. Levels define the
+dependency hierarchy of code within modules. See diagram below:
 
 .. code-block:: bash
 
@@ -193,8 +225,8 @@ hierarchy of code within modules. See diagram below:
    |
    |-- ...
 
-Notice that each subpackage (`pymedphys_analysis` is the diagram example) also
-contains a `tests/` directory. As the name suggests, `tests/` contains a the
+Notice that each subpackage (`pymedphys_analysis` in the diagram example) also
+contains a `tests/` directory. As the name suggests, `tests/` contains the
 suite of automated tests for that particular subpackage. Any code present in
 *src/<subpackage>/* should be covered by tests in this directory. Automated
 testing is essential for effective `continuous integration`_, which is a core
@@ -203,17 +235,17 @@ contributions to PyMedPhys - and become a much better developer as a result -
 it pays to get very familiar with automated testing and the code within these
 directories.
 
-For the most part, the many ``__init__.py`` files just tell Python to treat
+For the most part, the many *__init__.py* files just tell Python to treat
 directories containing the files as *packages*. They form part of how
 PyMedPhys' code is brought together as installable packages.
 
 Python files within the source code should have descriptive names indicating
 the functions of the code within them. For example, ``gammafilter.py`` in level
-1 of the `pymedphys_analysis` ``gamma`` module is so-named because it contains
-code that calculates gamma pass-rates using a simple pass-fail filtration
-algorithm. However, in order to illustrate how levelling works in PyMedPhys,
-the files in the above diagram have been named according to their level and
-module like so:
+1 of the ``gamma`` module in `pymedphys_analysis` is so-named because it
+contains code that calculates gamma pass-rates using a simple pass-fail
+filtration algorithm. However, in order to illustrate how levelling works in
+PyMedPhys, the files in the above diagram have been named according to their
+level and module like so:
 
 ``<first-letter-of-module><level number><letter-to-differentiate-files-in-the-same-module-and-level>``
 
@@ -225,7 +257,7 @@ level should only depend on code in files of lower-numbered levels. Code should
 never depend on code within files of the same level, nor of higher-numbered
 levels.**
 
-Note that, in practice, *"depend on"* really means *"import code from"* using
+Note that, in practice, "depend on" really means "import code from" using
 Python's ``import`` statement.
 
 In our example, ``g2a.py`` is in level 2, so code in ``g2a.py`` can import code
@@ -239,11 +271,12 @@ adjusted as needed. Modules are assigned levels in the file ``layers.yml``.
 View this file to see the currently assigned level of a given module. Just as
 with files, modules of a given level can import from lower level modules, but
 not from modules of the same or higher levels. For example, at the time of
-writing, ``dicom`` is a level 2 module, and ``gamma`` is a ``level 3`` module.
-This means that any file within ``gamma``, such as ``g1a.py``, is free to
-import from any file within ``dicom``, such as ``d4a.py``, but no file
-within ``dicom`` is allowed to import from any file in ``gamma``. Note that
-a module's level is unaffected by which subpackage/s it is in.
+writing, ``mudensity`` is a level 2 module, and ``gamma`` is a ``level 3``
+module. This means that any file within ``gamma``, such as ``g1a.py``, is free
+to import from any file within ``mudensity``, such as ``m2a.py``, regardless of
+that file's level within its own module. However, no file within ``mudensity``
+is allowed to import from any file in ``gamma``. Note that a module's level is
+unaffected by which subpackage/s it is in.
 
 Thankfully, we are able to programatically check for any improper file
 levelling. PyMedPhys' automated test suite includes a Python package called
