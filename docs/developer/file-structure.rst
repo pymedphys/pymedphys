@@ -133,56 +133,56 @@ helps to prevent circular code dependencies. See diagram below:
    |-- packages/
    |   |
    |   |-- pymedphys_analysis/
-   |   |   |-- package.json
-   |   |   |-- setup.py
+   |   |   |   package.json
+   |   |   |   setup.py
    |   |   |
    |   |   |-- src/pymedphys_analysis/
-   |   |   |   |-- __init__.py
-   |   |   |   |-- _install_requires.py
-   |   |   |   |-- _version.py
+   |   |   |   |   __init__.py
+   |   |   |   |   _install_requires.py
+   |   |   |   |   _version.py
    |   |   |   |
    |   |   |   |-- gamma/
-   |   |   |   |   |-- __init__.py
+   |   |   |   |   |   __init__.py
    |   |   |   |   |
    |   |   |   |   |-- _level1/
-   |   |   |   |   |   |-- __init__.py
-   |   |   |   |   |   |-- g1a.py
-   |   |   |   |   |   |-- g1b.py
+   |   |   |   |   |   |   __init__.py
+   |   |   |   |   |   |   g1a.py
+   |   |   |   |   |   |   g1b.py
    |   |   |   |   |
    |   |   |   |   |-- _level2/
-   |   |   |   |   |   |-- __init__.py
-   |   |   |   |   |   |-- g2a.py
-   |   |   |   |   |   |-- g2b.py
+   |   |   |   |   |   |   __init__.py
+   |   |   |   |   |   |   g2a.py
+   |   |   |   |   |   |   g2b.py
    |   |   |   |   |
    |   |   |   |   |-- _level3/
-   |   |   |   |       |-- __init__.py
-   |   |   |   |       |-- g3a.py
+   |   |   |   |       |   __init__.py
+   |   |   |   |       |   g3a.py
    |   |   |   |
    |   |   |   |-- mudensity/
-   |   |   |   |   |-- __init__.py
+   |   |   |   |   |   __init__.py
    |   |   |   |   |
    |   |   |   |   |-- _level1/
-   |   |   |   |   |   |-- __init__.py
-   |   |   |   |   |   |-- m1a.py
+   |   |   |   |   |   |   __init__.py
+   |   |   |   |   |   |   m1a.py
    |   |   |   |   |
    |   |   |   |   |-- _level2/
-   |   |   |   |       |-- __init__.py
-   |   |   |   |       |-- m2a.py
-   |   |   |   |       |-- m2b.py
-   |   |   |   |       |-- m2c.py
+   |   |   |   |       |   __init__.py
+   |   |   |   |       |   m2a.py
+   |   |   |   |       |   m2b.py
+   |   |   |   |       |   m2c.py
    |   |   |   |
    |   |   |   |-- ...
    |   |   |
    |   |   |-- tests/
    |   |       |
    |   |       |-- gamma/
-   |   |       |   |-- test_agnew_mcgarry.py
-   |   |       |   |-- test_gamma shell.py
+   |   |       |   |   test_agnew_mcgarry.py
+   |   |       |   |   test_gamma shell.py
    |   |       |
    |   |       |-- mudensity/
-   |   |       |   |-- test_mu_density_single_regression.py
-   |   |       |   |-- test_mu_density_leaf_gap.py
-   |   |       |   |-- ...
+   |   |       |   |   test_mu_density_single_regression.py
+   |   |       |   |   test_mu_density_leaf_gap.py
+   |   |       |   |   ...
    |   |       |
    |   |       |--...
    |   |
