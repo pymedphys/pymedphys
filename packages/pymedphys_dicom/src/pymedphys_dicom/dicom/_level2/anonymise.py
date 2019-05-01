@@ -384,18 +384,14 @@ def anonymise_directory(
     errors = []
 
     for dicom_filepath in dicom_filepaths:
-        try:
-            anonymise_file(
-                dicom_filepath,
-                delete_original_file=False,
-                anonymise_filename=anonymise_filenames,
-                replace_values=replace_values,
-                keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-                delete_private_tags=delete_private_tags,
-                delete_unknown_tags=delete_unknown_tags)
-        except Exception as e:
-            failing_filepaths.append(dicom_filepath)
-            errors.append(e)
+        anonymise_file(
+            dicom_filepath,
+            delete_original_file=False,
+            anonymise_filename=anonymise_filenames,
+            replace_values=replace_values,
+            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+            delete_private_tags=delete_private_tags,
+            delete_unknown_tags=delete_unknown_tags)
 
     # Separate loop provides the ability to raise Exceptions from the
     # unsuccessful deletion of the original DICOM files while preventing
@@ -404,12 +400,6 @@ def anonymise_directory(
         for dicom_filepath in dicom_filepaths:
             if not dicom_filepath in failing_filepaths:
                 remove_file(dicom_filepath)
-
-    for i, filepath in enumerate(failing_filepaths):
-        raise Exception("Could not complete anonymisation of {}; a {} "
-                        "error was raised. For more details, try "
-                        "anonymising {} individually.\n"
-                        .format(filepath, type(errors[i]), filepath))
 
 
 def anonymise_cli(args):
