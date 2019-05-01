@@ -35,10 +35,9 @@ IMPORTS = get_imports(globals())
 DICOM_NAMES = [item[-1] for _, item in DicomDictionary.items()]
 
 
-def convert_nparray_and_set_key_value_in_dataset(dataset, key, value):
+def add_array_to_dataset(dataset, key, value):
     if isinstance(value, np.ndarray):
         value = value.tolist()
-
     setattr(dataset, key, value)
 
 
@@ -51,25 +50,25 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
 
     for key, value in input_dict.items():
         if key not in DICOM_NAMES:
-            raise ValueError(
-                "{} is not within the DICOM dictionary.".format(key))
+            raise ValueError("{} is not within the DICOM dictionary."
+                             .format(key))
 
         if isinstance(value, dict):
             setattr(dataset, key, dicom_dataset_from_dict(value))
         elif isinstance(value, list):
             if np.all([not isinstance(item, dict) for item in value]):
-                convert_nparray_and_set_key_value_in_dataset(
+                add_array_to_dataset(
                     dataset, key, value)
             elif np.all([isinstance(item, dict) for item in value]):
-                setattr(dataset, key, [
-                        dicom_dataset_from_dict(item) for item in value])
+                setattr(dataset, key,
+                        [dicom_dataset_from_dict(item) for item in value])
             else:
                 raise ValueError(
                     "{} should contain either only dictionaries, or no "
                     "dictionaries".format(key)
                 )
         else:
-            convert_nparray_and_set_key_value_in_dataset(dataset, key, value)
+            add_array_to_dataset(dataset, key, value)
 
     return dataset
 
