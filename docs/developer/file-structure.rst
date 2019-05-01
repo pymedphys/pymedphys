@@ -76,13 +76,12 @@ so we'll disregard them for now in the interest of brevity.
 
 :``notebooks/``: Contains a series of experimental `Jupyter notebooks`_.
                  Jupyter notebooks provide a highly convenient way to
-                 experiment with code. Some of the `examples in docs`_ are in
-                 the form of Jupyter notebooks. Some PyMedPhys contributors
-                 prefer to code in Jupyter notebooks to zero in on a solution
-                 before attempting to add code to the PyMedPhys library.
-                 *notebooks/* is a convenient place to store these experimental
-                 notebooks, permitting both remote and collaborative raw
-                 development.
+                 experiment with code. Some of the `examples`_ are in the form
+                 of Jupyter notebooks. Some PyMedPhys contributors prefer to
+                 code in Jupyter notebooks to zero in on a solution before
+                 attempting to add code to the PyMedPhys library. *notebooks/*
+                 is a convenient place to store these experimental notebooks,
+                 permitting both remote and collaborative raw development.
 
 :``packages/``: The PyMedPhys source code library is separated into a set of
                 *subpackages*, from which the main PyMedPhys package draws.
@@ -98,41 +97,37 @@ so we'll disregard them for now in the interest of brevity.
                 not yet in practice), this code has been thoroughly tested
                 and documented. Changes to code in *packages/* are tracked in
                 ``changelog.md``. Each subpackage in this directory has its
-                own subdirectories; e.g. *pymedphys_analysis*.  See
-                the :ref:`source-code` section below for further details.
+                own subdirectories; e.g. *pymedphys_analysis*.  For more
+                details on the source code structure, especially within the
+                subpackages, see the :ref:`source-code` section below.
 
 :``src/pympedhys/``: Contains code that determines which modules, classes,
                      functions, etc. in *packages/* is exposed to the user via
                      the main installable ``pymedphys`` library package.
 
-:``tests/``: Contains the PyMedPhys suite of automated tests. Any code present
-             in *src/pymedphys/* should be covered by tests in this directory.
-             Automated testing is essential for effective `continuous
-             integration`_, which is a core development philosophy of
-             PyMedPhys. If you would like to make meaningful contributions to
-             PyMedPhys - and become a much better developer as a result - it
-             pays to get very familiar with automated testing and the code
-             within this directory.
-
 
 .. _`the PyMedPhys GitHub page`: https://github.com/pymedphys/pymedphys
-.. _`examples in docs`: ../user/examples/index.html
+.. _`examples`: ../user/examples/index.html
 .. _`Installation`: ../getting-started/installation.html
 .. _`Release Notes`: ../getting-started/changelog.html
 .. _`Jupyter notebooks`: https://realpython.com/jupyter-notebook-introduction/
 .. _`continuous integration`: https://en.wikipedia.org/wiki/Continuous_integration
 
+|
 
 .. _source-code:
 
-The PyMedPhys Source Code Package
----------------------------------
+The PyMedPhys Source Code
+-------------------------
 
-All library source code for PyMedPhys is contained within ``packages``.
-Within this directory, the code is organised into a range of categories, such
-as ``dicom``, ``gamma``, etc. These correspond to Python modules. Finally, code
-within these categories is organised into levels. Levelling the source code
-helps to prevent circular code dependencies. See diagram below:
+All *library* source code for PyMedPhys is contained within
+``pymedphys/packages/``. Within this directory, the code is organised into a
+set of subpackages, such as ``pymedphys_analysis`` and ``pymedphys_dicom``.
+From there, each subpackage contains a directory named `src/<package_name>`,
+within which code is further arranged into categories, such as `gamma` and
+`mudensity`. These correspond to Python modules. Finally, code within these
+category directories is organised into levels. Levels define the dependency
+hierarchy of code within modules. See diagram below:
 
 .. code-block:: bash
 
@@ -198,15 +193,25 @@ helps to prevent circular code dependencies. See diagram below:
    |
    |-- ...
 
+Notice that each subpackage (`pymedphys_analysis` is the diagram example) also
+contains a `tests/` directory. As the name suggests, `tests/` contains a the
+suite of automated tests for that particular subpackage. Any code present in
+*src/<subpackage>/* should be covered by tests in this directory. Automated
+testing is essential for effective `continuous integration`_, which is a core
+development philosophy of PyMedPhys. If you would like to make meaningful
+contributions to PyMedPhys - and become a much better developer as a result -
+it pays to get very familiar with automated testing and the code within these
+directories.
+
 For the most part, the many ``__init__.py`` files just tell Python to treat
 directories containing the files as *packages*. They form part of how
-PyMedPhys' code is brought together as an installable package or library whose
-modules can be imported.
+PyMedPhys' code is brought together as installable packages.
 
 Python files within the source code should have descriptive names indicating
-the functions of the code within them. For example, ``dose.py`` in level 1 of
-``dicom`` is so-named because it contains code that interacts with DICOM RT
-Dose files. However, in order to illustrate how levelling works in PyMedPhys,
+the functions of the code within them. For example, ``gammafilter.py`` in level
+1 of the `pymedphys_analysis` ``gamma`` module is so-named because it contains
+code that calculates gamma pass-rates using a simple pass-fail filtration
+algorithm. However, in order to illustrate how levelling works in PyMedPhys,
 the files in the above diagram have been named according to their level and
 module like so:
 
@@ -226,22 +231,22 @@ Python's ``import`` statement.
 In our example, ``g2a.py`` is in level 2, so code in ``g2a.py`` can import code
 from ``g1a.py``, because ``g1a.py`` is in level 1 (a lower-numbered level). In
 contrast, code in ``g2a.py`` *cannot* import code from ``g2b.py`` (which is in
-the same level), ``g3a.py`` or ``g4a.py`` (which are in higher-numbered
-levels).
+the same level) or ``g3a.py`` (which is in a higher-numbered level).
 
-*This philosophy applies for modules as well:* each module has an assigned
-level. A module's level is flexible; it can be adjusted as needed. Modules are
-assigned levels in the file ``layers.yml``. View this file to see the currently
-assigned level of a given module. Just as with files, modules of a given level
-can import from lower level modules, but not from modules of the same or higher
-levels. For example, at the time of writing, ``dicom`` is a level 2 module,
-and ``gamma`` is a ``level 3`` module. This means that any file within
-``gamma``, such as ``g1a.py``, is free to import from any file within
-``dicom``, such as ``d4a.py``, but no file within ``dicom`` is allowed to
-import from any file in ``gamma``.
+*This philosophy applies for modules (categories within subpackages) as well:*
+Each module has an assigned level. A module's level is flexible; it can be
+adjusted as needed. Modules are assigned levels in the file ``layers.yml``.
+View this file to see the currently assigned level of a given module. Just as
+with files, modules of a given level can import from lower level modules, but
+not from modules of the same or higher levels. For example, at the time of
+writing, ``dicom`` is a level 2 module, and ``gamma`` is a ``level 3`` module.
+This means that any file within ``gamma``, such as ``g1a.py``, is free to
+import from any file within ``dicom``, such as ``d4a.py``, but no file
+within ``dicom`` is allowed to import from any file in ``gamma``. Note that
+a module's level is unaffected by which subpackage/s it is in.
 
-We are able to programatically check for any improper file levelling.
-PyMedPhys' automated test suite includes a Python package called
+Thankfully, we are able to programatically check for any improper file
+levelling. PyMedPhys' automated test suite includes a Python package called
 ``layer-linter``, which does just that!
 
 For a further, in-depth explanation of the philosophy behind levelling
