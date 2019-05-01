@@ -116,16 +116,15 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'UI': "12345678"}
 
 
-def anonymised_dicom_filepath(filepath, ds=None, preserve_original=False):
-    if preserve_original:
-        basename_anon = "{}_Anonymised.dcm".format('.'.join(
-            basename(filepath).split('.')[:-1]))
-    else:
-        mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds.SOPClassUID.name]
-        basename_anon = "{}.{}_Anonymised.dcm".format(
-            mode_prefix, ds.SOPInstanceUID)
-
+def label_dicom_filepath_as_anonymised(filepath):
+    basename_anon = "{}_Anonymised.dcm".format(
+        '.'.join(basename(filepath).split('.')[:-1]))
     return pjoin(dirname(filepath), basename_anon)
+
+
+def create_filename_from_dataset(ds, dirpath=''):
+    mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds.SOPClassUID.name]
+    return pjoin(dirpath, "{}.{}.dcm".format(mode_prefix, ds.SOPInstanceUID))
 
 
 def anonymise_dataset(
@@ -302,8 +301,14 @@ def anonymise_file(
         delete_unknown_tags=delete_unknown_tags,
         copy_dataset=False)
 
-    dicom_anon_filepath = anonymised_dicom_filepath(
-        dicom_filepath, ds=ds, preserve_original=not anonymise_filename)
+    if anonymise_filename:
+        path = create_filename_from_dataset(ds,
+                                            dirpath=dirname(dicom_filepath))
+        dicom_anon_filepath = label_dicom_filepath_as_anonymised(path)
+    else:
+        dicom_anon_filepath = label_dicom_filepath_as_anonymised(
+            dicom_filepath)
+
     ds.save_as(dicom_anon_filepath)
 
     if delete_original_file:
