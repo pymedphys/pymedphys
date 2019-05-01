@@ -47,6 +47,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
   <title>{{ title|striptags|e }}{{ titlesuffix }}</title>
   {% endblock %}
 
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ pathto('_static/apple-touch-icon.png', 1) }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ pathto('_static/favicon-32x32.png', 1) }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ pathto('_static/favicon-16x16.png', 1) }}">
+  <link rel="manifest" href="{{ pathto('_static/site.webmanifest', 1) }}">
+  <link rel="mask-icon" href="{{ pathto('_static/safari-pinned-tab.svg', 1) }}" color="#366a96">
+  <link rel="shortcut icon" href="{{ pathto('_static/favicon.ico', 1) }}">
+  <meta name="msapplication-TileColor" content="#ffc40d">
+  <meta name="msapplication-config" content="{{ pathto('_static/browserconfig.xml', 1) }}">
+  <meta name="theme-color" content="#ffffff">
+
   {# FAVICON #}
   {% if favicon %}
   <link rel="shortcut icon" href="{{ pathto('_static/' + favicon, 1) }}" />
