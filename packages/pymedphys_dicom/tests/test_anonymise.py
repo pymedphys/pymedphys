@@ -2,6 +2,7 @@ from copy import deepcopy
 from os import makedirs
 from os.path import abspath, basename, dirname, exists, join as pjoin
 from shutil import copyfile
+import subprocess
 from uuid import uuid4
 
 from pydicom.datadict import tag_for_keyword
@@ -27,8 +28,9 @@ from pymedphys_utilities.utilities import remove_file, remove_dir
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(HERE, 'data', 'anonymise')
 test_filepath = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
-baseline_anon_test_basename = \
+test_anon_basename = \
     "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm"
+test_anon_filepath = pjoin(DATA_DIR, test_anon_basename)
 file_meta = read_file_meta_info(test_filepath)
 temp_dirpath = pjoin(DATA_DIR, 'temp_{}'.format(uuid4()))
 temp_filepath = pjoin(temp_dirpath, "test.dcm")
@@ -125,7 +127,8 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
     _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=False)
 
     ds_anon_blank = anonymise_dataset(ds, replace_values=False)
-    _check_is_anonymised_dataset_file_and_dir(ds_anon_blank, anon_is_expected=True)
+    _check_is_anonymised_dataset_file_and_dir(
+        ds_anon_blank, anon_is_expected=True)
 
     # Test handling of unknown tags by removing PatientName from
     # baseline dict
@@ -182,7 +185,7 @@ def test_anonymise_file():
                                   ignore_private_tags=False)
 
         # Filename is anonymised?
-        assert basename(anon_private_filepath) == baseline_anon_test_basename
+        assert basename(anon_private_filepath) == test_anon_basename
 
         # Deletion of original file
         temp_basename = "{}_{}.dcm".format(
@@ -242,7 +245,28 @@ def test_anonymise_directory():
 
 
 def test_anonymise_cli():
-    pass
+
+    # Basic file anonymisation
+    assert not is_anonymised_file(test_filepath)
+    assert not exists(test_anon_filepath)
+    anon_file_command = ('pymedphys dicom anonymise'.split() + [test_filepath])
+    try:
+        subprocess.check_call(anon_file_command)
+        assert is_anonymised_file(test_anon_filepath)
+        assert exists(test_filepath)
+    finally:
+        remove_file(test_anon_filepath)
+
+    # Basic dir anonymisation
+    assert not is_anonymised_directory(DATA_DIR)
+    assert not exists(test_anon_filepath)
+    anon_dir_command = ('pymedphys dicom anonymise'.split() + [DATA_DIR])
+    try:
+        subprocess.check_call(anon_dir_command)
+        assert is_anonymised_file(test_anon_filepath)
+        assert exists(test_filepath)
+    finally:
+        remove_file(test_anon_filepath)
 
 
 def test_tags_to_anonymise_in_dicom_dict_baseline():
