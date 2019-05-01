@@ -13,11 +13,11 @@ jobs:
         #   test_title: Pylint Subpackages
         #   toxenv: analysis,dicom,fileformats,labs,logfiles,coordsandscales,electronfactors,databases,utilities,workshops,toolbox,xlwings
         #   python: 3.7
-        Docs:
-          image_name: ubuntu-16.04
-          test_title: Docs
-          toxenv: docs
-          python: 3.7
+        # Docs:
+        #   image_name: ubuntu-16.04
+        #   test_title: Docs
+        #   toxenv: docs
+        #   python: 3.7
         Pytest-DoctestModules:
           image_name: ubuntu-16.04
           test_title: Pytest with Docstrings Included
