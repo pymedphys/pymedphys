@@ -1,4 +1,4 @@
-module.exports = function(grunt) {
+module.exports = function (grunt) {
 
   // load all grunt tasks
   require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
@@ -7,7 +7,7 @@ module.exports = function(grunt) {
     // Read package.json
     pkg: grunt.file.readJSON("package.json"),
 
-    open : {
+    open: {
       dev: {
         path: 'http://localhost:1919'
       }
@@ -26,25 +26,25 @@ module.exports = function(grunt) {
       fonts: {
         files: [
           {
-              expand: true,
-              flatten: true,
-              src: ['bower_components/font-awesome/fonts/*'],
-              dest: 'pymedphys_sphinxtheme/static/fonts/',
-              filter: 'isFile'
+            expand: true,
+            flatten: true,
+            src: ['bower_components/font-awesome/fonts/*'],
+            dest: 'pymedphys_sphinxtheme/static/fonts/',
+            filter: 'isFile'
           },
           {
-              expand: true,
-              flatten: true,
-              src: ['fonts/Lato/*'],
-              dest: 'pymedphys_sphinxtheme/static/fonts/Lato',
-              filter: 'isFile'
+            expand: true,
+            flatten: true,
+            src: ['fonts/Lato/*'],
+            dest: 'pymedphys_sphinxtheme/static/fonts/Lato',
+            filter: 'isFile'
           },
           {
-              expand: true,
-              flatten: true,
-              src: ['fonts/RobotoSlab/*'],
-              dest: 'pymedphys_sphinxtheme/static/fonts/RobotoSlab/',
-              filter: 'isFile'
+            expand: true,
+            flatten: true,
+            src: ['fonts/RobotoSlab/*'],
+            dest: 'pymedphys_sphinxtheme/static/fonts/RobotoSlab/',
+            filter: 'isFile'
           }
         ]
       }
@@ -127,11 +127,11 @@ module.exports = function(grunt) {
         options: {
           position: 'top',
           banner: '/* <%= pkg.name %> version <%= pkg.version %> | MIT license */\n' +
-                  '/* Built <%= grunt.template.today("yyyymmdd HH:mm") %> */',
+            '/* Built <%= grunt.template.today("yyyymmdd HH:mm") %> */',
           linebreak: true
         },
         files: {
-          src: [ 'pymedphys_sphinxtheme/static/js/theme.js', 'pymedphys_sphinxtheme/static/css/theme.css' ]
+          src: ['pymedphys_sphinxtheme/static/js/theme.js', 'pymedphys_sphinxtheme/static/css/theme.css']
         }
       }
     },
@@ -159,7 +159,7 @@ module.exports = function(grunt) {
       /* Changes in theme dir rebuild sphinx */
       sphinx: {
         files: ['pymedphys_sphinxtheme/**/*', 'README.rst', 'docs/**/*.rst', 'docs/**/*.py'],
-        tasks: ['clean:build','exec:build_sphinx']
+        tasks: ['clean:build', 'exec:build_sphinx']
       },
       /* JavaScript */
       browserify: {
@@ -184,6 +184,6 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-browserify');
 
-  grunt.registerTask('default', ['exec:bower_update','clean','copy:fonts','sass:dev','browserify:dev','usebanner','exec:build_sphinx','connect','open','watch']);
-  grunt.registerTask('build', ['exec:bower_update','clean','copy:fonts','sass:build','browserify:build','uglify','usebanner','exec:build_sphinx']);
+  grunt.registerTask('default', ['exec:bower_update', 'clean', 'copy:fonts', 'sass:dev', 'browserify:dev', 'usebanner']);
+  grunt.registerTask('build', ['exec:bower_update', 'clean', 'copy:fonts', 'sass:build', 'browserify:build', 'uglify', 'usebanner']);
 }
