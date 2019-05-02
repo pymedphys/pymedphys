@@ -9,7 +9,7 @@ Summary
 .. automodule:: pymedphys_analysis.gamma
     :no-members:
 
-|
+
 
 ***
 API

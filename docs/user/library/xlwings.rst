@@ -5,17 +5,17 @@ Excel integration via xlwings
 xlwings is a powerful tool for implementing python script within Microsoft
 Excel.
 
-|
+
 
 Installation of PyMedPhys and xlwings
 -------------------------------------
 
-Download and install the latest Anaconda Python 3 version from `here 
+Download and install the latest Anaconda Python 3 version from `here
 <https://www.anaconda.com/download/>`__. This comes with xlwings included in
 the installation. Follow xlwings' `guide on enabling UDFs within Excel
 <https://docs.xlwings.org/en/stable/udfs.html>`__.
 
-|
+
 
 Setting up xlwings
 ------------------
