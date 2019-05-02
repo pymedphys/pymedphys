@@ -150,9 +150,6 @@ html_static_path = ['_static']
 # html_sidebars = {}
 
 html_context = {
-    'css_files': [
-        '_static/theme_overrides.css',
-    ],
     'display_github': True,
     'github_user': 'pymedphys',
     'github_repo': 'pymedphys',
