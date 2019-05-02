@@ -121,7 +121,7 @@ nbsphinx_prolog = r"""
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'pymedphys_sphinxtheme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -150,9 +150,6 @@ html_static_path = ['_static']
 # html_sidebars = {}
 
 html_context = {
-    'css_files': [
-        '_static/theme_overrides.css',
-    ],
     'display_github': True,
     'github_user': 'pymedphys',
     'github_repo': 'pymedphys',
