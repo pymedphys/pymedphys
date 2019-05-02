@@ -2,8 +2,6 @@
 Sustainable Open Source
 =======================
 
-..    include:: <isonum.txt>
-
 Project Maintenance
 -------------------
 
