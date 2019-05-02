@@ -5304,7 +5304,6 @@ footer span.commit code, footer span.commit .rst-content tt, .rst-content footer
 .rst-versions.shift-up {
   height: auto;
   max-height: 100%;
-  overflow-y: scroll;
 }
 .rst-versions.shift-up .rst-other-versions {
   display: block;
@@ -5850,6 +5849,23 @@ a {
   padding: 27.5px;
 }
 
+.rst-versions .rst-current-version {
+  background-color: #eaeaea;
+  color: #55a5d9;
+}
+
+.rst-versions .rst-current-version .fa, .rst-versions .rst-current-version .wy-menu-vertical li span.toctree-expand, .wy-menu-vertical li .rst-versions .rst-current-version span.toctree-expand, .rst-versions .rst-current-version .rst-content .admonition-title, .rst-content .rst-versions .rst-current-version .admonition-title, .rst-versions .rst-current-version .rst-content h1 .headerlink, .rst-content h1 .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content h2 .headerlink, .rst-content h2 .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content h3 .headerlink, .rst-content h3 .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content h4 .headerlink, .rst-content h4 .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content h5 .headerlink, .rst-content h5 .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content h6 .headerlink, .rst-content h6 .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content dl dt .headerlink, .rst-content dl dt .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content p.caption .headerlink, .rst-content p.caption .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content table > caption .headerlink, .rst-content table > caption .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content .code-block-caption .headerlink, .rst-content .code-block-caption .rst-versions .rst-current-version .headerlink, .rst-versions .rst-current-version .rst-content tt.download span:first-child, .rst-content tt.download .rst-versions .rst-current-version span:first-child, .rst-versions .rst-current-version .rst-content code.download span:first-child, .rst-content code.download .rst-versions .rst-current-version span:first-child, .rst-versions .rst-current-version .icon {
+  color: #333;
+}
+
+.rst-versions {
+  background: #fcfcfc;
+}
+
+.rst-versions .rst-other-versions dd a {
+  color: #333;
+}
+
 .deprecated p {
   padding: 10px 7px 10px 10px;
   color: #b94a48;
@@ -5868,7 +5884,6 @@ a {
 
 .wy-nav-side {
   background: #f9f9f9;
-  padding-bottom: 0;
 }
 
 .wy-side-nav-search {

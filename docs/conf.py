@@ -39,6 +39,8 @@ version = 'master'
 # The full version, including alpha/beta/rc tags
 release = pymedphys.__version__
 
+current_version = 'master'
+
 
 # -- General configuration ---------------------------------------------------
 
