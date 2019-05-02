@@ -90,9 +90,8 @@ so we'll disregard them for now in the interest of brevity.
                 but almost all will instead install the main PyMedPhys
                 package. The instructions given in `Installation`_ apply to the
                 main PyMedPhys package. Subpackages are not really intended for
-                user installation, but rather to provide an optional way to deploy applications with minimal dependencies when needed.
-                code dependencies within the PyMedPhys monorepo. They also
-                assist with app deployments.
+                user installation, but rather to provide an optional way to
+                deploy applications with minimal dependencies when needed.
 
                 Along with the code in ``src/pymedphys/``, the code within
                 ``packages/`` constitutes PyMedPhys proper. In theory (though
