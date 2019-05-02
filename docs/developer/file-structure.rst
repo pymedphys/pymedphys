@@ -85,11 +85,11 @@ so we'll disregard them for now in the interest of brevity.
 
 :``packages/``: The PyMedPhys source code library is separated into a set of
                 **subpackages**, from which the main PyMedPhys package draws.
-                Users are strictly able to install any of these subpackages,
+                Users are able to install these subpackages standalone,
                 but almost all will instead install the main PyMedPhys
                 package. The instructions given in `Installation`_ apply to the
                 main PyMedPhys package. Subpackages are not really intended for
-                user installation, but rather to help manage (the very complex)
+                user installation, but rather to provide an optional way to deploy applications with minimal dependencies when needed.
                 code dependencies within the PyMedPhys monorepo. They also
                 assist with app deployments.
 
