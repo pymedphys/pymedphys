@@ -31,7 +31,7 @@ following commands in your terminal:
 The optional commands create an isolated conda environment called "*pmp*"
 within which you can safely work without breaking other python installations
 or running into python package incompatibilities. For more on working with
-conda environments, see `**Managing environments**`_ in the Conda docs.
+conda environments, see `Managing environments`_ in the Conda docs.
 
 .. _`**Managing environments**`: https://conda-forge.org/
 
