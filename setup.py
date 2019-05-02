@@ -87,7 +87,7 @@ setup(
             'sphinx-autobuild',
             'sphinxcontrib-napoleon',
             'sphinx >= 1.4, < 1.8',
-            'sphinx_rtd_theme',
+            'pymedphys_sphinxtheme',
             'sphinx-argparse'
         ],
         'testing': [
