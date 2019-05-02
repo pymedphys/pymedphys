@@ -2,36 +2,22 @@
   "name": "pymedphys",
   "private": true,
   "scripts": {
-    "bootstrap": "yarn && yarn conda:forge && yarn dependencies && yarn nbstripout:install && yarn install:dev",
-    "conda:create": "conda create -y --name pmp python=3.7",
-    "conda:delete": "conda env remove -y --name pmp",
-    "conda:forge": "conda config --add channels conda-forge",
-    "conda:reinstall": "yarn conda:delete && yarn conda:create",
-    "dependencies": "cross-os dependencies",
-    "dependencies:darwin:win32": "conda install -y --file requirements-dependencies-only.txt",
-    "dependencies:linux": "export INSTALL_ON_LINUX=1 && pip install -r requirements-dependencies-only.txt",
-    "docker:internal": "yarn dependencies:linux && yarn install:prod && pip install .",
+    "bootstrap": "yarn && yarn nbstripout:install && yarn install:dev",
+    "docker:internal": "yarn install:prod",
     "git:clean": "git clean -fxd",
     "git:undo": "git reset --soft HEAD~1",
-    "install:dev": "pip install -r requirements-development.txt",
-    "install:docs": "pip install -r requirements-docs.txt",
-    "install:prod": "pip install -r requirements-prod.txt",
-    "lerna:bootstrap": "lerna bootstrap && pip install -e .",
+    "install:dev": "yarn lerna:bootstrap:dev && pip install -e .",
+    "install:prod": "yarn lerna:bootstrap:prod && pip install .",
+    "lerna:bootstrap:dev": "lerna bootstrap",
+    "lerna:bootstrap:prod": "lerna bootstrap -- --production",
     "lerna:build": "lerna run build",
     "lerna:upload": "lerna run upload",
     "nbstripout:install": "pip install nbstripout && nbstripout --install",
     "netlify": "yarn netlify:install && yarn netlify:build",
-    "netlify:install": "yarn dependencies:linux && yarn install:prod && yarn install:docs && pip install .",
     "netlify:build": "sphinx-build -W docs docs/_build/html",
+    "netlify:install": "yarn lerna:bootstrap:prod && pip install .[docs]",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
-  },
-  "cross-os": {
-    "dependencies": {
-      "win32": "yarn dependencies:darwin:win32",
-      "darwin": "yarn dependencies:darwin:win32",
-      "linux": "yarn dependencies:linux"
-    }
   },
   "husky": {
     "hooks": {
@@ -39,7 +25,6 @@
     }
   },
   "devDependencies": {
-    "cross-os": "1.3.0",
     "husky": "^1.3.1",
     "lerna": "^3.13.3"
   }
