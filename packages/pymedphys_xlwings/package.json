@@ -2,14 +2,14 @@
   "name": "pymedphys_xlwings",
   "private": true,
   "scripts": {
-    "install": "pip install -e .",
+    "postinstall": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .') if 'NODE_ENV' in os.environ and os.environ['NODE_ENV'] == 'production' else os.system('pip install -e .')\"",
     "build": "python setup.py sdist bdist_wheel",
     "upload": "twine upload dist/*"
   },
   "dependencies": {
-    "pymedphys_utilities": "^0.0.0",
+    "pymedphys_dicom": "^0.0.0",
     "pymedphys_fileformats": "^0.0.0",
-    "pymedphys_dicom": "^0.0.0"
+    "pymedphys_utilities": "^0.0.0"
   },
   "version": "0.0.0"
 }
