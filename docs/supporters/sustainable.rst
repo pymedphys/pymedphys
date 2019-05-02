@@ -61,7 +61,7 @@ All advertising will be based upon `viewable impressions
 <https://www.thinkwithgoogle.com/feature/viewability/#/demo>`_
 using `a transparent open source viewability library
 <https://kahwee.github.io/viewability/timer.html>`_. We would specifically
-exclude charging for advertising to any user who is a maintainer of the
+exclude charging for advertising when the advert is viewed by a maintainer of the
 project.
 
 
