@@ -1,3 +1,244 @@
-/* pymedphys_sphinxtheme version 0.4.3 | MIT license */
-/* Built 20190502 21:05 */
-require=function r(s,a,l){function c(e,n){if(!a[e]){if(!s[e]){var i="function"==typeof require&&require;if(!n&&i)return i(e,!0);if(u)return u(e,!0);var t=new Error("Cannot find module '"+e+"'");throw t.code="MODULE_NOT_FOUND",t}var o=a[e]={exports:{}};s[e][0].call(o.exports,function(n){return c(s[e][1][n]||n)},o,o.exports,r,s,a,l)}return a[e].exports}for(var u="function"==typeof require&&require,n=0;n<l.length;n++)c(l[n]);return c}({"sphinx-rtd-theme":[function(n,e,i){var jQuery="undefined"!=typeof window?window.jQuery:n("jquery");e.exports.ThemeNav={navBar:null,win:null,winScroll:!1,winResize:!1,linkScroll:!1,winPosition:0,winHeight:null,docHeight:null,isRunning:!1,enable:function(e){var i=this;void 0===e&&(e=!0),i.isRunning||(i.isRunning=!0,jQuery(function(n){i.init(n),i.reset(),i.win.on("hashchange",i.reset),e&&i.win.on("scroll",function(){i.linkScroll||i.winScroll||(i.winScroll=!0,requestAnimationFrame(function(){i.onScroll()}))}),i.win.on("resize",function(){i.winResize||(i.winResize=!0,requestAnimationFrame(function(){i.onResize()}))}),i.onResize()}))},enableSticky:function(){this.enable(!0)},init:function(i){i(document);var t=this;this.navBar=i("div.wy-side-scroll:first"),this.win=i(window),i(document).on("click","[data-toggle='wy-nav-top']",function(){i("[data-toggle='wy-nav-shift']").toggleClass("shift"),i("[data-toggle='rst-versions']").toggleClass("shift")}).on("click",".wy-menu-vertical .current ul li a",function(){var n=i(this);i("[data-toggle='wy-nav-shift']").removeClass("shift"),i("[data-toggle='rst-versions']").toggleClass("shift"),t.toggleCurrent(n),t.hashChange()}).on("click","[data-toggle='rst-current-version']",function(){i("[data-toggle='rst-versions']").toggleClass("shift-up")}),i("table.docutils:not(.field-list,.footnote,.citation)").wrap("<div class='wy-table-responsive'></div>"),i("table.docutils.footnote").wrap("<div class='wy-table-responsive footnote'></div>"),i("table.docutils.citation").wrap("<div class='wy-table-responsive citation'></div>"),i(".wy-menu-vertical ul").not(".simple").siblings("a").each(function(){var e=i(this);expand=i('<span class="toctree-expand"></span>'),expand.on("click",function(n){return t.toggleCurrent(e),n.stopPropagation(),!1}),e.prepend(expand)})},reset:function(){var n=encodeURI(window.location.hash)||"#";try{var e=$(".wy-menu-vertical"),i=e.find('[href="'+n+'"]');if(0===i.length){var t=$('.document [id="'+n.substring(1)+'"]').closest("div.section");0===(i=e.find('[href="#'+t.attr("id")+'"]')).length&&(i=e.find('[href="#"]'))}0<i.length&&($(".wy-menu-vertical .current").removeClass("current"),i.addClass("current"),i.closest("li.toctree-l1").addClass("current"),i.closest("li.toctree-l1").parent().addClass("current"),i.closest("li.toctree-l1").addClass("current"),i.closest("li.toctree-l2").addClass("current"),i.closest("li.toctree-l3").addClass("current"),i.closest("li.toctree-l4").addClass("current"),i[0].scrollIntoView())}catch(o){console.log("Error expanding nav for anchor",o)}},onScroll:function(){this.winScroll=!1;var n=this.win.scrollTop(),e=n+this.winHeight,i=this.navBar.scrollTop()+(n-this.winPosition);n<0||e>this.docHeight||(this.navBar.scrollTop(i),this.winPosition=n)},onResize:function(){this.winResize=!1,this.winHeight=this.win.height(),this.docHeight=$(document).height()},hashChange:function(){this.linkScroll=!0,this.win.one("hashchange",function(){this.linkScroll=!1})},toggleCurrent:function(n){var e=n.closest("li");e.siblings("li.current").removeClass("current"),e.siblings().find("li.current").removeClass("current"),e.find("> ul li.current").removeClass("current"),e.toggleClass("current")}},"undefined"!=typeof window&&(window.SphinxRtdTheme={Navigation:e.exports.ThemeNav,StickyNav:e.exports.ThemeNav}),function(){for(var r=0,n=["ms","moz","webkit","o"],e=0;e<n.length&&!window.requestAnimationFrame;++e)window.requestAnimationFrame=window[n[e]+"RequestAnimationFrame"],window.cancelAnimationFrame=window[n[e]+"CancelAnimationFrame"]||window[n[e]+"CancelRequestAnimationFrame"];window.requestAnimationFrame||(window.requestAnimationFrame=function(n,e){var i=(new Date).getTime(),t=Math.max(0,16-(i-r)),o=window.setTimeout(function(){n(i+t)},t);return r=i+t,o}),window.cancelAnimationFrame||(window.cancelAnimationFrame=function(n){clearTimeout(n)})}()},{jquery:"jquery"}]},{},["sphinx-rtd-theme"]);
+require=(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({"sphinx-rtd-theme":[function(require,module,exports){
+var jQuery = (typeof(window) != 'undefined') ? window.jQuery : require('jquery');
+
+// Sphinx theme nav state
+function ThemeNav () {
+
+    var nav = {
+        navBar: null,
+        win: null,
+        winScroll: false,
+        winResize: false,
+        linkScroll: false,
+        winPosition: 0,
+        winHeight: null,
+        docHeight: null,
+        isRunning: false
+    };
+
+    nav.enable = function (withStickyNav) {
+        var self = this;
+
+        // TODO this can likely be removed once the theme javascript is broken
+        // out from the RTD assets. This just ensures old projects that are
+        // calling `enable()` get the sticky menu on by default. All other cals
+        // to `enable` should include an argument for enabling the sticky menu.
+        if (typeof(withStickyNav) == 'undefined') {
+            withStickyNav = true;
+        }
+
+        if (self.isRunning) {
+            // Only allow enabling nav logic once
+            return;
+        }
+
+        self.isRunning = true;
+        jQuery(function ($) {
+            self.init($);
+
+            self.reset();
+            self.win.on('hashchange', self.reset);
+
+            if (withStickyNav) {
+                // Set scroll monitor
+                self.win.on('scroll', function () {
+                    if (!self.linkScroll) {
+                        if (!self.winScroll) {
+                            self.winScroll = true;
+                            requestAnimationFrame(function() { self.onScroll(); });
+                        }
+                    }
+                });
+            }
+
+            // Set resize monitor
+            self.win.on('resize', function () {
+                if (!self.winResize) {
+                    self.winResize = true;
+                    requestAnimationFrame(function() { self.onResize(); });
+                }
+            });
+
+            self.onResize();
+        });
+
+    };
+
+    // TODO remove this with a split in theme and Read the Docs JS logic as
+    // well, it's only here to support 0.3.0 installs of our theme.
+    nav.enableSticky = function() {
+        this.enable(true);
+    };
+
+    nav.init = function ($) {
+        var doc = $(document),
+            self = this;
+
+        this.navBar = $('div.wy-side-scroll:first');
+        this.win = $(window);
+
+        // Set up javascript UX bits
+        $(document)
+            // Shift nav in mobile when clicking the menu.
+            .on('click', "[data-toggle='wy-nav-top']", function() {
+                $("[data-toggle='wy-nav-shift']").toggleClass("shift");
+                $("[data-toggle='rst-versions']").toggleClass("shift");
+            })
+
+            // Nav menu link click operations
+            .on('click', ".wy-menu-vertical .current ul li a", function() {
+                var target = $(this);
+                // Close menu when you click a link.
+                $("[data-toggle='wy-nav-shift']").removeClass("shift");
+                $("[data-toggle='rst-versions']").toggleClass("shift");
+                // Handle dynamic display of l3 and l4 nav lists
+                self.toggleCurrent(target);
+                self.hashChange();
+            })
+            .on('click', "[data-toggle='rst-current-version']", function() {
+                $("[data-toggle='rst-versions']").toggleClass("shift-up");
+            })
+
+        // Make tables responsive
+        $("table.docutils:not(.field-list,.footnote,.citation)")
+            .wrap("<div class='wy-table-responsive'></div>");
+
+        // Add extra class to responsive tables that contain
+        // footnotes or citations so that we can target them for styling
+        $("table.docutils.footnote")
+            .wrap("<div class='wy-table-responsive footnote'></div>");
+        $("table.docutils.citation")
+            .wrap("<div class='wy-table-responsive citation'></div>");
+
+        // Add expand links to all parents of nested ul
+        $('.wy-menu-vertical ul').not('.simple').siblings('a').each(function () {
+            var link = $(this);
+                expand = $('<span class="toctree-expand"></span>');
+            expand.on('click', function (ev) {
+                self.toggleCurrent(link);
+                ev.stopPropagation();
+                return false;
+            });
+            link.prepend(expand);
+        });
+    };
+
+    nav.reset = function () {
+        // Get anchor from URL and open up nested nav
+        var anchor = encodeURI(window.location.hash) || '#';
+
+        try {
+            var vmenu = $('.wy-menu-vertical');
+            var link = vmenu.find('[href="' + anchor + '"]');
+            if (link.length === 0) {
+                // this link was not found in the sidebar.
+                // Find associated id element, then its closest section
+                // in the document and try with that one.
+                var id_elt = $('.document [id="' + anchor.substring(1) + '"]');
+                var closest_section = id_elt.closest('div.section');
+                link = vmenu.find('[href="#' + closest_section.attr("id") + '"]');
+                if (link.length === 0) {
+                    // still not found in the sidebar. fall back to main section
+                    link = vmenu.find('[href="#"]');
+                }
+            }
+            // If we found a matching link then reset current and re-apply
+            // otherwise retain the existing match
+            if (link.length > 0) {
+                $('.wy-menu-vertical .current').removeClass('current');
+                link.addClass('current');
+                link.closest('li.toctree-l1').addClass('current');
+                link.closest('li.toctree-l1').parent().addClass('current');
+                link.closest('li.toctree-l1').addClass('current');
+                link.closest('li.toctree-l2').addClass('current');
+                link.closest('li.toctree-l3').addClass('current');
+                link.closest('li.toctree-l4').addClass('current');
+                link[0].scrollIntoView();
+            }
+        }
+        catch (err) {
+            console.log("Error expanding nav for anchor", err);
+        }
+
+    };
+
+    nav.onScroll = function () {
+        this.winScroll = false;
+        var newWinPosition = this.win.scrollTop(),
+            winBottom = newWinPosition + this.winHeight,
+            navPosition = this.navBar.scrollTop(),
+            newNavPosition = navPosition + (newWinPosition - this.winPosition);
+        if (newWinPosition < 0 || winBottom > this.docHeight) {
+            return;
+        }
+        this.navBar.scrollTop(newNavPosition);
+        this.winPosition = newWinPosition;
+    };
+
+    nav.onResize = function () {
+        this.winResize = false;
+        this.winHeight = this.win.height();
+        this.docHeight = $(document).height();
+    };
+
+    nav.hashChange = function () {
+        this.linkScroll = true;
+        this.win.one('hashchange', function () {
+            this.linkScroll = false;
+        });
+    };
+
+    nav.toggleCurrent = function (elem) {
+        var parent_li = elem.closest('li');
+        parent_li.siblings('li.current').removeClass('current');
+        parent_li.siblings().find('li.current').removeClass('current');
+        parent_li.find('> ul li.current').removeClass('current');
+        parent_li.toggleClass('current');
+    }
+
+    return nav;
+};
+
+module.exports.ThemeNav = ThemeNav();
+
+if (typeof(window) != 'undefined') {
+    window.SphinxRtdTheme = {
+        Navigation: module.exports.ThemeNav,
+        // TODO remove this once static assets are split up between the theme
+        // and Read the Docs. For now, this patches 0.3.0 to be backwards
+        // compatible with a pre-0.3.0 layout.html
+        StickyNav: module.exports.ThemeNav,
+    };
+}
+
+
+// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+// https://gist.github.com/paulirish/1579671
+// MIT license
+
+(function() {
+    var lastTime = 0;
+    var vendors = ['ms', 'moz', 'webkit', 'o'];
+    for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+        window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame']
+                                   || window[vendors[x]+'CancelRequestAnimationFrame'];
+    }
+
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function(callback, element) {
+            var currTime = new Date().getTime();
+            var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+            var id = window.setTimeout(function() { callback(currTime + timeToCall); },
+              timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
+        };
+
+    if (!window.cancelAnimationFrame)
+        window.cancelAnimationFrame = function(id) {
+            clearTimeout(id);
+        };
+}());
+
+},{"jquery":"jquery"}]},{},["sphinx-rtd-theme"]);

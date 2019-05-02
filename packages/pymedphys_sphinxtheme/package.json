@@ -8,7 +8,7 @@
     "build": "python setup.py sdist bdist_wheel",
     "upload": "twine upload dist/*"
   },
-  "devDependencies": {
+  "dependencies": {
     "bower": "^1.8.4",
     "browserify": "^13.0.0",
     "connect-livereload": "~0.6.0",
@@ -23,6 +23,8 @@
     "grunt-contrib-watch": "~1.0.0",
     "grunt-exec": "~1.0.1",
     "grunt-open": "0.2.3",
-    "matchdep": "~1.0.1"
+    "matchdep": "~1.0.1",
+    "wyrm": "~1.0.9",
+    "font-awesome": "~4.7"
   }
 }
