@@ -35,7 +35,8 @@ setup(
         ]
     },
     install_requires=[
-        'sphinx >= 1.4, < 1.8'
+        'sphinx >= 1.4, < 1.8',
+        'readthedocs-sphinx-ext'
     ],
     classifiers=[
         'Framework :: Sphinx',
