@@ -1,8 +1,10 @@
 @charset "UTF-8";
-* {
-  -webkit-box-sizing: border-box;
-  -moz-box-sizing: border-box;
+html {
   box-sizing: border-box;
+}
+
+*, *::after, *::before {
+  box-sizing: inherit;
 }
 
 article, aside, details, figcaption, figure, footer, header, hgroup, nav, section {
@@ -3888,7 +3890,7 @@ input, select, textarea {
 .wy-control-group {
   margin-bottom: 24px;
   *zoom: 1;
-  max-width: 68em;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
   *zoom: 1;

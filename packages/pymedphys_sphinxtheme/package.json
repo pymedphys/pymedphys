@@ -1,7 +1,7 @@
 {
   "name": "pymedphys_sphinxtheme",
   "main": "js/theme.js",
-  "version": "0.4.3",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "postinstall": "python -c \"import os; os.system('pip install .') if 'NODE_ENV' in os.environ and os.environ['NODE_ENV'] == 'production' else os.system('pip install -e .')\"",
@@ -9,9 +9,10 @@
     "upload": "twine upload dist/*"
   },
   "dependencies": {
-    "bower": "^1.8.4",
+    "bourbon": "~4.3",
+    "bourbon-neat": "~1.7",
     "browserify": "^13.0.0",
-    "connect-livereload": "~0.6.0",
+    "font-awesome": "~4.7",
     "grunt": "~1.0.1",
     "grunt-banner": "^0.6.0",
     "grunt-browserify": "^5.0.0",
@@ -24,7 +25,6 @@
     "grunt-exec": "~1.0.1",
     "grunt-open": "0.2.3",
     "matchdep": "~1.0.1",
-    "wyrm": "~1.0.9",
-    "font-awesome": "~4.7"
+    "wyrm": "^1.0.9"
   }
 }

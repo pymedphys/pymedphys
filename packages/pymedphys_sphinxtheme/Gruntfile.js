@@ -13,7 +13,7 @@ module.exports = function (grunt) {
           {
             expand: true,
             flatten: true,
-            src: ['bower_components/font-awesome/fonts/*'],
+            src: ['node_modules/font-awesome/fonts/*'],
             dest: 'pymedphys_sphinxtheme/static/fonts/',
             filter: 'isFile'
           },
@@ -40,7 +40,7 @@ module.exports = function (grunt) {
         options: {
           style: 'expanded',
           sourcemap: 'none',
-          loadPath: ['bower_components/bourbon/dist', 'bower_components/neat/app/assets/stylesheets', 'bower_components/font-awesome/scss', 'bower_components/wyrm/sass']
+          loadPath: ['node_modules/bourbon/app/assets/stylesheets', 'node_modules/bourbon-neat/app/assets/stylesheets', 'node_modules/font-awesome/scss', 'node_modules/wyrm/sass']
         },
         files: [{
           expand: true,
@@ -65,14 +65,7 @@ module.exports = function (grunt) {
       }
     },
 
-    exec: {
-      bower_update: {
-        cmd: 'bower update'
-      }
-    },
-
     clean: {
-      build: ["docs/build"],
       fonts: ["pymedphys_sphinxtheme/static/fonts"],
       css: ["pymedphys_sphinxtheme/static/css"],
       js: ["pymedphys_sphinxtheme/static/js/*", "!pymedphys_sphinxtheme/static/js/modernizr.min.js"]
@@ -88,5 +81,5 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-browserify');
 
-  grunt.registerTask('build', ['exec:bower_update', 'clean', 'copy:fonts', 'sass:build', 'browserify:build']);
+  grunt.registerTask('build', ['clean', 'copy:fonts', 'sass:build', 'browserify:build']);
 }
