@@ -140,7 +140,6 @@ so we'll disregard them for now in the interest of brevity.
 .. _`Jupyter notebooks`: https://realpython.com/jupyter-notebook-introduction/
 .. _`continuous integration`: https://en.wikipedia.org/wiki/Continuous_integration
 
-|
 
 .. _source-code:
 
@@ -285,7 +284,6 @@ levelling. PyMedPhys' automated test suite includes a Python package called
 For a further, in-depth explanation of the philosophy behind levelling
 dependencies, see the :ref:`john-lakos` section.
 
-|
 
 .. _john-lakos:
 
