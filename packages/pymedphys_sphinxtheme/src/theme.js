@@ -1,7 +1,10 @@
-var jQuery = (typeof(window) != 'undefined') ? window.jQuery : require('jquery');
+import './sass/theme.sass'
+import './sass/badge_only.sass'
+
+var jQuery = (typeof (window) != 'undefined') ? window.jQuery : require('jquery');
 
 // Sphinx theme nav state
-function ThemeNav () {
+function ThemeNav() {
 
     var nav = {
         navBar: null,
@@ -22,7 +25,7 @@ function ThemeNav () {
         // out from the RTD assets. This just ensures old projects that are
         // calling `enable()` get the sticky menu on by default. All other cals
         // to `enable` should include an argument for enabling the sticky menu.
-        if (typeof(withStickyNav) == 'undefined') {
+        if (typeof (withStickyNav) == 'undefined') {
             withStickyNav = true;
         }
 
@@ -44,7 +47,7 @@ function ThemeNav () {
                     if (!self.linkScroll) {
                         if (!self.winScroll) {
                             self.winScroll = true;
-                            requestAnimationFrame(function() { self.onScroll(); });
+                            requestAnimationFrame(function () { self.onScroll(); });
                         }
                     }
                 });
@@ -54,7 +57,7 @@ function ThemeNav () {
             self.win.on('resize', function () {
                 if (!self.winResize) {
                     self.winResize = true;
-                    requestAnimationFrame(function() { self.onResize(); });
+                    requestAnimationFrame(function () { self.onResize(); });
                 }
             });
 
@@ -65,7 +68,7 @@ function ThemeNav () {
 
     // TODO remove this with a split in theme and Read the Docs JS logic as
     // well, it's only here to support 0.3.0 installs of our theme.
-    nav.enableSticky = function() {
+    nav.enableSticky = function () {
         this.enable(true);
     };
 
@@ -79,13 +82,13 @@ function ThemeNav () {
         // Set up javascript UX bits
         $(document)
             // Shift nav in mobile when clicking the menu.
-            .on('click', "[data-toggle='wy-nav-top']", function() {
+            .on('click', "[data-toggle='wy-nav-top']", function () {
                 $("[data-toggle='wy-nav-shift']").toggleClass("shift");
                 $("[data-toggle='rst-versions']").toggleClass("shift");
             })
 
             // Nav menu link click operations
-            .on('click', ".wy-menu-vertical .current ul li a", function() {
+            .on('click', ".wy-menu-vertical .current ul li a", function () {
                 var target = $(this);
                 // Close menu when you click a link.
                 $("[data-toggle='wy-nav-shift']").removeClass("shift");
@@ -94,7 +97,7 @@ function ThemeNav () {
                 self.toggleCurrent(target);
                 self.hashChange();
             })
-            .on('click', "[data-toggle='rst-current-version']", function() {
+            .on('click', "[data-toggle='rst-current-version']", function () {
                 $("[data-toggle='rst-versions']").toggleClass("shift-up");
             })
 
@@ -112,7 +115,7 @@ function ThemeNav () {
         // Add expand links to all parents of nested ul
         $('.wy-menu-vertical ul').not('.simple').siblings('a').each(function () {
             var link = $(this);
-                expand = $('<span class="toctree-expand"></span>');
+            expand = $('<span class="toctree-expand"></span>');
             expand.on('click', function (ev) {
                 self.toggleCurrent(link);
                 ev.stopPropagation();
@@ -200,7 +203,7 @@ function ThemeNav () {
 
 module.exports.ThemeNav = ThemeNav();
 
-if (typeof(window) != 'undefined') {
+if (typeof (window) != 'undefined') {
     window.SphinxRtdTheme = {
         Navigation: module.exports.ThemeNav,
         // TODO remove this once static assets are split up between the theme
@@ -215,27 +218,27 @@ if (typeof(window) != 'undefined') {
 // https://gist.github.com/paulirish/1579671
 // MIT license
 
-(function() {
+(function () {
     var lastTime = 0;
     var vendors = ['ms', 'moz', 'webkit', 'o'];
-    for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-        window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
-        window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame']
-                                   || window[vendors[x]+'CancelRequestAnimationFrame'];
+    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+        window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame']
+            || window[vendors[x] + 'CancelRequestAnimationFrame'];
     }
 
     if (!window.requestAnimationFrame)
-        window.requestAnimationFrame = function(callback, element) {
+        window.requestAnimationFrame = function (callback, element) {
             var currTime = new Date().getTime();
             var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-            var id = window.setTimeout(function() { callback(currTime + timeToCall); },
-              timeToCall);
+            var id = window.setTimeout(function () { callback(currTime + timeToCall); },
+                timeToCall);
             lastTime = currTime + timeToCall;
             return id;
         };
 
     if (!window.cancelAnimationFrame)
-        window.cancelAnimationFrame = function(id) {
+        window.cancelAnimationFrame = function (id) {
             clearTimeout(id);
         };
 }());
