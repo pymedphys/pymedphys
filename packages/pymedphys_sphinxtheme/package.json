@@ -14,17 +14,16 @@
     "browserify": "^13.0.0",
     "font-awesome": "~4.7",
     "grunt": "~1.0.1",
-    "grunt-banner": "^0.6.0",
     "grunt-browserify": "^5.0.0",
     "grunt-contrib-clean": "^1.0.0",
-    "grunt-contrib-connect": "^1.0.2",
     "grunt-contrib-copy": "~1.0.0",
     "grunt-contrib-sass": "~1.0.0",
-    "grunt-contrib-uglify": "~3.3.0",
-    "grunt-contrib-watch": "~1.0.0",
-    "grunt-exec": "~1.0.1",
-    "grunt-open": "0.2.3",
+    "jquery": "^3.4.1",
     "matchdep": "~1.0.1",
     "wyrm": "^1.0.9"
+  },
+  "devDependencies": {
+    "webpack": "^4.30.0",
+    "webpack-cli": "^3.3.1"
   }
 }
