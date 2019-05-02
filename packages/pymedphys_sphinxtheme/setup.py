@@ -6,7 +6,7 @@
 """
 from io import open
 from setuptools import setup
-from sphinx_rtd_theme import __version__
+from pymedphys_sphinxtheme import __version__
 
 
 setup(
@@ -19,8 +19,8 @@ setup(
     description='Read the Docs theme for Sphinx',
     long_description=open('README.rst', encoding='utf-8').read(),
     zip_safe=False,
-    packages=['sphinx_rtd_theme'],
-    package_data={'sphinx_rtd_theme': [
+    packages=['pymedphys_sphinxtheme'],
+    package_data={'pymedphys_sphinxtheme': [
         'theme.conf',
         '*.html',
         'static/css/*.css',
@@ -31,7 +31,7 @@ setup(
     # See http://www.sphinx-doc.org/en/stable/theming.html#distribute-your-theme-as-a-python-package
     entry_points={
         'sphinx.html_themes': [
-            'sphinx_rtd_theme = sphinx_rtd_theme',
+            'pymedphys_sphinxtheme = pymedphys_sphinxtheme',
         ]
     },
     install_requires=[

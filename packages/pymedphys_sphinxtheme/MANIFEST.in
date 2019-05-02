@@ -1,13 +1,13 @@
 include *.txt
 include LICENSE
-recursive-include sphinx_rtd_theme *.conf
-recursive-include sphinx_rtd_theme *.css
-recursive-include sphinx_rtd_theme *.eot
-recursive-include sphinx_rtd_theme *.html
-recursive-include sphinx_rtd_theme *.js
-recursive-include sphinx_rtd_theme *.svg
-recursive-include sphinx_rtd_theme *.ttf
-recursive-include sphinx_rtd_theme *.woff
-recursive-include sphinx_rtd_theme *.woff2
+recursive-include pymedphys_sphinxtheme *.conf
+recursive-include pymedphys_sphinxtheme *.css
+recursive-include pymedphys_sphinxtheme *.eot
+recursive-include pymedphys_sphinxtheme *.html
+recursive-include pymedphys_sphinxtheme *.js
+recursive-include pymedphys_sphinxtheme *.svg
+recursive-include pymedphys_sphinxtheme *.ttf
+recursive-include pymedphys_sphinxtheme *.woff
+recursive-include pymedphys_sphinxtheme *.woff2
 recursive-include tests *.py
 recursive-include tests *.rst

@@ -14,5 +14,5 @@ bower_components/
 node_modules
 npm-debug.log
 package-lock.json
-sphinx_rtd_theme/static/fonts/Lato/
-sphinx_rtd_theme/static/fonts/RobotoSlab/
+pymedphys_sphinxtheme/static/fonts/Lato/
+pymedphys_sphinxtheme/static/fonts/RobotoSlab/

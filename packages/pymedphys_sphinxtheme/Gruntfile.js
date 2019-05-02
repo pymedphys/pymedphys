@@ -29,21 +29,21 @@ module.exports = function(grunt) {
               expand: true,
               flatten: true,
               src: ['bower_components/font-awesome/fonts/*'],
-              dest: 'sphinx_rtd_theme/static/fonts/',
+              dest: 'pymedphys_sphinxtheme/static/fonts/',
               filter: 'isFile'
           },
           {
               expand: true,
               flatten: true,
               src: ['fonts/Lato/*'],
-              dest: 'sphinx_rtd_theme/static/fonts/Lato',
+              dest: 'pymedphys_sphinxtheme/static/fonts/Lato',
               filter: 'isFile'
           },
           {
               expand: true,
               flatten: true,
               src: ['fonts/RobotoSlab/*'],
-              dest: 'sphinx_rtd_theme/static/fonts/RobotoSlab/',
+              dest: 'pymedphys_sphinxtheme/static/fonts/RobotoSlab/',
               filter: 'isFile'
           }
         ]
@@ -60,7 +60,7 @@ module.exports = function(grunt) {
           expand: true,
           cwd: 'sass',
           src: ['*.sass'],
-          dest: 'sphinx_rtd_theme/static/css',
+          dest: 'pymedphys_sphinxtheme/static/css',
           ext: '.css'
         }]
       },
@@ -74,7 +74,7 @@ module.exports = function(grunt) {
           expand: true,
           cwd: 'sass',
           src: ['*.sass'],
-          dest: 'sphinx_rtd_theme/static/css',
+          dest: 'pymedphys_sphinxtheme/static/css',
           ext: '.css'
         }]
       }
@@ -89,7 +89,7 @@ module.exports = function(grunt) {
           }
         },
         src: ['js/*.js'],
-        dest: 'sphinx_rtd_theme/static/js/theme.js'
+        dest: 'pymedphys_sphinxtheme/static/js/theme.js'
       },
       build: {
         options: {
@@ -99,7 +99,7 @@ module.exports = function(grunt) {
           }
         },
         src: ['js/*.js'],
-        dest: 'sphinx_rtd_theme/static/js/theme.js'
+        dest: 'pymedphys_sphinxtheme/static/js/theme.js'
       }
     },
     uglify: {
@@ -113,8 +113,8 @@ module.exports = function(grunt) {
         },
         files: [{
           expand: true,
-          src: ['sphinx_rtd_theme/static/js/*.js', '!sphinx_rtd_theme/static/js/*.min.js'],
-          dest: 'sphinx_rtd_theme/static/js/',
+          src: ['pymedphys_sphinxtheme/static/js/*.js', '!pymedphys_sphinxtheme/static/js/*.min.js'],
+          dest: 'pymedphys_sphinxtheme/static/js/',
           rename: function (dst, src) {
             // Use unminified file name for minified file
             return src;
@@ -131,7 +131,7 @@ module.exports = function(grunt) {
           linebreak: true
         },
         files: {
-          src: [ 'sphinx_rtd_theme/static/js/theme.js', 'sphinx_rtd_theme/static/css/theme.css' ]
+          src: [ 'pymedphys_sphinxtheme/static/js/theme.js', 'pymedphys_sphinxtheme/static/css/theme.css' ]
         }
       }
     },
@@ -145,9 +145,9 @@ module.exports = function(grunt) {
     },
     clean: {
       build: ["docs/build"],
-      fonts: ["sphinx_rtd_theme/static/fonts"],
-      css: ["sphinx_rtd_theme/static/css"],
-      js: ["sphinx_rtd_theme/static/js/*", "!sphinx_rtd_theme/static/js/modernizr.min.js"]
+      fonts: ["pymedphys_sphinxtheme/static/fonts"],
+      css: ["pymedphys_sphinxtheme/static/css"],
+      js: ["pymedphys_sphinxtheme/static/js/*", "!pymedphys_sphinxtheme/static/js/modernizr.min.js"]
     },
 
     watch: {
@@ -158,7 +158,7 @@ module.exports = function(grunt) {
       },
       /* Changes in theme dir rebuild sphinx */
       sphinx: {
-        files: ['sphinx_rtd_theme/**/*', 'README.rst', 'docs/**/*.rst', 'docs/**/*.py'],
+        files: ['pymedphys_sphinxtheme/**/*', 'README.rst', 'docs/**/*.rst', 'docs/**/*.py'],
         tasks: ['clean:build','exec:build_sphinx']
       },
       /* JavaScript */
