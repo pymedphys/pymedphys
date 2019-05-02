@@ -1,8 +1,0 @@
-m2r
-nbsphinx
-sphinx-autobuild
-sphinxcontrib-napoleon
-sphinx >= 1.4, < 1.8
-sphinx-argparse
-
--e ./packages/pymedphys_sphinxtheme
