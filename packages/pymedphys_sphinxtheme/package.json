@@ -3,6 +3,11 @@
   "main": "js/theme.js",
   "version": "0.4.3",
   "private": true,
+  "scripts": {
+    "postinstall": "python -c \"import os; os.system('pip install .') if 'NODE_ENV' in os.environ and os.environ['NODE_ENV'] == 'production' else os.system('pip install -e .')\"",
+    "build": "python setup.py sdist bdist_wheel",
+    "upload": "twine upload dist/*"
+  },
   "devDependencies": {
     "bower": "^1.8.4",
     "browserify": "^13.0.0",
