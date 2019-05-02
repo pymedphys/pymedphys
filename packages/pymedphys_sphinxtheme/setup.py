@@ -35,7 +35,7 @@ setup(
         ]
     },
     install_requires=[
-        'sphinx'
+        'sphinx >= 1.4, < 1.8'
     ],
     classifiers=[
         'Framework :: Sphinx',
