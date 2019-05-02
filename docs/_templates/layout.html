@@ -253,8 +253,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
       });
   </script>
 
-  {# Do not conflict with RTD insertion of analytics script #}
-  {% if not READTHEDOCS %}
   {% if theme_analytics_id %}
   <!-- Theme Analytics -->
   <script>
@@ -268,7 +266,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
     ga('send', 'pageview');
   </script>
 
-  {% endif %}
   {% endif %}
 
   {%- block footer %} {% endblock %}
