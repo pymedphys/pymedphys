@@ -26,6 +26,7 @@ a {
 }
 
 .supporting {
+    height: 200px;
     padding: 27.5px;
 }
 
@@ -86,15 +87,27 @@ THE SOFTWARE. */
 
 .wy-nav-side {
     background: #f9f9f9 !important;
-    padding-bottom: 0 !important;
+    /* padding-bottom: 0 !important; */
 }
 
 .wy-side-nav-search {
-    background-color: #f9f9f9 !important;
+    background-color: #d1a2a2 !important;
 }
 
 .wy-side-nav-search>a, .wy-side-nav-search .wy-dropdown>a {
     color: #3f7cad !important
+}
+
+.wy-side-scroll {
+    background-color: #b9f9f9 !important;
+    height: 100%;
+}
+
+.ad-placeholder {
+    background-color: #b9f9f9 !important;
+    height: 200px;
+    position: fixed;
+    z-index:-1;
 }
 
 .version {
@@ -102,5 +115,5 @@ THE SOFTWARE. */
 }
 
 .section {
-    padding-bottom:20px !important;
+    padding-bottom:30px !important;
 }
