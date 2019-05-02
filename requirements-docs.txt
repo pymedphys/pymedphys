@@ -3,5 +3,6 @@ nbsphinx
 sphinx-autobuild
 sphinxcontrib-napoleon
 sphinx >= 1.4, < 1.8
-pymedphys_sphinxtheme
 sphinx-argparse
+
+-e ./packages/pymedphys_sphinxtheme
