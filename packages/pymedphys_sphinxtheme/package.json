@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "python -c \"import os; os.system('pip install .') if 'NODE_ENV' in os.environ and os.environ['NODE_ENV'] == 'production' else os.system('pip install -e .')\"",
+    "postinstall": "webpack && yarn install:python",
+    "install:python": "python -c \"import os; os.system('pip install .') if 'NODE_ENV' in os.environ and os.environ['NODE_ENV'] == 'production' else os.system('pip install -e .')\"",
     "build": "python setup.py sdist bdist_wheel",
     "upload": "twine upload dist/*"
   },
