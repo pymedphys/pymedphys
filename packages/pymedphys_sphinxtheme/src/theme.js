@@ -214,6 +214,7 @@ if (typeof (window) != 'undefined') {
 
     jQuery(function () {
         SphinxRtdTheme.Navigation.enable('true');
+
     });
 }
 
