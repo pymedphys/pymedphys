@@ -1,8 +1,5 @@
 var jQuery = (typeof (window) != 'undefined') ? window.jQuery : require('jquery');
 
-import './sass/theme.sass'
-import './sass/badge_only.sass'
-
 // Sphinx theme nav state
 function ThemeNav() {
 
