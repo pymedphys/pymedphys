@@ -9,7 +9,7 @@ Summary
 .. automodule:: pymedphys_electronfactors.electronfactors
     :no-members:
 
-|
+
 
 ***
 API
