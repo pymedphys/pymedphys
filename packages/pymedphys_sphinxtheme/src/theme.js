@@ -16,6 +16,8 @@ function ThemeNav() {
     };
 
     nav.enable = function (withStickyNav) {
+        console.log('Navigation Enable')
+
         var self = this;
 
         // TODO this can likely be removed once the theme javascript is broken
@@ -208,11 +210,6 @@ if (typeof (window) != 'undefined') {
         // compatible with a pre-0.3.0 layout.html
         StickyNav: module.exports.ThemeNav,
     };
-
-    jQuery(function () {
-        SphinxRtdTheme.Navigation.enable('true');
-
-    });
 }
 
 

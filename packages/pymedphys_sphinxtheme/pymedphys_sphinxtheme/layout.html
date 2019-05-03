@@ -225,10 +225,9 @@
   <script type="text/javascript">
     jQuery(function () {
       SphinxRtdTheme.Navigation.enable({{ 'true' if theme_sticky_navigation | tobool else 'false' }});
-      });
+    });
   </script>
 
-  {# Do not conflict with RTD insertion of analytics script #}
   {% if theme_analytics_id %}
   <!-- Theme Analytics -->
   <script>
@@ -243,7 +242,6 @@
   </script>
 
   {% endif %}
-
   {%- block footer %} {% endblock %}
 
 </body>
