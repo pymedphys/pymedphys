@@ -13,7 +13,7 @@ Summary
 
 .. plot:: pyplots/single_leaf.py
 
-|
+
 
 ***
 API

@@ -9,7 +9,7 @@ Summary
 .. automodule:: pymedphys_analysis.geometry
     :no-members:
 
-|
+
 
 ***
 API
