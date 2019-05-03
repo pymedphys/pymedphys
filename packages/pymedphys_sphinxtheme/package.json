@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "pip:install:dev": "yarn && yarn webpack:dev && pip install -e .",
-    "pip:install:prod": "yarn --production && yarn webpack:prod && pip install .",
+    "bootstrap": "yarn --production && yarn webpack:prod",
+    "pip:install:dev": "yarn bootstrap && pip install -e .",
+    "pip:install:prod": "yarn bootstrap && pip install .",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*",
     "webpack:dev": "yarn webpack-dev-server --open --config webpack.dev.js",
