@@ -1,13 +1,3 @@
-include *.txt
+graft pymedphys_sphinxtheme
+global-exclude *.py[co]
 include LICENSE
-recursive-include pymedphys_sphinxtheme *.conf
-recursive-include pymedphys_sphinxtheme *.css
-recursive-include pymedphys_sphinxtheme *.eot
-recursive-include pymedphys_sphinxtheme *.html
-recursive-include pymedphys_sphinxtheme *.js
-recursive-include pymedphys_sphinxtheme *.svg
-recursive-include pymedphys_sphinxtheme *.ttf
-recursive-include pymedphys_sphinxtheme *.woff
-recursive-include pymedphys_sphinxtheme *.woff2
-recursive-include tests *.py
-recursive-include tests *.rst

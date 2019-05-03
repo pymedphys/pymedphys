@@ -1,0 +1,7 @@
+js/theme*.js
+css/theme*.css
+fonts/*.eot
+fonts/*.svg
+fonts/*.ttf
+fonts/*.woff
+fonts/*.woff2
