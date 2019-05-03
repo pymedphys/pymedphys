@@ -2,9 +2,6 @@
   "command": {
     "run": {
       "npmClient": "yarn"
-    },
-    "bootstrap": {
-      "ignore": "pymedphys_sphinxtheme"
     }
   },
   "packages": [

@@ -2,9 +2,10 @@
   "name": "pymedphys_coordsandscales",
   "private": true,
   "scripts": {
-    "postinstall": "python -c \"import os; os.system('pip install .') if 'NODE_ENV' in os.environ and os.environ['NODE_ENV'] == 'production' else os.system('pip install -e .')\"",
-    "build": "python setup.py sdist bdist_wheel",
-    "upload": "twine upload dist/*"
+    "pip:install:dev": "pip install -e .",
+    "pip:install:prod": "pip install .",
+    "pypi:build": "python setup.py sdist bdist_wheel",
+    "pypi:upload": "twine upload dist/*"
   },
   "dependencies": {
     "pymedphys_utilities": "^0.0.0"
