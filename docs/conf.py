@@ -39,9 +39,6 @@ version = 'master'
 # The full version, including alpha/beta/rc tags
 release = pymedphys.__version__
 
-current_version = 'master'
-
-
 # -- General configuration ---------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
