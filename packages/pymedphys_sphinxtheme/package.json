@@ -4,11 +4,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "webpack && yarn install:python",
+    "postinstall": "yarn webpack:prod && yarn install:python",
     "install:python": "python -c \"import os; os.system('pip install .') if 'NODE_ENV' in os.environ and os.environ['NODE_ENV'] == 'production' else os.system('pip install -e .')\"",
     "build": "python setup.py sdist bdist_wheel",
     "upload": "twine upload dist/*",
-    "watch": "yarn webpack --mode=development --watch"
+    "webpack:dev": "yarn webpack-dev-server --open --config webpack.dev.js",
+    "webpack:prod": "yarn webpack --config webpack.prod.js"
   },
   "dependencies": {
     "bourbon": "~4.3",
@@ -28,7 +29,9 @@
     "style-loader": "^0.23.1",
     "webpack": "^4.30.0",
     "webpack-cli": "^3.3.1",
-    "webpack-dev-server": "^3.3.1",
     "wyrm": "^1.0.9"
+  },
+  "devDependencies": {
+    "webpack-dev-server": "^3.3.1",
   }
 }
