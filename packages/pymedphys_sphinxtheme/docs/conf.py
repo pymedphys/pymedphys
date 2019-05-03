@@ -43,7 +43,7 @@ html_theme_options = {
     'logo_only': True
 }
 html_theme_path = ["../.."]
-html_logo = "demo/static/logo-wordmark-light.svg"
+html_logo = "demo/static/logo-pymedphys.svg"
 html_show_sourcelink = True
 
 htmlhelp_basename = slug
