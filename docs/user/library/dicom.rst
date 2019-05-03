@@ -9,7 +9,7 @@ Summary
 .. automodule:: pymedphys_dicom.dicom
     :no-members:
 
-|
+
 
 ***
 API
@@ -34,7 +34,7 @@ A suite of functions related to DICOM dataset anonymisation.
 
 .. autofunction:: pymedphys.dicom.is_anonymised_directory
 
-|
+
 
 Coordinates
 -----------
@@ -45,7 +45,7 @@ relevant modality, such as 'CT' or 'RTDOSE'.
 
 .. autofunction:: pymedphys.dicom.xyz_axes_from_dataset
 
-|
+
 
 Dose
 -------
@@ -57,7 +57,7 @@ A suite of functions for manipulating dose in a DICOM context.
 
 .. autofunction:: pymedphys.dicom.find_dose_within_structure
 
-|
+
 
 RT Structure
 ------------
