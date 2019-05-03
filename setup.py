@@ -96,10 +96,7 @@ setup(
             'pytest-cov',
             'xlwings >= 0.15.4'
         ],
-        'pylint': [
-            'pylint'
-        ],
-        'formatting': [
+        'linting': [
             'autopep8',
             'pylint',
             'mypy'
