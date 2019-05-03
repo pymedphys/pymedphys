@@ -48,7 +48,7 @@ module.exports = {
         {
             apply: (compiler) => {
                 compiler.hooks.environment.tap('StartServer', (compilation) => {
-                    exec('rm -rf docs/_build && sphinx-autobuild -p 7070 docs docs/_build/html', (err, stdout, stderr) => {
+                    exec('rm -rf docs/_build', (err, stdout, stderr) => {
                         if (stdout) process.stdout.write(stdout);
                         if (stderr) process.stderr.write(stderr);
                     });
@@ -70,5 +70,10 @@ module.exports = {
             }
         }
     ],
-    watch: true
+    watch: true,
+    devServer: {
+        contentBase: path.join(__dirname, 'docs/_build/html'),
+        compress: false,
+        port: 7070
+    }
 };

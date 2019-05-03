@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
+
+from sphinx.locale import _
 import sys
 import os
 import re
 
+from pymedphys_sphinxtheme import __version__
+
 sys.path.append(os.path.abspath('..'))
 sys.path.append(os.path.abspath('./demo/'))
-
-from sphinx.locale import _
-
-from sphinx_rtd_theme import __version__
 
 
 project = u'Read the Docs Sphinx Theme'
@@ -41,7 +41,7 @@ intersphinx_mapping = {
     'sphinx': ('http://www.sphinx-doc.org/en/stable/', None),
 }
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'pymedphys_sphinxtheme'
 html_theme_options = {
     'logo_only': True
 }
@@ -52,7 +52,7 @@ html_show_sourcelink = True
 htmlhelp_basename = slug
 
 latex_documents = [
-  ('index', '{0}.tex'.format(slug), project, author, 'manual'),
+    ('index', '{0}.tex'.format(slug), project, author, 'manual'),
 ]
 
 man_pages = [
@@ -60,7 +60,7 @@ man_pages = [
 ]
 
 texinfo_documents = [
-  ('index', slug, project, author, slug, project, 'Miscellaneous'),
+    ('index', slug, project, author, slug, project, 'Miscellaneous'),
 ]
 
 
