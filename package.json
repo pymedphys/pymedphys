@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "bootstrap": "yarn && yarn nbstripout:install && yarn install:dev",
+    "bootstrap:all": "yarn bootstrap",
     "docker:internal": "yarn install:prod",
     "git:clean": "git clean -fxd",
     "git:undo": "git reset --soft HEAD~1",
@@ -15,12 +16,11 @@
     "nbstripout:install": "pip install nbstripout && nbstripout --install",
     "netlify": "yarn netlify:install && yarn netlify:build",
     "netlify:build": "sphinx-build -W docs docs/_build/html",
-    "netlify:install": "yarn sphinxtheme && yarn lerna:bootstrap:prod && pip install .[docs]",
+    "netlify:install": "yarn sphinxtheme:prod && yarn lerna:bootstrap:prod && pip install .[docs]",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*",
-    "sphinxtheme": "yarn sphinxtheme:build && yarn sphinxtheme:install",
-    "sphinxtheme:build": "lerna run --scope pymedphys_sphinxtheme webpack:prod",
-    "sphinxtheme:install": "lerna run --scope pymedphys_sphinxtheme install:python -- --production"
+    "sphinxtheme:dev": "lerna run --scope pymedphys_sphinxtheme bootstrap:dev",
+    "sphinxtheme:prod": "lerna run --scope pymedphys_sphinxtheme bootstrap:prod"
   },
   "husky": {
     "hooks": {

@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "install:python": "python -c \"import os; os.system('pip install .') if 'NODE_ENV' in os.environ and os.environ['NODE_ENV'] == 'production' else os.system('pip install -e .')\"",
-    "build": "python setup.py sdist bdist_wheel",
-    "upload": "twine upload dist/*",
+    "bootstrap:prod": "yarn --production && yarn webpack:prod && pip install .",
+    "bootstrap:dev": "yarn && yarn webpack:dev && pip install -e .",
+    "pypi:build": "python setup.py sdist bdist_wheel",
+    "pypi:upload": "twine upload dist/*",
     "webpack:dev": "yarn webpack-dev-server --open --config webpack.dev.js",
     "webpack:prod": "yarn webpack --config webpack.prod.js"
   },
