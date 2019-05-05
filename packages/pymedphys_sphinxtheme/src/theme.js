@@ -1,11 +1,22 @@
 var jQuery = (typeof (window) != 'undefined') ? window.jQuery : require('jquery');
 
 
-// console.log('test3')
+pythonCode = `
+import micropip
 
-// self.languagePluginUrl = 'https://pyodide.pymedphys.com/'
+def something_awesome():
+    import pydicom
+    print(pydicom)
+
+
+micropip.install('pydicom').then(something_awesome())
+`
+
+
 languagePluginLoader.then(() => {
-    console.log(pyodide.runPython('import sys\nsys.version'));
+    return pyodide.loadPackage(['micropip'])
+}).then(() => {
+    console.log(pyodide.runPython(pythonCode));
 })
 
 // Sphinx theme nav state
