@@ -1,3 +1,13 @@
+import './pyodide';
+
+window.languagePluginUrl = 'https://cdn.rawgit.com/iodide-project/pyodide-demo/a39e3f3e80a438a07e6a8028fa4745768c16cbc2/'
+
+languagePluginLoader.then(() => {
+    console.log(pyodide.runPython('import sys\nsys.version'));
+})
+
+
+
 var jQuery = (typeof (window) != 'undefined') ? window.jQuery : require('jquery');
 
 // Sphinx theme nav state
