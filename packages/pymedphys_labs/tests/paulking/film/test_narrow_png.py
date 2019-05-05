@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2019 Paul King
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,19 +23,21 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""A film toolbox.
+import os
+import numpy as np
 
-Example:
-    >>> from pymedphys.film import get_interpolated_dose
-"""
+from pymedphys_labs.paulking.narrow_png import read_narrow_png
 
-# pylint: disable=W0401,W0614
+DATA_DIRECTORY = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 'data'))
 
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.film import *
-from ._level1.narrow_png import *
+def test_read_narrow_png():
+    vert_strip = os.path.join(DATA_DIRECTORY, 'FilmCalib_EBT_vert_strip.png')
+    horz_strip = os.path.join(DATA_DIRECTORY, 'FilmCalib_EBT_horz_strip.png')
+    assert np.allclose(read_narrow_png(vert_strip)[0][0],
+                       read_narrow_png(horz_strip)[0][0])
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.film', '._level1.narrow_png'
-], package='pymedphys_analysis.film')
+
+if __name__ == "__main__":
+    test_read_narrow_png()
