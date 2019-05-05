@@ -4,9 +4,12 @@ var jQuery = (typeof (window) != 'undefined') ? window.jQuery : require('jquery'
 pythonCode = `
 import micropip
 
-def something_awesome():
+def something_awesome(*args):
     import pydicom
-    print(pydicom)
+
+    dataset = pydicom.Dataset()
+    dataset.PatientName = 'MacDonald^George'
+    print(dataset)
 
 
 micropip.install('pydicom').then(something_awesome)
@@ -35,8 +38,6 @@ function ThemeNav() {
     };
 
     nav.enable = function (withStickyNav) {
-        console.log('Navigation Enable')
-
         var self = this;
 
         // TODO this can likely be removed once the theme javascript is broken
