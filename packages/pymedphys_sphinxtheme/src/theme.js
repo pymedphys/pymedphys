@@ -9,7 +9,7 @@ def something_awesome():
     print(pydicom)
 
 
-micropip.install('pydicom').then(something_awesome())
+micropip.install('pydicom').then(something_awesome)
 `
 
 
