@@ -24,14 +24,15 @@ following commands in your terminal:
 .. code:: bash
 
     conda config --add channels conda-forge
-    conda create --name pmp python=3.7 # Optional.
-    conda activate pmp # Optional
+    conda create --name pmp python=3.7.
+    conda activate pmp
     conda install pymedphys
 
-The optional commands create an isolated conda environment called "*pmp*"
-within which you can safely work without breaking other python installations
-or running into python package incompatibilities. For more on working with
-conda environments, see `Managing environments`_ in the Conda docs.
+The ``conda`` commands create, activate and install ``pymedphys`` into an
+isolated conda environment called "*pmp*" within which you can safely work
+without breaking other python installations or running into python package
+incompatibilities. For more on working with conda environments, see
+`Managing environments`_ in the Conda docs.
 
 .. _`Managing environments`: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
 
@@ -62,8 +63,8 @@ using the following commands from within a terminal:
     cd pymedphys
 
     conda config --add channels conda-forge
-    conda create --name pmp python=3.7 # Optional.
-    conda activate pmp # Optional
+    conda create --name pmp python=3.7
+    conda activate pmp
     conda install pymedphys --only-deps
     pip install -e .
 
