@@ -39,13 +39,12 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
-import psutil
-
 from pymedphys_utilities.libutils import get_imports
 
 from .._level1.gammainputcheck import run_input_checks
 
 IMPORTS = get_imports(globals())
+DEFAULT_RAM = int(2**30 * 1.5)  # 1.5 GB
 
 
 def gamma_shell(axes_reference, dose_reference,
@@ -54,7 +53,7 @@ def gamma_shell(axes_reference, dose_reference,
                 lower_percent_dose_cutoff=20, interp_fraction=10,
                 max_gamma=np.inf, local_gamma=False,
                 global_normalisation=None, skip_once_passed=False,
-                random_subset=None, ram_available=None,
+                random_subset=None, ram_available=DEFAULT_RAM,
                 quiet=False):
     """Compare two dose grids with the gamma index.
 
@@ -165,15 +164,6 @@ def gamma_shell(axes_reference, dose_reference,
     return gamma
 
 
-def default_ram() -> int:
-    memory = psutil.virtual_memory()
-    total_memory = memory.total
-
-    ram_available = int(total_memory * 0.3)
-
-    return ram_available
-
-
 def expand_dims_to_1d(array):
     array = np.array(array)
     dims = len(np.shape(array))
@@ -202,7 +192,7 @@ class GammaInternalFixedOptions():
     global_normalisation: Optional[float] = None
     local_gamma: bool = False
     skip_once_passed: bool = False
-    ram_available: Optional[int] = None
+    ram_available: Optional[int] = DEFAULT_RAM
     quiet: bool = False
 
     def __post_init__(self):
@@ -212,9 +202,6 @@ class GammaInternalFixedOptions():
         if self.global_normalisation is None:
             object.__setattr__(
                 self, 'global_normalisation', np.max(self.flat_dose_reference))
-
-        if self.ram_available is None:
-            object.__setattr__(self, 'ram_available', default_ram())
 
     @property
     def global_dose_threshold(self):
