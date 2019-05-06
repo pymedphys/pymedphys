@@ -27,7 +27,6 @@
 """A toolbox for handling trf files.
 
 Examples:
-    >>> from pymedphys.trf import identify_logfile
     >>> from pymedphys.trf import delivery_data_from_logfile
     >>> from pymedphys.trf import decode_header_from_file
 """
@@ -38,14 +37,13 @@ from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
 from ._level1.trfconstants import *
 from ._level1.trfheader import *
-from ._level2.trfidentify import *
 from ._level2.trftable import *
 from ._level3.trf2pandas import *
 from ._level4.trf2deliverydata import *
 from ._level4.trf2csv import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.trfconstants', '._level1.trfheader',
-    '._level2.trfidentify', '._level2.trftable', '._level3.trf2pandas',
-    '._level4.trf2deliverydata', '._level4.trf2csv'
+    '._level1.trfconstants', '._level1.trfheader', '._level2.trftable',
+    '._level3.trf2pandas', '._level4.trf2deliverydata',
+    '._level4.trf2csv'
 ], package='pymedphys_fileformats.trf')

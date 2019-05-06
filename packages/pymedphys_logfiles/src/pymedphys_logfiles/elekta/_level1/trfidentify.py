@@ -30,8 +30,7 @@ from dateutil import tz
 from pymedphys_utilities.libutils import get_imports
 from pymedphys_databases.msq import (
     get_mosaiq_delivery_details, OISDeliveryDetails)
-
-from .._level1.trfheader import decode_header_from_file
+from pymedphys_fileformats.trf import decode_header_from_file
 
 IMPORTS = get_imports(globals())
 

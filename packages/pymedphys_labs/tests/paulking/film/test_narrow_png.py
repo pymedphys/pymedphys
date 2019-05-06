@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Paul King
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,25 +23,21 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import os
+import numpy as np
 
-"""A logfile toolbox.
+from pymedphys_labs.paulking.narrow_png import read_narrow_png
 
-Examples:
-    >>> from pymedphys.logfile import index_logfiles
-"""
+DATA_DIRECTORY = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), 'data'))
 
-# pylint: disable=W0401,W0614,C0103,C0413
 
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
+def test_read_narrow_png():
+    vert_strip = os.path.join(DATA_DIRECTORY, 'FilmCalib_EBT_vert_strip.png')
+    horz_strip = os.path.join(DATA_DIRECTORY, 'FilmCalib_EBT_horz_strip.png')
+    assert np.allclose(read_narrow_png(vert_strip)[0][0],
+                       read_narrow_png(horz_strip)[0][0])
 
-from ._level1.logfileanalyse import *
-from ._level1.diagnostics_zips import *
-from ._level1.logfileindex import *
-from ._level2.logfilebygantry import *
-from ._level2.orchestration import *
 
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.logfileanalyse', '._level1.diagnostics_zips',
-    '._level1.logfileindex', '._level2.logfilebygantry',
-    '._level2.orchestration'
-], package='pymedphys_logfiles.logfile')
+if __name__ == "__main__":
+    test_read_narrow_png()
