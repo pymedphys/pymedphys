@@ -204,7 +204,7 @@ To install ``nbstripout``, run the following within the pymedphys directory:
 
 .. code:: bash
 
-    λ conda create --name pmp python=3.7 # Optional.
+    λ conda create --name pmp python=3.7 shapely # Optional.
     λ conda activate pmp # Optional
     λ conda install nbstripout
     λ nbstripout --install
