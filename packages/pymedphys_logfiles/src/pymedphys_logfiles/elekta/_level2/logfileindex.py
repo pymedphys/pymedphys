@@ -41,9 +41,9 @@ from pymedphys_utilities.utilities import get_sql_servers, make_a_valid_director
 from pymedphys_databases.msq import (
     multi_mosaiq_connect, get_mosaiq_delivery_details, OISDeliveryDetails,
     NoMosaiqEntries)
+from pymedphys_fileformats.trf import Header, decode_header_from_file
 
-from pymedphys_fileformats.trf import Header, decode_header_from_file, date_convert
-
+from .._level1.trfidentify import date_convert
 
 IMPORTS = get_imports(globals())
 
