@@ -37,11 +37,12 @@ import json
 
 import pandas as pd
 
-from .._level1.logfileindex import index_logfiles
+from pymedphys_utilities.libutils import get_imports
+
 from .._level1.diagnostics_zips import (
     fetch_system_diagnostics_multi_linac, extract_diagnostic_zips_and_archive,)
+from .._level2.logfileindex import index_logfiles
 
-from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
 
 

@@ -1,1 +1,1 @@
-from pymedphys_logfiles.logfile import index_logfiles
+from pymedphys_logfiles.elekta import index_logfiles
