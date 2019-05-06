@@ -204,8 +204,8 @@ To install ``nbstripout``, run the following within the pymedphys directory:
 
 .. code:: bash
 
-    λ conda create --name pmp python=3.7 shapely # Optional.
-    λ conda activate pmp # Optional
+    λ conda create --name pmp python=3.7 shapely
+    λ conda activate pmp
     λ conda install nbstripout
     λ nbstripout --install
     λ nbstripout --is-installed && echo Success!
@@ -214,10 +214,12 @@ To install ``nbstripout``, run the following within the pymedphys directory:
 Make sure that ``"Success!"`` was actually printed after running the last
 command. If nothing printed, ``nbstripout`` did not successfully install.
 
-The optional commands create an isolated conda environment called "*pmp*"
-within which you can safely work without breaking other python installations
-or running into python package incompatibilities. For more on working with
-conda environments, see `Managing environments`_ in the Conda docs.
+The ``conda`` commands create, activate and install ``nbstripout`` within an
+isolated conda environment called ``pmp``. Working within the ``pmp``
+environment allows you to more safely write code without breaking other python
+installations or running into python package incompatibilities. For more on
+working with conda environments, see `Managing environments`_ in the Conda
+docs.
 
 .. _`Managing environments`: https://conda-forge.org/
 
