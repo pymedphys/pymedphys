@@ -4,6 +4,5 @@ install_requires = [
     'pandas',
     'matplotlib',
     'pymedphys_coordsandscales',
-    'pymedphys_utilities',
-    'pymedphys_databases'  # TODO remove this dependency
+    'pymedphys_utilities'
 ]

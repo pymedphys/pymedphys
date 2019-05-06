@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,19 +23,29 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""A film toolbox.
 
-Example:
-    >>> from pymedphys.film import get_interpolated_dose
+"""A logfile toolbox.
+
+Examples:
+    >>> from pymedphys.logfile import index_logfiles
 """
 
-# pylint: disable=W0401,W0614
+# pylint: disable=W0401,W0614,C0103,C0413
 
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.film import *
-from ._level1.narrow_png import *
+from ._level1.logfileanalyse import *
+from ._level1.diagnostics_zips import *
+from ._level1.trfidentify import *
+from ._level2.logfileindex import *
+from ._level2.logfilebygantry import *
+from ._level3.orchestration import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.film', '._level1.narrow_png'
-], package='pymedphys_analysis.film')
+    '._level1.logfileanalyse',
+    '._level1.diagnostics_zips',
+    '._level1.trfidentify',
+    '._level2.logfileindex',
+    '._level2.logfilebygantry',
+    '._level3.orchestration'
+], package='pymedphys_logfiles.elekta')
