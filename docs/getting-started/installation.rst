@@ -24,7 +24,7 @@ following commands in your terminal:
 .. code:: bash
 
     conda config --add channels conda-forge
-    conda create --name pmp python=3.7.
+    conda create --name pmp python=3.7
     conda activate pmp
     conda install pymedphys
 
