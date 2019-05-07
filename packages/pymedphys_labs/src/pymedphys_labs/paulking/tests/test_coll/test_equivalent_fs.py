@@ -27,7 +27,9 @@ import numpy as np
 # import pytest
 
 from pymedphys_labs.paulking.collequivalent import (
-    mlc_equivalent_square_fs, A_LEAF_TYPE, AGILITY)
+    mlc_equivalent_square_fs)
+from pymedphys_utilities.coll import (
+    A_LEAF_TYPE, AGILITY)
 
 
 def test_equivalent_mlc():
