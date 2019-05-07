@@ -46,5 +46,10 @@ setup(
     ],
     packages=packages,
     package_dir={'': 'src'},
-    license='AGPL-3.0-or-later'
+    license='AGPL-3.0-or-later',
+    extras_require={
+        'test': [
+            'pytest'
+        ]
+    }
 )

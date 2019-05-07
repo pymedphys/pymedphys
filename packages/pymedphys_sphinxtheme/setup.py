@@ -2,7 +2,6 @@
 """`sphinx_rtd_theme` lives on `Github`_.
 
 .. _github: https://github.com/rtfd/sphinx_rtd_theme
-
 """
 from io import open
 from setuptools import setup
@@ -56,4 +55,9 @@ setup(
         'Topic :: Documentation',
         'Topic :: Software Development :: Documentation',
     ],
+    extras_require={
+        'test': [
+            'pytest'
+        ]
+    }
 )
