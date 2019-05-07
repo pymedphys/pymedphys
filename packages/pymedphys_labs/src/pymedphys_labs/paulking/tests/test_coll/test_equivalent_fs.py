@@ -26,12 +26,12 @@
 import numpy as np
 # import pytest
 
-from pymedphys_utilities.coll import (
+from pymedphys_labs.paulking.coll import (
     mlc_equivalent_square_fs, A_LEAF_TYPE, AGILITY)
 
 
 def test_equivalent_mlc():
-    """ Compare effective field size for known pattern against benchmark. """
+    """Compare effective field size for known pattern against benchmark."""
     mlc_segments = [(0.0, 0.0)] * 14
     mlc_segments += [
         (3.03, 2.47), (2.88, 2.46), (3.08, 2.51), (2.86, 2.46),
