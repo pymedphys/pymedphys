@@ -20,7 +20,7 @@
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*",
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
-    "test:subpackage": "yarn install:subpackage && pylint -E $SUBPACKAGE && pytest -v packages/$SUBPACKAGE"
+    "test:subpackage": "yarn install:subpackage && pytest -v packages/$SUBPACKAGE --pylint --pylint-error-types=EF --pylint-jobs=8"
   },
   "husky": {
     "hooks": {
