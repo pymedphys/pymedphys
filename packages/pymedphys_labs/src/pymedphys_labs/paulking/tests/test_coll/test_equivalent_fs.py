@@ -26,7 +26,7 @@
 import numpy as np
 # import pytest
 
-from pymedphys_labs.paulking.coll import (
+from pymedphys_labs.paulking.collequivalent import (
     mlc_equivalent_square_fs, A_LEAF_TYPE, AGILITY)
 
 
