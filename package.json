@@ -18,7 +18,8 @@
     "netlify:install": "yarn install:prod && pip install .[docs]",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*",
-    "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8"
+    "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
+    "test:subpackage": "yarn lerna run pip:install:dev -- --scope=$SUBPACKAGE --include-filtered-dependencies --concurrency 1 && pylint -E $SUBPACKAGE && pytest -v packages/$SUBPACKAGE"
   },
   "husky": {
     "hooks": {
