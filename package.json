@@ -10,6 +10,7 @@
     "git:undo": "git reset --soft HEAD~1",
     "install:dev": "yarn lerna run pip:install:dev --concurrency 1 && pip install -e .",
     "install:prod": "yarn lerna run pip:install:prod --concurrency 1 && pip install .",
+    "install:subpackage": "yarn lerna run pip:install:dev -- --scope=$SUBPACKAGE --include-filtered-dependencies --concurrency 1",
     "lerna:pypi:build": "lerna run pypi:build",
     "lerna:pypi:upload": "lerna run pypi:upload",
     "nbstripout:install": "pip install nbstripout && nbstripout --install",
@@ -19,7 +20,7 @@
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*",
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
-    "test:subpackage": "yarn lerna run pip:install:dev -- --scope=$SUBPACKAGE --include-filtered-dependencies --concurrency 1 && pylint -E $SUBPACKAGE && pytest -v packages/$SUBPACKAGE"
+    "test:subpackage": "yarn install:subpackage && pylint -E $SUBPACKAGE && pytest -v packages/$SUBPACKAGE"
   },
   "husky": {
     "hooks": {
