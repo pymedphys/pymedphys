@@ -72,7 +72,7 @@ jobs:
     - bash: "python -m pip install -U tox --user"
       displayName: Install tox
 
-    - bash: export INSTALL_ON_LINUX=1; python -m tox -e $TOXENV --notest
+    - bash: python -m tox -e $TOXENV --notest
       displayName: Install test dependencies
 
     - bash: python -m tox -e $TOXENV
