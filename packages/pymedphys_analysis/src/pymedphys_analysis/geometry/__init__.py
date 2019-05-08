@@ -36,8 +36,8 @@ functions include:
 
 from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
 
-from ._level1.geometry import *
+from ._level1.cube import *
 
 clean_and_verify_levelled_modules(globals(), [
-    '._level1.geometry'
+    '._level1.cube'
 ], package='pymedphys_analysis.geometry')

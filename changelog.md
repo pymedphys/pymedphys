@@ -49,9 +49,24 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `mudensity` module.
 - `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
   module.
+- `pymedphys.dicom.get_structure_aligned_cube` has had its `x0` paremeter
+  changed from required to optional. It is no longer the first parameter
+  passed to the function. By default `x0` is now determined using the min/max
+  bounds of the structure.
+- The DICOM coordinate extraction functions - `extract_dicom_patient_xyz()`,
+  `extract_iec_patient_xyz()` and `extract_iec_fixed_xyz()` - have been
+  combined into a single function called `xyz_from_dataset()`. The x, y, z axes
+  can still be returned in either the DICOM, IEC fixed or IEC patient
+  coordinate systems by passing the following case-insensitive strings to the
+  `coord_system=` parameter of `xyz_from_dataset()`:
+  - DICOM: `'d'` or `'DICOM'`
+  - IEC fixed: `'f'`, `'fixed'` or `'IEC fixed'`
+  - IEC patient: `'p'`, `'patient'` or `'IEC patient'`
 
 ### New Features
 
+- A DICOM anonymsation CLI! See
+  [the DICOM Files CLI docs](../user/interfaces/cli/dicom.rst).
 - `anonymise_file()` and `anonymise_directory()`:
   - two new DICOM anonymisation
     wrapper functions that take a DICOM file and a directory as respective
@@ -61,6 +76,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - three new functions that check whether a pydicom
     dataset, a DICOM file or all files within a directory have been anonymised,
     respectively.
+- `coords_from_xyz_axes()` is a previously internal function that has now been
+  exposed in the API. It converts x, y, z axes returned by `xyz_from_dataset()`
+  into a full grid of coordinate triplets that correspond to the original grid
+  (pixel array or dose grid).
+
 
 ## [0.7.2] -- 2019/04/05
 

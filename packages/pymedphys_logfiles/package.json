@@ -2,16 +2,17 @@
   "name": "pymedphys_logfiles",
   "private": true,
   "scripts": {
-    "install": "pip install -e .",
-    "build": "python setup.py sdist bdist_wheel",
-    "upload": "twine upload dist/*"
+    "pip:install:dev": "pip install -e .",
+    "pip:install:prod": "pip install .",
+    "pypi:build": "python setup.py sdist bdist_wheel",
+    "pypi:upload": "twine upload dist/*"
   },
   "dependencies": {
-    "pymedphys_utilities": "^0.0.0",
+    "pymedphys_analysis": "^0.0.0",
     "pymedphys_coordsandscales": "^0.0.0",
-    "pymedphys_fileformats": "^0.0.0",
     "pymedphys_databases": "^0.0.0",
-    "pymedphys_analysis": "^0.0.0"
+    "pymedphys_fileformats": "^0.0.0",
+    "pymedphys_utilities": "^0.0.0"
   },
   "version": "0.0.0"
 }

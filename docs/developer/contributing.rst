@@ -9,7 +9,7 @@ you have administrator rights on your machine. Although this document
 is tailored to Windows users, PyMedPhys itself works on Windows, macOS
 and Linux.
 
-|
+
 
 Your mission
 ------------
@@ -20,7 +20,7 @@ Write down what feedback you have. By the end, instead of you emailing that
 feedback to us, we'd like you to use your new set up to edit this file and
 submit a merge request!
 
-|
+
 
 Get Python & Anaconda
 ---------------------
@@ -55,7 +55,7 @@ using the following command in a new command prompt:
 
     conda config --add channels conda-forge
 
-|
+
 
 .. _text-editor-section:
 
@@ -84,7 +84,7 @@ We also recommend the "GitLens" extension to further enhance your VS Code
 experience! It comes with a number of useful tools for using Git within VS
 Code itself.
 
-|
+
 
 Get a (good) terminal - Cmder
 -----------------------------
@@ -99,7 +99,7 @@ Once you've downloaded cmder, follow the steps given
 to obtain the ability to open a terminal in any directory by right clicking in
 the file browser.
 
-|
+
 
 Get a package manager (for Windows users) - Chocolatey
 ------------------------------------------------------
@@ -120,7 +120,7 @@ Git LFS, and yarn like so:
 
     choco install git yarn nodejs
 
-|
+
 
 Get a GitHub account
 --------------------
@@ -142,7 +142,7 @@ documentation can be found
 `here <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__.
 Use this documentation to begin to get a feel for what Git is.
 
-|
+
 
 Peruse some useful resources
 ----------------------------
@@ -158,7 +158,7 @@ At this point you might find some of the following resources useful:
 The "Don't be afraid to commit" resource will be invaluable for these next few
 steps.
 
-|
+
 
 Authenticate your computer to be able to access your GitHub account
 -------------------------------------------------------------------
@@ -185,7 +185,7 @@ prompted for a password.
 
 This will download all of PyMedPhys to your local machine.
 
-|
+
 
 Set up *nbstripout*
 -------------------
@@ -204,8 +204,8 @@ To install ``nbstripout``, run the following within the pymedphys directory:
 
 .. code:: bash
 
-    λ conda create --name pmp python=3.7 # Optional.
-    λ conda activate pmp # Optional
+    λ conda create --name pmp python=3.7 shapely
+    λ conda activate pmp
     λ conda install nbstripout
     λ nbstripout --install
     λ nbstripout --is-installed && echo Success!
@@ -214,14 +214,16 @@ To install ``nbstripout``, run the following within the pymedphys directory:
 Make sure that ``"Success!"`` was actually printed after running the last
 command. If nothing printed, ``nbstripout`` did not successfully install.
 
-The optional commands create an isolated conda environment called "*pmp*"
-within which you can safely work without breaking other python installations
-or running into python package incompatibilities. For more on working with
-conda environments, see `Managing environments`_ in the Conda docs.
+The ``conda`` commands create, activate and install ``nbstripout`` within an
+isolated conda environment called ``pmp``. Working within the ``pmp``
+environment allows you to more safely write code without breaking other python
+installations or running into python package incompatibilities. For more on
+working with conda environments, see `Managing environments`_ in the Conda
+docs.
 
 .. _`Managing environments`: https://conda-forge.org/
 
-|
+
 
 Install the development version of PyMedPhys
 --------------------------------------------
@@ -233,7 +235,7 @@ conda. With cmder open in the pymedphys directory, run:
 
     yarn bootstrap
 
-|
+
 
 Update this document
 --------------------

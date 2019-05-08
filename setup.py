@@ -87,7 +87,7 @@ setup(
             'sphinx-autobuild',
             'sphinxcontrib-napoleon',
             'sphinx >= 1.4, < 1.8',
-            'sphinx_rtd_theme',
+            'pymedphys_sphinxtheme',
             'sphinx-argparse'
         ],
         'testing': [
@@ -96,10 +96,7 @@ setup(
             'pytest-cov',
             'xlwings >= 0.15.4'
         ],
-        'pylint': [
-            'pylint'
-        ],
-        'formatting': [
+        'linting': [
             'autopep8',
             'pylint',
             'mypy'

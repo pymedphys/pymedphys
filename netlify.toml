@@ -1,0 +1,28 @@
+[build]
+  command = "yarn netlify"
+  publish = "docs/_build/html"
+
+
+[[redirects]]
+  from = "/en/stable/*"
+  to = "/:splat"
+
+[[redirects]]
+  from = "/en/latest/*"
+  to = "/:splat"
+
+[[redirects]]
+  from = "/en/0.8.x/*"
+  to = "/:splat"
+
+[[redirects]]
+  from = "/en/0.7.x/*"
+  to = "/:splat"
+
+[[redirects]]
+  from = "/en/0.6.x/*"
+  to = "/:splat"
+
+[[redirects]]
+  from = "/en/0.5.x/*"
+  to = "/:splat"

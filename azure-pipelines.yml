@@ -8,16 +8,16 @@ jobs:
           test_title: Pylint All
           toxenv: pylint
           python: 3.7
-        Pylint-Subpackages:
-          image_name: ubuntu-16.04
-          test_title: Pylint Subpackages
-          toxenv: analysis,dicom,fileformats,labs,logfiles,coordsandscales,electronfactors,databases,utilities,workshops,toolbox,xlwings
-          python: 3.7
-        Docs:
-          image_name: ubuntu-16.04
-          test_title: Docs
-          toxenv: docs
-          python: 3.7
+        # Pylint-Subpackages:
+        #   image_name: ubuntu-16.04
+        #   test_title: Pylint Subpackages
+        #   toxenv: analysis,dicom,fileformats,labs,logfiles,coordsandscales,electronfactors,databases,utilities,workshops,toolbox,xlwings
+        #   python: 3.7
+        # Docs:
+        #   image_name: ubuntu-16.04
+        #   test_title: Docs
+        #   toxenv: docs
+        #   python: 3.7
         Pytest-DoctestModules:
           image_name: ubuntu-16.04
           test_title: Pytest with Docstrings Included
@@ -65,6 +65,9 @@ jobs:
 
     - bash: "python -m pip install -U pip setuptools --user"
       displayName: Upgrade pip and setuptools
+
+    - bash: yarn
+      displayName: Run yarn
 
     - bash: "python -m pip install -U tox --user"
       displayName: Install tox
@@ -153,18 +156,21 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=$(python) pip pymedphys
+        packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql matplotlib
         updateConda: true
         createOptions: --channel conda-forge
 
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
-    - bash: yarn install:prod
+    - bash: yarn
       displayName: Run yarn
 
-    - bash: "pip install -e .[testing]"
-      displayName: Install development version of PyMedPhys
+    - bash: yarn install:prod
+      displayName: Install dependencies with yarn
+
+    - bash: "pip install .[testing]"
+      displayName: Install PyMedPhys with testing dependencies
 
     - bash: "pytest -v"
       displayName: Run tests

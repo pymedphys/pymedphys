@@ -26,6 +26,8 @@
 
 """A DICOM RT Dose toolbox"""
 
+from .._level1.structure import pull_structure
+from .._level1.coords import coords_from_xyz_axes, xyz_axes_from_dataset
 import warnings
 
 import numpy as np
@@ -37,29 +39,19 @@ from scipy.interpolate import RegularGridInterpolator
 import pydicom
 import pydicom.uid
 
-from .._level1.structure import pull_structure
-
 from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
+
 
 # pylint: disable=C0103
 
 
-def convert_xyz_to_dicom_coords(xyz_tuple):
-    ZZ, YY, XX = np.meshgrid(
-        xyz_tuple[2], xyz_tuple[1], xyz_tuple[0], indexing='ij')
-
-    coords = np.array((XX, YY, ZZ), dtype=np.float64)
-    return coords
-
-
-def load_dose_from_dicom(ds, set_transfer_syntax_uid=True, reshape=True):
+def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
     r"""Extract the dose grid from a DICOM RT Dose file.
 
     .. deprecated:: 0.5.0
-            `load_dose_from_dicom` will be removed in a future version of PyMedPhys.
-            It is replaced by `extract_dose`, which provides additional dose-related
-            information and conforms to a new coordinate system handling convention.
+            `dose_from_dataset` will be removed in a future version of
+            PyMedPhys in favour of a new & improved API.
     """
 
     if set_transfer_syntax_uid:
@@ -67,10 +59,10 @@ def load_dose_from_dicom(ds, set_transfer_syntax_uid=True, reshape=True):
 
     if reshape:
         warnings.warn((
-            '`load_dose_from_dicom` currently reshapes the dose grid. In a '
+            '`dose_from_dataset` currently reshapes the dose grid. In a '
             'future version this will no longer occur. To begin using this '
             'function without the reshape pass the parameter `reshape=False` '
-            'when calling `load_dose_from_dicom`.'), UserWarning)
+            'when calling `dose_from_dataset`.'), UserWarning)
         pixels = np.transpose(
             ds.pixel_array, (1, 2, 0))
     else:
@@ -81,363 +73,29 @@ def load_dose_from_dicom(ds, set_transfer_syntax_uid=True, reshape=True):
     return dose
 
 
-def load_xyz_from_dicom(ds):
-    r"""Extract the coordinates of a DICOM RT Dose file's dose grid.
-
-    .. deprecated:: 0.5.0
-            `load_xyz_from_dicom` will be removed in a future version of PyMedPhys.
-            It is replaced by `extract_dicom_patient_coords`, `extract_iec_patient_coords`
-            and `extract_iec_fixed_coords`, which explicitly work in their respective
-            coordinate systems.
-    """
-
-    warnings.warn((
-        '`load_xyz_from_dicom` returns x, y & z values in the DICOM patient '
-        'coordinate system and presumes the patient\'s orientation is HFS. '
-        'This presumption may not be correct and so the function may return '
-        'incorrect x, y, z values. In the future, this function will be removed. '
-        'It is currently preserved for temporary backwards compatibility.'
-    ), UserWarning)
-
-    resolution = np.array(ds.PixelSpacing).astype(float)
-
-    dx = resolution[0]
-    x = (ds.ImagePositionPatient[0] + np.arange(0, ds.Columns * dx, dx))
-
-    dy = resolution[1]
-    y = (ds.ImagePositionPatient[1] + np.arange(0, ds.Rows * dy, dy))
-
-    z = (np.array(ds.GridFrameOffsetVector) + ds.ImagePositionPatient[2])
-
-    return x, y, z
-
-
-def extract_iec_patient_xyz(ds):
-    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-    in the IEC patient coordinate system
-
-    Parameters
-    ----------
-    ds
-        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
-        Must represent a valid DICOM RT Dose file.
-
-    Returns
-    -------
-    (x, y, z)
-        A tuple containing three `ndarrays` corresponding to the `x`,
-        `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the IEC patient coordinate system [1]_:
-
-        `x` corresponds to the patient's left-right axis and increases toward the
-        left hand side of the patient.
-
-        `y` corresponds to the patient's superoinferior axis and increases toward
-        the head of the patient.
-
-        `z` corresponds to the patient's anteroposterior axis and increases to the
-        anterior side of the patient.
-
-    Notes
-    -----
-    Supported scan orientations [2]_:
-
-    =========================== =======================
-    Orientation                 ImageOrientationPatient
-    =========================== =======================
-    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
-    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
-    Feet First Prone            [1, 0, 0, 0, -1, 0]
-    Feet First Supine           [-1, 0, 0, 0, 1, 0]
-    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
-    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
-    Head First Prone            [-1, 0, 0, 0, -1, 0]
-    Head First Supine           [1, 0, 0, 0, 1, 0]
-    =========================== =======================
-
-    References
-    ----------
-    .. [1] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
-
-    .. [2] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
-       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
-    """
-
-    if ds.Modality != "RTDOSE":
-        raise ValueError("The input DICOM file is not an RT Dose file")
-
-    position = np.array(ds.ImagePositionPatient)
-    orientation = np.array(ds.ImageOrientationPatient)
-
-    di = float(ds.PixelSpacing[0])
-    dj = float(ds.PixelSpacing[1])
-
-    is_prone_or_supine = np.array_equal(
-        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
-
-    is_decubitus = np.array_equal(
-        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
-
-    if is_prone_or_supine:
-        xflip = (orientation[0] == -1)
-        zflip = (orientation[4] == 1)
-        head_first = (xflip != zflip)
-
-        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
-        z = -(orientation[4]*position[1] + np.arange(0, ds.Rows * dj, dj))
-
-    elif is_decubitus:
-        xflip = (orientation[3] == -1)
-        zflip = (orientation[1] == 1)
-        head_first = (xflip == zflip)
-
-        x = -(orientation[3]*position[0] + np.arange(0, ds.Rows * dj, dj))
-        z = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
-    else:
-        raise ValueError(
-            "Dose grid orientation is not supported. "
-            "Dose grid slices must be aligned along the superoinferior axis of patient")
-
-    if xflip:
-        x = np.flip(x)
-    if zflip:
-        z = np.flip(z)
-
-    if head_first:
-        y = position[2] + np.array(ds.GridFrameOffsetVector)
-    else:
-        y = np.flip(-position[2] + np.array(ds.GridFrameOffsetVector))
-
-    return (x, y, z)
-
-
-def extract_iec_fixed_xyz(ds):
-    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-    in the IEC fixed coordinate system.
-
-    Parameters
-    ----------
-    ds
-        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
-        Must represent a valid DICOM RT Dose file.
-
-    Returns
-    -------
-    (x, y, z)
-        A tuple containing three `ndarrays` corresponding to the `x`,
-        `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the IEC fixed coordinate system [3]_:
-
-            `x`
-                An `np.ndarray` of coordinates on the horizontal plane that runs
-                orthogonal to the gantry axis of rotation. The x axis increases
-                towards a viewer's right hand side when facing the gantry standing
-                at the isocentre. The isocentre has an x value of 0.
-            `y`
-                An `np.ndarray` of coordinates on the horizontal plane that runs
-                parallel to the gantry axis of rotation. The positive direction
-                of the y axis travels from the isocentre to the gantry. The
-                isocentre has a y value of 0.
-            `z`
-                An `np.ndarray` of coordinates aligned vertically and passing through
-                the isocentre. The positive direction of the z axis travels upwards
-                and the isocentre has a z value of 0.
-
-    Notes
-    -----
-    Supported scan orientations [4]_:
-
-    =========================== =======================
-    Orientation                 ImageOrientationPatient
-    =========================== =======================
-    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
-    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
-    Feet First Prone            [1, 0, 0, 0, -1, 0]
-    Feet First Supine           [-1, 0, 0, 0, 1, 0]
-    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
-    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
-    Head First Prone            [-1, 0, 0, 0, -1, 0]
-    Head First Supine           [1, 0, 0, 0, 1, 0]
-    =========================== =======================
-
-    References
-    ----------
-    .. [3] "IEC 61217:2.0 Radiotherapy equipment – Coordinates, movements and scales"
-
-    .. [4] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
-       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
-    """
-
-    if ds.Modality != "RTDOSE":
-        raise ValueError("The input DICOM file is not an RT Dose file")
-
-    position = np.array(ds.ImagePositionPatient)
-    orientation = np.array(ds.ImageOrientationPatient)
-
-    di = float(ds.PixelSpacing[0])
-    dj = float(ds.PixelSpacing[1])
-
-    is_prone_or_supine = np.array_equal(
-        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
-
-    is_decubitus = np.array_equal(
-        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
-
-    # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
-    # grid and the 'patient'
-    if is_prone_or_supine:
-        y_orientation = 2*(orientation[0] == orientation[4])-1
-
-        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
-        z = -np.flip(orientation[4]*position[1] +
-                     np.arange(0, ds.Rows * dj, dj))
-
-    elif is_decubitus:
-        y_orientation = 2*(orientation[1] != orientation[3])-1
-
-        z = -np.flip(orientation[3]*position[0] +
-                     np.arange(0, ds.Rows * dj, dj))
-        x = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
-    else:
-        raise ValueError(
-            "Dose grid orientation is not supported. "
-            "Dose grid slices must be aligned along the superoinferior axis of patient")
-
-    y = y_orientation*position[2] + np.array(ds.GridFrameOffsetVector)
-
-    return (x, y, z)
-
-
-def extract_dicom_patient_xyz(ds):
-    r"""Returns the x, y and z coordinates of a DICOM RT Dose file's dose grid
-    in the DICOM patient coordinate system
-
-    Parameters
-    ----------
-    ds
-        A `pydicom Dataset` - ordinarily returned by `pydicom.dcmread()`.
-        Must represent a valid DICOM RT Dose file.
-
-    Returns
-    -------
-    (x, y, z)
-        A tuple containing three `ndarrays` corresponding to the `x`,
-        `y` and `z` coordinates of the DICOM RT Dose file's dose grid in
-        the DICOM patient coordinate system [5]_:
-
-        `x` corresponds to the patient's left-right axis and increases to the
-        left hand side of the patient.
-
-        `y` corresponds to the patient's anteroposterior axis and increases toward
-        the posterior side of the patient.
-
-        `z` corresponds to the patient's superoinferior axis and increases
-        toward the head of the patient.
-
-    Notes
-    -----
-    Supported scan orientations [6]_:
-
-    =========================== =======================
-    Orientation                 ImageOrientationPatient
-    =========================== =======================
-    Feet First Decubitus Left   [0, 1, 0, 1, 0, 0]
-    Feet First Decubitus Right  [0, -1, 0, -1, 0, 0]
-    Feet First Prone            [1, 0, 0, 0, -1, 0]
-    Feet First Supine           [-1, 0, 0, 0, 1, 0]
-    Head First Decubitus Left   [0, -1, 0, 1, 0, 0]
-    Head First Decubitus Right  [0, 1, 0, -1, 0, 0]
-    Head First Prone            [-1, 0, 0, 0, -1, 0]
-    Head First Supine           [1, 0, 0, 0, 1, 0]
-    =========================== =======================
-
-    References
-    ----------
-    .. [5] "C.7.6.2.1.1 Image Position and Image Orientation",
-       "DICOM PS3.3 2016a - Information Object Definitions",
-       http://dicom.nema.org/MEDICAL/dicom/2016a/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
-
-    .. [6] O. McNoleg, "Generalized coordinate transformations for Monte Carlo
-       (DOSXYZnrc and VMC++) verifications of DICOM compatible radiotherapy
-       treatment plans", arXiv:1406.0014, Table 1,
-       https://arxiv.org/ftp/arxiv/papers/1406/1406.0014.pdf
-    """
-
-    if ds.Modality != "RTDOSE":
-        raise ValueError("The input DICOM file is not an RT Dose file")
-
-    position = np.array(ds.ImagePositionPatient)
-    orientation = np.array(ds.ImageOrientationPatient)
-
-    di = float(ds.PixelSpacing[0])
-    dj = float(ds.PixelSpacing[1])
-
-    is_prone_or_supine = np.array_equal(
-        np.absolute(orientation), np.array([1., 0., 0., 0., 1., 0.]))
-
-    is_decubitus = np.array_equal(
-        np.absolute(orientation), np.array([0., 1., 0., 1., 0., 0.]))
-
-    # Only proceed if the DICOM RT Dose file has a supported orientation.
-    # I.e. no pitch, yaw or non-cardinal roll angle exists between the dose
-    # grid and the 'patient'
-    if is_prone_or_supine:
-        xflip = (orientation[0] == -1)
-        yflip = (orientation[4] == -1)
-        head_first = (xflip == yflip)
-
-        x = orientation[0]*position[0] + np.arange(0, ds.Columns * di, di)
-        y = orientation[4]*position[1] + np.arange(0, ds.Rows * dj, dj)
-
-    elif is_decubitus:
-        xflip = (orientation[3] == -1)
-        yflip = (orientation[1] == -1)
-        head_first = (xflip != yflip)
-
-        x = orientation[3]*position[0] + np.arange(0, ds.Rows * dj, dj)
-        y = orientation[1]*position[1] + np.arange(0, ds.Columns * di, di)
-    else:
-        raise ValueError(
-            "Dose grid orientation is not supported. "
-            "Dose grid slices must be aligned along the superoinferior axis of patient")
-
-    if xflip:
-        x = np.flip(x)
-    if yflip:
-        y = np.flip(y)
-
-    if head_first:
-        z = position[2] + np.array(ds.GridFrameOffsetVector)
-    else:
-        z = np.flip(-position[2] + np.array(ds.GridFrameOffsetVector))
-
-    return (x, y, z)
-
-
-def coords_and_dose_from_dicom(dicom_filepath):
-    ds = pydicom.read_file(dicom_filepath, force=True)
-    x, y, z = load_xyz_from_dicom(ds)
-    coords = (y, x, z)
-    dose = load_dose_from_dicom(ds)
-
-    return coords, dose
+def axes_and_dose_from_dicom(dicom_filepath):
+    ds = pydicom.dcmread(dicom_filepath, force=True)
+    axes = xyz_axes_from_dataset(ds)
+    dose = dose_from_dataset(ds)
+
+    return axes, dose
 
 
 def load_dicom_data(ds, depth_adjust):
-    dose = load_dose_from_dicom(ds)
-    crossplane, vertical, inplane = load_xyz_from_dicom(ds)
+    dose = dose_from_dataset(ds)
+    crossplane, vertical, inplane = xyz_axes_from_dataset(ds)
 
     depth = vertical + depth_adjust
 
     return inplane, crossplane, depth, dose
 
 
-def arbitrary_profile_from_dicom_dose(ds, depth_adjust, inplane_ref, crossplane_ref, depth_ref):
+def arbitrary_profile_from_dicom_dose(
+        ds,
+        depth_adjust,
+        inplane_ref,
+        crossplane_ref,
+        depth_ref):
     inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
     interpolation_function = RegularGridInterpolator(
@@ -534,48 +192,55 @@ def average_bounding_profiles(ds, depth_adjust, depth_lookup,
         return inplane, inplane_dose, crossplane, crossplane_dose
 
 
-def _get_index(z_list, z_val):
+def _get_indices(z_list, z_val):
     indices = np.array([item[0] for item in z_list])
     # This will error if more than one contour exists on a given slice
-    index = int(np.where(indices == z_val)[0])
+    desired_indices = np.where(indices == z_val)[0]
     # Multiple contour sets per slice not yet implemented
 
-    return index
+    return desired_indices
 
 
-def find_dose_within_structure(structure, dcm_struct, dcm_dose):
-    x_dose, y_dose, z_dose = load_xyz_from_dicom(dcm_dose)
-    dose = load_dose_from_dicom(dcm_dose)
+def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
+    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dcm_dose)
+    dose = dose_from_dataset(dcm_dose)
 
     xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
 
     x_structure, y_structure, z_structure = pull_structure(
-        structure, dcm_struct)
+        structure_name, dcm_struct)
     structure_z_values = np.array([item[0] for item in z_structure])
 
-    structure_dose_values = np.array([])
+    mask = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
 
     for z_val in structure_z_values:
-        structure_index = _get_index(z_structure, z_val)
-        dose_index = int(np.where(z_dose == z_val)[0])
+        structure_indices = _get_indices(z_structure, z_val)
 
-        assert z_structure[structure_index][0] == z_dose[dose_index]
+        for structure_index in structure_indices:
+            dose_index = int(np.where(z_dose == z_val)[0])
 
-        structure_polygon = path.Path([
-            (
-                x_structure[structure_index][i],
-                y_structure[structure_index][i]
-            )
-            for i in range(len(x_structure[structure_index]))
-        ])
-        mask = structure_polygon.contains_points(points).reshape(
-            len(y_dose), len(x_dose))
-        masked_dose = dose[:, :, dose_index]
-        structure_dose_values = np.append(
-            structure_dose_values, masked_dose[mask])
+            assert z_structure[structure_index][0] == z_dose[dose_index]
 
-    return structure_dose_values
+            structure_polygon = path.Path([
+                (
+                    x_structure[structure_index][i],
+                    y_structure[structure_index][i]
+                )
+                for i in range(len(x_structure[structure_index]))
+            ])
+            mask[:, :, dose_index] = mask[:, :, dose_index] | (
+                structure_polygon.contains_points(points).reshape(
+                    len(y_dose), len(x_dose)))
+
+    return mask
+
+
+def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
+    dose = dose_from_dataset(dcm_dose)
+    mask = get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose)
+
+    return dose[mask]
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
@@ -584,7 +249,7 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]
     bin_edge = hist[1]
-    bin_mid = (bin_edge[1::] + bin_edge[:-1:])/2
+    bin_mid = (bin_edge[1::] + bin_edge[:-1:]) / 2
 
     cumulative = np.cumsum(freq[::-1])
     cumulative = cumulative[::-1]
