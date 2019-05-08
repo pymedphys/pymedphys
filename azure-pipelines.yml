@@ -161,7 +161,7 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql matplotlib shapely
+        packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql matplotlib shapely freetype
         updateConda: true
         createOptions: --channel conda-forge
 
