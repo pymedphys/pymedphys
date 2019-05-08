@@ -8,11 +8,11 @@ jobs:
           test_title: Pylint All
           toxenv: pylint
           python: 3.7
-        # Pylint-Subpackages:
-        #   image_name: ubuntu-16.04
-        #   test_title: Pylint Subpackages
-        #   toxenv: analysis,dicom,fileformats,labs,logfiles,coordsandscales,electronfactors,databases,utilities,workshops,toolbox,xlwings
-        #   python: 3.7
+        Test-Subpackages:
+          image_name: ubuntu-16.04
+          test_title: Test Subpackages
+          toxenv: analysis,dicom,fileformats,labs,logfiles,coordsandscales,electronfactors,databases,utilities,workshops,toolbox
+          python: 3.7
         # Docs:
         #   image_name: ubuntu-16.04
         #   test_title: Docs
@@ -72,10 +72,10 @@ jobs:
     - bash: "python -m pip install -U tox --user"
       displayName: Install tox
 
-    - bash: export INSTALL_ON_LINUX=1; python -m tox -e $TOXENV -p 8 -o --notest
+    - bash: python -m tox -e $TOXENV --notest
       displayName: Install test dependencies
 
-    - bash: python -m tox -e $TOXENV -p 8 -o
+    - bash: python -m tox -e $TOXENV
       displayName: Run tests
 
     - task: PublishTestResults@2

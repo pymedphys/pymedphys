@@ -7,6 +7,7 @@
     "bootstrap": "yarn --production && yarn webpack:prod",
     "pip:install:dev": "yarn bootstrap && pip install -e .",
     "pip:install:prod": "yarn bootstrap && pip install .",
+    "pip:install:test": "yarn bootstrap && pip install .[test]",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*",
     "webpack:dev": "yarn webpack-dev-server --open --config webpack.dev.js",

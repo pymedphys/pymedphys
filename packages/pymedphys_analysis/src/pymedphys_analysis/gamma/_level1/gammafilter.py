@@ -24,6 +24,7 @@
 
 
 """Gamma filters that only calculate pass or fail for each evaluation point.
+
 No interpolation is undergone with these at the moment. Interpolation is
 planned for the future.
 """
@@ -33,7 +34,7 @@ import sys
 
 import numpy as np
 
-from pymedphys.dicom import coords_from_xyz_axes
+from pymedphys_dicom.dicom import coords_from_xyz_axes
 
 from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())

@@ -25,16 +25,38 @@
 
 
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 
 import pydicom
 import xlwings as xw
 
 from pymedphys_utilities.utilities import wildcard_file_resolution
 from pymedphys_dicom.dicom import (
-    extract_depth_dose, extract_profiles, arbitrary_profile_from_dicom_dose)
+    extract_depth_dose, extract_profiles, load_dicom_data)
 
 from pymedphys_utilities.libutils import get_imports
 IMPORTS = get_imports(globals())
+
+
+def arbitrary_profile_from_dicom_dose(
+        ds,
+        depth_adjust,
+        inplane_ref,
+        crossplane_ref,
+        depth_ref):
+    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
+
+    interpolation_function = RegularGridInterpolator(
+        (depth, crossplane, inplane), dose)
+    points = [
+        (a_depth_val, a_crossplane_val, an_inplane_val)
+        for a_depth_val, a_crossplane_val, an_inplane_val
+        in zip(depth_ref, crossplane_ref, inplane_ref)
+    ]
+
+    interpolated_dose = interpolation_function(points)
+
+    return interpolated_dose
 
 
 @xw.func
