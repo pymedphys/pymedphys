@@ -161,12 +161,16 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql matplotlib shapely freetype
+        packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql shapely
         updateConda: true
         createOptions: --channel conda-forge
 
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
+
+    - bash: conda install matplotlib
+      displayName: Install matplotlib with conda on MacOS
+      condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - bash: yarn
       displayName: Run yarn
