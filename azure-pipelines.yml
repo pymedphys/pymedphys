@@ -133,7 +133,7 @@ jobs:
 #       condition: succeededOrFailed()
 
 
-  - job: Conda
+  - job: CondaEnvironment
 
     strategy:
       matrix:
@@ -142,14 +142,14 @@ jobs:
         #   test_title: macOS py36
         #   toxenv: py36
         #   python: 3.6
-        mac-py37:
+        MacOS-Py37:
           image_name: macos-10.13
-          test_title: macOS py37
+          test_title: MacOS Py37
           toxenv: py37
           python: 3.7
-        windows-py37:
+        Windows-Py37:
           image_name: vs2017-win2016
-          test_title: Windows py37
+          test_title: Windows Py37
           toxenv: py37
           python: 3.7
 
