@@ -4,6 +4,7 @@ install_requires = [
     'matplotlib',
     'pandas',
     'xlwings',
+    'psutil',  # An undeclared dependency of xlwings
     'pymedphys_dicom',
     'pymedphys_fileformats',
     'pymedphys_utilities'

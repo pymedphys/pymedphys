@@ -1,5 +1,4 @@
-# Copyright (C) 2018 PyMedPhys Contributors
-
+# Copyright (C) 2019 Simon Biggs
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -23,15 +22,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Various helper functions for mlcs and jaws.
-"""
 
-# pylint: disable=W0401,W0614,C0413,W0611
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.collmlctypes import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.collmlctypes'
-], package='pymedphys_utilities.coll')
+def test_import():
+    import pymedphys_utilities.coll
+    import pymedphys_utilities.filehash
+    import pymedphys_utilities.libutils
+    import pymedphys_utilities.utilities
