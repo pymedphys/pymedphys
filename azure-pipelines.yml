@@ -147,6 +147,11 @@ jobs:
           test_title: macOS py37
           toxenv: py37
           python: 3.7
+        windows-py37:
+          image_name: vs2017-win2016
+          test_title: Windows py37
+          toxenv: py37
+          python: 3.7
 
     pool:
       vmImage: $(image_name)
@@ -156,7 +161,7 @@ jobs:
       inputs:
         createCustomEnvironment: true
         environmentName: pymedphys
-        packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql matplotlib
+        packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql matplotlib shapely
         updateConda: true
         createOptions: --channel conda-forge
 
