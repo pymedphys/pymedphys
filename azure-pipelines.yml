@@ -169,7 +169,7 @@ jobs:
       displayName: Show python information
 
     - bash: conda install -y matplotlib pymssql
-      displayName: Install matplotlib with conda on MacOS
+      displayName: Install matplotlib and pymssql with conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - bash: yarn
