@@ -24,11 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 """Various helper functions for mlcs and jaws.
-
-Available Functions
--------------------
->>> from pymedphys_utilities.coll import (
-...    mlc_equivalent_square_fs)
 """
 
 # pylint: disable=W0401,W0614,C0413,W0611
