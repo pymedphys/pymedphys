@@ -4,11 +4,11 @@
   "scripts": {
     "pip:install:dev": "pip install -e .",
     "pip:install:prod": "pip install .",
+    "pip:install:test": "pip install .[test]",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
   "dependencies": {
-    "pymedphys_analysis": "^0.0.0",
     "pymedphys_utilities": "^0.0.0"
   },
   "version": "0.0.0"

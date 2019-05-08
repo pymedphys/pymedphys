@@ -1,3 +1,5 @@
+import os
+
 from copy import deepcopy
 from os import makedirs
 from os.path import abspath, basename, dirname, exists, join as pjoin
@@ -76,9 +78,8 @@ def _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=True,
 
 
 def _get_non_anonymous_replacement_value(keyword):
-    """Get an appropriate dummy non-anonymised value for a DICOM element
-    based on its value representation (VR)
-    """
+    """Get an appropriate dummy non-anonymised value for a DICOM element based
+    on its value representation (VR)"""
     vr = BASELINE_KEYWORD_VR_DICT[keyword]
     return VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
 
@@ -243,6 +244,7 @@ def test_anonymise_directory():
         remove_dir(temp_dirpath)
 
 
+@pytest.mark.skipif('SUBPACKAGE' in os.environ, reason="Need to extract CLI out of subpackages")
 def test_anonymise_cli():
 
     # Basic file anonymisation

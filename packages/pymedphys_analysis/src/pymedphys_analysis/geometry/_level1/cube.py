@@ -29,7 +29,15 @@ import matplotlib.pyplot as plt
 
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from scipy.optimize import basinhopping
+from scipy.interpolate import splprep, splev
+
+import pydicom
+
 from pymedphys_utilities.libutils import get_imports
+from pymedphys_dicom.dicom import pull_structure
+
+
 IMPORTS = get_imports(globals())
 
 
@@ -312,3 +320,174 @@ def get_interpolated_dose(coords_grid, dose_interpolation):
         interpolated_dose, (coords_dim[0], coords_dim[1]))
 
     return interpolated_dose
+
+
+def resample_contour(contour, n=51):
+    tck, u = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
+    new_points = splev(np.linspace(0, 1, n), tck)
+
+    return new_points
+
+
+def resample_contour_set(contours, n=50):
+    resampled_contours = [resample_contour([x, y, z], n)
+                          for x, y, z in zip(*contours)]
+
+    return resampled_contours
+
+
+def contour_to_points(contours):
+    resampled_contours = resample_contour_set([
+        contours[1], contours[0], contours[2]])
+    contour_points = np.concatenate(resampled_contours, axis=1)
+
+    return contour_points
+
+
+def get_structure_aligned_cube(structure_name: str,
+                               dcm_struct: pydicom.dataset.FileDataset,
+                               quiet=False, niter=10, x0=None):
+    """Align a cube to a dicom structure set.
+
+    Designed to allow arbitrary references frames within a dicom file
+    to be extracted via contouring a cube.
+
+    Parameters
+    ----------
+    structure_name
+        The DICOM label of the cube structure
+    dcm_struct
+        The pydicom reference to the DICOM structure file.
+    quiet : ``bool``
+        Tell the function to not print anything. Defaults to False.
+    x0 : ``np.ndarray``, optional
+        A 3x3 array with each row defining a 3-D point in space.
+        These three points are used as initial conditions to search for
+        a cube that fits the contours. Choosing initial values close to
+        the structure set, and in the desired orientation will allow
+        consistent results. See examples within
+        `pymedphys.geometry.cubify_cube_definition`_ on what the
+        effects of each of the three points are on the resulting cube.
+        By default, this parameter is defined using the min/max values
+        of the contour structure.
+
+    Returns
+    -------
+    cube_definition_array
+        Four 3-D points the define the vertices of the cube.
+
+    vectors
+        The vectors between the points that can be used to traverse the cube.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import pydicom
+    >>> from pymedphys.geometry import get_structure_aligned_cube
+    >>>
+    >>> struct_path = 'packages/pymedphys_dicom/tests/data/struct/example_structures.dcm'
+    >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
+    >>> structure_name = 'ANT Box'
+    >>> cube_definition_array, vectors = get_structure_aligned_cube(
+    ...     structure_name, dcm_struct, quiet=True, niter=1)
+    >>> np.round(cube_definition_array)
+    array([[-266.,  -31.,   43.],
+           [-266.,   29.,   42.],
+           [-207.,  -31.,   33.],
+           [-276.,  -31.,  -16.]])
+    >>>
+    >>> np.round(vectors, 1)
+    array([[  0.7,  59.9,  -0.5],
+           [ 59.2,  -0.7,  -9.7],
+           [ -9.7,  -0.4, -59.2]])
+    """
+
+    contours = pull_structure(structure_name, dcm_struct)
+    contour_points = contour_to_points(contours)
+
+    def to_minimise(cube):
+        cube_definition = cubify_cube_definition(
+            [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
+        )
+        min_dist_squared = calc_min_distance(cube_definition, contour_points)
+        return np.sum(min_dist_squared)
+
+    if x0 is None:
+        concatenated_contours = [
+            np.concatenate(contour_coord)
+            for contour_coord in contours
+        ]
+
+        bounds = [
+            (np.min(concatenated_contour), np.max(concatenated_contour))
+            for concatenated_contour in concatenated_contours
+        ]
+
+        x0 = np.array([
+            (bounds[1][0], bounds[0][0], bounds[2][1]),
+            (bounds[1][0], bounds[0][1], bounds[2][1]),
+            (bounds[1][1], bounds[0][0], bounds[2][1])
+        ])
+
+    if quiet:
+        def print_fun(x, f, accepted):
+            pass
+    else:
+        def print_fun(x, f, accepted):
+            print("at minimum %.4f accepted %d" % (f, int(accepted)))
+
+    result = basinhopping(
+        to_minimise, x0, callback=print_fun, niter=niter, stepsize=5)
+
+    cube = result.x
+
+    cube_definition = cubify_cube_definition(
+        [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
+    )
+
+    cube_definition_array = np.array([
+        np.array(list(item))
+        for item in cube_definition
+    ])
+
+    vectors = [
+        cube_definition_array[1] - cube_definition_array[0],
+        cube_definition_array[2] - cube_definition_array[0],
+        cube_definition_array[3] - cube_definition_array[0]
+    ]
+
+    return cube_definition_array, vectors
+
+
+def calc_min_distance(cube_definition, contours):
+    vertices = cube_vertices(cube_definition)
+
+    vectors = cube_vectors(cube_definition)
+    unit_vectors = [vector / np.linalg.norm(vector) for vector in vectors]
+
+    plane_norms = np.array([
+        unit_vectors[1],
+        -unit_vectors[0],
+        -unit_vectors[1],
+        unit_vectors[0],
+        unit_vectors[2],
+        -unit_vectors[2]
+    ])
+
+    plane_points = np.array([
+        vertices[0],
+        vertices[1],
+        vertices[2],
+        vertices[0],
+        vertices[0],
+        vertices[3]
+    ])
+
+    plane_origin_dist = -np.sum(plane_points * plane_norms, axis=1)
+
+    distance_to_planes = np.dot(plane_norms, contours) \
+        + plane_origin_dist[:, None]
+
+    min_dist_squared = np.min(distance_to_planes**2, axis=0)
+
+    return min_dist_squared

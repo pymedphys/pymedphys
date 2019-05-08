@@ -34,8 +34,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
 
-from scipy.interpolate import RegularGridInterpolator
-
 import pydicom
 import pydicom.uid
 
@@ -88,27 +86,6 @@ def load_dicom_data(ds, depth_adjust):
     depth = vertical + depth_adjust
 
     return inplane, crossplane, depth, dose
-
-
-def arbitrary_profile_from_dicom_dose(
-        ds,
-        depth_adjust,
-        inplane_ref,
-        crossplane_ref,
-        depth_ref):
-    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
-
-    interpolation_function = RegularGridInterpolator(
-        (depth, crossplane, inplane), dose)
-    points = [
-        (a_depth_val, a_crossplane_val, an_inplane_val)
-        for a_depth_val, a_crossplane_val, an_inplane_val
-        in zip(depth_ref, crossplane_ref, inplane_ref)
-    ]
-
-    interpolated_dose = interpolation_function(points)
-
-    return interpolated_dose
 
 
 def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
