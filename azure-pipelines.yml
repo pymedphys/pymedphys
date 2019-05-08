@@ -168,7 +168,7 @@ jobs:
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
 
-    - bash: conda install matplotlib
+    - bash: conda install -y matplotlib
       displayName: Install matplotlib with conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
