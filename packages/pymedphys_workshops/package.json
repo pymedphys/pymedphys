@@ -11,7 +11,7 @@
     "pypi:upload": "twine upload dist/*"
   },
   "dependencies": {
-    "pymedphys_utilities": "^0.2.4"
+    "pymedphys_utilities": "^0.2.5"
   },
-  "version": "0.2.4"
+  "version": "0.2.5"
 }
