@@ -55,7 +55,7 @@ of PyMedPhys must comply with this license. See
 Can I use the PyMedPhys CLI within a commercial, closed-source, product?
 ------------------------------------------------------------------------
 
-Yes, you can. We have exposed our CLI in such a way that complex internal
+Yes, you can. We have written our CLI in such a way that complex internal
 data structures are not exposed. As such, if the only way your code interfaces
 with PyMedPhys is via the CLI we have exposed then your program can be
 considered a separate program, not a derivative. Any distribution of your
