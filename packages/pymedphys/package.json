@@ -1,17 +1,17 @@
 {
   "dependencies": {
-    "pymedphys_analysis": "~0.8.0-dev.13",
-    "pymedphys_coordsandscales": "~0.8.0-dev.13",
-    "pymedphys_databases": "~0.8.0-dev.13",
-    "pymedphys_dicom": "~0.8.0-dev.13",
-    "pymedphys_electronfactors": "~0.8.0-dev.13",
-    "pymedphys_fileformats": "~0.8.0-dev.13",
-    "pymedphys_labs": "~0.8.0-dev.13",
-    "pymedphys_logfiles": "~0.8.0-dev.13",
-    "pymedphys_toolbox": "~0.8.0-dev.13",
-    "pymedphys_utilities": "~0.8.0-dev.13",
-    "pymedphys_workshops": "~0.8.0-dev.13",
-    "pymedphys_xlwings": "~0.8.0-dev.13"
+    "pymedphys_analysis": "~0.8.0-dev.14",
+    "pymedphys_coordsandscales": "~0.8.0-dev.14",
+    "pymedphys_databases": "~0.8.0-dev.14",
+    "pymedphys_dicom": "~0.8.0-dev.14",
+    "pymedphys_electronfactors": "~0.8.0-dev.14",
+    "pymedphys_fileformats": "~0.8.0-dev.14",
+    "pymedphys_labs": "~0.8.0-dev.14",
+    "pymedphys_logfiles": "~0.8.0-dev.14",
+    "pymedphys_toolbox": "~0.8.0-dev.14",
+    "pymedphys_utilities": "~0.8.0-dev.14",
+    "pymedphys_workshops": "~0.8.0-dev.14",
+    "pymedphys_xlwings": "~0.8.0-dev.14"
   },
   "name": "pymedphys",
   "private": true,
@@ -30,5 +30,5 @@
     "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.13"
+  "version": "0.8.0-dev.14"
 }

@@ -65,7 +65,7 @@ for package, dependency_store in tree.items():
         external_dependencies = {
             package: pin
             for package, pin in data['dependencies'].items()
-            if not package.startswith('pymedphys')
+            if package not in packages
         }
     except KeyError:
         external_dependencies = {}
