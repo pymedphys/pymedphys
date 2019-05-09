@@ -11,9 +11,9 @@
     "pypi:upload": "twine upload dist/*"
   },
   "dependencies": {
-    "pymedphys_coordsandscales": "^0.2.1",
-    "pymedphys_dicom": "^0.2.1",
-    "pymedphys_utilities": "^0.2.1"
+    "pymedphys_coordsandscales": "^0.2.2",
+    "pymedphys_dicom": "^0.2.2",
+    "pymedphys_utilities": "^0.2.2"
   },
-  "version": "0.2.1"
+  "version": "0.2.2"
 }
