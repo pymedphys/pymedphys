@@ -17,5 +17,6 @@ def pytest_ignore_collect(path, config):
         relative_path.startswith('notebooks') or
         relative_path.startswith('docs') or
         'node_modules' in relative_path or
-        'xlwings' in relative_path
+        'xlwings' in relative_path or
+        relative_path.startswith('scripts')
     )
