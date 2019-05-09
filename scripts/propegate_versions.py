@@ -4,7 +4,10 @@ from glob import glob
 
 import semver
 
-version_filepath = glob("src/pymedphys*/_version.py")[0]
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+version_filepath = glob(os.path.join(
+    "src", "pymedphys*", "_version.py"))[0]
 package_name = os.path.split(os.path.dirname(version_filepath))[-1]
 
 with open('package.json', 'r') as file:
@@ -22,7 +25,7 @@ __version__ = '.'.join(
     map(str, version_info[:3])) + ''.join(version_info[3:])  # type: ignore
 
 version_file_contents = """version_info = {}
-__version__ = {}
+__version__ = "{}"
 """.format(version_info, __version__)
 
 with open(version_filepath, 'w') as file:
@@ -35,17 +38,20 @@ semver_string = '.'.join(
 semver_parsed = semver.parse(semver_string)
 
 if semver_parsed['major'] == 0:
-    upper_limit = semver.bump_minor(semver_string).replace('-', '')
+    upper_limit = semver.bump_minor(semver_string)
 else:
-    upper_limit = semver.bump_major(semver_string).replace('-', '')
+    upper_limit = semver.bump_major(semver_string)
 
 
-with open('../../dependencies.json', 'r') as file:
+dependencies_filepath = os.path.join(ROOT, "dependencies.json")
+
+
+with open(dependencies_filepath, 'r') as file:
     dependencies_data = json.load(file)
 
 
 dependencies_data['pins']['internal'][package_name] = ">= {}, < {}".format(
     __version__, upper_limit)
 
-with open('../../dependencies.json', 'w') as file:
-    json.dump(dependencies_data, file, indent=2)
+with open(dependencies_filepath, 'w') as file:
+    json.dump(dependencies_data, file, indent=2, sort_keys=True)

@@ -1,11 +1,11 @@
 install_requires = [
-    'pymedphys_utilities',
-    'pymedphys_fileformats',
-    'pymedphys_coordsandscales',
-    'pymedphys_databases',
-    'pymedphys_analysis',
-    'attrs',
-    'numpy < 1.16, >= 1.12',
-    'matplotlib',
-    'pandas'
+    "attrs",
+    "matplotlib",
+    "numpy >= 1.12, < 1.16",
+    "pandas",
+    "pymedphys_analysis >= 0.3.1dev11, < 0.4.0",
+    "pymedphys_coordsandscales >= 0.3.1dev11, < 0.4.0",
+    "pymedphys_databases >= 0.3.1dev11, < 0.4.0",
+    "pymedphys_fileformats >= 0.3.1dev11, < 0.4.0",
+    "pymedphys_utilities >= 0.3.1dev11, < 0.4.0"
 ]

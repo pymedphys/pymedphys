@@ -1,8 +1,8 @@
 install_requires = [
-    'numpy < 1.16, >= 1.12',
-    'matplotlib',
-    'pymedphys_dicom',
-    'pymedphys_databases',
-    'pymedphys_analysis',
-    'pymedphys_utilities'
+    "matplotlib",
+    "numpy ",
+    "pymedphys_analysis >= 0.3.1dev11, < 0.4.0",
+    "pymedphys_databases >= 0.3.1dev11, < 0.4.0",
+    "pymedphys_dicom >= 0.3.1dev11, < 0.4.0",
+    "pymedphys_utilities >= 0.3.1dev11, < 0.4.0"
 ]

@@ -1,1 +1,1 @@
-install_requires = []  # type: ignore
+install_requires = []

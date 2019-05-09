@@ -1,8 +1,8 @@
 install_requires = [
-    'scipy',
-    'pymedphys_utilities',
-    'numpy < 1.16, >= 1.12',
-    'matplotlib',
-    'Pillow',
-    'xarray'
+    "Pillow",
+    "matplotlib",
+    "numpy >= 1.12, < 1.16",
+    "pymedphys_utilities >= 0.3.1dev11, < 0.4.0",
+    "scipy",
+    "xarray"
 ]
