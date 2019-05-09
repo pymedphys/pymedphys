@@ -1,9 +1,7 @@
 {
   "dependencies": {
-    "pymedphys_analysis": "~0.8.0-dev.14",
-    "pymedphys_databases": "~0.8.0-dev.14",
-    "pymedphys_dicom": "~0.8.0-dev.14",
-    "pymedphys_utilities": "~0.8.0-dev.14"
+    "pymedphys_analysis": "~0.8.0-dev.15",
+    "pymedphys_databases": "~0.8.0-dev.15"
   },
   "name": "pymedphys_toolbox",
   "private": true,
@@ -16,5 +14,5 @@
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.14"
+  "version": "0.8.0-dev.15"
 }
