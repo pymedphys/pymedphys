@@ -30,7 +30,7 @@ with open(version_filepath, 'w') as file:
 
 
 semver_string = '.'.join(
-    map(str, version_info[:3])) + '-' + ''.join(version_info[3:])
+    map(str, version_info[:3])) + '-' + ''.join(version_info[3:])  # type: ignore
 
 semver_parsed = semver.parse(semver_string)
 
