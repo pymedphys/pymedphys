@@ -31,7 +31,10 @@
     "pypi:build": "lerna run pypi:build",
     "pypi:upload": "lerna run pypi:upload",
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
-    "test:subpackage": "yarn install:subpackage && pytest -v packages/$SUBPACKAGE && pylint --errors-only --verbose $SUBPACKAGE"
+    "test:subpackage": "yarn install:subpackage && pytest -v packages/$SUBPACKAGE && pylint --errors-only --verbose $SUBPACKAGE",
+    "tree:deps": "pip install networkx pydeps",
+    "tree:update": "python -c \"import sys; sys.path.insert(0, 'scripts'); from build_dependency_tree import save_tree; save_tree()\"",
+    "tree:test": "python -c \"import sys; sys.path.insert(0, 'scripts'); from build_dependency_tree import assert_tree_unchanged; assert_tree_unchanged()\""
   },
   "husky": {
     "hooks": {
