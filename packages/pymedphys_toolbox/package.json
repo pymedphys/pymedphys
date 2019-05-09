@@ -9,10 +9,10 @@
     "pypi:upload": "twine upload dist/*"
   },
   "dependencies": {
-    "pymedphys_analysis": "^0.0.0",
-    "pymedphys_databases": "^0.0.0",
-    "pymedphys_dicom": "^0.0.0",
-    "pymedphys_utilities": "^0.0.0"
+    "pymedphys_analysis": "^0.1.0",
+    "pymedphys_databases": "^0.1.0",
+    "pymedphys_dicom": "^0.1.0",
+    "pymedphys_utilities": "^0.1.0"
   },
-  "version": "0.0.0"
+  "version": "0.1.0"
 }
