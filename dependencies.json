@@ -1,24 +1,45 @@
 {
   "pins": {
-    "external": {
-      "numpy": ">= 1.12, < 1.16",
-      "sphinx": ">= 1.4, < 1.8"
+    "npm": {
+      "external": {},
+      "internal": {
+        "pymedphys": "~0.8.0-dev7",
+        "pymedphys_analysis": "~0.8.0-dev7",
+        "pymedphys_coordsandscales": "~0.8.0-dev7",
+        "pymedphys_databases": "~0.8.0-dev7",
+        "pymedphys_dicom": "~0.8.0-dev7",
+        "pymedphys_electronfactors": "~0.8.0-dev7",
+        "pymedphys_fileformats": "~0.8.0-dev7",
+        "pymedphys_labs": "~0.8.0-dev7",
+        "pymedphys_logfiles": "~0.8.0-dev7",
+        "pymedphys_sphinxtheme": "~0.8.0-dev7",
+        "pymedphys_toolbox": "~0.8.0-dev7",
+        "pymedphys_utilities": "~0.8.0-dev7",
+        "pymedphys_workshops": "~0.8.0-dev7",
+        "pymedphys_xlwings": "~0.8.0-dev7"
+      }
     },
-    "internal": {
-      "pymedphys": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_analysis": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_coordsandscales": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_databases": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_dicom": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_electronfactors": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_fileformats": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_labs": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_logfiles": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_sphinxtheme": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_toolbox": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_utilities": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_workshops": ">= 0.8.0dev2, < 0.9.0",
-      "pymedphys_xlwings": ">= 0.8.0dev2, < 0.9.0"
+    "pypi": {
+      "external": {
+        "numpy": ">= 1.12, < 1.16",
+        "sphinx": ">= 1.4, < 1.8"
+      },
+      "internal": {
+        "pymedphys": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_analysis": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_coordsandscales": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_databases": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_dicom": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_electronfactors": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_fileformats": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_labs": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_logfiles": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_sphinxtheme": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_toolbox": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_utilities": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_workshops": ">= 0.8.0dev7, < 0.9.0",
+        "pymedphys_xlwings": ">= 0.8.0dev7, < 0.9.0"
+      }
     }
   },
   "tree": {

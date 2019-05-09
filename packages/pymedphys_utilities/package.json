@@ -1,4 +1,5 @@
 {
+  "dependencies": {},
   "name": "pymedphys_utilities",
   "private": true,
   "scripts": {
@@ -10,5 +11,5 @@
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.2"
+  "version": "0.8.0-dev.7"
 }

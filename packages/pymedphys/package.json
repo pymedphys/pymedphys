@@ -1,35 +1,34 @@
 {
+  "dependencies": {
+    "pymedphys_analysis": "~0.8.0-dev7",
+    "pymedphys_coordsandscales": "~0.8.0-dev7",
+    "pymedphys_databases": "~0.8.0-dev7",
+    "pymedphys_dicom": "~0.8.0-dev7",
+    "pymedphys_electronfactors": "~0.8.0-dev7",
+    "pymedphys_fileformats": "~0.8.0-dev7",
+    "pymedphys_labs": "~0.8.0-dev7",
+    "pymedphys_logfiles": "~0.8.0-dev7",
+    "pymedphys_toolbox": "~0.8.0-dev7",
+    "pymedphys_utilities": "~0.8.0-dev7",
+    "pymedphys_workshops": "~0.8.0-dev7",
+    "pymedphys_xlwings": "~0.8.0-dev7"
+  },
   "name": "pymedphys",
   "private": true,
   "scripts": {
-    "prerun": "yarn copy:readme",
     "copy:readme": "python -c \"import shutil; shutil.copy('../../README.rst', 'README.rst')\"",
-    "pip:install:dev": "yarn prerun && pip install -e .",
-    "pip:install:dev:test": "yarn prerun && pip install -e .[test]",
-    "pip:install:dev:all": "yarn prerun && pip install -e .[docs,test,lint,dev]",
     "pip:install": "yarn prerun && pip install .",
+    "pip:install:dev": "yarn prerun && pip install -e .",
+    "pip:install:dev:all": "yarn prerun && pip install -e .[docs,test,lint,dev]",
+    "pip:install:dev:test": "yarn prerun && pip install -e .[test]",
+    "pip:install:docs": "yarn prerun && pip install .[docs]",
     "pip:install:prod": "yarn pip:install",
     "pip:install:test": "yarn prerun && pip install .[test]",
-    "pip:install:docs": "yarn prerun && pip install .[docs]",
     "postversion": "yarn propegate:version",
+    "prerun": "yarn copy:readme",
     "propegate:version": "python ../../scripts/propegate_versions.py",
     "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
-  "dependencies": {
-    "pymedphys_analysis": "^0.8.0-dev.2",
-    "pymedphys_coordsandscales": "^0.8.0-dev.2",
-    "pymedphys_databases": "^0.8.0-dev.2",
-    "pymedphys_dicom": "^0.8.0-dev.2",
-    "pymedphys_electronfactors": "^0.8.0-dev.2",
-    "pymedphys_fileformats": "^0.8.0-dev.2",
-    "pymedphys_labs": "^0.8.0-dev.2",
-    "pymedphys_logfiles": "^0.8.0-dev.2",
-    "pymedphys_sphinxtheme": "^0.8.0-dev.2",
-    "pymedphys_toolbox": "^0.8.0-dev.2",
-    "pymedphys_utilities": "^0.8.0-dev.2",
-    "pymedphys_workshops": "^0.8.0-dev.2",
-    "pymedphys_xlwings": "^0.8.0-dev.2"
-  },
-  "version": "0.8.0-dev.2"
+  "version": "0.8.0-dev.7"
 }

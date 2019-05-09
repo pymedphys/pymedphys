@@ -42,8 +42,10 @@ semver_parsed = semver.parse(semver_string)
 
 if semver_parsed['major'] == 0:
     upper_limit = semver.bump_minor(semver_string)
+    npm_version_prepend = "~"
 else:
     upper_limit = semver.bump_major(semver_string)
+    npm_version_prepend = "^"
 
 
 dependencies_filepath = os.path.join(ROOT, "dependencies.json")
@@ -53,8 +55,10 @@ with open(dependencies_filepath, 'r') as file:
     dependencies_data = json.load(file)
 
 
-dependencies_data['pins']['internal'][package_name] = ">= {}, < {}".format(
-    __version__, upper_limit)
+dependencies_data['pins']['pypi']['internal'][package_name] = (
+    ">= {}, < {}".format(__version__, upper_limit))
+dependencies_data['pins']['npm']['internal'][package_name] = (
+    "{}{}".format(npm_version_prepend, semver_string))
 
 with open(dependencies_filepath, 'w') as file:
     json.dump(dependencies_data, file, indent=2, sort_keys=True)
