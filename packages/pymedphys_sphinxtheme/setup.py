@@ -74,7 +74,9 @@ setup(
     install_requires=install_requires,
     extras_require={
         'test': [
-            'pytest'
+            'pytest',
+            "readthedocs-sphinx-ext",
+            "sphinx >= 1.4, < 1.8"
         ]
     }
 )
