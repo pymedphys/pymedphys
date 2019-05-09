@@ -61,7 +61,19 @@ for package, dependency_store in tree.items():
     with open(package_json_filepath, 'r') as file:
         data = json.load(file)
 
-    data['dependencies'] = dependencies
+    try:
+        external_dependencies = {
+            package: pin
+            for package, pin in data['dependencies'].items()
+            if not package.startswith('pymedphys')
+        }
+    except KeyError:
+        external_dependencies = {}
+
+    data['dependencies'] = {
+        **dependencies,
+        **external_dependencies
+    }
 
     with open(package_json_filepath, 'w') as file:
         json.dump(data, file, indent=2, sort_keys=True)

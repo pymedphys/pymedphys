@@ -13,7 +13,9 @@ package_name = os.path.split(os.path.dirname(version_filepath))[-1]
 with open('package.json', 'r') as file:
     data = json.load(file)
 
-loaded_version_info = data['version'].replace(
+semver_string = data['version']
+
+loaded_version_info = semver_string.replace(
     '.', ' ').replace('-', ' ').split(' ')
 
 version_info = [
@@ -32,12 +34,6 @@ with open(version_filepath, 'w') as file:
     file.write(version_file_contents)
 
 
-if version_info[3]:
-    dev_string = '-' + ''.join(version_info[3:])  # type: ignore
-else:
-    dev_string = ""
-
-semver_string = '.'.join(map(str, version_info[:3])) + dev_string
 semver_parsed = semver.parse(semver_string)
 
 if semver_parsed['major'] == 0:
