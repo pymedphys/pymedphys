@@ -50,8 +50,8 @@ for package, dependency_store in tree.items():
 
 
 for package, dependency_store in tree.items():
-    dependencies = {
-        dependency: npm_pins['internal'][package]
+    internal_dependencies = {
+        dependency: npm_pins['internal'][dependency]
         for dependency in dependency_store['internal']
     }
 
@@ -71,7 +71,7 @@ for package, dependency_store in tree.items():
         external_dependencies = {}
 
     data['dependencies'] = {
-        **dependencies,
+        **internal_dependencies,
         **external_dependencies
     }
 
