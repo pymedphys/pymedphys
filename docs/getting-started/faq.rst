@@ -62,7 +62,7 @@ considered a separate program, not a derivative. Any distribution of your
 program with PyMedPhys will need to include the source code of PyMedPhys as
 well as any changes you have made to PyMedPhys, but it will not need to include
 the source of your commercial product. This is considered a "Mere Aggregation"
-by the AGPL license.
+by the AGPL-3.0 license.
 
 We believe even for a commercial entity there is value in you embracing open
 source, but to use the PyMedPhys CLI within your products you don't have to.
