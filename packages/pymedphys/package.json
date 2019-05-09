@@ -1,0 +1,33 @@
+{
+  "name": "pymedphys",
+  "private": true,
+  "scripts": {
+    "prerun": "yarn copy:readme",
+    "copy:readme": "python -c \"import shutil; shutil.copy('../../README.rst', 'README.rst')\"",
+    "pip:install:dev": "yarn prerun && pip install -e .",
+    "pip:install:dev:test": "yarn prerun && pip install -e .[test]",
+    "pip:install:dev:all": "yarn prerun && pip install -e .[docs,test,lint]",
+    "pip:install": "yarn prerun && pip install .",
+    "pip:install:prod": "yarn pip:install",
+    "pip:install:test": "yarn prerun && pip install .[test]",
+    "pip:install:docs": "yarn prerun && pip install .[docs]",
+    "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
+    "pypi:upload": "twine upload dist/*"
+  },
+  "dependencies": {
+    "pymedphys_analysis": "^0.2.0",
+    "pymedphys_coordsandscales": "^0.2.0",
+    "pymedphys_databases": "^0.2.0",
+    "pymedphys_dicom": "^0.2.0",
+    "pymedphys_electronfactors": "^0.2.0",
+    "pymedphys_fileformats": "^0.2.0",
+    "pymedphys_labs": "^0.2.0",
+    "pymedphys_logfiles": "^0.2.0",
+    "pymedphys_sphinxtheme": "^0.2.0",
+    "pymedphys_toolbox": "^0.2.0",
+    "pymedphys_utilities": "^0.2.0",
+    "pymedphys_workshops": "^0.2.0",
+    "pymedphys_xlwings": "^0.2.0"
+  },
+  "version": "0.2.0"
+}

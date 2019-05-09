@@ -4,20 +4,26 @@
   "scripts": {
     "bootstrap": "yarn bootstrap:dev",
     "bootstrap:dev": "yarn && yarn nbstripout:install && yarn install:dev",
-    "bootstrap:dev:all": "yarn bootstrap:dev && pip install -e .[docs,testing,linting]",
+    "bootstrap:dev:all": "yarn bootstrap:dev && yarn pip:install:all",
     "docker:internal": "yarn install:prod",
     "git:clean": "git clean -fxd",
     "git:undo": "git reset --soft HEAD~1",
-    "install:dev": "yarn lerna run pip:install:dev --concurrency 1 && pip install -e .",
-    "install:prod": "yarn lerna run pip:install:prod --concurrency 1 && pip install .",
+    "install:dev": "yarn lerna run pip:install:dev --concurrency 1",
+    "install:prod": "yarn lerna run pip:install:prod --concurrency 1",
     "install:subpackage": "yarn lerna run pip:install:test -- --scope=$SUBPACKAGE --include-filtered-dependencies --concurrency 1",
     "lerna:pypi:build": "lerna run pypi:build",
     "lerna:pypi:upload": "lerna run pypi:upload",
     "nbstripout:install": "pip install nbstripout && nbstripout --install",
     "netlify": "yarn netlify:install && yarn netlify:build",
     "netlify:build": "sphinx-build -W docs docs/_build/html",
-    "netlify:install": "yarn install:prod && pip install .[docs]",
+    "netlify:install": "yarn install:prod && yarn pip:install:docs",
     "postversion": "touch boo",
+    "pip:install:dev": "yarn lerna run pip:install:dev --scope=pymedphys",
+    "pip:install:dev:test": "yarn lerna run pip:install:dev:test --scope=pymedphys",
+    "pip:install:prod": "yarn lerna run pip:install:prod --scope=pymedphys",
+    "pip:install:test": "yarn lerna run pip:install:test --scope=pymedphys",
+    "pip:install:docs": "yarn lerna run pip:install:docs --scope=pymedphys",
+    "pip:install:all": "yarn lerna run pip:install:all --scope=pymedphys",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*",
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
@@ -31,21 +37,5 @@
   "devDependencies": {
     "husky": "^1.3.1",
     "lerna": "^3.13.3"
-  },
-  "dependencies": {
-    "pymedphys_analysis": "^0.2.0",
-    "pymedphys_coordsandscales": "^0.2.0",
-    "pymedphys_databases": "^0.2.0",
-    "pymedphys_dicom": "^0.2.0",
-    "pymedphys_electronfactors": "^0.2.0",
-    "pymedphys_fileformats": "^0.2.0",
-    "pymedphys_labs": "^0.2.0",
-    "pymedphys_logfiles": "^0.2.0",
-    "pymedphys_sphinxtheme": "^0.2.0",
-    "pymedphys_toolbox": "^0.2.0",
-    "pymedphys_utilities": "^0.2.0",
-    "pymedphys_workshops": "^0.2.0",
-    "pymedphys_xlwings": "^0.2.0"
-  },
-  "version": "0.2.0"
+  }
 }

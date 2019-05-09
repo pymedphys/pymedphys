@@ -1,0 +1,6 @@
+graft src/pymedphys
+global-exclude *.py[co] yarn-error.log
+prune src/pymedphys/gui/node_modules
+prune src/pymedphys/.mypy_cache
+prune src/pymedphys/*/.mypy_cache
+prune src/pymedphys/*/*/.mypy_cache
