@@ -17,6 +17,7 @@
     "netlify": "yarn netlify:install && yarn netlify:build",
     "netlify:build": "sphinx-build -W docs docs/_build/html",
     "netlify:install": "yarn install:prod && pip install .[docs]",
+    "postversion": "touch boo",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*",
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
