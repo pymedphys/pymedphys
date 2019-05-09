@@ -7,8 +7,7 @@ I need help! How do I ask for help?
 ***********************************
 
 If you are having trouble, we are more than happy to help! The best way to seek
-assistance from us is to raise an issue within the
-`PyMedPhys repo issues section`_
+assistance from us is to raise an issue within the `PyMedPhys issue tracker`_
 on GitHub. You will need to make a GitHub account to do this, but making an
 account is very easy and almost certainly worth your while.
 
@@ -16,7 +15,7 @@ GitHub issues are preferable to email correspondence, since other people may
 have similar questions. They might be able to get help from the same
 answers/guidance that we provide to you.
 
-Also, if you do find a question and answer within GitHub that you foundhttps://github.com/pymedphys/pymedphys/issues
+Also, if you do find a question and answer within GitHub that you found
 helpful, please notify us by commenting on the relevant issue and we will
 consider adding it to the FAQ!
 
