@@ -5,7 +5,7 @@ module.exports = {
     entry: './src/index.js',
     output: {
         filename: 'js/theme.js',
-        path: path.resolve(__dirname, 'pymedphys_sphinxtheme/static')
+        path: path.resolve(__dirname, 'src/pymedphys_sphinxtheme/static')
     },
     module: {
         rules: [

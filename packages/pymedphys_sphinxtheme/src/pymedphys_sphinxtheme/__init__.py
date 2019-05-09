@@ -6,10 +6,6 @@ From https://github.com/ryan-roemer/sphinx-bootstrap-theme.
 from os import path
 
 
-__version__ = '0.1.0.dev0'
-__version_full__ = __version__
-
-
 def get_html_theme_path():
     """Return list of HTML theme paths."""
     cur_dir = path.abspath(path.dirname(path.dirname(__file__)))
