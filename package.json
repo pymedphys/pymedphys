@@ -28,8 +28,8 @@
     "pip:install:test": "yarn lerna run pip:install:test --scope=pymedphys",
     "pip:install:docs": "yarn lerna run pip:install:docs --scope=pymedphys",
     "pip:install:all": "yarn lerna run pip:install:all --scope=pymedphys",
-    "pypi:build": "python setup.py sdist bdist_wheel",
-    "pypi:upload": "twine upload dist/*",
+    "pypi:build": "lerna run pypi:build",
+    "pypi:upload": "lerna run pypi:upload",
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
     "test:subpackage": "yarn install:subpackage && pytest -v packages/$SUBPACKAGE && pylint --errors-only --verbose $SUBPACKAGE"
   },
