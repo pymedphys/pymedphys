@@ -11,25 +11,25 @@
     "pip:install:prod": "yarn pip:install",
     "pip:install:test": "yarn prerun && pip install .[test]",
     "pip:install:docs": "yarn prerun && pip install .[docs]",
-    "preversion": "yarn propegate:version",
+    "postversion": "yarn propegate:version",
     "propegate:version": "python ../../scripts/propegate_versions.py",
     "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
   "dependencies": {
-    "pymedphys_analysis": "^0.2.6",
-    "pymedphys_coordsandscales": "^0.2.6",
-    "pymedphys_databases": "^0.2.6",
-    "pymedphys_dicom": "^0.2.6",
-    "pymedphys_electronfactors": "^0.2.6",
-    "pymedphys_fileformats": "^0.2.6",
-    "pymedphys_labs": "^0.2.6",
-    "pymedphys_logfiles": "^0.2.6",
-    "pymedphys_sphinxtheme": "^0.2.6",
-    "pymedphys_toolbox": "^0.2.6",
-    "pymedphys_utilities": "^0.2.6",
-    "pymedphys_workshops": "^0.2.6",
-    "pymedphys_xlwings": "^0.2.6"
+    "pymedphys_analysis": "^0.2.4",
+    "pymedphys_coordsandscales": "^0.2.4",
+    "pymedphys_databases": "^0.2.4",
+    "pymedphys_dicom": "^0.2.4",
+    "pymedphys_electronfactors": "^0.2.4",
+    "pymedphys_fileformats": "^0.2.4",
+    "pymedphys_labs": "^0.2.4",
+    "pymedphys_logfiles": "^0.2.4",
+    "pymedphys_sphinxtheme": "^0.2.4",
+    "pymedphys_toolbox": "^0.2.4",
+    "pymedphys_utilities": "^0.2.4",
+    "pymedphys_workshops": "^0.2.4",
+    "pymedphys_xlwings": "^0.2.4"
   },
-  "version": "0.2.6"
+  "version": "0.2.4"
 }
