@@ -13,14 +13,14 @@ tree = dependencies_data['tree']
 pypi_pins = dependencies_data['pins']['pypi']
 npm_pins = dependencies_data['pins']['npm']
 
-packages = [
+internal_packages = [
     os.path.basename(filepath)
     for filepath in glob(os.path.join(ROOT, 'packages', '*'))
 ]
 
-assert set(packages) == set(tree.keys())
-assert set(packages) == set(pypi_pins['internal'].keys())
-assert set(packages) == set(npm_pins['internal'].keys())
+assert set(internal_packages) == set(tree.keys())
+assert set(internal_packages) == set(pypi_pins['internal'].keys())
+assert set(internal_packages) == set(npm_pins['internal'].keys())
 
 
 for package, dependency_store in tree.items():
@@ -65,7 +65,7 @@ for package, dependency_store in tree.items():
         external_dependencies = {
             package: pin
             for package, pin in data['dependencies'].items()
-            if package not in packages
+            if package not in internal_packages
         }
     except KeyError:
         external_dependencies = {}
