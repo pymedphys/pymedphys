@@ -32,19 +32,19 @@
     "lerna": "^3.13.3"
   },
   "dependencies": {
-    "pymedphys_analysis": "^0.1.0",
-    "pymedphys_coordsandscales": "^0.1.0",
-    "pymedphys_databases": "^0.1.0",
-    "pymedphys_dicom": "^0.1.0",
-    "pymedphys_electronfactors": "^0.1.0",
-    "pymedphys_fileformats": "^0.1.0",
-    "pymedphys_labs": "^0.1.0",
-    "pymedphys_logfiles": "^0.1.0",
-    "pymedphys_sphinxtheme": "^0.1.0",
-    "pymedphys_toolbox": "^0.1.0",
-    "pymedphys_utilities": "^0.1.0",
-    "pymedphys_workshops": "^0.1.0",
-    "pymedphys_xlwings": "^0.1.0"
+    "pymedphys_analysis": "^0.1.1",
+    "pymedphys_coordsandscales": "^0.1.1",
+    "pymedphys_databases": "^0.1.1",
+    "pymedphys_dicom": "^0.1.1",
+    "pymedphys_electronfactors": "^0.1.1",
+    "pymedphys_fileformats": "^0.1.1",
+    "pymedphys_labs": "^0.1.1",
+    "pymedphys_logfiles": "^0.1.1",
+    "pymedphys_sphinxtheme": "^0.1.1",
+    "pymedphys_toolbox": "^0.1.1",
+    "pymedphys_utilities": "^0.1.1",
+    "pymedphys_workshops": "^0.1.1",
+    "pymedphys_xlwings": "^0.1.1"
   },
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
