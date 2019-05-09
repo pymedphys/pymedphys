@@ -32,9 +32,12 @@ with open(version_filepath, 'w') as file:
     file.write(version_file_contents)
 
 
-semver_string = '.'.join(
-    map(str, version_info[:3])) + '-' + ''.join(version_info[3:])  # type: ignore
+if version_info[3]:
+    dev_string = '-' + ''.join(version_info[3:])  # type: ignore
+else:
+    dev_string = ""
 
+semver_string = '.'.join(map(str, version_info[:3])) + dev_string
 semver_parsed = semver.parse(semver_string)
 
 if semver_parsed['major'] == 0:

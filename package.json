@@ -7,6 +7,7 @@
     "bootstrap:dev:all": "yarn bootstrap:dev && yarn pip:install:all",
     "bump:patch": "yarn lerna version --force-publish=* --no-git-tag-version patch && yarn postversion",
     "bump:minor": "yarn lerna version --force-publish=* --no-git-tag-version minor && yarn postversion",
+    "bump:dev:minor": "yarn lerna version --force-publish=* --no-git-tag-version --preid dev preminor && yarn postversion",
     "bump:dev": "yarn lerna version --force-publish=* --no-git-tag-version --preid dev prerelease && yarn postversion",
     "docker:internal": "yarn install:prod",
     "git:clean": "git clean -fxd",

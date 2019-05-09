@@ -1,2 +1,2 @@
-version_info = [0, 3, 1, 'dev11']
-__version__ = "0.3.1dev11"
+version_info = [0, 8, 0, 'dev2']
+__version__ = "0.8.0dev2"
