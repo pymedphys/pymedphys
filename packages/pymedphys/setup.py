@@ -100,6 +100,9 @@ setup(
             'autopep8',
             'pylint',
             'mypy'
+        ],
+        'dev': [
+            'semver'
         ]
     }
 )
