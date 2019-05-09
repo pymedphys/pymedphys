@@ -110,6 +110,78 @@
                 "pandas",
                 "matplotlib"
             ]
+        },
+        "pymedphys_labs": {
+            "internal": [
+                "pymedphys_utilities"
+            ],
+            "external": [
+                "scipy",
+                "numpy",
+                "matplotlib",
+                "Pillow",
+                "xarray"
+            ]
+        },
+        "pymedphys_logfiles": {
+            "internal": [
+                "pymedphys_utilities",
+                "pymedphys_fileformats",
+                "pymedphys_coordsandscales",
+                "pymedphys_databases",
+                "pymedphys_analysis"
+            ],
+            "external": [
+                "attrs",
+                "numpy",
+                "matplotlib",
+                "pandas"
+            ]
+        },
+        "pymedphys_sphinxtheme": {
+            "internal": [
+                "sphinx"
+            ],
+            "external": [
+                "readthedocs-sphinx-ext"
+            ]
+        },
+        "pymedphys_toolbox": {
+            "internal": [
+                "pymedphys_dicom",
+                "pymedphys_databases",
+                "pymedphys_analysis",
+                "pymedphys_utilities"
+            ],
+            "external": [
+                "numpy ",
+                "matplotlib"
+            ]
+        },
+        "pymedphys_utilities": {
+            "internal": [],
+            "external": []
+        },
+        "pymedphys_workshops": {
+            "internal": [
+                "pymedphys_utilities"
+            ],
+            "external": []
+        },
+        "pymedphys_xlwings": {
+            "internal": [
+                "pymedphys_dicom",
+                "pymedphys_fileformats",
+                "pymedphys_utilities"
+            ],
+            "external": [
+                "scipy",
+                "numpy",
+                "matplotlib",
+                "pandas",
+                "xlwings",
+                "psutil"
+            ]
         }
     }
 }
