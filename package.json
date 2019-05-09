@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "bootstrap": "yarn bootstrap:dev",
-    "bootstrap:dev": "yarn && yarn lerna bootstrap && yarn nbstripout:install && yarn install:dev",
+    "bootstrap:dev": "yarn && yarn nbstripout:install && yarn install:dev",
     "bootstrap:dev:all": "yarn bootstrap:dev && yarn pip:install:all",
     "bump:patch": "yarn lerna version --force-publish=* --no-git-tag-version patch && yarn postversion",
     "bump:minor": "yarn lerna version --force-publish=* --no-git-tag-version minor && yarn postversion",
