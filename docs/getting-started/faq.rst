@@ -52,6 +52,28 @@ of PyMedPhys must comply with this license. See
 .. _`PyMedPhys licensing documentation`: licensing.html
 
 
+Can I use the PyMedPhys CLI within a commercial, closed-source, product?
+------------------------------------------------------------------------
+
+Yes, you can. We have exposed our CLI in such a way that complex internal
+data structures are not exposed. As such, if the only way your code interfaces
+with PyMedPhys is via the CLI we have exposed then your program can be
+considered a separate program, not a derivative. Any distribution of your
+program with PyMedPhys will need to include the source code of PyMedPhys as
+well as any changes you have made to PyMedPhys, but it will not need to include
+the source of your commercial product. This is considered a "Mere Aggregation"
+by the AGPL license.
+
+We believe even for a commercial entity there is value in you embracing open
+source, but to use the PyMedPhys CLI within your products you don't have to.
+
+For more information on this exception see the description of `Mere Aggregation
+within the GPL FAQ
+<https://www.gnu.org/licenses/gpl-faq.html#MereAggregation>`_ or the definition
+of "aggregate" within `Section 5 of the AGPL license
+<https://www.gnu.org/licenses/agpl-3.0.en.html#section5>`_.
+
+
 How do I decode Elekta TRF logfiles?
 ------------------------------------
 
