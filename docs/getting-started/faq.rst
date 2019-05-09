@@ -64,8 +64,9 @@ well as any changes you have made to PyMedPhys, but it will not need to include
 the source of your commercial product. This is considered a "Mere Aggregation"
 by the AGPL-3.0 license.
 
-We believe even for a commercial entity there is value in you embracing open
-source, but to use the PyMedPhys CLI within your products you don't have to.
+We believe even for a commercial entity `there is value in you embracing open
+source for the code you write <../developer/agpl-benefits.html>`_, but to use
+the PyMedPhys CLI within your products you don't have to.
 
 For more information on this exception see the description of `Mere Aggregation
 within the GPL FAQ
