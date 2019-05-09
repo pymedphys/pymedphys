@@ -86,7 +86,7 @@ to what you want. To achieve this you will either need to make a feature
 request, or more effectively, write the CLI yourself and create a pull request.
 
 To make a feature request use the `PyMedPhys issue tracker`_. To make a pull
-request see `Developer Guide`_ for how to begin.
+request see the `Developer Guide`_ for how to begin.
 
 
 ************************************
