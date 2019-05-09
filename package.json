@@ -32,8 +32,19 @@
     "lerna": "^3.13.3"
   },
   "dependencies": {
-    "bourbon": "^5.1.0",
-    "neat": "^1.2.2"
+    "pymedphys_analysis": "0.0.0",
+    "pymedphys_coordsandscales": "0.0.0",
+    "pymedphys_databases": "0.0.0",
+    "pymedphys_dicom": "0.0.0",
+    "pymedphys_electronfactors": "0.0.0",
+    "pymedphys_fileformats": "0.0.0",
+    "pymedphys_labs": "0.0.0",
+    "pymedphys_logfiles": "0.0.0",
+    "pymedphys_sphinxtheme": "0.0.0",
+    "pymedphys_toolbox": "0.0.0",
+    "pymedphys_utilitites": "0.0.0",
+    "pymedphys_workshops": "0.0.0",
+    "pymedphys_xlwings": "0.0.0"
   },
   "version": "0.0.0"
 }
