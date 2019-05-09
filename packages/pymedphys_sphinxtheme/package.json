@@ -1,7 +1,7 @@
 {
   "name": "pymedphys_sphinxtheme",
   "main": "js/theme.js",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "private": true,
   "scripts": {
     "bootstrap": "yarn --production && yarn webpack:prod",

@@ -17,19 +17,19 @@
     "pypi:upload": "twine upload dist/*"
   },
   "dependencies": {
-    "pymedphys_analysis": "^0.2.7",
-    "pymedphys_coordsandscales": "^0.2.7",
-    "pymedphys_databases": "^0.2.7",
-    "pymedphys_dicom": "^0.2.7",
-    "pymedphys_electronfactors": "^0.2.7",
-    "pymedphys_fileformats": "^0.2.7",
-    "pymedphys_labs": "^0.2.7",
-    "pymedphys_logfiles": "^0.2.7",
-    "pymedphys_sphinxtheme": "^0.2.7",
-    "pymedphys_toolbox": "^0.2.7",
-    "pymedphys_utilities": "^0.2.7",
-    "pymedphys_workshops": "^0.2.7",
-    "pymedphys_xlwings": "^0.2.7"
+    "pymedphys_analysis": "^0.2.8",
+    "pymedphys_coordsandscales": "^0.2.8",
+    "pymedphys_databases": "^0.2.8",
+    "pymedphys_dicom": "^0.2.8",
+    "pymedphys_electronfactors": "^0.2.8",
+    "pymedphys_fileformats": "^0.2.8",
+    "pymedphys_labs": "^0.2.8",
+    "pymedphys_logfiles": "^0.2.8",
+    "pymedphys_sphinxtheme": "^0.2.8",
+    "pymedphys_toolbox": "^0.2.8",
+    "pymedphys_utilities": "^0.2.8",
+    "pymedphys_workshops": "^0.2.8",
+    "pymedphys_xlwings": "^0.2.8"
   },
-  "version": "0.2.7"
+  "version": "0.2.8"
 }
