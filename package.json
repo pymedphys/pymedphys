@@ -40,9 +40,9 @@
     "pymedphys_fileformats": "^0.1.0",
     "pymedphys_labs": "^0.1.0",
     "pymedphys_logfiles": "^0.1.0",
-    "pymedphys_sphinxtheme": "0.0.0",
+    "pymedphys_sphinxtheme": "^0.1.0",
     "pymedphys_toolbox": "^0.1.0",
-    "pymedphys_utilitites": "0.0.0",
+    "pymedphys_utilities": "^0.1.0",
     "pymedphys_workshops": "^0.1.0",
     "pymedphys_xlwings": "^0.1.0"
   },
