@@ -11,6 +11,8 @@
     "pip:install:prod": "yarn pip:install",
     "pip:install:test": "yarn prerun && pip install .[test]",
     "pip:install:docs": "yarn prerun && pip install .[docs]",
+    "postversion": "yarn propegate:version",
+    "propegate:version": "python ../../scripts/propegate_versions.py",
     "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
