@@ -49,30 +49,21 @@
         "notebook"
       ],
       "internal": [
-        "pymedphys_analysis",
-        "pymedphys_coordsandscales",
-        "pymedphys_databases",
-        "pymedphys_dicom",
         "pymedphys_electronfactors",
-        "pymedphys_fileformats",
         "pymedphys_labs",
         "pymedphys_logfiles",
+        "pymedphys_sphinxtheme",
         "pymedphys_toolbox",
-        "pymedphys_utilities",
         "pymedphys_workshops",
         "pymedphys_xlwings"
       ]
     },
     "pymedphys_analysis": {
       "external": [
-        "scipy",
-        "numpy",
-        "pandas",
-        "matplotlib"
+        "scipy"
       ],
       "internal": [
         "pymedphys_coordsandscales",
-        "pymedphys_utilities",
         "pymedphys_dicom"
       ]
     },
@@ -86,23 +77,20 @@
     },
     "pymedphys_databases": {
       "external": [
-        "pymssql",
         "attrs",
         "keyring",
-        "scipy",
-        "numpy",
-        "pandas"
+        "pandas",
+        "pymssql"
       ],
       "internal": [
-        "pymedphys_coordsandscales",
-        "pymedphys_utilities"
+        "pymedphys_coordsandscales"
       ]
     },
     "pymedphys_dicom": {
       "external": [
-        "packaging",
-        "numpy",
         "matplotlib",
+        "numpy",
+        "packaging",
         "pydicom"
       ],
       "internal": [
@@ -111,10 +99,9 @@
     },
     "pymedphys_electronfactors": {
       "external": [
+        "matplotlib",
         "numpy",
         "scipy",
-        "matplotlib",
-        "descartes",
         "shapely"
       ],
       "internal": [
@@ -123,21 +110,18 @@
     },
     "pymedphys_fileformats": {
       "external": [
-        "numpy",
-        "pandas",
-        "matplotlib"
+        "pandas"
       ],
       "internal": [
-        "pymedphys_coordsandscales",
-        "pymedphys_utilities"
+        "pymedphys_coordsandscales"
       ]
     },
     "pymedphys_labs": {
       "external": [
-        "scipy",
-        "numpy",
-        "matplotlib",
         "Pillow",
+        "matplotlib",
+        "numpy",
+        "scipy",
         "xarray"
       ],
       "internal": [
@@ -145,37 +129,22 @@
       ]
     },
     "pymedphys_logfiles": {
-      "external": [
-        "attrs",
-        "numpy",
-        "matplotlib",
-        "pandas"
-      ],
+      "external": [],
       "internal": [
-        "pymedphys_utilities",
-        "pymedphys_fileformats",
-        "pymedphys_coordsandscales",
+        "pymedphys_analysis",
         "pymedphys_databases",
-        "pymedphys_analysis"
+        "pymedphys_fileformats"
       ]
     },
     "pymedphys_sphinxtheme": {
-      "external": [
-        "sphinx",
-        "readthedocs-sphinx-ext"
-      ],
+      "external": [],
       "internal": []
     },
     "pymedphys_toolbox": {
-      "external": [
-        "numpy ",
-        "matplotlib"
-      ],
+      "external": [],
       "internal": [
-        "pymedphys_dicom",
-        "pymedphys_databases",
         "pymedphys_analysis",
-        "pymedphys_utilities"
+        "pymedphys_databases"
       ]
     },
     "pymedphys_utilities": {
@@ -184,23 +153,16 @@
     },
     "pymedphys_workshops": {
       "external": [],
-      "internal": [
-        "pymedphys_utilities"
-      ]
+      "internal": []
     },
     "pymedphys_xlwings": {
       "external": [
         "scipy",
-        "numpy",
-        "matplotlib",
-        "pandas",
-        "xlwings",
-        "psutil"
+        "xlwings"
       ],
       "internal": [
         "pymedphys_dicom",
-        "pymedphys_fileformats",
-        "pymedphys_utilities"
+        "pymedphys_fileformats"
       ]
     }
   }
