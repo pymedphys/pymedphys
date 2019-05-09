@@ -9,10 +9,17 @@ with open('package.json', 'r') as file:
 loaded_version_info = data['version'].replace(
     '.', ' ').replace('-', ' ').split(' ')
 
-version_info = tuple([
+version_info = [
     int(number)
     for number in loaded_version_info[0:3]
-] + loaded_version_info[3::])
+] + loaded_version_info[3::]
+
+try:
+    version_info[4] = int(version_info[4])
+except IndexError:
+    pass
+
+version_info = tuple(version_info)
 
 version_file_contents = """version_info = {}
 __version__ = '.'.join(map(str, version_info[:3])) + ''.join(version_info[3:])
