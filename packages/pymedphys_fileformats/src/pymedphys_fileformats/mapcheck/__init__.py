@@ -26,3 +26,5 @@
 
 """
 """
+
+from .core import read_mapcheck_txt

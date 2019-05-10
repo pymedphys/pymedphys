@@ -34,4 +34,4 @@ Available Functions
 """
 
 
-from .transforms import rotate_about_z, translate
+from .transforms import rotate_about_z, translate, rotate_about_vector

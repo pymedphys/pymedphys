@@ -72,4 +72,8 @@ from .dose import (
 
 from .create import dicom_dataset_from_dict
 
-from .structure import pull_structure
+from .structure import pull_structure, create_contour_sequence_dict
+
+from .constants import BaselineDicomDictionary
+from .collection import DicomBase, DicomDose
+from .header import adjust_machine_name

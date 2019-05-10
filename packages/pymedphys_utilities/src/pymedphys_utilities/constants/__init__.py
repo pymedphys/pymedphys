@@ -26,4 +26,4 @@
 """Constants.
 """
 
-from .mlctypes import AGILITY
+from .mlctypes import AGILITY, A_LEAF_TYPE

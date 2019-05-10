@@ -36,6 +36,7 @@ verification and refinement. The gamma shell function is the most
 mature.
 """
 
-from .filter import gamma_filter_brute_force, gamma_filter_numpy
-from .shell import gamma_shell
+from .filter import (
+    gamma_filter_brute_force, gamma_filter_numpy, calculate_pass_rate)
+from .shell import gamma_shell, calculate_coordinates_shell
 from .api import gamma_dicom
