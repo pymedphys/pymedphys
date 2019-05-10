@@ -61,15 +61,11 @@ formats:
    of MLC and Jaw travel.
 """
 
-# pylint: disable=W0401,W0614,C0413,W0611
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.mudensitycore import *
-from ._level2.mudensityapi import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.mudensitycore', '._level2.mudensityapi'
-], package='pymedphys_analysis.mudensity')
-
-from ._level1 import mudensitycore  # nopep8
+from .core import (
+    calc_mu_density,
+    calc_single_control_point,
+    single_mlc_pair,
+    get_grid,
+    display_mu_density
+)
+from .api import mu_density_from_delivery_data

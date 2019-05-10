@@ -32,12 +32,4 @@ functions include:
 ...     plot_cube)
 """
 
-# pylint: disable=W0401, W0614
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.cube import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.cube'
-], package='pymedphys_analysis.geometry')
+from .cube import cubify_cube_definition, plot_cube

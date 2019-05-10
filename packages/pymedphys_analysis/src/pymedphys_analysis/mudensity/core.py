@@ -33,9 +33,6 @@ from pymedphys_coordsandscales.deliverydata import (
 from pymedphys_analysis.plt import pcolormesh_grid
 from pymedphys_utilities.coll import AGILITY
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 __DEFAULT_LEAF_PAIR_WIDTHS = AGILITY
 __DEFAULT_GRID_RESOLUTION = 1
