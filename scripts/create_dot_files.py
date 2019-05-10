@@ -123,8 +123,11 @@ def create_dot_file_contents(glob_string):
     strict digraph  {{
 
         rankdir = LR;
-        node [shape = box];
-        splines = ortho;
+        node [
+            shape = box;
+            width = 3;
+        ];
+        splines = polyline;
 
     {}
     {}
