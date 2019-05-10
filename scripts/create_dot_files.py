@@ -12,15 +12,6 @@ sys.path.insert(0, '.')
 from build_dependency_tree import build_tree  # nopep8
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODULE_PACKAGE_MAP = {
-    'attr': 'attrs',
-    'PIL': 'Pillow',
-    'Image': 'Pillow',
-    'mpl_toolkits': 'matplotlib',
-    'docker': None,
-    'collections': None,
-    'dateutil': None
-}
 
 
 def create_all():
