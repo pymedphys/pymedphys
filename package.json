@@ -36,7 +36,8 @@
     "tree:deps": "pip install networkx stdlib_list",
     "tree:update": "yarn tree:save && yarn postversion",
     "tree:save": "python -c \"import sys; sys.path.insert(0, 'scripts'); from build_dependency_tree import save_tree; save_tree()\"",
-    "tree:test": "python -c \"import sys; sys.path.insert(0, 'scripts'); from build_dependency_tree import test_tree; test_tree()\""
+    "tree:test": "python -c \"import sys; sys.path.insert(0, 'scripts'); from build_dependency_tree import test_tree; test_tree()\"",
+    "tree:graph": "python -c \"import sys; sys.path.insert(0, 'scripts'); from create_dot_files import create_all; create_all()\""
   },
   "husky": {
     "hooks": {

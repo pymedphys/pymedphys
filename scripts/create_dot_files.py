@@ -23,6 +23,11 @@ MODULE_PACKAGE_MAP = {
 }
 
 
+def create_all():
+    full_graph()
+    trimmed_graph()
+
+
 def full_graph():
     tree = build_tree()
     internal_packages = tuple(tree.keys())
@@ -70,6 +75,10 @@ def save_dot_file(dot_contents, filename):
     dot_filepath = os.path.join(ROOT, filename)
     with open(dot_filepath, 'w') as file:
         file.write(dot_contents)
+
+    svg_filepath = os.path.splitext(dot_filepath)[0] + ".svg"
+
+    subprocess.call(["dot", "-Tsvg", dot_filepath, "-o", svg_filepath])
 
 
 def get_levels(dag, internal_packages):
