@@ -39,11 +39,9 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
-from pymedphys_utilities.libutils import get_imports
+from .inputcheck import run_input_checks
 
-from .._level1.gammainputcheck import run_input_checks
 
-IMPORTS = get_imports(globals())
 DEFAULT_RAM = int(2**30 * 1.5)  # 1.5 GB
 
 

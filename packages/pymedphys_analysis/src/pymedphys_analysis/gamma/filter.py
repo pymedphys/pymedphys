@@ -36,9 +36,6 @@ import numpy as np
 
 from pymedphys_dicom.dicom import coords_from_xyz_axes
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def calculate_pass_rate(gamma_array):
     valid_gamma = gamma_array[np.invert(np.isnan(gamma_array))]

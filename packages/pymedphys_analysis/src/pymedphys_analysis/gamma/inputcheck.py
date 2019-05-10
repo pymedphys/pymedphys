@@ -25,9 +25,6 @@
 
 import numpy as np
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def run_input_checks(
         axes_reference, dose_reference,
