@@ -119,7 +119,9 @@
         "scipy",
         "xarray"
       ],
-      "internal": []
+      "internal": [
+        "pymedphys_utilities"
+      ]
     },
     "pymedphys_logfiles": {
       "external": [],

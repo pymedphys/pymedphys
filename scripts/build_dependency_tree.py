@@ -48,7 +48,9 @@ def build_tree():
         'mpl_toolkits': 'matplotlib',
         'docker': None,
         'collections': None,
-        'dateutil': None
+        'dateutil': None,
+        'utilities': None  # TODO: Use module finder instead of pydeps so that
+                           #       this is not needed.
     }
 
     dependencies_set = {

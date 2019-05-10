@@ -24,12 +24,28 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from pymedphys_utilities.constants import AGILITY
+
+
 def abutted(a, b, tolerance=1):
     """ Returns True iff leaf-tips a and b are within 1 mm. """
     if abs(a + b) < tolerance:
         return True
     else:
         return False
+
+
+def get_leaf_pair_widths(model):
+    model_map = {
+        'agility': AGILITY
+    }
+
+    try:
+        return model_map[model]
+    except KeyError:
+        raise ValueError(
+            '{} not implemented only the following are'
+            ' implemented:\n{}'.format(model, model_map.keys()))
 
 
 def mlc_equivalent_square_fs(mlc_segments, leaf_pair_widths):
