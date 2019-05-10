@@ -45,7 +45,7 @@ def full_graph():
 
     dot_filepath = os.path.join(ROOT, 'full_graph.dot')
     with open(dot_filepath, 'w') as file:
-        file.write(dot_filepath)
+        file.write(dot_contents)
 
 
 def get_levels(dag, internal_packages):

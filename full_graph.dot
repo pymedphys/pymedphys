@@ -1,1 +1,138 @@
-/home/simon/git/pymedphys/full_graph.dot
+
+    strict digraph  {
+
+        rankdir = LR;
+        node [
+            shape = box;
+            width = 3;
+        ];
+        splines = spline;
+
+    
+        subgraph cluster_0 {
+            matplotlib;
+        numpy;
+        scipy;
+        shapely;
+        Pillow;
+        xarray;
+        packaging;
+        pydicom;
+        attrs;
+        keyring;
+        pandas;
+        pymssql;
+        python_dateutil;
+        xlwings;
+        jinja2;
+        notebook;
+            label = "Level 0";
+            style = dashed;
+            color = grey80;
+        }
+        
+        subgraph cluster_1 {
+            pymedphys_workshops;
+        pymedphys_sphinxtheme;
+        pymedphys_electronfactors;
+        pymedphys_utilities;
+        pymedphys_coordsandscales;
+        pymedphys_dicom;
+            label = "Level 1";
+            style = dashed;
+            color = grey80;
+        }
+        
+        subgraph cluster_2 {
+            pymedphys_labs;
+        pymedphys_analysis;
+        pymedphys_databases;
+        pymedphys_fileformats;
+            label = "Level 2";
+            style = dashed;
+            color = grey80;
+        }
+        
+        subgraph cluster_3 {
+            pymedphys_logfiles;
+        pymedphys_xlwings;
+        pymedphys_toolbox;
+            label = "Level 3";
+            style = dashed;
+            color = grey80;
+        }
+        
+        subgraph cluster_4 {
+            pymedphys;
+            label = "Level 4";
+            style = dashed;
+            color = grey80;
+        }
+        
+        pymedphys_logfiles -> pymedphys_analysis;
+    pymedphys_logfiles -> pymedphys_coordsandscales;
+    pymedphys_logfiles -> pymedphys_databases;
+    pymedphys_logfiles -> pymedphys_fileformats;
+    pymedphys_logfiles -> pymedphys_utilities;
+    pymedphys_logfiles -> attrs;
+    pymedphys_logfiles -> matplotlib;
+    pymedphys_logfiles -> numpy;
+    pymedphys_logfiles -> pandas;
+    pymedphys_logfiles -> python_dateutil;
+    pymedphys_analysis -> pymedphys_coordsandscales;
+    pymedphys_analysis -> pymedphys_dicom;
+    pymedphys_analysis -> pymedphys_utilities;
+    pymedphys_analysis -> matplotlib;
+    pymedphys_analysis -> numpy;
+    pymedphys_analysis -> pydicom;
+    pymedphys_analysis -> scipy;
+    pymedphys_coordsandscales -> numpy;
+    pymedphys_databases -> pymedphys_coordsandscales;
+    pymedphys_databases -> attrs;
+    pymedphys_databases -> keyring;
+    pymedphys_databases -> numpy;
+    pymedphys_databases -> pandas;
+    pymedphys_databases -> pymssql;
+    pymedphys_fileformats -> pymedphys_coordsandscales;
+    pymedphys_fileformats -> numpy;
+    pymedphys_fileformats -> pandas;
+    pymedphys_labs -> pymedphys_utilities;
+    pymedphys_labs -> Pillow;
+    pymedphys_labs -> matplotlib;
+    pymedphys_labs -> numpy;
+    pymedphys_labs -> scipy;
+    pymedphys_labs -> xarray;
+    pymedphys_xlwings -> pymedphys_dicom;
+    pymedphys_xlwings -> pymedphys_fileformats;
+    pymedphys_xlwings -> pymedphys_utilities;
+    pymedphys_xlwings -> numpy;
+    pymedphys_xlwings -> pydicom;
+    pymedphys_xlwings -> scipy;
+    pymedphys_xlwings -> xlwings;
+    pymedphys_dicom -> matplotlib;
+    pymedphys_dicom -> numpy;
+    pymedphys_dicom -> packaging;
+    pymedphys_dicom -> pydicom;
+    pymedphys -> pymedphys_analysis;
+    pymedphys -> pymedphys_coordsandscales;
+    pymedphys -> pymedphys_databases;
+    pymedphys -> pymedphys_dicom;
+    pymedphys -> pymedphys_electronfactors;
+    pymedphys -> pymedphys_fileformats;
+    pymedphys -> pymedphys_labs;
+    pymedphys -> pymedphys_logfiles;
+    pymedphys -> pymedphys_utilities;
+    pymedphys -> pymedphys_xlwings;
+    pymedphys -> jinja2;
+    pymedphys -> notebook;
+    pymedphys_electronfactors -> matplotlib;
+    pymedphys_electronfactors -> numpy;
+    pymedphys_electronfactors -> scipy;
+    pymedphys_electronfactors -> shapely;
+    pymedphys_toolbox -> pymedphys_analysis;
+    pymedphys_toolbox -> pymedphys_databases;
+    pymedphys_toolbox -> matplotlib;
+    pymedphys_toolbox -> numpy;
+
+    }
+    
