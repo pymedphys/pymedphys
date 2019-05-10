@@ -1,16 +1,14 @@
+strict digraph  {
 
-    strict digraph  {
+    rankdir = LR;
+    node [
+        shape = box;
+        width = 3;
+    ];
+    splines = spline;
 
-        rankdir = LR;
-        node [
-            shape = box;
-            width = 3;
-        ];
-        splines = spline;
-
-    
-        subgraph cluster_0 {
-            matplotlib;
+    subgraph cluster_0 {
+        matplotlib;
         numpy;
         scipy;
         shapely;
@@ -26,50 +24,50 @@
         xlwings;
         jinja2;
         notebook;
-            label = "Level 0";
-            style = dashed;
-            color = grey80;
-        }
-        
-        subgraph cluster_1 {
-            pymedphys_workshops;
+        label = "Level 0";
+        style = dashed;
+        color = grey80;
+    }
+
+    subgraph cluster_1 {
+        pymedphys_workshops;
         pymedphys_sphinxtheme;
         pymedphys_electronfactors;
         pymedphys_utilities;
         pymedphys_coordsandscales;
         pymedphys_dicom;
-            label = "Level 1";
-            style = dashed;
-            color = grey80;
-        }
-        
-        subgraph cluster_2 {
-            pymedphys_labs;
+        label = "Level 1";
+        style = dashed;
+        color = grey80;
+    }
+
+    subgraph cluster_2 {
+        pymedphys_labs;
         pymedphys_analysis;
         pymedphys_databases;
         pymedphys_fileformats;
-            label = "Level 2";
-            style = dashed;
-            color = grey80;
-        }
-        
-        subgraph cluster_3 {
-            pymedphys_logfiles;
+        label = "Level 2";
+        style = dashed;
+        color = grey80;
+    }
+
+    subgraph cluster_3 {
+        pymedphys_logfiles;
         pymedphys_xlwings;
         pymedphys_toolbox;
-            label = "Level 3";
-            style = dashed;
-            color = grey80;
-        }
-        
-        subgraph cluster_4 {
-            pymedphys;
-            label = "Level 4";
-            style = dashed;
-            color = grey80;
-        }
-        
-        pymedphys_logfiles -> pymedphys_analysis;
+        label = "Level 3";
+        style = dashed;
+        color = grey80;
+    }
+
+    subgraph cluster_4 {
+        pymedphys;
+        label = "Level 4";
+        style = dashed;
+        color = grey80;
+    }
+
+    pymedphys_logfiles -> pymedphys_analysis;
     pymedphys_logfiles -> pymedphys_coordsandscales;
     pymedphys_logfiles -> pymedphys_databases;
     pymedphys_logfiles -> pymedphys_fileformats;
@@ -133,6 +131,4 @@
     pymedphys_toolbox -> pymedphys_databases;
     pymedphys_toolbox -> matplotlib;
     pymedphys_toolbox -> numpy;
-
-    }
-    
+}
