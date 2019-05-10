@@ -64,7 +64,8 @@
       ],
       "internal": [
         "pymedphys_coordsandscales",
-        "pymedphys_dicom"
+        "pymedphys_dicom",
+        "pymedphys_utilities"
       ]
     },
     "pymedphys_coordsandscales": {
@@ -91,9 +92,7 @@
         "packaging",
         "pydicom"
       ],
-      "internal": [
-        "pymedphys_utilities"
-      ]
+      "internal": []
     },
     "pymedphys_electronfactors": {
       "external": [
@@ -156,7 +155,8 @@
       ],
       "internal": [
         "pymedphys_dicom",
-        "pymedphys_fileformats"
+        "pymedphys_fileformats",
+        "pymedphys_utilities"
       ]
     }
   }

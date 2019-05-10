@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "pymedphys_dicom": "~0.8.0-dev.16",
-    "pymedphys_fileformats": "~0.8.0-dev.16"
+    "pymedphys_fileformats": "~0.8.0-dev.16",
+    "pymedphys_utilities": "~0.8.0-dev.16"
   },
   "name": "pymedphys_xlwings",
   "private": true,

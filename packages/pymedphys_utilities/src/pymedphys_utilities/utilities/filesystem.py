@@ -24,7 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import string
-from os import remove, rmdir
 
 
 def make_a_valid_directory_name(proposed_directory_name):
@@ -37,20 +36,3 @@ def make_a_valid_directory_name(proposed_directory_name):
     directory_name = directory_name.replace(" ", "-")
 
     return directory_name
-
-
-def remove_file(filepath):
-    """Remove a file. Suppress error if the file does not exist."""
-    try:
-        remove(filepath)
-    except FileNotFoundError:
-        pass
-
-
-def remove_dir(dirpath):
-    """Remove a directory. Suppress error if the directory does not
-    exist."""
-    try:
-        rmdir(dirpath)
-    except FileNotFoundError:
-        pass

@@ -24,14 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 from glob import glob
+from os import remove, rmdir
 from os.path import basename, dirname, isdir, isfile, join as pjoin
 from copy import deepcopy
 
 import numpy as np
 import pydicom
 from pydicom.dataset import Dataset
-
-from pymedphys_utilities.utilities import remove_file
 
 from .constants import (
     BaselineDicomDictionary,
@@ -111,6 +110,23 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AS': "100Y",
                                        'ST': "Anonymous",
                                        'TM': "000900.000000",
                                        'UI': "12345678"}
+
+
+def remove_file(filepath):
+    """Remove a file. Suppress error if the file does not exist."""
+    try:
+        remove(filepath)
+    except FileNotFoundError:
+        pass
+
+
+def remove_dir(dirpath):
+    """Remove a directory. Suppress error if the directory does not
+    exist."""
+    try:
+        rmdir(dirpath)
+    except FileNotFoundError:
+        pass
 
 
 def label_dicom_filepath_as_anonymised(filepath):

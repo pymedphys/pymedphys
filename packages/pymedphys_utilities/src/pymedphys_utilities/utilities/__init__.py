@@ -34,4 +34,4 @@ from .config import (
     get_filepath, get_sql_servers, get_gantry_tolerance, get_cache_filepaths,
     get_mu_density_parameters, get_index, get_centre, get_sql_servers_list)
 from .filesearch import wildcard_file_resolution
-from .filesystem import remove_file, make_a_valid_directory_name
+from .filesystem import make_a_valid_directory_name
