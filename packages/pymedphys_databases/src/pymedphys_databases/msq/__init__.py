@@ -30,4 +30,5 @@ Examples:
     >>> from pymedphys.msq import mosaiq_connect
 """
 
-from .connect import mosaiq_connect
+from .connect import mosaiq_connect, multi_mosaiq_connect
+from .delivery import delivery_data_from_mosaiq

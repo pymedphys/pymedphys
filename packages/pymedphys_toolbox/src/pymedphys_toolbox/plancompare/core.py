@@ -32,12 +32,9 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_utilities.libutils import get_imports
-
-from pymedphys_databases.msq import multi_mosaiq_connect, delivery_data_from_mosaiq
+from pymedphys_databases.msq import (
+    multi_mosaiq_connect, delivery_data_from_mosaiq)
 from pymedphys_analysis.mudensity import mu_density_from_delivery_data
-
-IMPORTS = get_imports(globals())
 
 
 def plot_mu_densities(labels, mu_density_results):
