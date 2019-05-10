@@ -27,10 +27,6 @@ import re
 import numpy as np
 
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
-
 def find_scan_index(file_contents):
     """Searches through the mephysto file for where the BEGIN_SCAN and END_SCAN
     appear. This region contains all of the information for a given scan within

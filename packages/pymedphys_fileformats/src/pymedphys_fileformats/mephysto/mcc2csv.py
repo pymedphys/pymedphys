@@ -29,9 +29,6 @@ import os
 import numpy as np
 import pandas as pd
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def file_output(output_directory, distance, relative_dose,
                 scan_curvetype, scan_depth):

@@ -28,13 +28,9 @@ import os
 
 import numpy as np
 
-from pymedphys_utilities.libutils import get_imports
-
-from .._level1.mccread import (
+from .core import (
     pull_mephysto_item, pull_mephysto_number, pull_mephysto_data)
-from .._level1.csvoutput import file_output
-
-IMPORTS = get_imports(globals())
+from .mcc2csv import file_output
 
 
 def load_single_item(filepath, index):
