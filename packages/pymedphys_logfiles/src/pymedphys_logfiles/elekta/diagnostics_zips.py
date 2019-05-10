@@ -30,9 +30,6 @@ import shutil
 import zipfile
 from glob import glob
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def fetch_system_diagnostics(ip, storage_directory, other_directory=None):
     r"""Fetches and stores locally Linac system diagnositc files.

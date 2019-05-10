@@ -27,12 +27,9 @@
 from datetime import datetime
 from dateutil import tz
 
-from pymedphys_utilities.libutils import get_imports
 from pymedphys_databases.msq import (
     get_mosaiq_delivery_details, OISDeliveryDetails)
 from pymedphys_fileformats.trf import decode_header_from_file
-
-IMPORTS = get_imports(globals())
 
 
 # TODO Make the field identification run one whole day at a time, searching

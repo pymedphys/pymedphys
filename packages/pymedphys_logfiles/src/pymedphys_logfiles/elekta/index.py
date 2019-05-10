@@ -35,7 +35,6 @@ from glob import glob
 
 import attr
 
-from pymedphys_utilities.libutils import get_imports
 from pymedphys_utilities.filehash import hash_file
 from pymedphys_utilities.utilities import get_sql_servers, make_a_valid_directory_name
 from pymedphys_databases.msq import (
@@ -43,9 +42,7 @@ from pymedphys_databases.msq import (
     NoMosaiqEntries)
 from pymedphys_fileformats.trf import Header, decode_header_from_file
 
-from .._level1.trfidentify import date_convert
-
-IMPORTS = get_imports(globals())
+from .identify import date_convert
 
 
 def create_logfile_directory_name(centre,

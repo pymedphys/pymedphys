@@ -37,13 +37,9 @@ import json
 
 import pandas as pd
 
-from pymedphys_utilities.libutils import get_imports
-
-from .._level1.diagnostics_zips import (
+from .diagnostics_zips import (
     fetch_system_diagnostics_multi_linac, extract_diagnostic_zips_and_archive,)
-from .._level2.logfileindex import index_logfiles
-
-IMPORTS = get_imports(globals())
+from .index import index_logfiles
 
 
 def orchestration(mosaiq_sql, linac_details, logfile_data_directory):

@@ -34,7 +34,6 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_utilities.libutils import get_imports
 from pymedphys_coordsandscales.deliverydata import get_delivery_parameters
 from pymedphys_utilities.utilities import (
     get_cache_filepaths, get_mu_density_parameters,
@@ -44,9 +43,6 @@ from pymedphys_utilities.utilities import (
 from pymedphys_databases.msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
 from pymedphys_analysis.mudensity import calc_mu_density
 from pymedphys_fileformats.trf import delivery_data_from_logfile
-
-
-IMPORTS = get_imports(globals())
 
 
 def analyse_single_hash(index, config, filehash, cursors):
