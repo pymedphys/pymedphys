@@ -30,12 +30,8 @@ import datetime
 
 import pandas as pd
 
-from pymedphys_utilities.libutils import get_imports
-
-from .._level1.msqconnect import execute_sql
-from .._level1.msqdictionaries import FIELD_TYPES
-
-IMPORTS = get_imports(globals())
+from .connect import execute_sql
+from .constants import FIELD_TYPES
 
 
 def get_treatment_times(cursor, field_id):

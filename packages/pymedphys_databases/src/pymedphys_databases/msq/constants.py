@@ -23,8 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
 
 FIELD_TYPES = {
     1: 'Static',

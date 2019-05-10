@@ -32,13 +32,10 @@ import struct
 import attr
 import numpy as np
 
-from pymedphys_utilities.libutils import get_imports
 from pymedphys_coordsandscales.deliverydata import DeliveryData, get_delivery_parameters
 
-from .._level1.msqconnect import execute_sql
-from .._level1.msqdictionaries import FIELD_TYPES
-
-IMPORTS = get_imports(globals())
+from .connect import execute_sql
+from .constants import FIELD_TYPES
 
 
 @attr.s

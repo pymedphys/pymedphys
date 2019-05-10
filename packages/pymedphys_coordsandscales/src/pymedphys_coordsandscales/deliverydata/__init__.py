@@ -31,4 +31,4 @@ Example:
 """
 
 
-from .core import DeliveryData
+from .core import DeliveryData, get_delivery_parameters

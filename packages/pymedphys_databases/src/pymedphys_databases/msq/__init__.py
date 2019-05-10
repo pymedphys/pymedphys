@@ -30,16 +30,4 @@ Examples:
     >>> from pymedphys.msq import mosaiq_connect
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.msqconnect import *
-from ._level1.msqdictionaries import *
-from ._level2.msqdelivery import *
-from ._level2.msqhelpers import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.msqconnect', '._level1.msqdictionaries',
-    '._level2.msqdelivery', '._level2.msqhelpers'
-], package='pymedphys_databases.msq')
+from .connect import mosaiq_connect

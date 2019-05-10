@@ -33,9 +33,6 @@ from getpass import getpass
 import keyring
 import pymssql
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def execute_sql(cursor, sql_string, parameters=None):
     """Executes a given SQL string on an SQL cursor.
