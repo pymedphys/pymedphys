@@ -25,3 +25,5 @@
 
 """Constants.
 """
+
+from .mlctypes import AGILITY

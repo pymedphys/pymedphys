@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 from pymedphys_coordsandscales.deliverydata import (
     extract_angle_from_delivery_data, remove_irrelevant_control_points)
 from pymedphys_analysis.plt import pcolormesh_grid
-from pymedphys_utilities.coll import AGILITY
+from pymedphys_utilities.constants import AGILITY
 
 
 __DEFAULT_LEAF_PAIR_WIDTHS = AGILITY

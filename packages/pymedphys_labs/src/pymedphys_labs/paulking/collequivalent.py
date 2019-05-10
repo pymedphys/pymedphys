@@ -24,10 +24,6 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
-
 def abutted(a, b, tolerance=1):
     """ Returns True iff leaf-tips a and b are within 1 mm. """
     if abs(a + b) < tolerance:

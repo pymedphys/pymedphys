@@ -28,10 +28,6 @@ from PIL import Image
 import numpy as np
 import matplotlib.image as mpimg
 
-from pymedphys_utilities.libutils import get_imports
-
-IMPORTS = get_imports(globals())
-
 
 def read_narrow_png(file_name, step_size=0.1):
     """  Extract a an relative-density profilee from a narrow png file.
