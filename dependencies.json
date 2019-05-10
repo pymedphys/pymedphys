@@ -137,7 +137,7 @@
         "matplotlib",
         "numpy",
         "pandas",
-        "python-dateutil"
+        "python_dateutil"
       ],
       "internal": [
         "pymedphys_analysis",

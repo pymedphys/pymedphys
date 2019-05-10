@@ -1,9 +1,7 @@
 import ast
-from glob import glob
-import sys
 import os
 import json
-from copy import copy, deepcopy
+from copy import copy
 import difflib
 
 import networkx as nx
@@ -16,7 +14,7 @@ CONVERSIONS = {
     'PIL': 'Pillow',
     'Image': 'Pillow',
     'mpl_toolkits': 'matplotlib',
-    'dateutil': 'python-dateutil'
+    'dateutil': 'python_dateutil'
 }
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
