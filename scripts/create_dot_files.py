@@ -18,10 +18,10 @@ MODULE_PACKAGE_MAP = {
 }
 
 
-def create_dot_file_contents(glob_string):
-    package_dirs = list(map(os.path.dirname, glob(glob_string)))
-    internal_packages = [
-        os.path.basename(directory) for directory in package_dirs]
+def create_dot_file_contents(internal_packages, package_dirs):
+    # package_dirs = list(map(os.path.dirname, glob(glob_string)))
+    # internal_packages = [
+    #     os.path.basename(directory) for directory in package_dirs]
 
     dependencies_from_pydeps = {}
     for directory in package_dirs:
