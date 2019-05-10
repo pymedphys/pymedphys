@@ -1,8 +1,8 @@
 {
   "dependencies": {
-    "pymedphys_analysis": "~0.8.0-dev.15",
-    "pymedphys_databases": "~0.8.0-dev.15",
-    "pymedphys_fileformats": "~0.8.0-dev.15"
+    "pymedphys_analysis": "~0.8.0-dev.16",
+    "pymedphys_databases": "~0.8.0-dev.16",
+    "pymedphys_fileformats": "~0.8.0-dev.16"
   },
   "name": "pymedphys_logfiles",
   "private": true,
@@ -15,5 +15,5 @@
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.15"
+  "version": "0.8.0-dev.16"
 }

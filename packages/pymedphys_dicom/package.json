@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "pymedphys_utilities": "~0.8.0-dev.15"
+    "pymedphys_utilities": "~0.8.0-dev.16"
   },
   "name": "pymedphys_dicom",
   "private": true,
@@ -13,5 +13,5 @@
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.15"
+  "version": "0.8.0-dev.16"
 }

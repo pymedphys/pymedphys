@@ -1,12 +1,12 @@
 {
   "dependencies": {
-    "pymedphys_electronfactors": "~0.8.0-dev.15",
-    "pymedphys_labs": "~0.8.0-dev.15",
-    "pymedphys_logfiles": "~0.8.0-dev.15",
-    "pymedphys_sphinxtheme": "~0.8.0-dev.15",
-    "pymedphys_toolbox": "~0.8.0-dev.15",
-    "pymedphys_workshops": "~0.8.0-dev.15",
-    "pymedphys_xlwings": "~0.8.0-dev.15"
+    "pymedphys_electronfactors": "~0.8.0-dev.16",
+    "pymedphys_labs": "~0.8.0-dev.16",
+    "pymedphys_logfiles": "~0.8.0-dev.16",
+    "pymedphys_sphinxtheme": "~0.8.0-dev.16",
+    "pymedphys_toolbox": "~0.8.0-dev.16",
+    "pymedphys_workshops": "~0.8.0-dev.16",
+    "pymedphys_xlwings": "~0.8.0-dev.16"
   },
   "name": "pymedphys",
   "private": true,
@@ -25,5 +25,5 @@
     "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.15"
+  "version": "0.8.0-dev.16"
 }
