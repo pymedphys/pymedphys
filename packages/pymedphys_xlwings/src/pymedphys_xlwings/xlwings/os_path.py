@@ -26,9 +26,6 @@
 import os
 import xlwings as xw
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 @xw.func
 def current_directory():

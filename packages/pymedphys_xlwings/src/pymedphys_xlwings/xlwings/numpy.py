@@ -27,9 +27,6 @@ import numpy as np
 
 import xlwings as xw
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 @xw.func
 @xw.arg('values', np.array, ndim=2)

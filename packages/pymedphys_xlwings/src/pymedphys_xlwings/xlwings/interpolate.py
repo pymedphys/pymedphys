@@ -28,9 +28,6 @@ from scipy import interpolate
 
 import xlwings as xw
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 @xw.func
 @xw.arg('x', np.array, ndim=1)

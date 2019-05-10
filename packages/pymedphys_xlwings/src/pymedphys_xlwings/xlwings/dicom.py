@@ -34,9 +34,6 @@ from pymedphys_utilities.utilities import wildcard_file_resolution
 from pymedphys_dicom.dicom import (
     extract_depth_dose, extract_profiles, load_dicom_data)
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def arbitrary_profile_from_dicom_dose(
         ds,
