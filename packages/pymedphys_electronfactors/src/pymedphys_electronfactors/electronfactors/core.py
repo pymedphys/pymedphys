@@ -35,9 +35,6 @@ from scipy.optimize import basinhopping
 import shapely.geometry as geo
 import shapely.affinity as aff
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def spline_model(width_test, ratio_perim_area_test,
                  width_data, ratio_perim_area_data, factor_data):

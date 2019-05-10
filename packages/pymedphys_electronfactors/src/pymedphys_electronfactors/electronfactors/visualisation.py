@@ -27,13 +27,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .._level1.electronfactors import (
+from .core import (
     visual_alignment_of_equivalent_ellipse, create_transformed_mesh,
     parameterise_insert_with_visual_alignment
 )
-
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
 
 
 def model_and_display(x, y):
