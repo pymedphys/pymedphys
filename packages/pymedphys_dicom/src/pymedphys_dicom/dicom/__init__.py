@@ -63,5 +63,8 @@ from .coords import (
 from .dose import (
     create_dvh,
     dose_from_dataset,
-    find_dose_within_structure
+    find_dose_within_structure,
+    extract_depth_dose,
+    extract_profiles,
+    load_dicom_data
 )

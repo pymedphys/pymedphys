@@ -31,3 +31,4 @@ Examples:
 """
 
 from .config import get_filepath
+from .filesearch import wildcard_file_resolution
