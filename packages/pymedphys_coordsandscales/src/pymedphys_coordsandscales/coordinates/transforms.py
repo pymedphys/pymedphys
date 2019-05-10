@@ -27,9 +27,6 @@ import numpy as np
 from numpy import sin, cos, pi, radians
 from numpy.linalg import norm
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def rotate_about_vector(coords_to_rotate, vector, theta, active=False):
     r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the axis specified by

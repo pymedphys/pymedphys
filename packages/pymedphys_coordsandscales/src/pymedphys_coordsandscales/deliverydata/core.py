@@ -30,10 +30,6 @@ from collections import namedtuple
 
 import numpy as np
 
-from pymedphys_utilities.libutils import get_imports
-
-IMPORTS = get_imports(globals())
-
 # Make the creation of DeliveryData look a bit like this...
 # Or a bit like the dataclass ...
 DeliveryData = namedtuple(
