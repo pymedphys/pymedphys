@@ -71,9 +71,7 @@
       "external": [
         "numpy"
       ],
-      "internal": [
-        "pymedphys_utilities"
-      ]
+      "internal": []
     },
     "pymedphys_databases": {
       "external": [
@@ -104,9 +102,7 @@
         "scipy",
         "shapely"
       ],
-      "internal": [
-        "pymedphys_utilities"
-      ]
+      "internal": []
     },
     "pymedphys_fileformats": {
       "external": [
@@ -124,9 +120,7 @@
         "scipy",
         "xarray"
       ],
-      "internal": [
-        "pymedphys_utilities"
-      ]
+      "internal": []
     },
     "pymedphys_logfiles": {
       "external": [],
