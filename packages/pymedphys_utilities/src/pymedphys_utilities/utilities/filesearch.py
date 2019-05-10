@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,25 +23,18 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Create a reproducable hash from a filepath.
-"""
 
-import hashlib
-
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
+from glob import glob
 
 
-def hash_file(filename, dot_feedback=False):
-    BLOCKSIZE = 65536
-    hasher = hashlib.sha1()
-    with open(filename, 'rb') as afile:
-        buf = afile.read(BLOCKSIZE)
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = afile.read(BLOCKSIZE)
+def wildcard_file_resolution(glob_search_string):
+    filepaths = glob(glob_search_string)
+    if len(filepaths) < 1:
+        raise FileNotFoundError("No file found that matches the provided path")
+    elif len(filepaths) > 1:
+        raise TypeError(
+            "More than one file found that matches the search string")
 
-    if dot_feedback:
-        print(".", end="", flush=True)
+    found_filepath = filepaths[0]
 
-    return hasher.hexdigest()
+    return found_filepath

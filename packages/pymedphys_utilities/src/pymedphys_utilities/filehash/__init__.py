@@ -27,12 +27,5 @@
 """
 """
 
-# pylint: disable=W0401,W0614
 
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.filehash import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.filehash'
-], package='pymedphys_utilities.filehash')
+from .core import hash_file

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 PyMedPhys Contributors
+# Copyright (C) 2018 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,11 +23,25 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-# import warnings
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
+import lzma
 
-A_LEAF_TYPE = (10,)*10 + (5,)*40 + (10,)*10
-BRAINLAB = (5.5,)*3 + (4.5,)*3 + (3,)*14 + (4.5,)*3 + (5.5,)*3
-AGILITY = (5,)*80
+from glob import glob
+
+
+def compress_test_file(filepath):
+    with open(filepath, 'rb') as load_file:
+        with lzma.open('{}.xz'.format(filepath), 'w') as save_file:
+            save_file.write(load_file.read())
+
+
+def compress_test_files(glob_string, exclude_xz_files=True):
+    files_to_compress = glob(glob_string, recursive=True)
+
+    for filepath in files_to_compress:
+        if not filepath.endswith(".xz") or not exclude_xz_files:
+            compress_test_file(filepath)
+
+
+def decompress_test_files():
+    pass

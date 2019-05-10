@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,28 +23,22 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""Create a reproducable hash from a filepath.
+"""
 
-import lzma
-
-from glob import glob
-
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
+import hashlib
 
 
-def compress_test_file(filepath):
-    with open(filepath, 'rb') as load_file:
-        with lzma.open('{}.xz'.format(filepath), 'w') as save_file:
-            save_file.write(load_file.read())
+def hash_file(filename, dot_feedback=False):
+    BLOCKSIZE = 65536
+    hasher = hashlib.sha1()
+    with open(filename, 'rb') as afile:
+        buf = afile.read(BLOCKSIZE)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = afile.read(BLOCKSIZE)
 
+    if dot_feedback:
+        print(".", end="", flush=True)
 
-def compress_test_files(glob_string, exclude_xz_files=True):
-    files_to_compress = glob(glob_string, recursive=True)
-
-    for filepath in files_to_compress:
-        if not filepath.endswith(".xz") or not exclude_xz_files:
-            compress_test_file(filepath)
-
-
-def decompress_test_files():
-    pass
+    return hasher.hexdigest()

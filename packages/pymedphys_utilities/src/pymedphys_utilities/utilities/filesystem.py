@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Cancer Care Associates
+# Copyright (C) 2018 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,21 +23,34 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-from glob import glob
-
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
+import string
+from os import remove, rmdir
 
 
-def wildcard_file_resolution(glob_search_string):
-    filepaths = glob(glob_search_string)
-    if len(filepaths) < 1:
-        raise FileNotFoundError("No file found that matches the provided path")
-    elif len(filepaths) > 1:
-        raise TypeError(
-            "More than one file found that matches the search string")
+def make_a_valid_directory_name(proposed_directory_name):
+    """In the case a field label can't be used as a file name the invalid
+    characters can be dropped."""
+    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    directory_name = ''.join(
+        c for c in proposed_directory_name if c in valid_chars)
 
-    found_filepath = filepaths[0]
+    directory_name = directory_name.replace(" ", "-")
 
-    return found_filepath
+    return directory_name
+
+
+def remove_file(filepath):
+    """Remove a file. Suppress error if the file does not exist."""
+    try:
+        remove(filepath)
+    except FileNotFoundError:
+        pass
+
+
+def remove_dir(dirpath):
+    """Remove a directory. Suppress error if the directory does not
+    exist."""
+    try:
+        rmdir(dirpath)
+    except FileNotFoundError:
+        pass

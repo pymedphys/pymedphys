@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2018 PyMedPhys Contributors
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,37 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import string
-from os import remove, rmdir
-
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
+# import warnings
 
 
-def make_a_valid_directory_name(proposed_directory_name):
-    """In the case a field label can't be used as a file name the invalid
-    characters can be dropped."""
-    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-    directory_name = ''.join(
-        c for c in proposed_directory_name if c in valid_chars)
-
-    directory_name = directory_name.replace(" ", "-")
-
-    return directory_name
-
-
-def remove_file(filepath):
-    """Remove a file. Suppress error if the file does not exist."""
-    try:
-        remove(filepath)
-    except FileNotFoundError:
-        pass
-
-
-def remove_dir(dirpath):
-    """Remove a directory. Suppress error if the directory does not
-    exist."""
-    try:
-        rmdir(dirpath)
-    except FileNotFoundError:
-        pass
+A_LEAF_TYPE = (10,)*10 + (5,)*40 + (10,)*10
+BRAINLAB = (5.5,)*3 + (4.5,)*3 + (3,)*14 + (4.5,)*3 + (5.5,)*3
+AGILITY = (5,)*80
