@@ -52,7 +52,10 @@ from .anonymise import (
     anonymise_directory,
     is_anonymised_dataset,
     is_anonymised_file,
-    is_anonymised_directory
+    is_anonymised_directory,
+    BASELINE_KEYWORD_VR_DICT,
+    IDENTIFYING_KEYWORDS,
+    label_dicom_filepath_as_anonymised
 )
 
 from .coords import (
@@ -72,8 +75,10 @@ from .dose import (
 
 from .create import dicom_dataset_from_dict
 
-from .structure import pull_structure, create_contour_sequence_dict
+from .structure import pull_structure, create_contour_sequence_dict, Structure
 
 from .constants import BaselineDicomDictionary
 from .collection import DicomBase, DicomDose
-from .header import adjust_machine_name
+from .header import (
+    adjust_machine_name, adjust_rel_elec_density, adjust_RED_by_structure_name,
+    RED_adjustment_map_from_structure_names)
