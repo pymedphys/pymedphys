@@ -30,14 +30,11 @@ from packaging import version
 import numpy as np
 import pydicom
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
-from .._level1.create import dicom_dataset_from_dict
-from .._level1.coords import (
+from .create import dicom_dataset_from_dict
+from .coords import (
     coords_from_xyz_axes,
     xyz_axes_from_dataset)
-from .._level2.anonymise import anonymise_dataset
+from .anonymise import anonymise_dataset
 
 # pylint: disable=W0201
 

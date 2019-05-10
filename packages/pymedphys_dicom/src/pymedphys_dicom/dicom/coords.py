@@ -27,9 +27,6 @@
 
 import numpy as np
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def coords_from_xyz_axes(xyz_axes):
     """Converts a set of x, y and z axes of a regular grid (e.g. a DICOM

@@ -29,8 +29,6 @@ import numpy as np
 from pydicom import Dataset
 from pydicom.datadict import DicomDictionary
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
 
 DICOM_NAMES = [item[-1] for _, item in DicomDictionary.items()]
 

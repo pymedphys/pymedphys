@@ -29,11 +29,7 @@ from copy import deepcopy
 
 import pydicom
 
-from pymedphys_utilities.libutils import get_imports
-
-from .._level1.create import dicom_dataset_from_dict
-
-IMPORTS = get_imports(globals())
+from .create import dicom_dataset_from_dict
 
 
 def adjust_machine_name(dicom_dataset, new_machine_name):

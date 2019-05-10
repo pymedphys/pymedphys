@@ -32,10 +32,6 @@ import numpy as np
 
 import pydicom
 
-from pymedphys_utilities.libutils import get_imports
-
-IMPORTS = get_imports(globals())
-
 
 # pylint: disable=C0103
 

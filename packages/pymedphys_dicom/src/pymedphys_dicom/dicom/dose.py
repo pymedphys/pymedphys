@@ -26,8 +26,6 @@
 
 """A DICOM RT Dose toolbox"""
 
-from .._level1.structure import pull_structure
-from .._level1.coords import coords_from_xyz_axes, xyz_axes_from_dataset
 import warnings
 
 import numpy as np
@@ -37,8 +35,8 @@ from matplotlib import path
 import pydicom
 import pydicom.uid
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
+from .structure import pull_structure
+from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
 
 
 # pylint: disable=C0103

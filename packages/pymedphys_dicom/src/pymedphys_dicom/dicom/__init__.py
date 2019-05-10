@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs, Matthew Jennings
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -43,32 +43,25 @@
 ...     create_dvh,
 ...     dose_from_dataset,
 ...     find_dose_within_structure,
-...
-...     # RT Structure related functions
-...     get_structure_aligned_cube
 ...     )
 """
 
-# pylint: disable=W0401,W0614
+from .anonymise import (
+    anonymise_dataset,
+    anonymise_file,
+    anonymise_directory,
+    is_anonymised_dataset,
+    is_anonymised_file,
+    is_anonymised_directory
+)
 
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
+from .coords import (
+    coords_from_xyz_axes,
+    xyz_axes_from_dataset
+)
 
-from ._level1.constants import *
-from ._level1.coords import *
-from ._level1.create import *
-from ._level1.structure import *
-from ._level2.header_tweaks import *
-from ._level2.anonymise import *
-from ._level2.dose import *
-from ._level3.dicom_collection import *
-
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.coords',
-    '._level1.create',
-    '._level2.header_tweaks',
-    '._level1.structure',
-    '._level2.anonymise',
-    '._level2.dose',
-    '._level3.dicom_collection'
-], package='pymedphys_dicom.dicom')
+from .dose import (
+    create_dvh,
+    dose_from_dataset,
+    find_dose_within_structure
+)
