@@ -31,11 +31,7 @@
 import os
 from glob import glob
 
-from pymedphys_utilities.libutils import get_imports
-
-from .._level3.trf2pandas import trf2pandas
-
-IMPORTS = get_imports(globals())
+from .trf2pandas import trf2pandas
 
 
 def trf2csv(trf_filepath, skip_if_exists=False):

@@ -24,50 +24,28 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Decodes trf file.
-"""
-
-import pandas as pd
-
-from .._level1.trfheader import decode_header, determine_header_length, Header
-from .._level2.trftable import decode_trf_table
-
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
+import os
+import json
 
 
-def trf2pandas(filepath):
-    with open(filepath, 'rb') as file:
-        trf_contents = file.read()
+CONFIG_FILEPATH = os.path.join(
+    os.path.dirname(__file__), 'config.json')
 
-    trf_header_contents, trf_table_contents = split_into_header_table(
-        trf_contents)
+with open(CONFIG_FILEPATH) as json_data_file:
+    CONFIG = json.load(json_data_file)
 
-    header_dataframe = header_as_dataframe(trf_header_contents)
+Y1_LEAF_BANK_NAMES = [
+    'Y1 Leaf {}/Scaled Actual (mm)'.format(item)
+    for item in range(1, 81)
+]
 
-    table_dataframe = decode_trf_table(trf_table_contents)
+Y2_LEAF_BANK_NAMES = [
+    'Y2 Leaf {}/Scaled Actual (mm)'.format(item)
+    for item in range(1, 81)
+]
 
-    return header_dataframe, table_dataframe
+JAW_NAMES = [
+    'X1 Diaphragm/Scaled Actual (mm)', 'X2 Diaphragm/Scaled Actual (mm)']
 
-
-def split_into_header_table(trf_contents):
-    header_length = determine_header_length(trf_contents)
-
-    trf_header_contents = trf_contents[0:header_length]
-    trf_table_contents = trf_contents[header_length::]
-
-    return trf_header_contents, trf_table_contents
-
-
-def header_as_dataframe(trf_header_contents):
-    header = decode_header(trf_header_contents)
-
-    return pd.DataFrame([header], columns=Header._fields)
-
-
-def decode_trf(filepath):
-    """DEPRECATED
-    """
-    _, table_dataframe = trf2pandas(filepath)
-
-    return table_dataframe
+GANTRY_NAME = 'Step Gantry/Scaled Actual (deg)'
+COLLIMATOR_NAME = 'Step Collimator/Scaled Actual (deg)'

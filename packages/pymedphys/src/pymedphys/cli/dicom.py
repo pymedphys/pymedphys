@@ -26,8 +26,8 @@
 """Provides a various set of tools for DICOM header manipulation.
 """
 
-from pymedphys_dicom.dicom import (
-    anonymise_cli,
+from pymedphys_dicom.dicom.anonymise import anonymise_cli
+from pymedphys_dicom.dicom.header import (
     adjust_machine_name_cli,
     adjust_RED_cli,
     adjust_RED_by_structure_name_cli)

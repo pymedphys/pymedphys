@@ -31,4 +31,4 @@ Examples:
 """
 
 from .connect import mosaiq_connect, multi_mosaiq_connect
-from .delivery import delivery_data_from_mosaiq
+from .delivery import delivery_data_from_mosaiq, multi_fetch_and_verify_mosaiq

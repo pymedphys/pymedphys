@@ -50,7 +50,7 @@ Requires two configuration csv files detailed as following:
 """
 
 
-from pymedphys_logfiles.elekta import orchestration_cli
+from pymedphys_logfiles.elekta.orchestration import orchestration_cli
 
 
 def logfile_cli(subparsers):

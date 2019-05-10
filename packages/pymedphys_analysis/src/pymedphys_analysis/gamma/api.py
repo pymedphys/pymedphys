@@ -26,14 +26,10 @@
 # import numpy as np
 # import matplotlib.pyplot as plt
 
-from pymedphys_utilities.libutils import get_imports
 from pymedphys_dicom.dicom import axes_and_dose_from_dicom
 
-from pymedphys_analysis.gamma import (
-    gamma_filter_numpy, calculate_pass_rate, gamma_shell)
-
-
-IMPORTS = get_imports(globals())
+from .shell import gamma_shell
+from .filter import gamma_filter_numpy, calculate_pass_rate
 
 
 def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,

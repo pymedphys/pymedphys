@@ -27,15 +27,12 @@ import numpy as np
 
 from pymedphys_coordsandscales.deliverydata import DeliveryData
 
-from .._level1.trfconstants import (
+from .constants import (
     GANTRY_NAME, COLLIMATOR_NAME,
     Y1_LEAF_BANK_NAMES, Y2_LEAF_BANK_NAMES,
     JAW_NAMES
 )
-from .._level3.trf2pandas import decode_trf
-
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
+from .trf2pandas import decode_trf
 
 
 def delivery_data_from_logfile(logfile_path):

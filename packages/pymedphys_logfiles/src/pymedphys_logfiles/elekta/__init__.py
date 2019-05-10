@@ -32,3 +32,4 @@ Examples:
 
 
 from .index import index_logfiles
+from .identify import identify_logfile

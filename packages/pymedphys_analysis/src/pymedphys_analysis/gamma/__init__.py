@@ -38,3 +38,4 @@ mature.
 
 from .filter import gamma_filter_brute_force, gamma_filter_numpy
 from .shell import gamma_shell
+from .api import gamma_dicom

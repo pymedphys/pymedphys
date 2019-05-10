@@ -32,4 +32,6 @@ functions include:
 ...     plot_cube)
 """
 
-from .cube import cubify_cube_definition, plot_cube
+from .cube import (
+    cubify_cube_definition, plot_cube, get_structure_aligned_cube,
+    get_interpolated_dose)

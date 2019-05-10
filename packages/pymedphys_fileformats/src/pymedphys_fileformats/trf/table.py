@@ -29,11 +29,9 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from .._level1.trfconstants import CONFIG
-from .._level1.trfheader import determine_header_length
+from .constants import CONFIG
+from .header import determine_header_length
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
 
 GROUPING_OPTIONS = {
     'integrityv3': {
