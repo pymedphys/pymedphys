@@ -35,7 +35,7 @@ import pydicom
 from pymedphys_dicom.dicom import (
     dicom_dataset_from_dict, adjust_machine_name, adjust_rel_elec_density,
     adjust_RED_by_structure_name, RED_adjustment_map_from_structure_names)
-from pymedphys_utilities.utilities import remove_file
+from pymedphys_dicom.utilities import remove_file
 
 
 HERE = os.path.dirname(__file__)
