@@ -49,30 +49,30 @@ def get_imports(filepath, internal_packages, depth):
         return name
 
     def add_level_0(name):
-        if name in STDLIB:
-            stdlib_imports.add(name)
-        elif name in internal_packages:
+        base_converted = get_base_converted_module(name)
+
+        if base_converted in STDLIB:
+            stdlib_imports.add(base_converted)
+        elif base_converted in internal_packages:
             internal_package_imports.add(name)
         else:
-            external_imports.add(name)
+            external_imports.add(base_converted)
 
     for an_import in imports:
 
         if type(an_import) in IMPORT_TYPES:
             for alias in an_import.names:
-                name = get_base_converted_module(alias.name)
-                add_level_0(name)
+                add_level_0(alias.name)
 
         elif type(an_import) in IMPORT_FROM_TYPES:
-            name = get_base_converted_module(an_import.module)
             if an_import.level == 0:
-                add_level_0(name)
+                add_level_0(an_import.module)
             elif an_import.level == 1 and depth == 2:
-                internal_file_imports.add(name)
+                internal_file_imports.add(an_import.module)
             elif (
                     (an_import.level == 1 and depth == 1) or
                     (an_import.level == 2 and depth == 2)):
-                internal_module_imports.add(name)
+                internal_module_imports.add(an_import.module)
             else:
                 raise ValueError(
                     "Unexpected depth and import level of relative "

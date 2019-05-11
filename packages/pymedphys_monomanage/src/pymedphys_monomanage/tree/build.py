@@ -137,8 +137,8 @@ class PackageTree:
 
             tree = {
                 package: {
-                        key_map[key]: item
-                        for key, item in self.descendants_dependencies(package).items()
+                        key_map[key]: sorted(list({package.split('.')[0] for package in packages}))
+                        for key, packages in self.descendants_dependencies(package).items()
                         if key in key_map.keys()
                     }
                 for package in self.roots
