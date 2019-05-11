@@ -1,3 +1,4 @@
+import os
 import ast
 
 from stdlib_list import stdlib_list
@@ -24,7 +25,7 @@ CONVERSIONS = {
 
 
 
-def get_imports(filepath, internal_packages, depth):
+def get_imports(filepath, relative_filepath, internal_packages, depth):
     with open(filepath, 'r') as file:
         data = file.read()
 
@@ -68,11 +69,15 @@ def get_imports(filepath, internal_packages, depth):
             if an_import.level == 0:
                 add_level_0(an_import.module)
             elif an_import.level == 1 and depth == 2:
-                internal_file_imports.add(an_import.module)
+                module_path = (
+                    relative_filepath.split(os.sep)[0:2] + [an_import.module])
+                internal_file_imports.add('.'.join(module_path))
             elif (
                     (an_import.level == 1 and depth == 1) or
                     (an_import.level == 2 and depth == 2)):
-                internal_module_imports.add(an_import.module)
+                module_path = (
+                    relative_filepath.split(os.sep)[0:1] + [an_import.module])
+                internal_module_imports.add('.'.join(module_path))
             else:
                 raise ValueError(
                     "Unexpected depth and import level of relative "

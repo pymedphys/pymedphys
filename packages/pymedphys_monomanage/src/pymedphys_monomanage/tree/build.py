@@ -88,7 +88,8 @@ class PackageTree:
         self.roots = [n for n, d in self.digraph.in_degree() if d == 0]
         self.imports = {
             filepath: get_imports(
-                self.expand_path(filepath), self.roots, self.depth[filepath])
+                self.expand_path(filepath), filepath, self.roots,
+                self.depth[filepath])
             for filepath in self.digraph.nodes()
         }
         self._cache = {}
