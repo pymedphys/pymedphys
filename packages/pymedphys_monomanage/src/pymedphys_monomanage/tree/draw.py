@@ -144,11 +144,7 @@ def build_dot_contents(dag, levels):
 
     dot_file_contents = """
         strict digraph  {{
-
             rankdir = LR;
-            splines = splines;
-
-
             {}\n{}
         }}
     """.format(nodes, edges)
