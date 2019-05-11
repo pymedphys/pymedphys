@@ -3,7 +3,7 @@ import textwrap
 import json
 from glob import glob
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.getcwd()
 
 with open(os.path.join(ROOT, 'dependencies.json'), 'r') as file:
     dependencies_data = json.load(file)

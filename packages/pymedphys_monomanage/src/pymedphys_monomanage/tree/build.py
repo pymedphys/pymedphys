@@ -17,7 +17,7 @@ CONVERSIONS = {
     'dateutil': 'python_dateutil'
 }
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.getcwd()
 DEPENDENCIES_JSON_FILEPATH = os.path.join(ROOT, 'dependencies.json')
 
 IMPORT_TYPES = {

@@ -4,7 +4,7 @@ from glob import glob
 
 import semver
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(os.getcwd())))
 
 version_filepath = glob(os.path.join(
     "src", "pymedphys*", "_version.py"))[0]

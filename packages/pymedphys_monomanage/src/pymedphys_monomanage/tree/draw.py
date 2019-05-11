@@ -8,18 +8,17 @@ import textwrap
 
 import networkx as nx
 
-sys.path.insert(0, '.')
-from build_dependency_tree import build_tree  # nopep8
+from .build import build_tree
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def create_all():
-    full_graph()
-    trimmed_graph()
+ROOT = os.getcwd()
 
 
-def full_graph():
+def draw_all(save_directory):
+    full_graph(save_directory)
+    trimmed_graph(save_directory)
+
+
+def full_graph(save_directory):
     tree = build_tree()
     internal_packages = tuple(tree.keys())
     dag = nx.DiGraph()
@@ -39,10 +38,10 @@ def full_graph():
 
     levels = get_levels(dag, internal_packages)
     dot_contents = build_dot_contents(dag, levels)
-    save_dot_file(dot_contents, 'graph_full.dot')
+    save_dot_file(dot_contents, save_directory, 'graph_full.dot')
 
 
-def trimmed_graph():
+def trimmed_graph(save_directory):
     tree = build_tree()
     tree.pop('pymedphys')
     internal_packages = tuple(tree.keys())
@@ -59,11 +58,11 @@ def trimmed_graph():
 
     levels = get_levels(dag, internal_packages)
     dot_contents = build_dot_contents(dag, levels)
-    save_dot_file(dot_contents, 'graph_trimmed.dot')
+    save_dot_file(dot_contents, save_directory, 'graph_trimmed.dot')
 
 
-def save_dot_file(dot_contents, filename):
-    dot_filepath = os.path.join(ROOT, filename)
+def save_dot_file(dot_contents, save_directory, filename):
+    dot_filepath = os.path.join(save_directory, filename)
     with open(dot_filepath, 'w') as file:
         file.write(dot_contents)
 

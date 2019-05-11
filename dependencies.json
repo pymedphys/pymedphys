@@ -12,6 +12,7 @@
         "pymedphys_fileformats": "~0.8.0-dev.16",
         "pymedphys_labs": "~0.8.0-dev.16",
         "pymedphys_logfiles": "~0.8.0-dev.16",
+        "pymedphys_monomanage": "~0.8.0-dev.16",
         "pymedphys_sphinxtheme": "~0.8.0-dev.16",
         "pymedphys_toolbox": "~0.8.0-dev.16",
         "pymedphys_utilities": "~0.8.0-dev.16",
@@ -34,6 +35,7 @@
         "pymedphys_fileformats": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_labs": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_logfiles": ">= 0.8.0dev16, < 0.9.0",
+        "pymedphys_monomanage": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_sphinxtheme": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_toolbox": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_utilities": ">= 0.8.0dev16, < 0.9.0",
@@ -146,6 +148,14 @@
         "pymedphys_fileformats",
         "pymedphys_utilities"
       ]
+    },
+    "pymedphys_monomanage": {
+      "external": [
+        "networkx",
+        "semver",
+        "stdlib_list"
+      ],
+      "internal": []
     },
     "pymedphys_sphinxtheme": {
       "external": [],
