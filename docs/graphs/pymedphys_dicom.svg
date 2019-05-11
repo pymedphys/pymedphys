@@ -27,7 +27,7 @@
 <text text-anchor="middle" x="219.9337" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">dicom</text>
 </g>
 <!-- pymedphys_xlwings.xlwings&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge1" class="edge">
+<g id="edge2" class="edge">
 <title>pymedphys_xlwings.xlwings&#45;&gt;pymedphys_dicom.dicom</title>
 <path fill="none" stroke="#000000" d="M116.5558,-111.4972C127.6886,-107.5098 139.7185,-103.1418 150.7866,-99 161.5063,-94.9886 173.1104,-90.5109 183.6951,-86.3732"/>
 <polygon fill="#000000" stroke="#000000" points="185.0446,-89.6035 193.0746,-82.692 182.4871,-83.0874 185.0446,-89.6035"/>
@@ -39,7 +39,7 @@
 <text text-anchor="middle" x="75.3933" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.geometry</text>
 </g>
 <!-- pymedphys_analysis.geometry&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge2" class="edge">
+<g id="edge3" class="edge">
 <title>pymedphys_analysis.geometry&#45;&gt;pymedphys_dicom.dicom</title>
 <path fill="none" stroke="#000000" d="M151.0501,-72C159.6937,-72 168.2727,-72 176.2908,-72"/>
 <polygon fill="#000000" stroke="#000000" points="176.4668,-75.5001 186.4668,-72 176.4667,-68.5001 176.4668,-75.5001"/>
@@ -51,7 +51,7 @@
 <text text-anchor="middle" x="75.3933" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma</text>
 </g>
 <!-- pymedphys_analysis.gamma&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge3" class="edge">
+<g id="edge4" class="edge">
 <title>pymedphys_analysis.gamma&#45;&gt;pymedphys_dicom.dicom</title>
 <path fill="none" stroke="#000000" d="M116.5558,-32.5028C127.6886,-36.4902 139.7185,-40.8582 150.7866,-45 161.5063,-49.0114 173.1104,-53.4891 183.6951,-57.6268"/>
 <polygon fill="#000000" stroke="#000000" points="182.4871,-60.9126 193.0746,-61.308 185.0446,-54.3965 182.4871,-60.9126"/>
@@ -63,7 +63,7 @@
 <text text-anchor="middle" x="326.1275" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities</text>
 </g>
 <!-- pymedphys_dicom.dicom&#45;&gt;pymedphys_dicom.utilities -->
-<g id="edge4" class="edge">
+<g id="edge1" class="edge">
 <title>pymedphys_dicom.dicom&#45;&gt;pymedphys_dicom.utilities</title>
 <path fill="none" stroke="#000000" d="M253.2427,-72C261.286,-72 270.0363,-72 278.5919,-72"/>
 <polygon fill="#000000" stroke="#000000" points="278.8707,-75.5001 288.8706,-72 278.8706,-68.5001 278.8707,-75.5001"/>

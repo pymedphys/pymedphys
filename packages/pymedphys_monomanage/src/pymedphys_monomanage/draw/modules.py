@@ -58,9 +58,9 @@ def get_levels(dag):
 
     level_map = {}
     for package in topological[::-1]:
-        depencencies = nx.descendants(dag, package)
+        dependencies = nx.descendants(dag, package)
         levels = {0}
-        for dependency in sorted(depencencies):
+        for dependency in sorted(list(dependencies)):
             try:
                 levels.add(level_map[dependency])
             except KeyError:
@@ -155,12 +155,12 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
     for module in current_modules:
         current_packages += '"{}";\n'.format(module)
 
-        for dependency in sorted(dependencies[module]):
+        for dependency in sorted(list(dependencies[module])):
             edges += '"{}" -> "{}";\n'.format(module, dependency)
             if not dependency in current_modules:
                 current_dependencies.add(dependency)
 
-        for dependent in sorted(dependents[module]):
+        for dependent in sorted(list(dependents[module])):
             edges += '"{}" -> "{}";\n'.format(dependent, module)
             if not dependent in current_modules:
                 current_dependents.add(dependent)
@@ -168,11 +168,11 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
 
     external_ranks = ""
     if current_dependents:
-        grouped_dependents = '"; "'.join(sorted(current_dependents))
+        grouped_dependents = '"; "'.join(sorted(list(current_dependents)))
         external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependents)
 
     if current_dependencies:
-        grouped_dependencies = '"; "'.join(sorted(current_dependencies))
+        grouped_dependencies = '"; "'.join(sorted(list(current_dependencies)))
         external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependencies)
 
 
