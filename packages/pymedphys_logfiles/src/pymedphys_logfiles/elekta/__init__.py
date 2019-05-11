@@ -30,22 +30,7 @@ Examples:
     >>> from pymedphys.logfile import index_logfiles
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
 
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.logfileanalyse import *
-from ._level1.diagnostics_zips import *
-from ._level1.trfidentify import *
-from ._level2.logfileindex import *
-from ._level2.logfilebygantry import *
-from ._level3.orchestration import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.logfileanalyse',
-    '._level1.diagnostics_zips',
-    '._level1.trfidentify',
-    '._level2.logfileindex',
-    '._level2.logfilebygantry',
-    '._level3.orchestration'
-], package='pymedphys_logfiles.elekta')
+from .index import index_logfiles
+from .identify import identify_logfile
+from .diagnostics_zips import already_indexed_path

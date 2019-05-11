@@ -1,18 +1,4 @@
 {
-  "name": "pymedphys_sphinxtheme",
-  "main": "js/theme.js",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "bootstrap": "yarn --production && yarn webpack:prod",
-    "pip:install:dev": "yarn bootstrap && pip install -e .",
-    "pip:install:prod": "yarn bootstrap && pip install .",
-    "pip:install:test": "yarn bootstrap && pip install .[test]",
-    "pypi:build": "python setup.py sdist bdist_wheel",
-    "pypi:upload": "twine upload dist/*",
-    "webpack:dev": "yarn webpack-dev-server --open --config webpack.dev.js",
-    "webpack:prod": "yarn webpack --config webpack.prod.js"
-  },
   "dependencies": {
     "bourbon": "~4.3",
     "bourbon-neat": "~1.9",
@@ -36,5 +22,21 @@
   },
   "devDependencies": {
     "webpack-dev-server": "^3.3.1"
-  }
+  },
+  "main": "js/theme.js",
+  "name": "pymedphys_sphinxtheme",
+  "private": true,
+  "scripts": {
+    "bootstrap": "yarn --production && yarn webpack:prod",
+    "pip:install:dev": "yarn bootstrap && pip install -e .",
+    "pip:install:prod": "yarn bootstrap && pip install .",
+    "pip:install:test": "yarn bootstrap && pip install .[test]",
+    "postversion": "yarn propegate:version",
+    "propegate:version": "python ../../scripts/propegate_versions.py",
+    "pypi:build": "python setup.py sdist bdist_wheel",
+    "pypi:upload": "twine upload dist/*",
+    "webpack:dev": "yarn webpack-dev-server --open --config webpack.dev.js",
+    "webpack:prod": "yarn webpack --config webpack.prod.js"
+  },
+  "version": "0.8.0-dev.16"
 }
