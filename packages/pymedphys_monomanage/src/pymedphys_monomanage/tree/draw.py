@@ -9,7 +9,7 @@ import shutil
 
 import networkx as nx
 
-from .build import build_tree
+from .build import PackageTree
 
 ROOT = os.getcwd()
 
@@ -43,7 +43,7 @@ def draw_all(save_directory):
 
 
 def trimmed_graph(save_directory):
-    tree = build_tree()
+    tree = PackageTree('packages').package_dependencies_dict
     tree.pop('pymedphys')
     internal_packages = tuple(tree.keys())
 

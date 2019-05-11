@@ -1,191 +1,166 @@
-import ast
+
 import os
 import json
-from copy import copy
+from copy import copy, deepcopy
 import difflib
 
 import networkx as nx
 
-from stdlib_list import stdlib_list
-STDLIB = set(stdlib_list())
-
-CONVERSIONS = {
-    'attr': 'attrs',
-    'PIL': 'Pillow',
-    'Image': 'Pillow',
-    'mpl_toolkits': 'matplotlib',
-    'dateutil': 'python_dateutil'
-}
-
-ROOT = os.getcwd()
-DEPENDENCIES_JSON_FILEPATH = os.path.join(ROOT, 'dependencies.json')
-
-IMPORT_TYPES = {
-    type(ast.parse('import george').body[0]),  # type: ignore
-    type(ast.parse('import george as macdonald').body[0])}  # type: ignore
-
-IMPORT_FROM_TYPES = {
-    type(ast.parse('from george import macdonald').body[0])  # type: ignore
-}
-
-ALL_IMPORT_TYPES = IMPORT_TYPES.union(IMPORT_FROM_TYPES)
+from ..parse.imports import get_imports
 
 
-def create_directory_digraph():
-    dirtree = nx.DiGraph()
-
-    exclude_dirs = {'node_modules', '__pycache__', 'dist'}
-    exclude_files = {'__init__.py', '_version.py', '_install_requires.py'}
-    packages_dir = os.path.join(ROOT, 'packages')
-
-    for root, dirs, files in os.walk(packages_dir, topdown=True):
-        dirs[:] = [d for d in dirs if d not in exclude_dirs]
-
-        if '__init__.py' in files:
-            module_init = os.path.join(root, '__init__.py')
-            files[:] = [f for f in files if f not in exclude_files]
-
-            dirtree.add_node(module_init)
-            parent_init = os.path.join(os.path.dirname(root), '__init__.py')
-            if os.path.exists(parent_init):
-                dirtree.add_edge(parent_init, module_init)
-
-            for f in files:
-                if f.endswith('.py'):
-                    filepath = os.path.join(root, f)
-                    dirtree.add_node(filepath)
-                    dirtree.add_edge(module_init, filepath)
-
-    return dirtree
+DEPENDENCIES_JSON_FILEPATH = 'dependencies.json'
+DEFAULT_EXCLUDE_DIRS = {'node_modules', '__pycache__', 'dist'}
+DEFAULT_EXCLUDE_FILES = {'__init__.py', '_version.py', '_install_requires.py'}
+DEFAULT_KEYS_TO_KEEP = {'stdlib', 'internal', 'external'}
 
 
-def get_imports(filepath, internal_packages):
-    with open(filepath, 'r') as file:
-        data = file.read()
+class PackageTree:
+    def __init__(self, directory, exclude_dirs=None, exclude_files=None):
+        if exclude_dirs is None:
+            exclude_dirs = DEFAULT_EXCLUDE_DIRS
 
-    parsed = ast.parse(data)
-    imports = [
-        node for node in ast.walk(parsed) if type(node) in ALL_IMPORT_TYPES]
+        if exclude_files is None:
+            exclude_files = DEFAULT_EXCLUDE_FILES
 
-    stdlib_imports = set()
-    external_imports = set()
-    internal_imports = set()
-    near_relative_imports = set()
-    far_relative_imports = set()
+        self.exclude_dirs = exclude_dirs
+        self.exclude_files = exclude_files
 
-    def get_base_converted_module(name):
-        name = name.split('.')[0]
+        self.directory = directory
 
+
+    def build_digraph(self):
+        digraph = nx.DiGraph()
+
+        for root, dirs, files in os.walk(self._directory, topdown=True):
+            dirs[:] = [d for d in dirs if d not in self.exclude_dirs]
+
+            if '__init__.py' in files:
+                module_init = os.path.join(root, '__init__.py')
+                files[:] = [f for f in files if f not in self.exclude_files]
+
+                digraph.add_node(module_init)
+                parent_init = os.path.join(os.path.dirname(root), '__init__.py')
+                if os.path.exists(parent_init):
+                    digraph.add_edge(parent_init, module_init)
+
+                for f in files:
+                    if f.endswith('.py'):
+                        filepath = os.path.join(root, f)
+                        digraph.add_node(filepath)
+                        digraph.add_edge(module_init, filepath)
+
+        self.digraph = digraph
+        self.calc_properties()
+
+
+    def calc_properties(self):
+        root_nodes = [n for n, d in self.digraph.in_degree() if d == 0]
+        roots = {
+            os.path.basename(os.path.dirname(root)): root
+            for root in root_nodes
+        }
+
+        self.roots = roots
+        self.internal_packages = list(self.roots.keys())
+        self.imports = {
+            filepath: get_imports(filepath, self.internal_packages)
+            for filepath in self.digraph.nodes()
+        }
+        self._cache = {}
+        self._cache['descendants_dependencies'] = {}
+
+
+    @property
+    def directory(self):
+        return self._directory
+
+
+    @directory.setter
+    def directory(self, value):
+        self._directory = value
+        self.build_digraph()
+
+
+    def descendants_dependencies(self, filepath):
         try:
-            name = CONVERSIONS[name]
+            return self._cache['descendants_dependencies'][filepath]
         except KeyError:
-            pass
+            dependencies = deepcopy(self.imports[filepath])
 
-        return name
+            for descendant in nx.descendants(self.digraph, filepath):
+                for key in dependencies:
+                    dependencies[key] |= self.imports[descendant][key]
 
-    def add_level_0(name):
-        if name in STDLIB:
-            stdlib_imports.add(name)
-        elif name in internal_packages:
-            internal_imports.add(name)
-        else:
-            external_imports.add(name)
+            for key in dependencies:
+                dependencies[key] = list(dependencies[key])
+                dependencies[key].sort()
 
-    for an_import in imports:
-
-        if type(an_import) in IMPORT_TYPES:
-            for alias in an_import.names:
-                name = get_base_converted_module(alias.name)
-                add_level_0(name)
-
-        elif type(an_import) in IMPORT_FROM_TYPES:
-            name = get_base_converted_module(an_import.module)
-            if an_import.level == 0:
-                add_level_0(name)
-            elif an_import.level == 1:
-                near_relative_imports.add(name)
-            else:
-                far_relative_imports.add(name)
-
-        else:
-            raise TypeError("Unexpected import type")
-
-    return {
-        'stdlib': stdlib_imports,
-        'external': external_imports,
-        'internal': internal_imports,
-        'near_relative': near_relative_imports,
-        'far_relative': far_relative_imports}
+            self._cache['descendants_dependencies'][filepath] = dependencies
+            return dependencies
 
 
-def build_tree(keys_to_keep={'stdlib', 'internal', 'external'}):
-    dirtree = create_directory_digraph()
+    @property
+    def package_dependencies_dict(self):
+        try:
+            return self._cache['package_dependencies_dict']
+        except KeyError:
+            key_map = {
+                'internal_package': 'internal',
+                'external': 'external',
+                'stdlib': 'stdlib'
+            }
 
-    package_roots = [n for n, d in dirtree.in_degree() if d == 0]
-    package_root_map = {
-        os.path.basename(os.path.dirname(package_root)): package_root
-        for package_root in package_roots
-    }
+            tree = {
+                package: {
+                        key_map[key]: item
+                        for key, item in self.descendants_dependencies(root).items()
+                        if key in key_map.keys()
+                    }
+                for package, root in self.roots.items()
+            }
 
-    internal_packages = list(package_root_map.keys())
-    all_imports = {
-        filepath: get_imports(filepath, internal_packages)
-        for filepath in dirtree.nodes()
-    }
-
-    def get_descendants_dependencies(filepath):
-        dependencies = {}
-        for key in keys_to_keep:
-            dependencies[key] = copy(all_imports[filepath][key])
-
-        for descendant in nx.descendants(dirtree, filepath):
-            for key in keys_to_keep:
-                dependencies[key] |= all_imports[descendant][key]
-
-        for key in keys_to_keep:
-            dependencies[key] = list(dependencies[key])
-            dependencies[key].sort()
-
-        return dependencies
-
-    tree = {
-        package: get_descendants_dependencies(root)
-        for package, root in package_root_map.items()
-    }
-
-    return tree
+            self._cache['package_dependencies_dict'] = tree
+            return tree
 
 
-def save_tree():
-    tree = build_tree()
+    @property
+    def package_dependencies_digraph(self):
+        try:
+            return self._cache['package_dependencies_digraph']
+        except KeyError:
+            dag = nx.DiGraph()
 
+            for key, values in self.package_dependencies_dict.items():
+                dag.add_node(key)
+                dag.add_nodes_from(values['internal'])
+                edge_tuples = [
+                    (key, value) for value in values['internal']
+                ]
+                dag.add_edges_from(edge_tuples)
+
+            self._cache['package_dependencies_digraph'] = dag
+            return dag
+
+
+    def are_packages_acyclic(self):
+        return nx.is_directed_acyclic_graph(self.package_dependencies_digraph)
+
+
+def build_tree(directory):
     with open(DEPENDENCIES_JSON_FILEPATH, 'r') as file:
         data = json.load(file)
 
-    data['tree'] = tree
+    data['tree'] = PackageTree(directory).package_dependencies_dict
 
     with open(DEPENDENCIES_JSON_FILEPATH, 'w') as file:
         json.dump(data, file, indent=2, sort_keys=True)
 
 
-def test_tree():
-    tree = build_tree()
-    assert_tree_unchanged(tree)
-    assert_tree_has_no_cycles(tree)
-
-
-def assert_tree_has_no_cycles(tree):
-    dag = nx.DiGraph()
-
-    for key, values in tree.items():
-        dag.add_node(key)
-        dag.add_nodes_from(values['internal'])
-        edge_tuples = [
-            (key, value) for value in values['internal']
-        ]
-        dag.add_edges_from(edge_tuples)
-
-    assert nx.is_directed_acyclic_graph(dag)
+def test_tree(directory):
+    package_tree = PackageTree(directory)
+    assert package_tree.are_packages_acyclic()
+    assert_tree_unchanged(package_tree.package_dependencies_dict)
 
 
 def assert_tree_unchanged(tree):
