@@ -1,16 +1,17 @@
 {
+  "dependencies": {
+    "pymedphys_coordsandscales": "~0.8.0-dev.16"
+  },
   "name": "pymedphys_databases",
   "private": true,
   "scripts": {
     "pip:install:dev": "pip install -e .",
     "pip:install:prod": "pip install .",
     "pip:install:test": "pip install .[test]",
+    "postversion": "yarn propegate:version",
+    "propegate:version": "python ../../scripts/propegate_versions.py",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
-  "dependencies": {
-    "pymedphys_coordsandscales": "^0.0.0",
-    "pymedphys_utilities": "^0.0.0"
-  },
-  "version": "0.0.0"
+  "version": "0.8.0-dev.16"
 }

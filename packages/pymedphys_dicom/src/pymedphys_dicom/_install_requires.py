@@ -1,7 +1,6 @@
 install_requires = [
-    'packaging',
-    'pymedphys_utilities',
-    'numpy < 1.16, >= 1.12',
-    'matplotlib',
-    'pydicom'
+    "matplotlib",
+    "numpy >= 1.12, < 1.16",
+    "packaging",
+    "pydicom"
 ]

@@ -30,15 +30,4 @@ Examples:
     >>> from pymedphys.mephysto import load_mephysto
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.csvoutput import *
-from ._level1.mccread import *
-from ._level2.load_mephysto import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.csvoutput', '._level1.mccread',
-    '._level2.load_mephysto'
-], package='pymedphys_fileformats.mephysto')
+from .api import load_mephysto, load_single_item

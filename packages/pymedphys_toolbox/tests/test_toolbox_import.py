@@ -24,5 +24,4 @@
 
 
 def test_import():
-    import pymedphys_toolbox.gamma
     import pymedphys_toolbox.plancompare
