@@ -10,7 +10,7 @@ from ..parse.imports import get_imports
 
 
 DEPENDENCIES_JSON_FILEPATH = 'dependencies.json'
-DEFAULT_EXCLUDE_DIRS = {'node_modules', '__pycache__', 'dist'}
+DEFAULT_EXCLUDE_DIRS = {'node_modules', '__pycache__', 'dist', '.tox'}
 DEFAULT_EXCLUDE_FILES = {'__init__.py', '_version.py', '_install_requires.py'}
 DEFAULT_KEYS_TO_KEEP = {'stdlib', 'internal', 'external'}
 
@@ -29,42 +29,60 @@ class PackageTree:
         self.directory = directory
 
 
-    def build_digraph(self):
+    def trim_path(self, path):
+        relpath = os.path.relpath(path, self.directory)
+        split = relpath.split(os.sep)
+        assert split[0] == split[2]
+        assert split[1] == 'src'
+
+        if split[-1] == '__init__.py':
+            split = split[:-1]
+
+        return os.path.join(*split[2:])
+
+
+    def expand_path(self, path):
+        split = path.split(os.sep)
+        relpath = os.path.join(split[0], 'src', path)
+
+        if not relpath.endswith('.py'):
+            relpath = os.path.join(relpath, '__init__.py')
+
+        return os.path.join(self.directory, relpath)
+
+
+    def build_directory_digraph(self):
         digraph = nx.DiGraph()
 
         for root, dirs, files in os.walk(self._directory, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude_dirs]
 
             if '__init__.py' in files:
-                module_init = os.path.join(root, '__init__.py')
+                module = self.trim_path(os.path.join(root, '__init__.py'))
                 files[:] = [f for f in files if f not in self.exclude_files]
 
-                digraph.add_node(module_init)
+                digraph.add_node(module)
                 parent_init = os.path.join(os.path.dirname(root), '__init__.py')
                 if os.path.exists(parent_init):
-                    digraph.add_edge(parent_init, module_init)
+                    digraph.add_edge(self.trim_path(parent_init), module)
 
                 for f in files:
                     if f.endswith('.py'):
-                        filepath = os.path.join(root, f)
+                        filepath = self.trim_path(os.path.join(root, f))
                         digraph.add_node(filepath)
-                        digraph.add_edge(module_init, filepath)
+                        digraph.add_edge(module, filepath)
+
+        if not digraph.nodes:
+            raise ValueError('Directory provided does not contain modules')
 
         self.digraph = digraph
         self.calc_properties()
 
 
     def calc_properties(self):
-        root_nodes = [n for n, d in self.digraph.in_degree() if d == 0]
-        roots = {
-            os.path.basename(os.path.dirname(root)): root
-            for root in root_nodes
-        }
-
-        self.roots = roots
-        self.internal_packages = list(self.roots.keys())
+        self.roots = [n for n, d in self.digraph.in_degree() if d == 0]
         self.imports = {
-            filepath: get_imports(filepath, self.internal_packages)
+            filepath: get_imports(self.expand_path(filepath), self.roots)
             for filepath in self.digraph.nodes()
         }
         self._cache = {}
@@ -79,7 +97,7 @@ class PackageTree:
     @directory.setter
     def directory(self, value):
         self._directory = value
-        self.build_digraph()
+        self.build_directory_digraph()
 
 
     def descendants_dependencies(self, filepath):
@@ -114,10 +132,10 @@ class PackageTree:
             tree = {
                 package: {
                         key_map[key]: item
-                        for key, item in self.descendants_dependencies(root).items()
+                        for key, item in self.descendants_dependencies(package).items()
                         if key in key_map.keys()
                     }
-                for package, root in self.roots.items()
+                for package in self.roots
             }
 
             self._cache['package_dependencies_dict'] = tree
@@ -143,7 +161,7 @@ class PackageTree:
             return dag
 
 
-    def are_packages_acyclic(self):
+    def is_acyclic(self):
         return nx.is_directed_acyclic_graph(self.package_dependencies_digraph)
 
 
@@ -159,7 +177,7 @@ def build_tree(directory):
 
 def test_tree(directory):
     package_tree = PackageTree(directory)
-    assert package_tree.are_packages_acyclic()
+    assert package_tree.is_acyclic()
     assert_tree_unchanged(package_tree.package_dependencies_dict)
 
 
