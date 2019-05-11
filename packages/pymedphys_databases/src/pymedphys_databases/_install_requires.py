@@ -1,10 +1,8 @@
 install_requires = [
-    'pymssql',
-    'attrs',
-    'keyring',
-    'scipy',
-    'numpy < 1.16, >= 1.12',
-    'pandas',
-    'pymedphys_coordsandscales',
-    'pymedphys_utilities'
+    "attrs",
+    "keyring",
+    "numpy >= 1.12, < 1.16",
+    "pandas",
+    "pymedphys_coordsandscales >= 0.8.0dev16, < 0.9.0",
+    "pymssql"
 ]

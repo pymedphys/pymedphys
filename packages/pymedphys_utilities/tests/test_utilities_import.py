@@ -24,7 +24,6 @@
 
 
 def test_import():
-    import pymedphys_utilities.coll
+    import pymedphys_utilities.constants
     import pymedphys_utilities.filehash
-    import pymedphys_utilities.libutils
     import pymedphys_utilities.utilities

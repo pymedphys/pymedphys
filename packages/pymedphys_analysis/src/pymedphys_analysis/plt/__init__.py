@@ -30,13 +30,5 @@ Example:
     >>> from pymedphys.plt import pcolormesh_grid
 """
 
-# pylint: disable=W0401,W0614
 
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.plthelpers import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.plthelpers'
-], package='pymedphys_analysis.plt')
+from .helpers import pcolormesh_grid

@@ -36,9 +36,6 @@ import csv
 
 import numpy as np
 
-from pymedphys_utilities.libutils import get_imports
-IMPORTS = get_imports(globals())
-
 
 def read_csv_file(file_name):
     """ read sinogram from csv file

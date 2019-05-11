@@ -36,13 +36,11 @@ parameterising them as equivalent ellipses. Available functions include:
 ...     visual_alignment_of_equivalent_ellipse)
 """
 
-# pylint: disable=W0401,W0614
 
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.electronfactors import *
-from ._level2.visualisation import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.electronfactors', '._level2.visualisation'
-], package='pymedphys_electronfactors.electronfactors')
+from .core import (
+    parameterise_insert,
+    spline_model,
+    calculate_deformability,
+    spline_model_with_deformability,
+    calculate_percent_prediction_differences,
+    visual_alignment_of_equivalent_ellipse)
