@@ -36,13 +36,7 @@ verification and refinement. The gamma shell function is the most
 mature.
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.gammafilter import *
-from ._level2.gammashell import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.gammafilter', '._level2.gammashell'
-], package='pymedphys_analysis.gamma')
+from .filter import (
+    gamma_filter_brute_force, gamma_filter_numpy, calculate_pass_rate)
+from .shell import gamma_shell, calculate_coordinates_shell
+from .api import gamma_dicom

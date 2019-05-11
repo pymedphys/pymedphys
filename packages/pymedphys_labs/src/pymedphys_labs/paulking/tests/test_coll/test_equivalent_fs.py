@@ -28,7 +28,7 @@ import numpy as np
 
 from pymedphys_labs.paulking.collequivalent import (
     mlc_equivalent_square_fs)
-from pymedphys_utilities.coll import (
+from pymedphys_utilities.constants import (
     A_LEAF_TYPE, AGILITY)
 
 

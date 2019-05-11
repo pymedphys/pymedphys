@@ -229,6 +229,8 @@ scratch-*
 # USER DEFINED
 *.pdf
 
+graph*.svg
+
 # Paul's custom additions
 Ubuntu_GitHub
 Ubuntu_GitHub.pub

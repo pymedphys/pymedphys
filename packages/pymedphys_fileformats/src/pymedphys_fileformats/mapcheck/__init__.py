@@ -27,12 +27,4 @@
 """
 """
 
-# pylint: disable=W0401,W0614,C0103,C0413
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.mapcheck_txt import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.mapcheck_txt'
-], package='pymedphys_fileformats.mapcheck')
+from .core import read_mapcheck_txt
