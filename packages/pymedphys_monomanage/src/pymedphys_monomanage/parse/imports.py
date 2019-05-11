@@ -24,7 +24,7 @@ CONVERSIONS = {
 
 
 
-def get_imports(filepath, internal_packages):
+def get_imports(filepath, internal_packages, depth):
     with open(filepath, 'r') as file:
         data = file.read()
 
@@ -67,10 +67,16 @@ def get_imports(filepath, internal_packages):
             name = get_base_converted_module(an_import.module)
             if an_import.level == 0:
                 add_level_0(name)
-            elif an_import.level == 1:
+            elif an_import.level == 1 and depth == 2:
                 internal_file_imports.add(name)
-            else:
+            elif (
+                    (an_import.level == 1 and depth == 1) or
+                    (an_import.level == 2 and depth == 2)):
                 internal_module_imports.add(name)
+            else:
+                raise ValueError(
+                    "Unexpected depth and import level of relative "
+                    "import")
 
         else:
             raise TypeError("Unexpected import type")

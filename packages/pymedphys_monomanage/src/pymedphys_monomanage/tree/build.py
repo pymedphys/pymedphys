@@ -53,15 +53,18 @@ class PackageTree:
 
     def build_directory_digraph(self):
         digraph = nx.DiGraph()
+        depth = {}
 
         for root, dirs, files in os.walk(self._directory, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude_dirs]
 
             if '__init__.py' in files:
                 module = self.trim_path(os.path.join(root, '__init__.py'))
+                current_depth = module.count(os.sep) + 1
                 files[:] = [f for f in files if f not in self.exclude_files]
 
                 digraph.add_node(module)
+                depth[module] = current_depth
                 parent_init = os.path.join(os.path.dirname(root), '__init__.py')
                 if os.path.exists(parent_init):
                     digraph.add_edge(self.trim_path(parent_init), module)
@@ -70,19 +73,22 @@ class PackageTree:
                     if f.endswith('.py'):
                         filepath = self.trim_path(os.path.join(root, f))
                         digraph.add_node(filepath)
+                        depth[filepath] = current_depth
                         digraph.add_edge(module, filepath)
 
         if not digraph.nodes:
             raise ValueError('Directory provided does not contain modules')
 
         self.digraph = digraph
+        self.depth = depth
         self.calc_properties()
 
 
     def calc_properties(self):
         self.roots = [n for n, d in self.digraph.in_degree() if d == 0]
         self.imports = {
-            filepath: get_imports(self.expand_path(filepath), self.roots)
+            filepath: get_imports(
+                self.expand_path(filepath), self.roots, self.depth[filepath])
             for filepath in self.digraph.nodes()
         }
         self._cache = {}
