@@ -61,6 +61,14 @@
         "pymedphys_logfiles",
         "pymedphys_utilities",
         "pymedphys_xlwings"
+      ],
+      "stdlib": [
+        "argparse",
+        "glob",
+        "os",
+        "re",
+        "subprocess",
+        "sys"
       ]
     },
     "pymedphys_analysis": {
@@ -74,13 +82,21 @@
         "pymedphys_coordsandscales",
         "pymedphys_dicom",
         "pymedphys_utilities"
+      ],
+      "stdlib": [
+        "dataclasses",
+        "sys",
+        "typing"
       ]
     },
     "pymedphys_coordsandscales": {
       "external": [
         "numpy"
       ],
-      "internal": []
+      "internal": [],
+      "stdlib": [
+        "collections"
+      ]
     },
     "pymedphys_databases": {
       "external": [
@@ -92,6 +108,12 @@
       ],
       "internal": [
         "pymedphys_coordsandscales"
+      ],
+      "stdlib": [
+        "contextlib",
+        "datetime",
+        "getpass",
+        "struct"
       ]
     },
     "pymedphys_dicom": {
@@ -101,7 +123,17 @@
         "packaging",
         "pydicom"
       ],
-      "internal": []
+      "internal": [],
+      "stdlib": [
+        "collections",
+        "copy",
+        "functools",
+        "glob",
+        "operator",
+        "os",
+        "re",
+        "warnings"
+      ]
     },
     "pymedphys_electronfactors": {
       "external": [
@@ -110,7 +142,8 @@
         "scipy",
         "shapely"
       ],
-      "internal": []
+      "internal": [],
+      "stdlib": []
     },
     "pymedphys_fileformats": {
       "external": [
@@ -119,6 +152,15 @@
       ],
       "internal": [
         "pymedphys_coordsandscales"
+      ],
+      "stdlib": [
+        "collections",
+        "csv",
+        "glob",
+        "json",
+        "os",
+        "re",
+        "typing"
       ]
     },
     "pymedphys_labs": {
@@ -131,6 +173,14 @@
       ],
       "internal": [
         "pymedphys_utilities"
+      ],
+      "stdlib": [
+        "collections",
+        "copy",
+        "csv",
+        "os",
+        "string",
+        "typing"
       ]
     },
     "pymedphys_logfiles": {
@@ -147,6 +197,16 @@
         "pymedphys_databases",
         "pymedphys_fileformats",
         "pymedphys_utilities"
+      ],
+      "stdlib": [
+        "datetime",
+        "glob",
+        "json",
+        "os",
+        "pathlib",
+        "shutil",
+        "traceback",
+        "zipfile"
       ]
     },
     "pymedphys_monomanage": {
@@ -155,11 +215,25 @@
         "semver",
         "stdlib_list"
       ],
-      "internal": []
+      "internal": [],
+      "stdlib": [
+        "ast",
+        "copy",
+        "difflib",
+        "glob",
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "textwrap"
+      ]
     },
     "pymedphys_sphinxtheme": {
       "external": [],
-      "internal": []
+      "internal": [],
+      "stdlib": [
+        "os"
+      ]
     },
     "pymedphys_toolbox": {
       "external": [
@@ -169,15 +243,27 @@
       "internal": [
         "pymedphys_analysis",
         "pymedphys_databases"
+      ],
+      "stdlib": [
+        "itertools"
       ]
     },
     "pymedphys_utilities": {
       "external": [],
-      "internal": []
+      "internal": [],
+      "stdlib": [
+        "glob",
+        "hashlib",
+        "json",
+        "lzma",
+        "os",
+        "string"
+      ]
     },
     "pymedphys_workshops": {
       "external": [],
-      "internal": []
+      "internal": [],
+      "stdlib": []
     },
     "pymedphys_xlwings": {
       "external": [
@@ -190,6 +276,9 @@
         "pymedphys_dicom",
         "pymedphys_fileformats",
         "pymedphys_utilities"
+      ],
+      "stdlib": [
+        "os"
       ]
     }
   }

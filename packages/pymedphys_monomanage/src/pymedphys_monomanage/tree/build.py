@@ -118,7 +118,7 @@ def get_imports(filepath, internal_packages):
         'far_relative': far_relative_imports}
 
 
-def build_tree():
+def build_tree(keys_to_keep={'stdlib', 'internal', 'external'}):
     dirtree = create_directory_digraph()
 
     package_roots = [n for n, d in dirtree.in_degree() if d == 0]
@@ -132,8 +132,6 @@ def build_tree():
         filepath: get_imports(filepath, internal_packages)
         for filepath in dirtree.nodes()
     }
-
-    keys_to_keep = {'internal', 'external'}
 
     def get_descendants_dependencies(filepath):
         dependencies = {}

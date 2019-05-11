@@ -26,15 +26,17 @@ assert set(internal_packages) == set(npm_pins['internal'].keys())
 for package, dependency_store in tree.items():
     install_requires = []
 
+    keys_to_keep = {'internal', 'external'}
     for where, dependencies in dependency_store.items():
-        for dependency in dependencies:
-            try:
-                pin = " " + pypi_pins[where][dependency]
-            except KeyError:
-                pin = ""
+        if where in keys_to_keep:
+            for dependency in dependencies:
+                try:
+                    pin = " " + pypi_pins[where][dependency]
+                except KeyError:
+                    pin = ""
 
-            requirement_string = dependency + pin
-            install_requires.append(requirement_string)
+                requirement_string = dependency + pin
+                install_requires.append(requirement_string)
 
     install_requires.sort()
 
