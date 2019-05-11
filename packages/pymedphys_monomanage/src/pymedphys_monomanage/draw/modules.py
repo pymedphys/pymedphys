@@ -83,10 +83,10 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
                              dependents, save_directory):
     print(graphed_package)
 
-    current_modules = [
+    current_modules = sorted([
         item.replace(os.sep, '.')
         for item in package_tree.digraph.neighbors(graphed_package)
-    ]
+    ])
 
     outfilepath = os.path.join(
         save_directory, "{}.svg".format(graphed_package.replace(os.sep, '.')))
@@ -111,7 +111,7 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
             for item in
             package_tree.descendants_dependencies(module)['internal_module']
         ]
-        for module in package_tree.digraph.neighbors(graphed_package)
+        for module in sorted(list(package_tree.digraph.neighbors(graphed_package)))
     }
 
     dag = nx.DiGraph()
@@ -139,7 +139,7 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
 
     for level in range(max(levels.keys()) + 1):
         if levels[level]:
-            grouped_packages = '"; "'.join(levels[level])
+            grouped_packages = '"; "'.join(sorted(list(levels[level])))
             nodes += """
             {{ rank = same; "{}"; }}
             """.format(grouped_packages)
@@ -195,8 +195,6 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
     dot_file_contents = """
         strict digraph  {{
             rankdir = LR;
-            {}
-            {}
             subgraph cluster_0 {{
                 {}
                 label = "{}";
@@ -204,9 +202,11 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
                 {}
             }}
             {}
+            {}
+            {}
         }}
     """.format(
-        external_labels, external_ranks, current_packages, graphed_package,
-        nodes, edges)
+        current_packages, graphed_package,
+        nodes, external_labels, external_ranks, edges)
 
     save_dot_file(dot_file_contents, outfilepath)

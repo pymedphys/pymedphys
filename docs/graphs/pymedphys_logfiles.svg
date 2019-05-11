@@ -20,29 +20,29 @@
 <ellipse fill="none" stroke="#000000" cx="268.4343" cy="-288" rx="65.7887" ry="18"/>
 <text text-anchor="middle" x="268.4343" y="-284.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.utilities</text>
 </g>
-<!-- pymedphys_utilities.filehash -->
-<g id="node2" class="node">
-<title>pymedphys_utilities.filehash</title>
-<ellipse fill="none" stroke="#000000" cx="268.4343" cy="-234" rx="67.6881" ry="18"/>
-<text text-anchor="middle" x="268.4343" y="-230.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.filehash</text>
-</g>
-<!-- pymedphys_analysis.mudensity -->
-<g id="node3" class="node">
-<title>pymedphys_analysis.mudensity</title>
-<ellipse fill="none" stroke="#000000" cx="268.4343" cy="-180" rx="78.7863" ry="18"/>
-<text text-anchor="middle" x="268.4343" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.mudensity</text>
-</g>
 <!-- pymedphys_fileformats.trf -->
-<g id="node4" class="node">
+<g id="node2" class="node">
 <title>pymedphys_fileformats.trf</title>
-<ellipse fill="none" stroke="#000000" cx="268.4343" cy="-126" rx="60.3893" ry="18"/>
-<text text-anchor="middle" x="268.4343" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">fileformats.trf</text>
+<ellipse fill="none" stroke="#000000" cx="268.4343" cy="-234" rx="60.3893" ry="18"/>
+<text text-anchor="middle" x="268.4343" y="-230.3" font-family="Times,serif" font-size="14.00" fill="#000000">fileformats.trf</text>
 </g>
 <!-- pymedphys_coordsandscales.deliverydata -->
-<g id="node5" class="node">
+<g id="node3" class="node">
 <title>pymedphys_coordsandscales.deliverydata</title>
-<ellipse fill="none" stroke="#000000" cx="268.4343" cy="-72" rx="113.9803" ry="18"/>
-<text text-anchor="middle" x="268.4343" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
+<ellipse fill="none" stroke="#000000" cx="268.4343" cy="-180" rx="113.9803" ry="18"/>
+<text text-anchor="middle" x="268.4343" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
+</g>
+<!-- pymedphys_analysis.mudensity -->
+<g id="node4" class="node">
+<title>pymedphys_analysis.mudensity</title>
+<ellipse fill="none" stroke="#000000" cx="268.4343" cy="-126" rx="78.7863" ry="18"/>
+<text text-anchor="middle" x="268.4343" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.mudensity</text>
+</g>
+<!-- pymedphys_utilities.filehash -->
+<g id="node5" class="node">
+<title>pymedphys_utilities.filehash</title>
+<ellipse fill="none" stroke="#000000" cx="268.4343" cy="-72" rx="67.6881" ry="18"/>
+<text text-anchor="middle" x="268.4343" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.filehash</text>
 </g>
 <!-- pymedphys_databases.msq -->
 <g id="node6" class="node">
@@ -62,29 +62,29 @@
 <path fill="none" stroke="#000000" d="M72.5796,-170.1887C87.1884,-194.3548 117.1234,-237.9879 154.6943,-261 167.7556,-269 183.0008,-274.6297 198.0071,-278.5914"/>
 <polygon fill="#000000" stroke="#000000" points="197.2659,-282.013 207.8085,-280.962 198.9116,-275.2092 197.2659,-282.013"/>
 </g>
-<!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.filehash -->
-<g id="edge2" class="edge">
-<title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.filehash</title>
-<path fill="none" stroke="#000000" d="M82.7356,-167.0633C100.7576,-179.2161 128.4362,-196.4425 154.6943,-207 169.5232,-212.9621 185.9918,-217.8111 201.6882,-221.6676"/>
-<polygon fill="#000000" stroke="#000000" points="201.3308,-225.179 211.8664,-224.0603 202.9327,-218.3647 201.3308,-225.179"/>
-</g>
-<!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge3" class="edge">
-<title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity</title>
-<path fill="none" stroke="#000000" d="M94.0714,-157.1007C119.4191,-160.4297 156.2931,-165.2724 189.6095,-169.6479"/>
-<polygon fill="#000000" stroke="#000000" points="189.4476,-173.1566 199.8182,-170.9886 190.3591,-166.2162 189.4476,-173.1566"/>
-</g>
 <!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_fileformats.trf -->
-<g id="edge4" class="edge">
+<g id="edge2" class="edge">
 <title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_fileformats.trf</title>
-<path fill="none" stroke="#000000" d="M94.0714,-148.8993C122.8206,-145.1236 166.397,-139.4007 202.7933,-134.6207"/>
-<polygon fill="#000000" stroke="#000000" points="203.3912,-138.0723 212.8502,-133.2999 202.4796,-131.1319 203.3912,-138.0723"/>
+<path fill="none" stroke="#000000" d="M82.7356,-167.0633C100.7576,-179.2161 128.4362,-196.4425 154.6943,-207 170.9075,-213.5187 189.0809,-218.7068 206.0619,-222.7218"/>
+<polygon fill="#000000" stroke="#000000" points="205.3721,-226.1542 215.8985,-224.9515 206.9196,-219.3274 205.3721,-226.1542"/>
 </g>
 <!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_coordsandscales.deliverydata -->
-<g id="edge5" class="edge">
+<g id="edge3" class="edge">
 <title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_coordsandscales.deliverydata</title>
-<path fill="none" stroke="#000000" d="M82.7356,-138.9367C100.7576,-126.7839 128.4362,-109.5575 154.6943,-99 164.5699,-95.0294 175.1728,-91.5525 185.7905,-88.5336"/>
-<polygon fill="#000000" stroke="#000000" points="186.7926,-91.8883 195.5252,-85.889 184.9573,-85.1332 186.7926,-91.8883"/>
+<path fill="none" stroke="#000000" d="M94.0714,-157.1007C114.6803,-159.8073 142.9084,-163.5145 170.6491,-167.1578"/>
+<polygon fill="#000000" stroke="#000000" points="170.4616,-170.6631 180.8322,-168.4951 171.3732,-163.7227 170.4616,-170.6631"/>
+</g>
+<!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity -->
+<g id="edge4" class="edge">
+<title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity</title>
+<path fill="none" stroke="#000000" d="M94.0714,-148.8993C119.4191,-145.5703 156.2931,-140.7276 189.6095,-136.3521"/>
+<polygon fill="#000000" stroke="#000000" points="190.3591,-139.7838 199.8182,-135.0114 189.4476,-132.8434 190.3591,-139.7838"/>
+</g>
+<!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.filehash -->
+<g id="edge5" class="edge">
+<title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.filehash</title>
+<path fill="none" stroke="#000000" d="M82.7356,-138.9367C100.7576,-126.7839 128.4362,-109.5575 154.6943,-99 169.5232,-93.0379 185.9918,-88.1889 201.6882,-84.3324"/>
+<polygon fill="#000000" stroke="#000000" points="202.9327,-87.6353 211.8664,-81.9397 201.3308,-80.821 202.9327,-87.6353"/>
 </g>
 <!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_databases.msq -->
 <g id="edge6" class="edge">

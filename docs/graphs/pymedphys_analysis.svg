@@ -27,7 +27,7 @@
 <text text-anchor="middle" x="255.6805" y="-114.3" font-family="Times,serif" font-size="14.00" fill="#000000">mudensity</text>
 </g>
 <!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge1" class="edge">
+<g id="edge6" class="edge">
 <title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity</title>
 <path fill="none" stroke="#000000" d="M139.5461,-136.457C159.2479,-133.3258 181.5494,-129.7815 201.3054,-126.6417"/>
 <polygon fill="#000000" stroke="#000000" points="202.0505,-130.0673 211.3771,-125.0411 200.9517,-123.1541 202.0505,-130.0673"/>
@@ -39,28 +39,28 @@
 <text text-anchor="middle" x="85.7924" y="-87.3" font-family="Times,serif" font-size="14.00" fill="#000000">toolbox.plancompare</text>
 </g>
 <!-- pymedphys_toolbox.plancompare&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge3" class="edge">
+<g id="edge7" class="edge">
 <title>pymedphys_toolbox.plancompare&#45;&gt;pymedphys_analysis.mudensity</title>
 <path fill="none" stroke="#000000" d="M154.4027,-101.9041C169.9659,-104.3775 186.2894,-106.9718 201.1756,-109.3376"/>
 <polygon fill="#000000" stroke="#000000" points="200.7993,-112.8217 211.2247,-110.9347 201.8981,-105.9084 200.7993,-112.8217"/>
 </g>
-<!-- pymedphys_dicom.dicom -->
-<g id="node3" class="node">
-<title>pymedphys_dicom.dicom</title>
-<ellipse fill="none" stroke="#000000" cx="577.9083" cy="-199" rx="57.6901" ry="18"/>
-<text text-anchor="middle" x="577.9083" y="-195.3" font-family="Times,serif" font-size="14.00" fill="#000000">dicom.dicom</text>
-</g>
 <!-- pymedphys_utilities.constants -->
-<g id="node4" class="node">
+<g id="node3" class="node">
 <title>pymedphys_utilities.constants</title>
 <ellipse fill="none" stroke="#000000" cx="577.9083" cy="-72" rx="72.2875" ry="18"/>
 <text text-anchor="middle" x="577.9083" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.constants</text>
 </g>
 <!-- pymedphys_coordsandscales.deliverydata -->
-<g id="node5" class="node">
+<g id="node4" class="node">
 <title>pymedphys_coordsandscales.deliverydata</title>
 <ellipse fill="none" stroke="#000000" cx="577.9083" cy="-18" rx="113.9803" ry="18"/>
 <text text-anchor="middle" x="577.9083" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
+</g>
+<!-- pymedphys_dicom.dicom -->
+<g id="node5" class="node">
+<title>pymedphys_dicom.dicom</title>
+<ellipse fill="none" stroke="#000000" cx="577.9083" cy="-199" rx="57.6901" ry="18"/>
+<text text-anchor="middle" x="577.9083" y="-195.3" font-family="Times,serif" font-size="14.00" fill="#000000">dicom.dicom</text>
 </g>
 <!-- pymedphys_analysis.gamma -->
 <g id="node6" class="node">
@@ -69,43 +69,43 @@
 <text text-anchor="middle" x="383.9723" y="-222.3" font-family="Times,serif" font-size="14.00" fill="#000000">gamma</text>
 </g>
 <!-- pymedphys_analysis.gamma&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge2" class="edge">
+<g id="edge1" class="edge">
 <title>pymedphys_analysis.gamma&#45;&gt;pymedphys_dicom.dicom</title>
 <path fill="none" stroke="#000000" d="M420.4502,-220.9215C446.9845,-217.2274 483.5802,-212.1325 514.8135,-207.7841"/>
 <polygon fill="#000000" stroke="#000000" points="515.3243,-211.2469 524.7461,-206.4013 514.359,-204.3137 515.3243,-211.2469"/>
 </g>
-<!-- pymedphys_analysis.plt -->
-<g id="node7" class="node">
-<title>pymedphys_analysis.plt</title>
-<ellipse fill="none" stroke="#000000" cx="383.9723" cy="-118" rx="27" ry="18"/>
-<text text-anchor="middle" x="383.9723" y="-114.3" font-family="Times,serif" font-size="14.00" fill="#000000">plt</text>
-</g>
 <!-- pymedphys_analysis.geometry -->
-<g id="node8" class="node">
+<g id="node7" class="node">
 <title>pymedphys_analysis.geometry</title>
 <ellipse fill="none" stroke="#000000" cx="383.9723" cy="-172" rx="44.393" ry="18"/>
 <text text-anchor="middle" x="383.9723" y="-168.3" font-family="Times,serif" font-size="14.00" fill="#000000">geometry</text>
 </g>
 <!-- pymedphys_analysis.geometry&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge4" class="edge">
+<g id="edge2" class="edge">
 <title>pymedphys_analysis.geometry&#45;&gt;pymedphys_dicom.dicom</title>
 <path fill="none" stroke="#000000" d="M426.0535,-177.8586C451.9633,-181.4658 485.6686,-186.1583 514.7407,-190.2057"/>
 <polygon fill="#000000" stroke="#000000" points="514.4232,-193.6952 524.8103,-191.6076 515.3885,-186.7621 514.4232,-193.6952"/>
 </g>
+<!-- pymedphys_analysis.plt -->
+<g id="node8" class="node">
+<title>pymedphys_analysis.plt</title>
+<ellipse fill="none" stroke="#000000" cx="383.9723" cy="-118" rx="27" ry="18"/>
+<text text-anchor="middle" x="383.9723" y="-114.3" font-family="Times,serif" font-size="14.00" fill="#000000">plt</text>
+</g>
 <!-- pymedphys_analysis.mudensity&#45;&gt;pymedphys_utilities.constants -->
-<g id="edge5" class="edge">
+<g id="edge4" class="edge">
 <title>pymedphys_analysis.mudensity&#45;&gt;pymedphys_utilities.constants</title>
 <path fill="none" stroke="#000000" d="M289.5787,-105.143C304.7257,-99.9144 322.9281,-94.3302 339.7762,-91 391.0302,-80.8692 449.5041,-76.1081 495.6816,-73.885"/>
 <polygon fill="#000000" stroke="#000000" points="496.107,-77.3695 505.9393,-73.423 495.7919,-70.3766 496.107,-77.3695"/>
 </g>
 <!-- pymedphys_analysis.mudensity&#45;&gt;pymedphys_coordsandscales.deliverydata -->
-<g id="edge7" class="edge">
+<g id="edge5" class="edge">
 <title>pymedphys_analysis.mudensity&#45;&gt;pymedphys_coordsandscales.deliverydata</title>
 <path fill="none" stroke="#000000" d="M281.0428,-102.5853C297.3427,-93.2258 319.239,-81.6485 339.7762,-74 388.2571,-55.9448 444.5169,-42.3929 490.1761,-33.1465"/>
 <polygon fill="#000000" stroke="#000000" points="490.9245,-36.5663 500.0484,-31.1806 489.5573,-29.7011 490.9245,-36.5663"/>
 </g>
 <!-- pymedphys_analysis.mudensity&#45;&gt;pymedphys_analysis.plt -->
-<g id="edge6" class="edge">
+<g id="edge3" class="edge">
 <title>pymedphys_analysis.mudensity&#45;&gt;pymedphys_analysis.plt</title>
 <path fill="none" stroke="#000000" d="M303.8166,-118C317.9545,-118 333.2008,-118 346.5621,-118"/>
 <polygon fill="#000000" stroke="#000000" points="346.8164,-121.5001 356.8164,-118 346.8164,-114.5001 346.8164,-121.5001"/>

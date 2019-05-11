@@ -14,17 +14,17 @@
 <polygon fill="none" stroke="#000000" stroke-dasharray="5,2" points="8,-19 8,-94 137.09,-94 137.09,-19 8,-19"/>
 <text text-anchor="middle" x="72.545" y="-78.8" font-family="Times,serif" font-size="14.00" fill="#000000">pymedphys_toolbox</text>
 </g>
-<!-- pymedphys_databases.msq -->
-<g id="node1" class="node">
-<title>pymedphys_databases.msq</title>
-<ellipse fill="none" stroke="#000000" cx="243.733" cy="-72" rx="61.99" ry="18"/>
-<text text-anchor="middle" x="243.733" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">databases.msq</text>
-</g>
 <!-- pymedphys_analysis.mudensity -->
-<g id="node2" class="node">
+<g id="node1" class="node">
 <title>pymedphys_analysis.mudensity</title>
-<ellipse fill="none" stroke="#000000" cx="243.733" cy="-18" rx="78.7863" ry="18"/>
-<text text-anchor="middle" x="243.733" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.mudensity</text>
+<ellipse fill="none" stroke="#000000" cx="243.733" cy="-72" rx="78.7863" ry="18"/>
+<text text-anchor="middle" x="243.733" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.mudensity</text>
+</g>
+<!-- pymedphys_databases.msq -->
+<g id="node2" class="node">
+<title>pymedphys_databases.msq</title>
+<ellipse fill="none" stroke="#000000" cx="243.733" cy="-18" rx="61.99" ry="18"/>
+<text text-anchor="middle" x="243.733" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">databases.msq</text>
 </g>
 <!-- pymedphys_toolbox.plancompare -->
 <g id="node3" class="node">
@@ -32,17 +32,17 @@
 <ellipse fill="none" stroke="#000000" cx="72.545" cy="-45" rx="56.59" ry="18"/>
 <text text-anchor="middle" x="72.545" y="-41.3" font-family="Times,serif" font-size="14.00" fill="#000000">plancompare</text>
 </g>
-<!-- pymedphys_toolbox.plancompare&#45;&gt;pymedphys_databases.msq -->
-<g id="edge1" class="edge">
-<title>pymedphys_toolbox.plancompare&#45;&gt;pymedphys_databases.msq</title>
-<path fill="none" stroke="#000000" d="M123.4435,-53.0278C140.9067,-55.7821 160.6893,-58.9022 179.0945,-61.8051"/>
-<polygon fill="#000000" stroke="#000000" points="178.7312,-65.291 189.1544,-63.3918 179.8218,-58.3765 178.7312,-65.291"/>
-</g>
 <!-- pymedphys_toolbox.plancompare&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge2" class="edge">
+<g id="edge1" class="edge">
 <title>pymedphys_toolbox.plancompare&#45;&gt;pymedphys_analysis.mudensity</title>
-<path fill="none" stroke="#000000" d="M123.4435,-36.9722C137.6728,-34.728 153.442,-32.2408 168.7512,-29.8262"/>
-<polygon fill="#000000" stroke="#000000" points="169.3917,-33.2686 178.7243,-28.2533 168.3011,-26.354 169.3917,-33.2686"/>
+<path fill="none" stroke="#000000" d="M123.4435,-53.0278C137.6728,-55.272 153.442,-57.7592 168.7512,-60.1738"/>
+<polygon fill="#000000" stroke="#000000" points="168.3011,-63.646 178.7243,-61.7467 169.3917,-56.7314 168.3011,-63.646"/>
+</g>
+<!-- pymedphys_toolbox.plancompare&#45;&gt;pymedphys_databases.msq -->
+<g id="edge2" class="edge">
+<title>pymedphys_toolbox.plancompare&#45;&gt;pymedphys_databases.msq</title>
+<path fill="none" stroke="#000000" d="M123.4435,-36.9722C140.9067,-34.2179 160.6893,-31.0978 179.0945,-28.1949"/>
+<polygon fill="#000000" stroke="#000000" points="179.8218,-31.6235 189.1544,-26.6082 178.7312,-24.709 179.8218,-31.6235"/>
 </g>
 </g>
 </svg>

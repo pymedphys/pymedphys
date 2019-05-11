@@ -17,62 +17,62 @@
 <!-- pymedphys_xlwings.xlwings -->
 <g id="node1" class="node">
 <title>pymedphys_xlwings.xlwings</title>
-<ellipse fill="none" stroke="#000000" cx="68.8939" cy="-196" rx="68.7879" ry="18"/>
-<text text-anchor="middle" x="68.8939" y="-192.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.xlwings</text>
+<ellipse fill="none" stroke="#000000" cx="68.8939" cy="-142" rx="68.7879" ry="18"/>
+<text text-anchor="middle" x="68.8939" y="-138.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.xlwings</text>
 </g>
 <!-- pymedphys_fileformats.mephysto -->
-<g id="node6" class="node">
+<g id="node5" class="node">
 <title>pymedphys_fileformats.mephysto</title>
-<ellipse fill="none" stroke="#000000" cx="238.5836" cy="-196" rx="45.4919" ry="18"/>
-<text text-anchor="middle" x="238.5836" y="-192.3" font-family="Times,serif" font-size="14.00" fill="#000000">mephysto</text>
+<ellipse fill="none" stroke="#000000" cx="238.5836" cy="-142" rx="45.4919" ry="18"/>
+<text text-anchor="middle" x="238.5836" y="-138.3" font-family="Times,serif" font-size="14.00" fill="#000000">mephysto</text>
 </g>
 <!-- pymedphys_xlwings.xlwings&#45;&gt;pymedphys_fileformats.mephysto -->
-<g id="edge1" class="edge">
+<g id="edge2" class="edge">
 <title>pymedphys_xlwings.xlwings&#45;&gt;pymedphys_fileformats.mephysto</title>
-<path fill="none" stroke="#000000" d="M137.9132,-196C152.828,-196 168.4192,-196 182.7541,-196"/>
-<polygon fill="#000000" stroke="#000000" points="182.9425,-199.5001 192.9425,-196 182.9425,-192.5001 182.9425,-199.5001"/>
+<path fill="none" stroke="#000000" d="M137.9132,-142C152.828,-142 168.4192,-142 182.7541,-142"/>
+<polygon fill="#000000" stroke="#000000" points="182.9425,-145.5001 192.9425,-142 182.9425,-138.5001 182.9425,-145.5001"/>
 </g>
 <!-- pymedphys_logfiles.elekta -->
 <g id="node2" class="node">
 <title>pymedphys_logfiles.elekta</title>
-<ellipse fill="none" stroke="#000000" cx="68.8939" cy="-88" rx="60.3893" ry="18"/>
-<text text-anchor="middle" x="68.8939" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta</text>
+<ellipse fill="none" stroke="#000000" cx="68.8939" cy="-34" rx="60.3893" ry="18"/>
+<text text-anchor="middle" x="68.8939" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta</text>
 </g>
 <!-- pymedphys_fileformats.trf -->
-<g id="node4" class="node">
+<g id="node7" class="node">
 <title>pymedphys_fileformats.trf</title>
-<ellipse fill="none" stroke="#000000" cx="238.5836" cy="-88" rx="27" ry="18"/>
-<text text-anchor="middle" x="238.5836" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">trf</text>
+<ellipse fill="none" stroke="#000000" cx="238.5836" cy="-34" rx="27" ry="18"/>
+<text text-anchor="middle" x="238.5836" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">trf</text>
 </g>
 <!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_fileformats.trf -->
 <g id="edge3" class="edge">
 <title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_fileformats.trf</title>
-<path fill="none" stroke="#000000" d="M129.6765,-88C153.5946,-88 180.294,-88 201.2706,-88"/>
-<polygon fill="#000000" stroke="#000000" points="201.3715,-91.5001 211.3715,-88 201.3715,-84.5001 201.3715,-91.5001"/>
+<path fill="none" stroke="#000000" d="M129.6765,-34C153.5946,-34 180.294,-34 201.2706,-34"/>
+<polygon fill="#000000" stroke="#000000" points="201.3715,-37.5001 211.3715,-34 201.3715,-30.5001 201.3715,-37.5001"/>
 </g>
 <!-- pymedphys_coordsandscales.deliverydata -->
 <g id="node3" class="node">
 <title>pymedphys_coordsandscales.deliverydata</title>
-<ellipse fill="none" stroke="#000000" cx="453.1194" cy="-88" rx="113.9803" ry="18"/>
-<text text-anchor="middle" x="453.1194" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
-</g>
-<!-- pymedphys_fileformats.trf&#45;&gt;pymedphys_coordsandscales.deliverydata -->
-<g id="edge2" class="edge">
-<title>pymedphys_fileformats.trf&#45;&gt;pymedphys_coordsandscales.deliverydata</title>
-<path fill="none" stroke="#000000" d="M265.7547,-88C282.4278,-88 305.0991,-88 328.9131,-88"/>
-<polygon fill="#000000" stroke="#000000" points="329.1749,-91.5001 339.1748,-88 329.1748,-84.5001 329.1749,-91.5001"/>
+<ellipse fill="none" stroke="#000000" cx="453.1194" cy="-34" rx="113.9803" ry="18"/>
+<text text-anchor="middle" x="453.1194" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
 </g>
 <!-- pymedphys_fileformats.mapcheck -->
-<g id="node5" class="node">
+<g id="node4" class="node">
 <title>pymedphys_fileformats.mapcheck</title>
-<ellipse fill="none" stroke="#000000" cx="238.5836" cy="-142" rx="46.5926" ry="18"/>
-<text text-anchor="middle" x="238.5836" y="-138.3" font-family="Times,serif" font-size="14.00" fill="#000000">mapcheck</text>
+<ellipse fill="none" stroke="#000000" cx="238.5836" cy="-196" rx="46.5926" ry="18"/>
+<text text-anchor="middle" x="238.5836" y="-192.3" font-family="Times,serif" font-size="14.00" fill="#000000">mapcheck</text>
 </g>
 <!-- pymedphys_fileformats.profiler -->
-<g id="node7" class="node">
+<g id="node6" class="node">
 <title>pymedphys_fileformats.profiler</title>
-<ellipse fill="none" stroke="#000000" cx="238.5836" cy="-34" rx="37.0935" ry="18"/>
-<text text-anchor="middle" x="238.5836" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">profiler</text>
+<ellipse fill="none" stroke="#000000" cx="238.5836" cy="-88" rx="37.0935" ry="18"/>
+<text text-anchor="middle" x="238.5836" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">profiler</text>
+</g>
+<!-- pymedphys_fileformats.trf&#45;&gt;pymedphys_coordsandscales.deliverydata -->
+<g id="edge1" class="edge">
+<title>pymedphys_fileformats.trf&#45;&gt;pymedphys_coordsandscales.deliverydata</title>
+<path fill="none" stroke="#000000" d="M265.7547,-34C282.4278,-34 305.0991,-34 328.9131,-34"/>
+<polygon fill="#000000" stroke="#000000" points="329.1749,-37.5001 339.1748,-34 329.1748,-30.5001 329.1749,-37.5001"/>
 </g>
 </g>
 </svg>

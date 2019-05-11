@@ -33,7 +33,7 @@
 <text text-anchor="middle" x="136.1949" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">tree</text>
 </g>
 <!-- pymedphys_monomanage.tree&#45;&gt;pymedphys_monomanage.parse -->
-<g id="edge1" class="edge">
+<g id="edge2" class="edge">
 <title>pymedphys_monomanage.tree&#45;&gt;pymedphys_monomanage.parse</title>
 <path fill="none" stroke="#000000" d="M163.2932,-34C175.8972,-34 191.1357,-34 205.0034,-34"/>
 <polygon fill="#000000" stroke="#000000" points="205.2745,-37.5001 215.2744,-34 205.2744,-30.5001 205.2745,-37.5001"/>
@@ -45,7 +45,7 @@
 <text text-anchor="middle" x="44.5975" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">draw</text>
 </g>
 <!-- pymedphys_monomanage.draw&#45;&gt;pymedphys_monomanage.tree -->
-<g id="edge2" class="edge">
+<g id="edge1" class="edge">
 <title>pymedphys_monomanage.draw&#45;&gt;pymedphys_monomanage.tree</title>
 <path fill="none" stroke="#000000" d="M73.5795,-34C81.6281,-34 90.4813,-34 98.9325,-34"/>
 <polygon fill="#000000" stroke="#000000" points="98.9607,-37.5001 108.9607,-34 98.9606,-30.5001 98.9607,-37.5001"/>

@@ -14,23 +14,23 @@
 <polygon fill="none" stroke="#000000" stroke-dasharray="5,2" points="0,-8 0,-191 144.4902,-191 144.4902,-8 0,-8"/>
 <text text-anchor="middle" x="72.2451" y="-175.8" font-family="Times,serif" font-size="14.00" fill="#000000">pymedphys_workshops</text>
 </g>
-<!-- pymedphys_workshops.novice -->
-<g id="node1" class="node">
-<title>pymedphys_workshops.novice</title>
-<ellipse fill="none" stroke="#000000" cx="72.2451" cy="-142" rx="34.394" ry="18"/>
-<text text-anchor="middle" x="72.2451" y="-138.3" font-family="Times,serif" font-size="14.00" fill="#000000">novice</text>
-</g>
 <!-- pymedphys_workshops.experienced -->
-<g id="node2" class="node">
+<g id="node1" class="node">
 <title>pymedphys_workshops.experienced</title>
-<ellipse fill="none" stroke="#000000" cx="72.2451" cy="-88" rx="53.0913" ry="18"/>
-<text text-anchor="middle" x="72.2451" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">experienced</text>
+<ellipse fill="none" stroke="#000000" cx="72.2451" cy="-142" rx="53.0913" ry="18"/>
+<text text-anchor="middle" x="72.2451" y="-138.3" font-family="Times,serif" font-size="14.00" fill="#000000">experienced</text>
 </g>
 <!-- pymedphys_workshops.intermediate -->
-<g id="node3" class="node">
+<g id="node2" class="node">
 <title>pymedphys_workshops.intermediate</title>
-<ellipse fill="none" stroke="#000000" cx="72.2451" cy="-34" rx="55.4913" ry="18"/>
-<text text-anchor="middle" x="72.2451" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">intermediate</text>
+<ellipse fill="none" stroke="#000000" cx="72.2451" cy="-88" rx="55.4913" ry="18"/>
+<text text-anchor="middle" x="72.2451" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">intermediate</text>
+</g>
+<!-- pymedphys_workshops.novice -->
+<g id="node3" class="node">
+<title>pymedphys_workshops.novice</title>
+<ellipse fill="none" stroke="#000000" cx="72.2451" cy="-34" rx="34.394" ry="18"/>
+<text text-anchor="middle" x="72.2451" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">novice</text>
 </g>
 </g>
 </svg>
