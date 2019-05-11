@@ -14,33 +14,33 @@
 <polygon fill="none" stroke="#000000" stroke-dasharray="5,2" points="8,-19 8,-94 137.09,-94 137.09,-19 8,-19"/>
 <text text-anchor="middle" x="72.545" y="-78.8" font-family="Times,serif" font-size="14.00" fill="#000000">pymedphys_toolbox</text>
 </g>
-<!-- analysis.mudensity -->
+<!-- pymedphys_analysis.mudensity -->
 <g id="node1" class="node">
-<title>analysis.mudensity</title>
+<title>pymedphys_analysis.mudensity</title>
 <ellipse fill="none" stroke="#000000" cx="243.733" cy="-72" rx="78.7863" ry="18"/>
 <text text-anchor="middle" x="243.733" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.mudensity</text>
 </g>
-<!-- databases.msq -->
+<!-- pymedphys_databases.msq -->
 <g id="node2" class="node">
-<title>databases.msq</title>
+<title>pymedphys_databases.msq</title>
 <ellipse fill="none" stroke="#000000" cx="243.733" cy="-18" rx="61.99" ry="18"/>
 <text text-anchor="middle" x="243.733" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">databases.msq</text>
 </g>
-<!-- plancompare -->
+<!-- pymedphys_toolbox.plancompare -->
 <g id="node3" class="node">
-<title>plancompare</title>
+<title>pymedphys_toolbox.plancompare</title>
 <ellipse fill="none" stroke="#000000" cx="72.545" cy="-45" rx="56.59" ry="18"/>
 <text text-anchor="middle" x="72.545" y="-41.3" font-family="Times,serif" font-size="14.00" fill="#000000">plancompare</text>
 </g>
-<!-- plancompare&#45;&gt;analysis.mudensity -->
+<!-- pymedphys_toolbox.plancompare&#45;&gt;pymedphys_analysis.mudensity -->
 <g id="edge1" class="edge">
-<title>plancompare&#45;&gt;analysis.mudensity</title>
+<title>pymedphys_toolbox.plancompare&#45;&gt;pymedphys_analysis.mudensity</title>
 <path fill="none" stroke="#000000" d="M123.4435,-53.0278C137.6728,-55.272 153.442,-57.7592 168.7512,-60.1738"/>
 <polygon fill="#000000" stroke="#000000" points="168.3011,-63.646 178.7243,-61.7467 169.3917,-56.7314 168.3011,-63.646"/>
 </g>
-<!-- plancompare&#45;&gt;databases.msq -->
+<!-- pymedphys_toolbox.plancompare&#45;&gt;pymedphys_databases.msq -->
 <g id="edge2" class="edge">
-<title>plancompare&#45;&gt;databases.msq</title>
+<title>pymedphys_toolbox.plancompare&#45;&gt;pymedphys_databases.msq</title>
 <path fill="none" stroke="#000000" d="M123.4435,-36.9722C140.9067,-34.2179 160.6893,-31.0978 179.0945,-28.1949"/>
 <polygon fill="#000000" stroke="#000000" points="179.8218,-31.6235 189.1544,-26.6082 178.7312,-24.709 179.8218,-31.6235"/>
 </g>

@@ -29,21 +29,21 @@ def draw_modules(save_directory):
     }
 
     dependencies = {
-        module.replace(os.sep, '.'): [
+        module.replace(os.sep, '.'): {
             '.'.join(item.split('.')[0:2])
             for item in
             package_tree.descendants_dependencies(module)['internal_module'] +
             package_tree.descendants_dependencies(module)['internal_package']
-        ]
+        }
         for module in modules.keys()
     }
 
     dependents = {  # type: ignore
-        key: [] for key in dependencies.keys()
+        key: set() for key in dependencies.keys()
     }
     for key, values in dependencies.items():
         for item in values:
-            dependents[item].append(key)  # type: ignore
+            dependents[item].add(key)  # type: ignore
 
     for package in internal_packages:
         build_graph_for_a_module(
@@ -139,11 +139,7 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
 
     for level in range(max(levels.keys()) + 1):
         if levels[level]:
-            trimmed_nodes = [
-                simplify(node) for node in levels[level]
-            ]
-
-            grouped_packages = '"; "'.join(trimmed_nodes)
+            grouped_packages = '"; "'.join(levels[level])
             nodes += """
             {{ rank = same; "{}"; }}
             """.format(grouped_packages)
@@ -157,20 +153,17 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
 
 
     for module in current_modules:
-        module_repr = simplify(module)
-        current_packages += '"{}";\n'.format(module_repr)
+        current_packages += '"{}";\n'.format(module)
 
         for dependency in sorted(dependencies[module]):
-            simplified = simplify(dependency)
-            edges += '"{}" -> "{}";\n'.format(module_repr, simplified)
+            edges += '"{}" -> "{}";\n'.format(module, dependency)
             if not dependency in current_modules:
-                current_dependencies.add(simplified)
+                current_dependencies.add(dependency)
 
         for dependent in sorted(dependents[module]):
-            simplified = simplify(dependent)
-            edges += '"{}" -> "{}";\n'.format(simplified, module_repr)
+            edges += '"{}" -> "{}";\n'.format(dependent, module)
             if not dependent in current_modules:
-                current_dependents.add(simplified)
+                current_dependents.add(dependent)
 
 
     external_ranks = ""
@@ -182,9 +175,27 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
         grouped_dependencies = '"; "'.join(sorted(current_dependencies))
         external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependencies)
 
+
+    all_nodes = set(module_internal_relationships.keys())
+    for module in current_modules:
+        all_nodes |= dependencies[module]
+        all_nodes |= dependents[module]
+
+
+    label_map = {
+        node: simplify(node)
+        for node in all_nodes
+    }
+
+    external_labels = ""
+    for node, label in label_map.items():
+        external_labels += '"{}" [label="{}"];\n'.format(node, label)
+
+
     dot_file_contents = """
         strict digraph  {{
             rankdir = LR;
+            {}
             {}
             subgraph cluster_0 {{
                 {}
@@ -194,6 +205,8 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
             }}
             {}
         }}
-    """.format(external_ranks, current_packages, graphed_package, nodes, edges)
+    """.format(
+        external_labels, external_ranks, current_packages, graphed_package,
+        nodes, edges)
 
     save_dot_file(dot_file_contents, outfilepath)

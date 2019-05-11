@@ -14,9 +14,9 @@
 <polygon fill="none" stroke="#000000" stroke-dasharray="5,2" points="0,-8 0,-83 166.0888,-83 166.0888,-8 0,-8"/>
 <text text-anchor="middle" x="83.0444" y="-67.8" font-family="Times,serif" font-size="14.00" fill="#000000">pymedphys_electronfactors</text>
 </g>
-<!-- electronfactors -->
+<!-- pymedphys_electronfactors.electronfactors -->
 <g id="node1" class="node">
-<title>electronfactors</title>
+<title>pymedphys_electronfactors.electronfactors</title>
 <ellipse fill="none" stroke="#000000" cx="83.0444" cy="-34" rx="63.0888" ry="18"/>
 <text text-anchor="middle" x="83.0444" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">electronfactors</text>
 </g>

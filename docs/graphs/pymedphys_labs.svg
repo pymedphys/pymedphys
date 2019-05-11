@@ -14,35 +14,35 @@
 <polygon fill="none" stroke="#000000" stroke-dasharray="5,2" points="8,-8 8,-191 156.5882,-191 156.5882,-8 8,-8"/>
 <text text-anchor="middle" x="82.2941" y="-175.8" font-family="Times,serif" font-size="14.00" fill="#000000">pymedphys_labs</text>
 </g>
-<!-- utilities.constants -->
+<!-- pymedphys_utilities.constants -->
 <g id="node1" class="node">
-<title>utilities.constants</title>
-<ellipse fill="none" stroke="#000000" cx="256.7318" cy="-142" rx="72.2875" ry="18"/>
-<text text-anchor="middle" x="256.7318" y="-138.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.constants</text>
+<title>pymedphys_utilities.constants</title>
+<ellipse fill="none" stroke="#000000" cx="256.7318" cy="-34" rx="72.2875" ry="18"/>
+<text text-anchor="middle" x="256.7318" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.constants</text>
 </g>
-<!-- paulking -->
+<!-- pymedphys_labs.simonbiggs -->
 <g id="node2" class="node">
-<title>paulking</title>
-<ellipse fill="none" stroke="#000000" cx="82.2941" cy="-142" rx="41.6928" ry="18"/>
-<text text-anchor="middle" x="82.2941" y="-138.3" font-family="Times,serif" font-size="14.00" fill="#000000">paulking</text>
+<title>pymedphys_labs.simonbiggs</title>
+<ellipse fill="none" stroke="#000000" cx="82.2941" cy="-142" rx="51.9908" ry="18"/>
+<text text-anchor="middle" x="82.2941" y="-138.3" font-family="Times,serif" font-size="14.00" fill="#000000">simonbiggs</text>
 </g>
-<!-- paulking&#45;&gt;utilities.constants -->
-<g id="edge1" class="edge">
-<title>paulking&#45;&gt;utilities.constants</title>
-<path fill="none" stroke="#000000" d="M124.0763,-142C139.1582,-142 156.7549,-142 174.1084,-142"/>
-<polygon fill="#000000" stroke="#000000" points="174.2769,-145.5001 184.2769,-142 174.2768,-138.5001 174.2769,-145.5001"/>
-</g>
-<!-- simonbiggs -->
+<!-- pymedphys_labs.mattsobolewski -->
 <g id="node3" class="node">
-<title>simonbiggs</title>
-<ellipse fill="none" stroke="#000000" cx="82.2941" cy="-88" rx="51.9908" ry="18"/>
-<text text-anchor="middle" x="82.2941" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">simonbiggs</text>
+<title>pymedphys_labs.mattsobolewski</title>
+<ellipse fill="none" stroke="#000000" cx="82.2941" cy="-88" rx="66.0889" ry="18"/>
+<text text-anchor="middle" x="82.2941" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">mattsobolewski</text>
 </g>
-<!-- mattsobolewski -->
+<!-- pymedphys_labs.paulking -->
 <g id="node4" class="node">
-<title>mattsobolewski</title>
-<ellipse fill="none" stroke="#000000" cx="82.2941" cy="-34" rx="66.0889" ry="18"/>
-<text text-anchor="middle" x="82.2941" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">mattsobolewski</text>
+<title>pymedphys_labs.paulking</title>
+<ellipse fill="none" stroke="#000000" cx="82.2941" cy="-34" rx="41.6928" ry="18"/>
+<text text-anchor="middle" x="82.2941" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">paulking</text>
+</g>
+<!-- pymedphys_labs.paulking&#45;&gt;pymedphys_utilities.constants -->
+<g id="edge1" class="edge">
+<title>pymedphys_labs.paulking&#45;&gt;pymedphys_utilities.constants</title>
+<path fill="none" stroke="#000000" d="M124.0763,-34C139.1582,-34 156.7549,-34 174.1084,-34"/>
+<polygon fill="#000000" stroke="#000000" points="174.2769,-37.5001 184.2769,-34 174.2768,-30.5001 174.2769,-37.5001"/>
 </g>
 </g>
 </svg>
