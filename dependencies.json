@@ -224,8 +224,6 @@
         "json",
         "os",
         "shutil",
-        "subprocess",
-        "sys",
         "textwrap"
       ]
     },
