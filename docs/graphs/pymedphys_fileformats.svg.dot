@@ -1,6 +1,5 @@
 
         strict digraph  {
-            graph [ordering="out"];
             rankdir = LR;
             subgraph cluster_0 {
                 "pymedphys_fileformats.mapcheck";
@@ -14,11 +13,11 @@
             { rank = same; "pymedphys_fileformats.mapcheck"; "pymedphys_fileformats.mephysto"; "pymedphys_fileformats.profiler"; "pymedphys_fileformats.trf"; }
             
             }
-            "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
-"pymedphys_fileformats.mapcheck" [label="mapcheck"];
+            "pymedphys_fileformats.mapcheck" [label="mapcheck"];
 "pymedphys_fileformats.mephysto" [label="mephysto"];
 "pymedphys_fileformats.profiler" [label="profiler"];
 "pymedphys_fileformats.trf" [label="trf"];
+"pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
 "pymedphys_logfiles.elekta" [label="logfiles.elekta"];
 "pymedphys_xlwings.xlwings" [label="xlwings.xlwings"];
 

@@ -1,6 +1,5 @@
 
         strict digraph  {
-            graph [ordering="out"];
             rankdir = LR;
             subgraph cluster_0 {
                 "pymedphys_dicom.dicom";
@@ -14,10 +13,10 @@
             { rank = same; "pymedphys_dicom.dicom"; }
             
             }
-            "pymedphys_analysis.gamma" [label="analysis.gamma"];
-"pymedphys_analysis.geometry" [label="analysis.geometry"];
-"pymedphys_dicom.dicom" [label="dicom"];
+            "pymedphys_dicom.dicom" [label="dicom"];
 "pymedphys_dicom.utilities" [label="utilities"];
+"pymedphys_analysis.gamma" [label="analysis.gamma"];
+"pymedphys_analysis.geometry" [label="analysis.geometry"];
 "pymedphys_xlwings.xlwings" [label="xlwings.xlwings"];
 
             { rank = same; "pymedphys_analysis.gamma"; "pymedphys_analysis.geometry"; "pymedphys_xlwings.xlwings"; }

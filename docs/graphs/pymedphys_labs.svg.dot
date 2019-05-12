@@ -1,6 +1,5 @@
 
         strict digraph  {
-            graph [ordering="out"];
             rankdir = LR;
             subgraph cluster_0 {
                 "pymedphys_labs.mattsobolewski";

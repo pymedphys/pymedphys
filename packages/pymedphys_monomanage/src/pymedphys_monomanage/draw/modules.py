@@ -180,12 +180,15 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
         external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependencies)
 
 
-    all_nodes = set(module_internal_relationships.keys())
+    internal_nodes = sorted(list(set(module_internal_relationships.keys())))
+    external_nodes = set()
     for module in current_modules:
-        all_nodes |= dependencies[module]
-        all_nodes |= dependents[module]
+        external_nodes |= dependencies[module]
+        external_nodes |= dependents[module]
 
-    all_nodes = sorted(list(all_nodes))
+    external_nodes = sorted(list(external_nodes))
+
+    all_nodes = internal_nodes + external_nodes
 
     label_map = {
         node: simplify(node)
@@ -199,7 +202,6 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
 
     dot_file_contents = """
         strict digraph  {{
-            graph [ordering="out"];
             rankdir = LR;
             subgraph cluster_0 {{
                 {}
