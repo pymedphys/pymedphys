@@ -157,29 +157,29 @@
 <path fill="none" stroke="#000000" d="M155.3819,-170.2002C166.6866,-166.6188 178.1702,-162.2519 188.4833,-157 204.7391,-148.7218 220.919,-136.3703 233.5361,-125.5686"/>
 <polygon fill="#000000" stroke="#000000" points="236.0852,-127.9876 241.2779,-118.7526 231.4595,-122.7337 236.0852,-127.9876"/>
 </g>
-<!-- pymedphys_analysis.gamma.filter -->
-<g id="node12" class="node">
-<title>pymedphys_analysis.gamma.filter</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-130" rx="87.9851" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-126.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma.filter</text>
-</g>
-<!-- pymedphys_analysis.gamma.filter&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge13" class="edge">
-<title>pymedphys_analysis.gamma.filter&#45;&gt;pymedphys_dicom.dicom</title>
-<path fill="none" stroke="#000000" d="M162.5865,-118.706C180.5199,-115.7425 199.3354,-112.6332 215.4493,-109.9704"/>
-<polygon fill="#000000" stroke="#000000" points="216.3163,-113.3747 225.6119,-108.2911 215.175,-106.4684 216.3163,-113.3747"/>
-</g>
 <!-- pymedphys_analysis.gamma.api -->
-<g id="node13" class="node">
+<g id="node12" class="node">
 <title>pymedphys_analysis.gamma.api</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-76" rx="81.4863" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-72.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma.api</text>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-130" rx="81.4863" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-126.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma.api</text>
 </g>
 <!-- pymedphys_analysis.gamma.api&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge14" class="edge">
+<g id="edge13" class="edge">
 <title>pymedphys_analysis.gamma.api&#45;&gt;pymedphys_dicom.dicom</title>
-<path fill="none" stroke="#000000" d="M159.7566,-86.8264C178.5783,-89.9366 198.5934,-93.2441 215.5869,-96.0523"/>
-<polygon fill="#000000" stroke="#000000" points="215.3026,-99.5527 225.7395,-97.73 216.4439,-92.6464 215.3026,-99.5527"/>
+<path fill="none" stroke="#000000" d="M159.7566,-119.1736C178.5783,-116.0634 198.5934,-112.7559 215.5869,-109.9477"/>
+<polygon fill="#000000" stroke="#000000" points="216.4439,-113.3536 225.7395,-108.27 215.3026,-106.4473 216.4439,-113.3536"/>
+</g>
+<!-- pymedphys_analysis.gamma.filter -->
+<g id="node13" class="node">
+<title>pymedphys_analysis.gamma.filter</title>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-76" rx="87.9851" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-72.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma.filter</text>
+</g>
+<!-- pymedphys_analysis.gamma.filter&#45;&gt;pymedphys_dicom.dicom -->
+<g id="edge14" class="edge">
+<title>pymedphys_analysis.gamma.filter&#45;&gt;pymedphys_dicom.dicom</title>
+<path fill="none" stroke="#000000" d="M162.5865,-87.294C180.5199,-90.2575 199.3354,-93.3668 215.4493,-96.0296"/>
+<polygon fill="#000000" stroke="#000000" points="215.175,-99.5316 225.6119,-97.7089 216.3163,-92.6253 215.175,-99.5316"/>
 </g>
 <!-- pymedphys_xlwings.xlwings.dicom -->
 <g id="node14" class="node">

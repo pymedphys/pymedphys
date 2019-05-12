@@ -1,0 +1,41 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_xlwings";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_xlwings.xlwings.dicom"; "pymedphys_xlwings.xlwings.interpolate"; "pymedphys_xlwings.xlwings.mephysto"; "pymedphys_xlwings.xlwings.numpy"; "pymedphys_xlwings.xlwings.path"; }
+            { rank = same; "pymedphys_xlwings.xlwings"; }
+
+            label = "pymedphys_xlwings.xlwings"
+        }
+    }
+
+    "pymedphys_dicom.dicom" [label="dicom.dicom"];
+    "pymedphys_xlwings.xlwings.numpy" [label="xlwings.numpy"];
+    "pymedphys_xlwings.xlwings.mephysto" [label="xlwings.mephysto"];
+    "pymedphys_fileformats.mephysto" [label="fileformats.mephysto"];
+    "pymedphys_xlwings.xlwings.path" [label="xlwings.path"];
+    "pymedphys_utilities.utilities" [label="utilities.utilities"];
+    "pymedphys_xlwings.xlwings" [label="xlwings"];
+    "pymedphys_xlwings.xlwings.interpolate" [label="xlwings.interpolate"];
+    "pymedphys_xlwings.xlwings.dicom" [label="xlwings.dicom"];
+
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.dicom";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.interpolate";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.mephysto";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.numpy";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.path";
+    "pymedphys_xlwings.xlwings.dicom" -> "pymedphys_dicom.dicom";
+    "pymedphys_xlwings.xlwings.dicom" -> "pymedphys_utilities.utilities";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.dicom";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.interpolate";
+    "pymedphys_xlwings.xlwings.mephysto" -> "pymedphys_fileformats.mephysto";
+    "pymedphys_xlwings.xlwings.mephysto" -> "pymedphys_utilities.utilities";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.mephysto";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.numpy";
+    "pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.path";
+}

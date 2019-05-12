@@ -37,29 +37,29 @@
 <path fill="none" stroke="#000000" d="M664.4991,-132C701.2396,-132 745.6885,-132 776.5417,-132"/>
 <polygon fill="#000000" stroke="#000000" points="776.853,-135.5001 786.8529,-132 776.8529,-128.5001 776.853,-135.5001"/>
 </g>
-<!-- pymedphys_utilities.constants -->
-<g id="node5" class="node">
-<title>pymedphys_utilities.constants</title>
-<ellipse fill="none" stroke="#000000" cx="814.0905" cy="-72" rx="72.2875" ry="18"/>
-<text text-anchor="middle" x="814.0905" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.constants</text>
-</g>
-<!-- pymedphys_analysis.mudensity.core&#45;&gt;pymedphys_utilities.constants -->
-<g id="edge2" class="edge">
-<title>pymedphys_analysis.mudensity.core&#45;&gt;pymedphys_utilities.constants</title>
-<path fill="none" stroke="#000000" d="M634.9142,-116.7845C654.1048,-109.1505 678.2265,-100.2283 700.3506,-94 714.193,-90.1031 729.1756,-86.6669 743.5817,-83.7379"/>
-<polygon fill="#000000" stroke="#000000" points="744.309,-87.162 753.4419,-81.7918 742.9535,-80.2945 744.309,-87.162"/>
-</g>
 <!-- pymedphys_coordsandscales.deliverydata -->
-<g id="node6" class="node">
+<g id="node5" class="node">
 <title>pymedphys_coordsandscales.deliverydata</title>
-<ellipse fill="none" stroke="#000000" cx="814.0905" cy="-18" rx="113.9803" ry="18"/>
-<text text-anchor="middle" x="814.0905" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
+<ellipse fill="none" stroke="#000000" cx="814.0905" cy="-72" rx="113.9803" ry="18"/>
+<text text-anchor="middle" x="814.0905" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
 </g>
 <!-- pymedphys_analysis.mudensity.core&#45;&gt;pymedphys_coordsandscales.deliverydata -->
-<g id="edge3" class="edge">
+<g id="edge2" class="edge">
 <title>pymedphys_analysis.mudensity.core&#45;&gt;pymedphys_coordsandscales.deliverydata</title>
-<path fill="none" stroke="#000000" d="M614.1509,-114.4979C632.663,-94.6298 665.5678,-62.6902 700.3506,-45 708.6749,-40.7664 717.6815,-37.1823 726.8561,-34.1512"/>
-<polygon fill="#000000" stroke="#000000" points="727.9332,-37.4818 736.4564,-31.1885 725.869,-30.793 727.9332,-37.4818"/>
+<path fill="none" stroke="#000000" d="M634.9142,-116.7845C654.1048,-109.1505 678.2265,-100.2283 700.3506,-94 708.7904,-91.6241 717.654,-89.4194 726.5523,-87.3965"/>
+<polygon fill="#000000" stroke="#000000" points="727.577,-90.7549 736.5929,-85.1904 726.0748,-83.918 727.577,-90.7549"/>
+</g>
+<!-- pymedphys_utilities.constants -->
+<g id="node6" class="node">
+<title>pymedphys_utilities.constants</title>
+<ellipse fill="none" stroke="#000000" cx="814.0905" cy="-18" rx="72.2875" ry="18"/>
+<text text-anchor="middle" x="814.0905" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.constants</text>
+</g>
+<!-- pymedphys_analysis.mudensity.core&#45;&gt;pymedphys_utilities.constants -->
+<g id="edge3" class="edge">
+<title>pymedphys_analysis.mudensity.core&#45;&gt;pymedphys_utilities.constants</title>
+<path fill="none" stroke="#000000" d="M614.1509,-114.4979C632.663,-94.6298 665.5678,-62.6902 700.3506,-45 713.2115,-38.4591 727.7012,-33.4688 741.923,-29.6723"/>
+<polygon fill="#000000" stroke="#000000" points="742.8487,-33.0487 751.7029,-27.2304 741.1528,-26.2573 742.8487,-33.0487"/>
 </g>
 <!-- pymedphys_analysis.mudensity.api -->
 <g id="node2" class="node">
@@ -85,40 +85,40 @@
 <path fill="none" stroke="#000000" d="M339.1237,-132C347.3058,-132 355.9524,-132 364.5762,-132"/>
 <polygon fill="#000000" stroke="#000000" points="364.6603,-135.5001 374.6603,-132 364.6602,-128.5001 364.6603,-135.5001"/>
 </g>
-<!-- pymedphys_logfiles.elekta.bygantry -->
-<g id="node7" class="node">
-<title>pymedphys_logfiles.elekta.bygantry</title>
-<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-186" rx="94.4839" ry="18"/>
-<text text-anchor="middle" x="103.3408" y="-182.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.bygantry</text>
-</g>
-<!-- pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge6" class="edge">
-<title>pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_analysis.mudensity</title>
-<path fill="none" stroke="#000000" d="M160.6197,-171.6352C175.6514,-167.7015 191.8143,-163.3253 206.6817,-159 219.2289,-155.3497 232.7414,-151.1377 245.1862,-147.1425"/>
-<polygon fill="#000000" stroke="#000000" points="246.4621,-150.4084 254.8989,-143.9997 244.307,-143.7483 246.4621,-150.4084"/>
-</g>
-<!-- pymedphys_toolbox.plancompare.core -->
-<g id="node8" class="node">
-<title>pymedphys_toolbox.plancompare.core</title>
-<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-132" rx="103.1819" ry="18"/>
-<text text-anchor="middle" x="103.3408" y="-128.3" font-family="Times,serif" font-size="14.00" fill="#000000">toolbox.plancompare.core</text>
-</g>
-<!-- pymedphys_toolbox.plancompare.core&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge7" class="edge">
-<title>pymedphys_toolbox.plancompare.core&#45;&gt;pymedphys_analysis.mudensity</title>
-<path fill="none" stroke="#000000" d="M206.9272,-132C215.6187,-132 224.1957,-132 232.3547,-132"/>
-<polygon fill="#000000" stroke="#000000" points="232.4431,-135.5001 242.4431,-132 232.4431,-128.5001 232.4431,-135.5001"/>
-</g>
 <!-- pymedphys_logfiles.elekta.analyse -->
-<g id="node9" class="node">
+<g id="node7" class="node">
 <title>pymedphys_logfiles.elekta.analyse</title>
-<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-78" rx="89.0842" ry="18"/>
-<text text-anchor="middle" x="103.3408" y="-74.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.analyse</text>
+<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-186" rx="89.0842" ry="18"/>
+<text text-anchor="middle" x="103.3408" y="-182.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.analyse</text>
 </g>
 <!-- pymedphys_logfiles.elekta.analyse&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge8" class="edge">
+<g id="edge6" class="edge">
 <title>pymedphys_logfiles.elekta.analyse&#45;&gt;pymedphys_analysis.mudensity</title>
-<path fill="none" stroke="#000000" d="M159.2727,-92.0126C174.6824,-96.0364 191.3692,-100.5452 206.6817,-105 219.2289,-108.6503 232.7414,-112.8623 245.1862,-116.8575"/>
+<path fill="none" stroke="#000000" d="M159.2727,-171.9874C174.6824,-167.9636 191.3692,-163.4548 206.6817,-159 219.2289,-155.3497 232.7414,-151.1377 245.1862,-147.1425"/>
+<polygon fill="#000000" stroke="#000000" points="246.4621,-150.4084 254.8989,-143.9997 244.307,-143.7483 246.4621,-150.4084"/>
+</g>
+<!-- pymedphys_logfiles.elekta.bygantry -->
+<g id="node8" class="node">
+<title>pymedphys_logfiles.elekta.bygantry</title>
+<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-132" rx="94.4839" ry="18"/>
+<text text-anchor="middle" x="103.3408" y="-128.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.bygantry</text>
+</g>
+<!-- pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_analysis.mudensity -->
+<g id="edge7" class="edge">
+<title>pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_analysis.mudensity</title>
+<path fill="none" stroke="#000000" d="M197.6082,-132C209.3526,-132 221.0854,-132 232.069,-132"/>
+<polygon fill="#000000" stroke="#000000" points="232.346,-135.5001 242.346,-132 232.346,-128.5001 232.346,-135.5001"/>
+</g>
+<!-- pymedphys_toolbox.plancompare.core -->
+<g id="node9" class="node">
+<title>pymedphys_toolbox.plancompare.core</title>
+<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-78" rx="103.1819" ry="18"/>
+<text text-anchor="middle" x="103.3408" y="-74.3" font-family="Times,serif" font-size="14.00" fill="#000000">toolbox.plancompare.core</text>
+</g>
+<!-- pymedphys_toolbox.plancompare.core&#45;&gt;pymedphys_analysis.mudensity -->
+<g id="edge8" class="edge">
+<title>pymedphys_toolbox.plancompare.core&#45;&gt;pymedphys_analysis.mudensity</title>
+<path fill="none" stroke="#000000" d="M162.2442,-92.7905C176.8111,-96.6129 192.3485,-100.8301 206.6817,-105 219.2289,-108.6503 232.7414,-112.8623 245.1862,-116.8575"/>
 <polygon fill="#000000" stroke="#000000" points="244.307,-120.2517 254.8989,-120.0003 246.4621,-113.5916 244.307,-120.2517"/>
 </g>
 </g>

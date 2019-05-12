@@ -1,0 +1,31 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_labs";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_labs.paulking"; "pymedphys_labs.paulking.collequivalent"; "pymedphys_labs.paulking.devicesfilm"; "pymedphys_labs.paulking.devicessncprofiler"; "pymedphys_labs.paulking.narrow_png"; "pymedphys_labs.paulking.profile"; "pymedphys_labs.paulking.sinogram"; "pymedphys_labs.paulking.tempCodeRunnerFile"; }
+            { rank = same; "pymedphys_labs.paulking.tomo_sinogram_csv2pdf"; }
+
+            label = "pymedphys_labs.paulking"
+        }
+    }
+
+    "pymedphys_labs.paulking.tomo_sinogram_csv2pdf" [label="paulking.tomo_sinogram_csv2pdf"];
+    "pymedphys_labs.paulking.collequivalent" [label="paulking.collequivalent"];
+    "pymedphys_labs.paulking.sinogram" [label="paulking.sinogram"];
+    "pymedphys_labs.paulking" [label="paulking"];
+    "pymedphys_labs.paulking.devicesfilm" [label="paulking.devicesfilm"];
+    "pymedphys_labs.paulking.tempCodeRunnerFile" [label="paulking.tempCodeRunnerFile"];
+    "pymedphys_labs.paulking.profile" [label="paulking.profile"];
+    "pymedphys_utilities.constants" [label="utilities.constants"];
+    "pymedphys_labs.paulking.devicessncprofiler" [label="paulking.devicessncprofiler"];
+    "pymedphys_labs.paulking.narrow_png" [label="paulking.narrow_png"];
+
+    "pymedphys_labs.paulking.collequivalent" -> "pymedphys_utilities.constants";
+    "pymedphys_labs.paulking.tomo_sinogram_csv2pdf" -> "pymedphys_labs.paulking.sinogram";
+    "pymedphys_labs.paulking.tomo_sinogram_csv2pdf" -> "pymedphys_labs.paulking.sinogram";
+}

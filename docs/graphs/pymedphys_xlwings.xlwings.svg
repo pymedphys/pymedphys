@@ -25,29 +25,29 @@
 <ellipse fill="none" stroke="#000000" cx="215.3362" cy="-150" rx="63.8893" ry="18"/>
 <text text-anchor="middle" x="215.3362" y="-146.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.dicom</text>
 </g>
-<!-- pymedphys_utilities.utilities -->
-<g id="node7" class="node">
-<title>pymedphys_utilities.utilities</title>
-<ellipse fill="none" stroke="#000000" cx="417.0715" cy="-96" rx="65.7887" ry="18"/>
-<text text-anchor="middle" x="417.0715" y="-92.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.utilities</text>
-</g>
-<!-- pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_utilities.utilities -->
-<g id="edge1" class="edge">
-<title>pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_utilities.utilities</title>
-<path fill="none" stroke="#000000" d="M261.6184,-137.6113C290.904,-129.7722 328.9745,-119.5816 360.1102,-111.2473"/>
-<polygon fill="#000000" stroke="#000000" points="361.2007,-114.5787 369.9556,-108.6119 359.3906,-107.8167 361.2007,-114.5787"/>
-</g>
 <!-- pymedphys_dicom.dicom -->
-<g id="node8" class="node">
+<g id="node7" class="node">
 <title>pymedphys_dicom.dicom</title>
 <ellipse fill="none" stroke="#000000" cx="417.0715" cy="-150" rx="57.6901" ry="18"/>
 <text text-anchor="middle" x="417.0715" y="-146.3" font-family="Times,serif" font-size="14.00" fill="#000000">dicom.dicom</text>
 </g>
 <!-- pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge2" class="edge">
+<g id="edge1" class="edge">
 <title>pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_dicom.dicom</title>
 <path fill="none" stroke="#000000" d="M279.1665,-150C301.3893,-150 326.3975,-150 348.9544,-150"/>
 <polygon fill="#000000" stroke="#000000" points="349.1272,-153.5001 359.1272,-150 349.1271,-146.5001 349.1272,-153.5001"/>
+</g>
+<!-- pymedphys_utilities.utilities -->
+<g id="node8" class="node">
+<title>pymedphys_utilities.utilities</title>
+<ellipse fill="none" stroke="#000000" cx="417.0715" cy="-96" rx="65.7887" ry="18"/>
+<text text-anchor="middle" x="417.0715" y="-92.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.utilities</text>
+</g>
+<!-- pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_utilities.utilities -->
+<g id="edge2" class="edge">
+<title>pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_utilities.utilities</title>
+<path fill="none" stroke="#000000" d="M261.6184,-137.6113C290.904,-129.7722 328.9745,-119.5816 360.1102,-111.2473"/>
+<polygon fill="#000000" stroke="#000000" points="361.2007,-114.5787 369.9556,-108.6119 359.3906,-107.8167 361.2007,-114.5787"/>
 </g>
 <!-- pymedphys_xlwings.xlwings.interpolate -->
 <g id="node2" class="node">

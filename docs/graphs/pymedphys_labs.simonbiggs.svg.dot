@@ -1,0 +1,19 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_labs";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_labs.simonbiggs"; "pymedphys_labs.simonbiggs.profilescore"; }
+
+            label = "pymedphys_labs.simonbiggs"
+        }
+    }
+
+    "pymedphys_labs.simonbiggs.profilescore" [label="simonbiggs.profilescore"];
+    "pymedphys_labs.simonbiggs" [label="simonbiggs"];
+
+}

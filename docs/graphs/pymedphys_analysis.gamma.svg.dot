@@ -1,0 +1,40 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_analysis";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_analysis.gamma.filter"; "pymedphys_analysis.gamma.inputcheck"; }
+            { rank = same; "pymedphys_analysis.gamma.shell"; }
+            { rank = same; "pymedphys_analysis.gamma.api"; }
+            { rank = same; "pymedphys_analysis.gamma"; }
+
+            label = "pymedphys_analysis.gamma"
+        }
+    }
+
+    "pymedphys_dicom.dicom" [label="dicom.dicom"];
+    "pymedphys_analysis.gamma.shell" [label="gamma.shell"];
+    "pymedphys_analysis.gamma.api" [label="gamma.api"];
+    "pymedphys_analysis.gamma" [label="gamma"];
+    "pymedphys_analysis.gamma.filter" [label="gamma.filter"];
+    "pymedphys_analysis.gamma.inputcheck" [label="gamma.inputcheck"];
+
+    "pymedphys_analysis.gamma" -> "pymedphys_analysis.gamma.api";
+    "pymedphys_analysis.gamma" -> "pymedphys_analysis.gamma.filter";
+    "pymedphys_analysis.gamma" -> "pymedphys_analysis.gamma.shell";
+    "pymedphys_analysis.gamma.api" -> "pymedphys_analysis.gamma.filter";
+    "pymedphys_analysis.gamma.api" -> "pymedphys_analysis.gamma.shell";
+    "pymedphys_analysis.gamma.api" -> "pymedphys_dicom.dicom";
+    "pymedphys_analysis.gamma" -> "pymedphys_analysis.gamma.api";
+    "pymedphys_analysis.gamma.filter" -> "pymedphys_dicom.dicom";
+    "pymedphys_analysis.gamma" -> "pymedphys_analysis.gamma.filter";
+    "pymedphys_analysis.gamma.api" -> "pymedphys_analysis.gamma.filter";
+    "pymedphys_analysis.gamma.shell" -> "pymedphys_analysis.gamma.inputcheck";
+    "pymedphys_analysis.gamma.shell" -> "pymedphys_analysis.gamma.inputcheck";
+    "pymedphys_analysis.gamma" -> "pymedphys_analysis.gamma.shell";
+    "pymedphys_analysis.gamma.api" -> "pymedphys_analysis.gamma.shell";
+}

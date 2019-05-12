@@ -1,0 +1,19 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_labs";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_labs.mattsobolewski"; "pymedphys_labs.mattsobolewski.wlutzfilesort"; }
+
+            label = "pymedphys_labs.mattsobolewski"
+        }
+    }
+
+    "pymedphys_labs.mattsobolewski.wlutzfilesort" [label="mattsobolewski.wlutzfilesort"];
+    "pymedphys_labs.mattsobolewski" [label="mattsobolewski"];
+
+}

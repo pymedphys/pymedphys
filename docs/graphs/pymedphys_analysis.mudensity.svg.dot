@@ -1,0 +1,41 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        "pymedphys_analysis.plt";
+        label = "pymedphys_analysis";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_analysis.mudensity.core"; }
+            { rank = same; "pymedphys_analysis.mudensity.api"; }
+            { rank = same; "pymedphys_analysis.mudensity"; }
+
+            label = "pymedphys_analysis.mudensity"
+        }
+    }
+
+    "pymedphys_logfiles.elekta.analyse" [label="logfiles.elekta.analyse"];
+    "pymedphys_analysis.mudensity.api" [label="mudensity.api"];
+    "pymedphys_analysis.mudensity" [label="mudensity"];
+    "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
+    "pymedphys_analysis.plt" [label="plt"];
+    "pymedphys_logfiles.elekta.bygantry" [label="logfiles.elekta.bygantry"];
+    "pymedphys_toolbox.plancompare.core" [label="toolbox.plancompare.core"];
+    "pymedphys_utilities.constants" [label="utilities.constants"];
+    "pymedphys_analysis.mudensity.core" [label="mudensity.core"];
+
+    "pymedphys_analysis.mudensity" -> "pymedphys_analysis.mudensity.api";
+    "pymedphys_analysis.mudensity" -> "pymedphys_analysis.mudensity.core";
+    "pymedphys_logfiles.elekta.analyse" -> "pymedphys_analysis.mudensity";
+    "pymedphys_logfiles.elekta.bygantry" -> "pymedphys_analysis.mudensity";
+    "pymedphys_toolbox.plancompare.core" -> "pymedphys_analysis.mudensity";
+    "pymedphys_analysis.mudensity.api" -> "pymedphys_analysis.mudensity.core";
+    "pymedphys_analysis.mudensity.api" -> "pymedphys_coordsandscales.deliverydata";
+    "pymedphys_analysis.mudensity" -> "pymedphys_analysis.mudensity.api";
+    "pymedphys_analysis.mudensity.core" -> "pymedphys_analysis.plt";
+    "pymedphys_analysis.mudensity.core" -> "pymedphys_coordsandscales.deliverydata";
+    "pymedphys_analysis.mudensity.core" -> "pymedphys_utilities.constants";
+    "pymedphys_analysis.mudensity" -> "pymedphys_analysis.mudensity.core";
+    "pymedphys_analysis.mudensity.api" -> "pymedphys_analysis.mudensity.core";
+}

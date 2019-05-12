@@ -103,52 +103,52 @@
 <path fill="none" stroke="#000000" d="M173.0001,-222.5005C184.8226,-218.714 196.5398,-213.6832 206.6817,-207 227.5833,-193.2264 244.5194,-170.1714 255.5464,-152.1726"/>
 <polygon fill="#000000" stroke="#000000" points="258.7133,-153.6917 260.7639,-143.2972 252.6787,-150.1442 258.7133,-153.6917"/>
 </g>
-<!-- pymedphys_logfiles.elekta.bygantry -->
-<g id="node8" class="node">
-<title>pymedphys_logfiles.elekta.bygantry</title>
-<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-180" rx="94.4839" ry="18"/>
-<text text-anchor="middle" x="103.3408" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.bygantry</text>
-</g>
-<!-- pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_databases.msq -->
-<g id="edge8" class="edge">
-<title>pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_databases.msq</title>
-<path fill="none" stroke="#000000" d="M163.0865,-166.011C177.4861,-162.1953 192.7362,-157.7802 206.6817,-153 217.1741,-149.4034 228.378,-144.8465 238.3841,-140.5053"/>
-<polygon fill="#000000" stroke="#000000" points="239.8216,-143.6966 247.5483,-136.4476 236.9875,-137.2959 239.8216,-143.6966"/>
-</g>
 <!-- pymedphys_logfiles.elekta.index -->
-<g id="node9" class="node">
+<g id="node8" class="node">
 <title>pymedphys_logfiles.elekta.index</title>
-<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-126" rx="82.5854" ry="18"/>
-<text text-anchor="middle" x="103.3408" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.index</text>
+<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-180" rx="82.5854" ry="18"/>
+<text text-anchor="middle" x="103.3408" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.index</text>
 </g>
 <!-- pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_databases.msq -->
-<g id="edge9" class="edge">
+<g id="edge8" class="edge">
 <title>pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_databases.msq</title>
-<path fill="none" stroke="#000000" d="M186.0239,-126C202.2676,-126 218.5362,-126 232.3509,-126"/>
-<polygon fill="#000000" stroke="#000000" points="232.3958,-129.5001 242.3958,-126 232.3957,-122.5001 232.3958,-129.5001"/>
-</g>
-<!-- pymedphys_toolbox.plancompare.core -->
-<g id="node10" class="node">
-<title>pymedphys_toolbox.plancompare.core</title>
-<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-72" rx="103.1819" ry="18"/>
-<text text-anchor="middle" x="103.3408" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">toolbox.plancompare.core</text>
-</g>
-<!-- pymedphys_toolbox.plancompare.core&#45;&gt;pymedphys_databases.msq -->
-<g id="edge10" class="edge">
-<title>pymedphys_toolbox.plancompare.core&#45;&gt;pymedphys_databases.msq</title>
-<path fill="none" stroke="#000000" d="M164.9931,-86.4964C178.8263,-90.1942 193.3502,-94.4303 206.6817,-99 217.1741,-102.5966 228.378,-107.1535 238.3841,-111.4947"/>
-<polygon fill="#000000" stroke="#000000" points="236.9875,-114.7041 247.5483,-115.5524 239.8216,-108.3034 236.9875,-114.7041"/>
+<path fill="none" stroke="#000000" d="M159.8416,-166.8647C175.1767,-162.8596 191.6837,-158.1409 206.6817,-153 217.1741,-149.4034 228.378,-144.8465 238.3841,-140.5053"/>
+<polygon fill="#000000" stroke="#000000" points="239.8216,-143.6966 247.5483,-136.4476 236.9875,-137.2959 239.8216,-143.6966"/>
 </g>
 <!-- pymedphys_logfiles.elekta.analyse -->
-<g id="node11" class="node">
+<g id="node9" class="node">
 <title>pymedphys_logfiles.elekta.analyse</title>
-<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-18" rx="89.0842" ry="18"/>
-<text text-anchor="middle" x="103.3408" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.analyse</text>
+<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-126" rx="89.0842" ry="18"/>
+<text text-anchor="middle" x="103.3408" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.analyse</text>
 </g>
 <!-- pymedphys_logfiles.elekta.analyse&#45;&gt;pymedphys_databases.msq -->
-<g id="edge11" class="edge">
+<g id="edge9" class="edge">
 <title>pymedphys_logfiles.elekta.analyse&#45;&gt;pymedphys_databases.msq</title>
-<path fill="none" stroke="#000000" d="M172.7294,-29.413C184.6436,-33.2093 196.4624,-38.2658 206.6817,-45 227.5833,-58.7736 244.5194,-81.8286 255.5464,-99.8274"/>
+<path fill="none" stroke="#000000" d="M192.841,-126C206.7355,-126 220.393,-126 232.2504,-126"/>
+<polygon fill="#000000" stroke="#000000" points="232.5889,-129.5001 242.5888,-126 232.5888,-122.5001 232.5889,-129.5001"/>
+</g>
+<!-- pymedphys_logfiles.elekta.bygantry -->
+<g id="node10" class="node">
+<title>pymedphys_logfiles.elekta.bygantry</title>
+<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-72" rx="94.4839" ry="18"/>
+<text text-anchor="middle" x="103.3408" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.bygantry</text>
+</g>
+<!-- pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_databases.msq -->
+<g id="edge10" class="edge">
+<title>pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_databases.msq</title>
+<path fill="none" stroke="#000000" d="M163.0865,-85.989C177.4861,-89.8047 192.7362,-94.2198 206.6817,-99 217.1741,-102.5966 228.378,-107.1535 238.3841,-111.4947"/>
+<polygon fill="#000000" stroke="#000000" points="236.9875,-114.7041 247.5483,-115.5524 239.8216,-108.3034 236.9875,-114.7041"/>
+</g>
+<!-- pymedphys_toolbox.plancompare.core -->
+<g id="node11" class="node">
+<title>pymedphys_toolbox.plancompare.core</title>
+<ellipse fill="none" stroke="#000000" cx="103.3408" cy="-18" rx="103.1819" ry="18"/>
+<text text-anchor="middle" x="103.3408" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">toolbox.plancompare.core</text>
+</g>
+<!-- pymedphys_toolbox.plancompare.core&#45;&gt;pymedphys_databases.msq -->
+<g id="edge11" class="edge">
+<title>pymedphys_toolbox.plancompare.core&#45;&gt;pymedphys_databases.msq</title>
+<path fill="none" stroke="#000000" d="M176.7851,-30.7566C187.309,-34.3801 197.6236,-39.031 206.6817,-45 227.5833,-58.7736 244.5194,-81.8286 255.5464,-99.8274"/>
 <polygon fill="#000000" stroke="#000000" points="252.6787,-101.8558 260.7639,-108.7028 258.7133,-98.3083 252.6787,-101.8558"/>
 </g>
 </g>
