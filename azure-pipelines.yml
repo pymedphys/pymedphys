@@ -131,10 +131,10 @@ jobs:
       vmImage: 'ubuntu-16.04'
 
     steps:
-    - bash: pip install --upgrade pip setuptools
+    - bash: "python -m pip install -U pip setuptools --user"
       displayName: Upgrade pip and setuptools
 
-    - bash: pip install packages/pymedphys_monomanage
+    - bash: "python -m pip install packages/pymedphys_monomanage --user"
       displayName: Install monomanage
 
     - bash: sudo apt-get install -y graphviz
