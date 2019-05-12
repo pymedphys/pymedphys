@@ -30,6 +30,7 @@ def is_imports_json_up_to_date(directory):
 def commit_hook(directory):
     if not is_imports_json_up_to_date(directory):
         os.system("yarn tree")
+        raise ValueError("Tree was out of date. Please rerun commit.")
 
 
 def update_imports_json(directory):

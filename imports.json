@@ -3,7 +3,7 @@
     "external": [],
     "internal_file": [],
     "internal_module": [
-      "pymedphys._versions"
+      "pymedphys._version"
     ],
     "internal_package": [],
     "stdlib": []
