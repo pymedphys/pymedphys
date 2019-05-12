@@ -1,1 +1,0 @@
-from pymedphys_electronfactors.electronfactors import calculate_deformability
