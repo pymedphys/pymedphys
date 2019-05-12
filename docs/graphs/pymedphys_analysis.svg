@@ -14,11 +14,11 @@
 <polygon fill="none" stroke="#000000" stroke-dasharray="5,2" points="199.5848,-92 199.5848,-275 436.1684,-275 436.1684,-92 199.5848,-92"/>
 <text text-anchor="middle" x="317.8766" y="-259.8" font-family="Times,serif" font-size="14.00" fill="#000000">pymedphys_analysis</text>
 </g>
-<!-- pymedphys_logfiles.elekta -->
+<!-- pymedphys_toolbox.plancompare -->
 <g id="node1" class="node">
-<title>pymedphys_logfiles.elekta</title>
-<ellipse fill="none" stroke="#000000" cx="85.7924" cy="-145" rx="60.3893" ry="18"/>
-<text text-anchor="middle" x="85.7924" y="-141.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta</text>
+<title>pymedphys_toolbox.plancompare</title>
+<ellipse fill="none" stroke="#000000" cx="85.7924" cy="-145" rx="85.5853" ry="18"/>
+<text text-anchor="middle" x="85.7924" y="-141.3" font-family="Times,serif" font-size="14.00" fill="#000000">toolbox.plancompare</text>
 </g>
 <!-- pymedphys_analysis.mudensity -->
 <g id="node9" class="node">
@@ -26,41 +26,41 @@
 <ellipse fill="none" stroke="#000000" cx="255.6805" cy="-118" rx="48.1917" ry="18"/>
 <text text-anchor="middle" x="255.6805" y="-114.3" font-family="Times,serif" font-size="14.00" fill="#000000">mudensity</text>
 </g>
-<!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge6" class="edge">
-<title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity</title>
-<path fill="none" stroke="#000000" d="M139.5461,-136.457C159.2479,-133.3258 181.5494,-129.7815 201.3054,-126.6417"/>
-<polygon fill="#000000" stroke="#000000" points="202.0505,-130.0673 211.3771,-125.0411 200.9517,-123.1541 202.0505,-130.0673"/>
-</g>
-<!-- pymedphys_toolbox.plancompare -->
-<g id="node2" class="node">
-<title>pymedphys_toolbox.plancompare</title>
-<ellipse fill="none" stroke="#000000" cx="85.7924" cy="-91" rx="85.5853" ry="18"/>
-<text text-anchor="middle" x="85.7924" y="-87.3" font-family="Times,serif" font-size="14.00" fill="#000000">toolbox.plancompare</text>
-</g>
 <!-- pymedphys_toolbox.plancompare&#45;&gt;pymedphys_analysis.mudensity -->
-<g id="edge7" class="edge">
+<g id="edge6" class="edge">
 <title>pymedphys_toolbox.plancompare&#45;&gt;pymedphys_analysis.mudensity</title>
-<path fill="none" stroke="#000000" d="M154.4027,-101.9041C169.9659,-104.3775 186.2894,-106.9718 201.1756,-109.3376"/>
-<polygon fill="#000000" stroke="#000000" points="200.7993,-112.8217 211.2247,-110.9347 201.8981,-105.9084 200.7993,-112.8217"/>
+<path fill="none" stroke="#000000" d="M154.4027,-134.0959C169.9659,-131.6225 186.2894,-129.0282 201.1756,-126.6624"/>
+<polygon fill="#000000" stroke="#000000" points="201.8981,-130.0916 211.2247,-125.0653 200.7993,-123.1783 201.8981,-130.0916"/>
 </g>
-<!-- pymedphys_utilities.constants -->
+<!-- pymedphys_logfiles.elekta -->
+<g id="node2" class="node">
+<title>pymedphys_logfiles.elekta</title>
+<ellipse fill="none" stroke="#000000" cx="85.7924" cy="-91" rx="60.3893" ry="18"/>
+<text text-anchor="middle" x="85.7924" y="-87.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta</text>
+</g>
+<!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity -->
+<g id="edge7" class="edge">
+<title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_analysis.mudensity</title>
+<path fill="none" stroke="#000000" d="M139.5461,-99.543C159.2479,-102.6742 181.5494,-106.2185 201.3054,-109.3583"/>
+<polygon fill="#000000" stroke="#000000" points="200.9517,-112.8459 211.3771,-110.9589 202.0505,-105.9327 200.9517,-112.8459"/>
+</g>
+<!-- pymedphys_dicom.dicom -->
 <g id="node3" class="node">
-<title>pymedphys_utilities.constants</title>
-<ellipse fill="none" stroke="#000000" cx="577.9083" cy="-72" rx="72.2875" ry="18"/>
-<text text-anchor="middle" x="577.9083" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.constants</text>
+<title>pymedphys_dicom.dicom</title>
+<ellipse fill="none" stroke="#000000" cx="577.9083" cy="-199" rx="57.6901" ry="18"/>
+<text text-anchor="middle" x="577.9083" y="-195.3" font-family="Times,serif" font-size="14.00" fill="#000000">dicom.dicom</text>
 </g>
 <!-- pymedphys_coordsandscales.deliverydata -->
 <g id="node4" class="node">
 <title>pymedphys_coordsandscales.deliverydata</title>
-<ellipse fill="none" stroke="#000000" cx="577.9083" cy="-18" rx="113.9803" ry="18"/>
-<text text-anchor="middle" x="577.9083" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
+<ellipse fill="none" stroke="#000000" cx="577.9083" cy="-72" rx="113.9803" ry="18"/>
+<text text-anchor="middle" x="577.9083" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">coordsandscales.deliverydata</text>
 </g>
-<!-- pymedphys_dicom.dicom -->
+<!-- pymedphys_utilities.constants -->
 <g id="node5" class="node">
-<title>pymedphys_dicom.dicom</title>
-<ellipse fill="none" stroke="#000000" cx="577.9083" cy="-199" rx="57.6901" ry="18"/>
-<text text-anchor="middle" x="577.9083" y="-195.3" font-family="Times,serif" font-size="14.00" fill="#000000">dicom.dicom</text>
+<title>pymedphys_utilities.constants</title>
+<ellipse fill="none" stroke="#000000" cx="577.9083" cy="-18" rx="72.2875" ry="18"/>
+<text text-anchor="middle" x="577.9083" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities.constants</text>
 </g>
 <!-- pymedphys_analysis.gamma -->
 <g id="node6" class="node">
@@ -92,17 +92,17 @@
 <ellipse fill="none" stroke="#000000" cx="383.9723" cy="-118" rx="27" ry="18"/>
 <text text-anchor="middle" x="383.9723" y="-114.3" font-family="Times,serif" font-size="14.00" fill="#000000">plt</text>
 </g>
-<!-- pymedphys_analysis.mudensity&#45;&gt;pymedphys_utilities.constants -->
-<g id="edge4" class="edge">
-<title>pymedphys_analysis.mudensity&#45;&gt;pymedphys_utilities.constants</title>
-<path fill="none" stroke="#000000" d="M289.5787,-105.143C304.7257,-99.9144 322.9281,-94.3302 339.7762,-91 391.0302,-80.8692 449.5041,-76.1081 495.6816,-73.885"/>
-<polygon fill="#000000" stroke="#000000" points="496.107,-77.3695 505.9393,-73.423 495.7919,-70.3766 496.107,-77.3695"/>
-</g>
 <!-- pymedphys_analysis.mudensity&#45;&gt;pymedphys_coordsandscales.deliverydata -->
-<g id="edge5" class="edge">
+<g id="edge4" class="edge">
 <title>pymedphys_analysis.mudensity&#45;&gt;pymedphys_coordsandscales.deliverydata</title>
-<path fill="none" stroke="#000000" d="M281.0428,-102.5853C297.3427,-93.2258 319.239,-81.6485 339.7762,-74 388.2571,-55.9448 444.5169,-42.3929 490.1761,-33.1465"/>
-<polygon fill="#000000" stroke="#000000" points="490.9245,-36.5663 500.0484,-31.1806 489.5573,-29.7011 490.9245,-36.5663"/>
+<path fill="none" stroke="#000000" d="M289.5787,-105.143C304.7257,-99.9144 322.9281,-94.3302 339.7762,-91 377.312,-83.5808 418.7201,-79.0414 456.3347,-76.2698"/>
+<polygon fill="#000000" stroke="#000000" points="456.5921,-79.7604 466.3223,-75.5683 456.1016,-72.7776 456.5921,-79.7604"/>
+</g>
+<!-- pymedphys_analysis.mudensity&#45;&gt;pymedphys_utilities.constants -->
+<g id="edge5" class="edge">
+<title>pymedphys_analysis.mudensity&#45;&gt;pymedphys_utilities.constants</title>
+<path fill="none" stroke="#000000" d="M281.0428,-102.5853C297.3427,-93.2258 319.239,-81.6485 339.7762,-74 394.5825,-53.5891 459.33,-38.9332 507.4656,-29.7468"/>
+<polygon fill="#000000" stroke="#000000" points="508.2922,-33.1529 517.4756,-27.8694 507.0017,-26.2729 508.2922,-33.1529"/>
 </g>
 <!-- pymedphys_analysis.mudensity&#45;&gt;pymedphys_analysis.plt -->
 <g id="edge3" class="edge">

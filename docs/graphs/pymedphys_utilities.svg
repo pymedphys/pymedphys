@@ -14,38 +14,50 @@
 <polygon fill="none" stroke="#000000" stroke-dasharray="5,2" points="185.286,-46 185.286,-229 311.3783,-229 311.3783,-46 185.286,-46"/>
 <text text-anchor="middle" x="248.3322" y="-213.8" font-family="Times,serif" font-size="14.00" fill="#000000">pymedphys_utilities</text>
 </g>
-<!-- pymedphys_logfiles.elekta -->
+<!-- pymedphys_xlwings.xlwings -->
 <g id="node1" class="node">
-<title>pymedphys_logfiles.elekta</title>
-<ellipse fill="none" stroke="#000000" cx="78.643" cy="-180" rx="60.3893" ry="18"/>
-<text text-anchor="middle" x="78.643" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta</text>
-</g>
-<!-- pymedphys_utilities.filehash -->
-<g id="node6" class="node">
-<title>pymedphys_utilities.filehash</title>
-<ellipse fill="none" stroke="#000000" cx="247.8322" cy="-180" rx="38.1938" ry="18"/>
-<text text-anchor="middle" x="247.8322" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">filehash</text>
-</g>
-<!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.filehash -->
-<g id="edge1" class="edge">
-<title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.filehash</title>
-<path fill="none" stroke="#000000" d="M139.2463,-180C158.9271,-180 180.4964,-180 199.1887,-180"/>
-<polygon fill="#000000" stroke="#000000" points="199.2471,-183.5001 209.247,-180 199.247,-176.5001 199.2471,-183.5001"/>
+<title>pymedphys_xlwings.xlwings</title>
+<ellipse fill="none" stroke="#000000" cx="78.643" cy="-180" rx="68.7879" ry="18"/>
+<text text-anchor="middle" x="78.643" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.xlwings</text>
 </g>
 <!-- pymedphys_utilities.utilities -->
 <g id="node7" class="node">
 <title>pymedphys_utilities.utilities</title>
-<ellipse fill="none" stroke="#000000" cx="247.8322" cy="-126" rx="37.0935" ry="18"/>
-<text text-anchor="middle" x="247.8322" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities</text>
+<ellipse fill="none" stroke="#000000" cx="247.8322" cy="-180" rx="37.0935" ry="18"/>
+<text text-anchor="middle" x="247.8322" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">utilities</text>
+</g>
+<!-- pymedphys_xlwings.xlwings&#45;&gt;pymedphys_utilities.utilities -->
+<g id="edge1" class="edge">
+<title>pymedphys_xlwings.xlwings&#45;&gt;pymedphys_utilities.utilities</title>
+<path fill="none" stroke="#000000" d="M147.9469,-180C165.4641,-180 183.8861,-180 200.0723,-180"/>
+<polygon fill="#000000" stroke="#000000" points="200.3542,-183.5001 210.3542,-180 200.3541,-176.5001 200.3542,-183.5001"/>
+</g>
+<!-- pymedphys_logfiles.elekta -->
+<g id="node2" class="node">
+<title>pymedphys_logfiles.elekta</title>
+<ellipse fill="none" stroke="#000000" cx="78.643" cy="-126" rx="60.3893" ry="18"/>
+<text text-anchor="middle" x="78.643" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta</text>
+</g>
+<!-- pymedphys_utilities.filehash -->
+<g id="node6" class="node">
+<title>pymedphys_utilities.filehash</title>
+<ellipse fill="none" stroke="#000000" cx="247.8322" cy="-126" rx="38.1938" ry="18"/>
+<text text-anchor="middle" x="247.8322" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">filehash</text>
+</g>
+<!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.filehash -->
+<g id="edge2" class="edge">
+<title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.filehash</title>
+<path fill="none" stroke="#000000" d="M139.2463,-126C158.9271,-126 180.4964,-126 199.1887,-126"/>
+<polygon fill="#000000" stroke="#000000" points="199.2471,-129.5001 209.247,-126 199.247,-122.5001 199.2471,-129.5001"/>
 </g>
 <!-- pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.utilities -->
-<g id="edge2" class="edge">
+<g id="edge3" class="edge">
 <title>pymedphys_logfiles.elekta&#45;&gt;pymedphys_utilities.utilities</title>
-<path fill="none" stroke="#000000" d="M120.0313,-166.7901C146.489,-158.3456 180.6543,-147.4411 207.0025,-139.0316"/>
-<polygon fill="#000000" stroke="#000000" points="208.2233,-142.316 216.6856,-135.941 206.0948,-135.6474 208.2233,-142.316"/>
+<path fill="none" stroke="#000000" d="M120.0313,-139.2099C146.489,-147.6544 180.6543,-158.5589 207.0025,-166.9684"/>
+<polygon fill="#000000" stroke="#000000" points="206.0948,-170.3526 216.6856,-170.059 208.2233,-163.684 206.0948,-170.3526"/>
 </g>
 <!-- pymedphys_labs.paulking -->
-<g id="node2" class="node">
+<g id="node3" class="node">
 <title>pymedphys_labs.paulking</title>
 <ellipse fill="none" stroke="#000000" cx="78.643" cy="-72" rx="57.6901" ry="18"/>
 <text text-anchor="middle" x="78.643" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">labs.paulking</text>
@@ -57,22 +69,10 @@
 <text text-anchor="middle" x="247.8322" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">constants</text>
 </g>
 <!-- pymedphys_labs.paulking&#45;&gt;pymedphys_utilities.constants -->
-<g id="edge3" class="edge">
+<g id="edge4" class="edge">
 <title>pymedphys_labs.paulking&#45;&gt;pymedphys_utilities.constants</title>
 <path fill="none" stroke="#000000" d="M136.8683,-72C155.4125,-72 175.8351,-72 194.0501,-72"/>
 <polygon fill="#000000" stroke="#000000" points="194.2017,-75.5001 204.2016,-72 194.2016,-68.5001 194.2017,-75.5001"/>
-</g>
-<!-- pymedphys_xlwings.xlwings -->
-<g id="node3" class="node">
-<title>pymedphys_xlwings.xlwings</title>
-<ellipse fill="none" stroke="#000000" cx="78.643" cy="-126" rx="68.7879" ry="18"/>
-<text text-anchor="middle" x="78.643" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.xlwings</text>
-</g>
-<!-- pymedphys_xlwings.xlwings&#45;&gt;pymedphys_utilities.utilities -->
-<g id="edge4" class="edge">
-<title>pymedphys_xlwings.xlwings&#45;&gt;pymedphys_utilities.utilities</title>
-<path fill="none" stroke="#000000" d="M147.9469,-126C165.4641,-126 183.8861,-126 200.0723,-126"/>
-<polygon fill="#000000" stroke="#000000" points="200.3542,-129.5001 210.3542,-126 200.3541,-122.5001 200.3542,-129.5001"/>
 </g>
 <!-- pymedphys_analysis.mudensity -->
 <g id="node4" class="node">

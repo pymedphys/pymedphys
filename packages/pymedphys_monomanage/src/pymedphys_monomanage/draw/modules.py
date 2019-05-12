@@ -114,9 +114,13 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
         for module in sorted(list(package_tree.digraph.neighbors(graphed_package)))
     }
 
+    keys = list(module_internal_relationships.keys())
+    keys.sort(reverse=True)
+
     dag = nx.DiGraph()
 
-    for key, values in module_internal_relationships.items():
+    for key in keys:
+        values = sorted(module_internal_relationships[key])
         dag.add_node(key)
         dag.add_nodes_from(values)
         edge_tuples = [
@@ -194,6 +198,7 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
 
     dot_file_contents = """
         strict digraph  {{
+            graph [ordering="out"];
             rankdir = LR;
             subgraph cluster_0 {{
                 {}

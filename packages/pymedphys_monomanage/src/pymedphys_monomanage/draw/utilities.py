@@ -7,7 +7,8 @@ def save_dot_file(dot_contents, outfilepath):
         file.write(dot_contents)
 
     os.system("cat temp.dot | tred | dot -Tsvg -o temp.svg")
-    os.remove("temp.dot")
+    # os.remove("temp.dot")
+    shutil.move("temp.dot", outfilepath + ".dot")
 
     shutil.move("temp.svg", outfilepath)
 

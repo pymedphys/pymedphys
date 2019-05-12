@@ -1,0 +1,30 @@
+
+        strict digraph  {
+            graph [ordering="out"];
+            rankdir = LR;
+            subgraph cluster_0 {
+                "pymedphys_coordsandscales.coordinates";
+"pymedphys_coordsandscales.deliverydata";
+
+                label = "pymedphys_coordsandscales";
+                style = dashed;
+                
+            { rank = same; "pymedphys_coordsandscales.coordinates"; "pymedphys_coordsandscales.deliverydata"; }
+            
+            }
+            "pymedphys_fileformats.trf" [label="fileformats.trf"];
+"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
+"pymedphys_coordsandscales.deliverydata" [label="deliverydata"];
+"pymedphys_databases.msq" [label="databases.msq"];
+"pymedphys_coordsandscales.coordinates" [label="coordinates"];
+"pymedphys_analysis.mudensity" [label="analysis.mudensity"];
+
+            { rank = same; "pymedphys_analysis.mudensity"; "pymedphys_databases.msq"; "pymedphys_fileformats.trf"; "pymedphys_logfiles.elekta"; }
+
+            "pymedphys_analysis.mudensity" -> "pymedphys_coordsandscales.deliverydata";
+"pymedphys_databases.msq" -> "pymedphys_coordsandscales.deliverydata";
+"pymedphys_fileformats.trf" -> "pymedphys_coordsandscales.deliverydata";
+"pymedphys_logfiles.elekta" -> "pymedphys_coordsandscales.deliverydata";
+
+        }
+    
