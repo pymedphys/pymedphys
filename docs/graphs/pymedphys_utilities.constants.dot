@@ -14,10 +14,10 @@ strict digraph  {
         }
     }
 
-    "pymedphys_utilities.constants.mlctypes" [label="constants.mlctypes"];
+    "pymedphys_analysis.mudensity.core" [label="analysis.mudensity.core"];
     "pymedphys_labs.paulking.collequivalent" [label="labs.paulking.collequivalent"];
     "pymedphys_utilities.constants" [label="constants"];
-    "pymedphys_analysis.mudensity.core" [label="analysis.mudensity.core"];
+    "pymedphys_utilities.constants.mlctypes" [label="constants.mlctypes"];
 
     "pymedphys_utilities.constants" -> "pymedphys_utilities.constants.mlctypes";
     "pymedphys_analysis.mudensity.core" -> "pymedphys_utilities.constants";

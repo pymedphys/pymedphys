@@ -37,29 +37,29 @@
 <path fill="none" stroke="#000000" d="M344.41,-45C352.4802,-45 361.1626,-45 370.0034,-45"/>
 <polygon fill="#000000" stroke="#000000" points="370.0281,-48.5001 380.0281,-45 370.0281,-41.5001 370.0281,-48.5001"/>
 </g>
-<!-- pymedphys_labs.paulking.collequivalent -->
-<g id="node3" class="node">
-<title>pymedphys_labs.paulking.collequivalent</title>
-<ellipse fill="none" stroke="#000000" cx="110.4902" cy="-72" rx="110.4804" ry="18"/>
-<text text-anchor="middle" x="110.4902" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">labs.paulking.collequivalent</text>
-</g>
-<!-- pymedphys_labs.paulking.collequivalent&#45;&gt;pymedphys_utilities.constants -->
-<g id="edge2" class="edge">
-<title>pymedphys_labs.paulking.collequivalent&#45;&gt;pymedphys_utilities.constants</title>
-<path fill="none" stroke="#000000" d="M193.8429,-60.1574C212.5901,-57.4938 231.9523,-54.7429 248.9508,-52.3278"/>
-<polygon fill="#000000" stroke="#000000" points="249.7945,-55.7431 259.2027,-50.8712 248.8098,-48.8127 249.7945,-55.7431"/>
-</g>
 <!-- pymedphys_analysis.mudensity.core -->
-<g id="node4" class="node">
+<g id="node3" class="node">
 <title>pymedphys_analysis.mudensity.core</title>
-<ellipse fill="none" stroke="#000000" cx="110.4902" cy="-18" rx="96.3833" ry="18"/>
-<text text-anchor="middle" x="110.4902" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.mudensity.core</text>
+<ellipse fill="none" stroke="#000000" cx="110.4902" cy="-72" rx="96.3833" ry="18"/>
+<text text-anchor="middle" x="110.4902" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.mudensity.core</text>
 </g>
 <!-- pymedphys_analysis.mudensity.core&#45;&gt;pymedphys_utilities.constants -->
-<g id="edge3" class="edge">
+<g id="edge2" class="edge">
 <title>pymedphys_analysis.mudensity.core&#45;&gt;pymedphys_utilities.constants</title>
-<path fill="none" stroke="#000000" d="M187.2375,-28.9041C208.1066,-31.8692 230.1978,-35.0078 249.2765,-37.7185"/>
-<polygon fill="#000000" stroke="#000000" points="248.8537,-41.1935 259.2466,-39.135 249.8384,-34.2631 248.8537,-41.1935"/>
+<path fill="none" stroke="#000000" d="M187.2375,-61.0959C208.1066,-58.1308 230.1978,-54.9922 249.2765,-52.2815"/>
+<polygon fill="#000000" stroke="#000000" points="249.8384,-55.7369 259.2466,-50.865 248.8537,-48.8065 249.8384,-55.7369"/>
+</g>
+<!-- pymedphys_labs.paulking.collequivalent -->
+<g id="node4" class="node">
+<title>pymedphys_labs.paulking.collequivalent</title>
+<ellipse fill="none" stroke="#000000" cx="110.4902" cy="-18" rx="110.4804" ry="18"/>
+<text text-anchor="middle" x="110.4902" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">labs.paulking.collequivalent</text>
+</g>
+<!-- pymedphys_labs.paulking.collequivalent&#45;&gt;pymedphys_utilities.constants -->
+<g id="edge3" class="edge">
+<title>pymedphys_labs.paulking.collequivalent&#45;&gt;pymedphys_utilities.constants</title>
+<path fill="none" stroke="#000000" d="M193.8429,-29.8426C212.5901,-32.5062 231.9523,-35.2571 248.9508,-37.6722"/>
+<polygon fill="#000000" stroke="#000000" points="248.8098,-41.1873 259.2027,-39.1288 249.7945,-34.2569 248.8098,-41.1873"/>
 </g>
 </g>
 </svg>

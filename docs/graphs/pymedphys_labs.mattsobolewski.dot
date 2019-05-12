@@ -13,7 +13,7 @@ strict digraph  {
         }
     }
 
-    "pymedphys_labs.mattsobolewski.wlutzfilesort" [label="mattsobolewski.wlutzfilesort"];
     "pymedphys_labs.mattsobolewski" [label="mattsobolewski"];
+    "pymedphys_labs.mattsobolewski.wlutzfilesort" [label="mattsobolewski.wlutzfilesort"];
 
 }

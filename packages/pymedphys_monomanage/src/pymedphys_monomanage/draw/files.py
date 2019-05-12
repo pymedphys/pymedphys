@@ -110,7 +110,7 @@ def draw_file_modules(save_directory):
             for module in current_modules
         }
 
-        all_nodes = set([
+        all_nodes = sorted(list(set([
             *current_dependencies.keys(),
             *[
                 item
@@ -121,7 +121,7 @@ def draw_file_modules(save_directory):
                 item
                 for a_list in current_dependents.values()
                 for item in a_list]
-        ])
+        ])))
 
         internal_dependencies = {
             key: [

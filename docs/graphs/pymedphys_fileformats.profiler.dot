@@ -14,8 +14,8 @@ strict digraph  {
         }
     }
 
-    "pymedphys_fileformats.profiler.core" [label="profiler.core"];
     "pymedphys_fileformats.profiler" [label="profiler"];
+    "pymedphys_fileformats.profiler.core" [label="profiler.core"];
 
     "pymedphys_fileformats.profiler" -> "pymedphys_fileformats.profiler.core";
     "pymedphys_fileformats.profiler" -> "pymedphys_fileformats.profiler.core";

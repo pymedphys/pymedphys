@@ -14,9 +14,9 @@ strict digraph  {
         }
     }
 
-    "pymedphys_utilities.filehash.core" [label="filehash.core"];
     "pymedphys_logfiles.elekta.index" [label="logfiles.elekta.index"];
     "pymedphys_utilities.filehash" [label="filehash"];
+    "pymedphys_utilities.filehash.core" [label="filehash.core"];
 
     "pymedphys_utilities.filehash" -> "pymedphys_utilities.filehash.core";
     "pymedphys_logfiles.elekta.index" -> "pymedphys_utilities.filehash";

@@ -67,64 +67,64 @@
 <path fill="none" stroke="#000000" d="M314.3201,-137.2053C327.6042,-142.1814 343.5294,-148.0251 357.9746,-153 367.1601,-156.1635 376.9495,-159.4074 386.4873,-162.5001"/>
 <polygon fill="#000000" stroke="#000000" points="385.7083,-165.9262 396.2997,-165.6585 387.8531,-159.2628 385.7083,-165.9262"/>
 </g>
-<!-- pymedphys_logfiles.elekta.index -->
-<g id="node6" class="node">
-<title>pymedphys_logfiles.elekta.index</title>
-<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-234" rx="82.5854" ry="18"/>
-<text text-anchor="middle" x="105.9406" y="-230.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.index</text>
-</g>
-<!-- pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_utilities.utilities -->
-<g id="edge4" class="edge">
-<title>pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_utilities.utilities</title>
-<path fill="none" stroke="#000000" d="M172.768,-223.3144C186.3095,-219.4356 200.0204,-214.1625 211.8812,-207 234.8663,-193.1199 254.7994,-169.7653 268.0097,-151.6903"/>
-<polygon fill="#000000" stroke="#000000" points="271.0226,-153.4916 273.9386,-143.306 265.3072,-149.45 271.0226,-153.4916"/>
-</g>
 <!-- pymedphys_logfiles.elekta.analyse -->
-<g id="node7" class="node">
+<g id="node6" class="node">
 <title>pymedphys_logfiles.elekta.analyse</title>
-<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-180" rx="89.0842" ry="18"/>
-<text text-anchor="middle" x="105.9406" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.analyse</text>
+<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-234" rx="89.0842" ry="18"/>
+<text text-anchor="middle" x="105.9406" y="-230.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.analyse</text>
 </g>
 <!-- pymedphys_logfiles.elekta.analyse&#45;&gt;pymedphys_utilities.utilities -->
-<g id="edge5" class="edge">
+<g id="edge4" class="edge">
 <title>pymedphys_logfiles.elekta.analyse&#45;&gt;pymedphys_utilities.utilities</title>
-<path fill="none" stroke="#000000" d="M164.2559,-166.3017C179.821,-162.3291 196.5677,-157.7672 211.8812,-153 223.2635,-149.4566 235.4704,-145.1511 246.5837,-141.0289"/>
-<polygon fill="#000000" stroke="#000000" points="247.894,-144.2755 256.0202,-137.4772 245.4282,-137.7241 247.894,-144.2755"/>
-</g>
-<!-- pymedphys_xlwings.xlwings.mephysto -->
-<g id="node8" class="node">
-<title>pymedphys_xlwings.xlwings.mephysto</title>
-<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-126" rx="105.8812" ry="18"/>
-<text text-anchor="middle" x="105.9406" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.xlwings.mephysto</text>
-</g>
-<!-- pymedphys_xlwings.xlwings.mephysto&#45;&gt;pymedphys_utilities.utilities -->
-<g id="edge6" class="edge">
-<title>pymedphys_xlwings.xlwings.mephysto&#45;&gt;pymedphys_utilities.utilities</title>
-<path fill="none" stroke="#000000" d="M212.1269,-126C220.9202,-126 229.4905,-126 237.482,-126"/>
-<polygon fill="#000000" stroke="#000000" points="237.6242,-129.5001 247.6242,-126 237.6241,-122.5001 237.6242,-129.5001"/>
+<path fill="none" stroke="#000000" d="M175.2737,-222.5811C187.9928,-218.7783 200.7515,-213.7209 211.8812,-207 234.8663,-193.1199 254.7994,-169.7653 268.0097,-151.6903"/>
+<polygon fill="#000000" stroke="#000000" points="271.0226,-153.4916 273.9386,-143.306 265.3072,-149.45 271.0226,-153.4916"/>
 </g>
 <!-- pymedphys_logfiles.elekta.bygantry -->
-<g id="node9" class="node">
+<g id="node7" class="node">
 <title>pymedphys_logfiles.elekta.bygantry</title>
-<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-72" rx="94.4839" ry="18"/>
-<text text-anchor="middle" x="105.9406" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.bygantry</text>
+<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-180" rx="94.4839" ry="18"/>
+<text text-anchor="middle" x="105.9406" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.bygantry</text>
 </g>
 <!-- pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_utilities.utilities -->
-<g id="edge7" class="edge">
+<g id="edge5" class="edge">
 <title>pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_utilities.utilities</title>
+<path fill="none" stroke="#000000" d="M165.363,-166.0186C180.613,-162.113 196.9301,-157.6544 211.8812,-153 223.2635,-149.4566 235.4704,-145.1511 246.5837,-141.0289"/>
+<polygon fill="#000000" stroke="#000000" points="247.894,-144.2755 256.0202,-137.4772 245.4282,-137.7241 247.894,-144.2755"/>
+</g>
+<!-- pymedphys_logfiles.elekta.index -->
+<g id="node8" class="node">
+<title>pymedphys_logfiles.elekta.index</title>
+<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-126" rx="82.5854" ry="18"/>
+<text text-anchor="middle" x="105.9406" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.index</text>
+</g>
+<!-- pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_utilities.utilities -->
+<g id="edge6" class="edge">
+<title>pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_utilities.utilities</title>
+<path fill="none" stroke="#000000" d="M188.6232,-126C205.4428,-126 222.5851,-126 237.6552,-126"/>
+<polygon fill="#000000" stroke="#000000" points="237.7279,-129.5001 247.7279,-126 237.7278,-122.5001 237.7279,-129.5001"/>
+</g>
+<!-- pymedphys_xlwings.xlwings.dicom -->
+<g id="node9" class="node">
+<title>pymedphys_xlwings.xlwings.dicom</title>
+<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-72" rx="93.6835" ry="18"/>
+<text text-anchor="middle" x="105.9406" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.xlwings.dicom</text>
+</g>
+<!-- pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_utilities.utilities -->
+<g id="edge7" class="edge">
+<title>pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_utilities.utilities</title>
 <path fill="none" stroke="#000000" d="M165.363,-85.9814C180.613,-89.887 196.9301,-94.3456 211.8812,-99 223.2635,-102.5434 235.4704,-106.8489 246.5837,-110.9711"/>
 <polygon fill="#000000" stroke="#000000" points="245.4282,-114.2759 256.0202,-114.5228 247.894,-107.7245 245.4282,-114.2759"/>
 </g>
-<!-- pymedphys_xlwings.xlwings.dicom -->
+<!-- pymedphys_xlwings.xlwings.mephysto -->
 <g id="node10" class="node">
-<title>pymedphys_xlwings.xlwings.dicom</title>
-<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-18" rx="93.6835" ry="18"/>
-<text text-anchor="middle" x="105.9406" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.xlwings.dicom</text>
+<title>pymedphys_xlwings.xlwings.mephysto</title>
+<ellipse fill="none" stroke="#000000" cx="105.9406" cy="-18" rx="105.8812" ry="18"/>
+<text text-anchor="middle" x="105.9406" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">xlwings.xlwings.mephysto</text>
 </g>
-<!-- pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_utilities.utilities -->
+<!-- pymedphys_xlwings.xlwings.mephysto&#45;&gt;pymedphys_utilities.utilities -->
 <g id="edge8" class="edge">
-<title>pymedphys_xlwings.xlwings.dicom&#45;&gt;pymedphys_utilities.utilities</title>
-<path fill="none" stroke="#000000" d="M176.6664,-29.8403C188.9219,-33.5931 201.1577,-38.5243 211.8812,-45 234.8663,-58.8801 254.7994,-82.2347 268.0097,-100.3097"/>
+<title>pymedphys_xlwings.xlwings.mephysto&#45;&gt;pymedphys_utilities.utilities</title>
+<path fill="none" stroke="#000000" d="M180.0072,-30.8933C191.1341,-34.5024 202.1326,-39.113 211.8812,-45 234.8663,-58.8801 254.7994,-82.2347 268.0097,-100.3097"/>
 <polygon fill="#000000" stroke="#000000" points="265.3072,-102.55 273.9386,-108.694 271.0226,-98.5084 265.3072,-102.55"/>
 </g>
 </g>

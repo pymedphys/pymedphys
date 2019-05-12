@@ -109,52 +109,52 @@
 <path fill="none" stroke="#000000" d="M278.5428,-99C286.2057,-99 294.9883,-99 304.1995,-99"/>
 <polygon fill="#000000" stroke="#000000" points="304.3301,-102.5001 314.3301,-99 304.33,-95.5001 304.3301,-102.5001"/>
 </g>
-<!-- pymedphys_logfiles.elekta.identify -->
-<g id="node9" class="node">
-<title>pymedphys_logfiles.elekta.identify</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-180" rx="90.1842" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.identify</text>
-</g>
-<!-- pymedphys_logfiles.elekta.identify&#45;&gt;pymedphys_fileformats.trf -->
-<g id="edge8" class="edge">
-<title>pymedphys_logfiles.elekta.identify&#45;&gt;pymedphys_fileformats.trf</title>
-<path fill="none" stroke="#000000" d="M155.58,-166.5785C166.8664,-162.9622 178.2926,-158.4857 188.4833,-153 203.5302,-144.9001 218.1596,-132.7119 229.5276,-121.9636"/>
-<polygon fill="#000000" stroke="#000000" points="232.133,-124.3114 236.8417,-114.8204 227.2421,-119.3034 232.133,-124.3114"/>
-</g>
-<!-- pymedphys_logfiles.elekta.index -->
-<g id="node10" class="node">
-<title>pymedphys_logfiles.elekta.index</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-126" rx="82.5854" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.index</text>
-</g>
-<!-- pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_fileformats.trf -->
-<g id="edge9" class="edge">
-<title>pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_fileformats.trf</title>
-<path fill="none" stroke="#000000" d="M159.1057,-114.8622C178.3014,-111.5661 198.6264,-108.0761 215.3096,-105.2114"/>
-<polygon fill="#000000" stroke="#000000" points="215.9205,-108.6578 225.1839,-103.5159 214.7358,-101.7588 215.9205,-108.6578"/>
-</g>
 <!-- pymedphys_logfiles.elekta.analyse -->
-<g id="node11" class="node">
+<g id="node9" class="node">
 <title>pymedphys_logfiles.elekta.analyse</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-72" rx="89.0842" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.analyse</text>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-180" rx="89.0842" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-176.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.analyse</text>
 </g>
 <!-- pymedphys_logfiles.elekta.analyse&#45;&gt;pymedphys_fileformats.trf -->
-<g id="edge10" class="edge">
+<g id="edge8" class="edge">
 <title>pymedphys_logfiles.elekta.analyse&#45;&gt;pymedphys_fileformats.trf</title>
-<path fill="none" stroke="#000000" d="M162.2956,-83.6856C180.369,-86.7889 199.2012,-90.0226 214.8777,-92.7144"/>
-<polygon fill="#000000" stroke="#000000" points="214.7303,-96.2403 225.1784,-94.4832 215.915,-89.3413 214.7303,-96.2403"/>
+<path fill="none" stroke="#000000" d="M155.0822,-166.7375C166.5301,-163.0936 178.1428,-158.5664 188.4833,-153 203.5302,-144.9001 218.1596,-132.7119 229.5276,-121.9636"/>
+<polygon fill="#000000" stroke="#000000" points="232.133,-124.3114 236.8417,-114.8204 227.2421,-119.3034 232.133,-124.3114"/>
 </g>
 <!-- pymedphys_logfiles.elekta.bygantry -->
-<g id="node12" class="node">
+<g id="node10" class="node">
 <title>pymedphys_logfiles.elekta.bygantry</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-18" rx="94.4839" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.bygantry</text>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-126" rx="94.4839" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-122.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.bygantry</text>
 </g>
 <!-- pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_fileformats.trf -->
-<g id="edge11" class="edge">
+<g id="edge9" class="edge">
 <title>pymedphys_logfiles.elekta.bygantry&#45;&gt;pymedphys_fileformats.trf</title>
-<path fill="none" stroke="#000000" d="M156.5762,-31.7428C167.5375,-35.302 178.5924,-39.6756 188.4833,-45 203.5302,-53.0999 218.1596,-65.2881 229.5276,-76.0364"/>
+<path fill="none" stroke="#000000" d="M164.5841,-113.9215C182.1238,-110.9097 200.2193,-107.8025 215.3264,-105.2085"/>
+<polygon fill="#000000" stroke="#000000" points="216.0007,-108.644 225.2641,-103.5021 214.816,-101.745 216.0007,-108.644"/>
+</g>
+<!-- pymedphys_logfiles.elekta.identify -->
+<g id="node11" class="node">
+<title>pymedphys_logfiles.elekta.identify</title>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-72" rx="90.1842" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-68.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.identify</text>
+</g>
+<!-- pymedphys_logfiles.elekta.identify&#45;&gt;pymedphys_fileformats.trf -->
+<g id="edge10" class="edge">
+<title>pymedphys_logfiles.elekta.identify&#45;&gt;pymedphys_fileformats.trf</title>
+<path fill="none" stroke="#000000" d="M162.7527,-83.764C180.6393,-86.8354 199.2358,-90.0286 214.7557,-92.6935"/>
+<polygon fill="#000000" stroke="#000000" points="214.5141,-96.2032 224.9622,-94.4461 215.6988,-89.3041 214.5141,-96.2032"/>
+</g>
+<!-- pymedphys_logfiles.elekta.index -->
+<g id="node12" class="node">
+<title>pymedphys_logfiles.elekta.index</title>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-18" rx="82.5854" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-14.3" font-family="Times,serif" font-size="14.00" fill="#000000">logfiles.elekta.index</text>
+</g>
+<!-- pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_fileformats.trf -->
+<g id="edge11" class="edge">
+<title>pymedphys_logfiles.elekta.index&#45;&gt;pymedphys_fileformats.trf</title>
+<path fill="none" stroke="#000000" d="M153.0932,-30.6376C165.1794,-34.3849 177.5433,-39.1109 188.4833,-45 203.5302,-53.0999 218.1596,-65.2881 229.5276,-76.0364"/>
 <polygon fill="#000000" stroke="#000000" points="227.2421,-78.6966 236.8417,-83.1796 232.133,-73.6886 227.2421,-78.6966"/>
 </g>
 </g>

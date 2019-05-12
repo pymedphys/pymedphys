@@ -13,8 +13,8 @@ strict digraph  {
         }
     }
 
-    "pymedphys_monomanage.propegate.versions" [label="propegate.versions"];
-    "pymedphys_monomanage.propegate.dependencies" [label="propegate.dependencies"];
     "pymedphys_monomanage.propegate" [label="propegate"];
+    "pymedphys_monomanage.propegate.dependencies" [label="propegate.dependencies"];
+    "pymedphys_monomanage.propegate.versions" [label="propegate.versions"];
 
 }

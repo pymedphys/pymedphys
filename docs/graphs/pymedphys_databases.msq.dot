@@ -15,17 +15,17 @@ strict digraph  {
         }
     }
 
+    "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
+    "pymedphys_databases.msq" [label="msq"];
+    "pymedphys_databases.msq.connect" [label="msq.connect"];
+    "pymedphys_databases.msq.constants" [label="msq.constants"];
+    "pymedphys_databases.msq.delivery" [label="msq.delivery"];
+    "pymedphys_databases.msq.helpers" [label="msq.helpers"];
+    "pymedphys_logfiles.elekta.analyse" [label="logfiles.elekta.analyse"];
+    "pymedphys_logfiles.elekta.bygantry" [label="logfiles.elekta.bygantry"];
     "pymedphys_logfiles.elekta.identify" [label="logfiles.elekta.identify"];
     "pymedphys_logfiles.elekta.index" [label="logfiles.elekta.index"];
-    "pymedphys_logfiles.elekta.analyse" [label="logfiles.elekta.analyse"];
-    "pymedphys_databases.msq.delivery" [label="msq.delivery"];
-    "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
-    "pymedphys_logfiles.elekta.bygantry" [label="logfiles.elekta.bygantry"];
     "pymedphys_toolbox.plancompare.core" [label="toolbox.plancompare.core"];
-    "pymedphys_databases.msq.helpers" [label="msq.helpers"];
-    "pymedphys_databases.msq.constants" [label="msq.constants"];
-    "pymedphys_databases.msq.connect" [label="msq.connect"];
-    "pymedphys_databases.msq" [label="msq"];
 
     "pymedphys_databases.msq" -> "pymedphys_databases.msq.connect";
     "pymedphys_databases.msq" -> "pymedphys_databases.msq.delivery";

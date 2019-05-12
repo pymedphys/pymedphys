@@ -14,16 +14,16 @@ strict digraph  {
         }
     }
 
-    "pymedphys_utilities.utilities.config" [label="utilities.config"];
-    "pymedphys_logfiles.elekta.index" [label="logfiles.elekta.index"];
     "pymedphys_logfiles.elekta.analyse" [label="logfiles.elekta.analyse"];
-    "pymedphys_utilities.utilities.compression" [label="utilities.compression"];
-    "pymedphys_utilities.utilities.filesystem" [label="utilities.filesystem"];
-    "pymedphys_xlwings.xlwings.mephysto" [label="xlwings.xlwings.mephysto"];
-    "pymedphys_utilities.utilities.filesearch" [label="utilities.filesearch"];
     "pymedphys_logfiles.elekta.bygantry" [label="logfiles.elekta.bygantry"];
-    "pymedphys_xlwings.xlwings.dicom" [label="xlwings.xlwings.dicom"];
+    "pymedphys_logfiles.elekta.index" [label="logfiles.elekta.index"];
     "pymedphys_utilities.utilities" [label="utilities"];
+    "pymedphys_utilities.utilities.compression" [label="utilities.compression"];
+    "pymedphys_utilities.utilities.config" [label="utilities.config"];
+    "pymedphys_utilities.utilities.filesearch" [label="utilities.filesearch"];
+    "pymedphys_utilities.utilities.filesystem" [label="utilities.filesystem"];
+    "pymedphys_xlwings.xlwings.dicom" [label="xlwings.xlwings.dicom"];
+    "pymedphys_xlwings.xlwings.mephysto" [label="xlwings.xlwings.mephysto"];
 
     "pymedphys_utilities.utilities" -> "pymedphys_utilities.utilities.config";
     "pymedphys_utilities.utilities" -> "pymedphys_utilities.utilities.filesearch";

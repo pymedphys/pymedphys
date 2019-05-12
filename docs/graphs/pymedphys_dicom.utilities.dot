@@ -15,8 +15,8 @@ strict digraph  {
     }
 
     "pymedphys_dicom.dicom.anonymise" [label="dicom.anonymise"];
-    "pymedphys_dicom.utilities.files" [label="utilities.files"];
     "pymedphys_dicom.utilities" [label="utilities"];
+    "pymedphys_dicom.utilities.files" [label="utilities.files"];
 
     "pymedphys_dicom.utilities" -> "pymedphys_dicom.utilities.files";
     "pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.utilities";

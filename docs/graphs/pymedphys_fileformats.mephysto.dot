@@ -15,11 +15,11 @@ strict digraph  {
         }
     }
 
+    "pymedphys_fileformats.mephysto" [label="mephysto"];
     "pymedphys_fileformats.mephysto.api" [label="mephysto.api"];
     "pymedphys_fileformats.mephysto.core" [label="mephysto.core"];
-    "pymedphys_xlwings.xlwings.mephysto" [label="xlwings.xlwings.mephysto"];
     "pymedphys_fileformats.mephysto.mcc2csv" [label="mephysto.mcc2csv"];
-    "pymedphys_fileformats.mephysto" [label="mephysto"];
+    "pymedphys_xlwings.xlwings.mephysto" [label="xlwings.xlwings.mephysto"];
 
     "pymedphys_fileformats.mephysto" -> "pymedphys_fileformats.mephysto.api";
     "pymedphys_xlwings.xlwings.mephysto" -> "pymedphys_fileformats.mephysto";

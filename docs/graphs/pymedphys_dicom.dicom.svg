@@ -145,41 +145,41 @@
 <path fill="none" stroke="#000000" d="M285.828,-112.5112C302.708,-118.2048 324.6948,-125.621 344.6527,-132.3528"/>
 <polygon fill="#000000" stroke="#000000" points="343.6618,-135.7123 354.2559,-135.5921 345.8991,-129.0795 343.6618,-135.7123"/>
 </g>
-<!-- pymedphys_analysis.geometry.cube -->
-<g id="node11" class="node">
-<title>pymedphys_analysis.geometry.cube</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-184" rx="94.4839" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-180.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.geometry.cube</text>
-</g>
-<!-- pymedphys_analysis.geometry.cube&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge12" class="edge">
-<title>pymedphys_analysis.geometry.cube&#45;&gt;pymedphys_dicom.dicom</title>
-<path fill="none" stroke="#000000" d="M155.3819,-170.2002C166.6866,-166.6188 178.1702,-162.2519 188.4833,-157 204.7391,-148.7218 220.919,-136.3703 233.5361,-125.5686"/>
-<polygon fill="#000000" stroke="#000000" points="236.0852,-127.9876 241.2779,-118.7526 231.4595,-122.7337 236.0852,-127.9876"/>
-</g>
 <!-- pymedphys_analysis.gamma.api -->
-<g id="node12" class="node">
+<g id="node11" class="node">
 <title>pymedphys_analysis.gamma.api</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-130" rx="81.4863" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-126.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma.api</text>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-184" rx="81.4863" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-180.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma.api</text>
 </g>
 <!-- pymedphys_analysis.gamma.api&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge13" class="edge">
+<g id="edge12" class="edge">
 <title>pymedphys_analysis.gamma.api&#45;&gt;pymedphys_dicom.dicom</title>
-<path fill="none" stroke="#000000" d="M159.7566,-119.1736C178.5783,-116.0634 198.5934,-112.7559 215.5869,-109.9477"/>
-<polygon fill="#000000" stroke="#000000" points="216.4439,-113.3536 225.7395,-108.27 215.3026,-106.4473 216.4439,-113.3536"/>
+<path fill="none" stroke="#000000" d="M151.8979,-171.2814C164.3099,-167.5085 177.1085,-162.7926 188.4833,-157 204.7391,-148.7218 220.919,-136.3703 233.5361,-125.5686"/>
+<polygon fill="#000000" stroke="#000000" points="236.0852,-127.9876 241.2779,-118.7526 231.4595,-122.7337 236.0852,-127.9876"/>
 </g>
 <!-- pymedphys_analysis.gamma.filter -->
-<g id="node13" class="node">
+<g id="node12" class="node">
 <title>pymedphys_analysis.gamma.filter</title>
-<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-76" rx="87.9851" ry="18"/>
-<text text-anchor="middle" x="94.2416" y="-72.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma.filter</text>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-130" rx="87.9851" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-126.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.gamma.filter</text>
 </g>
 <!-- pymedphys_analysis.gamma.filter&#45;&gt;pymedphys_dicom.dicom -->
-<g id="edge14" class="edge">
+<g id="edge13" class="edge">
 <title>pymedphys_analysis.gamma.filter&#45;&gt;pymedphys_dicom.dicom</title>
-<path fill="none" stroke="#000000" d="M162.5865,-87.294C180.5199,-90.2575 199.3354,-93.3668 215.4493,-96.0296"/>
-<polygon fill="#000000" stroke="#000000" points="215.175,-99.5316 225.6119,-97.7089 216.3163,-92.6253 215.175,-99.5316"/>
+<path fill="none" stroke="#000000" d="M162.5865,-118.706C180.5199,-115.7425 199.3354,-112.6332 215.4493,-109.9704"/>
+<polygon fill="#000000" stroke="#000000" points="216.3163,-113.3747 225.6119,-108.2911 215.175,-106.4684 216.3163,-113.3747"/>
+</g>
+<!-- pymedphys_analysis.geometry.cube -->
+<g id="node13" class="node">
+<title>pymedphys_analysis.geometry.cube</title>
+<ellipse fill="none" stroke="#000000" cx="94.2416" cy="-76" rx="94.4839" ry="18"/>
+<text text-anchor="middle" x="94.2416" y="-72.3" font-family="Times,serif" font-size="14.00" fill="#000000">analysis.geometry.cube</text>
+</g>
+<!-- pymedphys_analysis.geometry.cube&#45;&gt;pymedphys_dicom.dicom -->
+<g id="edge14" class="edge">
+<title>pymedphys_analysis.geometry.cube&#45;&gt;pymedphys_dicom.dicom</title>
+<path fill="none" stroke="#000000" d="M165.9063,-87.8426C182.9049,-90.6516 200.4916,-93.5578 215.6625,-96.0648"/>
+<polygon fill="#000000" stroke="#000000" points="215.3057,-99.5532 225.7425,-97.7305 216.447,-92.6469 215.3057,-99.5532"/>
 </g>
 <!-- pymedphys_xlwings.xlwings.dicom -->
 <g id="node14" class="node">

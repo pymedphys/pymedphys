@@ -26,7 +26,7 @@
 <text text-anchor="middle" x="393.4729" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">tree.build</text>
 </g>
 <!-- pymedphys_monomanage.parse.imports -->
-<g id="node5" class="node">
+<g id="node6" class="node">
 <title>pymedphys_monomanage.parse.imports</title>
 <ellipse fill="none" stroke="#000000" cx="532.8137" cy="-88" rx="59.2899" ry="18"/>
 <text text-anchor="middle" x="532.8137" y="-84.3" font-family="Times,serif" font-size="14.00" fill="#000000">parse.imports</text>
@@ -49,32 +49,32 @@
 <path fill="none" stroke="#000000" d="M277.512,-88C294.8815,-88 317.9874,-88 339.0008,-88"/>
 <polygon fill="#000000" stroke="#000000" points="339.1141,-91.5001 349.1141,-88 339.1141,-84.5001 339.1141,-91.5001"/>
 </g>
-<!-- pymedphys_monomanage.draw.files -->
-<g id="node3" class="node">
-<title>pymedphys_monomanage.draw.files</title>
-<ellipse fill="none" stroke="#000000" cx="83.594" cy="-103" rx="46.2923" ry="18"/>
-<text text-anchor="middle" x="83.594" y="-99.3" font-family="Times,serif" font-size="14.00" fill="#000000">draw.files</text>
-</g>
-<!-- pymedphys_monomanage.draw.files&#45;&gt;pymedphys_monomanage.tree -->
-<g id="edge1" class="edge">
-<title>pymedphys_monomanage.draw.files&#45;&gt;pymedphys_monomanage.tree</title>
-<path fill="none" stroke="#000000" d="M128.6888,-98.9408C155.1714,-96.5569 188.2317,-93.581 213.1843,-91.3349"/>
-<polygon fill="#000000" stroke="#000000" points="213.6931,-94.8033 223.339,-90.4208 213.0655,-87.8315 213.6931,-94.8033"/>
-</g>
 <!-- pymedphys_monomanage.draw.directories -->
-<g id="node4" class="node">
+<g id="node3" class="node">
 <title>pymedphys_monomanage.draw.directories</title>
-<ellipse fill="none" stroke="#000000" cx="83.594" cy="-49" rx="67.6881" ry="18"/>
-<text text-anchor="middle" x="83.594" y="-45.3" font-family="Times,serif" font-size="14.00" fill="#000000">draw.directories</text>
+<ellipse fill="none" stroke="#000000" cx="83.594" cy="-103" rx="67.6881" ry="18"/>
+<text text-anchor="middle" x="83.594" y="-99.3" font-family="Times,serif" font-size="14.00" fill="#000000">draw.directories</text>
 </g>
 <!-- pymedphys_monomanage.draw.directories&#45;&gt;pymedphys_monomanage.tree -->
-<g id="edge2" class="edge">
+<g id="edge1" class="edge">
 <title>pymedphys_monomanage.draw.directories&#45;&gt;pymedphys_monomanage.tree</title>
-<path fill="none" stroke="#000000" d="M134.4965,-60.9132C160.5096,-67.0013 191.5173,-74.2583 214.8872,-79.7278"/>
-<polygon fill="#000000" stroke="#000000" points="214.185,-83.158 224.7195,-82.029 215.7802,-76.3422 214.185,-83.158"/>
+<path fill="none" stroke="#000000" d="M148.0208,-97.2006C170.1216,-95.2112 194.0945,-93.0533 213.2654,-91.3276"/>
+<polygon fill="#000000" stroke="#000000" points="213.7336,-94.7997 223.3795,-90.4172 213.106,-87.8279 213.7336,-94.7997"/>
+</g>
+<!-- pymedphys_monomanage.draw.files -->
+<g id="node4" class="node">
+<title>pymedphys_monomanage.draw.files</title>
+<ellipse fill="none" stroke="#000000" cx="83.594" cy="-49" rx="46.2923" ry="18"/>
+<text text-anchor="middle" x="83.594" y="-45.3" font-family="Times,serif" font-size="14.00" fill="#000000">draw.files</text>
+</g>
+<!-- pymedphys_monomanage.draw.files&#45;&gt;pymedphys_monomanage.tree -->
+<g id="edge2" class="edge">
+<title>pymedphys_monomanage.draw.files&#45;&gt;pymedphys_monomanage.tree</title>
+<path fill="none" stroke="#000000" d="M123.5081,-58.3415C151.2189,-64.8269 187.8169,-73.3923 214.5555,-79.6502"/>
+<polygon fill="#000000" stroke="#000000" points="214.1041,-83.139 224.6386,-82.01 215.6993,-76.3232 214.1041,-83.139"/>
 </g>
 <!-- pymedphys_monomanage.draw.packages -->
-<g id="node6" class="node">
+<g id="node5" class="node">
 <title>pymedphys_monomanage.draw.packages</title>
 <ellipse fill="none" stroke="#000000" cx="250.2324" cy="-34" rx="63.0888" ry="18"/>
 <text text-anchor="middle" x="250.2324" y="-30.3" font-family="Times,serif" font-size="14.00" fill="#000000">draw.packages</text>

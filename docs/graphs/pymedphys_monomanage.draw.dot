@@ -2,8 +2,8 @@ strict digraph  {
     rankdir = LR;
 
     subgraph cluster_0 {
-        "pymedphys_monomanage.tree.build";
-"pymedphys_monomanage.tree";
+        "pymedphys_monomanage.tree";
+"pymedphys_monomanage.tree.build";
         label = "pymedphys_monomanage";
         style = dashed;
 
@@ -17,14 +17,14 @@ strict digraph  {
         }
     }
 
+    "pymedphys_monomanage.draw" [label="draw"];
     "pymedphys_monomanage.draw.api" [label="draw.api"];
-    "pymedphys_monomanage.tree.build" [label="tree.build"];
     "pymedphys_monomanage.draw.directories" [label="draw.directories"];
-    "pymedphys_monomanage.tree" [label="tree"];
-    "pymedphys_monomanage.draw.utilities" [label="draw.utilities"];
     "pymedphys_monomanage.draw.files" [label="draw.files"];
     "pymedphys_monomanage.draw.packages" [label="draw.packages"];
-    "pymedphys_monomanage.draw" [label="draw"];
+    "pymedphys_monomanage.draw.utilities" [label="draw.utilities"];
+    "pymedphys_monomanage.tree" [label="tree"];
+    "pymedphys_monomanage.tree.build" [label="tree.build"];
 
     "pymedphys_monomanage.draw" -> "pymedphys_monomanage.draw.api";
     "pymedphys_monomanage.draw.api" -> "pymedphys_monomanage.draw.directories";

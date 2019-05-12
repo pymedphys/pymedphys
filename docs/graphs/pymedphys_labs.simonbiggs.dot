@@ -13,7 +13,7 @@ strict digraph  {
         }
     }
 
-    "pymedphys_labs.simonbiggs.profilescore" [label="simonbiggs.profilescore"];
     "pymedphys_labs.simonbiggs" [label="simonbiggs"];
+    "pymedphys_labs.simonbiggs.profilescore" [label="simonbiggs.profilescore"];
 
 }

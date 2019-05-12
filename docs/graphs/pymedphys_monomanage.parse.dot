@@ -13,8 +13,8 @@ strict digraph  {
         }
     }
 
-    "pymedphys_monomanage.parse.imports" [label="parse.imports"];
     "pymedphys_monomanage.parse" [label="parse"];
+    "pymedphys_monomanage.parse.imports" [label="parse.imports"];
     "pymedphys_monomanage.tree.build" [label="tree.build"];
 
     "pymedphys_monomanage.tree.build" -> "pymedphys_monomanage.parse.imports";

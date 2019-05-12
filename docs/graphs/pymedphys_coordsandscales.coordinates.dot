@@ -14,8 +14,8 @@ strict digraph  {
         }
     }
 
-    "pymedphys_coordsandscales.coordinates.transforms" [label="coordinates.transforms"];
     "pymedphys_coordsandscales.coordinates" [label="coordinates"];
+    "pymedphys_coordsandscales.coordinates.transforms" [label="coordinates.transforms"];
 
     "pymedphys_coordsandscales.coordinates" -> "pymedphys_coordsandscales.coordinates.transforms";
     "pymedphys_coordsandscales.coordinates" -> "pymedphys_coordsandscales.coordinates.transforms";

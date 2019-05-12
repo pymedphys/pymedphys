@@ -14,9 +14,9 @@ strict digraph  {
         }
     }
 
+    "pymedphys_electronfactors.electronfactors" [label="electronfactors"];
     "pymedphys_electronfactors.electronfactors.core" [label="electronfactors.core"];
     "pymedphys_electronfactors.electronfactors.visualisation" [label="electronfactors.visualisation"];
-    "pymedphys_electronfactors.electronfactors" [label="electronfactors"];
 
     "pymedphys_electronfactors.electronfactors" -> "pymedphys_electronfactors.electronfactors.core";
     "pymedphys_electronfactors.electronfactors" -> "pymedphys_electronfactors.electronfactors.core";

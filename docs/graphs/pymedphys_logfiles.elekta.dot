@@ -15,19 +15,19 @@ strict digraph  {
         }
     }
 
-    "pymedphys_logfiles.elekta.identify" [label="elekta.identify"];
-    "pymedphys_logfiles.elekta.index" [label="elekta.index"];
-    "pymedphys_logfiles.elekta.analyse" [label="elekta.analyse"];
-    "pymedphys_logfiles.elekta" [label="elekta"];
-    "pymedphys_fileformats.trf" [label="fileformats.trf"];
     "pymedphys_analysis.mudensity" [label="analysis.mudensity"];
     "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
-    "pymedphys_logfiles.elekta.bygantry" [label="elekta.bygantry"];
-    "pymedphys_utilities.filehash" [label="utilities.filehash"];
     "pymedphys_databases.msq" [label="databases.msq"];
+    "pymedphys_fileformats.trf" [label="fileformats.trf"];
+    "pymedphys_logfiles.elekta" [label="elekta"];
+    "pymedphys_logfiles.elekta.analyse" [label="elekta.analyse"];
+    "pymedphys_logfiles.elekta.bygantry" [label="elekta.bygantry"];
     "pymedphys_logfiles.elekta.diagnostics_zips" [label="elekta.diagnostics_zips"];
-    "pymedphys_utilities.utilities" [label="utilities.utilities"];
+    "pymedphys_logfiles.elekta.identify" [label="elekta.identify"];
+    "pymedphys_logfiles.elekta.index" [label="elekta.index"];
     "pymedphys_logfiles.elekta.orchestration" [label="elekta.orchestration"];
+    "pymedphys_utilities.filehash" [label="utilities.filehash"];
+    "pymedphys_utilities.utilities" [label="utilities.utilities"];
 
     "pymedphys_logfiles.elekta" -> "pymedphys_logfiles.elekta.diagnostics_zips";
     "pymedphys_logfiles.elekta" -> "pymedphys_logfiles.elekta.identify";

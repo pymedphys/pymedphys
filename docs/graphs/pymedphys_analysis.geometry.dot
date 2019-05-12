@@ -14,8 +14,8 @@ strict digraph  {
         }
     }
 
-    "pymedphys_analysis.geometry.cube" [label="geometry.cube"];
     "pymedphys_analysis.geometry" [label="geometry"];
+    "pymedphys_analysis.geometry.cube" [label="geometry.cube"];
     "pymedphys_dicom.dicom" [label="dicom.dicom"];
 
     "pymedphys_analysis.geometry" -> "pymedphys_analysis.geometry.cube";
