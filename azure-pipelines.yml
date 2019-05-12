@@ -131,6 +131,11 @@ jobs:
       vmImage: 'ubuntu-16.04'
 
     steps:
+    - task: UsePythonVersion@0
+      displayName: Setup Python
+      inputs:
+        versionSpec: 3.7
+
     - bash: "python -m pip install -U pip setuptools --user"
       displayName: Upgrade pip and setuptools
 
