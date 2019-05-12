@@ -34,7 +34,7 @@ jobs:
 
     steps:
     - task: UsePythonVersion@0
-      displayName: setup python
+      displayName: Setup Python
       inputs:
         versionSpec: $(python)
 
@@ -151,5 +151,5 @@ jobs:
     - bash: yarn tree
       displayName: Build and graph dependency trees
 
-    - bash: git add -A && git diff HEAD --name-only --exit-code -- "*"
-      displayName: Verify that tree building didn't change anything
+    - bash: git add -A && git diff HEAD --name-only --exit-code -- "*.dot"
+      displayName: Verify that tree building didn't change any dot files
