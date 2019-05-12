@@ -13,31 +13,11 @@ jobs:
           test_title: Test Subpackages
           toxenv: analysis,dicom,fileformats,labs,logfiles,coordsandscales,electronfactors,databases,utilities,workshops,toolbox
           python: 3.7
-        # Docs:
-        #   image_name: ubuntu-16.04
-        #   test_title: Docs
-        #   toxenv: docs
-        #   python: 3.7
         Pytest-DoctestModules:
           image_name: ubuntu-16.04
           test_title: Pytest with Docstrings Included
           toxenv: doctest
           python: 3.7
-        # Layer-Lint:
-        #   image_name: ubuntu-16.04
-        #   test_title: Layer-Lint
-        #   toxenv: layer_lint
-        #   python: 3.7
-        # mypy:
-        #   image_name: ubuntu-16.04
-        #   test_title: mypy
-        #   toxenv: mypy
-        #   python: 3.7
-        # Linux-Py36:
-        #   image_name: ubuntu-16.04
-        #   test_title: Linux Py36
-        #   toxenv: py36
-        #   python: 3.6
         Linux-Py37:
           image_name: ubuntu-16.04
           test_title: Linux Py37
@@ -57,9 +37,6 @@ jobs:
       displayName: setup python
       inputs:
         versionSpec: $(python)
-
-    # - bash: export INSTALL_ON_LINUX=1; yarn
-    #   displayName: Run yarn
 
     - bash: sudo apt-get install -y pandoc
       displayName: Install Pandoc, need to make this only on doc run
@@ -90,63 +67,10 @@ jobs:
         testRunTitle: '$(test_title)'
       condition: succeededOrFailed()
 
-
-#   - job: ToxWithConda
-
-#     strategy:
-#       matrix:
-#         windows-py36:
-#           image_name: vs2017-win2016
-#           test_title: Windows py36
-#           toxenv: py36
-#           python: 3.6
-#         windows-py37:
-#           image_name: vs2017-win2016
-#           test_title: Windows py37
-#           toxenv: py37
-#           python: 3.7
-
-#     pool:
-#       vmImage: $(image_name)
-
-#     steps:
-#     - task: CondaEnvironment@1
-#       inputs:
-#         createCustomEnvironment: true
-#         environmentName: pymedphys
-#         packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql
-#         updateConda: true
-#         createOptions: --channel conda-forge
-
-#     - bash: "source activate pymedphys && python -c \"import sys; print(sys.version); print(sys.executable)\""
-#       displayName: Show python information
-
-#     - bash: "source activate pymedphys && python -m pip install -U tox --user"
-#       displayName: Install tox
-
-#     - bash: "source activate pymedphys && python -m tox -e $TOXENV --notest"
-#       displayName: Install test dependencies
-
-#     - bash: "source activate pymedphys && python -m tox -e $TOXENV"
-#       displayName: Run tests
-
-#     - task: PublishTestResults@2
-#       displayName: Publish test results
-#       inputs:
-#         testResultsFiles: junit/*.xml
-#         testRunTitle: '$(test_title)'
-#       condition: succeededOrFailed()
-
-
   - job: Conda
 
     strategy:
       matrix:
-        # mac-py36:
-        #   image_name: macos-10.13
-        #   test_title: macOS py36
-        #   toxenv: py36
-        #   python: 3.6
         mac-py37:
           image_name: macos-10.13
           test_title: macOS py37
@@ -199,3 +123,25 @@ jobs:
 
     - bash: find . -iname \*.ipynb | xargs -d "\n" python -m nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
       displayName: Check that notebooks have no included output
+
+
+  - job: DependencyTree
+
+    pool:
+      vmImage: 'ubuntu-16.04'
+
+    steps:
+    - bash: "python -m pip install -U pip setuptools --user"
+      displayName: Upgrade pip and setuptools
+
+    - bash: yarn
+      displayName: Run yarn
+
+    - bash: yarn tree:deps
+      displayName: Install tree dependencies
+
+    - bash: yarn tree
+      displayName: Build and graph dependency trees
+
+    - bash: git add -A && git diff HEAD --name-only --exit-code -- "*"
+      displayName: Verify that tree building didn't change anything
