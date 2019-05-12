@@ -8,10 +8,11 @@ def save_dot_file(dot_contents, outfilepath):
     with open("temp.dot", 'w') as file:
         file.write(dot_contents)
 
-    os.system("cat temp.dot | tred | dot -Tsvg -o temp.svg")
+    # TODO: Implement svg creation in docs build workflow
+    # os.system("cat temp.dot | tred | dot -Tsvg -o temp.svg")
 
     shutil.move("temp.dot", os.path.splitext(outfilepath)[0] + ".dot")
-    shutil.move("temp.svg", outfilepath)
+    # shutil.move("temp.svg", outfilepath)
 
 
 def remove_prefix(text, prefix):

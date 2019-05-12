@@ -24,7 +24,6 @@ CONVERSIONS = {
 }
 
 
-
 def get_imports(filepath, relative_filepath, internal_packages, depth):
     with open(filepath, 'r') as file:
         data = file.read()

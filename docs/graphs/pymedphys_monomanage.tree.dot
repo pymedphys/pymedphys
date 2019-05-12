@@ -11,6 +11,7 @@ strict digraph  {
 
         subgraph cluster_1 {
             { rank = same; "pymedphys_monomanage.tree.build"; }
+            { rank = same; "pymedphys_monomanage.tree.check"; }
             { rank = same; "pymedphys_monomanage.tree"; }
 
             label = "pymedphys_monomanage.tree"
@@ -23,11 +24,16 @@ strict digraph  {
     "pymedphys_monomanage.parse.imports" [label="parse.imports"];
     "pymedphys_monomanage.tree" [label="tree"];
     "pymedphys_monomanage.tree.build" [label="tree.build"];
+    "pymedphys_monomanage.tree.check" [label="tree.check"];
 
     "pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.build";
+    "pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.check";
     "pymedphys_monomanage.draw.directories" -> "pymedphys_monomanage.tree";
     "pymedphys_monomanage.draw.files" -> "pymedphys_monomanage.tree";
     "pymedphys_monomanage.tree.build" -> "pymedphys_monomanage.parse.imports";
     "pymedphys_monomanage.draw.packages" -> "pymedphys_monomanage.tree.build";
     "pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.build";
+    "pymedphys_monomanage.tree.check" -> "pymedphys_monomanage.tree.build";
+    "pymedphys_monomanage.tree.check" -> "pymedphys_monomanage.tree.build";
+    "pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.check";
 }

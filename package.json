@@ -12,6 +12,11 @@
     "docker:internal": "yarn install:prod",
     "git:clean": "git clean -fxd",
     "git:undo": "git reset --soft HEAD~1",
+    "hooks:pre-commit": "yarn hooks:pre-commit:nbstripout && yarn hooks:pre-commit:tree",
+    "hooks:pre-commit:nbstripout": "nbstripout --is-installed",
+    "hooks:pre-commit:tree": "python -c \"from pymedphys_monomanage.tree import check; check.commit_hook('.')\"",
+    "imports:check": "python -c \"from pymedphys_monomanage.tree import check; check.is_imports_json_up_to_date('.')\"",
+    "imports:save": "python -c \"from pymedphys_monomanage.tree import check; check.update_imports_json('.')\"",
     "install:dev": "yarn lerna run pip:install:dev --concurrency 1",
     "install:prod": "yarn lerna run pip:install:prod --concurrency 1",
     "install:test": "yarn lerna run pip:install:test --concurrency 1",
@@ -35,14 +40,14 @@
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
     "test:subpackage": "yarn install:subpackage:test && pytest -v packages/$SUBPACKAGE && pylint --errors-only --verbose $SUBPACKAGE",
     "tree:deps": "export SUBPACKAGE=pymedphys_monomanage && yarn install:subpackage:dev",
-    "tree": "yarn tree:build && yarn postversion && yarn tree:draw",
+    "tree": "yarn tree:build && yarn postversion && yarn tree:draw && yarn imports:save",
     "tree:build": "python -c \"from pymedphys_monomanage import tree; tree.build_tree('packages')\"",
     "tree:test": "python -c \"from pymedphys_monomanage import tree; tree.test_tree('packages')\"",
     "tree:draw": "python -c \"from pymedphys_monomanage import draw; draw.all('docs/graphs')\""
   },
   "husky": {
     "hooks": {
-      "pre-commit": "nbstripout --is-installed"
+      "pre-commit": "yarn hooks:pre-commit"
     }
   },
   "devDependencies": {
