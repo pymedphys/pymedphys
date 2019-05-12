@@ -14,13 +14,13 @@
             { rank = same; "pymedphys_fileformats.mapcheck"; "pymedphys_fileformats.mephysto"; "pymedphys_fileformats.profiler"; "pymedphys_fileformats.trf"; }
             
             }
-            "pymedphys_fileformats.mapcheck" [label="mapcheck"];
-"pymedphys_xlwings.xlwings" [label="xlwings.xlwings"];
-"pymedphys_fileformats.trf" [label="trf"];
-"pymedphys_fileformats.profiler" [label="profiler"];
-"pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
-"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
+            "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
+"pymedphys_fileformats.mapcheck" [label="mapcheck"];
 "pymedphys_fileformats.mephysto" [label="mephysto"];
+"pymedphys_fileformats.profiler" [label="profiler"];
+"pymedphys_fileformats.trf" [label="trf"];
+"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
+"pymedphys_xlwings.xlwings" [label="xlwings.xlwings"];
 
             { rank = same; "pymedphys_logfiles.elekta"; "pymedphys_xlwings.xlwings"; }
 { rank = same; "pymedphys_coordsandscales.deliverydata"; }

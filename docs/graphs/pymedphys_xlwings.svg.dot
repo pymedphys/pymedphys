@@ -12,9 +12,9 @@
             
             }
             "pymedphys_dicom.dicom" [label="dicom.dicom"];
-"pymedphys_xlwings.xlwings" [label="xlwings"];
 "pymedphys_fileformats.mephysto" [label="fileformats.mephysto"];
 "pymedphys_utilities.utilities" [label="utilities.utilities"];
+"pymedphys_xlwings.xlwings" [label="xlwings"];
 
             { rank = same; "pymedphys_dicom.dicom"; "pymedphys_fileformats.mephysto"; "pymedphys_utilities.utilities"; }
 

@@ -13,13 +13,13 @@
             { rank = same; "pymedphys_utilities.constants"; "pymedphys_utilities.filehash"; "pymedphys_utilities.utilities"; }
             
             }
-            "pymedphys_xlwings.xlwings" [label="xlwings.xlwings"];
-"pymedphys_utilities.filehash" [label="filehash"];
-"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
+            "pymedphys_analysis.mudensity" [label="analysis.mudensity"];
 "pymedphys_labs.paulking" [label="labs.paulking"];
-"pymedphys_utilities.utilities" [label="utilities"];
+"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
 "pymedphys_utilities.constants" [label="constants"];
-"pymedphys_analysis.mudensity" [label="analysis.mudensity"];
+"pymedphys_utilities.filehash" [label="filehash"];
+"pymedphys_utilities.utilities" [label="utilities"];
+"pymedphys_xlwings.xlwings" [label="xlwings.xlwings"];
 
             { rank = same; "pymedphys_analysis.mudensity"; "pymedphys_labs.paulking"; "pymedphys_logfiles.elekta"; "pymedphys_xlwings.xlwings"; }
 

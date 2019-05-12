@@ -13,9 +13,9 @@
             { rank = same; "pymedphys_labs.mattsobolewski"; "pymedphys_labs.paulking"; "pymedphys_labs.simonbiggs"; }
             
             }
-            "pymedphys_labs.paulking" [label="paulking"];
+            "pymedphys_labs.mattsobolewski" [label="mattsobolewski"];
+"pymedphys_labs.paulking" [label="paulking"];
 "pymedphys_labs.simonbiggs" [label="simonbiggs"];
-"pymedphys_labs.mattsobolewski" [label="mattsobolewski"];
 "pymedphys_utilities.constants" [label="utilities.constants"];
 
             { rank = same; "pymedphys_utilities.constants"; }

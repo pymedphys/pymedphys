@@ -11,13 +11,13 @@
             { rank = same; "pymedphys_logfiles.elekta"; }
             
             }
-            "pymedphys_utilities.filehash" [label="utilities.filehash"];
-"pymedphys_logfiles.elekta" [label="elekta"];
-"pymedphys_fileformats.trf" [label="fileformats.trf"];
+            "pymedphys_analysis.mudensity" [label="analysis.mudensity"];
 "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
 "pymedphys_databases.msq" [label="databases.msq"];
+"pymedphys_fileformats.trf" [label="fileformats.trf"];
+"pymedphys_logfiles.elekta" [label="elekta"];
+"pymedphys_utilities.filehash" [label="utilities.filehash"];
 "pymedphys_utilities.utilities" [label="utilities.utilities"];
-"pymedphys_analysis.mudensity" [label="analysis.mudensity"];
 
             { rank = same; "pymedphys_analysis.mudensity"; "pymedphys_coordsandscales.deliverydata"; "pymedphys_databases.msq"; "pymedphys_fileformats.trf"; "pymedphys_utilities.filehash"; "pymedphys_utilities.utilities"; }
 

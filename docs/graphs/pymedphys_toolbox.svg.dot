@@ -11,8 +11,8 @@
             { rank = same; "pymedphys_toolbox.plancompare"; }
             
             }
-            "pymedphys_databases.msq" [label="databases.msq"];
-"pymedphys_analysis.mudensity" [label="analysis.mudensity"];
+            "pymedphys_analysis.mudensity" [label="analysis.mudensity"];
+"pymedphys_databases.msq" [label="databases.msq"];
 "pymedphys_toolbox.plancompare" [label="plancompare"];
 
             { rank = same; "pymedphys_analysis.mudensity"; "pymedphys_databases.msq"; }

@@ -185,6 +185,7 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
         all_nodes |= dependencies[module]
         all_nodes |= dependents[module]
 
+    all_nodes = sorted(list(all_nodes))
 
     label_map = {
         node: simplify(node)

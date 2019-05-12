@@ -12,12 +12,12 @@
             { rank = same; "pymedphys_coordsandscales.coordinates"; "pymedphys_coordsandscales.deliverydata"; }
             
             }
-            "pymedphys_fileformats.trf" [label="fileformats.trf"];
-"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
+            "pymedphys_analysis.mudensity" [label="analysis.mudensity"];
+"pymedphys_coordsandscales.coordinates" [label="coordinates"];
 "pymedphys_coordsandscales.deliverydata" [label="deliverydata"];
 "pymedphys_databases.msq" [label="databases.msq"];
-"pymedphys_coordsandscales.coordinates" [label="coordinates"];
-"pymedphys_analysis.mudensity" [label="analysis.mudensity"];
+"pymedphys_fileformats.trf" [label="fileformats.trf"];
+"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
 
             { rank = same; "pymedphys_analysis.mudensity"; "pymedphys_databases.msq"; "pymedphys_fileformats.trf"; "pymedphys_logfiles.elekta"; }
 

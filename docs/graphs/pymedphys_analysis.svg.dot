@@ -16,14 +16,14 @@
             { rank = same; "pymedphys_analysis.mudensity"; }
             
             }
-            "pymedphys_toolbox.plancompare" [label="toolbox.plancompare"];
-"pymedphys_dicom.dicom" [label="dicom.dicom"];
-"pymedphys_analysis.mudensity" [label="mudensity"];
+            "pymedphys_analysis.gamma" [label="gamma"];
 "pymedphys_analysis.geometry" [label="geometry"];
-"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
-"pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
+"pymedphys_analysis.mudensity" [label="mudensity"];
 "pymedphys_analysis.plt" [label="plt"];
-"pymedphys_analysis.gamma" [label="gamma"];
+"pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
+"pymedphys_dicom.dicom" [label="dicom.dicom"];
+"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
+"pymedphys_toolbox.plancompare" [label="toolbox.plancompare"];
 "pymedphys_utilities.constants" [label="utilities.constants"];
 
             { rank = same; "pymedphys_logfiles.elekta"; "pymedphys_toolbox.plancompare"; }

@@ -18,10 +18,10 @@
             { rank = same; "pymedphys_monomanage.draw"; }
             
             }
-            "pymedphys_monomanage.propegate" [label="propegate"];
+            "pymedphys_monomanage.draw" [label="draw"];
 "pymedphys_monomanage.parse" [label="parse"];
+"pymedphys_monomanage.propegate" [label="propegate"];
 "pymedphys_monomanage.tree" [label="tree"];
-"pymedphys_monomanage.draw" [label="draw"];
 
             
             "pymedphys_monomanage.draw" -> "pymedphys_monomanage.tree";
