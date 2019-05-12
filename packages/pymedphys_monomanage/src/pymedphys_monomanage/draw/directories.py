@@ -4,14 +4,14 @@ import networkx as nx
 from copy import copy
 
 from ..tree import PackageTree
-from .utilities import save_dot_file, remove_prefix
+from .utilities import save_dot_file, remove_prefix, get_levels
 
 
 
 ROOT = os.getcwd()
 
 
-def draw_modules(save_directory):
+def draw_directory_modules(save_directory):
     package_tree = PackageTree(os.path.join(ROOT, 'packages'))
 
     internal_packages = copy(package_tree.roots)
@@ -50,35 +50,6 @@ def draw_modules(save_directory):
             package, package_tree, dependencies, dependents, save_directory)
 
 
-
-
-def get_levels(dag):
-
-    topological = list(nx.topological_sort(dag))
-
-    level_map = {}
-    for package in topological[::-1]:
-        dependencies = nx.descendants(dag, package)
-        levels = {0}
-        for dependency in sorted(list(dependencies)):
-            try:
-                levels.add(level_map[dependency])
-            except KeyError:
-                pass
-        max_level = max(levels)
-        level_map[package] = max_level + 1
-
-    levels = {
-        level: []
-        for level in range(max(level_map.values()) + 1)
-    }
-    for package, level in level_map.items():
-        levels[level].append(package)
-
-    return levels
-
-
-
 def build_graph_for_a_module(graphed_package, package_tree, dependencies,
                              dependents, save_directory):
     print(graphed_package)
@@ -114,30 +85,30 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
         for module in sorted(list(package_tree.digraph.neighbors(graphed_package)))
     }
 
-    keys = list(module_internal_relationships.keys())
-    keys.sort(reverse=True)
-
-    dag = nx.DiGraph()
-
-    for key in keys:
-        values = sorted(module_internal_relationships[key])
-        dag.add_node(key)
-        dag.add_nodes_from(values)
-        edge_tuples = [
-            (key, value) for value in values
-        ]
-        dag.add_edges_from(edge_tuples)
+    levels = get_levels(module_internal_relationships)
 
 
-    dag.edges()
+    internal_nodes = sorted(list(set(module_internal_relationships.keys())))
+    external_nodes = set()
+    for module in current_modules:
+        external_nodes |= dependencies[module]
+        external_nodes |= dependents[module]
 
-    levels = get_levels(dag)
+    external_nodes = sorted(list(external_nodes))
+
+    all_nodes = internal_nodes + external_nodes
 
     def simplify(text):
         text = remove_prefix(text, "{}.".format(graphed_package))
         text = remove_prefix(text, 'pymedphys_')
 
         return text
+
+    label_map = {
+        node: simplify(node)
+        for node in all_nodes
+    }
+
 
     nodes = ""
 
@@ -178,22 +149,6 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
     if current_dependencies:
         grouped_dependencies = '"; "'.join(sorted(list(current_dependencies)))
         external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependencies)
-
-
-    internal_nodes = sorted(list(set(module_internal_relationships.keys())))
-    external_nodes = set()
-    for module in current_modules:
-        external_nodes |= dependencies[module]
-        external_nodes |= dependents[module]
-
-    external_nodes = sorted(list(external_nodes))
-
-    all_nodes = internal_nodes + external_nodes
-
-    label_map = {
-        node: simplify(node)
-        for node in all_nodes
-    }
 
     external_labels = ""
     for node, label in label_map.items():

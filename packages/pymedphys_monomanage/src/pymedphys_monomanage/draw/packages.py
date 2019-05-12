@@ -7,6 +7,7 @@ from .utilities import save_dot_file
 
 ROOT = os.getcwd()
 
+
 def draw_packages(save_directory):
     tree = PackageTree('packages').package_dependencies_dict
     tree.pop('pymedphys')
