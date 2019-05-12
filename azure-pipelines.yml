@@ -131,7 +131,7 @@ jobs:
       vmImage: 'ubuntu-16.04'
 
     steps:
-    - bash: pip install --upgrade pip setuptools
+    - bash: pip install --upgrade pip setuptools packages/pymedphys_monomanage
       displayName: Upgrade pip and setuptools
 
     - bash: sudo apt-get install -y graphviz
@@ -139,9 +139,6 @@ jobs:
 
     - bash: yarn
       displayName: Run yarn
-
-    - bash: yarn tree:deps
-      displayName: Install tree dependencies
 
     - bash: yarn tree
       displayName: Build and graph dependency trees
