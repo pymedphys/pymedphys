@@ -1,24 +1,22 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        "pymedphys_dicom.dicom.anonymise";
-        label = "pymedphys_dicom";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_dicom.utilities.files"; }
-            { rank = same; "pymedphys_dicom.utilities"; }
-
-            label = "pymedphys_dicom.utilities"
-        }
-    }
-
-    "pymedphys_dicom.dicom.anonymise" [label="dicom.anonymise"];
-    "pymedphys_dicom.utilities" [label="utilities"];
-    "pymedphys_dicom.utilities.files" [label="utilities.files"];
-
-    "pymedphys_dicom.utilities" -> "pymedphys_dicom.utilities.files";
-    "pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.utilities";
-    "pymedphys_dicom.utilities" -> "pymedphys_dicom.utilities.files";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_dicom,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_dicom.utilities"];
+			{
+				graph [rank=same];
+				"pymedphys_dicom.utilities.files"				 [label="utilities.files"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_dicom.utilities"				 [label=utilities];
+			}
+		}
+		"pymedphys_dicom.dicom.anonymise"		 [label="dicom.anonymise"];
+	}
+	"pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.utilities";
+	"pymedphys_dicom.utilities" -> "pymedphys_dicom.utilities.files";
 }

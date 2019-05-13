@@ -1,26 +1,24 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_utilities";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_utilities.constants.mlctypes"; }
-            { rank = same; "pymedphys_utilities.constants"; }
-
-            label = "pymedphys_utilities.constants"
-        }
-    }
-
-    "pymedphys_analysis.mudensity.core" [label="analysis.mudensity.core"];
-    "pymedphys_labs.paulking.collequivalent" [label="labs.paulking.collequivalent"];
-    "pymedphys_utilities.constants" [label="constants"];
-    "pymedphys_utilities.constants.mlctypes" [label="constants.mlctypes"];
-
-    "pymedphys_utilities.constants" -> "pymedphys_utilities.constants.mlctypes";
-    "pymedphys_analysis.mudensity.core" -> "pymedphys_utilities.constants";
-    "pymedphys_labs.paulking.collequivalent" -> "pymedphys_utilities.constants";
-    "pymedphys_utilities.constants" -> "pymedphys_utilities.constants.mlctypes";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_utilities,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_utilities.constants"];
+			{
+				graph [rank=same];
+				"pymedphys_utilities.constants.mlctypes"				 [label="constants.mlctypes"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_utilities.constants"				 [label=constants];
+			}
+		}
+	}
+	"pymedphys_utilities.constants" -> "pymedphys_utilities.constants.mlctypes";
+	"pymedphys_analysis.mudensity.core"	 [label="analysis.mudensity.core"];
+	"pymedphys_analysis.mudensity.core" -> "pymedphys_utilities.constants";
+	"pymedphys_labs.paulking.collequivalent"	 [label="labs.paulking.collequivalent"];
+	"pymedphys_labs.paulking.collequivalent" -> "pymedphys_utilities.constants";
 }

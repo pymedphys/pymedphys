@@ -1,20 +1,17 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_monomanage";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_monomanage.propegate"; "pymedphys_monomanage.propegate.dependencies"; "pymedphys_monomanage.propegate.versions"; }
-
-            label = "pymedphys_monomanage.propegate"
-        }
-    }
-
-    "pymedphys_monomanage.propegate" [label="propegate"];
-    "pymedphys_monomanage.propegate.dependencies" [label="propegate.dependencies"];
-    "pymedphys_monomanage.propegate.versions" [label="propegate.versions"];
-
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_monomanage,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_monomanage.propegate"];
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.propegate"				 [label=propegate];
+				"pymedphys_monomanage.propegate.dependencies"				 [label="propegate.dependencies"];
+				"pymedphys_monomanage.propegate.versions"				 [label="propegate.versions"];
+			}
+		}
+	}
 }

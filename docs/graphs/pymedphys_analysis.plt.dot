@@ -1,24 +1,22 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        "pymedphys_analysis.mudensity.core";
-        label = "pymedphys_analysis";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_analysis.plt.helpers"; }
-            { rank = same; "pymedphys_analysis.plt"; }
-
-            label = "pymedphys_analysis.plt"
-        }
-    }
-
-    "pymedphys_analysis.mudensity.core" [label="mudensity.core"];
-    "pymedphys_analysis.plt" [label="plt"];
-    "pymedphys_analysis.plt.helpers" [label="plt.helpers"];
-
-    "pymedphys_analysis.plt" -> "pymedphys_analysis.plt.helpers";
-    "pymedphys_analysis.mudensity.core" -> "pymedphys_analysis.plt";
-    "pymedphys_analysis.plt" -> "pymedphys_analysis.plt.helpers";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_analysis,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_analysis.plt"];
+			{
+				graph [rank=same];
+				"pymedphys_analysis.plt.helpers"				 [label="plt.helpers"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_analysis.plt"				 [label=plt];
+			}
+		}
+		"pymedphys_analysis.mudensity.core"		 [label="mudensity.core"];
+	}
+	"pymedphys_analysis.mudensity.core" -> "pymedphys_analysis.plt";
+	"pymedphys_analysis.plt" -> "pymedphys_analysis.plt.helpers";
 }

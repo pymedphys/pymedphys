@@ -1333,7 +1333,8 @@
     "stdlib": [
       "copy",
       "json",
-      "os"
+      "os",
+      "sys"
     ]
   },
   "pymedphys_sphinxtheme": {
