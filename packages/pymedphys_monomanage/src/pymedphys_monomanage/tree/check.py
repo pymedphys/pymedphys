@@ -6,10 +6,11 @@ from .build import PackageTree
 
 
 def serialise_imports(imports):
-    new_imports = deepcopy(imports)
-    for module, values in imports.items():
+    new_imports = {}
+    for module_path_raw, values in imports.items():
+        module_path = module_path_raw.replace(os.sep, '/')
         for where, a_set in values.items():
-            new_imports[module][where] = sorted(list(a_set))
+            new_imports[module_path][where] = sorted(list(a_set))
 
     return json.dumps(new_imports, sort_keys=True, indent=2)
 
