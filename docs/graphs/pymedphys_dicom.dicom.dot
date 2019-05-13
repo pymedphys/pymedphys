@@ -1,69 +1,52 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        "pymedphys_dicom.utilities";
-        label = "pymedphys_dicom";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_dicom.dicom.constants"; "pymedphys_dicom.dicom.coords"; "pymedphys_dicom.dicom.create"; "pymedphys_dicom.dicom.structure"; }
-            { rank = same; "pymedphys_dicom.dicom.anonymise"; "pymedphys_dicom.dicom.dose"; "pymedphys_dicom.dicom.header"; }
-            { rank = same; "pymedphys_dicom.dicom.collection"; }
-            { rank = same; "pymedphys_dicom.dicom"; }
-
-            label = "pymedphys_dicom.dicom"
-        }
-    }
-
-    "pymedphys_analysis.gamma.api" [label="analysis.gamma.api"];
-    "pymedphys_analysis.gamma.filter" [label="analysis.gamma.filter"];
-    "pymedphys_analysis.geometry.cube" [label="analysis.geometry.cube"];
-    "pymedphys_dicom.dicom" [label="dicom"];
-    "pymedphys_dicom.dicom.anonymise" [label="dicom.anonymise"];
-    "pymedphys_dicom.dicom.collection" [label="dicom.collection"];
-    "pymedphys_dicom.dicom.constants" [label="dicom.constants"];
-    "pymedphys_dicom.dicom.coords" [label="dicom.coords"];
-    "pymedphys_dicom.dicom.create" [label="dicom.create"];
-    "pymedphys_dicom.dicom.dose" [label="dicom.dose"];
-    "pymedphys_dicom.dicom.header" [label="dicom.header"];
-    "pymedphys_dicom.dicom.structure" [label="dicom.structure"];
-    "pymedphys_dicom.utilities" [label="utilities"];
-    "pymedphys_xlwings.xlwings.dicom" [label="xlwings.xlwings.dicom"];
-
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.anonymise";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.collection";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.constants";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.coords";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.create";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.dose";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.header";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.structure";
-    "pymedphys_analysis.gamma.api" -> "pymedphys_dicom.dicom";
-    "pymedphys_analysis.gamma.filter" -> "pymedphys_dicom.dicom";
-    "pymedphys_analysis.geometry.cube" -> "pymedphys_dicom.dicom";
-    "pymedphys_xlwings.xlwings.dicom" -> "pymedphys_dicom.dicom";
-    "pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.dicom.constants";
-    "pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.utilities";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.anonymise";
-    "pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.anonymise";
-    "pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.anonymise";
-    "pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.coords";
-    "pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.create";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.collection";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.constants";
-    "pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.dicom.constants";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.coords";
-    "pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.coords";
-    "pymedphys_dicom.dicom.dose" -> "pymedphys_dicom.dicom.coords";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.create";
-    "pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.create";
-    "pymedphys_dicom.dicom.header" -> "pymedphys_dicom.dicom.create";
-    "pymedphys_dicom.dicom.dose" -> "pymedphys_dicom.dicom.coords";
-    "pymedphys_dicom.dicom.dose" -> "pymedphys_dicom.dicom.structure";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.dose";
-    "pymedphys_dicom.dicom.header" -> "pymedphys_dicom.dicom.create";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.header";
-    "pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.structure";
-    "pymedphys_dicom.dicom.dose" -> "pymedphys_dicom.dicom.structure";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_dicom,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_dicom.dicom"];
+			{
+				graph [rank=same];
+				"pymedphys_dicom.dicom.constants"				 [label="dicom.constants"];
+				"pymedphys_dicom.dicom.coords"				 [label="dicom.coords"];
+				"pymedphys_dicom.dicom.create"				 [label="dicom.create"];
+				"pymedphys_dicom.dicom.structure"				 [label="dicom.structure"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_dicom.dicom.anonymise"				 [label="dicom.anonymise"];
+				"pymedphys_dicom.dicom.dose"				 [label="dicom.dose"];
+				"pymedphys_dicom.dicom.header"				 [label="dicom.header"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_dicom.dicom.collection"				 [label="dicom.collection"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_dicom.dicom"				 [label=dicom];
+			}
+		}
+		"pymedphys_dicom.utilities"		 [label=utilities];
+	}
+	"pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.utilities";
+	"pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.dicom.constants";
+	"pymedphys_dicom.dicom.dose" -> "pymedphys_dicom.dicom.coords";
+	"pymedphys_dicom.dicom.dose" -> "pymedphys_dicom.dicom.structure";
+	"pymedphys_dicom.dicom.header" -> "pymedphys_dicom.dicom.create";
+	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.coords";
+	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.create";
+	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.anonymise";
+	"pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.dose";
+	"pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.header";
+	"pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.collection";
+	"pymedphys_analysis.gamma.api"	 [label="analysis.gamma.api"];
+	"pymedphys_analysis.gamma.api" -> "pymedphys_dicom.dicom";
+	"pymedphys_analysis.gamma.filter"	 [label="analysis.gamma.filter"];
+	"pymedphys_analysis.gamma.filter" -> "pymedphys_dicom.dicom";
+	"pymedphys_analysis.geometry.cube"	 [label="analysis.geometry.cube"];
+	"pymedphys_analysis.geometry.cube" -> "pymedphys_dicom.dicom";
+	"pymedphys_xlwings.xlwings.dicom"	 [label="xlwings.xlwings.dicom"];
+	"pymedphys_xlwings.xlwings.dicom" -> "pymedphys_dicom.dicom";
 }

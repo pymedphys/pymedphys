@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 from copy import deepcopy
 
@@ -33,7 +34,12 @@ def is_imports_json_up_to_date(directory):
 def commit_hook(directory):
     if not is_imports_json_up_to_date(directory):
         os.system("yarn tree")
-        raise ValueError("Tree was out of date. Please rerun commit.")
+        print(
+            "Tree was out of date. It has been run for you. "
+            "Please rerun commit. To prevent this message in the future "
+            "run `yarn tree` whenever you change the dependency structure "
+            "of PyMedPhys.")
+        sys.exit(1)
 
 
 def update_imports_json(directory):

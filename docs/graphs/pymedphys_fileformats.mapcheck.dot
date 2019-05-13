@@ -1,22 +1,20 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_fileformats";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_fileformats.mapcheck.core"; }
-            { rank = same; "pymedphys_fileformats.mapcheck"; }
-
-            label = "pymedphys_fileformats.mapcheck"
-        }
-    }
-
-    "pymedphys_fileformats.mapcheck" [label="mapcheck"];
-    "pymedphys_fileformats.mapcheck.core" [label="mapcheck.core"];
-
-    "pymedphys_fileformats.mapcheck" -> "pymedphys_fileformats.mapcheck.core";
-    "pymedphys_fileformats.mapcheck" -> "pymedphys_fileformats.mapcheck.core";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_fileformats,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_fileformats.mapcheck"];
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.mapcheck.core"				 [label="mapcheck.core"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.mapcheck"				 [label=mapcheck];
+			}
+		}
+	}
+	"pymedphys_fileformats.mapcheck" -> "pymedphys_fileformats.mapcheck.core";
 }

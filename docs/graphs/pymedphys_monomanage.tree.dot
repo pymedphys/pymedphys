@@ -1,39 +1,33 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        "pymedphys_monomanage.draw.directories";
-"pymedphys_monomanage.draw.files";
-"pymedphys_monomanage.draw.packages";
-"pymedphys_monomanage.parse.imports";
-        label = "pymedphys_monomanage";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_monomanage.tree.build"; }
-            { rank = same; "pymedphys_monomanage.tree.check"; }
-            { rank = same; "pymedphys_monomanage.tree"; }
-
-            label = "pymedphys_monomanage.tree"
-        }
-    }
-
-    "pymedphys_monomanage.draw.directories" [label="draw.directories"];
-    "pymedphys_monomanage.draw.files" [label="draw.files"];
-    "pymedphys_monomanage.draw.packages" [label="draw.packages"];
-    "pymedphys_monomanage.parse.imports" [label="parse.imports"];
-    "pymedphys_monomanage.tree" [label="tree"];
-    "pymedphys_monomanage.tree.build" [label="tree.build"];
-    "pymedphys_monomanage.tree.check" [label="tree.check"];
-
-    "pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.build";
-    "pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.check";
-    "pymedphys_monomanage.draw.directories" -> "pymedphys_monomanage.tree";
-    "pymedphys_monomanage.draw.files" -> "pymedphys_monomanage.tree";
-    "pymedphys_monomanage.tree.build" -> "pymedphys_monomanage.parse.imports";
-    "pymedphys_monomanage.draw.packages" -> "pymedphys_monomanage.tree.build";
-    "pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.build";
-    "pymedphys_monomanage.tree.check" -> "pymedphys_monomanage.tree.build";
-    "pymedphys_monomanage.tree.check" -> "pymedphys_monomanage.tree.build";
-    "pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.check";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_monomanage,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_monomanage.tree"];
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.tree.build"				 [label="tree.build"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.tree.check"				 [label="tree.check"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.tree"				 [label=tree];
+			}
+		}
+		"pymedphys_monomanage.draw.directories"		 [label="draw.directories"];
+		"pymedphys_monomanage.draw.files"		 [label="draw.files"];
+		"pymedphys_monomanage.draw.packages"		 [label="draw.packages"];
+		"pymedphys_monomanage.parse.imports"		 [label="parse.imports"];
+	}
+	"pymedphys_monomanage.draw.directories" -> "pymedphys_monomanage.tree";
+	"pymedphys_monomanage.draw.files" -> "pymedphys_monomanage.tree";
+	"pymedphys_monomanage.draw.packages" -> "pymedphys_monomanage.tree.build";
+	"pymedphys_monomanage.tree.build" -> "pymedphys_monomanage.parse.imports";
+	"pymedphys_monomanage.tree.check" -> "pymedphys_monomanage.tree.build";
+	"pymedphys_monomanage.tree" -> "pymedphys_monomanage.tree.check";
 }

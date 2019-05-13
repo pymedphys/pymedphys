@@ -1,34 +1,32 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_coordsandscales";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_coordsandscales.deliverydata.core"; }
-            { rank = same; "pymedphys_coordsandscales.deliverydata"; }
-
-            label = "pymedphys_coordsandscales.deliverydata"
-        }
-    }
-
-    "pymedphys_analysis.mudensity.api" [label="analysis.mudensity.api"];
-    "pymedphys_analysis.mudensity.core" [label="analysis.mudensity.core"];
-    "pymedphys_coordsandscales.deliverydata" [label="deliverydata"];
-    "pymedphys_coordsandscales.deliverydata.core" [label="deliverydata.core"];
-    "pymedphys_databases.msq.delivery" [label="databases.msq.delivery"];
-    "pymedphys_fileformats.trf.trf2deliverydata" [label="fileformats.trf.trf2deliverydata"];
-    "pymedphys_logfiles.elekta.analyse" [label="logfiles.elekta.analyse"];
-    "pymedphys_logfiles.elekta.bygantry" [label="logfiles.elekta.bygantry"];
-
-    "pymedphys_coordsandscales.deliverydata" -> "pymedphys_coordsandscales.deliverydata.core";
-    "pymedphys_analysis.mudensity.api" -> "pymedphys_coordsandscales.deliverydata";
-    "pymedphys_analysis.mudensity.core" -> "pymedphys_coordsandscales.deliverydata";
-    "pymedphys_databases.msq.delivery" -> "pymedphys_coordsandscales.deliverydata";
-    "pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_coordsandscales.deliverydata";
-    "pymedphys_logfiles.elekta.analyse" -> "pymedphys_coordsandscales.deliverydata";
-    "pymedphys_logfiles.elekta.bygantry" -> "pymedphys_coordsandscales.deliverydata";
-    "pymedphys_coordsandscales.deliverydata" -> "pymedphys_coordsandscales.deliverydata.core";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_coordsandscales,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_coordsandscales.deliverydata"];
+			{
+				graph [rank=same];
+				"pymedphys_coordsandscales.deliverydata.core"				 [label="deliverydata.core"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_coordsandscales.deliverydata"				 [label=deliverydata];
+			}
+		}
+	}
+	"pymedphys_coordsandscales.deliverydata" -> "pymedphys_coordsandscales.deliverydata.core";
+	"pymedphys_analysis.mudensity.api"	 [label="analysis.mudensity.api"];
+	"pymedphys_analysis.mudensity.api" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_analysis.mudensity.core"	 [label="analysis.mudensity.core"];
+	"pymedphys_analysis.mudensity.core" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_databases.msq.delivery"	 [label="databases.msq.delivery"];
+	"pymedphys_databases.msq.delivery" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_fileformats.trf.trf2deliverydata"	 [label="fileformats.trf.trf2deliverydata"];
+	"pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_logfiles.elekta.analyse"	 [label="logfiles.elekta.analyse"];
+	"pymedphys_logfiles.elekta.analyse" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_logfiles.elekta.bygantry"	 [label="logfiles.elekta.bygantry"];
+	"pymedphys_logfiles.elekta.bygantry" -> "pymedphys_coordsandscales.deliverydata";
 }

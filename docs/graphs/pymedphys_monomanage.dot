@@ -1,32 +1,23 @@
-
-        strict digraph  {
-            rankdir = LR;
-            subgraph cluster_0 {
-                "pymedphys_monomanage.draw";
-"pymedphys_monomanage.parse";
-"pymedphys_monomanage.propegate";
-"pymedphys_monomanage.tree";
-
-                label = "pymedphys_monomanage";
-                style = dashed;
-                
-            { rank = same; "pymedphys_monomanage.parse"; "pymedphys_monomanage.propegate"; }
-            
-            { rank = same; "pymedphys_monomanage.tree"; }
-            
-            { rank = same; "pymedphys_monomanage.draw"; }
-            
-            }
-            "pymedphys_monomanage.draw" [label="draw"];
-"pymedphys_monomanage.parse" [label="parse"];
-"pymedphys_monomanage.propegate" [label="propegate"];
-"pymedphys_monomanage.tree" [label="tree"];
-
-            
-            "pymedphys_monomanage.draw" -> "pymedphys_monomanage.tree";
-"pymedphys_monomanage.tree" -> "pymedphys_monomanage.parse";
-"pymedphys_monomanage.tree" -> "pymedphys_monomanage.parse";
-"pymedphys_monomanage.draw" -> "pymedphys_monomanage.tree";
-
-        }
-    
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_monomanage,
+			style=dashed
+		];
+		{
+			graph [rank=same];
+			"pymedphys_monomanage.parse"			 [label=parse];
+			"pymedphys_monomanage.propegate"			 [label=propegate];
+		}
+		{
+			graph [rank=same];
+			"pymedphys_monomanage.tree"			 [label=tree];
+		}
+		{
+			graph [rank=same];
+			"pymedphys_monomanage.draw"			 [label=draw];
+		}
+	}
+	"pymedphys_monomanage.draw" -> "pymedphys_monomanage.tree";
+	"pymedphys_monomanage.tree" -> "pymedphys_monomanage.parse";
+}

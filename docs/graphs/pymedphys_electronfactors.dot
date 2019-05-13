@@ -1,18 +1,12 @@
-
-        strict digraph  {
-            rankdir = LR;
-            subgraph cluster_0 {
-                "pymedphys_electronfactors.electronfactors";
-
-                label = "pymedphys_electronfactors";
-                style = dashed;
-                
-            { rank = same; "pymedphys_electronfactors.electronfactors"; }
-            
-            }
-            "pymedphys_electronfactors.electronfactors" [label="electronfactors"];
-
-            
-            
-        }
-    
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_electronfactors,
+			style=dashed
+		];
+		{
+			graph [rank=same];
+			"pymedphys_electronfactors.electronfactors"			 [label=electronfactors];
+		}
+	}
+}
