@@ -1,0 +1,48 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_databases";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_databases.msq.connect"; "pymedphys_databases.msq.constants"; }
+            { rank = same; "pymedphys_databases.msq.delivery"; "pymedphys_databases.msq.helpers"; }
+            { rank = same; "pymedphys_databases.msq"; }
+
+            label = "pymedphys_databases.msq"
+        }
+    }
+
+    "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
+    "pymedphys_databases.msq" [label="msq"];
+    "pymedphys_databases.msq.connect" [label="msq.connect"];
+    "pymedphys_databases.msq.constants" [label="msq.constants"];
+    "pymedphys_databases.msq.delivery" [label="msq.delivery"];
+    "pymedphys_databases.msq.helpers" [label="msq.helpers"];
+    "pymedphys_logfiles.elekta.analyse" [label="logfiles.elekta.analyse"];
+    "pymedphys_logfiles.elekta.bygantry" [label="logfiles.elekta.bygantry"];
+    "pymedphys_logfiles.elekta.identify" [label="logfiles.elekta.identify"];
+    "pymedphys_logfiles.elekta.index" [label="logfiles.elekta.index"];
+    "pymedphys_toolbox.plancompare.core" [label="toolbox.plancompare.core"];
+
+    "pymedphys_databases.msq" -> "pymedphys_databases.msq.connect";
+    "pymedphys_databases.msq" -> "pymedphys_databases.msq.delivery";
+    "pymedphys_logfiles.elekta.analyse" -> "pymedphys_databases.msq";
+    "pymedphys_logfiles.elekta.bygantry" -> "pymedphys_databases.msq";
+    "pymedphys_logfiles.elekta.identify" -> "pymedphys_databases.msq";
+    "pymedphys_logfiles.elekta.index" -> "pymedphys_databases.msq";
+    "pymedphys_toolbox.plancompare.core" -> "pymedphys_databases.msq";
+    "pymedphys_databases.msq" -> "pymedphys_databases.msq.connect";
+    "pymedphys_databases.msq.delivery" -> "pymedphys_databases.msq.connect";
+    "pymedphys_databases.msq.helpers" -> "pymedphys_databases.msq.connect";
+    "pymedphys_databases.msq.delivery" -> "pymedphys_databases.msq.constants";
+    "pymedphys_databases.msq.helpers" -> "pymedphys_databases.msq.constants";
+    "pymedphys_databases.msq.delivery" -> "pymedphys_coordsandscales.deliverydata";
+    "pymedphys_databases.msq.delivery" -> "pymedphys_databases.msq.connect";
+    "pymedphys_databases.msq.delivery" -> "pymedphys_databases.msq.constants";
+    "pymedphys_databases.msq" -> "pymedphys_databases.msq.delivery";
+    "pymedphys_databases.msq.helpers" -> "pymedphys_databases.msq.connect";
+    "pymedphys_databases.msq.helpers" -> "pymedphys_databases.msq.constants";
+}

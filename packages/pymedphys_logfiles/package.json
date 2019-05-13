@@ -13,7 +13,7 @@
     "pip:install:prod": "pip install .",
     "pip:install:test": "pip install .[test]",
     "postversion": "yarn propegate:version",
-    "propegate:version": "python ../../scripts/propegate_versions.py",
+    "propegate:version": "python -m pymedphys_monomanage.propegate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:upload": "twine upload dist/*"
   },
