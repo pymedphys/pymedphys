@@ -1,0 +1,31 @@
+
+        strict digraph  {
+            rankdir = LR;
+            subgraph cluster_0 {
+                "pymedphys_logfiles.elekta";
+
+                label = "pymedphys_logfiles";
+                style = dashed;
+                
+            { rank = same; "pymedphys_logfiles.elekta"; }
+            
+            }
+            "pymedphys_logfiles.elekta" [label="elekta"];
+"pymedphys_analysis.mudensity" [label="analysis.mudensity"];
+"pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
+"pymedphys_databases.msq" [label="databases.msq"];
+"pymedphys_fileformats.trf" [label="fileformats.trf"];
+"pymedphys_utilities.filehash" [label="utilities.filehash"];
+"pymedphys_utilities.utilities" [label="utilities.utilities"];
+
+            { rank = same; "pymedphys_analysis.mudensity"; "pymedphys_coordsandscales.deliverydata"; "pymedphys_databases.msq"; "pymedphys_fileformats.trf"; "pymedphys_utilities.filehash"; "pymedphys_utilities.utilities"; }
+
+            "pymedphys_logfiles.elekta" -> "pymedphys_analysis.mudensity";
+"pymedphys_logfiles.elekta" -> "pymedphys_coordsandscales.deliverydata";
+"pymedphys_logfiles.elekta" -> "pymedphys_databases.msq";
+"pymedphys_logfiles.elekta" -> "pymedphys_fileformats.trf";
+"pymedphys_logfiles.elekta" -> "pymedphys_utilities.filehash";
+"pymedphys_logfiles.elekta" -> "pymedphys_utilities.utilities";
+
+        }
+    

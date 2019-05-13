@@ -1,0 +1,25 @@
+
+        strict digraph  {
+            rankdir = LR;
+            subgraph cluster_0 {
+                "pymedphys_xlwings.xlwings";
+
+                label = "pymedphys_xlwings";
+                style = dashed;
+                
+            { rank = same; "pymedphys_xlwings.xlwings"; }
+            
+            }
+            "pymedphys_xlwings.xlwings" [label="xlwings"];
+"pymedphys_dicom.dicom" [label="dicom.dicom"];
+"pymedphys_fileformats.mephysto" [label="fileformats.mephysto"];
+"pymedphys_utilities.utilities" [label="utilities.utilities"];
+
+            { rank = same; "pymedphys_dicom.dicom"; "pymedphys_fileformats.mephysto"; "pymedphys_utilities.utilities"; }
+
+            "pymedphys_xlwings.xlwings" -> "pymedphys_dicom.dicom";
+"pymedphys_xlwings.xlwings" -> "pymedphys_fileformats.mephysto";
+"pymedphys_xlwings.xlwings" -> "pymedphys_utilities.utilities";
+
+        }
+    
