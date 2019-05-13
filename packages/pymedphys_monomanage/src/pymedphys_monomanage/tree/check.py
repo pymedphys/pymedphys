@@ -42,6 +42,8 @@ def commit_hook(directory):
             "this is complete.\033[0;0m\n"
         )
 
+        sys.stdout.flush()
+
         yarn = shutil.which("yarn")
         git = shutil.which("git")
 
