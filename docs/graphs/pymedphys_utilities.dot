@@ -1,32 +1,26 @@
-
-        strict digraph  {
-            rankdir = LR;
-            subgraph cluster_0 {
-                "pymedphys_utilities.constants";
-"pymedphys_utilities.filehash";
-"pymedphys_utilities.utilities";
-
-                label = "pymedphys_utilities";
-                style = dashed;
-                
-            { rank = same; "pymedphys_utilities.constants"; "pymedphys_utilities.filehash"; "pymedphys_utilities.utilities"; }
-            
-            }
-            "pymedphys_utilities.constants" [label="constants"];
-"pymedphys_utilities.filehash" [label="filehash"];
-"pymedphys_utilities.utilities" [label="utilities"];
-"pymedphys_analysis.mudensity" [label="analysis.mudensity"];
-"pymedphys_labs.paulking" [label="labs.paulking"];
-"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
-"pymedphys_xlwings.xlwings" [label="xlwings.xlwings"];
-
-            { rank = same; "pymedphys_analysis.mudensity"; "pymedphys_labs.paulking"; "pymedphys_logfiles.elekta"; "pymedphys_xlwings.xlwings"; }
-
-            "pymedphys_analysis.mudensity" -> "pymedphys_utilities.constants";
-"pymedphys_labs.paulking" -> "pymedphys_utilities.constants";
-"pymedphys_logfiles.elekta" -> "pymedphys_utilities.filehash";
-"pymedphys_logfiles.elekta" -> "pymedphys_utilities.utilities";
-"pymedphys_xlwings.xlwings" -> "pymedphys_utilities.utilities";
-
-        }
-    
+strict digraph {
+	graph [rankdir=LR];
+	{
+		graph [rank=same];
+		"pymedphys_analysis.mudensity"		 [label="analysis.mudensity"];
+		"pymedphys_labs.paulking"		 [label="labs.paulking"];
+		"pymedphys_logfiles.elekta"		 [label="logfiles.elekta"];
+		"pymedphys_xlwings.xlwings"		 [label="xlwings.xlwings"];
+	}
+	subgraph cluster_0 {
+		graph [label=pymedphys_utilities,
+			style=dashed
+		];
+		{
+			graph [rank=same];
+			"pymedphys_utilities.constants"			 [label=constants];
+			"pymedphys_utilities.filehash"			 [label=filehash];
+			"pymedphys_utilities.utilities"			 [label=utilities];
+		}
+	}
+	"pymedphys_analysis.mudensity" -> "pymedphys_utilities.constants";
+	"pymedphys_labs.paulking" -> "pymedphys_utilities.constants";
+	"pymedphys_logfiles.elekta" -> "pymedphys_utilities.filehash";
+	"pymedphys_logfiles.elekta" -> "pymedphys_utilities.utilities";
+	"pymedphys_xlwings.xlwings" -> "pymedphys_utilities.utilities";
+}

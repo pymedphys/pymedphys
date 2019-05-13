@@ -1,21 +1,18 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        "pymedphys_monomanage.tree.build";
-        label = "pymedphys_monomanage";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_monomanage.parse"; "pymedphys_monomanage.parse.imports"; }
-
-            label = "pymedphys_monomanage.parse"
-        }
-    }
-
-    "pymedphys_monomanage.parse" [label="parse"];
-    "pymedphys_monomanage.parse.imports" [label="parse.imports"];
-    "pymedphys_monomanage.tree.build" [label="tree.build"];
-
-    "pymedphys_monomanage.tree.build" -> "pymedphys_monomanage.parse.imports";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_monomanage,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_monomanage.parse"];
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.parse"				 [label=parse];
+				"pymedphys_monomanage.parse.imports"				 [label="parse.imports"];
+			}
+		}
+		"pymedphys_monomanage.tree.build"		 [label="tree.build"];
+	}
+	"pymedphys_monomanage.tree.build" -> "pymedphys_monomanage.parse.imports";
 }

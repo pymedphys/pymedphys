@@ -1,56 +1,49 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_fileformats";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_fileformats.trf.constants"; "pymedphys_fileformats.trf.header"; }
-            { rank = same; "pymedphys_fileformats.trf.table"; }
-            { rank = same; "pymedphys_fileformats.trf.trf2pandas"; }
-            { rank = same; "pymedphys_fileformats.trf.trf2csv"; "pymedphys_fileformats.trf.trf2deliverydata"; }
-            { rank = same; "pymedphys_fileformats.trf"; }
-
-            label = "pymedphys_fileformats.trf"
-        }
-    }
-
-    "pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
-    "pymedphys_fileformats.trf" [label="trf"];
-    "pymedphys_fileformats.trf.constants" [label="trf.constants"];
-    "pymedphys_fileformats.trf.header" [label="trf.header"];
-    "pymedphys_fileformats.trf.table" [label="trf.table"];
-    "pymedphys_fileformats.trf.trf2csv" [label="trf.trf2csv"];
-    "pymedphys_fileformats.trf.trf2deliverydata" [label="trf.trf2deliverydata"];
-    "pymedphys_fileformats.trf.trf2pandas" [label="trf.trf2pandas"];
-    "pymedphys_logfiles.elekta.analyse" [label="logfiles.elekta.analyse"];
-    "pymedphys_logfiles.elekta.bygantry" [label="logfiles.elekta.bygantry"];
-    "pymedphys_logfiles.elekta.identify" [label="logfiles.elekta.identify"];
-    "pymedphys_logfiles.elekta.index" [label="logfiles.elekta.index"];
-
-    "pymedphys_fileformats.trf" -> "pymedphys_fileformats.trf.header";
-    "pymedphys_fileformats.trf" -> "pymedphys_fileformats.trf.trf2deliverydata";
-    "pymedphys_logfiles.elekta.analyse" -> "pymedphys_fileformats.trf";
-    "pymedphys_logfiles.elekta.bygantry" -> "pymedphys_fileformats.trf";
-    "pymedphys_logfiles.elekta.identify" -> "pymedphys_fileformats.trf";
-    "pymedphys_logfiles.elekta.index" -> "pymedphys_fileformats.trf";
-    "pymedphys_fileformats.trf.table" -> "pymedphys_fileformats.trf.constants";
-    "pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_fileformats.trf.constants";
-    "pymedphys_fileformats.trf" -> "pymedphys_fileformats.trf.header";
-    "pymedphys_fileformats.trf.table" -> "pymedphys_fileformats.trf.header";
-    "pymedphys_fileformats.trf.trf2pandas" -> "pymedphys_fileformats.trf.header";
-    "pymedphys_fileformats.trf.table" -> "pymedphys_fileformats.trf.constants";
-    "pymedphys_fileformats.trf.table" -> "pymedphys_fileformats.trf.header";
-    "pymedphys_fileformats.trf.trf2pandas" -> "pymedphys_fileformats.trf.table";
-    "pymedphys_fileformats.trf.trf2csv" -> "pymedphys_fileformats.trf.trf2pandas";
-    "pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_coordsandscales.deliverydata";
-    "pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_fileformats.trf.constants";
-    "pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_fileformats.trf.trf2pandas";
-    "pymedphys_fileformats.trf" -> "pymedphys_fileformats.trf.trf2deliverydata";
-    "pymedphys_fileformats.trf.trf2pandas" -> "pymedphys_fileformats.trf.header";
-    "pymedphys_fileformats.trf.trf2pandas" -> "pymedphys_fileformats.trf.table";
-    "pymedphys_fileformats.trf.trf2csv" -> "pymedphys_fileformats.trf.trf2pandas";
-    "pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_fileformats.trf.trf2pandas";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [label=pymedphys_fileformats,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [label="pymedphys_fileformats.trf"];
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.trf.constants"				 [label="trf.constants"];
+				"pymedphys_fileformats.trf.header"				 [label="trf.header"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.trf.table"				 [label="trf.table"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.trf.trf2pandas"				 [label="trf.trf2pandas"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.trf.trf2csv"				 [label="trf.trf2csv"];
+				"pymedphys_fileformats.trf.trf2deliverydata"				 [label="trf.trf2deliverydata"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.trf"				 [label=trf];
+			}
+		}
+	}
+	"pymedphys_fileformats.trf.table" -> "pymedphys_fileformats.trf.constants";
+	"pymedphys_fileformats.trf.table" -> "pymedphys_fileformats.trf.header";
+	"pymedphys_fileformats.trf.trf2pandas" -> "pymedphys_fileformats.trf.table";
+	"pymedphys_fileformats.trf.trf2csv" -> "pymedphys_fileformats.trf.trf2pandas";
+	"pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_fileformats.trf.trf2pandas";
+	"pymedphys_coordsandscales.deliverydata"	 [label="coordsandscales.deliverydata"];
+	"pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_fileformats.trf" -> "pymedphys_fileformats.trf.trf2deliverydata";
+	"pymedphys_logfiles.elekta.analyse"	 [label="logfiles.elekta.analyse"];
+	"pymedphys_logfiles.elekta.analyse" -> "pymedphys_fileformats.trf";
+	"pymedphys_logfiles.elekta.bygantry"	 [label="logfiles.elekta.bygantry"];
+	"pymedphys_logfiles.elekta.bygantry" -> "pymedphys_fileformats.trf";
+	"pymedphys_logfiles.elekta.identify"	 [label="logfiles.elekta.identify"];
+	"pymedphys_logfiles.elekta.identify" -> "pymedphys_fileformats.trf";
+	"pymedphys_logfiles.elekta.index"	 [label="logfiles.elekta.index"];
+	"pymedphys_logfiles.elekta.index" -> "pymedphys_fileformats.trf";
 }
