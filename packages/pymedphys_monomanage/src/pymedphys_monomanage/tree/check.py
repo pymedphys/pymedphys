@@ -2,6 +2,8 @@ import os
 import sys
 import json
 from copy import deepcopy
+import textwrap
+import subprocess
 
 from .build import PackageTree
 
@@ -33,12 +35,23 @@ def is_imports_json_up_to_date(directory):
 
 def commit_hook(directory):
     if not is_imports_json_up_to_date(directory):
-        os.system("yarn tree")
+
         print(
-            "Tree was out of date. It has been run for you. "
-            "Please rerun commit. To prevent this message in the future "
-            "run `yarn tree` whenever you change the dependency structure "
-            "of PyMedPhys.")
+            "\n    \033[1;31;1mThe dependency tree is out of date."
+            "\033[1;32;1m Will now run `yarn tree` to update.\n"
+            "    \033[1;34;1mYou will need to rerun `git commit` after "
+            "this is complete.\033[0;0m\n"
+        )
+
+        subprocess.call(["yarn", "tree"])
+        print(
+            "\n    \033[1;31;1mThe dependency tree was out of date.\n"
+            "    \033[1;32;1mThe command `yarn tree` has been run for "
+            "you.\n"
+            "    \033[1;34;1mPlease rerun your commit.\033[0;0m\n"
+            "    To prevent this message in the future run `yarn tree` "
+            "whenever you change the dependency structure of "
+            "PyMedPhys.\n")
         sys.exit(1)
 
 

@@ -1,19 +1,34 @@
 import os
 import shutil
+import subprocess
 
 import networkx as nx
 
 
 def save_dot_file(dot_contents, outfilepath):
+
     with open("temp.dot", 'w') as file:
         file.write(dot_contents)
 
-    os.system("tred temp.dot > temp_reduced.dot")
-    os.system("dot -Tsvg temp_reduced.dot -o temp.svg")
-    os.remove("temp.dot")
+    try:
+        tred = subprocess.Popen(('tred', 'temp.dot'), stdout=subprocess.PIPE)
+        data = tred.stdout.read()
+        tred.wait()
+        with open("temp_reduced.dot", 'wb') as file:
+            file.write(data)
 
-    shutil.move("temp.svg", outfilepath)
-    shutil.move("temp_reduced.dot", os.path.splitext(outfilepath)[0] + ".dot")
+        output = subprocess.check_output(
+            ['dot', '-Tsvg', 'temp_reduced.dot', '-o', 'temp.svg'])
+
+        shutil.move("temp.svg", outfilepath)
+        shutil.move("temp_reduced.dot", os.path.splitext(
+            outfilepath)[0] + ".dot")
+    except FileNotFoundError:
+        print(
+            "Graph not drawn, please install graphviz and add it to "
+            "your path.\n")
+    finally:
+        os.remove("temp.dot")
 
 
 def remove_prefix(text, prefix):
