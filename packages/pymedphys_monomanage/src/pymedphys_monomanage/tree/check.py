@@ -1,8 +1,6 @@
 import os
 import sys
 import json
-from copy import deepcopy
-import textwrap
 import subprocess
 
 from .build import PackageTree
@@ -44,6 +42,15 @@ def commit_hook(directory):
         )
 
         subprocess.call(["yarn", "tree"])
+
+        subprocess.call(["git", "add", "imports.json"])
+        subprocess.call(["git", "add", "dependencies.json"])
+        subprocess.call(["git", "add", "*package.json"])
+        subprocess.call(["git", "add", "*_install_requires.py"])
+        subprocess.call(["git", "add", "*.dot"])
+
+        subprocess.call(["git", "status"])
+
         print(
             "\n    \033[1;31;1mThe dependency tree was out of date.\n"
             "    \033[1;32;1mThe command `yarn tree` has been run for "
@@ -52,6 +59,7 @@ def commit_hook(directory):
             "    To prevent this message in the future run `yarn tree` "
             "whenever you change the dependency structure of "
             "PyMedPhys.\n")
+
         sys.exit(1)
 
 

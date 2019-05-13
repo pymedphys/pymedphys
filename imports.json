@@ -1332,9 +1332,9 @@
     "internal_module": [],
     "internal_package": [],
     "stdlib": [
-      "copy",
       "json",
       "os",
+      "subprocess",
       "sys"
     ]
   },
