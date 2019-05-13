@@ -1242,7 +1242,8 @@
     "internal_package": [],
     "stdlib": [
       "os",
-      "shutil"
+      "shutil",
+      "subprocess"
     ]
   },
   "pymedphys_monomanage/parse": {

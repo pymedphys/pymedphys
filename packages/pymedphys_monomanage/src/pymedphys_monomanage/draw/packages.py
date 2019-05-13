@@ -9,6 +9,7 @@ ROOT = os.getcwd()
 
 
 def draw_packages(save_directory):
+    print('pymedphys')
     tree = PackageTree('packages').package_dependencies_dict
     tree.pop('pymedphys')
     internal_packages = tuple(tree.keys())
