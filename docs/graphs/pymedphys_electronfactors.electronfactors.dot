@@ -1,0 +1,25 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_electronfactors";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_electronfactors.electronfactors.core"; }
+            { rank = same; "pymedphys_electronfactors.electronfactors"; "pymedphys_electronfactors.electronfactors.visualisation"; }
+
+            label = "pymedphys_electronfactors.electronfactors"
+        }
+    }
+
+    "pymedphys_electronfactors.electronfactors" [label="electronfactors"];
+    "pymedphys_electronfactors.electronfactors.core" [label="electronfactors.core"];
+    "pymedphys_electronfactors.electronfactors.visualisation" [label="electronfactors.visualisation"];
+
+    "pymedphys_electronfactors.electronfactors" -> "pymedphys_electronfactors.electronfactors.core";
+    "pymedphys_electronfactors.electronfactors" -> "pymedphys_electronfactors.electronfactors.core";
+    "pymedphys_electronfactors.electronfactors.visualisation" -> "pymedphys_electronfactors.electronfactors.core";
+    "pymedphys_electronfactors.electronfactors.visualisation" -> "pymedphys_electronfactors.electronfactors.core";
+}

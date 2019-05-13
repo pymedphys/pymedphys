@@ -1,0 +1,24 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_analysis";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_analysis.geometry.cube"; }
+            { rank = same; "pymedphys_analysis.geometry"; }
+
+            label = "pymedphys_analysis.geometry"
+        }
+    }
+
+    "pymedphys_analysis.geometry" [label="geometry"];
+    "pymedphys_analysis.geometry.cube" [label="geometry.cube"];
+    "pymedphys_dicom.dicom" [label="dicom.dicom"];
+
+    "pymedphys_analysis.geometry" -> "pymedphys_analysis.geometry.cube";
+    "pymedphys_analysis.geometry.cube" -> "pymedphys_dicom.dicom";
+    "pymedphys_analysis.geometry" -> "pymedphys_analysis.geometry.cube";
+}

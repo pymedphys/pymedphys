@@ -1,0 +1,24 @@
+strict digraph  {
+    rankdir = LR;
+
+    subgraph cluster_0 {
+        
+        label = "pymedphys_utilities";
+        style = dashed;
+
+        subgraph cluster_1 {
+            { rank = same; "pymedphys_utilities.filehash.core"; }
+            { rank = same; "pymedphys_utilities.filehash"; }
+
+            label = "pymedphys_utilities.filehash"
+        }
+    }
+
+    "pymedphys_logfiles.elekta.index" [label="logfiles.elekta.index"];
+    "pymedphys_utilities.filehash" [label="filehash"];
+    "pymedphys_utilities.filehash.core" [label="filehash.core"];
+
+    "pymedphys_utilities.filehash" -> "pymedphys_utilities.filehash.core";
+    "pymedphys_logfiles.elekta.index" -> "pymedphys_utilities.filehash";
+    "pymedphys_utilities.filehash" -> "pymedphys_utilities.filehash.core";
+}

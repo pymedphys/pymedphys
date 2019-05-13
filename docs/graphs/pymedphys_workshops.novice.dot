@@ -1,0 +1,9 @@
+
+                strict digraph  {
+                    subgraph cluster_0 {
+                        "";
+                        label = "pymedphys_workshops.novice";
+                        style = dashed;
+                    }
+                }
+            

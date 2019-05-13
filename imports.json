@@ -1,0 +1,1575 @@
+{
+  "pymedphys": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [
+      "pymedphys._version"
+    ],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys/_jupyter_server_extension.py": {
+    "external": [
+      "jinja2",
+      "notebook"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "glob",
+      "os",
+      "re"
+    ]
+  },
+  "pymedphys/_labs": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys/_labs/paulking": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys/_labs/paulking/profile": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_labs.paulking.profile"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/_labs/paulking/sinogram": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_labs.paulking.sinogram"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/cli": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys/cli/dicom.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_dicom.dicom.anonymise",
+      "pymedphys_dicom.dicom.header"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/cli/docker.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [
+      "pymedphys.docker"
+    ],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys/cli/logfile.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_logfiles.elekta.orchestration"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/cli/main.py": {
+    "external": [],
+    "internal_file": [
+      "pymedphys.cli.dicom",
+      "pymedphys.cli.docker",
+      "pymedphys.cli.logfile",
+      "pymedphys.cli.trf"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "argparse",
+      "sys"
+    ]
+  },
+  "pymedphys/cli/trf.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_fileformats.trf.trf2csv"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/coordinates.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_coordsandscales.coordinates"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/deliverydata.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_coordsandscales.deliverydata"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/dicom.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.geometry",
+      "pymedphys_dicom.dicom"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/docker": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "os",
+      "subprocess"
+    ]
+  },
+  "pymedphys/electronfactors.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_electronfactors.electronfactors"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/film.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.geometry"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/gamma.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.gamma"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/geometry.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.geometry"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/gui": {
+    "external": [
+      "notebook"
+    ],
+    "internal_file": [],
+    "internal_module": [
+      "pymedphys._jupyter_server_extension"
+    ],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys/logfile.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_logfiles.elekta"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/mephysto.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_fileformats.mephysto"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/msq.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_databases.msq"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/mudensity.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.mudensity"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/plt.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.plt"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/trf.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_fileformats.trf",
+      "pymedphys_logfiles.elekta"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/utilities.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_utilities.utilities"
+    ],
+    "stdlib": []
+  },
+  "pymedphys/xlwings.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_xlwings.xlwings"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_analysis": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_analysis/gamma": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_analysis.gamma.api",
+      "pymedphys_analysis.gamma.filter",
+      "pymedphys_analysis.gamma.shell"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_analysis/gamma/api.py": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_analysis.gamma.filter",
+      "pymedphys_analysis.gamma.shell"
+    ],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_dicom.dicom"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_analysis/gamma/filter.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_dicom.dicom"
+    ],
+    "stdlib": [
+      "sys"
+    ]
+  },
+  "pymedphys_analysis/gamma/inputcheck.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_analysis/gamma/shell.py": {
+    "external": [
+      "numpy",
+      "scipy"
+    ],
+    "internal_file": [
+      "pymedphys_analysis.gamma.inputcheck"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "dataclasses",
+      "sys",
+      "typing"
+    ]
+  },
+  "pymedphys_analysis/geometry": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_analysis.geometry.cube"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_analysis/geometry/cube.py": {
+    "external": [
+      "matplotlib",
+      "numpy",
+      "pydicom",
+      "scipy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_dicom.dicom"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_analysis/mudensity": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_analysis.mudensity.api",
+      "pymedphys_analysis.mudensity.core"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_analysis/mudensity/api.py": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_analysis.mudensity.core"
+    ],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_coordsandscales.deliverydata"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_analysis/mudensity/core.py": {
+    "external": [
+      "matplotlib",
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [
+      "pymedphys_analysis.plt"
+    ],
+    "internal_package": [
+      "pymedphys_coordsandscales.deliverydata",
+      "pymedphys_utilities.constants"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_analysis/plt": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_analysis.plt.helpers"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_analysis/plt/helpers.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_coordsandscales": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_coordsandscales/coordinates": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_coordsandscales.coordinates.transforms"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_coordsandscales/coordinates/transforms.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_coordsandscales/deliverydata": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_coordsandscales.deliverydata.core"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_coordsandscales/deliverydata/core.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "collections"
+    ]
+  },
+  "pymedphys_databases": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_databases/msq": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_databases.msq.connect",
+      "pymedphys_databases.msq.delivery"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_databases/msq/connect.py": {
+    "external": [
+      "keyring",
+      "pymssql"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "contextlib",
+      "getpass"
+    ]
+  },
+  "pymedphys_databases/msq/constants.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_databases/msq/delivery.py": {
+    "external": [
+      "attrs",
+      "numpy"
+    ],
+    "internal_file": [
+      "pymedphys_databases.msq.connect",
+      "pymedphys_databases.msq.constants"
+    ],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_coordsandscales.deliverydata"
+    ],
+    "stdlib": [
+      "struct"
+    ]
+  },
+  "pymedphys_databases/msq/helpers.py": {
+    "external": [
+      "pandas"
+    ],
+    "internal_file": [
+      "pymedphys_databases.msq.connect",
+      "pymedphys_databases.msq.constants"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "datetime"
+    ]
+  },
+  "pymedphys_dicom": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/dicom": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_dicom.dicom.anonymise",
+      "pymedphys_dicom.dicom.collection",
+      "pymedphys_dicom.dicom.constants",
+      "pymedphys_dicom.dicom.coords",
+      "pymedphys_dicom.dicom.create",
+      "pymedphys_dicom.dicom.dose",
+      "pymedphys_dicom.dicom.header",
+      "pymedphys_dicom.dicom.structure"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/dicom/anonymise.py": {
+    "external": [
+      "numpy",
+      "pydicom"
+    ],
+    "internal_file": [
+      "pymedphys_dicom.dicom.constants"
+    ],
+    "internal_module": [
+      "pymedphys_dicom.utilities"
+    ],
+    "internal_package": [],
+    "stdlib": [
+      "copy",
+      "glob",
+      "os"
+    ]
+  },
+  "pymedphys_dicom/dicom/collection.py": {
+    "external": [
+      "numpy",
+      "packaging",
+      "pydicom"
+    ],
+    "internal_file": [
+      "pymedphys_dicom.dicom.anonymise",
+      "pymedphys_dicom.dicom.coords",
+      "pymedphys_dicom.dicom.create"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "copy"
+    ]
+  },
+  "pymedphys_dicom/dicom/constants.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/dicom/coords.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/dicom/create.py": {
+    "external": [
+      "numpy",
+      "pydicom"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "copy"
+    ]
+  },
+  "pymedphys_dicom/dicom/dose.py": {
+    "external": [
+      "matplotlib",
+      "numpy",
+      "pydicom"
+    ],
+    "internal_file": [
+      "pymedphys_dicom.dicom.coords",
+      "pymedphys_dicom.dicom.structure"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "warnings"
+    ]
+  },
+  "pymedphys_dicom/dicom/header.py": {
+    "external": [
+      "pydicom"
+    ],
+    "internal_file": [
+      "pymedphys_dicom.dicom.create"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "copy",
+      "re"
+    ]
+  },
+  "pymedphys_dicom/dicom/structure.py": {
+    "external": [
+      "numpy",
+      "pydicom"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "collections",
+      "functools",
+      "operator"
+    ]
+  },
+  "pymedphys_dicom/utilities": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_dicom.utilities.files"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/utilities/files.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "os"
+    ]
+  },
+  "pymedphys_electronfactors": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_electronfactors/electronfactors": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_electronfactors.electronfactors.core"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_electronfactors/electronfactors/core.py": {
+    "external": [
+      "numpy",
+      "scipy",
+      "shapely"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_electronfactors/electronfactors/visualisation.py": {
+    "external": [
+      "matplotlib",
+      "numpy"
+    ],
+    "internal_file": [
+      "pymedphys_electronfactors.electronfactors.core"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_fileformats": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_fileformats/mapcheck": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_fileformats.mapcheck.core"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_fileformats/mapcheck/core.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "collections",
+      "csv"
+    ]
+  },
+  "pymedphys_fileformats/mephysto": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_fileformats.mephysto.api"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_fileformats/mephysto/api.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [
+      "pymedphys_fileformats.mephysto.core",
+      "pymedphys_fileformats.mephysto.mcc2csv"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "os"
+    ]
+  },
+  "pymedphys_fileformats/mephysto/core.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "re"
+    ]
+  },
+  "pymedphys_fileformats/mephysto/mcc2csv.py": {
+    "external": [
+      "numpy",
+      "pandas"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "os"
+    ]
+  },
+  "pymedphys_fileformats/profiler": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_fileformats.profiler.core"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_fileformats/profiler/core.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "collections"
+    ]
+  },
+  "pymedphys_fileformats/trf": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_fileformats.trf.header",
+      "pymedphys_fileformats.trf.trf2deliverydata"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_fileformats/trf/constants.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "json",
+      "os"
+    ]
+  },
+  "pymedphys_fileformats/trf/header.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "collections",
+      "re"
+    ]
+  },
+  "pymedphys_fileformats/trf/table.py": {
+    "external": [
+      "numpy",
+      "pandas"
+    ],
+    "internal_file": [
+      "pymedphys_fileformats.trf.constants",
+      "pymedphys_fileformats.trf.header"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "typing"
+    ]
+  },
+  "pymedphys_fileformats/trf/trf2csv.py": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_fileformats.trf.trf2pandas"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "glob",
+      "os"
+    ]
+  },
+  "pymedphys_fileformats/trf/trf2deliverydata.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [
+      "pymedphys_fileformats.trf.constants",
+      "pymedphys_fileformats.trf.trf2pandas"
+    ],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_coordsandscales.deliverydata"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_fileformats/trf/trf2pandas.py": {
+    "external": [
+      "pandas"
+    ],
+    "internal_file": [
+      "pymedphys_fileformats.trf.header",
+      "pymedphys_fileformats.trf.table"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs/mattsobolewski": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs/mattsobolewski/wlutzfilesort.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs/paulking": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs/paulking/collequivalent.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_utilities.constants"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_labs/paulking/devicesfilm.py": {
+    "external": [
+      "Pillow",
+      "matplotlib",
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs/paulking/devicessncprofiler.py": {
+    "external": [
+      "numpy",
+      "scipy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "collections"
+    ]
+  },
+  "pymedphys_labs/paulking/narrow_png.py": {
+    "external": [
+      "Pillow",
+      "matplotlib",
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs/paulking/profile.py": {
+    "external": [
+      "Pillow",
+      "matplotlib",
+      "numpy",
+      "scipy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "copy",
+      "os",
+      "typing"
+    ]
+  },
+  "pymedphys_labs/paulking/sinogram.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "csv",
+      "string"
+    ]
+  },
+  "pymedphys_labs/paulking/tempCodeRunnerFile.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs/paulking/tomo_sinogram_csv2pdf.py": {
+    "external": [
+      "matplotlib",
+      "numpy"
+    ],
+    "internal_file": [
+      "pymedphys_labs.paulking.sinogram"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "csv",
+      "os",
+      "string"
+    ]
+  },
+  "pymedphys_labs/simonbiggs": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_labs/simonbiggs/profilescore.py": {
+    "external": [
+      "matplotlib",
+      "numpy",
+      "scipy",
+      "xarray"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "copy",
+      "typing"
+    ]
+  },
+  "pymedphys_logfiles": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_logfiles/elekta": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_logfiles.elekta.diagnostics_zips",
+      "pymedphys_logfiles.elekta.identify",
+      "pymedphys_logfiles.elekta.index"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_logfiles/elekta/analyse.py": {
+    "external": [
+      "matplotlib",
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.mudensity",
+      "pymedphys_coordsandscales.deliverydata",
+      "pymedphys_databases.msq",
+      "pymedphys_fileformats.trf",
+      "pymedphys_utilities.utilities"
+    ],
+    "stdlib": [
+      "json",
+      "os",
+      "traceback"
+    ]
+  },
+  "pymedphys_logfiles/elekta/bygantry.py": {
+    "external": [
+      "numpy"
+    ],
+    "internal_file": [
+      "pymedphys_logfiles.elekta.analyse"
+    ],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.mudensity",
+      "pymedphys_coordsandscales.deliverydata",
+      "pymedphys_databases.msq",
+      "pymedphys_fileformats.trf",
+      "pymedphys_utilities.utilities"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_logfiles/elekta/diagnostics_zips.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "glob",
+      "os",
+      "pathlib",
+      "shutil",
+      "zipfile"
+    ]
+  },
+  "pymedphys_logfiles/elekta/identify.py": {
+    "external": [
+      "python_dateutil"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_databases.msq",
+      "pymedphys_fileformats.trf"
+    ],
+    "stdlib": [
+      "datetime"
+    ]
+  },
+  "pymedphys_logfiles/elekta/index.py": {
+    "external": [
+      "attrs"
+    ],
+    "internal_file": [
+      "pymedphys_logfiles.elekta.identify"
+    ],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_databases.msq",
+      "pymedphys_fileformats.trf",
+      "pymedphys_utilities.filehash",
+      "pymedphys_utilities.utilities"
+    ],
+    "stdlib": [
+      "glob",
+      "json",
+      "os",
+      "pathlib",
+      "traceback"
+    ]
+  },
+  "pymedphys_logfiles/elekta/orchestration.py": {
+    "external": [
+      "pandas"
+    ],
+    "internal_file": [
+      "pymedphys_logfiles.elekta.diagnostics_zips",
+      "pymedphys_logfiles.elekta.index"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "json",
+      "os"
+    ]
+  },
+  "pymedphys_monomanage": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_monomanage/draw": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_monomanage.draw.api"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_monomanage/draw/api.py": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_monomanage.draw.directories",
+      "pymedphys_monomanage.draw.files",
+      "pymedphys_monomanage.draw.packages"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_monomanage/draw/directories.py": {
+    "external": [
+      "networkx"
+    ],
+    "internal_file": [
+      "pymedphys_monomanage.draw.utilities"
+    ],
+    "internal_module": [
+      "pymedphys_monomanage.tree"
+    ],
+    "internal_package": [],
+    "stdlib": [
+      "copy",
+      "os"
+    ]
+  },
+  "pymedphys_monomanage/draw/files.py": {
+    "external": [
+      "networkx"
+    ],
+    "internal_file": [
+      "pymedphys_monomanage.draw.utilities"
+    ],
+    "internal_module": [
+      "pymedphys_monomanage.tree"
+    ],
+    "internal_package": [],
+    "stdlib": [
+      "copy",
+      "os",
+      "textwrap"
+    ]
+  },
+  "pymedphys_monomanage/draw/packages.py": {
+    "external": [
+      "networkx"
+    ],
+    "internal_file": [
+      "pymedphys_monomanage.draw.utilities"
+    ],
+    "internal_module": [
+      "pymedphys_monomanage.tree.build"
+    ],
+    "internal_package": [],
+    "stdlib": [
+      "os"
+    ]
+  },
+  "pymedphys_monomanage/draw/utilities.py": {
+    "external": [
+      "networkx"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "os",
+      "shutil"
+    ]
+  },
+  "pymedphys_monomanage/parse": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_monomanage/parse/imports.py": {
+    "external": [
+      "stdlib_list"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "ast",
+      "os"
+    ]
+  },
+  "pymedphys_monomanage/propegate": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_monomanage/propegate/dependencies.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "glob",
+      "json",
+      "os",
+      "textwrap"
+    ]
+  },
+  "pymedphys_monomanage/propegate/versions.py": {
+    "external": [
+      "semver"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "glob",
+      "json",
+      "os",
+      "textwrap"
+    ]
+  },
+  "pymedphys_monomanage/tree": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_monomanage.tree.build",
+      "pymedphys_monomanage.tree.check"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_monomanage/tree/build.py": {
+    "external": [
+      "networkx"
+    ],
+    "internal_file": [],
+    "internal_module": [
+      "pymedphys_monomanage.parse.imports"
+    ],
+    "internal_package": [],
+    "stdlib": [
+      "copy",
+      "difflib",
+      "json",
+      "os"
+    ]
+  },
+  "pymedphys_monomanage/tree/check.py": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_monomanage.tree.build"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "copy",
+      "json",
+      "os"
+    ]
+  },
+  "pymedphys_sphinxtheme": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "os"
+    ]
+  },
+  "pymedphys_toolbox": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_toolbox/plancompare": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_toolbox/plancompare/core.py": {
+    "external": [
+      "matplotlib",
+      "numpy"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_analysis.mudensity",
+      "pymedphys_databases.msq"
+    ],
+    "stdlib": [
+      "itertools"
+    ]
+  },
+  "pymedphys_utilities": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_utilities/constants": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_utilities.constants.mlctypes"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_utilities/constants/mlctypes.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_utilities/filehash": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_utilities.filehash.core"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_utilities/filehash/core.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "hashlib"
+    ]
+  },
+  "pymedphys_utilities/utilities": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_utilities.utilities.config",
+      "pymedphys_utilities.utilities.filesearch",
+      "pymedphys_utilities.utilities.filesystem"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_utilities/utilities/compression.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "glob",
+      "lzma"
+    ]
+  },
+  "pymedphys_utilities/utilities/config.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "json",
+      "os"
+    ]
+  },
+  "pymedphys_utilities/utilities/filesearch.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "glob"
+    ]
+  },
+  "pymedphys_utilities/utilities/filesystem.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "string"
+    ]
+  },
+  "pymedphys_workshops": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_workshops/experienced": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_workshops/intermediate": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_workshops/novice": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_xlwings": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_xlwings/xlwings": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_xlwings.xlwings.dicom",
+      "pymedphys_xlwings.xlwings.interpolate",
+      "pymedphys_xlwings.xlwings.mephysto",
+      "pymedphys_xlwings.xlwings.numpy",
+      "pymedphys_xlwings.xlwings.path"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_xlwings/xlwings/dicom.py": {
+    "external": [
+      "numpy",
+      "pydicom",
+      "scipy",
+      "xlwings"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_dicom.dicom",
+      "pymedphys_utilities.utilities"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_xlwings/xlwings/interpolate.py": {
+    "external": [
+      "numpy",
+      "scipy",
+      "xlwings"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_xlwings/xlwings/mephysto.py": {
+    "external": [
+      "numpy",
+      "xlwings"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [
+      "pymedphys_fileformats.mephysto",
+      "pymedphys_utilities.utilities"
+    ],
+    "stdlib": []
+  },
+  "pymedphys_xlwings/xlwings/numpy.py": {
+    "external": [
+      "numpy",
+      "xlwings"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_xlwings/xlwings/path.py": {
+    "external": [
+      "xlwings"
+    ],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "os"
+    ]
+  }
+}
