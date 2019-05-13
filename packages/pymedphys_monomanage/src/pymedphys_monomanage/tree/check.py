@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import subprocess
+import shutil
 
 from .build import PackageTree
 
@@ -41,15 +42,18 @@ def commit_hook(directory):
             "this is complete.\033[0;0m\n"
         )
 
-        subprocess.call(["yarn", "tree"])
+        yarn = shutil.which("yarn")
+        git = shutil.which("git")
 
-        subprocess.call(["git", "add", "imports.json"])
-        subprocess.call(["git", "add", "dependencies.json"])
-        subprocess.call(["git", "add", "*package.json"])
-        subprocess.call(["git", "add", "*_install_requires.py"])
-        subprocess.call(["git", "add", "*.dot"])
+        subprocess.call([yarn, "tree"])
 
-        subprocess.call(["git", "status"])
+        subprocess.call([git, "add", "imports.json"])
+        subprocess.call([git, "add", "dependencies.json"])
+        subprocess.call([git, "add", "*package.json"])
+        subprocess.call([git, "add", "*_install_requires.py"])
+        subprocess.call([git, "add", "*.dot"])
+
+        subprocess.call([git, "status"])
 
         print(
             "\n    \033[1;31;1mThe dependency tree was out of date.\n"
