@@ -6,27 +6,34 @@ import networkx as nx
 
 
 def save_dot_file(dot_contents, outfilepath):
+    tred = shutil.which("tred")
+    dot = shutil.which("dot")
+
+    if not tred or not dot:
+        print(
+            "Graph not drawn, please install graphviz and add it to "
+            "your path.\nOn Windows this is done with "
+            "`choco install graphviz.portable`.")
+
+        return
 
     with open("temp.dot", 'w') as file:
         file.write(dot_contents)
 
     try:
-        tred = subprocess.Popen(('tred', 'temp.dot'), stdout=subprocess.PIPE)
-        data = tred.stdout.read()
-        tred.wait()
+        tred_process = subprocess.Popen(
+            [tred, 'temp.dot'], stdout=subprocess.PIPE)
+        data = tred_process.stdout.read()
+        tred_process.wait()
         with open("temp_reduced.dot", 'wb') as file:
             file.write(data)
 
         output = subprocess.check_output(
-            ['dot', '-Tsvg', 'temp_reduced.dot', '-o', 'temp.svg'])
+            [dot, '-Tsvg', 'temp_reduced.dot', '-o', 'temp.svg'])
 
         shutil.move("temp.svg", outfilepath)
         shutil.move("temp_reduced.dot", os.path.splitext(
             outfilepath)[0] + ".dot")
-    except FileNotFoundError:
-        print(
-            "Graph not drawn, please install graphviz and add it to "
-            "your path.\n")
     finally:
         os.remove("temp.dot")
 
