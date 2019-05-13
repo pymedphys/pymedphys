@@ -118,7 +118,7 @@ Git LFS, yarn, and graphviz like so:
 
 .. code:: bash
 
-    choco install git yarn nodejs graphviz
+    choco install git yarn nodejs graphviz.portable
 
 
 
