@@ -9,6 +9,8 @@ def serialise_imports(imports):
     new_imports = {}
     for module_path_raw, values in imports.items():
         module_path = module_path_raw.replace(os.sep, '/')
+        new_imports[module_path] = {}
+
         for where, a_set in values.items():
             new_imports[module_path][where] = sorted(list(a_set))
 
