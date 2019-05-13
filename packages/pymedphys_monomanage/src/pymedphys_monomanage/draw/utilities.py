@@ -13,7 +13,7 @@ def save_dot_file(dot_contents, outfilepath):
         print(
             "Graph not drawn, please install graphviz and add it to "
             "your path.\nOn Windows this is done with "
-            "`choco install graphviz.portable`.")
+            "`choco install graphviz.portable`.\n")
 
         return
 
