@@ -1,14 +1,18 @@
 strict digraph {
 	graph [rankdir=LR];
 	subgraph cluster_0 {
-		graph [label=pymedphys_workshops,
+		graph [URL="#pymedphys-workshops",
+			label=pymedphys_workshops,
 			style=dashed
 		];
 		{
 			graph [rank=same];
-			"pymedphys_workshops.experienced"			 [label=experienced];
-			"pymedphys_workshops.intermediate"			 [label=intermediate];
-			"pymedphys_workshops.novice"			 [label=novice];
+			"pymedphys_workshops.experienced"			 [URL="#pymedphys-workshops-experienced",
+				label=experienced];
+			"pymedphys_workshops.intermediate"			 [URL="#pymedphys-workshops-intermediate",
+				label=intermediate];
+			"pymedphys_workshops.novice"			 [URL="#pymedphys-workshops-novice",
+				label=novice];
 		}
 	}
 }

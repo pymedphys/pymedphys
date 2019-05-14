@@ -4,7 +4,8 @@ import networkx as nx
 from copy import copy
 
 from ..tree import PackageTree
-from .utilities import save_dot_file, remove_prefix, get_levels
+from .utilities import (
+    save_dot_file, remove_prefix, get_levels, create_labels, create_href)
 
 
 
@@ -150,9 +151,7 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
         grouped_dependencies = '"; "'.join(sorted(list(current_dependencies)))
         external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependencies)
 
-    external_labels = ""
-    for node, label in label_map.items():
-        external_labels += '"{}" [label="{}"];\n'.format(node, label)
+    external_labels = create_labels(label_map)
 
 
     dot_file_contents = """
@@ -161,6 +160,7 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
             subgraph cluster_0 {{
                 {}
                 label = "{}";
+                URL = "{}";
                 style = dashed;
                 {}
             }}
@@ -169,7 +169,10 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
             {}
         }}
     """.format(
-        current_packages, graphed_package,
+        current_packages, graphed_package, create_href(graphed_package),
         nodes, external_labels, external_ranks, edges)
 
     save_dot_file(dot_file_contents, outfilepath)
+
+
+

@@ -2,28 +2,38 @@ strict digraph {
 	graph [rankdir=LR];
 	{
 		graph [rank=same];
-		"pymedphys_logfiles.elekta"		 [label="logfiles.elekta"];
-		"pymedphys_toolbox.plancompare"		 [label="toolbox.plancompare"];
+		"pymedphys_logfiles.elekta"		 [URL="#pymedphys-logfiles-elekta",
+			label="logfiles.elekta"];
+		"pymedphys_toolbox.plancompare"		 [URL="#pymedphys-toolbox-plancompare",
+			label="toolbox.plancompare"];
 	}
 	{
 		graph [rank=same];
-		"pymedphys_coordsandscales.deliverydata"		 [label="coordsandscales.deliverydata"];
-		"pymedphys_dicom.dicom"		 [label="dicom.dicom"];
-		"pymedphys_utilities.constants"		 [label="utilities.constants"];
+		"pymedphys_coordsandscales.deliverydata"		 [URL="#pymedphys-coordsandscales-deliverydata",
+			label="coordsandscales.deliverydata"];
+		"pymedphys_dicom.dicom"		 [URL="#pymedphys-dicom-dicom",
+			label="dicom.dicom"];
+		"pymedphys_utilities.constants"		 [URL="#pymedphys-utilities-constants",
+			label="utilities.constants"];
 	}
 	subgraph cluster_0 {
-		graph [label=pymedphys_analysis,
+		graph [URL="#pymedphys-analysis",
+			label=pymedphys_analysis,
 			style=dashed
 		];
 		{
 			graph [rank=same];
-			"pymedphys_analysis.gamma"			 [label=gamma];
-			"pymedphys_analysis.geometry"			 [label=geometry];
-			"pymedphys_analysis.plt"			 [label=plt];
+			"pymedphys_analysis.gamma"			 [URL="#pymedphys-analysis-gamma",
+				label=gamma];
+			"pymedphys_analysis.geometry"			 [URL="#pymedphys-analysis-geometry",
+				label=geometry];
+			"pymedphys_analysis.plt"			 [URL="#pymedphys-analysis-plt",
+				label=plt];
 		}
 		{
 			graph [rank=same];
-			"pymedphys_analysis.mudensity"			 [label=mudensity];
+			"pymedphys_analysis.mudensity"			 [URL="#pymedphys-analysis-mudensity",
+				label=mudensity];
 		}
 	}
 	"pymedphys_analysis.gamma" -> "pymedphys_dicom.dicom";

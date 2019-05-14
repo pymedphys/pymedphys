@@ -2,16 +2,20 @@ strict digraph {
 	graph [rankdir=LR];
 	{
 		graph [rank=same];
-		"pymedphys_analysis.mudensity"		 [label="analysis.mudensity"];
-		"pymedphys_databases.msq"		 [label="databases.msq"];
+		"pymedphys_analysis.mudensity"		 [URL="#pymedphys-analysis-mudensity",
+			label="analysis.mudensity"];
+		"pymedphys_databases.msq"		 [URL="#pymedphys-databases-msq",
+			label="databases.msq"];
 	}
 	subgraph cluster_0 {
-		graph [label=pymedphys_toolbox,
+		graph [URL="#pymedphys-toolbox",
+			label=pymedphys_toolbox,
 			style=dashed
 		];
 		{
 			graph [rank=same];
-			"pymedphys_toolbox.plancompare"			 [label=plancompare];
+			"pymedphys_toolbox.plancompare"			 [URL="#pymedphys-toolbox-plancompare",
+				label=plancompare];
 		}
 	}
 	"pymedphys_toolbox.plancompare" -> "pymedphys_analysis.mudensity";

@@ -7,7 +7,7 @@ from copy import copy
 from ..tree import PackageTree
 from .utilities import (
     save_dot_file, remove_prefix, get_levels, remove_prefix, remove_postfix,
-    convert_path_to_package)
+    convert_path_to_package, create_labels, create_href)
 
 
 
@@ -169,7 +169,8 @@ def draw_file_modules(save_directory):
 
         label_map_str = ""
         for node, label in label_map.items():
-            label_map_str += '"{}" [label="{}"];\n'.format(node, label)
+            label_map_str += '"{}" [label="{}"] {};\n'.format(
+                node, label, get_github_url(node))
 
         edges = ""
 
@@ -187,11 +188,13 @@ def draw_file_modules(save_directory):
             subgraph cluster_0 {{
                 {}
                 label = "{}";
+                URL = "{}";
                 style = dashed;
 
                 subgraph cluster_1 {{
         {}
-                    label = "{}"
+                    label = "{}";
+                    URL = "{}"
                 }}
             }}
 
@@ -200,10 +203,29 @@ def draw_file_modules(save_directory):
         """).format(
             in_same_module_other_dir_string,
             package_name,
+            create_href(package_name),
             textwrap.indent(internal_ranks, ' '*12),
             directory_module,
+            create_href(directory_module),
             textwrap.indent(label_map_str, ' '*4),
             textwrap.indent(edges, ' '*4))
 
 
         save_dot_file(dot_file_contents, outfilepath)
+
+
+
+def get_github_url(module):
+    url_module = module.replace('.', '/')
+    split_module = url_module.split('/')
+
+    if len(split_module) == 3:
+        url_module += '.py'
+
+    top_level_package = split_module[0]
+    url = "https://github.com/pymedphys/pymedphys/blob/master/packages/{}/src/{}".format(
+        top_level_package, url_module
+    )
+
+    hyperlink = '[URL="{}"]'.format(url)
+    return hyperlink

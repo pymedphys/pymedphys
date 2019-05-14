@@ -1,22 +1,28 @@
 strict digraph {
 	graph [rankdir=LR];
 	subgraph cluster_0 {
-		graph [label=pymedphys_analysis,
+		graph [URL="#pymedphys-analysis",
+			label=pymedphys_analysis,
 			style=dashed
 		];
 		subgraph cluster_1 {
-			graph [label="pymedphys_analysis.geometry"];
+			graph [URL="#pymedphys-analysis-geometry",
+				label="pymedphys_analysis.geometry"
+			];
 			{
 				graph [rank=same];
-				"pymedphys_analysis.geometry.cube"				 [label="geometry.cube"];
+				"pymedphys_analysis.geometry.cube"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/geometry/cube.py",
+					label="geometry.cube"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_analysis.geometry"				 [label=geometry];
+				"pymedphys_analysis.geometry"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/geometry",
+					label=geometry];
 			}
 		}
 	}
-	"pymedphys_dicom.dicom"	 [label="dicom.dicom"];
+	"pymedphys_dicom.dicom"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom",
+		label="dicom.dicom"];
 	"pymedphys_analysis.geometry.cube" -> "pymedphys_dicom.dicom";
 	"pymedphys_analysis.geometry" -> "pymedphys_analysis.geometry.cube";
 }

@@ -2,21 +2,27 @@ strict digraph {
 	graph [rankdir=LR];
 	{
 		graph [rank=same];
-		"pymedphys_analysis.gamma"		 [label="analysis.gamma"];
-		"pymedphys_analysis.geometry"		 [label="analysis.geometry"];
-		"pymedphys_xlwings.xlwings"		 [label="xlwings.xlwings"];
+		"pymedphys_analysis.gamma"		 [URL="#pymedphys-analysis-gamma",
+			label="analysis.gamma"];
+		"pymedphys_analysis.geometry"		 [URL="#pymedphys-analysis-geometry",
+			label="analysis.geometry"];
+		"pymedphys_xlwings.xlwings"		 [URL="#pymedphys-xlwings-xlwings",
+			label="xlwings.xlwings"];
 	}
 	subgraph cluster_0 {
-		graph [label=pymedphys_dicom,
+		graph [URL="#pymedphys-dicom",
+			label=pymedphys_dicom,
 			style=dashed
 		];
 		{
 			graph [rank=same];
-			"pymedphys_dicom.utilities"			 [label=utilities];
+			"pymedphys_dicom.utilities"			 [URL="#pymedphys-dicom-utilities",
+				label=utilities];
 		}
 		{
 			graph [rank=same];
-			"pymedphys_dicom.dicom"			 [label=dicom];
+			"pymedphys_dicom.dicom"			 [URL="#pymedphys-dicom-dicom",
+				label=dicom];
 		}
 	}
 	"pymedphys_dicom.dicom" -> "pymedphys_dicom.utilities";

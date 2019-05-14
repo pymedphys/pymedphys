@@ -2,19 +2,26 @@ strict digraph {
 	graph [rankdir=LR];
 	{
 		graph [rank=same];
-		"pymedphys_analysis.mudensity"		 [label="analysis.mudensity"];
-		"pymedphys_databases.msq"		 [label="databases.msq"];
-		"pymedphys_fileformats.trf"		 [label="fileformats.trf"];
-		"pymedphys_logfiles.elekta"		 [label="logfiles.elekta"];
+		"pymedphys_analysis.mudensity"		 [URL="#pymedphys-analysis-mudensity",
+			label="analysis.mudensity"];
+		"pymedphys_databases.msq"		 [URL="#pymedphys-databases-msq",
+			label="databases.msq"];
+		"pymedphys_fileformats.trf"		 [URL="#pymedphys-fileformats-trf",
+			label="fileformats.trf"];
+		"pymedphys_logfiles.elekta"		 [URL="#pymedphys-logfiles-elekta",
+			label="logfiles.elekta"];
 	}
 	subgraph cluster_0 {
-		graph [label=pymedphys_coordsandscales,
+		graph [URL="#pymedphys-coordsandscales",
+			label=pymedphys_coordsandscales,
 			style=dashed
 		];
 		{
 			graph [rank=same];
-			"pymedphys_coordsandscales.coordinates"			 [label=coordinates];
-			"pymedphys_coordsandscales.deliverydata"			 [label=deliverydata];
+			"pymedphys_coordsandscales.coordinates"			 [URL="#pymedphys-coordsandscales-coordinates",
+				label=coordinates];
+			"pymedphys_coordsandscales.deliverydata"			 [URL="#pymedphys-coordsandscales-deliverydata",
+				label=deliverydata];
 		}
 	}
 	"pymedphys_analysis.mudensity" -> "pymedphys_coordsandscales.deliverydata";
