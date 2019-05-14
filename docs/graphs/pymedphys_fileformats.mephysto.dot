@@ -1,31 +1,37 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_fileformats";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_fileformats.mephysto.core"; "pymedphys_fileformats.mephysto.mcc2csv"; }
-            { rank = same; "pymedphys_fileformats.mephysto.api"; }
-            { rank = same; "pymedphys_fileformats.mephysto"; }
-
-            label = "pymedphys_fileformats.mephysto"
-        }
-    }
-
-    "pymedphys_fileformats.mephysto" [label="mephysto"];
-    "pymedphys_fileformats.mephysto.api" [label="mephysto.api"];
-    "pymedphys_fileformats.mephysto.core" [label="mephysto.core"];
-    "pymedphys_fileformats.mephysto.mcc2csv" [label="mephysto.mcc2csv"];
-    "pymedphys_xlwings.xlwings.mephysto" [label="xlwings.xlwings.mephysto"];
-
-    "pymedphys_fileformats.mephysto" -> "pymedphys_fileformats.mephysto.api";
-    "pymedphys_xlwings.xlwings.mephysto" -> "pymedphys_fileformats.mephysto";
-    "pymedphys_fileformats.mephysto.api" -> "pymedphys_fileformats.mephysto.core";
-    "pymedphys_fileformats.mephysto.api" -> "pymedphys_fileformats.mephysto.mcc2csv";
-    "pymedphys_fileformats.mephysto" -> "pymedphys_fileformats.mephysto.api";
-    "pymedphys_fileformats.mephysto.api" -> "pymedphys_fileformats.mephysto.core";
-    "pymedphys_fileformats.mephysto.api" -> "pymedphys_fileformats.mephysto.mcc2csv";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-fileformats",
+			label=pymedphys_fileformats,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-fileformats-mephysto",
+				label="pymedphys_fileformats.mephysto"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.mephysto.core"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/mephysto/core.py",
+					label="mephysto.core"];
+				"pymedphys_fileformats.mephysto.mcc2csv"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/mephysto/mcc2csv.py",
+					label="mephysto.mcc2csv"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.mephysto.api"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/mephysto/api.py",
+					label="mephysto.api"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.mephysto"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/mephysto",
+					label=mephysto];
+			}
+		}
+	}
+	"pymedphys_fileformats.mephysto.api" -> "pymedphys_fileformats.mephysto.core";
+	"pymedphys_fileformats.mephysto.api" -> "pymedphys_fileformats.mephysto.mcc2csv";
+	"pymedphys_fileformats.mephysto" -> "pymedphys_fileformats.mephysto.api";
+	"pymedphys_xlwings.xlwings.mephysto"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_xlwings/src/pymedphys_xlwings/xlwings/mephysto.py",
+		label="xlwings.xlwings.mephysto"];
+	"pymedphys_xlwings.xlwings.mephysto" -> "pymedphys_fileformats.mephysto";
 }

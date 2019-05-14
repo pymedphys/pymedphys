@@ -1,0 +1,23 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-monomanage",
+			label=pymedphys_monomanage,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-monomanage-propagate",
+				label="pymedphys_monomanage.propagate"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.propagate"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/propagate",
+					label=propagate];
+				"pymedphys_monomanage.propagate.dependencies"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/propagate/dependencies.py",
+					label="propagate.dependencies"];
+				"pymedphys_monomanage.propagate.versions"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/propagate/versions.py",
+					label="propagate.versions"];
+			}
+		}
+	}
+}

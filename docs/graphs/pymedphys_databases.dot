@@ -1,26 +1,29 @@
-
-        strict digraph  {
-            rankdir = LR;
-            subgraph cluster_0 {
-                "pymedphys_databases.msq";
-
-                label = "pymedphys_databases";
-                style = dashed;
-                
-            { rank = same; "pymedphys_databases.msq"; }
-            
-            }
-            "pymedphys_databases.msq" [label="msq"];
-"pymedphys_coordsandscales.deliverydata" [label="coordsandscales.deliverydata"];
-"pymedphys_logfiles.elekta" [label="logfiles.elekta"];
-"pymedphys_toolbox.plancompare" [label="toolbox.plancompare"];
-
-            { rank = same; "pymedphys_logfiles.elekta"; "pymedphys_toolbox.plancompare"; }
-{ rank = same; "pymedphys_coordsandscales.deliverydata"; }
-
-            "pymedphys_databases.msq" -> "pymedphys_coordsandscales.deliverydata";
-"pymedphys_logfiles.elekta" -> "pymedphys_databases.msq";
-"pymedphys_toolbox.plancompare" -> "pymedphys_databases.msq";
-
-        }
-    
+strict digraph {
+	graph [rankdir=LR];
+	{
+		graph [rank=same];
+		"pymedphys_logfiles.elekta"		 [URL="#pymedphys-logfiles-elekta",
+			label="logfiles.elekta"];
+		"pymedphys_toolbox.plancompare"		 [URL="#pymedphys-toolbox-plancompare",
+			label="toolbox.plancompare"];
+	}
+	{
+		graph [rank=same];
+		"pymedphys_coordsandscales.deliverydata"		 [URL="#pymedphys-coordsandscales-deliverydata",
+			label="coordsandscales.deliverydata"];
+	}
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-databases",
+			label=pymedphys_databases,
+			style=dashed
+		];
+		{
+			graph [rank=same];
+			"pymedphys_databases.msq"			 [URL="#pymedphys-databases-msq",
+				label=msq];
+		}
+	}
+	"pymedphys_databases.msq" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_logfiles.elekta" -> "pymedphys_databases.msq";
+	"pymedphys_toolbox.plancompare" -> "pymedphys_databases.msq";
+}

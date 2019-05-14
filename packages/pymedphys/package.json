@@ -22,10 +22,11 @@
     "pip:install:docs": "yarn prerun && pip install .[docs]",
     "pip:install:prod": "yarn pip:install",
     "pip:install:test": "yarn prerun && pip install .[test]",
-    "postversion": "yarn propegate:version",
+    "postversion": "yarn propagate:version",
     "prerun": "yarn copy:readme",
-    "propegate:version": "python -m pymedphys_monomanage.propegate.versions",
+    "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
+    "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
     "pypi:upload": "twine upload dist/*"
   },
   "version": "0.8.0-dev.16"

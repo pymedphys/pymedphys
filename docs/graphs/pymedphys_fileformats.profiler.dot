@@ -1,22 +1,25 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_fileformats";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_fileformats.profiler.core"; }
-            { rank = same; "pymedphys_fileformats.profiler"; }
-
-            label = "pymedphys_fileformats.profiler"
-        }
-    }
-
-    "pymedphys_fileformats.profiler" [label="profiler"];
-    "pymedphys_fileformats.profiler.core" [label="profiler.core"];
-
-    "pymedphys_fileformats.profiler" -> "pymedphys_fileformats.profiler.core";
-    "pymedphys_fileformats.profiler" -> "pymedphys_fileformats.profiler.core";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-fileformats",
+			label=pymedphys_fileformats,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-fileformats-profiler",
+				label="pymedphys_fileformats.profiler"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.profiler.core"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/profiler/core.py",
+					label="profiler.core"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_fileformats.profiler"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/profiler",
+					label=profiler];
+			}
+		}
+	}
+	"pymedphys_fileformats.profiler" -> "pymedphys_fileformats.profiler.core";
 }
