@@ -2,26 +2,26 @@ strict digraph {
 	graph [rankdir=LR];
 	{
 		graph [rank=same];
-		dicom;
-		coordsandscales;
-		utilities;
-		workshops;
-		sphinxtheme;
-		monomanage;
-		electronfactors;
+		dicom		 [URL="#pymedphys-dicom"];
+		coordsandscales		 [URL="#pymedphys-coordsandscales"];
+		utilities		 [URL="#pymedphys-utilities"];
+		workshops		 [URL="#pymedphys-workshops"];
+		sphinxtheme		 [URL="#pymedphys-sphinxtheme"];
+		monomanage		 [URL="#pymedphys-monomanage"];
+		electronfactors		 [URL="#pymedphys-electronfactors"];
 	}
 	{
 		graph [rank=same];
-		fileformats;
-		analysis;
-		databases;
-		labs;
+		fileformats		 [URL="#pymedphys-fileformats"];
+		analysis		 [URL="#pymedphys-analysis"];
+		databases		 [URL="#pymedphys-databases"];
+		labs		 [URL="#pymedphys-labs"];
 	}
 	{
 		graph [rank=same];
-		xlwings;
-		toolbox;
-		logfiles;
+		xlwings		 [URL="#pymedphys-xlwings"];
+		toolbox		 [URL="#pymedphys-toolbox"];
+		logfiles		 [URL="#pymedphys-logfiles"];
 	}
 	fileformats -> coordsandscales;
 	analysis -> dicom;
