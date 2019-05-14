@@ -1,25 +1,30 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_electronfactors";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_electronfactors.electronfactors.core"; }
-            { rank = same; "pymedphys_electronfactors.electronfactors"; "pymedphys_electronfactors.electronfactors.visualisation"; }
-
-            label = "pymedphys_electronfactors.electronfactors"
-        }
-    }
-
-    "pymedphys_electronfactors.electronfactors" [label="electronfactors"];
-    "pymedphys_electronfactors.electronfactors.core" [label="electronfactors.core"];
-    "pymedphys_electronfactors.electronfactors.visualisation" [label="electronfactors.visualisation"];
-
-    "pymedphys_electronfactors.electronfactors" -> "pymedphys_electronfactors.electronfactors.core";
-    "pymedphys_electronfactors.electronfactors" -> "pymedphys_electronfactors.electronfactors.core";
-    "pymedphys_electronfactors.electronfactors.visualisation" -> "pymedphys_electronfactors.electronfactors.core";
-    "pymedphys_electronfactors.electronfactors.visualisation" -> "pymedphys_electronfactors.electronfactors.core";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-electronfactors",
+			label=pymedphys_electronfactors,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-electronfactors-electronfactors",
+				label="pymedphys_electronfactors.electronfactors"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_electronfactors.electronfactors.core"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_electronfactors/src/pymedphys_electronfactors/electronfactors/\
+core.py",
+					label="electronfactors.core"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_electronfactors.electronfactors"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_electronfactors/src/pymedphys_electronfactors/electronfactors",
+					label=electronfactors];
+				"pymedphys_electronfactors.electronfactors.visualisation"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_electronfactors/src/pymedphys_electronfactors/electronfactors/\
+visualisation.py",
+					label="electronfactors.visualisation"];
+			}
+		}
+	}
+	"pymedphys_electronfactors.electronfactors" -> "pymedphys_electronfactors.electronfactors.core";
+	"pymedphys_electronfactors.electronfactors.visualisation" -> "pymedphys_electronfactors.electronfactors.core";
 }

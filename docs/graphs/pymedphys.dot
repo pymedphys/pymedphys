@@ -1,29 +1,40 @@
-
-        strict digraph  {
-            rankdir = LR;
-            
-            { rank = same; dicom; coordsandscales; utilities; workshops; sphinxtheme; monomanage; electronfactors; }
-            
-            { rank = same; fileformats; analysis; databases; labs; }
-            
-            { rank = same; xlwings; toolbox; logfiles; }
-            
-xlwings -> dicom;
-xlwings -> fileformats;
-xlwings -> utilities;
-fileformats -> coordsandscales;
-toolbox -> analysis;
-toolbox -> databases;
-analysis -> coordsandscales;
-analysis -> dicom;
-analysis -> utilities;
-databases -> coordsandscales;
-logfiles -> analysis;
-logfiles -> coordsandscales;
-logfiles -> databases;
-logfiles -> fileformats;
-logfiles -> utilities;
-labs -> utilities;
-
-        }
-    
+strict digraph {
+	graph [rankdir=LR];
+	{
+		graph [rank=same];
+		dicom		 [URL="#pymedphys-dicom"];
+		coordsandscales		 [URL="#pymedphys-coordsandscales"];
+		utilities		 [URL="#pymedphys-utilities"];
+		workshops		 [URL="#pymedphys-workshops"];
+		sphinxtheme		 [URL="#pymedphys-sphinxtheme"];
+		monomanage		 [URL="#pymedphys-monomanage"];
+		electronfactors		 [URL="#pymedphys-electronfactors"];
+	}
+	{
+		graph [rank=same];
+		fileformats		 [URL="#pymedphys-fileformats"];
+		analysis		 [URL="#pymedphys-analysis"];
+		databases		 [URL="#pymedphys-databases"];
+		labs		 [URL="#pymedphys-labs"];
+	}
+	{
+		graph [rank=same];
+		xlwings		 [URL="#pymedphys-xlwings"];
+		toolbox		 [URL="#pymedphys-toolbox"];
+		logfiles		 [URL="#pymedphys-logfiles"];
+	}
+	fileformats -> coordsandscales;
+	analysis -> dicom;
+	analysis -> coordsandscales;
+	analysis -> utilities;
+	databases -> coordsandscales;
+	labs -> utilities;
+	xlwings -> dicom;
+	xlwings -> utilities;
+	xlwings -> fileformats;
+	toolbox -> analysis;
+	toolbox -> databases;
+	logfiles -> fileformats;
+	logfiles -> analysis;
+	logfiles -> databases;
+}

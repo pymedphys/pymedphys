@@ -1,18 +1,41 @@
 import os
 import shutil
+import subprocess
 
 import networkx as nx
 
 
 def save_dot_file(dot_contents, outfilepath):
+    tred = shutil.which("tred")
+    dot = shutil.which("dot")
+
+    if not tred or not dot:
+        print(
+            "Graph not drawn, please install graphviz and add it to "
+            "your path.\nOn Windows this is done with "
+            "`choco install graphviz.portable`.\n")
+
+        return
+
     with open("temp.dot", 'w') as file:
         file.write(dot_contents)
 
-    # TODO: Implement svg creation in docs build workflow
-    # os.system("cat temp.dot | tred | dot -Tsvg -o temp.svg")
+    try:
+        tred_process = subprocess.Popen(
+            [tred, 'temp.dot'], stdout=subprocess.PIPE)
+        data = tred_process.stdout.read()
+        tred_process.wait()
+        with open("temp_reduced.dot", 'wb') as file:
+            file.write(data)
 
-    shutil.move("temp.dot", os.path.splitext(outfilepath)[0] + ".dot")
-    # shutil.move("temp.svg", outfilepath)
+        output = subprocess.check_output(
+            [dot, '-Tsvg', 'temp_reduced.dot', '-o', 'temp.svg'])
+
+        shutil.move("temp.svg", outfilepath)
+        shutil.move("temp_reduced.dot", os.path.splitext(
+            outfilepath)[0] + ".dot")
+    finally:
+        os.remove("temp.dot")
 
 
 def remove_prefix(text, prefix):
@@ -76,3 +99,20 @@ def remove_postfix(text, postfix):
 
 def convert_path_to_package(path):
     return remove_postfix(path.replace(os.sep, '.'), '.py')
+
+
+def create_href(text):
+    return '#{}'.format(text.replace('_', '-').replace('.', '-'))
+
+
+def create_link(text):
+    return '[URL="{}"]'.format(create_href(text))
+
+
+def create_labels(label_map):
+    labels = ""
+    for node, label in label_map.items():
+        labels += '"{}" [label="{}"] {};\n'.format(
+            node, label, create_link(node))
+
+    return labels

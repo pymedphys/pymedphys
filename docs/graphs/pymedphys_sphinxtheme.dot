@@ -1,9 +1,8 @@
-
-            strict digraph  {
-                subgraph cluster_0 {
-                    "";
-                    label = "pymedphys_sphinxtheme";
-                    style = dashed;
-                }
-            }
-        
+strict digraph {
+	subgraph cluster_0 {
+		graph [label=pymedphys_sphinxtheme,
+			style=dashed
+		];
+		"";
+	}
+}
