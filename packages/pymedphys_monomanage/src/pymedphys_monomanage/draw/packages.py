@@ -3,12 +3,13 @@ import os
 import networkx as nx
 
 from ..tree.build import PackageTree
-from .utilities import save_dot_file
+from .utilities import save_dot_file, create_link
 
 ROOT = os.getcwd()
 
 
 def draw_packages(save_directory):
+    print('pymedphys')
     tree = PackageTree('packages').package_dependencies_dict
     tree.pop('pymedphys')
     internal_packages = tuple(tree.keys())
@@ -75,8 +76,12 @@ def build_dot_contents(dag, levels):
     for level in range(max(levels.keys()) + 1):
         if levels[level]:
             trimmed_nodes = [
-                remove_prefix(node, 'pymedphys_') for node in levels[level]
+                '"{}" {}'.format(
+                    remove_prefix(node, 'pymedphys_'), create_link(node))
+                for node in levels[level]
             ]
+
+
 
             grouped_packages = '; '.join(trimmed_nodes)
             nodes += """

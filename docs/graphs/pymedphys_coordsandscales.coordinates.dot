@@ -1,22 +1,26 @@
-strict digraph  {
-    rankdir = LR;
-
-    subgraph cluster_0 {
-        
-        label = "pymedphys_coordsandscales";
-        style = dashed;
-
-        subgraph cluster_1 {
-            { rank = same; "pymedphys_coordsandscales.coordinates.transforms"; }
-            { rank = same; "pymedphys_coordsandscales.coordinates"; }
-
-            label = "pymedphys_coordsandscales.coordinates"
-        }
-    }
-
-    "pymedphys_coordsandscales.coordinates" [label="coordinates"];
-    "pymedphys_coordsandscales.coordinates.transforms" [label="coordinates.transforms"];
-
-    "pymedphys_coordsandscales.coordinates" -> "pymedphys_coordsandscales.coordinates.transforms";
-    "pymedphys_coordsandscales.coordinates" -> "pymedphys_coordsandscales.coordinates.transforms";
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-coordsandscales",
+			label=pymedphys_coordsandscales,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-coordsandscales-coordinates",
+				label="pymedphys_coordsandscales.coordinates"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_coordsandscales.coordinates.transforms"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_coordsandscales/src/pymedphys_coordsandscales/coordinates/\
+transforms.py",
+					label="coordinates.transforms"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_coordsandscales.coordinates"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_coordsandscales/src/pymedphys_coordsandscales/coordinates",
+					label=coordinates];
+			}
+		}
+	}
+	"pymedphys_coordsandscales.coordinates" -> "pymedphys_coordsandscales.coordinates.transforms";
 }

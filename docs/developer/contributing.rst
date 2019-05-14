@@ -110,15 +110,15 @@ development tools quite a breeze. Follow
 
 
 
-Get a version control system - Git, Git LFS, and Yarn
------------------------------------------------------
+Install contributor system dependencies
+---------------------------------------
 
 Use Chocolatey within an administrator command prompt to install Git,
-Git LFS, and yarn like so:
+Git LFS, yarn, and graphviz like so:
 
 .. code:: bash
 
-    choco install git yarn nodejs
+    choco install git yarn nodejs graphviz.portable
 
 
 
