@@ -99,3 +99,20 @@ def remove_postfix(text, postfix):
 
 def convert_path_to_package(path):
     return remove_postfix(path.replace(os.sep, '.'), '.py')
+
+
+def create_href(text):
+    return '#{}'.format(text.replace('_', '-').replace('.', '-'))
+
+
+def create_link(text):
+    return '[URL="{}"]'.format(create_href(text))
+
+
+def create_labels(label_map):
+    labels = ""
+    for node, label in label_map.items():
+        labels += '"{}" [label="{}"] {};\n'.format(
+            node, label, create_link(node))
+
+    return labels

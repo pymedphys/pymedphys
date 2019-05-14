@@ -1,37 +1,49 @@
 strict digraph {
 	graph [rankdir=LR];
 	subgraph cluster_0 {
-		graph [label=pymedphys_analysis,
+		graph [URL="#pymedphys-analysis",
+			label=pymedphys_analysis,
 			style=dashed
 		];
 		subgraph cluster_1 {
-			graph [label="pymedphys_analysis.mudensity"];
+			graph [URL="#pymedphys-analysis-mudensity",
+				label="pymedphys_analysis.mudensity"
+			];
 			{
 				graph [rank=same];
-				"pymedphys_analysis.mudensity.core"				 [label="mudensity.core"];
+				"pymedphys_analysis.mudensity.core"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/mudensity/core.py",
+					label="mudensity.core"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_analysis.mudensity.api"				 [label="mudensity.api"];
+				"pymedphys_analysis.mudensity.api"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/mudensity/api.py",
+					label="mudensity.api"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_analysis.mudensity"				 [label=mudensity];
+				"pymedphys_analysis.mudensity"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/mudensity",
+					label=mudensity];
 			}
 		}
-		"pymedphys_analysis.plt"		 [label=plt];
+		"pymedphys_analysis.plt"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/plt",
+			label=plt];
 	}
 	"pymedphys_analysis.mudensity.core" -> "pymedphys_analysis.plt";
-	"pymedphys_coordsandscales.deliverydata"	 [label="coordsandscales.deliverydata"];
+	"pymedphys_coordsandscales.deliverydata"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_coordsandscales/src/pymedphys_coordsandscales/deliverydata",
+		label="coordsandscales.deliverydata"];
 	"pymedphys_analysis.mudensity.core" -> "pymedphys_coordsandscales.deliverydata";
-	"pymedphys_utilities.constants"	 [label="utilities.constants"];
+	"pymedphys_utilities.constants"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_utilities/src/pymedphys_utilities/constants",
+		label="utilities.constants"];
 	"pymedphys_analysis.mudensity.core" -> "pymedphys_utilities.constants";
 	"pymedphys_analysis.mudensity.api" -> "pymedphys_analysis.mudensity.core";
 	"pymedphys_analysis.mudensity" -> "pymedphys_analysis.mudensity.api";
-	"pymedphys_logfiles.elekta.analyse"	 [label="logfiles.elekta.analyse"];
+	"pymedphys_logfiles.elekta.analyse"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/analyse.py",
+		label="logfiles.elekta.analyse"];
 	"pymedphys_logfiles.elekta.analyse" -> "pymedphys_analysis.mudensity";
-	"pymedphys_logfiles.elekta.bygantry"	 [label="logfiles.elekta.bygantry"];
+	"pymedphys_logfiles.elekta.bygantry"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/bygantry.py",
+		label="logfiles.elekta.bygantry"];
 	"pymedphys_logfiles.elekta.bygantry" -> "pymedphys_analysis.mudensity";
-	"pymedphys_toolbox.plancompare.core"	 [label="toolbox.plancompare.core"];
+	"pymedphys_toolbox.plancompare.core"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_toolbox/src/pymedphys_toolbox/plancompare/core.py",
+		label="toolbox.plancompare.core"];
 	"pymedphys_toolbox.plancompare.core" -> "pymedphys_analysis.mudensity";
 }

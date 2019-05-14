@@ -1,21 +1,27 @@
 strict digraph {
 	graph [rankdir=LR];
 	subgraph cluster_0 {
-		graph [label=pymedphys_dicom,
+		graph [URL="#pymedphys-dicom",
+			label=pymedphys_dicom,
 			style=dashed
 		];
 		subgraph cluster_1 {
-			graph [label="pymedphys_dicom.utilities"];
+			graph [URL="#pymedphys-dicom-utilities",
+				label="pymedphys_dicom.utilities"
+			];
 			{
 				graph [rank=same];
-				"pymedphys_dicom.utilities.files"				 [label="utilities.files"];
+				"pymedphys_dicom.utilities.files"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/utilities/files.py",
+					label="utilities.files"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_dicom.utilities"				 [label=utilities];
+				"pymedphys_dicom.utilities"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/utilities",
+					label=utilities];
 			}
 		}
-		"pymedphys_dicom.dicom.anonymise"		 [label="dicom.anonymise"];
+		"pymedphys_dicom.dicom.anonymise"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/anonymise.py",
+			label="dicom.anonymise"];
 	}
 	"pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.utilities";
 	"pymedphys_dicom.utilities" -> "pymedphys_dicom.utilities.files";

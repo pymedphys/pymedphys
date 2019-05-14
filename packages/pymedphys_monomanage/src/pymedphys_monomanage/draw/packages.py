@@ -3,7 +3,7 @@ import os
 import networkx as nx
 
 from ..tree.build import PackageTree
-from .utilities import save_dot_file
+from .utilities import save_dot_file, create_link
 
 ROOT = os.getcwd()
 
@@ -68,10 +68,6 @@ def remove_prefix(text, prefix):
         return text[len(prefix):]
     else:
         raise ValueError("Prefix not found.")
-
-
-def create_link(text):
-    return '[URL="#{}"]'.format(text.replace('_', '-').replace('.', '-'))
 
 
 def build_dot_contents(dag, levels):

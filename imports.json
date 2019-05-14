@@ -1168,7 +1168,8 @@
   "pymedphys_monomanage/draw": {
     "external": [],
     "internal_file": [
-      "pymedphys_monomanage.draw.api"
+      "pymedphys_monomanage.draw.api",
+      "pymedphys_monomanage.draw.docs"
     ],
     "internal_module": [],
     "internal_package": [],
@@ -1199,6 +1200,19 @@
     "stdlib": [
       "copy",
       "os"
+    ]
+  },
+  "pymedphys_monomanage/draw/docs.py": {
+    "external": [],
+    "internal_file": [
+      "pymedphys_monomanage.draw.utilities"
+    ],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": [
+      "glob",
+      "os",
+      "textwrap"
     ]
   },
   "pymedphys_monomanage/draw/files.py": {
@@ -1265,14 +1279,14 @@
       "os"
     ]
   },
-  "pymedphys_monomanage/propegate": {
+  "pymedphys_monomanage/propagate": {
     "external": [],
     "internal_file": [],
     "internal_module": [],
     "internal_package": [],
     "stdlib": []
   },
-  "pymedphys_monomanage/propegate/dependencies.py": {
+  "pymedphys_monomanage/propagate/dependencies.py": {
     "external": [],
     "internal_file": [],
     "internal_module": [],
@@ -1284,7 +1298,7 @@
       "textwrap"
     ]
   },
-  "pymedphys_monomanage/propegate/versions.py": {
+  "pymedphys_monomanage/propagate/versions.py": {
     "external": [
       "semver"
     ],

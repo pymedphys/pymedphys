@@ -1,32 +1,42 @@
 strict digraph {
 	graph [rankdir=LR];
 	subgraph cluster_0 {
-		graph [label=pymedphys_fileformats,
+		graph [URL="#pymedphys-fileformats",
+			label=pymedphys_fileformats,
 			style=dashed
 		];
 		subgraph cluster_1 {
-			graph [label="pymedphys_fileformats.trf"];
+			graph [URL="#pymedphys-fileformats-trf",
+				label="pymedphys_fileformats.trf"
+			];
 			{
 				graph [rank=same];
-				"pymedphys_fileformats.trf.constants"				 [label="trf.constants"];
-				"pymedphys_fileformats.trf.header"				 [label="trf.header"];
+				"pymedphys_fileformats.trf.constants"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/trf/constants.py",
+					label="trf.constants"];
+				"pymedphys_fileformats.trf.header"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/trf/header.py",
+					label="trf.header"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_fileformats.trf.table"				 [label="trf.table"];
+				"pymedphys_fileformats.trf.table"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/trf/table.py",
+					label="trf.table"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_fileformats.trf.trf2pandas"				 [label="trf.trf2pandas"];
+				"pymedphys_fileformats.trf.trf2pandas"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/trf/trf2pandas.py",
+					label="trf.trf2pandas"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_fileformats.trf.trf2csv"				 [label="trf.trf2csv"];
-				"pymedphys_fileformats.trf.trf2deliverydata"				 [label="trf.trf2deliverydata"];
+				"pymedphys_fileformats.trf.trf2csv"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/trf/trf2csv.py",
+					label="trf.trf2csv"];
+				"pymedphys_fileformats.trf.trf2deliverydata"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/trf/trf2deliverydata.py",
+					label="trf.trf2deliverydata"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_fileformats.trf"				 [label=trf];
+				"pymedphys_fileformats.trf"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/trf",
+					label=trf];
 			}
 		}
 	}
@@ -35,15 +45,20 @@ strict digraph {
 	"pymedphys_fileformats.trf.trf2pandas" -> "pymedphys_fileformats.trf.table";
 	"pymedphys_fileformats.trf.trf2csv" -> "pymedphys_fileformats.trf.trf2pandas";
 	"pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_fileformats.trf.trf2pandas";
-	"pymedphys_coordsandscales.deliverydata"	 [label="coordsandscales.deliverydata"];
+	"pymedphys_coordsandscales.deliverydata"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_coordsandscales/src/pymedphys_coordsandscales/deliverydata",
+		label="coordsandscales.deliverydata"];
 	"pymedphys_fileformats.trf.trf2deliverydata" -> "pymedphys_coordsandscales.deliverydata";
 	"pymedphys_fileformats.trf" -> "pymedphys_fileformats.trf.trf2deliverydata";
-	"pymedphys_logfiles.elekta.analyse"	 [label="logfiles.elekta.analyse"];
+	"pymedphys_logfiles.elekta.analyse"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/analyse.py",
+		label="logfiles.elekta.analyse"];
 	"pymedphys_logfiles.elekta.analyse" -> "pymedphys_fileformats.trf";
-	"pymedphys_logfiles.elekta.bygantry"	 [label="logfiles.elekta.bygantry"];
+	"pymedphys_logfiles.elekta.bygantry"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/bygantry.py",
+		label="logfiles.elekta.bygantry"];
 	"pymedphys_logfiles.elekta.bygantry" -> "pymedphys_fileformats.trf";
-	"pymedphys_logfiles.elekta.identify"	 [label="logfiles.elekta.identify"];
+	"pymedphys_logfiles.elekta.identify"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/identify.py",
+		label="logfiles.elekta.identify"];
 	"pymedphys_logfiles.elekta.identify" -> "pymedphys_fileformats.trf";
-	"pymedphys_logfiles.elekta.index"	 [label="logfiles.elekta.index"];
+	"pymedphys_logfiles.elekta.index"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/index.py",
+		label="logfiles.elekta.index"];
 	"pymedphys_logfiles.elekta.index" -> "pymedphys_fileformats.trf";
 }

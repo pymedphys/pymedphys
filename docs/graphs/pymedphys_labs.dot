@@ -2,17 +2,22 @@ strict digraph {
 	graph [rankdir=LR];
 	{
 		graph [rank=same];
-		"pymedphys_utilities.constants"		 [label="utilities.constants"];
+		"pymedphys_utilities.constants"		 [URL="#pymedphys-utilities-constants",
+			label="utilities.constants"];
 	}
 	subgraph cluster_0 {
-		graph [label=pymedphys_labs,
+		graph [URL="#pymedphys-labs",
+			label=pymedphys_labs,
 			style=dashed
 		];
 		{
 			graph [rank=same];
-			"pymedphys_labs.mattsobolewski"			 [label=mattsobolewski];
-			"pymedphys_labs.paulking"			 [label=paulking];
-			"pymedphys_labs.simonbiggs"			 [label=simonbiggs];
+			"pymedphys_labs.mattsobolewski"			 [URL="#pymedphys-labs-mattsobolewski",
+				label=mattsobolewski];
+			"pymedphys_labs.paulking"			 [URL="#pymedphys-labs-paulking",
+				label=paulking];
+			"pymedphys_labs.simonbiggs"			 [URL="#pymedphys-labs-simonbiggs",
+				label=simonbiggs];
 		}
 	}
 	"pymedphys_labs.paulking" -> "pymedphys_utilities.constants";
