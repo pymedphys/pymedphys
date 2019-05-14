@@ -39,6 +39,7 @@
     :caption: Developer Guide
 
     developer/contributing
+    developer/dependencies
     developer/file-structure
     developer/documentation
     developer/agpl-benefits
