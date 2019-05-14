@@ -10,6 +10,7 @@
     "bump:dev:minor": "yarn lerna version --force-publish=* --no-git-tag-version --preid dev preminor && yarn postversion",
     "bump:dev": "yarn lerna version --force-publish=* --no-git-tag-version --preid dev prerelease && yarn postversion",
     "docker:internal": "yarn install:prod",
+    "docs:live": "sphinx-autobuild -W -p 7070 docs docs/_build/html",
     "git:clean": "git clean -fxd",
     "git:undo": "git reset --soft HEAD~1",
     "hooks:pre-commit": "yarn hooks:pre-commit:nbstripout && yarn hooks:pre-commit:tree",

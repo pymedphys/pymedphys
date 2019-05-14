@@ -70,14 +70,22 @@ def remove_prefix(text, prefix):
         raise ValueError("Prefix not found.")
 
 
+def create_link(text):
+    return '[URL="#{}"]'.format(text.replace('_', '-').replace('.', '-'))
+
+
 def build_dot_contents(dag, levels):
     nodes = ""
 
     for level in range(max(levels.keys()) + 1):
         if levels[level]:
             trimmed_nodes = [
-                remove_prefix(node, 'pymedphys_') for node in levels[level]
+                '"{}" {}'.format(
+                    remove_prefix(node, 'pymedphys_'), create_link(node))
+                for node in levels[level]
             ]
+
+
 
             grouped_packages = '; '.join(trimmed_nodes)
             nodes += """
