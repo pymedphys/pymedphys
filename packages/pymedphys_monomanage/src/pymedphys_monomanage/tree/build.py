@@ -10,7 +10,7 @@ from ..parse.imports import get_imports
 
 
 DEPENDENCIES_JSON_FILEPATH = 'dependencies.json'
-DEFAULT_EXCLUDE_DIRS = {'node_modules', '__pycache__', 'dist', '.tox'}
+DEFAULT_EXCLUDE_DIRS = {'node_modules', '__pycache__', 'dist', '.tox', 'build'}
 DEFAULT_EXCLUDE_FILES = {'__init__.py', '_version.py', '_install_requires.py'}
 DEFAULT_KEYS_TO_KEEP = {'stdlib', 'internal', 'external'}
 
@@ -28,7 +28,6 @@ class PackageTree:
 
         self.directory = directory
 
-
     def trim_path(self, path):
         relpath = os.path.relpath(path, self.directory)
         split = relpath.split(os.sep)
@@ -40,7 +39,6 @@ class PackageTree:
 
         return os.path.join(*split[2:])
 
-
     def expand_path(self, path):
         split = path.split(os.sep)
         relpath = os.path.join(split[0], 'src', path)
@@ -49,7 +47,6 @@ class PackageTree:
             relpath = os.path.join(relpath, '__init__.py')
 
         return os.path.join(self.directory, relpath)
-
 
     def build_directory_digraph(self):
         digraph = nx.DiGraph()
@@ -65,7 +62,8 @@ class PackageTree:
 
                 digraph.add_node(module)
                 depth[module] = current_depth
-                parent_init = os.path.join(os.path.dirname(root), '__init__.py')
+                parent_init = os.path.join(
+                    os.path.dirname(root), '__init__.py')
                 if os.path.exists(parent_init):
                     digraph.add_edge(self.trim_path(parent_init), module)
 
@@ -83,7 +81,6 @@ class PackageTree:
         self.depth = depth
         self.calc_properties()
 
-
     def calc_properties(self):
         self.roots = [n for n, d in self.digraph.in_degree() if d == 0]
         self.imports = {
@@ -95,17 +92,14 @@ class PackageTree:
         self._cache = {}
         self._cache['descendants_dependencies'] = {}
 
-
     @property
     def directory(self):
         return self._directory
-
 
     @directory.setter
     def directory(self, value):
         self._directory = value
         self.build_directory_digraph()
-
 
     def descendants_dependencies(self, filepath):
         try:
@@ -124,7 +118,6 @@ class PackageTree:
             self._cache['descendants_dependencies'][filepath] = dependencies
             return dependencies
 
-
     @property
     def package_dependencies_dict(self):
         try:
@@ -138,16 +131,16 @@ class PackageTree:
 
             tree = {
                 package: {
-                        key_map[key]: sorted(list({package.split('.')[0] for package in packages}))
-                        for key, packages in self.descendants_dependencies(package).items()
-                        if key in key_map.keys()
-                    }
+                    key_map[key]: sorted(
+                        list({package.split('.')[0] for package in packages}))
+                    for key, packages in self.descendants_dependencies(package).items()
+                    if key in key_map.keys()
+                }
                 for package in self.roots
             }
 
             self._cache['package_dependencies_dict'] = tree
             return tree
-
 
     @property
     def package_dependencies_digraph(self):
@@ -166,7 +159,6 @@ class PackageTree:
 
             self._cache['package_dependencies_digraph'] = dag
             return dag
-
 
     def is_acyclic(self):
         return nx.is_directed_acyclic_graph(self.package_dependencies_digraph)
