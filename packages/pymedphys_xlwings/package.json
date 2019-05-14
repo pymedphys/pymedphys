@@ -10,8 +10,8 @@
     "pip:install:dev": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install -e .')\"",
     "pip:install:prod": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .')\"",
     "pip:install:test": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .[test]')\"",
-    "postversion": "yarn propegate:version",
-    "propegate:version": "python -m pymedphys_monomanage.propegate.versions",
+    "postversion": "yarn propagate:version",
+    "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
     "pypi:upload": "twine upload dist/*"

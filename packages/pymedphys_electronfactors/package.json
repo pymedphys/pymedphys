@@ -6,8 +6,8 @@
     "pip:install:dev": "pip install -e .",
     "pip:install:prod": "pip install .",
     "pip:install:test": "pip install .[test]",
-    "postversion": "yarn propegate:version",
-    "propegate:version": "python -m pymedphys_monomanage.propegate.versions",
+    "postversion": "yarn propagate:version",
+    "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
     "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
     "pypi:upload": "twine upload dist/*"

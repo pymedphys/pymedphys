@@ -1,28 +1,38 @@
 strict digraph {
 	graph [rankdir=LR];
 	subgraph cluster_0 {
-		graph [label=pymedphys_monomanage,
+		graph [URL="#pymedphys-monomanage",
+			label=pymedphys_monomanage,
 			style=dashed
 		];
 		subgraph cluster_1 {
-			graph [label="pymedphys_monomanage.tree"];
+			graph [URL="#pymedphys-monomanage-tree",
+				label="pymedphys_monomanage.tree"
+			];
 			{
 				graph [rank=same];
-				"pymedphys_monomanage.tree.build"				 [label="tree.build"];
+				"pymedphys_monomanage.tree.build"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/tree/build.py",
+					label="tree.build"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_monomanage.tree.check"				 [label="tree.check"];
+				"pymedphys_monomanage.tree.check"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/tree/check.py",
+					label="tree.check"];
 			}
 			{
 				graph [rank=same];
-				"pymedphys_monomanage.tree"				 [label=tree];
+				"pymedphys_monomanage.tree"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/tree",
+					label=tree];
 			}
 		}
-		"pymedphys_monomanage.draw.directories"		 [label="draw.directories"];
-		"pymedphys_monomanage.draw.files"		 [label="draw.files"];
-		"pymedphys_monomanage.draw.packages"		 [label="draw.packages"];
-		"pymedphys_monomanage.parse.imports"		 [label="parse.imports"];
+		"pymedphys_monomanage.draw.directories"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw/directories.py",
+			label="draw.directories"];
+		"pymedphys_monomanage.draw.files"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw/files.py",
+			label="draw.files"];
+		"pymedphys_monomanage.draw.packages"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw/packages.py",
+			label="draw.packages"];
+		"pymedphys_monomanage.parse.imports"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/parse/imports.py",
+			label="parse.imports"];
 	}
 	"pymedphys_monomanage.draw.directories" -> "pymedphys_monomanage.tree";
 	"pymedphys_monomanage.draw.files" -> "pymedphys_monomanage.tree";
