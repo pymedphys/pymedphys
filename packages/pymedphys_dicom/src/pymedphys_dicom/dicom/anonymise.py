@@ -33,7 +33,7 @@ from pydicom.dataset import Dataset
 
 from ..utilities import remove_file
 
-from .constants import (
+from ..constants.core import (
     BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES)

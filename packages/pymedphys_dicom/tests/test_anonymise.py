@@ -13,11 +13,12 @@ from pydicom.dataset import Dataset, DataElement
 from pydicom.filereader import read_file_meta_info
 import pytest
 
+from pymedphys_dicom.constants.core import BaselineDicomDictionary
+
 from pymedphys_dicom.dicom import (
     anonymise_dataset,
     anonymise_directory,
     anonymise_file,
-    BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,
     dicom_dataset_from_dict,
     IDENTIFYING_KEYWORDS,

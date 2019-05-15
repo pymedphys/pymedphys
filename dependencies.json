@@ -127,10 +127,12 @@
       "stdlib": [
         "collections",
         "copy",
+        "datetime",
         "functools",
         "glob",
         "operator",
         "os",
+        "random",
         "re",
         "warnings"
       ]
