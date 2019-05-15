@@ -64,10 +64,10 @@ def extend(input_dir, output_dir, index_to_copy, number_of_slices):
         dicom_dataset.save_as(filepath)
 
 
-def extend_datasets(dicom_datasets, index_to_copy, number_of_slices):
+def extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
     copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices)
     refresh_instance_numbers(dicom_datasets)
-    generate_new_uids(dicom_datasets)
+    generate_new_uids(dicom_datasets, uids=uids)
 
 
 def load_dicom_into_deque(filepaths):
@@ -76,12 +76,19 @@ def load_dicom_into_deque(filepaths):
         for filepath in filepaths
     ]
 
+    dicom_datasets = convert_datasets_to_deque(dicom_datasets_initial_read)
+
+    return dicom_datasets
+
+
+def convert_datasets_to_deque(datasets):
     dicom_datasets = deque()
 
-    for dicom_dataset in sorted(dicom_datasets_initial_read, key=instance_number):
+    for dicom_dataset in sorted(datasets, key=instance_number):
         dicom_datasets.append(dicom_dataset)
 
     return dicom_datasets
+
 
 
 def instance_number(dicom_dataset):
@@ -115,11 +122,12 @@ def refresh_instance_numbers(dicom_datasets):
         dicom_dataset.InstanceNumber = str(i)
 
 
-def generate_new_uids(dicom_datasets):
-    new_UIDs = generate_UIDs(len(dicom_datasets))
+def generate_new_uids(dicom_datasets, uids=None):
+    if uids is None:
+        uids = generate_uids(len(dicom_datasets))
 
-    for dicom_dataset, UID in zip(dicom_datasets, new_UIDs):
-        dicom_dataset.SOPInstanceUID = UID
+    for dicom_dataset, uid in zip(dicom_datasets, uids):
+        dicom_dataset.SOPInstanceUID = uid
 
 
 def generate_new_slice_locations(dicom_datasets, index_to_copy, number_of_slices):
@@ -149,20 +157,20 @@ def get_append_method(dicom_datasets, index_to_copy):
         raise ValueError('index_to_copy must be first or last slice')
 
 
-def generate_UIDs(number_of_UIDs, randomisation_length=10, root=PYMEDPHYS_ROOT_UID):
-    num_of_digits = len(str(number_of_UIDs))
+def generate_uids(number_of_uids, randomisation_length=10, root=PYMEDPHYS_ROOT_UID):
+    num_of_digits = len(str(number_of_uids))
 
     middle_item = str(random.randint(
         0, 10**randomisation_length)).zfill(randomisation_length)
     time_stamp_item = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
 
     last_item = [
-        str(i).zfill(num_of_digits) for i in range(number_of_UIDs)
+        str(i).zfill(num_of_digits) for i in range(number_of_uids)
     ]
 
-    UIDs = [
+    uids = [
         '.'.join([root, middle_item, time_stamp_item, item])
         for item in last_item
     ]
 
-    return UIDs
+    return uids

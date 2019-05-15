@@ -23,5 +23,53 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from copy import deepcopy
+
 from pymedphys_dicom.dicom.create import dicom_dataset_from_dict
-from pymedphys_dicom.ct.extend import extend_datasets
+from pymedphys_dicom.ct.extend import (
+    extend_datasets, generate_uids, convert_datasets_to_deque)
+
+
+def make_datasets(uuids, slice_locations):
+    initial_datasets = [
+        dicom_dataset_from_dict({
+            'SOPInstanceUID': uuid,
+            'InstanceNumber': str(i),
+            'SliceLocation': str(float(slice_location)),
+            'ImagePositionPatient': ['0.0', '0.0', str(float(slice_location))]
+        })
+        for i, (uuid, slice_location)
+        in enumerate(zip(uuids, slice_locations))
+    ]
+
+    return convert_datasets_to_deque(initial_datasets)
+
+
+def test_extend_datasets():
+    initial_uuids = generate_uids(4)
+    final_uuids = generate_uids(7)
+
+    number_of_slices_to_add = 3
+    initial_slice_locations = [1, 3, 5, 7]
+    expected_slice_locations_left = [-5, -3, -1, 1, 3, 5, 7]
+    expected_slice_locations_right = [1, 3, 5, 7, 9, 11, 13]
+
+    initial_datasets = make_datasets(initial_uuids, initial_slice_locations)
+    expected_datasets_left = make_datasets(
+        final_uuids, expected_slice_locations_left)
+    expected_datasets_right = make_datasets(
+        final_uuids, expected_slice_locations_right)
+
+    resulting_dataset_left = deepcopy(initial_datasets)
+    resulting_dataset_right = deepcopy(initial_datasets)
+
+    extend_datasets(
+        resulting_dataset_left, 0, number_of_slices_to_add, uids=final_uuids)
+    extend_datasets(
+        resulting_dataset_right, -1, number_of_slices_to_add, uids=final_uuids)
+
+    assert resulting_dataset_left != initial_datasets
+    assert resulting_dataset_left == expected_datasets_left
+
+    assert resulting_dataset_right != initial_datasets
+    assert resulting_dataset_right == expected_datasets_right
