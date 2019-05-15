@@ -77,7 +77,6 @@ from .create import dicom_dataset_from_dict
 
 from .structure import pull_structure, create_contour_sequence_dict, Structure
 
-from .constants import BaselineDicomDictionary
 from .collection import DicomBase, DicomDose
 from .header import (
     adjust_machine_name, adjust_rel_elec_density, adjust_RED_by_structure_name,

@@ -536,12 +536,57 @@
     "internal_package": [],
     "stdlib": []
   },
+  "pymedphys_dicom/constants": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/constants/core.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/constants/uuid.py": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/ct": {
+    "external": [],
+    "internal_file": [],
+    "internal_module": [],
+    "internal_package": [],
+    "stdlib": []
+  },
+  "pymedphys_dicom/ct/extend.py": {
+    "external": [
+      "pydicom"
+    ],
+    "internal_file": [],
+    "internal_module": [
+      "pymedphys_dicom.constants.uuid"
+    ],
+    "internal_package": [],
+    "stdlib": [
+      "collections",
+      "copy",
+      "datetime",
+      "glob",
+      "os",
+      "random"
+    ]
+  },
   "pymedphys_dicom/dicom": {
     "external": [],
     "internal_file": [
       "pymedphys_dicom.dicom.anonymise",
       "pymedphys_dicom.dicom.collection",
-      "pymedphys_dicom.dicom.constants",
       "pymedphys_dicom.dicom.coords",
       "pymedphys_dicom.dicom.create",
       "pymedphys_dicom.dicom.dose",
@@ -557,10 +602,9 @@
       "numpy",
       "pydicom"
     ],
-    "internal_file": [
-      "pymedphys_dicom.dicom.constants"
-    ],
+    "internal_file": [],
     "internal_module": [
+      "pymedphys_dicom.constants.core",
       "pymedphys_dicom.utilities"
     ],
     "internal_package": [],
@@ -581,18 +625,13 @@
       "pymedphys_dicom.dicom.coords",
       "pymedphys_dicom.dicom.create"
     ],
-    "internal_module": [],
+    "internal_module": [
+      "pymedphys_dicom.constants.uuid"
+    ],
     "internal_package": [],
     "stdlib": [
       "copy"
     ]
-  },
-  "pymedphys_dicom/dicom/constants.py": {
-    "external": [],
-    "internal_file": [],
-    "internal_module": [],
-    "internal_package": [],
-    "stdlib": []
   },
   "pymedphys_dicom/dicom/coords.py": {
     "external": [
