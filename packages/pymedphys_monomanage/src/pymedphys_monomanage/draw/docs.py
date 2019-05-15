@@ -12,7 +12,7 @@ def write_graphs_rst(save_directory):
 
     svg_files = [
         os.path.basename(filepath)
-        for filepath in sorted(glob(search_string))
+        for filepath in sorted(glob(search_string), key=os.path.splitext[0])
     ]
 
     modules = [remove_postfix(filepath, '.svg') for filepath in svg_files]
