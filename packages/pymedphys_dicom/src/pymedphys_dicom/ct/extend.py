@@ -50,7 +50,7 @@ def extend(input_dir, output_dir, index_to_copy, number_of_slices):
     new_filenames = [
         "{}{}.dcm".format(
             common_prefix,
-            str(dicom_dataset.InstanceNumber).zfill(number_of_digits)
+            dicom_dataset.SOPInstanceUID
         )
         for dicom_dataset in dicom_datasets
     ]
@@ -88,7 +88,6 @@ def convert_datasets_to_deque(datasets):
         dicom_datasets.append(dicom_dataset)
 
     return dicom_datasets
-
 
 
 def instance_number(dicom_dataset):
