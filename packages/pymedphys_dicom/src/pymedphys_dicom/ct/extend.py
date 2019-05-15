@@ -84,7 +84,7 @@ def load_dicom_into_deque(filepaths):
 def convert_datasets_to_deque(datasets):
     dicom_datasets = deque()
 
-    for dicom_dataset in sorted(datasets, key=instance_number):
+    for dicom_dataset in sorted(datasets, key=slice_location):
         dicom_datasets.append(dicom_dataset)
 
     return dicom_datasets
@@ -93,6 +93,10 @@ def convert_datasets_to_deque(datasets):
 
 def instance_number(dicom_dataset):
     return dicom_dataset.InstanceNumber
+
+
+def slice_location(dicom_dataset):
+    return float(dicom_dataset.SliceLocation)
 
 
 def copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
