@@ -54,6 +54,7 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
         if isinstance(value, dict):
             setattr(dataset, key, dicom_dataset_from_dict(value))
         elif isinstance(value, list):
+            # TODO: Check for DICOM SQ type on this attribute
             if np.all([not isinstance(item, dict) for item in value]):
                 add_array_to_dataset(
                     dataset, key, value)

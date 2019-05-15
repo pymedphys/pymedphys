@@ -88,6 +88,22 @@ pymedphys_databases
 .. raw:: html
     :file: ../graphs/pymedphys_databases.svg
 
+*************************
+pymedphys_dicom.constants
+*************************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_dicom.constants.svg
+
+******************
+pymedphys_dicom.ct
+******************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_dicom.ct.svg
+
 *********************
 pymedphys_dicom.dicom
 *********************
@@ -239,6 +255,14 @@ pymedphys_monomanage.propagate
 
 .. raw:: html
     :file: ../graphs/pymedphys_monomanage.propagate.svg
+
+******************************
+pymedphys_monomanage.propegate
+******************************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_monomanage.propegate.svg
 
 ********************
 pymedphys_monomanage
