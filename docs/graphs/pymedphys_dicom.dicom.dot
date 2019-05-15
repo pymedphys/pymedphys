@@ -11,8 +11,8 @@ strict digraph {
 			];
 			{
 				graph [rank=same];
-				"pymedphys_dicom.dicom.constants"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/constants.py",
-					label="dicom.constants"];
+				"pymedphys_dicom.dicom.anonymise"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/anonymise.py",
+					label="dicom.anonymise"];
 				"pymedphys_dicom.dicom.coords"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/coords.py",
 					label="dicom.coords"];
 				"pymedphys_dicom.dicom.create"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/create.py",
@@ -22,8 +22,8 @@ strict digraph {
 			}
 			{
 				graph [rank=same];
-				"pymedphys_dicom.dicom.anonymise"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/anonymise.py",
-					label="dicom.anonymise"];
+				"pymedphys_dicom.dicom.collection"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/collection.py",
+					label="dicom.collection"];
 				"pymedphys_dicom.dicom.dose"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/dose.py",
 					label="dicom.dose"];
 				"pymedphys_dicom.dicom.header"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/header.py",
@@ -31,29 +31,29 @@ strict digraph {
 			}
 			{
 				graph [rank=same];
-				"pymedphys_dicom.dicom.collection"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/collection.py",
-					label="dicom.collection"];
-			}
-			{
-				graph [rank=same];
 				"pymedphys_dicom.dicom"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom",
 					label=dicom];
 			}
 		}
+		"pymedphys_dicom.constants.core"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/constants/core.py",
+			label="constants.core"];
+		"pymedphys_dicom.constants.uuid"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/constants/uuid.py",
+			label="constants.uuid"];
 		"pymedphys_dicom.utilities"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/utilities",
 			label=utilities];
 	}
+	"pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.constants.core";
 	"pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.utilities";
-	"pymedphys_dicom.dicom.anonymise" -> "pymedphys_dicom.dicom.constants";
+	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.constants.uuid";
+	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.anonymise";
+	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.coords";
+	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.create";
 	"pymedphys_dicom.dicom.dose" -> "pymedphys_dicom.dicom.coords";
 	"pymedphys_dicom.dicom.dose" -> "pymedphys_dicom.dicom.structure";
 	"pymedphys_dicom.dicom.header" -> "pymedphys_dicom.dicom.create";
-	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.coords";
-	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.create";
-	"pymedphys_dicom.dicom.collection" -> "pymedphys_dicom.dicom.anonymise";
+	"pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.collection";
 	"pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.dose";
 	"pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.header";
-	"pymedphys_dicom.dicom" -> "pymedphys_dicom.dicom.collection";
 	"pymedphys_analysis.gamma.api"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/gamma/api.py",
 		label="analysis.gamma.api"];
 	"pymedphys_analysis.gamma.api" -> "pymedphys_dicom.dicom";

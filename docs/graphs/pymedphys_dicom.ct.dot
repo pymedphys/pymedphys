@@ -1,0 +1,24 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-dicom",
+			label=pymedphys_dicom,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-dicom-ct",
+				label="pymedphys_dicom.ct"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_dicom.ct"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/ct",
+					label=ct];
+				"pymedphys_dicom.ct.extend"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/ct/extend.py",
+					label="ct.extend"];
+			}
+		}
+		"pymedphys_dicom.constants.uuid"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/constants/uuid.py",
+			label="constants.uuid"];
+	}
+	"pymedphys_dicom.ct.extend" -> "pymedphys_dicom.constants.uuid";
+}
