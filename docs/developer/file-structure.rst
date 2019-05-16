@@ -83,9 +83,9 @@ so we'll disregard them for now in the interest of brevity.
                  collaborative raw development.
 
 :``packages/``: The PyMedPhys source code library is separated into a set of
-                **packages**, each of is a subdirectory of ``packages/``. The
-                packages consist of a main ``pymedphys`` package along with a
-                series of subpackages, such as ``pymedphys_dicom``, from which
+                **packages**, each of which is a subdirectory of ``packages/``.
+                There is one main ``pymedphys`` package along with a series of
+                subpackages, such as ``pymedphys_dicom``, from which
                 the main ``pymedphys`` package draws.
 
                 Code within ``packages/`` constitutes PyMedPhys proper.
