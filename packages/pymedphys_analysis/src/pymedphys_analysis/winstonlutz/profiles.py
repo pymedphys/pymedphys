@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-def penumbra_flip_diff():
+def penumbra_flip_diff(disp, measurement, tested_centre, penumbra_width,
+                       field_width):
     """Find sum of squares difference between penumbras when flipped
     """

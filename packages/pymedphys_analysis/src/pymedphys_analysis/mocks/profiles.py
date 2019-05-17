@@ -23,19 +23,29 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
 import numpy as np
+from scipy.special import erf, erfinv  # pylint: disable=no-name-in-module
 
-from pymedphys_analysis.winstonlutz.profiles import penumbra_flip_diff
+
+def gaussian_cdf(x, mu=0, sig=1):
+    x = np.array(x, copy=False)
+    return 0.5 * (1 + erf((x - mu) / (sig * np.sqrt(2))))
 
 
-# pylint: disable=bad-whitespace,C1801
+def scaled_penumbra_sig(profile_shoulder_edge=0.8):
+    sig = 1 / (2 * np.sqrt(2) * erfinv(profile_shoulder_edge * 2 - 1))
 
-def test_profile_flip_diff():
-    x = np.array([-10,  -9,  -8,  -7, -4, 0, 4,   7,   8,   9,  10])
-    y = np.array([0.2, 0.5, 0.7, 0.9,  1, 1, 1, 0.8, 0.6, 0.5, 0.2])
-    centre_test = 0
-    penumbra_width = 3
-    field_width = 8.5 * 2
-    sum_of_squares_diff = np.sum((y[0:4] - y[-1:-5:-1])**2)
+    return sig
 
-    penumbra_flip_diff(x, y, centre_test, penumbra_width, field_width)
+
+def create_dummy_profile_function(centre, field_width, penumbra_width,
+                                  profile_shoulder_edge=0.8):
+    sig = scaled_penumbra_sig(profile_shoulder_edge) * penumbra_width
+    mu = [centre - field_width/2, centre + field_width/2]
+
+    def dummy_profile(x):
+        x = np.array(x, copy=False)
+        return gaussian_cdf(x, mu[0], sig) * gaussian_cdf(-x, -mu[1], sig)
+
+    return dummy_profile
