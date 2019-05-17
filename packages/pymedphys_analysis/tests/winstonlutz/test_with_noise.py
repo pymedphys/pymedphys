@@ -23,29 +23,5 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import numpy as np
 
-from pymedphys_analysis.mocks.profiles import create_dummy_profile_function
-from pymedphys_analysis.winstonlutz.profiles import penumbra_flip_diff
-
-
-# pylint: disable=bad-whitespace,C1801
-
-def test_profile_flip_diff():
-    profile_centre = 1.7
-    field_width = 10
-    penumbra_width = 0.3
-
-    dummy_profile = create_dummy_profile_function(
-        profile_centre, field_width, penumbra_width)
-
-    centre_tests = [0, 1, 1.6, 1.69, 1.699, 1.7, 1.701, 1.71, 1.8, 2, 3, 10]
-    expected_smallest_index = centre_tests.index(profile_centre)
-
-    flip_diffs = [
-        penumbra_flip_diff(dummy_profile, centre_test, penumbra_width,
-                           field_width)
-        for centre_test in centre_tests
-    ]
-
-    assert np.argmin(flip_diffs) == expected_smallest_index
+# TODO: Create tests that push the implementation by adding awkward features
