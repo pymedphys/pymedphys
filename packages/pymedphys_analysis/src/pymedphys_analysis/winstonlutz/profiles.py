@@ -24,7 +24,23 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-def penumbra_flip_diff(disp, measurement, tested_centre, penumbra_width,
-                       field_width):
+def penumbra_flip_diff(profile, centre_to_test, field_width, penumbra_width):
     """Find sum of squares difference between penumbras when flipped
+
+    Parameters
+    ----------
+    profile : function
+        A function that has displacement as input, and profile value as output.
+    centre_to_test : float
+        A position to flip the profile about
+    field_width : float
+        The profile field width
+    penumbra_width : float
+        The profile penumbra width
+
+    Returns
+    -------
+    sum_of_squares_diff : float
+        The sum of squares difference between the field edges flipped about the
+        provided centre.
     """
