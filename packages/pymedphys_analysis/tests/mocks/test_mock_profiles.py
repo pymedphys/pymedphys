@@ -23,19 +23,35 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
 import numpy as np
 
-from pymedphys_analysis.winstonlutz.profiles import penumbra_flip_diff
+from pymedphys_analysis.mocks.profiles import (
+    scaled_penumbra_sig, gaussian_cdf, create_dummy_profile_function)
 
 
-# pylint: disable=bad-whitespace,C1801
+def test_scaled_penumbra():
+    profile_shoulder_edges = [0.7, 0.8, 0.9]
 
-def test_profile_flip_diff():
-    x = np.array([-10,  -9,  -8,  -7, -4, 0, 4,   7,   8,   9,  10])
-    y = np.array([0.2, 0.5, 0.7, 0.9,  1, 1, 1, 0.8, 0.6, 0.5, 0.2])
-    centre_test = 0
-    penumbra_width = 3
-    field_width = 8.5 * 2
-    sum_of_squares_diff = np.sum((y[0:4] - y[-1:-5:-1])**2)
+    for profile_shoulder_edge in profile_shoulder_edges:
+        sig = scaled_penumbra_sig(profile_shoulder_edge)
+        np.testing.assert_allclose(
+            gaussian_cdf([-0.5, 0, 0.5], sig=sig),
+            [1 - profile_shoulder_edge, 0.5, profile_shoulder_edge]
+        )
 
-    penumbra_flip_diff(x, y, centre_test, penumbra_width, field_width)
+
+def test_dummy_profile():
+    x = [-5, -1, 0, 1, 3, 5, 7, 9, 10, 11, 15]
+    centre = 5
+    field_width = 10
+    penumbra_width = 2
+    expected_dummy_profile_values = [
+        0, 0.2, 0.5, 0.8, 1, 1, 1, 0.8, 0.5, 0.2, 0]
+
+    dummy_profile = create_dummy_profile_function(
+        centre, field_width, penumbra_width)
+
+    np.testing.assert_allclose(
+        expected_dummy_profile_values, dummy_profile(x), atol=0.01
+    )
