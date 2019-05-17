@@ -25,27 +25,35 @@
 
 import numpy as np
 
-from pymedphys_analysis.mocks.profiles import create_dummy_profile_function
+from pymedphys_analysis.mocks.profiles import create_square_field_function
 from pymedphys_analysis.winstonlutz.profiles import penumbra_flip_diff
 
 
 # pylint: disable=bad-whitespace,C1801
 
 def test_profile_flip_diff():
-    profile_centre = 1.7
-    field_width = 10
+    profile_centre = [1.7, -3.5]
+    side_length = 2
     penumbra_width = 0.3
+    rotation = 45
 
-    dummy_profile = create_dummy_profile_function(
-        profile_centre, field_width, penumbra_width)
+    field = create_square_field_function(
+        profile_centre, side_length, penumbra_width, rotation)
 
-    centre_tests = [0, 1, 1.6, 1.69, 1.699, 1.7, 1.701, 1.71, 1.8, 2, 3, 10]
-    expected_smallest_index = centre_tests.index(profile_centre)
+    x_to_test = [0, 1, 1.6, 1.69, 1.699, 1.7, 1.701, 1.71, 1.8, 2, 3, 10]
+    y_to_test = [-2, -3, -3.499, -3.5, -3.501, -4, -5]
+    expected_smallest_indicies = (
+        x_to_test.index(profile_centre[0]),
+        y_to_test.index(profile_centre[1])
+    )
 
     flip_diffs = [
-        penumbra_flip_diff(dummy_profile, centre_test, penumbra_width,
-                           field_width)
-        for centre_test in centre_tests
+        [
+            penumbra_flip_diff(
+                field, (x, y), side_length, penumbra_width, rotation)
+            for y in y_to_test
+        ]
+        for x in x_to_test
     ]
 
-    assert np.argmin(flip_diffs) == expected_smallest_index
+    assert np.all(np.argmin(flip_diffs) == expected_smallest_indicies)

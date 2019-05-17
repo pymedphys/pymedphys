@@ -58,7 +58,7 @@ def rotate_coords(x, y, theta):
 
 
 def create_rectangular_field_function(centre, side_lengths, penumbra_width,
-                                      rotation):
+                                      rotation=0):
     width_profile = create_profile_function(
         0, side_lengths[0], penumbra_width)
     length_profile = create_profile_function(
@@ -79,7 +79,7 @@ def create_rectangular_field_function(centre, side_lengths, penumbra_width,
 
 
 def create_square_field_function(centre, side_length, penumbra_width,
-                                 rotation):
+                                 rotation=0):
 
     side_lengths = [side_length, side_length]
     return create_rectangular_field_function(
