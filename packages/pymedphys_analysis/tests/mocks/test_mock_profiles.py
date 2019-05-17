@@ -27,7 +27,8 @@
 import numpy as np
 
 from pymedphys_analysis.mocks.profiles import (
-    scaled_penumbra_sig, gaussian_cdf, create_dummy_profile_function)
+    scaled_penumbra_sig, gaussian_cdf, create_profile_function,
+    create_square_field_function)
 
 
 def test_scaled_penumbra():
@@ -41,17 +42,39 @@ def test_scaled_penumbra():
         )
 
 
-def test_dummy_profile():
+def test_profile_function():
     x = [-5, -1, 0, 1, 3, 5, 7, 9, 10, 11, 15]
     centre = 5
     field_width = 10
     penumbra_width = 2
-    expected_dummy_profile_values = [
+    expected_profile_values = [
         0, 0.2, 0.5, 0.8, 1, 1, 1, 0.8, 0.5, 0.2, 0]
 
-    dummy_profile = create_dummy_profile_function(
-        centre, field_width, penumbra_width)
+    profile = create_profile_function(centre, field_width, penumbra_width)
 
-    np.testing.assert_allclose(
-        expected_dummy_profile_values, dummy_profile(x), atol=0.01
+    np.testing.assert_allclose(expected_profile_values, profile(x), atol=0.01)
+
+
+def test_field_function():
+    centre = [5, 5]
+    side_length = 2
+    penumbra_width = 0.3
+    rotation = 10
+
+    field = create_square_field_function(
+        centre, side_length, penumbra_width, rotation)
+
+    xx, yy = np.meshgrid(
+        np.linspace(3, 7, 10),
+        [4, 5, 6]
     )
+
+    expected_results = [
+        [0., 0., 0.11, 0.29, 0.45, 0.62, 0.64, 0.06, 0., 0.],
+        [0., 0., 0.3, 0.97, 1., 1., 0.97, 0.3, 0., 0.],
+        [0., 0., 0.06, 0.64, 0.62, 0.45, 0.29, 0.11, 0., 0.]
+    ]
+
+    field_values = np.round(field(xx, yy), 2)
+
+    assert np.all(field_values == expected_results)
