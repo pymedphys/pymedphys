@@ -1,6 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
+
+import '@blueprintjs/core/lib/css/blueprint.css';
+
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 import raw from "raw.macro";
@@ -34,8 +37,6 @@ declare let languagePluginLoader: any;
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-
-
 
 
 /**
@@ -287,8 +288,6 @@ class TodoWidget extends Widget {
   }
 }
 
-
-
 /**
  * The main application entry point.
  */
@@ -300,7 +299,7 @@ function main(): void {
   //   '<h2>Right click this panel for a context menu.</h2>' +
   //   '<h3>Clicked Item: <span id="log-span"></span></h3>'
   // );
-  contextArea.title.text = 'React';
+  contextArea.title.text = 'Decode TRF File';
 
   var contextMenu = createContextMenu();
   contextArea.node.addEventListener('contextmenu', (event: MouseEvent) => {
