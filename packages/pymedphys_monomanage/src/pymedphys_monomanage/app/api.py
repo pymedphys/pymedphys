@@ -32,7 +32,7 @@ from .wheels import build_wheels_with_yarn, copy_wheels
 
 def package_wheels(pymedphys_dir):
     app_directory = os.path.join(pymedphys_dir, 'app')
-    wheels_directory = os.path.join(app_directory, 'python-wheels')
+    wheels_directory = os.path.join(app_directory, 'public', 'python-wheels')
 
     packages_directory = os.path.join(pymedphys_dir, 'packages')
 
