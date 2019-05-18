@@ -27,13 +27,14 @@
 import os
 
 
-from ..draw import draw_all
-from .graphs import write_graphs_rst
+from .wheels import build_wheels_with_yarn, copy_wheels
 
 
-def pre_docs_build(pymedphys_dir):
-    docs_directory = os.path.join(pymedphys_dir, 'docs')
-    docs_graphs = os.path.join(docs_directory, 'graphs')
+def package_wheels(pymedphys_dir):
+    app_directory = os.path.join(pymedphys_dir, 'app')
+    wheels_directory = os.path.join(app_directory, 'python-wheels')
 
-    draw_all(docs_graphs)
-    write_graphs_rst(docs_graphs)
+    packages_directory = os.path.join(pymedphys_dir, 'packages')
+
+    build_wheels_with_yarn()
+    copy_wheels(packages_directory, wheels_directory)
