@@ -52,6 +52,18 @@
   force = true
 
 [[redirects]]
+  from = "https://docs-pymedphys.netlify.com/*"
+  to = "https://docs.pymedphys.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://app-pymedphys.netlify.com/*"
+  to = "https://app.pymedphys.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
