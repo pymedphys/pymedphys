@@ -1,8 +1,0 @@
-strict digraph {
-	subgraph cluster_0 {
-		graph [label="pymedphys_workshops.experienced",
-			style=dashed
-		];
-		"";
-	}
-}
