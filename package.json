@@ -2,6 +2,7 @@
   "name": "pymedphys",
   "private": true,
   "scripts": {
+    "app:wheels": "python -c \"from pymedphys_monomanage import app; app.package_wheels('.')\"",
     "bootstrap": "yarn bootstrap:dev",
     "bootstrap:dev": "yarn && yarn nbstripout:install && yarn install:dev",
     "bootstrap:dev:all": "yarn bootstrap:dev && yarn pip:install:all",
