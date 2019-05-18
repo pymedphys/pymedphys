@@ -7,6 +7,7 @@ if os.environ['SITE'] == 'docs':
     os.system("mv docs/_build/html site")
 
 elif os.environ['SITE'] == 'app':
+    os.system('yarn monomanage:install')
     os.system('yarn app:wheels')
     os.system('pushd app && yarn build && popd')
     os.system('mv app/build site')
