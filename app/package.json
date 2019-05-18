@@ -11,6 +11,7 @@
     "phosphor-messaging": "^1.0.6",
     "phosphor-tabs": "^1.0.0-rc.2",
     "phosphor-widget": "^1.0.0-rc.1",
+    "raw.macro": "^0.3.0",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "react-scripts": "3.0.1",
