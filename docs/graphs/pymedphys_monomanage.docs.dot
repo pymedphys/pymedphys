@@ -1,0 +1,37 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-monomanage",
+			label=pymedphys_monomanage,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-monomanage-docs",
+				label="pymedphys_monomanage.docs"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.docs.graphs"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/docs/graphs.py",
+					label="docs.graphs"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.docs.api"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/docs/api.py",
+					label="docs.api"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_monomanage.docs"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/docs",
+					label=docs];
+			}
+		}
+		"pymedphys_monomanage.draw"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw",
+			label=draw];
+		"pymedphys_monomanage.draw.utilities"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw/utilities.py",
+			label="draw.utilities"];
+	}
+	"pymedphys_monomanage.docs.graphs" -> "pymedphys_monomanage.draw.utilities";
+	"pymedphys_monomanage.docs.api" -> "pymedphys_monomanage.draw";
+	"pymedphys_monomanage.docs.api" -> "pymedphys_monomanage.docs.graphs";
+	"pymedphys_monomanage.docs" -> "pymedphys_monomanage.docs.api";
+}
