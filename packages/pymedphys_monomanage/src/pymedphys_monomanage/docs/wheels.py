@@ -28,6 +28,7 @@ import os
 import shutil
 from glob import glob
 import subprocess
+import json
 
 
 def build_wheels_with_yarn():
@@ -38,7 +39,19 @@ def build_wheels_with_yarn():
 def copy_wheels(packages_dir, new_dir):
     wheel_filepaths = glob(os.path.join(packages_dir, '*', 'dist', '*.whl'))
 
-    for filepath in wheel_filepaths:
-        filename = os.path.basename(filepath)
-        new_filepath = os.path.join(new_dir, filename)
+    filenames = [
+        os.path.basename(filepath)
+        for filepath in wheel_filepaths
+    ]
+
+    new_filepaths = [
+        os.path.join(new_dir, filename)
+        for filename in filenames
+    ]
+
+    for filepath, new_filepath in zip(wheel_filepaths, new_filepaths):
         shutil.copy(filepath, new_filepath)
+
+    wheelnames_filepath = os.path.join(new_dir, 'wheelnames.json')
+    with open(wheelnames_filepath, 'w') as wheelnames_file:
+        json.dump(filenames, wheelnames_file)
