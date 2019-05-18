@@ -52,6 +52,6 @@ def copy_wheels(packages_dir, new_dir):
     for filepath, new_filepath in zip(wheel_filepaths, new_filepaths):
         shutil.copy(filepath, new_filepath)
 
-    wheelnames_filepath = os.path.join(new_dir, 'wheelnames.json')
-    with open(wheelnames_filepath, 'w') as wheelnames_file:
-        json.dump(filenames, wheelnames_file)
+    filenames_filepath = os.path.join(new_dir, 'filenames.json')
+    with open(filenames_filepath, 'w') as filenames_file:
+        json.dump(filenames, filenames_file)
