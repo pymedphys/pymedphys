@@ -1,16 +1,20 @@
 {
+  "dependencies": {
+    "pymedphys_dicom": "~0.8.0-dev.16",
+    "pymedphys_fileformats": "~0.8.0-dev.16",
+    "pymedphys_utilities": "~0.8.0-dev.16"
+  },
   "name": "pymedphys_xlwings",
   "private": true,
   "scripts": {
     "pip:install:dev": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install -e .')\"",
     "pip:install:prod": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .')\"",
+    "pip:install:test": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .[test]')\"",
+    "postversion": "yarn propagate:version",
+    "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
+    "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
     "pypi:upload": "twine upload dist/*"
   },
-  "dependencies": {
-    "pymedphys_dicom": "^0.0.0",
-    "pymedphys_fileformats": "^0.0.0",
-    "pymedphys_utilities": "^0.0.0"
-  },
-  "version": "0.0.0"
+  "version": "0.8.0-dev.16"
 }

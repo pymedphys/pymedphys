@@ -1,0 +1,43 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-analysis",
+			label=pymedphys_analysis,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-analysis-gamma",
+				label="pymedphys_analysis.gamma"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_analysis.gamma.filter"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/gamma/filter.py",
+					label="gamma.filter"];
+				"pymedphys_analysis.gamma.inputcheck"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/gamma/inputcheck.py",
+					label="gamma.inputcheck"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_analysis.gamma.shell"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/gamma/shell.py",
+					label="gamma.shell"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_analysis.gamma.api"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/gamma/api.py",
+					label="gamma.api"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_analysis.gamma"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/gamma",
+					label=gamma];
+			}
+		}
+	}
+	"pymedphys_dicom.dicom"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom",
+		label="dicom.dicom"];
+	"pymedphys_analysis.gamma.filter" -> "pymedphys_dicom.dicom";
+	"pymedphys_analysis.gamma.shell" -> "pymedphys_analysis.gamma.inputcheck";
+	"pymedphys_analysis.gamma.api" -> "pymedphys_analysis.gamma.filter";
+	"pymedphys_analysis.gamma.api" -> "pymedphys_analysis.gamma.shell";
+	"pymedphys_analysis.gamma" -> "pymedphys_analysis.gamma.api";
+}

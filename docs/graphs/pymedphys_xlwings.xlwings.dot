@@ -1,0 +1,47 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-xlwings",
+			label=pymedphys_xlwings,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-xlwings-xlwings",
+				label="pymedphys_xlwings.xlwings"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_xlwings.xlwings.dicom"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_xlwings/src/pymedphys_xlwings/xlwings/dicom.py",
+					label="xlwings.dicom"];
+				"pymedphys_xlwings.xlwings.interpolate"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_xlwings/src/pymedphys_xlwings/xlwings/interpolate.py",
+					label="xlwings.interpolate"];
+				"pymedphys_xlwings.xlwings.mephysto"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_xlwings/src/pymedphys_xlwings/xlwings/mephysto.py",
+					label="xlwings.mephysto"];
+				"pymedphys_xlwings.xlwings.numpy"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_xlwings/src/pymedphys_xlwings/xlwings/numpy.py",
+					label="xlwings.numpy"];
+				"pymedphys_xlwings.xlwings.path"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_xlwings/src/pymedphys_xlwings/xlwings/path.py",
+					label="xlwings.path"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_xlwings.xlwings"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_xlwings/src/pymedphys_xlwings/xlwings",
+					label=xlwings];
+			}
+		}
+	}
+	"pymedphys_dicom.dicom"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom",
+		label="dicom.dicom"];
+	"pymedphys_xlwings.xlwings.dicom" -> "pymedphys_dicom.dicom";
+	"pymedphys_utilities.utilities"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_utilities/src/pymedphys_utilities/utilities",
+		label="utilities.utilities"];
+	"pymedphys_xlwings.xlwings.dicom" -> "pymedphys_utilities.utilities";
+	"pymedphys_fileformats.mephysto"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_fileformats/src/pymedphys_fileformats/mephysto",
+		label="fileformats.mephysto"];
+	"pymedphys_xlwings.xlwings.mephysto" -> "pymedphys_fileformats.mephysto";
+	"pymedphys_xlwings.xlwings.mephysto" -> "pymedphys_utilities.utilities";
+	"pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.dicom";
+	"pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.interpolate";
+	"pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.mephysto";
+	"pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.numpy";
+	"pymedphys_xlwings.xlwings" -> "pymedphys_xlwings.xlwings.path";
+}

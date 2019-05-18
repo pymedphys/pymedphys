@@ -1,4 +1,3 @@
 install_requires = [
-    'numpy < 1.16, >= 1.12',
-    'pymedphys_utilities'
+    "numpy >= 1.12, < 1.16"
 ]

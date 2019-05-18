@@ -1,0 +1,21 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-labs",
+			label=pymedphys_labs,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-labs-mattsobolewski",
+				label="pymedphys_labs.mattsobolewski"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_labs.mattsobolewski"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/mattsobolewski",
+					label=mattsobolewski];
+				"pymedphys_labs.mattsobolewski.wlutzfilesort"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/mattsobolewski/wlutzfilesort.py",
+					label="mattsobolewski.wlutzfilesort"];
+			}
+		}
+	}
+}

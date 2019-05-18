@@ -30,13 +30,7 @@ Example:
     >>> from pymedphys.deliverydata import DeliveryData
 """
 
-# pylint: disable=W0401,W0614
 
-
-from pymedphys_utilities.libutils import clean_and_verify_levelled_modules
-
-from ._level1.deliverydatacore import *
-
-clean_and_verify_levelled_modules(globals(), [
-    '._level1.deliverydatacore'
-], package='pymedphys_coordsandscales.deliverydata')
+from .core import (
+    DeliveryData, get_delivery_parameters, extract_angle_from_delivery_data,
+    remove_irrelevant_control_points, find_relevant_control_points)
