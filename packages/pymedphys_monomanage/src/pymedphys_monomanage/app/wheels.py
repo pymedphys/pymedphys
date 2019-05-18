@@ -24,12 +24,37 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from .packages import draw_packages
-from .directories import draw_directory_modules
-from .files import draw_file_modules
+import os
+import shutil
+from glob import glob
+import subprocess
+import json
 
 
-def draw_all(save_directory):
-    draw_packages(save_directory)
-    draw_directory_modules(save_directory)
-    draw_file_modules(save_directory)
+WHITELIST = (
+    'pymedphys_coordsandscales', 'pymedphys_dicom', 'pymedphys_fileformats')
+
+
+def build_wheels_with_yarn():
+    yarn = shutil.which("yarn")
+    for package in WHITELIST:
+        subprocess.call(
+            [yarn, "lerna", "run", "pypi:build", "--scope={}".format(package)])
+
+
+def copy_wheels(packages_dir, new_dir):
+    wheel_filepaths = glob(os.path.join(packages_dir, '*', 'dist', '*.whl'))
+
+    filenames = []
+    for filepath in wheel_filepaths:
+        filename = os.path.basename(filepath)
+        if not filename.split('-')[0] in WHITELIST:
+            continue
+
+        filenames.append(filename)
+        new_filepath = os.path.join(new_dir, filename)
+        shutil.copy(filepath, new_filepath)
+
+    filenames_filepath = os.path.join(new_dir, 'filenames.json')
+    with open(filenames_filepath, 'w') as filenames_file:
+        json.dump(filenames, filenames_file)
