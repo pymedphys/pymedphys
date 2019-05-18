@@ -5,36 +5,53 @@
 
 [[redirects]]
   from = "/en/stable/*"
-  to = "/:splat" 301!
+  to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/latest/*"
-  to = "/:splat" 301!
+  to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/0.8.x/*"
-  to = "/:splat" 301!
+  to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/0.7.x/*"
-  to = "/:splat" 301!
+  to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/0.6.x/*"
-  to = "/:splat" 301!
+  to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/0.5.x/*"
-  to = "/:splat" 301!
+  to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "https://pymedphys.netlify.com/*"
-  to = "https://pymedphys.com/:splat" 301!
+  to = "https://pymedphys.com/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "https://pymedphys.com/*"
-  to = "https://docs.pymedphys.com/:splat" 307!
+  to = "https://docs.pymedphys.com/:splat"
+  status = 307
+  force = true
 
 [[redirects]]
   from = "/*"
-  to = "/index.html" 200
+  to = "/index.html"
+  status = 200
