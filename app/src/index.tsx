@@ -24,9 +24,21 @@ import {
   Widget
 } from 'phosphor-widget';
 
+import {
+  PromiseDelegate
+} from '@phosphor/coreutils';
+
 import './index.css';
 
-const pythonCode = raw("./something_awesome.py");
+
+declare global {
+  interface Window { wheelsPromise: PromiseDelegate<{}>; }
+}
+
+window.wheelsPromise = window.wheelsPromise || {};
+
+
+const loadWheelsPythonCode = raw("./python/load_wheels.py");
 declare let pyodide: any;
 declare let languagePluginLoader: any;
 
@@ -323,10 +335,12 @@ function main(): void {
   window.onresize = () => { panel.update() };
 }
 
+window.wheelsPromise = new PromiseDelegate()
+
 languagePluginLoader.then(() => {
   return pyodide.loadPackage(['distlib', 'matplotlib', 'numpy', 'pandas'])
 }).then(() => {
-  pyodide.runPython(pythonCode);
+  pyodide.runPython(loadWheelsPythonCode);
 })
 
 // If you want your app to work offline and load faster, you can change

@@ -69,6 +69,7 @@ def get_package_no_validation(url):
                 resolve()
 
         get_url(url).then(run_promise)
+        importlib.invalidate_caches()
 
     return Promise.new(do_install)
 
@@ -111,19 +112,6 @@ def load_and_copy_wheels():
     return Promise.new(run_promise)
 
 
-def something_awesome(*args):
-    from pymedphys_dicom.dicom import DicomBase
-
-    dicom = DicomBase.from_dict({
-        'Manufacturer': 'PyMedPhys',
-        'PatientName': 'Python^Monte'
-    })
-
-    dicom.anonymise(inplace=True)
-
-    print(dicom.dataset)
-
-
 pydicom_data = (
     'https://files.pythonhosted.org/packages/97/ae/93aeb6ba65cf976a23e735e9d32b0d1ffa2797c418f7161300be2ec1f1dd/pydicom-1.2.0-py2.py3-none-any.whl',
     '2132a9b15a927a1c35a757c0bdef30c373c89cc999cf901633dcd0e8bdd22e84'
@@ -139,5 +127,5 @@ get_package(*pydicom_data).then(
 ).then(
     lambda x: load_and_copy_wheels()
 ).then(
-    something_awesome
+    lambda x: window['wheelsPromise'].resolve()
 )
