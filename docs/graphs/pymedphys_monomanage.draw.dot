@@ -18,8 +18,6 @@ strict digraph {
 				graph [rank=same];
 				"pymedphys_monomanage.draw.directories"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw/directories.py",
 					label="draw.directories"];
-				"pymedphys_monomanage.draw.docs"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw/docs.py",
-					label="draw.docs"];
 				"pymedphys_monomanage.draw.files"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw/files.py",
 					label="draw.files"];
 				"pymedphys_monomanage.draw.packages"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/draw/packages.py",
@@ -36,14 +34,19 @@ strict digraph {
 					label=draw];
 			}
 		}
+		"pymedphys_monomanage.docs.api"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/docs/api.py",
+			label="docs.api"];
+		"pymedphys_monomanage.docs.graphs"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/docs/graphs.py",
+			label="docs.graphs"];
 		"pymedphys_monomanage.tree"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/tree",
 			label=tree];
 		"pymedphys_monomanage.tree.build"		 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/tree/build.py",
 			label="tree.build"];
 	}
+	"pymedphys_monomanage.docs.api" -> "pymedphys_monomanage.draw";
+	"pymedphys_monomanage.docs.graphs" -> "pymedphys_monomanage.draw.utilities";
 	"pymedphys_monomanage.draw.directories" -> "pymedphys_monomanage.tree";
 	"pymedphys_monomanage.draw.directories" -> "pymedphys_monomanage.draw.utilities";
-	"pymedphys_monomanage.draw.docs" -> "pymedphys_monomanage.draw.utilities";
 	"pymedphys_monomanage.draw.files" -> "pymedphys_monomanage.tree";
 	"pymedphys_monomanage.draw.files" -> "pymedphys_monomanage.draw.utilities";
 	"pymedphys_monomanage.draw.packages" -> "pymedphys_monomanage.tree.build";
@@ -51,6 +54,5 @@ strict digraph {
 	"pymedphys_monomanage.draw.api" -> "pymedphys_monomanage.draw.directories";
 	"pymedphys_monomanage.draw.api" -> "pymedphys_monomanage.draw.files";
 	"pymedphys_monomanage.draw.api" -> "pymedphys_monomanage.draw.packages";
-	"pymedphys_monomanage.draw" -> "pymedphys_monomanage.draw.docs";
 	"pymedphys_monomanage.draw" -> "pymedphys_monomanage.draw.api";
 }
