@@ -8,6 +8,14 @@ pymedphys
 .. raw:: html
     :file: ../graphs/pymedphys.svg
 
+******************
+pymedphys_analysis
+******************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_analysis.svg
+
 ************************
 pymedphys_analysis.gamma
 ************************
@@ -40,13 +48,13 @@ pymedphys_analysis.plt
 .. raw:: html
     :file: ../graphs/pymedphys_analysis.plt.svg
 
-******************
-pymedphys_analysis
-******************
+*************************
+pymedphys_coordsandscales
+*************************
 `Back to pymedphys <#pymedphys>`_
 
 .. raw:: html
-    :file: ../graphs/pymedphys_analysis.svg
+    :file: ../graphs/pymedphys_coordsandscales.svg
 
 *************************************
 pymedphys_coordsandscales.coordinates
@@ -64,13 +72,13 @@ pymedphys_coordsandscales.deliverydata
 .. raw:: html
     :file: ../graphs/pymedphys_coordsandscales.deliverydata.svg
 
-*************************
-pymedphys_coordsandscales
-*************************
+*******************
+pymedphys_databases
+*******************
 `Back to pymedphys <#pymedphys>`_
 
 .. raw:: html
-    :file: ../graphs/pymedphys_coordsandscales.svg
+    :file: ../graphs/pymedphys_databases.svg
 
 ***********************
 pymedphys_databases.msq
@@ -80,13 +88,13 @@ pymedphys_databases.msq
 .. raw:: html
     :file: ../graphs/pymedphys_databases.msq.svg
 
-*******************
-pymedphys_databases
-*******************
+***************
+pymedphys_dicom
+***************
 `Back to pymedphys <#pymedphys>`_
 
 .. raw:: html
-    :file: ../graphs/pymedphys_databases.svg
+    :file: ../graphs/pymedphys_dicom.svg
 
 *********************
 pymedphys_dicom.dicom
@@ -96,14 +104,6 @@ pymedphys_dicom.dicom
 .. raw:: html
     :file: ../graphs/pymedphys_dicom.dicom.svg
 
-***************
-pymedphys_dicom
-***************
-`Back to pymedphys <#pymedphys>`_
-
-.. raw:: html
-    :file: ../graphs/pymedphys_dicom.svg
-
 *************************
 pymedphys_dicom.utilities
 *************************
@@ -111,6 +111,14 @@ pymedphys_dicom.utilities
 
 .. raw:: html
     :file: ../graphs/pymedphys_dicom.utilities.svg
+
+*************************
+pymedphys_electronfactors
+*************************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_electronfactors.svg
 
 *****************************************
 pymedphys_electronfactors.electronfactors
@@ -120,13 +128,13 @@ pymedphys_electronfactors.electronfactors
 .. raw:: html
     :file: ../graphs/pymedphys_electronfactors.electronfactors.svg
 
-*************************
-pymedphys_electronfactors
-*************************
+*********************
+pymedphys_fileformats
+*********************
 `Back to pymedphys <#pymedphys>`_
 
 .. raw:: html
-    :file: ../graphs/pymedphys_electronfactors.svg
+    :file: ../graphs/pymedphys_fileformats.svg
 
 ******************************
 pymedphys_fileformats.mapcheck
@@ -152,14 +160,6 @@ pymedphys_fileformats.profiler
 .. raw:: html
     :file: ../graphs/pymedphys_fileformats.profiler.svg
 
-*********************
-pymedphys_fileformats
-*********************
-`Back to pymedphys <#pymedphys>`_
-
-.. raw:: html
-    :file: ../graphs/pymedphys_fileformats.svg
-
 *************************
 pymedphys_fileformats.trf
 *************************
@@ -167,6 +167,14 @@ pymedphys_fileformats.trf
 
 .. raw:: html
     :file: ../graphs/pymedphys_fileformats.trf.svg
+
+**************
+pymedphys_labs
+**************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_labs.svg
 
 *****************************
 pymedphys_labs.mattsobolewski
@@ -192,13 +200,13 @@ pymedphys_labs.simonbiggs
 .. raw:: html
     :file: ../graphs/pymedphys_labs.simonbiggs.svg
 
-**************
-pymedphys_labs
-**************
+******************
+pymedphys_logfiles
+******************
 `Back to pymedphys <#pymedphys>`_
 
 .. raw:: html
-    :file: ../graphs/pymedphys_labs.svg
+    :file: ../graphs/pymedphys_logfiles.svg
 
 *************************
 pymedphys_logfiles.elekta
@@ -208,13 +216,21 @@ pymedphys_logfiles.elekta
 .. raw:: html
     :file: ../graphs/pymedphys_logfiles.elekta.svg
 
-******************
-pymedphys_logfiles
-******************
+********************
+pymedphys_monomanage
+********************
 `Back to pymedphys <#pymedphys>`_
 
 .. raw:: html
-    :file: ../graphs/pymedphys_logfiles.svg
+    :file: ../graphs/pymedphys_monomanage.svg
+
+*************************
+pymedphys_monomanage.docs
+*************************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_monomanage.docs.svg
 
 *************************
 pymedphys_monomanage.draw
@@ -240,14 +256,6 @@ pymedphys_monomanage.propagate
 .. raw:: html
     :file: ../graphs/pymedphys_monomanage.propagate.svg
 
-********************
-pymedphys_monomanage
-********************
-`Back to pymedphys <#pymedphys>`_
-
-.. raw:: html
-    :file: ../graphs/pymedphys_monomanage.svg
-
 *************************
 pymedphys_monomanage.tree
 *************************
@@ -264,6 +272,14 @@ pymedphys_sphinxtheme
 .. raw:: html
     :file: ../graphs/pymedphys_sphinxtheme.svg
 
+*****************
+pymedphys_toolbox
+*****************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_toolbox.svg
+
 *****************************
 pymedphys_toolbox.plancompare
 *****************************
@@ -272,13 +288,13 @@ pymedphys_toolbox.plancompare
 .. raw:: html
     :file: ../graphs/pymedphys_toolbox.plancompare.svg
 
-*****************
-pymedphys_toolbox
-*****************
+*******************
+pymedphys_utilities
+*******************
 `Back to pymedphys <#pymedphys>`_
 
 .. raw:: html
-    :file: ../graphs/pymedphys_toolbox.svg
+    :file: ../graphs/pymedphys_utilities.svg
 
 *****************************
 pymedphys_utilities.constants
@@ -296,14 +312,6 @@ pymedphys_utilities.filehash
 .. raw:: html
     :file: ../graphs/pymedphys_utilities.filehash.svg
 
-*******************
-pymedphys_utilities
-*******************
-`Back to pymedphys <#pymedphys>`_
-
-.. raw:: html
-    :file: ../graphs/pymedphys_utilities.svg
-
 *****************************
 pymedphys_utilities.utilities
 *****************************
@@ -311,6 +319,14 @@ pymedphys_utilities.utilities
 
 .. raw:: html
     :file: ../graphs/pymedphys_utilities.utilities.svg
+
+*******************
+pymedphys_workshops
+*******************
+`Back to pymedphys <#pymedphys>`_
+
+.. raw:: html
+    :file: ../graphs/pymedphys_workshops.svg
 
 *******************************
 pymedphys_workshops.experienced
@@ -335,14 +351,6 @@ pymedphys_workshops.novice
 
 .. raw:: html
     :file: ../graphs/pymedphys_workshops.novice.svg
-
-*******************
-pymedphys_workshops
-*******************
-`Back to pymedphys <#pymedphys>`_
-
-.. raw:: html
-    :file: ../graphs/pymedphys_workshops.svg
 
 *****************
 pymedphys_xlwings

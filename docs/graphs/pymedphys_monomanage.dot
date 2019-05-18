@@ -22,7 +22,13 @@ strict digraph {
 			"pymedphys_monomanage.draw"			 [URL="#pymedphys-monomanage-draw",
 				label=draw];
 		}
+		{
+			graph [rank=same];
+			"pymedphys_monomanage.docs"			 [URL="#pymedphys-monomanage-docs",
+				label=docs];
+		}
 	}
+	"pymedphys_monomanage.docs" -> "pymedphys_monomanage.draw";
 	"pymedphys_monomanage.draw" -> "pymedphys_monomanage.tree";
 	"pymedphys_monomanage.tree" -> "pymedphys_monomanage.parse";
 }
