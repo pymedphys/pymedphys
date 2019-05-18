@@ -11,4 +11,5 @@ elif os.environ['SITE'] == 'app':
     os.system('mv app site')
 
 elif os.environ['SITE'] == 'home':
-    os.system('mkdir site')
+    os.system('pushd app && yarn build && popd')
+    os.system('mv app/build site')
