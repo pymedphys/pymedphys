@@ -31,25 +31,28 @@ import subprocess
 import json
 
 
+WHITELIST = (
+    'pymedphys_coordsandscales', 'pymedphys_dicom', 'pymedphys_fileformats')
+
+
 def build_wheels_with_yarn():
     yarn = shutil.which("yarn")
-    subprocess.call([yarn, "pypi:build"])
+    for package in WHITELIST:
+        subprocess.call(
+            [yarn, "lerna", "run", "pypi:build", "--scope={}".format(package)])
 
 
 def copy_wheels(packages_dir, new_dir):
     wheel_filepaths = glob(os.path.join(packages_dir, '*', 'dist', '*.whl'))
 
-    filenames = [
-        os.path.basename(filepath)
-        for filepath in wheel_filepaths
-    ]
+    filenames = []
+    for filepath in wheel_filepaths:
+        filename = os.path.basename(filepath)
+        if not filename.split('-')[0] in WHITELIST:
+            continue
 
-    new_filepaths = [
-        os.path.join(new_dir, filename)
-        for filename in filenames
-    ]
-
-    for filepath, new_filepath in zip(wheel_filepaths, new_filepaths):
+        filenames.append(filename)
+        new_filepath = os.path.join(new_dir, filename)
         shutil.copy(filepath, new_filepath)
 
     filenames_filepath = os.path.join(new_dir, 'filenames.json')
