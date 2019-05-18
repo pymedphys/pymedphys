@@ -36,7 +36,7 @@ def build_wheels_with_yarn():
 
 
 def copy_wheels(packages_dir, new_dir):
-    wheel_filepaths = glob('*/dist/*.whl')
+    wheel_filepaths = glob(os.path.join(packages_dir, '*', 'dist', '*.whl'))
 
     for filepath in wheel_filepaths:
         filename = os.path.basename(filepath)
