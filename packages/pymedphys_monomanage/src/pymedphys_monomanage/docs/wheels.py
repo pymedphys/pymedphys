@@ -25,21 +25,20 @@
 
 
 import os
+import shutil
+from glob import glob
+import subprocess
 
 
-from ..draw import draw_all
-from .graphs import write_graphs_rst
-from .wheels import build_wheels_with_yarn, copy_wheels
+def build_wheels_with_yarn():
+    yarn = shutil.which("yarn")
+    subprocess.call([yarn, "pypi:build"])
 
 
-def pre_docs_build(pymedphys_dir):
-    docs_directory = os.path.join(pymedphys_dir, 'docs')
-    docs_wheels = os.path.join(docs_directory, '_static', 'python-wheels')
-    docs_graphs = os.path.join(docs_directory, 'graphs')
+def copy_wheels(packages_dir, new_dir):
+    wheel_filepaths = glob('*/dist/*.whl')
 
-    packages_directory = os.path.join(pymedphys_dir, 'packages')
-
-    draw_all(docs_graphs)
-    write_graphs_rst(docs_graphs)
-    build_wheels_with_yarn()
-    copy_wheels(packages_directory, docs_wheels)
+    for filepath in wheel_filepaths:
+        filename = os.path.basename(filepath)
+        new_filepath = os.path.join(new_dir, filename)
+        shutil.copy(filepath, new_filepath)
