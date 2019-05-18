@@ -1,3 +1,29 @@
+# Copyright (C) 2019 Simon Biggs
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version (the "AGPL-3.0+").
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License and the additional terms for more
+# details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
+# Affero General Public License. These additional terms are Sections 1, 5,
+# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
+# where all references to the definition "License" are instead defined to
+# mean the AGPL-3.0+.
+
+# You should have received a copy of the Apache-2.0 along with this
+# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+
 import os
 
 import networkx as nx
@@ -6,7 +32,6 @@ from copy import copy
 from ..tree import PackageTree
 from .utilities import (
     save_dot_file, remove_prefix, get_levels, create_labels, create_href)
-
 
 
 ROOT = os.getcwd()
@@ -88,7 +113,6 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
 
     levels = get_levels(module_internal_relationships)
 
-
     internal_nodes = sorted(list(set(module_internal_relationships.keys())))
     external_nodes = set()
     for module in current_modules:
@@ -110,7 +134,6 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
         for node in all_nodes
     }
 
-
     nodes = ""
 
     for level in range(max(levels.keys()) + 1):
@@ -120,13 +143,11 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
             {{ rank = same; "{}"; }}
             """.format(grouped_packages)
 
-
     edges = ""
     current_packages = ""
 
     current_dependents = set()
     current_dependencies = set()
-
 
     for module in current_modules:
         current_packages += '"{}";\n'.format(module)
@@ -141,18 +162,18 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
             if not dependent in current_modules:
                 current_dependents.add(dependent)
 
-
     external_ranks = ""
     if current_dependents:
         grouped_dependents = '"; "'.join(sorted(list(current_dependents)))
-        external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependents)
+        external_ranks += '{{ rank = same; "{}"; }}\n'.format(
+            grouped_dependents)
 
     if current_dependencies:
         grouped_dependencies = '"; "'.join(sorted(list(current_dependencies)))
-        external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependencies)
+        external_ranks += '{{ rank = same; "{}"; }}\n'.format(
+            grouped_dependencies)
 
     external_labels = create_labels(label_map)
-
 
     dot_file_contents = """
         strict digraph  {{
@@ -173,6 +194,3 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
         nodes, external_labels, external_ranks, edges)
 
     save_dot_file(dot_file_contents, outfilepath)
-
-
-

@@ -24,12 +24,40 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from .packages import draw_packages
-from .directories import draw_directory_modules
-from .files import draw_file_modules
+import os
+import textwrap
+
+from glob import glob
+from ..draw.utilities import remove_postfix
+
+ROOT = os.getcwd()
 
 
-def draw_all(save_directory):
-    draw_packages(save_directory)
-    draw_directory_modules(save_directory)
-    draw_file_modules(save_directory)
+def write_graphs_rst(save_directory):
+    search_string = os.path.join(save_directory, "*.svg")
+
+    svg_files = [
+        os.path.basename(filepath)
+        for filepath in sorted(glob(search_string), key=os.path.splitext)
+    ]
+
+    modules = [remove_postfix(filepath, '.svg') for filepath in svg_files]
+    images_paths = ["../graphs/{}.svg".format(module) for module in modules]
+
+    sections = ".. This is automatically generated. DO NOT DIRECTLY EDIT.\n\n"
+    for module, images_path in zip(modules, images_paths):
+        header_border = '*' * len(module)
+        sections += textwrap.dedent("""\
+            {0}
+            {1}
+            {0}
+            `Back to pymedphys <#pymedphys>`_
+
+            .. raw:: html
+                :file: {2}
+
+        """.format(header_border, module, images_path))
+
+    save_file = os.path.join(save_directory, 'graphs.rst')
+    with open(save_file, 'w') as file:
+        file.write(sections)

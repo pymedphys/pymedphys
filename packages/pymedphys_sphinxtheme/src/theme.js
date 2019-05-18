@@ -16,8 +16,6 @@ function ThemeNav() {
     };
 
     nav.enable = function (withStickyNav) {
-        console.log('Navigation Enable')
-
         var self = this;
 
         // TODO this can likely be removed once the theme javascript is broken

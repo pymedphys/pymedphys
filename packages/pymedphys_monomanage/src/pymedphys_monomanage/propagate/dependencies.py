@@ -1,3 +1,29 @@
+# Copyright (C) 2019 Simon Biggs
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version (the "AGPL-3.0+").
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License and the additional terms for more
+# details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
+# Affero General Public License. These additional terms are Sections 1, 5,
+# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
+# where all references to the definition "License" are instead defined to
+# mean the AGPL-3.0+.
+
+# You should have received a copy of the Apache-2.0 along with this
+# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+
 import os
 import textwrap
 import json
@@ -9,7 +35,6 @@ ROOT = os.getcwd()
 def main():
     with open(os.path.join(ROOT, 'dependencies.json'), 'r') as file:
         dependencies_data = json.load(file)
-
 
     tree = dependencies_data['tree']
     pypi_pins = dependencies_data['pins']['pypi']
@@ -23,7 +48,6 @@ def main():
     assert set(internal_packages) == set(tree.keys())
     assert set(internal_packages) == set(pypi_pins['internal'].keys())
     assert set(internal_packages) == set(npm_pins['internal'].keys())
-
 
     for package, dependency_store in tree.items():
         install_requires = []
@@ -51,7 +75,6 @@ def main():
 
         with open(install_requires_filepath, 'w') as file:
             file.write(install_requires_contents)
-
 
     for package, dependency_store in tree.items():
         internal_dependencies = {
@@ -81,7 +104,6 @@ def main():
 
         with open(package_json_filepath, 'w') as file:
             json.dump(data, file, indent=2, sort_keys=True)
-
 
 
 if __name__ == "__main__":
