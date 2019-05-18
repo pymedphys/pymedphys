@@ -1,0 +1,31 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-utilities",
+			label=pymedphys_utilities,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-utilities-constants",
+				label="pymedphys_utilities.constants"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_utilities.constants.mlctypes"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_utilities/src/pymedphys_utilities/constants/mlctypes.py",
+					label="constants.mlctypes"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_utilities.constants"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_utilities/src/pymedphys_utilities/constants",
+					label=constants];
+			}
+		}
+	}
+	"pymedphys_utilities.constants" -> "pymedphys_utilities.constants.mlctypes";
+	"pymedphys_analysis.mudensity.core"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/mudensity/core.py",
+		label="analysis.mudensity.core"];
+	"pymedphys_analysis.mudensity.core" -> "pymedphys_utilities.constants";
+	"pymedphys_labs.paulking.collequivalent"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/collequivalent.py",
+		label="labs.paulking.collequivalent"];
+	"pymedphys_labs.paulking.collequivalent" -> "pymedphys_utilities.constants";
+}

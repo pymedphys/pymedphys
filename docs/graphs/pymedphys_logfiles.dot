@@ -1,0 +1,35 @@
+strict digraph {
+	graph [rankdir=LR];
+	{
+		graph [rank=same];
+		"pymedphys_analysis.mudensity"		 [URL="#pymedphys-analysis-mudensity",
+			label="analysis.mudensity"];
+		"pymedphys_coordsandscales.deliverydata"		 [URL="#pymedphys-coordsandscales-deliverydata",
+			label="coordsandscales.deliverydata"];
+		"pymedphys_databases.msq"		 [URL="#pymedphys-databases-msq",
+			label="databases.msq"];
+		"pymedphys_fileformats.trf"		 [URL="#pymedphys-fileformats-trf",
+			label="fileformats.trf"];
+		"pymedphys_utilities.filehash"		 [URL="#pymedphys-utilities-filehash",
+			label="utilities.filehash"];
+		"pymedphys_utilities.utilities"		 [URL="#pymedphys-utilities-utilities",
+			label="utilities.utilities"];
+	}
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-logfiles",
+			label=pymedphys_logfiles,
+			style=dashed
+		];
+		{
+			graph [rank=same];
+			"pymedphys_logfiles.elekta"			 [URL="#pymedphys-logfiles-elekta",
+				label=elekta];
+		}
+	}
+	"pymedphys_logfiles.elekta" -> "pymedphys_analysis.mudensity";
+	"pymedphys_logfiles.elekta" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_logfiles.elekta" -> "pymedphys_databases.msq";
+	"pymedphys_logfiles.elekta" -> "pymedphys_fileformats.trf";
+	"pymedphys_logfiles.elekta" -> "pymedphys_utilities.filehash";
+	"pymedphys_logfiles.elekta" -> "pymedphys_utilities.utilities";
+}

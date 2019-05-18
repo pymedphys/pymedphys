@@ -1,0 +1,42 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-labs",
+			label=pymedphys_labs,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-labs-paulking",
+				label="pymedphys_labs.paulking"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_labs.paulking"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking",
+					label=paulking];
+				"pymedphys_labs.paulking.collequivalent"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/collequivalent.py",
+					label="paulking.collequivalent"];
+				"pymedphys_labs.paulking.devicesfilm"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/devicesfilm.py",
+					label="paulking.devicesfilm"];
+				"pymedphys_labs.paulking.devicessncprofiler"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/devicessncprofiler.py",
+					label="paulking.devicessncprofiler"];
+				"pymedphys_labs.paulking.narrow_png"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/narrow_png.py",
+					label="paulking.narrow_png"];
+				"pymedphys_labs.paulking.profile"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/profile.py",
+					label="paulking.profile"];
+				"pymedphys_labs.paulking.sinogram"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/sinogram.py",
+					label="paulking.sinogram"];
+				"pymedphys_labs.paulking.tempCodeRunnerFile"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/tempCodeRunnerFile.py",
+					label="paulking.tempCodeRunnerFile"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_labs.paulking.tomo_sinogram_csv2pdf"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_labs/src/pymedphys_labs/paulking/tomo_sinogram_csv2pdf.py",
+					label="paulking.tomo_sinogram_csv2pdf"];
+			}
+		}
+	}
+	"pymedphys_utilities.constants"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_utilities/src/pymedphys_utilities/constants",
+		label="utilities.constants"];
+	"pymedphys_labs.paulking.collequivalent" -> "pymedphys_utilities.constants";
+	"pymedphys_labs.paulking.tomo_sinogram_csv2pdf" -> "pymedphys_labs.paulking.sinogram";
+}

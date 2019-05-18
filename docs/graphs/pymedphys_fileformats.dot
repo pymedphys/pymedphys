@@ -1,0 +1,35 @@
+strict digraph {
+	graph [rankdir=LR];
+	{
+		graph [rank=same];
+		"pymedphys_logfiles.elekta"		 [URL="#pymedphys-logfiles-elekta",
+			label="logfiles.elekta"];
+		"pymedphys_xlwings.xlwings"		 [URL="#pymedphys-xlwings-xlwings",
+			label="xlwings.xlwings"];
+	}
+	{
+		graph [rank=same];
+		"pymedphys_coordsandscales.deliverydata"		 [URL="#pymedphys-coordsandscales-deliverydata",
+			label="coordsandscales.deliverydata"];
+	}
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-fileformats",
+			label=pymedphys_fileformats,
+			style=dashed
+		];
+		{
+			graph [rank=same];
+			"pymedphys_fileformats.mapcheck"			 [URL="#pymedphys-fileformats-mapcheck",
+				label=mapcheck];
+			"pymedphys_fileformats.mephysto"			 [URL="#pymedphys-fileformats-mephysto",
+				label=mephysto];
+			"pymedphys_fileformats.profiler"			 [URL="#pymedphys-fileformats-profiler",
+				label=profiler];
+			"pymedphys_fileformats.trf"			 [URL="#pymedphys-fileformats-trf",
+				label=trf];
+		}
+	}
+	"pymedphys_fileformats.trf" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_logfiles.elekta" -> "pymedphys_fileformats.trf";
+	"pymedphys_xlwings.xlwings" -> "pymedphys_fileformats.mephysto";
+}

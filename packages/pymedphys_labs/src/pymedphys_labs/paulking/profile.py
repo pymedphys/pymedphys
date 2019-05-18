@@ -39,10 +39,7 @@ import matplotlib.image as mpimg
 # from PIL import Image
 import PIL
 
-from pymedphys_utilities.libutils import get_imports
-
 # from .._level1.coreobjects import _PyMedPhysBase
-IMPORTS = get_imports(globals())
 
 NumpyFunction = Callable[[np.ndarray], np.ndarray]
 

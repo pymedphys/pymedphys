@@ -1,0 +1,27 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-toolbox",
+			label=pymedphys_toolbox,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-toolbox-plancompare",
+				label="pymedphys_toolbox.plancompare"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_toolbox.plancompare"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_toolbox/src/pymedphys_toolbox/plancompare",
+					label=plancompare];
+				"pymedphys_toolbox.plancompare.core"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_toolbox/src/pymedphys_toolbox/plancompare/core.py",
+					label="plancompare.core"];
+			}
+		}
+	}
+	"pymedphys_analysis.mudensity"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_analysis/src/pymedphys_analysis/mudensity",
+		label="analysis.mudensity"];
+	"pymedphys_toolbox.plancompare.core" -> "pymedphys_analysis.mudensity";
+	"pymedphys_databases.msq"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_databases/src/pymedphys_databases/msq",
+		label="databases.msq"];
+	"pymedphys_toolbox.plancompare.core" -> "pymedphys_databases.msq";
+}

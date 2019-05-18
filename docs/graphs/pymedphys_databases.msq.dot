@@ -1,0 +1,56 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-databases",
+			label=pymedphys_databases,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-databases-msq",
+				label="pymedphys_databases.msq"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_databases.msq.connect"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_databases/src/pymedphys_databases/msq/connect.py",
+					label="msq.connect"];
+				"pymedphys_databases.msq.constants"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_databases/src/pymedphys_databases/msq/constants.py",
+					label="msq.constants"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_databases.msq.delivery"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_databases/src/pymedphys_databases/msq/delivery.py",
+					label="msq.delivery"];
+				"pymedphys_databases.msq.helpers"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_databases/src/pymedphys_databases/msq/helpers.py",
+					label="msq.helpers"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_databases.msq"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_databases/src/pymedphys_databases/msq",
+					label=msq];
+			}
+		}
+	}
+	"pymedphys_databases.msq.delivery" -> "pymedphys_databases.msq.connect";
+	"pymedphys_databases.msq.delivery" -> "pymedphys_databases.msq.constants";
+	"pymedphys_coordsandscales.deliverydata"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_coordsandscales/src/pymedphys_coordsandscales/deliverydata",
+		label="coordsandscales.deliverydata"];
+	"pymedphys_databases.msq.delivery" -> "pymedphys_coordsandscales.deliverydata";
+	"pymedphys_databases.msq.helpers" -> "pymedphys_databases.msq.connect";
+	"pymedphys_databases.msq.helpers" -> "pymedphys_databases.msq.constants";
+	"pymedphys_databases.msq" -> "pymedphys_databases.msq.delivery";
+	"pymedphys_logfiles.elekta.analyse"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/analyse.py",
+		label="logfiles.elekta.analyse"];
+	"pymedphys_logfiles.elekta.analyse" -> "pymedphys_databases.msq";
+	"pymedphys_logfiles.elekta.bygantry"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/bygantry.py",
+		label="logfiles.elekta.bygantry"];
+	"pymedphys_logfiles.elekta.bygantry" -> "pymedphys_databases.msq";
+	"pymedphys_logfiles.elekta.identify"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/identify.py",
+		label="logfiles.elekta.identify"];
+	"pymedphys_logfiles.elekta.identify" -> "pymedphys_databases.msq";
+	"pymedphys_logfiles.elekta.index"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/index.py",
+		label="logfiles.elekta.index"];
+	"pymedphys_logfiles.elekta.index" -> "pymedphys_databases.msq";
+	"pymedphys_toolbox.plancompare.core"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_toolbox/src/pymedphys_toolbox/plancompare/core.py",
+		label="toolbox.plancompare.core"];
+	"pymedphys_toolbox.plancompare.core" -> "pymedphys_databases.msq";
+}

@@ -4,21 +4,44 @@
   "scripts": {
     "bootstrap": "yarn bootstrap:dev",
     "bootstrap:dev": "yarn && yarn nbstripout:install && yarn install:dev",
-    "bootstrap:dev:all": "yarn bootstrap:dev && pip install -e .[docs,testing,linting]",
+    "bootstrap:dev:all": "yarn bootstrap:dev && yarn pip:install:all",
+    "bump:patch": "yarn lerna version --force-publish=* --no-git-tag-version patch && yarn postversion",
+    "bump:minor": "yarn lerna version --force-publish=* --no-git-tag-version minor && yarn postversion",
+    "bump:dev:minor": "yarn lerna version --force-publish=* --no-git-tag-version --preid dev preminor && yarn postversion",
+    "bump:dev": "yarn lerna version --force-publish=* --no-git-tag-version --preid dev prerelease && yarn postversion",
     "docker:internal": "yarn install:prod",
+    "docs:live": "sphinx-autobuild -W -p 7070 docs docs/_build/html",
     "git:clean": "git clean -fxd",
     "git:undo": "git reset --soft HEAD~1",
-    "install:dev": "yarn lerna run pip:install:dev --concurrency 1 && pip install -e .",
-    "install:prod": "yarn lerna run pip:install:prod --concurrency 1 && pip install .",
+    "install:dev": "yarn lerna run pip:install:dev --concurrency 1",
+    "install:prod": "yarn lerna run pip:install:prod --concurrency 1",
+    "install:test": "yarn lerna run pip:install:test --concurrency 1",
+    "install:subpackage:test": "yarn lerna run pip:install:test -- --scope=$SUBPACKAGE --include-filtered-dependencies --concurrency 1",
+    "install:subpackage:dev": "yarn lerna run pip:install:dev -- --scope=$SUBPACKAGE --include-filtered-dependencies --concurrency 1",
     "lerna:pypi:build": "lerna run pypi:build",
     "lerna:pypi:upload": "lerna run pypi:upload",
     "nbstripout:install": "pip install nbstripout && nbstripout --install",
     "netlify": "yarn netlify:install && yarn netlify:build",
-    "netlify:build": "sphinx-build -W docs docs/_build/html",
-    "netlify:install": "yarn install:prod && pip install .[docs]",
-    "pypi:build": "python setup.py sdist bdist_wheel",
-    "pypi:upload": "twine upload dist/*",
-    "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8"
+    "netlify:build": "export PATH=`pwd`/bin:$PATH && yarn tree && sphinx-build -W docs docs/_build/html",
+    "netlify:install": "yarn install:prod && yarn pip:install:docs",
+    "postversion": "yarn lerna run postversion --concurrency 1 && python -m pymedphys_monomanage.propagate.dependencies",
+    "pip:install:dev": "yarn lerna run pip:install:dev --scope=pymedphys",
+    "pip:install:dev:test": "yarn lerna run pip:install:dev:test --scope=pymedphys",
+    "pip:install:prod": "yarn lerna run pip:install:prod --scope=pymedphys",
+    "pip:install:test": "yarn lerna run pip:install:test --scope=pymedphys",
+    "pip:install:docs": "yarn lerna run pip:install:docs --scope=pymedphys",
+    "pip:install:all": "yarn lerna run pip:install:all --scope=pymedphys",
+    "pypi:build": "lerna run pypi:build",
+    "pypi:clean": "lerna run pypi:clean",
+    "pypi:upload": "lerna run pypi:upload",
+    "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
+    "test:subpackage": "yarn install:subpackage:test && pytest -v packages/$SUBPACKAGE && pylint --errors-only --verbose $SUBPACKAGE",
+    "tree:deps": "export SUBPACKAGE=pymedphys_monomanage && yarn install:subpackage:dev",
+    "tree": "yarn tree:build && yarn postversion && yarn tree:draw && yarn tree:docs",
+    "tree:build": "python -c \"from pymedphys_monomanage import tree; tree.build_tree('packages')\"",
+    "tree:test": "python -c \"from pymedphys_monomanage import tree; tree.test_tree('packages')\"",
+    "tree:draw": "python -c \"from pymedphys_monomanage import draw; draw.all('docs/graphs')\"",
+    "tree:docs": "python -c \"from pymedphys_monomanage import draw; draw.write_graphs_rst('docs/graphs')\""
   },
   "husky": {
     "hooks": {
@@ -28,9 +51,5 @@
   "devDependencies": {
     "husky": "^1.3.1",
     "lerna": "^3.13.3"
-  },
-  "dependencies": {
-    "bourbon": "^5.1.0",
-    "neat": "^1.2.2"
   }
 }
