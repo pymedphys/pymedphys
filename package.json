@@ -39,10 +39,9 @@
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
     "test:subpackage": "yarn install:subpackage:test && pytest -v packages/$SUBPACKAGE && pylint --errors-only --verbose $SUBPACKAGE",
     "tree:deps": "export SUBPACKAGE=pymedphys_monomanage && yarn install:subpackage:dev",
-    "tree": "yarn tree:build && yarn postversion && yarn tree:draw",
+    "tree": "yarn tree:build && yarn postversion",
     "tree:build": "python -c \"from pymedphys_monomanage import tree; tree.build_tree('packages')\"",
-    "tree:test": "python -c \"from pymedphys_monomanage import tree; tree.test_tree('packages')\"",
-    "tree:draw": "python -c \"from pymedphys_monomanage import draw; draw.draw_all('docs/graphs')\""
+    "tree:test": "python -c \"from pymedphys_monomanage import tree; tree.test_tree('packages')\""
   },
   "husky": {
     "hooks": {
