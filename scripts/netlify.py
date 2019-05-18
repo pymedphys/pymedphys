@@ -1,5 +1,7 @@
 import os
 
+os.system('mkdir site')
+
 if os.environ['SITE'] == 'docs':
     os.system("yarn install:prod && yarn pip:install:docs")
     os.system(
@@ -13,4 +15,4 @@ elif os.environ['SITE'] == 'app':
     os.system('mv app/build site')
 
 elif os.environ['SITE'] == 'home':
-    os.system('mkdir site')
+    pass
