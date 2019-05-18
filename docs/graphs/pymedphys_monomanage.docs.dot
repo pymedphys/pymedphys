@@ -13,6 +13,8 @@ strict digraph {
 				graph [rank=same];
 				"pymedphys_monomanage.docs.graphs"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/docs/graphs.py",
 					label="docs.graphs"];
+				"pymedphys_monomanage.docs.wheels"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_monomanage/src/pymedphys_monomanage/docs/wheels.py",
+					label="docs.wheels"];
 			}
 			{
 				graph [rank=same];
@@ -33,5 +35,6 @@ strict digraph {
 	"pymedphys_monomanage.docs.graphs" -> "pymedphys_monomanage.draw.utilities";
 	"pymedphys_monomanage.docs.api" -> "pymedphys_monomanage.draw";
 	"pymedphys_monomanage.docs.api" -> "pymedphys_monomanage.docs.graphs";
+	"pymedphys_monomanage.docs.api" -> "pymedphys_monomanage.docs.wheels";
 	"pymedphys_monomanage.docs" -> "pymedphys_monomanage.docs.api";
 }
