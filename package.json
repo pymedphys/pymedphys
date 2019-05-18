@@ -40,8 +40,8 @@
     "tree": "yarn tree:build && yarn postversion && yarn tree:draw && yarn tree:docs",
     "tree:build": "python -c \"from pymedphys_monomanage import tree; tree.build_tree('packages')\"",
     "tree:test": "python -c \"from pymedphys_monomanage import tree; tree.test_tree('packages')\"",
-    "tree:draw": "python -c \"from pymedphys_monomanage import draw; draw.all('docs/graphs')\"",
-    "tree:docs": "python -c \"from pymedphys_monomanage import draw; draw.write_graphs_rst('docs/graphs')\""
+    "tree:draw": "python -c \"from pymedphys_monomanage import draw; draw.draw_all('docs/graphs')\"",
+    "tree:docs": "python -c \"from pymedphys_monomanage import docs; docs.pre_docs_build('docs')\""
   },
   "husky": {
     "hooks": {
