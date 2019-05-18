@@ -58,5 +58,10 @@ setup(
     include_package_data=True,
     package_data={package: []},
     license='AGPL-3.0-or-later',
-    install_requires=install_requires
+    install_requires=install_requires,
+    extras_require={
+        'test': [
+            'pytest'
+        ]
+    }
 )

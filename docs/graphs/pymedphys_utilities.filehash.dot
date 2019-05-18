@@ -1,0 +1,28 @@
+strict digraph {
+	graph [rankdir=LR];
+	subgraph cluster_0 {
+		graph [URL="#pymedphys-utilities",
+			label=pymedphys_utilities,
+			style=dashed
+		];
+		subgraph cluster_1 {
+			graph [URL="#pymedphys-utilities-filehash",
+				label="pymedphys_utilities.filehash"
+			];
+			{
+				graph [rank=same];
+				"pymedphys_utilities.filehash.core"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_utilities/src/pymedphys_utilities/filehash/core.py",
+					label="filehash.core"];
+			}
+			{
+				graph [rank=same];
+				"pymedphys_utilities.filehash"				 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_utilities/src/pymedphys_utilities/filehash",
+					label=filehash];
+			}
+		}
+	}
+	"pymedphys_utilities.filehash" -> "pymedphys_utilities.filehash.core";
+	"pymedphys_logfiles.elekta.index"	 [URL="https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_logfiles/src/pymedphys_logfiles/elekta/index.py",
+		label="logfiles.elekta.index"];
+	"pymedphys_logfiles.elekta.index" -> "pymedphys_utilities.filehash";
+}
