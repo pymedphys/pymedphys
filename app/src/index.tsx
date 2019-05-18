@@ -340,7 +340,7 @@ window.wheelsPromise = new PromiseDelegate()
 languagePluginLoader.then(() => {
   return pyodide.loadPackage(['distlib', 'matplotlib', 'numpy', 'pandas'])
 }).then(() => {
-  pyodide.runPython(loadWheelsPythonCode);
+  pyodide.runPythonAsync(loadWheelsPythonCode);
 })
 
 // If you want your app to work offline and load faster, you can change
