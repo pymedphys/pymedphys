@@ -19,5 +19,5 @@ def pytest_ignore_collect(path, config):
         'node_modules' in relative_path or
         'xlwings' in relative_path or
         relative_path.startswith('scripts') or
-        relative_path.startswith('app') or
+        relative_path.startswith('app')
     )
