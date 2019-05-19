@@ -134,10 +134,10 @@ pypi_data = {
         'https://files.pythonhosted.org/packages/91/32/58bc30e646e55eab8b21abf89e353f59c0cc02c417e42929f4a9546e1b1d/packaging-19.0-py2.py3-none-any.whl',
         '9e1cbf8c12b1f1ce0bb5344b8d7ecf66a6f8a6e91bcb0c84593ed6d3ab5c4ab3'
     ),
-    'Rx': (
-        'https://files.pythonhosted.org/packages/33/0f/5ef4ac78e2a538cc1b054eb86285fe0bf7a5dbaeaac2c584757c300515e2/Rx-1.6.1-py2.py3-none-any.whl',
-        '7357592bc7e881a95e0c2013b73326f704953301ab551fbc8133a6fadab84105'
-    )
+    # 'Rx': (
+    #     'https://files.pythonhosted.org/packages/33/0f/5ef4ac78e2a538cc1b054eb86285fe0bf7a5dbaeaac2c584757c300515e2/Rx-1.6.1-py2.py3-none-any.whl',
+    #     '7357592bc7e881a95e0c2013b73326f704953301ab551fbc8133a6fadab84105'
+    # )
 }
 
 get_packages(pypi_data).then(
