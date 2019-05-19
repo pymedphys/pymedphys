@@ -3,7 +3,8 @@ from glob import glob
 from zipfile import ZipFile
 
 
+files = glob('output/*')
+
 with ZipFile('output.zip', 'w') as myzip:
-    files = glob('output/*')
     for filename in files:
         myzip.write(filename, os.path.basename(filename))
