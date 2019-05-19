@@ -3,16 +3,18 @@
 import os
 from glob import glob
 
-from pymedphys_fileformats.trf.trf2csv import trf2csv
+from js import window
+
+from pymedphys_fileformats.trf.trf2csv import trf2csv_by_directory
 
 
-trf_files = glob('/*.trf')
+def callback(filename):
+    print('Completed processing of {}'.format(filename))
+    output_filenames = [
+        os.path.basename(filepath)
+        for filepath in glob('/output/*')
+    ]
+    window['outputDirectory'].next(output_filenames)
 
-assert len(trf_files) == 1
 
-a_file = trf_files[0]
-
-header_csv_filepath, table_csv_filepath = trf2csv(a_file)
-header_filename = os.path.basename(header_csv_filepath)
-table_filename = os.path.basename(table_csv_filepath)
-os.remove(a_file)
+trf2csv_by_directory('/input', '/output', callback=callback)
