@@ -184,7 +184,7 @@ class App extends React.Component {
         />
 
         <div>
-          <FileInput id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.areWheelsReady} />
+          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.areWheelsReady} />
         </div>
 
         <H2>File processing</H2>
