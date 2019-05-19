@@ -16,7 +16,7 @@ import { wheelsReady } from './observables/wheels'
 import { inputDirectory, outputDirectory } from './observables/directories'
 
 const decodeTRF = raw("./python/decode_trf.py");
-const zipOutput = raw("./python/decode_trf.py");
+const zipOutput = raw("./python/zip_output.py");
 declare let pyodide: any;
 declare var Module: any;
 
