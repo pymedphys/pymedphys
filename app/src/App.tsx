@@ -12,7 +12,7 @@ import { saveAs } from 'file-saver';
 
 import './App.css';
 
-import { wheelsReady } from './observables/wheels'
+import { pythonReady } from './observables/python'
 import { inputDirectory, outputDirectory } from './observables/directories'
 
 const decodeTRF = raw("./python/decode_trf.py");
@@ -78,7 +78,7 @@ interface AppProps {
 }
 
 interface AppState extends Readonly<{}> {
-  areWheelsReady: boolean;
+  isPythonReady: boolean;
   nodes: ITreeNode[];
 }
 
@@ -89,16 +89,16 @@ class App extends React.Component {
   constructor(props: AppProps) {
     super(props)
     this.state = {
-      areWheelsReady: false,
+      isPythonReady: false,
       nodes: INITIAL_STATE
     }
   }
 
   componentDidMount() {
     this.subscriptions.push(
-      wheelsReady.subscribe(areWheelsReady => {
+      pythonReady.subscribe(isPythonReady => {
         this.setState({
-          areWheelsReady: areWheelsReady
+          isPythonReady: isPythonReady
         })
       })
     )
@@ -165,7 +165,7 @@ class App extends React.Component {
       <div className="App">
         <H1>Testing trf decoding</H1>
 
-        <div hidden={this.state.areWheelsReady}>
+        <div hidden={this.state.isPythonReady}>
           <H2>Currently Loading Python...</H2>
           <p>Before any file processing begins you need to finish downloading and initialising Python and the required packages.</p>
           <ProgressBar intent="primary" />
@@ -184,16 +184,16 @@ class App extends React.Component {
         />
 
         <div>
-          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.areWheelsReady} />
+          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.isPythonReady} />
         </div>
 
         <H2>File processing</H2>
         <div>
-          <Button intent="primary" text="Process Files" icon="key-enter" onClick={runConversion} disabled={!this.state.areWheelsReady} />
+          <Button intent="primary" text="Process Files" icon="key-enter" onClick={runConversion} disabled={!this.state.isPythonReady} />
         </div>
 
         <div>
-          <Button intent="success" text="Save output" icon="download" onClick={downloadOutput} disabled={!this.state.areWheelsReady} />
+          <Button intent="success" text="Save output" icon="download" onClick={downloadOutput} disabled={!this.state.isPythonReady} />
         </div>
       </div>
     );
