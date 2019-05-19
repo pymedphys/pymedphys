@@ -1,8 +1,8 @@
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 
 import raw from "raw.macro";
 
-import { wheelsReady } from '../observables/wheels'
+import { wheelsReady, pythonReady } from '../observables/python'
 import { inputDirectory, outputDirectory } from '../observables/directories'
 
 declare let pyodide: any;
@@ -10,7 +10,7 @@ declare let languagePluginLoader: any;
 
 declare global {
   interface Window {
-    wheelsReady: BehaviorSubject<boolean>;
+    wheelsReady: Subject<boolean>;
     inputDirectory: BehaviorSubject<Set<string>>;
     outputDirectory: BehaviorSubject<Set<string>>;
   }
@@ -31,10 +31,13 @@ export function initPython() {
   languagePluginLoader.then(() => {
     return pyodide.loadPackage(['distlib', 'matplotlib', 'numpy', 'pandas'])
   }).then(() => {
-    return pyodide.runPythonAsync(loadWheels);
+    return Promise.all([
+      pyodide.loadPackage(['matplotlib', 'numpy', 'pandas']),
+      pyodide.runPythonAsync(loadWheels),
+      pyodide.runPythonAsync(setupDirectories),
+      wheelsReady.toPromise()
+    ])
   }).then(() => {
-    return pyodide.runPythonAsync(setupDirectories);
-  }).then(() => {
-
+    pythonReady.next(true)
   })
 }
