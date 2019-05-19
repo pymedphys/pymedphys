@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Subscription } from 'rxjs';
 
-import { FileInput, H2, Button } from '@blueprintjs/core';
+import { FileInput, H1, H2, Button, ProgressBar } from '@blueprintjs/core';
 
 import raw from "raw.macro";
 import { saveAs } from 'file-saver';
@@ -55,10 +55,6 @@ interface AppProps {
 
 }
 
-
-
-
-
 class App extends React.Component {
   subscription!: Subscription
   state: Readonly<{
@@ -87,10 +83,25 @@ class App extends React.Component {
   render() {
     return (
       <div className="App">
-        <H2>Testing trf decoding</H2>
+        <H1>Testing trf decoding</H1>
+
+        <div hidden={this.state.areWheelsReady}>
+          <H2>Currently Loading Python...</H2>
+          <p>Before any file processing begins you need to finish downloading and initialising Python and the required packages.</p>
+          <ProgressBar intent="primary" />
+        </div>
+
+        <H2>File management</H2>
+
         <p><a href="/data/vmat.trf">Download a demo .trf file</a></p>
-        <FileInput id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} />
-        <Button icon="refresh" onClick={runConversion} disabled={!this.state.areWheelsReady} />
+        <div>
+          <FileInput id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} />
+        </div>
+
+        <H2>File processing</H2>
+        <div>
+          <Button intent="success" text="Process Files" icon="key-enter" onClick={runConversion} disabled={!this.state.areWheelsReady} />
+        </div>
       </div>
     );
   }
