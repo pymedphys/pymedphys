@@ -3,7 +3,7 @@ import React from 'react';
 import { Subscription } from 'rxjs';
 
 import {
-  FileInput, H1, H2, Button, ProgressBar, Classes, Icon, Intent, ITreeNode,
+  FileInput, H1, H2, Button, ProgressBar, Classes, ITreeNode,
   Position, Tooltip, Tree
 } from '@blueprintjs/core';
 
@@ -15,20 +15,20 @@ import './App.css';
 import { wheelsReady } from './observables/wheels'
 import { inputDirectory, outputDirectory } from './observables/directories'
 
-const decodeTRFPythonCode = raw("./python/decode_trf.py");
+const decodeTRF = raw("./python/decode_trf.py");
+const zipOutput = raw("./python/decode_trf.py");
 declare let pyodide: any;
 declare var Module: any;
 
 
 function runConversion() {
-  pyodide.runPythonAsync(decodeTRFPythonCode).then(() => {
-    let headerFilepath = pyodide.pyimport("header_filename")
-    let tableFilepath = pyodide.pyimport("table_filename")
+  pyodide.runPythonAsync(decodeTRF)
+}
 
-    let header = Module.FS.readFile(headerFilepath) as Uint8Array
-    let table = Module.FS.readFile(tableFilepath) as Uint8Array
-    saveAs(new Blob([new Uint8Array(header)]), headerFilepath)
-    saveAs(new Blob([new Uint8Array(table)]), tableFilepath)
+function downloadOutput() {
+  pyodide.runPythonAsync(zipOutput).then(() => {
+    let zip = Module.FS.readFile('/output.zip') as Uint8Array
+    saveAs(new Blob([new Uint8Array(zip)]), 'output.zip')
   })
 }
 
@@ -82,7 +82,7 @@ interface AppState extends Readonly<{}> {
 }
 
 class App extends React.Component {
-  subscription!: Subscription
+  subscriptions: Subscription[] = []
   state: AppState
 
   constructor(props: AppProps) {
@@ -94,15 +94,37 @@ class App extends React.Component {
   }
 
   componentDidMount() {
-    this.subscription = wheelsReady.subscribe(areWheelsReady => {
-      this.setState({
-        areWheelsReady: areWheelsReady
+    this.subscriptions.push(
+      wheelsReady.subscribe(areWheelsReady => {
+        this.setState({
+          areWheelsReady: areWheelsReady
+        })
       })
-    })
+    )
+    this.subscriptions.push(
+      inputDirectory.subscribe(filenames => {
+        let currentTree = this.state.nodes
+        currentTree[0]['childNodes'] = createFileNodes(filenames)
+        this.setState({
+          nodes: currentTree
+        })
+      })
+    )
+    this.subscriptions.push(
+      outputDirectory.subscribe(filenames => {
+        let currentTree = this.state.nodes
+        currentTree[1]['childNodes'] = createFileNodes(filenames)
+        this.setState({
+          nodes: currentTree
+        })
+      })
+    )
   }
 
   componentWillUnmount() {
-    this.subscription.unsubscribe()
+    this.subscriptions.forEach(subscription => {
+      subscription.unsubscribe();
+    })
   }
 
 
@@ -161,12 +183,16 @@ class App extends React.Component {
         />
 
         <div>
-          <FileInput id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} />
+          <FileInput id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.areWheelsReady} />
         </div>
 
         <H2>File processing</H2>
         <div>
-          <Button intent="success" text="Process Files" icon="key-enter" onClick={runConversion} disabled={!this.state.areWheelsReady} />
+          <Button intent="primary" text="Process Files" icon="key-enter" onClick={runConversion} disabled={!this.state.areWheelsReady} />
+        </div>
+
+        <div>
+          <Button intent="success" text="Save output" icon="download" onClick={downloadOutput} disabled={!this.state.areWheelsReady} />
         </div>
       </div>
     );
@@ -176,71 +202,49 @@ class App extends React.Component {
 export default App;
 
 
+
+
+function createFileNodes(filenames: Set<string>): ITreeNode[] {
+  let nodes: ITreeNode[] = [];
+  let id = 0
+  filenames.forEach(filename => {
+    nodes.push(
+      {
+        id: id++,
+        icon: "document",
+        label: filename
+      }
+    )
+  })
+
+  return nodes
+}
+
+
+
 /* tslint:disable:object-literal-sort-keys so childNodes can come last */
 const INITIAL_STATE: ITreeNode[] = [
   {
     id: 0,
     hasCaret: true,
     icon: "folder-close",
-    label: "Folder 0",
+    isExpanded: true,
+    label: (
+      <Tooltip content="Provided files go here" position={Position.RIGHT}>
+        input
+      </Tooltip>
+    )
   },
   {
     id: 1,
+    hasCaret: true,
     icon: "folder-close",
     isExpanded: true,
     label: (
-      <Tooltip content="I'm a folder <3" position={Position.RIGHT}>
-        Folder 1
-          </Tooltip>
-    ),
-    childNodes: [
-      {
-        id: 2,
-        icon: "document",
-        label: "Item 0",
-        secondaryLabel: (
-          <Tooltip content="An eye!">
-            <Icon icon="eye-open" />
-          </Tooltip>
-        ),
-      },
-      {
-        id: 3,
-        icon: <Icon icon="tag" intent={Intent.PRIMARY} className={Classes.TREE_NODE_ICON} />,
-        label: "Organic meditation gluten-free, sriracha VHS drinking vinegar beard man.",
-      },
-      {
-        id: 4,
-        hasCaret: true,
-        icon: "folder-close",
-        label: (
-          <Tooltip content="foo" position={Position.RIGHT}>
-            Folder 2
-                  </Tooltip>
-        ),
-        childNodes: [
-          { id: 5, label: "No-Icon Item" },
-          { id: 6, icon: "tag", label: "Item 1" },
-          {
-            id: 7,
-            hasCaret: true,
-            icon: "folder-close",
-            label: "Folder 3",
-            childNodes: [
-              { id: 8, icon: "document", label: "Item 0" },
-              { id: 9, icon: "tag", label: "Item 1" },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 2,
-    hasCaret: true,
-    icon: "folder-close",
-    label: "Super secret files",
-    disabled: true,
-  },
+      <Tooltip content="Processed files go here" position={Position.RIGHT}>
+        output
+      </Tooltip>
+    )
+  }
 ];
 /* tslint:enable:object-literal-sort-keys */

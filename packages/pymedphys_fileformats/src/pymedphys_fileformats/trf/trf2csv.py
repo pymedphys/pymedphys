@@ -34,18 +34,24 @@ from glob import glob
 from .trf2pandas import trf2pandas
 
 
-def trf2csv_by_directory(input_directory, output_directory):
+def trf2csv_by_directory(input_directory, output_directory, callback=None):
     filepaths = glob(os.path.join(input_directory, '*'))
 
     for filepath in filepaths:
-        header_csv_filepath = "{}.header.csv".format(filepath)
-        table_csv_filepath = "{}.table.csv".format(filepath)
+        filename = os.path.basename(filepath)
+        new_filename = os.path.join(output_directory, filename)
+
+        header_csv_filepath = "{}.header.csv".format(new_filename)
+        table_csv_filepath = "{}.table.csv".format(new_filename)
 
         print("Converting {}".format(filepath))
 
         header, table = trf2pandas(filepath)
         header.to_csv(header_csv_filepath)
         table.to_csv(table_csv_filepath)
+
+        if callback is not None:
+            callback(filepath)
 
 
 def trf2csv(trf_filepath, skip_if_exists=False):
