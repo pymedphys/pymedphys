@@ -20,8 +20,8 @@ window.wheelsReady = wheelsReady;
 window.inputDirectory = inputDirectory;
 window.outputDirectory = outputDirectory;
 
-wheelsReady.subscribe(areWheelsReady => {
-  console.log(`wheelsReady = ${areWheelsReady}`)
+pythonReady.subscribe(isPythonReady => {
+  console.log(`pythonReady = ${isPythonReady}`)
 })
 
 const loadWheels = raw("./load_wheels.py");
@@ -29,13 +29,13 @@ const setupDirectories = raw("./setup_directories.py");
 
 export function initPython() {
   languagePluginLoader.then(() => {
-    return pyodide.loadPackage(['distlib', 'matplotlib', 'numpy', 'pandas'])
+    return pyodide.loadPackage(['distlib'])
   }).then(() => {
     return Promise.all([
-      pyodide.loadPackage(['matplotlib', 'numpy', 'pandas']),
-      pyodide.runPythonAsync(loadWheels),
-      pyodide.runPythonAsync(setupDirectories),
-      wheelsReady.toPromise()
+      // wheelsReady.toPromise(),
+      pyodide.runPython(setupDirectories),
+      pyodide.runPython(loadWheels),
+      pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
     ])
   }).then(() => {
     pythonReady.next(true)
