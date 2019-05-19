@@ -52,6 +52,8 @@ def trf2csv(trf_filepath, skip_if_exists=False):
     # else:
     #     print("Skipping {}".format(trf_filepath))
 
+    return header_csv_filepath, table_csv_filepath
+
 
 def trf2csv_cli(args):
 

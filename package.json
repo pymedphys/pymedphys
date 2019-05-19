@@ -23,6 +23,7 @@
     "install:subpackage:dev": "yarn lerna run pip:install:dev -- --scope=$SUBPACKAGE --include-filtered-dependencies --concurrency 1",
     "lerna:pypi:build": "lerna run pypi:build",
     "lerna:pypi:upload": "lerna run pypi:upload",
+    "monomanage:install": "export SUBPACKAGE=pymedphys_monomanage && yarn install:subpackage:dev",
     "nbstripout:install": "pip install nbstripout && nbstripout --install",
     "postversion": "yarn lerna run postversion --concurrency 1 && python -m pymedphys_monomanage.propagate.dependencies",
     "pip:install:dev": "yarn lerna run pip:install:dev --scope=pymedphys",
@@ -36,7 +37,6 @@
     "pypi:upload": "lerna run pypi:upload",
     "pytest:pylint": "pytest --pylint --pylint-error-types=EF --pylint-jobs=8",
     "test:subpackage": "yarn install:subpackage:test && pytest -v packages/$SUBPACKAGE && pylint --errors-only --verbose $SUBPACKAGE",
-    "tree:deps": "export SUBPACKAGE=pymedphys_monomanage && yarn install:subpackage:dev",
     "tree": "yarn tree:build && yarn postversion",
     "tree:build": "python -c \"from pymedphys_monomanage import tree; tree.build_tree('packages')\"",
     "tree:test": "python -c \"from pymedphys_monomanage import tree; tree.test_tree('packages')\""
