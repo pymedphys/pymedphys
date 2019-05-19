@@ -1,13 +1,9 @@
 import os
-import zipfile
+from glob import glob
+from zipfile import ZipFile
 
 
-def zipdir(path, zipfile_handle):
-    for root, dirs, files in os.walk(path):
-        for filename in files:
-            zipfile_handle.write(os.path.join(root, filename))
-
-
-with zipfile.ZipFile('output.zip', 'w',
-                     zipfile.ZIP_DEFLATED) as zipfile_handle:
-    zipdir('output', zipfile_handle)
+with ZipFile('output.zip', 'w') as myzip:
+    files = glob('output/*')
+    for filename in files:
+        myzip.write(filename, os.path.basename(filename))

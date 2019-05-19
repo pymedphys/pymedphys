@@ -70,6 +70,7 @@ function onFileInputChange(event: React.FormEvent<HTMLInputElement>) {
  * limitations under the License.
  */
 
+// File tree code copied from https://github.com/palantir/blueprint/blob/06a186c90758bbdca604ed6d7bf639c3d05b1fa0/packages/docs-app/src/examples/core-examples/treeExample.tsx
 
 
 interface AppProps {
