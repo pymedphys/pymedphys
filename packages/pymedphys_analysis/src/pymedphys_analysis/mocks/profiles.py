@@ -45,7 +45,7 @@ def create_profile_function(centre, field_width, penumbra_width):
 
     def profile(x):
         x = np.array(x, copy=False)
-        return gaussian_cdf(x, mu[0], sig) * gaussian_cdf(-x, -mu[1], sig)
+        return gaussian_cdf(x, mu[0], sig) * gaussian_cdf(-x, -mu[1], sig)  # pylint: disable=invalid-unary-operand-type
 
     return profile
 
