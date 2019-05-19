@@ -1,33 +1,218 @@
-.App {
-  text-align: center;
+/*-----------------------------------------------------------------------------
+| Copyright (c) 2014-2015, PhosphorJS Contributors
+|
+| Distributed under the terms of the BSD 3-Clause License.
+|
+| The full license is in the file LICENSE, distributed with this software.
+|----------------------------------------------------------------------------*/
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #F5F6F7;
 }
 
-.App-logo {
-  animation: App-logo-spin infinite 20s linear;
-  height: 40vmin;
-  pointer-events: none;
+
+#main {
+  position: absolute;
+  top: 35px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+
+.ContextArea {
+  padding-left: 10px;
 }
 
-.App-link {
-  color: #61dafb;
+
+.p-TabBar {
+  min-height: 24px;
+  max-height: 24px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+
+.p-TabBar-header {
+  display: none;
+}
+
+
+.p-TabBar-footer {
+  flex: 0 0 1px;
+  background: #C0C0C0;
+}
+
+
+.p-TabBar-content {
+  min-width: 0;
+  align-items: flex-end;
+}
+
+
+.p-TabBar-tab {
+  flex: 0 1 125px;
+  min-height: 20px;
+  max-height: 20px;
+  min-width: 35px;
+  margin-left: -1px;
+  border: 1px solid #C0C0C0;
+  border-bottom: none;
+  padding: 0px 10px;
+  background: #E5E5E5;
+  font: 12px Helvetica, Arial, sans-serif;
+}
+
+
+.p-TabBar-tab:first-child {
+  margin-left: 0;
+}
+
+
+.p-TabBar-tab.p-mod-current {
+  min-height: 23px;
+  max-height: 23px;
+  background: white;
+  transform: translateY(1px);
+}
+
+
+.p-TabBar-tab:hover:not(.p-mod-current) {
+  background: #F0F0F0;
+}
+
+
+.p-TabBar-tabIcon,
+.p-TabBar-tabText,
+.p-TabBar-tabCloseIcon {
+  line-height: 20px;
+}
+
+
+.p-TabPanel > .p-StackedPanel {
+  background: white;
+  border: 1px solid #C0C0C0;
+  border-top: none;
+}
+
+
+.p-MenuBar {
+  padding-left: 5px;
+  background: #FEFEFE;
+  color: rgba(0, 0, 0, 0.87);
+  border-bottom: 1px solid #DDDDDD;
+  font: 13px Helvetica, Arial, sans-serif;
+}
+
+
+.p-MenuBar-menu {
+  transform: translateY(-1px);
+}
+
+
+.p-MenuBar-item {
+  padding: 4px 8px;
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+}
+
+
+.p-MenuBar-item.p-mod-active {
+  background: #E5E5E5;
+}
+
+
+.p-MenuBar-item.p-mod-disabled {
+  color: rgba(0, 0, 0, 0.26);
+}
+
+
+.p-MenuBar-item.p-mod-separator-type {
+  margin: 2px;
+  padding: 0;
+  border: none;
+  border-left: 1px solid #DDDDDD;
+}
+
+
+.p-MenuBar.p-mod-active .p-MenuBar-item.p-mod-active {
+  z-index: 1000000;
+  background: white;
+  border-left: 1px solid #C0C0C0;
+  border-right: 1px solid #C0C0C0;
+  box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+}
+
+
+.p-Menu {
+  z-index: 10000;
+  padding: 3px 0px;
+  background: white;
+  color: rgba(0, 0, 0, 0.87);
+  border: 1px solid #C0C0C0;
+  font: 12px Helvetica, Arial, sans-serif;
+  box-shadow: 0px 1px 6px rgba(0, 0, 0, 0.2);
+}
+
+
+.p-Menu-item.p-mod-active {
+  background: #E5E5E5;
+}
+
+
+.p-Menu-item.p-mod-disabled {
+  color: rgba(0, 0, 0, 0.26);
+}
+
+
+.p-Menu-itemIcon {
+  width: 21px;
+  padding: 4px 2px;
+}
+
+
+.p-Menu-itemText {
+  padding: 4px 35px 4px 2px;
+}
+
+
+.p-Menu-itemShortcut {
+  padding: 4px 0px;
+}
+
+
+.p-Menu-itemSubmenuIcon {
+  width: 16px;
+  padding: 4px 0px;
+}
+
+
+.p-Menu-item.p-type-separator > span {
+  padding: 0;
+  height: 9px;
+}
+
+
+.p-Menu-item.p-type-separator > span::after {
+  content: '';
+  display: block;
+  position: relative;
+  top: 4px;
+  border-top: 1px solid #DDDDDD;
+}
+
+
+.p-Menu-itemIcon::before,
+.p-Menu-itemSubmenuIcon::before {
+  font-family: FontAwesome;
+}
+
+
+.p-Menu-item.p-type-check.p-mod-checked > .p-Menu-itemIcon::before {
+  content: '\f00c';
+}
+
+
+.p-Menu-item.p-type-submenu > .p-Menu-itemSubmenuIcon::before {
+  content: '\f0da';
 }
