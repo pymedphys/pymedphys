@@ -48,7 +48,7 @@ def test_field_points_to_compare():
             'y': [0, 1, 2, 3, 4],
             'x-left': [-1, 0, 1],
             'x-right': [7, 8, 9]
-        }
+        },
         'top-bot': {
             'x': [2, 3, 4, 5, 6],
             'y-top': [5, 6, 7],
