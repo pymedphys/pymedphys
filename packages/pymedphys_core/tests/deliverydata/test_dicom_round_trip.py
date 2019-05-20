@@ -29,7 +29,8 @@ import os
 import pydicom
 
 from pymedphys_core.deliverydata.dicom import (
-    dicom_to_delivery_data, delivery_data_to_dicom)
+    dicom_to_delivery_data, delivery_data_to_dicom,
+    get_gantry_angles_from_dicom)
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "data")
@@ -38,10 +39,13 @@ DICOM_FILEPATH = os.path.abspath(os.path.join(
 
 
 def test_round_trip():
-    dicom_dataset = pydicom.dcmread(DICOM_FILEPATH, force=True)
+    original = pydicom.dcmread(DICOM_FILEPATH, force=True)
 
-    delivery_data = dicom_to_delivery_data(dicom_dataset)
-    dicom_after_round_trip = delivery_data_to_dicom(
-        delivery_data, dicom_dataset)
+    delivery_data = dicom_to_delivery_data(original)
+    processed = delivery_data_to_dicom(
+        delivery_data, original)
 
-    assert dicom_after_round_trip == dicom_dataset
+    original_gantry_angles = get_gantry_angles_from_dicom(original)
+    processed_gantry_angles = get_gantry_angles_from_dicom(processed)
+
+    assert original_gantry_angles == processed_gantry_angles
