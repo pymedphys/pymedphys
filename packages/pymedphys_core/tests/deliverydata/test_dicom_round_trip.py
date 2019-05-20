@@ -41,5 +41,7 @@ def test_round_trip():
     dicom_dataset = pydicom.dcmread(DICOM_FILEPATH, force=True)
 
     delivery_data = dicom_to_delivery_data(dicom_dataset)
+    dicom_after_round_trip = delivery_data_to_dicom(
+        delivery_data, dicom_dataset)
 
 
