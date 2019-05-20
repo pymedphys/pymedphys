@@ -2,7 +2,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import raw from "raw.macro";
 
-import { pythonReady } from '../observables/python'
+import { pythonReady, IPythonData, pythonData } from '../observables/python'
 import { inputDirectory, outputDirectory } from '../observables/directories'
 
 declare let pyodide: any;
@@ -10,11 +10,13 @@ declare let languagePluginLoader: any;
 
 declare global {
   interface Window {
+    pythonData: BehaviorSubject<IPythonData>;
     inputDirectory: BehaviorSubject<Set<string>>;
     outputDirectory: BehaviorSubject<Set<string>>;
   }
 }
 
+window.pythonData = pythonData;
 window.inputDirectory = inputDirectory;
 window.outputDirectory = outputDirectory;
 

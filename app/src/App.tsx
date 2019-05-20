@@ -4,7 +4,7 @@ import { Subscription } from 'rxjs';
 
 import {
   FileInput, H1, H2, H3, Button, ProgressBar, Classes, ITreeNode,
-  Position, Tooltip, Tree
+  Position, Tooltip, Tree, NumericInput
 } from '@blueprintjs/core';
 
 import raw from "raw.macro";
@@ -12,7 +12,7 @@ import { saveAs } from 'file-saver';
 
 import './App.css';
 
-import { pythonReady } from './observables/python'
+import { pythonReady, pythonData, IPythonData } from './observables/python'
 import { inputDirectory, outputDirectory } from './observables/directories'
 
 const trf2dcm = raw("./python/trf2dcm.py");
@@ -82,6 +82,7 @@ interface AppProps {
 interface AppState extends Readonly<{}> {
   isPythonReady: boolean;
   nodes: ITreeNode[];
+  pythonData: IPythonData;
 }
 
 class App extends React.Component {
@@ -92,7 +93,8 @@ class App extends React.Component {
     super(props)
     this.state = {
       isPythonReady: false,
-      nodes: INITIAL_STATE
+      nodes: INITIAL_STATE,
+      pythonData: pythonData.getValue()
     }
   }
 
@@ -101,6 +103,13 @@ class App extends React.Component {
       pythonReady.subscribe(isPythonReady => {
         this.setState({
           isPythonReady: isPythonReady
+        })
+      })
+    )
+    this.subscriptions.push(
+      pythonData.subscribe(data => {
+        this.setState({
+          pythonData: data
         })
       })
     )
@@ -192,6 +201,10 @@ class App extends React.Component {
           </li>
         </ul>
         <p>
+          In its current form only one Gantry angle is used within the DICOM
+          file.
+        </p>
+        <p>
           In the future it is expected that this application will be able to
           serve as a generic file processing application for a range processing
           tasks.
@@ -281,6 +294,11 @@ class App extends React.Component {
         />
 
         <H2>File processing</H2>
+
+        Gantry angle to use: <NumericInput value={this.state.pythonData.gantryAngle}></NumericInput>
+
+        <br></br>
+
         <span className="floatleft">
           <Button
             intent="primary"
@@ -300,7 +318,10 @@ class App extends React.Component {
 
         <div className="big-top-margin">
           <a href="https://www.netlify.com">
-            <img src="https://www.netlify.com/img/global/badges/netlify-light.svg"></img>
+            <img
+              alt="Build, deploy, and manage modern web projects"
+              src="https://www.netlify.com/img/global/badges/netlify-light.svg">
+            </img>
           </a>
         </div>
       </div>

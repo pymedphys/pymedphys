@@ -160,13 +160,16 @@
     "pymedphys_fileformats": {
       "external": [
         "numpy",
-        "pandas"
+        "pandas",
+        "pydicom"
       ],
       "internal": [
-        "pymedphys_coordsandscales"
+        "pymedphys_coordsandscales",
+        "pymedphys_fileformats"
       ],
       "stdlib": [
         "collections",
+        "copy",
         "csv",
         "glob",
         "json",
