@@ -6,6 +6,7 @@
         "pymedphys": "~0.8.0-dev.16",
         "pymedphys_analysis": "~0.8.0-dev.16",
         "pymedphys_coordsandscales": "~0.8.0-dev.16",
+        "pymedphys_core": "~0.8.0-dev.16",
         "pymedphys_databases": "~0.8.0-dev.16",
         "pymedphys_dicom": "~0.8.0-dev.16",
         "pymedphys_electronfactors": "~0.8.0-dev.16",
@@ -29,6 +30,7 @@
         "pymedphys": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_analysis": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_coordsandscales": ">= 0.8.0dev16, < 0.9.0",
+        "pymedphys_core": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_databases": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_dicom": ">= 0.8.0dev16, < 0.9.0",
         "pymedphys_electronfactors": ">= 0.8.0dev16, < 0.9.0",
@@ -79,9 +81,7 @@
         "scipy"
       ],
       "internal": [
-        "pymedphys_coordsandscales",
-        "pymedphys_dicom",
-        "pymedphys_utilities"
+        "pymedphys_dicom"
       ],
       "stdlib": [
         "dataclasses",
@@ -97,6 +97,17 @@
       "stdlib": [
         "collections"
       ]
+    },
+    "pymedphys_core": {
+      "external": [
+        "matplotlib",
+        "numpy"
+      ],
+      "internal": [
+        "pymedphys_coordsandscales",
+        "pymedphys_utilities"
+      ],
+      "stdlib": []
     },
     "pymedphys_databases": {
       "external": [

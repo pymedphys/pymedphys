@@ -32,7 +32,8 @@ import json
 
 
 WHITELIST = (
-    'pymedphys_coordsandscales', 'pymedphys_dicom', 'pymedphys_fileformats')
+    'pymedphys_coordsandscales', 'pymedphys_dicom', 'pymedphys_fileformats',
+    'pymedphys_utilities', 'pymedphys_core')
 
 
 def build_wheels_with_yarn():

@@ -1,8 +1,9 @@
 {
   "dependencies": {
-    "pymedphys_dicom": "~0.8.0-dev.16"
+    "pymedphys_coordsandscales": "~0.8.0-dev.16",
+    "pymedphys_utilities": "~0.8.0-dev.16"
   },
-  "name": "pymedphys_analysis",
+  "name": "pymedphys_core",
   "private": true,
   "scripts": {
     "pip:install:dev": "pip install -e .",
