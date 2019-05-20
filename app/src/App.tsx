@@ -3,7 +3,7 @@ import React from 'react';
 import { Subscription } from 'rxjs';
 
 import {
-  FileInput, H1, H2, Button, ProgressBar, Classes, ITreeNode,
+  FileInput, H1, H2, H3, Button, ProgressBar, Classes, ITreeNode,
   Position, Tooltip, Tree
 } from '@blueprintjs/core';
 
@@ -17,16 +17,19 @@ import { inputDirectory, outputDirectory } from './observables/directories'
 
 const trf2dcm = raw("./python/trf2dcm.py");
 const zipOutput = raw("./python/zip_output.py");
+const updateOutput = raw("./python/update_output.py");
 declare let pyodide: any;
 declare var Module: any;
 
 
 function runConversion() {
-  pyodide.runPython(trf2dcm)
+  pyodide.runPython(trf2dcm).then(() => {
+    pyodide.runPython(updateOutput)
+  })
 }
 
 function downloadOutput() {
-  pyodide.runPythonAsync(zipOutput).then(() => {
+  pyodide.runPython(zipOutput).then(() => {
     let zip = Module.FS.readFile('/output.zip') as Uint8Array
     saveAs(new Blob([new Uint8Array(zip)]), 'output.zip')
   })
@@ -160,7 +163,7 @@ class App extends React.Component {
   render() {
     return (
       <div className="App">
-        <H1>VERY ALPHA -- PyMedPhys File Processing App</H1>
+        <H1>ALPHA &mdash; PyMedPhys File Processing App</H1>
 
         <div hidden={this.state.isPythonReady}>
           <H2>Currently Loading Python...</H2>
@@ -168,10 +171,102 @@ class App extends React.Component {
           <ProgressBar intent="primary" />
         </div>
 
+        <H2>Overview</H2>
+
+        <H3>Aim of application</H3>
+        <p>
+          In its current form this application takes a single Elekta Linac trf
+          logfile as well as a single RT DICOM plan file that corresponds to
+          the same plan as the logfile. It then process this data and creates
+          the following:
+          <ul>
+            <li>Decoded header and table csv files for the logfile</li>
+            <li>
+              The logfile mapped to a RT DICOM plan file using the provided
+              DICOM file as a template (in ALPHA)
+            </li>
+            <li>
+              A plot of the MU Density comparison between the logfile and the
+              provided DICOM file
+            </li>
+          </ul>
+        </p>
+        <p>
+          In the future it is expected that this application will be able to
+          serve as a generic file processing application for a range processing
+          tasks.
+        </p>
+
+        <H3>Dependencies used</H3>
+        <p>
+          This is an example application that
+          combines <a href="https://github.com/pymedphys/pymedphys/">
+            PyMedPhys
+          </a> with <a href="https://github.com/iodide-project/pyodide">
+            pyodide
+          </a>.
+        </p>
+        <p>
+          This application loads Python into the <a href="https://webassembly.org/">
+            wasm virtual machine
+          </a> of your
+          browser allowing Python code to be run on your local machine without
+          having Python installed, or without needing Python to run on a remote
+          server.
+        </p>
+        <p>
+          When it comes to sensitive information or large data files, this
+          means no data needs to leave your computer, while you still get the
+          convenience a web app brings in not needing to install anything on
+          your PC.
+        </p>
+        <p>
+          Expect this application to freeze up, and not always work as
+          expected. Both the application itself, and a key part of
+          the engine that makes it work is under very much an ALPHA level of
+          release. In practice this means feel free to use this application
+          as a means to investigate what is possible, but do not rely on it
+          to work correctly, or work at all.
+        </p>
+
+        <H2>Instructions for use</H2>
+        <p>
+          To begin, download the demo .trf and .dcm files using the links
+          below:
+          <ul>
+            <li>
+              A demo RT DICOM plan
+              file &mdash; <a href="/data/RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm">
+                RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm
+              </a>
+            </li>
+            <li>
+              A demo .trf file from the delivery given by the above RT DICOM
+              plan &mdash; <a href="/data/imrt.trf">
+                imrt.trf
+              </a>
+            </li>
+          </ul>
+        </p>
+        <p>
+          Then, press browse below under File Management and select the .trf
+          and .dcm files.
+        </p>
+        <p>
+          Once these files have appeared within the input directory displayed
+          then press "Process Files". At this point in time, unfortunately,
+          the application will freeze until the processing is complete.
+        </p>
+        <p>
+          Once the processing is complete, and the files appear within the
+          output directory, press "Save Output" to download a zip of the
+          contents of the output directory.
+        </p>
+
+
         <H2>File management</H2>
 
-        <p><a href="/data/imrt.trf">Download a demo .trf file</a></p>
-        <p><a href="/data/RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm">Download a demo .dcm file</a></p>
+
 
         <Tree
           contents={this.state.nodes}

@@ -142,6 +142,4 @@ pypi_data = {
 
 get_packages(pypi_data).then(
     lambda _: load_and_copy_wheels()
-).then(
-    lambda _: window['wheelsReady'].next(True)
 )

@@ -1,4 +1,3 @@
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 
 export const pythonReady = new BehaviorSubject<boolean>(false);
-export const wheelsReady = new Subject<boolean>();
