@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "pymedphys_analysis": "~0.8.0-dev.16",
     "pymedphys_coordsandscales": "~0.8.0-dev.16",
+    "pymedphys_core": "~0.8.0-dev.16",
     "pymedphys_databases": "~0.8.0-dev.16",
     "pymedphys_fileformats": "~0.8.0-dev.16",
     "pymedphys_utilities": "~0.8.0-dev.16"

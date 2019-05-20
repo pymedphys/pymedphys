@@ -55,6 +55,7 @@
       "internal": [
         "pymedphys_analysis",
         "pymedphys_coordsandscales",
+        "pymedphys_core",
         "pymedphys_databases",
         "pymedphys_dicom",
         "pymedphys_electronfactors",
@@ -203,8 +204,8 @@
         "python_dateutil"
       ],
       "internal": [
-        "pymedphys_analysis",
         "pymedphys_coordsandscales",
+        "pymedphys_core",
         "pymedphys_databases",
         "pymedphys_fileformats",
         "pymedphys_utilities"
@@ -253,7 +254,7 @@
         "numpy"
       ],
       "internal": [
-        "pymedphys_analysis",
+        "pymedphys_core",
         "pymedphys_databases"
       ],
       "stdlib": [
