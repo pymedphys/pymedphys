@@ -71,17 +71,22 @@ def get_gantry_angles_from_dicom(dicom_dataset):
         for beam_sequence in dicom_dataset.BeamSequence
     ]
 
-    return gantry_angles
+    for gantry_angle_set in gantry_angles:
+        if len(gantry_angle_set) != 1:
+            raise ValueError(
+                "Only a single gantry angle per beam is currently supported")
+
+    gantry_angle_list = [
+        list(item)[0]
+        for item in gantry_angles
+    ]
+
+    return gantry_angle_list
 
 
 def dicom_to_delivery_data(dicom_dataset) -> DeliveryData:
     gantry_angles_of_beam_sequences = get_gantry_angles_from_dicom(
         dicom_dataset)
-
-    for gantry_angles in gantry_angles_of_beam_sequences:
-        if len(gantry_angles) != 1:
-            raise ValueError(
-                "Only a single gantry angle per beam is currently supported")
 
     delivery_data_by_beam_sequence = []
     for beam_sequence_index, _ in enumerate(dicom_dataset.BeamSequence):
@@ -184,15 +189,25 @@ def maintain_order_unique(items):
 
 def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
     delivery_data = filter_out_irrelivant_control_points(delivery_data)
-    gantry_angles = maintain_order_unique(delivery_data.gantry)
+    template_gantry_angles = get_gantry_angles_from_dicom(dicom_template)
 
-    dicoms_by_gantry_angle = []
-    for gantry_angle in gantry_angles:
-        dicoms_by_gantry_angle.append(
-            delivery_data_to_dicom_single_gantry(
-                delivery_data, dicom_template, gantry_angle))
+    min_diff = np.min(np.diff(sorted(template_gantry_angles)))
+    gantry_tol = np.min([min_diff / 2 - 0.1, 3])
 
-    return merge_beam_sequences(dicoms_by_gantry_angle)
+    masks = [
+        gantry_angle_mask(delivery_data, gantry_angle, gantry_tol)
+        for gantry_angle in template_gantry_angles
+    ]
+
+    assert np.all(np.sum(masks, axis=0) == np.ones_like(delivery_data.gantry))
+
+    single_beam_dicoms = []
+    for beam_index, mask in enumerate(masks):
+        masked_delivery_data = apply_mask_to_delivery_data(delivery_data, mask)
+        single_beam_dicoms.append(delivery_data_to_dicom_single_beam(
+            masked_delivery_data, dicom_template, beam_index))
+
+    return merge_beam_sequences(single_beam_dicoms)
 
 
 def merge_beam_sequences(dicoms_by_gantry_angle):
@@ -209,19 +224,13 @@ def merge_beam_sequences(dicoms_by_gantry_angle):
     return merged
 
 
-def delivery_data_to_dicom_single_gantry(delivery_data, dicom_template,
-                                         gantry_angle):
+def delivery_data_to_dicom_single_beam(delivery_data, dicom_template,
+                                       beam_index):
 
     created_dicom = deepcopy(dicom_template)
-
-    # Copied from non-generic notebook experimentation
-    # TODO: cleaning and fixing required.
-
-    delivery_data = extract_one_gantry_angle(
-        delivery_data, gantry_angle, gantry_angle_tol=0)
     data_converted = coordinate_convert_delivery_data(delivery_data)
 
-    beam = created_dicom.BeamSequence[0]
+    beam = created_dicom.BeamSequence[beam_index]
     cp_sequence = beam.ControlPointSequence
     initial_cp = cp_sequence[0]
     subsequent_cp = cp_sequence[-1]
@@ -230,8 +239,8 @@ def delivery_data_to_dicom_single_gantry(delivery_data, dicom_template,
         initial_cp, subsequent_cp, data_converted)
 
     beam_meterset = data_converted['monitor_units'][-1]
-    replace_fraction_group(created_dicom, beam_meterset)
-    replace_beam_sequence(created_dicom, all_control_points)
+    replace_fraction_group(created_dicom, beam_meterset, beam_index)
+    replace_beam_sequence(created_dicom, all_control_points, beam_index)
 
     return created_dicom
 
@@ -295,16 +304,16 @@ def coordinate_convert_delivery_data(delivery_data):
     }
 
 
-def replace_fraction_group(created_dicom, beam_meterset):
+def replace_fraction_group(created_dicom, beam_meterset, beam_index):
     fraction_group = created_dicom.FractionGroupSequence[0]
-    referenced_beam = fraction_group.ReferencedBeamSequence[0]
+    referenced_beam = fraction_group.ReferencedBeamSequence[beam_index]
     referenced_beam.BeamMeterset = str(beam_meterset)
     fraction_group.ReferencedBeamSequence = [referenced_beam]
     created_dicom.FractionGroupSequence = [fraction_group]
 
 
-def replace_beam_sequence(created_dicom, all_control_points):
-    beam = created_dicom.BeamSequence[0]
+def replace_beam_sequence(created_dicom, all_control_points, beam_index):
+    beam = created_dicom.BeamSequence[beam_index]
     beam.ControlPointSequence = all_control_points
     beam.NumberOfControlPoints = len(all_control_points)
     created_dicom.BeamSequence = [beam]
@@ -367,19 +376,32 @@ def strip_delivery_data(delivery_data, skip_size):
     return DeliveryData(*new_delivery_data)
 
 
-def extract_one_gantry_angle(delivery_data, gantry_angle, gantry_angle_tol=3):
+def gantry_angle_mask(delivery_data, gantry_angle, gantry_angle_tol):
     near_angle = np.abs(
         np.array(delivery_data.gantry) - gantry_angle) <= gantry_angle_tol
     assert np.all(np.diff(np.where(near_angle)[0]) == 1)
 
+    return near_angle
+
+
+def apply_mask_to_delivery_data(delivery_data, mask):
     new_delivery_data = []
     for item in delivery_data:
-        new_delivery_data.append(np.array(item)[near_angle].tolist())
+        new_delivery_data.append(np.array(item)[mask].tolist())
 
     new_delivery_data[0] = np.round(
-        np.array(new_delivery_data[0]) - new_delivery_data[0][0], decimals=7).tolist()
+        np.array(new_delivery_data[0], copy=False)
+        - new_delivery_data[0][0], decimals=7
+    ).tolist()
 
     return DeliveryData(*new_delivery_data)
+
+
+def extract_one_gantry_angle(delivery_data, gantry_angle, gantry_angle_tol=3):
+    near_angle = gantry_angle_mask(
+        delivery_data, gantry_angle, gantry_angle_tol)
+
+    return apply_mask_to_delivery_data(delivery_data, near_angle)
 
 
 def convert_jaw_format(jaw):
