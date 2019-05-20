@@ -258,7 +258,7 @@ def strip_delivery_data(delivery_data, skip_size):
 
 def extract_one_gantry_angle(delivery_data, gantry_angle, gantry_angle_tol=3):
     near_angle = np.abs(
-        np.array(delivery_data.gantry) - gantry_angle) < gantry_angle_tol
+        np.array(delivery_data.gantry) - gantry_angle) <= gantry_angle_tol
     assert np.all(np.diff(np.where(near_angle)[0]) == 1)
 
     new_delivery_data = []
