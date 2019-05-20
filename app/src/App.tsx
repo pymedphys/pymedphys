@@ -107,7 +107,7 @@ class App extends React.Component {
     this.subscriptions.push(
       inputDirectory.subscribe(filenames => {
         let currentTree = this.state.nodes
-        currentTree[0]['childNodes'] = createFileNodes(filenames)
+        currentTree[0].childNodes = createFileNodes(filenames)
         this.setState({
           nodes: currentTree
         })
@@ -116,7 +116,7 @@ class App extends React.Component {
     this.subscriptions.push(
       outputDirectory.subscribe(filenames => {
         let currentTree = this.state.nodes
-        currentTree[1]['childNodes'] = createFileNodes(filenames)
+        currentTree[1].childNodes = createFileNodes(filenames)
         this.setState({
           nodes: currentTree
         })
@@ -179,18 +179,18 @@ class App extends React.Component {
           logfile as well as a single RT DICOM plan file that corresponds to
           the same plan as the logfile. It then process this data and creates
           the following:
-          <ul>
-            <li>Decoded header and table csv files for the logfile</li>
-            <li>
-              The logfile mapped to a RT DICOM plan file using the provided
-              DICOM file as a template (in ALPHA)
-            </li>
-            <li>
-              A plot of the MU Density comparison between the logfile and the
-              provided DICOM file
-            </li>
-          </ul>
         </p>
+        <ul>
+          <li>Decoded header and table csv files for the logfile</li>
+          <li>
+            The logfile mapped to a RT DICOM plan file using the provided
+            DICOM file as a template (in ALPHA)
+          </li>
+          <li>
+            A plot of the MU Density comparison between the logfile and the
+            provided DICOM file
+          </li>
+        </ul>
         <p>
           In the future it is expected that this application will be able to
           serve as a generic file processing application for a range processing
@@ -233,21 +233,21 @@ class App extends React.Component {
         <p>
           To begin, download the demo .trf and .dcm files using the links
           below:
-          <ul>
-            <li>
-              A demo RT DICOM plan
-              file &mdash; <a href="/data/RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm">
-                RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm
-              </a>
-            </li>
-            <li>
-              A demo .trf file from the delivery given by the above RT DICOM
-              plan &mdash; <a href="/data/imrt.trf">
-                imrt.trf
-              </a>
-            </li>
-          </ul>
         </p>
+        <ul>
+          <li>
+            A demo RT DICOM plan
+            file &mdash; <a href="/data/RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm">
+              RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm
+            </a>
+          </li>
+          <li>
+            A demo .trf file from the delivery given by the above RT DICOM
+            plan &mdash; <a href="/data/imrt.trf">
+              imrt.trf
+            </a>
+          </li>
+        </ul>
         <p>
           Then, press browse below under File Management and select the .trf
           and .dcm files.
@@ -266,7 +266,9 @@ class App extends React.Component {
 
         <H2>File management</H2>
 
-
+        <div>
+          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.isPythonReady} />
+        </div>
 
         <Tree
           contents={this.state.nodes}
@@ -276,18 +278,23 @@ class App extends React.Component {
           className={Classes.ELEVATION_0}
         />
 
-        <div>
-          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.isPythonReady} />
-        </div>
-
         <H2>File processing</H2>
-        <div>
-          <Button intent="primary" text="Process Files" icon="key-enter" onClick={runConversion} disabled={!this.state.isPythonReady} />
-        </div>
-
-        <div>
-          <Button intent="success" text="Save output" icon="download" onClick={downloadOutput} disabled={!this.state.isPythonReady} />
-        </div>
+        <span className="floatleft">
+          <Button
+            intent="primary"
+            text="Process Files"
+            icon="key-enter"
+            onClick={runConversion}
+            disabled={!this.state.isPythonReady || this.state.nodes[0].childNodes === undefined || this.state.nodes[0].childNodes.length === 0} />
+        </span>
+        <span className="floatright">
+          <Button
+            intent="success"
+            text="Save output"
+            icon="download"
+            onClick={downloadOutput}
+            disabled={!this.state.isPythonReady || this.state.nodes[1].childNodes === undefined || this.state.nodes[1].childNodes.length === 0} />
+        </span>
       </div>
     );
   }
@@ -315,7 +322,6 @@ function createFileNodes(filenames: Set<string>): ITreeNode[] {
 }
 
 
-
 /* tslint:disable:object-literal-sort-keys so childNodes can come last */
 const INITIAL_STATE: ITreeNode[] = [
   {
@@ -327,7 +333,8 @@ const INITIAL_STATE: ITreeNode[] = [
       <Tooltip content="Provided files go here" position={Position.RIGHT}>
         input
       </Tooltip>
-    )
+    ),
+    childNodes: []
   },
   {
     id: 1,
@@ -338,7 +345,8 @@ const INITIAL_STATE: ITreeNode[] = [
       <Tooltip content="Processed files go here" position={Position.RIGHT}>
         output
       </Tooltip>
-    )
+    ),
+    childNodes: []
   }
 ];
 /* tslint:enable:object-literal-sort-keys */
