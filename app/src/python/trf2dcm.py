@@ -37,7 +37,9 @@ def trf2csv(filepath, output_directory):
 
 
 def plot_and_save_mudensity_diff(mu_density_logfile, mu_density_dicom):
-    mu_density_diff = mu_density_logfile - mu_density_dicom
+    mu_density_diff = (
+        mu_density_logfile -
+        mu_density_dicom[::-1, ::-1])  # TODO: Fix this hacky work around
 
     max_diff = np.max(np.abs(mu_density_diff))
 
@@ -46,7 +48,7 @@ def plot_and_save_mudensity_diff(mu_density_logfile, mu_density_dicom):
     grid = get_grid()
 
     plt.pcolormesh(
-        grid['mlc'][-1::-1], grid['jaw'],
+        grid['mlc'], grid['jaw'],
         mu_density_diff, vmin=-max_diff, vmax=max_diff, cmap='bwr')
     cbar = plt.colorbar()
     cbar.set_label('MU Density Difference')
