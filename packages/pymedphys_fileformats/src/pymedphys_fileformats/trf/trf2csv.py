@@ -35,7 +35,7 @@ from .trf2pandas import trf2pandas
 
 
 def trf2csv_by_directory(input_directory, output_directory, callback=None):
-    filepaths = glob(os.path.join(input_directory, '*'))
+    filepaths = glob(os.path.join(input_directory, '*.trf'))
 
     for filepath in filepaths:
         filename = os.path.basename(filepath)
