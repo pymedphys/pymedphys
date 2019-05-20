@@ -1,4 +1,29 @@
-import os
+# Copyright (C) 2019 Cancer Care Associates and Simon Biggs
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version (the "AGPL-3.0+").
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License and the additional terms for more
+# details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
+# Affero General Public License. These additional terms are Sections 1, 5,
+# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
+# where all references to the definition "License" are instead defined to
+# mean the AGPL-3.0+.
+
+# You should have received a copy of the Apache-2.0 along with this
+# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+
 from copy import deepcopy
 from typing import List
 
@@ -155,15 +180,41 @@ def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
     return dicoms_by_gantry_angle
 
 
+def merge_beam_sequences(dicoms_by_gantry_angle):
+    pass
+
+
 def delivery_data_to_dicom_single_gantry(delivery_data, dicom_template,
                                          gantry_angle):
 
-    delivery_data = extract_one_gantry_angle(
-        delivery_data, gantry_angle, gantry_angle_tol=0)  # abstract used gantry_angle = -120
-    mlc = np.array(delivery_data.mlc)
-    converted_mlc = convert_mlc_format(mlc)
+    created_dicom = deepcopy(dicom_template)
 
-    new_jaw = np.array(delivery_data.jaw)
+    # Copied from non-generic notebook experimentation
+    # TODO: cleaning and fixing required.
+
+    delivery_data = extract_one_gantry_angle(
+        delivery_data, gantry_angle, gantry_angle_tol=0)
+    data_converted = coordinate_convert_delivery_data(delivery_data)
+
+    beam = created_dicom.BeamSequence[0]
+    cp_sequence = beam.ControlPointSequence
+    initial_cp = cp_sequence[0]
+    subsequent_cp = cp_sequence[-1]
+
+    all_control_points = build_control_points(
+        initial_cp, subsequent_cp, data_converted)
+
+    beam_meterset = data_converted['monitor_units'][-1]
+    replace_fraction_group(created_dicom, beam_meterset)
+    replace_beam_sequence(created_dicom, all_control_points)
+
+    return created_dicom
+
+
+def jaw_dd2dcm(jaw):
+    jaw = np.array(jaw, copy=False)
+
+    new_jaw = np.array(jaw)
     new_jaw[:, 1] = -new_jaw[:, 1]
 
     converted_jaw = new_jaw.astype(str)
@@ -171,68 +222,103 @@ def delivery_data_to_dicom_single_gantry(delivery_data, dicom_template,
     converted_jaw[:, 0] = new_jaw.astype(str)[:, 1]
     converted_jaw = converted_jaw.tolist()
 
-    diff = np.append(np.diff(delivery_data.gantry), 0)
-    movement = (np.empty_like(delivery_data.gantry)).astype(str)
+    return converted_jaw
+
+
+def mlc_dd2dcm(mlc):
+    mlc = np.array(mlc, copy=False)
+
+    dicom_mlc_format = []
+    for control_point in mlc:
+        concatenated = np.hstack(
+            [-control_point[-1::-1, 1], control_point[-1::-1, 0]])
+        dicom_mlc_format.append(concatenated.astype(str).tolist())
+
+    return dicom_mlc_format
+
+
+def gantry_dd2dcm(gantry):
+    diff = np.append(np.diff(gantry), 0)
+    movement = (np.empty_like(gantry)).astype(str)
 
     movement[diff > 0] = 'CW'
     movement[diff < 0] = 'CC'
     movement[diff == 0] = 'NONE'
 
-    converted_gantry = np.array(delivery_data.gantry)
+    converted_gantry = np.array(gantry, copy=False)
     converted_gantry[converted_gantry <
                      0] = converted_gantry[converted_gantry < 0] + 360
 
     converted_gantry = converted_gantry.astype(str).tolist()
 
+    return converted_gantry, movement
+
+
+def coordinate_convert_delivery_data(delivery_data):
     monitor_units = delivery_data.monitor_units
+    mlc = mlc_dd2dcm(delivery_data.mlc)
+    jaw = jaw_dd2dcm(delivery_data.jaw)
+    gantry_angle, gantry_movement = gantry_dd2dcm(delivery_data.gantry)
+    # TODO: support collimator
 
-    control_point_sequence = dicom_template.BeamSequence[0].ControlPointSequence
+    return {
+        'monitor_units': monitor_units,
+        'mlc': mlc,
+        'jaw': jaw,
+        'gantry_angle': gantry_angle,
+        'gantry_movement': gantry_movement
+    }
 
-    init_cp = deepcopy(control_point_sequence[0])
-    subsequent_cp = deepcopy(control_point_sequence[-1])
 
-    init_cp.GantryAngle = converted_gantry[0]
-    init_cp.GantryRotationDirection = movement[0]
-    init_cp.BeamLimitingDevicePositionSequence[0].LeafJawPositions = converted_jaw[0]
+def replace_fraction_group(created_dicom, beam_meterset):
+    fraction_group = created_dicom.FractionGroupSequence[0]
+    referenced_beam = fraction_group.ReferencedBeamSequence[0]
+    referenced_beam.BeamMeterset = str(beam_meterset)
+    fraction_group.ReferencedBeamSequence = [referenced_beam]
+    created_dicom.FractionGroupSequence = [fraction_group]
 
-    init_cp.BeamLimitingDevicePositionSequence[1].LeafJawPositions = converted_mlc[0]
+
+def replace_beam_sequence(created_dicom, all_control_points):
+    beam = created_dicom.BeamSequence[0]
+    beam.ControlPointSequence = all_control_points
+    beam.NumberOfControlPoints = len(all_control_points)
+    created_dicom.BeamSequence = [beam]
+
+
+def build_control_points(initial_cp_template, subsequent_cp_template,
+                         data):
+    initial_cp_template = deepcopy(initial_cp_template)
+    subsequent_cp_template = deepcopy(subsequent_cp_template)
+
+    initial_cp_template.GantryAngle = data['gantry_angle'][0]
+    initial_cp_template.GantryRotationDirection = data['gantry_movement'][0]
+
+    init_cp_collimation = initial_cp_template.BeamLimitingDevicePositionSequence
+
+    init_cp_collimation[0].LeafJawPositions = data['jaw'][0]
+    init_cp_collimation[1].LeafJawPositions = data['mlc'][0]
 
     remaining_cps = []
-    for i, (mu, mlc_cp, jaw_cp, move_cp, gantry_cp) in enumerate(zip(monitor_units[1::],
-                                                                     converted_mlc[1::],
-                                                                     converted_jaw[1::],
-                                                                     movement[1::],
-                                                                     converted_gantry[1::])):
-        current_cp = deepcopy(subsequent_cp)
+    for i, (
+        mu, mlc_cp, jaw_cp, move_cp, gantry_cp
+    ) in enumerate(zip(data['monitor_units'][1::], data['mlc'][1::],
+                       data['jaw'][1::], data['gantry_movement'][1::],
+                       data['gantry_angle'][1::])):
+
+        current_cp = deepcopy(subsequent_cp_template)
         current_cp.ControlPointIndex = str(i+1)
         current_cp.GantryAngle = gantry_cp
         current_cp.GantryRotationDirection = move_cp
         current_cp.BeamLimitingDevicePositionSequence[0].LeafJawPositions = jaw_cp
         current_cp.BeamLimitingDevicePositionSequence[1].LeafJawPositions = mlc_cp
         current_cp.CumulativeMetersetWeight = np.around(
-            mu / delivery_data.monitor_units[-1], decimals=5)
+            mu / data['monitor_units'][-1], decimals=5)
 
         remaining_cps.append(current_cp)
 
-    all_control_points = [init_cp] + remaining_cps
+    all_control_points = [initial_cp_template] + remaining_cps
 
-    edited_dcm = deepcopy(dicom_template)
-
-    edited_dcm.FractionGroupSequence[0].ReferencedBeamSequence[-2].BeamMeterset = (
-        str(monitor_units[-1]))
-
-    edited_dcm.FractionGroupSequence[0].ReferencedBeamSequence = [
-        edited_dcm.FractionGroupSequence[0].ReferencedBeamSequence[-2]
-    ]
-
-    edited_dcm.BeamSequence[-2].ControlPointSequence = all_control_points
-    edited_dcm.BeamSequence[-2].NumberOfControlPoints = len(all_control_points)
-
-    edited_dcm.BeamSequence = [
-        edited_dcm.BeamSequence[-2]
-    ]
-
-    return edited_dcm
+    return all_control_points
 
 
 def filter_out_irrelivant_control_points(delivery_data: DeliveryData) -> DeliveryData:
@@ -269,17 +355,6 @@ def extract_one_gantry_angle(delivery_data, gantry_angle, gantry_angle_tol=3):
         np.array(new_delivery_data[0]) - new_delivery_data[0][0], decimals=7).tolist()
 
     return DeliveryData(*new_delivery_data)
-
-
-def convert_mlc_format(mlc):
-
-    dicom_mlc_format = []
-    for control_point in mlc:
-        concatenated = np.hstack(
-            [-control_point[-1::-1, 1], control_point[-1::-1, 0]])
-        dicom_mlc_format.append(concatenated.astype(str).tolist())
-
-    return dicom_mlc_format
 
 
 def convert_jaw_format(jaw):
