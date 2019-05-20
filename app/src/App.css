@@ -1,8 +1,16 @@
 .App {
   max-width: 700px;
-  margin: 50px auto;
+  margin: 50px auto 500px auto;
 }
 
 h2 {
   margin: 25px 0 10px !important;
+}
+
+.floatleft {
+  float: left;
+}
+
+.floatright {
+  float: right;
 }
