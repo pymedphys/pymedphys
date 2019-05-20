@@ -23,14 +23,13 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-from pymedphys_coordsandscales.deliverydata import get_delivery_parameters
+from ..deliverydata import get_delivery_parameters
 
 from .core import calc_mu_density
 
 
 def mu_density_from_delivery_data(delivery_data):
     mu, mlc, jaw = get_delivery_parameters(delivery_data)
-    xx, yy, mu_density = calc_mu_density(mu, mlc, jaw)
+    mu_density = calc_mu_density(mu, mlc, jaw)
 
-    return xx, yy, mu_density
+    return mu_density

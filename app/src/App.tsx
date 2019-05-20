@@ -23,7 +23,11 @@ declare var Module: any;
 
 
 function runConversion() {
-  pyodide.runPython(trf2dcm).then(() => {
+  pyodide.runPython(trf2dcm)
+  .catch(() => {
+    pyodide.runPython(updateOutput)
+  })
+  .then(() => {
     pyodide.runPython(updateOutput)
   })
 }
