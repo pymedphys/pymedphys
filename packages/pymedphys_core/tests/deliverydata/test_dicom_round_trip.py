@@ -70,10 +70,8 @@ def test_round_trip():
 
     original_gantry_angles = get_gantry_angles_from_dicom(original)
 
-    assert maintain_order_unique(delivery_data.gantry) == [
-        list(item)[0]
-        for item in original_gantry_angles
-    ]
+    assert (
+        maintain_order_unique(delivery_data.gantry) == original_gantry_angles)
 
     processed_gantry_angles = get_gantry_angles_from_dicom(processed)
 
