@@ -1,1 +1,1 @@
-from pymedphys_analysis.plt import pcolormesh_grid
+from pymedphys_core.plt import pcolormesh_grid

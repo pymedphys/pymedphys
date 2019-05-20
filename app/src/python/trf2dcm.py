@@ -74,6 +74,8 @@ def run_trf2dcm():
             print("Decoding to CSV complete")
 
             logfile_delivery_data = delivery_data_from_pandas(table)
+            print(extract_angle_from_delivery_data(
+                logfile_delivery_data, gantry_angle, gantry_tolerance=3))
 
             print("Creating new DICOM file")
             dicom_template = pydicom.read_file(
@@ -87,7 +89,9 @@ def run_trf2dcm():
 
             dicom_delivery_data = dicom_to_delivery_data(
                 dicom_template, gantry_angle)
-            print(dicom_delivery_data)
+
+            print(extract_angle_from_delivery_data(
+                dicom_delivery_data, gantry_angle, gantry_tolerance=3))
 
             print("Determining MU Density of original DICOM file")
             mu_density_dicom = calc_mu_density_bygantry(
