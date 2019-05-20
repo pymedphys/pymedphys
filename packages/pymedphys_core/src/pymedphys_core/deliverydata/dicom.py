@@ -187,9 +187,10 @@ def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
 
 
 def merge_beam_sequences(dicoms_by_gantry_angle):
-    merged = dicoms_by_gantry_angle[0]
+    inverted = dicoms_by_gantry_angle[::-1]
+    merged = inverted[0]
 
-    for dicom in dicoms_by_gantry_angle[1::]:
+    for dicom in inverted[1::]:
         merged.BeamSequence.append(
             dicom.BeamSequence[0]
         )
