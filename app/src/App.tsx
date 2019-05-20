@@ -173,7 +173,8 @@ class App extends React.Component {
 
         <H2>File management</H2>
 
-        <p><a href="/data/vmat.trf">Download a demo .trf file</a></p>
+        <p><a href="/data/19_01_14 04_16_29 Z 1-2_9FLD IMRT.trf.trf">Download a demo .trf file</a></p>
+        <p><a href="/data/RP.2.16.840.1.114337.1.1.1548284863.0_Anonymised.dcm">Download a demo .dcm file</a></p>
 
         <Tree
           contents={this.state.nodes}
