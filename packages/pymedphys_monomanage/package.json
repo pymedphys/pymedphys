@@ -12,5 +12,5 @@
     "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.16"
+  "version": "0.8.0-dev.17"
 }
