@@ -177,11 +177,21 @@ def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
             delivery_data_to_dicom_single_gantry(
                 delivery_data, dicom_template, gantry_angle))
 
-    return dicoms_by_gantry_angle
+    return merge_beam_sequences(dicoms_by_gantry_angle)
 
 
 def merge_beam_sequences(dicoms_by_gantry_angle):
-    pass
+    merged = dicoms_by_gantry_angle[0]
+
+    for dicom in dicoms_by_gantry_angle[1::]:
+        merged.BeamSequence.append(
+            dicom.BeamSequence[0]
+        )
+        merged.FractionGroupSequence[0].ReferencedBeamSequence.append(
+            dicom.FractionGroupSequence[0].ReferencedBeamSequence[0]
+        )
+
+    return merged
 
 
 def delivery_data_to_dicom_single_gantry(delivery_data, dicom_template,
