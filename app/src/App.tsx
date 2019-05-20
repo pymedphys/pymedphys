@@ -163,7 +163,7 @@ class App extends React.Component {
   render() {
     return (
       <div className="App">
-        <H1>Testing trf decoding</H1>
+        <H1>VERY ALPHA -- PyMedPhys File Processing App</H1>
 
         <div hidden={this.state.isPythonReady}>
           <H2>Currently Loading Python...</H2>
