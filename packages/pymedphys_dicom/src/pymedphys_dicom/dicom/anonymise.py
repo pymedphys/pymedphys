@@ -288,7 +288,7 @@ def anonymise_file(
         information.
     """
 
-    ds = pydicom.dcmread(dicom_filepath)
+    ds = pydicom.dcmread(dicom_filepath, force=True)
 
     anonymise_dataset(
         ds=ds,
