@@ -297,7 +297,15 @@ class App extends React.Component {
             onClick={downloadOutput}
             disabled={!this.state.isPythonReady || this.state.nodes[1].childNodes === undefined || this.state.nodes[1].childNodes.length === 0} />
         </span>
+
+        <div className="big-top-margin">
+          <a href="https://www.netlify.com">
+            <img src="https://www.netlify.com/img/global/badges/netlify-light.svg"></img>
+          </a>
+        </div>
       </div>
+
+
     );
   }
 }
