@@ -30,7 +30,7 @@ import pydicom
 
 from pymedphys_core.deliverydata.dicom import (
     dicom_to_delivery_data, delivery_data_to_dicom,
-    get_gantry_angles_from_dicom)
+    get_gantry_angles_from_dicom, maintain_order_unique)
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "data")
@@ -70,12 +70,7 @@ def test_round_trip():
 
     original_gantry_angles = get_gantry_angles_from_dicom(original)
 
-    maintain_order_unique = []
-    for item in delivery_data.gantry:
-        if item not in maintain_order_unique:
-            maintain_order_unique.append(item)
-
-    assert maintain_order_unique == [
+    assert maintain_order_unique(delivery_data.gantry) == [
         list(item)[0]
         for item in original_gantry_angles
     ]
