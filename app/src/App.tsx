@@ -325,8 +325,6 @@ class App extends React.Component {
           </a>
         </div>
       </div>
-
-
     );
   }
 }
