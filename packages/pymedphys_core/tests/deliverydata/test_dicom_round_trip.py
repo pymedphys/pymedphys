@@ -38,6 +38,13 @@ DICOM_FILEPATH = os.path.abspath(os.path.join(
     DATA_DIRECTORY, "RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm"))
 
 
+def num_of_control_points(dicom_dataset):
+    return [
+        len(beam.ControlPointSequence)
+        for beam in dicom_dataset.BeamSequence
+    ]
+
+
 def test_round_trip():
     original = pydicom.dcmread(DICOM_FILEPATH, force=True)
 
@@ -45,7 +52,27 @@ def test_round_trip():
     processed = delivery_data_to_dicom(
         delivery_data, original)
 
+    assert (
+        num_of_control_points(original) == num_of_control_points(processed)
+    )
+
     original_gantry_angles = get_gantry_angles_from_dicom(original)
+
+    maintain_order_unique = []
+    for item in delivery_data.gantry:
+        if item not in maintain_order_unique:
+            maintain_order_unique.append(item)
+
+    assert maintain_order_unique == [
+        list(item)[0]
+        for item in original_gantry_angles
+    ]
+
     processed_gantry_angles = get_gantry_angles_from_dicom(processed)
 
     assert original_gantry_angles == processed_gantry_angles
+
+    # TODO: Make delivery_data only be able to assign to already existing beams
+    # Look for nearby gantry angles, assign all respective control_points to
+    # that beam index
+    assert original == processed
