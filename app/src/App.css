@@ -1,0 +1,8 @@
+.App {
+  max-width: 700px;
+  margin: 50px auto;
+}
+
+h2 {
+  margin: 25px 0 10px !important;
+}
