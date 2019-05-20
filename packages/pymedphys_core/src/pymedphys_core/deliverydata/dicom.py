@@ -62,14 +62,21 @@ def convert_angle_to_bipolar(angle):
     return angle
 
 
-def dicom_to_delivery_data(dicom_dataset) -> DeliveryData:
-    gantry_angles_of_beam_sequences = [
+def get_gantry_angles_from_dicom(dicom_dataset):
+    gantry_angles = [
         set(convert_angle_to_bipolar([
             control_point.GantryAngle
             for control_point in beam_sequence.ControlPointSequence
         ]))
         for beam_sequence in dicom_dataset.BeamSequence
     ]
+
+    return gantry_angles
+
+
+def dicom_to_delivery_data(dicom_dataset) -> DeliveryData:
+    gantry_angles_of_beam_sequences = get_gantry_angles_from_dicom(
+        dicom_dataset)
 
     for gantry_angles in gantry_angles_of_beam_sequences:
         if len(gantry_angles) != 1:
@@ -79,7 +86,7 @@ def dicom_to_delivery_data(dicom_dataset) -> DeliveryData:
     delivery_data_by_beam_sequence = []
     for beam_sequence_index, _ in enumerate(dicom_dataset.BeamSequence):
         delivery_data_by_beam_sequence.append(
-            dicom_to_delivery_data_single_beam_sequence(
+            dicom_to_delivery_data_single_beam(
                 dicom_dataset, beam_sequence_index))
 
     return merge_delivery_data(delivery_data_by_beam_sequence)
@@ -101,8 +108,7 @@ def merge_delivery_data(separate: List[DeliveryData]) -> DeliveryData:
     return merged
 
 
-def dicom_to_delivery_data_single_beam_sequence(dicom_dataset,
-                                                beam_sequence_index):
+def dicom_to_delivery_data_single_beam(dicom_dataset, beam_sequence_index):
 
     beam_sequence = dicom_dataset.BeamSequence[beam_sequence_index]
     leaf_boundaries = beam_sequence.BeamLimitingDeviceSequence[-1].LeafPositionBoundaries
@@ -256,8 +262,8 @@ def gantry_dd2dcm(gantry):
     movement[diff == 0] = 'NONE'
 
     converted_gantry = np.array(gantry, copy=False)
-    converted_gantry[converted_gantry <
-                     0] = converted_gantry[converted_gantry < 0] + 360
+    converted_gantry[converted_gantry < 0] = (
+        converted_gantry[converted_gantry < 0] + 360)
 
     converted_gantry = converted_gantry.astype(str).tolist()
 
