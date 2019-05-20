@@ -270,6 +270,8 @@ class App extends React.Component {
           <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.isPythonReady} />
         </div>
 
+        <br></br>
+
         <Tree
           contents={this.state.nodes}
           onNodeClick={this.handleNodeClick}
