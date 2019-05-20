@@ -1,5 +1,6 @@
 import os
 from copy import deepcopy
+from typing import List
 
 import numpy as np
 
@@ -36,7 +37,7 @@ def convert_angle_to_bipolar(angle):
     return angle
 
 
-def dicom_to_delivery_data(dicom_dataset):
+def dicom_to_delivery_data(dicom_dataset) -> DeliveryData:
     gantry_angles_of_beam_sequences = [
         set(convert_angle_to_bipolar([
             control_point.GantryAngle
@@ -56,7 +57,23 @@ def dicom_to_delivery_data(dicom_dataset):
             dicom_to_delivery_data_single_beam_sequence(
                 dicom_dataset, beam_sequence_index))
 
-    return delivery_data_by_beam_sequence
+    return merge_delivery_data(delivery_data_by_beam_sequence)
+
+
+def merge_delivery_data(separate: List[DeliveryData]) -> DeliveryData:
+    collection = {}  # type: ignore
+
+    for delivery_data in separate:
+        for field in delivery_data._fields:
+            try:
+                collection[field] = np.concatenate(
+                    [collection[field], getattr(delivery_data, field)], axis=0)
+            except KeyError:
+                collection[field] = getattr(delivery_data, field)
+
+    merged = DeliveryData(**collection)
+
+    return merged
 
 
 def dicom_to_delivery_data_single_beam_sequence(dicom_dataset,
@@ -125,12 +142,24 @@ def dicom_to_delivery_data_single_beam_sequence(dicom_dataset,
     return DeliveryData(mu, gantry_angles, collimator_angles, mlcs, jaw)
 
 
-# TODO: This needs testing, and likely fixing.
-def delivery_data_to_dicom(delivery_data, dicom_template, gantry_angle):
+def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
     delivery_data = filter_out_irrelivant_control_points(delivery_data)
+    gantry_angles = np.unique(delivery_data.gantry)
+
+    dicoms_by_gantry_angle = []
+    for gantry_angle in gantry_angles:
+        dicoms_by_gantry_angle.append(
+            delivery_data_to_dicom_single_gantry(
+                delivery_data, dicom_template, gantry_angle))
+
+    return dicoms_by_gantry_angle
+
+
+def delivery_data_to_dicom_single_gantry(delivery_data, dicom_template,
+                                         gantry_angle):
 
     delivery_data = extract_one_gantry_angle(
-        delivery_data, gantry_angle)  # abstract used gantry_angle = -120
+        delivery_data, gantry_angle, gantry_angle_tol=0)  # abstract used gantry_angle = -120
     mlc = np.array(delivery_data.mlc)
     converted_mlc = convert_mlc_format(mlc)
 
@@ -206,7 +235,7 @@ def delivery_data_to_dicom(delivery_data, dicom_template, gantry_angle):
     return edited_dcm
 
 
-def filter_out_irrelivant_control_points(delivery_data):
+def filter_out_irrelivant_control_points(delivery_data: DeliveryData) -> DeliveryData:
 
     relvant_control_points = find_relevant_control_points(
         delivery_data.monitor_units)
@@ -227,8 +256,9 @@ def strip_delivery_data(delivery_data, skip_size):
     return DeliveryData(*new_delivery_data)
 
 
-def extract_one_gantry_angle(delivery_data, gantry_angle):
-    near_angle = np.abs(np.array(delivery_data.gantry) - gantry_angle) < 3
+def extract_one_gantry_angle(delivery_data, gantry_angle, gantry_angle_tol=3):
+    near_angle = np.abs(
+        np.array(delivery_data.gantry) - gantry_angle) < gantry_angle_tol
     assert np.all(np.diff(np.where(near_angle)[0]) == 1)
 
     new_delivery_data = []
