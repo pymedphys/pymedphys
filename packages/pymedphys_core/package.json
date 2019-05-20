@@ -12,7 +12,7 @@
     "postversion": "yarn propagate:version",
     "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
-    "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
+    "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
   "version": "0.8.0-dev.17"
