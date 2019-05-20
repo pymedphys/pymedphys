@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"name": "pymedphys",
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.linting.pylintUseMinimalCheckers": false,
+		"python.linting.mypyEnabled": true,
+		"files.trimTrailingWhitespace": true,
+		"editor.formatOnSave": true,
+		"editor.detectIndentation": true,
+		"editor.insertSpaces": true,
+		"editor.rulers": [
+			79,
+			119
+		]
+	}
+}

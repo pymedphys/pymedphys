@@ -36,7 +36,7 @@ def convert_angle_to_bipolar(angle):
     return angle
 
 
-def dicom_to_delivery_data(dicom_dataset, gantry_angle):
+def dicom_to_delivery_data(dicom_dataset):
     gantry_angles_of_beam_sequences = [
         set(convert_angle_to_bipolar([
             control_point.GantryAngle
@@ -45,12 +45,22 @@ def dicom_to_delivery_data(dicom_dataset, gantry_angle):
         for beam_sequence in dicom_dataset.BeamSequence
     ]
 
-    try:
-        beam_sequence_index = gantry_angles_of_beam_sequences.index(
-            set([gantry_angle]))
-    except ValueError:
-        raise ValueError(
-            "Chosen static gantry angle doesn't exist within DICOM file")
+    for gantry_angles in gantry_angles_of_beam_sequences:
+        if len(gantry_angles) != 1:
+            raise ValueError(
+                "Only a single gantry angle per beam is currently supported")
+
+    delivery_data_by_beam_sequence = []
+    for beam_sequence_index, _ in enumerate(dicom_dataset.BeamSequence):
+        delivery_data_by_beam_sequence.append(
+            dicom_to_delivery_data_single_beam_sequence(
+                dicom_dataset, beam_sequence_index))
+
+    return delivery_data_by_beam_sequence
+
+
+def dicom_to_delivery_data_single_beam_sequence(dicom_dataset,
+                                                beam_sequence_index):
 
     beam_sequence = dicom_dataset.BeamSequence[beam_sequence_index]
     leaf_boundaries = beam_sequence.BeamLimitingDeviceSequence[-1].LeafPositionBoundaries
