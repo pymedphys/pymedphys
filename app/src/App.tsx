@@ -15,14 +15,14 @@ import './App.css';
 import { pythonReady } from './observables/python'
 import { inputDirectory, outputDirectory } from './observables/directories'
 
-const decodeTRF = raw("./python/decode_trf.py");
+const trf2dcm = raw("./python/trf2dcm.py");
 const zipOutput = raw("./python/zip_output.py");
 declare let pyodide: any;
 declare var Module: any;
 
 
 function runConversion() {
-  pyodide.runPythonAsync(decodeTRF)
+  pyodide.runPython(trf2dcm)
 }
 
 function downloadOutput() {
@@ -52,7 +52,6 @@ function onFileInputChange(event: React.FormEvent<HTMLInputElement>) {
     fr.readAsArrayBuffer(file);
   })
 }
-
 
 /*
  * Copyright 2015 Palantir Technologies, Inc. All rights reserved.
@@ -128,8 +127,6 @@ class App extends React.Component {
     })
   }
 
-
-
   private handleNodeClick = (nodeData: ITreeNode, _nodePath: number[], e: React.MouseEvent<HTMLElement>) => {
     const originallySelected = nodeData.isSelected;
     if (!e.shiftKey) {
@@ -174,7 +171,7 @@ class App extends React.Component {
         <H2>File management</H2>
 
         <p><a href="/data/imrt.trf">Download a demo .trf file</a></p>
-        <p><a href="/data/RP.2.16.840.1.114337.1.1.1548284863.0_Anonymised.dcm">Download a demo .dcm file</a></p>
+        <p><a href="/data/RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm">Download a demo .dcm file</a></p>
 
         <Tree
           contents={this.state.nodes}
