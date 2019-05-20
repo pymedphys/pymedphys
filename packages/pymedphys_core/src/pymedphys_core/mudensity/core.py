@@ -97,7 +97,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     --------
     >>> import numpy as np
     >>>
-    >>> from pymedphys_analysis.mudensity import (
+    >>> from pymedphys_core.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
     >>> leaf_pair_widths = (5, 5, 5)
@@ -168,7 +168,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
 
     MU Density from a Mosaiq record
 
-    >>> from pymedphys_analysis.mudensity import (
+    >>> from pymedphys_core.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
     >>> from pymedphys_databases.msq import (
@@ -193,7 +193,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
 
     MU Density from a logfile at a given filepath
 
-    >>> from pymedphys_analysis.mudensity import (
+    >>> from pymedphys_core.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
     >>> from pymedphys_fileformats.trf import delivery_data_from_logfile
@@ -265,7 +265,7 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
     Examples
     --------
     >>> import numpy as np
-    >>> from pymedphys_analysis.mudensity import (
+    >>> from pymedphys_core.mudensity import (
     ...     calc_single_control_point, display_mu_density)
     >>>
     >>> leaf_pair_widths = (2, 2)
@@ -353,7 +353,7 @@ def single_mlc_pair(left_mlc, right_mlc,
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>>
-    >>> from pymedphys_analysis.mudensity import single_mlc_pair
+    >>> from pymedphys_core.mudensity import single_mlc_pair
     >>>
     >>> mlc_left = (-2.3, 3.1)  # (start position, end position)
     >>> mlc_right = (0, 7.7)
