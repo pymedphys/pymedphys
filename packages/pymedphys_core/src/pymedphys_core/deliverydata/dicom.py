@@ -173,9 +173,18 @@ def dicom_to_delivery_data_single_beam(dicom_dataset, beam_sequence_index):
     return DeliveryData(mu, gantry_angles, collimator_angles, mlcs, jaw)
 
 
+def maintain_order_unique(items):
+    result = []
+    for item in items:
+        if item not in result:
+            result.append(item)
+
+    return result
+
+
 def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
     delivery_data = filter_out_irrelivant_control_points(delivery_data)
-    gantry_angles = np.unique(delivery_data.gantry)
+    gantry_angles = maintain_order_unique(delivery_data.gantry)
 
     dicoms_by_gantry_angle = []
     for gantry_angle in gantry_angles:
@@ -187,10 +196,9 @@ def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
 
 
 def merge_beam_sequences(dicoms_by_gantry_angle):
-    inverted = dicoms_by_gantry_angle[::-1]
-    merged = inverted[0]
+    merged = dicoms_by_gantry_angle[0]
 
-    for dicom in inverted[1::]:
+    for dicom in dicoms_by_gantry_angle[1::]:
         merged.BeamSequence.append(
             dicom.BeamSequence[0]
         )
