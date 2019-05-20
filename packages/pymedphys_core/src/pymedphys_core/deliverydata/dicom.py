@@ -71,7 +71,7 @@ def dicom_to_delivery_data(dicom_dataset, gantry_angle):
         np.array([
             mlc[num_leaves::],
             -np.array(mlc[0:num_leaves])  # pylint: disable=invalid-unary-operand-type  # nopep8
-        ]).T
+        ][::-1]).T
         for mlc in mlcs
     ]
 
@@ -82,7 +82,7 @@ def dicom_to_delivery_data(dicom_dataset, gantry_angle):
         for control_point in control_points
     ]
 
-    jaw = np.array(dicom_jaw)[-1::-1]
+    jaw = np.array(dicom_jaw)
 
     second_col = deepcopy(jaw[:, 1])
     jaw[:, 1] = jaw[:, 0]
@@ -115,6 +115,7 @@ def dicom_to_delivery_data(dicom_dataset, gantry_angle):
     return DeliveryData(mu, gantry_angles, collimator_angles, mlcs, jaw)
 
 
+# TODO: This needs testing, and likely fixing.
 def delivery_data_to_dicom(delivery_data, dicom_template, gantry_angle):
     delivery_data = filter_out_irrelivant_control_points(delivery_data)
 
