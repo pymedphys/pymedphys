@@ -31,5 +31,8 @@ Examples:
     >>> from pymedphys.trf import decode_header_from_file
 """
 
+from .trf2pandas import trf2pandas
+from .trf2csv import trf2csv_by_directory
 from .header import decode_header_from_file, Header
-from .trf2deliverydata import delivery_data_from_logfile
+from .trf2deliverydata import (
+    delivery_data_from_logfile, delivery_data_from_pandas)

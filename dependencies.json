@@ -95,9 +95,7 @@
         "numpy"
       ],
       "internal": [],
-      "stdlib": [
-        "collections"
-      ]
+      "stdlib": []
     },
     "pymedphys_core": {
       "external": [
@@ -105,10 +103,13 @@
         "numpy"
       ],
       "internal": [
-        "pymedphys_coordsandscales",
         "pymedphys_utilities"
       ],
-      "stdlib": []
+      "stdlib": [
+        "collections",
+        "copy",
+        "os"
+      ]
     },
     "pymedphys_databases": {
       "external": [
@@ -119,7 +120,7 @@
         "pymssql"
       ],
       "internal": [
-        "pymedphys_coordsandscales"
+        "pymedphys_core"
       ],
       "stdlib": [
         "contextlib",
@@ -164,12 +165,10 @@
         "pydicom"
       ],
       "internal": [
-        "pymedphys_coordsandscales",
-        "pymedphys_fileformats"
+        "pymedphys_core"
       ],
       "stdlib": [
         "collections",
-        "copy",
         "csv",
         "glob",
         "json",
@@ -207,7 +206,6 @@
         "python_dateutil"
       ],
       "internal": [
-        "pymedphys_coordsandscales",
         "pymedphys_core",
         "pymedphys_databases",
         "pymedphys_fileformats",

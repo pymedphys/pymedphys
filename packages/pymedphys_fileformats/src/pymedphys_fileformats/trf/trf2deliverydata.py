@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from pymedphys_coordsandscales.deliverydata import DeliveryData
+from pymedphys_core.deliverydata import DeliveryData
 
 from .constants import (
     GANTRY_NAME, COLLIMATOR_NAME,
@@ -37,6 +37,11 @@ from .trf2pandas import decode_trf
 
 def delivery_data_from_logfile(logfile_path):
     logfile_dataframe = decode_trf(logfile_path)
+
+    return delivery_data_from_pandas(logfile_dataframe)
+
+
+def delivery_data_from_pandas(logfile_dataframe):
     raw_monitor_units = logfile_dataframe[
         'Step Dose/Actual Value (Mu)'].values.tolist()
 
