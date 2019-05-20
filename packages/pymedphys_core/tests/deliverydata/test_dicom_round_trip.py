@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2019 Simon Biggs and Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -45,6 +45,18 @@ def num_of_control_points(dicom_dataset):
     ]
 
 
+def source_to_surface_distances(dicom_dataset):
+    SSDs = [
+        {
+            control_point.SourceToSurfaceDistance
+            for control_point in beam_sequence.ControlPointSequence
+        }
+        for beam_sequence in dicom_dataset.BeamSequence
+    ]
+
+    return SSDs
+
+
 def test_round_trip():
     original = pydicom.dcmread(DICOM_FILEPATH, force=True)
 
@@ -71,6 +83,10 @@ def test_round_trip():
     processed_gantry_angles = get_gantry_angles_from_dicom(processed)
 
     assert original_gantry_angles == processed_gantry_angles
+
+    assert (
+        source_to_surface_distances(original) ==
+        source_to_surface_distances(processed))
 
     # TODO: Make delivery_data only be able to assign to already existing beams
     # Look for nearby gantry angles, assign all respective control_points to
