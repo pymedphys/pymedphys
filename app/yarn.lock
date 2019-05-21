@@ -4366,11 +4366,6 @@ fs.realpath@^1.0.0:
   resolved "https://registry.yarnpkg.com/fs.realpath/-/fs.realpath-1.0.0.tgz#1504ad2523158caa40db4a2787cb01411994ea4f"
   integrity sha1-FQStJSMVjKpA20onh8sBQRmU6k8=
 
-fsevents@2.0.6:
-  version "2.0.6"
-  resolved "https://registry.yarnpkg.com/fsevents/-/fsevents-2.0.6.tgz#87b19df0bfb4a1a51d7ddb51b01b5f3bedb40c33"
-  integrity sha512-vfmKZp3XPM36DNF0qhW+Cdxk7xm7gTEHY1clv1Xq1arwRQuKZgAhw+NZNWbJBtuaNxzNXwhfdPYRrvIbjfS33A==
-
 fsevents@^1.2.7:
   version "1.2.9"
   resolved "https://registry.yarnpkg.com/fsevents/-/fsevents-1.2.9.tgz#3f5ed66583ccd6f400b5a00db6f7e861363e388f"
@@ -7302,129 +7297,6 @@ performance-now@^2.1.0:
   resolved "https://registry.yarnpkg.com/performance-now/-/performance-now-2.1.0.tgz#6309f4e0e5fa913ec1c69307ae364b4b377c9e7b"
   integrity sha1-Ywn04OX6kT7BxpMHrjZLSzd8nns=
 
-phosphor-arrays@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/phosphor-arrays/-/phosphor-arrays-1.0.6.tgz#4f3401ea9ea6b8899f6e17147ff04fd15dfe8575"
-  integrity sha1-TzQB6p6muImfbhcUf/BP0V3+hXU=
-
-phosphor-boxengine@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/phosphor-boxengine/-/phosphor-boxengine-1.0.1.tgz#853b0fcfc8e2e1e91b2b3c8b6a99c9f83a89791c"
-  integrity sha1-hTsPz8ji4ekbKzyLapnJ+DqJeRw=
-
-phosphor-boxpanel@^1.0.0-rc.0:
-  version "1.0.0-rc.0"
-  resolved "https://registry.yarnpkg.com/phosphor-boxpanel/-/phosphor-boxpanel-1.0.0-rc.0.tgz#391ae50db16dfac666968d5d5c0b30a4ae1340a9"
-  integrity sha1-ORrlDbFt+sZmlo1dXAswpK4TQKk=
-  dependencies:
-    phosphor-arrays "^1.0.6"
-    phosphor-boxengine "^1.0.1"
-    phosphor-domutil "^1.2.0"
-    phosphor-messaging "^1.0.6"
-    phosphor-panel "^1.0.0-rc.0"
-    phosphor-properties "^2.0.0"
-    phosphor-widget "^1.0.0-rc.0"
-
-phosphor-disposable@^1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/phosphor-disposable/-/phosphor-disposable-1.0.5.tgz#7b64309d36fcf2b1254c064637db538282386597"
-  integrity sha1-e2QwnTb88rElTAZGN9tTgoI4ZZc=
-
-phosphor-domutil@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/phosphor-domutil/-/phosphor-domutil-1.2.0.tgz#1d63891be84685275b15b18941bdb5134227bfdc"
-  integrity sha1-HWOJG+hGhSdbFbGJQb21E0Inv9w=
-  dependencies:
-    phosphor-disposable "^1.0.5"
-
-phosphor-menus@^1.0.0-rc.1:
-  version "1.0.0-rc.1"
-  resolved "https://registry.yarnpkg.com/phosphor-menus/-/phosphor-menus-1.0.0-rc.1.tgz#cc1559911dc34b162a2cd6734f8f0273c3df3901"
-  integrity sha1-zBVZkR3DSxYqLNZzT48Cc8PfOQE=
-  dependencies:
-    phosphor-arrays "^1.0.6"
-    phosphor-domutil "^1.2.0"
-    phosphor-messaging "^1.0.6"
-    phosphor-properties "^2.0.0"
-    phosphor-signaling "^1.2.0"
-    phosphor-widget "^1.0.0-rc.0"
-
-phosphor-messaging@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/phosphor-messaging/-/phosphor-messaging-1.0.6.tgz#01d23bcd2c2b1de5c7cbb8f00b0a194e1445b9a3"
-  integrity sha1-AdI7zSwrHeXHy7jwCwoZThRFuaM=
-  dependencies:
-    phosphor-queue "^1.0.5"
-
-phosphor-nodewrapper@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/phosphor-nodewrapper/-/phosphor-nodewrapper-1.0.6.tgz#ec2cf88c5606bd13b36bfd395286ac6770413abf"
-  integrity sha1-7Cz4jFYGvROza/05UoasZ3BBOr8=
-
-phosphor-panel@^1.0.0-rc.0, phosphor-panel@^1.0.0-rc.1:
-  version "1.0.0-rc.1"
-  resolved "https://registry.yarnpkg.com/phosphor-panel/-/phosphor-panel-1.0.0-rc.1.tgz#bf8a876eabfbd21f5305339df34d14ee2e94c46b"
-  integrity sha1-v4qHbqv70h9TBTOd800U7i6UxGs=
-  dependencies:
-    phosphor-arrays "^1.0.6"
-    phosphor-messaging "^1.0.6"
-    phosphor-widget "^1.0.0-rc.0"
-
-phosphor-properties@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/phosphor-properties/-/phosphor-properties-2.0.0.tgz#fae2ff80370e6dd40dc696ca7c512403d16956ec"
-  integrity sha1-+uL/gDcObdQNxpbKfFEkA9FpVuw=
-  dependencies:
-    phosphor-signaling "^1.1.2"
-
-phosphor-queue@^1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/phosphor-queue/-/phosphor-queue-1.0.5.tgz#7d15912564ad23d7cab36443596324e30cf34f10"
-  integrity sha1-fRWRJWStI9fKs2RDWWMk4wzzTxA=
-
-phosphor-signaling@^1.1.2, phosphor-signaling@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/phosphor-signaling/-/phosphor-signaling-1.2.0.tgz#f757d6af1ab1683d16bf686ad0bfd50195ed5daa"
-  integrity sha1-91fWrxqxaD0Wv2hq0L/VAZXtXao=
-
-phosphor-stackedpanel@^1.0.0-rc.0:
-  version "1.0.0-rc.0"
-  resolved "https://registry.yarnpkg.com/phosphor-stackedpanel/-/phosphor-stackedpanel-1.0.0-rc.0.tgz#db09d40245f3fa858b204f95129234fd8fe039d3"
-  integrity sha1-2wnUAkXz+oWLIE+VEpI0/Y/gOdM=
-  dependencies:
-    phosphor-domutil "^1.2.0"
-    phosphor-messaging "^1.0.6"
-    phosphor-panel "^1.0.0-rc.1"
-    phosphor-properties "^2.0.0"
-    phosphor-signaling "^1.2.0"
-    phosphor-widget "^1.0.0-rc.0"
-
-phosphor-tabs@^1.0.0-rc.2:
-  version "1.0.0-rc.2"
-  resolved "https://registry.yarnpkg.com/phosphor-tabs/-/phosphor-tabs-1.0.0-rc.2.tgz#47264612ae79aea9eacec1b9444430d29b533c63"
-  integrity sha1-RyZGEq55rqnqzsG5REQw0ptTPGM=
-  dependencies:
-    phosphor-arrays "^1.0.6"
-    phosphor-boxpanel "^1.0.0-rc.0"
-    phosphor-disposable "^1.0.5"
-    phosphor-domutil "^1.2.0"
-    phosphor-messaging "^1.0.6"
-    phosphor-signaling "^1.2.0"
-    phosphor-stackedpanel "^1.0.0-rc.0"
-    phosphor-widget "^1.0.0-rc.0"
-
-phosphor-widget@^1.0.0-rc.0, phosphor-widget@^1.0.0-rc.1:
-  version "1.0.0-rc.1"
-  resolved "https://registry.yarnpkg.com/phosphor-widget/-/phosphor-widget-1.0.0-rc.1.tgz#082539ee9d95d1318c53faf6c496e1f57b758db5"
-  integrity sha1-CCU57p2V0TGMU/r2xJbh9Xt1jbU=
-  dependencies:
-    phosphor-disposable "^1.0.5"
-    phosphor-messaging "^1.0.6"
-    phosphor-nodewrapper "^1.0.6"
-    phosphor-properties "^2.0.0"
-    phosphor-queue "^1.0.5"
-    phosphor-signaling "^1.2.0"
-
 pify@^2.0.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/pify/-/pify-2.3.0.tgz#ed141a6ac043a849ea588498e7dca8b15330e90c"
@@ -8488,66 +8360,6 @@ react-popper@^1.0.0:
     prop-types "^15.6.1"
     typed-styles "^0.0.7"
     warning "^4.0.2"
-
-react-scripts@3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/react-scripts/-/react-scripts-3.0.1.tgz#e5565350d8069cc9966b5998d3fe3befe3d243ac"
-  integrity sha512-LKEjBhVpEB+c312NeJhzF+NATxF7JkHNr5GhtwMeRS1cMeLElMeIu8Ye7WGHtDP7iz7ra4ryy48Zpo6G/cwWUw==
-  dependencies:
-    "@babel/core" "7.4.3"
-    "@svgr/webpack" "4.1.0"
-    "@typescript-eslint/eslint-plugin" "1.6.0"
-    "@typescript-eslint/parser" "1.6.0"
-    babel-eslint "10.0.1"
-    babel-jest "^24.8.0"
-    babel-loader "8.0.5"
-    babel-plugin-named-asset-import "^0.3.2"
-    babel-preset-react-app "^9.0.0"
-    camelcase "^5.2.0"
-    case-sensitive-paths-webpack-plugin "2.2.0"
-    css-loader "2.1.1"
-    dotenv "6.2.0"
-    dotenv-expand "4.2.0"
-    eslint "^5.16.0"
-    eslint-config-react-app "^4.0.1"
-    eslint-loader "2.1.2"
-    eslint-plugin-flowtype "2.50.1"
-    eslint-plugin-import "2.16.0"
-    eslint-plugin-jsx-a11y "6.2.1"
-    eslint-plugin-react "7.12.4"
-    eslint-plugin-react-hooks "^1.5.0"
-    file-loader "3.0.1"
-    fs-extra "7.0.1"
-    html-webpack-plugin "4.0.0-beta.5"
-    identity-obj-proxy "3.0.0"
-    is-wsl "^1.1.0"
-    jest "24.7.1"
-    jest-environment-jsdom-fourteen "0.1.0"
-    jest-resolve "24.7.1"
-    jest-watch-typeahead "0.3.0"
-    mini-css-extract-plugin "0.5.0"
-    optimize-css-assets-webpack-plugin "5.0.1"
-    pnp-webpack-plugin "1.2.1"
-    postcss-flexbugs-fixes "4.1.0"
-    postcss-loader "3.0.0"
-    postcss-normalize "7.0.1"
-    postcss-preset-env "6.6.0"
-    postcss-safe-parser "4.0.1"
-    react-app-polyfill "^1.0.1"
-    react-dev-utils "^9.0.1"
-    resolve "1.10.0"
-    sass-loader "7.1.0"
-    semver "6.0.0"
-    style-loader "0.23.1"
-    terser-webpack-plugin "1.2.3"
-    ts-pnp "1.1.2"
-    url-loader "1.1.2"
-    webpack "4.29.6"
-    webpack-dev-server "3.2.1"
-    webpack-manifest-plugin "2.0.4"
-    workbox-webpack-plugin "4.2.0"
-  optionalDependencies:
-    fsevents "2.0.6"
 
 react-transition-group@^2.2.1:
   version "2.9.0"
