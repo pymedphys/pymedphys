@@ -178,12 +178,6 @@ class App extends React.Component {
       <div className="App">
         <H1>ALPHA &mdash; PyMedPhys File Processing App</H1>
 
-        <div hidden={this.state.isPythonReady}>
-          <H2>Currently Loading Python...</H2>
-          <p>Before any file processing begins you need to finish downloading and initialising Python and the required packages.</p>
-          <ProgressBar intent="primary" />
-        </div>
-
         <H2>Overview</H2>
 
         <H3>Aim of application</H3>
@@ -280,6 +274,11 @@ class App extends React.Component {
           contents of the output directory.
         </p>
 
+        <div hidden={this.state.isPythonReady}>
+          <H2>Currently Loading Python...</H2>
+          <p>Before any file processing begins you need to finish downloading and initialising Python and the required packages.</p>
+          <ProgressBar intent="primary" />
+        </div>
 
         <H2>File management</H2>
 
