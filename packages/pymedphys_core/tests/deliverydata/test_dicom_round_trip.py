@@ -57,7 +57,16 @@ def source_to_surface_distances(dicom_dataset):
     return SSDs
 
 
-def test_round_trip():
+def first_mlc_positions(dicom_dataset):
+    result = [
+        beam_sequence.ControlPointSequence[0].BeamLimitingDevicePositionSequence[1].LeafJawPositions
+        for beam_sequence in dicom_dataset.BeamSequence
+    ]
+
+    return result
+
+
+def test_round_trip_dcm2dd2dcm():
     original = pydicom.dcmread(DICOM_FILEPATH, force=True)
 
     delivery_data = dicom_to_delivery_data(original)
@@ -80,6 +89,8 @@ def test_round_trip():
     assert (
         source_to_surface_distances(original) ==
         source_to_surface_distances(processed))
+
+    assert first_mlc_positions(original) == first_mlc_positions(processed)
 
     # TODO: Make delivery_data only be able to assign to already existing beams
     # Look for nearby gantry angles, assign all respective control_points to
