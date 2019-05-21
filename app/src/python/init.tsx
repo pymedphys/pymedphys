@@ -1,9 +1,10 @@
 import { BehaviorSubject } from 'rxjs';
 
-import raw from "raw.macro";
+import { pythonReady, IPythonData, pythonData } from '../observables/python';
+import { inputDirectory, outputDirectory } from '../observables/directories';
 
-import { pythonReady, IPythonData, pythonData } from '../observables/python'
-import { inputDirectory, outputDirectory } from '../observables/directories'
+import loadWheels from './load_wheels.py';
+import setupDirectories from './setup_directories.py';
 
 declare let pyodide: any;
 declare let languagePluginLoader: any;
@@ -23,9 +24,6 @@ window.outputDirectory = outputDirectory;
 pythonReady.subscribe(isPythonReady => {
   console.log(`pythonReady = ${isPythonReady}`)
 })
-
-const loadWheels = raw("./load_wheels.py");
-const setupDirectories = raw("./setup_directories.py");
 
 export function initPython() {
   languagePluginLoader.then(() => {
