@@ -28,10 +28,10 @@ import numpy as np
 
 from pymedphys_utilities.utilities import get_filepath, get_gantry_tolerance
 
-from pymedphys_coordsandscales.deliverydata import (
+from pymedphys_core.deliverydata import (
     extract_angle_from_delivery_data, find_relevant_control_points)
 
-from pymedphys_analysis.mudensity import (
+from pymedphys_core.mudensity import (
     calc_mu_density, calc_mu_density_return_grid,
     calc_mu_density_bygantry_return_grid)
 from pymedphys_databases.msq import multi_fetch_and_verify_mosaiq

@@ -34,14 +34,14 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_coordsandscales.deliverydata import get_delivery_parameters
+from pymedphys_core.deliverydata import get_delivery_parameters
 from pymedphys_utilities.utilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath
 )
 from pymedphys_databases.msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
-from pymedphys_analysis.mudensity import calc_mu_density
+from pymedphys_core.mudensity import calc_mu_density
 from pymedphys_fileformats.trf import delivery_data_from_logfile
 
 
