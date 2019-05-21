@@ -2,15 +2,13 @@ import React from 'react';
 
 
 import {
-  H1, H2, H3
+  H2, H3
 } from '@blueprintjs/core';
 
 export class AppText extends React.Component {
   render() {
     return (
       <div>
-        <H1>ALPHA &mdash; PyMedPhys File Processing</H1>
-
         <H2>Overview</H2>
 
         <H3>Aim of application</H3>
@@ -54,9 +52,9 @@ export class AppText extends React.Component {
           This application loads Python into the <a href="https://webassembly.org/">
             wasm virtual machine
         </a> of your
-              browser allowing Python code to be run on your local machine without
-              having Python installed, or without needing Python to run on a remote
-              server.
+                  browser allowing Python code to be run on your local machine without
+                  having Python installed, or without needing Python to run on a remote
+                  server.
         </p>
         <p>
           When it comes to sensitive information or large data files, this

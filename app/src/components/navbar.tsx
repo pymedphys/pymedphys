@@ -2,7 +2,7 @@ import React from 'react';
 
 import {
   Navbar, NavbarGroup, NavbarHeading, NavbarDivider, Alignment, AnchorButton,
-  Button
+  Button, Classes
 } from '@blueprintjs/core';
 
 import logo from '../logo.svg';
@@ -10,10 +10,9 @@ import logo from '../logo.svg';
 export class AppNavbar extends React.Component {
   render() {
     return (
-
       <Navbar fixedToTop>
         <NavbarGroup align={Alignment.LEFT}>
-          <img className='logo bp3-icon' src={logo} alt="Logo" />
+          <img className={`${Classes.ICON} logo`} src={logo} alt="Logo" />
           <NavbarHeading>PyMedPhys</NavbarHeading>
           <NavbarDivider />
           <Button
@@ -28,7 +27,6 @@ export class AppNavbar extends React.Component {
             href="https://github.com/pymedphys/pymedphys" />
         </NavbarGroup>
       </Navbar>
-
     )
   }
 }
