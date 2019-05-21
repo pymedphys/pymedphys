@@ -132,8 +132,8 @@ def dicom_to_delivery_data_single_beam(dicom_dataset, beam_sequence_index):
 
     mlcs = [
         np.array([
-            mlc[num_leaves::],
-            -np.array(mlc[0:num_leaves])  # pylint: disable=invalid-unary-operand-type  # nopep8
+            -np.array(mlc[0:num_leaves][::-1]),  # pylint: disable=invalid-unary-operand-type  # nopep8
+            np.array(mlc[num_leaves::][::-1])
         ][::-1]).T
         for mlc in mlcs
     ]
@@ -346,7 +346,7 @@ def build_control_points(initial_cp_template, subsequent_cp_template,
         current_cp.BeamLimitingDevicePositionSequence[0].LeafJawPositions = jaw_cp
         current_cp.BeamLimitingDevicePositionSequence[1].LeafJawPositions = mlc_cp
         current_cp.CumulativeMetersetWeight = np.around(
-            mu / data['monitor_units'][-1], decimals=5)
+            mu / data['monitor_units'][-1], decimals=6)
 
         remaining_cps.append(current_cp)
 
