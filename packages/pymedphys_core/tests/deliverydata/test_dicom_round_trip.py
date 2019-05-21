@@ -26,16 +26,76 @@
 
 import os
 
+import numpy as np
+
 import pydicom
 
 from pymedphys_core.deliverydata.dicom import (
     dicom_to_delivery_data, delivery_data_to_dicom,
-    get_gantry_angles_from_dicom, maintain_order_unique)
+    get_gantry_angles_from_dicom, maintain_order_unique,
+    filter_out_irrelevant_control_points)
+
+from pymedphys_fileformats.trf import delivery_data_from_logfile
+
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "data")
 DICOM_FILEPATH = os.path.abspath(os.path.join(
     DATA_DIRECTORY, "RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm"))
+LOGFILE_FILEPATH = os.path.abspath(os.path.join(
+    DATA_DIRECTORY, "imrt.trf"))
+
+
+def test_round_trip_dd2dcm2dd():
+    original = filter_out_irrelevant_control_points(
+        delivery_data_from_logfile(LOGFILE_FILEPATH))
+    template = pydicom.dcmread(DICOM_FILEPATH, force=True)
+
+    dicom = delivery_data_to_dicom(original, template)
+    processed = dicom_to_delivery_data(dicom)
+
+    assert np.all(
+        np.around(original.monitor_units, 2) ==
+        np.around(processed.monitor_units, 2))
+
+    assert np.allclose(
+        np.array(original.gantry), np.array(processed.gantry),
+        atol=0.01)
+
+    # Collimator not currently handled appropriately
+    assert np.allclose(original.collimator, processed.collimator, atol=0.01)
+
+    assert np.allclose(original.mlc, processed.mlc, atol=0.01)
+    assert np.allclose(original.jaw, processed.jaw, atol=0.01)
+
+
+def test_round_trip_dcm2dd2dcm():
+    original = pydicom.dcmread(DICOM_FILEPATH, force=True)
+
+    delivery_data = dicom_to_delivery_data(original)
+    processed = delivery_data_to_dicom(
+        delivery_data, original)
+
+    assert (
+        num_of_control_points(original) == num_of_control_points(processed)
+    )
+
+    original_gantry_angles = get_gantry_angles_from_dicom(original)
+
+    assert (
+        maintain_order_unique(delivery_data.gantry) == original_gantry_angles)
+
+    processed_gantry_angles = get_gantry_angles_from_dicom(processed)
+
+    assert original_gantry_angles == processed_gantry_angles
+
+    assert (
+        source_to_surface_distances(original) ==
+        source_to_surface_distances(processed))
+
+    assert first_mlc_positions(original) == first_mlc_positions(processed)
+
+    assert str(original) == str(processed)
 
 
 def num_of_control_points(dicom_dataset):
@@ -57,13 +117,6 @@ def source_to_surface_distances(dicom_dataset):
     return SSDs
 
 
-# def reasign_meterset_weights(dicom_dataset):
-#     for beam_sequence in dicom_dataset.BeamSequence:
-#         for control_point in beam_sequence.ControlPointSequence:
-#             control_point.CumulativeMetersetWeight = float(
-#                 control_point.CumulativeMetersetWeight)
-
-
 def first_mlc_positions(dicom_dataset):
     result = [
         beam_sequence.ControlPointSequence[0].BeamLimitingDevicePositionSequence[1].LeafJawPositions
@@ -71,37 +124,3 @@ def first_mlc_positions(dicom_dataset):
     ]
 
     return result
-
-
-def test_round_trip_dcm2dd2dcm():
-    original = pydicom.dcmread(DICOM_FILEPATH, force=True)
-    # reasign_meterset_weights(original)
-
-    delivery_data = dicom_to_delivery_data(original)
-    processed = delivery_data_to_dicom(
-        delivery_data, original)
-    # reasign_meterset_weights(processed)
-
-    assert (
-        num_of_control_points(original) == num_of_control_points(processed)
-    )
-
-    original_gantry_angles = get_gantry_angles_from_dicom(original)
-
-    assert (
-        maintain_order_unique(delivery_data.gantry) == original_gantry_angles)
-
-    processed_gantry_angles = get_gantry_angles_from_dicom(processed)
-
-    assert original_gantry_angles == processed_gantry_angles
-
-    assert (
-        source_to_surface_distances(original) ==
-        source_to_surface_distances(processed))
-
-    assert first_mlc_positions(original) == first_mlc_positions(processed)
-
-    # TODO: Make delivery_data only be able to assign to already existing beams
-    # Look for nearby gantry angles, assign all respective control_points to
-    # that beam index
-    assert str(original) == str(processed)

@@ -104,9 +104,14 @@ def merge_delivery_data(separate: List[DeliveryData]) -> DeliveryData:
         for field in delivery_data._fields:
             try:
                 collection[field] = np.concatenate(
-                    [collection[field], getattr(delivery_data, field)], axis=0)
+                    [collection[field], getattr(delivery_data, field)],
+                    axis=0
+                )
             except KeyError:
                 collection[field] = getattr(delivery_data, field)
+
+    for key, item in collection.items():
+        collection[key] = item.tolist()
 
     merged = DeliveryData(**collection)
 
@@ -188,7 +193,7 @@ def maintain_order_unique(items):
 
 
 def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
-    delivery_data = filter_out_irrelivant_control_points(delivery_data)
+    delivery_data = filter_out_irrelevant_control_points(delivery_data)
     template_gantry_angles = get_gantry_angles_from_dicom(dicom_template)
 
     min_diff = np.min(np.diff(sorted(template_gantry_angles)))
@@ -366,15 +371,14 @@ def gantry_dd2dcm(gantry):
     return converted_gantry, movement
 
 
-def filter_out_irrelivant_control_points(delivery_data: DeliveryData) -> DeliveryData:
-
-    relvant_control_points = find_relevant_control_points(
+def filter_out_irrelevant_control_points(delivery_data: DeliveryData) -> DeliveryData:
+    relevant_control_points = find_relevant_control_points(
         delivery_data.monitor_units)
 
     new_delivery_data = []
     for item in delivery_data:
         new_delivery_data.append(
-            np.array(item)[relvant_control_points].tolist())
+            np.array(item)[relevant_control_points].tolist())
 
     return DeliveryData(*new_delivery_data)
 
