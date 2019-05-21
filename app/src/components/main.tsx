@@ -146,13 +146,6 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
           <ProgressBar intent="primary" />
         </div>
 
-        <H2>File management</H2>
-
-        <div>
-          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.isPythonReady} />
-        </div>
-
-        <br></br>
 
         <H2>Code to use</H2>
 
@@ -177,9 +170,18 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
           </div>
         </Drawer>
 
-        <H2>File processing</H2>
+        <H2>File management</H2>
+
+        <div>
+          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.isPythonReady} />
+        </div>
+
+        <br></br>
 
         <AppFileTree />
+
+        <H2>File processing</H2>
+
 
         <br></br>
 
