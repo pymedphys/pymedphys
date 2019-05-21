@@ -238,11 +238,89 @@ def delivery_data_to_dicom_single_beam(delivery_data, dicom_template,
     all_control_points = build_control_points(
         initial_cp, subsequent_cp, data_converted)
 
-    beam_meterset = data_converted['monitor_units'][-1]
+    beam_meterset = '{0:.6f}'.format(data_converted['monitor_units'][-1])
     replace_fraction_group(created_dicom, beam_meterset, beam_index)
     replace_beam_sequence(created_dicom, all_control_points, beam_index)
 
+    restore_trailing_zeros(created_dicom)
+
     return created_dicom
+
+
+def coordinate_convert_delivery_data(delivery_data):
+    monitor_units = delivery_data.monitor_units
+    mlc = mlc_dd2dcm(delivery_data.mlc)
+    jaw = jaw_dd2dcm(delivery_data.jaw)
+    gantry_angle, gantry_movement = gantry_dd2dcm(delivery_data.gantry)
+    # TODO: support collimator
+
+    return {
+        'monitor_units': monitor_units,
+        'mlc': mlc,
+        'jaw': jaw,
+        'gantry_angle': gantry_angle,
+        'gantry_movement': gantry_movement
+    }
+
+
+def build_control_points(initial_cp_template, subsequent_cp_template,
+                         data):
+    initial_cp_template = deepcopy(initial_cp_template)
+    subsequent_cp_template = deepcopy(subsequent_cp_template)
+
+    initial_cp_template.GantryAngle = data['gantry_angle'][0]
+    initial_cp_template.GantryRotationDirection = data['gantry_movement'][0]
+
+    init_cp_collimation = initial_cp_template.BeamLimitingDevicePositionSequence
+
+    init_cp_collimation[0].LeafJawPositions = data['jaw'][0]
+    init_cp_collimation[1].LeafJawPositions = data['mlc'][0]
+
+    remaining_cps = []
+    for i, (
+        mu, mlc_cp, jaw_cp, move_cp, gantry_cp
+    ) in enumerate(zip(data['monitor_units'][1::], data['mlc'][1::],
+                       data['jaw'][1::], data['gantry_movement'][1::],
+                       data['gantry_angle'][1::])):
+
+        current_cp = deepcopy(subsequent_cp_template)
+        current_cp.ControlPointIndex = str(i+1)
+        current_cp.GantryAngle = gantry_cp
+        current_cp.GantryRotationDirection = move_cp
+        current_cp.BeamLimitingDevicePositionSequence[0].LeafJawPositions = jaw_cp
+        current_cp.BeamLimitingDevicePositionSequence[1].LeafJawPositions = mlc_cp
+        current_cp.CumulativeMetersetWeight = np.around(
+            mu / data['monitor_units'][-1], decimals=6)
+
+        remaining_cps.append(current_cp)
+
+    all_control_points = [initial_cp_template] + remaining_cps
+
+    return all_control_points
+
+
+def replace_fraction_group(created_dicom, beam_meterset, beam_index):
+    fraction_group = created_dicom.FractionGroupSequence[0]
+    referenced_beam = fraction_group.ReferencedBeamSequence[beam_index]
+    referenced_beam.BeamMeterset = str(beam_meterset)
+    fraction_group.ReferencedBeamSequence = [referenced_beam]
+    created_dicom.FractionGroupSequence = [fraction_group]
+
+
+def replace_beam_sequence(created_dicom, all_control_points, beam_index):
+    beam = created_dicom.BeamSequence[beam_index]
+    beam.ControlPointSequence = all_control_points
+    beam.NumberOfControlPoints = len(all_control_points)
+    created_dicom.BeamSequence = [beam]
+
+
+def restore_trailing_zeros(created_dicom):
+    for beam_sequence in created_dicom.BeamSequence:
+        for control_point in beam_sequence.ControlPointSequence:
+            current_value = float(control_point.CumulativeMetersetWeight)
+            new_value = '{0:.6f}'.format(current_value)
+
+            control_point.CumulativeMetersetWeight = new_value
 
 
 def jaw_dd2dcm(jaw):
@@ -286,73 +364,6 @@ def gantry_dd2dcm(gantry):
     converted_gantry = converted_gantry.astype(str).tolist()
 
     return converted_gantry, movement
-
-
-def coordinate_convert_delivery_data(delivery_data):
-    monitor_units = delivery_data.monitor_units
-    mlc = mlc_dd2dcm(delivery_data.mlc)
-    jaw = jaw_dd2dcm(delivery_data.jaw)
-    gantry_angle, gantry_movement = gantry_dd2dcm(delivery_data.gantry)
-    # TODO: support collimator
-
-    return {
-        'monitor_units': monitor_units,
-        'mlc': mlc,
-        'jaw': jaw,
-        'gantry_angle': gantry_angle,
-        'gantry_movement': gantry_movement
-    }
-
-
-def replace_fraction_group(created_dicom, beam_meterset, beam_index):
-    fraction_group = created_dicom.FractionGroupSequence[0]
-    referenced_beam = fraction_group.ReferencedBeamSequence[beam_index]
-    referenced_beam.BeamMeterset = str(beam_meterset)
-    fraction_group.ReferencedBeamSequence = [referenced_beam]
-    created_dicom.FractionGroupSequence = [fraction_group]
-
-
-def replace_beam_sequence(created_dicom, all_control_points, beam_index):
-    beam = created_dicom.BeamSequence[beam_index]
-    beam.ControlPointSequence = all_control_points
-    beam.NumberOfControlPoints = len(all_control_points)
-    created_dicom.BeamSequence = [beam]
-
-
-def build_control_points(initial_cp_template, subsequent_cp_template,
-                         data):
-    initial_cp_template = deepcopy(initial_cp_template)
-    subsequent_cp_template = deepcopy(subsequent_cp_template)
-
-    initial_cp_template.GantryAngle = data['gantry_angle'][0]
-    initial_cp_template.GantryRotationDirection = data['gantry_movement'][0]
-
-    init_cp_collimation = initial_cp_template.BeamLimitingDevicePositionSequence
-
-    init_cp_collimation[0].LeafJawPositions = data['jaw'][0]
-    init_cp_collimation[1].LeafJawPositions = data['mlc'][0]
-
-    remaining_cps = []
-    for i, (
-        mu, mlc_cp, jaw_cp, move_cp, gantry_cp
-    ) in enumerate(zip(data['monitor_units'][1::], data['mlc'][1::],
-                       data['jaw'][1::], data['gantry_movement'][1::],
-                       data['gantry_angle'][1::])):
-
-        current_cp = deepcopy(subsequent_cp_template)
-        current_cp.ControlPointIndex = str(i+1)
-        current_cp.GantryAngle = gantry_cp
-        current_cp.GantryRotationDirection = move_cp
-        current_cp.BeamLimitingDevicePositionSequence[0].LeafJawPositions = jaw_cp
-        current_cp.BeamLimitingDevicePositionSequence[1].LeafJawPositions = mlc_cp
-        current_cp.CumulativeMetersetWeight = np.around(
-            mu / data['monitor_units'][-1], decimals=6)
-
-        remaining_cps.append(current_cp)
-
-    all_control_points = [initial_cp_template] + remaining_cps
-
-    return all_control_points
 
 
 def filter_out_irrelivant_control_points(delivery_data: DeliveryData) -> DeliveryData:
