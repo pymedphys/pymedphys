@@ -4,15 +4,18 @@ import { Subscription } from 'rxjs';
 
 import {
   FileInput, H1, H2, H3, Button, ProgressBar, Classes, ITreeNode,
-  Position, Tooltip, Tree, NumericInput
+  Position, Tooltip, Tree, NumericInput, Drawer
 } from '@blueprintjs/core';
 
-import * as monaco from 'monaco-editor';
+import MonacoEditor from 'react-monaco-editor';
+
 import { saveAs } from 'file-saver';
 
 import './App.css';
 
-import { pythonReady, pythonData, IPythonData } from './observables/python'
+import {
+  pythonReady, pythonData, IPythonData, pythonCode
+} from './observables/python'
 import { inputDirectory, outputDirectory } from './observables/directories'
 
 import trf2dcm from './python/trf2dcm.py';
@@ -88,10 +91,12 @@ interface AppState extends Readonly<{}> {
   isPythonReady: boolean;
   nodes: ITreeNode[];
   pythonData: IPythonData;
+  codeIsOpen: boolean;
 }
 
 class App extends React.Component {
   subscriptions: Subscription[] = []
+  editorSubscription: Subscription | undefined = undefined
   state: AppState
 
   constructor(props: AppProps) {
@@ -99,7 +104,8 @@ class App extends React.Component {
     this.state = {
       isPythonReady: false,
       nodes: INITIAL_STATE,
-      pythonData: pythonData.getValue()
+      pythonData: pythonData.getValue(),
+      codeIsOpen: false,
     }
   }
 
@@ -174,7 +180,28 @@ class App extends React.Component {
     }
   }
 
+  private showCode = () => this.setState({ codeIsOpen: true });
+  private hideCode = () => {
+    this.setState({ codeIsOpen: false })
+    let editorSubscription = this.editorSubscription as Subscription
+    editorSubscription.unsubscribe()
+  };
+
+  private editorOnChange(code: string, event: any) {
+    pythonCode.next(code)
+  }
+
+  private editorDidMount = (editor: any, monaco: any) => {
+    editor.value = pythonCode.getValue()
+    editor.focus()
+    this.editorSubscription = pythonCode.subscribe(value => {
+      editor.value = value
+    })
+  }
+
   render() {
+    let self = this;
+
     return (
       <div className="App">
         <H1>ALPHA &mdash; PyMedPhys File Processing App</H1>
@@ -319,6 +346,23 @@ class App extends React.Component {
             onClick={downloadOutput}
             disabled={!this.state.isPythonReady || this.state.nodes[1].childNodes === undefined || this.state.nodes[1].childNodes.length === 0} />
         </span>
+
+        <Button text="Show code" onClick={this.showCode}></Button>
+
+        <Drawer
+          onClose={this.hideCode}
+          isOpen={this.state.codeIsOpen}
+        >
+          <div className="monaco-container">
+            <MonacoEditor
+              language="python" width="100%" height="100%"
+              onChange={this.editorOnChange}
+              editorDidMount={this.editorDidMount}
+              value={pythonCode.getValue()}
+            />
+          </div>
+        </Drawer>
+
 
         <div className="big-top-margin">
           <a href="https://www.netlify.com">
