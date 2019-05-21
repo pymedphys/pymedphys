@@ -10,10 +10,10 @@ filepaths = glob(os.path.join(input_directory, '*.trf'))
 
 for filepath in filepaths:
     filename = os.path.basename(filepath)
-    new_filename = os.path.join(output_directory, filename)
+    common_output_filepath = os.path.join(output_directory, filename)
 
-    header_csv_filepath = "{}.header.csv".format(new_filename)
-    table_csv_filepath = "{}.table.csv".format(new_filename)
+    header_csv_filepath = "{}.header.csv".format(common_output_filepath)
+    table_csv_filepath = "{}.table.csv".format(common_output_filepath)
 
     print("Converting {}".format(filepath))
 
