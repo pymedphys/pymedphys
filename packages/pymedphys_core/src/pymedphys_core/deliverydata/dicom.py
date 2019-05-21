@@ -110,6 +110,10 @@ def merge_delivery_data(separate: List[DeliveryData]) -> DeliveryData:
             except KeyError:
                 collection[field] = getattr(delivery_data, field)
 
+    mu = np.concatenate([[0], np.diff(collection['monitor_units'])])
+    mu[mu < 0] = 0
+    collection['monitor_units'] = np.cumsum(mu)
+
     for key, item in collection.items():
         collection[key] = item.tolist()
 
@@ -256,52 +260,55 @@ def coordinate_convert_delivery_data(delivery_data):
     monitor_units = delivery_data.monitor_units
     mlc = mlc_dd2dcm(delivery_data.mlc)
     jaw = jaw_dd2dcm(delivery_data.jaw)
-    gantry_angle, gantry_movement = gantry_dd2dcm(delivery_data.gantry)
-    # TODO: support collimator
+    gantry_angle, gantry_movement = angle_dd2dcm(delivery_data.gantry)
+    collimator_angle, collimator_movement = angle_dd2dcm(
+        delivery_data.collimator)
 
     return {
         'monitor_units': monitor_units,
         'mlc': mlc,
         'jaw': jaw,
         'gantry_angle': gantry_angle,
-        'gantry_movement': gantry_movement
+        'gantry_movement': gantry_movement,
+        'collimator_angle': collimator_angle,
+        'collimator_movement': collimator_movement
     }
+
+
+def add_data_to_control_point(template, data, i):
+    cp = deepcopy(template)
+    cp.ControlPointIndex = str(i)
+
+    cp.GantryAngle = data['gantry_angle'][i]
+    cp.GantryRotationDirection = data['gantry_movement'][i]
+
+    cp.BeamLimitingDeviceAngle = data['collimator_angle'][i]
+    cp.BeamLimitingDeviceRotationDirection = data['collimator_movement'][i]
+
+    collimation = cp.BeamLimitingDevicePositionSequence
+    collimation[0].LeafJawPositions = data['jaw'][i]
+    collimation[1].LeafJawPositions = data['mlc'][i]
+
+    cp.CumulativeMetersetWeight = np.around(
+        data['monitor_units'][i] / data['monitor_units'][-1], decimals=6)
+
+    return cp
 
 
 def build_control_points(initial_cp_template, subsequent_cp_template,
                          data):
-    initial_cp_template = deepcopy(initial_cp_template)
-    subsequent_cp_template = deepcopy(subsequent_cp_template)
+    number_of_control_points = len(data['monitor_units'])
 
-    initial_cp_template.GantryAngle = data['gantry_angle'][0]
-    initial_cp_template.GantryRotationDirection = data['gantry_movement'][0]
+    cps = []
+    for i in range(number_of_control_points):
+        if i == 0:
+            template = initial_cp_template
+        else:
+            template = subsequent_cp_template
 
-    init_cp_collimation = initial_cp_template.BeamLimitingDevicePositionSequence
+        cps.append(add_data_to_control_point(template, data, i))
 
-    init_cp_collimation[0].LeafJawPositions = data['jaw'][0]
-    init_cp_collimation[1].LeafJawPositions = data['mlc'][0]
-
-    remaining_cps = []
-    for i, (
-        mu, mlc_cp, jaw_cp, move_cp, gantry_cp
-    ) in enumerate(zip(data['monitor_units'][1::], data['mlc'][1::],
-                       data['jaw'][1::], data['gantry_movement'][1::],
-                       data['gantry_angle'][1::])):
-
-        current_cp = deepcopy(subsequent_cp_template)
-        current_cp.ControlPointIndex = str(i+1)
-        current_cp.GantryAngle = gantry_cp
-        current_cp.GantryRotationDirection = move_cp
-        current_cp.BeamLimitingDevicePositionSequence[0].LeafJawPositions = jaw_cp
-        current_cp.BeamLimitingDevicePositionSequence[1].LeafJawPositions = mlc_cp
-        current_cp.CumulativeMetersetWeight = np.around(
-            mu / data['monitor_units'][-1], decimals=6)
-
-        remaining_cps.append(current_cp)
-
-    all_control_points = [initial_cp_template] + remaining_cps
-
-    return all_control_points
+    return cps
 
 
 def replace_fraction_group(created_dicom, beam_meterset, beam_index):
@@ -354,21 +361,21 @@ def mlc_dd2dcm(mlc):
     return dicom_mlc_format
 
 
-def gantry_dd2dcm(gantry):
-    diff = np.append(np.diff(gantry), 0)
-    movement = (np.empty_like(gantry)).astype(str)
+def angle_dd2dcm(angle):
+    diff = np.append(np.diff(angle), 0)
+    movement = (np.empty_like(angle)).astype(str)
 
     movement[diff > 0] = 'CW'
     movement[diff < 0] = 'CC'
     movement[diff == 0] = 'NONE'
 
-    converted_gantry = np.array(gantry, copy=False)
-    converted_gantry[converted_gantry < 0] = (
-        converted_gantry[converted_gantry < 0] + 360)
+    converted_angle = np.array(angle, copy=False)
+    converted_angle[converted_angle < 0] = (
+        converted_angle[converted_angle < 0] + 360)
 
-    converted_gantry = converted_gantry.astype(str).tolist()
+    converted_angle = converted_angle.astype(str).tolist()
 
-    return converted_gantry, movement
+    return converted_angle, movement
 
 
 def filter_out_irrelevant_control_points(delivery_data: DeliveryData) -> DeliveryData:
