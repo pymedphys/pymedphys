@@ -3,7 +3,7 @@ import React from 'react';
 import { Subscription } from 'rxjs';
 
 import {
-  FileInput, H2, Button, ProgressBar,
+  FileInput, H1, H2, Button, ProgressBar,
   Drawer
 } from '@blueprintjs/core';
 
@@ -135,6 +135,8 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
     return (
       <div className="AppMain">
         <AppNavbar />
+
+        <H1>ALPHA &mdash; PyMedPhys File Processing</H1>
         <AppText />
 
         <div hidden={this.state.isPythonReady}>
