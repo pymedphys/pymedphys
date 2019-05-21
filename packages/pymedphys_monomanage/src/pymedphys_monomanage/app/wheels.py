@@ -32,11 +32,13 @@ import json
 
 
 WHITELIST = (
-    'pymedphys_coordsandscales', 'pymedphys_dicom', 'pymedphys_fileformats')
+    'pymedphys_coordsandscales', 'pymedphys_dicom', 'pymedphys_fileformats',
+    'pymedphys_utilities', 'pymedphys_core', 'pymedphys')
 
 
 def build_wheels_with_yarn():
     yarn = shutil.which("yarn")
+    subprocess.call([yarn, "pypi:clean"])
     for package in WHITELIST:
         subprocess.call(
             [yarn, "lerna", "run", "pypi:build", "--scope={}".format(package)])
