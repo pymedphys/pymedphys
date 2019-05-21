@@ -25,11 +25,12 @@
 
 from ..deliverydata import get_delivery_parameters
 
-from .core import calc_mu_density
+from .core import calc_mu_density, __DEFAULT_GRID_RESOLUTION
 
 
-def mu_density_from_delivery_data(delivery_data):
+def mu_density_from_delivery_data(delivery_data,
+                                  grid_resolution=__DEFAULT_GRID_RESOLUTION):
     mu, mlc, jaw = get_delivery_parameters(delivery_data)
-    mu_density = calc_mu_density(mu, mlc, jaw)
+    mu_density = calc_mu_density(mu, mlc, jaw, grid_resolution=grid_resolution)
 
     return mu_density

@@ -27,6 +27,7 @@
 import os
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 import pydicom
 
@@ -37,6 +38,8 @@ from pymedphys_core.deliverydata.dicom import (
 
 from pymedphys_fileformats.trf import delivery_data_from_logfile
 
+from pymedphys_core.mudensity import mu_density_from_delivery_data
+
 
 DATA_DIRECTORY = os.path.join(
     os.path.dirname(__file__), "data")
@@ -44,6 +47,46 @@ DICOM_FILEPATH = os.path.abspath(os.path.join(
     DATA_DIRECTORY, "RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm"))
 LOGFILE_FILEPATH = os.path.abspath(os.path.join(
     DATA_DIRECTORY, "imrt.trf"))
+
+
+def test_mudensity_agreement():
+    dicom = pydicom.dcmread(DICOM_FILEPATH, force=True)
+    dicom_delivery_data = dicom_to_delivery_data(dicom)
+
+    logfile_delivery_data = delivery_data_from_logfile(LOGFILE_FILEPATH)
+
+    dicom_mu_density = mu_density_from_delivery_data(
+        dicom_delivery_data, grid_resolution=5)
+    logfile_mu_density = mu_density_from_delivery_data(
+        logfile_delivery_data, grid_resolution=5)
+
+    diff = logfile_mu_density - dicom_mu_density
+    max_diff = np.max(np.abs(diff))
+    std_diff = np.std(diff)
+    try:
+        assert max_diff < 4.1
+        assert std_diff < 0.4
+    except AssertionError:
+        max_val = np.max([
+            np.max(logfile_mu_density),
+            np.max(dicom_mu_density)
+        ])
+
+        plt.figure()
+        plt.pcolormesh(dicom_mu_density, vmin=0, vmax=max_val)
+        plt.colorbar()
+
+        plt.figure()
+        plt.pcolormesh(logfile_mu_density, vmin=0, vmax=max_val)
+        plt.colorbar()
+
+        plt.figure()
+        plt.pcolormesh(
+            logfile_mu_density - dicom_mu_density,
+            vmin=-max_diff, vmax=max_diff, cmap='bwr')
+        plt.colorbar()
+        plt.show()
+        raise
 
 
 def test_round_trip_dd2dcm2dd():
