@@ -14,6 +14,7 @@ import { saveAs } from 'file-saver';
 import { AppNavbar } from './navbar';
 import { AppText } from './text';
 import { AppFileTree } from './file-tree'
+import { AppSelectScript } from './select-script'
 
 import {
   pythonReady, pythonData, IPythonData, pythonCode
@@ -155,9 +156,28 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
 
         <H2>File processing</H2>
 
+        <AppSelectScript />
+        <Button intent="primary" text="Show code" onClick={this.showCode}></Button>
+
+        <Drawer
+          onClose={this.hideCode}
+          isOpen={this.state.codeIsOpen}
+        >
+          <div className="monaco-container">
+            <MonacoEditor
+              language="python" width="100%" height="100%"
+              onChange={this.editorOnChange}
+              editorDidMount={this.editorDidMount}
+              value={pythonCode.getValue()}
+            />
+          </div>
+        </Drawer>
+
         <AppFileTree />
 
         <br></br>
+
+
 
         <span className="floatleft">
           <Button
@@ -176,21 +196,9 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             disabled={!this.state.isPythonReady || outputDirectory.getValue().size === 0} />
         </span>
 
-        <Button text="Show code" onClick={this.showCode}></Button>
 
-        <Drawer
-          onClose={this.hideCode}
-          isOpen={this.state.codeIsOpen}
-        >
-          <div className="monaco-container">
-            <MonacoEditor
-              language="python" width="100%" height="100%"
-              onChange={this.editorOnChange}
-              editorDidMount={this.editorDidMount}
-              value={pythonCode.getValue()}
-            />
-          </div>
-        </Drawer>
+
+
       </div>
     );
   }

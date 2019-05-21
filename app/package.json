@@ -5,6 +5,7 @@
   "dependencies": {
     "@babel/core": "7.4.3",
     "@blueprintjs/core": "^3.15.1",
+    "@blueprintjs/select": "^3.8.0",
     "@phosphor/coreutils": "1.2.0",
     "@svgr/webpack": "4.1.0",
     "@types/file-saver": "^2.0.0",
