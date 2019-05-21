@@ -57,6 +57,13 @@ def source_to_surface_distances(dicom_dataset):
     return SSDs
 
 
+# def reasign_meterset_weights(dicom_dataset):
+#     for beam_sequence in dicom_dataset.BeamSequence:
+#         for control_point in beam_sequence.ControlPointSequence:
+#             control_point.CumulativeMetersetWeight = float(
+#                 control_point.CumulativeMetersetWeight)
+
+
 def first_mlc_positions(dicom_dataset):
     result = [
         beam_sequence.ControlPointSequence[0].BeamLimitingDevicePositionSequence[1].LeafJawPositions
@@ -68,10 +75,12 @@ def first_mlc_positions(dicom_dataset):
 
 def test_round_trip_dcm2dd2dcm():
     original = pydicom.dcmread(DICOM_FILEPATH, force=True)
+    # reasign_meterset_weights(original)
 
     delivery_data = dicom_to_delivery_data(original)
     processed = delivery_data_to_dicom(
         delivery_data, original)
+    # reasign_meterset_weights(processed)
 
     assert (
         num_of_control_points(original) == num_of_control_points(processed)
@@ -95,4 +104,4 @@ def test_round_trip_dcm2dd2dcm():
     # TODO: Make delivery_data only be able to assign to already existing beams
     # Look for nearby gantry angles, assign all respective control_points to
     # that beam index
-    assert original == processed
+    assert str(original) == str(processed)
