@@ -154,10 +154,14 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
 
         <br></br>
 
-        <H2>File processing</H2>
+        <H2>Code to use</H2>
 
         <AppSelectScript />
-        <Button intent="primary" text="Show code" onClick={this.showCode}></Button>
+        <Button
+          intent="primary"
+          icon="eye-open"
+          rightIcon="edit"
+          text="Show and/or edit code" onClick={this.showCode}></Button>
 
         <Drawer
           onClose={this.hideCode}
@@ -172,6 +176,8 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             />
           </div>
         </Drawer>
+
+        <H2>File processing</H2>
 
         <AppFileTree />
 

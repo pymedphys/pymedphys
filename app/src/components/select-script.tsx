@@ -3,8 +3,9 @@ import React from 'react';
 import { Button, MenuItem } from "@blueprintjs/core";
 import { Select, ItemPredicate, ItemRenderer } from '@blueprintjs/select';
 
-import { IUserScripts as IUserScript, USER_SCRIPTS } from '../python/user-scripts/options';
-const UserScriptSelect = Select.ofType<IUserScript>();
+import { IUserScript, USER_SCRIPTS } from '../python/user-scripts/options';
+
+import { pythonCode } from '../observables/python';
 
 /*
  * Copyright 2017 Palantir Technologies, Inc. All rights reserved.
@@ -26,6 +27,8 @@ const UserScriptSelect = Select.ofType<IUserScript>();
 // Select options code copied and modified from:
 // https://github.com/palantir/blueprint/blob/06a186c90758bbdca604ed6d7bf639c3d05b1fa0/packages/docs-app/src/examples/select-examples/films.tsx
 
+
+const UserScriptSelect = Select.ofType<IUserScript>();
 
 const filterScripts: ItemPredicate<IUserScript> = (query, script, _index, exactMatch) => {
   const normalisedName = script.name.toLowerCase();
@@ -154,6 +157,10 @@ export class AppSelectScript extends React.Component<IAppSelectScriptProps, IApp
     script: USER_SCRIPTS[0]
   }
 
+  componentDidMount() {
+    pythonCode.next(this.state.script.code)
+  }
+
   private handleValueChange = (script: IUserScript) => {
     const { createdItems, items } = maybeDeleteCreatedFilmFromArrays(
       this.state.items,
@@ -165,6 +172,7 @@ export class AppSelectScript extends React.Component<IAppSelectScriptProps, IApp
       createdItems,
       script,
     );
+    pythonCode.next(script.code)
     this.setState({ createdItems: nextCreatedItems, script: script, items: nextItems });
   };
 
