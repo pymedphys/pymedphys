@@ -1,4 +1,12 @@
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
+
+export interface IPythonData {
+    gantryAngle: number
+}
+
 
 export const pythonReady = new BehaviorSubject<boolean>(false);
-export const wheelsReady = new Subject<boolean>();
+export const pythonData = new BehaviorSubject<IPythonData>({
+    gantryAngle: -120
+});
+export const pythonCode = new BehaviorSubject<string>("")
