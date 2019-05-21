@@ -108,7 +108,7 @@
       "stdlib": [
         "collections",
         "copy",
-        "os"
+        "typing"
       ]
     },
     "pymedphys_databases": {
