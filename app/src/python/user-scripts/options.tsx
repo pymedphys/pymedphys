@@ -1,7 +1,7 @@
 import trf2csv from './trf2csv.py';
-import muDensityDiff from './mu-density-diff.py';
-import trf2dcm from './trf2dcm.py';
-import anonymiseDicom from './anonymise-dicom.py';
+// import muDensityDiff from './mu-density-diff.py';
+// import trf2dcm from './trf2dcm.py';
+// import anonymiseDicom from './anonymise-dicom.py';
 
 export interface IUserScript {
     name: string;
