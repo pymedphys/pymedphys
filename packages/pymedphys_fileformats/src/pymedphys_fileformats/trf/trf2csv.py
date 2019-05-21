@@ -34,7 +34,7 @@ from glob import glob
 from .trf2pandas import trf2pandas
 
 
-def trf2csv_by_directory(input_directory, output_directory, callback=None):
+def trf2csv_by_directory(input_directory, output_directory):
     filepaths = glob(os.path.join(input_directory, '*.trf'))
 
     for filepath in filepaths:
@@ -49,9 +49,6 @@ def trf2csv_by_directory(input_directory, output_directory, callback=None):
         header, table = trf2pandas(filepath)
         header.to_csv(header_csv_filepath)
         table.to_csv(table_csv_filepath)
-
-        if callback is not None:
-            callback(filepath)
 
 
 def trf2csv(trf_filepath, skip_if_exists=False):
