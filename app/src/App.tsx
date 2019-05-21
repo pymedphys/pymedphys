@@ -7,7 +7,7 @@ import {
   Position, Tooltip, Tree, NumericInput
 } from '@blueprintjs/core';
 
-import raw from "raw.macro";
+import * as monaco from 'monaco-editor';
 import { saveAs } from 'file-saver';
 
 import './App.css';
@@ -15,9 +15,10 @@ import './App.css';
 import { pythonReady, pythonData, IPythonData } from './observables/python'
 import { inputDirectory, outputDirectory } from './observables/directories'
 
-const trf2dcm = raw("./python/trf2dcm.py");
-const zipOutput = raw("./python/zip_output.py");
-const updateOutput = raw("./python/update_output.py");
+import trf2dcm from './python/trf2dcm.py';
+import zipOutput from './python/zip_output.py';
+import updateOutput from './python/update_output.py';
+
 declare let pyodide: any;
 declare var Module: any;
 
