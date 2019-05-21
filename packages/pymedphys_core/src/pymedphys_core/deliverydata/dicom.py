@@ -123,7 +123,6 @@ def merge_delivery_data(separate: List[DeliveryData]) -> DeliveryData:
 
 
 def dicom_to_delivery_data_single_beam(dicom_dataset, beam_sequence_index):
-
     beam_sequence = dicom_dataset.BeamSequence[beam_sequence_index]
     leaf_boundaries = beam_sequence.BeamLimitingDeviceSequence[-1].LeafPositionBoundaries
     leaf_widths = np.diff(leaf_boundaries)
