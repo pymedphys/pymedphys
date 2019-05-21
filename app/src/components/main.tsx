@@ -21,16 +21,17 @@ import {
 } from '../observables/python'
 import { inputDirectory, outputDirectory } from '../observables/directories'
 
-import trf2dcm from '../python/trf2dcm.py';
-import zipOutput from '../python/zip_output.py';
-import updateOutput from '../python/update_output.py';
+import runUserCode from '../python/run-user-code.py';
+import zipOutput from '../python/zip-output.py';
+import updateOutput from '../python/update-output.py';
+
 
 declare let pyodide: any;
 declare var Module: any;
 
 
 function runConversion() {
-  pyodide.runPython(trf2dcm)
+  pyodide.runPython(runUserCode)
     .catch(() => {
       pyodide.runPython(updateOutput)
     })
@@ -75,6 +76,8 @@ interface IAppMainState extends Readonly<{}> {
   isPythonReady: boolean;
   pythonData: IPythonData;
   codeIsOpen: boolean;
+  hasInputFiles: boolean;
+  hasOutputFiles: boolean;
 }
 
 export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
@@ -87,6 +90,8 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
       isPythonReady: false,
       pythonData: pythonData.getValue(),
       codeIsOpen: false,
+      hasInputFiles: false,
+      hasOutputFiles: false
     }
   }
 
@@ -102,6 +107,20 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
       pythonData.subscribe(data => {
         this.setState({
           pythonData: data
+        })
+      })
+    )
+    this.subscriptions.push(
+      inputDirectory.subscribe(value => {
+        this.setState({
+          hasInputFiles: value.size !== 0
+        })
+      })
+    )
+    this.subscriptions.push(
+      outputDirectory.subscribe(value => {
+        this.setState({
+          hasOutputFiles: value.size !== 0
         })
       })
     )
@@ -193,7 +212,7 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             text="Process Files"
             icon="key-enter"
             onClick={runConversion}
-            disabled={!this.state.isPythonReady || inputDirectory.getValue().size === 0} />
+            disabled={!this.state.isPythonReady || !this.state.hasInputFiles} />
         </span>
         <span className="floatright">
           <Button
@@ -201,7 +220,7 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             text="Save output"
             icon="download"
             onClick={downloadOutput}
-            disabled={!this.state.isPythonReady || outputDirectory.getValue().size === 0} />
+            disabled={!this.state.isPythonReady || !this.state.hasOutputFiles} />
         </span>
 
 

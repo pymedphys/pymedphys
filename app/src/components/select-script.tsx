@@ -60,6 +60,7 @@ export const renderScripts: ItemRenderer<IUserScript> = (script, { handleClick, 
 };
 
 function escapeRegExpChars(text: string) {
+  // eslint-disable-next-line
   return text.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
 }
 
@@ -109,7 +110,6 @@ export function maybeDeleteCreatedFilmFromArrays(
 ): { createdItems: IUserScript[]; items: IUserScript[] } {
   const wasItemCreatedByUser = arrayContainsScript(createdItems, script);
 
-  // Delete the item if the user manually created it.
   return {
     createdItems: wasItemCreatedByUser ? deleteScriptFromArray(createdItems, script) : createdItems,
     items: wasItemCreatedByUser ? deleteScriptFromArray(items, script) : items,
@@ -130,13 +130,6 @@ export function maybeAddCreatedScriptToArrays(
     createdItems: isNewlyCreatedItem ? addScriptToArray(createdItems, script) : createdItems,
     items: isNewlyCreatedItem ? addScriptToArray(items, script) : items,
   };
-}
-
-
-const AppSelectScriptProps = {
-  itemPredicate: filterScripts,
-  itemRenderer: renderScripts,
-  items: USER_SCRIPTS,
 }
 
 interface IAppSelectScriptProps {
