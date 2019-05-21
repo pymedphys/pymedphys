@@ -58,15 +58,22 @@ def test_round_trip_dd2dcm2dd():
         np.around(original.monitor_units, 2) ==
         np.around(processed.monitor_units, 2))
 
-    assert np.allclose(
-        np.array(original.gantry), np.array(processed.gantry),
-        atol=0.01)
+    assert np.all(
+        np.around(original.gantry, 2) ==
+        np.around(processed.gantry, 2))
+
+    assert np.all(
+        np.around(original.mlc, 2) ==
+        np.around(processed.mlc, 2))
+
+    assert np.all(
+        np.around(original.jaw, 2) ==
+        np.around(processed.jaw, 2))
 
     # Collimator not currently handled appropriately
-    assert np.allclose(original.collimator, processed.collimator, atol=0.01)
-
-    assert np.allclose(original.mlc, processed.mlc, atol=0.01)
-    assert np.allclose(original.jaw, processed.jaw, atol=0.01)
+    assert np.all(
+        np.around(original.collimator, 2) ==
+        np.around(processed.collimator, 2))
 
 
 def test_round_trip_dcm2dd2dcm():
