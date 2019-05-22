@@ -34,7 +34,7 @@ services:
     volumes:
       - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
       - ./orthanc/scripts:/etc/share/orthanc/scripts:ro
-      - ../../../.:/usr/src/pymedphys:ro
+      - ../../../../../.:/usr/src/pymedphys:ro
       - pypi-cache:/root/.cache/pip:rw
 
     entrypoint: /bin/bash -c
