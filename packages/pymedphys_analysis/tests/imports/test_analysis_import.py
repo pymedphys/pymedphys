@@ -1,5 +1,4 @@
 # Copyright (C) 2019 Simon Biggs
-
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -24,39 +23,5 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
-import shutil
-from glob import glob
-import subprocess
-import json
-
-
-WHITELIST = (
-    'pymedphys_coordsandscales', 'pymedphys_dicom', 'pymedphys_fileformats',
-    'pymedphys_utilities', 'pymedphys_core', 'pymedphys_gamma', 'pymedphys')
-
-
-def build_wheels_with_yarn():
-    yarn = shutil.which("yarn")
-    subprocess.call([yarn, "pypi:clean"])
-    for package in WHITELIST:
-        subprocess.call(
-            [yarn, "lerna", "run", "pypi:build", "--scope={}".format(package)])
-
-
-def copy_wheels(packages_dir, new_dir):
-    wheel_filepaths = glob(os.path.join(packages_dir, '*', 'dist', '*.whl'))
-
-    filenames = []
-    for filepath in wheel_filepaths:
-        filename = os.path.basename(filepath)
-        if not filename.split('-')[0] in WHITELIST:
-            continue
-
-        filenames.append(filename)
-        new_filepath = os.path.join(new_dir, filename)
-        shutil.copy(filepath, new_filepath)
-
-    filenames_filepath = os.path.join(new_dir, 'filenames.json')
-    with open(filenames_filepath, 'w') as filenames_file:
-        json.dump(filenames, filenames_file)
+def test_import():
+    import pymedphys_analysis.geometry
