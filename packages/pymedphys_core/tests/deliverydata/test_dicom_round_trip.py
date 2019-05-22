@@ -31,8 +31,12 @@ import matplotlib.pyplot as plt
 
 import pydicom
 
+from pymedphys.deliverydata import (
+    # Import using the same API as the webapp
+    dicom_to_delivery_data, delivery_data_to_dicom
+)
+
 from pymedphys_core.deliverydata.dicom import (
-    dicom_to_delivery_data, delivery_data_to_dicom,
     get_gantry_angles_from_dicom, maintain_order_unique,
     filter_out_irrelevant_control_points)
 
