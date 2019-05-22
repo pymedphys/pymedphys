@@ -28,7 +28,7 @@
 
 from pymedphys_dicom.dicom import axes_and_dose_from_dicom
 
-from ..implementations import gamma_shell, gamma_filter_numpy
+from ..implementation import gamma_shell, gamma_filter_numpy
 from ..utilities import calculate_pass_rate
 
 
