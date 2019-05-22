@@ -33,55 +33,31 @@ from .core import (
     DeliveryData, find_relevant_control_points)
 
 
-def convert_angle_to_bipolar(angle):
-    angle = np.copy(angle)
-    if np.all(angle == 180):
-        return angle
+def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
+    delivery_data = filter_out_irrelevant_control_points(delivery_data)
+    template_gantry_angles = get_gantry_angles_from_dicom(dicom_template)
 
-    angle[angle > 180] = angle[angle > 180] - 360
+    min_diff = np.min(np.diff(sorted(template_gantry_angles)))
+    gantry_tol = np.min([min_diff / 2 - 0.1, 3])
 
-    is_180 = np.where(angle == 180)[0]
-    not_180 = np.where(np.invert(angle == 180))[0]
-
-    where_closest_left_leaning = np.argmin(
-        np.abs(is_180[:, None] - not_180[None, :]), axis=1)
-    where_closest_right_leaning = len(not_180) - 1 - np.argmin(np.abs(
-        is_180[::-1, None] -
-        not_180[None, ::-1]), axis=1)[::-1]
-
-    closest_left_leaning = not_180[where_closest_left_leaning]
-    closest_right_leaning = not_180[where_closest_right_leaning]
-
-    assert np.all(
-        np.sign(angle[closest_left_leaning]) ==
-        np.sign(angle[closest_right_leaning])
-    ), "Unable to automatically determine whether angle is 180 or -180"
-
-    angle[is_180] = np.sign(angle[closest_left_leaning]) * angle[is_180]
-
-    return angle
-
-
-def get_gantry_angles_from_dicom(dicom_dataset):
-    gantry_angles = [
-        set(convert_angle_to_bipolar([
-            control_point.GantryAngle
-            for control_point in beam_sequence.ControlPointSequence
-        ]))
-        for beam_sequence in dicom_dataset.BeamSequence
+    masks = [
+        gantry_angle_mask(delivery_data, gantry_angle, gantry_tol)
+        for gantry_angle in template_gantry_angles
     ]
 
-    for gantry_angle_set in gantry_angles:
-        if len(gantry_angle_set) != 1:
-            raise ValueError(
-                "Only a single gantry angle per beam is currently supported")
+    assert np.all(np.sum(masks, axis=0) == np.ones_like(delivery_data.gantry))
 
-    gantry_angle_list = [
-        list(item)[0]
-        for item in gantry_angles
-    ]
+    single_beam_dicoms = []
+    for beam_index, mask in enumerate(masks):
+        masked_delivery_data = apply_mask_to_delivery_data(delivery_data, mask)
+        single_beam_dicoms.append(delivery_data_to_dicom_single_beam(
+            masked_delivery_data, dicom_template, beam_index))
 
-    return gantry_angle_list
+    return merge_beam_sequences(single_beam_dicoms)
+
+
+def get_metersets_from_delivery_data(delivery_data: DeliveryData):
+    pass
 
 
 def dicom_to_delivery_data(dicom_dataset) -> DeliveryData:
@@ -186,6 +162,57 @@ def dicom_to_delivery_data_single_beam(dicom_dataset, beam_sequence_index):
     return DeliveryData(mu, gantry_angles, collimator_angles, mlcs, jaw)
 
 
+def convert_angle_to_bipolar(angle):
+    angle = np.copy(angle)
+    if np.all(angle == 180):
+        return angle
+
+    angle[angle > 180] = angle[angle > 180] - 360
+
+    is_180 = np.where(angle == 180)[0]
+    not_180 = np.where(np.invert(angle == 180))[0]
+
+    where_closest_left_leaning = np.argmin(
+        np.abs(is_180[:, None] - not_180[None, :]), axis=1)
+    where_closest_right_leaning = len(not_180) - 1 - np.argmin(np.abs(
+        is_180[::-1, None] -
+        not_180[None, ::-1]), axis=1)[::-1]
+
+    closest_left_leaning = not_180[where_closest_left_leaning]
+    closest_right_leaning = not_180[where_closest_right_leaning]
+
+    assert np.all(
+        np.sign(angle[closest_left_leaning]) ==
+        np.sign(angle[closest_right_leaning])
+    ), "Unable to automatically determine whether angle is 180 or -180"
+
+    angle[is_180] = np.sign(angle[closest_left_leaning]) * angle[is_180]
+
+    return angle
+
+
+def get_gantry_angles_from_dicom(dicom_dataset):
+    gantry_angles = [
+        set(convert_angle_to_bipolar([
+            control_point.GantryAngle
+            for control_point in beam_sequence.ControlPointSequence
+        ]))
+        for beam_sequence in dicom_dataset.BeamSequence
+    ]
+
+    for gantry_angle_set in gantry_angles:
+        if len(gantry_angle_set) != 1:
+            raise ValueError(
+                "Only a single gantry angle per beam is currently supported")
+
+    gantry_angle_list = [
+        list(item)[0]
+        for item in gantry_angles
+    ]
+
+    return gantry_angle_list
+
+
 def maintain_order_unique(items):
     result = []
     for item in items:
@@ -193,29 +220,6 @@ def maintain_order_unique(items):
             result.append(item)
 
     return result
-
-
-def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
-    delivery_data = filter_out_irrelevant_control_points(delivery_data)
-    template_gantry_angles = get_gantry_angles_from_dicom(dicom_template)
-
-    min_diff = np.min(np.diff(sorted(template_gantry_angles)))
-    gantry_tol = np.min([min_diff / 2 - 0.1, 3])
-
-    masks = [
-        gantry_angle_mask(delivery_data, gantry_angle, gantry_tol)
-        for gantry_angle in template_gantry_angles
-    ]
-
-    assert np.all(np.sum(masks, axis=0) == np.ones_like(delivery_data.gantry))
-
-    single_beam_dicoms = []
-    for beam_index, mask in enumerate(masks):
-        masked_delivery_data = apply_mask_to_delivery_data(delivery_data, mask)
-        single_beam_dicoms.append(delivery_data_to_dicom_single_beam(
-            masked_delivery_data, dicom_template, beam_index))
-
-    return merge_beam_sequences(single_beam_dicoms)
 
 
 def merge_beam_sequences(dicoms_by_gantry_angle):
