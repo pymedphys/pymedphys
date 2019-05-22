@@ -8,14 +8,9 @@ import { runPyodide } from './web-workers/init';
 import App from './root';
 import './index.scss';
 
-
-
-
 ReactDOM.render(<App />, document.getElementById('root'));
 
 runPyodide()
-
-
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.

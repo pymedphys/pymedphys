@@ -5,30 +5,26 @@ import loadWheels from '../python/load-wheels.py';
 import setupDirectories from '../python/setup-directories.py';
 
 
-
-languagePluginLoader.then(() => {
+let pythonInitialise = languagePluginLoader.then(() => {
   return Promise.all([
     pyodide.runPython(setupDirectories),
     pyodide.runPython(loadWheels),
     pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
   ])
-}).then(() => {
-  console.log("Loaded all the things")
 })
 
-
-// initPython()
-
+pythonInitialise.then(() => {
+  console.log('Loaded all the things')
+  self.postMessage(['Python Ready'])
+})
 
 var onmessage = function (e) { // eslint-disable-line no-unused-vars
-  languagePluginLoader.then(() => {
+  pythonInitialise.then(() => {
     initPython()
     const data = e.data;
     const keys = Object.keys(data);
     for (let key of keys) {
       if (key !== 'python') {
-        // Keys other than python must be arguments for the python script.
-        // Set them on self, so that `from js import key` works.
         self[key] = data[key];
       }
     }
