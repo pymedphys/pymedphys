@@ -1,10 +1,20 @@
-from pymedphys_dicom.dicom import DicomBase
+from os.path import basename, join as pjoin
+from glob import glob
 
-dicom = DicomBase.from_dict({
-    'Manufacturer': 'PyMedPhys',
-    'PatientName': 'Python^Monte'
-})
+from pymedphys.dicom import DicomBase
 
-dicom.anonymise(inplace=True)
+INPUT_DIR = 'input'
+OUTPUT_DIR = 'output'
 
-print(dicom.dataset)
+filepaths = glob(pjoin(INPUT_DIR, "*.dcm"))
+
+for filepath in filepaths:
+    filename = basename(filepath)
+    print("Anonymising {}".format(filename))
+
+    output_filepath = pjoin(OUTPUT_DIR, filename)
+    dcm = DicomBase.from_file(filepath)
+    dcm.anonymise()
+    dcm.to_file(output_filepath)
+
+print("Anonymised {} log file(s)".format(len(filepaths)))
