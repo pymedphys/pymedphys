@@ -39,9 +39,10 @@ from pymedphys.deliverydata import (
 )
 
 from pymedphys_core.deliverydata.dicom import (
-    get_gantry_angles_from_dicom, maintain_order_unique,
+    get_gantry_angles_from_dicom, get_all_masked_delivery_data,
+    maintain_order_unique,
     filter_out_irrelevant_control_points,
-    get_metersets_from_delivery_data)
+    get_metersets_from_delivery_data, get_gantry_angle_masks)
 
 from pymedphys_fileformats.trf import delivery_data_from_logfile
 
@@ -67,8 +68,26 @@ def logfile_delivery_data():
     return delivery_data_from_logfile(LOGFILE_FILEPATH)
 
 
-def test_get_metersets_from_delivery_data():
-    pass
+@pytest.fixture
+def loaded_dicom_gantry_angles(loaded_dicom_dataset):
+    return get_gantry_angles_from_dicom(loaded_dicom_dataset)
+
+
+@pytest.fixture
+def filtered_logfile_delivery_data(logfile_delivery_data):
+    return filter_out_irrelevant_control_points(logfile_delivery_data)
+
+
+def test_get_metersets_from_delivery_data(filtered_logfile_delivery_data,
+                                          loaded_dicom_gantry_angles):
+    expected = [189.5728, 57.0711, 190.006]
+    gantry_tol = 3
+    all_masked_delivery_data = get_all_masked_delivery_data(
+        filtered_logfile_delivery_data, loaded_dicom_gantry_angles, gantry_tol)
+
+    metersets = get_metersets_from_delivery_data(all_masked_delivery_data)
+
+    assert expected == metersets
 
 
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
@@ -108,8 +127,9 @@ def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
         raise
 
 
-def test_round_trip_dd2dcm2dd(loaded_dicom_dataset, logfile_delivery_data):
-    original = filter_out_irrelevant_control_points(logfile_delivery_data)
+def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
+                              filtered_logfile_delivery_data):
+    original = filtered_logfile_delivery_data
     template = loaded_dicom_dataset
 
     dicom = delivery_data_to_dicom(original, template)
@@ -137,8 +157,10 @@ def test_round_trip_dd2dcm2dd(loaded_dicom_dataset, logfile_delivery_data):
         np.around(processed.collimator, 2))
 
 
-def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset):
+def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
+                               loaded_dicom_gantry_angles):
     original = loaded_dicom_dataset
+    original_gantry_angles = loaded_dicom_gantry_angles
 
     delivery_data = dicom_to_delivery_data(original)
     processed = delivery_data_to_dicom(
@@ -147,8 +169,6 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset):
     assert (
         num_of_control_points(original) == num_of_control_points(processed)
     )
-
-    original_gantry_angles = get_gantry_angles_from_dicom(original)
 
     assert (
         maintain_order_unique(delivery_data.gantry) == original_gantry_angles)
