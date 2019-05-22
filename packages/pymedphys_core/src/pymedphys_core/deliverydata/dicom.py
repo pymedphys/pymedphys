@@ -75,6 +75,9 @@ def get_gantry_angle_masks(delivery_data: DeliveryData, gantry_angles,
         if np.all(mask == 0):
             continue
 
+        # TODO: Apply mask by more than just gantry angle to appropriately
+        # extract beam index even when multiple beams have the same gantry
+        # angle
         assert np.sum(np.abs(np.diff(np.concatenate([
             [0], mask, [0]])))) == 2, "Duplicate gantry angles not yet supported"
 
@@ -96,10 +99,32 @@ def get_gantry_angle_masks(delivery_data: DeliveryData, gantry_angles,
     return masks
 
 
+def get_metersets_from_dicom(dicom_dataset, fraction_group):
+    fraction_group_sequence = dicom_dataset.FractionGroupSequence
+
+    fraction_group_numbers = [
+        fraction_group.FractionGroupNumber
+        for fraction_group in fraction_group_sequence
+    ]
+
+    fraction_group_index = fraction_group_numbers.index(fraction_group)
+    fraction_group = fraction_group_sequence[fraction_group_index]
+
+    beam_metersets = [
+        float(referenced_beam.BeamMeterset)
+        for referenced_beam in fraction_group.ReferencedBeamSequence
+    ]
+
+    return beam_metersets
+
+
 def get_metersets_from_delivery_data(all_masked_delivery_data):
     metersets = []
     for delivery_data in all_masked_delivery_data:
-        metersets.append(delivery_data.monitor_units[-1])
+        try:
+            metersets.append(delivery_data.monitor_units[-1])
+        except IndexError:
+            continue
 
     return metersets
 
@@ -458,9 +483,15 @@ def apply_mask_to_delivery_data(delivery_data, mask):
     for item in delivery_data:
         new_delivery_data.append(np.array(item)[mask].tolist())
 
+    new_monitor_units = new_delivery_data[0]
+    try:
+        first_monitor_unit_item = new_monitor_units[0]
+    except IndexError:
+        return DeliveryData(*new_delivery_data)
+
     new_delivery_data[0] = np.round(
         np.array(new_delivery_data[0], copy=False)
-        - new_delivery_data[0][0], decimals=7
+        - first_monitor_unit_item, decimals=7
     ).tolist()
 
     return DeliveryData(*new_delivery_data)
