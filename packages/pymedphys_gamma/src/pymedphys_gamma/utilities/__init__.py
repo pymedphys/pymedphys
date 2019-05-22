@@ -23,20 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""A range of functions for calculating the gamma index. Available
-functions include:
-
->>> from pymedphys.gamma import (
-...     gamma_shell,
-...     gamma_filter_numpy,
-...     gamma_filter_brute_force)
-
-Note that all of these functions are still in the process of
-verification and refinement. The gamma shell function is the most
-mature.
-"""
-
-from .filter import (
-    gamma_filter_brute_force, gamma_filter_numpy, calculate_pass_rate)
-from .shell import gamma_shell, calculate_coordinates_shell
-from .api import gamma_dicom
+from .core import (
+    create_point_combination, convert_to_ravel_index,
+    calculate_pass_rate, run_input_checks)

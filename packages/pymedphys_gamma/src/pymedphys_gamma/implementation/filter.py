@@ -34,84 +34,9 @@ import sys
 
 import numpy as np
 
-from pymedphys_dicom.dicom import coords_from_xyz_axes
-
-
-def calculate_pass_rate(gamma_array):
-    valid_gamma = gamma_array[np.invert(np.isnan(gamma_array))]
-    percent_pass = 100 * np.sum(valid_gamma < 1) / len(valid_gamma)
-
-    return percent_pass
-
-
-def gamma_filter_brute_force(axes_reference, dose_reference,
-                             axes_evaluation, dose_evaluation,
-                             distance_mm_threshold, dose_threshold,
-                             lower_dose_cutoff=0, **kwargs):
-
-    xx_ref, yy_ref, zz_ref = np.meshgrid(*axes_reference, indexing='ij')
-    gamma_array = np.ones_like(dose_evaluation).astype(np.float) * np.nan
-
-    mesh_index = np.meshgrid(*[
-        np.arange(len(coord_eval))
-        for coord_eval in axes_evaluation
-    ])
-
-    eval_index = np.reshape(np.array(mesh_index), (3, -1))
-    run_index = np.arange(np.shape(eval_index)[1])
-    np.random.shuffle(run_index)
-
-    sys.stdout.write('    ')
-
-    for counter, point_index in enumerate(run_index):
-        i, j, k = eval_index[:, point_index]
-        eval_x = axes_evaluation[0][i]
-        eval_y = axes_evaluation[1][j]
-        eval_z = axes_evaluation[2][k]
-
-        if dose_evaluation[i, j, k] < lower_dose_cutoff:
-            continue
-
-        distance = np.sqrt(
-            (xx_ref - eval_x)**2 +
-            (yy_ref - eval_y)**2 +
-            (zz_ref - eval_z)**2
-        )
-
-        dose_diff = dose_evaluation[i, j, k] - dose_reference
-
-        gamma = np.min(
-            np.sqrt((dose_diff / dose_threshold)**2 +
-                    (distance / distance_mm_threshold)**2))
-
-        gamma_array[i, j, k] = gamma
-
-        if counter // 30 == counter / 30:
-            percent_pass = str(
-                np.round(calculate_pass_rate(gamma_array), decimals=1))
-            sys.stdout.write(
-                '\rPercent Pass: {0}% | Percent Complete: {1:.2f}%'.format(
-                    percent_pass,
-                    counter / np.shape(eval_index)[1] * 100))
-            sys.stdout.flush()
-
-    return calculate_pass_rate(gamma_array)
-
-
-def create_point_combination(coords):
-    mesh_index = np.meshgrid(*coords)
-    point_combination = np.reshape(np.array(mesh_index), (3, -1))
-
-    return point_combination
-
-
-def convert_to_ravel_index(points):
-    ravel_index = (
-        points[2, :] +
-        (points[2, -1] + 1) * points[1, :] +
-        (points[2, -1] + 1) * (points[1, -1] + 1) * points[0, :])
-
-    return ravel_index
+from ..utilities import (
+    create_point_combination, convert_to_ravel_index,
+    calculate_pass_rate, run_input_checks)
 
 
 def gamma_filter_numpy(axes_reference, dose_reference,
@@ -177,3 +102,57 @@ def gamma_filter_numpy(axes_reference, dose_reference,
     gamma_pass_percentage = np.mean(gamma_pass_array[dose_above_cut_off]) * 100
 
     return gamma_pass_percentage
+
+
+def gamma_filter_brute_force(axes_reference, dose_reference,
+                             axes_evaluation, dose_evaluation,
+                             distance_mm_threshold, dose_threshold,
+                             lower_dose_cutoff=0, **kwargs):
+
+    xx_ref, yy_ref, zz_ref = np.meshgrid(*axes_reference, indexing='ij')
+    gamma_array = np.ones_like(dose_evaluation).astype(np.float) * np.nan
+
+    mesh_index = np.meshgrid(*[
+        np.arange(len(coord_eval))
+        for coord_eval in axes_evaluation
+    ])
+
+    eval_index = np.reshape(np.array(mesh_index), (3, -1))
+    run_index = np.arange(np.shape(eval_index)[1])
+    np.random.shuffle(run_index)
+
+    sys.stdout.write('    ')
+
+    for counter, point_index in enumerate(run_index):
+        i, j, k = eval_index[:, point_index]
+        eval_x = axes_evaluation[0][i]
+        eval_y = axes_evaluation[1][j]
+        eval_z = axes_evaluation[2][k]
+
+        if dose_evaluation[i, j, k] < lower_dose_cutoff:
+            continue
+
+        distance = np.sqrt(
+            (xx_ref - eval_x)**2 +
+            (yy_ref - eval_y)**2 +
+            (zz_ref - eval_z)**2
+        )
+
+        dose_diff = dose_evaluation[i, j, k] - dose_reference
+
+        gamma = np.min(
+            np.sqrt((dose_diff / dose_threshold)**2 +
+                    (distance / distance_mm_threshold)**2))
+
+        gamma_array[i, j, k] = gamma
+
+        if counter // 30 == counter / 30:
+            percent_pass = str(
+                np.round(calculate_pass_rate(gamma_array), decimals=1))
+            sys.stdout.write(
+                '\rPercent Pass: {0}% | Percent Complete: {1:.2f}%'.format(
+                    percent_pass,
+                    counter / np.shape(eval_index)[1] * 100))
+            sys.stdout.flush()
+
+    return calculate_pass_rate(gamma_array)
