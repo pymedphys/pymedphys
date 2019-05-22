@@ -42,7 +42,8 @@ from pymedphys_core.deliverydata.dicom import (
     get_gantry_angles_from_dicom, get_all_masked_delivery_data,
     maintain_order_unique,
     filter_out_irrelevant_control_points,
-    get_metersets_from_delivery_data, get_gantry_angle_masks)
+    get_metersets_from_delivery_data, get_gantry_angle_masks,
+    get_metersets_from_dicom)
 
 from pymedphys_fileformats.trf import delivery_data_from_logfile
 
@@ -79,15 +80,17 @@ def filtered_logfile_delivery_data(logfile_delivery_data):
 
 
 def test_get_metersets_from_delivery_data(filtered_logfile_delivery_data,
+                                          loaded_dicom_dataset,
                                           loaded_dicom_gantry_angles):
-    expected = [189.5728, 57.0711, 190.006]
     gantry_tol = 3
+
+    expected = get_metersets_from_dicom(loaded_dicom_dataset, 2)
     all_masked_delivery_data = get_all_masked_delivery_data(
         filtered_logfile_delivery_data, loaded_dicom_gantry_angles, gantry_tol)
 
     metersets = get_metersets_from_delivery_data(all_masked_delivery_data)
 
-    assert expected == metersets
+    assert np.all(np.abs(np.array(expected) - np.array(metersets)) <= 0.1)
 
 
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
