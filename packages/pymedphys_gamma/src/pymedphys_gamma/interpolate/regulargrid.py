@@ -45,43 +45,55 @@ from .interpnd import _ndim_coords_from_arrays
 class RegularGridInterpolator(object):
     """
     Interpolation on a regular grid in arbitrary dimensions
+
     The data must be defined on a regular grid; the grid spacing however may be
     uneven.  Linear and nearest-neighbour interpolation are supported. After
     setting up the interpolator object, the interpolation method (*linear* or
     *nearest*) may be chosen at each evaluation.
+
     Parameters
     ----------
     points : tuple of ndarray of float, with shapes (m1, ), ..., (mn, )
         The points defining the regular grid in n dimensions.
+
     values : array_like, shape (m1, ..., mn, ...)
         The data on the regular grid in n dimensions.
+
     method : str, optional
         The method of interpolation to perform. Supported are "linear" and
         "nearest". This parameter will become the default for the object's
         ``__call__`` method. Default is "linear".
+
     bounds_error : bool, optional
         If True, when interpolated values are requested outside of the
         domain of the input data, a ValueError is raised.
         If False, then `fill_value` is used.
+
     fill_value : number, optional
         If provided, the value to use for points outside of the
         interpolation domain. If None, values outside
         the domain are extrapolated.
+
     Methods
     -------
     __call__
+
     Notes
     -----
     Contrary to LinearNDInterpolator and NearestNDInterpolator, this class
     avoids expensive triangulation of the input data by taking advantage of the
     regular grid structure.
+
     If any of `points` have a dimension of size 1, linear interpolation will
     return an array of `nan` values. Nearest-neighbor interpolation will work
     as usual in this case.
+
     .. versionadded:: 0.14
+
     Examples
     --------
     Evaluate a simple example function on the points of a 3D grid:
+
     >>> from scipy.interpolate import RegularGridInterpolator
     >>> def f(x, y, z):
     ...     return 2 * x**3 + 3 * y**2 - z
@@ -89,22 +101,30 @@ class RegularGridInterpolator(object):
     >>> y = np.linspace(4, 7, 22)
     >>> z = np.linspace(7, 9, 33)
     >>> data = f(*np.meshgrid(x, y, z, indexing='ij', sparse=True))
+
     ``data`` is now a 3D array with ``data[i,j,k] = f(x[i], y[j], z[k])``.
     Next, define an interpolating function from this data:
+
     >>> my_interpolating_function = RegularGridInterpolator((x, y, z), data)
+
     Evaluate the interpolating function at the two points
     ``(x,y,z) = (2.1, 6.2, 8.3)`` and ``(3.3, 5.2, 7.1)``:
+
     >>> pts = np.array([[2.1, 6.2, 8.3], [3.3, 5.2, 7.1]])
     >>> my_interpolating_function(pts)
     array([ 125.80469388,  146.30069388])
+
     which is indeed a close approximation to
     ``[f(2.1, 6.2, 8.3), f(3.3, 5.2, 7.1)]``.
+
     See also
     --------
     NearestNDInterpolator : Nearest neighbour interpolation on unstructured
                             data in N dimensions
+
     LinearNDInterpolator : Piecewise linear interpolant on unstructured data
                            in N dimensions
+
     References
     ----------
     .. [1] Python package *regulargrid* by Johannes Buchner, see
@@ -115,6 +135,7 @@ class RegularGridInterpolator(object):
            and multilinear table interpolation in many dimensions." MATH.
            COMPUT. 50.181 (1988): 189-196.
            https://www.ams.org/journals/mcom/1988-50-181/S0025-5718-1988-0917826-0/S0025-5718-1988-0917826-0.pdf
+
     """
     # this class is based on code originally programmed by Johannes Buchner,
     # see https://github.com/JohannesBuchner/regulargrid
@@ -163,13 +184,16 @@ class RegularGridInterpolator(object):
     def __call__(self, xi, method=None):
         """
         Interpolation at coordinates
+
         Parameters
         ----------
         xi : ndarray of shape (..., ndim)
             The coordinates to sample the gridded data at
+
         method : str
             The method of interpolation to perform. Supported are "linear" and
             "nearest".
+
         """
         method = self.method if method is None else method
         if method not in ["linear", "nearest"]:
