@@ -2,7 +2,7 @@
   "dependencies": {
     "pymedphys_dicom": "~0.8.0-dev.17"
   },
-  "name": "pymedphys_analysis",
+  "name": "pymedphys_gamma",
   "private": true,
   "scripts": {
     "pip:install:dev": "pip install -e .",
