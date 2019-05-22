@@ -26,6 +26,29 @@
 import numpy as np
 
 
+def create_point_combination(coords):
+    mesh_index = np.meshgrid(*coords)
+    point_combination = np.reshape(np.array(mesh_index), (3, -1))
+
+    return point_combination
+
+
+def convert_to_ravel_index(points):
+    ravel_index = (
+        points[2, :] +
+        (points[2, -1] + 1) * points[1, :] +
+        (points[2, -1] + 1) * (points[1, -1] + 1) * points[0, :])
+
+    return ravel_index
+
+
+def calculate_pass_rate(gamma_array):
+    valid_gamma = gamma_array[np.invert(np.isnan(gamma_array))]
+    percent_pass = 100 * np.sum(valid_gamma < 1) / len(valid_gamma)
+
+    return percent_pass
+
+
 def run_input_checks(
         axes_reference, dose_reference,
         axes_evaluation, dose_evaluation):
