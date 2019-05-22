@@ -14,7 +14,7 @@ for filepath in filepaths:
 
     output_filepath = pjoin(OUTPUT_DIR, filename)
     dcm = DicomBase.from_file(filepath)
-    dcm.anonymise()
+    dcm.anonymise(inplace=True)
     dcm.to_file(output_filepath)
 
-print("Anonymised {} log file(s)".format(len(filepaths)))
+print("Anonymised {} DICOM file(s)".format(len(filepaths)))
