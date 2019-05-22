@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""The tests given here are replicated using pymedphys_analysis.gamma from the
+"""The tests given here are replicated using pymedphys_gamma from the
 method given within the following paper:
 
 > C. Agnew, C. McGarry, A tool to include gamma analysis software into a
@@ -32,12 +32,15 @@ method given within the following paper:
 http://dx.doi.org/10.1016/j.radonc.2015.11.034
 """
 
-
-from pymedphys_analysis.gamma import gamma_shell, calculate_pass_rate
-import pydicom
-import numpy as np
 import os
+
 import pytest
+
+import numpy as np
+
+import pydicom
+
+from pymedphys.gamma import gamma_shell, calculate_pass_rate
 
 
 # pylint: disable=C0103,C1801

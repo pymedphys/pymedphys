@@ -1,3 +1,4 @@
+
 # Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
@@ -23,40 +24,14 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+"""A range of functions for calculating the gamma index. Available
+functions include:
 
-import os
-import shutil
-from glob import glob
-import subprocess
-import json
+>>> from pymedphys.gamma import (
+...     gamma_shell,
+...     gamma_filter_numpy)
 
-
-WHITELIST = (
-    'pymedphys_coordsandscales', 'pymedphys_dicom', 'pymedphys_fileformats',
-    'pymedphys_utilities', 'pymedphys_core', 'pymedphys_gamma', 'pymedphys')
-
-
-def build_wheels_with_yarn():
-    yarn = shutil.which("yarn")
-    subprocess.call([yarn, "pypi:clean"])
-    for package in WHITELIST:
-        subprocess.call(
-            [yarn, "lerna", "run", "pypi:build", "--scope={}".format(package)])
-
-
-def copy_wheels(packages_dir, new_dir):
-    wheel_filepaths = glob(os.path.join(packages_dir, '*', 'dist', '*.whl'))
-
-    filenames = []
-    for filepath in wheel_filepaths:
-        filename = os.path.basename(filepath)
-        if not filename.split('-')[0] in WHITELIST:
-            continue
-
-        filenames.append(filename)
-        new_filepath = os.path.join(new_dir, filename)
-        shutil.copy(filepath, new_filepath)
-
-    filenames_filepath = os.path.join(new_dir, 'filenames.json')
-    with open(filenames_filepath, 'w') as filenames_file:
-        json.dump(filenames, filenames_file)
+Note that all of these functions are still in the process of
+verification and refinement. The gamma shell function is the most
+mature.
+"""
