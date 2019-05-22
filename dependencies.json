@@ -178,8 +178,7 @@
     },
     "pymedphys_gamma": {
       "external": [
-        "numpy",
-        "scipy"
+        "numpy"
       ],
       "internal": [
         "pymedphys_dicom"
