@@ -28,8 +28,8 @@
 
 from pymedphys_dicom.dicom import axes_and_dose_from_dicom
 
-from .shell import gamma_shell
-from .filter import gamma_filter_numpy, calculate_pass_rate
+from ..implementations import gamma_shell, gamma_filter_numpy
+from ..utilities import calculate_pass_rate
 
 
 def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
@@ -48,80 +48,6 @@ def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
         **kwargs)
 
     return gamma
-
-
-# def gamma_with_reports(dcm_ref_filepath, dcm_eval_filepath,
-#                        dose_percent_threshold, distance_mm_threshold,
-#                        **kwargs):
-#     """Prototype reporting of gamma. Needs to be reworked before merge.
-#     """
-#     axes_reference, dose_reference = axes_and_dose_from_dicom(
-#         dcm_ref_filepath)
-#     axes_evaluation, dose_evaluation = axes_and_dose_from_dicom(
-#         dcm_eval_filepath)
-
-#     gamma = gamma_shell(
-#         axes_reference, dose_reference,
-#         axes_evaluation, dose_evaluation,
-#         dose_percent_threshold, distance_mm_threshold,
-#         **kwargs)
-
-#     valid_gamma = gamma[~np.isnan(gamma)]
-#     valid_gamma[valid_gamma > 2] = 2
-
-#     plt.hist(valid_gamma, 30)
-#     plt.xlim([0, 2])
-
-#     plt.show()
-
-#     print(np.sum(valid_gamma <= 1) / len(valid_gamma))
-
-#     x_reference, y_reference, z_reference = axes_reference
-#     x_evaluation, y_evaluation, z_evaluation = axes_evaluation
-
-#     relevant_slice = (
-#         np.max(dose_evaluation, axis=(0, 1)) > 0)  # TODO fix hacky prototyping
-#     slice_start = np.max([
-#         np.where(relevant_slice)[0][0],
-#         0])
-#     slice_end = np.min([
-#         np.where(relevant_slice)[0][-1],
-#         len(z_evaluation)])
-
-#     max_ref_dose = np.max(dose_reference)
-
-#     cut_off_gamma = gamma.copy()
-#     greater_than_2_ref = (cut_off_gamma > 2) & ~np.isnan(cut_off_gamma)
-#     cut_off_gamma[greater_than_2_ref] = 2
-
-#     for z_i in z_evaluation[slice_start:slice_end:5]:
-#         i = np.where(z_i == z_evaluation)[0][0]
-#         j = np.where(z_i == z_reference)[0][0]
-#         print("======================================================================")
-#         print("Slice = {0}".format(z_i))
-
-#         plt.contourf(
-#             x_evaluation, y_evaluation, dose_evaluation[:, :, j], 30,
-#             vmin=0, vmax=max_ref_dose, cmap=plt.get_cmap('viridis'))
-#         plt.title("Evaluation")
-#         plt.colorbar()
-#         plt.show()
-
-#         plt.contourf(
-#             x_reference, y_reference, dose_reference[:, :, j], 30,
-#             vmin=0, vmax=max_ref_dose, cmap=plt.get_cmap('viridis'))
-#         plt.title("Reference")
-#         plt.colorbar()
-#         plt.show()
-
-#         plt.contourf(
-#             x_evaluation, y_evaluation, cut_off_gamma[:, :, i], 30,
-#             vmin=0, vmax=2, cmap=plt.get_cmap('bwr'))
-#         plt.title("Gamma")
-#         plt.colorbar()
-#         plt.show()
-
-#         print("\n")
 
 
 def gamma_percent_pass(dcm_ref_filepath, dcm_eval_filepath,

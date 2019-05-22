@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "pymedphys_dicom": "~0.8.0-dev.17"
+  },
+  "name": "pymedphys_analysis",
+  "private": true,
+  "scripts": {
+    "pip:install:dev": "pip install -e .",
+    "pip:install:prod": "pip install .",
+    "pip:install:test": "pip install .[test]",
+    "postversion": "yarn propagate:version",
+    "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
+    "pypi:build": "python setup.py sdist bdist_wheel",
+    "pypi:clean": "python -m pymedphys_monomanage.clean.core",
+    "pypi:upload": "twine upload dist/*"
+  },
+  "version": "0.8.0-dev.17"
+}
