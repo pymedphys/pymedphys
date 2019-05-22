@@ -62,6 +62,7 @@
         "pymedphys_dicom",
         "pymedphys_electronfactors",
         "pymedphys_fileformats",
+        "pymedphys_gamma",
         "pymedphys_labs",
         "pymedphys_logfiles",
         "pymedphys_utilities",
