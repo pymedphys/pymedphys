@@ -112,7 +112,7 @@ class RegularGridInterpolator(object):
 
     >>> pts = np.array([[2.1, 6.2, 8.3], [3.3, 5.2, 7.1]])
     >>> my_interpolating_function(pts)
-    array([ 125.80469388,  146.30069388])
+    array([125.80469388, 146.30069388])
 
     which is indeed a close approximation to
     ``[f(2.1, 6.2, 8.3), f(3.3, 5.2, 7.1)]``.
