@@ -26,6 +26,8 @@
 
 import os
 
+import pytest
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -38,26 +40,39 @@ from pymedphys.deliverydata import (
 
 from pymedphys_core.deliverydata.dicom import (
     get_gantry_angles_from_dicom, maintain_order_unique,
-    filter_out_irrelevant_control_points)
+    filter_out_irrelevant_control_points,
+    get_metersets_from_delivery_data)
 
 from pymedphys_fileformats.trf import delivery_data_from_logfile
 
 from pymedphys_core.mudensity import mu_density_from_delivery_data
 
+# pylint: disable=redefined-outer-name
 
 DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "data")
+    os.path.dirname(__file__), "data", "multi_fraction_groups")
 DICOM_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, "RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm"))
+    DATA_DIRECTORY, "RP.2.16.840.1.114337.1.1.1558497888.0_Anonymised.dcm"))
 LOGFILE_FILEPATH = os.path.abspath(os.path.join(
     DATA_DIRECTORY, "imrt.trf"))
 
 
-def test_mudensity_agreement():
-    dicom = pydicom.dcmread(DICOM_FILEPATH, force=True)
-    dicom_delivery_data = dicom_to_delivery_data(dicom)
+@pytest.fixture
+def loaded_dicom_dataset():
+    return pydicom.dcmread(DICOM_FILEPATH, force=True)
 
-    logfile_delivery_data = delivery_data_from_logfile(LOGFILE_FILEPATH)
+
+@pytest.fixture
+def logfile_delivery_data():
+    return delivery_data_from_logfile(LOGFILE_FILEPATH)
+
+
+def test_get_metersets_from_delivery_data():
+    pass
+
+
+def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
+    dicom_delivery_data = dicom_to_delivery_data(loaded_dicom_dataset)
 
     dicom_mu_density = mu_density_from_delivery_data(
         dicom_delivery_data, grid_resolution=5)
@@ -93,10 +108,9 @@ def test_mudensity_agreement():
         raise
 
 
-def test_round_trip_dd2dcm2dd():
-    original = filter_out_irrelevant_control_points(
-        delivery_data_from_logfile(LOGFILE_FILEPATH))
-    template = pydicom.dcmread(DICOM_FILEPATH, force=True)
+def test_round_trip_dd2dcm2dd(loaded_dicom_dataset, logfile_delivery_data):
+    original = filter_out_irrelevant_control_points(logfile_delivery_data)
+    template = loaded_dicom_dataset
 
     dicom = delivery_data_to_dicom(original, template)
     processed = dicom_to_delivery_data(dicom)
@@ -123,8 +137,8 @@ def test_round_trip_dd2dcm2dd():
         np.around(processed.collimator, 2))
 
 
-def test_round_trip_dcm2dd2dcm():
-    original = pydicom.dcmread(DICOM_FILEPATH, force=True)
+def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset):
+    original = loaded_dicom_dataset
 
     delivery_data = dicom_to_delivery_data(original)
     processed = delivery_data_to_dicom(
