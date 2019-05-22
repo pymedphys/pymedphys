@@ -1,8 +1,28 @@
 self.languagePluginUrl = 'https://pyodide.pymedphys.com/'
 importScripts('https://pyodide.pymedphys.com/pyodide.js')
 
+import loadWheels from '../python/load-wheels.py';
+import setupDirectories from '../python/setup-directories.py';
+
+
+
+languagePluginLoader.then(() => {
+  return Promise.all([
+    pyodide.runPython(setupDirectories),
+    pyodide.runPython(loadWheels),
+    pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
+  ])
+}).then(() => {
+  console.log("Loaded all the things")
+})
+
+
+// initPython()
+
+
 var onmessage = function (e) { // eslint-disable-line no-unused-vars
   languagePluginLoader.then(() => {
+    initPython()
     const data = e.data;
     const keys = Object.keys(data);
     for (let key of keys) {

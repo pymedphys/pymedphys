@@ -8,9 +8,7 @@ import json
 from pathlib import Path
 import zipfile
 
-from distlib import markers, util, version
-
-from js import Promise, window, XMLHttpRequest, pyodide as js_pyodide
+from js import Promise, XMLHttpRequest, pyodide as js_pyodide
 import pyodide
 
 
@@ -140,6 +138,8 @@ pypi_data = {
     # )
 }
 
-get_packages(pypi_data).then(
-    lambda _: load_and_copy_wheels()
-)
+
+Promise.all([
+    get_packages(pypi_data),
+    load_and_copy_wheels()
+])

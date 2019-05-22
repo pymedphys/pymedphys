@@ -324,7 +324,7 @@ module.exports = function (webpackEnv) {
           // back to the "file" loader at the end of the loader list.
           oneOf: [
             {
-              test: /\.worker\.js$/,
+              test: /\.worker$/,
               use: { loader: 'worker-loader' }
             },
             // "url" loader works like "file" loader except that it embeds assets

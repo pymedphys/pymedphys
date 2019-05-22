@@ -1,13 +1,13 @@
-import PyodideWorker from './pyodide.worker.js';
+import PyodideWorker from './pyodide.worker';
 
 export function runPyodide() {
   const pyodideWorker = new PyodideWorker()
 
-  pyodideWorker.onerror = (e) => {
+  pyodideWorker.onerror = (e: any) => {
     console.log(`Error in pyodideWorker at ${e.filename}, Line: ${e.lineno}, ${e.message}`)
   }
 
-  pyodideWorker.onmessage = (e) => {
+  pyodideWorker.onmessage = (e: any) => {
     const { results, error } = e.data
     if (results) {
       console.log('pyodideWorker return results: ', results)
