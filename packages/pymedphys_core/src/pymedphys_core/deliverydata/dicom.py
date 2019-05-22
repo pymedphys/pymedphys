@@ -40,24 +40,68 @@ def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
     min_diff = np.min(np.diff(sorted(template_gantry_angles)))
     gantry_tol = np.min([min_diff / 2 - 0.1, 3])
 
-    masks = [
-        gantry_angle_mask(delivery_data, gantry_angle, gantry_tol)
-        for gantry_angle in template_gantry_angles
-    ]
-
-    assert np.all(np.sum(masks, axis=0) == np.ones_like(delivery_data.gantry))
+    all_masked_delivery_data = get_all_masked_delivery_data(
+        delivery_data, template_gantry_angles, gantry_tol)
 
     single_beam_dicoms = []
-    for beam_index, mask in enumerate(masks):
-        masked_delivery_data = apply_mask_to_delivery_data(delivery_data, mask)
+    for beam_index, masked_delivery_data in enumerate(all_masked_delivery_data):
         single_beam_dicoms.append(delivery_data_to_dicom_single_beam(
             masked_delivery_data, dicom_template, beam_index))
 
     return merge_beam_sequences(single_beam_dicoms)
 
 
-def get_metersets_from_delivery_data(delivery_data: DeliveryData):
-    pass
+def get_all_masked_delivery_data(delivery_data: DeliveryData,
+                                 template_gantry_angles, gantry_tol):
+    masks = get_gantry_angle_masks(
+        delivery_data, template_gantry_angles, gantry_tol)
+
+    all_masked_delivery_data = [
+        apply_mask_to_delivery_data(delivery_data, mask)
+        for mask in masks
+    ]
+
+    return all_masked_delivery_data
+
+
+def get_gantry_angle_masks(delivery_data: DeliveryData, gantry_angles,
+                           gantry_tol):
+    masks = [
+        gantry_angle_mask(delivery_data, gantry_angle, gantry_tol)
+        for gantry_angle in gantry_angles
+    ]
+
+    for mask in masks:
+        if np.all(mask == 0):
+            continue
+
+        assert np.sum(np.abs(np.diff(np.concatenate([
+            [0], mask, [0]])))) == 2, "Duplicate gantry angles not yet supported"
+
+    try:
+        assert np.all(np.sum(masks, axis=0) == 1), (
+            "Not all beams were captured by the gantry tolerance of "
+            " {}".format(gantry_tol)
+        )
+    except AssertionError:
+        print("Allowable gantry angles = {}".format(gantry_angles))
+        gantry = np.array(delivery_data.gantry, copy=False)
+        out_of_tolerance = np.unique(
+            gantry[np.sum(masks, axis=0) == 0]).tolist()
+        print("The gantry angles out of tolerance were {}".format(
+            out_of_tolerance))
+
+        raise
+
+    return masks
+
+
+def get_metersets_from_delivery_data(all_masked_delivery_data):
+    metersets = []
+    for delivery_data in all_masked_delivery_data:
+        metersets.append(delivery_data.monitor_units[-1])
+
+    return metersets
 
 
 def dicom_to_delivery_data(dicom_dataset) -> DeliveryData:
