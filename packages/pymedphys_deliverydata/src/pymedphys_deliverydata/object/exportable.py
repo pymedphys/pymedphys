@@ -24,13 +24,17 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import functools
+
+
 from ..base import DeliveryDataBase
 from ..dicom import (
     delivery_data_to_dicom,
     dicom_to_delivery_data)
 from ..utilities import (
     filter_out_irrelevant_control_points,
-    get_all_masked_delivery_data)
+    get_all_masked_delivery_data,
+    get_metersets_from_delivery_data)
 
 
 class DeliveryData(DeliveryDataBase):
@@ -49,14 +53,12 @@ class DeliveryData(DeliveryDataBase):
     def filter_cps(self):
         return type(self).from_delivery_data_base(self)
 
+    @functools.lru_cache()
     def mask_by_gantry(self, angles, tolerance):
-        base_masked = get_all_masked_delivery_data(self, angles, tolerance)
-        reassigned_class = []
-        for masked in base_masked:
-            if type(masked) is not type(self):
-                reassigned_class.append(
-                    type(self).from_delivery_data_base(masked))
-            else:
-                reassigned_class.append(masked)
+        return get_all_masked_delivery_data(self, angles, tolerance)
 
-        return reassigned_class
+    @functools.lru_cache()
+    def metersets(self, gantry_angles, gantry_tolerance):
+        self.mask_by_gantry(gantry_angles, gantry_tolerance)
+        return get_metersets_from_delivery_data(
+            self.mask_by_gantry(gantry_angles, gantry_tolerance))
