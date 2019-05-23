@@ -52,6 +52,10 @@ class DeliveryData(DeliveryDataBase):
         return cls.from_delivery_data_base(
             dicom_to_delivery_data(dataset))
 
+    @classmethod
+    def empty(cls):
+        return cls([], [], [], [], [])
+
     def to_dicom(self, template):
         return delivery_data_to_dicom(self, template)
 
