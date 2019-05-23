@@ -30,13 +30,6 @@ from pymedphys_utilities.rtplan import find_relevant_control_points
 from ..base import DeliveryDataBase
 
 
-def to_tuple(a):
-    try:
-        return tuple(to_tuple(i) for i in a)
-    except TypeError:
-        return a
-
-
 def get_delivery_parameters(delivery_data):
     mu = np.array(delivery_data.monitor_units)  # pylint: disable=C0103
     mlc = np.array(delivery_data.mlc)
