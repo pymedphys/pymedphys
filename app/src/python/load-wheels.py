@@ -1,14 +1,18 @@
 # pylint: disable=import-error
 
-import hashlib
 import importlib
 import io
 import json
 from pathlib import Path
 import zipfile
 
-from js import Promise, XMLHttpRequest, pyodide as js_pyodide
-import pyodide
+from js import Promise, XMLHttpRequest
+
+
+WHEEL_BASE_PATH = Path('/lib/python3.7/site-packages/').parent
+WHEEL_BASE_URL = 'https://pyodide.pymedphys.com/wheels/'
+WHEEL_INDEX_URL = '{}index-8ec6006c-6cf8-5ced-a51c-97afb8f29174.json'.format(
+    WHEEL_BASE_URL)
 
 
 def _nullop(*args):
@@ -38,24 +42,14 @@ def _get_url_async(url, cb):
     req.send(None)
 
 
-WHEEL_BASE = Path('/lib/python3.7/site-packages/').parent
-
-
 def extract_wheel(fd):
     with zipfile.ZipFile(fd) as zf:
-        zf.extractall(WHEEL_BASE)
+        zf.extractall(WHEEL_BASE_PATH)
 
     importlib.invalidate_caches()
 
 
-def validate_wheel(data, sha256):
-    m = hashlib.sha256()
-    m.update(data.getvalue())
-    if m.hexdigest() != sha256:
-        raise ValueError("Contents don't match hash")
-
-
-def get_package_no_validation(url):
+def get_package(url):
     def do_install(resolve, reject):
         def run_promise(wheel):
             try:
@@ -71,74 +65,28 @@ def get_package_no_validation(url):
     return Promise.new(do_install)
 
 
-def get_package(url, sha256):
-    def do_install(resolve, reject):
-        def callback(wheel):
-            try:
-                validate_wheel(wheel, sha256)
-                extract_wheel(wheel)
-            except Exception as e:
-                reject(str(e))
-            else:
-                resolve()
-
-        _get_url_async('https://cors-anywhere.herokuapp.com/' + url, callback)
-        importlib.invalidate_caches()
-
-    return Promise.new(do_install)
-
-
 def load_and_copy_wheels():
     def run_promise(resolve, reject):
-        def extract_all_wheels(filenames_json):
-            filenames = json.load(filenames_json)
+        def extract_all_wheels(wheel_index_json):
+            wheel_index = json.load(wheel_index_json)
 
-            for filename in filenames:
-                print('Loading {} from python-wheels'.format(
-                    filename.split('-')[0]))
+            for wheel in wheel_index:
+                wheel_name = wheel.split('/')[-1].split('-')[0]
+                print('Loading {} from python-wheels'.format(wheel_name))
 
             urls = [
-                '/python-wheels/{}'.format(filename)
-                for filename in filenames
-            ]
+                '{}{}'.format(WHEEL_BASE_URL, wheel)
+                for wheel in wheel_index]
 
             promises = []
             for url in urls:
-                promises.append(get_package_no_validation(url))
+                promises.append(get_package(url))
 
             Promise.all(promises).then(resolve)
 
-        get_url('/python-wheels/paths.json').then(extract_all_wheels)
+        get_url(WHEEL_INDEX_URL).then(extract_all_wheels)
 
     return Promise.new(run_promise)
 
 
-def get_packages(pypi_data):
-    promises = []
-    for key, package_data in pypi_data.items():
-        print('Loading {} from pypi'.format(key))
-        promises.append(get_package(*package_data))
-
-    return Promise.all(promises)
-
-
-pypi_data = {
-    'pydicom': (
-        'https://files.pythonhosted.org/packages/97/ae/93aeb6ba65cf976a23e735e9d32b0d1ffa2797c418f7161300be2ec1f1dd/pydicom-1.2.0-py2.py3-none-any.whl',
-        '2132a9b15a927a1c35a757c0bdef30c373c89cc999cf901633dcd0e8bdd22e84'
-    ),
-    'packaging': (
-        'https://files.pythonhosted.org/packages/91/32/58bc30e646e55eab8b21abf89e353f59c0cc02c417e42929f4a9546e1b1d/packaging-19.0-py2.py3-none-any.whl',
-        '9e1cbf8c12b1f1ce0bb5344b8d7ecf66a6f8a6e91bcb0c84593ed6d3ab5c4ab3'
-    ),
-    'rope': (
-        'https://files.pythonhosted.org/packages/69/b7/4802c5736b70fc7b7ace5d4f81355fae72702e1da0675e3a305959fdb9ce/rope-0.14.0-py3-none-any.whl',
-        'f0dcf719b63200d492b85535ebe5ea9b29e0d0b8aebeb87fe03fc1a65924fdaf'
-    )
-}
-
-
-Promise.all([
-    get_packages(pypi_data),
-    load_and_copy_wheels()
-])
+load_and_copy_wheels()
