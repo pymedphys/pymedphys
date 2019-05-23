@@ -11,8 +11,8 @@ from js import Promise, XMLHttpRequest
 
 WHEEL_BASE_PATH = Path('/lib/python3.7/site-packages/').parent
 WHEEL_BASE_URL = 'https://pyodide.pymedphys.com/wheels/'
-WHEEL_INDEX_URL = '{}index-8ec6006c-6cf8-5ced-a51c-97afb8f29174.json'.format(
-    WHEEL_BASE_URL)
+WHEEL_INDEX_FILENAME = 'index-2e1331bc-c5e2-5209-8234-4d85fe03b5dd.json'
+WHEEL_INDEX_URL = '{}{}'.format(WHEEL_BASE_URL, WHEEL_INDEX_FILENAME)
 
 
 def _nullop(*args):
