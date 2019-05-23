@@ -68,11 +68,17 @@ class DeliveryData(_DeliveryDataBase):
             tuple(),
             tuple(),
             tuple(),
-            tuple(
-                (tuple((tuple(), tuple())),)
-            ),
-            tuple(
-                (tuple(), tuple())))
+            tuple((
+                tuple((
+                    tuple(),
+                    tuple()
+                )),
+            )),
+            tuple((
+                tuple(),
+                tuple()
+            ))
+        )
 
     def to_dicom(self, template):
         return delivery_data_to_dicom(self, template)
