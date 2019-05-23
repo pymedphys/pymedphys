@@ -28,7 +28,8 @@
 import pytest
 
 import numpy as np
-from pymedphys_analysis.gamma import gamma_shell, calculate_coordinates_shell
+from pymedphys.gamma import gamma_shell
+from pymedphys_gamma.implementation.shell import calculate_coordinates_shell
 
 
 def does_gamma_scale_as_expected(init_distance_threshold, threshold_ratio,

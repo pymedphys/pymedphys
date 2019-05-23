@@ -7,6 +7,7 @@
     "pymedphys_dicom": "~0.8.0-dev.17",
     "pymedphys_electronfactors": "~0.8.0-dev.17",
     "pymedphys_fileformats": "~0.8.0-dev.17",
+    "pymedphys_gamma": "~0.8.0-dev.17",
     "pymedphys_labs": "~0.8.0-dev.17",
     "pymedphys_logfiles": "~0.8.0-dev.17",
     "pymedphys_utilities": "~0.8.0-dev.17",
