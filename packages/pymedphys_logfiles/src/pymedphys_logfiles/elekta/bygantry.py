@@ -32,7 +32,6 @@ from pymedphys_mudensity.mudensity import get_grid
 from pymedphys_deliverydata.object import DeliveryData
 
 from pymedphys_databases.msq import multi_fetch_and_verify_mosaiq
-from pymedphys_fileformats.trf import delivery_data_from_logfile
 
 from .analyse import calc_comparison, plot_results
 
@@ -122,7 +121,7 @@ def calc_logfile_mu_density_bygantry(index, config, logfile_group,
 
     for filehash in logfile_group:
         filepath = get_filepath(index, config, filehash)
-        logfile_delivery_data = delivery_data_from_logfile(filepath)
+        logfile_delivery_data = DeliveryData.from_logfile(filepath)
 
         a_logfile_mu_density = [
             get_grid(grid_resolution=grid_resolution),
@@ -186,7 +185,7 @@ def get_logfile_delivery_data_bygantry(index, config, logfile_groups,
 
         for file_hash in logfile_group:
             filepath = get_filepath(index, config, file_hash)
-            logfile_delivery_data = delivery_data_from_logfile(filepath)
+            logfile_delivery_data = DeliveryData.from_logfile(filepath)
             mu = np.array(logfile_delivery_data.monitor_units)
 
             filtered = logfile_delivery_data.filter_cps()
