@@ -1,1 +1,3 @@
-from .object import DeliveryData
+# Disable this for now
+
+# from .object import DeliveryData

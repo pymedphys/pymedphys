@@ -60,6 +60,10 @@ def draw_directory_modules(save_directory):
             for item in
             package_tree.descendants_dependencies(module)['internal_module'] +
             package_tree.descendants_dependencies(module)['internal_package']
+            # package_tree.descendants_dependencies(module)['internal_file'] +
+            # list(package_tree.imports[module]['internal_module']) +
+            # list(package_tree.imports[module]['internal_package']) +
+            # list(package_tree.imports[module]['internal_file'])
         }
         for module in modules.keys()
     }
@@ -67,9 +71,14 @@ def draw_directory_modules(save_directory):
     dependents = {  # type: ignore
         key: set() for key in dependencies.keys()
     }
-    for key, values in dependencies.items():
-        for item in values:
-            dependents[item].add(key)  # type: ignore
+    try:
+        for key, values in dependencies.items():
+            for item in values:
+                dependents[item].add(key)  # type: ignore
+    except KeyError:
+        print("\n{}".format(dependents.keys()))
+        print("\n{}".format(dependencies))
+        raise
 
     for package in internal_packages:
         build_graph_for_a_module(
