@@ -40,10 +40,10 @@ def get_delivery_parameters(delivery_data):
 
 def extract_angle_from_delivery_data(delivery_data, gantry_angle,
                                      gantry_tolerance=0):
-    moniter_units = np.array(delivery_data.monitor_units)
-    relevant_control_points = find_relevant_control_points(moniter_units)
+    monitor_units = np.array(delivery_data.monitor_units)
+    relevant_control_points = find_relevant_control_points(monitor_units)
 
-    mu = moniter_units[relevant_control_points]
+    mu = monitor_units[relevant_control_points]
     mlc = np.array(delivery_data.mlc)[relevant_control_points]
     jaw = np.array(delivery_data.jaw)[relevant_control_points]
     gantry_angles = np.array(delivery_data.gantry)[relevant_control_points]
