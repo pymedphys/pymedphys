@@ -30,4 +30,4 @@ def maintain_order_unique(items):
         if item not in result:
             result.append(item)
 
-    return result
+    return tuple(result)
