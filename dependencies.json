@@ -124,11 +124,13 @@
       ],
       "internal": [
         "pymedphys_dicom",
+        "pymedphys_mudensity",
         "pymedphys_utilities"
       ],
       "stdlib": [
         "collections",
         "copy",
+        "functools",
         "typing"
       ]
     },
@@ -268,6 +270,7 @@
         "numpy"
       ],
       "internal": [
+        "pymedphys_deliverydata",
         "pymedphys_utilities"
       ],
       "stdlib": []
