@@ -13,4 +13,4 @@ from pymedphys_dicom.dicom import (
     dicom_dataset_from_dict
 )
 
-from pymedphys_analysis.geometry import get_structure_aligned_cube
+# from pymedphys_analysis.geometry import get_structure_aligned_cube
