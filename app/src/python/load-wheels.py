@@ -108,7 +108,7 @@ def load_and_copy_wheels():
 
             Promise.all(promises).then(resolve)
 
-        get_url('/python-wheels/filenames.json').then(extract_all_wheels)
+        get_url('/python-wheels/paths.json').then(extract_all_wheels)
 
     return Promise.new(run_promise)
 
@@ -130,6 +130,10 @@ pypi_data = {
     'packaging': (
         'https://files.pythonhosted.org/packages/91/32/58bc30e646e55eab8b21abf89e353f59c0cc02c417e42929f4a9546e1b1d/packaging-19.0-py2.py3-none-any.whl',
         '9e1cbf8c12b1f1ce0bb5344b8d7ecf66a6f8a6e91bcb0c84593ed6d3ab5c4ab3'
+    ),
+    'rope': (
+        'https://files.pythonhosted.org/packages/69/b7/4802c5736b70fc7b7ace5d4f81355fae72702e1da0675e3a305959fdb9ce/rope-0.14.0-py3-none-any.whl',
+        'f0dcf719b63200d492b85535ebe5ea9b29e0d0b8aebeb87fe03fc1a65924fdaf'
     )
 }
 

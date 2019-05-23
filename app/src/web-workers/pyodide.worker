@@ -1,9 +1,19 @@
 self.languagePluginUrl = 'https://pyodide.pymedphys.com/'
 importScripts('https://pyodide.pymedphys.com/pyodide.js')
 
+import * as uuidv4 from 'uuid/v4'
+import { BehaviorSubject } from 'rxjs';
+
 import loadWheels from '../python/load-wheels.py';
 import setupDirectories from '../python/setup-directories.py';
 
+
+let messageReceiver = new BehaviorSubject({
+  uuid: uuidv4(),
+  type: '',  // 'code', ''
+  imports: {},
+  code: {}
+})
 
 let pythonInitialise = languagePluginLoader.then(() => {
   return Promise.all([
@@ -18,7 +28,16 @@ pythonInitialise.then(() => {
   self.postMessage(['Python Ready'])
 })
 
+
+
+
+
 var onmessage = function (e) { // eslint-disable-line no-unused-vars
+
+}
+
+
+function runPython() {
   pythonInitialise.then(() => {
     initPython()
     const data = e.data;
@@ -35,3 +54,4 @@ var onmessage = function (e) { // eslint-disable-line no-unused-vars
       });
   });
 }
+
