@@ -46,7 +46,18 @@ def main():
     ]
 
     assert set(internal_packages) == set(tree.keys())
-    assert set(internal_packages) == set(pypi_pins['internal'].keys())
+    try:
+        assert set(internal_packages) == set(pypi_pins['internal'].keys())
+    except AssertionError:
+        internal = set(internal_packages)
+        pypi = set(pypi_pins['internal'].keys())
+        print("Internal packages not pinned: {}".format(
+            internal.difference(pypi)))
+        print("Pinned packages not in internal: {}".format(
+            pypi.difference(internal)))
+        # print(set(set(pypi_pins['internal'].keys())))
+        raise
+
     assert set(internal_packages) == set(npm_pins['internal'].keys())
 
     for package, dependency_store in tree.items():

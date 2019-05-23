@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "pymedphys_core": "~0.8.0-dev.17",
-    "pymedphys_databases": "~0.8.0-dev.17"
+    "pymedphys_databases": "~0.8.0-dev.17",
+    "pymedphys_mudensity": "~0.8.0-dev.17"
   },
   "name": "pymedphys_toolbox",
   "private": true,
