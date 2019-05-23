@@ -27,31 +27,48 @@
 # pylint: disable=C0103,C1801
 
 
-"""End to end regression testing.
+"""Testing of a single mlc pair.
 """
-
-import os
 
 import numpy as np
 
-from pymedphys_core.mudensity import calc_mu_density
+from pymedphys_mudensity.mudensity import single_mlc_pair
 
 
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "data")
-DELIVERY_DATA_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, 'mu_density_example_arrays.npz'))
+def test_minimal_variance_with_resolution():
+    mlc_left = (-2.3, 3.1)
+    mlc_right = (0, 7.7)
+
+    x_coarse, mu_density_coarse = single_mlc_pair(
+        mlc_left, mlc_right, 1)
+    x_fine, mu_density_fine = single_mlc_pair(
+        mlc_left, mlc_right, 0.01)
+
+    reference = np.argmin(np.abs(x_fine[None, :] - x_coarse[:, None]), axis=0)
+
+    average_mu_density_fine = []
+    for i in range(2, len(x_coarse) - 2):
+        average_mu_density_fine.append(
+            np.mean(mu_density_fine[reference == i]))
+
+    average_mu_density_fine = np.array(average_mu_density_fine)
+
+    assert np.allclose(
+        average_mu_density_fine, mu_density_coarse[2:-2], 0.1)
 
 
-def test_regression():
-    """The results of MU Density calculation should not change
-    """
-    regress_test_arrays = np.load(DELIVERY_DATA_FILEPATH)
+def test_stationary_partial_occlusion():
+    _, mu_density = single_mlc_pair((-1, -1), (2.7, 2.7), 1)
 
-    mu = regress_test_arrays['mu']
-    mlc = regress_test_arrays['mlc']
-    jaw = regress_test_arrays['jaw']
+    assert np.allclose(mu_density, [0.5, 1, 1, 1, 0.2])
 
-    cached_mu_density = regress_test_arrays['mu_density']
-    mu_density = calc_mu_density(mu, mlc, jaw)
-    assert np.allclose(mu_density, cached_mu_density, atol=0.1)
+
+def test_large_travel():
+    x, mu_density = single_mlc_pair(
+        (-400, 400), (400, 400)
+    )
+
+    linear = (x + 400) / 800
+    linear[-1] = 0.5
+
+    assert np.allclose(linear, mu_density, atol=0.001)
