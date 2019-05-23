@@ -69,7 +69,7 @@ class DeliveryData(_DeliveryDataBase):
             tuple(),
             tuple(),
             tuple(
-                tuple(tuple(), tuple())
+                (tuple((tuple(), tuple())),)
             ),
             tuple(
                 (tuple(), tuple())))
