@@ -1,7 +1,8 @@
+from os import rename
 from os.path import basename, join as pjoin
 from glob import glob
 
-from pymedphys.dicom import DicomBase
+from pymedphys.dicom import anonymise_file
 
 INPUT_DIR = 'input'
 OUTPUT_DIR = 'output'
@@ -13,8 +14,9 @@ for filepath in filepaths:
     print("Anonymising {}".format(filename))
 
     output_filepath = pjoin(OUTPUT_DIR, filename)
-    dcm = DicomBase.from_file(filepath)
-    dcm.anonymise(inplace=True)
-    dcm.to_file(output_filepath)
+
+    anon_filepath = anonymise_file(filepath)
+
+    rename(anon_filepath, output_filepath)
 
 print("Anonymised {} DICOM file(s)".format(len(filepaths)))
