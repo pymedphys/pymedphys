@@ -41,7 +41,7 @@ def delivery_data_from_logfile(logfile_path):
     return delivery_data_from_pandas(logfile_dataframe)
 
 
-def delivery_data_from_pandas(logfile_dataframe):
+def delivery_data_from_pandas(logfile_dataframe) -> DeliveryData:
     raw_monitor_units = logfile_dataframe[
         'Step Dose/Actual Value (Mu)'].values.tolist()
 
