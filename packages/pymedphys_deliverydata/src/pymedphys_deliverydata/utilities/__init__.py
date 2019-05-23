@@ -29,4 +29,6 @@ from .core import (
     find_relevant_control_points,
     get_delivery_parameters)
 
-from .masking import get_all_masked_delivery_data
+from .masking import (
+    get_all_masked_delivery_data,
+    get_metersets_from_delivery_data)

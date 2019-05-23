@@ -33,26 +33,16 @@ import matplotlib.pyplot as plt
 
 import pydicom
 
-from pymedphys.deliverydata import (
-    # Import using the same API as the webapp
-    dicom_to_delivery_data, delivery_data_to_dicom
-)
-
 from pymedphys_utilities.algorithms import maintain_order_unique
 
 from pymedphys_fileformats.trf import delivery_data_from_logfile
-from pymedphys_dicom.rtplan import get_metersets_from_dicom
+from pymedphys_dicom.rtplan import (
+    get_metersets_from_dicom,
+    get_gantry_angles_from_dicom)
 
 from pymedphys_mudensity.mudensity import mu_density_from_delivery_data
 
-from pymedphys_deliverydata.dicom.conversion import (
-    get_gantry_angles_from_dicom,
-    get_all_masked_delivery_data,
-    filter_out_irrelevant_control_points,
-    get_metersets_from_delivery_data,
-    get_gantry_angle_masks)
-# from pymedphys_deliverydata.utilities
-
+from pymedphys.deliverydata import DeliveryData
 
 # pylint: disable=redefined-outer-name
 
@@ -83,7 +73,7 @@ def loaded_dicom_dataset():
 
 
 @pytest.fixture
-def logfile_delivery_data():
+def logfile_delivery_data() -> DeliveryData:
     return delivery_data_from_logfile(LOGFILE_FILEPATH)
 
 
@@ -93,26 +83,24 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
 
 
 @pytest.fixture
-def filtered_logfile_delivery_data(logfile_delivery_data):
-    return filter_out_irrelevant_control_points(logfile_delivery_data)
+def filtered_logfile_delivery_data(logfile_delivery_data: DeliveryData):
+    return logfile_delivery_data.filter_cps
 
 
 def test_get_metersets_from_delivery_data(filtered_logfile_delivery_data,
                                           loaded_dicom_dataset,
                                           loaded_dicom_gantry_angles):
     gantry_tol = 3
-
     expected = get_metersets_from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
-    all_masked_delivery_data = get_all_masked_delivery_data(
-        filtered_logfile_delivery_data, loaded_dicom_gantry_angles, gantry_tol)
 
-    metersets = get_metersets_from_delivery_data(all_masked_delivery_data)
+    metersets = filtered_logfile_delivery_data.metersets(
+        loaded_dicom_gantry_angles, gantry_tol)
 
     assert np.all(np.abs(np.array(expected) - np.array(metersets)) <= 0.1)
 
 
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
-    dicom_delivery_data = dicom_to_delivery_data(loaded_dicom_dataset)
+    dicom_delivery_data = DeliveryData.from_dicom(loaded_dicom_dataset)
 
     dicom_mu_density = mu_density_from_delivery_data(
         dicom_delivery_data, grid_resolution=5)
@@ -149,12 +137,12 @@ def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
 
 
 def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
-                              filtered_logfile_delivery_data):
+                              filtered_logfile_delivery_data: DeliveryData):
     original = filtered_logfile_delivery_data
     template = loaded_dicom_dataset
 
-    dicom = delivery_data_to_dicom(original, template)
-    processed = dicom_to_delivery_data(dicom)
+    dicom = original.to_dicom(template)
+    processed = DeliveryData.from_dicom(dicom)
 
     assert np.all(
         np.around(original.monitor_units, 2) ==
@@ -183,9 +171,8 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
     original = loaded_dicom_dataset
     original_gantry_angles = loaded_dicom_gantry_angles
 
-    delivery_data = dicom_to_delivery_data(original)
-    processed = delivery_data_to_dicom(
-        delivery_data, original)
+    delivery_data = DeliveryData.from_dicom(original)
+    processed = delivery_data.to_dicom(original)
 
     assert (
         num_of_control_points(original) == num_of_control_points(processed)
