@@ -1,5 +1,4 @@
-# Copyright (C) 2019 Cancer Care Associates
-
+# Copyright (C) 2019 Simon Biggs
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
 # by the Free Software Foundation, either version 3 of the License, or
@@ -23,30 +22,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-version: "3.6"
 
-services:
-  physics-server-orthanc-machine-id-editor:
-    restart: unless-stopped
-    build: orthanc/orthanc-and-miniconda
-    ports: ["34242:4242", "38042:8042"]
-
-    volumes:
-      - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
-      - ./orthanc/scripts:/etc/share/orthanc/scripts:ro
-      - ../../../../../.:/usr/src/pymedphys:ro
-      - pypi-cache:/root/.cache/pip:rw
-
-    entrypoint: /bin/bash -c
-    command: ['pushd /usr/src/pymedphys && yarn docker:internal && popd && /docker-entrypoint.sh --verbose /etc/orthanc']
-
-  physics-server-nginx:
-    restart: always
-    image: nginx:1.15
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    ports:
-      - "80:80"
-
-volumes:
-  pypi-cache:
+def test_import():
+    import pymedphys_analysis.geometry

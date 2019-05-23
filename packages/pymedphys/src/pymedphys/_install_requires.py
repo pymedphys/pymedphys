@@ -8,6 +8,7 @@ install_requires = [
     "pymedphys_dicom >= 0.8.0dev17, < 0.9.0",
     "pymedphys_electronfactors >= 0.8.0dev17, < 0.9.0",
     "pymedphys_fileformats >= 0.8.0dev17, < 0.9.0",
+    "pymedphys_gamma >= 0.8.0dev17, < 0.9.0",
     "pymedphys_labs >= 0.8.0dev17, < 0.9.0",
     "pymedphys_logfiles >= 0.8.0dev17, < 0.9.0",
     "pymedphys_utilities >= 0.8.0dev17, < 0.9.0",
