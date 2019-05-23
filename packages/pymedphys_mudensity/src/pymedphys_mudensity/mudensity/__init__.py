@@ -67,8 +67,6 @@ from .core import (
     single_mlc_pair,
     get_grid,
     display_mu_density,
-    calc_mu_density_return_grid,
-    calc_mu_density_bygantry_return_grid,
-    calc_mu_density_bygantry
+    calc_mu_density_return_grid
 )
 from .api import mu_density_from_delivery_data

@@ -60,14 +60,18 @@ def extract_angle_from_delivery_data(delivery_data, gantry_angle,
 
 
 def strip_delivery_data(delivery_data, skip_size):
+    DeliveryDataObject = type(delivery_data)
+
     new_delivery_data = []
     for item in delivery_data:
         new_delivery_data.append(np.array(item)[::skip_size].tolist())
 
-    return DeliveryDataBase(*new_delivery_data)
+    return DeliveryDataObject(*new_delivery_data)
 
 
 def filter_out_irrelevant_control_points(delivery_data: DeliveryDataBase) -> DeliveryDataBase:
+    DeliveryDataObject = type(delivery_data)
+
     relevant_control_points = find_relevant_control_points(
         delivery_data.monitor_units)
 
@@ -76,4 +80,4 @@ def filter_out_irrelevant_control_points(delivery_data: DeliveryDataBase) -> Del
         new_delivery_data.append(
             np.array(item)[relevant_control_points].tolist())
 
-    return DeliveryDataBase(*new_delivery_data)
+    return DeliveryDataObject(*new_delivery_data)

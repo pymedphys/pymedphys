@@ -87,7 +87,7 @@ def filtered_logfile_delivery_data(logfile_delivery_data: DeliveryData):
     return logfile_delivery_data.filter_cps
 
 
-def test_get_metersets_from_delivery_data(filtered_logfile_delivery_data,
+def test_get_metersets_from_delivery_data(filtered_logfile_delivery_data: DeliveryData,
                                           loaded_dicom_dataset,
                                           loaded_dicom_gantry_angles):
     gantry_tol = 3

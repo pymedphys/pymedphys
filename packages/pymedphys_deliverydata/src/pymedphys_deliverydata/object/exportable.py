@@ -42,7 +42,10 @@ from ..utilities import (
 class DeliveryData(DeliveryDataBase):
     @classmethod
     def from_delivery_data_base(cls, delivery_data_base):
-        cls(**delivery_data_base)
+        if type(delivery_data_base) is type(cls):
+            return delivery_data_base
+
+        return cls(**delivery_data_base)
 
     @classmethod
     def from_dicom(cls, dataset):
@@ -53,7 +56,7 @@ class DeliveryData(DeliveryDataBase):
         return delivery_data_to_dicom(self, template)
 
     def filter_cps(self):
-        return type(self).from_delivery_data_base(self)
+        return filter_out_irrelevant_control_points(self)
 
     @functools.lru_cache()
     def mask_by_gantry(self, angles, tolerance=3):
