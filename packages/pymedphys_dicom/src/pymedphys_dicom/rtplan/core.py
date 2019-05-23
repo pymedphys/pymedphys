@@ -60,7 +60,7 @@ def get_gantry_angles_from_dicom(dicom_dataset):
             raise ValueError(
                 "Only a single gantry angle per beam is currently supported")
 
-    result = (
+    result = tuple(
         list(item)[0]
         for item in gantry_angles
     )
