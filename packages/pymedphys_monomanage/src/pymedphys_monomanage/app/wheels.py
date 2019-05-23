@@ -32,6 +32,7 @@ import json
 
 
 WHITELIST = (
+    'pymedphys_base',
     'pymedphys_coordsandscales',
     'pymedphys_dicom',
     'pymedphys_fileformats',

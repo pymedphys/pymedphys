@@ -35,7 +35,6 @@ import pydicom
 
 from pymedphys_utilities.algorithms import maintain_order_unique
 
-from pymedphys_fileformats.trf import delivery_data_from_logfile
 from pymedphys_dicom.rtplan import (
     get_metersets_from_dicom,
     get_gantry_angles_from_dicom)
@@ -72,7 +71,7 @@ def loaded_dicom_dataset():
 
 @pytest.fixture
 def logfile_delivery_data() -> DeliveryData:
-    return delivery_data_from_logfile(LOGFILE_FILEPATH)
+    return DeliveryData.from_logfile(LOGFILE_FILEPATH)
 
 
 @pytest.fixture

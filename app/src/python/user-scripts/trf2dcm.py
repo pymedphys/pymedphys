@@ -3,8 +3,7 @@ from glob import glob
 
 import pydicom
 
-from pymedphys.deliverydata import delivery_data_to_dicom
-from pymedphys.trf import delivery_data_from_logfile
+from pymedphys.deliverydata import DeliveryData
 
 input_directory = 'input'
 output_directory = 'output'
@@ -20,10 +19,10 @@ for filepath in trf_filepaths:
     output_filepath = os.path.join(output_directory, "{}.dcm".format(filename))
 
     print("Loading log file")
-    delivery_data = delivery_data_from_logfile(filepath)
+    delivery_data = DeliveryData.from_logfile(filepath)
 
     print("Converting log file to RT Plan DICOM")
-    created_dicom = delivery_data_to_dicom(delivery_data, dicom_template)
+    created_dicom = delivery_data.to_dicom(dicom_template)
 
     print("Saving newly created RT Plan DICOM")
     created_dicom.save_as(output_filepath)
