@@ -25,6 +25,7 @@
 
 
 import functools
+from typing import Union, Tuple
 
 
 from pymedphys_mudensity.mudensity import calc_mu_density
@@ -36,10 +37,18 @@ from ..dicom import (
 from ..utilities import (
     filter_out_irrelevant_control_points,
     get_all_masked_delivery_data,
-    get_metersets_from_delivery_data)
+    get_metersets_from_delivery_data,
+    to_tuple)
 
 
 class DeliveryData(DeliveryDataBase):
+    def __new__(cls, *args):
+        new_args = (
+            to_tuple(arg)
+            for arg in args
+        )
+        return super().__new__(cls, *new_args)
+
     @classmethod
     def from_delivery_data_base(cls, delivery_data_base):
         if type(delivery_data_base) is type(cls):
@@ -54,7 +63,15 @@ class DeliveryData(DeliveryDataBase):
 
     @classmethod
     def empty(cls):
-        return cls([], [], [], [], [])
+        return cls(
+            tuple(),
+            tuple(),
+            tuple(),
+            tuple(
+                (tuple(), tuple())
+            ),
+            tuple(
+                (tuple(), tuple())))
 
     def to_dicom(self, template):
         return delivery_data_to_dicom(self, template)
@@ -63,16 +80,18 @@ class DeliveryData(DeliveryDataBase):
         return filter_out_irrelevant_control_points(self)
 
     @functools.lru_cache()
-    def mask_by_gantry(self, angles, tolerance=3):
+    def mask_by_gantry(self, angles: Union[tuple, float, int], tolerance=3):
+        iterable_angles: tuple
+
         try:
-            _ = iter(angles)
+            _ = iter(angles)  # type: ignore
+            iterable_angles = tuple(angles)  # type: ignore
         except TypeError:
             # Not iterable, assume just one angle provided
-            angles = [angles]
+            iterable_angles = (angles,)
 
-        return get_all_masked_delivery_data(self, angles, tolerance)
+        return get_all_masked_delivery_data(self, iterable_angles, tolerance)
 
-    @functools.lru_cache()
     def metersets(self, gantry_angles, gantry_tolerance):
         self.mask_by_gantry(gantry_angles, gantry_tolerance)
         return get_metersets_from_delivery_data(
