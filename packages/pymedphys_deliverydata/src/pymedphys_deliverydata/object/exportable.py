@@ -27,6 +27,8 @@
 import functools
 
 
+from pymedphys_mudensity.mudensity import calc_mu_density
+
 from ..base import DeliveryDataBase
 from ..dicom import (
     delivery_data_to_dicom,
@@ -54,7 +56,13 @@ class DeliveryData(DeliveryDataBase):
         return type(self).from_delivery_data_base(self)
 
     @functools.lru_cache()
-    def mask_by_gantry(self, angles, tolerance):
+    def mask_by_gantry(self, angles, tolerance=3):
+        try:
+            _ = iter(angles)
+        except TypeError:
+            # Not iterable, assume just one angle provided
+            angles = [angles]
+
         return get_all_masked_delivery_data(self, angles, tolerance)
 
     @functools.lru_cache()
@@ -62,3 +70,16 @@ class DeliveryData(DeliveryDataBase):
         self.mask_by_gantry(gantry_angles, gantry_tolerance)
         return get_metersets_from_delivery_data(
             self.mask_by_gantry(gantry_angles, gantry_tolerance))
+
+    def mudensity(self, gantry_angles, gantry_tolerance=0, grid_resolution=1):
+        masked_by_gantry = self.mask_by_gantry(gantry_angles, gantry_tolerance)
+
+        mudensities = []
+        for delivery_data in masked_by_gantry:
+            mudensities.append(calc_mu_density(
+                delivery_data.monitor_units,
+                delivery_data.mlc,
+                delivery_data.jaw,
+                grid_resolution=grid_resolution))
+
+        return mudensities
