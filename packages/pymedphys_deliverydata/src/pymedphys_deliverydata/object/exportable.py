@@ -34,7 +34,8 @@ from pymedphys_mudensity.mudensity import calc_mu_density
 from ..base import DeliveryDataBase
 from ..dicom import (
     delivery_data_to_dicom,
-    dicom_to_delivery_data)
+    dicom_to_delivery_data,
+    gantry_tol_from_gantry_angles)
 from ..utilities import (
     filter_out_irrelevant_control_points,
     get_all_masked_delivery_data,
@@ -68,7 +69,7 @@ class DeliveryData(DeliveryDataBase):
             tuple(),
             tuple(),
             tuple(
-                (tuple(), tuple())
+                tuple(tuple(), tuple())
             ),
             tuple(
                 (tuple(), tuple())))
@@ -99,7 +100,13 @@ class DeliveryData(DeliveryDataBase):
         return get_metersets_from_delivery_data(
             self.mask_by_gantry(gantry_angles, gantry_tolerance))
 
-    def mudensity(self, gantry_angles, gantry_tolerance=0, grid_resolution=1):
+    def mudensity(self, gantry_angles=None, gantry_tolerance=None, grid_resolution=1):
+        if gantry_angles is None:
+            gantry_angles = 0
+            gantry_tolerance = 500
+        elif gantry_tolerance is None:
+            gantry_tolerance = gantry_tol_from_gantry_angles(gantry_angles)
+
         masked_by_gantry = self.mask_by_gantry(gantry_angles, gantry_tolerance)
 
         mudensities = []
@@ -109,5 +116,9 @@ class DeliveryData(DeliveryDataBase):
                 delivery_data.mlc,
                 delivery_data.jaw,
                 grid_resolution=grid_resolution))
+
+        # TODO: This is worth discussion whether or not we should do this
+        if len(mudensities) == 1:
+            return mudensities[0]
 
         return mudensities
