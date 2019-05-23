@@ -36,7 +36,7 @@ WHITELIST = (
     'pymedphys_dicom',
     'pymedphys_fileformats',
     'pymedphys_utilities',
-    'pymedphys_core',
+    'pymedphys_mudensity',
     'pymedphys_gamma',
     'pymedphys_deliverydata',
     'pymedphys')
