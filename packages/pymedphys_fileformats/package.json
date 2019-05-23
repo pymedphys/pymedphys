@@ -1,7 +1,6 @@
 {
   "dependencies": {
-    "pymedphys_core": "~0.8.0-dev.17",
-    "pymedphys_deliverydata": "~0.8.0-dev.17"
+    "pymedphys_core": "~0.8.0-dev.17"
   },
   "name": "pymedphys_fileformats",
   "private": true,
