@@ -1,1 +1,1 @@
-from .core import DeliveryDataBase
+from .core import _DeliveryDataBase
