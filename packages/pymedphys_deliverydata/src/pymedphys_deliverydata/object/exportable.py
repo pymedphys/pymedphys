@@ -28,6 +28,7 @@ import functools
 from typing import Union, Tuple
 
 
+from pymedphys_utilities.types import to_tuple
 from pymedphys_mudensity.mudensity import calc_mu_density
 
 from ..base import DeliveryDataBase
@@ -37,8 +38,7 @@ from ..dicom import (
 from ..utilities import (
     filter_out_irrelevant_control_points,
     get_all_masked_delivery_data,
-    get_metersets_from_delivery_data,
-    to_tuple)
+    get_metersets_from_delivery_data)
 
 
 class DeliveryData(DeliveryDataBase):
