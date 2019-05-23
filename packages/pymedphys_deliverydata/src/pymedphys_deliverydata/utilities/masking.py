@@ -34,10 +34,10 @@ def get_all_masked_delivery_data(delivery_data: DeliveryDataBase,
     masks = get_gantry_angle_masks(
         delivery_data, template_gantry_angles, gantry_tol)
 
-    all_masked_delivery_data = [
+    all_masked_delivery_data = (
         apply_mask_to_delivery_data(delivery_data, mask)
         for mask in masks
-    ]
+    )
 
     return all_masked_delivery_data
 
@@ -121,4 +121,4 @@ def get_metersets_from_delivery_data(all_masked_delivery_data):
         except IndexError:
             continue
 
-    return metersets
+    return tuple(metersets)
