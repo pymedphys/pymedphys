@@ -76,6 +76,7 @@ class DeliveryData(DeliveryDataBase):
     def to_dicom(self, template):
         return delivery_data_to_dicom(self, template)
 
+    @functools.lru_cache()
     def filter_cps(self):
         return filter_out_irrelevant_control_points(self)
 
