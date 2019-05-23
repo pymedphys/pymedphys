@@ -92,6 +92,7 @@ class DeliveryData(DeliveryDataBase):
 
         return get_all_masked_delivery_data(self, iterable_angles, tolerance)
 
+    @functools.lru_cache()
     def metersets(self, gantry_angles, gantry_tolerance):
         self.mask_by_gantry(gantry_angles, gantry_tolerance)
         return get_metersets_from_delivery_data(
