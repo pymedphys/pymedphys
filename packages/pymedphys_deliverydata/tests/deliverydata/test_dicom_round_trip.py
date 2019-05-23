@@ -82,19 +82,14 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
     return get_gantry_angles_from_dicom(loaded_dicom_dataset)
 
 
-@pytest.fixture
-def filtered_logfile_delivery_data(logfile_delivery_data: DeliveryData):
-    return logfile_delivery_data.filter_cps
-
-
-def test_get_metersets_from_delivery_data(filtered_logfile_delivery_data: DeliveryData,
+def test_get_metersets_from_delivery_data(logfile_delivery_data,
                                           loaded_dicom_dataset,
                                           loaded_dicom_gantry_angles):
     gantry_tol = 3
     expected = get_metersets_from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
 
-    metersets = filtered_logfile_delivery_data.metersets(
-        loaded_dicom_gantry_angles, gantry_tol)
+    filtered = logfile_delivery_data.filter_cps()
+    metersets = filtered.metersets(loaded_dicom_gantry_angles, gantry_tol)
 
     assert np.all(np.abs(np.array(expected) - np.array(metersets)) <= 0.1)
 
@@ -137,8 +132,8 @@ def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
 
 
 def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
-                              filtered_logfile_delivery_data: DeliveryData):
-    original = filtered_logfile_delivery_data
+                              logfile_delivery_data: DeliveryData):
+    original = logfile_delivery_data.filter_cps()
     template = loaded_dicom_dataset
 
     dicom = original.to_dicom(template)
