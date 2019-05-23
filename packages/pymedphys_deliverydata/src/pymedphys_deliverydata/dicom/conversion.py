@@ -47,12 +47,18 @@ from ..utilities import (
     get_all_masked_delivery_data)
 
 
+def gantry_tol_from_gantry_angles(gantry_angles):
+    min_diff = np.min(np.diff(sorted(gantry_angles)))
+    gantry_tol = np.min([min_diff / 2 - 0.1, 3])
+
+    return gantry_tol
+
+
 def delivery_data_to_dicom(delivery_data: DeliveryDataBase, dicom_template):
     delivery_data = filter_out_irrelevant_control_points(delivery_data)
     template_gantry_angles = get_gantry_angles_from_dicom(dicom_template)
 
-    min_diff = np.min(np.diff(sorted(template_gantry_angles)))
-    gantry_tol = np.min([min_diff / 2 - 0.1, 3])
+    gantry_tol = gantry_tol_from_gantry_angles(template_gantry_angles)
 
     all_masked_delivery_data = get_all_masked_delivery_data(
         delivery_data, template_gantry_angles, gantry_tol)
