@@ -53,6 +53,10 @@ class DeliveryData(DeliveryDataBase):
         base_masked = get_all_masked_delivery_data(self, angles, tolerance)
         reassigned_class = []
         for masked in base_masked:
-            reassigned_class.append(type(self).from_delivery_data_base(masked))
+            if type(masked) is not type(self):
+                reassigned_class.append(
+                    type(self).from_delivery_data_base(masked))
+            else:
+                reassigned_class.append(masked)
 
         return reassigned_class
