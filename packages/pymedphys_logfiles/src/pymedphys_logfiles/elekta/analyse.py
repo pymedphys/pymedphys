@@ -34,7 +34,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_core.deliverydata import get_delivery_parameters
+from pymedphys_deliverydata.utilities import get_delivery_parameters
 from pymedphys_utilities.utilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,

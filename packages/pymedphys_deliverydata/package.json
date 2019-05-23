@@ -2,7 +2,7 @@
   "dependencies": {
     "pymedphys_utilities": "~0.8.0-dev.17"
   },
-  "name": "pymedphys_dicom",
+  "name": "pymedphys_deliverydata",
   "private": true,
   "scripts": {
     "pip:install:dev": "pip install -e .",
