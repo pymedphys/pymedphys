@@ -15,7 +15,7 @@ for filepath in filepaths:
 
     output_filepath = pjoin(OUTPUT_DIR, filename)
 
-    anon_filepath = anonymise_file(filepath)
+    anon_filepath = anonymise_file(filepath, delete_unknown_tags=True)
 
     rename(anon_filepath, output_filepath)
 
