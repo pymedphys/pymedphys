@@ -40,7 +40,7 @@ from pymedphys_dicom.rtplan import (
     restore_trailing_zeros)
 
 
-from ..base import DeliveryDataBase
+from ..base import _DeliveryDataBase
 from ..utilities import (
     find_relevant_control_points,
     filter_out_irrelevant_control_points,
@@ -54,7 +54,7 @@ def gantry_tol_from_gantry_angles(gantry_angles):
     return gantry_tol
 
 
-def delivery_data_to_dicom(delivery_data: DeliveryDataBase, dicom_template):
+def delivery_data_to_dicom(delivery_data: _DeliveryDataBase, dicom_template):
     delivery_data = filter_out_irrelevant_control_points(delivery_data)
     template_gantry_angles = get_gantry_angles_from_dicom(dicom_template)
 
@@ -71,7 +71,7 @@ def delivery_data_to_dicom(delivery_data: DeliveryDataBase, dicom_template):
     return merge_beam_sequences(single_beam_dicoms)
 
 
-def dicom_to_delivery_data(dicom_dataset) -> DeliveryDataBase:
+def dicom_to_delivery_data(dicom_dataset) -> _DeliveryDataBase:
     gantry_angles_of_beam_sequences = get_gantry_angles_from_dicom(
         dicom_dataset)
 
@@ -84,7 +84,7 @@ def dicom_to_delivery_data(dicom_dataset) -> DeliveryDataBase:
     return merge_delivery_data(delivery_data_by_beam_sequence)
 
 
-def merge_delivery_data(separate: List[DeliveryDataBase]) -> DeliveryDataBase:
+def merge_delivery_data(separate: List[_DeliveryDataBase]) -> _DeliveryDataBase:
     collection = {}  # type: ignore
 
     for delivery_data in separate:
@@ -104,7 +104,7 @@ def merge_delivery_data(separate: List[DeliveryDataBase]) -> DeliveryDataBase:
     for key, item in collection.items():
         collection[key] = item.tolist()
 
-    merged = DeliveryDataBase(**collection)
+    merged = _DeliveryDataBase(**collection)
 
     return merged
 
@@ -170,7 +170,7 @@ def dicom_to_delivery_data_single_beam(dicom_dataset, beam_sequence_index):
         for control_point in control_points
     ])
 
-    return DeliveryDataBase(mu, gantry_angles, collimator_angles, mlcs, jaw)
+    return _DeliveryDataBase(mu, gantry_angles, collimator_angles, mlcs, jaw)
 
 
 def merge_beam_sequences(dicoms_by_gantry_angle):

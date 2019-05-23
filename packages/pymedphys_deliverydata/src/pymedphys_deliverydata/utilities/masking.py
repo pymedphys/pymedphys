@@ -26,10 +26,10 @@
 
 import numpy as np
 
-from ..base import DeliveryDataBase
+from ..base import _DeliveryDataBase
 
 
-def get_all_masked_delivery_data(delivery_data: DeliveryDataBase,
+def get_all_masked_delivery_data(delivery_data: _DeliveryDataBase,
                                  template_gantry_angles, gantry_tol):
     masks = get_gantry_angle_masks(
         delivery_data, template_gantry_angles, gantry_tol)
@@ -42,7 +42,7 @@ def get_all_masked_delivery_data(delivery_data: DeliveryDataBase,
     return all_masked_delivery_data
 
 
-def get_gantry_angle_masks(delivery_data: DeliveryDataBase, gantry_angles,
+def get_gantry_angle_masks(delivery_data: _DeliveryDataBase, gantry_angles,
                            gantry_tol):
     masks = [
         gantry_angle_mask(delivery_data, gantry_angle, gantry_tol)
@@ -85,7 +85,7 @@ def gantry_angle_mask(delivery_data, gantry_angle, gantry_angle_tol):
     return near_angle
 
 
-def apply_mask_to_delivery_data(delivery_data: DeliveryDataBase, mask):
+def apply_mask_to_delivery_data(delivery_data: _DeliveryDataBase, mask):
     DeliveryDataObject = type(delivery_data)
 
     new_delivery_data = []

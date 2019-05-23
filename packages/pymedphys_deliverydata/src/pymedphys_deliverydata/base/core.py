@@ -30,6 +30,6 @@ from collections import namedtuple
 
 # Make the creation of DeliveryData look a bit like this...
 # Or a bit like the dataclass ...
-DeliveryDataBase = namedtuple(
+_DeliveryDataBase = namedtuple(
     'DeliveryData',
     ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
