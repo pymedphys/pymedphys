@@ -32,8 +32,10 @@ import struct
 import attr
 import numpy as np
 
-from pymedphys_core.deliverydata import (
-    DeliveryData, get_delivery_parameters, convert_angle_to_bipolar)
+from pymedphys_utilities.transforms import convert_angle_to_bipolar
+
+from pymedphys_deliverydata.base import DeliveryData
+from pymedphys_deliverydata.utilities import get_delivery_parameters
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES

@@ -29,8 +29,22 @@ from typing import List
 
 import numpy as np
 
-from .core import (
-    DeliveryData, find_relevant_control_points)
+from pymedphys_utilities.transforms import convert_angle_to_bipolar
+from pymedphys_utilities.algorithms import maintain_order_unique
+
+from pymedphys_dicom.rtplan import (
+    get_gantry_angles_from_dicom,
+    build_control_points,
+    replace_fraction_group,
+    replace_beam_sequence,
+    restore_trailing_zeros)
+
+
+from ..base import DeliveryData
+from ..utilities import (
+    find_relevant_control_points,
+    filter_out_irrelevant_control_points,
+    get_all_masked_delivery_data)
 
 
 def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
@@ -49,73 +63,6 @@ def delivery_data_to_dicom(delivery_data: DeliveryData, dicom_template):
             masked_delivery_data, dicom_template, beam_index))
 
     return merge_beam_sequences(single_beam_dicoms)
-
-
-def get_all_masked_delivery_data(delivery_data: DeliveryData,
-                                 template_gantry_angles, gantry_tol):
-    masks = get_gantry_angle_masks(
-        delivery_data, template_gantry_angles, gantry_tol)
-
-    all_masked_delivery_data = [
-        apply_mask_to_delivery_data(delivery_data, mask)
-        for mask in masks
-    ]
-
-    return all_masked_delivery_data
-
-
-def get_gantry_angle_masks(delivery_data: DeliveryData, gantry_angles,
-                           gantry_tol):
-    masks = [
-        gantry_angle_mask(delivery_data, gantry_angle, gantry_tol)
-        for gantry_angle in gantry_angles
-    ]
-
-    for mask in masks:
-        if np.all(mask == 0):
-            continue
-
-        # TODO: Apply mask by more than just gantry angle to appropriately
-        # extract beam index even when multiple beams have the same gantry
-        # angle
-        assert np.sum(np.abs(np.diff(np.concatenate([
-            [0], mask, [0]])))) == 2, "Duplicate gantry angles not yet supported"
-
-    try:
-        assert np.all(np.sum(masks, axis=0) == 1), (
-            "Not all beams were captured by the gantry tolerance of "
-            " {}".format(gantry_tol)
-        )
-    except AssertionError:
-        print("Allowable gantry angles = {}".format(gantry_angles))
-        gantry = np.array(delivery_data.gantry, copy=False)
-        out_of_tolerance = np.unique(
-            gantry[np.sum(masks, axis=0) == 0]).tolist()
-        print("The gantry angles out of tolerance were {}".format(
-            out_of_tolerance))
-
-        raise
-
-    return masks
-
-
-def get_metersets_from_dicom(dicom_dataset, fraction_group):
-    fraction_group_sequence = dicom_dataset.FractionGroupSequence
-
-    fraction_group_numbers = [
-        fraction_group.FractionGroupNumber
-        for fraction_group in fraction_group_sequence
-    ]
-
-    fraction_group_index = fraction_group_numbers.index(fraction_group)
-    fraction_group = fraction_group_sequence[fraction_group_index]
-
-    beam_metersets = [
-        float(referenced_beam.BeamMeterset)
-        for referenced_beam in fraction_group.ReferencedBeamSequence
-    ]
-
-    return beam_metersets
 
 
 def get_metersets_from_delivery_data(all_masked_delivery_data):
@@ -231,66 +178,6 @@ def dicom_to_delivery_data_single_beam(dicom_dataset, beam_sequence_index):
     return DeliveryData(mu, gantry_angles, collimator_angles, mlcs, jaw)
 
 
-def convert_angle_to_bipolar(angle):
-    angle = np.copy(angle)
-    if np.all(angle == 180):
-        return angle
-
-    angle[angle > 180] = angle[angle > 180] - 360
-
-    is_180 = np.where(angle == 180)[0]
-    not_180 = np.where(np.invert(angle == 180))[0]
-
-    where_closest_left_leaning = np.argmin(
-        np.abs(is_180[:, None] - not_180[None, :]), axis=1)
-    where_closest_right_leaning = len(not_180) - 1 - np.argmin(np.abs(
-        is_180[::-1, None] -
-        not_180[None, ::-1]), axis=1)[::-1]
-
-    closest_left_leaning = not_180[where_closest_left_leaning]
-    closest_right_leaning = not_180[where_closest_right_leaning]
-
-    assert np.all(
-        np.sign(angle[closest_left_leaning]) ==
-        np.sign(angle[closest_right_leaning])
-    ), "Unable to automatically determine whether angle is 180 or -180"
-
-    angle[is_180] = np.sign(angle[closest_left_leaning]) * angle[is_180]
-
-    return angle
-
-
-def get_gantry_angles_from_dicom(dicom_dataset):
-    gantry_angles = [
-        set(convert_angle_to_bipolar([
-            control_point.GantryAngle
-            for control_point in beam_sequence.ControlPointSequence
-        ]))
-        for beam_sequence in dicom_dataset.BeamSequence
-    ]
-
-    for gantry_angle_set in gantry_angles:
-        if len(gantry_angle_set) != 1:
-            raise ValueError(
-                "Only a single gantry angle per beam is currently supported")
-
-    gantry_angle_list = [
-        list(item)[0]
-        for item in gantry_angles
-    ]
-
-    return gantry_angle_list
-
-
-def maintain_order_unique(items):
-    result = []
-    for item in items:
-        if item not in result:
-            result.append(item)
-
-    return result
-
-
 def merge_beam_sequences(dicoms_by_gantry_angle):
     merged = dicoms_by_gantry_angle[0]
 
@@ -347,66 +234,6 @@ def coordinate_convert_delivery_data(delivery_data):
     }
 
 
-def add_data_to_control_point(template, data, i):
-    cp = deepcopy(template)
-    cp.ControlPointIndex = str(i)
-
-    cp.GantryAngle = data['gantry_angle'][i]
-    cp.GantryRotationDirection = data['gantry_movement'][i]
-
-    cp.BeamLimitingDeviceAngle = data['collimator_angle'][i]
-    cp.BeamLimitingDeviceRotationDirection = data['collimator_movement'][i]
-
-    collimation = cp.BeamLimitingDevicePositionSequence
-    collimation[0].LeafJawPositions = data['jaw'][i]
-    collimation[1].LeafJawPositions = data['mlc'][i]
-
-    cp.CumulativeMetersetWeight = np.around(
-        data['monitor_units'][i] / data['monitor_units'][-1], decimals=6)
-
-    return cp
-
-
-def build_control_points(initial_cp_template, subsequent_cp_template,
-                         data):
-    number_of_control_points = len(data['monitor_units'])
-
-    cps = []
-    for i in range(number_of_control_points):
-        if i == 0:
-            template = initial_cp_template
-        else:
-            template = subsequent_cp_template
-
-        cps.append(add_data_to_control_point(template, data, i))
-
-    return cps
-
-
-def replace_fraction_group(created_dicom, beam_meterset, beam_index):
-    fraction_group = created_dicom.FractionGroupSequence[0]
-    referenced_beam = fraction_group.ReferencedBeamSequence[beam_index]
-    referenced_beam.BeamMeterset = str(beam_meterset)
-    fraction_group.ReferencedBeamSequence = [referenced_beam]
-    created_dicom.FractionGroupSequence = [fraction_group]
-
-
-def replace_beam_sequence(created_dicom, all_control_points, beam_index):
-    beam = created_dicom.BeamSequence[beam_index]
-    beam.ControlPointSequence = all_control_points
-    beam.NumberOfControlPoints = len(all_control_points)
-    created_dicom.BeamSequence = [beam]
-
-
-def restore_trailing_zeros(created_dicom):
-    for beam_sequence in created_dicom.BeamSequence:
-        for control_point in beam_sequence.ControlPointSequence:
-            current_value = float(control_point.CumulativeMetersetWeight)
-            new_value = '{0:.6f}'.format(current_value)
-
-            control_point.CumulativeMetersetWeight = new_value
-
-
 def jaw_dd2dcm(jaw):
     jaw = np.array(jaw, copy=False)
 
@@ -448,60 +275,6 @@ def angle_dd2dcm(angle):
     converted_angle = converted_angle.astype(str).tolist()
 
     return converted_angle, movement
-
-
-def filter_out_irrelevant_control_points(delivery_data: DeliveryData) -> DeliveryData:
-    relevant_control_points = find_relevant_control_points(
-        delivery_data.monitor_units)
-
-    new_delivery_data = []
-    for item in delivery_data:
-        new_delivery_data.append(
-            np.array(item)[relevant_control_points].tolist())
-
-    return DeliveryData(*new_delivery_data)
-
-
-def strip_delivery_data(delivery_data, skip_size):
-    new_delivery_data = []
-    for item in delivery_data:
-        new_delivery_data.append(np.array(item)[::skip_size].tolist())
-
-    return DeliveryData(*new_delivery_data)
-
-
-def gantry_angle_mask(delivery_data, gantry_angle, gantry_angle_tol):
-    near_angle = np.abs(
-        np.array(delivery_data.gantry) - gantry_angle) <= gantry_angle_tol
-    assert np.all(np.diff(np.where(near_angle)[0]) == 1)
-
-    return near_angle
-
-
-def apply_mask_to_delivery_data(delivery_data, mask):
-    new_delivery_data = []
-    for item in delivery_data:
-        new_delivery_data.append(np.array(item)[mask].tolist())
-
-    new_monitor_units = new_delivery_data[0]
-    try:
-        first_monitor_unit_item = new_monitor_units[0]
-    except IndexError:
-        return DeliveryData(*new_delivery_data)
-
-    new_delivery_data[0] = np.round(
-        np.array(new_delivery_data[0], copy=False)
-        - first_monitor_unit_item, decimals=7
-    ).tolist()
-
-    return DeliveryData(*new_delivery_data)
-
-
-def extract_one_gantry_angle(delivery_data, gantry_angle, gantry_angle_tol=3):
-    near_angle = gantry_angle_mask(
-        delivery_data, gantry_angle, gantry_angle_tol)
-
-    return apply_mask_to_delivery_data(delivery_data, near_angle)
 
 
 def convert_jaw_format(jaw):

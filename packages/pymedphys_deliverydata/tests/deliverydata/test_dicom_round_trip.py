@@ -38,23 +38,41 @@ from pymedphys.deliverydata import (
     dicom_to_delivery_data, delivery_data_to_dicom
 )
 
-from pymedphys_core.deliverydata.dicom import (
-    get_gantry_angles_from_dicom, get_all_masked_delivery_data,
-    maintain_order_unique,
-    filter_out_irrelevant_control_points,
-    get_metersets_from_delivery_data, get_gantry_angle_masks,
-    get_metersets_from_dicom)
+from pymedphys_utilities.algorithms import maintain_order_unique
 
 from pymedphys_fileformats.trf import delivery_data_from_logfile
+from pymedphys_dicom.rtplan import get_metersets_from_dicom
 
 from pymedphys_core.mudensity import mu_density_from_delivery_data
 
+from pymedphys_deliverydata.dicom.conversion import (
+    get_gantry_angles_from_dicom,
+    get_all_masked_delivery_data,
+    filter_out_irrelevant_control_points,
+    get_metersets_from_delivery_data,
+    get_gantry_angle_masks)
+# from pymedphys_deliverydata.utilities
+
+
 # pylint: disable=redefined-outer-name
 
+
+DIR_TO_TEST_MAP = {
+    "original": {
+        'fraction_group': 1
+    },
+    "multi_fraction_groups": {
+        'fraction_group': 2
+    }
+}
+
+DIR_TO_TEST = 'original'
+FRACTION_GROUP = DIR_TO_TEST_MAP[DIR_TO_TEST]['fraction_group']
+
 DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "data", "multi_fraction_groups")
+    os.path.dirname(__file__), "data", DIR_TO_TEST)
 DICOM_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, "RP.2.16.840.1.114337.1.1.1558497888.0_Anonymised.dcm"))
+    DATA_DIRECTORY, "rtplan.dcm"))
 LOGFILE_FILEPATH = os.path.abspath(os.path.join(
     DATA_DIRECTORY, "imrt.trf"))
 
@@ -84,7 +102,7 @@ def test_get_metersets_from_delivery_data(filtered_logfile_delivery_data,
                                           loaded_dicom_gantry_angles):
     gantry_tol = 3
 
-    expected = get_metersets_from_dicom(loaded_dicom_dataset, 2)
+    expected = get_metersets_from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
     all_masked_delivery_data = get_all_masked_delivery_data(
         filtered_logfile_delivery_data, loaded_dicom_gantry_angles, gantry_tol)
 

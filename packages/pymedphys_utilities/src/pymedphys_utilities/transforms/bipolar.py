@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,45 +24,33 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
-import shutil
-from glob import glob
-import subprocess
-import json
+import numpy as np
 
 
-WHITELIST = (
-    'pymedphys_coordsandscales',
-    'pymedphys_dicom',
-    'pymedphys_fileformats',
-    'pymedphys_utilities',
-    'pymedphys_core',
-    'pymedphys_gamma',
-    'pymedphys_deliverydata',
-    'pymedphys')
+def convert_angle_to_bipolar(angle):
+    angle = np.copy(angle)
+    if np.all(angle == 180):
+        return angle
 
+    angle[angle > 180] = angle[angle > 180] - 360
 
-def build_wheels_with_yarn():
-    yarn = shutil.which("yarn")
-    subprocess.call([yarn, "pypi:clean"])
-    for package in WHITELIST:
-        subprocess.call(
-            [yarn, "lerna", "run", "pypi:build", "--scope={}".format(package)])
+    is_180 = np.where(angle == 180)[0]
+    not_180 = np.where(np.invert(angle == 180))[0]
 
+    where_closest_left_leaning = np.argmin(
+        np.abs(is_180[:, None] - not_180[None, :]), axis=1)
+    where_closest_right_leaning = len(not_180) - 1 - np.argmin(np.abs(
+        is_180[::-1, None] -
+        not_180[None, ::-1]), axis=1)[::-1]
 
-def copy_wheels(packages_dir, new_dir):
-    wheel_filepaths = glob(os.path.join(packages_dir, '*', 'dist', '*.whl'))
+    closest_left_leaning = not_180[where_closest_left_leaning]
+    closest_right_leaning = not_180[where_closest_right_leaning]
 
-    filenames = []
-    for filepath in wheel_filepaths:
-        filename = os.path.basename(filepath)
-        if not filename.split('-')[0] in WHITELIST:
-            continue
+    assert np.all(
+        np.sign(angle[closest_left_leaning]) ==
+        np.sign(angle[closest_right_leaning])
+    ), "Unable to automatically determine whether angle is 180 or -180"
 
-        filenames.append(filename)
-        new_filepath = os.path.join(new_dir, filename)
-        shutil.copy(filepath, new_filepath)
+    angle[is_180] = np.sign(angle[closest_left_leaning]) * angle[is_180]
 
-    filenames_filepath = os.path.join(new_dir, 'filenames.json')
-    with open(filenames_filepath, 'w') as filenames_file:
-        json.dump(filenames, filenames_file)
+    return angle

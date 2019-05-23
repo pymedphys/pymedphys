@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from pymedphys_core.deliverydata import DeliveryData
+from pymedphys_deliverydata.base import DeliveryData
 
 from .constants import (
     GANTRY_NAME, COLLIMATOR_NAME,

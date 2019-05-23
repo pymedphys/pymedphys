@@ -1,8 +1,7 @@
 import os
 import pydicom
 
-from pymedphys_core.deliverydata import (
-    delivery_data_to_dicom)
+from pymedphys_deliverydata.dicom import delivery_data_to_dicom
 from .trf2deliverydata import delivery_data_from_logfile
 
 
