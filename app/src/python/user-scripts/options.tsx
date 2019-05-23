@@ -1,7 +1,7 @@
 import trf2csv from './trf2csv.py';
 // import muDensityDiff from './mu-density-diff.py';
 // import trf2dcm from './trf2dcm.py';
-// import anonymiseDicom from './anonymise-dicom.py';
+import anonymiseDicom from './anonymise-dicom.py';
 
 export interface IUserScript {
     name: string;
@@ -22,8 +22,8 @@ export const USER_SCRIPTS: IUserScript[] = [
     //     name: "trf2dcm", code: trf2dcm,
     //     description: "Converts files that end in `.trf` into an RT DICOM plan file using the a DICOM template"
     // },
-    // {
-    //     name: "Anonymise DICOM", code: anonymiseDicom,
-    //     description: "Anonymises DICOM headers"
-    // }
+    {
+        name: "Anonymise DICOM", code: anonymiseDicom,
+        description: "Anonymises DICOM headers"
+    }
 ]
