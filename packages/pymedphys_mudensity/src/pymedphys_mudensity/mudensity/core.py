@@ -29,9 +29,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pymedphys_utilities.constants import AGILITY
-
-from ..deliverydata import (
-    extract_angle_from_delivery_data, remove_irrelevant_control_points)
+from pymedphys_utilities.rtplan import (
+    find_relevant_control_points,
+    remove_irrelevant_control_points)
 
 from ..plt import pcolormesh_grid
 
@@ -477,31 +477,6 @@ def display_mu_density(grid, mu_density, grid_resolution=None):
     plt.ylabel('Jaw direction (mm)')
     plt.axis('equal')
     plt.gca().invert_yaxis()
-
-
-def calc_mu_density_bygantry(delivery_data, gantry_angle, grid_resolution=1,
-                             gantry_tolerance=0):
-    mu_density = calc_mu_density(
-        grid_resolution=grid_resolution,
-        *extract_angle_from_delivery_data(
-            delivery_data, gantry_angle, gantry_tolerance)
-    )
-
-    return mu_density
-
-
-def calc_mu_density_bygantry_return_grid(delivery_data, gantry_angle,
-                                         grid_resolution=1,
-                                         gantry_tolerance=0):
-    """DEPRECATED. This is a temporary helper function to provide the old api.
-    """
-    mu_density = calc_mu_density_return_grid(
-        grid_resolution=grid_resolution,
-        *extract_angle_from_delivery_data(
-            delivery_data, gantry_angle, gantry_tolerance)
-    )
-
-    return mu_density
 
 
 def _calc_blocked_t(travel_diff, grid_resolution):

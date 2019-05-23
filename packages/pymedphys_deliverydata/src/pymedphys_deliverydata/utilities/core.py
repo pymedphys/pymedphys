@@ -25,6 +25,8 @@
 
 import numpy as np
 
+from pymedphys_utilities.rtplan import find_relevant_control_points
+
 from ..base import DeliveryDataBase
 
 
@@ -53,40 +55,6 @@ def extract_angle_from_delivery_data(delivery_data, gantry_angle,
 
     mlc = mlc[gantry_angle_within_tolerance]
     jaw = jaw[gantry_angle_within_tolerance]
-
-    return mu, mlc, jaw
-
-
-def find_relevant_control_points(mu):
-    """Returns that control points that had an MU difference either side.
-    """
-    mu_diff = np.diff(mu)
-    no_change = mu_diff == 0
-    no_change_before = no_change[0:-1]
-    no_change_after = no_change[1::]
-
-    no_change_before_and_after = no_change_before & no_change_after
-    irrelevant_control_point = np.hstack(
-        [no_change[0], no_change_before_and_after, no_change[-1]])
-    relevant_control_points = np.invert(irrelevant_control_point)
-
-    return relevant_control_points
-
-
-def remove_irrelevant_control_points(mu, mlc, jaw):
-    """Removes control points that don't have MU delivery
-    """
-    assert len(mu) > 0, "No control points found"
-
-    mu = np.array(mu)
-    mlc = np.array(mlc)
-    jaw = np.array(jaw)
-
-    control_points_to_use = find_relevant_control_points(mu)
-
-    mu = mu[control_points_to_use]
-    mlc = mlc[control_points_to_use, :, :]
-    jaw = jaw[control_points_to_use, :]
 
     return mu, mlc, jaw
 
