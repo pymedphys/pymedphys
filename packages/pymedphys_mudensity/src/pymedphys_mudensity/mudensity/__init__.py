@@ -69,4 +69,3 @@ from .core import (
     display_mu_density,
     calc_mu_density_return_grid
 )
-from .api import mu_density_from_delivery_data
