@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,16 +24,35 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Model insert factors and parameterise inserts as equivalent ellipses.
+from ..base import DeliveryDataBase
+from ..dicom import (
+    delivery_data_to_dicom,
+    dicom_to_delivery_data)
+from ..utilities import (
+    filter_out_irrelevant_control_points,
+    get_all_masked_delivery_data)
 
-Example:
-    >>> from pymedphys.deliverydata import DeliveryData
-"""
 
+class DeliveryData(DeliveryDataBase):
+    @classmethod
+    def from_delivery_data_base(cls, delivery_data_base):
+        cls(**delivery_data_base)
 
-from .core import (
-    DeliveryData, get_delivery_parameters, extract_angle_from_delivery_data,
-    remove_irrelevant_control_points, find_relevant_control_points)
+    @classmethod
+    def from_dicom(cls, dataset):
+        return cls.from_delivery_data_base(
+            dicom_to_delivery_data(dataset))
 
-from .dicom import (
-    delivery_data_to_dicom, dicom_to_delivery_data, convert_angle_to_bipolar)
+    def to_dicom(self, template):
+        return delivery_data_to_dicom(self, template)
+
+    def filter_cps(self):
+        return type(self).from_delivery_data_base(self)
+
+    def mask_by_gantry(self, angles, tolerance):
+        base_masked = get_all_masked_delivery_data(self, angles, tolerance)
+        reassigned_class = []
+        for masked in base_masked:
+            reassigned_class.append(type(self).from_delivery_data_base(masked))
+
+        return reassigned_class

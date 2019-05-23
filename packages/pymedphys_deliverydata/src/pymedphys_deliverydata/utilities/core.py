@@ -23,18 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Working with delivery data from either logfiles or Mosaiq.
-"""
-
-from collections import namedtuple
-
 import numpy as np
 
-# Make the creation of DeliveryData look a bit like this...
-# Or a bit like the dataclass ...
-DeliveryData = namedtuple(
-    'DeliveryData',
-    ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
+from ..base import DeliveryDataBase
 
 
 def get_delivery_parameters(delivery_data):
@@ -98,3 +89,23 @@ def remove_irrelevant_control_points(mu, mlc, jaw):
     jaw = jaw[control_points_to_use, :]
 
     return mu, mlc, jaw
+
+
+def strip_delivery_data(delivery_data, skip_size):
+    new_delivery_data = []
+    for item in delivery_data:
+        new_delivery_data.append(np.array(item)[::skip_size].tolist())
+
+    return DeliveryDataBase(*new_delivery_data)
+
+
+def filter_out_irrelevant_control_points(delivery_data: DeliveryDataBase) -> DeliveryDataBase:
+    relevant_control_points = find_relevant_control_points(
+        delivery_data.monitor_units)
+
+    new_delivery_data = []
+    for item in delivery_data:
+        new_delivery_data.append(
+            np.array(item)[relevant_control_points].tolist())
+
+    return DeliveryDataBase(*new_delivery_data)

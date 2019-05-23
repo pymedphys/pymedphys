@@ -24,45 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
-import shutil
-from glob import glob
-import subprocess
-import json
+def maintain_order_unique(items):
+    result = []
+    for item in items:
+        if item not in result:
+            result.append(item)
 
-
-WHITELIST = (
-    'pymedphys_coordsandscales',
-    'pymedphys_dicom',
-    'pymedphys_fileformats',
-    'pymedphys_utilities',
-    'pymedphys_core',
-    'pymedphys_gamma',
-    'pymedphys_deliverydata',
-    'pymedphys')
-
-
-def build_wheels_with_yarn():
-    yarn = shutil.which("yarn")
-    subprocess.call([yarn, "pypi:clean"])
-    for package in WHITELIST:
-        subprocess.call(
-            [yarn, "lerna", "run", "pypi:build", "--scope={}".format(package)])
-
-
-def copy_wheels(packages_dir, new_dir):
-    wheel_filepaths = glob(os.path.join(packages_dir, '*', 'dist', '*.whl'))
-
-    filenames = []
-    for filepath in wheel_filepaths:
-        filename = os.path.basename(filepath)
-        if not filename.split('-')[0] in WHITELIST:
-            continue
-
-        filenames.append(filename)
-        new_filepath = os.path.join(new_dir, filename)
-        shutil.copy(filepath, new_filepath)
-
-    filenames_filepath = os.path.join(new_dir, 'filenames.json')
-    with open(filenames_filepath, 'w') as filenames_file:
-        json.dump(filenames, filenames_file)
+    return result
