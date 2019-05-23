@@ -32,12 +32,21 @@ def find_relevant_control_points(mu):
     """
     mu_diff = np.diff(mu)
     no_change = mu_diff == 0
+    try:
+        start = no_change[0]
+        end = no_change[-1]
+    except IndexError:
+        all_true = np.empty_like(mu).astype(bool)
+        all_true.fill(True)
+        return all_true
+
     no_change_before = no_change[0:-1]
     no_change_after = no_change[1::]
 
     no_change_before_and_after = no_change_before & no_change_after
+
     irrelevant_control_point = np.hstack(
-        [no_change[0], no_change_before_and_after, no_change[-1]])
+        [start, no_change_before_and_after, end])
     relevant_control_points = np.invert(irrelevant_control_point)
 
     return relevant_control_points
