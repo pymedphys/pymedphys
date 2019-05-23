@@ -38,10 +38,10 @@ def get_metersets_from_dicom(dicom_dataset, fraction_group):
     fraction_group_index = fraction_group_numbers.index(fraction_group)
     fraction_group = fraction_group_sequence[fraction_group_index]
 
-    beam_metersets = [
+    beam_metersets = tuple(
         float(referenced_beam.BeamMeterset)
         for referenced_beam in fraction_group.ReferencedBeamSequence
-    ]
+    )
 
     return beam_metersets
 
