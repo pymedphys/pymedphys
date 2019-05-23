@@ -27,7 +27,7 @@ import numpy as np
 
 from pymedphys_utilities.rtplan import find_relevant_control_points
 
-from ..base import DeliveryDataBase
+from ..base import _DeliveryDataBase
 
 
 def get_delivery_parameters(delivery_data):
@@ -69,7 +69,7 @@ def strip_delivery_data(delivery_data, skip_size):
     return DeliveryDataObject(*new_delivery_data)
 
 
-def filter_out_irrelevant_control_points(delivery_data: DeliveryDataBase) -> DeliveryDataBase:
+def filter_out_irrelevant_control_points(delivery_data: _DeliveryDataBase) -> _DeliveryDataBase:
     DeliveryDataObject = type(delivery_data)
 
     relevant_control_points = find_relevant_control_points(
