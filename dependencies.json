@@ -11,6 +11,7 @@
         "pymedphys_dicom": "~0.8.0-dev.17",
         "pymedphys_electronfactors": "~0.8.0-dev.17",
         "pymedphys_fileformats": "~0.8.0-dev.17",
+        "pymedphys_gamma": "~0.8.0-dev.17",
         "pymedphys_labs": "~0.8.0-dev.17",
         "pymedphys_logfiles": "~0.8.0-dev.17",
         "pymedphys_monomanage": "~0.8.0-dev.17",
@@ -35,6 +36,7 @@
         "pymedphys_dicom": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_electronfactors": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_fileformats": ">= 0.8.0dev17, < 0.9.0",
+        "pymedphys_gamma": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_labs": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_logfiles": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_monomanage": ">= 0.8.0dev17, < 0.9.0",
@@ -60,6 +62,7 @@
         "pymedphys_dicom",
         "pymedphys_electronfactors",
         "pymedphys_fileformats",
+        "pymedphys_gamma",
         "pymedphys_labs",
         "pymedphys_logfiles",
         "pymedphys_utilities",
@@ -84,11 +87,7 @@
       "internal": [
         "pymedphys_dicom"
       ],
-      "stdlib": [
-        "dataclasses",
-        "sys",
-        "typing"
-      ]
+      "stdlib": []
     },
     "pymedphys_coordsandscales": {
       "external": [
@@ -174,6 +173,20 @@
         "json",
         "os",
         "re",
+        "typing"
+      ]
+    },
+    "pymedphys_gamma": {
+      "external": [
+        "numpy"
+      ],
+      "internal": [
+        "pymedphys_dicom"
+      ],
+      "stdlib": [
+        "dataclasses",
+        "itertools",
+        "sys",
         "typing"
       ]
     },
