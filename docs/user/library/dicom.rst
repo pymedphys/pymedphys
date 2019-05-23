@@ -59,9 +59,3 @@ A suite of functions for manipulating dose in a DICOM context.
 
 
 
-RT Structure
-------------
-A suite of functions that apply specifically to DICOM RT Structure sets
-
-.. autofunction:: pymedphys.dicom.get_structure_aligned_cube
-
