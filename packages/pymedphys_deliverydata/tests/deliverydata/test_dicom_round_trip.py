@@ -40,8 +40,6 @@ from pymedphys_dicom.rtplan import (
     get_metersets_from_dicom,
     get_gantry_angles_from_dicom)
 
-from pymedphys_mudensity.mudensity import mu_density_from_delivery_data
-
 from pymedphys.deliverydata import DeliveryData
 
 # pylint: disable=redefined-outer-name
@@ -102,10 +100,8 @@ def test_get_metersets_from_delivery_data(logfile_delivery_data,
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
     dicom_delivery_data = DeliveryData.from_dicom(loaded_dicom_dataset)
 
-    dicom_mu_density = mu_density_from_delivery_data(
-        dicom_delivery_data, grid_resolution=5)
-    logfile_mu_density = mu_density_from_delivery_data(
-        logfile_delivery_data, grid_resolution=5)
+    dicom_mu_density = dicom_delivery_data.mudensity(grid_resolution=5)
+    logfile_mu_density = logfile_delivery_data.mudensity(grid_resolution=5)
 
     diff = logfile_mu_density - dicom_mu_density
     max_diff = np.max(np.abs(diff))
