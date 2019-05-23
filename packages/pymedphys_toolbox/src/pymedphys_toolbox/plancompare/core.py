@@ -34,7 +34,6 @@ import matplotlib.pyplot as plt
 
 from pymedphys_databases.msq import (
     multi_mosaiq_connect, delivery_data_from_mosaiq)
-from pymedphys_mudensity.mudensity import mu_density_from_delivery_data
 
 
 def plot_mu_densities(labels, mu_density_results):
@@ -83,7 +82,7 @@ def compare_mosaiq_fields(servers, field_ids):
         ]
 
     mu_density_results = [
-        mu_density_from_delivery_data(delivery_data)
+        delivery_data.mudensity()
         for delivery_data in deliveries
     ]
 
