@@ -54,7 +54,7 @@ class DeliveryData(DeliveryDataBase):
         if type(delivery_data_base) is type(cls):
             return delivery_data_base
 
-        return cls(**delivery_data_base)
+        return cls(*delivery_data_base)
 
     @classmethod
     def from_dicom(cls, dataset):

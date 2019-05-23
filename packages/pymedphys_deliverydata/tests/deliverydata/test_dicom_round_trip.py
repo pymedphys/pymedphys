@@ -91,7 +91,12 @@ def test_get_metersets_from_delivery_data(logfile_delivery_data,
     filtered = logfile_delivery_data.filter_cps()
     metersets = filtered.metersets(loaded_dicom_gantry_angles, gantry_tol)
 
-    assert np.all(np.abs(np.array(expected) - np.array(metersets)) <= 0.1)
+    try:
+        assert np.all(np.abs(np.array(expected) - np.array(metersets)) <= 0.2)
+    except AssertionError:
+        print("\nIn DICOM file:\n   {}".format(expected))
+        print("\nIn log file:\n   {}".format(metersets))
+        raise
 
 
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
