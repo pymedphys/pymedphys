@@ -85,7 +85,9 @@ def gantry_angle_mask(delivery_data, gantry_angle, gantry_angle_tol):
     return near_angle
 
 
-def apply_mask_to_delivery_data(delivery_data, mask):
+def apply_mask_to_delivery_data(delivery_data: DeliveryDataBase, mask):
+    DeliveryDataObject = type(delivery_data)
+
     new_delivery_data = []
     for item in delivery_data:
         new_delivery_data.append(np.array(item)[mask].tolist())
@@ -94,14 +96,14 @@ def apply_mask_to_delivery_data(delivery_data, mask):
     try:
         first_monitor_unit_item = new_monitor_units[0]
     except IndexError:
-        return DeliveryDataBase(*new_delivery_data)
+        return DeliveryDataObject(*new_delivery_data)
 
     new_delivery_data[0] = np.round(
         np.array(new_delivery_data[0], copy=False)
         - first_monitor_unit_item, decimals=7
     ).tolist()
 
-    return DeliveryDataBase(*new_delivery_data)
+    return DeliveryDataObject(*new_delivery_data)
 
 
 def extract_one_gantry_angle(delivery_data, gantry_angle, gantry_angle_tol=3):
@@ -109,3 +111,14 @@ def extract_one_gantry_angle(delivery_data, gantry_angle, gantry_angle_tol=3):
         delivery_data, gantry_angle, gantry_angle_tol)
 
     return apply_mask_to_delivery_data(delivery_data, near_angle)
+
+
+def get_metersets_from_delivery_data(all_masked_delivery_data):
+    metersets = []
+    for delivery_data in all_masked_delivery_data:
+        try:
+            metersets.append(delivery_data.monitor_units[-1])
+        except IndexError:
+            continue
+
+    return metersets
