@@ -10,9 +10,14 @@ import setupDirectories from '../python/setup-directories.py';
 
 let messageReceiver = new BehaviorSubject({
   uuid: uuidv4(),
-  type: '',  // 'code', ''
-  imports: {},
-  code: {}
+  type: '',  // 'executeRequest', 'fileTransfer', 'languageServer', 'reply',
+  data: {}
+})
+
+let messageSender = new BehaviorSubject({
+  uuid: uuidv4(),
+  type: '',  // 'fileTransfer', 'languageServer', 'reply',
+  data: {}
 })
 
 let pythonInitialise = languagePluginLoader.then(() => {
