@@ -27,11 +27,10 @@
 import functools
 from typing import Union, Tuple
 
-
+from pymedphys_base.deliverydata import DeliveryDataBase
 from pymedphys_utilities.types import to_tuple
 from pymedphys_mudensity.mudensity import calc_mu_density
 
-from ..base import _DeliveryDataBase
 from ..dicom import (
     delivery_data_to_dicom,
     dicom_to_delivery_data,
@@ -40,9 +39,10 @@ from ..utilities import (
     filter_out_irrelevant_control_points,
     get_all_masked_delivery_data,
     get_metersets_from_delivery_data)
+from ..logfile import delivery_data_from_logfile
 
 
-class DeliveryData(_DeliveryDataBase):
+class DeliveryData(DeliveryDataBase):
     def __new__(cls, *args):
         new_args = (
             to_tuple(arg)
@@ -62,6 +62,14 @@ class DeliveryData(_DeliveryDataBase):
         return cls.from_delivery_data_base(
             dicom_to_delivery_data(dataset))
 
+    def to_dicom(self, template):
+        return delivery_data_to_dicom(self, template)
+
+    @classmethod
+    def from_logfile(cls, filepath):
+        return cls.from_delivery_data_base(
+            delivery_data_from_logfile(filepath))
+
     @classmethod
     def empty(cls):
         return cls(
@@ -80,15 +88,12 @@ class DeliveryData(_DeliveryDataBase):
             ))
         )
 
-    def to_dicom(self, template):
-        return delivery_data_to_dicom(self, template)
-
     @functools.lru_cache()
     def filter_cps(self):
         return filter_out_irrelevant_control_points(self)
 
     @functools.lru_cache()
-    def mask_by_gantry(self, angles: Union[tuple, float, int], tolerance=3):
+    def mask_by_gantry(self, angles: Union[Tuple, float, int], tolerance=3):
         iterable_angles: tuple
 
         try:
@@ -106,7 +111,8 @@ class DeliveryData(_DeliveryDataBase):
         return get_metersets_from_delivery_data(
             self.mask_by_gantry(gantry_angles, gantry_tolerance))
 
-    def mudensity(self, gantry_angles=None, gantry_tolerance=None, grid_resolution=1):
+    def mudensity(self, gantry_angles=None, gantry_tolerance=None,
+                  grid_resolution=1, output_always_list=False):
         if gantry_angles is None:
             gantry_angles = 0
             gantry_tolerance = 500
@@ -123,8 +129,8 @@ class DeliveryData(_DeliveryDataBase):
                 delivery_data.jaw,
                 grid_resolution=grid_resolution))
 
-        # TODO: This is worth discussion whether or not we should do this
-        if len(mudensities) == 1:
-            return mudensities[0]
+        if not output_always_list:
+            if len(mudensities) == 1:
+                return mudensities[0]
 
         return mudensities
