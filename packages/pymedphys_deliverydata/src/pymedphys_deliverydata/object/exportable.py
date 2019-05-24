@@ -159,7 +159,7 @@ class DeliveryData(DeliveryDataBase):
                 masked = get_all_masked_delivery_data(
                     filtered, gantry_angles, gantry_tol, quiet=True)
             except AssertionError:
-                masked = DeliveryDataBase.empty()
+                masked = [DeliveryDataBase.empty()]
 
             masked_delivery_data_by_fraction_group.append(masked)
 
@@ -170,11 +170,15 @@ class DeliveryData(DeliveryDataBase):
 
         maximum_deviations = []
         for dicom_metersets, delivery_data_metersets in zip(
-            dicom_metersets_by_fraction_group,
-            deliver_data_metersets_by_fraction_group
-        ):
-            maximmum_diff = np.max(np.abs(
-                np.array(dicom_metersets) - np.array(delivery_data_metersets)))
+                dicom_metersets_by_fraction_group,  # nopep8
+                deliver_data_metersets_by_fraction_group):  # nopep8
+
+            try:
+                maximmum_diff = np.max(np.abs(
+                    np.array(dicom_metersets) -
+                    np.array(delivery_data_metersets)))
+            except ValueError:
+                maximmum_diff = np.inf
 
             maximum_deviations.append(maximmum_diff)
 
