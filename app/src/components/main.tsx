@@ -19,7 +19,8 @@ import { AppSelectScript } from './select-script'
 import {
   pythonReady, pythonData, IPythonData, pythonCode
 } from '../observables/python'
-import { inputDirectory, outputDirectory } from '../observables/directories'
+import { inputDirectory, outputDirectory } from '../observables/directories';
+import { sendExecuteRequest } from '../observables/webworker-messaging';
 
 import runUserCode from '../python/run-user-code.py';
 import zipOutput from '../python/zip-output.py';
@@ -31,13 +32,10 @@ declare var Module: any;
 
 
 function runConversion() {
-  pyodide.runPython(runUserCode)
-    .catch(() => {
-      pyodide.runPython(updateOutput)
-    })
-    .then(() => {
-      pyodide.runPython(updateOutput)
-    })
+  sendExecuteRequest(updateOutput).toPromise().then(result => {
+    const fileNames = result.data.result
+    outputDirectory.next(fileNames)
+  })
 }
 
 function downloadOutput() {

@@ -52,7 +52,8 @@ interface ILanguageServerMessage extends IMessage {
 }
 
 interface IReplyData extends IData {
-
+  error?: any
+  result?: any
 }
 
 interface IReplyMessage extends IMessage {
