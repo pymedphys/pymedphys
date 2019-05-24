@@ -29,7 +29,9 @@ import updateOutput from '../python/update-output.py';
 
 
 function runConversion() {
-  sendExecuteRequest(pythonCode.getValue()).subscribe(() => {
+  // const code = pythonCode.getValue();
+  const code = "print('boo'); 'george'"
+  sendExecuteRequest(code).subscribe(() => {
     sendExecuteRequest(updateOutput).subscribe(result => {
       const fileNames = result.data.result
       outputDirectory.next(fileNames)

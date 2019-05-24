@@ -55,19 +55,20 @@ receiverMessengers.initialise.subscribe(data => {
 
 function convertCode(code: string) {
   const converted = `
+import sys
 from js import Promise
+
+sys.setrecursionlimit(100)
 
 def run_user_code():
     def run_promise(resolve, reject):
         try:
-            exec("""${code}""")
-            resolve()
+            resolve(exec("""${code}"""))
         except Exception as e:
             reject(e)
             raise
 
     return Promise.new(run_promise)
-
 
 run_user_code()
 `
@@ -82,8 +83,14 @@ receiverMessengers.executeRequest.subscribe(message => {
 
   pythonInitialise.then(() => {
     pyodide.runPython(convertCode(code))
-      .then((result: any) => sendReply(uuid, { result }))
-      .catch((error: any) => sendReply(uuid, { error }));
+      .then((result: any) => {
+        console.log(result)
+        sendReply(uuid, { result })
+      })
+      .catch((error: any) => {
+        console.log(error)
+        sendReply(uuid, { error })
+      });
   });
 })
 
