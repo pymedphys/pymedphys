@@ -30,7 +30,7 @@ import numpy as np
 
 from pymedphys_base.deliverydata import DeliveryDataBase
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
-from pymedphys_utilities.rtplan import get_fraction_group_index
+from pymedphys_dicom.rtplan import get_fraction_group_index
 
 from ..utilities import merge_delivery_data
 
