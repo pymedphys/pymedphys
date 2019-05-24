@@ -64,11 +64,15 @@ receiverMessengers.fileTransferRequest.subscribe(message => {
 })
 
 function dirBasenameSplit(filepath) {
-  split = filepath.split('/')
-  basename = split[split.length - 1]
-  dir = split.slice(0, -1).join('/')
+  const split = filepath.split('/')
+  // console.log(split)
+  const basename = split[split.length - 1]
+  // console.log(basename)
+  const dir = split.slice(0, -1).join('/') + '/'
+  // console.log(dir)
+  const dirbasename = [dir, basename]
 
-  return [dir, basename]
+  return dirbasename
 }
 
 receiverMessengers.fileTransfer.subscribe(message => {
@@ -80,7 +84,7 @@ receiverMessengers.fileTransfer.subscribe(message => {
     const dirbasename = dirBasenameSplit(filepath)
     const data = new Uint8Array(file);
     Module['FS_createDataFile'](dirbasename[0], dirbasename[1], data, true, true, true);
-  }
 
-  sendReply(uuid, { result: dirbasename[1] })
+    sendReply(uuid, { result: dirbasename[1] })
+  }
 })
