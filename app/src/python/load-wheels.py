@@ -1,5 +1,6 @@
 # pylint: disable=import-error
 
+# import sys
 import importlib
 import io
 import json
@@ -7,6 +8,8 @@ from pathlib import Path
 import zipfile
 
 from js import Promise, XMLHttpRequest
+
+# sys.setrecursionlimit(10000)
 
 
 WHEEL_BASE_PATH = Path('/lib/python3.7/site-packages/').parent

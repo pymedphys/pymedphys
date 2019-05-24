@@ -29,9 +29,11 @@ import updateOutput from '../python/update-output.py';
 
 
 function runConversion() {
-  sendExecuteRequest(updateOutput).toPromise().then(result => {
-    const fileNames = result.data.result
-    outputDirectory.next(fileNames)
+  sendExecuteRequest(pythonCode.getValue()).subscribe(() => {
+    sendExecuteRequest(updateOutput).subscribe(result => {
+      const fileNames = result.data.result
+      outputDirectory.next(fileNames)
+    })
   })
 }
 
@@ -39,13 +41,13 @@ function runConversion() {
 function downloadOutput() {
   const filename = '/output.zip'
 
-  sendExecuteRequest(zipOutput).toPromise().then(() => {
-    return sendFileTransferRequest(filename).toPromise()
-  }).then(message => {
-    const file = message.data.file
-    const pathSplit = filename.split('/')
-    const basename = pathSplit[pathSplit.length - 1]
-    saveAs(new Blob([new Uint8Array(file)]), basename)
+  sendExecuteRequest(zipOutput).subscribe(() => {
+    return sendFileTransferRequest(filename).subscribe(message => {
+      const file = message.data.file
+      const pathSplit = filename.split('/')
+      const basename = pathSplit[pathSplit.length - 1]
+      saveAs(new Blob([new Uint8Array(file)]), basename)
+    })
   })
 }
 

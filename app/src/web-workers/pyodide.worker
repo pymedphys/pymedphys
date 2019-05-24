@@ -3,6 +3,7 @@ importScripts('https://pyodide.pymedphys.com/pyodide.js')
 
 import loadWheels from '../python/load-wheels.py';
 import setupDirectories from '../python/setup-directories.py';
+import setMatplotlibBackend from '../python/set-matplotlib-backend.py';
 
 import {
   receiverMessengers, senderMessengers,
@@ -29,7 +30,9 @@ let pythonInitialise = languagePluginLoader.then(() => {
     pyodide.runPython(setupDirectories),
     pyodide.runPython(loadWheels),
     pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
-  ])
+  ]).then(() => {
+    return pyodide.runPython(setMatplotlibBackend)
+  })
 })
 
 receiverMessengers.initialise.subscribe(data => {
@@ -39,12 +42,35 @@ receiverMessengers.initialise.subscribe(data => {
   })
 })
 
+function convertCode(code) {
+  const converted = `
+from js import Promise
+
+def run_user_code():
+    def run_promise(resolve, reject):
+        try:
+            exec("""${code}""")
+            resolve()
+        except Exception as e:
+            reject(e)
+            raise
+
+    return Promise.new(run_promise)
+
+
+run_user_code()
+`
+  console.log(converted)
+
+  return converted
+}
+
 receiverMessengers.executeRequest.subscribe(message => {
   const uuid = message.uuid;
   const code = message.data.code;
 
   pythonInitialise.then(() => {
-    self.pyodide.runPythonAsync(code, () => { })
+    self.pyodide.runPython(convertCode(code))
       .then(result => sendReply(uuid, { result }))
       .catch(error => sendReply(uuid, { error }));
   });
