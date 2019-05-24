@@ -27,7 +27,7 @@
 import numpy as np
 
 
-def convert_angle_to_bipolar(angle):
+def convert_IEC_angle_to_bipolar(angle):
     angle = np.copy(angle)
     if np.all(angle == 180):
         return angle

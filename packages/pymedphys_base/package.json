@@ -1,8 +1,8 @@
 {
   "dependencies": {
-    "pymedphys_core": "~0.8.0-dev.17"
+    "pymedphys_utilities": "~0.8.0-dev.17"
   },
-  "name": "pymedphys_fileformats",
+  "name": "pymedphys_base",
   "private": true,
   "scripts": {
     "pip:install:dev": "pip install -e .",

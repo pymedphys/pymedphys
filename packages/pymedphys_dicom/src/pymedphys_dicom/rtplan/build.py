@@ -65,8 +65,9 @@ def build_control_points(initial_cp_template, subsequent_cp_template,
     return cps
 
 
-def replace_fraction_group(created_dicom, beam_meterset, beam_index):
-    fraction_group = created_dicom.FractionGroupSequence[0]
+def replace_fraction_group(created_dicom, beam_meterset, beam_index,
+                           fraction_group_index):
+    fraction_group = created_dicom.FractionGroupSequence[fraction_group_index]
     referenced_beam = fraction_group.ReferencedBeamSequence[beam_index]
     referenced_beam.BeamMeterset = str(beam_meterset)
     fraction_group.ReferencedBeamSequence = [referenced_beam]
@@ -87,3 +88,17 @@ def restore_trailing_zeros(created_dicom):
             new_value = '{0:.6f}'.format(current_value)
 
             control_point.CumulativeMetersetWeight = new_value
+
+
+def merge_beam_sequences(dicoms_by_gantry_angle):
+    merged = dicoms_by_gantry_angle[0]
+
+    for dicom in dicoms_by_gantry_angle[1::]:
+        merged.BeamSequence.append(
+            dicom.BeamSequence[0]
+        )
+        merged.FractionGroupSequence[0].ReferencedBeamSequence.append(
+            dicom.FractionGroupSequence[0].ReferencedBeamSequence[0]
+        )
+
+    return merged
