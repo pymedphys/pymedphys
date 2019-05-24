@@ -1,1 +1,1 @@
-import './webworker.js'
+import './webworker.tsx'
