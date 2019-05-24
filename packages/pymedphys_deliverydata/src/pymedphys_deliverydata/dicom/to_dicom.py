@@ -52,13 +52,15 @@ from ..utilities import (
 def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
                            dicom_template,
                            fraction_group_number=None):
-    if fraction_group_number is None:
-        pass
-
     single_fraction_group_template = convert_to_one_fraction_group(
         dicom_template, fraction_group_number)
 
     delivery_data = filter_out_irrelevant_control_points(delivery_data)
+
+    if fraction_group_number is None:
+        fraction_group_number = determine_fraction_group_number(
+            delivery_data, dicom_template)
+
     template_gantry_angles = get_gantry_angles_from_dicom(
         single_fraction_group_template)
 
@@ -80,7 +82,7 @@ def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
 
 
 def determine_fraction_group_number(delivery_data, dicom_template,
-                                    gantry_tol=None, meterset_tol=0.5):
+                                    gantry_tol=3, meterset_tol=0.5):
     fraction_groups = dicom_template.FractionGroupSequence
 
     if len(fraction_groups) == 1:
@@ -106,18 +108,8 @@ def determine_fraction_group_number(delivery_data, dicom_template,
         get_gantry_angles_from_dicom(dataset)
         for dataset in split_by_fraction_group]
 
-    gantry_tolerances = [
-        gantry_tol_from_gantry_angles(gantry_angles)
-        if gantry_tol is None
-        else gantry_tol
-        for gantry_angles in gantry_angles_by_fraction_group
-    ]
-
     masked_delivery_data_by_fraction_group = []
-
-    for gantry_angles, gantry_tol in zip(
-        gantry_angles_by_fraction_group, gantry_tolerances
-    ):
+    for gantry_angles in gantry_angles_by_fraction_group:
         try:
             masked = get_all_masked_delivery_data(
                 delivery_data, gantry_angles, gantry_tol, quiet=True)
@@ -126,10 +118,14 @@ def determine_fraction_group_number(delivery_data, dicom_template,
 
         masked_delivery_data_by_fraction_group.append(masked)
 
-    deliver_data_metersets_by_fraction_group = [
-        get_metersets_from_delivery_data(masked_delivery_data)
-        for masked_delivery_data in masked_delivery_data_by_fraction_group
-    ]
+    try:
+        deliver_data_metersets_by_fraction_group = [
+            get_metersets_from_delivery_data(masked_delivery_data)
+            for masked_delivery_data in masked_delivery_data_by_fraction_group
+        ]
+    except AttributeError:
+        # print(masked_delivery_data_by_fraction_group)
+        raise
 
     maximum_deviations = []
     for dicom_metersets, delivery_data_metersets in zip(
