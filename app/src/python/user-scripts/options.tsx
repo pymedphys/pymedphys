@@ -20,7 +20,7 @@ export const USER_SCRIPTS: IUserScript[] = [
     //     description: "Prints the MU Density for the first `.trf` file and the first RT DICOM `.dcm` file"
     // },
     {
-        name: "trf2dcm", code: trf2dcm,
+        name: "TRF to DICOM", code: trf2dcm,
         description: "Converts files that end in `.trf` into DICOM RT Plan files using a user-supplied DICOM RT Plan file template."
     },
     {
