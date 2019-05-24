@@ -32,8 +32,10 @@ import struct
 import attr
 import numpy as np
 
-from pymedphys_core.deliverydata import (
-    DeliveryData, get_delivery_parameters, convert_angle_to_bipolar)
+from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
+
+from pymedphys_deliverydata.object import DeliveryData
+from pymedphys_deliverydata.utilities import get_delivery_parameters
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES
@@ -338,8 +340,8 @@ def delivery_data_from_mosaiq(cursor, field_id):
     coll_y2 = txfieldpoint_results[:, 6].astype(float)
 
     mlc, jaw = collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2)
-    gantry = convert_angle_to_bipolar(msq_gantry_angle)
-    collimator = convert_angle_to_bipolar(msq_collimator_angle)
+    gantry = convert_IEC_angle_to_bipolar(msq_gantry_angle)
+    collimator = convert_IEC_angle_to_bipolar(msq_collimator_angle)
 
     # TODO Tidy up this axis swap
     mlc = np.swapaxes(mlc, 0, 2)
