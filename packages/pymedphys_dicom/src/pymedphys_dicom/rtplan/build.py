@@ -87,3 +87,17 @@ def restore_trailing_zeros(created_dicom):
             new_value = '{0:.6f}'.format(current_value)
 
             control_point.CumulativeMetersetWeight = new_value
+
+
+def merge_beam_sequences(dicoms_by_gantry_angle):
+    merged = dicoms_by_gantry_angle[0]
+
+    for dicom in dicoms_by_gantry_angle[1::]:
+        merged.BeamSequence.append(
+            dicom.BeamSequence[0]
+        )
+        merged.FractionGroupSequence[0].ReferencedBeamSequence.append(
+            dicom.FractionGroupSequence[0].ReferencedBeamSequence[0]
+        )
+
+    return merged
