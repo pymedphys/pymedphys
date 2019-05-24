@@ -58,9 +58,9 @@ class DeliveryData(DeliveryDataBase):
         return cls(*delivery_data_base)
 
     @classmethod
-    def from_dicom(cls, dataset):
+    def from_dicom(cls, dataset, fraction_group_number):
         return cls.from_delivery_data_base(
-            delivery_data_from_dicom(dataset))
+            delivery_data_from_dicom(dataset, fraction_group_number))
 
     def to_dicom(self, template):
         return delivery_data_to_dicom(self, template)

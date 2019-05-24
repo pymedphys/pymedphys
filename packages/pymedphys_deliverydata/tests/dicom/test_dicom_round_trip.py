@@ -53,7 +53,7 @@ DIR_TO_TEST_MAP = {
     }
 }
 
-DIR_TO_TEST = 'original'
+DIR_TO_TEST = 'multi_fraction_groups'
 FRACTION_GROUP = DIR_TO_TEST_MAP[DIR_TO_TEST]['fraction_group']
 
 DATA_DIRECTORY = os.path.join(
@@ -79,6 +79,64 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
     return get_gantry_angles_from_dicom(loaded_dicom_dataset)
 
 
+def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
+                              logfile_delivery_data: DeliveryData):
+    original = logfile_delivery_data.filter_cps()
+    template = loaded_dicom_dataset
+
+    dicom = original.to_dicom(template)
+    processed = DeliveryData.from_dicom(dicom, FRACTION_GROUP)
+
+    assert np.all(
+        np.around(original.monitor_units, 2) ==
+        np.around(processed.monitor_units, 2))
+
+    assert np.all(
+        np.around(original.gantry, 2) ==
+        np.around(processed.gantry, 2))
+
+    assert np.all(
+        np.around(original.mlc, 2) ==
+        np.around(processed.mlc, 2))
+
+    assert np.all(
+        np.around(original.jaw, 2) ==
+        np.around(processed.jaw, 2))
+
+    # Collimator not currently handled appropriately
+    assert np.all(
+        np.around(original.collimator, 2) ==
+        np.around(processed.collimator, 2))
+
+
+def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
+                               loaded_dicom_gantry_angles):
+    original = loaded_dicom_dataset
+    original_gantry_angles = loaded_dicom_gantry_angles
+
+    delivery_data = DeliveryData.from_dicom(original, FRACTION_GROUP)
+    processed = delivery_data.to_dicom(original)
+
+    assert (
+        num_of_control_points(original) == num_of_control_points(processed)
+    )
+
+    assert (
+        maintain_order_unique(delivery_data.gantry) == original_gantry_angles)
+
+    processed_gantry_angles = get_gantry_angles_from_dicom(processed)
+
+    assert original_gantry_angles == processed_gantry_angles
+
+    assert (
+        source_to_surface_distances(original) ==
+        source_to_surface_distances(processed))
+
+    assert first_mlc_positions(original) == first_mlc_positions(processed)
+
+    assert str(original) == str(processed)
+
+
 def test_get_metersets_from_delivery_data(logfile_delivery_data,
                                           loaded_dicom_dataset,
                                           loaded_dicom_gantry_angles):
@@ -97,7 +155,8 @@ def test_get_metersets_from_delivery_data(logfile_delivery_data,
 
 
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
-    dicom_delivery_data = DeliveryData.from_dicom(loaded_dicom_dataset)
+    dicom_delivery_data = DeliveryData.from_dicom(
+        loaded_dicom_dataset, FRACTION_GROUP)
 
     dicom_mu_density = dicom_delivery_data.mudensity(grid_resolution=5)
     logfile_mu_density = logfile_delivery_data.mudensity(grid_resolution=5)
@@ -129,64 +188,6 @@ def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
         plt.colorbar()
         plt.show()
         raise
-
-
-def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
-                              logfile_delivery_data: DeliveryData):
-    original = logfile_delivery_data.filter_cps()
-    template = loaded_dicom_dataset
-
-    dicom = original.to_dicom(template)
-    processed = DeliveryData.from_dicom(dicom)
-
-    assert np.all(
-        np.around(original.monitor_units, 2) ==
-        np.around(processed.monitor_units, 2))
-
-    assert np.all(
-        np.around(original.gantry, 2) ==
-        np.around(processed.gantry, 2))
-
-    assert np.all(
-        np.around(original.mlc, 2) ==
-        np.around(processed.mlc, 2))
-
-    assert np.all(
-        np.around(original.jaw, 2) ==
-        np.around(processed.jaw, 2))
-
-    # Collimator not currently handled appropriately
-    assert np.all(
-        np.around(original.collimator, 2) ==
-        np.around(processed.collimator, 2))
-
-
-def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
-                               loaded_dicom_gantry_angles):
-    original = loaded_dicom_dataset
-    original_gantry_angles = loaded_dicom_gantry_angles
-
-    delivery_data = DeliveryData.from_dicom(original)
-    processed = delivery_data.to_dicom(original)
-
-    assert (
-        num_of_control_points(original) == num_of_control_points(processed)
-    )
-
-    assert (
-        maintain_order_unique(delivery_data.gantry) == original_gantry_angles)
-
-    processed_gantry_angles = get_gantry_angles_from_dicom(processed)
-
-    assert original_gantry_angles == processed_gantry_angles
-
-    assert (
-        source_to_surface_distances(original) ==
-        source_to_surface_distances(processed))
-
-    assert first_mlc_positions(original) == first_mlc_positions(processed)
-
-    assert str(original) == str(processed)
 
 
 def num_of_control_points(dicom_dataset):

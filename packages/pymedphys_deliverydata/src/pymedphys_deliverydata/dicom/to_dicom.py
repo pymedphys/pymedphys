@@ -25,12 +25,10 @@
 
 
 from copy import deepcopy
-from typing import List
 
 import numpy as np
 
 from pymedphys_base.deliverydata import DeliveryDataBase
-from pymedphys_utilities.algorithms import maintain_order_unique
 
 from pymedphys_dicom.rtplan import (
     get_gantry_angles_from_dicom,
@@ -41,7 +39,6 @@ from pymedphys_dicom.rtplan import (
     merge_beam_sequences)
 
 from ..utilities import (
-    find_relevant_control_points,
     filter_out_irrelevant_control_points,
     get_all_masked_delivery_data)
 
