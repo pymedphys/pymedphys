@@ -42,9 +42,6 @@ from ..logfile import delivery_data_from_logfile
 
 
 class DeliveryData(DeliveryDataBase):
-    def __new__(cls, *args):
-        return super().__new__(cls, *args)
-
     @classmethod
     def from_delivery_data_base(cls, delivery_data_base):
         if type(delivery_data_base) is type(cls):
