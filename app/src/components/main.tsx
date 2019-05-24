@@ -69,12 +69,8 @@ function onFileInputChange(event: React.FormEvent<HTMLInputElement>) {
         inputDirectory.next(inputDirectory.getValue().add(filename))
       })
     };
-
     fr.readAsArrayBuffer(file);
-
   })
-
-
 }
 
 interface IAppMainProps {
@@ -213,8 +209,6 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
 
         <br></br>
 
-
-
         <span className="floatleft">
           <Button
             intent="primary"
@@ -231,9 +225,6 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             onClick={downloadOutput}
             disabled={!this.state.isPythonReady || !this.state.hasOutputFiles} />
         </span>
-
-
-
 
       </div>
     );

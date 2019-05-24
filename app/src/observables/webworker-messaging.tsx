@@ -26,7 +26,6 @@ interface INullMessage extends IMessage {
 
 interface IExecuteRequestData extends IData {
   code: string
-  variables: {}
 }
 
 interface IExecuteRequestMessage extends IMessage {
@@ -138,7 +137,8 @@ function sendMessage(data: IPyodideData, type: any) {
   return responses
 }
 
-export function sendExecuteRequest(data: IExecuteRequestData): Observable<IReplyMessage> {
+export function sendExecuteRequest(code: string): Observable<IReplyMessage> {
+  const data: IExecuteRequestData = { code }
   return sendMessage(data, 'executeRequest')
 }
 

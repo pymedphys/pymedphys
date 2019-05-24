@@ -39,17 +39,16 @@ receiverMessengers.initialise.subscribe(data => {
   })
 })
 
-receiverMessengers.executeRequest.subscribe(data => {
-  const uuid = data.uuid;
-  const code = data.code;
+receiverMessengers.executeRequest.subscribe(message => {
+  const uuid = message.uuid;
+  const code = message.data.code;
 
   pythonInitialise.then(() => {
-    self.pyodide.runPythonAsync(code)
+    self.pyodide.runPythonAsync(code, () => { })
       .then(result => sendReply(uuid, { result }))
       .catch(error => sendReply(uuid, { error }));
   });
 })
-
 
 receiverMessengers.fileTransferRequest.subscribe(message => {
   const uuid = message.uuid
