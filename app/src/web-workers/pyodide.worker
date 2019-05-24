@@ -20,7 +20,7 @@ senderMessengers.base.subscribe(message => {
   self.postMessage(message)
 });
 
-var onmessage = function (e) { // eslint-disable-line no-unused-vars
+self.onmessage = function (e) { // eslint-disable-line no-unused-vars
   receiverMessengers.base.next(e.data)
 }
 
