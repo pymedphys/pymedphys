@@ -5,9 +5,10 @@
       "internal": {
         "pymedphys": "~0.8.0-dev.17",
         "pymedphys_analysis": "~0.8.0-dev.17",
+        "pymedphys_base": "~0.8.0-dev.17",
         "pymedphys_coordsandscales": "~0.8.0-dev.17",
-        "pymedphys_core": "~0.8.0-dev.17",
         "pymedphys_databases": "~0.8.0-dev.17",
+        "pymedphys_deliverydata": "~0.8.0-dev.17",
         "pymedphys_dicom": "~0.8.0-dev.17",
         "pymedphys_electronfactors": "~0.8.0-dev.17",
         "pymedphys_fileformats": "~0.8.0-dev.17",
@@ -15,6 +16,7 @@
         "pymedphys_labs": "~0.8.0-dev.17",
         "pymedphys_logfiles": "~0.8.0-dev.17",
         "pymedphys_monomanage": "~0.8.0-dev.17",
+        "pymedphys_mudensity": "~0.8.0-dev.17",
         "pymedphys_sphinxtheme": "~0.8.0-dev.17",
         "pymedphys_toolbox": "~0.8.0-dev.17",
         "pymedphys_utilities": "~0.8.0-dev.17",
@@ -30,9 +32,10 @@
       "internal": {
         "pymedphys": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_analysis": ">= 0.8.0dev17, < 0.9.0",
+        "pymedphys_base": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_coordsandscales": ">= 0.8.0dev17, < 0.9.0",
-        "pymedphys_core": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_databases": ">= 0.8.0dev17, < 0.9.0",
+        "pymedphys_deliverydata": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_dicom": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_electronfactors": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_fileformats": ">= 0.8.0dev17, < 0.9.0",
@@ -40,6 +43,7 @@
         "pymedphys_labs": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_logfiles": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_monomanage": ">= 0.8.0dev17, < 0.9.0",
+        "pymedphys_mudensity": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_sphinxtheme": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_toolbox": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_utilities": ">= 0.8.0dev17, < 0.9.0",
@@ -57,14 +61,15 @@
       "internal": [
         "pymedphys_analysis",
         "pymedphys_coordsandscales",
-        "pymedphys_core",
         "pymedphys_databases",
+        "pymedphys_deliverydata",
         "pymedphys_dicom",
         "pymedphys_electronfactors",
         "pymedphys_fileformats",
         "pymedphys_gamma",
         "pymedphys_labs",
         "pymedphys_logfiles",
+        "pymedphys_mudensity",
         "pymedphys_utilities",
         "pymedphys_xlwings"
       ],
@@ -89,26 +94,21 @@
       ],
       "stdlib": []
     },
+    "pymedphys_base": {
+      "external": [],
+      "internal": [
+        "pymedphys_utilities"
+      ],
+      "stdlib": [
+        "collections"
+      ]
+    },
     "pymedphys_coordsandscales": {
       "external": [
         "numpy"
       ],
       "internal": [],
       "stdlib": []
-    },
-    "pymedphys_core": {
-      "external": [
-        "matplotlib",
-        "numpy"
-      ],
-      "internal": [
-        "pymedphys_utilities"
-      ],
-      "stdlib": [
-        "collections",
-        "copy",
-        "typing"
-      ]
     },
     "pymedphys_databases": {
       "external": [
@@ -119,13 +119,31 @@
         "pymssql"
       ],
       "internal": [
-        "pymedphys_core"
+        "pymedphys_deliverydata",
+        "pymedphys_utilities"
       ],
       "stdlib": [
         "contextlib",
         "datetime",
         "getpass",
         "struct"
+      ]
+    },
+    "pymedphys_deliverydata": {
+      "external": [
+        "numpy"
+      ],
+      "internal": [
+        "pymedphys_base",
+        "pymedphys_dicom",
+        "pymedphys_fileformats",
+        "pymedphys_mudensity",
+        "pymedphys_utilities"
+      ],
+      "stdlib": [
+        "copy",
+        "functools",
+        "typing"
       ]
     },
     "pymedphys_dicom": {
@@ -135,7 +153,9 @@
         "packaging",
         "pydicom"
       ],
-      "internal": [],
+      "internal": [
+        "pymedphys_utilities"
+      ],
       "stdlib": [
         "collections",
         "copy",
@@ -160,12 +180,9 @@
     "pymedphys_fileformats": {
       "external": [
         "numpy",
-        "pandas",
-        "pydicom"
+        "pandas"
       ],
-      "internal": [
-        "pymedphys_core"
-      ],
+      "internal": [],
       "stdlib": [
         "collections",
         "csv",
@@ -219,9 +236,10 @@
         "python_dateutil"
       ],
       "internal": [
-        "pymedphys_core",
         "pymedphys_databases",
+        "pymedphys_deliverydata",
         "pymedphys_fileformats",
+        "pymedphys_mudensity",
         "pymedphys_utilities"
       ],
       "stdlib": [
@@ -255,6 +273,16 @@
         "textwrap"
       ]
     },
+    "pymedphys_mudensity": {
+      "external": [
+        "matplotlib",
+        "numpy"
+      ],
+      "internal": [
+        "pymedphys_utilities"
+      ],
+      "stdlib": []
+    },
     "pymedphys_sphinxtheme": {
       "external": [],
       "internal": [],
@@ -268,7 +296,6 @@
         "numpy"
       ],
       "internal": [
-        "pymedphys_core",
         "pymedphys_databases"
       ],
       "stdlib": [
@@ -276,7 +303,9 @@
       ]
     },
     "pymedphys_utilities": {
-      "external": [],
+      "external": [
+        "numpy"
+      ],
       "internal": [],
       "stdlib": [
         "glob",

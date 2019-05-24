@@ -27,12 +27,16 @@
 """A toolbox for handling trf files.
 
 Examples:
-    >>> from pymedphys.trf import delivery_data_from_logfile
     >>> from pymedphys.trf import decode_header_from_file
 """
 
-from .trf2pandas import trf2pandas
+from .trf2pandas import trf2pandas, decode_trf
 from .trf2csv import trf2csv_by_directory
 from .header import decode_header_from_file, Header
-from .trf2deliverydata import (
-    delivery_data_from_logfile, delivery_data_from_pandas)
+
+from .constants import (
+    GANTRY_NAME,
+    COLLIMATOR_NAME,
+    Y1_LEAF_BANK_NAMES,
+    Y2_LEAF_BANK_NAMES,
+    JAW_NAMES)
