@@ -1,4 +1,8 @@
-from .core import get_metersets_from_dicom, get_gantry_angles_from_dicom
+from .core import (
+    get_metersets_from_dicom,
+    get_gantry_angles_from_dicom,
+    get_fraction_group_index)
+
 from .build import (
     build_control_points,
     replace_fraction_group,
