@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys_utilities.transforms import convert_angle_to_bipolar
+from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 
 
 def get_metersets_from_dicom(dicom_dataset, fraction_group):
@@ -48,7 +48,7 @@ def get_metersets_from_dicom(dicom_dataset, fraction_group):
 
 def get_gantry_angles_from_dicom(dicom_dataset):
     gantry_angles = [
-        set(convert_angle_to_bipolar([
+        set(convert_IEC_angle_to_bipolar([
             control_point.GantryAngle
             for control_point in beam_sequence.ControlPointSequence
         ]))

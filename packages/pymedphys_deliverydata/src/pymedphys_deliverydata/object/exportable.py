@@ -33,7 +33,7 @@ from pymedphys_mudensity.mudensity import calc_mu_density
 
 from ..dicom import (
     delivery_data_to_dicom,
-    dicom_to_delivery_data,
+    delivery_data_from_dicom,
     gantry_tol_from_gantry_angles)
 from ..utilities import (
     filter_out_irrelevant_control_points,
@@ -60,7 +60,7 @@ class DeliveryData(DeliveryDataBase):
     @classmethod
     def from_dicom(cls, dataset):
         return cls.from_delivery_data_base(
-            dicom_to_delivery_data(dataset))
+            delivery_data_from_dicom(dataset))
 
     def to_dicom(self, template):
         return delivery_data_to_dicom(self, template)

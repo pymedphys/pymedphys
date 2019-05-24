@@ -27,7 +27,8 @@
 from .core import (
     filter_out_irrelevant_control_points,
     find_relevant_control_points,
-    get_delivery_parameters)
+    get_delivery_parameters,
+    merge_delivery_data)
 
 from .masking import (
     get_all_masked_delivery_data,

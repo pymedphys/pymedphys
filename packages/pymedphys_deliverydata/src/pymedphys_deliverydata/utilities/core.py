@@ -23,10 +23,37 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+from typing import List
+
 import numpy as np
 
 from pymedphys_base.deliverydata import DeliveryDataBase
 from pymedphys_utilities.rtplan import find_relevant_control_points
+
+
+def merge_delivery_data(separate: List[DeliveryDataBase]) -> DeliveryDataBase:
+    collection = {}  # type: ignore
+
+    for delivery_data in separate:
+        for field in delivery_data._fields:
+            try:
+                collection[field] = np.concatenate(
+                    [collection[field], getattr(delivery_data, field)],
+                    axis=0
+                )
+            except KeyError:
+                collection[field] = getattr(delivery_data, field)
+
+    mu = np.concatenate([[0], np.diff(collection['monitor_units'])])
+    mu[mu < 0] = 0
+    collection['monitor_units'] = np.cumsum(mu)
+
+    for key, item in collection.items():
+        collection[key] = item.tolist()
+
+    merged = DeliveryDataBase(**collection)
+
+    return merged
 
 
 def get_delivery_parameters(delivery_data):
