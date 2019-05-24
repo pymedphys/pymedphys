@@ -27,28 +27,30 @@
 import functools
 from typing import Union, Tuple
 
+import numpy as np
 
-from pymedphys_utilities.types import to_tuple
+from pymedphys_base.deliverydata import DeliveryDataBase
 from pymedphys_mudensity.mudensity import calc_mu_density
 
-from ..base import _DeliveryDataBase
+from pymedphys_dicom.rtplan import (
+    get_gantry_angles_from_dicom,
+    get_fraction_group_beam_sequence_and_meterset,
+    convert_to_one_fraction_group)
+
 from ..dicom import (
     delivery_data_to_dicom,
-    dicom_to_delivery_data,
+    delivery_data_from_dicom,
     gantry_tol_from_gantry_angles)
 from ..utilities import (
     filter_out_irrelevant_control_points,
     get_all_masked_delivery_data,
     get_metersets_from_delivery_data)
+from ..logfile import delivery_data_from_logfile
 
 
-class DeliveryData(_DeliveryDataBase):
-    def __new__(cls, *args):
-        new_args = (
-            to_tuple(arg)
-            for arg in args
-        )
-        return super().__new__(cls, *new_args)
+class DeliveryData(DeliveryDataBase):
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, *args, **kwargs)
 
     @classmethod
     def from_delivery_data_base(cls, delivery_data_base):
@@ -58,37 +60,29 @@ class DeliveryData(_DeliveryDataBase):
         return cls(*delivery_data_base)
 
     @classmethod
-    def from_dicom(cls, dataset):
+    def from_dicom(cls, dataset, fraction_group_number):
         return cls.from_delivery_data_base(
-            dicom_to_delivery_data(dataset))
+            delivery_data_from_dicom(dataset, fraction_group_number))
+
+    def to_dicom(self, template, fraction_group_number=None):
+        filtered = self.filter_cps()
+        if fraction_group_number is None:
+            fraction_group_number = self.fraction_group_number(template)
+
+        return delivery_data_to_dicom(
+            filtered, template, fraction_group_number)
 
     @classmethod
-    def empty(cls):
-        return cls(
-            tuple(),
-            tuple(),
-            tuple(),
-            tuple((
-                tuple((
-                    tuple(),
-                    tuple()
-                )),
-            )),
-            tuple((
-                tuple(),
-                tuple()
-            ))
-        )
-
-    def to_dicom(self, template):
-        return delivery_data_to_dicom(self, template)
+    def from_logfile(cls, filepath):
+        return cls.from_delivery_data_base(
+            delivery_data_from_logfile(filepath))
 
     @functools.lru_cache()
     def filter_cps(self):
         return filter_out_irrelevant_control_points(self)
 
     @functools.lru_cache()
-    def mask_by_gantry(self, angles: Union[tuple, float, int], tolerance=3):
+    def mask_by_gantry(self, angles: Union[Tuple, float, int], tolerance=3):
         iterable_angles: tuple
 
         try:
@@ -106,7 +100,8 @@ class DeliveryData(_DeliveryDataBase):
         return get_metersets_from_delivery_data(
             self.mask_by_gantry(gantry_angles, gantry_tolerance))
 
-    def mudensity(self, gantry_angles=None, gantry_tolerance=None, grid_resolution=1):
+    def mudensity(self, gantry_angles=None, gantry_tolerance=None,
+                  grid_resolution=1, output_always_list=False):
         if gantry_angles is None:
             gantry_angles = 0
             gantry_tolerance = 500
@@ -123,8 +118,85 @@ class DeliveryData(_DeliveryDataBase):
                 delivery_data.jaw,
                 grid_resolution=grid_resolution))
 
-        # TODO: This is worth discussion whether or not we should do this
-        if len(mudensities) == 1:
-            return mudensities[0]
+        if not output_always_list:
+            if len(mudensities) == 1:
+                return mudensities[0]
 
         return mudensities
+
+    def fraction_group_number(self, dicom_template, gantry_tol=3,
+                              meterset_tol=0.5):
+        filtered = self.filter_cps()
+        fraction_groups = dicom_template.FractionGroupSequence
+
+        if len(fraction_groups) == 1:
+            return fraction_groups[0].FractionGroupNumber
+
+        fraction_group_numbers = [
+            fraction_group.FractionGroupNumber
+            for fraction_group in fraction_groups
+        ]
+
+        dicom_metersets_by_fraction_group = [
+            get_fraction_group_beam_sequence_and_meterset(
+                dicom_template, fraction_group_number)[1]
+            for fraction_group_number in fraction_group_numbers
+        ]
+
+        split_by_fraction_group = [
+            convert_to_one_fraction_group(
+                dicom_template, fraction_group_number)
+            for fraction_group_number in fraction_group_numbers
+        ]
+
+        gantry_angles_by_fraction_group = [
+            get_gantry_angles_from_dicom(dataset)
+            for dataset in split_by_fraction_group]
+
+        masked_delivery_data_by_fraction_group = []
+        for gantry_angles in gantry_angles_by_fraction_group:
+            try:
+                masked = get_all_masked_delivery_data(
+                    filtered, gantry_angles, gantry_tol, quiet=True)
+            except AssertionError:
+                masked = [DeliveryDataBase.empty()]
+
+            masked_delivery_data_by_fraction_group.append(masked)
+
+        deliver_data_metersets_by_fraction_group = [
+            get_metersets_from_delivery_data(masked_delivery_data)
+            for masked_delivery_data in masked_delivery_data_by_fraction_group
+        ]
+
+        maximum_deviations = []
+        for dicom_metersets, delivery_data_metersets in zip(
+                dicom_metersets_by_fraction_group,  # nopep8
+                deliver_data_metersets_by_fraction_group):  # nopep8
+
+            try:
+                maximmum_diff = np.max(np.abs(
+                    np.array(dicom_metersets) -
+                    np.array(delivery_data_metersets)))
+            except ValueError:
+                maximmum_diff = np.inf
+
+            maximum_deviations.append(maximmum_diff)
+
+        deviations_within_tol = np.array(maximum_deviations) <= meterset_tol
+
+        if np.sum(deviations_within_tol) < 1:
+            raise ValueError(
+                "A fraction group was not able to be found with the metersets "
+                "and gantry angles defined by the tolerances provided. "
+                "Please manually define the fraction group number.")
+
+        if np.sum(deviations_within_tol) > 1:
+            raise ValueError(
+                "More than one fraction group was found that had metersets "
+                "and gantry angles within the tolerances provided. "
+                "Please manually define the fraction group number.")
+
+        fraction_group_number = np.array(
+            fraction_group_numbers)[deviations_within_tol]
+
+        return fraction_group_number

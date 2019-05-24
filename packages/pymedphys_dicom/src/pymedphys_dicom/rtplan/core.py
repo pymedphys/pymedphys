@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys_utilities.transforms import convert_angle_to_bipolar
+from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 
 
 def get_metersets_from_dicom(dicom_dataset, fraction_group):
@@ -48,7 +48,7 @@ def get_metersets_from_dicom(dicom_dataset, fraction_group):
 
 def get_gantry_angles_from_dicom(dicom_dataset):
     gantry_angles = [
-        set(convert_angle_to_bipolar([
+        set(convert_IEC_angle_to_bipolar([
             control_point.GantryAngle
             for control_point in beam_sequence.ControlPointSequence
         ]))
@@ -66,3 +66,67 @@ def get_gantry_angles_from_dicom(dicom_dataset):
     )
 
     return result
+
+
+def get_fraction_group_index(dicom_dataset, fraction_group_number):
+    fraction_group_numbers = [
+        fraction_group.FractionGroupNumber
+        for fraction_group in dicom_dataset.FractionGroupSequence
+    ]
+
+    return fraction_group_numbers.index(fraction_group_number)
+
+
+def get_referenced_beam_sequence(dicom_dataset, fraction_group_number):
+    fraction_group_index = get_fraction_group_index(
+        dicom_dataset, fraction_group_number)
+
+    fraction_group = dicom_dataset.FractionGroupSequence[fraction_group_index]
+    referenced_beam_sequence = fraction_group.ReferencedBeamSequence
+
+    beam_numbers = [
+        referenced_beam.ReferencedBeamNumber
+        for referenced_beam in referenced_beam_sequence
+    ]
+
+    return beam_numbers, referenced_beam_sequence
+
+
+def get_beam_indices_of_fraction_group(dicom_dataset, fraction_group_number):
+    beam_numbers, _ = get_referenced_beam_sequence(
+        dicom_dataset, fraction_group_number)
+
+    beam_sequence_numbers = [
+        beam_sequence.BeamNumber
+        for beam_sequence in dicom_dataset.BeamSequence
+    ]
+
+    beam_indexes = [
+        beam_sequence_numbers.index(beam_number)
+        for beam_number in beam_numbers
+    ]
+
+    return beam_indexes
+
+
+def get_fraction_group_beam_sequence_and_meterset(dicom_dataset,
+                                                  fraction_group_number):
+    beam_numbers, referenced_beam_sequence = get_referenced_beam_sequence(
+        dicom_dataset, fraction_group_number)
+
+    metersets = [
+        referenced_beam.BeamMeterset
+        for referenced_beam in referenced_beam_sequence
+    ]
+
+    beam_sequence_number_mapping = {
+        beam.BeamNumber: beam
+        for beam in dicom_dataset.BeamSequence
+    }
+
+    beam_sequence = [
+        beam_sequence_number_mapping[beam_number]
+        for beam_number in beam_numbers
+    ]
+
+    return beam_sequence, metersets

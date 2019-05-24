@@ -5,6 +5,7 @@
       "internal": {
         "pymedphys": "~0.8.0-dev.17",
         "pymedphys_analysis": "~0.8.0-dev.17",
+        "pymedphys_base": "~0.8.0-dev.17",
         "pymedphys_coordsandscales": "~0.8.0-dev.17",
         "pymedphys_databases": "~0.8.0-dev.17",
         "pymedphys_deliverydata": "~0.8.0-dev.17",
@@ -31,6 +32,7 @@
       "internal": {
         "pymedphys": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_analysis": ">= 0.8.0dev17, < 0.9.0",
+        "pymedphys_base": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_coordsandscales": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_databases": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_deliverydata": ">= 0.8.0dev17, < 0.9.0",
@@ -92,6 +94,15 @@
       ],
       "stdlib": []
     },
+    "pymedphys_base": {
+      "external": [],
+      "internal": [
+        "pymedphys_utilities"
+      ],
+      "stdlib": [
+        "collections"
+      ]
+    },
     "pymedphys_coordsandscales": {
       "external": [
         "numpy"
@@ -123,12 +134,13 @@
         "numpy"
       ],
       "internal": [
+        "pymedphys_base",
         "pymedphys_dicom",
+        "pymedphys_fileformats",
         "pymedphys_mudensity",
         "pymedphys_utilities"
       ],
       "stdlib": [
-        "collections",
         "copy",
         "functools",
         "typing"
@@ -168,12 +180,9 @@
     "pymedphys_fileformats": {
       "external": [
         "numpy",
-        "pandas",
-        "pydicom"
+        "pandas"
       ],
-      "internal": [
-        "pymedphys_deliverydata"
-      ],
+      "internal": [],
       "stdlib": [
         "collections",
         "csv",

@@ -26,15 +26,16 @@
 
 import numpy as np
 
-from ..base import _DeliveryDataBase
+from pymedphys_base.deliverydata import DeliveryDataBase
 
 
-def get_all_masked_delivery_data(delivery_data: _DeliveryDataBase,
-                                 template_gantry_angles, gantry_tol):
+def get_all_masked_delivery_data(delivery_data: DeliveryDataBase,
+                                 template_gantry_angles, gantry_tol,
+                                 quiet=False):
     masks = get_gantry_angle_masks(
-        delivery_data, template_gantry_angles, gantry_tol)
+        delivery_data, template_gantry_angles, gantry_tol, quiet=quiet)
 
-    all_masked_delivery_data = (
+    all_masked_delivery_data = tuple(
         apply_mask_to_delivery_data(delivery_data, mask)
         for mask in masks
     )
@@ -42,8 +43,8 @@ def get_all_masked_delivery_data(delivery_data: _DeliveryDataBase,
     return all_masked_delivery_data
 
 
-def get_gantry_angle_masks(delivery_data: _DeliveryDataBase, gantry_angles,
-                           gantry_tol):
+def get_gantry_angle_masks(delivery_data: DeliveryDataBase, gantry_angles,
+                           gantry_tol, quiet=False):
     masks = [
         gantry_angle_mask(delivery_data, gantry_angle, gantry_tol)
         for gantry_angle in gantry_angles
@@ -56,8 +57,11 @@ def get_gantry_angle_masks(delivery_data: _DeliveryDataBase, gantry_angles,
         # TODO: Apply mask by more than just gantry angle to appropriately
         # extract beam index even when multiple beams have the same gantry
         # angle
-        assert np.sum(np.abs(np.diff(np.concatenate([
-            [0], mask, [0]])))) == 2, "Duplicate gantry angles not yet supported"
+        is_duplicate_gantry_angles = not np.sum(
+            np.abs(np.diff(np.concatenate([[0], mask, [0]])))) == 2
+
+        if is_duplicate_gantry_angles:
+            raise ValueError("Duplicate gantry angles not yet supported")
 
     try:
         assert np.all(np.sum(masks, axis=0) == 1), (
@@ -65,12 +69,13 @@ def get_gantry_angle_masks(delivery_data: _DeliveryDataBase, gantry_angles,
             " {}".format(gantry_tol)
         )
     except AssertionError:
-        print("Allowable gantry angles = {}".format(gantry_angles))
-        gantry = np.array(delivery_data.gantry, copy=False)
-        out_of_tolerance = np.unique(
-            gantry[np.sum(masks, axis=0) == 0]).tolist()
-        print("The gantry angles out of tolerance were {}".format(
-            out_of_tolerance))
+        if not quiet:
+            print("Allowable gantry angles = {}".format(gantry_angles))
+            gantry = np.array(delivery_data.gantry, copy=False)
+            out_of_tolerance = np.unique(
+                gantry[np.sum(masks, axis=0) == 0]).tolist()
+            print("The gantry angles out of tolerance were {}".format(
+                out_of_tolerance))
 
         raise
 
@@ -85,7 +90,7 @@ def gantry_angle_mask(delivery_data, gantry_angle, gantry_angle_tol):
     return near_angle
 
 
-def apply_mask_to_delivery_data(delivery_data: _DeliveryDataBase, mask):
+def apply_mask_to_delivery_data(delivery_data: DeliveryDataBase, mask):
     DeliveryDataObject = type(delivery_data)
 
     new_delivery_data = []
