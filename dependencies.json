@@ -96,7 +96,9 @@
     },
     "pymedphys_base": {
       "external": [],
-      "internal": [],
+      "internal": [
+        "pymedphys_utilities"
+      ],
       "stdlib": [
         "collections"
       ]
