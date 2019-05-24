@@ -62,7 +62,7 @@ class DeliveryData(DeliveryDataBase):
         return cls.from_delivery_data_base(
             delivery_data_from_dicom(dataset, fraction_group_number))
 
-    def to_dicom(self, template, fraction_group_number):
+    def to_dicom(self, template, fraction_group_number=None):
         return delivery_data_to_dicom(self, template, fraction_group_number)
 
     @classmethod

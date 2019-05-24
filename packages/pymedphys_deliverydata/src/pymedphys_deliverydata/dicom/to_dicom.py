@@ -49,7 +49,10 @@ from ..utilities import (
 
 def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
                            dicom_template,
-                           fraction_group_number):
+                           fraction_group_number=None):
+    if fraction_group_number is None:
+        pass
+
     single_fraction_group_template = convert_to_one_fraction_group(
         dicom_template, fraction_group_number)
 
@@ -72,6 +75,10 @@ def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
             fraction_group_index))
 
     return merge_beam_sequences(single_beam_dicoms)
+
+
+def determine_fraction_group_number():
+    pass
 
 
 def delivery_data_to_dicom_single_beam(delivery_data, dicom_template,
