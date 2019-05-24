@@ -42,7 +42,7 @@ export class AppText extends React.Component {
         <H3>Dependencies used</H3>
         <p>
           This is an example application that
-        combines <a href="https://github.com/pymedphys/pymedphys/" type="application/octet-stream">
+        combines <a href="https://github.com/pymedphys/pymedphys/">
             PyMedPhys
         </a> with <a href="https://github.com/iodide-project/pyodide" type="application/octet-stream">
             pyodide
@@ -52,9 +52,9 @@ export class AppText extends React.Component {
           This application loads Python into the <a href="https://webassembly.org/">
             wasm virtual machine
         </a> of your
-                  browser allowing Python code to be run on your local machine without
-                  having Python installed, or without needing Python to run on a remote
-                  server.
+                        browser allowing Python code to be run on your local machine without
+                        having Python installed, or without needing Python to run on a remote
+                        server.
         </p>
         <p>
           When it comes to sensitive information or large data files, this
@@ -79,13 +79,13 @@ export class AppText extends React.Component {
         <ul>
           <li>
             A demo RT DICOM plan
-          file &mdash; <a href="/data/RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm">
-              RP.2.16.840.1.114337.1.1.1548043901.0_Anonymised.dcm
+          file &mdash; <a href="/data/rtplan.dcm" type="application/octet-stream">
+              rtplan.dcm
           </a>
           </li>
           <li>
             A demo .trf file from the delivery given by the above RT DICOM
-          plan &mdash; <a href="/data/imrt.trf">
+          plan &mdash; <a href="/data/imrt.trf" type="application/octet-stream">
               imrt.trf
           </a>
           </li>
