@@ -1,24 +1,19 @@
 self.languagePluginUrl = 'https://pyodide.pymedphys.com/'
 importScripts('https://pyodide.pymedphys.com/pyodide.js')
 
-import * as uuidv4 from 'uuid/v4'
-import { BehaviorSubject } from 'rxjs';
-
 import loadWheels from '../python/load-wheels.py';
 import setupDirectories from '../python/setup-directories.py';
 
+import {
+  receiverMessengers, senderMessengers,
+  sendMessage, sendReply
+} from '../observables/webworker-messaging';
 
-let messageReceiver = new BehaviorSubject({
-  uuid: uuidv4(),
-  type: '',  // 'executeRequest', 'fileTransfer', 'languageServer', 'reply',
-  data: {}
-})
+var onmessage = function (e) { // eslint-disable-line no-unused-vars
+  receiverMessengers.base.next(e.data)
+}
 
-let messageSender = new BehaviorSubject({
-  uuid: uuidv4(),
-  type: '',  // 'fileTransfer', 'languageServer', 'reply',
-  data: {}
-})
+senderMessengers.base.subscribe(message => self.postMessage(message));
 
 let pythonInitialise = languagePluginLoader.then(() => {
   return Promise.all([
@@ -29,34 +24,48 @@ let pythonInitialise = languagePluginLoader.then(() => {
 })
 
 pythonInitialise.then(() => {
-  console.log('Loaded all the things')
-  self.postMessage(['Python Ready'])
+  console.log("Ready")
+})
+
+receiverMessengers.initialise.subscribe(data => {
+  const uuid = data.uuid
+  pythonInitialise.then(() => {
+    sendReply(uuid, {})
+  })
+})
+
+receiverMessengers.executeRequest.subscribe(data => {
+  const uuid = data.uuid;
+  const code = data.code;
+  const variables = data.variables;
+
+  pythonInitialise.then(() => {
+    const keys = Object.keys(variables);
+    for (let key of keys) {
+      self[key] = variables[key]
+    }
+
+    self.pyodide.runPythonAsync(code, () => { })
+      .then((results) => { self.postMessage({ results }); })
+      .catch((err) => {
+        self.postMessage({ error: err.message });
+      });
+  });
 })
 
 
 
 
 
-var onmessage = function (e) { // eslint-disable-line no-unused-vars
 
-}
+
+
+// executeRequests.subscribe(data => {
+
+// })
 
 
 function runPython() {
-  pythonInitialise.then(() => {
-    initPython()
-    const data = e.data;
-    const keys = Object.keys(data);
-    for (let key of keys) {
-      if (key !== 'python') {
-        self[key] = data[key];
-      }
-    }
-    self.pyodide.runPythonAsync(data.python, () => { })
-      .then((results) => { self.postMessage({ results }); })
-      .catch((err) => {
-        self.postMessage({ error: err.message });
-      });
-  });
+
 }
 

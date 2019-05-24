@@ -1,13 +1,23 @@
 import PyodideWorker from './pyodide.worker';
 
+import {
+  receiverMessengers, senderMessengers,
+  sendInitialise
+} from '../observables/webworker-messaging';
+
+
 export function runPyodide() {
   const pyodideWorker = new PyodideWorker()
 
   pyodideWorker.onmessage = (event: MessageEvent) => {
-
-    console.log('message received')
-    console.log(event.data)
+    receiverMessengers.base.next(event.data)
   }
+
+  senderMessengers.base.subscribe(data => {
+    pyodideWorker.postMessage(data)
+  })
+
+  return sendInitialise()
 
   // pyodideWorker.onerror = (e: any) => {
   //   console.log(`Error in pyodideWorker at ${e.filename}, Line: ${e.lineno}, ${e.message}`)
