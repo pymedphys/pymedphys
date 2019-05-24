@@ -36,12 +36,16 @@ _DeliveryDataBase = namedtuple(
 
 
 class DeliveryDataBase(_DeliveryDataBase):
-    def __new__(cls, *args):
+    def __new__(cls, *args, **kwargs):
         new_args = (
             to_tuple(arg)
             for arg in args
         )
-        return super().__new__(cls, *new_args)
+        new_kwargs = {
+            key: to_tuple(item)
+            for key, item in kwargs.items()
+        }
+        return super().__new__(cls, *new_args, **new_kwargs)
 
     @classmethod
     def empty(cls):
