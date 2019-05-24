@@ -36,14 +36,18 @@ from pymedphys_dicom.rtplan import (
     replace_fraction_group,
     replace_beam_sequence,
     restore_trailing_zeros,
-    merge_beam_sequences)
+    merge_beam_sequences,
+    get_fraction_group_index)
 
 from ..utilities import (
+    find_relevant_control_points,
     filter_out_irrelevant_control_points,
     get_all_masked_delivery_data)
 
 
-def delivery_data_to_dicom(delivery_data: DeliveryDataBase, dicom_template):
+def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
+                           dicom_template,
+                           fraction_group_number):
     delivery_data = filter_out_irrelevant_control_points(delivery_data)
     template_gantry_angles = get_gantry_angles_from_dicom(dicom_template)
 
@@ -52,16 +56,20 @@ def delivery_data_to_dicom(delivery_data: DeliveryDataBase, dicom_template):
     all_masked_delivery_data = get_all_masked_delivery_data(
         delivery_data, template_gantry_angles, gantry_tol)
 
+    fraction_group_index = get_fraction_group_index(
+        dicom_template, fraction_group_number)
+
     single_beam_dicoms = []
     for beam_index, masked_delivery_data in enumerate(all_masked_delivery_data):
         single_beam_dicoms.append(delivery_data_to_dicom_single_beam(
-            masked_delivery_data, dicom_template, beam_index))
+            masked_delivery_data, dicom_template, beam_index,
+            fraction_group_index))
 
     return merge_beam_sequences(single_beam_dicoms)
 
 
 def delivery_data_to_dicom_single_beam(delivery_data, dicom_template,
-                                       beam_index):
+                                       beam_index, fraction_group_index):
 
     created_dicom = deepcopy(dicom_template)
     data_converted = coordinate_convert_delivery_data(delivery_data)
@@ -75,7 +83,8 @@ def delivery_data_to_dicom_single_beam(delivery_data, dicom_template,
         initial_cp, subsequent_cp, data_converted)
 
     beam_meterset = '{0:.6f}'.format(data_converted['monitor_units'][-1])
-    replace_fraction_group(created_dicom, beam_meterset, beam_index)
+    replace_fraction_group(
+        created_dicom, beam_meterset, beam_index, fraction_group_index)
     replace_beam_sequence(created_dicom, all_control_points, beam_index)
 
     restore_trailing_zeros(created_dicom)

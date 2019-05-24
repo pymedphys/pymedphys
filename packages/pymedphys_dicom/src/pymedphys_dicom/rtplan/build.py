@@ -65,8 +65,9 @@ def build_control_points(initial_cp_template, subsequent_cp_template,
     return cps
 
 
-def replace_fraction_group(created_dicom, beam_meterset, beam_index):
-    fraction_group = created_dicom.FractionGroupSequence[0]
+def replace_fraction_group(created_dicom, beam_meterset, beam_index,
+                           fraction_group_index):
+    fraction_group = created_dicom.FractionGroupSequence[fraction_group_index]
     referenced_beam = fraction_group.ReferencedBeamSequence[beam_index]
     referenced_beam.BeamMeterset = str(beam_meterset)
     fraction_group.ReferencedBeamSequence = [referenced_beam]

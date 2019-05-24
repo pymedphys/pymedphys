@@ -66,3 +66,12 @@ def get_gantry_angles_from_dicom(dicom_dataset):
     )
 
     return result
+
+
+def get_fraction_group_index(dicom_dataset, fraction_group_number):
+    fraction_group_numbers = [
+        fraction_group.FractionGroupNumber
+        for fraction_group in dicom_dataset.FractionGroupSequence
+    ]
+
+    return fraction_group_numbers.index(fraction_group_number)
