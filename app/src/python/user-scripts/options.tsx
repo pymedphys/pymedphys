@@ -21,7 +21,7 @@ export const USER_SCRIPTS: IUserScript[] = [
     // },
     {
         name: "trf2dcm", code: trf2dcm,
-        description: "Converts files that end in `.trf` into an RT DICOM plan file using the a DICOM template"
+        description: "Converts files that end in `.trf` into DICOM RT Plan files using a user-supplied DICOM RT Plan file template."
     },
     {
         name: "Anonymise DICOM", code: anonymiseDicom,
