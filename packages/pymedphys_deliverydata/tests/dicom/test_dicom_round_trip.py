@@ -87,7 +87,7 @@ def test_determine_fraction_group_number(loaded_dicom_dataset,
                                          logfile_delivery_data: DeliveryData):
     expected = FRACTION_GROUP
     result = determine_fraction_group_number(
-        logfile_delivery_data, loaded_dicom_dataset)
+        logfile_delivery_data.filter_cps(), loaded_dicom_dataset)
 
     assert result == expected
 
