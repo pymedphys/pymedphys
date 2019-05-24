@@ -42,9 +42,6 @@ from pymedphys_dicom.rtplan import (
 
 from pymedphys.deliverydata import DeliveryData
 
-from pymedphys_deliverydata.dicom.to_dicom import (
-    determine_fraction_group_number)
-
 # pylint: disable=redefined-outer-name
 
 
@@ -83,13 +80,31 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
     return get_gantry_angles_from_dicom(loaded_dicom_dataset)
 
 
-def test_determine_fraction_group_number(loaded_dicom_dataset,
-                                         logfile_delivery_data: DeliveryData):
+def test_fraction_group_number(loaded_dicom_dataset,
+                               logfile_delivery_data: DeliveryData):
     expected = FRACTION_GROUP
-    result = determine_fraction_group_number(
-        logfile_delivery_data.filter_cps(), loaded_dicom_dataset)
+
+    result = logfile_delivery_data.fraction_group_number(
+        loaded_dicom_dataset)
 
     assert result == expected
+
+
+def test_get_metersets_from_delivery_data(logfile_delivery_data,
+                                          loaded_dicom_dataset,
+                                          loaded_dicom_gantry_angles):
+    gantry_tol = 3
+    expected = get_metersets_from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
+
+    filtered = logfile_delivery_data.filter_cps()
+    metersets = filtered.metersets(loaded_dicom_gantry_angles, gantry_tol)
+
+    try:
+        assert np.all(np.abs(np.array(expected) - np.array(metersets)) <= 0.2)
+    except AssertionError:
+        print("\nIn DICOM file:\n   {}".format(expected))
+        print("\nIn log file:\n   {}".format(metersets))
+        raise
 
 
 def test_filter_cps(logfile_delivery_data):
@@ -162,23 +177,6 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
         first_mlc_positions(processed))
 
     assert str(single_fraction_group) == str(processed)
-
-
-def test_get_metersets_from_delivery_data(logfile_delivery_data,
-                                          loaded_dicom_dataset,
-                                          loaded_dicom_gantry_angles):
-    gantry_tol = 3
-    expected = get_metersets_from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
-
-    filtered = logfile_delivery_data.filter_cps()
-    metersets = filtered.metersets(loaded_dicom_gantry_angles, gantry_tol)
-
-    try:
-        assert np.all(np.abs(np.array(expected) - np.array(metersets)) <= 0.2)
-    except AssertionError:
-        print("\nIn DICOM file:\n   {}".format(expected))
-        print("\nIn log file:\n   {}".format(metersets))
-        raise
 
 
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
