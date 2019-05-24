@@ -30,8 +30,6 @@ from typing import List
 import numpy as np
 
 from pymedphys_base.deliverydata import DeliveryDataBase
-
-from pymedphys_utilities.transforms import convert_angle_to_bipolar
 from pymedphys_utilities.algorithms import maintain_order_unique
 
 from pymedphys_dicom.rtplan import (
@@ -39,19 +37,13 @@ from pymedphys_dicom.rtplan import (
     build_control_points,
     replace_fraction_group,
     replace_beam_sequence,
-    restore_trailing_zeros)
+    restore_trailing_zeros,
+    merge_beam_sequences)
 
 from ..utilities import (
     find_relevant_control_points,
     filter_out_irrelevant_control_points,
     get_all_masked_delivery_data)
-
-
-def gantry_tol_from_gantry_angles(gantry_angles):
-    min_diff = np.min(np.diff(sorted(gantry_angles)))
-    gantry_tol = np.min([min_diff / 2 - 0.1, 3])
-
-    return gantry_tol
 
 
 def delivery_data_to_dicom(delivery_data: DeliveryDataBase, dicom_template):
@@ -69,122 +61,6 @@ def delivery_data_to_dicom(delivery_data: DeliveryDataBase, dicom_template):
             masked_delivery_data, dicom_template, beam_index))
 
     return merge_beam_sequences(single_beam_dicoms)
-
-
-def dicom_to_delivery_data(dicom_dataset) -> DeliveryDataBase:
-    gantry_angles_of_beam_sequences = get_gantry_angles_from_dicom(
-        dicom_dataset)
-
-    delivery_data_by_beam_sequence = []
-    for beam_sequence_index, _ in enumerate(dicom_dataset.BeamSequence):
-        delivery_data_by_beam_sequence.append(
-            dicom_to_delivery_data_single_beam(
-                dicom_dataset, beam_sequence_index))
-
-    return merge_delivery_data(delivery_data_by_beam_sequence)
-
-
-def merge_delivery_data(separate: List[DeliveryDataBase]) -> DeliveryDataBase:
-    collection = {}  # type: ignore
-
-    for delivery_data in separate:
-        for field in delivery_data._fields:
-            try:
-                collection[field] = np.concatenate(
-                    [collection[field], getattr(delivery_data, field)],
-                    axis=0
-                )
-            except KeyError:
-                collection[field] = getattr(delivery_data, field)
-
-    mu = np.concatenate([[0], np.diff(collection['monitor_units'])])
-    mu[mu < 0] = 0
-    collection['monitor_units'] = np.cumsum(mu)
-
-    for key, item in collection.items():
-        collection[key] = item.tolist()
-
-    merged = DeliveryDataBase(**collection)
-
-    return merged
-
-
-def dicom_to_delivery_data_single_beam(dicom_dataset, beam_sequence_index):
-    beam_sequence = dicom_dataset.BeamSequence[beam_sequence_index]
-    leaf_boundaries = beam_sequence.BeamLimitingDeviceSequence[-1].LeafPositionBoundaries
-    leaf_widths = np.diff(leaf_boundaries)
-
-    assert beam_sequence.BeamLimitingDeviceSequence[-1].NumberOfLeafJawPairs == len(
-        leaf_widths)
-    num_leaves = len(leaf_widths)
-
-    control_points = beam_sequence.ControlPointSequence
-
-    mlcs = [
-        control_point.BeamLimitingDevicePositionSequence[-1].LeafJawPositions
-        for control_point in control_points
-    ]
-
-    mlcs = [
-        np.array([
-            -np.array(mlc[0:num_leaves][::-1]),  # pylint: disable=invalid-unary-operand-type  # nopep8
-            np.array(mlc[num_leaves::][::-1])
-        ][::-1]).T
-        for mlc in mlcs
-    ]
-
-    mlcs = np.array(mlcs)
-
-    dicom_jaw = [
-        control_point.BeamLimitingDevicePositionSequence[0].LeafJawPositions
-        for control_point in control_points
-    ]
-
-    jaw = np.array(dicom_jaw)
-
-    second_col = deepcopy(jaw[:, 1])
-    jaw[:, 1] = jaw[:, 0]
-    jaw[:, 0] = second_col
-
-    jaw[:, 1] = -jaw[:, 1]
-
-    total_mu = np.array(
-        dicom_dataset.FractionGroupSequence[0].ReferencedBeamSequence[  # TODO: Make this more generalised
-            beam_sequence_index].BeamMeterset)
-    final_mu_weight = np.array(beam_sequence.FinalCumulativeMetersetWeight)
-
-    mu = [
-        total_mu *
-        np.array(control_point.CumulativeMetersetWeight) / final_mu_weight
-        for control_point in control_points
-    ]
-    mu = np.array(mu)
-
-    gantry_angles = convert_angle_to_bipolar([
-        control_point.GantryAngle
-        for control_point in control_points
-    ])
-
-    collimator_angles = convert_angle_to_bipolar([
-        control_point.BeamLimitingDeviceAngle
-        for control_point in control_points
-    ])
-
-    return DeliveryDataBase(mu, gantry_angles, collimator_angles, mlcs, jaw)
-
-
-def merge_beam_sequences(dicoms_by_gantry_angle):
-    merged = dicoms_by_gantry_angle[0]
-
-    for dicom in dicoms_by_gantry_angle[1::]:
-        merged.BeamSequence.append(
-            dicom.BeamSequence[0]
-        )
-        merged.FractionGroupSequence[0].ReferencedBeamSequence.append(
-            dicom.FractionGroupSequence[0].ReferencedBeamSequence[0]
-        )
-
-    return merged
 
 
 def delivery_data_to_dicom_single_beam(delivery_data, dicom_template,
@@ -272,20 +148,8 @@ def angle_dd2dcm(angle):
     return converted_angle, movement
 
 
-def convert_jaw_format(jaw):
-    dicom_jaw_format = []
-    for control_point in jaw:
-        control_point[0]
+def gantry_tol_from_gantry_angles(gantry_angles):
+    min_diff = np.min(np.diff(sorted(gantry_angles)))
+    gantry_tol = np.min([min_diff / 2 - 0.1, 3])
 
-
-def movement_check(angles):
-    float_angles = angles.astype(np.float64)
-    float_angles[float_angles >= 180] = float_angles[float_angles >= 180] - 360
-    diff = np.append(np.diff(float_angles), 0)
-
-    movement = (np.empty_like(angles)).astype(str)
-    movement[diff > 0] = 'CW'
-    movement[diff < 0] = 'CC'
-    movement[diff == 0] = 'NONE'
-
-    return movement
+    return gantry_tol
