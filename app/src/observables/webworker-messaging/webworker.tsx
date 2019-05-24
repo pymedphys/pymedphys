@@ -53,42 +53,16 @@ receiverMessengers.initialise.subscribe(data => {
   })
 })
 
-function convertCode(code: string) {
-  const converted = `
-import sys
-from js import Promise
-
-sys.setrecursionlimit(100)
-
-def run_user_code():
-    def run_promise(resolve, reject):
-        try:
-            resolve(exec("""${code}"""))
-        except Exception as e:
-            reject(e)
-            raise
-
-    return Promise.new(run_promise)
-
-run_user_code()
-`
-  console.log(converted)
-
-  return converted
-}
-
 receiverMessengers.executeRequest.subscribe(message => {
   const uuid = message.uuid;
   const code = message.data.code;
 
   pythonInitialise.then(() => {
-    pyodide.runPython(convertCode(code))
+    pyodide.runPythonAsync(code)
       .then((result: any) => {
-        console.log(result)
         sendReply(uuid, { result })
       })
       .catch((error: any) => {
-        console.log(error)
         sendReply(uuid, { error })
       });
   });

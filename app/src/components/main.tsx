@@ -30,7 +30,7 @@ import updateOutput from '../python/update-output.py';
 
 function runConversion() {
   // const code = pythonCode.getValue();
-  const code = "print('boo'); 'george'"
+  const code = "print('boo'); open('/output/test', 'a').close()"
   sendExecuteRequest(code).subscribe(() => {
     sendExecuteRequest(updateOutput).subscribe(result => {
       const fileNames = result.data.result
