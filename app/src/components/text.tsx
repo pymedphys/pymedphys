@@ -52,9 +52,9 @@ export class AppText extends React.Component {
           This application loads Python into the <a href="https://webassembly.org/">
             wasm virtual machine
         </a> of your
-                        browser allowing Python code to be run on your local machine without
-                        having Python installed, or without needing Python to run on a remote
-                        server.
+                              browser allowing Python code to be run on your local machine without
+                              having Python installed, or without needing Python to run on a remote
+                              server.
         </p>
         <p>
           When it comes to sensitive information or large data files, this
@@ -73,23 +73,10 @@ export class AppText extends React.Component {
 
         <H2>Instructions for use</H2>
         <p>
-          To begin, download the demo .trf and .dcm files using the links
-          below:
+          To begin, download <a href="https://zenodo.org/record/3227868/files/demo_files.zip?download=1">
+            this demo_files.zip
+          </a>.
         </p>
-        <ul>
-          <li>
-            A demo RT DICOM plan
-          file &mdash; <a href="/data/rtplan.dcm" type="application/octet-stream">
-              rtplan.dcm
-          </a>
-          </li>
-          <li>
-            A demo .trf file from the delivery given by the above RT DICOM
-          plan &mdash; <a href="/data/imrt.trf" type="application/octet-stream">
-              imrt.trf
-          </a>
-          </li>
-        </ul>
         <p>
           Then, press browse below under File Management and select the .trf
           and .dcm files.
@@ -104,7 +91,7 @@ export class AppText extends React.Component {
           output directory, press "Save Output" to download a zip of the
           contents of the output directory.
         </p>
-      </div>
+      </div >
     )
   }
 }
