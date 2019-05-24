@@ -7,7 +7,7 @@ import {
     pythonReady
 } from './observables/python';
 
-import { runPyodide } from './web-workers/init';
+import { pyodideInitialise } from './web-workers/init';
 
 import App from './root';
 import './index.scss';
@@ -20,7 +20,7 @@ pythonReady.subscribe(isReady => {
     }
 })
 
-runPyodide().subscribe(() => {
+pyodideInitialise.subscribe(() => {
     pythonReady.next(true)
 })
 

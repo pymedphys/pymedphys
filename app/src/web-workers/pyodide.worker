@@ -6,14 +6,25 @@ import setupDirectories from '../python/setup-directories.py';
 
 import {
   receiverMessengers, senderMessengers,
-  sendMessage, sendReply
+  sendReply
 } from '../observables/webworker-messaging';
+
+receiverMessengers.base.subscribe(message => {
+  console.log("Received webworker <-- main")
+  console.log(message)
+})
+
+senderMessengers.base.subscribe(message => {
+  console.log("Sending webworker --> main")
+  console.log(message)
+  self.postMessage(message)
+});
 
 var onmessage = function (e) { // eslint-disable-line no-unused-vars
   receiverMessengers.base.next(e.data)
 }
 
-senderMessengers.base.subscribe(message => self.postMessage(message));
+
 
 let pythonInitialise = languagePluginLoader.then(() => {
   return Promise.all([

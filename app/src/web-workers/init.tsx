@@ -6,18 +6,25 @@ import {
 } from '../observables/webworker-messaging';
 
 
-export function runPyodide() {
-  const pyodideWorker = new PyodideWorker()
+const pyodideWorker = new PyodideWorker() as Worker
 
-  pyodideWorker.onmessage = (event: MessageEvent) => {
-    receiverMessengers.base.next(event.data)
-  }
+receiverMessengers.base.subscribe(message => {
+  console.log("Received main <-- webworker")
+  console.log(message)
+})
 
-  senderMessengers.base.subscribe(data => {
-    pyodideWorker.postMessage(data)
-  })
+senderMessengers.base.subscribe(message => {
+  console.log("Sending main --> webworker")
+  console.log(message)
+  pyodideWorker.postMessage(message)
+})
 
-  return sendInitialise()
+pyodideWorker.onmessage = (event: MessageEvent) => {
+  receiverMessengers.base.next(event.data)
+}
+
+export const pyodideInitialise = sendInitialise()
+
 
   // pyodideWorker.onerror = (e: any) => {
   //   console.log(`Error in pyodideWorker at ${e.filename}, Line: ${e.lineno}, ${e.message}`)
@@ -41,5 +48,5 @@ export function runPyodide() {
   // }
 
   // pyodideWorker.postMessage(data)
-}
+// }
 

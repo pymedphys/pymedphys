@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Subject, Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
 import { v4 } from 'uuid';
@@ -73,7 +73,7 @@ type IPyodideData = INullData | IExecuteRequestData | IFileTransferData | ILangu
 type IPyodideMessage = INullMessage | IExecuteRequestMessage | IFileTransferMessage | ILanguageServerMessage | IReplyMessage | IInitialiseMessage;
 
 interface IMessengers extends Readonly<{}> {
-  base: BehaviorSubject<IPyodideMessage>
+  base: Subject<IPyodideMessage>
   executeRequest: Observable<IExecuteRequestMessage>;
   fileTransfer: Observable<IFileTransferMessage>;
   languageServer: Observable<ILanguageServerMessage>;
@@ -87,11 +87,7 @@ export function createUuid(): string {
 }
 
 function createMessengers() {
-  let messenger = new BehaviorSubject<IPyodideMessage>({
-    uuid: createUuid(),
-    type: '',
-    data: {}
-  })
+  let messenger = new Subject<IPyodideMessage>()
 
   const messengers: IMessengers = {
     base: messenger,
