@@ -37,7 +37,9 @@ from pymedphys_dicom.rtplan import (
     replace_beam_sequence,
     restore_trailing_zeros,
     merge_beam_sequences,
-    get_fraction_group_index)
+    get_fraction_group_index,
+    get_beam_indices_of_fraction_group,
+    convert_to_one_fraction_group)
 
 from ..utilities import (
     find_relevant_control_points,
@@ -48,8 +50,12 @@ from ..utilities import (
 def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
                            dicom_template,
                            fraction_group_number):
+    single_fraction_group_template = convert_to_one_fraction_group(
+        dicom_template, fraction_group_number)
+
     delivery_data = filter_out_irrelevant_control_points(delivery_data)
-    template_gantry_angles = get_gantry_angles_from_dicom(dicom_template)
+    template_gantry_angles = get_gantry_angles_from_dicom(
+        single_fraction_group_template)
 
     gantry_tol = gantry_tol_from_gantry_angles(template_gantry_angles)
 
@@ -57,12 +63,12 @@ def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
         delivery_data, template_gantry_angles, gantry_tol)
 
     fraction_group_index = get_fraction_group_index(
-        dicom_template, fraction_group_number)
+        single_fraction_group_template, fraction_group_number)
 
     single_beam_dicoms = []
     for beam_index, masked_delivery_data in enumerate(all_masked_delivery_data):
         single_beam_dicoms.append(delivery_data_to_dicom_single_beam(
-            masked_delivery_data, dicom_template, beam_index,
+            masked_delivery_data, single_fraction_group_template, beam_index,
             fraction_group_index))
 
     return merge_beam_sequences(single_beam_dicoms)
@@ -112,14 +118,12 @@ def coordinate_convert_delivery_data(delivery_data):
 
 
 def jaw_dd2dcm(jaw):
-    jaw = np.array(jaw, copy=False)
+    jaw = np.array(jaw, copy=True)
+    jaw[:, 1] = -jaw[:, 1]
 
-    new_jaw = np.array(jaw)
-    new_jaw[:, 1] = -new_jaw[:, 1]
-
-    converted_jaw = new_jaw.astype(str)
-    converted_jaw[:, 1] = new_jaw.astype(str)[:, 0]
-    converted_jaw[:, 0] = new_jaw.astype(str)[:, 1]
+    converted_jaw = jaw.astype(str)
+    converted_jaw[:, 1] = jaw.astype(str)[:, 0]
+    converted_jaw[:, 0] = jaw.astype(str)[:, 1]
     converted_jaw = converted_jaw.tolist()
 
     return converted_jaw
