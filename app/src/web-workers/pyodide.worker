@@ -6,7 +6,7 @@ import setupDirectories from '../python/setup-directories.py';
 
 import {
   receiverMessengers, senderMessengers,
-  sendReply
+  sendReply, sendFileTransfer
 } from '../observables/webworker-messaging';
 
 receiverMessengers.base.subscribe(message => {
@@ -17,7 +17,7 @@ receiverMessengers.base.subscribe(message => {
 senderMessengers.base.subscribe(message => {
   console.log("Sending webworker --> main")
   console.log(message)
-  self.postMessage(message)
+  self.postMessage(message, message.transferables)
 });
 
 self.onmessage = function (e) { // eslint-disable-line no-unused-vars
@@ -48,4 +48,39 @@ receiverMessengers.executeRequest.subscribe(data => {
       .then(result => sendReply(uuid, { result }))
       .catch(error => sendReply(uuid, { error }));
   });
+})
+
+
+receiverMessengers.fileTransferRequest.subscribe(message => {
+  const uuid = message.uuid
+  const filepaths = message.data.filepaths
+
+  let files = []
+  filepaths.forEach(filepath => {
+    files.push(Module.FS.readFile(filepath))  // TODO: check this doesn't get unlinked
+  })
+
+  sendFileTransfer(files, filepaths, uuid)
+})
+
+function dirBasenameSplit(filepath) {
+  split = filepath.split('/')
+  basename = split[split.length - 1]
+  dir = split.slice(0, -1).join('/')
+
+  return [dir, basename]
+}
+
+receiverMessengers.fileTransfer.subscribe(message => {
+  const uuid = message.uuid
+  const filepath = message.data.filepath
+  const file = message.data.file
+
+  if (filepath !== undefined) {
+    const dirbasename = dirBasenameSplit(filepath)
+    const data = new Uint8Array(file);
+    Module['FS_createDataFile'](dirbasename[0], dirbasename[1], data, true, true, true);
+  }
+
+  sendReply(uuid, { result: dirbasename[1] })
 })

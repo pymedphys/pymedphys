@@ -7,6 +7,7 @@ interface IMessage extends Readonly<{}> {
   uuid: string;
   type: string;
   data: {};
+  transferables?: Transferable[];
 }
 
 interface IData extends Readonly<{}> {
@@ -34,7 +35,7 @@ interface IExecuteRequestMessage extends IMessage {
 }
 
 interface IFileTransferRequestData extends IData {
-  filepaths: string[]
+  filepath: string
 }
 
 interface IFileTransferRequestMessage extends IMessage {
@@ -48,7 +49,8 @@ interface IFileTransferMessage extends IMessage {
 }
 
 interface IFileTransferData extends IData {
-  files: FileList
+  file: ArrayBuffer,
+  filepath: string
 }
 
 interface IFileTransferMessage extends IMessage {
@@ -109,7 +111,7 @@ function createMessengers() {
     base: messenger,
     executeRequest: messenger.pipe(filter(data => data.type === 'executeRequest')) as Observable<IExecuteRequestMessage>,
     fileTransfer: messenger.pipe(filter(data => data.type === 'fileTransfer')) as Observable<IFileTransferMessage>,
-    fileTransferRequest: messenger.pipe(filter(data => data.type === 'fileTransfer')) as Observable<IFileTransferRequestMessage>,
+    fileTransferRequest: messenger.pipe(filter(data => data.type === 'fileTransferRequest')) as Observable<IFileTransferRequestMessage>,
     languageServer: messenger.pipe(filter(data => data.type === 'languageServer')) as Observable<ILanguageServerMessage>,
     reply: messenger.pipe(filter(data => data.type === 'reply')) as Observable<IReplyMessage>,
     initialise: messenger.pipe(filter(data => data.type === 'initialise')) as Observable<IInitialiseMessage>
@@ -158,27 +160,32 @@ export function sendReply(uuid: string, data: IReplyData) {
   senderMessengers.base.next(message)
 }
 
-export function sendFileTransferRequest(data: IFileTransferRequestData): Observable<IFileTransferMessage> {
+export function sendFileTransferRequest(filepath: string): Observable<IFileTransferMessage> {
   const uuid = createUuid();
   const responses = receiverMessengers.fileTransfer.pipe(filter(data => data.uuid === uuid))
 
   const message: IPyodideMessage = {
     uuid: uuid,
     type: 'fileTransferRequest',
-    data: data
+    data: { filepath }
   }
 
   senderMessengers.base.next(message)
   return responses
 }
 
-export function sendFileTransfer(uuid: string, data: IFileTransferData): Observable<IReplyMessage> {
+export function sendFileTransfer(file: ArrayBuffer, filepath: string, uuid?: string): Observable<IReplyMessage> {
+  if (uuid === undefined) {
+    uuid = createUuid();
+  }
   const responses = receiverMessengers.reply.pipe(filter(data => data.uuid === uuid))
   const message: IFileTransferMessage = {
     uuid: uuid,
     type: 'fileTransfer',
-    data: data
+    data: { file, filepath },
   }
+
+  message.transferables = [message.data.file]
 
   senderMessengers.base.next(message)
   return responses

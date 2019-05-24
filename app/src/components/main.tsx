@@ -20,14 +20,12 @@ import {
   pythonReady, pythonData, IPythonData, pythonCode
 } from '../observables/python'
 import { inputDirectory, outputDirectory } from '../observables/directories';
-import { sendExecuteRequest } from '../observables/webworker-messaging';
+import {
+  sendExecuteRequest, sendFileTransferRequest, sendFileTransfer
+} from '../observables/webworker-messaging';
 
 import zipOutput from '../python/zip-output.py';
 import updateOutput from '../python/update-output.py';
-
-
-declare let pyodide: any;
-declare var Module: any;
 
 
 function runConversion() {
@@ -37,10 +35,17 @@ function runConversion() {
   })
 }
 
+
 function downloadOutput() {
-  pyodide.runPython(zipOutput).then(() => {
-    let zip = Module.FS.readFile('/output.zip') as Uint8Array
-    saveAs(new Blob([new Uint8Array(zip)]), 'output.zip')
+  const filename = '/output.zip'
+
+  sendExecuteRequest(zipOutput).toPromise().then(() => {
+    return sendFileTransferRequest(filename).toPromise()
+  }).then(message => {
+    const file = message.data.file
+    const pathSplit = filename.split('/')
+    const basename = pathSplit[pathSplit.length - 1]
+    saveAs(new Blob([new Uint8Array(file)]), basename)
   })
 }
 
@@ -55,14 +60,19 @@ function onFileInputChange(event: React.FormEvent<HTMLInputElement>) {
     let fr = new FileReader();
     fr.onload = function () {
       let result = fr.result as ArrayBuffer
-      var data = new Uint8Array(result);
+      const filepath = '/input/' + file.name
 
-      Module['FS_createDataFile']('/input/', file.name, data, true, true, true);
-      inputDirectory.next(inputDirectory.getValue().add(file.name))
+      sendFileTransfer(result, filepath).toPromise().then(message => {
+        const filename: string = message.data.result
+        inputDirectory.next(inputDirectory.getValue().add(filename))
+      })
     };
 
     fr.readAsArrayBuffer(file);
+
   })
+
+
 }
 
 interface IAppMainProps {

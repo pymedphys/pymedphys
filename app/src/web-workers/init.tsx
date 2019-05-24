@@ -16,7 +16,7 @@ receiverMessengers.base.subscribe(message => {
 senderMessengers.base.subscribe(message => {
   console.log("Sending main --> webworker")
   console.log(message)
-  pyodideWorker.postMessage(message)
+  pyodideWorker.postMessage(message, message.transferables)
 })
 
 pyodideWorker.onmessage = (event: MessageEvent) => {

@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 
 import {
-    pythonReady
+  pythonReady
 } from './observables/python';
 
 import { pyodideInitialise } from './web-workers/init';
@@ -15,13 +15,13 @@ import './index.scss';
 ReactDOM.render(<App />, document.getElementById('root'));
 
 pythonReady.subscribe(isReady => {
-    if (isReady) {
-        console.log("Python Ready")
-    }
+  if (isReady) {
+    console.log("Python Ready")
+  }
 })
 
 pyodideInitialise.subscribe(() => {
-    pythonReady.next(true)
+  pythonReady.next(true)
 })
 
 // If you want your app to work offline and load faster, you can change

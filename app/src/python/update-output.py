@@ -1,7 +1,7 @@
 # pylint: disable=import-error
 
 import os
-from glob import globZ
+from glob import glob
 
 output_filenames = [
     os.path.basename(filepath)
