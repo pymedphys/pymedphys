@@ -37,7 +37,8 @@ from pymedphys_utilities.algorithms import maintain_order_unique
 
 from pymedphys_dicom.rtplan import (
     get_metersets_from_dicom,
-    get_gantry_angles_from_dicom)
+    get_gantry_angles_from_dicom,
+    convert_to_one_fraction_group)
 
 from pymedphys.deliverydata import DeliveryData
 
@@ -79,12 +80,19 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
     return get_gantry_angles_from_dicom(loaded_dicom_dataset)
 
 
+def test_filter_cps(logfile_delivery_data):
+    filtered = logfile_delivery_data.filter_cps()
+
+    for field in logfile_delivery_data._fields:
+        assert len(getattr(logfile_delivery_data, field)) != 0
+
+
 def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
                               logfile_delivery_data: DeliveryData):
     original = logfile_delivery_data.filter_cps()
     template = loaded_dicom_dataset
 
-    dicom = original.to_dicom(template)
+    dicom = original.to_dicom(template, FRACTION_GROUP)
     processed = DeliveryData.from_dicom(dicom, FRACTION_GROUP)
 
     assert np.all(
@@ -112,13 +120,18 @@ def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
 def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
                                loaded_dicom_gantry_angles):
     original = loaded_dicom_dataset
-    original_gantry_angles = loaded_dicom_gantry_angles
-
     delivery_data = DeliveryData.from_dicom(original, FRACTION_GROUP)
-    processed = delivery_data.to_dicom(original)
+    processed = delivery_data.to_dicom(original, FRACTION_GROUP)
+
+    single_fraction_group = convert_to_one_fraction_group(
+        original, FRACTION_GROUP)
+
+    original_gantry_angles = get_gantry_angles_from_dicom(
+        single_fraction_group)
 
     assert (
-        num_of_control_points(original) == num_of_control_points(processed)
+        num_of_control_points(single_fraction_group) ==
+        num_of_control_points(processed)
     )
 
     assert (
@@ -129,12 +142,14 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
     assert original_gantry_angles == processed_gantry_angles
 
     assert (
-        source_to_surface_distances(original) ==
+        source_to_surface_distances(single_fraction_group) ==
         source_to_surface_distances(processed))
 
-    assert first_mlc_positions(original) == first_mlc_positions(processed)
+    assert (
+        first_mlc_positions(single_fraction_group) ==
+        first_mlc_positions(processed))
 
-    assert str(original) == str(processed)
+    assert str(single_fraction_group) == str(processed)
 
 
 def test_get_metersets_from_delivery_data(logfile_delivery_data,
