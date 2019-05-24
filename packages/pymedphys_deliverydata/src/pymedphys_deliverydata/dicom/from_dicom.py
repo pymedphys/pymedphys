@@ -30,7 +30,8 @@ import numpy as np
 
 from pymedphys_base.deliverydata import DeliveryDataBase
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
-from pymedphys_dicom.rtplan import get_fraction_group_index
+from pymedphys_dicom.rtplan import (
+    get_fraction_group_beam_sequence_and_meterset)
 
 from ..utilities import merge_delivery_data
 
@@ -104,34 +105,3 @@ def delivery_data_from_dicom_single_beam(beam, meterset):
     ])
 
     return DeliveryDataBase(mu, gantry_angles, collimator_angles, mlcs, jaw)
-
-
-def get_fraction_group_beam_sequence_and_meterset(dicom_dataset,
-                                                  fraction_group_number):
-    fraction_group_index = get_fraction_group_index(
-        dicom_dataset, fraction_group_number)
-
-    fraction_group = dicom_dataset.FractionGroupSequence[fraction_group_index]
-    referenced_beam_sequence = fraction_group.ReferencedBeamSequence
-
-    beam_numbers = [
-        referenced_beam.ReferencedBeamNumber
-        for referenced_beam in referenced_beam_sequence
-    ]
-
-    metersets = [
-        referenced_beam.BeamMeterset
-        for referenced_beam in referenced_beam_sequence
-    ]
-
-    beam_sequence_number_mapping = {
-        beam.BeamNumber: beam
-        for beam in dicom_dataset.BeamSequence
-    }
-
-    beam_sequence = [
-        beam_sequence_number_mapping[beam_number]
-        for beam_number in beam_numbers
-    ]
-
-    return beam_sequence, metersets
