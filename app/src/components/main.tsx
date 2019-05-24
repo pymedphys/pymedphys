@@ -22,7 +22,6 @@ import {
 import { inputDirectory, outputDirectory } from '../observables/directories';
 import { sendExecuteRequest } from '../observables/webworker-messaging';
 
-import runUserCode from '../python/run-user-code.py';
 import zipOutput from '../python/zip-output.py';
 import updateOutput from '../python/update-output.py';
 
