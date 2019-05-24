@@ -38,28 +38,16 @@ from pymedphys_dicom.rtplan import (
     restore_trailing_zeros,
     merge_beam_sequences,
     get_fraction_group_index,
-    get_beam_indices_of_fraction_group,
-    convert_to_one_fraction_group,
-    get_fraction_group_beam_sequence_and_meterset)
+    convert_to_one_fraction_group)
 
-from ..utilities import (
-    find_relevant_control_points,
-    filter_out_irrelevant_control_points,
-    get_all_masked_delivery_data,
-    get_metersets_from_delivery_data)
+from ..utilities import get_all_masked_delivery_data
 
 
-def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
+def delivery_data_to_dicom(filtered_delivery_data: DeliveryDataBase,
                            dicom_template,
-                           fraction_group_number=None):
+                           fraction_group_number):
     single_fraction_group_template = convert_to_one_fraction_group(
         dicom_template, fraction_group_number)
-
-    delivery_data = filter_out_irrelevant_control_points(delivery_data)
-
-    if fraction_group_number is None:
-        fraction_group_number = determine_fraction_group_number(
-            delivery_data, dicom_template)
 
     template_gantry_angles = get_gantry_angles_from_dicom(
         single_fraction_group_template)
@@ -67,7 +55,7 @@ def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
     gantry_tol = gantry_tol_from_gantry_angles(template_gantry_angles)
 
     all_masked_delivery_data = get_all_masked_delivery_data(
-        delivery_data, template_gantry_angles, gantry_tol)
+        filtered_delivery_data, template_gantry_angles, gantry_tol)
 
     fraction_group_index = get_fraction_group_index(
         single_fraction_group_template, fraction_group_number)
@@ -79,82 +67,6 @@ def delivery_data_to_dicom(delivery_data: DeliveryDataBase,
             fraction_group_index))
 
     return merge_beam_sequences(single_beam_dicoms)
-
-
-def determine_fraction_group_number(delivery_data, dicom_template,
-                                    gantry_tol=3, meterset_tol=0.5):
-    fraction_groups = dicom_template.FractionGroupSequence
-
-    if len(fraction_groups) == 1:
-        return fraction_groups[0].FractionGroupNumber
-
-    fraction_group_numbers = [
-        fraction_group.FractionGroupNumber
-        for fraction_group in fraction_groups
-    ]
-
-    dicom_metersets_by_fraction_group = [
-        get_fraction_group_beam_sequence_and_meterset(
-            dicom_template, fraction_group_number)[1]
-        for fraction_group_number in fraction_group_numbers
-    ]
-
-    split_by_fraction_group = [
-        convert_to_one_fraction_group(dicom_template, fraction_group_number)
-        for fraction_group_number in fraction_group_numbers
-    ]
-
-    gantry_angles_by_fraction_group = [
-        get_gantry_angles_from_dicom(dataset)
-        for dataset in split_by_fraction_group]
-
-    masked_delivery_data_by_fraction_group = []
-    for gantry_angles in gantry_angles_by_fraction_group:
-        try:
-            masked = get_all_masked_delivery_data(
-                delivery_data, gantry_angles, gantry_tol, quiet=True)
-        except AssertionError:
-            masked = DeliveryDataBase.empty()
-
-        masked_delivery_data_by_fraction_group.append(masked)
-
-    try:
-        deliver_data_metersets_by_fraction_group = [
-            get_metersets_from_delivery_data(masked_delivery_data)
-            for masked_delivery_data in masked_delivery_data_by_fraction_group
-        ]
-    except AttributeError:
-        # print(masked_delivery_data_by_fraction_group)
-        raise
-
-    maximum_deviations = []
-    for dicom_metersets, delivery_data_metersets in zip(
-        dicom_metersets_by_fraction_group,
-        deliver_data_metersets_by_fraction_group
-    ):
-        maximmum_diff = np.max(np.abs(
-            np.array(dicom_metersets) - np.array(delivery_data_metersets)))
-
-        maximum_deviations.append(maximmum_diff)
-
-    deviations_within_tol = np.array(maximum_deviations) <= meterset_tol
-
-    if np.sum(deviations_within_tol) < 1:
-        raise ValueError(
-            "A fraction group was not able to be found with the metersets "
-            "and gantry angles defined by the tolerances provided. "
-            "Please manually define the fraction group number.")
-
-    if np.sum(deviations_within_tol) > 1:
-        raise ValueError(
-            "More than one fraction group was found that had metersets "
-            "and gantry angles within the tolerances provided. "
-            "Please manually define the fraction group number.")
-
-    fraction_group_number = np.array(
-        fraction_group_numbers)[deviations_within_tol]
-
-    return fraction_group_number
 
 
 def delivery_data_to_dicom_single_beam(delivery_data, dicom_template,
