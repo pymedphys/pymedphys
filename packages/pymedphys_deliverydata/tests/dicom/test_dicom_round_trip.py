@@ -42,6 +42,9 @@ from pymedphys_dicom.rtplan import (
 
 from pymedphys.deliverydata import DeliveryData
 
+from pymedphys_deliverydata.dicom.to_dicom import (
+    determine_fraction_group_number)
+
 # pylint: disable=redefined-outer-name
 
 
@@ -80,6 +83,15 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
     return get_gantry_angles_from_dicom(loaded_dicom_dataset)
 
 
+def test_determine_fraction_group_number(loaded_dicom_dataset,
+                                         logfile_delivery_data: DeliveryData):
+    expected = FRACTION_GROUP
+    result = determine_fraction_group_number(
+        logfile_delivery_data, loaded_dicom_dataset)
+
+    assert result == expected
+
+
 def test_filter_cps(logfile_delivery_data):
     filtered = logfile_delivery_data.filter_cps()
 
@@ -92,7 +104,7 @@ def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
     original = logfile_delivery_data.filter_cps()
     template = loaded_dicom_dataset
 
-    dicom = original.to_dicom(template, FRACTION_GROUP)
+    dicom = original.to_dicom(template)
     processed = DeliveryData.from_dicom(dicom, FRACTION_GROUP)
 
     assert np.all(
@@ -121,7 +133,7 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
                                loaded_dicom_gantry_angles):
     original = loaded_dicom_dataset
     delivery_data = DeliveryData.from_dicom(original, FRACTION_GROUP)
-    processed = delivery_data.to_dicom(original, FRACTION_GROUP)
+    processed = delivery_data.to_dicom(original)
 
     single_fraction_group = convert_to_one_fraction_group(
         original, FRACTION_GROUP)
