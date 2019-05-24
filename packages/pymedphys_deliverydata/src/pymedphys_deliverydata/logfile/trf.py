@@ -25,14 +25,15 @@
 
 import numpy as np
 
-from pymedphys_deliverydata.object import DeliveryData
+from pymedphys_base.deliverydata import DeliveryDataBase
 
-from .constants import (
-    GANTRY_NAME, COLLIMATOR_NAME,
-    Y1_LEAF_BANK_NAMES, Y2_LEAF_BANK_NAMES,
-    JAW_NAMES
-)
-from .trf2pandas import decode_trf
+from pymedphys_fileformats.trf import (
+    decode_trf,
+    GANTRY_NAME,
+    COLLIMATOR_NAME,
+    Y1_LEAF_BANK_NAMES,
+    Y2_LEAF_BANK_NAMES,
+    JAW_NAMES)
 
 
 def delivery_data_from_logfile(logfile_path):
@@ -41,25 +42,24 @@ def delivery_data_from_logfile(logfile_path):
     return delivery_data_from_pandas(logfile_dataframe)
 
 
-def delivery_data_from_pandas(logfile_dataframe) -> DeliveryData:
-    raw_monitor_units = logfile_dataframe[
-        'Step Dose/Actual Value (Mu)'].values.tolist()
+def delivery_data_from_pandas(logfile_dataframe) -> DeliveryDataBase:
+    raw_monitor_units = logfile_dataframe['Step Dose/Actual Value (Mu)']
 
     diff = np.append([0], np.diff(raw_monitor_units))
     diff[diff < 0] = 0
 
-    monitor_units = np.cumsum(diff).tolist()
+    monitor_units = np.cumsum(diff)
 
-    gantry = logfile_dataframe[GANTRY_NAME].values.tolist()
-    collimator = logfile_dataframe[COLLIMATOR_NAME].values.tolist()
+    gantry = logfile_dataframe[GANTRY_NAME]
+    collimator = logfile_dataframe[COLLIMATOR_NAME]
 
     y1_bank = [
-        logfile_dataframe[name].values.tolist()
+        logfile_dataframe[name]
         for name in Y1_LEAF_BANK_NAMES
     ]
 
     y2_bank = [
-        logfile_dataframe[name].values.tolist()
+        logfile_dataframe[name]
         for name in Y2_LEAF_BANK_NAMES
     ]
 
@@ -67,12 +67,12 @@ def delivery_data_from_pandas(logfile_dataframe) -> DeliveryData:
     mlc = np.swapaxes(mlc, 0, 2)
 
     jaw = [
-        logfile_dataframe[name].values.tolist()
+        logfile_dataframe[name]
         for name in JAW_NAMES
     ]
     jaw = np.swapaxes(jaw, 0, 1)
 
-    logfile_delivery_data = DeliveryData(
+    logfile_delivery_data = DeliveryDataBase(
         monitor_units, gantry, collimator, mlc, jaw
     )
 

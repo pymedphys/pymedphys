@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2018 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,20 +23,44 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-"""A toolbox for handling trf files.
-
-Examples:
-    >>> from pymedphys.trf import decode_header_from_file
+"""Working with delivery data from either logfiles or Mosaiq.
 """
 
-from .trf2pandas import trf2pandas, decode_trf
-from .trf2csv import trf2csv_by_directory
-from .header import decode_header_from_file, Header
+from collections import namedtuple
 
-from .constants import (
-    GANTRY_NAME,
-    COLLIMATOR_NAME,
-    Y1_LEAF_BANK_NAMES,
-    Y2_LEAF_BANK_NAMES,
-    JAW_NAMES)
+from pymedphys_utilities.types import to_tuple
+
+_DeliveryDataBase = namedtuple(
+    'DeliveryData',
+    ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
+
+
+class DeliveryDataBase(_DeliveryDataBase):
+    def __new__(cls, *args, **kwargs):
+        new_args = (
+            to_tuple(arg)
+            for arg in args
+        )
+        new_kwargs = {
+            key: to_tuple(item)
+            for key, item in kwargs.items()
+        }
+        return super().__new__(cls, *new_args, **new_kwargs)
+
+    @classmethod
+    def empty(cls):
+        return cls(
+            tuple(),
+            tuple(),
+            tuple(),
+            tuple((
+                tuple((
+                    tuple(),
+                    tuple()
+                )),
+            )),
+            tuple((
+                tuple(),
+                tuple()
+            ))
+        )

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,13 +23,26 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Working with delivery data from either logfiles or Mosaiq.
-"""
 
-from collections import namedtuple
+from copy import deepcopy
 
-# Make the creation of DeliveryData look a bit like this...
-# Or a bit like the dataclass ...
-_DeliveryDataBase = namedtuple(
-    'DeliveryData',
-    ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
+from .core import (
+    get_fraction_group_beam_sequence_and_meterset,
+    get_fraction_group_index)
+
+
+def convert_to_one_fraction_group(dicom_dataset, fraction_group_number):
+    created_dicom = deepcopy(dicom_dataset)
+
+    beam_sequence, _ = get_fraction_group_beam_sequence_and_meterset(
+        dicom_dataset, fraction_group_number)
+
+    created_dicom.BeamSequence = beam_sequence
+
+    fraction_group_index = get_fraction_group_index(
+        dicom_dataset, fraction_group_number)
+
+    fraction_group = created_dicom.FractionGroupSequence[fraction_group_index]
+    created_dicom.FractionGroupSequence = [fraction_group]
+
+    return created_dicom
