@@ -2,8 +2,9 @@ import PyodideWorker from './pyodide.worker';
 
 import {
   receiverMessengers, senderMessengers,
-  sendInitialise
-} from '../observables/webworker-messaging';
+  sendInitialise, sendExecuteRequest, sendFileTransfer,
+  sendFileTransferRequest
+} from './common';
 
 
 const pyodideWorker = new PyodideWorker() as Worker
@@ -23,4 +24,9 @@ pyodideWorker.onmessage = (event: MessageEvent) => {
   receiverMessengers.base.next(event.data)
 }
 
-export const pyodideInitialise = sendInitialise()
+const pyodideInitialise = sendInitialise()
+
+export {
+  pyodideInitialise, sendExecuteRequest, sendFileTransfer,
+  sendFileTransferRequest
+}

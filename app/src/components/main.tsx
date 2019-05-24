@@ -22,7 +22,7 @@ import {
 import { inputDirectory, outputDirectory } from '../observables/directories';
 import {
   sendExecuteRequest, sendFileTransferRequest, sendFileTransfer
-} from '../observables/webworker-messaging';
+} from '../observables/webworker-messaging/main';
 
 import zipOutput from '../python/zip-output.py';
 import updateOutput from '../python/update-output.py';
