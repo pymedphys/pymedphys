@@ -28,7 +28,6 @@ import functools
 from typing import Union, Tuple
 
 from pymedphys_base.deliverydata import DeliveryDataBase
-from pymedphys_utilities.types import to_tuple
 from pymedphys_mudensity.mudensity import calc_mu_density
 
 from ..dicom import (
@@ -44,11 +43,7 @@ from ..logfile import delivery_data_from_logfile
 
 class DeliveryData(DeliveryDataBase):
     def __new__(cls, *args):
-        new_args = (
-            to_tuple(arg)
-            for arg in args
-        )
-        return super().__new__(cls, *new_args)
+        return super().__new__(cls, *args)
 
     @classmethod
     def from_delivery_data_base(cls, delivery_data_base):
@@ -69,24 +64,6 @@ class DeliveryData(DeliveryDataBase):
     def from_logfile(cls, filepath):
         return cls.from_delivery_data_base(
             delivery_data_from_logfile(filepath))
-
-    @classmethod
-    def empty(cls):
-        return cls(
-            tuple(),
-            tuple(),
-            tuple(),
-            tuple((
-                tuple((
-                    tuple(),
-                    tuple()
-                )),
-            )),
-            tuple((
-                tuple(),
-                tuple()
-            ))
-        )
 
     @functools.lru_cache()
     def filter_cps(self):

@@ -28,6 +28,35 @@
 
 from collections import namedtuple
 
-DeliveryDataBase = namedtuple(
+from pymedphys_utilities.types import to_tuple
+
+_DeliveryDataBase = namedtuple(
     'DeliveryData',
     ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
+
+
+class DeliveryDataBase(_DeliveryDataBase):
+    def __new__(cls, *args):
+        new_args = (
+            to_tuple(arg)
+            for arg in args
+        )
+        return super().__new__(cls, *new_args)
+
+    @classmethod
+    def empty(cls):
+        return cls(
+            tuple(),
+            tuple(),
+            tuple(),
+            tuple((
+                tuple((
+                    tuple(),
+                    tuple()
+                )),
+            )),
+            tuple((
+                tuple(),
+                tuple()
+            ))
+        )
