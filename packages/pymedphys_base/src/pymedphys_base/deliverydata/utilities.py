@@ -49,3 +49,11 @@ def find_relevant_control_points(mu):
     relevant_control_points = np.invert(irrelevant_control_point)
 
     return relevant_control_points
+
+
+def to_tuple(a):
+    # https://stackoverflow.com/a/10016613/3912576
+    try:
+        return tuple(to_tuple(i) for i in a)
+    except TypeError:
+        return a

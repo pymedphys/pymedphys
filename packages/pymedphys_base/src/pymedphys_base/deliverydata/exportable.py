@@ -24,25 +24,49 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from collections import namedtuple
 import functools
 from typing import Union, Tuple
 
 import numpy as np
 
-from .core import DeliveryDataBase
-from .utilities import find_relevant_control_points
+from .utilities import find_relevant_control_points, to_tuple
 
 
-class DeliveryData(DeliveryDataBase):
+_DeliveryDataBase = namedtuple(
+    'DeliveryData',
+    ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
+
+
+class DeliveryData(_DeliveryDataBase):
     def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, *args, **kwargs)
+        new_args = (
+            to_tuple(arg)
+            for arg in args
+        )
+        new_kwargs = {
+            key: to_tuple(item)
+            for key, item in kwargs.items()
+        }
+        return super().__new__(cls, *new_args, **new_kwargs)
 
     @classmethod
-    def from_delivery_data_base(cls, delivery_data_base):
-        if type(delivery_data_base) is type(cls):
-            return delivery_data_base
-
-        return cls(*delivery_data_base)
+    def empty(cls):
+        return cls(
+            tuple(),
+            tuple(),
+            tuple(),
+            tuple((
+                tuple((
+                    tuple(),
+                    tuple()
+                )),
+            )),
+            tuple((
+                tuple(),
+                tuple()
+            ))
+        )
 
     @functools.lru_cache()
     def filter_cps(self):
@@ -92,9 +116,15 @@ class DeliveryData(DeliveryDataBase):
 
     @classmethod
     def combine(cls, *args):
-        return cls(args[0]).merge(*args[1::])
+        first = cls(args[0])
+
+        if len(args) == 1:
+            return first
+
+        return first.merge(*args[1::])
 
     def merge(self, *args):
+        cls = type(self)
         separate = tuple(self,) + args
         collection = {}  # type: ignore
 
@@ -112,10 +142,7 @@ class DeliveryData(DeliveryDataBase):
         mu[mu < 0] = 0
         collection['monitor_units'] = np.cumsum(mu)
 
-        for key, item in collection.items():
-            collection[key] = item.tolist()
-
-        merged = DeliveryDataBase(**collection)
+        merged = cls(**collection)
 
         return merged
 
