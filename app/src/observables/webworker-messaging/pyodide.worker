@@ -45,6 +45,7 @@ let pythonInitialise = languagePluginLoader.then(() => {
     ctx.document = {
       createElement: () => { }
     };
+    ctx.pyodide.runPython('import matplotlib')  // Maximum call stack occurs here
   })
 })
 
