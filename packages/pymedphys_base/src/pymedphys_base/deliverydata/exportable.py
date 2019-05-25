@@ -58,9 +58,8 @@ class DeliveryData(DeliveryDataBase):
         return cls(*new_delivery_data)
 
     @functools.lru_cache()
-    def mask_by_gantry(self, angles: Union[Tuple, float, int], tolerance=3):
-        iterable_angles: tuple
-
+    def mask_by_gantry(self, angles: Union[Tuple, float, int], gantry_tolerance=3,
+                       allow_missing_angles=False):
         try:
             _ = iter(angles)  # type: ignore
             iterable_angles = tuple(angles)  # type: ignore
@@ -68,12 +67,19 @@ class DeliveryData(DeliveryDataBase):
             # Not iterable, assume just one angle provided
             iterable_angles = (angles,)
 
-        return self.all_masked(self, iterable_angles, tolerance)
+        masks = self._gantry_angle_masks(
+            angles, gantry_tolerance, allow_missing_angles=allow_missing_angles)
+
+        all_masked_delivery_data = tuple(
+            self._apply_mask_to_delivery_data(mask)
+            for mask in masks)
+
+        return all_masked_delivery_data
 
     @functools.lru_cache()
     def metersets(self, gantry_angles, gantry_tolerance):
         all_masked_delivery_data = self.mask_by_gantry(
-            gantry_angles, gantry_tolerance)
+            gantry_angles, gantry_tolerance, allow_missing_angles=False)
 
         metersets = []
         for delivery_data in all_masked_delivery_data:
@@ -83,6 +89,10 @@ class DeliveryData(DeliveryDataBase):
                 continue
 
         return tuple(metersets)
+
+    @classmethod
+    def combine(cls, *args):
+        return cls(args[0]).merge(*args[1::])
 
     def merge(self, *args):
         separate = tuple(self,) + args
@@ -109,26 +119,13 @@ class DeliveryData(DeliveryDataBase):
 
         return merged
 
-    def all_masked(self,
-                   template_gantry_angles, gantry_tol,
-                   quiet=False):
-        masks = self._gantry_angle_masks(
-            template_gantry_angles, gantry_tol, quiet=quiet)
-
-        all_masked_delivery_data = tuple(
-            self._apply_mask_to_delivery_data(mask)
-            for mask in masks
-        )
-
-        return all_masked_delivery_data
-
-    def extract_one_gantry_angle(self, gantry_angle, gantry_angle_tol=3):
-        near_angle = self._gantry_angle_mask(gantry_angle, gantry_angle_tol)
+    def extract_one_gantry_angle(self, gantry_angle, gantry_tolerance=3):
+        near_angle = self._gantry_angle_mask(gantry_angle, gantry_tolerance)
 
         return self._apply_mask_to_delivery_data(near_angle)
 
     def _gantry_angle_masks(self, gantry_angles,
-                            gantry_tol, quiet=False):
+                            gantry_tol, allow_missing_angles=False):
         masks = [
             self._gantry_angle_mask(gantry_angle, gantry_tol)
             for gantry_angle in gantry_angles
@@ -153,7 +150,7 @@ class DeliveryData(DeliveryDataBase):
                 " {}".format(gantry_tol)
             )
         except AssertionError:
-            if not quiet:
+            if not allow_missing_angles:
                 print("Allowable gantry angles = {}".format(gantry_angles))
                 gantry = np.array(self.gantry, copy=False)
                 out_of_tolerance = np.unique(
@@ -161,7 +158,7 @@ class DeliveryData(DeliveryDataBase):
                 print("The gantry angles out of tolerance were {}".format(
                     out_of_tolerance))
 
-            raise
+                raise
 
         return masks
 

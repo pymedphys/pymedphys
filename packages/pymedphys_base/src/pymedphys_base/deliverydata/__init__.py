@@ -1,1 +1,1 @@
-from .core import DeliveryDataBase
+from .exportable import DeliveryData
