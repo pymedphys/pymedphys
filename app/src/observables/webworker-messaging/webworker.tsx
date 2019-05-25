@@ -8,6 +8,7 @@ interface PyodideWorker extends Worker {
   pyodide: any;
   Module: any;
   languagePluginUrl: string;
+  document: any;
 }
 
 const ctx: PyodideWorker = self as any;
@@ -40,7 +41,11 @@ let pythonInitialise = languagePluginLoader.then(() => {
     ctx.pyodide.runPython(setupDirectories),
     ctx.pyodide.runPython(loadWheels),
     ctx.pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
-  ])
+  ]).then(() => {
+    ctx.document = {
+      createElement: () => { }
+    };
+  })
 })
 
 receiverMessengers.initialise.subscribe(data => {
