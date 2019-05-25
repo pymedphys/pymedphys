@@ -11,7 +11,7 @@ import setupDirectories from '../../python/setup-directories.py';
 //   document: any;
 // }
 
-// const ctx: PyodideWorker = self as any;
+const ctx = self;
 
 ctx.languagePluginUrl = 'https://pyodide.pymedphys.com/'
 importScripts('https://pyodide.pymedphys.com/pyodide.js')
