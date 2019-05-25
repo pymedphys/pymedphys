@@ -109,7 +109,8 @@ export function createUuid(): string {
 
 function createMessengers() {
   let messenger = new Subject<IPyodideMessage>()
-  let scheduled = messenger.pipe(observeOn(queueScheduler))
+  // let scheduled = messenger.pipe(observeOn(queueScheduler))
+  let scheduled = messenger
 
   const messengers: IMessengers = {
     next: (value: IPyodideMessage) => messenger.next(value),

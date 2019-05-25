@@ -42,9 +42,9 @@ let pythonInitialise = languagePluginLoader.then(() => {
     ctx.pyodide.runPython(loadWheels),
     ctx.pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
   ]).then(() => {
-    ctx.document = {
-      createElement: () => { }
-    };
+    // ctx.document = {
+    //   createElement: () => { }
+    // };
     ctx.pyodide.runPython('import matplotlib')  // Maximum call stack occurs here
   })
 })
