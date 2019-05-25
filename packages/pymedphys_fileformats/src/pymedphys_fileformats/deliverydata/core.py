@@ -25,9 +25,9 @@
 
 import numpy as np
 
-from pymedphys_base.deliverydata import DeliveryDataBase
+from pymedphys_base.deliverydata import DeliveryData
 
-from pymedphys_fileformats.trf import (
+from ..trf import (
     decode_trf,
     GANTRY_NAME,
     COLLIMATOR_NAME,
@@ -36,51 +36,42 @@ from pymedphys_fileformats.trf import (
     JAW_NAMES)
 
 
-class DeliveryDataLogfileMixin:
+class DeliveryDataLogfile(DeliveryData):
     @classmethod
     def from_logfile(cls, filepath):
-        return cls.from_delivery_data_base(
-            delivery_data_from_logfile(filepath))
+        dataframe = decode_trf(filepath)
 
+        return cls.from_pandas(dataframe)
 
-def delivery_data_from_logfile(logfile_path):
-    logfile_dataframe = decode_trf(logfile_path)
+    @classmethod
+    def from_pandas(cls, table):
+        raw_monitor_units = table['Step Dose/Actual Value (Mu)']
 
-    return delivery_data_from_pandas(logfile_dataframe)
+        diff = np.append([0], np.diff(raw_monitor_units))
+        diff[diff < 0] = 0
 
+        monitor_units = np.cumsum(diff)
 
-def delivery_data_from_pandas(logfile_dataframe) -> DeliveryDataBase:
-    raw_monitor_units = logfile_dataframe['Step Dose/Actual Value (Mu)']
+        gantry = table[GANTRY_NAME]
+        collimator = table[COLLIMATOR_NAME]
 
-    diff = np.append([0], np.diff(raw_monitor_units))
-    diff[diff < 0] = 0
+        y1_bank = [
+            table[name]
+            for name in Y1_LEAF_BANK_NAMES
+        ]
 
-    monitor_units = np.cumsum(diff)
+        y2_bank = [
+            table[name]
+            for name in Y2_LEAF_BANK_NAMES
+        ]
 
-    gantry = logfile_dataframe[GANTRY_NAME]
-    collimator = logfile_dataframe[COLLIMATOR_NAME]
+        mlc = [y1_bank, y2_bank]
+        mlc = np.swapaxes(mlc, 0, 2)
 
-    y1_bank = [
-        logfile_dataframe[name]
-        for name in Y1_LEAF_BANK_NAMES
-    ]
+        jaw = [
+            table[name]
+            for name in JAW_NAMES
+        ]
+        jaw = np.swapaxes(jaw, 0, 1)
 
-    y2_bank = [
-        logfile_dataframe[name]
-        for name in Y2_LEAF_BANK_NAMES
-    ]
-
-    mlc = [y1_bank, y2_bank]
-    mlc = np.swapaxes(mlc, 0, 2)
-
-    jaw = [
-        logfile_dataframe[name]
-        for name in JAW_NAMES
-    ]
-    jaw = np.swapaxes(jaw, 0, 1)
-
-    logfile_delivery_data = DeliveryDataBase(
-        monitor_units, gantry, collimator, mlc, jaw
-    )
-
-    return logfile_delivery_data
+        return cls(monitor_units, gantry, collimator, mlc, jaw)
