@@ -89,10 +89,11 @@ interface IInitialiseMessage extends IMessage {
 }
 type IPyodideType = '' | 'executeRequest' | 'fileTransfer' | 'languageServer' | 'reply' | 'initialise';
 type IPyodideData = INullData | IExecuteRequestData | IFileTransferRequestData | IFileTransferData | ILanguageServerData | IReplyData | IInitialiseData;
-type IPyodideMessage = INullMessage | IExecuteRequestMessage | IFileTransferRequestMessage | IFileTransferMessage | ILanguageServerMessage | IReplyMessage | IInitialiseMessage;
+export type IPyodideMessage = INullMessage | IExecuteRequestMessage | IFileTransferRequestMessage | IFileTransferMessage | ILanguageServerMessage | IReplyMessage | IInitialiseMessage;
 
 interface IMessengers extends Readonly<{}> {
-  base: Subject<IPyodideMessage>
+  next: Function;
+  subscribe: Function;
   executeRequest: Observable<IExecuteRequestMessage>;
   fileTransfer: Observable<IFileTransferMessage>;
   fileTransferRequest: Observable<IFileTransferRequestMessage>;
@@ -108,15 +109,17 @@ export function createUuid(): string {
 
 function createMessengers() {
   let messenger = new Subject<IPyodideMessage>()
+  let scheduled = messenger.pipe(observeOn(queueScheduler))
 
   const messengers: IMessengers = {
-    base: messenger,
-    executeRequest: messenger.pipe(filter((data: IPyodideMessage) => data.type === 'executeRequest'), observeOn(queueScheduler)) as any,
-    fileTransfer: messenger.pipe(filter(data => data.type === 'fileTransfer'), observeOn(queueScheduler)) as any,
-    fileTransferRequest: messenger.pipe(filter(data => data.type === 'fileTransferRequest'), observeOn(queueScheduler)) as any,
-    languageServer: messenger.pipe(filter(data => data.type === 'languageServer'), observeOn(queueScheduler)) as any,
-    reply: messenger.pipe(filter(data => data.type === 'reply'), observeOn(queueScheduler)) as any,
-    initialise: messenger.pipe(filter(data => data.type === 'initialise'), observeOn(queueScheduler)) as any
+    next: (value: IPyodideMessage) => messenger.next(value),
+    subscribe: (func: (value: IPyodideMessage) => void) => { scheduled.subscribe(func) },
+    executeRequest: scheduled.pipe(filter((data: IPyodideMessage) => data.type === 'executeRequest')) as Observable<IExecuteRequestMessage>,
+    fileTransfer: scheduled.pipe(filter(data => data.type === 'fileTransfer')) as Observable<IFileTransferMessage>,
+    fileTransferRequest: scheduled.pipe(filter(data => data.type === 'fileTransferRequest')) as Observable<IFileTransferRequestMessage>,
+    languageServer: scheduled.pipe(filter(data => data.type === 'languageServer')) as Observable<ILanguageServerMessage>,
+    reply: scheduled.pipe(filter(data => data.type === 'reply')) as Observable<IReplyMessage>,
+    initialise: scheduled.pipe(filter(data => data.type === 'initialise')) as Observable<IInitialiseMessage>
   }
 
   return messengers
@@ -135,7 +138,7 @@ const sendMessage = (data: IPyodideData, type: any) => {
     data: data
   }
 
-  senderMessengers.base.next(message)
+  senderMessengers.next(message)
   return responses
 }
 
@@ -159,7 +162,7 @@ const sendReply = (uuid: string, data: IReplyData) => {
     data: data
   }
 
-  senderMessengers.base.next(message)
+  senderMessengers.next(message)
 }
 
 const sendFileTransferRequest = (filepath: string): Observable<IFileTransferMessage> => {
@@ -172,7 +175,7 @@ const sendFileTransferRequest = (filepath: string): Observable<IFileTransferMess
     data: { filepath }
   }
 
-  senderMessengers.base.next(message)
+  senderMessengers.next(message)
   return responses
 }
 
@@ -189,7 +192,7 @@ const sendFileTransfer = (file: ArrayBuffer, filepath: string, uuid?: string): O
 
   message.transferables = [message.data.file]
 
-  senderMessengers.base.next(message)
+  senderMessengers.next(message)
   return responses
 }
 

@@ -3,25 +3,25 @@ import PyodideWorker from './pyodide.worker';
 import {
   receiverMessengers, senderMessengers,
   sendInitialise, sendExecuteRequest, sendFileTransfer,
-  sendFileTransferRequest
+  sendFileTransferRequest, IPyodideMessage
 } from './common';
 
 
 const pyodideWorker = new PyodideWorker() as Worker
 
-receiverMessengers.base.subscribe(message => {
+receiverMessengers.subscribe((message: IPyodideMessage) => {
   console.log("Received main <-- webworker")
   console.log(message)
 })
 
-senderMessengers.base.subscribe(message => {
+senderMessengers.subscribe((message: IPyodideMessage) => {
   console.log("Sending main --> webworker")
   console.log(message)
   pyodideWorker.postMessage(message, message.transferables)
 })
 
 pyodideWorker.onmessage = (event: MessageEvent) => {
-  receiverMessengers.base.next(event.data)
+  receiverMessengers.next(event.data)
 }
 
 const pyodideInitialise = sendInitialise()

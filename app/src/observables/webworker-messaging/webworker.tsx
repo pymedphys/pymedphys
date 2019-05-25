@@ -17,30 +17,29 @@ importScripts('https://pyodide.pymedphys.com/pyodide.js')
 
 import {
   receiverMessengers, senderMessengers,
-  sendReply, sendFileTransfer
+  sendReply, sendFileTransfer, IPyodideMessage
 } from './common';
 
-receiverMessengers.base.subscribe(message => {
+receiverMessengers.subscribe((message: IPyodideMessage) => {
   console.log("Received webworker <-- main")
   console.log(message)
 })
 
-senderMessengers.base.subscribe(message => {
+senderMessengers.subscribe((message: IPyodideMessage) => {
   console.log("Sending webworker --> main")
   console.log(message)
   ctx.postMessage(message, message.transferables)
 });
 
 ctx.onmessage = function (e) { // eslint-disable-line no-unused-vars
-  receiverMessengers.base.next(e.data)
+  receiverMessengers.next(e.data)
 }
 
 let pythonInitialise = languagePluginLoader.then(() => {
   return Promise.all([
     ctx.pyodide.runPython(setupDirectories),
     ctx.pyodide.runPython(loadWheels),
-    ctx.pyodide.loadPackage(['numpy'])
-    // ctx.pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
+    ctx.pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
   ])
 })
 
