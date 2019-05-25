@@ -24,13 +24,11 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys_dicom.rtplan import (
-    get_fraction_group_beam_sequence_and_meterset)
-from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 from copy import deepcopy
 
 import numpy as np
 
+from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 from pymedphys_base.deliverydata import DeliveryData
 
 from ..rtplan import (
@@ -41,7 +39,8 @@ from ..rtplan import (
     restore_trailing_zeros,
     merge_beam_sequences,
     get_fraction_group_index,
-    convert_to_one_fraction_group)
+    convert_to_one_fraction_group,
+    get_fraction_group_beam_sequence_and_meterset)
 
 
 class DeliveryDataDicom(DeliveryData):
@@ -147,7 +146,7 @@ class DeliveryDataDicom(DeliveryData):
                       beam_index, fraction_group_index):
 
         created_dicom = deepcopy(dicom_template)
-        data_converted = coordinate_convert_delivery_data(self)
+        data_converted = self.coordinate_convert()
 
         beam = created_dicom.BeamSequence[beam_index]
         cp_sequence = beam.ControlPointSequence
@@ -234,24 +233,23 @@ class DeliveryDataDicom(DeliveryData):
 
         return fraction_group_number
 
+    def coordinate_convert(self):
+        monitor_units = self.monitor_units
+        mlc = mlc_dd2dcm(self.mlc)
+        jaw = jaw_dd2dcm(self.jaw)
+        gantry_angle, gantry_movement = angle_dd2dcm(self.gantry)
+        collimator_angle, collimator_movement = angle_dd2dcm(
+            self.collimator)
 
-def coordinate_convert_delivery_data(delivery_data):
-    monitor_units = delivery_data.monitor_units
-    mlc = mlc_dd2dcm(delivery_data.mlc)
-    jaw = jaw_dd2dcm(delivery_data.jaw)
-    gantry_angle, gantry_movement = angle_dd2dcm(delivery_data.gantry)
-    collimator_angle, collimator_movement = angle_dd2dcm(
-        delivery_data.collimator)
-
-    return {
-        'monitor_units': monitor_units,
-        'mlc': mlc,
-        'jaw': jaw,
-        'gantry_angle': gantry_angle,
-        'gantry_movement': gantry_movement,
-        'collimator_angle': collimator_angle,
-        'collimator_movement': collimator_movement
-    }
+        return {
+            'monitor_units': monitor_units,
+            'mlc': mlc,
+            'jaw': jaw,
+            'gantry_angle': gantry_angle,
+            'gantry_movement': gantry_movement,
+            'collimator_angle': collimator_angle,
+            'collimator_movement': collimator_movement
+        }
 
 
 def jaw_dd2dcm(jaw):

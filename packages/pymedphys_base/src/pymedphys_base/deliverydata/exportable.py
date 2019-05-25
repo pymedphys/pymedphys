@@ -201,7 +201,7 @@ class DeliveryData(_DeliveryDataBase):
 
         new_delivery_data = []
         for item in self:
-            new_delivery_data.append(np.array(item)[mask].tolist())
+            new_delivery_data.append(np.array(item)[mask])
 
         new_monitor_units = new_delivery_data[0]
         try:
@@ -212,7 +212,7 @@ class DeliveryData(_DeliveryDataBase):
         new_delivery_data[0] = np.round(
             np.array(new_delivery_data[0], copy=False)
             - first_monitor_unit_item, decimals=7
-        ).tolist()
+        )
 
         return cls(*new_delivery_data)
 
@@ -221,6 +221,6 @@ class DeliveryData(_DeliveryDataBase):
 
         new_delivery_data = []
         for item in self:
-            new_delivery_data.append(np.array(item)[::skip_size].tolist())
+            new_delivery_data.append(np.array(item)[::skip_size])
 
         return cls(*new_delivery_data)
