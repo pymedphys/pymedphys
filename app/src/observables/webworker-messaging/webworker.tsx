@@ -2,7 +2,6 @@ import './serviceworker.d.ts'
 
 import loadWheels from '../../python/load-wheels.py';
 import setupDirectories from '../../python/setup-directories.py';
-import setMatplotlibBackend from '../../python/set-matplotlib-backend.py';
 
 
 interface PyodideWorker extends Worker {
@@ -40,10 +39,9 @@ let pythonInitialise = languagePluginLoader.then(() => {
   return Promise.all([
     ctx.pyodide.runPython(setupDirectories),
     ctx.pyodide.runPython(loadWheels),
-    ctx.pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
-  ]).then(() => {
-    return ctx.pyodide.runPython(setMatplotlibBackend)
-  })
+    ctx.pyodide.loadPackage(['numpy'])
+    // ctx.pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
+  ])
 })
 
 receiverMessengers.initialise.subscribe(data => {
