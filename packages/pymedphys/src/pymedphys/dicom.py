@@ -15,4 +15,7 @@ from pymedphys_dicom.dicom import (
 
 from pymedphys_dicom.rtplan import convert_to_one_fraction_group
 
-# from pymedphys_analysis.geometry import get_structure_aligned_cube
+try:
+    from pymedphys_analysis.geometry import get_structure_aligned_cube
+except ImportError:
+    pass
