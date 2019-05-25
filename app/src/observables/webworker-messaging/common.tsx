@@ -1,5 +1,8 @@
-import { Subject, Observable } from 'rxjs';
-import { filter } from 'rxjs/operators';
+import {
+  Subject, Observable, queueScheduler,
+  // MonoTypeOperatorFunction
+} from 'rxjs';
+import { filter, observeOn } from 'rxjs/operators';
 
 import { v4 } from 'uuid';
 
@@ -108,12 +111,12 @@ function createMessengers() {
 
   const messengers: IMessengers = {
     base: messenger,
-    executeRequest: messenger.pipe(filter(data => data.type === 'executeRequest')) as Observable<IExecuteRequestMessage>,
-    fileTransfer: messenger.pipe(filter(data => data.type === 'fileTransfer')) as Observable<IFileTransferMessage>,
-    fileTransferRequest: messenger.pipe(filter(data => data.type === 'fileTransferRequest')) as Observable<IFileTransferRequestMessage>,
-    languageServer: messenger.pipe(filter(data => data.type === 'languageServer')) as Observable<ILanguageServerMessage>,
-    reply: messenger.pipe(filter(data => data.type === 'reply')) as Observable<IReplyMessage>,
-    initialise: messenger.pipe(filter(data => data.type === 'initialise')) as Observable<IInitialiseMessage>
+    executeRequest: messenger.pipe(filter((data: IPyodideMessage) => data.type === 'executeRequest'), observeOn(queueScheduler)) as any,
+    fileTransfer: messenger.pipe(filter(data => data.type === 'fileTransfer'), observeOn(queueScheduler)) as any,
+    fileTransferRequest: messenger.pipe(filter(data => data.type === 'fileTransferRequest'), observeOn(queueScheduler)) as any,
+    languageServer: messenger.pipe(filter(data => data.type === 'languageServer'), observeOn(queueScheduler)) as any,
+    reply: messenger.pipe(filter(data => data.type === 'reply'), observeOn(queueScheduler)) as any,
+    initialise: messenger.pipe(filter(data => data.type === 'initialise'), observeOn(queueScheduler)) as any
   }
 
   return messengers
