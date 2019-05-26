@@ -19,31 +19,37 @@ import { AppSelectScript } from './select-script'
 import {
   pythonReady, pythonData, IPythonData, pythonCode
 } from '../observables/python'
-import { inputDirectory, outputDirectory } from '../observables/directories'
+import { inputDirectory, outputDirectory } from '../observables/directories';
+import {
+  sendExecuteRequest, sendFileTransferRequest, sendFileTransfer
+} from '../observables/webworker-messaging/main';
 
-import runUserCode from '../python/run-user-code.py';
 import zipOutput from '../python/zip-output.py';
 import updateOutput from '../python/update-output.py';
 
 
-declare let pyodide: any;
-declare var Module: any;
-
-
 function runConversion() {
-  pyodide.runPython(runUserCode)
-    .catch(() => {
-      pyodide.runPython(updateOutput)
+  const code = pythonCode.getValue();
+  // const code = "print('boo'); open('/output/test', 'a').close()"
+  sendExecuteRequest(code).subscribe(() => {
+    sendExecuteRequest(updateOutput).subscribe(result => {
+      const fileNames = result.data.result
+      outputDirectory.next(fileNames)
     })
-    .then(() => {
-      pyodide.runPython(updateOutput)
-    })
+  })
 }
 
+
 function downloadOutput() {
-  pyodide.runPython(zipOutput).then(() => {
-    let zip = Module.FS.readFile('/output.zip') as Uint8Array
-    saveAs(new Blob([new Uint8Array(zip)]), 'output.zip')
+  const filename = '/output.zip'
+
+  sendExecuteRequest(zipOutput).subscribe(() => {
+    return sendFileTransferRequest(filename).subscribe(message => {
+      const file = message.data.file
+      const pathSplit = filename.split('/')
+      const basename = pathSplit[pathSplit.length - 1]
+      saveAs(new Blob([new Uint8Array(file)]), basename)
+    })
   })
 }
 
@@ -56,14 +62,16 @@ function onFileInputChange(event: React.FormEvent<HTMLInputElement>) {
 
   fileArray.forEach(file => {
     let fr = new FileReader();
-    fr.onload = function () {
-      let result = fr.result as ArrayBuffer
-      var data = new Uint8Array(result);
+    fr.onload = () => {
+      let result = fr.result as ArrayBuffer;
+      const filepath = '/input/' + file.name;
 
-      Module['FS_createDataFile']('/input/', file.name, data, true, true, true);
-      inputDirectory.next(inputDirectory.getValue().add(file.name))
+      const subscription = sendFileTransfer(result, filepath).subscribe(message => {
+        const filename: string = message.data.result;
+        inputDirectory.next(inputDirectory.getValue().add(filename));
+        subscription.unsubscribe();
+      });
     };
-
     fr.readAsArrayBuffer(file);
   })
 }
@@ -204,8 +212,6 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
 
         <br></br>
 
-
-
         <span className="floatleft">
           <Button
             intent="primary"
@@ -222,9 +228,6 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             onClick={downloadOutput}
             disabled={!this.state.isPythonReady || !this.state.hasOutputFiles} />
         </span>
-
-
-
 
       </div>
     );
