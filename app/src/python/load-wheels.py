@@ -14,7 +14,7 @@ from js import Promise, XMLHttpRequest
 
 WHEEL_BASE_PATH = Path('/lib/python3.7/site-packages/').parent
 VENDOR_WHEEL_BASE_URL = 'https://pyodide.pymedphys.com/wheels/'
-VENDOR_WHEEL_INDEX_FILENAME = 'index-7dc273d8-32cf-565f-8a3d-2f8ff86dde8d.json'
+VENDOR_WHEEL_INDEX_FILENAME = 'index-4e286215-fe29-5bac-9123-052f34d75df8.json'
 VENDOR_WHEEL_INDEX_URL = '{}{}'.format(
     VENDOR_WHEEL_BASE_URL, VENDOR_WHEEL_INDEX_FILENAME)
 
