@@ -1,0 +1,103 @@
+// import './webworker.tsx'
+
+// import loadWheels from '../../python/load-wheels.py';
+// import setupDirectories from '../../python/setup-directories.py';
+
+
+// // interface PyodideWorker extends Worker {
+// //   pyodide: any;
+// //   Module: any;
+// //   languagePluginUrl: string;
+// //   document: any;
+// // }
+
+// const ctx = self;
+
+// ctx.languagePluginUrl = 'https://pyodide.pymedphys.com/'
+// importScripts('https://pyodide.pymedphys.com/pyodide.js')
+
+// import {
+//   receiverMessengers, senderMessengers,
+//   sendReply, sendFileTransfer
+// } from './common';
+
+// receiverMessengers.subscribe((message) => {
+//   console.log("Received webworker <-- main")
+//   console.log(message)
+// })
+
+// senderMessengers.subscribe((message) => {
+//   console.log("Sending webworker --> main")
+//   console.log(message)
+//   ctx.postMessage(message, message.transferables)
+// });
+
+// ctx.onmessage = function (e) { // eslint-disable-line no-unused-vars
+//   receiverMessengers.next(e.data)
+// }
+
+// let pythonInitialise = languagePluginLoader.then(() => {
+//   return Promise.all([
+//     ctx.pyodide.runPython(setupDirectories),
+//     ctx.pyodide.runPython(loadWheels),
+//     ctx.pyodide.loadPackage(['matplotlib', 'numpy', 'pandas'])
+//   ]).then(() => {
+//     // ctx.document = {
+//     //   createElement: () => { }
+//     // };
+//     ctx.pyodide.runPython('import matplotlib')  // Maximum call stack occurs here
+//   })
+// })
+
+// receiverMessengers.initialise.subscribe(data => {
+//   const uuid = data.uuid
+//   pythonInitialise.then(() => {
+//     sendReply(uuid, {})
+//   })
+// })
+
+// receiverMessengers.executeRequest.subscribe(message => {
+//   const uuid = message.uuid;
+//   const code = message.data.code;
+
+//   pythonInitialise.then(() => {
+//     pyodide.runPythonAsync(code)
+//       .then((result) => {
+//         sendReply(uuid, { result })
+//       })
+//       .catch((error) => {
+//         sendReply(uuid, { error })
+//       });
+//   });
+// })
+
+// receiverMessengers.fileTransferRequest.subscribe(message => {
+//   const uuid = message.uuid
+//   const filepath = message.data.filepath
+
+//   let file = ctx.Module.FS.readFile(filepath)
+//   sendFileTransfer(file, filepath, uuid)
+// })
+
+// function dirBasenameSplit(filepath) {
+//   const split = filepath.split('/')
+//   const basename = split[split.length - 1]
+//   const dir = split.slice(0, -1).join('/') + '/'
+//   const dirbasename = [dir, basename]
+
+//   return dirbasename
+// }
+
+// receiverMessengers.fileTransfer.subscribe(message => {
+//   const uuid = message.uuid
+//   const filepath = message.data.filepath
+//   const file = message.data.file
+
+//   if (filepath !== undefined) {
+//     const dirbasename = dirBasenameSplit(filepath)
+//     const data = new Uint8Array(file);
+//     ctx.Module['FS_createDataFile'](dirbasename[0], dirbasename[1], data, true, true, true);
+
+//     sendReply(uuid, { result: dirbasename[1] })
+//   }
+// })
