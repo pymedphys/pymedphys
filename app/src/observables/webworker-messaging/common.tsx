@@ -107,7 +107,7 @@ export function createUuid(): string {
   return uuid
 }
 
-function createMessengers() {
+function createBaseMessengers() {
   let messenger = new Subject<IPyodideMessage>()
   // let scheduled = messenger.pipe(observeOn(queueScheduler))
   let scheduled = messenger
@@ -126,79 +126,89 @@ function createMessengers() {
   return messengers
 }
 
-export const receiverMessengers = createMessengers()
-export const senderMessengers = createMessengers()
+function createMessengers() {
+  const receiver = createBaseMessengers()
+  const sender = createBaseMessengers()
 
-const sendMessage = (data: IPyodideData, type: any) => {
-  const uuid = createUuid();
-  const responses = receiverMessengers.reply.pipe(filter(data => data.uuid === uuid))
+  const sendMessage = (data: IPyodideData, type: any) => {
+    const uuid = createUuid();
+    const responses = receiver.reply.pipe(filter(data => data.uuid === uuid))
 
-  const message: IPyodideMessage = {
-    uuid: uuid,
-    type: type,
-    data: data
+    const message: IPyodideMessage = {
+      uuid: uuid,
+      type: type,
+      data: data
+    }
+
+    sender.next(message)
+    return responses
   }
 
-  senderMessengers.next(message)
-  return responses
-}
-
-const sendExecuteRequest = (code: string): Observable<IReplyMessage> => {
-  const data: IExecuteRequestData = { code }
-  return sendMessage(data, 'executeRequest')
-}
-
-const sendLanguageServer = (data: ILanguageServerMessage): Observable<IReplyMessage> => {
-  return sendMessage(data, 'languageServer')
-}
-
-const sendInitialise = (): Observable<IReplyMessage> => {
-  return sendMessage({}, 'initialise')
-}
-
-const sendReply = (uuid: string, data: IReplyData) => {
-  const message: IReplyMessage = {
-    uuid: uuid,
-    type: 'reply',
-    data: data
+  const sendExecuteRequest = (code: string): Observable<IReplyMessage> => {
+    const data: IExecuteRequestData = { code }
+    return sendMessage(data, 'executeRequest')
   }
 
-  senderMessengers.next(message)
-}
-
-const sendFileTransferRequest = (filepath: string): Observable<IFileTransferMessage> => {
-  const uuid = createUuid();
-  const responses = receiverMessengers.fileTransfer.pipe(filter(data => data.uuid === uuid), observeOn(queueScheduler))
-
-  const message: IPyodideMessage = {
-    uuid: uuid,
-    type: 'fileTransferRequest',
-    data: { filepath }
+  const sendLanguageServer = (data: ILanguageServerMessage): Observable<IReplyMessage> => {
+    return sendMessage(data, 'languageServer')
   }
 
-  senderMessengers.next(message)
-  return responses
-}
-
-const sendFileTransfer = (file: ArrayBuffer, filepath: string, uuid?: string): Observable<IReplyMessage> => {
-  if (uuid === undefined) {
-    uuid = createUuid();
-  }
-  const responses = receiverMessengers.reply.pipe(filter(data => data.uuid === uuid), observeOn(queueScheduler))
-  const message: IFileTransferMessage = {
-    uuid: uuid,
-    type: 'fileTransfer',
-    data: { file, filepath },
+  const sendInitialise = (): Observable<IReplyMessage> => {
+    return sendMessage({}, 'initialise')
   }
 
-  message.transferables = [message.data.file]
+  const sendReply = (uuid: string, data: IReplyData) => {
+    const message: IReplyMessage = {
+      uuid: uuid,
+      type: 'reply',
+      data: data
+    }
 
-  senderMessengers.next(message)
-  return responses
+    sender.next(message)
+  }
+
+  const sendFileTransferRequest = (filepath: string): Observable<IFileTransferMessage> => {
+    const uuid = createUuid();
+    const responses = receiver.fileTransfer.pipe(filter(data => data.uuid === uuid), observeOn(queueScheduler))
+
+    const message: IPyodideMessage = {
+      uuid: uuid,
+      type: 'fileTransferRequest',
+      data: { filepath }
+    }
+
+    sender.next(message)
+    return responses
+  }
+
+  const sendFileTransfer = (file: ArrayBuffer, filepath: string, uuid?: string): Observable<IReplyMessage> => {
+    if (uuid === undefined) {
+      uuid = createUuid();
+    }
+    const responses = receiver.reply.pipe(filter(data => data.uuid === uuid), observeOn(queueScheduler))
+    const message: IFileTransferMessage = {
+      uuid: uuid,
+      type: 'fileTransfer',
+      data: { file, filepath },
+    }
+
+    message.transferables = [message.data.file]
+
+    sender.next(message)
+    return responses
+  }
+
+  const messengers = {
+    sender, receiver, sendExecuteRequest, sendLanguageServer, sendInitialise,
+    sendFileTransferRequest, sendFileTransfer, sendReply
+  }
+
+  return messengers
 }
 
+const workerMessengers = createMessengers()
+const mainMessengers = createMessengers()
 
 export {
-  sendReply, sendExecuteRequest, sendLanguageServer, sendInitialise,
-  sendFileTransferRequest, sendFileTransfer
+  workerMessengers, mainMessengers
 }
