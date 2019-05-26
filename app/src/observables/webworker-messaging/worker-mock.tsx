@@ -14,13 +14,13 @@ function createWorkerCommMock() {
   class WorkerMock implements commMock {
     onmessage = (ev: MessageEvent) => { }
     postMessage(ev: MessageEvent, transfer?: Transferable[]) {
-      console.log('Mocked sending worker --> main')
-      console.log(ev)
+      // console.log('Mocked sending worker --> main')
+      // console.log(ev)
       fromWorker.next({ data: ev } as any)
     }
     callOnMessage(ev: MessageEvent) {
-      console.log('Mocked receiving worker <-- main')
-      console.log(ev.data)
+      // console.log('Mocked receiving worker <-- main')
+      // console.log(ev.data)
       this.onmessage(ev)
     }
   }
@@ -33,13 +33,13 @@ function createWorkerCommMock() {
   class MainMock implements commMock {
     onmessage = (ev: MessageEvent) => { }
     postMessage(ev: MessageEvent, transfer?: Transferable[]) {
-      console.log('Mocked sending main --> worker')
-      console.log(ev)
+      // console.log('Mocked sending main --> worker')
+      // console.log(ev)
       toWorker.next({ data: ev } as any)
     }
     callOnMessage(ev: MessageEvent) {
-      console.log('Mocked receiving main <-- worker')
-      console.log(ev.data)
+      // console.log('Mocked receiving main <-- worker')
+      // console.log(ev.data)
       this.onmessage(ev)
     }
   }

@@ -1,8 +1,7 @@
 import {
-  Subject, Observable, queueScheduler,
-  // MonoTypeOperatorFunction
+  Subject, Observable
 } from 'rxjs';
-import { filter, observeOn } from 'rxjs/operators';
+import { filter } from 'rxjs/operators';
 
 import { v4 } from 'uuid';
 
@@ -107,7 +106,7 @@ export function createUuid(): string {
   return uuid
 }
 
-function createBaseMessengers() {
+const createBaseMessengers = () => {
   let messenger = new Subject<IPyodideMessage>()
   // let scheduled = messenger.pipe(observeOn(queueScheduler))
   let scheduled = messenger
@@ -126,13 +125,13 @@ function createBaseMessengers() {
   return messengers
 }
 
-function createMessengers() {
+const createMessengers = () => {
   const receiver = createBaseMessengers()
   const sender = createBaseMessengers()
 
   const sendMessage = (data: IPyodideData, type: any) => {
     const uuid = createUuid();
-    const responses = receiver.reply.pipe(filter(data => data.uuid === uuid))
+    const responses = receiver.reply.pipe(filter(message => message.uuid === uuid))
 
     const message: IPyodideMessage = {
       uuid: uuid,
@@ -169,7 +168,7 @@ function createMessengers() {
 
   const sendFileTransferRequest = (filepath: string): Observable<IFileTransferMessage> => {
     const uuid = createUuid();
-    const responses = receiver.fileTransfer.pipe(filter(data => data.uuid === uuid), observeOn(queueScheduler))
+    const responses = receiver.fileTransfer.pipe(filter(message => message.uuid === uuid))
 
     const message: IPyodideMessage = {
       uuid: uuid,
@@ -185,7 +184,7 @@ function createMessengers() {
     if (uuid === undefined) {
       uuid = createUuid();
     }
-    const responses = receiver.reply.pipe(filter(data => data.uuid === uuid), observeOn(queueScheduler))
+    const responses = receiver.reply.pipe(filter(message => message.uuid === uuid))
     const message: IFileTransferMessage = {
       uuid: uuid,
       type: 'fileTransfer',

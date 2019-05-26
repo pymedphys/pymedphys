@@ -31,7 +31,6 @@ let ctx: PyodideWorker
 // importScripts('https://pyodide.pymedphys.com/pyodide.js')
 
 ctx = workerMock as any;
-ctx.pyodide = pyodide;
 ctx.languagePluginLoader = languagePluginLoader
 
 receiverMessengers.subscribe((message: IPyodideMessage) => {
@@ -40,8 +39,8 @@ receiverMessengers.subscribe((message: IPyodideMessage) => {
 })
 
 senderMessengers.subscribe((message: IPyodideMessage) => {
-  console.log("Sending webworker --> main")
-  console.log(message)
+  // console.log("Sending webworker --> main")
+  // console.log(message)
   ctx.postMessage(message, message.transferables)
 });
 
@@ -50,6 +49,7 @@ ctx.onmessage = function (e) { // eslint-disable-line no-unused-vars
 }
 
 let pythonInitialise = ctx.languagePluginLoader.then(() => {
+  ctx.pyodide = pyodide;
   return Promise.all([
     ctx.pyodide.runPython(setupDirectories),
     ctx.pyodide.runPython(loadWheels),

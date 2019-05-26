@@ -63,14 +63,19 @@ function onFileInputChange(event: React.FormEvent<HTMLInputElement>) {
   fileArray.forEach(file => {
     let fr = new FileReader();
     fr.onload = () => {
-      let result = fr.result as ArrayBuffer
-      const filepath = '/input/' + file.name
+      let result = fr.result as ArrayBuffer;
+      const filepath = '/input/' + file.name;
 
-      sendFileTransfer(result, filepath).subscribe(message => {
-        console.log("Ready to update tree")
-        console.log(message)
-        const filename: string = message.data.result
-        inputDirectory.next(inputDirectory.getValue().add(filename))
+      const observable = sendFileTransfer(result, filepath)
+      observable.toPromise().then(() => console.log('a reply george'));
+
+      console.log(observable)
+      const subscription = observable.subscribe(message => {
+        console.log("Ready to update tree");
+        console.log(message);
+        const filename: string = message.data.result;
+        inputDirectory.next(inputDirectory.getValue().add(filename));
+        subscription.unsubscribe();
       })
     };
     fr.readAsArrayBuffer(file);
