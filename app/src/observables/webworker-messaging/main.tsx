@@ -1,6 +1,8 @@
 import PyodideWorker from './pyodide.worker';
-
+import { usingWebworkers } from './config';
 import { mainMock } from './worker-mock';
+
+import './webworker.tsx'  // Remove this if using webworker
 
 import {
   mainMessengers, IPyodideMessage
@@ -13,8 +15,6 @@ const sendExecuteRequest = mainMessengers.sendExecuteRequest
 const sendFileTransfer = mainMessengers.sendFileTransfer
 const sendFileTransferRequest = mainMessengers.sendFileTransferRequest
 
-import { usingWebworkers } from './config';
-
 let pyodideWorker: Worker
 
 if (usingWebworkers) {
@@ -22,7 +22,6 @@ if (usingWebworkers) {
 } else {
   pyodideWorker = mainMock as any
 }
-
 
 receiverMessengers.subscribe((message: IPyodideMessage) => {
   console.log("Received main <-- webworker")
