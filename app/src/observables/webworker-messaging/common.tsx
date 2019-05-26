@@ -1,7 +1,7 @@
 import {
-  Subject, Observable
+  Subject, Observable, asyncScheduler
 } from 'rxjs';
-import { filter } from 'rxjs/operators';
+import { filter, observeOn } from 'rxjs/operators';
 
 import { v4 } from 'uuid';
 
@@ -108,8 +108,8 @@ export function createUuid(): string {
 
 const createBaseMessengers = () => {
   let messenger = new Subject<IPyodideMessage>()
-  // let scheduled = messenger.pipe(observeOn(queueScheduler))
-  let scheduled = messenger
+  let scheduled = messenger.pipe(observeOn(asyncScheduler))
+  // let scheduled = messenger
 
   const messengers: IMessengers = {
     next: (value: IPyodideMessage) => messenger.next(value),
