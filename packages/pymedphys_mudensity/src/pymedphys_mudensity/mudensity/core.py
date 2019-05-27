@@ -453,7 +453,20 @@ def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
     return grid
 
 
-def display_mu_density(grid, mu_density, grid_resolution=None):
+def display_mu_density_diff(grid, mudensity_eval, mudensity_ref,
+                            grid_resolution=None, colour_range=None):
+    cmap = 'bwr'
+    diff = mudensity_eval - mudensity_ref
+    if colour_range is None:
+        colour_range = np.max(np.abs(diff))
+
+    display_mu_density(
+        grid, diff, grid_resolution=grid_resolution, cmap=cmap,
+        vmin=-colour_range, vmax=colour_range)  # pylint: disable=invalid-unary-operand-type
+
+
+def display_mu_density(grid, mu_density, grid_resolution=None, cmap=None,
+                       vmin=None, vmax=None):
     """Prints a colour plot of the MU Density.
 
     Examples
@@ -464,7 +477,7 @@ def display_mu_density(grid, mu_density, grid_resolution=None):
         grid_resolution = grid['mlc'][1] - grid['mlc'][0]
 
     x, y = pcolormesh_grid(grid['mlc'], grid['jaw'], grid_resolution)
-    plt.pcolormesh(x, y, mu_density)
+    plt.pcolormesh(x, y, mu_density, cmap=cmap, vmin=vmin, vmax=vmax)
     plt.colorbar()
     plt.title('MU density')
     plt.xlabel('MLC direction (mm)')

@@ -1,6 +1,9 @@
 import React from 'react';
 
-import { Subscription } from 'rxjs';
+import {
+  Subscription,
+  // Subject
+} from 'rxjs';
 
 import {
   FileInput, H1, H2, Button, ProgressBar,
@@ -27,7 +30,6 @@ import {
 import zipOutput from '../python/zip-output.py';
 import updateOutput from '../python/update-output.py';
 
-
 function runConversion() {
   const code = pythonCode.getValue();
   // const code = "print('boo'); open('/output/test', 'a').close()"
@@ -53,29 +55,6 @@ function downloadOutput() {
   })
 }
 
-function onFileInputChange(event: React.FormEvent<HTMLInputElement>) {
-  let fileInput = event.target as HTMLInputElement;
-
-  let files = fileInput.files as FileList;
-  let fileArray = Array.from(files);
-  fileInput.value = '';
-
-  fileArray.forEach(file => {
-    let fr = new FileReader();
-    fr.onload = () => {
-      let result = fr.result as ArrayBuffer;
-      const filepath = '/input/' + file.name;
-
-      const subscription = sendFileTransfer(result, filepath).subscribe(message => {
-        const filename: string = message.data.result;
-        inputDirectory.next(inputDirectory.getValue().add(filename));
-        subscription.unsubscribe();
-      });
-    };
-    fr.readAsArrayBuffer(file);
-  })
-}
-
 interface IAppMainProps {
 
 }
@@ -86,6 +65,7 @@ interface IAppMainState extends Readonly<{}> {
   codeIsOpen: boolean;
   hasInputFiles: boolean;
   hasOutputFiles: boolean;
+  filesUploading: Set<string>;
 }
 
 export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
@@ -99,7 +79,8 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
       pythonData: pythonData.getValue(),
       codeIsOpen: false,
       hasInputFiles: false,
-      hasOutputFiles: false
+      hasOutputFiles: false,
+      filesUploading: new Set()
     }
   }
 
@@ -159,6 +140,40 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
     })
   }
 
+  onFileInputChange = (event: React.FormEvent<HTMLInputElement>) => {
+    // const fileHoldingBay = new Subject<[ArrayBuffer, string]>();
+
+    let fileInput = event.target as HTMLInputElement;
+
+    let files = fileInput.files as FileList;
+    let fileArray = Array.from(files);
+    fileInput.value = '';
+
+    fileArray.forEach(file => {
+      let fr = new FileReader();
+      fr.onload = () => {
+        let result = fr.result as ArrayBuffer;
+        const filepath = '/input/' + file.name;
+
+        let filesUploading = this.state.filesUploading
+        filesUploading.add(filepath)
+        this.setState({ filesUploading })
+
+        const subscription = sendFileTransfer(result, filepath).subscribe(message => {
+          const filename: string = message.data.result;
+          inputDirectory.next(inputDirectory.getValue().add(filename));
+
+          let filesUploading = this.state.filesUploading
+          filesUploading.delete(filepath)
+          this.setState({ filesUploading })
+
+          subscription.unsubscribe();
+        });
+      };
+      fr.readAsArrayBuffer(file);
+    })
+  }
+
   render() {
     return (
       <div className="AppMain">
@@ -200,7 +215,7 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
         <H2>File management</H2>
 
         <div>
-          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={onFileInputChange} disabled={!this.state.isPythonReady} />
+          <FileInput inputProps={{ multiple: true }} id="trfFileInput" text="Choose file..." onInputChange={this.onFileInputChange} disabled={!this.state.isPythonReady} />
         </div>
 
         <br></br>
@@ -218,7 +233,7 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             text="Process Files"
             icon="key-enter"
             onClick={runConversion}
-            disabled={!this.state.isPythonReady || !this.state.hasInputFiles} />
+            disabled={!this.state.isPythonReady || !this.state.hasInputFiles || this.state.filesUploading.size !== 0} />
         </span>
         <span className="floatright">
           <Button
