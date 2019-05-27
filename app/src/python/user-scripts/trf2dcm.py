@@ -9,9 +9,8 @@ input_directory = 'input'
 output_directory = 'output'
 
 trf_filepaths = glob(os.path.join(input_directory, '*.trf'))
-first_dicom_filepath = glob(os.path.join(input_directory, '*.dcm'))[0]
+dicom_filepaths = glob(os.path.join(input_directory, '*.dcm'))
 
-dicom_template = pydicom.dcmread(first_dicom_filepath, force=True)
 
 for filepath in trf_filepaths:
     print("Preparing to convert {}".format(filepath))
@@ -22,7 +21,18 @@ for filepath in trf_filepaths:
     delivery_data = DeliveryData.from_logfile(filepath)
 
     print("Converting log file to RT Plan DICOM")
-    created_dicom = delivery_data.to_dicom(dicom_template)
+    for dicom_filepath in dicom_filepaths:
+        dicom_template = pydicom.dcmread(dicom_filepath, force=True)
+        try:
+            created_dicom = delivery_data.to_dicom(dicom_template)
+            print(
+                "{} appears to be an RT DICOM plan with appropriate "
+                "angle meterset combination".format(dicom_filepath))
+            continue
+        except AttributeError:
+            print(
+                "{} does not appear to be an RT DICOM plan, "
+                "skipping...".format(dicom_filepath))
 
     print("Saving newly created RT Plan DICOM")
     created_dicom.save_as(output_filepath)
