@@ -34,6 +34,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Breaking Changes
 
+- `DeliveryData` has been renamed to `Delivery` and is now importable by
+  running `from pymedphys import Delivery`
+  - A range of functions that used to use `DeliveryData` are now instead
+    accessible as methods on the `Delivery` object.
 - A large number of functions that were previously exposed have now been made
   private in preparation for eventually stabilising the API. No function that
   was within the documentation has been removed. If there is a function that
