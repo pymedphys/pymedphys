@@ -121,6 +121,8 @@
       ],
       "internal": [
         "pymedphys_base",
+        "pymedphys_fileformats",
+        "pymedphys_mudensity",
         "pymedphys_utilities"
       ],
       "stdlib": [
@@ -223,7 +225,6 @@
         "python_dateutil"
       ],
       "internal": [
-        "pymedphys_base",
         "pymedphys_databases",
         "pymedphys_fileformats",
         "pymedphys_mudensity",

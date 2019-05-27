@@ -2,6 +2,8 @@
   "dependencies": {
     "pymedphys_base": "~0.8.0-dev.17",
     "pymedphys_core": "~0.8.0-dev.17",
+    "pymedphys_fileformats": "~0.8.0-dev.17",
+    "pymedphys_mudensity": "~0.8.0-dev.17",
     "pymedphys_utilities": "~0.8.0-dev.17"
   },
   "name": "pymedphys_databases",
