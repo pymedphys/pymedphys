@@ -52,7 +52,8 @@ from .utilities import (
 
 
 def load_dicom_file(filepath):
-    dicom_dataset = pydicom.dcmread(filepath, force=True)
+    dicom_dataset = pydicom.dcmread(
+        filepath, force=True, stop_before_pixels=True)
     return dicom_dataset
 
 

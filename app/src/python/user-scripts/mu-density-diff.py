@@ -28,7 +28,8 @@ for trf_filepath in trf_filepaths:
     trf_filename = os.path.basename(trf_filepath)
 
     for dicom_filepath in dicom_filepaths:
-        dicom_dataset = pydicom.dcmread(dicom_filepath, force=True)
+        dicom_dataset = pydicom.dcmread(
+            dicom_filepath, force=True, stop_before_pixels=True)
         try:
             dicom_deliveries = Delivery.load_all_fractions(dicom_dataset)
         except AttributeError:
