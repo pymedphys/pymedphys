@@ -25,7 +25,8 @@ for trf_filepath in trf_filepaths:
     trf_mudensity = trf_delivery.mudensity(grid_resolution=grid_resolution)
 
     filepath_mu_density_map[
-        '{}.mudensity.png'.format(trf_filepath)] = trf_mudensity
+        '{}/{}.mudensity.png'.format(
+            output_directory, os.path.basename(trf_filepath))] = trf_mudensity
 
     for dicom_filepath in dicom_filepaths:
         try:
@@ -37,15 +38,23 @@ for trf_filepath in trf_filepaths:
                 "skipping...".format(dicom_filepath))
             continue
 
-        for dicom_delivery in dicom_deliveries:
+        for fraction_number, dicom_delivery in dicom_deliveries.items():
             dicom_mudensity = dicom_delivery.mudensity(
                 grid_resolution=grid_resolution)
 
+            fraction_filename = '{}_{}'.format(
+                os.path.basename(dicom_filepath), fraction_number)
+
             filepath_mu_density_map[
-                '{}.mudensity.png'.format(dicom_filepath)] = dicom_mudensity
+                '{}/{}.mudensity.png'.format(
+                    output_directory, fraction_filename)
+            ] = dicom_mudensity
 
             filepath_mu_density_diff_map[
-                '{}-{}.mudensity_diff.png'.format(trf_filepath, dicom_filepath)
+                '{}/{}-{}.mudensity_diff.png'.format(
+                    output_directory,
+                    os.path.basename(trf_filepath),
+                    fraction_filename)
             ] = trf_mudensity - dicom_mudensity
 
 

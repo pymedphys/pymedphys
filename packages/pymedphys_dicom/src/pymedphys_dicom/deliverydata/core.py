@@ -68,10 +68,11 @@ class DeliveryDataDicom(DeliveryData):
             for fraction_group in dicom_dataset.FractionGroupSequence
         )
 
-        all_fractions = tuple(
-            cls.from_dicom(dicom_dataset, fraction_group_number)
+        all_fractions = {
+            fraction_group_number: cls.from_dicom(
+                dicom_dataset, fraction_group_number)
             for fraction_group_number in fraction_group_numbers
-        )
+        }
 
         return all_fractions
 
