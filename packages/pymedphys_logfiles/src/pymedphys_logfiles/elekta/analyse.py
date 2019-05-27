@@ -34,14 +34,13 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_fileformats.deliverydata import DeliveryDataLogfile
-
 from pymedphys_utilities.utilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath
 )
 from pymedphys_databases.msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
+from pymedphys_databases.deliverydata import DeliveryDataDatabases
 from pymedphys_mudensity.mudensity import calc_mu_density
 
 
@@ -244,7 +243,7 @@ def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index,
 def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
     logfile_results = []
     for filepath in filepaths:
-        logfile_delivery_data = DeliveryDataLogfile.from_logfile(filepath)
+        logfile_delivery_data = DeliveryDataDatabases.from_logfile(filepath)
         mu_density_results = mu_density_from_delivery_data(
             logfile_delivery_data, grid_resolution=grid_resolution)
 

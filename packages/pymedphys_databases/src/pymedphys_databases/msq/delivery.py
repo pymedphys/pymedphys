@@ -34,7 +34,7 @@ import numpy as np
 
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 
-from pymedphys_base.deliverydata import DeliveryData
+from ..deliverydata import DeliveryDataDatabases
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES
@@ -346,7 +346,7 @@ def delivery_data_from_mosaiq(cursor, field_id):
     mlc = np.swapaxes(mlc, 0, 2)
     jaw = np.swapaxes(jaw, 0, 1)
 
-    mosaiq_delivery_data = DeliveryData(
+    mosaiq_delivery_data = DeliveryDataDatabases(
         monitor_units, gantry, collimator, mlc, jaw)
 
     return mosaiq_delivery_data
