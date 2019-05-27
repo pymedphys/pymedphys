@@ -1,9 +1,10 @@
 import React from 'react';
 
-
 import {
   H2, H3
 } from '@blueprintjs/core';
+
+import demoFiles from '../data/demo-files.zip';
 
 export class AppText extends React.Component {
   render() {
@@ -70,7 +71,7 @@ export class AppText extends React.Component {
 
         <H2>Instructions for use</H2>
         <p>
-          To begin, download <a href="/static/demo-files.zip">
+          To begin, download <a href={demoFiles}>
             demo-files.zip
           </a>.
         </p>
