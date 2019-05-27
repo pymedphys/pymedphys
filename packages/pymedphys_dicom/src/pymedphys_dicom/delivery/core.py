@@ -202,8 +202,8 @@ class DeliveryDicom(Delivery):
 
         return created_dicom
 
-    def does_match_fraction(self, dicom_dataset, fraction_group_number,
-                            gantry_tol=3, meterset_tol=0.5):
+    def matches_fraction(self, dicom_dataset, fraction_group_number,
+                         gantry_tol=3, meterset_tol=0.5):
         filtered = self.filter_cps()
         dicom_metersets = get_fraction_group_beam_sequence_and_meterset(
             dicom_dataset, fraction_group_number)[1]
@@ -237,7 +237,7 @@ class DeliveryDicom(Delivery):
         ]
 
         fraction_matches = np.array([
-            self.does_match_fraction(
+            self.matches_fraction(
                 dicom_template, fraction_group_number,
                 gantry_tol=gantry_tol, meterset_tol=meterset_tol)
             for fraction_group_number in fraction_group_numbers

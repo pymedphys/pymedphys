@@ -195,7 +195,7 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     >>> from pymedphys_mudensity.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
-    >>> from pymedphys.delivery import Delivery
+    >>> from pymedphys import Delivery
     >>>
     >>> def mu_density_from_logfile(filepath):
     ...     delivery_data = Delivery.from_logfile(filepath)
