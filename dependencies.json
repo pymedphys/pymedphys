@@ -19,7 +19,6 @@
         "pymedphys_sphinxtheme": "~0.8.0-dev.17",
         "pymedphys_toolbox": "~0.8.0-dev.17",
         "pymedphys_utilities": "~0.8.0-dev.17",
-        "pymedphys_workshops": "~0.8.0-dev.17",
         "pymedphys_xlwings": "~0.8.0-dev.17"
       }
     },
@@ -45,7 +44,6 @@
         "pymedphys_sphinxtheme": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_toolbox": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_utilities": ">= 0.8.0dev17, < 0.9.0",
-        "pymedphys_workshops": ">= 0.8.0dev17, < 0.9.0",
         "pymedphys_xlwings": ">= 0.8.0dev17, < 0.9.0"
       }
     }
@@ -304,11 +302,6 @@
         "os",
         "string"
       ]
-    },
-    "pymedphys_workshops": {
-      "external": [],
-      "internal": [],
-      "stdlib": []
     },
     "pymedphys_xlwings": {
       "external": [
