@@ -63,30 +63,30 @@ class DeliveryDicom(Delivery):
 
     @classmethod
     def load_all_fractions(cls, dicom_dataset):
-        fraction_group_numbers = tuple(
-            fraction_group.FractionGroupNumber
-            for fraction_group in dicom_dataset.FractionGroupSequence
+        fraction_numbers = tuple(
+            fraction.FractionGroupNumber
+            for fraction in dicom_dataset.FractionGroupSequence
         )
 
         all_fractions = {
-            fraction_group_number: cls.from_dicom(
-                dicom_dataset, fraction_group_number)
-            for fraction_group_number in fraction_group_numbers
+            fraction_number: cls.from_dicom(
+                dicom_dataset, fraction_number)
+            for fraction_number in fraction_numbers
         }
 
         return all_fractions
 
     @classmethod
-    def from_dicom_file(cls, filepath, fraction_group_number):
+    def from_dicom_file(cls, filepath, fraction_number):
         return cls.from_dicom(
-            load_dicom_file(filepath), fraction_group_number)
+            load_dicom_file(filepath), fraction_number)
 
     @classmethod
-    def from_dicom(cls, dicom_dataset, fraction_group_number):
+    def from_dicom(cls, dicom_dataset, fraction_number):
         (
             beam_sequence, metersets
         ) = get_fraction_group_beam_sequence_and_meterset(
-            dicom_dataset, fraction_group_number)
+            dicom_dataset, fraction_number)
 
         delivery_data_by_beam_sequence = []
         for beam, meterset in zip(beam_sequence, metersets):
@@ -152,35 +152,35 @@ class DeliveryDicom(Delivery):
 
         return cls(mu, gantry_angles, collimator_angles, mlcs, jaw)
 
-    def to_dicom(self, dicom_template, fraction_group_number=None):
+    def to_dicom(self, dicom_template, fraction_number=None):
         filtered = self.filter_cps()
-        if fraction_group_number is None:
-            fraction_group_number = self.fraction_group_number(dicom_template)
+        if fraction_number is None:
+            fraction_number = self.fraction_number(dicom_template)
 
-        single_fraction_group_template = convert_to_one_fraction_group(
-            dicom_template, fraction_group_number)
+        single_fraction_template = convert_to_one_fraction_group(
+            dicom_template, fraction_number)
 
         template_gantry_angles = get_gantry_angles_from_dicom(
-            single_fraction_group_template)
+            single_fraction_template)
 
         gantry_tol = gantry_tol_from_gantry_angles(template_gantry_angles)
 
         all_masked_delivery_data = filtered.mask_by_gantry(
             template_gantry_angles, gantry_tol)
 
-        fraction_group_index = get_fraction_group_index(
-            single_fraction_group_template, fraction_group_number)
+        fraction_index = get_fraction_group_index(
+            single_fraction_template, fraction_number)
 
         single_beam_dicoms = []
         for beam_index, masked_delivery_data in enumerate(all_masked_delivery_data):
             single_beam_dicoms.append(masked_delivery_data.to_dicom_beam(
-                single_fraction_group_template, beam_index,
-                fraction_group_index))
+                single_fraction_template, beam_index,
+                fraction_index))
 
         return merge_beam_sequences(single_beam_dicoms)
 
     def to_dicom_beam(self, dicom_template,
-                      beam_index, fraction_group_index):
+                      beam_index, fraction_index):
 
         created_dicom = deepcopy(dicom_template)
         data_converted = self.coordinate_convert()
@@ -195,21 +195,21 @@ class DeliveryDicom(Delivery):
 
         beam_meterset = '{0:.6f}'.format(data_converted['monitor_units'][-1])
         replace_fraction_group(
-            created_dicom, beam_meterset, beam_index, fraction_group_index)
+            created_dicom, beam_meterset, beam_index, fraction_index)
         replace_beam_sequence(created_dicom, all_control_points, beam_index)
 
         restore_trailing_zeros(created_dicom)
 
         return created_dicom
 
-    def matches_fraction(self, dicom_dataset, fraction_group_number,
+    def matches_fraction(self, dicom_dataset, fraction_number,
                          gantry_tol=3, meterset_tol=0.5):
         filtered = self.filter_cps()
         dicom_metersets = get_fraction_group_beam_sequence_and_meterset(
-            dicom_dataset, fraction_group_number)[1]
+            dicom_dataset, fraction_number)[1]
 
         dicom_fraction = convert_to_one_fraction_group(
-            dicom_dataset, fraction_group_number)
+            dicom_dataset, fraction_number)
 
         gantry_angles = get_gantry_angles_from_dicom(dicom_fraction)
 
@@ -224,23 +224,23 @@ class DeliveryDicom(Delivery):
 
         return maximmum_diff <= meterset_tol
 
-    def fraction_group_number(self, dicom_template, gantry_tol=3,
-                              meterset_tol=0.5):
-        fraction_groups = dicom_template.FractionGroupSequence
+    def fraction_number(self, dicom_template, gantry_tol=3,
+                        meterset_tol=0.5):
+        fractions = dicom_template.FractionGroupSequence
 
-        if len(fraction_groups) == 1:
-            return fraction_groups[0].FractionGroupNumber
+        if len(fractions) == 1:
+            return fractions[0].FractionGroupNumber
 
-        fraction_group_numbers = [
-            fraction_group.FractionGroupNumber
-            for fraction_group in fraction_groups
+        fraction_numbers = [
+            fraction.FractionGroupNumber
+            for fraction in fractions
         ]
 
         fraction_matches = np.array([
             self.matches_fraction(
-                dicom_template, fraction_group_number,
+                dicom_template, fraction_number,
                 gantry_tol=gantry_tol, meterset_tol=meterset_tol)
-            for fraction_group_number in fraction_group_numbers
+            for fraction_number in fraction_numbers
         ])
 
         if np.sum(fraction_matches) < 1:
@@ -255,10 +255,10 @@ class DeliveryDicom(Delivery):
                 "and gantry angles within the tolerances provided. "
                 "Please manually define the fraction group number.")
 
-        fraction_group_number = np.array(
-            fraction_group_numbers)[fraction_matches]
+        fraction_number = np.array(
+            fraction_numbers)[fraction_matches]
 
-        return fraction_group_number
+        return fraction_number
 
     def coordinate_convert(self):
         monitor_units = self.monitor_units
