@@ -31,7 +31,7 @@ import numpy as np
 import pydicom
 
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
-from pymedphys_base.deliverydata import DeliveryData
+from pymedphys_base.delivery import Delivery
 
 from ..rtplan import (
     get_gantry_angles_from_dicom,
@@ -56,7 +56,7 @@ def load_dicom_file(filepath):
     return dicom_dataset
 
 
-class DeliveryDataDicom(DeliveryData):
+class DeliveryDicom(Delivery):
     @classmethod
     def load_all_fractions_from_file(cls, filepath):
         return cls.load_all_fractions(load_dicom_file(filepath))

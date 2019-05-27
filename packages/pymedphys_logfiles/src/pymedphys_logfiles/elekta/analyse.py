@@ -40,7 +40,7 @@ from pymedphys_utilities.utilities import (
     get_filepath
 )
 from pymedphys_databases.msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
-from pymedphys_databases.deliverydata import DeliveryDataDatabases
+from pymedphys_databases.delivery import DeliveryDatabases
 from pymedphys_mudensity.mudensity import calc_mu_density
 
 
@@ -243,7 +243,7 @@ def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index,
 def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
     logfile_results = []
     for filepath in filepaths:
-        logfile_delivery_data = DeliveryDataDatabases.from_logfile(filepath)
+        logfile_delivery_data = DeliveryDatabases.from_logfile(filepath)
         mu_density_results = mu_density_from_delivery_data(
             logfile_delivery_data, grid_resolution=grid_resolution)
 

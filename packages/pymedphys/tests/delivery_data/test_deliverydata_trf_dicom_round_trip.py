@@ -40,7 +40,7 @@ from pymedphys_dicom.rtplan import (
     get_gantry_angles_from_dicom,
     convert_to_one_fraction_group)
 
-from pymedphys.deliverydata import DeliveryData
+from pymedphys.delivery import Delivery
 
 # pylint: disable=redefined-outer-name
 
@@ -71,8 +71,8 @@ def loaded_dicom_dataset():
 
 
 @pytest.fixture
-def logfile_delivery_data() -> DeliveryData:
-    return DeliveryData.from_logfile(LOGFILE_FILEPATH)
+def logfile_delivery_data() -> Delivery:
+    return Delivery.from_logfile(LOGFILE_FILEPATH)
 
 
 @pytest.fixture
@@ -81,7 +81,7 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
 
 
 def test_fraction_group_number(loaded_dicom_dataset,
-                               logfile_delivery_data: DeliveryData):
+                               logfile_delivery_data: Delivery):
     expected = FRACTION_GROUP
 
     result = logfile_delivery_data.fraction_group_number(
@@ -115,12 +115,12 @@ def test_filter_cps(logfile_delivery_data):
 
 
 def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
-                              logfile_delivery_data: DeliveryData):
+                              logfile_delivery_data: Delivery):
     original = logfile_delivery_data.filter_cps()
     template = loaded_dicom_dataset
 
     dicom = original.to_dicom(template)
-    processed = DeliveryData.from_dicom(dicom, FRACTION_GROUP)
+    processed = Delivery.from_dicom(dicom, FRACTION_GROUP)
 
     assert np.all(
         np.around(original.monitor_units, 2) ==
@@ -147,7 +147,7 @@ def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
 def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
                                loaded_dicom_gantry_angles):
     original = loaded_dicom_dataset
-    delivery_data = DeliveryData.from_dicom(original, FRACTION_GROUP)
+    delivery_data = Delivery.from_dicom(original, FRACTION_GROUP)
     processed = delivery_data.to_dicom(original)
 
     single_fraction_group = convert_to_one_fraction_group(
@@ -180,7 +180,7 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
 
 
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
-    dicom_delivery_data = DeliveryData.from_dicom(
+    dicom_delivery_data = Delivery.from_dicom(
         loaded_dicom_dataset, FRACTION_GROUP)
 
     dicom_mu_density = dicom_delivery_data.mudensity(grid_resolution=5)

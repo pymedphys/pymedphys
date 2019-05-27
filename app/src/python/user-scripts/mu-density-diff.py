@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 import pydicom
 
-from pymedphys import DeliveryData
+from pymedphys import Delivery
 from pymedphys.mudensity import get_grid, display_mu_density
 from pymedphys.dicom import get_gantry_angles_from_dicom
 
@@ -24,12 +24,12 @@ filepath_mu_density_map: Dict[str, np.ndarray] = {}
 filepath_mu_density_diff_map: Dict[str, np.ndarray] = {}
 
 for trf_filepath in trf_filepaths:
-    trf_delivery = DeliveryData.from_logfile(trf_filepath).filter_cps()
+    trf_delivery = Delivery.from_logfile(trf_filepath).filter_cps()
     trf_filename = os.path.basename(trf_filepath)
 
     for dicom_filepath in dicom_filepaths:
         try:
-            dicom_deliveries = DeliveryData.load_all_fractions_from_file(
+            dicom_deliveries = Delivery.load_all_fractions_from_file(
                 dicom_filepath)
         except AttributeError:
             print(

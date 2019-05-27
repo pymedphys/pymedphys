@@ -35,12 +35,12 @@ import numpy as np
 from .utilities import remove_irrelevant_control_points, to_tuple
 
 
-_DeliveryDataBase = namedtuple(
-    'DeliveryData',
+_DeliveryBase = namedtuple(
+    'Delivery',
     ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
 
 
-class DeliveryData(_DeliveryDataBase):
+class Delivery(_DeliveryBase):
     def __new__(cls, *args, **kwargs):
         new_args = (
             to_tuple(arg)
@@ -118,9 +118,9 @@ class DeliveryData(_DeliveryDataBase):
 
         return first.merge(*args[1::])
 
-    def merge(self, *args: DeliveryData):
+    def merge(self, *args: Delivery):
         cls = type(self)
-        separate: List[DeliveryData] = [self] + [*args]
+        separate: List[Delivery] = [self] + [*args]
         collection: Dict[str, Tuple] = {}
 
         for delivery_data in separate:

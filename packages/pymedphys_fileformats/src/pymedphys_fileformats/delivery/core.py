@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from pymedphys_base.deliverydata import DeliveryData
+from pymedphys_base.delivery import Delivery
 
 from ..trf import (
     decode_trf,
@@ -36,7 +36,7 @@ from ..trf import (
     JAW_NAMES)
 
 
-class DeliveryDataLogfile(DeliveryData):
+class DeliveryLogfile(Delivery):
     @classmethod
     def from_logfile(cls, filepath):
         dataframe = decode_trf(filepath)

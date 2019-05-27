@@ -24,12 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys_base.deliverydata import DeliveryData
+from pymedphys_base.delivery import Delivery
 
 from ..mudensity import calc_mu_density
 
 
-class DeliveryDataMuDensity(DeliveryData):
+class DeliveryMuDensity(Delivery):
     def mudensity(self, gantry_angles=None, gantry_tolerance=3,
                   grid_resolution=1, output_always_list=False):
         if gantry_angles is None:

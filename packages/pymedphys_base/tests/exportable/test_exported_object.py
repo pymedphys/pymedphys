@@ -1,8 +1,8 @@
-from pymedphys_base.deliverydata import DeliveryData
+from pymedphys_base.delivery import Delivery
 
 
 def test_object_consistency():
-    empty = DeliveryData.empty()
+    empty = Delivery.empty()
     filtered = empty.filter_cps()
 
     assert type(filtered.monitor_units) is tuple
@@ -11,7 +11,7 @@ def test_object_consistency():
 
 
 def test_base_object():
-    empty = DeliveryData.empty()
+    empty = Delivery.empty()
 
     assert empty.monitor_units == tuple()
 
@@ -20,4 +20,4 @@ def test_base_object():
         for field in empty._fields
     }
 
-    dummy = DeliveryData(**collection)
+    dummy = Delivery(**collection)

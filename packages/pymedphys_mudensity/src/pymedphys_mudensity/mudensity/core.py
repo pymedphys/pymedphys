@@ -28,7 +28,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_base.deliverydata import remove_irrelevant_control_points
+from pymedphys_base.delivery import remove_irrelevant_control_points
 from pymedphys_utilities.constants import AGILITY
 
 from ..plt import pcolormesh_grid
@@ -195,11 +195,11 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     >>> from pymedphys_mudensity.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
-    >>> from pymedphys.deliverydata import DeliveryData
+    >>> from pymedphys.delivery import Delivery
     >>>
     >>> def mu_density_from_logfile(filepath):
-    ...     delivery_data = DeliveryData.from_logfile(filepath)
-    ...     mu_density = DeliveryData.mudensity()
+    ...     delivery_data = Delivery.from_logfile(filepath)
+    ...     mu_density = Delivery.mudensity()
     ...
     ...     grid = get_grid()
     ...     display_mu_density(grid, mu_density)
