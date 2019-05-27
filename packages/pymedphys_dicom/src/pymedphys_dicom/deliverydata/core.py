@@ -28,6 +28,8 @@ from copy import deepcopy
 
 import numpy as np
 
+import pydicom
+
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 from pymedphys_base.deliverydata import DeliveryData
 
@@ -49,7 +51,33 @@ from .utilities import (
     gantry_tol_from_gantry_angles)
 
 
+def load_dicom_file(filepath):
+    dicom_dataset = pydicom.dcmread(filepath, force=True)
+    return dicom_dataset
+
+
 class DeliveryDataDicom(DeliveryData):
+    @classmethod
+    def load_all_fractions_from_file(cls, filepath):
+        return cls.load_all_fractions(load_dicom_file(filepath))
+
+    @classmethod
+    def load_all_fractions(cls, dicom_dataset):
+        fraction_group_numbers = tuple(
+            fraction_group.FractionGroupNumber
+            for fraction_group in dicom_dataset.FractionGroupSequence
+        )
+
+        all_fractions = tuple(
+            cls.from_dicom(dicom_dataset, fraction_group_number)
+            for fraction_group_number in fraction_group_numbers
+        )
+
+    @classmethod
+    def from_dicom_file(cls, filepath, fraction_group_number):
+        return cls.from_dicom(
+            load_dicom_file(filepath), fraction_group_number)
+
     @classmethod
     def from_dicom(cls, dicom_dataset, fraction_group_number):
         (
