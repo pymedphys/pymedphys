@@ -62,12 +62,12 @@ for trf_filepath in trf_filepaths:
             trf_mudensity = trf_delivery.mudensity(
                 gantry_angles=gantry_angles,
                 gantry_tolerance=gantry_angle_tolerance,
-                grid_resolution=5, output_always_list=True)
+                grid_resolution=grid_resolution, output_always_list=True)
 
             dicom_mudensity = dicom_delivery.mudensity(
                 gantry_angles=gantry_angles,
                 gantry_tolerance=gantry_angle_tolerance,
-                grid_resolution=5, output_always_list=True)
+                grid_resolution=grid_resolution, output_always_list=True)
 
             for i, gantry_angle in enumerate(gantry_angles):
                 prepend_string = '{}/Fraction_{}_Gantry_{}_'.format(
