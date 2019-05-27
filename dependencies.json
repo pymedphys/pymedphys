@@ -220,7 +220,6 @@
         "matplotlib",
         "numpy",
         "pandas",
-        "pymedphys_deliverydata",
         "python_dateutil"
       ],
       "internal": [

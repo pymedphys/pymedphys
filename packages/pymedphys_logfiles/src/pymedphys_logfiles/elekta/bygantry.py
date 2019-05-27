@@ -29,7 +29,7 @@ import numpy as np
 from pymedphys_utilities.utilities import get_filepath, get_gantry_tolerance
 
 from pymedphys_mudensity.mudensity import get_grid
-from pymedphys_deliverydata.object import DeliveryData
+from pymedphys_base.deliverydata import DeliveryData
 
 from pymedphys_databases.msq import multi_fetch_and_verify_mosaiq
 
