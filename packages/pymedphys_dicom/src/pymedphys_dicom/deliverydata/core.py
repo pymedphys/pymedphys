@@ -201,8 +201,7 @@ class DeliveryDataDicom(DeliveryData):
             for dataset in split_by_fraction_group]
 
         deliver_data_metersets_by_fraction_group = [
-            filtered.metersets(
-                gantry_angles, gantry_tol, allow_missing_angles=True)
+            filtered.metersets(gantry_angles, gantry_tol)
             for gantry_angles in gantry_angles_by_fraction_group
         ]
 

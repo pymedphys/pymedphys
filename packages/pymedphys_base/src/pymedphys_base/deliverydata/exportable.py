@@ -95,7 +95,7 @@ class DeliveryData(_DeliveryDataBase):
     @functools.lru_cache()
     def metersets(self, gantry_angles, gantry_tolerance):
         all_masked_delivery_data = self.mask_by_gantry(
-            gantry_angles, gantry_tolerance, allow_missing_angles=False)
+            gantry_angles, gantry_tolerance, allow_missing_angles=True)
 
         metersets = []
         for delivery_data in all_masked_delivery_data:
@@ -108,7 +108,7 @@ class DeliveryData(_DeliveryDataBase):
 
     @classmethod
     def combine(cls, *args):
-        first = cls(args[0])
+        first = cls(*args[0])
 
         if len(args) == 1:
             return first
@@ -117,7 +117,7 @@ class DeliveryData(_DeliveryDataBase):
 
     def merge(self, *args):
         cls = type(self)
-        separate = tuple(self,) + args
+        separate = [self] + list(args)
         collection = {}  # type: ignore
 
         for delivery_data in separate:

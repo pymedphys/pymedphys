@@ -55,7 +55,7 @@ def remove_irrelevant_control_points(monitor_units, *args):
     relevant_control_points = find_relevant_control_points(monitor_units)
 
     provided_values = tuple(
-        monitor_units, *args)
+        (monitor_units, *args))
 
     result = tuple(
         np.array(item)[relevant_control_points]
