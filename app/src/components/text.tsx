@@ -70,8 +70,8 @@ export class AppText extends React.Component {
 
         <H2>Instructions for use</H2>
         <p>
-          To begin, download <a href="/demo-files.zip">
-            this demo_files.zip
+          To begin, download <a href="/static/demo-files.zip">
+            demo-files.zip
           </a>.
         </p>
         <p>

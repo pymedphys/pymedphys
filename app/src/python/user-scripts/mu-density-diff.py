@@ -88,7 +88,7 @@ for trf_filepath in trf_filepaths:
 
                 dicom_out_filepath = '{}{}.mudensity.png'.format(
                     prepend_string, dicom_filename)
-                filepath_mu_density_map[trf_out_filepath] = trf
+                filepath_mu_density_map[dicom_out_filepath] = dicom
 
                 diff_filepath = '{}[{}]-[{}].mudensity_diff.png'.format(
                     prepend_string, trf_filename, dicom_filename)
