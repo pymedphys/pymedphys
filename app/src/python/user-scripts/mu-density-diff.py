@@ -14,8 +14,9 @@ from pymedphys.dicom import get_gantry_angles_from_dicom
 
 input_directory = 'input'
 output_directory = 'output'
-grid_resolution = 5
+grid_resolution = 5/3
 gantry_angle_tolerance = 3
+image_dpi = 254
 
 trf_filepaths = glob(os.path.join(input_directory, '*.trf'))
 dicom_filepaths = glob(os.path.join(input_directory, '*.dcm'))
@@ -100,7 +101,7 @@ grid = get_grid(grid_resolution=grid_resolution)
 for filepath, mudensity in filepath_mu_density_map.items():
     plt.figure()
     display_mu_density(grid, mudensity, vmin=0, vmax=maximum_mudensity)
-    plt.savefig(filepath)
+    plt.savefig(filepath, dpi=image_dpi)
 
 maximum_diff = np.max(np.abs([
     mudensity_diff
@@ -113,4 +114,4 @@ for filepath, mudensity_diff in filepath_mu_density_diff_map.items():
         grid, mudensity_diff, vmin=-maximum_diff, vmax=maximum_diff,
         cmap='seismic')
     plt.title('MU Density Difference')
-    plt.savefig(filepath)
+    plt.savefig(filepath, dpi=image_dpi)
