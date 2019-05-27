@@ -73,6 +73,8 @@ class DeliveryDataDicom(DeliveryData):
             for fraction_group_number in fraction_group_numbers
         )
 
+        return all_fractions
+
     @classmethod
     def from_dicom_file(cls, filepath, fraction_group_number):
         return cls.from_dicom(
