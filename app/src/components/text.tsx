@@ -51,11 +51,8 @@ export class AppText extends React.Component {
         <p>
           This application loads Python into the <a href="https://webassembly.org/">
             wasm virtual machine
-        </a> of your
-                              browser allowing Python code to be run on your local machine without
-                              having Python installed, or without needing Python to run on a remote
-                              server.
-        </p>
+        </a> of your browser allowing Python code to be run on your local machine without
+          having Python installed, or without needing Python to run on a remote.</p>
         <p>
           When it comes to sensitive information or large data files, this
           means no data needs to leave your computer, while you still get the
@@ -73,7 +70,7 @@ export class AppText extends React.Component {
 
         <H2>Instructions for use</H2>
         <p>
-          To begin, download <a href="https://zenodo.org/record/3227868/files/demo_files.zip?download=1">
+          To begin, download <a href="/demo-files.zip">
             this demo_files.zip
           </a>.
         </p>

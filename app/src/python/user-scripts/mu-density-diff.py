@@ -24,7 +24,7 @@ filepath_mu_density_map: Dict[str, np.ndarray] = {}
 filepath_mu_density_diff_map: Dict[str, np.ndarray] = {}
 
 for trf_filepath in trf_filepaths:
-    trf_delivery = DeliveryData.from_logfile(trf_filepath)
+    trf_delivery = DeliveryData.from_logfile(trf_filepath).filter_cps()
     trf_filename = os.path.basename(trf_filepath)
 
     for dicom_filepath in dicom_filepaths:
@@ -37,8 +37,11 @@ for trf_filepath in trf_filepaths:
                 "skipping...".format(dicom_filepath))
             continue
 
-        for fraction_number, dicom_delivery in dicom_deliveries.items():
-            gantry_angles = np.unique(dicom_delivery.gantry)
+        for fraction_number, dicom_delivery_raw in dicom_deliveries.items():
+            dicom_delivery = dicom_delivery_raw.filter_cps()
+
+            gantry_angles = tuple(
+                np.unique(dicom_delivery.gantry).tolist())
 
             all_within_tol = True
             for gantry_angle in set(trf_delivery.gantry):
