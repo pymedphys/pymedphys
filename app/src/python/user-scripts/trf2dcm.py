@@ -27,7 +27,8 @@ for filepath in trf_filepaths:
             created_dicom = delivery_data.to_dicom(dicom_template)
             print(
                 "{} appears to be an RT DICOM plan with appropriate "
-                "angle meterset combination".format(dicom_filepath))
+                "angle meterset combination, using this one.".format(
+                    dicom_filepath))
             continue
         except AttributeError:
             print(
