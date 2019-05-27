@@ -3,7 +3,7 @@ from glob import glob
 
 import pydicom
 
-from pymedphys.deliverydata import DeliveryData
+from pymedphys import DeliveryData
 
 input_directory = 'input'
 output_directory = 'output'
