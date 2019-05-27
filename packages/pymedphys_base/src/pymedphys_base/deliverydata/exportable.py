@@ -23,10 +23,12 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+# See https://stackoverflow.com/a/33533514/3912576
+from __future__ import annotations
 
 from collections import namedtuple
 import functools
-from typing import Union, Tuple
+from typing import Union, Tuple, List, Dict
 
 import numpy as np
 
@@ -76,15 +78,16 @@ class DeliveryData(_DeliveryDataBase):
     @functools.lru_cache()
     def mask_by_gantry(self, angles: Union[Tuple, float, int], gantry_tolerance=3,
                        allow_missing_angles=False):
+
         try:
             _ = iter(angles)  # type: ignore
             iterable_angles = tuple(angles)  # type: ignore
         except TypeError:
             # Not iterable, assume just one angle provided
-            iterable_angles = (angles,)
+            iterable_angles = tuple((angles,))
 
         masks = self._gantry_angle_masks(
-            angles, gantry_tolerance, allow_missing_angles=allow_missing_angles)
+            iterable_angles, gantry_tolerance, allow_missing_angles=allow_missing_angles)
 
         all_masked_delivery_data = tuple(
             self._apply_mask_to_delivery_data(mask)
@@ -115,13 +118,13 @@ class DeliveryData(_DeliveryDataBase):
 
         return first.merge(*args[1::])
 
-    def merge(self, *args):
+    def merge(self, *args: DeliveryData):
         cls = type(self)
-        separate = [self] + list(args)
-        collection = {}  # type: ignore
+        separate: List[DeliveryData] = [self] + [*args]
+        collection: Dict[str, Tuple] = {}
 
         for delivery_data in separate:
-            for field in delivery_data._fields:
+            for field in delivery_data._fields:  # pylint: disable=no-member
                 try:
                     collection[field] = np.concatenate(
                         [collection[field], getattr(delivery_data, field)],
