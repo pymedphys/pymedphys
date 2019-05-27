@@ -40,7 +40,7 @@ from pymedphys_dicom.rtplan import (
     get_gantry_angles_from_dicom,
     convert_to_one_fraction_group)
 
-from pymedphys.delivery import Delivery
+from pymedphys import Delivery
 
 # pylint: disable=redefined-outer-name
 
