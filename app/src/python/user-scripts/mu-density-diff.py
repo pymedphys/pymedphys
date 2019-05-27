@@ -25,7 +25,7 @@ filepath_mu_density_diff_map: Dict[str, np.ndarray] = {}
 
 for trf_filepath in trf_filepaths:
     trf_delivery = DeliveryData.from_logfile(trf_filepath)
-    trf_filename = os.path.basename(trf_filename)
+    trf_filename = os.path.basename(trf_filepath)
 
     for dicom_filepath in dicom_filepaths:
         try:
