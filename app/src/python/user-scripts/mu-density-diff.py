@@ -28,9 +28,9 @@ for trf_filepath in trf_filepaths:
     trf_filename = os.path.basename(trf_filepath)
 
     for dicom_filepath in dicom_filepaths:
+        dicom_dataset = pydicom.dcmread(dicom_filepath, force=True)
         try:
-            dicom_deliveries = Delivery.load_all_fractions_from_file(
-                dicom_filepath)
+            dicom_deliveries = Delivery.load_all_fractions(dicom_dataset)
         except AttributeError:
             print(
                 "{} does not appear to be an RT DICOM plan, "
@@ -43,25 +43,17 @@ for trf_filepath in trf_filepaths:
             gantry_angles = tuple(
                 np.unique(dicom_delivery.gantry).tolist())
 
-            trf_delivery
+            matches = trf_delivery.matches_fraction(
+                dicom_dataset, fraction_number)
 
-            all_within_tol = True
-            for gantry_angle in set(trf_delivery.gantry):
-                smallest_diff = np.min(np.abs(gantry_angles - gantry_angle))
-
-                if not smallest_diff < gantry_angle_tolerance:
-                    all_within_tol = False
-                    break
-
-            if not all_within_tol:
+            if not matches:
                 print(
-                    "The gantry angles within {} do not does not agree with "
-                    "the gantry angles within a tolerance of {} "
+                    "The gantry angles and metersets within {} do not "
+                    "appear to agree with those "
                     "for fraction number {} within {}. "
                     "Skipping this fraction..."
                     "".format(
-                        trf_filepath, gantry_angle_tolerance, fraction_number,
-                        dicom_filepath))
+                        trf_filepath, fraction_number, dicom_filepath))
                 continue
 
             dicom_filename = os.path.basename(dicom_filepath)
