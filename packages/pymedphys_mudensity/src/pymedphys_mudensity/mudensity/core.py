@@ -478,7 +478,6 @@ def display_mu_density(grid, mu_density, grid_resolution=None, cmap=None,
 
     x, y = pcolormesh_grid(grid['mlc'], grid['jaw'], grid_resolution)
     plt.pcolormesh(x, y, mu_density, cmap=cmap, vmin=vmin, vmax=vmax)
-    plt.colorbar()
     plt.title('MU density')
     plt.xlabel('MLC direction (mm)')
     plt.ylabel('Jaw direction (mm)')

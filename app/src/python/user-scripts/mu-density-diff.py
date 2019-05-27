@@ -117,4 +117,5 @@ for filepath, mudensity_diff in filepath_mu_density_diff_map.items():
     display_mu_density(
         grid, mudensity_diff, vmin=-maximum_diff, vmax=maximum_diff,
         cmap='seismic')
+    plt.title('MU Density Difference')
     plt.savefig(filepath)
