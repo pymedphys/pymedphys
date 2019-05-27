@@ -202,9 +202,30 @@ class DeliveryDicom(Delivery):
 
         return created_dicom
 
+    def does_match_fraction(self, dicom_dataset, fraction_group_number,
+                            gantry_tol=3, meterset_tol=0.5):
+        filtered = self.filter_cps()
+        dicom_metersets = get_fraction_group_beam_sequence_and_meterset(
+            dicom_dataset, fraction_group_number)[1]
+
+        dicom_fraction = convert_to_one_fraction_group(
+            dicom_dataset, fraction_group_number)
+
+        gantry_angles = get_gantry_angles_from_dicom(dicom_fraction)
+
+        delivery_metersets = filtered.metersets(gantry_angles, gantry_tol)
+
+        try:
+            maximmum_diff = np.max(np.abs(
+                np.array(dicom_metersets)
+                - np.array(delivery_metersets)))
+        except ValueError:
+            maximmum_diff = np.inf
+
+        return maximmum_diff <= meterset_tol
+
     def fraction_group_number(self, dicom_template, gantry_tol=3,
                               meterset_tol=0.5):
-        filtered = self.filter_cps()
         fraction_groups = dicom_template.FractionGroupSequence
 
         if len(fraction_groups) == 1:
@@ -215,57 +236,27 @@ class DeliveryDicom(Delivery):
             for fraction_group in fraction_groups
         ]
 
-        dicom_metersets_by_fraction_group = [
-            get_fraction_group_beam_sequence_and_meterset(
-                dicom_template, fraction_group_number)[1]
+        fraction_matches = np.array([
+            self.does_match_fraction(
+                dicom_template, fraction_group_number,
+                gantry_tol=gantry_tol, meterset_tol=meterset_tol)
             for fraction_group_number in fraction_group_numbers
-        ]
+        ])
 
-        split_by_fraction_group = [
-            convert_to_one_fraction_group(
-                dicom_template, fraction_group_number)
-            for fraction_group_number in fraction_group_numbers
-        ]
-
-        gantry_angles_by_fraction_group = [
-            get_gantry_angles_from_dicom(dataset)
-            for dataset in split_by_fraction_group]
-
-        deliver_data_metersets_by_fraction_group = [
-            filtered.metersets(gantry_angles, gantry_tol)
-            for gantry_angles in gantry_angles_by_fraction_group
-        ]
-
-        maximum_deviations = []
-        for dicom_metersets, delivery_data_metersets in zip(
-                dicom_metersets_by_fraction_group,  # nopep8
-                deliver_data_metersets_by_fraction_group):  # nopep8
-
-            try:
-                maximmum_diff = np.max(np.abs(
-                    np.array(dicom_metersets) -
-                    np.array(delivery_data_metersets)))
-            except ValueError:
-                maximmum_diff = np.inf
-
-            maximum_deviations.append(maximmum_diff)
-
-        deviations_within_tol = np.array(maximum_deviations) <= meterset_tol
-
-        if np.sum(deviations_within_tol) < 1:
+        if np.sum(fraction_matches) < 1:
             raise ValueError(
                 "A fraction group was not able to be found with the metersets "
                 "and gantry angles defined by the tolerances provided. "
                 "Please manually define the fraction group number.")
 
-        if np.sum(deviations_within_tol) > 1:
+        if np.sum(fraction_matches) > 1:
             raise ValueError(
                 "More than one fraction group was found that had metersets "
                 "and gantry angles within the tolerances provided. "
                 "Please manually define the fraction group number.")
 
         fraction_group_number = np.array(
-            fraction_group_numbers)[deviations_within_tol]
+            fraction_group_numbers)[fraction_matches]
 
         return fraction_group_number
 
