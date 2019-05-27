@@ -28,10 +28,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from pymedphys_base.deliverydata import remove_irrelevant_control_points
 from pymedphys_utilities.constants import AGILITY
-from pymedphys_utilities.rtplan import (
-    find_relevant_control_points,
-    remove_irrelevant_control_points)
 
 from ..plt import pcolormesh_grid
 

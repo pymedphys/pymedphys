@@ -34,8 +34,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_deliverydata.utilities import get_delivery_parameters
-from pymedphys_deliverydata.object import DeliveryData
+from pymedphys_base.deliverydata import DeliveryData
 
 from pymedphys_utilities.utilities import (
     get_cache_filepaths, get_mu_density_parameters,
@@ -209,7 +208,8 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
 
 
 def mu_density_from_delivery_data(delivery_data, grid_resolution=1):
-    mu, mlc, jaw = get_delivery_parameters(delivery_data)
+    mu, mlc, jaw = (
+        delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
 
     grid_xx, grid_yy, mu_density = calc_mu_density(
         mu, mlc, jaw,

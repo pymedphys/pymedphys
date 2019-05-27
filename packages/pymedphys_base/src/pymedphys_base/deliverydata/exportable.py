@@ -30,7 +30,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
-from .utilities import find_relevant_control_points, to_tuple
+from .utilities import remove_irrelevant_control_points, to_tuple
 
 
 _DeliveryDataBase = namedtuple(
@@ -71,15 +71,7 @@ class DeliveryData(_DeliveryDataBase):
     @functools.lru_cache()
     def filter_cps(self):
         cls = type(self)
-
-        relevant_control_points = find_relevant_control_points(
-            self.monitor_units)
-
-        new_delivery_data = []
-        for item in self:
-            new_delivery_data.append(np.array(item)[relevant_control_points])
-
-        return cls(*new_delivery_data)
+        return cls(*remove_irrelevant_control_points(*self))
 
     @functools.lru_cache()
     def mask_by_gantry(self, angles: Union[Tuple, float, int], gantry_tolerance=3,

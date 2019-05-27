@@ -1,5 +1,4 @@
-from pymedphys_base.deliverydata import DeliveryDataBase
-from pymedphys.deliverydata import DeliveryData
+from pymedphys_base.deliverydata import DeliveryData
 
 
 def test_object_consistency():
@@ -12,7 +11,7 @@ def test_object_consistency():
 
 
 def test_base_object():
-    empty = DeliveryDataBase.empty()
+    empty = DeliveryData.empty()
 
     assert empty.monitor_units == tuple()
 
@@ -21,4 +20,4 @@ def test_base_object():
         for field in empty._fields
     }
 
-    dummy = DeliveryDataBase(**collection)
+    dummy = DeliveryData(**collection)
