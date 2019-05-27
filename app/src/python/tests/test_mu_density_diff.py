@@ -7,7 +7,7 @@ import pytest
 HERE = os.path.abspath(__file__)
 USER_SCRIPTS = os.path.abspath(os.path.join(HERE, '..', '..', 'user-scripts'))
 DEMO_ZIP = os.path.abspath(
-    os.path.join(HERE, '..', '..', '..', '..', 'public', 'demo-files.zip'))
+    os.path.join(HERE, '..', '..', '..', 'data', 'demo-files.zip'))
 
 
 @pytest.fixture(scope="session")
