@@ -115,5 +115,6 @@ maximum_diff = np.max(np.abs([
 for filepath, mudensity_diff in filepath_mu_density_diff_map.items():
     plt.figure()
     display_mu_density(
-        grid, mudensity, vmin=-maximum_diff, vmax=maximum_diff, cmap='seismic')
+        grid, mudensity_diff, vmin=-maximum_diff, vmax=maximum_diff,
+        cmap='seismic')
     plt.savefig(filepath)
