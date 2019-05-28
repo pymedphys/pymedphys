@@ -16,10 +16,16 @@ for filepath in dicom_filepaths:
     print("Loading DICOM file")
     dicom_dataset = pydicom.dcmread(filepath, force=True)
 
-    fraction_group_numbers = [
-        fraction_group.FractionGroupNumber
-        for fraction_group in dicom_dataset.FractionGroupSequence
-    ]
+    try:
+        fraction_group_numbers = [
+            fraction_group.FractionGroupNumber
+            for fraction_group in dicom_dataset.FractionGroupSequence
+        ]
+    except AttributeError:
+        print(
+            "{} does not appear to be an RT DICOM plan, "
+            "skipping...".format(filepath))
+        continue
 
     print("{} Fraction Group(s) found".format(
         len(fraction_group_numbers)))

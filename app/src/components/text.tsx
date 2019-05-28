@@ -1,9 +1,10 @@
 import React from 'react';
 
-
 import {
   H2, H3
 } from '@blueprintjs/core';
+
+import demoFiles from '../data/demo-files.zip';
 
 export class AppText extends React.Component {
   render() {
@@ -44,18 +45,15 @@ export class AppText extends React.Component {
           This is an example application that
         combines <a href="https://github.com/pymedphys/pymedphys/">
             PyMedPhys
-        </a> with <a href="https://github.com/iodide-project/pyodide" type="application/octet-stream">
+        </a> with <a href="https://github.com/iodide-project/pyodide">
             pyodide
         </a>.
         </p>
         <p>
           This application loads Python into the <a href="https://webassembly.org/">
             wasm virtual machine
-        </a> of your
-                              browser allowing Python code to be run on your local machine without
-                              having Python installed, or without needing Python to run on a remote
-                              server.
-        </p>
+        </a> of your browser allowing Python code to be run on your local machine without
+          having Python installed, or without needing Python to run on a remote.</p>
         <p>
           When it comes to sensitive information or large data files, this
           means no data needs to leave your computer, while you still get the
@@ -73,8 +71,8 @@ export class AppText extends React.Component {
 
         <H2>Instructions for use</H2>
         <p>
-          To begin, download <a href="https://zenodo.org/record/3227868/files/demo_files.zip?download=1">
-            this demo_files.zip
+          To begin, download <a href={demoFiles} type="application/zip">
+            demo-files.zip
           </a>.
         </p>
         <p>
