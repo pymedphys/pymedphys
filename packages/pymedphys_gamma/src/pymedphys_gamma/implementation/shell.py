@@ -281,7 +281,7 @@ def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
     to_be_checked = (
         options.reference_points_to_calc & still_searching_for_gamma)
 
-    distance = 0.0
+    distance = distance_step_size / 2
 
     force_search_distances = np.sort(options.distance_mm_threshold)
     while distance <= options.maximum_test_distance:

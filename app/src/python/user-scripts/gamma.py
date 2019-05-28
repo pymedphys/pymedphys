@@ -14,13 +14,13 @@ reference_tag = "original"
 evaluation_tag = "logfile"
 
 gamma_options = {
-    'dose_percent_threshold': 3,
-    'distance_mm_threshold': 3,
+    'dose_percent_threshold': 2,
+    'distance_mm_threshold': 2,
     'lower_percent_dose_cutoff': 20,
-    'interp_fraction': 2,  # Should be about 10 for more accurate results
-    'max_gamma': 1.1,
-    'random_subset': 10000,
-    'local_gamma': False,
+    'interp_fraction': 10,  # Should be about 10 for more accurate results
+    'max_gamma': 2,
+    'random_subset': None,
+    'local_gamma': True,
     'ram_available': 2**29  # 1/2 GB
 }
 
@@ -36,7 +36,11 @@ gamma = gamma_dicom(
 valid_gamma = gamma[~np.isnan(gamma)]
 
 plt.figure()
-plt.hist(valid_gamma, 30)
+num_bins = (
+    gamma_options['interp_fraction'] * gamma_options['max_gamma'])  # type: ignore
+bins = np.linspace(0, gamma_options['max_gamma'], num_bins + 1)
+
+plt.hist(valid_gamma, bins, density=True)
 plt.xlim([0, gamma_options['max_gamma']])
 
 pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
