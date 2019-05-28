@@ -45,7 +45,7 @@ export class AppText extends React.Component {
           This is an example application that
         combines <a href="https://github.com/pymedphys/pymedphys/">
             PyMedPhys
-        </a> with <a href="https://github.com/iodide-project/pyodide" type="application/octet-stream">
+        </a> with <a href="https://github.com/iodide-project/pyodide">
             pyodide
         </a>.
         </p>
@@ -71,7 +71,7 @@ export class AppText extends React.Component {
 
         <H2>Instructions for use</H2>
         <p>
-          To begin, download <a href={demoFiles}>
+          To begin, download <a href={demoFiles} type="application/zip">
             demo-files.zip
           </a>.
         </p>
