@@ -26,6 +26,13 @@ def temp_workingdir(tmpdir_factory):
     return workingdir
 
 
+def test_gamma_calc(temp_workingdir):
+    os.chdir(temp_workingdir)
+    scriptpath = os.path.join(USER_SCRIPTS, 'gamma.py')
+
+    runpy.run_path(scriptpath)
+
+
 def test_mu_density_diff(temp_workingdir):
     os.chdir(temp_workingdir)
     scriptpath = os.path.join(USER_SCRIPTS, 'mu-density-diff.py')
