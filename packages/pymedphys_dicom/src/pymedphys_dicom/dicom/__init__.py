@@ -70,7 +70,8 @@ from .dose import (
     extract_depth_dose,
     extract_profiles,
     load_dicom_data,
-    axes_and_dose_from_dicom
+    axes_and_dose_from_dicom,
+    zyx_and_dose_from_dicom
 )
 
 from .create import dicom_dataset_from_dict
