@@ -1,7 +1,5 @@
 {
-  "dependencies": {
-    "pymedphys_utilities": "~0.8.0-dev.17"
-  },
+  "dependencies": {},
   "name": "pymedphys_base",
   "private": true,
   "scripts": {

@@ -1,10 +1,10 @@
 {
   "dependencies": {
     "pymedphys_analysis": "~0.8.0-dev.17",
+    "pymedphys_base": "~0.8.0-dev.17",
     "pymedphys_coordsandscales": "~0.8.0-dev.17",
     "pymedphys_core": "~0.8.0-dev.17",
     "pymedphys_databases": "~0.8.0-dev.17",
-    "pymedphys_deliverydata": "~0.8.0-dev.17",
     "pymedphys_dicom": "~0.8.0-dev.17",
     "pymedphys_electronfactors": "~0.8.0-dev.17",
     "pymedphys_fileformats": "~0.8.0-dev.17",
