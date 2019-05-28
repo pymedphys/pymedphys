@@ -42,11 +42,10 @@ from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
 # pylint: disable=C0103
 
 
-def zyx_and_dose_from_dicom(dicom_filepath):
-    ds = pydicom.dcmread(dicom_filepath, force=True)
-    x, y, z = xyz_axes_from_dataset(ds)
+def zyx_and_dose_from_dataset(dataset):
+    x, y, z = xyz_axes_from_dataset(dataset)
     coords = (z, y, x)
-    dose = dose_from_dataset(ds, reshape=False)
+    dose = dose_from_dataset(dataset, reshape=False)
 
     return coords, dose
 

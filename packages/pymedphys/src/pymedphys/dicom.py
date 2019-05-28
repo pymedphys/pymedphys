@@ -7,6 +7,7 @@ from pymedphys_dicom.dicom import (
     is_anonymised_directory,
     coords_from_xyz_axes,
     xyz_axes_from_dataset,
+    zyx_and_dose_from_dataset,
     create_dvh,
     dose_from_dataset,
     find_dose_within_structure,

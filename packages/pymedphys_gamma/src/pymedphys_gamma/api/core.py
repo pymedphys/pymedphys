@@ -22,20 +22,20 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-from pymedphys_dicom.dicom import zyx_and_dose_from_dicom
+from pymedphys_dicom.dicom import zyx_and_dose_from_dataset
 
 from ..implementation import gamma_shell, gamma_filter_numpy
 from ..utilities import calculate_pass_rate
 
 
-def gamma_dicom(dicom_ref_filepath, dicom_eval_filepath,
+def gamma_dicom(dicom_dataset_ref, dicom_dataset_eval,
                 dose_percent_threshold, distance_mm_threshold,
                 **kwargs):
 
-    axes_reference, dose_reference = zyx_and_dose_from_dicom(
-        dicom_ref_filepath)
-    axes_evaluation, dose_evaluation = zyx_and_dose_from_dicom(
-        dicom_eval_filepath)
+    axes_reference, dose_reference = zyx_and_dose_from_dataset(
+        dicom_dataset_ref)
+    axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(
+        dicom_dataset_eval)
 
     gamma = gamma_shell(
         axes_reference, dose_reference,
@@ -50,9 +50,9 @@ def gamma_percent_pass(dcm_ref_filepath, dcm_eval_filepath,
                        dose_percent_threshold, distance_mm_threshold,
                        method='shell', **kwargs):
 
-    axes_reference, dose_reference = zyx_and_dose_from_dicom(
+    axes_reference, dose_reference = zyx_and_dose_from_dataset(
         dcm_ref_filepath)
-    axes_evaluation, dose_evaluation = zyx_and_dose_from_dicom(
+    axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(
         dcm_eval_filepath)
 
     if method == 'shell':

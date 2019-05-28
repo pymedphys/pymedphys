@@ -66,6 +66,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - DICOM: `'d'` or `'DICOM'`
   - IEC fixed: `'f'`, `'fixed'` or `'IEC fixed'`
   - IEC patient: `'p'`, `'patient'` or `'IEC patient'`
+- `gamma_dicom` now take datasets as opposed to filenames
 
 ### New Features
 
