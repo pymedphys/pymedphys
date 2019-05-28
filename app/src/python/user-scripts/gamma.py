@@ -17,13 +17,13 @@ reference_tag = "original"
 evaluation_tag = "logfile"
 
 gamma_options = {
-    'dose_percent_threshold': 2,
-    'distance_mm_threshold': 2,
+    'dose_percent_threshold': 3,
+    'distance_mm_threshold': 3,
     'lower_percent_dose_cutoff': 20,
-    'interp_fraction': 10,  # Should be about 10 for more accurate results
-    'max_gamma': 2,
+    'interp_fraction': 5,  # Should be about 10 for more accurate results
+    'max_gamma': 1,
     'random_subset': None,
-    'local_gamma': True,
+    'local_gamma': False,
     'ram_available': 2**29  # 1/2 GB
 }
 
@@ -134,6 +134,6 @@ for z_val, eval_slice, ref_slice, diff, gamma_slice in zip(
     fig.colorbar(c11, ax=ax[1, 1])
     ax[1, 1].invert_yaxis()
 
-    fig.savefig(os.path.join(output_dir, 'slice_{}.gamma.png'.format(
+    fig.savefig(os.path.join(output_dir, 'slice_{:+06.1f}.gamma.png'.format(
         z_val
     )))
