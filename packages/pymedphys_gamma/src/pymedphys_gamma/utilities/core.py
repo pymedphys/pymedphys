@@ -78,8 +78,9 @@ def run_input_checks(
     reference_coords_shape = tuple([len(item) for item in axes_reference])
     if reference_coords_shape != np.shape(dose_reference):
         raise Exception(
-            "Length of items in axes_reference does not match the "
-            "shape of dose_reference")
+            "Length of items in axes_reference ({}) does not match the "
+            "shape of dose_reference ({})".format(
+                reference_coords_shape, np.shape(dose_reference)))
 
     evaluation_coords_shape = tuple([len(item) for item in axes_evaluation])
     if evaluation_coords_shape != np.shape(dose_evaluation):

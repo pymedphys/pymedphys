@@ -34,8 +34,7 @@ import numpy as np
 
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 
-from pymedphys_deliverydata.object import DeliveryData
-from pymedphys_deliverydata.utilities import get_delivery_parameters
+from ..delivery import DeliveryDatabases
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES
@@ -347,17 +346,21 @@ def delivery_data_from_mosaiq(cursor, field_id):
     mlc = np.swapaxes(mlc, 0, 2)
     jaw = np.swapaxes(jaw, 0, 1)
 
-    mosaiq_delivery_data = DeliveryData(
+    mosaiq_delivery_data = DeliveryDatabases(
         monitor_units, gantry, collimator, mlc, jaw)
 
     return mosaiq_delivery_data
 
 
 def multi_fetch_and_verify_mosaiq(cursor, field_id):
-    reference_data = get_delivery_parameters(
-        delivery_data_from_mosaiq(cursor, field_id))
+    mosaiq_delivery_data = delivery_data_from_mosaiq(cursor, field_id)
+    reference_data = (
+        mosaiq_delivery_data.monitor_units,
+        mosaiq_delivery_data.mlc, mosaiq_delivery_data.jaw)
+
     delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-    test_data = get_delivery_parameters(delivery_data)
+    test_data = (
+        delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
 
     agreement = False
 
@@ -375,6 +378,8 @@ def multi_fetch_and_verify_mosaiq(cursor, field_id):
             print('Trying again...')
             reference_data = test_data
             delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-            test_data = get_delivery_parameters(delivery_data)
+            test_data = (
+                delivery_data.monitor_units, delivery_data.mlc,
+                delivery_data.jaw)
 
     return delivery_data

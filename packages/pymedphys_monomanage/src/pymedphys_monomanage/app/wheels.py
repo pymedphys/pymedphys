@@ -39,7 +39,6 @@ WHITELIST = (
     'pymedphys_utilities',
     'pymedphys_mudensity',
     'pymedphys_gamma',
-    'pymedphys_deliverydata',
     'pymedphys')
 
 

@@ -28,10 +28,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from pymedphys_base.delivery import remove_irrelevant_control_points
 from pymedphys_utilities.constants import AGILITY
-from pymedphys_utilities.rtplan import (
-    find_relevant_control_points,
-    remove_irrelevant_control_points)
 
 from ..plt import pcolormesh_grid
 
@@ -197,11 +195,11 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
     >>> from pymedphys_mudensity.mudensity import (
     ...     calc_mu_density, get_grid, display_mu_density)
     >>>
-    >>> from pymedphys.deliverydata import DeliveryData
+    >>> from pymedphys import Delivery
     >>>
     >>> def mu_density_from_logfile(filepath):
-    ...     delivery_data = DeliveryData.from_logfile(filepath)
-    ...     mu_density = DeliveryData.mudensity()
+    ...     delivery_data = Delivery.from_logfile(filepath)
+    ...     mu_density = Delivery.mudensity()
     ...
     ...     grid = get_grid()
     ...     display_mu_density(grid, mu_density)
@@ -455,7 +453,20 @@ def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
     return grid
 
 
-def display_mu_density(grid, mu_density, grid_resolution=None):
+def display_mu_density_diff(grid, mudensity_eval, mudensity_ref,
+                            grid_resolution=None, colour_range=None):
+    cmap = 'bwr'
+    diff = mudensity_eval - mudensity_ref
+    if colour_range is None:
+        colour_range = np.max(np.abs(diff))
+
+    display_mu_density(
+        grid, diff, grid_resolution=grid_resolution, cmap=cmap,
+        vmin=-colour_range, vmax=colour_range)  # pylint: disable=invalid-unary-operand-type
+
+
+def display_mu_density(grid, mu_density, grid_resolution=None, cmap=None,
+                       vmin=None, vmax=None):
     """Prints a colour plot of the MU Density.
 
     Examples
@@ -466,7 +477,7 @@ def display_mu_density(grid, mu_density, grid_resolution=None):
         grid_resolution = grid['mlc'][1] - grid['mlc'][0]
 
     x, y = pcolormesh_grid(grid['mlc'], grid['jaw'], grid_resolution)
-    plt.pcolormesh(x, y, mu_density)
+    plt.pcolormesh(x, y, mu_density, cmap=cmap, vmin=vmin, vmax=vmax)
     plt.colorbar()
     plt.title('MU density')
     plt.xlabel('MLC direction (mm)')
