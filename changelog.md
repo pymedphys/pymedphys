@@ -84,6 +84,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   exposed in the API. It converts x, y, z axes returned by `xyz_from_dataset()`
   into a full grid of coordinate triplets that correspond to the original grid
   (pixel array or dose grid).
+
+## Algorithm Changes
+
 - `gamma_shell` now starts its search at 1/2 the distance step size instead of
   starting at 0.
 
