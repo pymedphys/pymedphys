@@ -6,7 +6,7 @@ import {
   Tree, ITreeNode, Tooltip, Classes, Position
 } from '@blueprintjs/core';
 
-import { inputDirectory, outputDirectory } from '../observables/directories'
+import { inputDirectory, outputDirectory } from '../../observables/directories'
 
 /*
  * Copyright 2015 Palantir Technologies, Inc. All rights reserved.

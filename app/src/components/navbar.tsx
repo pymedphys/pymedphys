@@ -13,7 +13,7 @@ export class AppNavbar extends React.Component {
       <Navbar fixedToTop>
         <NavbarGroup align={Alignment.LEFT}>
           <img className={`${Classes.ICON} logo`} src={logo} alt="Logo" />
-          <NavbarHeading>PyMedPhys</NavbarHeading>
+          <NavbarHeading>PyMedPhys &mdash; ALPHA</NavbarHeading>
           <NavbarDivider />
           <Button
             className="bp3-minimal" icon="home" text="Home" />

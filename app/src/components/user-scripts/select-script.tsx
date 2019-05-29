@@ -3,9 +3,9 @@ import React from 'react';
 import { Button, MenuItem } from "@blueprintjs/core";
 import { Select, ItemPredicate, ItemRenderer } from '@blueprintjs/select';
 
-import { IUserScript, USER_SCRIPTS } from '../python/user-scripts/options';
+import { IUserScript, USER_SCRIPTS } from '../../python/user-scripts/options';
 
-import { pythonCode } from '../observables/python';
+import { pythonCode } from '../../observables/python';
 
 /*
  * Copyright 2017 Palantir Technologies, Inc. All rights reserved.

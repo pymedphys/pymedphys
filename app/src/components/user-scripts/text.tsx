@@ -4,7 +4,7 @@ import {
   H2, H3
 } from '@blueprintjs/core';
 
-import demoFiles from '../data/demo-files.zip';
+import demoFiles from '../../data/demo-files.zip';
 
 export class AppText extends React.Component {
   render() {
