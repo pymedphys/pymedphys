@@ -175,7 +175,7 @@ export class AppUserScripts extends React.Component<IAppUserScriptsProps, IAppUs
 
   render() {
     return (
-      <div className="UserScripts">
+      <div className="AppUserScripts">
 
 
         <H1>User Scripts</H1>
