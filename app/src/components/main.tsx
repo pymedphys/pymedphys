@@ -1,10 +1,12 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Link } from "react-router-dom";
+import { BrowserRouter, Route, Link, Redirect } from "react-router-dom";
 
 
 import {
   Tabs, Tab, H3, Icon
 } from '@blueprintjs/core';
+
+import { IconName } from "@blueprintjs/icons";
 
 
 import { AppNavbar } from './navbar';
@@ -20,12 +22,39 @@ interface IAppMainState extends Readonly<{}> {
 
 }
 
+
+interface ITab {
+  path: string;
+  icon: IconName;
+  label: string;
+}
+
+
+const tabs: ITab[] = [
+  {
+    path: "/user-scripts/",
+    icon: "code",
+    label: "User Scripts"
+  },
+  {
+    path: "/gamma-analysis/",
+    icon: "grid",
+    label: "Gamma Analysis"
+  },
+  {
+    path: "/python-engine/",
+    icon: "function",
+    label: "Python Engine"
+  }
+]
+
 export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
 
 
   constructor(props: IAppMainProps) {
     super(props)
     this.state = {
+      path: window.location.pathname
     }
   }
 
@@ -34,44 +63,31 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
       <div className="AppMain">
         <AppNavbar />
 
-        {/* <Tabs
-          animate={true}
-          id="Tabs"
-          vertical={true}
-          renderActiveTabPanelOnly={true}
-        >
-          <Tab id="UserScripts" title={<span><Icon icon={"code"} /> User Scripts</span>} panel={<AppUserScripts />} />
-          <Tab id="GammaAnalysis" title={<span><Icon icon={"grid"} /> Gamma Analysis</span>} panel={<Placeholder />} />
-          <Tab id="PythonEngine" title={<span><Icon icon={"function"} /> Python Engine</span>} panel={<Placeholder />} />
-        </Tabs> */}
-
-
-
-        <Router>
+        <BrowserRouter>
 
           <Tabs
             animate={true}
             id="Tabs"
             vertical={true}
           >
-            <Tab id="UserScripts" title={
-              <Link to="/user-scripts/"><Icon icon={"code"} /> User Scripts</Link>
-            } />
-            <Tab id="GammaAnalysis" title={
-              <Link to="/gamma-analysis/"><Icon icon={"grid"} /> Gamma Analysis</Link>
-            } />
-            <Tab id="PythonEngine" title={
-              <Link to="/python-engine/"><Icon icon={"function"} /> Python Engine</Link>
-            } />
+            {tabs.map(tab => {
+              return <Tab id={tab.path} title={
+                <Link
+                  to={tab.path}
+                  onClick={() => this.setState({ path: tab.path })}
+                ><Icon icon={tab.icon} /> {tab.label}</Link>
+              } />
+            })}
+
           </Tabs>
 
           <div className="TabPadding">
-            <Route path="/" exact component={Placeholder} />
+            <Route path="/" exact component={RedirectToUserScripts} />
             <Route path="/user-scripts/" exact component={AppUserScripts} />
             <Route path="/gamma-analysis/" exact component={Placeholder} />
             <Route path="/python-engine/" exact component={Placeholder} />
           </div>
-        </Router>
+        </BrowserRouter>
 
 
       </div>
@@ -83,4 +99,9 @@ const Placeholder: React.SFC<{}> = () => (
   <div>
     <H3>Placeholder</H3>
   </div>
+);
+
+
+const RedirectToUserScripts: React.SFC<{}> = () => (
+  <Redirect to="/user-scripts/" />
 );
