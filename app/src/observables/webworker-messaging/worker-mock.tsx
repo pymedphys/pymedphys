@@ -6,6 +6,7 @@ interface commMock {
   postMessage: (message: any, transfer?: Transferable[] | undefined) => void
 }
 
+const workerBroadcastChannel = new BroadcastChannel('worker')
 
 function createWorkerCommMock() {
   const toWorker = new Subject<MessageEvent>()

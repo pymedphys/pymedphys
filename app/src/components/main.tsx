@@ -11,7 +11,6 @@ import { IconName } from "@blueprintjs/icons";
 
 import { AppNavbar } from './navbar';
 import { AppUserScripts } from './user-scripts';
-import { placeholder } from '@babel/types';
 
 
 interface IAppMainProps {
@@ -19,7 +18,7 @@ interface IAppMainProps {
 }
 
 interface IAppMainState extends Readonly<{}> {
-
+  path: string
 }
 
 
@@ -69,9 +68,10 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             animate={true}
             id="Tabs"
             vertical={true}
+            selectedTabId={this.state.path}
           >
             {tabs.map(tab => {
-              return <Tab id={tab.path} title={
+              return <Tab id={tab.path} key={tab.path} title={
                 <Link
                   to={tab.path}
                   onClick={() => this.setState({ path: tab.path })}
