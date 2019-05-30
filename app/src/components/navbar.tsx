@@ -17,9 +17,6 @@ export class AppNavbar extends React.Component {
           <NavbarDivider />
           <Button
             className="bp3-minimal" icon="home" text="Home" />
-          <AnchorButton
-            className="bp3-minimal" icon="function" text="Python Engine"
-            href="/python-engine/" target="_blank" />
         </NavbarGroup>
         <NavbarGroup align={Alignment.RIGHT}>
           <AnchorButton

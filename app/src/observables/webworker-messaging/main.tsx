@@ -4,6 +4,8 @@ import {
   mainMessengers, IPyodideMessage
 } from './common';
 
+import { pythonReady } from '../python';
+
 const receiverMessengers = mainMessengers.receiver
 const senderMessengers = mainMessengers.sender
 const sendInitialise = mainMessengers.sendInitialise
@@ -33,9 +35,21 @@ const hookInMain = () => {
 }
 
 
+const startPyodide = () => {
+  pythonReady.subscribe(isReady => {
+    if (isReady) {
+      console.log("Python Ready")
+    }
+  })
+
+  sendInitialise().subscribe(() => {
+    pythonReady.next(true)
+  })
+}
+
 
 
 export {
-  hookInMain, sendInitialise, sendExecuteRequest, sendFileTransfer,
+  startPyodide, hookInMain, sendInitialise, sendExecuteRequest, sendFileTransfer,
   sendFileTransferRequest, receiverMessengers
 }

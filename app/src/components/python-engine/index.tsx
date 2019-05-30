@@ -10,7 +10,7 @@ export class AppPythonEngine extends React.Component {
 
   componentDidMount() {
     hookInWorker()
-
+    window.document.title = "Python Engine"
   }
 
   render() {

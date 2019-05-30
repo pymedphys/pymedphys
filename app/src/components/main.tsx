@@ -3,32 +3,16 @@ import { BrowserRouter, Route, Link, Redirect } from "react-router-dom";
 
 
 import {
-  Tabs, Tab, H3, Icon
+  Tabs, Tab, H3, Icon, AnchorButton
 } from '@blueprintjs/core';
 
 import { IconName } from "@blueprintjs/icons";
 
-
-import { hookInMain, sendInitialise } from '../observables/webworker-messaging/main';
-import { pythonReady } from '../observables/python';
+import { startPyodide, hookInMain } from '../observables/webworker-messaging/main';
 
 import { AppNavbar } from './navbar';
 import { AppUserScripts } from './user-scripts';
-
-
-export function startPyodide() {
-  hookInMain()
-
-  pythonReady.subscribe(isReady => {
-    if (isReady) {
-      console.log("Python Ready")
-    }
-  })
-
-  sendInitialise().subscribe(() => {
-    pythonReady.next(true)
-  })
-}
+import { pythonReady } from '../observables/python';
 
 
 interface IAppMainProps {
@@ -36,7 +20,8 @@ interface IAppMainProps {
 }
 
 interface IAppMainState extends Readonly<{}> {
-  path: string
+  path: string;
+  pythonReady: boolean;
 }
 
 
@@ -67,19 +52,28 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
   constructor(props: IAppMainProps) {
     super(props)
     this.state = {
-      path: window.location.pathname
+      path: window.location.pathname,
+      pythonReady: false
     }
   }
 
   componentDidMount() {
-    startPyodide()
+    pythonReady.subscribe(ready => {
+      this.setState({ pythonReady: ready })
+    })
+
+    hookInMain()
+    startPyodide() // Do this only when the tab is ready, have a I'm here message be broadcast
+    // at that point a "you're not needed" can also be sent. Receiving a "you're not needed"
+    // will close that worker down.
+
   }
 
   render() {
-    return (
-      <div className="AppMain">
-        <AppNavbar />
+    let display;
 
+    if (this.state.pythonReady) {
+      display = <div>
         <BrowserRouter>
 
           <Tabs
@@ -105,8 +99,17 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             <Route path="/gamma-analysis/" exact component={Placeholder} />
           </div>
         </BrowserRouter>
+      </div>
+    } else {
+      display = <AnchorButton
+        icon="function" text="Python Engine"
+        href="/python-engine/" onClick={startPyodide} target="_blank" />
+    }
 
-
+    return (
+      <div className="AppMain">
+        <AppNavbar />
+        {display}
       </div>
     );
   }

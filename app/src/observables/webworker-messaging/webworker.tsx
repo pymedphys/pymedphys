@@ -4,6 +4,7 @@ import loadWheels from '../../python/load-wheels.py';
 import setupDirectories from '../../python/setup-directories.py';
 
 import { workerMock } from './worker-mock';
+import { workerChannel } from './broadcast-channels';
 
 import {
   workerMessengers, IPyodideMessage
@@ -29,6 +30,8 @@ const sendFileTransfer = workerMessengers.sendFileTransfer
 let ctx: PyodideWorker
 
 export const hookInWorker = () => {
+  // workerChannel.onmessage = () => { window.close(); }
+
   const pyodideReady = new BehaviorSubject<boolean>(false);
 
   ctx = workerMock as any;
