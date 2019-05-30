@@ -10,6 +10,7 @@ export class AppPythonEngine extends React.Component {
 
   componentDidMount() {
     hookInWorker()
+
   }
 
   render() {
