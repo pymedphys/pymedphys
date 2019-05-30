@@ -9,8 +9,24 @@ import {
 import { IconName } from "@blueprintjs/icons";
 
 
+import { sendInitialise } from '../observables/webworker-messaging/main';
+import { pythonReady } from '../observables/python';
+
 import { AppNavbar } from './navbar';
 import { AppUserScripts } from './user-scripts';
+
+
+export function startPyodide() {
+  pythonReady.subscribe(isReady => {
+    if (isReady) {
+      console.log("Python Ready")
+    }
+  })
+
+  sendInitialise().subscribe(() => {
+    pythonReady.next(true)
+  })
+}
 
 
 interface IAppMainProps {
@@ -26,6 +42,7 @@ interface ITab {
   path: string;
   icon: IconName;
   label: string;
+  newTab?: boolean;
 }
 
 
@@ -39,11 +56,6 @@ const tabs: ITab[] = [
     path: "/gamma-analysis/",
     icon: "grid",
     label: "Gamma Analysis"
-  },
-  {
-    path: "/python-engine/",
-    icon: "function",
-    label: "Python Engine"
   }
 ]
 
@@ -55,6 +67,10 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
     this.state = {
       path: window.location.pathname
     }
+  }
+
+  componentDidMount() {
+    startPyodide()
   }
 
   render() {
@@ -85,7 +101,6 @@ export class AppMain extends React.Component<IAppMainProps, IAppMainState> {
             <Route path="/" exact component={RedirectToUserScripts} />
             <Route path="/user-scripts/" exact component={AppUserScripts} />
             <Route path="/gamma-analysis/" exact component={Placeholder} />
-            <Route path="/python-engine/" exact component={Placeholder} />
           </div>
         </BrowserRouter>
 

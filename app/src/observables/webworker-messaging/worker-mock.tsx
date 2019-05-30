@@ -1,12 +1,15 @@
 import { Subject } from 'rxjs';
 
+import { v4 } from 'uuid';
+
 
 interface commMock {
   onmessage: ((this: Worker, ev: MessageEvent) => any) | null
   postMessage: (message: any, transfer?: Transferable[] | undefined) => void
 }
 
-const workerBroadcastChannel = new BroadcastChannel('worker')
+const workerChannel = new BroadcastChannel('worker');
+const workerId = v4();
 
 function createWorkerCommMock() {
   const toWorker = new Subject<MessageEvent>()

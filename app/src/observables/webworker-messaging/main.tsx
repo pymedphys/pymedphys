@@ -1,7 +1,7 @@
 // import PyodideWorker from './pyodide.worker';
 import { mainMock } from './worker-mock';
 
-import './webworker.tsx'  // Remove this if using webworker
+// import './webworker.tsx'  // Remove this if using webworker
 
 import {
   mainMessengers, IPyodideMessage
@@ -34,9 +34,8 @@ pyodideWorker.onmessage = (event: MessageEvent) => {
   receiverMessengers.next(event.data)
 }
 
-const pyodideInitialise = sendInitialise()
 
 export {
-  pyodideInitialise, sendExecuteRequest, sendFileTransfer,
+  sendInitialise, sendExecuteRequest, sendFileTransfer,
   sendFileTransferRequest, receiverMessengers
 }

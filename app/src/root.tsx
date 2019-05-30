@@ -1,10 +1,10 @@
 import React from 'react';
+import { BrowserRouter, Route, Switch } from "react-router-dom";
 
-import {
-  Classes
-} from '@blueprintjs/core';
+import { Classes } from '@blueprintjs/core';
 
 import { AppMain } from './components/main';
+import { AppPythonEngine } from './components/python-engine'
 
 interface IAppRootProps { }
 interface IAppRootState extends Readonly<{}> { }
@@ -14,7 +14,12 @@ class AppRoot extends React.Component<IAppRootProps, IAppRootState> {
     return (
       <div className="AppRoot">
 
-        <AppMain />
+        <BrowserRouter>
+          <Switch>
+            <Route path="/python-engine/" exact component={AppPythonEngine} />
+            <Route path="*" component={AppMain} />
+          </Switch>
+        </BrowserRouter>
 
         <div className={`${Classes.DRAWER_FOOTER} big-top-margin`}>
           <a className={'floatright'} href="https://www.netlify.com">
