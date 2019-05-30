@@ -1,7 +1,4 @@
-// import PyodideWorker from './pyodide.worker';
 import { mainMock } from './worker-mock';
-
-// import './webworker.tsx'  // Remove this if using webworker
 
 import {
   mainMessengers, IPyodideMessage
@@ -15,27 +12,30 @@ const sendFileTransfer = mainMessengers.sendFileTransfer
 const sendFileTransferRequest = mainMessengers.sendFileTransferRequest
 
 let pyodideWorker: Worker
-// pyodideWorker = new PyodideWorker() as Worker
 pyodideWorker = mainMock as any
 
 
-receiverMessengers.subscribe((message: IPyodideMessage) => {
-  console.log("Received main <-- webworker")
-  console.log(message)
-})
+const hookInMain = () => {
+  receiverMessengers.subscribe((message: IPyodideMessage) => {
+    console.log("Received main <-- webworker")
+    console.log(message)
+  })
 
-senderMessengers.subscribe((message: IPyodideMessage) => {
-  // console.log("Sending main --> webworker")
-  // console.log(message)
-  pyodideWorker.postMessage(message, message.transferables)
-})
+  senderMessengers.subscribe((message: IPyodideMessage) => {
+    console.log("Sending main --> webworker")
+    console.log(message)
+    pyodideWorker.postMessage(message, message.transferables)
+  })
 
-pyodideWorker.onmessage = (event: MessageEvent) => {
-  receiverMessengers.next(event.data)
+  pyodideWorker.onmessage = (event: MessageEvent) => {
+    receiverMessengers.next(event.data)
+  }
 }
 
 
+
+
 export {
-  sendInitialise, sendExecuteRequest, sendFileTransfer,
+  hookInMain, sendInitialise, sendExecuteRequest, sendFileTransfer,
   sendFileTransferRequest, receiverMessengers
 }

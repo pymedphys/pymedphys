@@ -9,6 +9,7 @@ interface commMock {
 }
 
 const workerChannel = new BroadcastChannel('worker');
+const mainChannel = new BroadcastChannel('main');
 const workerId = v4();
 
 function createWorkerCommMock() {
@@ -20,7 +21,7 @@ function createWorkerCommMock() {
     postMessage(ev: MessageEvent, transfer?: Transferable[]) {
       // console.log('Mocked sending worker --> main')
       // console.log(ev)
-      fromWorker.next({ data: ev } as any)
+      workerChannel.postMessage(ev)
     }
     callOnMessage(ev: MessageEvent) {
       // console.log('Mocked receiving worker <-- main')
@@ -30,16 +31,14 @@ function createWorkerCommMock() {
   }
 
   const workerMock = new WorkerMock()
-  toWorker.subscribe((ev: MessageEvent) => {
-    workerMock.callOnMessage(ev)
-  })
+  mainChannel.onmessage = message => workerMock.callOnMessage(message)
 
   class MainMock implements commMock {
     onmessage = (ev: MessageEvent) => { }
     postMessage(ev: MessageEvent, transfer?: Transferable[]) {
       // console.log('Mocked sending main --> worker')
       // console.log(ev)
-      toWorker.next({ data: ev } as any)
+      mainChannel.postMessage(ev)
     }
     callOnMessage(ev: MessageEvent) {
       // console.log('Mocked receiving main <-- worker')
@@ -49,9 +48,7 @@ function createWorkerCommMock() {
   }
 
   const mainMock = new MainMock()
-  fromWorker.subscribe((ev: MessageEvent) => {
-    mainMock.callOnMessage(ev)
-  })
+  workerChannel.onmessage = message => mainMock.callOnMessage(message)
 
   return { workerMock, mainMock }
 }

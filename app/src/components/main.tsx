@@ -9,7 +9,7 @@ import {
 import { IconName } from "@blueprintjs/icons";
 
 
-import { sendInitialise } from '../observables/webworker-messaging/main';
+import { hookInMain, sendInitialise } from '../observables/webworker-messaging/main';
 import { pythonReady } from '../observables/python';
 
 import { AppNavbar } from './navbar';
@@ -17,6 +17,8 @@ import { AppUserScripts } from './user-scripts';
 
 
 export function startPyodide() {
+  hookInMain()
+
   pythonReady.subscribe(isReady => {
     if (isReady) {
       console.log("Python Ready")
