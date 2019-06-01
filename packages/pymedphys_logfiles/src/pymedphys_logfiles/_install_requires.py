@@ -1,7 +1,7 @@
 install_requires = [
     "attrs",
     "matplotlib",
-    "numpy >= 1.12, < 1.16",
+    "numpy >= 1.12",
     "pandas",
     "pymedphys_databases >= 0.9.0dev0, < 0.10.0",
     "pymedphys_fileformats >= 0.9.0dev0, < 0.10.0",

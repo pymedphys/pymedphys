@@ -647,7 +647,8 @@ def _convert_to_full_grid(grid, full_grid, mu_density):
         np.abs(full_grid_yy[None, :, 0] - grid_yy[:, 0, None]) < 0.0001)
 
     full_grid_mu_density = np.zeros_like(full_grid_xx)
-    full_grid_mu_density[np.ix_(yy_to, xx_to)] = (
-        mu_density[np.ix_(yy_from, xx_from)])
+    full_grid_mu_density[  # pylint: disable=unsupported-assignment-operation
+        np.ix_(yy_to, xx_to)] = (
+            mu_density[np.ix_(yy_from, xx_from)])
 
     return full_grid_mu_density
