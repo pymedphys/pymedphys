@@ -93,7 +93,8 @@ def gamma_filter_numpy(axes_reference, dose_reference,
     eval_pass = eval_coord_points[:, gamma_pass]
 
     ravel_index = convert_to_ravel_index(eval_pass)
-    gamma_pass_array = np.zeros_like(dose_evaluation).astype(np.bool)
+    gamma_pass_array = np.zeros_like(  # pylint: disable=no-member
+        dose_evaluation).astype(np.bool)
 
     gamma_pass_array = np.ravel(gamma_pass_array)
     dose_above_cut_off = np.ravel(dose_evaluation) > lower_dose_cutoff
@@ -110,7 +111,8 @@ def gamma_filter_brute_force(axes_reference, dose_reference,
                              lower_dose_cutoff=0, **kwargs):
 
     xx_ref, yy_ref, zz_ref = np.meshgrid(*axes_reference, indexing='ij')
-    gamma_array = np.ones_like(dose_evaluation).astype(np.float) * np.nan
+    gamma_array = np.ones_like(  # pylint: disable=no-member
+        dose_evaluation).astype(np.float) * np.nan
 
     mesh_index = np.meshgrid(*[
         np.arange(len(coord_eval))
