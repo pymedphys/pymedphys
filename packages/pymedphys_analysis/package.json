@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "pymedphys_dicom": "~0.8.0"
+    "pymedphys_dicom": "~0.9.0-dev.0"
   },
   "name": "pymedphys_analysis",
   "private": true,
@@ -14,5 +14,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0"
+  "version": "0.9.0-dev.0"
 }
