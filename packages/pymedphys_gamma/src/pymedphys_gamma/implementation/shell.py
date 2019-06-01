@@ -251,7 +251,8 @@ class GammaInternalFixedOptions():
             np.random.shuffle(to_calc_index)
             random_subset_to_calc = np.full_like(
                 reference_points_to_calc, False, dtype=bool)
-            random_subset_to_calc[to_calc_index[0:random_subset]] = True
+            random_subset_to_calc[  # pylint: disable=unsupported-assignment-operation
+                to_calc_index[0:random_subset]] = True
 
             reference_points_to_calc = random_subset_to_calc
 
@@ -407,7 +408,8 @@ def calculate_min_dose_difference(options, distance, to_be_checked,
 
     for current_slice in sorted_sliced:
         to_be_checked_sliced = np.full_like(to_be_checked, False, dtype=bool)
-        to_be_checked_sliced[all_checks[current_slice]] = True
+        to_be_checked_sliced[  # pylint: disable=unsupported-assignment-operation
+            all_checks[current_slice]] = True
 
         assert np.all(to_be_checked[to_be_checked_sliced])
 
