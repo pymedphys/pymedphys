@@ -38,6 +38,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - nil
 
 
+## [0.8.2] -- 2019/06/01
+
+### Package changes
+
+- Included license files within the subpackage distributions
+
+
+## [0.8.1] -- 2019/06/01
+
+### Dependency changes
+
+- Removed numpy version upperlimit
+
+
 ## [0.8.0] -- 2019/06/01
 
 ### Breaking Changes
