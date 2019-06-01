@@ -26,6 +26,17 @@ interface INullMessage extends IMessage {
   data: INullData;
 }
 
+type IManagementStrings = "I'm here" | "You're not needed"
+
+interface IManagementData extends IData {
+  message: IManagementStrings
+}
+
+interface IManagementMessage extends IMessage {
+  type: 'management';
+  data: IManagementData
+}
+
 interface IExecuteRequestData extends IData {
   code: string
 }
@@ -86,9 +97,9 @@ interface IInitialiseMessage extends IMessage {
   type: 'initialise';
   data: IInitialiseData;
 }
-type IPyodideType = '' | 'executeRequest' | 'fileTransfer' | 'languageServer' | 'reply' | 'initialise';
-type IPyodideData = INullData | IExecuteRequestData | IFileTransferRequestData | IFileTransferData | ILanguageServerData | IReplyData | IInitialiseData;
-export type IPyodideMessage = INullMessage | IExecuteRequestMessage | IFileTransferRequestMessage | IFileTransferMessage | ILanguageServerMessage | IReplyMessage | IInitialiseMessage;
+// type IPyodideType = '' | 'executeRequest' | 'fileTransfer' | 'languageServer' | 'reply' | 'initialise';
+type IPyodideData = INullData | IExecuteRequestData | IFileTransferRequestData | IFileTransferData | ILanguageServerData | IReplyData | IInitialiseData | IManagementData;
+export type IPyodideMessage = INullMessage | IExecuteRequestMessage | IFileTransferRequestMessage | IFileTransferMessage | ILanguageServerMessage | IReplyMessage | IInitialiseMessage | IManagementMessage;
 
 interface IMessengers extends Readonly<{}> {
   next: Function;
@@ -99,6 +110,7 @@ interface IMessengers extends Readonly<{}> {
   languageServer: Observable<ILanguageServerMessage>;
   reply: Observable<IReplyMessage>;
   initialise: Observable<IInitialiseMessage>;
+  management: Observable<IManagementMessage>;
 }
 
 export function createUuid(): string {
@@ -119,7 +131,8 @@ const createBaseMessengers = () => {
     fileTransferRequest: scheduled.pipe(filter(data => data.type === 'fileTransferRequest')) as Observable<IFileTransferRequestMessage>,
     languageServer: scheduled.pipe(filter(data => data.type === 'languageServer')) as Observable<ILanguageServerMessage>,
     reply: scheduled.pipe(filter(data => data.type === 'reply')) as Observable<IReplyMessage>,
-    initialise: scheduled.pipe(filter(data => data.type === 'initialise')) as Observable<IInitialiseMessage>
+    initialise: scheduled.pipe(filter(data => data.type === 'initialise')) as Observable<IInitialiseMessage>,
+    management: scheduled.pipe(filter(data => data.type === 'management')) as Observable<IManagementMessage>
   }
 
   return messengers
@@ -141,6 +154,11 @@ const createMessengers = () => {
 
     sender.next(message)
     return responses
+  }
+
+  const sendManagementString = (message: IManagementStrings): Observable<IReplyMessage> => {
+    const data: IManagementData = { message }
+    return sendMessage(data, 'management')
   }
 
   const sendExecuteRequest = (code: string): Observable<IReplyMessage> => {
@@ -199,7 +217,7 @@ const createMessengers = () => {
 
   const messengers = {
     sender, receiver, sendExecuteRequest, sendLanguageServer, sendInitialise,
-    sendFileTransferRequest, sendFileTransfer, sendReply
+    sendFileTransferRequest, sendFileTransfer, sendReply, sendManagementString
   }
 
   return messengers

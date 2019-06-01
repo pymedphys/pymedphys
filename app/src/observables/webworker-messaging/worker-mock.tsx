@@ -7,7 +7,7 @@ interface commMock {
   postMessage: (message: any, transfer?: Transferable[] | undefined) => void
 }
 
-const workerId = v4();
+// const workerId = v4();
 
 function createWorkerCommMock() {
   class WorkerMock implements commMock {
@@ -34,7 +34,10 @@ function createWorkerCommMock() {
   }
 
   const mainMock = new MainMock()
-  workerChannel.onmessage = message => mainMock.callOnMessage(message)
+  workerChannel.onmessage = message => {
+    mainMock.callOnMessage(message);
+    workerMock.callOnMessage(message);
+  }
 
   return { workerMock, mainMock }
 }

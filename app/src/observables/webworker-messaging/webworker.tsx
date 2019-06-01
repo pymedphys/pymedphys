@@ -4,10 +4,10 @@ import loadWheels from '../../python/load-wheels.py';
 import setupDirectories from '../../python/setup-directories.py';
 
 import { workerMock } from './worker-mock';
-import { workerChannel } from './broadcast-channels';
+// import { interWorkerChannel } from './broadcast-channels';
 
 import {
-  workerMessengers, IPyodideMessage
+  workerMessengers, IPyodideMessage, mainMessengers
 } from './common';
 
 declare let pyodide: any;
@@ -30,8 +30,6 @@ const sendFileTransfer = workerMessengers.sendFileTransfer
 let ctx: PyodideWorker
 
 export const hookInWorker = () => {
-  // workerChannel.onmessage = () => { window.close(); }
-
   const pyodideReady = new BehaviorSubject<boolean>(false);
 
   ctx = workerMock as any;
@@ -51,6 +49,7 @@ export const hookInWorker = () => {
   const pythonInitialise = new Promise((resolve, reject) => {
     pyodideReady.subscribe(result => {
       if (result) {
+        console.log("Python Ready")
         resolve()
       }
     })
@@ -108,6 +107,17 @@ export const hookInWorker = () => {
       sendReply(uuid, { result: dirbasename[1] })
     }
   })
+
+  workerMessengers.receiver.management.subscribe(result => {
+    if (result.data.message === "You're not needed") {
+      window.close();
+    }
+    if (result.data.message === "I'm here") {
+      workerMessengers.sendManagementString("You're not needed")
+    }
+  })
+
+  workerMessengers.sendManagementString("I'm here")
 
 
   ctx.onmessage = function (e) { // eslint-disable-line no-unused-vars
