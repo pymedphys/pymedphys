@@ -1,10 +1,10 @@
 {
   "dependencies": {
-    "pymedphys_base": "~0.8.1",
+    "pymedphys_base": "~0.8.2",
     "pymedphys_core": "~0.8.0-dev.17",
-    "pymedphys_fileformats": "~0.8.1",
-    "pymedphys_mudensity": "~0.8.1",
-    "pymedphys_utilities": "~0.8.1"
+    "pymedphys_fileformats": "~0.8.2",
+    "pymedphys_mudensity": "~0.8.2",
+    "pymedphys_utilities": "~0.8.2"
   },
   "name": "pymedphys_databases",
   "private": true,
@@ -18,5 +18,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.1"
+  "version": "0.8.2"
 }

@@ -1,8 +1,8 @@
 {
   "dependencies": {
-    "pymedphys_dicom": "~0.8.1",
-    "pymedphys_fileformats": "~0.8.1",
-    "pymedphys_utilities": "~0.8.1"
+    "pymedphys_dicom": "~0.8.2",
+    "pymedphys_fileformats": "~0.8.2",
+    "pymedphys_utilities": "~0.8.2"
   },
   "name": "pymedphys_xlwings",
   "private": true,
@@ -16,5 +16,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.1"
+  "version": "0.8.2"
 }
