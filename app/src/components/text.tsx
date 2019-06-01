@@ -40,6 +40,14 @@ export class AppText extends React.Component {
           tasks.
         </p>
 
+        <H3>Currently only works in Desktop Browsers</H3>
+        <p>
+          As far as has been tested thus far, this will only work in desktop
+          browsers, only the desktop versions of Firefox and Chrome have been
+          tested. On mobile browsers it the "Python Loading" will likely
+          indefinitely hang.
+        </p>
+
         <H3>Dependencies used</H3>
         <p>
           This is an example application that
@@ -53,7 +61,7 @@ export class AppText extends React.Component {
           This application loads Python into the <a href="https://webassembly.org/">
             wasm virtual machine
         </a> of your browser allowing Python code to be run on your local machine without
-          having Python installed, or without needing Python to run on a remote.</p>
+          having Python installed, or without needing Python to run on a remote server.</p>
         <p>
           When it comes to sensitive information or large data files, this
           means no data needs to leave your computer, while you still get the
