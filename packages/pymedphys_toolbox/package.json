@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "pymedphys_core": "~0.8.0-dev.17",
-    "pymedphys_databases": "~0.8.0"
+    "pymedphys_databases": "~0.8.1"
   },
   "name": "pymedphys_toolbox",
   "private": true,
@@ -15,5 +15,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0"
+  "version": "0.8.1"
 }
