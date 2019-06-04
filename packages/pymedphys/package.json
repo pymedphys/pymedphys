@@ -1,19 +1,19 @@
 {
   "dependencies": {
-    "pymedphys_analysis": "~0.8.3",
-    "pymedphys_base": "~0.8.3",
-    "pymedphys_coordsandscales": "~0.8.3",
+    "pymedphys_analysis": "~0.8.4",
+    "pymedphys_base": "~0.8.4",
+    "pymedphys_coordsandscales": "~0.8.4",
     "pymedphys_core": "~0.8.0-dev.17",
-    "pymedphys_databases": "~0.8.3",
-    "pymedphys_dicom": "~0.8.3",
-    "pymedphys_electronfactors": "~0.8.3",
-    "pymedphys_fileformats": "~0.8.3",
-    "pymedphys_gamma": "~0.8.3",
-    "pymedphys_labs": "~0.8.3",
-    "pymedphys_logfiles": "~0.8.3",
-    "pymedphys_mudensity": "~0.8.3",
-    "pymedphys_utilities": "~0.8.3",
-    "pymedphys_xlwings": "~0.8.3"
+    "pymedphys_databases": "~0.8.4",
+    "pymedphys_dicom": "~0.8.4",
+    "pymedphys_electronfactors": "~0.8.4",
+    "pymedphys_fileformats": "~0.8.4",
+    "pymedphys_gamma": "~0.8.4",
+    "pymedphys_labs": "~0.8.4",
+    "pymedphys_logfiles": "~0.8.4",
+    "pymedphys_mudensity": "~0.8.4",
+    "pymedphys_utilities": "~0.8.4",
+    "pymedphys_xlwings": "~0.8.4"
   },
   "name": "pymedphys",
   "private": true,
@@ -33,5 +33,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.3"
+  "version": "0.8.4"
 }
