@@ -1,11 +1,10 @@
-<!-- markdownlint-disable MD033 MD024 -->
+<!-- markdownlint-disable MD024 -->
 
 # Release Notes
 
 All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-<br/>
 
 <!--  Template
 ## [Unreleased]
@@ -30,13 +29,25 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
-
 ## [Unreleased]
 
 ### Breaking Changes
 
 - nil
 
+## [0.8.4] -- 2019/06/04
+
+### Package changes
+
+- Made `xlwings` not install by default if system is `Linux` within `setup.py`
+- Removed unreleased `jupyter` based GUI
+
+## [0.8.3] -- 2019/06/04
+
+### Package changes
+
+- Updated MANIFEST file within `pymedphys_fileformats` to appropriately include
+  LICENSE files.
 
 ## [0.8.2] -- 2019/06/01
 
@@ -44,13 +55,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Included license files within the subpackage distributions
 
-
 ## [0.8.1] -- 2019/06/01
 
 ### Dependency changes
 
 - Removed numpy version upperlimit
-
 
 ## [0.8.0] -- 2019/06/01
 
@@ -108,7 +117,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   into a full grid of coordinate triplets that correspond to the original grid
   (pixel array or dose grid).
 
-
 ## [0.7.2] -- 2019/04/05
 
 ### Dependency changes
@@ -164,8 +172,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `pymedphys trf to-csv` within the command line to convert `.trf` files into
   `.csv` files.
 
-<br/>
-
 ## [0.6.0] -- 2019/03/15
 
 ### Breaking Changes
@@ -203,15 +209,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - All uses of `dcm` as a variable name for instances of PyDicom Datasets have
   been converted to `ds` to match PyDicom convention.
 
-<br/>
-
 ## [0.5.1] -- 2019/01/05
 
 ### New Features
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.8.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.8.4...master
+[0.8.4]: https://github.com/pymedphys/pymedphys/compare/v0.8.3...v0.8.4
+[0.8.3]: https://github.com/pymedphys/pymedphys/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/pymedphys/pymedphys/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/pymedphys/pymedphys/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/pymedphys/pymedphys/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/pymedphys/pymedphys/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/pymedphys/pymedphys/compare/v0.7.0...v0.7.1

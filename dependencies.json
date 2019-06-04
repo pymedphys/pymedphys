@@ -25,7 +25,8 @@
     "pypi": {
       "external": {
         "numpy": ">= 1.12",
-        "sphinx": ">= 1.4, < 1.8"
+        "sphinx": ">= 1.4, < 1.8",
+        "xlwings": "; platform_system != \"Linux\""
       },
       "internal": {
         "pymedphys": ">= 0.9.0dev0, < 0.10.0",
@@ -50,10 +51,7 @@
   },
   "tree": {
     "pymedphys": {
-      "external": [
-        "jinja2",
-        "notebook"
-      ],
+      "external": [],
       "internal": [
         "pymedphys_analysis",
         "pymedphys_base",
@@ -71,9 +69,7 @@
       ],
       "stdlib": [
         "argparse",
-        "glob",
         "os",
-        "re",
         "subprocess",
         "sys"
       ]
