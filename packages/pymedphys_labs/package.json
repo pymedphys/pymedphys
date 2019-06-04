@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "pymedphys_utilities": "~0.8.3"
+    "pymedphys_utilities": "~0.8.4"
   },
   "name": "pymedphys_labs",
   "private": true,
@@ -14,5 +14,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.3"
+  "version": "0.8.4"
 }
