@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "pymedphys_base": "~0.8.2",
-    "pymedphys_utilities": "~0.8.2"
+    "pymedphys_base": "~0.8.3",
+    "pymedphys_utilities": "~0.8.3"
   },
   "name": "pymedphys_mudensity",
   "private": true,
@@ -15,5 +15,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.2"
+  "version": "0.8.3"
 }
