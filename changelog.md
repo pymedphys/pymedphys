@@ -34,7 +34,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Package changes
 
-- Updated MANIFEST file within pymedphys_fileformats to appropriately include
+- Updated MANIFEST file within `pymedphys_fileformats` to appropriately include
   LICENSE files.
 
 ## [0.8.2] -- 2019/06/01
