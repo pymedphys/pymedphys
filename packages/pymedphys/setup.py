@@ -75,6 +75,7 @@ setup(
     install_requires=install_requires,
     extras_require={
         'docs': [
+            'ipykernel',
             'jupyter_client',
             'm2r',
             'nbsphinx',
