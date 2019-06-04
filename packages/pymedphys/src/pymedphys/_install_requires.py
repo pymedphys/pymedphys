@@ -1,6 +1,4 @@
 install_requires = [
-    "jinja2",
-    "notebook",
     "pymedphys_analysis >= 0.9.0dev0, < 0.10.0",
     "pymedphys_base >= 0.9.0dev0, < 0.10.0",
     "pymedphys_coordsandscales >= 0.9.0dev0, < 0.10.0",
