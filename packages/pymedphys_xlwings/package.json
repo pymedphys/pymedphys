@@ -7,9 +7,10 @@
   "name": "pymedphys_xlwings",
   "private": true,
   "scripts": {
-    "pip:install:dev": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install -e .')\"",
-    "pip:install:prod": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .')\"",
-    "pip:install:test": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .[test]')\"",
+    "pip:install:dev": "yarn install:xlwings && pip install -e .",
+    "pip:install:prod": "yarn install:xlwings && pip install .",
+    "pip:install:test": "yarn install:xlwings && pip install .[test]",
+    "install:xlwings": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install xlwings');\"",
     "postversion": "yarn propagate:version",
     "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
