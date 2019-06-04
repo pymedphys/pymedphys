@@ -1,3 +1,6 @@
 include LICENSE*
 graft src/pymedphys_fileformats
 global-exclude *.py[co]
+prune src/pymedphys*/.mypy_cache
+prune src/pymedphys*/*/.mypy_cache
+prune src/pymedphys*/*/*/.mypy_cache
