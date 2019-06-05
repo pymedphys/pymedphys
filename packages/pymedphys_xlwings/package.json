@@ -7,6 +7,7 @@
   "name": "pymedphys_xlwings",
   "private": true,
   "scripts": {
+    "conda-forge": "python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
     "install:xlwings": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install xlwings');\"",
     "pip:install:dev": "yarn install:xlwings && pip install -e .",
     "pip:install:prod": "yarn install:xlwings && pip install .",
