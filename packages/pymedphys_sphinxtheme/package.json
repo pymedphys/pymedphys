@@ -28,6 +28,7 @@
   "private": true,
   "scripts": {
     "bootstrap": "yarn --production && yarn webpack:prod",
+    "conda-forge": "yarn bootstrap && python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
     "pip:install:dev": "yarn bootstrap && pip install -e .",
     "pip:install:prod": "yarn bootstrap && pip install .",
     "pip:install:test": "yarn bootstrap && pip install .[test]",

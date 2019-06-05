@@ -6,6 +6,7 @@
   "name": "pymedphys_mudensity",
   "private": true,
   "scripts": {
+    "conda-forge": "python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
     "pip:install:dev": "pip install -e .",
     "pip:install:prod": "pip install .",
     "pip:install:test": "pip install .[test]",
