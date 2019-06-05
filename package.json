@@ -10,6 +10,8 @@
     "bump:minor": "yarn lerna version --force-publish=* --no-git-tag-version minor && yarn postversion",
     "bump:dev:minor": "yarn lerna version --force-publish=* --no-git-tag-version --preid dev preminor && yarn postversion",
     "bump:dev": "yarn lerna version --force-publish=* --no-git-tag-version --preid dev prerelease && yarn postversion",
+    "conda-forge": "yarn lerna run conda-forge -- --scope=$SUBPACKAGE",
+    "conda-forge:tar.gz": "python ./scripts/create-conda-forge-archive.py",
     "docker:internal": "yarn install:prod",
     "docs": "yarn docs:prebuild && yarn docs:live",
     "docs:live": "sphinx-autobuild -W -p 7070 docs docs/_build/html",
