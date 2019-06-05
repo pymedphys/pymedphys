@@ -18,8 +18,8 @@ def main():
 
     licenses = glob('LICENSE*')
 
-    to_archive = ['packages', 'package.json', 'README.rst'] + licenses
-    to_ignore = glob('*tests*')
+    to_archive = [
+        'packages', 'package.json', 'README.rst', 'lerna.json'] + licenses
 
     output_filename = 'v{}.tar.gz'.format(version)
 
