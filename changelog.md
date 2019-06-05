@@ -29,6 +29,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.8.5] -- 2019/06/05
+
+### Package changes
+
+- Enforce `Python >= 3.7` within `setup.py`. The package already did not work
+  with `Python < 3.7`, this just makes the error message clearer and the
+  failing faster.
+
 ## [0.8.4] -- 2019/06/04
 
 ### Package changes
