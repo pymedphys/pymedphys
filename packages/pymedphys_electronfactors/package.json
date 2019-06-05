@@ -12,5 +12,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.4"
+  "version": "0.8.5"
 }
