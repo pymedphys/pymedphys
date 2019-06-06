@@ -6,10 +6,15 @@ from glob import glob
 
 
 def tar_filter(tar_info: tarfile.TarInfo):
-    if 'tests' in tar_info.name:
-        return None
-    else:
-        return tar_info
+    blacklist = [
+        'tests', 'build', 'dist', 'node_modules', 'egg-info', '__pycache__',
+        '.pyc', 'yarn-error.log']
+
+    for item in blacklist:
+        if item in tar_info.name:
+            return None
+
+    return tar_info
 
 
 def main():
