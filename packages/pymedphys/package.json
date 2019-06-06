@@ -19,6 +19,7 @@
   "private": true,
   "scripts": {
     "copy:readme": "python ./scripts/attempt-readme-copy.py",
+    "conda-forge": "yarn prerun && python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
     "pip:install": "yarn prerun && pip install .",
     "pip:install:dev": "yarn prerun && pip install -e .",
     "pip:install:dev:all": "yarn prerun && pip install -e .[docs,test,lint,dev]",
