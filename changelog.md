@@ -29,11 +29,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
-## [Unreleased]
+## [0.9.0] -- 2019/06/06
 
-### Breaking Changes
+### New Features
 
-- nil
+- Re-exposed `multi_mosaiq_connect`, `multi_fetch_and_verify_mosaiq`,
+  `get_qcls_by_date`, and `get_staff_name` from `pymedphys.msq`.
 
 ## [0.8.4] -- 2019/06/04
 
