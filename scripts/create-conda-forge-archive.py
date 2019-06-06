@@ -8,7 +8,7 @@ from glob import glob
 def tar_filter(tar_info: tarfile.TarInfo):
     blacklist = [
         'tests', 'build', 'dist', 'node_modules', 'egg-info', '__pycache__',
-        '.pyc', 'yarn-error.log', '.mypy_cache']
+        '.pyc', 'yarn-error.log', '.mypy_cache', 'sphinxtheme']
 
     for item in blacklist:
         if item in tar_info.name:
