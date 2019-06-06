@@ -1,4 +1,4 @@
-=========
+﻿=========
 PyMedPhys
 =========
 
@@ -103,6 +103,13 @@ along with their affiliation:
 
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
 
+
+* `Pedro Martinez`_
+    * `University of Calgary`_, Canada
+    * `Tom Baker Cancer Centre`_, Canada
+
+.. _`Pedro Martinez`: https://github.com/peterg1t
+
 |
 
 .. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
@@ -133,6 +140,13 @@ along with their affiliation:
 
 |
 
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UofC_logo.png
+    :target: `University of Calgary`_
+    :align: center
+    :width: 400 px
+
+|
+
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
@@ -140,6 +154,8 @@ along with their affiliation:
 .. _`Anderson Regional Cancer Center`: http://www.andersonregional.org/CancerCenter.aspx
 
 .. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
+
+.. _`University of Calgary`: http://www.ucalgary.ca/
 
 
 We want you on this list. We want you, whether you are a  clinical
