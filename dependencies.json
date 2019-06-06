@@ -193,9 +193,12 @@
     "pymedphys_labs": {
       "external": [
         "Pillow",
+        "fitz",
         "matplotlib",
         "numpy",
+        "pydicom",
         "scipy",
+        "tqdm",
         "xarray"
       ],
       "internal": [
@@ -207,6 +210,8 @@
         "csv",
         "os",
         "string",
+        "subprocess",
+        "sys",
         "typing"
       ]
     },
