@@ -65,7 +65,6 @@ from scipy.signal import savgol_filter
 from scipy.stats import linregress
 from scipy import signal
 from scipy.signal import find_peaks, peak_prominences, peak_widths
-import fitz
 
 
 
@@ -81,7 +80,7 @@ def running_mean(x, N):
         # cap indices to min and max indices
         a = max(0, a)
         b = min(dim_len, b)
-        out[i] = np.mean(x[a:b])
+        out[i] = np.mean(x[a:b])  # pylint: disable=unsupported-assignment-operation
     return out
 
 
