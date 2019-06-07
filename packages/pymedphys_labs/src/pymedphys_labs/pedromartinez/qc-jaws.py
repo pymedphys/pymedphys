@@ -81,7 +81,7 @@ def running_mean(x, N):
         # cap indices to min and max indices
         a = max(0, a)
         b = min(dim_len, b)
-        out[i] = np.mean(x[a:b])
+        out[i] = np.mean(x[a:b])  # pylint: disable=unsupported-assignment-operation
     return out
 
 
