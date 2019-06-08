@@ -114,35 +114,35 @@ along with their affiliation:
 
 .. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
-    :align: center
+    :align: middle
     :width: 400 px
 
 
 
 .. |rah| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo2.png
     :target: `Royal Adelaide Hospital`_
-    :align: center
+    :align: middle
     :width: 200 px
 
 
 
 .. |arcc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
     :target: `Anderson Regional Cancer Center`_
-    :align: center
+    :align: middle
     :width: 400 px
 
 
 
 .. |nbcc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
-    :align: center
+    :align: middle
     :width: 400 px
 
 
 
 .. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UofC_logo.png
     :target: `University of Calgary`_
-    :align: center
+    :align: middle
     :width: 200 px
 
 
