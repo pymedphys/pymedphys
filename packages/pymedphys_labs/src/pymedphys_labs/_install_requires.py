@@ -1,6 +1,5 @@
 install_requires = [
     "Pillow",
-    "fitz",
     "matplotlib",
     "numpy >= 1.12",
     "pydicom",
