@@ -157,6 +157,8 @@ along with their affiliation:
 
 .. _`University of Calgary`: http://www.ucalgary.ca/
 
+.. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
+
 
 We want you on this list. We want you, whether you are a  clinical
 Medical Physicist, PhD or Masters student, researcher, or even just
