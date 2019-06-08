@@ -193,7 +193,6 @@
     "pymedphys_labs": {
       "external": [
         "Pillow",
-        "fitz",
         "matplotlib",
         "numpy",
         "pydicom",
