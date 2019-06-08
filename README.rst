@@ -1,4 +1,4 @@
-﻿=========
+=========
 PyMedPhys
 =========
 
@@ -110,42 +110,42 @@ along with their affiliation:
 
 .. _`Pedro Martinez`: https://github.com/peterg1t
 
-|
+|rccc| |rah| |arcc| |nbcc| |uoc|
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
+.. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/RCCC_logo.png
     :target: `Riverina Cancer Care Centre`_
     :align: center
     :width: 400 px
 
-|
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo2.png
+
+.. |rah| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/GOSA_logo2.png
     :target: `Royal Adelaide Hospital`_
     :align: center
     :width: 200 px
 
-|
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
+
+.. |arcc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/JARMC_logo.png
     :target: `Anderson Regional Cancer Center`_
     :align: center
     :width: 400 px
 
-|
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
+
+.. |nbcc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/NBCCC_logo.png
     :target: `Northern Beaches Cancer Care`_
     :align: center
     :width: 400 px
 
-|
 
-.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UofC_logo.png
+
+.. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UofC_logo.png
     :target: `University of Calgary`_
     :align: center
-    :width: 400 px
+    :width: 200 px
 
-|
+
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
