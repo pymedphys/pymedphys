@@ -81,7 +81,7 @@ slice_end = np.min([
 
 max_ref_dose = np.max(dose_reference)
 
-z_vals = z_ref[slice(slice_start, slice_end, 5)]
+z_vals = z_ref[slice(slice_start, slice_end, 1)]
 
 eval_slices = [
     dose_evaluation[np.where(z_i == z_eval)[0][0], :, :]
