@@ -48,6 +48,7 @@ install_requires = get_variable_from_file(
 setup(
     name=package,
     version=version,
+    python_requires='>=3.7',
     author="PyMedPhys Contributors",
     author_email="developers@pymedphys.com",
     description='Medical Physics python modules',
