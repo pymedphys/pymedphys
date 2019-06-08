@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "pymedphys_base": "~0.9.0",
+    "pymedphys_base": "~0.10.0-dev.0",
     "pymedphys_core": "~0.8.0-dev.17"
   },
   "name": "pymedphys_fileformats",
@@ -16,5 +16,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.9.0"
+  "version": "0.10.0-dev.0"
 }
