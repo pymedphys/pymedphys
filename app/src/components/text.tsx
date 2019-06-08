@@ -31,10 +31,6 @@ export class AppText extends React.Component {
         </li>
         </ul>
         <p>
-          In its current form only one Gantry angle is used within the DICOM
-          file.
-       </p>
-        <p>
           In the future it is expected that this application will be able to
           serve as a generic file processing application for a range processing
           tasks.
