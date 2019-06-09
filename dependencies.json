@@ -195,7 +195,9 @@
         "Pillow",
         "matplotlib",
         "numpy",
+        "pydicom",
         "scipy",
+        "tqdm",
         "xarray"
       ],
       "internal": [
@@ -207,6 +209,8 @@
         "csv",
         "os",
         "string",
+        "subprocess",
+        "sys",
         "typing"
       ]
     },
