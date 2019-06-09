@@ -110,27 +110,24 @@ along with their affiliation:
 
 .. _`Pedro Martinez`: https://github.com/peterg1t
 
+
 |rccc| |rah| |jarmc| |nbcc| |uoc|
+
 
 .. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/rccc_200x200.png
     :target: `Riverina Cancer Care Centre`_
-    :align: middle
 
 .. |rah| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/gosa_200x200.png
     :target: `Royal Adelaide Hospital`_
-    :align: middle
 
 .. |jarmc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/jarmc_200x200.png
     :target: `Anderson Regional Cancer Center`_
-    :align: middle
 
 .. |nbcc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/nbcc_200x200.png
     :target: `Northern Beaches Cancer Care`_
-    :align: middle
 
 .. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/uoc_200x200.png
     :target: `University of Calgary`_
-    :align: middle
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
