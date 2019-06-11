@@ -29,6 +29,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [Unreleased]
+
+### New Features
+
+- Re-exposed `convert2_ratio_perim_area` and `create_transformed_mesh` from
+  `pymedphys.electronfactors`.
+
 ## [0.9.0] -- 2019/06/06
 
 ### New Features
@@ -216,7 +223,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.8.4...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.9.0...master
+[0.9.0]: https://github.com/pymedphys/pymedphys/compare/v0.8.4...v0.9.0
 [0.8.4]: https://github.com/pymedphys/pymedphys/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/pymedphys/pymedphys/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/pymedphys/pymedphys/compare/v0.8.1...v0.8.2
