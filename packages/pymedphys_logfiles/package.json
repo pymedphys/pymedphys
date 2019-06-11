@@ -1,14 +1,15 @@
 {
   "dependencies": {
     "pymedphys_core": "~0.8.0-dev.17",
-    "pymedphys_databases": "~0.9.0-dev.0",
-    "pymedphys_fileformats": "~0.9.0-dev.0",
-    "pymedphys_mudensity": "~0.9.0-dev.0",
-    "pymedphys_utilities": "~0.9.0-dev.0"
+    "pymedphys_databases": "~0.9.0",
+    "pymedphys_fileformats": "~0.9.0",
+    "pymedphys_mudensity": "~0.9.0",
+    "pymedphys_utilities": "~0.9.0"
   },
   "name": "pymedphys_logfiles",
   "private": true,
   "scripts": {
+    "conda-forge": "python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
     "pip:install:dev": "pip install -e .",
     "pip:install:prod": "pip install .",
     "pip:install:test": "pip install .[test]",
@@ -18,5 +19,5 @@
     "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.9.0-dev.0"
+  "version": "0.9.0"
 }
