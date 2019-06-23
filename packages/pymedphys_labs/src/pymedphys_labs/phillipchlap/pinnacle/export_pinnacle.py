@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
-from .pinnacle import Pinnacle
 import sys
 import os
 import logging
 import tarfile
 import tempfile
 import click
+
+from .pinnacle import Pinnacle
+
 sys.path.append('.')
 
 logger = logging.getLogger(__name__)
@@ -188,10 +190,11 @@ def export(output_directory, verbose, modality, plan_name, trial, list_available
 
 
 def main():
+
     # For setup console_scripts
-    export()
+    export()  # pylint: disable=no-value-for-parameter
 
 
 if __name__ == "__main__":
 
-    export()
+    export()  # pylint: disable=no-value-for-parameter

@@ -225,7 +225,7 @@ def convert_plan(plan, export_path):
                 plan.logger.debug("Wedge is no name")
                 numwedges = 0
             elif "edw" in cp['WedgeContext']['WedgeName'] or "EDW" in cp['WedgeContext']['WedgeName']:
-                logger.debug("Wedge present")
+                plan.logger.debug("Wedge present")
                 wedgetype = "DYNAMIC"
                 wedgeflag = True
                 numwedges = 1
@@ -238,9 +238,9 @@ def convert_plan(plan, export_path):
                 elif "WedgeTopToBottom" == wedgeinorout:
                     wedgename = cp['WedgeContext']['WedgeName'].upper() + wedgeangle + "OUT"
                     wedgeorientation = '180'
-                logger.debug("Wedge name = ", wedgename)
+                plan.logger.debug("Wedge name = ", wedgename)
             elif "UP" in cp['WedgeContext']['WedgeName']:
-                logger.debug("Wedge present")
+                plan.logger.debug("Wedge present")
                 wedgetype = "STANDARD"
                 wedgeflag = True
                 numwedges = 1
@@ -267,7 +267,7 @@ def convert_plan(plan, export_path):
                 elif "WedgeBottomToTop" == wedgeinorout:
                     wedgename = "W" + str(int(wedgeangle)) + "IN" + numberinname  # + "U"
                     wedgeorientation = '0'  # temporary until I find out what to put here
-                logger.debug("Wedge name = ", wedgename)
+                plan.logger.debug("Wedge name = ", wedgename)
 
         # Get the prescription for this beam
         prescription = [p for p in trial_info["PrescriptionList"] if p["Name"] == beam["PrescriptionName"]][0]
