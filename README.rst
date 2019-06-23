@@ -82,7 +82,7 @@ along with their affiliation:
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
 
-.. _`Matthew Jennings`: https://github.com/centrus007
+.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
 
 * `Paul King`_
