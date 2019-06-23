@@ -193,6 +193,8 @@
     "pymedphys_labs": {
       "external": [
         "Pillow",
+        "PyYAML",
+        "click",
         "matplotlib",
         "numpy",
         "pydicom",
@@ -207,10 +209,20 @@
         "collections",
         "copy",
         "csv",
+        "io",
+        "logging",
+        "math",
         "os",
+        "random",
+        "re",
+        "shutil",
         "string",
+        "struct",
         "subprocess",
         "sys",
+        "tarfile",
+        "tempfile",
+        "time",
         "typing"
       ]
     },
