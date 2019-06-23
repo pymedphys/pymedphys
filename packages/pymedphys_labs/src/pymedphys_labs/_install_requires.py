@@ -1,5 +1,6 @@
 install_requires = [
     "Pillow",
+    "click",
     "matplotlib",
     "numpy >= 1.12",
     "pydicom",
@@ -7,6 +8,5 @@ install_requires = [
     "scipy",
     "tqdm",
     "xarray",
-    "PyYAML",
-    "click"
+    "yaml"
 ]
