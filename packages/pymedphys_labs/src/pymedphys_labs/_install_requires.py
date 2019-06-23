@@ -1,5 +1,6 @@
 install_requires = [
     "Pillow",
+    "PyYAML",
     "click",
     "matplotlib",
     "numpy >= 1.12",
@@ -7,6 +8,5 @@ install_requires = [
     "pymedphys_utilities >= 0.10.0dev0, < 0.11.0",
     "scipy",
     "tqdm",
-    "xarray",
-    "yaml"
+    "xarray"
 ]
