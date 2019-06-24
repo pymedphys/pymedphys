@@ -1,7 +1,6 @@
 install_requires = [
     "Pillow",
     "PyYAML",
-    "click",
     "matplotlib",
     "numpy >= 1.12",
     "pydicom",
