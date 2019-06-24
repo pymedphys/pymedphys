@@ -194,7 +194,6 @@
       "external": [
         "Pillow",
         "PyYAML",
-        "click",
         "matplotlib",
         "numpy",
         "pydicom",
