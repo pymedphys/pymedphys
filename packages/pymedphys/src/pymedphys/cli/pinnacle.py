@@ -26,7 +26,7 @@
 """Provides a various set of tools for DICOM header manipulation.
 """
 
-from pymedphys_labs.phillipchlap.export_pinnacle import export
+from pymedphys_pinnacle import export
 
 
 def pinnacle_cli(subparsers):
