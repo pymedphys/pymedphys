@@ -66,6 +66,7 @@
         "pymedphys_labs",
         "pymedphys_logfiles",
         "pymedphys_mudensity",
+        "pymedphys_pinnacle",
         "pymedphys_utilities",
         "pymedphys_xlwings"
       ],

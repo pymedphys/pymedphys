@@ -10,6 +10,7 @@ install_requires = [
     "pymedphys_labs >= 0.10.0dev0, < 0.11.0",
     "pymedphys_logfiles >= 0.10.0dev0, < 0.11.0",
     "pymedphys_mudensity >= 0.10.0dev0, < 0.11.0",
+    "pymedphys_pinnacle >= 0.10.0dev0, < 0.11.0",
     "pymedphys_utilities >= 0.10.0dev0, < 0.11.0",
     "pymedphys_xlwings >= 0.10.0dev0, < 0.11.0"
 ]
