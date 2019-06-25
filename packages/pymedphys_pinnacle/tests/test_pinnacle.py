@@ -34,7 +34,7 @@ def archive():
 
 @pytest.fixture
 def pinn(archive):
-    from pymedphys_labs.phillipchlap import Pinnacle
+    from pymedphys_pinnacle import Pinnacle
     return Pinnacle(archive, None)
 
 
