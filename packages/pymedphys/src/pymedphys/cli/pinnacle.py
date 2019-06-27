@@ -1,4 +1,5 @@
-# Copyright (C) 2019 Cancer Care Associates
+# Copyright (C) 2019 South Western Sydney Local Health District,
+# University of New South Wales
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
