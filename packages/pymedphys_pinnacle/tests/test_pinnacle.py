@@ -1,92 +1,255 @@
+# Copyright (C) 2019 South Western Sydney Local Health District,
+# University of New South Wales
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version (the "AGPL-3.0+").
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License and the additional terms for more
+# details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
+# Affero General Public License. These additional terms are Sections 1, 5,
+# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
+# where all references to the definition "License" are instead defined to
+# mean the AGPL-3.0+.
+
+# You should have received a copy of the Apache-2.0 along with this
+# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+# This work is derived from:
+# https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
+# which is released under the following license:
+
+# Copyright (c) [2017] [Colleen Henschel, Andrew Alexander]
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
 import pytest
 import pydicom
-import numpy
+import numpy as np
 import os
 import shutil
 import tempfile
+from zipfile import ZipFile
 
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "data")
+from pymedphys_pinnacle import Pinnacle
 
-pinn_archive = os.path.join(DATA_DIRECTORY, 'pinn/test_pinnacle_16.0.tar.gz')
-pinn_path = 'Institution_2812/Mount_0/Patient_16218'
-gt_dose_path = os.path.join(
-    DATA_DIRECTORY, 'dcm/1.3.46.670589.13.997910418.20181018190715.183309.dcm')
+HERE = os.path.dirname(os.path.abspath(__file__))
+DATA_DIRECTORY = os.path.join(HERE, 'data', 'export')
+
 working_path = tempfile.mkdtemp()
-archive_path = os.path.join(working_path, 'pinn')
-export_path = os.path.join(working_path, 'output')
+data_path = os.path.join(working_path, 'data')
+
+
+data_zip = os.path.join(DATA_DIRECTORY, 'pinnacle_16.0_test_data.zip')
 
 
 @pytest.fixture(scope='session')
-def archive():
-    import tarfile
+def data():
 
-    shutil.rmtree(working_path, ignore_errors=True)
-    os.makedirs(working_path)
+    zip_ref = ZipFile(data_zip, 'r')
+    zip_ref.extractall(data_path)
+    zip_ref.close()
 
-    t = tarfile.open(pinn_archive)
-
-    for m in t.getmembers():
-        if not ':' in m.name:
-            t.extract(m, path=archive_path)
-    return os.path.join(archive_path, pinn_path)
+    return data_path
 
 
 @pytest.fixture
-def pinn(archive):
-    from pymedphys_pinnacle import Pinnacle
-    return Pinnacle(archive, None)
+def pinn(data):
+
+    pinn_objs = []
+
+    for d in os.listdir(data):
+        pinn_dir = os.path.join(data, d, 'Pinnacle')
+        for pat_dir in os.listdir(pinn_dir):
+            pinn_objs.append(Pinnacle(os.path.join(pinn_dir, pat_dir), None))
+
+    return pinn_objs
 
 
 def test_pinnacle(pinn):
-    plans = pinn.get_plans()
-    assert len(plans) == 3
+
+    for p in pinn:
+        plans = p.get_plans()
+        assert len(plans) == 1
+
+
+def find_corresponding_dicom(dcm):
+
+    for root, dirs, files in os.walk(data_path):
+
+        for f in files:
+            if f.endswith(".dcm"):
+                dcm_file = os.path.join(root, f)
+                ds = pydicom.read_file(dcm_file)
+
+                if ds.PatientID == dcm.PatientID and ds.Modality == dcm.Modality:
+
+                    if ds.Modality == "CT":
+                        # Also match the SliceLocation
+                        if not ds.SliceLocation == dcm.SliceLocation:
+                            continue
+                    return ds
+
+    return None
+
+
+def test_ct(pinn):
+
+    for p in pinn:
+        export_path = os.path.join(
+            working_path, "output", p.patient_info['MedicalRecordNumber'], "CT")
+        os.makedirs(export_path)
+
+        export_plan = p.get_plans()[0]
+
+        p.export_image(export_plan.primary_image, export_path=export_path)
+
+        # Get the exported CT file
+        for f in os.listdir(export_path):
+            if f.startswith('CT'):
+                exported_ct = pydicom.read_file(os.path.join(export_path, f))
+                assert exported_ct.Modality == 'CT'
+
+                # Get the ground truth CT file
+                pinn_ct = find_corresponding_dicom(exported_ct)
+                assert pinn_ct != None
+
+                # Some (very) basic sanity checks
+                assert pinn_ct.PatientID == exported_ct.PatientID
+                assert pinn_ct.SliceLocation == exported_ct.SliceLocation
+
+                # Get the image data
+                exported_img = exported_ct.pixel_array.astype(np.int16)
+                pinn_img = pinn_ct.pixel_array.astype(np.int16)
+
+                # Ensure images are the same size
+                assert exported_img.shape == pinn_img.shape
+
+                # Make sure the absolute difference is (close to) zero
+                assert np.allclose(exported_img, pinn_img, atol=0.00001)
+
+
+def test_struct(pinn):
+
+    for p in pinn:
+        export_path = os.path.join(
+            working_path, "output", p.patient_info['MedicalRecordNumber'], "RTSTRUCT")
+        os.makedirs(export_path)
+
+        export_plan = p.get_plans()[0]
+
+        p.export_struct(export_plan, export_path=export_path)
+
+        # Get the exported struct file
+        for f in os.listdir(export_path):
+            if f.startswith('RS'):
+                exported_struct = pydicom.read_file(
+                    os.path.join(export_path, f))
+                assert exported_struct.Modality == 'RTSTRUCT'
+
+        # Get the ground truth RTSTRUCT file
+        pinn_struct = find_corresponding_dicom(exported_struct)
+        assert pinn_struct != None
+
+        assert len(pinn_struct.StructureSetROISequence) == len(
+            exported_struct.StructureSetROISequence)
+
+        for s1, s2 in zip(pinn_struct.StructureSetROISequence, exported_struct.StructureSetROISequence):
+            assert s1.ROIName == s2.ROIName
+
+        # TODO: Generate a mask for each contour and do a comparison of these
 
 
 def test_dose(pinn):
 
-    os.makedirs(export_path)
+    for p in pinn:
+        export_path = os.path.join(
+            working_path, "output", p.patient_info['MedicalRecordNumber'], "RTDOSE")
+        os.makedirs(export_path)
 
-    export_plan = None
+        export_plan = p.get_plans()[0]
 
-    for p in pinn.get_plans():
-        if p.plan_info['PlanName'] == 'Plan_2':
-            export_plan = p
-            break
+        p.export_dose(export_plan, export_path)
 
-    assert export_plan != None
+        # Get the exported RTDOSE file
+        for f in os.listdir(export_path):
+            if f.startswith('RD'):
+                exported_dose = pydicom.read_file(os.path.join(export_path, f))
+                assert exported_dose.Modality == 'RTDOSE'
+                break
 
-    pinn.export_dose(export_plan, export_path)
+        # Get the ground truth RTDOSE file
+        pinn_dose = find_corresponding_dicom(exported_dose)
+        assert pinn_dose != None
 
-    # Get the exported RTDOSE file
-    for f in os.listdir(export_path):
-        if f.startswith('RD'):
-            exported_dose = pydicom.read_file(os.path.join(export_path, f))
-            assert exported_dose.Modality == 'RTDOSE'
-            break
+        # Get the dose volumes
+        exported_vol = exported_dose.pixel_array.astype(np.int16)
+        pinn_vol = pinn_dose.pixel_array.astype(np.int16)
 
-    # Get the ground truth RTDOSE file
-    pinn_dose = pydicom.read_file(gt_dose_path)
-    assert pinn_dose.Modality == 'RTDOSE'
+        # Ensure dose volumes are the same size
+        assert exported_vol.shape == pinn_vol.shape
 
-    # Get the dose volumes
-    exported_vol = exported_dose.pixel_array.astype(numpy.int16)
-    pinn_vol = pinn_dose.pixel_array.astype(numpy.int16)
+        # Apply dose grid scaling
+        exported_vol = exported_vol * exported_dose.DoseGridScaling
+        pinn_vol = pinn_vol * pinn_dose.DoseGridScaling
 
-    # Ensure dose volumes are the same size
-    assert exported_vol.shape == pinn_vol.shape
+        # Make sure the maximum values are in the same locations
+        assert exported_vol.argmax() == pinn_vol.argmax()
 
-    # Apply dose grid scaling
-    exported_vol = exported_vol * exported_dose.DoseGridScaling
-    pinn_vol = pinn_vol * pinn_dose.DoseGridScaling
+        # Make sure the absolute difference is (close to) zero
+        assert np.allclose(exported_vol, pinn_vol, atol=0.01)
 
-    # Make sure the maximum values are in the same locations
-    assert exported_vol.argmax() == pinn_vol.argmax()
 
-    # Get the absolute difference between these volumes
-    diff = exported_vol - pinn_vol
-    abs_diff = numpy.absolute(diff)
+def test_plan(pinn):
 
-    # Make sure the absolute difference is (close to) zero
-    for val in numpy.nditer(abs_diff):
-        assert val < 0.01
+    for p in pinn:
+        export_path = os.path.join(
+            working_path, "output", p.patient_info['MedicalRecordNumber'], "RTPLAN")
+        os.makedirs(export_path)
+
+        export_plan = p.get_plans()[0]
+
+        p.export_plan(export_plan, export_path)
+
+        # Get the exported RTPLAN file
+        for f in os.listdir(export_path):
+            if f.startswith('RP'):
+                exported_plan = pydicom.read_file(os.path.join(export_path, f))
+                assert exported_plan.Modality == 'RTPLAN'
+                break
+
+        # Get the ground truth RTDOSE file
+        pinn_plan = find_corresponding_dicom(exported_plan)
+        assert pinn_plan != None
+
+        assert pinn_plan.RTPlanName == exported_plan.RTPlanName
+        assert pinn_plan.RTPlanLabel == exported_plan.RTPlanLabel
+
+        # TODO The RTPLAN export isn't fully functional yet, so we need
+        # to test more as we add that functionality
