@@ -1,3 +1,53 @@
+# Copyright (C) 2019 South Western Sydney Local Health District,
+# University of New South Wales
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version (the "AGPL-3.0+").
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License and the additional terms for more
+# details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
+# Affero General Public License. These additional terms are Sections 1, 5,
+# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
+# where all references to the definition "License" are instead defined to
+# mean the AGPL-3.0+.
+
+# You should have received a copy of the Apache-2.0 along with this
+# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+# This work is derived from:
+# https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
+# which is released under the following license:
+
+# Copyright (c) [2017] [Colleen Henschel, Andrew Alexander]
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import sys
 import os
 import logging
@@ -16,18 +66,16 @@ from .image import convert_image
 # RTSTRUCT, RTPLAN or RTDOSE.
 class Pinnacle:
 
-    logger = None  # Logger to use for all logging
-
-    path = ""  # Path to the root directory of the dataset (containing
-    # the Patient file)
-    patient_info = None  # The patient data read from
-    plans = None  # Pinnacle plans for this path
-    images = None  # Images found in image.info
-
     def __init__(self, path, logger=None):
 
-        self.path = path
-        self.logger = logger
+        self.logger = logger  # Logger to use for all logging
+
+        self.path = path # Path to the root directory of the dataset
+                         # (containing the Patient file)
+
+        self._patient_info = None  # The patient data read from
+        self.plans = None  # Pinnacle plans for this path
+        self.images = None  # Images found in image.info
 
         if not self.logger:
             self.logger = logging.getLogger(__name__)
@@ -42,22 +90,23 @@ class Pinnacle:
 
                 self.logger.addHandler(ch)
 
-    def get_patient_info(self):
+    @property
+    def patient_info(self):
 
-        if not self.patient_info:
+        if not self._patient_info:
             path_patient = os.path.join(self.path, "Patient")
             self.logger.debug(
                 'Reading patient data from: {0}'.format(path_patient))
-            self.patient_info = pinn_to_dict(path_patient)
+            self._patient_info = pinn_to_dict(path_patient)
 
             # Set the full patient name
-            self.patient_info['FullName'] = "{0}^{1}^{2}^".format(
-                self.patient_info['LastName'],
-                self.patient_info['FirstName'],
-                self.patient_info['MiddleName'])
+            self._patient_info['FullName'] = "{0}^{1}^{2}^".format(
+                self._patient_info['LastName'],
+                self._patient_info['FirstName'],
+                self._patient_info['MiddleName'])
 
             # gets birthday string with numbers and dashes
-            dobstr = self.patient_info['DateOfBirth']
+            dobstr = self._patient_info['DateOfBirth']
             if '-' in dobstr:
                 dob_list = dobstr.split('-')
             elif '/' in dobstr:
@@ -71,15 +120,14 @@ class Pinnacle:
                     num = '0' + num
                 dob = dob + num
 
-            self.patient_info['DOB'] = dob
+            self._patient_info['DOB'] = dob
 
-        return self.patient_info
+        return self._patient_info
 
     def get_plans(self):
 
         # Read patient info to populate patients plns
         if not self.plans:
-            self.get_patient_info()
 
             self.plans = []
             for plan in self.patient_info['PlanList']:
@@ -93,8 +141,6 @@ class Pinnacle:
 
         # Read patient info to populate patients images
         if not self.images:
-            self.get_patient_info()
-
             self.images = []
             for image in self.patient_info['ImageSetList']:
                 pi = PinnacleImage(self, self.path, image)
