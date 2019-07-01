@@ -56,11 +56,6 @@ import tempfile
 
 from .pinnacle import Pinnacle
 
-sys.path.append(".")
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
 
 def export(args):
     """
@@ -153,7 +148,7 @@ def export(args):
     logger.info("Will export modalities: {0}".format(modality))
 
     # Check that the plan exists, if not select first plan
-    plans = p.get_plans()
+    plans = p.plans
     plan = None
 
     for pl in plans:
@@ -203,9 +198,9 @@ def export(args):
         image_series_uids = []
 
         if image_series == "all":
-            for image in p.get_images():
+            for image in p.images:
                 image_series_uids.append(
-                    image.get_image_header()["series_UID"])
+                    image.image_header["series_UID"])
         else:
             image_series_uids.append(image_series)
 
@@ -213,7 +208,7 @@ def export(args):
             logger.info("Exporting image with UID: {0}".format(suid))
             p.export_image(series_uid=suid, export_path=output_directory)
 
-            series_uid = plan.primary_image.get_image_header()["series_UID"]
+            series_uid = plan.primary_image.image_header["series_UID"]
             if plan.primary_image and series_uid == suid:
                 primary_image_exported = True
 

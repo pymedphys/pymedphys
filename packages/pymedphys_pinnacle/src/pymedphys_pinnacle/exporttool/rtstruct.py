@@ -48,14 +48,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import pydicom
-import numpy as np
+import os, time, re, random
 
+import pydicom
 from pydicom.dataset import Dataset, FileDataset
 from pydicom.sequence import Sequence
-from pydicom.filebase import DicomFile
 import pydicom.uid
-import sys, os, time, re, struct, shutil, random
 
 from .constants import *
 
@@ -63,60 +61,63 @@ from .constants import *
 # the plan object
 def find_iso_center(plan):
 
-    image_header = plan.primary_image.get_image_header()
+    iso_center = []
+    ct_center = []
+    dose_ref_pt = []
 
-    for point in plan.get_points():
+    for point in plan.points:
 
         refpoint = plan.convert_point(point)
 
         if "Iso" in point['Name'] or "isocenter" in point['Name'] or "isocentre" in point['Name'] or "ISO" in point['Name']:
-            plan.iso_center = refpoint
+            iso_center = refpoint
         if "CT Center" in point['Name'] or "ct center" in point['Name'] or "ct centre" in point['Name']:
-            plan.ct_center = refpoint
-        if "drp" in point['Name']  or "DRP" in point['Name'] :
-            plan.dose_ref_pt = refpoint
+            ct_center = refpoint
+        if "drp" in point['Name']  or "DRP" in point['Name']:
+            dose_ref_pt = refpoint
 
         if "PoiInterpretedType" in point.keys():
             if "ISO" in point['PoiInterpretedType']:  # This point is Iso CenterAtZero
-                plan.iso_center = refpoint
-                plan.logger.debug("ISO Center located: " + str(plan.iso_center))
+                iso_center = refpoint
+                plan.logger.debug("ISO Center located: " + str(iso_center))
 
-    if len(plan.iso_center) < 2:
-        plan.iso_center = plan.ct_center
-        plan.logger.debug("Isocenter not located, setting to ct center: " + str(plan.iso_center))
+    if len(iso_center) < 2:
+        iso_center = ct_center
+        plan.logger.debug("Isocenter not located, setting to ct center: " + str(iso_center))
 
-    if len(plan.iso_center) < 2:
+    if len(iso_center) < 2:
         plan.logger.debug("Isocenter still not located, setting to point with center in name, if not, with iso in name")
         temp_point1 = []
         temp_point2 = []
 
-        for p in plan.get_points():
+        for p in plan.points:
             if "center" in p['Name']:
                 temp_point1 = p['refpoint']
             elif "iso" in p['Name']:
                 temp_point2 = p['refpoint']
 
         if len(temp_point1) > 1:
-            plan.iso_center = temp_point1
+            iso_center = temp_point1
         elif len(temp_point2) > 1:
-            plan.iso_center = temp_point2
+            iso_center = temp_point2
         else:
-            if len(plan.get_points()) > 0:
+            if len(plan.points) > 0:
                 # setting to first point if isocenter or ct center not found
-                plan.iso_center = plan.get_points()[0]['refpoint']
-                #logger.debug("setting iso to actual value: " + str(data["isocenter"]))
+                iso_center = plan.points[0]['refpoint']
 
-    plan.logger.debug("Isocenter: " + str(plan.iso_center))
+    plan.iso_center = iso_center
+    plan.ct_center = ct_center
+    plan.dose_ref_pt = dose_ref_pt
+
+    plan.logger.debug("Isocenter: " + str(iso_center))
 
 
 # Read points and insert them into the dicom dataset
 def read_points(ds, plan):
 
-    image_header = plan.primary_image.get_image_header()
-
     plan.roi_count = 0
 
-    for point in plan.get_points():
+    for point in plan.points:
 
         plan.roi_count = plan.roi_count + 1
 
@@ -134,8 +135,8 @@ def read_points(ds, plan):
 
         contour_image = Dataset()
 
-        closestvalue = abs(float(plan.primary_image.get_image_info()[0]['TablePosition']) - float(refpoint[-1]))
-        for s in plan.primary_image.get_image_info():
+        closestvalue = abs(float(plan.primary_image.image_info[0]['TablePosition']) - float(refpoint[-1]))
+        for s in plan.primary_image.image_info:
             if abs(float(s['TablePosition']) - (-float(refpoint[-1]/10))) <= closestvalue:
                 closestvalue = abs(float(s['TablePosition']) - (-float(refpoint[-1]/10)))
                 contour_image.ReferencedSOPClassUID = '1.2.840.10008.5.1.4.1.1.2'
@@ -153,7 +154,7 @@ def read_points(ds, plan):
 
         # Not sure what this is for, just basing off template, should look into further
         structure_set_roi.ROIGenerationAlgorithm = 'SEMIAUTOMATIC'
-        structure_set_roi.ReferencedFrameOfReferenceUID = plan.primary_image.get_image_info()[0]['FrameUID']
+        structure_set_roi.ReferencedFrameOfReferenceUID = plan.primary_image.image_info[0]['FrameUID']
 
         ds.StructureSetROISequence.append(structure_set_roi)
 
@@ -178,7 +179,7 @@ def read_points(ds, plan):
 # and isn't tab indented properly, so won't parse onto YAML.
 def read_roi(ds, plan):
 
-    image_header = plan.primary_image.get_image_header()
+    image_header = plan.primary_image.image_header
 
     path_roi = os.path.join(plan.path,'plan.roi')
 
@@ -203,8 +204,8 @@ def read_roi(ds, plan):
                 ds.ROIContourSequence[plan.roi_count - 1].ContourSequence[int(curvenum) - 1].ContourImageSequence = Sequence()
                 contour_image = Dataset()
 
-                closestvalue = abs(float(plan.primary_image.get_image_info()[0]['TablePosition']) - float(points[-1]))
-                for s in plan.primary_image.get_image_info():
+                closestvalue = abs(float(plan.primary_image.image_info[0]['TablePosition']) - float(points[-1]))
+                for s in plan.primary_image.image_info:
                     if abs(float(s['TablePosition']) - (-float(points[-1]/10))) <= closestvalue:
                         closestvalue = abs(float(s['TablePosition']) - (-float(points[-1]/10)))
                         contour_image.ReferencedSOPClassUID = '1.2.840.10008.5.1.4.1.1.2'
@@ -254,7 +255,7 @@ def read_roi(ds, plan):
                 ROIName = ROIName.replace('\n', '')
                 ds.StructureSetROISequence[plan.roi_count - 1].ROIName = ROIName
                 ds.StructureSetROISequence[plan.roi_count - 1].ROIGenerationAlgorithm = 'SEMIAUTOMATIC'
-                ds.StructureSetROISequence[plan.roi_count - 1].ReferencedFrameOfReferenceUID = plan.primary_image.get_image_info()[0]['FrameUID']
+                ds.StructureSetROISequence[plan.roi_count - 1].ReferencedFrameOfReferenceUID = plan.primary_image.image_info[0]['FrameUID']
                 ds.ROIContourSequence[plan.roi_count - 1].ContourSequence = Sequence()
                 roiinterpretedtype = 'ORGAN'
                 plan.logger.info('Exporting ROI: ' +ROIName)
@@ -305,7 +306,7 @@ def convert_struct(plan, export_path):
 
     patient_info = plan.pinnacle.patient_info
 
-    struct_sop_instuid = plan.get_struct_inst_uid()
+    struct_sop_instuid = plan.struct_inst_uid
 
     # Populate required values for file meta information
     file_meta = Dataset()
@@ -339,8 +340,8 @@ def convert_struct(plan, export_path):
     ds.ReferencedStudySequence.append(ReferencedStudy1)
     # Study Component Management SOP Class (chosen from template)
     ds.ReferencedStudySequence[0].ReferencedSOPClassUID = '1.2.840.10008.3.1.2.3.2'
-    ds.ReferencedStudySequence[0].ReferencedSOPInstanceUID = plan.primary_image.get_image_info()[0]['StudyInstanceUID']
-    ds.StudyInstanceUID = plan.primary_image.get_image_info()[0]['StudyInstanceUID']
+    ds.ReferencedStudySequence[0].ReferencedSOPInstanceUID = plan.primary_image.image_info[0]['StudyInstanceUID']
+    ds.StudyInstanceUID = plan.primary_image.image_info[0]['StudyInstanceUID']
     ds.SeriesInstanceUID = struct_series_instuid
 
     ds.PatientID = patient_info['MedicalRecordNumber']
@@ -352,9 +353,9 @@ def convert_struct(plan, export_path):
     ds.StructureSetLabel = plan.plan_info['PlanName']
     ds.StudyID = plan.primary_image.image['StudyID']
 
-    datetimesplit = plan.get_plan_info()["ObjectVersion"]["WriteTimeStamp"].split()
+    datetimesplit = plan.plan_info["ObjectVersion"]["WriteTimeStamp"].split()
     # Read more accurate date from trial file if it is available
-    trial_info = plan.get_trial_info()
+    trial_info = plan.trial_info
     if trial_info:
       datetimesplit = trial_info['ObjectVersion']['WriteTimeStamp'].split()
 
@@ -374,22 +375,22 @@ def convert_struct(plan, export_path):
     ds.ReferencedFrameOfReferenceSequence = Sequence()
     ReferencedFrameofReference = Dataset()
     ds.ReferencedFrameOfReferenceSequence.append(ReferencedFrameofReference)
-    ds.ReferencedFrameOfReferenceSequence[0].FrameOfReferenceUID = plan.primary_image.get_image_info()[0]['FrameUID']
+    ds.ReferencedFrameOfReferenceSequence[0].FrameOfReferenceUID = plan.primary_image.image_info[0]['FrameUID']
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence = Sequence()
 
     RTReferencedStudy = Dataset()
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence.append(RTReferencedStudy)
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0].ReferencedSOPClassUID = '1.2.840.10008.3.1.2.3.2'
-    ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0].ReferencedSOPInstanceUID = plan.primary_image.get_image_info()[0]['StudyInstanceUID']
-    ds.StudyInstanceUID = plan.primary_image.get_image_info()[0]['StudyInstanceUID']
+    ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0].ReferencedSOPInstanceUID = plan.primary_image.image_info[0]['StudyInstanceUID']
+    ds.StudyInstanceUID = plan.primary_image.image_info[0]['StudyInstanceUID']
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0].RTReferencedSeriesSequence = Sequence()
 
     RTReferencedSeries = Dataset()
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0].RTReferencedSeriesSequence.append(RTReferencedSeries)
-    ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0].RTReferencedSeriesSequence[0].SeriesInstanceUID = plan.primary_image.get_image_info()[0]['SeriesUID']
+    ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0].RTReferencedSeriesSequence[0].SeriesInstanceUID = plan.primary_image.image_info[0]['SeriesUID']
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[0].RTReferencedSeriesSequence[0].ContourImageSequence = Sequence()
 
-    for info in plan.primary_image.get_image_info():
+    for info in plan.primary_image.image_info:
         contour_image = Dataset()
         contour_image.ReferencedSOPClassUID = '1.2.840.10008.5.1.4.1.1.2'
         contour_image.ReferencedSOPInstanceUID = info['InstanceUID']

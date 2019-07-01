@@ -48,11 +48,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import pydicom
-import sys
 import os
-import logging
 import re
+
+import pydicom
 
 from .pinn_yaml import pinn_to_dict
 from .rtstruct import find_iso_center
@@ -68,142 +67,162 @@ UID_PREFIX = "1.2.826.0.1.3680043.10.202."
 
 class PinnaclePlan:
 
-    logger = None  # Logger to use for all logging
-
-    path = ""  # Path to the root directory of the plan (contains plan.Trial)
-    pinnacle = None  # Reference to main Pinnacle dataset object
-    plan_info = None  # The plan details found in the Patient file
-    machine_info = None  # Data of the machines used for this plan
-    trials = None  # Data found in plan.Trial
-    trial_info = None  # 'Active' trial for this plan
-    points = None  # Data found in plan.Points
-    patient_setup = None  # Data found in PatientSetup file
-    primary_image = None  # Primary image for this plan
-    uid_prefix = UID_PREFIX  # The prefix for UIDs generated
-
-    roi_count = 0  # Store the total number of ROIs
-    iso_center = []  # Store the iso center of this plan
-    ct_center = []  # Store the ct center of the primary image of this plan
-    dose_ref_pt = []  # Store the dose ref point of this plan
-
-    plan_inst_uid = None  # UID for RTPlan instance
-    dose_inst_uid = None  # UID for RTDose instance
-    struct_inst_uid = None  # UID for RTStruct instance
-
     def __init__(self, pinnacle, path, plan):
-        self.pinnacle = pinnacle
-        self.path = path
-        self.plan_info = plan
-        self.logger = pinnacle.logger
+        self._pinnacle = pinnacle
+        self._path = path
+        self._plan_info = plan
 
-        for image in pinnacle.get_images():
+        self._machine_info = None  # Data of the machines used for this plan
+        self._trials = None  # Data found in plan.Trial
+        self._trial_info = None  # 'Active' trial for this plan
+        self._points = None  # Data found in plan.Points
+        self._patient_setup = None  # Data found in PatientSetup file
+        self._primary_image = None  # Primary image for this plan
+        self._uid_prefix = UID_PREFIX  # The prefix for UIDs generated
+
+        self._roi_count = 0  # Store the total number of ROIs
+        self._iso_center = []  # Store the iso center of this plan
+        self._ct_center = []  # Store the ct center of the primary image of this plan
+        self._dose_ref_pt = []  # Store the dose ref point of this plan
+
+        self._plan_inst_uid = None  # UID for RTPlan instance
+        self._dose_inst_uid = None  # UID for RTDose instance
+        self._struct_inst_uid = None  # UID for RTStruct instance
+
+        for image in pinnacle.images:
             if image.image['ImageSetID'] == self.plan_info["PrimaryCTImageSetID"]:
                 self.primary_image = image
 
-    def get_machine_info(self):
+    @property
+    def logger(self):
+        return self._pinnacle.logger
 
-        if not self.machine_info:
-            path_machine = os.path.join(self.path, "plan.Pinnacle.Machines")
+    @property
+    def pinnacle(self):
+        return self._pinnacle
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def machine_info(self):
+
+        if not self._machine_info:
+            path_machine = os.path.join(self._path, "plan.Pinnacle.Machines")
             self.logger.debug('Reading machine data from: ' + path_machine)
-            self.machine_info = pinn_to_dict(path_machine)
+            self._machine_info = pinn_to_dict(path_machine)
 
-        return self.machine_info
+        return self._machine_info
 
-    def get_trials(self):
+    @property
+    def trials(self):
 
-        if not self.trials:
-            path_trial = os.path.join(self.path, "plan.Trial")
+        if not self._trials:
+            path_trial = os.path.join(self._path, "plan.Trial")
             self.logger.debug('Reading trial data from: ' + path_trial)
-            self.trials = pinn_to_dict(path_trial)
-            if type(self.trials) == dict:
-                self.trials = [self.trials['Trial']]
+            self._trials = pinn_to_dict(path_trial)
+            if isinstance(self._trials, dict):
+                self._trials = [self._trials['Trial']]
 
             # Select trial with FINAL in name as active trial for this plan
             # If no FINAL trial found then select first trial
-            for trial in self.trials:
+            for trial in self._trials:
                 if 'FINAL' in trial['Name'].upper():
-                    self.trial_info = trial
+                    self._trial_info = trial
                     break
 
-            if not self.trial_info:
-                self.trial_info = self.trials[0]
+            if not self._trial_info:
+                self._trial_info = self._trials[0]
 
             self.logger.debug('Number of trials read: ' +
-                              str(len(self.trials)))
-            self.logger.debug('Active Trial: ' + self.trial_info['Name'])
+                              str(len(self._trials)))
+            self.logger.debug('Active Trial: ' + self._trial_info['Name'])
 
-        return self.trials
+        return self._trials
 
-    def set_active_trial(self, trial_name):
+    @property
+    def active_trial(self):
+        return self._trial_info
 
-        if not self.trials:
-            self.get_trials()
+    @active_trial.setter
+    def active_trial(self, trial_name):
 
-        for trial in self.trials:
-            if trial['Name'] == trial_name:
-                self.trial_info = trial
-                self.logger.info('Active Trial set: ' + trial_name)
-                return True
+        if isinstance(trial_name, str):
+            for trial in self._trials:
+                if trial['Name'] == trial_name:
+                    self._trial_info = trial
+                    self.logger.info('Active Trial set: ' + trial_name)
+                    return True
 
         return False
 
-    def get_plan_info(self):
-        return self.plan_info
+    @property
+    def plan_info(self):
+        return self._plan_info
 
-    def get_trial_info(self):
+    @property
+    def trial_info(self):
 
-        if not self.trial_info:
-            self.get_trials()
+        if not self._trial_info:
+            self.trials
 
-        return self.trial_info
+        return self._trial_info
 
-    def get_points(self):
+    @property
+    def points(self):
 
-        if not self.points:
-            path_points = os.path.join(self.path, "plan.Points")
+        if not self._points:
+            path_points = os.path.join(self._path, "plan.Points")
             self.logger.debug('Reading points data from: ' + path_points)
-            self.points = pinn_to_dict(path_points)
+            self._points = pinn_to_dict(path_points)
 
-            if type(self.points) == dict:
-                self.points = [self.points['Poi']]
+            if type(self._points) == dict:
+                self._points = [self._points['Poi']]
 
-            if self.points == None:
-                self.points = []
+            if self._points == None:
+                self._points = []
 
-        return self.points
+        return self._points
 
-    def get_patient_position(self):
+    @property
+    def patient_position(self):
 
-        if not self.patient_setup:
-            self.patient_setup = pinn_to_dict(
-                os.path.join(self.path, "plan.PatientSetup"))
+        if not self._patient_setup:
+            self._patient_setup = pinn_to_dict(
+                os.path.join(self._path, "plan.PatientSetup"))
 
         pat_pos = ""
 
-        if "Head First" in self.patient_setup["Orientation"]:
+        if "Head First" in self._patient_setup["Orientation"]:
             pat_pos = "HF"
-        elif "Feet First" in self.patient_setup["Orientation"]:
+        elif "Feet First" in self._patient_setup["Orientation"]:
             pat_pos = "FF"
 
-        if "supine" in self.patient_setup["Position"]:
+        if "supine" in self._patient_setup["Position"]:
             pat_pos = pat_pos + "S"
-        elif "prone" in self.patient_setup["Position"]:
+        elif "prone" in self._patient_setup["Position"]:
             pat_pos = pat_pos + "P"
-        elif "decubitus right" in self.patient_setup["Position"] or "Decuibitus Right" in self.patient_setup["Position"]:
+        elif "decubitus right" in self._patient_setup["Position"] or "Decuibitus Right" in self._patient_setup["Position"]:
             pat_pos = pat_pos + "DR"
-        elif "decubitus left" in self.patient_setup["Position"] or "Decuibitus Left" in self.patient_setup["Position"]:
+        elif "decubitus left" in self._patient_setup["Position"] or "Decuibitus Left" in self._patient_setup["Position"]:
             pat_pos = pat_pos + "DL"
 
         return pat_pos
 
-    def get_iso_center(self):
+    @property
+    def iso_center(self):
         # If the iso center hasn't been set, then call read points function from
         # RTStruct which sets the iso center
 
-        if len(self.iso_center) == 0:
+        if len(self._iso_center) == 0:
             find_iso_center(self)
 
-        return self.iso_center
+        return self._iso_center
+
+    @iso_center.setter
+    def iso_center(self, iso_center):
+        self._iso_center = iso_center
 
     def is_prefix_valid(self, prefix):
 
@@ -220,52 +239,55 @@ class PinnaclePlan:
         entropy_srcs = None
         if uid_type == 'HASH':
             entropy_srcs = []
-            entropy_srcs.append(self.pinnacle.patient_info[
+            entropy_srcs.append(self._pinnacle.patient_info[
                                 'MedicalRecordNumber'])
-            entropy_srcs.append(self.get_plan_info()['PlanName'])
-            entropy_srcs.append(self.get_trial_info()['Name'])
-            entropy_srcs.append(self.get_trial_info()[
+            entropy_srcs.append(self.plan_info['PlanName'])
+            entropy_srcs.append(self.trial_info['Name'])
+            entropy_srcs.append(self.trial_info[
                                 'ObjectVersion']['WriteTimeStamp'])
 
-        RTPLAN_prefix = self.uid_prefix + "1."
-        self.plan_inst_uid = pydicom.uid.generate_uid(
+        RTPLAN_prefix = self._uid_prefix + "1."
+        self._plan_inst_uid = pydicom.uid.generate_uid(
             prefix=RTPLAN_prefix, entropy_srcs=entropy_srcs)
-        RTDOSE_prefix = self.uid_prefix + "2."
-        self.dose_inst_uid = pydicom.uid.generate_uid(
+        RTDOSE_prefix = self._uid_prefix + "2."
+        self._dose_inst_uid = pydicom.uid.generate_uid(
             prefix=RTDOSE_prefix, entropy_srcs=entropy_srcs)
-        RTSTRUCT_prefix = self.uid_prefix + "3."
-        self.struct_inst_uid = pydicom.uid.generate_uid(
+        RTSTRUCT_prefix = self._uid_prefix + "3."
+        self._struct_inst_uid = pydicom.uid.generate_uid(
             prefix=RTSTRUCT_prefix, entropy_srcs=entropy_srcs)
 
-        self.logger.debug('Plan Instance UID: ' + self.plan_inst_uid)
-        self.logger.debug('Dose Instance UID: ' + self.dose_inst_uid)
-        self.logger.debug('Struct Instance UID: ' + self.struct_inst_uid)
+        self.logger.debug('Plan Instance UID: ' + self._plan_inst_uid)
+        self.logger.debug('Dose Instance UID: ' + self._dose_inst_uid)
+        self.logger.debug('Struct Instance UID: ' + self._struct_inst_uid)
 
-    def get_plan_inst_uid(self):
+    @property
+    def plan_inst_uid(self):
 
-        if not self.plan_inst_uid:
+        if not self._plan_inst_uid:
             self.generate_uids()
 
-        return self.plan_inst_uid
+        return self._plan_inst_uid
 
-    def get_dose_inst_uid(self):
+    @property
+    def dose_inst_uid(self):
 
-        if not self.dose_inst_uid:
+        if not self._dose_inst_uid:
             self.generate_uids()
 
-        return self.dose_inst_uid
+        return self._dose_inst_uid
 
-    def get_struct_inst_uid(self):
+    @property
+    def struct_inst_uid(self):
 
-        if not self.struct_inst_uid:
+        if not self._struct_inst_uid:
             self.generate_uids()
 
-        return self.struct_inst_uid
+        return self._struct_inst_uid
 
     # Convert the point from the pinnacle plan format to dicom
     def convert_point(self, point):
 
-        image_header = self.primary_image.get_image_header()
+        image_header = self.primary_image.image_header
 
         refpoint = [point['XCoord']*10, point['YCoord']*10, point['ZCoord']*10]
         if image_header["patient_position"] == 'HFP' or image_header["patient_position"] == 'FFS':
