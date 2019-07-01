@@ -181,7 +181,7 @@ class PinnacleExport:
         if image:
             convert_image(image, export_path)
 
-    def print_images(self):
+    def log_images(self):
 
         for i in self.images:
             image_header = i.image_header
@@ -190,19 +190,19 @@ class PinnacleExport:
                 image_header['series_UID'],
                 image_header['SeriesDateTime']))
 
-    def print_plan_names(self):
+    def log_plan_names(self):
 
         for p in self.plans:
             self.logger.info(p.plan_info['PlanName'])
 
-    def print_trial_names(self):
+    def log_trial_names(self):
 
         for p in self.plans:
             self.logger.info('### ' + p.plan_info['PlanName'] + ' ###')
             for t in p.trials:
                 self.logger.info('- '+t['Name'])
 
-    def print_trial_names_in_plan(self, p):
+    def log_trial_names_in_plan(self, p):
 
         self.logger.info('### ' + p.plan_info['PlanName'] + ' ###')
         self.logger.info(p.path)
