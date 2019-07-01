@@ -140,7 +140,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
 
         with pytest.raises(ValueError) as e_info:
             anonymise_dataset(ds)
-        assert e_info.value.count("At least one of the non-private tags "
+        assert str(e_info.value).count("At least one of the non-private tags "
                                  "within your DICOM file is not within "
                                  "PyMedPhys's copy of the DICOM dictionary.")
 
@@ -150,7 +150,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
                                                   anon_is_expected=True)
         with pytest.raises(AttributeError) as e_info:
             ds_anon_delete_unknown.PatientName
-        assert e_info.value.count("'Dataset' object has no attribute "
+        assert str(e_info.value).count("'Dataset' object has no attribute "
                                  "'PatientName'")
 
         ds_anon_ignore_unknown = anonymise_dataset(ds,
