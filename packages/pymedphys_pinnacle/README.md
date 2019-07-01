@@ -20,7 +20,7 @@ pymedphys pinnacle export -h
 ```
 
 While the command line tool is useful for testing, it is probably more
-convienent to script larger exports. To get started calling this library from
+convenient to script larger exports. To get started calling this library from
 your Python scripts, work off the sample Jupyter notebook, located at
 notebooks/pinnacle/ExportSample.ipynb
 
