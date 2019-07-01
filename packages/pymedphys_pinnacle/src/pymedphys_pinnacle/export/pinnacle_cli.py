@@ -140,9 +140,9 @@ def export(args):
 
     if list_available:
         logger.info("Plans and Trials:")
-        p.print_trial_names()
+        p.log_trial_names()
         logger.info("Images:")
-        p.print_images()
+        p.log_images()
         exit()
 
     logger.info("Will export modalities: {0}".format(modality))
