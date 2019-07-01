@@ -1,3 +1,3 @@
-from .exporttool.pinnacle import Pinnacle
+from .export.pinnacle import PinnacleExport
 
-from .exporttool.export_pinnacle import export
+from .export.pinnacle_cli import export
