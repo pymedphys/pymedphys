@@ -142,7 +142,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
             anonymise_dataset(ds)
         print("E_INFO: '{}'".format(e_info))
         print("E_INFO.VALUE: '{}'".format(e_info.value))
-        assert str(e_info).count("At least one of the non-private tags "
+        assert e_info.value.count("At least one of the non-private tags "
                                  "within your DICOM file is not within "
                                  "PyMedPhys's copy of the DICOM dictionary.")
 
