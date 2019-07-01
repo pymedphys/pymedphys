@@ -54,7 +54,7 @@ import logging
 import tarfile
 import tempfile
 
-from .pinnacle import Pinnacle
+from .pinnacle import PinnacleExport
 
 
 def export(args):
@@ -136,7 +136,7 @@ def export(args):
         logger.info("Using Patient directory: {0}".format(input_path))
 
     # Create Pinnacle object given input path
-    p = Pinnacle(input_path, logger)
+    p = PinnacleExport(input_path, logger)
 
     if list_available:
         logger.info("Plans and Trials:")
