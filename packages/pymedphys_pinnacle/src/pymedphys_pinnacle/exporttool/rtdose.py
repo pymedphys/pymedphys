@@ -92,16 +92,16 @@ def convert_dose(plan, export_path):
         return
 
     patient_info = plan.pinnacle.patient_info
-    plan_info = plan.get_plan_info()
-    trial_info = plan.get_trial_info()
-    machine_info = plan.get_machine_info()
-    image_info = plan.primary_image.get_image_info()[0]
+    plan_info = plan.plan_info
+    trial_info = plan.trial_info
+    machine_info = plan.machine_info
+    image_info = plan.primary_image.image_info[0]
 
-    patient_position = plan.get_patient_position()
+    patient_position = plan.patient_position
 
     # Get the UID for the Dose and the Plan
-    doseInstanceUID = plan.get_dose_inst_uid()
-    planInstanceUID = plan.get_plan_inst_uid()
+    doseInstanceUID = plan.dose_inst_uid
+    planInstanceUID = plan.plan_inst_uid
 
     # Populate required values for file meta information
     file_meta = Dataset()
@@ -122,7 +122,7 @@ def convert_dose(plan, export_path):
     ds.SOPInstanceUID = doseInstanceUID
     datetimesplit = plan_info["ObjectVersion"]["WriteTimeStamp"].split()
     # Read more accurate date from trial file if it is available
-    trial_info = plan.get_trial_info()
+    trial_info = plan.trial_info
     if trial_info:
       datetimesplit = trial_info['ObjectVersion']['WriteTimeStamp'].split()
 
@@ -248,7 +248,7 @@ def convert_dose(plan, export_path):
 
         # Get the prescription point
         plan.logger.debug("PrescriptionPointName: {0}".format(beam["PrescriptionPointName"]))
-        points = plan.get_points()
+        points = plan.points
         prescription_point = []
         for p in points:
             if p["Name"] == beam["PrescriptionPointName"]:
