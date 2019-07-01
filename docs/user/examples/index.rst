@@ -21,6 +21,7 @@ library usage.
 
     trf_mudensity
     gamma_from_dicom
+    pinnacle_export
 
 
 
