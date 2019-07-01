@@ -46,7 +46,8 @@ CONVERSIONS = {
     'PIL': 'Pillow',
     'Image': 'Pillow',
     'mpl_toolkits': 'matplotlib',
-    'dateutil': 'python_dateutil'
+    'dateutil': 'python_dateutil',
+    'yaml': 'PyYAML'
 }
 
 
