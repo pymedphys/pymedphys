@@ -64,7 +64,7 @@ from .image import convert_image
 # This class holds all information relating to the Pinnacle Dataset
 # Can be used to export various elements of the dataset, Images,
 # RTSTRUCT, RTPLAN or RTDOSE.
-class Pinnacle:
+class PinnacleExport:
 
     def __init__(self, path, logger=None):
 

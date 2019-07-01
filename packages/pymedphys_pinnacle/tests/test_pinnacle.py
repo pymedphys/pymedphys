@@ -57,7 +57,7 @@ import shutil
 import tempfile
 from zipfile import ZipFile
 
-from pymedphys_pinnacle import Pinnacle
+from pymedphys_pinnacle import PinnacleExport
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIRECTORY = os.path.join(HERE, 'data', 'export')
@@ -87,7 +87,8 @@ def pinn(data):
     for d in os.listdir(data):
         pinn_dir = os.path.join(data, d, 'Pinnacle')
         for pat_dir in os.listdir(pinn_dir):
-            pinn_objs.append(Pinnacle(os.path.join(pinn_dir, pat_dir), None))
+            pinn_objs.append(PinnacleExport(
+                os.path.join(pinn_dir, pat_dir), None))
 
     return pinn_objs
 
