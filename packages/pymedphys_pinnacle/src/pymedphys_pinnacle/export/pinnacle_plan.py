@@ -125,13 +125,7 @@ class PinnaclePlan:
             if isinstance(self._trials, dict):
                 self._trials = [self._trials['Trial']]
 
-            # Select trial with FINAL in name as active trial for this plan
-            # If no FINAL trial found then select first trial
-            for trial in self._trials:
-                if 'FINAL' in trial['Name'].upper():
-                    self._trial_info = trial
-                    break
-
+            # Select the first trial by default
             if not self._trial_info:
                 self._trial_info = self._trials[0]
 
