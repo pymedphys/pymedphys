@@ -70,15 +70,15 @@ def convert_plan(plan, export_path):
     plan.logger.warning("RTPLAN export functionality is currently not validated and not stable. Use with caution.")
 
     patient_info = plan.pinnacle.patient_info
-    plan_info = plan.get_plan_info()
-    trial_info = plan.get_trial_info()
-    image_info = plan.primary_image.get_image_info()[0]
-    machine_info = plan.get_machine_info()
+    plan_info = plan.plan_info
+    trial_info = plan.trial_info
+    image_info = plan.primary_image.image_info[0]
+    machine_info = plan.machine_info
 
-    patient_position = plan.get_patient_position()
+    patient_position = plan.patient_position
 
     # Get the UID for the Plan
-    planInstanceUID = plan.get_plan_inst_uid()
+    planInstanceUID = plan.plan_inst_uid
 
     # Populate required values for file meta information
     file_meta = Dataset()
@@ -103,9 +103,9 @@ def convert_plan(plan, export_path):
     datetimesplit = plan_info["ObjectVersion"]["WriteTimeStamp"].split()
 
     # Read more accurate date from trial file if it is available
-    trial_info = plan.get_trial_info()
+    trial_info = plan.trial_info
     if trial_info:
-      datetimesplit = trial_info['ObjectVersion']['WriteTimeStamp'].split()
+        datetimesplit = trial_info['ObjectVersion']['WriteTimeStamp'].split()
 
     ds.StudyDate = datetimesplit[0].replace('-', '')
     ds.StudyTime = datetimesplit[1].replace(':', '')
@@ -147,7 +147,7 @@ def convert_plan(plan, export_path):
     ReferencedStructureSet1 = Dataset()
     ds.ReferencedStructureSetSequence.append(ReferencedStructureSet1)
     ds.ReferencedStructureSetSequence[0].ReferencedSOPClassUID = RTStructSOPClassUID
-    ds.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID = plan.get_struct_inst_uid()
+    ds.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID = plan.struct_inst_uid
     ds.ApprovalStatus = 'UNAPPROVED'  # find out where to get this information
 
     ds.FractionGroupSequence.append(Dataset())
@@ -205,7 +205,7 @@ def convert_plan(plan, export_path):
         ds.BeamSequence[beam_count - 1].TreatmentMachineName = beam['MachineNameAndVersion'].partition(":")[0]
 
         doserefpt = None
-        for point in plan.get_points():
+        for point in plan.points:
             if point['Name'] == beam['PrescriptionPointName']:
                 doserefpt = plan.convert_point(point)
                 plan.logger.debug("Dose reference point found: " + point['Name'])
@@ -425,7 +425,7 @@ def convert_plan(plan, export_path):
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].BeamLimitingDeviceRotationDirection = 'NONE'
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].PatientSupportAngle = psupportangle
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].PatientSupportRotationDirection = 'NONE'
-                    ds.BeamSequence[beam_count - 1].ControlPointSequence[j].IsocenterPosition = plan.get_iso_center()
+                    ds.BeamSequence[beam_count - 1].ControlPointSequence[j].IsocenterPosition = plan.iso_center
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].GantryRotationDirection = gantryrotdir
                 else:
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].BeamLimitingDevicePositionSequence.append(Dataset()) # This will be the mlcs for control points other than the first
@@ -501,7 +501,7 @@ def convert_plan(plan, export_path):
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].BeamLimitingDeviceRotationDirection = 'NONE'
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].PatientSupportAngle = psupportangle
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].PatientSupportRotationDirection = 'NONE'
-                    ds.BeamSequence[beam_count - 1].ControlPointSequence[j].IsocenterPosition = plan.get_iso_center()
+                    ds.BeamSequence[beam_count - 1].ControlPointSequence[j].IsocenterPosition = plan.iso_center
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[j].GantryRotationDirection = gantryrotdir
                     ds.BeamSequence[beam_count - 1].NumberOfWedges = numwedges
 

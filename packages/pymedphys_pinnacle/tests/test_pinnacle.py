@@ -95,7 +95,7 @@ def pinn(data):
 def test_pinnacle(pinn):
 
     for p in pinn:
-        plans = p.get_plans()
+        plans = p.plans
         assert len(plans) == 1
 
 
@@ -126,7 +126,7 @@ def test_ct(pinn):
             working_path, "output", p.patient_info['MedicalRecordNumber'], "CT")
         os.makedirs(export_path)
 
-        export_plan = p.get_plans()[0]
+        export_plan = p.plans[0]
 
         p.export_image(export_plan.primary_image, export_path=export_path)
 
@@ -162,7 +162,7 @@ def test_struct(pinn):
             working_path, "output", p.patient_info['MedicalRecordNumber'], "RTSTRUCT")
         os.makedirs(export_path)
 
-        export_plan = p.get_plans()[0]
+        export_plan = p.plans[0]
 
         p.export_struct(export_plan, export_path=export_path)
 
@@ -193,7 +193,7 @@ def test_dose(pinn):
             working_path, "output", p.patient_info['MedicalRecordNumber'], "RTDOSE")
         os.makedirs(export_path)
 
-        export_plan = p.get_plans()[0]
+        export_plan = p.plans[0]
 
         p.export_dose(export_plan, export_path)
 
@@ -233,7 +233,7 @@ def test_plan(pinn):
             working_path, "output", p.patient_info['MedicalRecordNumber'], "RTPLAN")
         os.makedirs(export_path)
 
-        export_plan = p.get_plans()[0]
+        export_plan = p.plans[0]
 
         p.export_plan(export_plan, export_path)
 

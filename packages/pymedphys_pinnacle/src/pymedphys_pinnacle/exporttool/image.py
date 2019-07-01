@@ -81,9 +81,9 @@ def create_image_files(image, export_path):
         "Creating image files: The output of these are not correct!")
 
     patient_info = image.pinnacle.patient_info
-    image_header = image.get_image_header()
-    image_info = image.get_image_info()
-    image_set = image.get_image_set()
+    image_header = image.image_header
+    image_info = image.image_info
+    image_set = image.image_set
     currentpatientposition = image_header['patient_position']
 
     modality = 'CT'
@@ -208,7 +208,7 @@ def create_image_files(image, export_path):
 def convert_image(image, export_path):
 
     patient_info = image.pinnacle.patient_info
-    image_info = image.get_image_info()
+    image_info = image.image_info
 
     image.logger.debug(
         "Converting image patient name, birthdate and id to match pinnacle\n")

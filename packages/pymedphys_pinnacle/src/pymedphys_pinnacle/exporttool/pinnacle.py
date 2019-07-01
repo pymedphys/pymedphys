@@ -68,33 +68,37 @@ class Pinnacle:
 
     def __init__(self, path, logger=None):
 
-        self.logger = logger  # Logger to use for all logging
+        self._logger = logger  # Logger to use for all logging
 
-        self.path = path # Path to the root directory of the dataset
+        self._path = path # Path to the root directory of the dataset
                          # (containing the Patient file)
 
         self._patient_info = None  # The patient data read from
-        self.plans = None  # Pinnacle plans for this path
-        self.images = None  # Images found in image.info
+        self._plans = None  # Pinnacle plans for this path
+        self._images = None  # Images found in image.info
 
-        if not self.logger:
-            self.logger = logging.getLogger(__name__)
-            self.logger.setLevel(logging.DEBUG)
+        if not self._logger:
+            self._logger = logging.getLogger(__name__)
+            self._logger.setLevel(logging.DEBUG)
 
-            if len(self.logger.handlers) == 0:
+            if len(self._logger.handlers) == 0:
                 ch = logging.StreamHandler(sys.stdout)
                 formatter = logging.Formatter(
                     '%(asctime)s - %(levelname)s - %(message)s')
                 ch.setFormatter(formatter)
                 ch.setLevel(logging.DEBUG)
 
-                self.logger.addHandler(ch)
+                self._logger.addHandler(ch)
+
+    @property
+    def logger(self):
+        return self._logger
 
     @property
     def patient_info(self):
 
         if not self._patient_info:
-            path_patient = os.path.join(self.path, "Patient")
+            path_patient = os.path.join(self._path, "Patient")
             self.logger.debug(
                 'Reading patient data from: {0}'.format(path_patient))
             self._patient_info = pinn_to_dict(path_patient)
@@ -124,29 +128,31 @@ class Pinnacle:
 
         return self._patient_info
 
-    def get_plans(self):
+    @property
+    def plans(self):
 
         # Read patient info to populate patients plns
-        if not self.plans:
+        if not self._plans:
 
-            self.plans = []
+            self._plans = []
             for plan in self.patient_info['PlanList']:
                 path_plan = os.path.join(
-                    self.path, "Plan_"+str(plan['PlanID']))
-                self.plans.append(PinnaclePlan(self, path_plan, plan))
+                    self._path, "Plan_"+str(plan['PlanID']))
+                self._plans.append(PinnaclePlan(self, path_plan, plan))
 
-        return self.plans
+        return self._plans
 
-    def get_images(self):
+    @property
+    def images(self):
 
         # Read patient info to populate patients images
-        if not self.images:
-            self.images = []
+        if not self._images:
+            self._images = []
             for image in self.patient_info['ImageSetList']:
-                pi = PinnacleImage(self, self.path, image)
-                self.images.append(pi)
+                pi = PinnacleImage(self, self._path, image)
+                self._images.append(pi)
 
-        return self.images
+        return self._images
 
     def export_struct(self, plan, export_path="."):
 
@@ -165,8 +171,8 @@ class Pinnacle:
 
     def export_image(self, image=None, series_uid="", export_path="."):
 
-        for im in self.get_images():
-            im_info = im.get_image_info()[0]
+        for im in self.images:
+            im_info = im.image_info[0]
             im_suid = im_info['SeriesUID']
             if len(series_uid) > 0 and im_suid == series_uid:
                 convert_image(im, export_path)
@@ -177,8 +183,8 @@ class Pinnacle:
 
     def print_images(self):
 
-        for i in self.get_images():
-            image_header = i.get_image_header()
+        for i in self.images:
+            image_header = i.image_header
             self.logger.info('{0}: {1} {2}'.format(
                 image_header['modality'],
                 image_header['series_UID'],
@@ -186,19 +192,19 @@ class Pinnacle:
 
     def print_plan_names(self):
 
-        for p in self.get_plans():
+        for p in self.plans:
             self.logger.info(p.plan_info['PlanName'])
 
     def print_trial_names(self):
 
-        for p in self.get_plans():
+        for p in self.plans:
             self.logger.info('### ' + p.plan_info['PlanName'] + ' ###')
-            for t in p.get_trials():
+            for t in p.trials:
                 self.logger.info('- '+t['Name'])
 
     def print_trial_names_in_plan(self, p):
 
         self.logger.info('### ' + p.plan_info['PlanName'] + ' ###')
         self.logger.info(p.path)
-        for t in p.get_trials():
+        for t in p.trials:
             self.logger.info('- '+t['Name'])
