@@ -24,10 +24,10 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Provides a various set of tools for DICOM header manipulation.
+"""Export DICOM objects from raw Pinnacle data.
 """
 
-from pymedphys_pinnacle import export
+from pymedphys_pinnacle import export_cli
 
 
 def pinnacle_cli(subparsers):
@@ -91,4 +91,4 @@ def export_pinnacle(pinnacle_subparsers):
         '-u', '--uid-prefix',
         help=("Prefix to use for generated UIDs."))
 
-    parser.set_defaults(func=export)
+    parser.set_defaults(func=export_cli)

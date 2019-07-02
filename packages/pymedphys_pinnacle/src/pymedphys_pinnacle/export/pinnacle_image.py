@@ -52,10 +52,21 @@ import os
 
 from .pinn_yaml import pinn_to_dict
 
-# This class holds all information relating to the Pinnacle Image
-
 
 class PinnacleImage:
+    """Represents an image within the Pinnacle data.
+
+    This class manages the data specific to an image within a Pinnacle dataset.
+
+    Parameters
+    ----------
+        pinnacle : PinnacleExport
+            PinnacleExport object representing the dataset.
+        path : str
+            Path to raw Pinnacle data (directoy containing 'Patient' file).
+        image : dict
+            Image info dict from 'Patient' file.
+    """
 
     def __init__(self, pinnacle, path, image):
 
@@ -69,22 +80,57 @@ class PinnacleImage:
 
     @property
     def logger(self):
+        """Gets the configured logger.
+
+        Returns
+        -------
+        logger : Logger
+            Logger configured.
+        """
         return self._pinnacle.logger
 
     @property
     def pinnacle(self):
+        """Gets the PinnacleExport object.
+
+        Returns
+        -------
+        pinnacle : PinnacleExport
+            PinnacleExport object for this dataset.
+        """
         return self._pinnacle
 
     @property
     def path(self):
+        """Gets the path of the Pinnacle data.
+
+        Returns
+        -------
+        path : str
+            Path containing the Pinnacle data.
+        """
         return self._path
 
     @property
     def image(self):
+        """Gets the image information from the 'Patient' file.
+
+        Returns
+        -------
+        image : dict
+            Image info as found in the Pinnacle 'Patient' file.
+        """
         return self._image
 
     @property
     def image_info(self):
+        """Gets the image information from the '.ImageInfo' file.
+
+        Returns
+        -------
+        image_info : dict
+            Image info as found in the Pinnacle '.ImageInfo' file.
+        """
 
         if not self._image_info:
             path_image_info = os.path.join(
@@ -96,6 +142,13 @@ class PinnacleImage:
 
     @property
     def image_header(self):
+        """Gets the image header from the '.header' file.
+
+        Returns
+        -------
+        image_header : dict
+            Image info as found in the Pinnacle '.header' file.
+        """
 
         if not self._image_header:
             path_image_header = os.path.join(
@@ -117,6 +170,13 @@ class PinnacleImage:
 
     @property
     def image_set(self):
+        """Gets the image set from the '.ImageSet' file.
+
+        Returns
+        -------
+        image_set : dict
+            Image set as found in the Pinnacle '.ImageSet' file.
+        """
 
         if not self._image_set:
             path_image_set = os.path.join(
