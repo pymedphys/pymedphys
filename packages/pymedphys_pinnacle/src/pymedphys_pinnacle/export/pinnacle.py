@@ -61,10 +61,19 @@ from .rtdose import convert_dose
 from .image import convert_image
 
 
-# This class holds all information relating to the Pinnacle Dataset
-# Can be used to export various elements of the dataset, Images,
-# RTSTRUCT, RTPLAN or RTDOSE.
 class PinnacleExport:
+    """Handle Pinnacle data to allow export of DICOM objects
+
+    This class is used to export the various DICOM objects from Pinnacle
+    data found within the given path.
+
+    Parameters
+    ----------
+        path : str
+            Path to raw Pinnacle data (directory containing 'Patient' file).
+        logger : Logger
+            Logger the tool will log to.
+    """
 
     def __init__(self, path, logger=None):
 
@@ -92,10 +101,25 @@ class PinnacleExport:
 
     @property
     def logger(self):
+        """Gets the configured logger.
+
+        Returns
+        -------
+        logger : Logger
+            Logger configured.
+        """
         return self._logger
 
     @property
     def patient_info(self):
+        """Gets the patient info.
+
+        Returns
+        -------
+        patient_info : dict
+            Dictionary object containing the data found in the 'Patient'
+            file within the raw Pinnacle data.
+        """
 
         if not self._patient_info:
             path_patient = os.path.join(self._path, "Patient")
@@ -130,8 +154,16 @@ class PinnacleExport:
 
     @property
     def plans(self):
+        """Get the plans available.
 
-        # Read patient info to populate patients plns
+        Returns
+        -------
+        plans : list
+            List of PinnaclePlan's available within the Pinnacle raw data in the path
+            configured.
+        """
+
+        # Read patient info to populate patients plans
         if not self._plans:
 
             self._plans = []
@@ -144,6 +176,14 @@ class PinnacleExport:
 
     @property
     def images(self):
+        """Get the images available.
+
+        Returns
+        -------
+        images : list
+            List of PinnacleImage's available within the Pinnacle raw data in the path
+            configured.
+        """
 
         # Read patient info to populate patients images
         if not self._images:
@@ -155,21 +195,63 @@ class PinnacleExport:
         return self._images
 
     def export_struct(self, plan, export_path="."):
+        """Exports the RTSTRUCT DICOM modality.
+
+        Parameters
+        ----------
+            plan : PinnaclePlan
+                The plan for which structures should be exported.
+            export_path : str, optional
+                The file system path where the DICOM object should be
+                exported to.
+        """
 
         # Export Structures for plan
         convert_struct(plan, export_path)
 
     def export_dose(self, plan, export_path="."):
+        """Exports the RTDOSE DICOM modality.
+
+        Parameters
+        ----------
+            plan : PinnaclePlan
+                The plan for which dose should be exported.
+            export_path : str, optional
+                The file system path where the DICOM object should be
+                exported to.
+        """
 
         # Export dose for plan
         convert_dose(plan, export_path)
 
     def export_plan(self, plan, export_path="."):
+        """Exports the RTPLAN DICOM modality.
+
+        Parameters
+        ----------
+            plan : PinnaclePlan
+                The plan for which dose should be exported.
+            export_path : str, optional
+                The file system path where the DICOM object should be
+                exported to.
+        """
 
         # Export rtplan for plan
         convert_plan(plan, export_path)
 
     def export_image(self, image=None, series_uid="", export_path="."):
+        """Exports an image from the Pinnacle data.
+
+        Parameters
+        ----------
+            image : PinnacleImage, optional
+                The image to export.
+            series_uid : str, optional
+                The SeriesInstanceUID of the image to export.
+            export_path : str, optional
+                The file system path where the DICOM objects should be
+                exported to.
+        """
 
         for im in self.images:
             im_info = im.image_info[0]
@@ -182,6 +264,8 @@ class PinnacleExport:
             convert_image(image, export_path)
 
     def log_images(self):
+        """Outputs all images found in the Pinnacle data to the log.
+        """
 
         for i in self.images:
             image_header = i.image_header
@@ -191,20 +275,31 @@ class PinnacleExport:
                 image_header['SeriesDateTime']))
 
     def log_plan_names(self):
+        """Outputs all plans found in the Pinnacle data to the log.
+        """
 
         for p in self.plans:
             self.logger.info(p.plan_info['PlanName'])
 
     def log_trial_names(self):
+        """Outputs all trials found in the Pinnacle data to the log.
+        """
 
         for p in self.plans:
             self.logger.info('### ' + p.plan_info['PlanName'] + ' ###')
             for t in p.trials:
                 self.logger.info('- '+t['Name'])
 
-    def log_trial_names_in_plan(self, p):
+    def log_trial_names_in_plan(self, plan):
+        """Outputs all trials found within a plan to the log.
 
-        self.logger.info('### ' + p.plan_info['PlanName'] + ' ###')
-        self.logger.info(p.path)
-        for t in p.trials:
-            self.logger.info('- '+t['Name'])
+        Parameters
+        ----------
+            plan : PinnaclePlan
+                The plan for which to log the trials.
+        """
+
+        self.logger.info('### ' + plan.plan_info['PlanName'] + ' ###')
+        self.logger.info(plan.path)
+        for trial in plan.trials:
+            self.logger.info('- '+trial['Name'])
