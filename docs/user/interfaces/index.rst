@@ -40,5 +40,6 @@ This presents what to write into the command prompt to use that CLI command.
     cli/trf
     cli/logfile
     cli/docker
+    cli/pinnacle
 
 
