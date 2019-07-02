@@ -1,3 +1,3 @@
-from .export.pinnacle import PinnacleExport
+from .export import PinnacleExport, PinnaclePlan, PinnacleImage
 
 from .export.pinnacle_cli import export_cli
