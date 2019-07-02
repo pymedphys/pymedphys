@@ -48,13 +48,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import pydicom
-import numpy as np
-
-from pydicom.dataset import Dataset, FileDataset
-from pydicom.sequence import Sequence
-from pydicom.filebase import DicomFile
-import pydicom.uid
 import sys
 import os
 import time
@@ -62,13 +55,13 @@ import re
 import struct
 import shutil
 
-# Constants
-RTDOSEModality = 'RTDOSE'
-GTransferSyntaxUID = '1.2.840.10008.1.2'
-GImplementationClassUID = '1.2.826.0.1.3680043.8.498.75006884747854523615841001'
-RTDoseSOPClassUID = '1.2.840.10008.5.1.4.1.1.481.2'
-RTPlanSOPClassUID = '1.2.840.10008.5.1.4.1.1.481.5'
-Manufacturer = 'Pinnacle Philips'
+import pydicom
+import numpy as np
+
+from pydicom.dataset import (Dataset, FileDataset)
+import pydicom.uid
+
+from .constants import *
 
 # This function will create dicom image files for each slice using the
 # condensed pixel data from file ImageSet_%s.img
