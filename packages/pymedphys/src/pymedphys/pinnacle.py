@@ -1,2 +1,2 @@
 from pymedphys_pinnacle import (
-    PinnacleExport)
+    PinnacleExport, PinnaclePlan, PinnacleImage)

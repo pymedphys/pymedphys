@@ -14,11 +14,11 @@ Summary
 API
 ***
 
-.. autoclass:: pymedphys_pinnacle.export.PinnacleExport
+.. autoclass:: pymedphys.pinnacle.PinnacleExport
    :members:
 
-.. autoclass:: pymedphys_pinnacle.export.PinnaclePlan
+.. autoclass:: pymedphys.pinnacle.PinnaclePlan
    :members:
 
-.. autoclass:: pymedphys_pinnacle.export.PinnacleImage
+.. autoclass:: pymedphys.pinnacle.PinnacleImage
    :members:
