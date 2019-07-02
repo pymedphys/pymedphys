@@ -44,7 +44,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - A CLI is provided: See
   [the Pinnacle CLI docs](https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html).
   - As well as an API: See
-  [the Pinnacle library docs](https://docs.pymedphys.com/user/interfaces/library/pinnacle.html).
+  [the Pinnacle library docs](https://docs.pymedphys.com/user/library/pinnacle.html).
 
 ## [0.9.0] -- 2019/06/06
 
