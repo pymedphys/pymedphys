@@ -38,7 +38,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Pinnacle module providing a tool to export raw Pinnacle data to DICOM
   objects.
   - A CLI is provided: See
-  [the Pinnacle CLI docs](../user/interfaces/cli/pinnacle.rst).
+  [the Pinnacle CLI docs](https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html).
   - As well as an API: See
   [the Pinnacle library docs](../user/interfaces/library/pinnacle.rst).
 
