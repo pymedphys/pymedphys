@@ -35,6 +35,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Re-exposed `convert2_ratio_perim_area` and `create_transformed_mesh` from
   `pymedphys.electronfactors`.
+- Pinnacle module providing a tool to export raw Pinnacle data to DICOM
+  objects.
+  - A CLI is provided: See
+  [the Pinnacle CLI docs](../user/interfaces/cli/pinnacle.rst).
+  - As well as an API: See
+  [the Pinnacle library docs](../user/interfaces/library/pinnacle.rst).
 
 ## [0.9.0] -- 2019/06/06
 
