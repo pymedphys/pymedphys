@@ -29,8 +29,7 @@
 >>> from pymedphys.pinnacle import (
 ...     PinnacleExport,
 ...     PinnaclePlan,
-...     PinnacleImage
-... )
+...     PinnacleImage)
 
 .. WARNING::
    The DICOM objects exported by this tool are not the same as the DICOM
