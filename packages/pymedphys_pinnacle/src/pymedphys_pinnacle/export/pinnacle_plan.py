@@ -62,10 +62,21 @@ from .rtstruct import find_iso_center
 # Their service was used to obtain the following root UID for this tool:
 UID_PREFIX = "1.2.826.0.1.3680043.10.202."
 
-# This class holds all information relating to the Pinnacle Plan
-
 
 class PinnaclePlan:
+    """Represents a plan within the Pinnacle data.
+
+    This class manages the data specific to a plan within a Pinnacle dataset.
+
+    Parameters
+    ----------
+        pinnacle : PinnacleExport
+            PinnacleExport object representing the dataset.
+        path : str
+            Path to raw Pinnacle data (directoy containing 'Patient' file).
+        plan : dict
+            Plan info dict from 'Patient' file.
+    """
 
     def __init__(self, pinnacle, path, plan):
         self._pinnacle = pinnacle
@@ -91,22 +102,61 @@ class PinnaclePlan:
 
         for image in pinnacle.images:
             if image.image['ImageSetID'] == self.plan_info["PrimaryCTImageSetID"]:
-                self.primary_image = image
+                self._primary_image = image
 
     @property
     def logger(self):
+        """Gets the configured logger.
+
+        Returns
+        -------
+        logger : Logger
+            Logger configured.
+        """
         return self._pinnacle.logger
 
     @property
     def pinnacle(self):
+        """Gets the PinnacleExport object.
+
+        Returns
+        -------
+        pinnacle : PinnacleExport
+            PinnacleExport object for this dataset.
+        """
         return self._pinnacle
 
     @property
     def path(self):
+        """Gets the path of the Pinnacle data.
+
+        Returns
+        -------
+        path : str
+            Path containing the Pinnacle data.
+        """
         return self._path
 
     @property
+    def primary_image(self):
+        """Gets the primary image for this plan.
+
+        Returns
+        -------
+        primary_image : PinnacleImage
+            PinnacleImage representing the primary image for this plan.
+        """
+        return self._primary_image
+
+    @property
     def machine_info(self):
+        """Gets the machine info for this plan.
+
+        Returns
+        -------
+        machine_info : dict
+            Machine info read from 'plan.Pinnacle.Machines' file.
+        """
 
         if not self._machine_info:
             path_machine = os.path.join(self._path, "plan.Pinnacle.Machines")
@@ -117,6 +167,13 @@ class PinnaclePlan:
 
     @property
     def trials(self):
+        """Gets the trials within this plan.
+
+        Returns
+        -------
+        trials : list
+            List of all trials found within this plan.
+        """
 
         if not self._trials:
             path_trial = os.path.join(self._path, "plan.Trial")
@@ -137,6 +194,12 @@ class PinnaclePlan:
 
     @property
     def active_trial(self):
+        """Get and set the active trial for this plan.
+
+        When DICOM objects are exported, data from the active trial is
+        used to generate the output.
+        """
+
         return self._trial_info
 
     @active_trial.setter
@@ -153,18 +216,41 @@ class PinnaclePlan:
 
     @property
     def plan_info(self):
+        """Gets the plan information for this plan.
+
+        Returns
+        -------
+        plan_info : dict
+            Plan info as found in the Pinnacle 'Patient' file.
+        """
         return self._plan_info
 
     @property
     def trial_info(self):
+        """Gets the trial information of the active trial.
+
+        Returns
+        -------
+        trial_info : dict
+            Trial info from the 'plan.Trial' file.
+        """
 
         if not self._trial_info:
-            self.trials
+            # Ensures that the trials are read and a default
+            # trial_info is set
+            self.trials  # pylint: disable=pointless-statement
 
         return self._trial_info
 
     @property
     def points(self):
+        """Gets the points defined within the plan.
+
+        Returns
+        -------
+        points : list
+            List of points read from the 'plan.Points' file.
+        """
 
         if not self._points:
             path_points = os.path.join(self._path, "plan.Points")
@@ -181,6 +267,13 @@ class PinnaclePlan:
 
     @property
     def patient_position(self):
+        """Gets the patient position
+
+        Returns
+        -------
+        patient_position : str
+            The patient position for this plan.
+        """
 
         if not self._patient_setup:
             self._patient_setup = pinn_to_dict(
@@ -206,8 +299,8 @@ class PinnaclePlan:
 
     @property
     def iso_center(self):
-        # If the iso center hasn't been set, then call read points function from
-        # RTStruct which sets the iso center
+        """Gets and sets the iso center for this plan.
+        """
 
         if len(self._iso_center) == 0:
             find_iso_center(self)
@@ -219,6 +312,16 @@ class PinnaclePlan:
         self._iso_center = iso_center
 
     def is_prefix_valid(self, prefix):
+        """Check is a UID prefix is valid.
+
+        Parameters
+        ----------
+            prefix :  str
+                The UID prefix to check.
+
+        Returns:
+            True if valid, False otherwise.
+        """
 
         if re.match(pydicom.uid.RE_VALID_UID_PREFIX, prefix):
             return True
@@ -226,9 +329,15 @@ class PinnaclePlan:
         return False
 
     def generate_uids(self, uid_type='HASH'):
-        # If uid_type HASH is supplied then entropy will be generated
-        # to hash to consistant UIDs. If not then random UIDs will be
-        # generated.
+        """Generates UIDs to be used for exporting this plan.
+
+        Parameters
+        ----------
+            uid_type : str, optional
+                If 'HASH', the entropy will be generated
+                to hash to consistant UIDs. If not then random UIDs will be
+                generated. Default: 'HASH'
+        """
 
         entropy_srcs = None
         if uid_type == 'HASH':
@@ -256,6 +365,13 @@ class PinnaclePlan:
 
     @property
     def plan_inst_uid(self):
+        """Gets the instance UID for RTPLAN.
+
+        Returns
+        -------
+        uid : str
+            The UID to use for the plan.
+        """
 
         if not self._plan_inst_uid:
             self.generate_uids()
@@ -264,6 +380,13 @@ class PinnaclePlan:
 
     @property
     def dose_inst_uid(self):
+        """Gets the instance UID for RTDOSE.
+
+        Returns
+        -------
+        uid : str
+            The UID to use for the dose.
+        """
 
         if not self._dose_inst_uid:
             self.generate_uids()
@@ -272,6 +395,13 @@ class PinnaclePlan:
 
     @property
     def struct_inst_uid(self):
+        """Gets the instance UID for RTSTRUCT.
+
+        Returns
+        -------
+        uid : str
+            The UID to use for the struct.
+        """
 
         if not self._struct_inst_uid:
             self.generate_uids()
@@ -280,6 +410,18 @@ class PinnaclePlan:
 
     # Convert the point from the pinnacle plan format to dicom
     def convert_point(self, point):
+        """Convert a point from Pinnacle coordinates to DICOM coordinates.
+
+        Parameters
+        ----------
+            point : list
+                The point to convert.
+
+        Returns
+        -------
+            The converted point.
+
+        """
 
         image_header = self.primary_image.image_header
 

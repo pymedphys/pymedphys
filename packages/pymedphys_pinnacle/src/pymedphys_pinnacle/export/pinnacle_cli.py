@@ -57,7 +57,7 @@ import tempfile
 from .pinnacle import PinnacleExport
 
 
-def export(args):
+def export_cli(args):
     """
     expose a cli to allow export of Pinnacle raw data to DICOM objects
     """
