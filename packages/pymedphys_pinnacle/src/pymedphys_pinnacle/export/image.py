@@ -144,7 +144,7 @@ def create_image_files(image, export_path):
         ds.Modality = modality
         # This should come from Manufacturer in header, but for some
         # patients it isn't set??
-        ds.Manufacturer = "GE MEDICAL SYSTEMS"
+        ds.Manufacturer = ""
         ds.StationName = modality
         ds.PatientsName = patient_info['FullName']
         ds.PatientID = patient_info['MedicalRecordNumber']
@@ -161,17 +161,17 @@ def create_image_files(image, export_path):
         # this is probably x_pixdim * xdim = y_pixdim * ydim
         ds.DataCollectionDiameter = float(
             image_header["x_pixdim"]) * 10 * float(image_header["x_dim"])
-        ds.SpatialResolution = 0.35  # ???????
-        # ds.DistanceSourceToDetector = #???
-        # ds.DistanceSourceToPatient = #????
-        ds.GantryDetectorTilt = 0.0  # ??
-        ds.TableHeight = -158.0  # ??
-        ds.RotationDirection = "CW"  # ???
-        ds.ExposureTime = 1000  # ??
-        ds.XRayTubeCurrent = 398  # ??
-        ds.GeneratorPower = 48  # ??
-        ds.FocalSpots = 1.2  # ??
-        ds.ConvolutionKernel = "STND"  # ????
+        # ds.SpatialResolution = 0.35  # ???????
+        # # ds.DistanceSourceToDetector = #???
+        # # ds.DistanceSourceToPatient = #????
+        # ds.GantryDetectorTilt = 0.0  # ??
+        # ds.TableHeight = -158.0  # ??
+        # ds.RotationDirection = "CW"  # ???
+        # ds.ExposureTime = 1000  # ??
+        # ds.XRayTubeCurrent = 398  # ??
+        # ds.GeneratorPower = 48  # ??
+        # ds.FocalSpots = 1.2  # ??
+        # ds.ConvolutionKernel = "STND"  # ????
         ds.SliceThickness = float(image_header["z_pixdim"]) * 10
         ds.NumberOfSlices = int(image_header["z_dim"])
         #ds.StudyInstanceUID = studyinstuid
