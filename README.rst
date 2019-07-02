@@ -91,6 +91,13 @@ along with their affiliation:
 .. _`Paul King`: https://github.com/kingrpaul
 
 
+* `Pedro Martinez`_
+    * `University of Calgary`_, Canada
+    * `Tom Baker Cancer Centre`_, Canada
+
+.. _`Pedro Martinez`: https://github.com/peterg1t
+
+
 * `Matthew Sobolewski`_
     * `Riverina Cancer Care Centre`_, Australia
     * `Northern Beaches Cancer Care`_, Australia
@@ -98,17 +105,16 @@ along with their affiliation:
 .. _`Matthew Sobolewski`: https://github.com/msobolewski
 
 
+* `Felix Bocklemann`_
+    * `Northern Beaches Cancer Care`_, Australia
+
+.. _`Felix Bocklemann`: https://github.com/fbockelmann
+
+
 * `Jacob McAloney`_
     * `Riverina Cancer Care Centre`_, Australia
 
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
-
-
-* `Pedro Martinez`_
-    * `University of Calgary`_, Canada
-    * `Tom Baker Cancer Centre`_, Canada
-
-.. _`Pedro Martinez`: https://github.com/peterg1t
 
 |
 
