@@ -1,4 +1,4 @@
-=========
+﻿=========
 PyMedPhys
 =========
 
@@ -82,7 +82,14 @@ along with their affiliation:
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
 
-.. _`Matthew Jennings`: https://github.com/centrus007
+.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
+
+
+* `Phillip Chlap`_
+    * `University of New South Wales`_, Australia
+    * `South Western Sydney Local Health District`_, Australia
+
+.. _`Phillip Chlap`: https://github.com/pchlap
 
 
 * `Paul King`_
@@ -102,6 +109,13 @@ along with their affiliation:
     * `Riverina Cancer Care Centre`_, Australia
 
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
+
+
+* `Pedro Martinez`_
+    * `University of Calgary`_, Canada
+    * `Tom Baker Cancer Centre`_, Canada
+
+.. _`Pedro Martinez`: https://github.com/peterg1t
 
 |
 
@@ -133,13 +147,28 @@ along with their affiliation:
 
 |
 
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UofC_logo.png
+    :target: `University of Calgary`_
+    :align: center
+    :width: 400 px
+
+|
+
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
 
+.. _`University of New South Wales`: https://www.unsw.edu.au/
+
+.. _`South Western Sydney Local Health District`: https://www.swslhd.health.nsw.gov.au/
+
 .. _`Anderson Regional Cancer Center`: http://www.andersonregional.org/CancerCenter.aspx
 
 .. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
+
+.. _`University of Calgary`: http://www.ucalgary.ca/
+
+.. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
 
 
 We want you on this list. We want you, whether you are a  clinical

@@ -1,11 +1,10 @@
-<!-- markdownlint-disable MD033 MD024 -->
+<!-- markdownlint-disable MD024 -->
 
 # Release Notes
 
 All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-<br/>
 
 <!--  Template
 ## [Unreleased]
@@ -32,8 +31,62 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+- nil
+
+## [0.10.0]
+
+### New Features
+
+- Re-exposed `convert2_ratio_perim_area` and `create_transformed_mesh` from
+  `pymedphys.electronfactors`.
+- Pinnacle module providing a tool to export raw Pinnacle data to DICOM
+  objects.
+  - A CLI is provided: See
+  [the Pinnacle CLI docs](https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html).
+  - As well as an API: See
+  [the Pinnacle library docs](https://docs.pymedphys.com/user/library/pinnacle.html).
+
+## [0.9.0] -- 2019/06/06
+
+### New Features
+
+- Re-exposed `multi_mosaiq_connect`, `multi_fetch_and_verify_mosaiq`,
+  `get_qcls_by_date`, and `get_staff_name` from `pymedphys.msq`.
+
+## [0.8.4] -- 2019/06/04
+
+### Package changes
+
+- Made `xlwings` not install by default if system is `Linux` within `setup.py`
+- Removed unreleased `jupyter` based GUI
+
+## [0.8.3] -- 2019/06/04
+
+### Package changes
+
+- Updated MANIFEST file within `pymedphys_fileformats` to appropriately include
+  LICENSE files.
+
+## [0.8.2] -- 2019/06/01
+
+### Package changes
+
+- Included license files within the subpackage distributions
+
+## [0.8.1] -- 2019/06/01
+
+### Dependency changes
+
+- Removed numpy version upperlimit
+
+## [0.8.0] -- 2019/06/01
+
 ### Breaking Changes
 
+- `DeliveryData` has been renamed to `Delivery` and is now importable by
+  running `from pymedphys import Delivery`
+  - A range of functions that used to use `DeliveryData` are now instead
+    accessible as methods on the `Delivery` object.
 - A large number of functions that were previously exposed have now been made
   private in preparation for eventually stabilising the API. No function that
   was within the documentation has been removed. If there is a function that
@@ -62,6 +115,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - DICOM: `'d'` or `'DICOM'`
   - IEC fixed: `'f'`, `'fixed'` or `'IEC fixed'`
   - IEC patient: `'p'`, `'patient'` or `'IEC patient'`
+- `gamma_dicom` now take datasets as opposed to filenames
 
 ### New Features
 
@@ -80,7 +134,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   exposed in the API. It converts x, y, z axes returned by `xyz_from_dataset()`
   into a full grid of coordinate triplets that correspond to the original grid
   (pixel array or dose grid).
-
 
 ## [0.7.2] -- 2019/04/05
 
@@ -137,8 +190,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `pymedphys trf to-csv` within the command line to convert `.trf` files into
   `.csv` files.
 
-<br/>
-
 ## [0.6.0] -- 2019/03/15
 
 ### Breaking Changes
@@ -176,15 +227,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - All uses of `dcm` as a variable name for instances of PyDicom Datasets have
   been converted to `ds` to match PyDicom convention.
 
-<br/>
-
 ## [0.5.1] -- 2019/01/05
 
 ### New Features
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.7.2...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.10.0...master
+[0.10.0]: https://github.com/pymedphys/pymedphys/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/pymedphys/pymedphys/compare/v0.8.4...v0.9.0
+[0.8.4]: https://github.com/pymedphys/pymedphys/compare/v0.8.3...v0.8.4
+[0.8.3]: https://github.com/pymedphys/pymedphys/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/pymedphys/pymedphys/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/pymedphys/pymedphys/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/pymedphys/pymedphys/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/pymedphys/pymedphys/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/pymedphys/pymedphys/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/pymedphys/pymedphys/compare/v0.6.0...v0.7.0

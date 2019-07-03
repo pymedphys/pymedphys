@@ -1,28 +1,69 @@
 [build]
-  command = "yarn netlify"
-  publish = "docs/_build/html"
+  command = "python ./scripts/netlify.py"
+  publish = "site"
 
 
 [[redirects]]
   from = "/en/stable/*"
   to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/latest/*"
   to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/0.8.x/*"
   to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/0.7.x/*"
   to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/0.6.x/*"
   to = "/:splat"
+  status = 301
+  force = true
 
 [[redirects]]
   from = "/en/0.5.x/*"
   to = "/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://pymedphys.netlify.com/*"
+  to = "https://pymedphys.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://pymedphys.com/*"
+  to = "https://docs.pymedphys.com/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://docs-pymedphys.netlify.com/*"
+  to = "https://docs.pymedphys.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://app-pymedphys.netlify.com/*"
+  to = "https://app.pymedphys.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
