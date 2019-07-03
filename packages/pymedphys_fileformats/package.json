@@ -1,18 +1,20 @@
 {
   "dependencies": {
-    "pymedphys_coordsandscales": "~0.8.0-dev.16"
+    "pymedphys_base": "~0.10.0",
+    "pymedphys_core": "~0.8.0-dev.17"
   },
   "name": "pymedphys_fileformats",
   "private": true,
   "scripts": {
+    "conda-forge": "python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
     "pip:install:dev": "pip install -e .",
     "pip:install:prod": "pip install .",
     "pip:install:test": "pip install .[test]",
     "postversion": "yarn propagate:version",
     "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
-    "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
+    "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.16"
+  "version": "0.10.0"
 }

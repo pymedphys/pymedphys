@@ -30,6 +30,7 @@ from .dicom import dicom_cli
 from .docker import docker_cli
 from .logfile import logfile_cli
 from .trf import trf_cli
+from .pinnacle import pinnacle_cli
 
 
 class DefaultHelpParser(argparse.ArgumentParser):
@@ -47,6 +48,7 @@ def define_parser():
     docker_cli(subparsers)
     logfile_cli(subparsers)
     trf_cli(subparsers)
+    pinnacle_cli(subparsers)
 
     return parser
 
