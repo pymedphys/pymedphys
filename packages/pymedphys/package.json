@@ -1,20 +1,26 @@
 {
   "dependencies": {
-    "pymedphys_analysis": "~0.8.0-dev.16",
-    "pymedphys_coordsandscales": "~0.8.0-dev.16",
-    "pymedphys_databases": "~0.8.0-dev.16",
-    "pymedphys_dicom": "~0.8.0-dev.16",
-    "pymedphys_electronfactors": "~0.8.0-dev.16",
-    "pymedphys_fileformats": "~0.8.0-dev.16",
-    "pymedphys_labs": "~0.8.0-dev.16",
-    "pymedphys_logfiles": "~0.8.0-dev.16",
-    "pymedphys_utilities": "~0.8.0-dev.16",
-    "pymedphys_xlwings": "~0.8.0-dev.16"
+    "pymedphys_analysis": "~0.10.0",
+    "pymedphys_base": "~0.10.0",
+    "pymedphys_coordsandscales": "~0.10.0",
+    "pymedphys_core": "~0.8.0-dev.17",
+    "pymedphys_databases": "~0.10.0",
+    "pymedphys_dicom": "~0.10.0",
+    "pymedphys_electronfactors": "~0.10.0",
+    "pymedphys_fileformats": "~0.10.0",
+    "pymedphys_gamma": "~0.10.0",
+    "pymedphys_labs": "~0.10.0",
+    "pymedphys_logfiles": "~0.10.0",
+    "pymedphys_mudensity": "~0.10.0",
+    "pymedphys_pinnacle": "~0.10.0",
+    "pymedphys_utilities": "~0.10.0",
+    "pymedphys_xlwings": "~0.10.0"
   },
   "name": "pymedphys",
   "private": true,
   "scripts": {
-    "copy:readme": "python -c \"import shutil; shutil.copy('../../README.rst', 'README.rst')\"",
+    "conda-forge": "yarn prerun && python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
+    "copy:readme": "python ./scripts/attempt-readme-copy.py",
     "pip:install": "yarn prerun && pip install .",
     "pip:install:dev": "yarn prerun && pip install -e .",
     "pip:install:dev:all": "yarn prerun && pip install -e .[docs,test,lint,dev]",
@@ -22,11 +28,12 @@
     "pip:install:docs": "yarn prerun && pip install .[docs]",
     "pip:install:prod": "yarn pip:install",
     "pip:install:test": "yarn prerun && pip install .[test]",
-    "postversion": "yarn propegate:version",
+    "postversion": "yarn propagate:version",
     "prerun": "yarn copy:readme",
-    "propegate:version": "python ../../scripts/propegate_versions.py",
+    "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
+    "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.16"
+  "version": "0.10.0"
 }

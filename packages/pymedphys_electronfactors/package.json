@@ -3,13 +3,15 @@
   "name": "pymedphys_electronfactors",
   "private": true,
   "scripts": {
+    "conda-forge": "python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
     "pip:install:dev": "pip install -e .",
     "pip:install:prod": "pip install .",
     "pip:install:test": "pip install .[test]",
-    "postversion": "yarn propegate:version",
-    "propegate:version": "python ../../scripts/propegate_versions.py",
+    "postversion": "yarn propagate:version",
+    "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
+    "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.16"
+  "version": "0.10.0"
 }

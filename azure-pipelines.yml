@@ -8,58 +8,35 @@ jobs:
           test_title: Pylint All
           toxenv: pylint
           python: 3.7
-        Test-Subpackages:
+        Docs:
           image_name: ubuntu-16.04
-          test_title: Test Subpackages
-          toxenv: analysis,dicom,fileformats,labs,logfiles,coordsandscales,electronfactors,databases,utilities,workshops,toolbox
+          test_title: Docs
+          toxenv: docs
           python: 3.7
-        # Docs:
-        #   image_name: ubuntu-16.04
-        #   test_title: Docs
-        #   toxenv: docs
-        #   python: 3.7
         Pytest-DoctestModules:
           image_name: ubuntu-16.04
           test_title: Pytest with Docstrings Included
           toxenv: doctest
           python: 3.7
-        # Layer-Lint:
-        #   image_name: ubuntu-16.04
-        #   test_title: Layer-Lint
-        #   toxenv: layer_lint
-        #   python: 3.7
-        # mypy:
-        #   image_name: ubuntu-16.04
-        #   test_title: mypy
-        #   toxenv: mypy
-        #   python: 3.7
-        # Linux-Py36:
-        #   image_name: ubuntu-16.04
-        #   test_title: Linux Py36
-        #   toxenv: py36
-        #   python: 3.6
         Linux-Py37:
           image_name: ubuntu-16.04
           test_title: Linux Py37
           toxenv: py37
           python: 3.7
-        Dependency-Tree:
-          image_name: ubuntu-16.04
-          test_title: Dependency Tree
-          toxenv: tree
-          python: 3.7
+        # Dependency-Tree:
+        #   image_name: ubuntu-16.04
+        #   test_title: Dependency Tree
+        #   toxenv: tree
+        #   python: 3.7
 
     pool:
       vmImage: $(image_name)
 
     steps:
     - task: UsePythonVersion@0
-      displayName: setup python
+      displayName: Setup Python
       inputs:
         versionSpec: $(python)
-
-    # - bash: export INSTALL_ON_LINUX=1; yarn
-    #   displayName: Run yarn
 
     - bash: sudo apt-get install -y pandoc
       displayName: Install Pandoc, need to make this only on doc run
@@ -91,62 +68,9 @@ jobs:
       condition: succeededOrFailed()
 
 
-#   - job: ToxWithConda
-
-#     strategy:
-#       matrix:
-#         windows-py36:
-#           image_name: vs2017-win2016
-#           test_title: Windows py36
-#           toxenv: py36
-#           python: 3.6
-#         windows-py37:
-#           image_name: vs2017-win2016
-#           test_title: Windows py37
-#           toxenv: py37
-#           python: 3.7
-
-#     pool:
-#       vmImage: $(image_name)
-
-#     steps:
-#     - task: CondaEnvironment@1
-#       inputs:
-#         createCustomEnvironment: true
-#         environmentName: pymedphys
-#         packageSpecs: python=$(python) virtualenv pip setuptools shapely pymssql
-#         updateConda: true
-#         createOptions: --channel conda-forge
-
-#     - bash: "source activate pymedphys && python -c \"import sys; print(sys.version); print(sys.executable)\""
-#       displayName: Show python information
-
-#     - bash: "source activate pymedphys && python -m pip install -U tox --user"
-#       displayName: Install tox
-
-#     - bash: "source activate pymedphys && python -m tox -e $TOXENV --notest"
-#       displayName: Install test dependencies
-
-#     - bash: "source activate pymedphys && python -m tox -e $TOXENV"
-#       displayName: Run tests
-
-#     - task: PublishTestResults@2
-#       displayName: Publish test results
-#       inputs:
-#         testResultsFiles: junit/*.xml
-#         testRunTitle: '$(test_title)'
-#       condition: succeededOrFailed()
-
-
   - job: CondaEnvironment
-
     strategy:
       matrix:
-        # mac-py36:
-        #   image_name: macos-10.13
-        #   test_title: macOS py36
-        #   toxenv: py36
-        #   python: 3.6
         MacOS-Py37:
           image_name: macos-10.13
           test_title: MacOS Py37
@@ -208,3 +132,36 @@ jobs:
 
     - bash: find . -iname \*.ipynb | xargs -d "\n" python -m nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
       displayName: Check that notebooks have no included output
+
+
+  - job: DependencyTree
+
+    pool:
+      vmImage: 'ubuntu-16.04'
+
+    steps:
+    - task: UsePythonVersion@0
+      displayName: Setup Python
+      inputs:
+        versionSpec: 3.7
+
+    - bash: "python -m pip install -U pip setuptools --user"
+      displayName: Upgrade pip and setuptools
+
+    - bash: "python -m pip install packages/pymedphys_monomanage --user"
+      displayName: Install monomanage
+
+    - bash: sudo apt-get install -y graphviz
+      displayName: Install graphviz
+
+    - bash: yarn
+      displayName: Run yarn
+
+    - bash: yarn tree
+      displayName: Build and graph dependency trees
+
+    - bash: git add -A && git diff HEAD --name-only --exit-code -- "*.py"
+      displayName: Test if any python files were changed
+
+    - bash: git add -A && git diff HEAD --name-only --exit-code -- "*.json"
+      displayName: Test if any json files were changed

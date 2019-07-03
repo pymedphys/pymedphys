@@ -34,6 +34,23 @@ from glob import glob
 from .trf2pandas import trf2pandas
 
 
+def trf2csv_by_directory(input_directory, output_directory):
+    filepaths = glob(os.path.join(input_directory, '*.trf'))
+
+    for filepath in filepaths:
+        filename = os.path.basename(filepath)
+        new_filename = os.path.join(output_directory, filename)
+
+        header_csv_filepath = "{}.header.csv".format(new_filename)
+        table_csv_filepath = "{}.table.csv".format(new_filename)
+
+        print("Converting {}".format(filepath))
+
+        header, table = trf2pandas(filepath)
+        header.to_csv(header_csv_filepath)
+        table.to_csv(table_csv_filepath)
+
+
 def trf2csv(trf_filepath, skip_if_exists=False):
     if not os.path.exists(trf_filepath):
         raise Exception("The provided trf filepath cannot be found.")
@@ -51,6 +68,8 @@ def trf2csv(trf_filepath, skip_if_exists=False):
         table.to_csv(table_csv_filepath)
     # else:
     #     print("Skipping {}".format(trf_filepath))
+
+    return header_csv_filepath, table_csv_filepath
 
 
 def trf2csv_cli(args):

@@ -32,7 +32,9 @@ import struct
 import attr
 import numpy as np
 
-from pymedphys_coordsandscales.deliverydata import DeliveryData, get_delivery_parameters
+from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
+
+from ..delivery import DeliveryDatabases
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES
@@ -241,35 +243,6 @@ def collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2):
     return mlc, jaw
 
 
-def convert_angle_to_bipolar(angle):
-    angle = np.copy(angle)
-    if np.all(angle == 180):
-        return angle
-
-    angle[angle > 180] = angle[angle > 180] - 360
-
-    is_180 = np.where(angle == 180)[0]
-    not_180 = np.where(np.invert(angle == 180))[0]
-
-    where_closest_left_leaning = np.argmin(
-        np.abs(is_180[:, None] - not_180[None, :]), axis=1)
-    where_closest_right_leaning = len(not_180) - 1 - np.argmin(np.abs(
-        is_180[::-1, None] -
-        not_180[None, ::-1]), axis=1)[::-1]
-
-    closest_left_leaning = not_180[where_closest_left_leaning]
-    closest_right_leaning = not_180[where_closest_right_leaning]
-
-    assert np.all(
-        np.sign(angle[closest_left_leaning]) ==
-        np.sign(angle[closest_right_leaning])
-    ), "Unable to automatically determine whether angle is 180 or -180"
-
-    angle[is_180] = np.sign(angle[closest_left_leaning]) * angle[is_180]
-
-    return angle
-
-
 def delivery_data_sql(cursor, field_id):
     """Get the treatment delivery data from Mosaiq given the SQL field_id
 
@@ -366,24 +339,28 @@ def delivery_data_from_mosaiq(cursor, field_id):
     coll_y2 = txfieldpoint_results[:, 6].astype(float)
 
     mlc, jaw = collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2)
-    gantry = convert_angle_to_bipolar(msq_gantry_angle)
-    collimator = convert_angle_to_bipolar(msq_collimator_angle)
+    gantry = convert_IEC_angle_to_bipolar(msq_gantry_angle)
+    collimator = convert_IEC_angle_to_bipolar(msq_collimator_angle)
 
     # TODO Tidy up this axis swap
     mlc = np.swapaxes(mlc, 0, 2)
     jaw = np.swapaxes(jaw, 0, 1)
 
-    mosaiq_delivery_data = DeliveryData(
+    mosaiq_delivery_data = DeliveryDatabases(
         monitor_units, gantry, collimator, mlc, jaw)
 
     return mosaiq_delivery_data
 
 
 def multi_fetch_and_verify_mosaiq(cursor, field_id):
-    reference_data = get_delivery_parameters(
-        delivery_data_from_mosaiq(cursor, field_id))
+    mosaiq_delivery_data = delivery_data_from_mosaiq(cursor, field_id)
+    reference_data = (
+        mosaiq_delivery_data.monitor_units,
+        mosaiq_delivery_data.mlc, mosaiq_delivery_data.jaw)
+
     delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-    test_data = get_delivery_parameters(delivery_data)
+    test_data = (
+        delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
 
     agreement = False
 
@@ -401,6 +378,8 @@ def multi_fetch_and_verify_mosaiq(cursor, field_id):
             print('Trying again...')
             reference_data = test_data
             delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-            test_data = get_delivery_parameters(delivery_data)
+            test_data = (
+                delivery_data.monitor_units, delivery_data.mlc,
+                delivery_data.jaw)
 
     return delivery_data
