@@ -18,8 +18,8 @@ def read(*names, **kwargs):
     ).read()
 
 
-package_dir = 'src'
-packages = find_packages(package_dir)
+source_path = 'src'
+packages = find_packages(source_path)
 root_packages = [
     package
     for package in packages
@@ -28,18 +28,27 @@ root_packages = [
 
 assert len(root_packages) == 1
 package = root_packages[0]
+package_directory = pjoin(root, source_path, package)
 
-version_ns = {}  # type: ignore
-version_filepath = glob(
-    pjoin(root, package_dir, package, '_version.py'))[0]
-execfile(version_filepath, version_ns)
 
-version = version_ns['__version__']
+def get_variable_from_file(filepath, variable):
+    filepath_in_package = pjoin(package_directory, filepath)
+    globs = {}
+    execfile(filepath_in_package, globs)
+    variable_value = globs[variable]
+
+    return variable_value
+
+
+version = get_variable_from_file('_version.py', '__version__')
+install_requires = get_variable_from_file(
+    '_install_requires.py', 'install_requires')
 
 
 setup(
     name=package,
     version=version,
+    python_requires='>=3.7',
     author="PyMedPhys Contributors",
     author_email="developers@pymedphys.com",
     description='Medical Physics python modules',
@@ -55,7 +64,7 @@ setup(
         'Intended Audience :: Healthcare Industry'
     ],
     packages=packages,
-    package_dir={'': package_dir},
+    package_dir={'': source_path},
     include_package_data=True,
     package_data={'pymedphys': []},
     entry_points={
@@ -64,24 +73,11 @@ setup(
         ],
     },
     license='AGPL-3.0-or-later',
-    install_requires=[
-        'jinja2',
-        'notebook',
-        'pymedphys_analysis',
-        'pymedphys_coordsandscales',
-        'pymedphys_databases',
-        'pymedphys_dicom',
-        'pymedphys_electronfactors',
-        'pymedphys_fileformats',
-        'pymedphys_labs',
-        'pymedphys_logfiles',
-        'pymedphys_toolbox',
-        'pymedphys_utilities',
-        'pymedphys_workshops',
-        'pymedphys_xlwings'
-    ],
+    install_requires=install_requires,
     extras_require={
         'docs': [
+            'ipykernel',
+            'jupyter_client',
             'm2r',
             'nbsphinx',
             'sphinx-autobuild',

@@ -42,6 +42,14 @@ from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
 # pylint: disable=C0103
 
 
+def zyx_and_dose_from_dataset(dataset):
+    x, y, z = xyz_axes_from_dataset(dataset)
+    coords = (z, y, x)
+    dose = dose_from_dataset(dataset, reshape=False)
+
+    return coords, dose
+
+
 def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
     r"""Extract the dose grid from a DICOM RT Dose file.
 

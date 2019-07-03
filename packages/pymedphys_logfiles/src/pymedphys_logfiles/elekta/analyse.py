@@ -34,15 +34,14 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_coordsandscales.deliverydata import get_delivery_parameters
 from pymedphys_utilities.utilities import (
     get_cache_filepaths, get_mu_density_parameters,
     get_index, get_centre, get_sql_servers, get_sql_servers_list,
     get_filepath
 )
 from pymedphys_databases.msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
-from pymedphys_analysis.mudensity import calc_mu_density
-from pymedphys_fileformats.trf import delivery_data_from_logfile
+from pymedphys_databases.delivery import DeliveryDatabases
+from pymedphys_mudensity.mudensity import calc_mu_density
 
 
 def analyse_single_hash(index, config, filehash, cursors):
@@ -208,7 +207,8 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
 
 
 def mu_density_from_delivery_data(delivery_data, grid_resolution=1):
-    mu, mlc, jaw = get_delivery_parameters(delivery_data)
+    mu, mlc, jaw = (
+        delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
 
     grid_xx, grid_yy, mu_density = calc_mu_density(
         mu, mlc, jaw,
@@ -243,7 +243,7 @@ def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index,
 def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
     logfile_results = []
     for filepath in filepaths:
-        logfile_delivery_data = delivery_data_from_logfile(filepath)
+        logfile_delivery_data = DeliveryDatabases.from_logfile(filepath)
         mu_density_results = mu_density_from_delivery_data(
             logfile_delivery_data, grid_resolution=grid_resolution)
 
@@ -295,11 +295,6 @@ def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
 
     logile_results = calc_and_merge_logfile_mudensity(
         logfilepaths, grid_resolution=grid_resolution)
-
-    #     logfile_delivery_data = delivery_data_from_logfile(filepath)
-    #     logile_results = mu_density_from_delivery_data(
-    #         logfile_delivery_data, ram_fraction=ram_fraction,
-    #         grid_resolution=grid_resolution)
 
     try:
         assert np.all(logile_results[0] == mosaiq_results[0])
