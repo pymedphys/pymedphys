@@ -85,6 +85,13 @@ along with their affiliation:
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
 
+* `Phillip Chlap`_
+    * `University of New South Wales`_, Australia
+    * `South Western Sydney Local Health District`_, Australia
+
+.. _`Phillip Chlap`: https://github.com/pchlap
+
+
 * `Paul King`_
     * `Anderson Regional Cancer Center`_, United States
 
@@ -156,6 +163,10 @@ along with their affiliation:
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
+
+.. _`University of New South Wales`: https://www.unsw.edu.au/
+
+.. _`South Western Sydney Local Health District`: https://www.swslhd.health.nsw.gov.au/
 
 .. _`Anderson Regional Cancer Center`: http://www.andersonregional.org/CancerCenter.aspx
 
