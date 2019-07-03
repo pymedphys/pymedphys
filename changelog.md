@@ -31,10 +31,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+- nil
+
+## [0.10.0]
+
 ### New Features
 
 - Re-exposed `convert2_ratio_perim_area` and `create_transformed_mesh` from
   `pymedphys.electronfactors`.
+- Pinnacle module providing a tool to export raw Pinnacle data to DICOM
+  objects.
+  - A CLI is provided: See
+  [the Pinnacle CLI docs](https://docs.pymedphys.com/user/interfaces/cli/pinnacle.html).
+  - As well as an API: See
+  [the Pinnacle library docs](https://docs.pymedphys.com/user/library/pinnacle.html).
 
 ## [0.9.0] -- 2019/06/06
 
@@ -223,7 +233,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.9.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.10.0...master
+[0.10.0]: https://github.com/pymedphys/pymedphys/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/pymedphys/pymedphys/compare/v0.8.4...v0.9.0
 [0.8.4]: https://github.com/pymedphys/pymedphys/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/pymedphys/pymedphys/compare/v0.8.2...v0.8.3
