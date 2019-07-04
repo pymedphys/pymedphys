@@ -31,7 +31,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-- nil
+### Improvements
+
+- Made the resolution detection of `pymedphys.plt.pcolormesh_grid` more robust.
 
 ## [0.10.0]
 
