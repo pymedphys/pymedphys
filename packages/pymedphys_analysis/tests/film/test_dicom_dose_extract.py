@@ -23,7 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 import os
 import json
 import lzma
@@ -33,47 +32,32 @@ import numpy as np
 
 import pydicom
 
-from pymedphys_base.delivery.utilities import to_tuple
 from pymedphys_analysis.film import dicom_dose_extract
 
-
-CREATE_BASELINE = True
+CREATE_BASELINE = False
 HERE = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(HERE, 'data/spine_case')
 BASELINES_DIR = os.path.join(DATA_DIR, 'Baselines')
 
-DICOM_DOSE_BASELINE_FILEPATH = os.path.join(
-    BASELINES_DIR, 'dicom_dose_extract.json')
+DICOM_DOSE_BASELINE_FILEPATH = os.path.join(BASELINES_DIR,
+                                            'dicom_dose_extract.json')
 
 
-def test_dose_plane_extract():
+def test_dose_extract():
+    x = np.arange(-60, 61)
+    y = np.arange(-70, 71)
+    z = np.array([0])
 
-    # Variables named as if patient is HFS
-    left_right_interp = np.arange(-60, 61)
-    ant_post_interp = np.arange(-70, 71)
-    sup_inf_interp = np.array([0, ])
+    compressed_dicom_path = list(
+        Path(DATA_DIR).joinpath('Raw').glob('*.dcm.xz'))[0]
 
-    compressed_dicom_paths = list(Path(DATA_DIR).joinpath('Raw').glob(
-        '*.dcm.xz.*'))
+    with lzma.open(compressed_dicom_path) as a_file:
+        dicom_dataset = pydicom.dcmread(a_file, force=True)
 
-    compressed_dicom_paths.sort()
-
-    print(compressed_dicom_paths)
-
-    for item in compressed_dicom_paths:
-        data = []
-        with open(item, 'rb') as a_file:
-            data.append(a_file.read())
-
-    dicom_dataset = pydicom.dcmread(
-        lzma.decompress(data), force=True)
-
-    result = dicom_dose_extract(
-        dicom_dataset,
-        (sup_inf_interp, ant_post_interp, left_right_interp))
+    result = dicom_dose_extract(dicom_dataset, (z, y, x))
 
     rounded_result = np.around(result, decimals=2)
-    tuple_result = to_tuple(rounded_result)
+    tuple_result = rounded_result.tolist()
 
     if CREATE_BASELINE:
         with open(DICOM_DOSE_BASELINE_FILEPATH, 'w') as a_file:
