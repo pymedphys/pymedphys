@@ -1,6 +1,8 @@
 {
   "python.linting.pylintUseMinimalCheckers": false,
   "python.linting.mypyEnabled": true,
+  "python.formatting.provider": "yapf",
+  "python.testing.pytestEnabled": true,
   "files.trimTrailingWhitespace": true,
   "editor.formatOnSave": true,
   "editor.detectIndentation": true,
