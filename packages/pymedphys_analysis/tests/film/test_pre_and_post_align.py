@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import os
+import json
 from pathlib import Path
 
 import pytest
@@ -37,8 +38,7 @@ from pymedphys_analysis.film import (load_cal_scans, align_images, load_image,
                                      shift_and_rotate)
 from pymedphys_analysis.mocks import create_rectangular_field_function
 
-CREATE_BASELINE = True
-SHOW_FIGURES = True
+CREATE_BASELINE = False
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(HERE, 'data/spine_case')
@@ -76,7 +76,16 @@ def create_axes(image, dpcm=100):
     return x_span, y_span
 
 
-def compare_alignment_to_baseline(prescan, postscan, baseline=None):
+def test_multi_channel_shift_and_rotate(prescans):
+    prescan = prescans[0]
+    axes = create_axes(prescan)
+
+    interpolated = shift_and_rotate(axes, axes, prescan, 0, 0, 0)
+
+    assert np.allclose(interpolated, prescan)
+
+
+def get_alignment(prescan, postscan, baseline=None):
     prescan_axes = create_axes(prescan)
     postscan_axes = create_axes(postscan)
 
@@ -84,28 +93,49 @@ def compare_alignment_to_baseline(prescan, postscan, baseline=None):
                              prescan,
                              postscan_axes,
                              postscan,
-                             max_shift=20)
+                             max_shift=1,
+                             max_rotation=5)
 
     shifted_image = shift_and_rotate(postscan_axes, prescan_axes, postscan,
                                      *alignment)
+    print(alignment)
 
-    if SHOW_FIGURES:
+    if baseline is None or not np.allclose(baseline, alignment, 0.01, 0.01):
         plt.figure()
         plt.imshow(prescan)
 
         plt.figure()
-        plt.imshow(shifted_image)
-        print(np.shape(shifted_image))
+        plt.imshow(postscan)
 
         plt.figure()
-        plt.imshow(shifted_image - prescan)
+        plt.imshow(shifted_image.astype(np.uint8))
 
         plt.show()
+
+        if baseline is not None:
+            raise AssertionError
+
+    return alignment
 
 
 def test_pre_and_post_align(prescans, postscans):
     keys = prescans.keys()
     assert keys == postscans.keys()
 
+    if not CREATE_BASELINE:
+        with open(ALIGNMENT_BASELINES_FILEPATH, 'r') as a_file:
+            baselines = json.load(a_file)
+    else:
+        baselines = {key: None for key in keys}
+
+    results = {}
+
     for key in keys:
-        compare_alignment_to_baseline(prescans[key], postscans[key])
+        results[key] = np.around(get_alignment(prescans[key],
+                                               postscans[key],
+                                               baseline=baselines[key]),
+                                 decimals=4).tolist()
+
+    if CREATE_BASELINE:
+        with open(ALIGNMENT_BASELINES_FILEPATH, 'w') as a_file:
+            json.dump(results, a_file)
