@@ -66,7 +66,12 @@ def align_images(ref_image, moving_image):
 
 
 def interpolated_rotation(interpolation, axes, angle):
-    pass
+    x_span = axes[0]
+    y_span = axes[1]
+
+    xx, yy = do_rotation(x_span, y_span, angle)
+
+    return interpolation((xx, yy))
 
 
 # https://stackoverflow.com/a/29709641/3912576
@@ -80,7 +85,7 @@ def do_rotation(x_span, y_span, angle):
                                 [-np.sin(radians),
                                  np.cos(radians)]])
 
-    xx, yy = np.meshgrid(xspan, yspan)
+    xx, yy = np.meshgrid(x_span, y_span, indexing='ij')
     return np.einsum('ji, mni -> jmn', rotation_matrix, np.dstack([xx, yy]))
 
 
