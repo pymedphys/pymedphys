@@ -44,6 +44,9 @@ def align_images(ref_axes,
     ref_edge_filtered = scharr_gray(ref_image)
     moving_edge_filtered = scharr_gray(moving_image)
 
+    # blurred_ref_edge = skimage.filters.gaussian(ref_edge_filtered)
+    # valid_region = np.where(blurred_ref_edge > np.max(blurred_ref_edge)/2)
+
     filter_loss = 0
     try:
         assert np.shape(ref_image)[0] - np.shape(
