@@ -79,15 +79,19 @@
     },
     "pymedphys_analysis": {
       "external": [
+        "imageio",
         "matplotlib",
         "numpy",
         "pydicom",
         "scipy"
       ],
       "internal": [
+        "pymedphys",
         "pymedphys_dicom"
       ],
-      "stdlib": []
+      "stdlib": [
+        "pathlib"
+      ]
     },
     "pymedphys_base": {
       "external": [
