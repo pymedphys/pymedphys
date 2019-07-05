@@ -98,9 +98,11 @@ def get_alignment(prescan, postscan, baseline=None):
 
     shifted_image = shift_and_rotate(postscan_axes, prescan_axes, postscan,
                                      *alignment)
-    print(alignment)
 
     if baseline is None or not np.allclose(baseline, alignment, 0.01, 0.01):
+        print(baseline)
+        print(alignment)
+
         plt.figure()
         plt.imshow(prescan)
 
@@ -126,14 +128,14 @@ def test_pre_and_post_align(prescans, postscans):
         with open(ALIGNMENT_BASELINES_FILEPATH, 'r') as a_file:
             baselines = json.load(a_file)
     else:
-        baselines = {key: None for key in keys}
+        baselines = {str(key): None for key in keys}
 
     results = {}
 
     for key in keys:
         results[key] = np.around(get_alignment(prescans[key],
                                                postscans[key],
-                                               baseline=baselines[key]),
+                                               baseline=baselines[str(key)]),
                                  decimals=4).tolist()
 
     if CREATE_BASELINE:
