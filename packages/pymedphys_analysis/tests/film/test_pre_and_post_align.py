@@ -33,7 +33,9 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 
 from pymedphys_analysis.film import (load_cal_scans, align_images, load_image,
-                                     interpolated_rotation)
+                                     interpolated_rotation,
+                                     create_image_interpolation,
+                                     shift_and_rotate)
 from pymedphys_analysis.mocks import create_rectangular_field_function
 
 CREATE_BASELINE = True
@@ -71,6 +73,59 @@ def postscans_cal():
     return load_cal_scans(POSTSCANS_CAL_DIR)
 
 
+def test_shift_alignments():
+    ref_field = create_rectangular_field_function((0, 0), (5, 7),
+                                                  2,
+                                                  rotation=0)
+
+    moving_field = create_rectangular_field_function((5, 5), (5, 7),
+                                                     2,
+                                                     rotation=0)
+
+    x_span = np.arange(-20, 21)
+    y_span = np.arange(-30, 31)
+
+    ref_image = ref_field(x_span[:, None], y_span[None, :])
+    moving_image = moving_field(x_span[:, None], y_span[None, :])
+
+    expected = (-5, -5, 0)
+    expected_results = shift_and_rotate(moving_image, *expected)
+
+    try:
+        assert np.allclose(expected_results, ref_image)
+    except AssertionError:
+        plt.figure()
+        plt.imshow(ref_image)
+
+        plt.figure()
+        plt.imshow(moving_image)
+
+        plt.figure()
+        plt.imshow(expected_results)
+
+        plt.figure()
+        plt.imshow(expected_results - ref_image)
+
+        plt.show()
+        raise
+
+    results = align_images(ref_image, moving_image, max_shift=10)
+
+    try:
+        assert np.allclose(results, expected, atol=1.e-3)
+    except AssertionError:
+        plt.figure()
+        plt.imshow(ref_image)
+
+        plt.figure()
+        plt.imshow(shift_and_rotate(moving_image, *results))
+
+        plt.figure()
+        plt.imshow(shift_and_rotate(moving_image, *results))
+
+        raise
+
+
 def test_interpolated_rotation():
     ref_field = create_rectangular_field_function((0, 0), (5, 7),
                                                   2,
@@ -86,10 +141,7 @@ def test_interpolated_rotation():
     ref_image = ref_field(x_span[:, None], y_span[None, :])
     moving_image = moving_field(x_span[:, None], y_span[None, :])
 
-    moving_interp = RegularGridInterpolator((x_span, y_span),
-                                            moving_image,
-                                            bounds_error=False,
-                                            fill_value=0)
+    moving_interp = create_image_interpolation((x_span, y_span), moving_image)
 
     no_rotation = interpolated_rotation(moving_interp, (x_span, y_span), 0)
 
