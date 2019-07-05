@@ -57,14 +57,14 @@ def test_dose_extract():
     result = dicom_dose_extract(dicom_dataset, (z, y, x))
 
     rounded_result = np.around(result, decimals=2)
-    tuple_result = rounded_result.tolist()
+    list_result = rounded_result.tolist()
 
     if CREATE_BASELINE:
         with open(DICOM_DOSE_BASELINE_FILEPATH, 'w') as a_file:
-            json.dump(tuple_result, a_file)
+            json.dump(list_result, a_file)
 
     else:
         with open(DICOM_DOSE_BASELINE_FILEPATH, 'r') as a_file:
             baseline_result = json.load(a_file)
 
-        assert baseline_result == tuple_result
+        assert baseline_result == list_result
