@@ -39,10 +39,19 @@ def align_images(ref_axes,
                  ref_image,
                  moving_axes,
                  moving_image,
-                 max_shift=20,
+                 max_shift=np.inf,
                  max_rotation=30):
     ref_edge_filtered = scharr_gray(ref_image)
     moving_edge_filtered = scharr_gray(moving_image)
+
+    filter_loss = 0
+    try:
+        assert np.shape(ref_image)[0] - np.shape(
+            ref_edge_filtered)[0] == filter_loss
+    except AssertionError:
+        print(np.shape(ref_image))
+        print(np.shape(ref_edge_filtered))
+        raise
 
     ref_x, ref_y = ref_axes
     move_x, move_y = moving_axes
@@ -85,13 +94,11 @@ def create_image_interpolation(axes, image):
                                    fill_value=0)
 
 
-def shift_and_rotate(axes, image, x_shift, y_shift, angle):
-    x_span, y_span = axes
+def shift_and_rotate(original_axes, new_axes, image, x_shift, y_shift, angle):
+    interp = create_image_interpolation(original_axes, image)
 
-    interp = create_image_interpolation((x_span, y_span), image)
-
-    return shift_and_rotate_with_interp(interp, (x_span, y_span),
-                                        (x_shift, y_shift), angle)
+    return shift_and_rotate_with_interp(interp, new_axes, (x_shift, y_shift),
+                                        angle)
 
 
 def shift_and_rotate_with_interp(interpolation, axes, shifts, angle):

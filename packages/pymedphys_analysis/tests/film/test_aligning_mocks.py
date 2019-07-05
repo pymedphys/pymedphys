@@ -41,7 +41,7 @@ def test_rotation_alignment():
 
 
 def test_rotation_and_shift_alignment():
-    alignment_assertions((-6, 4, 20))
+    alignment_assertions((-6, 4, -15))
 
 
 def alignment_assertions(expected):
@@ -60,7 +60,7 @@ def alignment_assertions(expected):
     moving_image = moving_field(x_span[:, None], y_span[None, :])
 
     results = align_images(axes, ref_image, axes, moving_image, max_shift=20)
-    shifted_image = shift_and_rotate(axes, moving_image, *results)
+    shifted_image = shift_and_rotate(axes, axes, moving_image, *results)
 
     try:
         assert np.allclose(shifted_image, ref_image, rtol=0.01, atol=0.01)

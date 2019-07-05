@@ -26,6 +26,7 @@
     "atol",
     "bfgs",
     "biggs",
+    "dpcm",
     "dstack",
     "einsum",
     "imageio",
