@@ -17,5 +17,23 @@
       79,
       119
     ]
-  }
+  },
+  "cSpell.words": [
+    "affero",
+    "agpl",
+    "analysis",
+    "arange",
+    "dstack",
+    "einsum",
+    "imageio",
+    "imread",
+    "imshow",
+    "interp",
+    "numpy",
+    "pymedphys",
+    "pyplot",
+    "pytest",
+    "ref",
+    "scipy"
+  ]
 }
