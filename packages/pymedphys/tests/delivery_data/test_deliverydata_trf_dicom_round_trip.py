@@ -23,7 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 import os
 
 import pytest
@@ -35,15 +34,13 @@ import pydicom
 
 from pymedphys_utilities.algorithms import maintain_order_unique
 
-from pymedphys_dicom.rtplan import (
-    get_metersets_from_dicom,
-    get_gantry_angles_from_dicom,
-    convert_to_one_fraction_group)
+from pymedphys_dicom.rtplan import (get_metersets_from_dicom,
+                                    get_gantry_angles_from_dicom,
+                                    convert_to_one_fraction_group)
 
 from pymedphys import Delivery
 
 # pylint: disable=redefined-outer-name
-
 
 DIR_TO_TEST_MAP = {
     "original": {
@@ -57,12 +54,9 @@ DIR_TO_TEST_MAP = {
 DIR_TO_TEST = 'multi_fraction_groups'
 FRACTION_GROUP = DIR_TO_TEST_MAP[DIR_TO_TEST]['fraction_group']
 
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "data", DIR_TO_TEST)
-DICOM_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, "rtplan.dcm"))
-LOGFILE_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, "imrt.trf"))
+DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data", DIR_TO_TEST)
+DICOM_FILEPATH = os.path.abspath(os.path.join(DATA_DIRECTORY, "rtplan.dcm"))
+LOGFILE_FILEPATH = os.path.abspath(os.path.join(DATA_DIRECTORY, "imrt.trf"))
 
 
 @pytest.fixture
@@ -84,8 +78,7 @@ def test_fraction_group_number(loaded_dicom_dataset,
                                logfile_delivery_data: Delivery):
     expected = FRACTION_GROUP
 
-    result = logfile_delivery_data.fraction_number(
-        loaded_dicom_dataset)
+    result = logfile_delivery_data.fraction_number(loaded_dicom_dataset)
 
     assert result == expected
 
@@ -123,25 +116,20 @@ def test_round_trip_dd2dcm2dd(loaded_dicom_dataset,
     processed = Delivery.from_dicom(dicom, FRACTION_GROUP)
 
     assert np.all(
-        np.around(original.monitor_units, 2) ==
-        np.around(processed.monitor_units, 2))
+        np.around(original.monitor_units, 2) == np.around(
+            processed.monitor_units, 2))
 
     assert np.all(
-        np.around(original.gantry, 2) ==
-        np.around(processed.gantry, 2))
+        np.around(original.gantry, 2) == np.around(processed.gantry, 2))
 
-    assert np.all(
-        np.around(original.mlc, 2) ==
-        np.around(processed.mlc, 2))
+    assert np.all(np.around(original.mlc, 2) == np.around(processed.mlc, 2))
 
-    assert np.all(
-        np.around(original.jaw, 2) ==
-        np.around(processed.jaw, 2))
+    assert np.all(np.around(original.jaw, 2) == np.around(processed.jaw, 2))
 
     # Collimator not currently handled appropriately
     assert np.all(
-        np.around(original.collimator, 2) ==
-        np.around(processed.collimator, 2))
+        np.around(original.collimator, 2) == np.around(processed.collimator,
+                                                       2))
 
 
 def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
@@ -156,32 +144,28 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset,
     original_gantry_angles = get_gantry_angles_from_dicom(
         single_fraction_group)
 
-    assert (
-        num_of_control_points(single_fraction_group) ==
-        num_of_control_points(processed)
-    )
+    assert (num_of_control_points(single_fraction_group) ==
+            num_of_control_points(processed))
 
-    assert (
-        maintain_order_unique(delivery_data.gantry) == original_gantry_angles)
+    assert (maintain_order_unique(
+        delivery_data.gantry) == original_gantry_angles)
 
     processed_gantry_angles = get_gantry_angles_from_dicom(processed)
 
     assert original_gantry_angles == processed_gantry_angles
 
-    assert (
-        source_to_surface_distances(single_fraction_group) ==
-        source_to_surface_distances(processed))
+    assert (source_to_surface_distances(single_fraction_group) ==
+            source_to_surface_distances(processed))
 
-    assert (
-        first_mlc_positions(single_fraction_group) ==
-        first_mlc_positions(processed))
+    assert (first_mlc_positions(single_fraction_group) == first_mlc_positions(
+        processed))
 
     assert str(single_fraction_group) == str(processed)
 
 
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
-    dicom_delivery_data = Delivery.from_dicom(
-        loaded_dicom_dataset, FRACTION_GROUP)
+    dicom_delivery_data = Delivery.from_dicom(loaded_dicom_dataset,
+                                              FRACTION_GROUP)
 
     dicom_mu_density = dicom_delivery_data.mudensity(grid_resolution=5)
     logfile_mu_density = logfile_delivery_data.mudensity(grid_resolution=5)
@@ -193,10 +177,9 @@ def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
         assert max_diff < 4.1
         assert std_diff < 0.4
     except AssertionError:
-        max_val = np.max([
-            np.max(logfile_mu_density),
-            np.max(dicom_mu_density)
-        ])
+        max_val = np.max(
+            [np.max(logfile_mu_density),
+             np.max(dicom_mu_density)])
 
         plt.figure()
         plt.pcolormesh(dicom_mu_density, vmin=0, vmax=max_val)
@@ -207,9 +190,10 @@ def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
         plt.colorbar()
 
         plt.figure()
-        plt.pcolormesh(
-            logfile_mu_density - dicom_mu_density,
-            vmin=-max_diff, vmax=max_diff, cmap='bwr')
+        plt.pcolormesh(logfile_mu_density - dicom_mu_density,
+                       vmin=-max_diff,
+                       vmax=max_diff,
+                       cmap='bwr')
         plt.colorbar()
         plt.show()
         raise
@@ -217,26 +201,23 @@ def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
 
 def num_of_control_points(dicom_dataset):
     return [
-        len(beam.ControlPointSequence)
-        for beam in dicom_dataset.BeamSequence
+        len(beam.ControlPointSequence) for beam in dicom_dataset.BeamSequence
     ]
 
 
 def source_to_surface_distances(dicom_dataset):
-    SSDs = [
-        {
-            control_point.SourceToSurfaceDistance
-            for control_point in beam_sequence.ControlPointSequence
-        }
-        for beam_sequence in dicom_dataset.BeamSequence
-    ]
+    SSDs = [{
+        control_point.SourceToSurfaceDistance
+        for control_point in beam_sequence.ControlPointSequence
+    } for beam_sequence in dicom_dataset.BeamSequence]
 
     return SSDs
 
 
 def first_mlc_positions(dicom_dataset):
     result = [
-        beam_sequence.ControlPointSequence[0].BeamLimitingDevicePositionSequence[1].LeafJawPositions
+        beam_sequence.ControlPointSequence[0].
+        BeamLimitingDevicePositionSequence[1].LeafJawPositions
         for beam_sequence in dicom_dataset.BeamSequence
     ]
 
