@@ -51,26 +51,61 @@ ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR,
 
 
 @pytest.fixture
-def prescan_treatment():
+def prescans():
     filepath = Path(DATA_DIR).joinpath('DatasetA/prescans/treatment.tif')
-    return load_image(filepath)
+    scans = load_cal_scans(PRESCANS_CAL_DIR)
+    scans['treatment'] = load_image(filepath)
+
+    return scans
 
 
 @pytest.fixture
-def postscan_treatment():
+def postscans():
     filepath = Path(DATA_DIR).joinpath('DatasetA/postscans/treatment.tif')
-    return load_image(filepath)
+    scans = load_cal_scans(POSTSCANS_CAL_DIR)
+    scans['treatment'] = load_image(filepath)
+
+    return scans
 
 
-@pytest.fixture
-def prescans_cal():
-    return load_cal_scans(PRESCANS_CAL_DIR)
+def create_axes(image, dpcm=100):
+    shape = np.shape(image)
+    x_span = (np.arange(0, shape[0]) - shape[0] // 2) * 10 / dpcm
+    y_span = (np.arange(0, shape[1]) - shape[1] // 2) * 10 / dpcm
+
+    return x_span, y_span
 
 
-@pytest.fixture
-def postscans_cal():
-    return load_cal_scans(POSTSCANS_CAL_DIR)
+def compare_alignment_to_baseline(prescan, postscan, baseline=None):
+    prescan_axes = create_axes(prescan)
+    postscan_axes = create_axes(postscan)
+
+    alignment = align_images(prescan_axes,
+                             prescan,
+                             postscan_axes,
+                             postscan,
+                             max_shift=20)
+
+    shifted_image = shift_and_rotate(postscan_axes, prescan_axes, postscan,
+                                     *alignment)
+
+    if SHOW_FIGURES:
+        plt.figure()
+        plt.imshow(prescan)
+
+        plt.figure()
+        plt.imshow(shifted_image)
+        print(np.shape(shifted_image))
+
+        plt.figure()
+        plt.imshow(shifted_image - prescan)
+
+        plt.show()
 
 
-# def test_pre_and_post_align(prescan_treatment, postscan_treatment):
-#     align_images(prescan_treatment, postscan_treatment)
+def test_pre_and_post_align(prescans, postscans):
+    keys = prescans.keys()
+    assert keys == postscans.keys()
+
+    for key in keys:
+        compare_alignment_to_baseline(prescans[key], postscans[key])
