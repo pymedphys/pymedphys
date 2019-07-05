@@ -23,6 +23,8 @@
     "agpl",
     "analysis",
     "arange",
+    "atol",
+    "bfgs",
     "dstack",
     "einsum",
     "imageio",
