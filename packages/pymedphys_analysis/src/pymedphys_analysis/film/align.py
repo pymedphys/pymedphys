@@ -37,8 +37,8 @@ DEFAULT_CAL_STRING_END = ' cGy.tif'
 
 
 def align_images(ref_image, moving_image):
-    ref_edge_filtered = skimage.filters.sobel(scharr_gray(ref_image))
-    moving_edge_filtered = skimage.filters.sobel(scharr_gray(moving_image))
+    ref_edge_filtered = scharr_gray(ref_image)
+    moving_edge_filtered = scharr_gray(moving_image)
 
     ref_shape = np.shape(ref_edge_filtered)
     ref_x = np.arange(0, ref_shape[1])
