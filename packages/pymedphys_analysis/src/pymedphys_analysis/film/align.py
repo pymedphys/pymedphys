@@ -26,7 +26,6 @@
 from pathlib import Path
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import basinhopping
 from scipy.interpolate import RegularGridInterpolator
 
@@ -36,17 +35,17 @@ import imageio
 DEFAULT_CAL_STRING_END = ' cGy.tif'
 
 
-def align_images(ref_image, moving_image, max_shift=20, max_rotation=30):
+def align_images(ref_axes,
+                 ref_image,
+                 moving_axes,
+                 moving_image,
+                 max_shift=20,
+                 max_rotation=30):
     ref_edge_filtered = scharr_gray(ref_image)
     moving_edge_filtered = scharr_gray(moving_image)
 
-    ref_shape = np.shape(ref_edge_filtered)
-    ref_x = np.arange(0, ref_shape[0])
-    ref_y = np.arange(0, ref_shape[1])
-
-    move_shape = np.shape(moving_edge_filtered)
-    move_x = np.arange(0, move_shape[0])
-    move_y = np.arange(0, move_shape[1])
+    ref_x, ref_y = ref_axes
+    move_x, move_y = moving_axes
 
     moving_interp = create_image_interpolation((move_x, move_y),
                                                moving_edge_filtered)
@@ -63,6 +62,7 @@ def align_images(ref_image, moving_image, max_shift=20, max_rotation=30):
         return np.sum((interpolated - ref_edge_filtered)**2)
 
     result = basinhopping(to_minimise, [0, 0, 0],
+                          niter_success=5,
                           minimizer_kwargs={
                               'method':
                               'L-BFGS-B',
@@ -85,10 +85,8 @@ def create_image_interpolation(axes, image):
                                    fill_value=0)
 
 
-def shift_and_rotate(image, x_shift, y_shift, angle):
-    shape = np.shape(image)
-    x_span = np.arange(0, shape[0])
-    y_span = np.arange(0, shape[1])
+def shift_and_rotate(axes, image, x_shift, y_shift, angle):
+    x_span, y_span = axes
 
     interp = create_image_interpolation((x_span, y_span), image)
 
@@ -102,7 +100,7 @@ def shift_and_rotate_with_interp(interpolation, axes, shifts, angle):
 
     interpolated = interpolated_rotation(interpolation,
                                          (x_span - x_shift, y_span - y_shift),
-                                         angle)
+                                         -angle)
 
     return interpolated
 

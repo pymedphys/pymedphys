@@ -30,7 +30,6 @@ import pytest
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import RegularGridInterpolator
 
 from pymedphys_analysis.film import (load_cal_scans, align_images, load_image,
                                      interpolated_rotation,
@@ -71,113 +70,6 @@ def prescans_cal():
 @pytest.fixture
 def postscans_cal():
     return load_cal_scans(POSTSCANS_CAL_DIR)
-
-
-def test_shift_alignments():
-    ref_field = create_rectangular_field_function((0, 0), (5, 7),
-                                                  2,
-                                                  rotation=0)
-
-    moving_field = create_rectangular_field_function((5, 5), (5, 7),
-                                                     2,
-                                                     rotation=0)
-
-    x_span = np.arange(-20, 21)
-    y_span = np.arange(-30, 31)
-
-    ref_image = ref_field(x_span[:, None], y_span[None, :])
-    moving_image = moving_field(x_span[:, None], y_span[None, :])
-
-    expected = (-5, -5, 0)
-    expected_results = shift_and_rotate(moving_image, *expected)
-
-    try:
-        assert np.allclose(expected_results, ref_image)
-    except AssertionError:
-        plt.figure()
-        plt.imshow(ref_image)
-
-        plt.figure()
-        plt.imshow(moving_image)
-
-        plt.figure()
-        plt.imshow(expected_results)
-
-        plt.figure()
-        plt.imshow(expected_results - ref_image)
-
-        plt.show()
-        raise
-
-    results = align_images(ref_image, moving_image, max_shift=10)
-
-    try:
-        assert np.allclose(results, expected, atol=1.e-3)
-    except AssertionError:
-        plt.figure()
-        plt.imshow(ref_image)
-
-        plt.figure()
-        plt.imshow(shift_and_rotate(moving_image, *results))
-
-        plt.figure()
-        plt.imshow(shift_and_rotate(moving_image, *results))
-
-        raise
-
-
-def test_interpolated_rotation():
-    ref_field = create_rectangular_field_function((0, 0), (5, 7),
-                                                  2,
-                                                  rotation=30)
-
-    moving_field = create_rectangular_field_function((0, 0), (5, 7),
-                                                     2,
-                                                     rotation=10)
-
-    x_span = np.linspace(-20, 20, 100)
-    y_span = np.linspace(-30, 30, 120)
-
-    ref_image = ref_field(x_span[:, None], y_span[None, :])
-    moving_image = moving_field(x_span[:, None], y_span[None, :])
-
-    moving_interp = create_image_interpolation((x_span, y_span), moving_image)
-
-    no_rotation = interpolated_rotation(moving_interp, (x_span, y_span), 0)
-
-    try:
-        assert np.allclose(no_rotation, moving_image)
-    except AssertionError:
-        plt.figure()
-        plt.imshow(moving_image)
-        plt.axis('equal')
-
-        plt.figure()
-        plt.imshow(no_rotation)
-        plt.axis('equal')
-
-        plt.show()
-        raise
-
-    rotated = interpolated_rotation(moving_interp, (x_span, y_span), -20)
-
-    try:
-        assert np.allclose(ref_image, rotated, atol=1.e-1)
-    except AssertionError:
-        plt.figure()
-        plt.imshow(ref_image)
-        plt.axis('equal')
-
-        plt.figure()
-        plt.imshow(rotated)
-        plt.axis('equal')
-
-        plt.figure()
-        plt.imshow(rotated - ref_image)
-        plt.axis('equal')
-
-        plt.show()
-        raise
 
 
 # def test_pre_and_post_align(prescan_treatment, postscan_treatment):
