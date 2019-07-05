@@ -73,35 +73,60 @@ def postscans_cal():
 
 def test_interpolated_rotation():
     ref_field = create_rectangular_field_function((0, 0), (5, 7),
-                                                  0.6,
+                                                  2,
                                                   rotation=30)
 
     moving_field = create_rectangular_field_function((0, 0), (5, 7),
-                                                     0.6,
-                                                     rotation=20)
+                                                     2,
+                                                     rotation=10)
 
     x_span = np.linspace(-20, 20, 100)
-    y_span = np.linspace(-20, 20, 100)
+    y_span = np.linspace(-30, 30, 120)
 
-    ref_image = ref_field(x_span, y_span)
-    moving_image = moving_field(x_span, y_span)
+    ref_image = ref_field(x_span[:, None], y_span[None, :])
+    moving_image = moving_field(x_span[:, None], y_span[None, :])
 
-    moving_interp = RegularGridInterpolator((x_span, y_span), moving_image)
+    moving_interp = RegularGridInterpolator((x_span, y_span),
+                                            moving_image,
+                                            bounds_error=False,
+                                            fill_value=0)
 
-    rotated = interpolated_rotation(moving_interp, (x_span, y_span), -10)
+    no_rotation = interpolated_rotation(moving_interp, (x_span, y_span), 0)
 
     try:
-        assert np.allclose(ref_image, rotated)
+        assert np.allclose(no_rotation, moving_image)
+    except AssertionError:
+        plt.figure()
+        plt.imshow(moving_image)
+        plt.axis('equal')
+
+        plt.figure()
+        plt.imshow(no_rotation)
+        plt.axis('equal')
+
+        plt.show()
+        raise
+
+    rotated = interpolated_rotation(moving_interp, (x_span, y_span), -20)
+
+    try:
+        assert np.allclose(ref_image, rotated, atol=1.e-1)
     except AssertionError:
         plt.figure()
         plt.imshow(ref_image)
+        plt.axis('equal')
 
         plt.figure()
         plt.imshow(rotated)
+        plt.axis('equal')
+
+        plt.figure()
+        plt.imshow(rotated - ref_image)
+        plt.axis('equal')
 
         plt.show()
         raise
 
 
-def test_pre_and_post_align(prescan_treatment, postscan_treatment):
-    align_images(prescan_treatment, postscan_treatment)
+# def test_pre_and_post_align(prescan_treatment, postscan_treatment):
+#     align_images(prescan_treatment, postscan_treatment)
