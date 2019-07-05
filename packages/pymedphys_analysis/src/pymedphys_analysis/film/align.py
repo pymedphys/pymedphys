@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Cancer Care Associates
+# Copyright (C) 2019 Simon Biggs, Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -68,7 +68,8 @@ def align_images(ref_axes,
                                                     (ref_x, ref_y),
                                                     (x_shift, y_shift), angle)
 
-        return np.sum((interpolated - ref_edge_filtered)**2)
+        return np.sum(
+            (interpolated - ref_edge_filtered)**2) - np.sum(interpolated)
 
     result = basinhopping(to_minimise, [0, 0, 0],
                           niter_success=5,

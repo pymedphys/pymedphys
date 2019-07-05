@@ -39,6 +39,7 @@
     "pytest",
     "ref",
     "rtol",
-    "scipy"
+    "scipy",
+    "tolist"
   ]
 }
