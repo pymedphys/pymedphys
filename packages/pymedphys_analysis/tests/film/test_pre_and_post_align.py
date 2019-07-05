@@ -24,21 +24,25 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import os
-# from pathlib import Path
+from pathlib import Path
 
 import pytest
 
+import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import RegularGridInterpolator
 
-from pymedphys_analysis.film import load_cal_scans, align
+from pymedphys_analysis.film import (load_cal_scans, align_images, load_image,
+                                     interpolated_rotation)
+from pymedphys_analysis.mocks import create_rectangular_field_function
 
 CREATE_BASELINE = True
 SHOW_FIGURES = True
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(HERE, 'data/spine_case')
-PRESCANS_DIR = os.path.join(DATA_DIR, 'DatasetA/prescans/calibration')
-POSTSCANS_DIR = os.path.join(DATA_DIR, 'DatasetA/postscans/calibration')
+PRESCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/prescans/calibration')
+POSTSCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/postscans/calibration')
 
 BASELINES_DIR = os.path.join(DATA_DIR, 'Baselines')
 ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR,
@@ -46,17 +50,58 @@ ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR,
 
 
 @pytest.fixture
-def prescans():
-    return load_cal_scans(PRESCANS_DIR)
+def prescan_treatment():
+    filepath = Path(DATA_DIR).joinpath('DatasetA/prescans/treatment.tif')
+    return load_image(filepath)
 
 
 @pytest.fixture
-def postscans():
-    return load_cal_scans(POSTSCANS_DIR)
+def postscan_treatment():
+    filepath = Path(DATA_DIR).joinpath('DatasetA/postscans/treatment.tif')
+    return load_image(filepath)
 
 
-def test_pre_and_post_align(prescans, postscans):
-    plt.figure()
-    plt.imshow(prescans[0])
+@pytest.fixture
+def prescans_cal():
+    return load_cal_scans(PRESCANS_CAL_DIR)
 
-    plt.show()
+
+@pytest.fixture
+def postscans_cal():
+    return load_cal_scans(POSTSCANS_CAL_DIR)
+
+
+def test_interpolated_rotation():
+    ref_field = create_rectangular_field_function((0, 0), (5, 7),
+                                                  0.6,
+                                                  rotation=30)
+
+    moving_field = create_rectangular_field_function((0, 0), (5, 7),
+                                                     0.6,
+                                                     rotation=20)
+
+    x_span = np.linspace(-20, 20, 100)
+    y_span = np.linspace(-20, 20, 100)
+
+    ref_image = ref_field(x_span, y_span)
+    moving_image = moving_field(x_span, y_span)
+
+    moving_interp = RegularGridInterpolator((x_span, y_span), moving_image)
+
+    rotated = interpolated_rotation(moving_interp, (x_span, y_span), -10)
+
+    try:
+        assert np.allclose(ref_image, rotated)
+    except AssertionError:
+        plt.figure()
+        plt.imshow(ref_image)
+
+        plt.figure()
+        plt.imshow(rotated)
+
+        plt.show()
+        raise
+
+
+def test_pre_and_post_align(prescan_treatment, postscan_treatment):
+    align_images(prescan_treatment, postscan_treatment)

@@ -25,9 +25,77 @@
 
 from pathlib import Path
 
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import basinhopping
+from scipy.interpolate import RegularGridInterpolator
+
+import skimage
 import imageio
 
 DEFAULT_CAL_STRING_END = ' cGy.tif'
+
+
+def align_images(ref_image, moving_image):
+    ref_edge_filtered = skimage.filters.sobel(scharr_gray(ref_image))
+    moving_edge_filtered = skimage.filters.sobel(scharr_gray(moving_image))
+
+    ref_shape = np.shape(ref_edge_filtered)
+    ref_x = np.arange(0, ref_shape[1])
+    ref_y = np.arange(0, ref_shape[0])
+
+    move_shape = np.shape(moving_edge_filtered)
+    move_x = np.arange(0, move_shape[1])
+    move_y = np.arange(0, move_shape[0])
+
+    moving_interp = RegularGridInterpolator((move_x, move_y),
+                                            moving_edge_filtered)
+
+    # angle =
+    # rotated_mesh
+
+    # interpolated_grid = moving_interp
+
+    plt.figure()
+    plt.imshow(ref_edge_filtered)
+
+    plt.figure()
+    plt.imshow(moving_edge_filtered)
+
+    plt.show()
+
+
+def interpolated_rotation(interpolation, axes, angle):
+    pass
+
+
+# https://stackoverflow.com/a/29709641/3912576
+def do_rotation(x_span, y_span, angle):
+    """Generate a meshgrid and rotate it by `angle` degrees."""
+
+    radians = angle * np.pi / 180
+
+    rotation_matrix = np.array([[np.cos(radians),
+                                 np.sin(radians)],
+                                [-np.sin(radians),
+                                 np.cos(radians)]])
+
+    xx, yy = np.meshgrid(xspan, yspan)
+    return np.einsum('ji, mni -> jmn', rotation_matrix, np.dstack([xx, yy]))
+
+
+def as_gray(image_filter, image, *args, **kwargs):
+    gray_image = skimage.color.rgb2gray(image)
+    return image_filter(gray_image, *args, **kwargs)
+
+
+@skimage.color.adapt_rgb.adapt_rgb(as_gray)
+def scharr_gray(image):
+    return skimage.filters.scharr(image)
+
+
+def load_image(path):
+    return imageio.imread(path)
 
 
 def load_cal_scans(path, cal_string_end=DEFAULT_CAL_STRING_END):
@@ -37,12 +105,8 @@ def load_cal_scans(path, cal_string_end=DEFAULT_CAL_STRING_END):
     filepaths = path.glob(cal_pattern)
 
     calibrations = {
-        float(path.name.rstrip(cal_string_end)): imageio.imread(path)
+        float(path.name.rstrip(cal_string_end)): load_image(path)
         for path in filepaths
     }
 
     return calibrations
-
-
-def film_mask(film_image):
-    pass
