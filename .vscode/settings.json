@@ -25,6 +25,7 @@
     "arange",
     "atol",
     "bfgs",
+    "biggs",
     "dstack",
     "einsum",
     "imageio",
@@ -36,6 +37,7 @@
     "pyplot",
     "pytest",
     "ref",
+    "rtol",
     "scipy"
   ]
 }
