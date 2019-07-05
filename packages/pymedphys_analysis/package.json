@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "pymedphys": "~0.10.0",
     "pymedphys_dicom": "~0.10.0"
   },
   "name": "pymedphys_analysis",
