@@ -39,6 +39,7 @@
     "interp",
     "lzma",
     "numpy",
+    "pcolormesh",
     "pydicom",
     "pylint",
     "pymedphys",

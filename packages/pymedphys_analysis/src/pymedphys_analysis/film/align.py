@@ -23,16 +23,11 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-from pathlib import Path
-
 import numpy as np
 from scipy.optimize import basinhopping
 from scipy.interpolate import RegularGridInterpolator
 
 import skimage
-import imageio
-
-DEFAULT_CAL_STRING_END = ' cGy.tif'
 
 
 def align_images(ref_axes,
@@ -148,21 +143,3 @@ def as_gray(image_filter, image, *args, **kwargs):
 @skimage.color.adapt_rgb.adapt_rgb(as_gray)
 def scharr_gray(image):
     return skimage.filters.scharr(image)
-
-
-def load_image(path):
-    return imageio.imread(path)
-
-
-def load_cal_scans(path, cal_string_end=DEFAULT_CAL_STRING_END):
-    path = Path(path)
-
-    cal_pattern = '*' + cal_string_end
-    filepaths = path.glob(cal_pattern)
-
-    calibrations = {
-        float(path.name.rstrip(cal_string_end)): load_image(path)
-        for path in filepaths
-    }
-
-    return calibrations
