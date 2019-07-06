@@ -30,36 +30,39 @@ the laser marked image.
 
 """
 
-import os
-import json
+import pytest
 
-import numpy as np
+# import numpy as np
+# import matplotlib.pyplot as plt
 
 from pymedphys_analysis.film import calc_net_od
-from pymedphys_analysis.film.fixtures import BASELINES_DIR, prescans, postscans  # pylint: disable=unused-import
+from pymedphys_analysis.film.fixtures import (BASELINES_DIR, prescans_base,
+                                              postscans_base)
 
-CREATE_BASELINE = True
-BASELINE_FILEPATH = os.path.join(BASELINES_DIR, 'net_od.json')
+
+@pytest.fixture
+def prescans():
+    return prescans_base()
+
+
+@pytest.fixture
+def postscans():
+    return postscans_base()
 
 
 def test_net_od(prescans, postscans):  # pylint: disable=redefined-outer-name
     keys = prescans.keys()
     assert keys == postscans.keys()
 
-    if not CREATE_BASELINE:
-        with open(BASELINE_FILEPATH, 'r') as a_file:
-            baselines = json.load(a_file)
-    else:
-        baselines = {str(key): None for key in keys}
-
     results = {}
 
+    keys_to_use = keys
     keys_to_use = [200, 600]
 
     for key in keys_to_use:
-        results[key] = np.around(calc_net_od(prescans[key], postscans[key]),
-                                 decimals=4).tolist()
+        results[key] = calc_net_od(prescans[key], postscans[key])
+        # plt.pcolormesh(results[key])
+        # plt.colorbar()
+        # plt.axis('equal')
 
-    if CREATE_BASELINE:
-        with open(BASELINE_FILEPATH, 'w') as a_file:
-            json.dump(results, a_file)
+        # plt.show()
