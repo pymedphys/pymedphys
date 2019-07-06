@@ -23,17 +23,16 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 import os
 import ast
 
 from stdlib_list import stdlib_list
 STDLIB = set(stdlib_list())
 
-
 IMPORT_TYPES = {
     type(ast.parse('import george').body[0]),  # type: ignore
-    type(ast.parse('import george as macdonald').body[0])}  # type: ignore
+    type(ast.parse('import george as macdonald').body[0])  # type: ignore
+}
 
 IMPORT_FROM_TYPES = {
     type(ast.parse('from george import macdonald').body[0])  # type: ignore
@@ -47,6 +46,7 @@ CONVERSIONS = {
     'Image': 'Pillow',
     'mpl_toolkits': 'matplotlib',
     'dateutil': 'python_dateutil',
+    'skimage': 'scikit-image',
     'yaml': 'PyYAML'
 }
 
@@ -57,7 +57,8 @@ def get_imports(filepath, relative_filepath, internal_packages, depth):
 
     parsed = ast.parse(data)
     imports = [
-        node for node in ast.walk(parsed) if type(node) in ALL_IMPORT_TYPES]
+        node for node in ast.walk(parsed) if type(node) in ALL_IMPORT_TYPES
+    ]
 
     stdlib_imports = set()
     external_imports = set()
@@ -95,14 +96,13 @@ def get_imports(filepath, relative_filepath, internal_packages, depth):
             if an_import.level == 0:
                 add_level_0(an_import.module)
             elif an_import.level == 1 and depth == 2:
-                module_path = (
-                    relative_filepath.split(os.sep)[0:2] + [an_import.module])
+                module_path = (relative_filepath.split(os.sep)[0:2] +
+                               [an_import.module])
                 internal_file_imports.add('.'.join(module_path))
-            elif (
-                    (an_import.level == 1 and depth == 1) or
-                    (an_import.level == 2 and depth == 2)):
-                module_path = (
-                    relative_filepath.split(os.sep)[0:1] + [an_import.module])
+            elif ((an_import.level == 1 and depth == 1)
+                  or (an_import.level == 2 and depth == 2)):
+                module_path = (relative_filepath.split(os.sep)[0:1] +
+                               [an_import.module])
                 internal_module_imports.add('.'.join(module_path))
             else:
                 raise ValueError(

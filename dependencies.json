@@ -84,8 +84,8 @@
         "numpy",
         "pydicom",
         "pytest",
-        "scipy",
-        "skimage"
+        "scikit-image",
+        "scipy"
       ],
       "internal": [
         "pymedphys",
