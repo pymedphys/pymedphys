@@ -23,12 +23,10 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
-from pymedphys.dicom import (
-    xyz_axes_from_dataset, dose_from_dataset)
+from pymedphys_dicom.dicom import xyz_axes_from_dataset, dose_from_dataset
 
 
 def dicom_dose_extract(dicom_dose_dataset, grid_axes):

@@ -83,17 +83,16 @@
         "matplotlib",
         "numpy",
         "pydicom",
-        "pytest",
         "scikit-image",
         "scipy"
       ],
       "internal": [
-        "pymedphys",
         "pymedphys_dicom"
       ],
       "stdlib": [
         "os",
-        "pathlib"
+        "pathlib",
+        "warnings"
       ]
     },
     "pymedphys_base": {
