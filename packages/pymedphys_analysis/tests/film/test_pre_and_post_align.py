@@ -25,47 +25,17 @@
 
 import os
 import json
-from pathlib import Path
-
-import pytest
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_analysis.film import (load_cal_scans, align_images, load_image,
-                                     interpolated_rotation,
-                                     create_image_interpolation,
-                                     shift_and_rotate)
-from pymedphys_analysis.mocks import create_rectangular_field_function
+from pymedphys_analysis.film import align_images, shift_and_rotate
+from pymedphys_analysis.film.fixtures import BASELINES_DIR, prescans, postscans  # pylint: disable=unused-import
 
 CREATE_BASELINE = False
 
-HERE = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(HERE, 'data/spine_case')
-PRESCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/prescans/calibration')
-POSTSCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/postscans/calibration')
-
-BASELINES_DIR = os.path.join(DATA_DIR, 'Baselines')
 ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR,
                                             'pre_post_alignment.json')
-
-
-@pytest.fixture
-def prescans():
-    filepath = Path(DATA_DIR).joinpath('DatasetA/prescans/treatment.tif')
-    scans = load_cal_scans(PRESCANS_CAL_DIR)
-    scans['treatment'] = load_image(filepath)
-
-    return scans
-
-
-@pytest.fixture
-def postscans():
-    filepath = Path(DATA_DIR).joinpath('DatasetA/postscans/treatment.tif')
-    scans = load_cal_scans(POSTSCANS_CAL_DIR)
-    scans['treatment'] = load_image(filepath)
-
-    return scans
 
 
 def create_axes(image, dpcm=100):
@@ -76,7 +46,7 @@ def create_axes(image, dpcm=100):
     return x_span, y_span
 
 
-def test_multi_channel_shift_and_rotate(prescans):
+def test_multi_channel_shift_and_rotate(prescans):  # pylint: disable=redefined-outer-name
     prescan = prescans[0]
     axes = create_axes(prescan)
 
@@ -120,7 +90,8 @@ def get_alignment(prescan, postscan, baseline=None):
     return alignment
 
 
-def test_pre_and_post_align(prescans, postscans):
+def test_pre_and_post_align(
+        prescans, postscans):  # pylint: disable = redefined-outer-name
     keys = prescans.keys()
     assert keys == postscans.keys()
 

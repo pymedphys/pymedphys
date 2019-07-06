@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Cancer Care Associates
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,44 +24,34 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import os
-import json
-import lzma
 from pathlib import Path
 
-import numpy as np
+import pytest
 
-import pydicom
+from .align import load_cal_scans, load_image
 
-from pymedphys_analysis.film import dicom_dose_extract
-from pymedphys_analysis.film.fixtures import BASELINES_DIR, DATA_DIR
+HERE = os.path.abspath(os.path.dirname(__file__))
+DATA_DIR = os.path.join(HERE, '../../../tests/film/data/spine_case')
 
-CREATE_BASELINE = False
-DICOM_DOSE_BASELINE_FILEPATH = os.path.join(BASELINES_DIR,
-                                            'dicom_dose_extract.json')
+PRESCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/prescans/calibration')
+POSTSCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/postscans/calibration')
+
+BASELINES_DIR = os.path.join(DATA_DIR, 'Baselines')
 
 
-def test_dose_extract():
-    x = np.arange(-60, 61)
-    y = np.arange(-70, 71)
-    z = np.array([0])
+@pytest.fixture
+def prescans():
+    filepath = Path(DATA_DIR).joinpath('DatasetA/prescans/treatment.tif')
+    scans = load_cal_scans(PRESCANS_CAL_DIR)
+    scans['treatment'] = load_image(filepath)
 
-    compressed_dicom_path = list(
-        Path(DATA_DIR).joinpath('Raw').glob('*.dcm.xz'))[0]
+    return scans
 
-    with lzma.open(compressed_dicom_path) as a_file:
-        dicom_dataset = pydicom.dcmread(a_file, force=True)
 
-    result = dicom_dose_extract(dicom_dataset, (z, y, x))
+@pytest.fixture
+def postscans():
+    filepath = Path(DATA_DIR).joinpath('DatasetA/postscans/treatment.tif')
+    scans = load_cal_scans(POSTSCANS_CAL_DIR)
+    scans['treatment'] = load_image(filepath)
 
-    rounded_result = np.around(result, decimals=2)
-    json_parsable_result = rounded_result.tolist()
-
-    if CREATE_BASELINE:
-        with open(DICOM_DOSE_BASELINE_FILEPATH, 'w') as a_file:
-            json.dump(json_parsable_result, a_file)
-
-    else:
-        with open(DICOM_DOSE_BASELINE_FILEPATH, 'r') as a_file:
-            baseline_result = json.load(a_file)
-
-        assert baseline_result == json_parsable_result
+    return scans
