@@ -48,4 +48,5 @@ def test_create_dose_function():
     ]
 
     dose_function = create_dose_function(net_od, dose)
-    assert np.allclose(baseline_fitted_dose, dose_function(net_od), 0.01, 0.01)
+    assert np.allclose(baseline_fitted_dose, dose_function(net_od), 0.0001,
+                       0.0001)
