@@ -30,9 +30,36 @@ the laser marked image.
 
 """
 
+import os
+import json
+
+import numpy as np
+
 from pymedphys_analysis.film import calc_net_od
-from pymedphys_analysis.film.fixtures import BASELINES_DIR, prescans, postscans
+from pymedphys_analysis.film.fixtures import BASELINES_DIR, prescans, postscans  # pylint: disable=unused-import
+
+CREATE_BASELINE = True
+BASELINE_FILEPATH = os.path.join(BASELINES_DIR, 'net_od.json')
 
 
 def test_net_od(prescans, postscans):  # pylint: disable=redefined-outer-name
-    pass
+    keys = prescans.keys()
+    assert keys == postscans.keys()
+
+    if not CREATE_BASELINE:
+        with open(BASELINE_FILEPATH, 'r') as a_file:
+            baselines = json.load(a_file)
+    else:
+        baselines = {str(key): None for key in keys}
+
+    results = {}
+
+    keys_to_use = [200, 600]
+
+    for key in keys_to_use:
+        results[key] = np.around(calc_net_od(prescans[key], postscans[key]),
+                                 decimals=4).tolist()
+
+    if CREATE_BASELINE:
+        with open(BASELINE_FILEPATH, 'w') as a_file:
+            json.dump(results, a_file)
