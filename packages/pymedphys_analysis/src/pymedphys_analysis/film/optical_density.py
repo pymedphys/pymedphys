@@ -28,23 +28,25 @@ import numpy as np
 from .align import align_images, shift_and_rotate
 
 
-def calc_net_od(prescan, postscan, dpcm=100):
-    shifted_prescan, _ = get_aligned_image(prescan, postscan, dpcm)
+def calc_net_od(prescan, postscan, dpcm=100, alignment=None):
+    shifted_prescan, alignment = get_aligned_image(prescan, postscan, dpcm,
+                                                   alignment)
     net_od = np.log10(shifted_prescan[:, :, 0] / postscan[:, :, 0])
 
-    return net_od
+    return net_od, alignment
 
 
-def get_aligned_image(prescan, postscan, dpcm=100):
+def get_aligned_image(prescan, postscan, dpcm=100, alignment=None):
     prescan_axes = create_axes(prescan, dpcm)
     postscan_axes = create_axes(postscan, dpcm)
 
-    alignment = align_images(postscan_axes,
-                             postscan,
-                             prescan_axes,
-                             prescan,
-                             max_shift=1,
-                             max_rotation=5)
+    if alignment is None:
+        alignment = align_images(postscan_axes,
+                                 postscan,
+                                 prescan_axes,
+                                 prescan,
+                                 max_shift=1,
+                                 max_rotation=5)
 
     shifted_prescan = shift_and_rotate(prescan_axes, postscan_axes, prescan,
                                        *alignment)
