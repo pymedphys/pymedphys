@@ -23,9 +23,12 @@
     "agpl",
     "analysis",
     "arange",
+    "astype",
     "atol",
     "bfgs",
     "biggs",
+    "dcmread",
+    "dicom",
     "dpcm",
     "dstack",
     "einsum",
@@ -33,13 +36,17 @@
     "imread",
     "imshow",
     "interp",
+    "lzma",
     "numpy",
+    "pydicom",
+    "pylint",
     "pymedphys",
     "pyplot",
     "pytest",
     "ref",
     "rtol",
     "scipy",
-    "tolist"
+    "tolist",
+    "uint"
   ]
 }
