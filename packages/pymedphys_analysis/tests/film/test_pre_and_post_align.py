@@ -29,21 +29,14 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_analysis.film import align_images, shift_and_rotate
+from pymedphys_analysis.film import shift_and_rotate, get_aligned_image
 from pymedphys_analysis.film.fixtures import BASELINES_DIR, prescans, postscans  # pylint: disable=unused-import
+from pymedphys_analysis.film.optical_density import create_axes
 
 CREATE_BASELINE = False
 
 ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR,
                                             'pre_post_alignment.json')
-
-
-def create_axes(image, dpcm=100):
-    shape = np.shape(image)
-    x_span = (np.arange(0, shape[0]) - shape[0] // 2) * 10 / dpcm
-    y_span = (np.arange(0, shape[1]) - shape[1] // 2) * 10 / dpcm
-
-    return x_span, y_span
 
 
 def test_multi_channel_shift_and_rotate(prescans):  # pylint: disable=redefined-outer-name
@@ -56,31 +49,20 @@ def test_multi_channel_shift_and_rotate(prescans):  # pylint: disable=redefined-
 
 
 def get_alignment(prescan, postscan, baseline=None):
-    prescan_axes = create_axes(prescan)
-    postscan_axes = create_axes(postscan)
-
-    alignment = align_images(prescan_axes,
-                             prescan,
-                             postscan_axes,
-                             postscan,
-                             max_shift=1,
-                             max_rotation=5)
-
-    shifted_image = shift_and_rotate(postscan_axes, prescan_axes, postscan,
-                                     *alignment)
+    shifted_prescan, alignment = get_aligned_image(prescan, postscan)
 
     if baseline is None or not np.allclose(baseline, alignment, 0.01, 0.01):
         print(baseline)
         print(alignment)
 
         plt.figure()
-        plt.imshow(prescan)
-
-        plt.figure()
         plt.imshow(postscan)
 
         plt.figure()
-        plt.imshow(shifted_image.astype(np.uint8))
+        plt.imshow(prescan)
+
+        plt.figure()
+        plt.imshow(shifted_prescan.astype(np.uint8))
 
         plt.show()
 
@@ -90,8 +72,7 @@ def get_alignment(prescan, postscan, baseline=None):
     return alignment
 
 
-def test_pre_and_post_align(
-        prescans, postscans):  # pylint: disable = redefined-outer-name
+def test_pre_and_post_align(prescans, postscans):  # pylint: disable=redefined-outer-name
     keys = prescans.keys()
     assert keys == postscans.keys()
 

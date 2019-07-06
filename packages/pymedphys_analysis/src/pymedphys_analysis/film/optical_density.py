@@ -23,6 +23,38 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import numpy as np
 
-def calc_net_od(prescan, postscan):
-    pass
+from .align import align_images, shift_and_rotate
+
+
+def calc_net_od(prescan, postscan, dpcm=100):
+    shifted_prescan, _ = get_aligned_image(prescan, postscan, dpcm)
+    net_od = np.log10(shifted_prescan[:, :, 0] / postscan[:, :, 0])
+
+    return net_od
+
+
+def get_aligned_image(prescan, postscan, dpcm=100):
+    prescan_axes = create_axes(prescan, dpcm)
+    postscan_axes = create_axes(postscan, dpcm)
+
+    alignment = align_images(postscan_axes,
+                             postscan,
+                             prescan_axes,
+                             prescan,
+                             max_shift=1,
+                             max_rotation=5)
+
+    shifted_prescan = shift_and_rotate(prescan_axes, postscan_axes, prescan,
+                                       *alignment)
+
+    return shifted_prescan, alignment
+
+
+def create_axes(image, dpcm=100):
+    shape = np.shape(image)
+    x_span = (np.arange(0, shape[0]) - shape[0] // 2) * 10 / dpcm
+    y_span = (np.arange(0, shape[1]) - shape[1] // 2) * 10 / dpcm
+
+    return x_span, y_span
