@@ -64,7 +64,7 @@ def create_to_minimise(net_od, dose):
     return to_minimise
 
 
-def calc_calibration_points(prescans, postscans):
+def calc_calibration_points(prescans, postscans, alignments=None):
     """Returns calibration points based on dictionaries of prescans and postscans.
 
     The key of the dictionaries of images is to represent the dose calibration
@@ -76,6 +76,9 @@ def calc_calibration_points(prescans, postscans):
 
     calibration_points = {}
 
+    if alignments is None:
+        alignments = {key: None for key in keys}
+
     for key in keys:
         try:
             dose_value = float(key)
@@ -85,10 +88,13 @@ def calc_calibration_points(prescans, postscans):
                 'be skipped.')
             continue
 
-        calibration_points[dose_value] = np.median(
-            calc_net_od(prescans[key], postscans[key]))
+        net_od, alignment = calc_net_od(prescans[key],
+                                        postscans[key],
+                                        alignment=alignments[key])
+        calibration_points[dose_value] = np.median(net_od)
+        alignments[key] = alignment
 
-    return calibration_points
+    return calibration_points, alignments
 
 
 def load_cal_scans(path, cal_string_end=DEFAULT_CAL_STRING_END):
