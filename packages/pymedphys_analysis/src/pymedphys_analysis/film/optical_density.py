@@ -22,17 +22,7 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
-"""Notes
-
-Make the prescan be the moving image, that way the treatment field is
-not interpolated during the netOD calc and is left in the same coords as
-the laser marked image.
-
-"""
-
-from pymedphys_analysis.film import calc_net_od
-from pymedphys_analysis.film.fixtures import BASELINES_DIR, prescans, postscans
 
 
-def test_net_od(prescans, postscans):  # pylint: disable=redefined-outer-name
+def calc_net_od(prescan, postscan):
     pass
