@@ -27,6 +27,7 @@
     "atol",
     "bfgs",
     "biggs",
+    "dateutil",
     "dcmread",
     "dicom",
     "dpcm",

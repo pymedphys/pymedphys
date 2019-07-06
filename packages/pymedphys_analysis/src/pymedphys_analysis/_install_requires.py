@@ -6,6 +6,6 @@ install_requires = [
     "pymedphys >= 0.10.0, < 0.11.0",
     "pymedphys_dicom >= 0.10.0, < 0.11.0",
     "pytest",
-    "scipy",
-    "skimage"
+    "scikit-image",
+    "scipy"
 ]
