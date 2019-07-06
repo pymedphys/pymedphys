@@ -83,13 +83,16 @@
         "matplotlib",
         "numpy",
         "pydicom",
-        "scipy"
+        "pytest",
+        "scipy",
+        "skimage"
       ],
       "internal": [
         "pymedphys",
         "pymedphys_dicom"
       ],
       "stdlib": [
+        "os",
         "pathlib"
       ]
     },
