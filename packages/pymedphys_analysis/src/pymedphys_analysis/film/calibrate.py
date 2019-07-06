@@ -41,7 +41,6 @@ def create_dose_function(net_od, dose):
     dose = np.array(dose, copy=False)
 
     to_minimise = create_to_minimise(net_od, dose)
-
     result = basinhopping(to_minimise, [np.max(dose) / np.max(net_od), 1, 1])
 
     return create_cal_fit(*result.x)
@@ -55,12 +54,12 @@ def create_cal_fit(a, b, n):
     return cal_fit
 
 
-def create_to_minimise(net_od_cal, dose_cal):
+def create_to_minimise(net_od, dose):
     def to_minimise(x):
         a, b, n = x
 
         cal_fit = create_cal_fit(a, b, n)
-        return np.sum((cal_fit(net_od_cal) - dose_cal)**2)
+        return np.sum((cal_fit(net_od) - dose)**2)
 
     return to_minimise
 
