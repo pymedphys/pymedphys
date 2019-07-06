@@ -23,31 +23,29 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import os
-from pathlib import Path
+import numpy as np
 
-from .calibrate import load_cal_scans, load_image
-
-HERE = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(HERE, '../../../tests/film/data/spine_case')
-
-PRESCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/prescans/calibration')
-POSTSCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/postscans/calibration')
-
-BASELINES_DIR = os.path.join(DATA_DIR, 'Baselines')
+from pymedphys_analysis.film import create_dose_function
 
 
-def prescans_base():
-    filepath = Path(DATA_DIR).joinpath('DatasetA/prescans/treatment.tif')
-    scans = load_cal_scans(PRESCANS_CAL_DIR)
-    scans['treatment'] = load_image(filepath)
+def test_create_dose_function():
+    net_od = [
+        0.03321279, 0.16718541, 0.21453297, 0.25253895, 0.28419923, 0.30208024,
+        0.3075344, 0.31008735, 0.3157614, 0.31611426, 0.32567696, 0.33727732,
+        0.34633589, 0.36541121, 0.37880263, 0.39419754, 0.4152226, 0.43042048
+    ]
 
-    return scans
+    dose = [
+        0., 200., 300., 400., 500., 550., 580., 600., 650., 620., 700., 750.,
+        800., 900., 1000., 1100., 1250., 1400.
+    ]
 
+    baseline_fitted_dose = [
+        31.12929272, 193.62365785, 289.34866228, 392.43366586, 501.12974266,
+        573.27868306, 596.98144741, 608.35995856, 634.31168013, 635.95616367,
+        681.91912861, 741.4117247, 790.84547747, 903.97412589, 991.13790282,
+        1099.74637299, 1263.53372935, 1393.75250018
+    ]
 
-def postscans_base():
-    filepath = Path(DATA_DIR).joinpath('DatasetA/postscans/treatment.tif')
-    scans = load_cal_scans(POSTSCANS_CAL_DIR)
-    scans['treatment'] = load_image(filepath)
-
-    return scans
+    dose_function = create_dose_function(net_od, dose)
+    assert np.allclose(baseline_fitted_dose, dose_function(net_od), 0.01, 0.01)
