@@ -90,7 +90,6 @@
         "pymedphys_dicom"
       ],
       "stdlib": [
-        "os",
         "pathlib",
         "warnings"
       ]
