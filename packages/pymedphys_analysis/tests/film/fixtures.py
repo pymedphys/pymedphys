@@ -26,10 +26,12 @@
 import os
 from pathlib import Path
 
-from .calibrate import load_cal_scans, load_image
+import pytest
+
+from pymedphys_analysis.film import load_cal_scans, load_image
 
 HERE = os.path.abspath(os.path.dirname(__file__))
-DATA_DIR = os.path.join(HERE, '../../../tests/film/data/spine_case')
+DATA_DIR = os.path.join(HERE, 'data/spine_case')
 
 PRESCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/prescans/calibration')
 POSTSCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/postscans/calibration')
@@ -37,7 +39,8 @@ POSTSCANS_CAL_DIR = os.path.join(DATA_DIR, 'DatasetA/postscans/calibration')
 BASELINES_DIR = os.path.join(DATA_DIR, 'Baselines')
 
 
-def prescans_base():
+@pytest.fixture
+def prescans():
     filepath = Path(DATA_DIR).joinpath('DatasetA/prescans/treatment.tif')
     scans = load_cal_scans(PRESCANS_CAL_DIR)
     scans['treatment'] = load_image(filepath)
@@ -45,7 +48,8 @@ def prescans_base():
     return scans
 
 
-def postscans_base():
+@pytest.fixture
+def postscans():
     filepath = Path(DATA_DIR).joinpath('DatasetA/postscans/treatment.tif')
     scans = load_cal_scans(POSTSCANS_CAL_DIR)
     scans['treatment'] = load_image(filepath)

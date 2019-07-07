@@ -33,7 +33,7 @@ import numpy as np
 import pydicom
 
 from pymedphys_analysis.film import dicom_dose_extract
-from pymedphys_analysis.film.fixtures import BASELINES_DIR, DATA_DIR
+from fixtures import BASELINES_DIR, DATA_DIR
 
 CREATE_BASELINE = False
 DICOM_DOSE_BASELINE_FILEPATH = os.path.join(BASELINES_DIR,

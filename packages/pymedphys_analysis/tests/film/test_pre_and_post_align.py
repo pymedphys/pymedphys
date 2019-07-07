@@ -32,24 +32,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pymedphys_analysis.film import shift_and_rotate, get_aligned_image
-from pymedphys_analysis.film.fixtures import (BASELINES_DIR, prescans_base,
-                                              postscans_base)
 from pymedphys_analysis.film.optical_density import create_axes
+
+from fixtures import BASELINES_DIR, prescans, postscans
 
 CREATE_BASELINE = False
 
 ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR,
                                             'pre_post_alignment.json')
-
-
-@pytest.fixture
-def prescans():
-    return prescans_base()
-
-
-@pytest.fixture
-def postscans():
-    return postscans_base()
 
 
 def test_multi_channel_shift_and_rotate(prescans):  # pylint: disable=redefined-outer-name

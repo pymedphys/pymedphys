@@ -36,18 +36,8 @@ import pytest
 # import matplotlib.pyplot as plt
 
 from pymedphys_analysis.film import calc_net_od
-from pymedphys_analysis.film.fixtures import (BASELINES_DIR, prescans_base,
-                                              postscans_base)
 
-
-@pytest.fixture
-def prescans():
-    return prescans_base()
-
-
-@pytest.fixture
-def postscans():
-    return postscans_base()
+from fixtures import prescans, postscans
 
 
 def test_net_od(prescans, postscans):  # pylint: disable=redefined-outer-name
