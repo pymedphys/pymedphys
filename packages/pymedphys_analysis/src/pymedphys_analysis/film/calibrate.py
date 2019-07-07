@@ -27,6 +27,7 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.optimize import basinhopping
 
 import imageio
@@ -64,7 +65,11 @@ def create_to_minimise(net_od, dose):
     return to_minimise
 
 
-def calc_calibration_points(prescans, postscans, alignments=None):
+def calc_calibration_points(prescans,
+                            postscans,
+                            alignments=None,
+                            figures=False,
+                            pixel_trim=0):
     """Returns calibration points based on dictionaries of prescans and postscans.
 
     The key of the dictionaries of images is to represent the dose calibration
@@ -91,6 +96,17 @@ def calc_calibration_points(prescans, postscans, alignments=None):
         net_od, alignment = calc_net_od(prescans[key],
                                         postscans[key],
                                         alignment=alignments[key])
+
+        if pixel_trim != 0:
+            trim_ref = (slice(pixel_trim,
+                              -pixel_trim), slice(pixel_trim, -pixel_trim))
+            net_od = net_od[trim_ref]
+
+        if figures:
+            plt.figure()
+            plt.imshow(net_od)
+            plt.show()
+
         calibration_points[dose_value] = np.median(net_od)
         alignments[key] = alignment
 
