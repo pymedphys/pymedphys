@@ -45,7 +45,7 @@ def get_aligned_image(prescan, postscan, dpcm=100, alignment=None):
                                  postscan,
                                  prescan_axes,
                                  prescan,
-                                 max_shift=1,
+                                 max_shift=2,
                                  max_rotation=5)
 
     shifted_prescan = shift_and_rotate(prescan_axes, postscan_axes, prescan,
