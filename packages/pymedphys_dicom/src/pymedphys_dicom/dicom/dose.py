@@ -22,8 +22,6 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
-
-
 """A DICOM RT Dose toolbox"""
 
 import warnings
@@ -32,12 +30,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
 
+from scipy.interpolate import RegularGridInterpolator
+
 import pydicom
 import pydicom.uid
 
 from .structure import pull_structure
 from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
-
 
 # pylint: disable=C0103
 
@@ -62,19 +61,43 @@ def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
         ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
     if reshape:
-        warnings.warn((
-            '`dose_from_dataset` currently reshapes the dose grid. In a '
-            'future version this will no longer occur. To begin using this '
-            'function without the reshape pass the parameter `reshape=False` '
-            'when calling `dose_from_dataset`.'), UserWarning)
-        pixels = np.transpose(
-            ds.pixel_array, (1, 2, 0))
+        warnings.warn(
+            ('`dose_from_dataset` currently reshapes the dose grid. In a '
+             'future version this will no longer occur. To begin using this '
+             'function without the reshape pass the parameter `reshape=False` '
+             'when calling `dose_from_dataset`.'), UserWarning)
+        pixels = np.transpose(ds.pixel_array, (1, 2, 0))
     else:
         pixels = ds.pixel_array
 
     dose = pixels * ds.DoseGridScaling
 
     return dose
+
+
+def dicom_dose_interpolate(dicom_dose_dataset, grid_axes):
+    """Interpolates across a DICOM dose dataset.
+
+    Parameters
+    ----------
+    dicom_dose_dataset : pydicom.Dataset
+        An RT DICOM Dose object
+    grid_axes : tuple(z, y, x)
+        A tuple of coordinates in DICOM order, z axis first, then y, then x
+        where x, y, and z are DICOM axes.
+    """
+
+    interp_z = np.array(grid_axes[0], copy=False)[:, None, None]
+    interp_y = np.array(grid_axes[1], copy=False)[None, :, None]
+    interp_x = np.array(grid_axes[2], copy=False)[None, None, :]
+
+    x, y, z = xyz_axes_from_dataset(dicom_dose_dataset)  # pylint: disable=invalid-name
+    dose = dose_from_dataset(dicom_dose_dataset, reshape=False)
+
+    interpolation = RegularGridInterpolator((z, y, x), dose)
+    result = interpolation((interp_z, interp_y, interp_x))
+
+    return result
 
 
 def axes_and_dose_from_dicom(dicom_filepath):
@@ -113,7 +136,6 @@ def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
 
 
 def extract_profiles(ds, depth_adjust, depth_lookup, averaging_distance=0):
-
     inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
     inplane_ref = abs(inplane) <= averaging_distance
@@ -143,13 +165,15 @@ def bounding_vals(test, values):
     return values[lower], values[upper]
 
 
-def average_bounding_profiles(ds, depth_adjust, depth_lookup,
+def average_bounding_profiles(ds,
+                              depth_adjust,
+                              depth_lookup,
                               averaging_distance=0):
     inplane, crossplane, depth, _ = load_dicom_data(ds, depth_adjust)
 
     if depth_lookup in depth:
-        return extract_profiles(
-            ds, depth_adjust, depth_lookup, averaging_distance)
+        return extract_profiles(ds, depth_adjust, depth_lookup,
+                                averaging_distance)
     else:
         print(
             'Specific depth not found, interpolating from surrounding depths')
@@ -165,12 +189,10 @@ def average_bounding_profiles(ds, depth_adjust, depth_lookup,
         shallower_weight = 1 - (depth_lookup - shallower) / depth_range
         deeper_weight = 1 - (deeper - depth_lookup) / depth_range
 
-        inplane_dose = (
-            shallower_weight * shallower_inplane +
-            deeper_weight * deeper_inplane)
-        crossplane_dose = (
-            shallower_weight * shallower_crossplane +
-            deeper_weight * deeper_crossplane)
+        inplane_dose = (shallower_weight * shallower_inplane +
+                        deeper_weight * deeper_inplane)
+        crossplane_dose = (shallower_weight * shallower_crossplane +
+                           deeper_weight * deeper_crossplane)
 
         return inplane, inplane_dose, crossplane, crossplane_dose
 
@@ -206,10 +228,8 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
             assert z_structure[structure_index][0] == z_dose[dose_index]
 
             structure_polygon = path.Path([
-                (
-                    x_structure[structure_index][i],
-                    y_structure[structure_index][i]
-                )
+                (x_structure[structure_index][i],
+                 y_structure[structure_index][i])
                 for i in range(len(x_structure[structure_index]))
             ])
             mask[:, :, dose_index] = mask[:, :, dose_index] | (
@@ -227,8 +247,8 @@ def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = find_dose_within_structure(
-        structure, dcm_struct, dcm_dose)
+    structure_dose_values = find_dose_within_structure(structure, dcm_struct,
+                                                       dcm_dose)
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]
     bin_edge = hist[1]
