@@ -32,7 +32,7 @@ import numpy as np
 
 import pydicom
 
-from pymedphys_analysis.film import dicom_dose_extract
+from pymedphys_dicom.dicom import dicom_dose_interpolate
 from fixtures import BASELINES_DIR, DATA_DIR
 
 CREATE_BASELINE = False
@@ -51,7 +51,7 @@ def test_dose_extract():
     with lzma.open(compressed_dicom_path) as a_file:
         dicom_dataset = pydicom.dcmread(a_file, force=True)
 
-    result = dicom_dose_extract(dicom_dataset, (z, y, x))
+    result = dicom_dose_interpolate(dicom_dataset, (z, y, x))
 
     rounded_result = np.around(result, decimals=2)
     json_parsable_result = rounded_result.tolist()
