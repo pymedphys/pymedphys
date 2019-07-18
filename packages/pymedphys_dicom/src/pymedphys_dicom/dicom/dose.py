@@ -91,11 +91,19 @@ def dicom_dose_interpolate(dicom_dose_dataset, grid_axes):
     interp_y = np.array(grid_axes[1], copy=False)[None, :, None]
     interp_x = np.array(grid_axes[2], copy=False)[None, None, :]
 
-    x, y, z = xyz_axes_from_dataset(dicom_dose_dataset)  # pylint: disable=invalid-name
+    x, y, z = xyz_axes_from_dataset(
+        dicom_dose_dataset)  # pylint: disable=invalid-name
     dose = dose_from_dataset(dicom_dose_dataset, reshape=False)
 
     interpolation = RegularGridInterpolator((z, y, x), dose)
-    result = interpolation((interp_z, interp_y, interp_x))
+
+    try:
+        result = interpolation((interp_z, interp_y, interp_x))
+    except ValueError:
+        print(f"x: {x}")
+        print(f"y: {y}")
+        print(f"z: {z}")
+        raise
 
     return result
 
