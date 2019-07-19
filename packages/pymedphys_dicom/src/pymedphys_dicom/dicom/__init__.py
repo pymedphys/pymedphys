@@ -68,6 +68,8 @@ from .dose import (
     find_dose_within_structure,
     zyx_and_dose_from_dataset,
     dicom_dose_interpolate,
+    profile,
+    depth_dose,
 )
 
 from .create import dicom_dataset_from_dict

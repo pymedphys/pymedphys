@@ -55,6 +55,9 @@ def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
     """
     all_surface_entry_points = set()
 
+    # Once we have DicomCollection sorted out, it will likely be worthwhile
+    # having this function take a beam sequence parameter, and get the entry
+    # point for a given beam sequence
     for beam in plan.BeamSequence:
         for control_point in beam.ControlPointSequence:
             try:

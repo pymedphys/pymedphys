@@ -30,8 +30,8 @@ DATA_DIR = HERE.joinpath('data')
 
 DICOM_DIR = DATA_DIR.joinpath('DICOM')
 DICOM_DOSE_FILEPATHS = {
-    '05x05': DICOM_DIR.joinpath('06MV_05x05_Dose.dcm.xz'),
-    '10x10': DICOM_DIR.joinpath('06MV_10x10_Dose.dcm.xz')
+    '05x05': DICOM_DIR.joinpath('06MV_05x05.dcm.xz'),
+    '10x10': DICOM_DIR.joinpath('06MV_10x10.dcm.xz')
 }
 DICOM_PLAN_FILEPATH = DICOM_DIR.joinpath('06MV_plan.dcm')
 
