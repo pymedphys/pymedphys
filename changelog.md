@@ -31,6 +31,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Within `dose_from_dataset` the `reshape` parameter now defaults to `False`
+  and setting it to `True` doesn't do anything except present a user warning
+  saying as such. In the future this parameter will be removed entirely.
+- Removed the following functions:
+  - `load_dicom_data`
+  - `axes_and_dose_from_dicom`
+
+
 ### Improvements
 
 - Made the resolution detection of `pymedphys.plt.pcolormesh_grid` more robust.

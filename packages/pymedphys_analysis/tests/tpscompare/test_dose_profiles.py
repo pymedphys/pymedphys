@@ -33,15 +33,17 @@ import numpy as np
 
 import pydicom
 
-from pymedphys_analysis.tpscompare import tps_profiles
-from shared import BASELINES_DIR, DATA_DIR, DICOM_FILE
+from shared import BASELINES_DIR, DATA_DIR, DICOM_DOSE_FILEPATHS
 
 CREATE_BASELINE = False
 BASELINE_FILEPATH = os.path.join(BASELINES_DIR,
-                                 'dicom_profiles.json')
+                                 'dicom_dose_profiles.json')
 
 
-def test_tps_profiles():
+def test_profile_diffs():
+    dicom_datasets = {}
 
-    with lzma.open(DICOM_FILE) as a_file:
-        dicom_dataset = pydicom.dcmread(a_file, force=True)
+    for key, filepath in DICOM_DOSE_FILEPATHS.items():
+
+        with lzma.open(filepath) as a_file:
+            dicom_datasets[key] = pydicom.dcmread(a_file, force=True)

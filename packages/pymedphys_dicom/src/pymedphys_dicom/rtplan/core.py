@@ -23,8 +23,34 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import pydicom
 
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
+
+
+def get_surface_entry_point(plan: pydicom.Dataset):
+    all_surface_entry_points = set()
+
+    for beam in plan.BeamSequence:
+        for control_point in beam.ControlPointSequence:
+            try:
+                surface_entry_point = control_point.SurfaceEntryPoint
+            except AttributeError:
+                pass
+
+            surface_entry_point = tuple(
+                float(item) for item in tuple(surface_entry_point)
+            )
+
+            all_surface_entry_points.add(surface_entry_point)
+
+    if not all_surface_entry_points:
+        raise ValueError("No surface entry point found")
+
+    if len(all_surface_entry_points) > 1:
+        raise ValueError("More than one disagreeing surface entry point found")
+
+    return all_surface_entry_points.pop()
 
 
 def get_metersets_from_dicom(dicom_dataset, fraction_group):
