@@ -29,9 +29,13 @@ import json
 import lzma
 from pathlib import Path
 
+import pytest
+
 import numpy as np
 
 import pydicom
+
+from pymedphys_dicom.dicom import depth_dose, profile
 
 from shared import (BASELINES_DIR, DATA_DIR,
                     DICOM_DOSE_FILEPATHS, DICOM_PLAN_FILEPATH,)
@@ -42,10 +46,56 @@ BASELINE_FILEPATH = os.path.join(BASELINES_DIR,
                                  'dicom_dose_profiles.json')
 
 
-def test_profile_diffs():
-    dicom_datasets = {}
+@pytest.fixture
+def loaded_doses():
+    doses = {}
 
     for key, filepath in DICOM_DOSE_FILEPATHS.items():
 
         with lzma.open(filepath) as a_file:
-            dicom_datasets[key] = pydicom.dcmread(a_file, force=True)
+            doses[key] = pydicom.dcmread(a_file, force=True)
+
+    return doses
+
+
+@pytest.fixture
+def loaded_plan():
+    plan = pydicom.read_file(str(DICOM_PLAN_FILEPATH), force=True)
+
+    return plan
+
+
+def test_baseline_profiles(loaded_doses, loaded_plan):
+    baselines = {}
+
+    displacements = list(range(-100, 110, 10))
+    depths = list(range(0, 310, 10))
+
+    for key, dose_dataset in loaded_doses.items():
+        baselines[key] = {}
+
+        extracted_dose = depth_dose(depths, dose_dataset, loaded_plan)
+        rounded_result = np.around(extracted_dose, decimals=2)
+        baselines[key]['depth'] = rounded_result.tolist()
+
+        for direction in ['inplane', 'crossplane']:
+            baselines[key][direction] = {}
+            for depth in [50, 100]:
+                extracted_dose = profile(
+                    displacements, depth, direction, dose_dataset, loaded_plan)
+                rounded_result = np.around(extracted_dose, decimals=2)
+                baselines[key][direction][str(depth)] = rounded_result.tolist()
+
+    if CREATE_BASELINE:
+        with open(BASELINE_FILEPATH, 'w') as a_file:
+            json.dump(baselines, a_file)
+
+    else:
+        with open(BASELINE_FILEPATH, 'r') as a_file:
+            baseline_result = json.load(a_file)
+
+        assert baseline_result == baselines
+
+
+# def test_profile_diffs(loaded_doses):
+#     pass
