@@ -54,7 +54,7 @@ from .anonymise import (anonymise_dataset, anonymise_file, anonymise_directory,
 from .coords import (coords_from_xyz_axes, xyz_axes_from_dataset)
 
 from .dose import (create_dvh, dose_from_dataset, find_dose_within_structure,
-                   extract_depth_dose, extract_profiles, load_dicom_data,
+                   extract_depth_dose, extract_profiles,
                    axes_and_dose_from_dicom, zyx_and_dose_from_dataset,
                    dicom_dose_interpolate)
 
