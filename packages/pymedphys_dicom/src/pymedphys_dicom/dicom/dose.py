@@ -83,7 +83,7 @@ def dicom_dose_interpolate(dose: pydicom.Dataset, grid_axes):
     interp_y = np.array(grid_axes[1], copy=False)[None, :, None]
     interp_x = np.array(grid_axes[2], copy=False)[None, None, :]
 
-    coords, dose = zyx_and_dose_from_dataset(dicom_dose_dataset)
+    coords, dose = zyx_and_dose_from_dataset(dose)
     interpolation = RegularGridInterpolator(coords, dose)
 
     try:
@@ -95,40 +95,41 @@ def dicom_dose_interpolate(dose: pydicom.Dataset, grid_axes):
     return result
 
 
-def depth_dose(dose: pydicom.Dataset, plan: pydicom.Dataset)
+def depth_dose(dose: pydicom.Dataset, plan: pydicom.Dataset):
+    beam_sequences = plan.BeamSequence
 
 
-def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
-    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
+# def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
+#     inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
-    inplane_ref = abs(inplane) <= averaging_distance
-    crossplane_ref = abs(crossplane) <= averaging_distance
+#     inplane_ref = abs(inplane) <= averaging_distance
+#     crossplane_ref = abs(crossplane) <= averaging_distance
 
-    sheet_dose = dose[:, :, inplane_ref]
-    column_dose = sheet_dose[:, crossplane_ref, :]
+#     sheet_dose = dose[:, :, inplane_ref]
+#     column_dose = sheet_dose[:, crossplane_ref, :]
 
-    depth_dose = np.mean(column_dose, axis=(1, 2))
+#     depth_dose = np.mean(column_dose, axis=(1, 2))
 
-    # uncertainty = np.std(column_dose, axis=(1, 2)) / depth_dose
-    # assert np.all(uncertainty < 0.01),
-    # "Shouldn't average over more than 1% uncertainty"
+#     # uncertainty = np.std(column_dose, axis=(1, 2)) / depth_dose
+#     # assert np.all(uncertainty < 0.01),
+#     # "Shouldn't average over more than 1% uncertainty"
 
-    return depth, depth_dose
+#     return depth, depth_dose
 
 
-def extract_profiles(ds, depth_adjust, depth_lookup, averaging_distance=0):
-    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
+# def extract_profiles(ds, depth_adjust, depth_lookup, averaging_distance=0):
+#     inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
-    inplane_ref = abs(inplane) <= averaging_distance
-    crossplane_ref = abs(crossplane) <= averaging_distance
+#     inplane_ref = abs(inplane) <= averaging_distance
+#     crossplane_ref = abs(crossplane) <= averaging_distance
 
-    depth_reference = depth == depth_lookup
+#     depth_reference = depth == depth_lookup
 
-    dose_at_depth = dose[depth_reference, :, :]
-    inplane_dose = np.mean(dose_at_depth[:, crossplane_ref, :], axis=(0, 1))
-    crossplane_dose = np.mean(dose_at_depth[:, :, inplane_ref], axis=(0, 2))
+#     dose_at_depth = dose[depth_reference, :, :]
+#     inplane_dose = np.mean(dose_at_depth[:, crossplane_ref, :], axis=(0, 1))
+#     crossplane_dose = np.mean(dose_at_depth[:, :, inplane_ref], axis=(0, 2))
 
-    return inplane, inplane_dose, crossplane, crossplane_dose
+#     return inplane, inplane_dose, crossplane, crossplane_dose
 
 
 def nearest_negative(diff):
@@ -146,36 +147,36 @@ def bounding_vals(test, values):
     return values[lower], values[upper]
 
 
-def average_bounding_profiles(ds,
-                              depth_adjust,
-                              depth_lookup,
-                              averaging_distance=0):
-    inplane, crossplane, depth, _ = load_dicom_data(ds, depth_adjust)
+# def average_bounding_profiles(ds,
+#                               depth_adjust,
+#                               depth_lookup,
+#                               averaging_distance=0):
+#     inplane, crossplane, depth, _ = load_dicom_data(ds, depth_adjust)
 
-    if depth_lookup in depth:
-        return extract_profiles(ds, depth_adjust, depth_lookup,
-                                averaging_distance)
-    else:
-        print(
-            'Specific depth not found, interpolating from surrounding depths')
-        shallower, deeper = bounding_vals(depth_lookup, depth)
+#     if depth_lookup in depth:
+#         return extract_profiles(ds, depth_adjust, depth_lookup,
+#                                 averaging_distance)
+#     else:
+#         print(
+#             'Specific depth not found, interpolating from surrounding depths')
+#         shallower, deeper = bounding_vals(depth_lookup, depth)
 
-        _, shallower_inplane, _, shallower_crossplane = np.array(
-            extract_profiles(ds, depth_adjust, shallower, averaging_distance))
+#         _, shallower_inplane, _, shallower_crossplane = np.array(
+#             extract_profiles(ds, depth_adjust, shallower, averaging_distance))
 
-        _, deeper_inplane, _, deeper_crossplane = np.array(
-            extract_profiles(ds, depth_adjust, deeper, averaging_distance))
+#         _, deeper_inplane, _, deeper_crossplane = np.array(
+#             extract_profiles(ds, depth_adjust, deeper, averaging_distance))
 
-        depth_range = deeper - shallower
-        shallower_weight = 1 - (depth_lookup - shallower) / depth_range
-        deeper_weight = 1 - (deeper - depth_lookup) / depth_range
+#         depth_range = deeper - shallower
+#         shallower_weight = 1 - (depth_lookup - shallower) / depth_range
+#         deeper_weight = 1 - (deeper - depth_lookup) / depth_range
 
-        inplane_dose = (shallower_weight * shallower_inplane +
-                        deeper_weight * deeper_inplane)
-        crossplane_dose = (shallower_weight * shallower_crossplane +
-                           deeper_weight * deeper_crossplane)
+#         inplane_dose = (shallower_weight * shallower_inplane +
+#                         deeper_weight * deeper_inplane)
+#         crossplane_dose = (shallower_weight * shallower_crossplane +
+#                            deeper_weight * deeper_crossplane)
 
-        return inplane, inplane_dose, crossplane, crossplane_dose
+#         return inplane, inplane_dose, crossplane, crossplane_dose
 
 
 def _get_indices(z_list, z_val):

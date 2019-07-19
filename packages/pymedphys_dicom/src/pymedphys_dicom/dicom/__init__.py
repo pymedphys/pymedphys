@@ -45,18 +45,30 @@
 ...     )
 """
 
-from .anonymise import (anonymise_dataset, anonymise_file, anonymise_directory,
-                        is_anonymised_dataset, is_anonymised_file,
-                        is_anonymised_directory, BASELINE_KEYWORD_VR_DICT,
-                        IDENTIFYING_KEYWORDS,
-                        label_dicom_filepath_as_anonymised)
+from .anonymise import (
+    anonymise_dataset,
+    anonymise_file,
+    anonymise_directory,
+    is_anonymised_dataset,
+    is_anonymised_file,
+    is_anonymised_directory,
+    BASELINE_KEYWORD_VR_DICT,
+    IDENTIFYING_KEYWORDS,
+    label_dicom_filepath_as_anonymised,
+)
 
-from .coords import (coords_from_xyz_axes, xyz_axes_from_dataset)
+from .coords import (
+    coords_from_xyz_axes,
+    xyz_axes_from_dataset,
+)
 
-from .dose import (create_dvh, dose_from_dataset, find_dose_within_structure,
-                   extract_depth_dose, extract_profiles,
-                   axes_and_dose_from_dicom, zyx_and_dose_from_dataset,
-                   dicom_dose_interpolate)
+from .dose import (
+    create_dvh,
+    dose_from_dataset,
+    find_dose_within_structure,
+    zyx_and_dose_from_dataset,
+    dicom_dose_interpolate,
+)
 
 from .create import dicom_dataset_from_dict
 
@@ -64,6 +76,9 @@ from .structure import pull_structure, create_contour_sequence_dict, Structure
 
 from .constants import BaselineDicomDictionary
 from .collection import DicomBase, DicomDose
-from .header import (adjust_machine_name, adjust_rel_elec_density,
-                     adjust_RED_by_structure_name,
-                     RED_adjustment_map_from_structure_names)
+from .header import (
+    adjust_machine_name,
+    adjust_rel_elec_density,
+    adjust_RED_by_structure_name,
+    RED_adjustment_map_from_structure_names,
+)
