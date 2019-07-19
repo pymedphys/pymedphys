@@ -35,8 +35,10 @@ from scipy.interpolate import RegularGridInterpolator
 import pydicom
 import pydicom.uid
 
+from ..rtplan import get_surface_entry_point
+
 from .structure import pull_structure
-from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
+from .coords import xyz_axes_from_dataset
 
 # pylint: disable=C0103
 
@@ -67,21 +69,21 @@ def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=False):
     return dose
 
 
-def dicom_dose_interpolate(dose: pydicom.Dataset, grid_axes):
+def dicom_dose_interpolate(interp_coords, dose: pydicom.Dataset):
     """Interpolates across a DICOM dose dataset.
 
     Parameters
     ----------
     dose : pydicom.Dataset
         An RT DICOM Dose object
-    grid_axes : tuple(z, y, x)
+    interp_coords : tuple(z, y, x)
         A tuple of coordinates in DICOM order, z axis first, then y, then x
         where x, y, and z are DICOM axes.
     """
 
-    interp_z = np.array(grid_axes[0], copy=False)[:, None, None]
-    interp_y = np.array(grid_axes[1], copy=False)[None, :, None]
-    interp_x = np.array(grid_axes[2], copy=False)[None, None, :]
+    interp_z = np.array(interp_coords[0], copy=False)[:, None, None]
+    interp_y = np.array(interp_coords[1], copy=False)[None, :, None]
+    interp_x = np.array(interp_coords[2], copy=False)[None, None, :]
 
     coords, dose = zyx_and_dose_from_dataset(dose)
     interpolation = RegularGridInterpolator(coords, dose)
@@ -95,8 +97,37 @@ def dicom_dose_interpolate(dose: pydicom.Dataset, grid_axes):
     return result
 
 
-def depth_dose(dose: pydicom.Dataset, plan: pydicom.Dataset):
-    beam_sequences = plan.BeamSequence
+def depth_dose(depths, dose: pydicom.Dataset, plan: pydicom.Dataset):
+    surface_entry_point = get_surface_entry_point(plan)
+    depth_adjust = surface_entry_point.y
+
+    y = depths + depth_adjust
+    x, z = [surface_entry_point.x], [surface_entry_point.z]
+
+    coords = (z, y, x)
+
+    dose = np.squeeze(dicom_dose_interpolate(coords, dose))
+
+    return dose
+
+
+def profile(displacements, depth, direction, dose: pydicom.Dataset,
+            plan: pydicom.Dataset):
+
+    surface_entry_point = get_surface_entry_point(plan)
+    depth_adjust = surface_entry_point.y
+    y = depth + depth_adjust
+
+    if direction is 'inplane':
+        coords = (
+            displacements + surface_entry_point.z,
+            y, [surface_entry_point.x]
+        )
+    elif direction is 'crossplane':
+        coords = (
+            surface_entry_point.z, y,
+            displacements + surface_entry_point.x
+        )
 
 
 # def extract_depth_dose(ds, depth_adjust, averaging_distance=0):

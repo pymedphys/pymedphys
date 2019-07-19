@@ -23,12 +23,36 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
+from collections import namedtuple
+
 import pydicom
 
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 
 
-def get_surface_entry_point(plan: pydicom.Dataset):
+Point = namedtuple("Point", ("x", "y", "z"))
+
+
+def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
+    """
+    Parameters
+    ----------
+    plan : pydicom.Dataset
+
+
+    Returns
+    -------
+    surface_entry_point : Point("x", "y", "z")
+        Patient surface entry point coordinates (x,y,z) in the
+        Patient-Based Coordinate System described in
+        Section C.7.6.2.1.1 [1]_ (mm).
+
+
+    References
+    ----------
+    .. [1] https://dicom.innolitics.com/ciods/rt-plan/rt-beams/300a00b0/300a0111/300a012e
+    """
     all_surface_entry_points = set()
 
     for beam in plan.BeamSequence:
@@ -50,7 +74,9 @@ def get_surface_entry_point(plan: pydicom.Dataset):
     if len(all_surface_entry_points) > 1:
         raise ValueError("More than one disagreeing surface entry point found")
 
-    return all_surface_entry_points.pop()
+    surface_entry_point = Point(*all_surface_entry_points.pop())
+
+    return surface_entry_point
 
 
 def get_metersets_from_dicom(dicom_dataset, fraction_group):
