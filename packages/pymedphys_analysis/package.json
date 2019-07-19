@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "pymedphys_dicom": "~0.10.0"
+    "pymedphys_dicom": "~0.10.0",
+    "pymedphys_fileformats": "~0.10.0"
   },
   "name": "pymedphys_analysis",
   "private": true,
