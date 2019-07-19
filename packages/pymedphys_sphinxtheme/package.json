@@ -40,5 +40,5 @@
     "webpack:dev": "yarn webpack-dev-server --open --config webpack.dev.js",
     "webpack:prod": "yarn webpack --config webpack.prod.js"
   },
-  "version": "0.10.0"
+  "version": "0.11.0-dev.0"
 }
