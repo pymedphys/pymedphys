@@ -33,7 +33,9 @@ import numpy as np
 
 import pydicom
 
-from shared import BASELINES_DIR, DATA_DIR, DICOM_DOSE_FILEPATHS
+from shared import (BASELINES_DIR, DATA_DIR,
+                    DICOM_DOSE_FILEPATHS, DICOM_PLAN_FILEPATH,)
+
 
 CREATE_BASELINE = False
 BASELINE_FILEPATH = os.path.join(BASELINES_DIR,
