@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,19 +23,19 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-from pathlib import Path
 
-HERE = Path(__file__).parent.resolve()
-DATA_DIR = HERE.joinpath('data')
+import pathlib
 
-DICOM_DIR = DATA_DIR.joinpath('DICOM')
-DICOM_DOSE_FILEPATHS = {
-    '05x05': DICOM_DIR.joinpath('06MV_05x05_Dose.dcm.xz'),
-    '10x10': DICOM_DIR.joinpath('06MV_10x10_Dose.dcm.xz')
-}
-DICOM_PLAN_FILEPATH = DICOM_DIR.joinpath('06MV_plan.dcm')
+import pydicom
 
-MEASUREMENTS_DIR = DATA_DIR.joinpath('measurements')
+from pymedphys_dicom.rtplan import get_surface_entry_point
+
+HERE = pathlib.Path(__file__).parent
+DATA_DIR = HERE.joinpath('data', 'rtplan')
+DICOM_PLAN_FILEPATH = DATA_DIR.joinpath('06MV_plan.dcm')
 
 
-BASELINES_DIR = DATA_DIR.joinpath('baselines')
+def test_surface_entry():
+    plan = pydicom.read_file(str(DICOM_PLAN_FILEPATH), force=True)
+
+    assert get_surface_entry_point(plan) == (-0.0, -300.0, 0.0)

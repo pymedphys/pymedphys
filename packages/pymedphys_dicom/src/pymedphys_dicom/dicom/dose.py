@@ -44,17 +44,13 @@ from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
 def zyx_and_dose_from_dataset(dataset):
     x, y, z = xyz_axes_from_dataset(dataset)
     coords = (z, y, x)
-    dose = dose_from_dataset(dataset, reshape=False)
+    dose = dose_from_dataset(dataset)
 
     return coords, dose
 
 
-def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
+def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=False):
     r"""Extract the dose grid from a DICOM RT Dose file.
-
-    .. deprecated:: 0.5.0
-            `dose_from_dataset` will be removed in a future version of
-            PyMedPhys in favour of a new & improved API.
     """
 
     if set_transfer_syntax_uid:
@@ -62,25 +58,21 @@ def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
 
     if reshape:
         warnings.warn(
-            ('`dose_from_dataset` currently reshapes the dose grid. In a '
-             'future version this will no longer occur. To begin using this '
-             'function without the reshape pass the parameter `reshape=False` '
-             'when calling `dose_from_dataset`.'), UserWarning)
-        pixels = np.transpose(ds.pixel_array, (1, 2, 0))
-    else:
-        pixels = ds.pixel_array
+            ('The `reshape` parameter no longer does anything. Please remove '
+             'this parameter. In a future version this parameter will no '
+             'longer be accepted.'), UserWarning)
 
-    dose = pixels * ds.DoseGridScaling
+    dose = ds.pixel_array * ds.DoseGridScaling
 
     return dose
 
 
-def dicom_dose_interpolate(dicom_dose_dataset, grid_axes):
+def dicom_dose_interpolate(dose: pydicom.Dataset, grid_axes):
     """Interpolates across a DICOM dose dataset.
 
     Parameters
     ----------
-    dicom_dose_dataset : pydicom.Dataset
+    dose : pydicom.Dataset
         An RT DICOM Dose object
     grid_axes : tuple(z, y, x)
         A tuple of coordinates in DICOM order, z axis first, then y, then x
@@ -91,38 +83,19 @@ def dicom_dose_interpolate(dicom_dose_dataset, grid_axes):
     interp_y = np.array(grid_axes[1], copy=False)[None, :, None]
     interp_x = np.array(grid_axes[2], copy=False)[None, None, :]
 
-    x, y, z = xyz_axes_from_dataset(
-        dicom_dose_dataset)  # pylint: disable=invalid-name
-    dose = dose_from_dataset(dicom_dose_dataset, reshape=False)
-
-    interpolation = RegularGridInterpolator((z, y, x), dose)
+    coords, dose = zyx_and_dose_from_dataset(dicom_dose_dataset)
+    interpolation = RegularGridInterpolator(coords, dose)
 
     try:
         result = interpolation((interp_z, interp_y, interp_x))
     except ValueError:
-        print(f"x: {x}")
-        print(f"y: {y}")
-        print(f"z: {z}")
+        print(f"coords: {coords}")
         raise
 
     return result
 
 
-def axes_and_dose_from_dicom(dicom_filepath):
-    ds = pydicom.dcmread(dicom_filepath, force=True)
-    axes = xyz_axes_from_dataset(ds)
-    dose = dose_from_dataset(ds)
-
-    return axes, dose
-
-
-def load_dicom_data(ds, depth_adjust):
-    dose = dose_from_dataset(ds)
-    crossplane, vertical, inplane = xyz_axes_from_dataset(ds)
-
-    depth = vertical + depth_adjust
-
-    return inplane, crossplane, depth, dose
+def depth_dose(dose: pydicom.Dataset, plan: pydicom.Dataset)
 
 
 def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
