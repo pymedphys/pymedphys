@@ -98,6 +98,8 @@ def dicom_dose_interpolate(interp_coords, dose: pydicom.Dataset):
 
 
 def depth_dose(depths, dose: pydicom.Dataset, plan: pydicom.Dataset):
+    depths = np.array(depths, copy=False)
+
     surface_entry_point = get_surface_entry_point(plan)
     depth_adjust = surface_entry_point.y
 
@@ -106,17 +108,19 @@ def depth_dose(depths, dose: pydicom.Dataset, plan: pydicom.Dataset):
 
     coords = (z, y, x)
 
-    dose = np.squeeze(dicom_dose_interpolate(coords, dose))
+    extracted_dose = np.squeeze(dicom_dose_interpolate(coords, dose))
 
-    return dose
+    return extracted_dose
 
 
 def profile(displacements, depth, direction, dose: pydicom.Dataset,
             plan: pydicom.Dataset):
 
+    displacements = np.array(displacements, copy=False)
+
     surface_entry_point = get_surface_entry_point(plan)
     depth_adjust = surface_entry_point.y
-    y = depth + depth_adjust
+    y = [depth + depth_adjust]
 
     if direction is 'inplane':
         coords = (
@@ -125,9 +129,16 @@ def profile(displacements, depth, direction, dose: pydicom.Dataset,
         )
     elif direction is 'crossplane':
         coords = (
-            surface_entry_point.z, y,
+            [surface_entry_point.z], y,
             displacements + surface_entry_point.x
         )
+    else:
+        raise ValueError(
+            "Expected direction to be equal to 'inplane' or 'crossplane'")
+
+    extracted_dose = np.squeeze(dicom_dose_interpolate(coords, dose))
+
+    return extracted_dose
 
 
 # def extract_depth_dose(ds, depth_adjust, averaging_distance=0):

@@ -42,6 +42,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - `extract_depth_dose`
   - `extract_profiles`
 
+### New Features
+
+- Added functions `depth_dose` and `profiles` although they are not yet exposed
+  via the `pymedphys` API.
 
 ### Improvements
 
