@@ -39,6 +39,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Removed the following functions:
   - `load_dicom_data`
   - `axes_and_dose_from_dicom`
+  - `extract_depth_dose`
+  - `extract_profiles`
 
 
 ### Improvements
