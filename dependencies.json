@@ -85,7 +85,8 @@
         "scipy"
       ],
       "internal": [
-        "pymedphys_dicom"
+        "pymedphys_dicom",
+        "pymedphys_fileformats"
       ],
       "stdlib": []
     },
@@ -134,7 +135,8 @@
         "matplotlib",
         "numpy",
         "packaging",
-        "pydicom"
+        "pydicom",
+        "scipy"
       ],
       "internal": [
         "pymedphys_base",
