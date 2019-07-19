@@ -26,9 +26,12 @@
 
 import pathlib
 
+import pytest
+
 import pydicom
 
 from pymedphys_dicom.rtplan import get_surface_entry_point
+from pymedphys_dicom.dicom import DicomBase
 
 HERE = pathlib.Path(__file__).parent
 DATA_DIR = HERE.joinpath('data', 'rtplan')
@@ -38,4 +41,52 @@ DICOM_PLAN_FILEPATH = DATA_DIR.joinpath('06MV_plan.dcm')
 def test_surface_entry():
     plan = pydicom.read_file(str(DICOM_PLAN_FILEPATH), force=True)
 
-    assert get_surface_entry_point(plan) == (-0.0, -300.0, 0.0)
+    assert get_surface_entry_point(plan) == (0.0, -300.0, 0.0)
+
+    should_pass = DicomBase.from_dict({
+        'BeamSequence': [
+            {
+                'ControlPointSequence': [
+                    {
+                        'SurfaceEntryPoint': ["10.0", "20.0", "30.0"]
+                    }
+                ]
+            }
+        ]
+    })
+
+    assert get_surface_entry_point(should_pass.dataset) == (10.0, 20.0, 30.0)
+
+    should_fail_with_no_points = DicomBase.from_dict({
+        'BeamSequence': [
+            {
+                'ControlPointSequence': []
+            }
+        ]
+    })
+
+    with pytest.raises(ValueError):
+        assert get_surface_entry_point(should_fail_with_no_points.dataset)
+
+    should_fail_with_differing_points = DicomBase.from_dict({
+        'BeamSequence': [
+            {
+                'ControlPointSequence': [
+                    {
+                        'SurfaceEntryPoint': ["10.0", "20.0", "30.0"]
+                    }
+                ]
+            },
+            {
+                'ControlPointSequence': [
+                    {
+                        'SurfaceEntryPoint': ["20.0", "20.0", "30.0"]
+                    }
+                ]
+            },
+        ]
+    })
+
+    with pytest.raises(ValueError):
+        assert get_surface_entry_point(
+            should_fail_with_differing_points.dataset)
