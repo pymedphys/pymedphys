@@ -27,18 +27,21 @@
 import os
 import json
 import lzma
-from pathlib import Path
+import operator
 
 import pytest
 
 import numpy as np
+import pandas as pd
 
 import pydicom
 
 from pymedphys_dicom.dicom import depth_dose, profile
+from pymedphys_analysis.tpscompare import bulk_load_mephysto
 
 from shared import (BASELINES_DIR, DATA_DIR,
-                    DICOM_DOSE_FILEPATHS, DICOM_PLAN_FILEPATH,)
+                    DICOM_DOSE_FILEPATHS, DICOM_PLAN_FILEPATH, DICOM_DIR,
+                    MEASUREMENTS_DIR)
 
 
 CREATE_BASELINE = False
@@ -63,6 +66,35 @@ def loaded_plan():
     plan = pydicom.read_file(str(DICOM_PLAN_FILEPATH), force=True)
 
     return plan
+
+
+def test_bulk_compare(loaded_doses, loaded_plan):
+    absolute_dose_table = pd.read_csv(MEASUREMENTS_DIR.joinpath(
+        'AbsoluteDose.csv'), index_col=0)
+    absolute_dose = absolute_dose_table['d10 @ 90 SSD']['6 MV']
+
+    output_factors = pd.read_csv(
+        MEASUREMENTS_DIR.joinpath('OutputFactors.csv'), index_col=0)
+
+    absolute_doses = {
+        key: output_factors[key]['6 MV'] * absolute_dose
+        for key in output_factors.columns
+    }
+
+    absolute_scans_per_field = bulk_load_mephysto(
+        MEASUREMENTS_DIR, '06MV_(\d\dx\d\d)\.mcc', absolute_doses, 100)
+
+    getter = operator.itemgetter('displacement', 'dose')
+
+    for key, absolute_scans in absolute_scans_per_field.items():
+        dose_dataset = loaded_doses[key]
+
+        depths, meas_dose = getter(absolute_scans['depth_dose'])
+        tps_dose = depth_dose(depths, dose_dataset, loaded_plan) / 10
+        diff = tps_dose - meas_dose
+
+        assert np.abs(np.mean(diff)) <= 0.02
+        assert np.std(diff) <= 0.05
 
 
 def test_baseline_profiles(loaded_doses, loaded_plan):
@@ -95,7 +127,3 @@ def test_baseline_profiles(loaded_doses, loaded_plan):
             baseline_result = json.load(a_file)
 
         assert baseline_result == baselines
-
-
-# def test_profile_diffs(loaded_doses):
-#     pass
