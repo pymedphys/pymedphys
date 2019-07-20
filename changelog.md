@@ -31,7 +31,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-- nil
+## New API
+
+- Exposed the `trf2pandas` function via `pymedphys.fileformats.trf2pandas`.
+
+### Improvements
+
+- Made the resolution detection of `pymedphys.plt.pcolormesh_grid` more robust.
 
 ## [0.10.0]
 
