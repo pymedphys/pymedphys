@@ -33,12 +33,16 @@ from .mephysto import absolute_scans_from_mephysto
 def bulk_load_mephysto(directory, regex, absolute_doses, normalisation_depth):
     directory = pathlib.Path(directory)
 
-    mephysto_files = list(directory.glob('*.mcc'))
+    all_mephysto_files = list(directory.glob('*.mcc'))
     matches = [
-        re.match(regex, filepath.name) for filepath in mephysto_files
+        re.match(regex, filepath.name) for filepath in all_mephysto_files
     ]
     keys = [
         match.group(1) for match in matches if match
+    ]
+    mephysto_files = [
+        filepath for filepath, match in zip(all_mephysto_files, matches)
+        if match
     ]
 
     if not set(keys).issubset(set(absolute_doses.keys())):
