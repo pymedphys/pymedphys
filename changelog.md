@@ -46,6 +46,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Added functions `depth_dose` and `profiles` although they are not yet exposed
   via the `pymedphys` API.
+- Exposed the `trf2pandas` function via `pymedphys.fileformats.trf2pandas`.
 
 ### Improvements
 
