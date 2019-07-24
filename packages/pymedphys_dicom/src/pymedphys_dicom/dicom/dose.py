@@ -33,7 +33,8 @@ from scipy.interpolate import RegularGridInterpolator
 import pydicom
 import pydicom.uid
 
-from ..rtplan import get_surface_entry_point
+from ..rtplan import (get_surface_entry_point_with_fallback,
+                      require_gantries_be_zero)
 
 from .structure import pull_structure
 from .coords import xyz_axes_from_dataset
@@ -112,9 +113,10 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Data
         The RT DICOM plan used to extract surface parameters and verify gantry
         angle 0 beams are used.
     """
+    require_gantries_be_zero(plan_dataset)
     depths = np.array(depths, copy=False)
 
-    surface_entry_point = get_surface_entry_point(plan_dataset)
+    surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
     depth_adjust = surface_entry_point.y
 
     y = depths + depth_adjust
@@ -128,11 +130,12 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Data
 
 
 def profile(displacements, depth, direction, dose: pydicom.Dataset,
-            plan: pydicom.Dataset):
+            plan_dataset: pydicom.Dataset):
 
+    require_gantries_be_zero(plan_dataset)
     displacements = np.array(displacements, copy=False)
 
-    surface_entry_point = get_surface_entry_point(plan)
+    surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
     depth_adjust = surface_entry_point.y
     y = [depth + depth_adjust]
 

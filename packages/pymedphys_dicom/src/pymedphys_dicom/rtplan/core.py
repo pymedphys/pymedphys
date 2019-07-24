@@ -38,16 +38,20 @@ class DICOMEntryMissing(ValueError):
     pass
 
 
+def require_gantries_be_zero(plan: pydicom.Dataset):
+    gantry_angles = set(get_gantry_angles_from_dicom(plan))
+    if gantry_angles != set([0.0]):
+        raise ValueError(
+            "Only Gantry angles equal to 0.0 are currently supported")
+
+
 def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
     try:
         return get_surface_entry_point(plan)
     except DICOMEntryMissing:
         pass
 
-    gantry_angles = set(get_gantry_angles_from_dicom(plan))
-    if gantry_angles != set([0.0]):
-        raise ValueError(
-            "Only Gantry angles equal to 0.0 are currently supported")
+    require_gantries_be_zero(plan)
 
     iso_raw = get_single_value_from_control_points(plan, 'IsocenterPosition')
     iso = Point(*[float(item) for item in iso_raw])
