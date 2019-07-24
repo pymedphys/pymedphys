@@ -152,8 +152,7 @@
         "glob",
         "operator",
         "os",
-        "re",
-        "warnings"
+        "re"
       ]
     },
     "pymedphys_electronfactors": {
