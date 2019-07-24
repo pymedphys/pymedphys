@@ -129,8 +129,40 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Data
     return extracted_dose
 
 
-def profile(displacements, depth, direction, dose: pydicom.Dataset,
+def profile(displacements, depth, direction, dose_dataset: pydicom.Dataset,
             plan_dataset: pydicom.Dataset):
+    """Interpolates dose for cardinal angle horizontal profiles within a
+    DICOM dose dataset.
+
+    Since the DICOM dose dataset is in CT coordinates the corresponding
+    DICOM plan is also required in order to calculate the conversion
+    between CT coordinate space and depth and horizontal displacement.
+
+    Currently only Gantry 0 beams are supported, and depth is assumed to be
+    purely in the y axis direction in DICOM coordinates.
+
+    Parameters
+    ----------
+    displacements : numpy.ndarray
+        An array of displacements to interpolate within the DICOM dose
+        file. 0 is defined in the DICOM z or x directions based either
+        upon the `SurfaceEntryPoint` or the `IsocenterPosition`
+        depending on what is available within the DICOM plan file.
+    depth : float
+        The depth at which to interpolate within the DICOM dose file. 0 is
+        defined as the surface of the phantom using either the
+        `SurfaceEntryPoint` parameter or a combination of `SourceAxisDistance`,
+        `SourceToSurfaceDistance`, and `IsocentrePosition`.
+    direction : str, one of ('inplane', 'inline', 'crossplane', 'crossline')
+        Corresponds to the axis upon which to apply the displacements.
+         - 'inplane' or 'inline' converts to DICOM z direction
+         - 'crossplane' or 'crossline' converts to DICOM x direction
+    dose_dataset : pydicom.dataset.Dataset
+        The RT DICOM dose dataset to be interpolated
+    plan_dataset : pydicom.dataset.Dataset
+        The RT DICOM plan used to extract surface and isocentre
+        parameters and verify gantry angle 0 beams are used.
+    """
 
     require_gantries_be_zero(plan_dataset)
     displacements = np.array(displacements, copy=False)
@@ -151,9 +183,10 @@ def profile(displacements, depth, direction, dose: pydicom.Dataset,
         )
     else:
         raise ValueError(
-            "Expected direction to be equal to 'inplane' or 'crossplane'")
+            "Expected direction to be equal to one of "
+            "'inplane', 'inline', 'crossplane', or 'crossline'")
 
-    extracted_dose = np.squeeze(dicom_dose_interpolate(coords, dose))
+    extracted_dose = np.squeeze(dicom_dose_interpolate(coords, dose_dataset))
 
     return extracted_dose
 
