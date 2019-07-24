@@ -50,6 +50,36 @@ def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
             "Only Gantry angles equal to 0.0 are currently supported")
 
 
+def get_single_value_from_control_points(plan: pydicom.Dataset, parameter):
+    """Get a named parameter from all control points.
+
+    Raises an error if all values are not the same as each other. Raises an
+    error if no value is found.
+    """
+
+    values = set()
+
+    for beam in plan.BeamSequence:
+        for control_point in beam.ControlPointSequence:
+            try:
+                value = getattr(control_point, parameter)
+            except AttributeError:
+                continue
+
+            try:
+                values.add(value)
+            except TypeError:
+                values.add(tuple(value))
+
+    if not values:
+        raise DICOMEntryMissing(f"{parameter} was not found within the plan")
+
+    if len(values) > 1:
+        raise ValueError(f"More than one disagreeing {parameter} found")
+
+    return values.pop()
+
+
 def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
     """
     Parameters
@@ -69,31 +99,13 @@ def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
     ----------
     .. [1] https://dicom.innolitics.com/ciods/rt-plan/rt-beams/300a00b0/300a0111/300a012e
     """
-    all_surface_entry_points = set()
-
     # Once we have DicomCollection sorted out, it will likely be worthwhile
     # having this function take a beam sequence parameter, and get the entry
     # point for a given beam sequence
-    for beam in plan.BeamSequence:
-        for control_point in beam.ControlPointSequence:
-            try:
-                surface_entry_point = control_point.SurfaceEntryPoint
-            except AttributeError:
-                continue
-
-            surface_entry_point = tuple(
-                float(item) for item in tuple(surface_entry_point)
-            )
-
-            all_surface_entry_points.add(surface_entry_point)
-
-    if not all_surface_entry_points:
-        raise DICOMEntryMissing("No surface entry point found")
-
-    if len(all_surface_entry_points) > 1:
-        raise ValueError("More than one disagreeing surface entry point found")
-
-    surface_entry_point = Point(*all_surface_entry_points.pop())
+    surface_entry_point_raw = get_single_value_from_control_points(
+        plan, 'SurfaceEntryPoint')
+    surface_entry_point = Point(*[float(item)
+                                  for item in surface_entry_point_raw])
 
     return surface_entry_point
 
