@@ -34,6 +34,22 @@ from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 Point = namedtuple("Point", ("x", "y", "z"))
 
 
+class DICOMEntryMissing(ValueError):
+    pass
+
+
+def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
+    try:
+        return get_surface_entry_point(plan)
+    except DICOMEntryMissing:
+        pass
+
+    gantry_angles = set(get_gantry_angles_from_dicom(plan))
+    if gantry_angles != set([0.0]):
+        raise ValueError(
+            "Only Gantry angles equal to 0.0 are currently supported")
+
+
 def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
     """
     Parameters
@@ -63,7 +79,7 @@ def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
             try:
                 surface_entry_point = control_point.SurfaceEntryPoint
             except AttributeError:
-                pass
+                continue
 
             surface_entry_point = tuple(
                 float(item) for item in tuple(surface_entry_point)
@@ -72,7 +88,7 @@ def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
             all_surface_entry_points.add(surface_entry_point)
 
     if not all_surface_entry_points:
-        raise ValueError("No surface entry point found")
+        raise DICOMEntryMissing("No surface entry point found")
 
     if len(all_surface_entry_points) > 1:
         raise ValueError("More than one disagreeing surface entry point found")

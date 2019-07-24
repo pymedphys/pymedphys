@@ -5,6 +5,7 @@ from .core import (
     get_fraction_group_index,
     get_beam_indices_of_fraction_group,
     get_surface_entry_point,
+    get_surface_entry_point_with_fallback,
 )
 
 from .build import (
