@@ -57,6 +57,20 @@ def test_surface_entry_with_fallback():
         get_surface_entry_point_with_fallback(
             should_fail_with_unsupported_gantry.dataset)
 
+    plan_dataset = pydicom.read_file(str(DICOM_PLAN_FILEPATH), force=True)
+    for beam in plan_dataset.BeamSequence:
+        for control_point in beam.ControlPointSequence:
+            try:
+                del control_point.SurfaceEntryPoint
+            except AttributeError:
+                pass
+
+    with pytest.raises(DICOMEntryMissing):
+        get_surface_entry_point(plan_dataset)
+
+    # assert get_surface_entry_point_with_fallback(
+    #     plan_dataset) == (0.0, -300.0, 0.0)
+
 
 def test_surface_entry():
     plan = pydicom.read_file(str(DICOM_PLAN_FILEPATH), force=True)
