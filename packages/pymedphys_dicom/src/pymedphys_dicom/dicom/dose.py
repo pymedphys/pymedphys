@@ -202,7 +202,6 @@ def _get_indices(z_list, z_val):
 
 def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
     x_dose, y_dose, z_dose = xyz_axes_from_dataset(dcm_dose)
-    dose = dose_from_dataset(dcm_dose)
 
     xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
