@@ -30,12 +30,32 @@ import pytest
 
 import pydicom
 
-from pymedphys_dicom.rtplan import get_surface_entry_point
+from pymedphys_dicom.rtplan import (
+    get_surface_entry_point, get_surface_entry_point_with_fallback)
+from pymedphys_dicom.rtplan.core import DICOMEntryMissing
 from pymedphys_dicom.dicom import DicomBase
 
 HERE = pathlib.Path(__file__).parent
 DATA_DIR = HERE.joinpath('data', 'rtplan')
 DICOM_PLAN_FILEPATH = DATA_DIR.joinpath('06MV_plan.dcm')
+
+
+def test_surface_entry_with_fallback():
+    should_fail_with_unsupported_gantry = DicomBase.from_dict({
+        'BeamSequence': [
+            {
+                'ControlPointSequence': [
+                    {
+                        'GantryAngle': "5.0"
+                    }
+                ]
+            }
+        ]
+    })
+
+    with pytest.raises(ValueError):
+        get_surface_entry_point_with_fallback(
+            should_fail_with_unsupported_gantry.dataset)
 
 
 def test_surface_entry():
@@ -65,8 +85,8 @@ def test_surface_entry():
         ]
     })
 
-    with pytest.raises(ValueError):
-        assert get_surface_entry_point(should_fail_with_no_points.dataset)
+    with pytest.raises(DICOMEntryMissing):
+        get_surface_entry_point(should_fail_with_no_points.dataset)
 
     should_fail_with_differing_points = DicomBase.from_dict({
         'BeamSequence': [
@@ -88,5 +108,4 @@ def test_surface_entry():
     })
 
     with pytest.raises(ValueError):
-        assert get_surface_entry_point(
-            should_fail_with_differing_points.dataset)
+        get_surface_entry_point(should_fail_with_differing_points.dataset)
