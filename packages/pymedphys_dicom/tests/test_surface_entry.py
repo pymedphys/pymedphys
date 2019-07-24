@@ -68,8 +68,8 @@ def test_surface_entry_with_fallback():
     with pytest.raises(DICOMEntryMissing):
         get_surface_entry_point(plan_dataset)
 
-    # assert get_surface_entry_point_with_fallback(
-    #     plan_dataset) == (0.0, -300.0, 0.0)
+    assert get_surface_entry_point_with_fallback(
+        plan_dataset) == (0.0, -300.0, 0.0)
 
 
 def test_surface_entry():

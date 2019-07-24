@@ -49,6 +49,18 @@ def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
         raise ValueError(
             "Only Gantry angles equal to 0.0 are currently supported")
 
+    iso_raw = get_single_value_from_control_points(plan, 'IsocenterPosition')
+    iso = Point(*[float(item) for item in iso_raw])
+
+    source_to_surface = get_single_value_from_control_points(
+        plan, 'SourceToSurfaceDistance')
+    source_to_axis = get_single_value_from_beams(plan, 'SourceAxisDistance')
+
+    new_y_value = iso.y + source_to_surface - source_to_axis
+    source_entry_point = Point(iso.x, new_y_value, iso.z)
+
+    return source_entry_point
+
 
 def get_single_value_from_control_points(plan: pydicom.Dataset, parameter):
     """Get a named parameter from all control points.
@@ -70,6 +82,35 @@ def get_single_value_from_control_points(plan: pydicom.Dataset, parameter):
                 values.add(value)
             except TypeError:
                 values.add(tuple(value))
+
+    if not values:
+        raise DICOMEntryMissing(f"{parameter} was not found within the plan")
+
+    if len(values) > 1:
+        raise ValueError(f"More than one disagreeing {parameter} found")
+
+    return values.pop()
+
+
+def get_single_value_from_beams(plan: pydicom.Dataset, parameter):
+    """Get a named parameter from all beams.
+
+    Raises an error if all values are not the same as each other. Raises an
+    error if no value is found.
+    """
+
+    values = set()
+
+    for beam in plan.BeamSequence:
+        try:
+            value = getattr(beam, parameter)
+        except AttributeError:
+            continue
+
+        try:
+            values.add(value)
+        except TypeError:
+            values.add(tuple(value))
 
     if not values:
         raise DICOMEntryMissing(f"{parameter} was not found within the plan")
