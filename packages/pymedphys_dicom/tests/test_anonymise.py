@@ -38,17 +38,24 @@ temp_dirpath = pjoin(DATA_DIR, 'temp_{}'.format(uuid4()))
 temp_filepath = pjoin(temp_dirpath, "test.dcm")
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
+    'AE': "AnAETitle",
     'AS': "1Y",
     'CS': "SMITH",
     'DA': "20190429",
+    'DS': "11111111.9",
     'DT': "20190429000700.000000",
     'LO': "Smith",
+    'LT': "LongText",
+    'OB': "Bytes",
+    'OB or OW': "ByteOrWord",
+    'OW': "Word",
     'PN': "Smith",
     'SH': "Smith",
     'SQ': [Dataset(), Dataset()],
     'ST': "Smith",
     'TM': "000700.000000",
-    'UI': "11111118"}
+    'UI': "11111118",
+    'US': "11111"}
 
 
 def _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=True,
@@ -141,8 +148,8 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
         with pytest.raises(ValueError) as e_info:
             anonymise_dataset(ds)
         assert str(e_info.value).count("At least one of the non-private tags "
-                                 "within your DICOM file is not within "
-                                 "PyMedPhys's copy of the DICOM dictionary.")
+                                       "within your DICOM file is not within "
+                                       "PyMedPhys's copy of the DICOM dictionary.")
 
         ds_anon_delete_unknown = anonymise_dataset(ds,
                                                    delete_unknown_tags=True)
@@ -151,7 +158,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
         with pytest.raises(AttributeError) as e_info:
             ds_anon_delete_unknown.PatientName
         assert str(e_info.value).count("'Dataset' object has no attribute "
-                                 "'PatientName'")
+                                       "'PatientName'")
 
         ds_anon_ignore_unknown = anonymise_dataset(ds,
                                                    delete_unknown_tags=False)
@@ -243,7 +250,8 @@ def test_anonymise_directory():
         remove_dir(temp_dirpath)
 
 
-@pytest.mark.skipif('SUBPACKAGE' in os.environ, reason="Need to extract CLI out of subpackages")
+@pytest.mark.skipif('SUBPACKAGE' in os.environ,
+                    reason="Need to extract CLI out of subpackages")
 def test_anonymise_cli():
 
     try:

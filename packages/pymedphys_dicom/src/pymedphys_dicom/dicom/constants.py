@@ -4379,10 +4379,11 @@ RepeatersDictionary = {
     '7Fxx0040': ('OW', '1', "Variable Coefficients SDDN", 'Retired', 'VariableCoefficientsSDDN')  # noqa
 }
 
+COMBINED_DICOM_DICT = {**BaselineDicomDictionary, **RepeatersDictionary}
 
-BASELINE_KEYWORD_VR_DICT = dict([(BaselineDicomDictionary[tag][4],
-                                  BaselineDicomDictionary[tag][0])
-                                 for tag in BaselineDicomDictionary])
+BASELINE_KEYWORD_VR_DICT = dict([(COMBINED_DICOM_DICT[tag][4],
+                                  COMBINED_DICOM_DICT[tag][0])
+                                 for tag in COMBINED_DICOM_DICT])
 
 
 DICOM_SOP_CLASS_NAMES_MODE_PREFIXES = {
