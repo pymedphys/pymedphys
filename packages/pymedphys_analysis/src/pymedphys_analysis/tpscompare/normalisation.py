@@ -34,7 +34,7 @@ def normalise(distance, relative_dose, scan_curvetype, scan_depth,
               pdd_normalisation_depth=None,
               profile_normalisation_position=None, scale_to_pdd=False,
               smoothed_normalisation=False):
-    """Take a series of PDDs and/or profiles and normalises them according to
+    """Take a series of PDDs and/or profiles and normalise them according to
     a range of available options.
     """
     # Convert scan_curvetype to a numpy array
