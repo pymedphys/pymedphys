@@ -58,6 +58,6 @@ def write_graphs_rst(save_directory):
 
         """.format(header_border, module, images_path))
 
-    save_file = os.path.join(save_directory, 'graphs.rst')
+    save_file = os.path.join(save_directory, 'graphs.txt')
     with open(save_file, 'w') as file:
         file.write(sections)
