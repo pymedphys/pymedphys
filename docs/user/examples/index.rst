@@ -23,6 +23,3 @@ library usage.
     gamma_from_dicom
     pinnacle_export
     tps_compare
-
-
-
