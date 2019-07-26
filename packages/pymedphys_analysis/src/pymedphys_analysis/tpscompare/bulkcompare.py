@@ -46,7 +46,10 @@ def bulk_load_mephysto(directory, regex, absolute_doses, normalisation_depth):
     ]
 
     if not set(keys).issubset(set(absolute_doses.keys())):
-        raise ValueError("For each file key an absolute dose must be provided")
+        keys_not_found = set(keys) - set(absolute_doses.keys())
+        raise ValueError(
+            "The following keys were not provided within the "
+            f"`absolute_doses` variable:\n{keys_not_found}")
 
     mephysto_file_map = {
         key: filepath for key, filepath in zip(keys, mephysto_files)
