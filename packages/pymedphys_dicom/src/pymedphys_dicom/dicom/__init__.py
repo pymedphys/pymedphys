@@ -55,6 +55,7 @@ from .anonymise import (
     is_anonymised_directory,
     BASELINE_KEYWORD_VR_DICT,
     IDENTIFYING_KEYWORDS,
+    IDENTIFYING_KEYWORDS_FILEPATH,
     label_dicom_filepath_as_anonymised
 )
 
