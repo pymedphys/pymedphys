@@ -55,7 +55,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "AdmittingTime",
                         "AffectedSOPInstanceUID",
                         "Allergies",
-                        "Arbitrary", # in file_meta
+                        "Arbitrary",
                         "AuthorObserverSequence",
                         "BranchOfService",
                         "CassetteID",
@@ -76,7 +76,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "CurveDate",
                         "CurveTime",
                         "CustodialOrganizationSequence",
-                        "DataSetTrailingPadding", # in file-meta
+                        "DataSetTrailingPadding",
                         "Date",
                         "DateTime",
                         "DerivationDescription",
@@ -84,12 +84,12 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "DeviceSerialNumber",
                         "DeviceUID",
                         "DigitalSignatureUID",
-                        "DigitalSignaturesSequence", # in file-meta
+                        "DigitalSignaturesSequence",
                         "DimensionOrganizationUID",
                         "DischargeDiagnosisDescription",
-                        "DistributionAddress", # in file-meta
-                        "DistributionName", # in file-meta
-                        "DoseReferenceUID", # in file-meta
+                        "DistributionAddress",
+                        "DistributionName",
+                        "DoseReferenceUID",
                         "EthnicGroup",
                         "FailedSOPInstanceUIDList",
                         "FiducialUID",
@@ -106,7 +106,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "ImageComments",
                         "ImagePresentationComments",
                         "ImagingServiceRequestComments",
-                        "Impressions", # in file-meta
+                        "Impressions",
                         "InstanceCreationDate",
                         "InstanceCreationTime",
                         "InstanceCreatorUID",
@@ -116,13 +116,13 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "InstitutionName",
                         "InsurancePlanIdentification",
                         "IntendedRecipientsOfResultsIdentificationSequence",
-                        "InterpretationApproverSequence", # in file-meta
-                        "InterpretationAuthor", # in file-meta
-                        "InterpretationDiagnosisDescription", # in file-meta
-                        "InterpretationIDIssuer", # in file-meta
-                        "InterpretationRecorder", # in file-meta
-                        "InterpretationText", # in file-meta
-                        "InterpretationTranscriber", # in file-meta
+                        "InterpretationApproverSequence",
+                        "InterpretationAuthor",
+                        "InterpretationDiagnosisDescription",
+                        "InterpretationIDIssuer",
+                        "InterpretationRecorder",
+                        "InterpretationText",
+                        "InterpretationTranscriber",
                         "IrradiationEventUID",
                         "IssuerOfAdmissionID",
                         "IssuerOfPatientID",
@@ -130,7 +130,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "LargePaletteColorLookupTableUID",
                         "LastMenstrualDate",
                         "MAC",
-                        "MediaStorageSOPInstanceUID",
+                        "MediaStorageSOPInstanceUID",  # in file meta
                         "MedicalAlerts",
                         "MedicalRecordLocator",
                         "MilitaryRank",
@@ -192,7 +192,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "PersonIdentificationCodeSequence",
                         "PersonName",
                         "PersonTelephoneNumbers",
-                        "PhysicianApprovingInterpretation", # in file-meta
+                        "PhysicianApprovingInterpretation",
                         "PhysiciansReadingStudyIdentificationSequence",
                         "PhysiciansOfRecord",
                         "PhysiciansOfRecordIdentificationSequence",
@@ -220,22 +220,22 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "ReferringPhysicianName",
                         "ReferringPhysicianTelephoneNumbers",
                         "RegionOfResidence",
-                        "RelatedFrameOfReferenceUID", # in file-meta
+                        "RelatedFrameOfReferenceUID",
                         "RequestAttributesSequence",
                         "RequestedContrastAgent",
                         "RequestedProcedureComments",
                         "RequestedProcedureDescription",
                         "RequestedProcedureID",
                         "RequestedProcedureLocation",
-                        "RequestedSOPInstanceUID", # in file-meta
+                        "RequestedSOPInstanceUID",
                         "RequestingPhysician",
                         "RequestingService",
                         "ResponsibleOrganization",
                         "ResponsiblePerson",
-                        "ResultsComments", # in file-meta
-                        "ResultsDistributionListSequence", # in file-meta
-                        "ResultsIDIssuer", # in file-meta
-                        "ReviewerName", # in file-meta
+                        "ResultsComments",
+                        "ResultsDistributionListSequence",
+                        "ResultsIDIssuer",
+                        "ReviewerName",
                         "ScheduledHumanPerformersSequence",
                         "ScheduledPatientInstitutionResidence",
                         "ScheduledPerformingPhysicianIdentificationSequence",
@@ -275,7 +275,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "SynchronizationFrameOfReferenceUID",
                         "TemplateExtensionCreatorUID",
                         "TemplateExtensionOrganizationUID",
-                        "TextComments", # in file-meta
+                        "TextComments",
                         "TextString",
                         "Time",
                         "TimezoneOffsetFromUTC",
@@ -292,24 +292,25 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "VisitComments")
 
 
-VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AE': "Anonymous",
-                                       'AS': "100Y",
-                                       'CS': "ANON",
-                                       'DA': "20190303",
-                                       'DS': "12345678.9",
-                                       'DT': "20190303000900.000000",
-                                       'LO': "Anonymous",
-                                       'LT': "Anonymous",
-                                       'OB': bytes(1),
-                                       'OB or OW': bytes(1),
-                                       'OW': bytes(1),
-                                       'PN': "Anonymous",
-                                       'SH': "Anonymous",
-                                       'SQ': [Dataset()],
-                                       'ST': "Anonymous",
-                                       'TM': "000900.000000",
-                                       'UI': "12345678",
-                                       'US': 12345}
+VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
+    'AE': "Anonymous",
+    'AS': "100Y",
+    'CS': "ANON",
+    'DA': "20190303",
+    'DS': "12345678.9",
+    'DT': "20190303000900.000000",
+    'LO': "Anonymous",
+    'LT': "Anonymous",
+    'OB': (1).to_bytes(2, 'little'),
+    'OB or OW': (1).to_bytes(2, 'little'),
+    'OW': (1).to_bytes(2, 'little'),
+    'PN': "Anonymous",
+    'SH': "Anonymous",
+    'SQ': [Dataset()],
+    'ST': "Anonymous",
+    'TM': "000900.000000",
+    'UI': "1234",
+    'US': 12345}
 
 
 def label_dicom_filepath_as_anonymised(filepath):
@@ -668,8 +669,16 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
             dummy_value = get_anonymous_replacement_value(elem.keyword)
             if elem.VR == 'SQ':
                 if not (elem.value == [] or elem.value == dummy_value):
+                    print(elem)
+                    is_anonymised = False
+            elif elem.VR == 'DS':
+                if not (elem.value == ''
+                        or np.isclose(float(elem.value),
+                                      float(dummy_value))):
+                    print(elem)
                     is_anonymised = False
             elif not (elem.value == '' or elem.value == dummy_value):
+                print(elem)
                 is_anonymised = False
                 break
         elif elem.tag.is_private and not ignore_private_tags:

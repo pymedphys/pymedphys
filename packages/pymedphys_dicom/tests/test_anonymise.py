@@ -11,6 +11,7 @@ import pydicom
 from pydicom.datadict import tag_for_keyword
 from pydicom.dataset import Dataset, DataElement
 from pydicom.filereader import read_file_meta_info
+from pydicom.tag import Tag
 import pytest
 
 from pymedphys_dicom.dicom import (
@@ -46,9 +47,9 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     'DT': "20190429000700.000000",
     'LO': "Smith",
     'LT': "LongText",
-    'OB': bytes(2),
-    'OB or OW': bytes(2),
-    'OW': bytes(2),
+    'OB': (2).to_bytes(2, 'little'),
+    'OB or OW': (2).to_bytes(2, 'little'),
+    'OW': (2).to_bytes(2, 'little'),
     'PN': "Smith",
     'SH': "Smith",
     'SQ': [Dataset(), Dataset()],
@@ -97,27 +98,28 @@ def test_anonymise_dataset_and_all_is_anonymised_functions():
     ds = Dataset()
     for keyword in IDENTIFYING_KEYWORDS:
         tag = hex(tag_for_keyword(keyword))
+
+        # Ignore file meta elements for now
+        if Tag(tag).group == 0x0002:
+            continue
+
         value = _get_non_anonymous_replacement_value(keyword)
         setattr(ds, keyword, value)
-
-        if ds[tag].tag.group == 0x0002:
-            del ds[tag]
-
     _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=False)
 
     ds_anon = anonymise_dataset(ds)
     _check_is_anonymised_dataset_file_and_dir(ds_anon, anon_is_expected=True)
 
-    # Test anonymisation (and check thereof) for each identifying
+    # Test the anonymisation and check functions for each identifying
     # element individually.
     for elem in ds_anon.iterall():
+
         ds_single_non_anon_value = deepcopy(ds_anon)
         setattr(ds_single_non_anon_value,
                 elem.keyword,
                 _get_non_anonymous_replacement_value(elem.keyword))
         _check_is_anonymised_dataset_file_and_dir(ds_single_non_anon_value,
                                                   anon_is_expected=False)
-
         ds_single_anon = anonymise_dataset(ds_single_non_anon_value)
         _check_is_anonymised_dataset_file_and_dir(ds_single_anon,
                                                   anon_is_expected=True)
