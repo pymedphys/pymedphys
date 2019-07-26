@@ -55,7 +55,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "AdmittingTime",
                         "AffectedSOPInstanceUID",
                         "Allergies",
-                        # "Arbitrary", TODO: file_meta
+                        "Arbitrary", # in file_meta
                         "AuthorObserverSequence",
                         "BranchOfService",
                         "CassetteID",
@@ -72,11 +72,11 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "CountryOfResidence",
                         "CreatorVersionUID",
                         "CurrentPatientLocation",
-                        # "CurveData", ##TODO: In repeaters dict only
+                        # "CurveData", ## in repeaters dict only
                         "CurveDate",
                         "CurveTime",
                         "CustodialOrganizationSequence",
-                        # "DataSetTrailingPadding", TODO: pydicom doesn't like writing OB outside of file-meta
+                        "DataSetTrailingPadding", # in file-meta
                         "Date",
                         "DateTime",
                         "DerivationDescription",
@@ -84,12 +84,12 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "DeviceSerialNumber",
                         "DeviceUID",
                         "DigitalSignatureUID",
-                        # "DigitalSignaturesSequence", TODO: pydicom doesn't like writing OB outside of file-meta
+                        "DigitalSignaturesSequence", # in file-meta
                         "DimensionOrganizationUID",
                         "DischargeDiagnosisDescription",
-                        # "DistributionAddress", TODO: pydicom doesn't like writing OB outside of file-meta
-                        # "DistributionName", TODO: pydicom doesn't like writing OB outside of file-meta
-                        # "DoseReferenceUID", TODO: file_meta
+                        "DistributionAddress", # in file-meta
+                        "DistributionName", # in file-meta
+                        "DoseReferenceUID", # in file-meta
                         "EthnicGroup",
                         "FailedSOPInstanceUIDList",
                         "FiducialUID",
@@ -106,7 +106,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "ImageComments",
                         "ImagePresentationComments",
                         "ImagingServiceRequestComments",
-                        # "Impressions", TODO: pydicom doesn't like writing OB outside of file-meta
+                        "Impressions", # in file-meta
                         "InstanceCreationDate",
                         "InstanceCreationTime",
                         "InstanceCreatorUID",
@@ -116,13 +116,13 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "InstitutionName",
                         "InsurancePlanIdentification",
                         "IntendedRecipientsOfResultsIdentificationSequence",
-                        # "InterpretationApproverSequence", TODO: file_meta
-                        # "InterpretationAuthor", TODO: file_meta
-                        # "InterpretationDiagnosisDescription", TODO: file_meta
-                        # "InterpretationIDIssuer", TODO: pydicom doesn't like writing OB outside of file-meta
-                        # "InterpretationRecorder", TODO: file_meta
-                        # "InterpretationText", TODO: file_meta
-                        # "InterpretationTranscriber", TODO: file_meta
+                        "InterpretationApproverSequence", # in file-meta
+                        "InterpretationAuthor", # in file-meta
+                        "InterpretationDiagnosisDescription", # in file-meta
+                        "InterpretationIDIssuer", # in file-meta
+                        "InterpretationRecorder", # in file-meta
+                        "InterpretationText", # in file-meta
+                        "InterpretationTranscriber", # in file-meta
                         "IrradiationEventUID",
                         "IssuerOfAdmissionID",
                         "IssuerOfPatientID",
@@ -192,7 +192,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "PersonIdentificationCodeSequence",
                         "PersonName",
                         "PersonTelephoneNumbers",
-                        # "PhysicianApprovingInterpretation", TODO: file_meta
+                        "PhysicianApprovingInterpretation", # in file-meta
                         "PhysiciansReadingStudyIdentificationSequence",
                         "PhysiciansOfRecord",
                         "PhysiciansOfRecordIdentificationSequence",
@@ -220,22 +220,22 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "ReferringPhysicianName",
                         "ReferringPhysicianTelephoneNumbers",
                         "RegionOfResidence",
-                        # "RelatedFrameOfReferenceUID", TODO: file_meta
+                        "RelatedFrameOfReferenceUID", # in file-meta
                         "RequestAttributesSequence",
                         "RequestedContrastAgent",
                         "RequestedProcedureComments",
                         "RequestedProcedureDescription",
                         "RequestedProcedureID",
                         "RequestedProcedureLocation",
-                        # "RequestedSOPInstanceUID", TODO: file_meta
+                        "RequestedSOPInstanceUID", # in file-meta
                         "RequestingPhysician",
                         "RequestingService",
                         "ResponsibleOrganization",
                         "ResponsiblePerson",
-                        # "ResultsComments", TODO: pydicom doesn't like writing OB outside of file-meta
-                        # "ResultsDistributionListSequence", TODO: pydicom doesn't like writing OB outside of file-meta
-                        # "ResultsIDIssuer", TODO: file_meta
-                        # "ReviewerName", TODO: file_meta
+                        "ResultsComments", # in file-meta
+                        "ResultsDistributionListSequence", # in file-meta
+                        "ResultsIDIssuer", # in file-meta
+                        "ReviewerName", # in file-meta
                         "ScheduledHumanPerformersSequence",
                         "ScheduledPatientInstitutionResidence",
                         "ScheduledPerformingPhysicianIdentificationSequence",
@@ -275,7 +275,7 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "SynchronizationFrameOfReferenceUID",
                         "TemplateExtensionCreatorUID",
                         "TemplateExtensionOrganizationUID",
-                        # "TextComments", TODO: file_meta
+                        "TextComments", # in file-meta
                         "TextString",
                         "Time",
                         "TimezoneOffsetFromUTC",
@@ -300,14 +300,16 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {'AE': "Anonymous",
                                        'DT': "20190303000900.000000",
                                        'LO': "Anonymous",
                                        'LT': "Anonymous",
-                                       'OB or OW': "Anonymous",
+                                       'OB': bytes(1),
+                                       'OB or OW': bytes(1),
+                                       'OW': bytes(1),
                                        'PN': "Anonymous",
                                        'SH': "Anonymous",
                                        'SQ': [Dataset()],
                                        'ST': "Anonymous",
                                        'TM': "000900.000000",
                                        'UI': "12345678",
-                                       'US': "12345"}
+                                       'US': 12345}
 
 
 def label_dicom_filepath_as_anonymised(filepath):
