@@ -1,6 +1,6 @@
-import os
-
 from copy import deepcopy
+import json
+import os
 from os import makedirs
 from os.path import abspath, basename, dirname, exists, join as pjoin
 from shutil import copyfile
@@ -20,8 +20,8 @@ from pymedphys_dicom.dicom import (
     anonymise_file,
     BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,
-    dicom_dataset_from_dict,
     IDENTIFYING_KEYWORDS,
+    IDENTIFYING_KEYWORDS_FILEPATH,
     is_anonymised_dataset,
     is_anonymised_directory,
     is_anonymised_file,
@@ -365,7 +365,10 @@ def test_anonymise_cli():
         remove_dir(temp_dirpath)
 
 
-def test_tags_to_anonymise_in_dicom_dict_baseline():
+def test_tags_to_anonymise_in_dicom_dict_baseline(save_new=False):
     baseline_keywords = [
         val[4] for val in BaselineDicomDictionary.values()]
     assert set(IDENTIFYING_KEYWORDS).issubset(baseline_keywords)
+    if save_new:
+        with open(IDENTIFYING_KEYWORDS_FILEPATH, 'w') as outfile:
+            json.dump(IDENTIFYING_KEYWORDS, outfile, indent=2)
