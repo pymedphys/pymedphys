@@ -1,3 +1,2 @@
 *.dcm
-*.zip
-*.png
+data/
