@@ -105,8 +105,9 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Data
     depths : numpy.ndarray
         An array of depths to interpolate within the DICOM dose file. 0 is
         defined as the surface of the phantom using either the
-        `SurfaceEntryPoint` parameter or a combination of `SourceAxisDistance`,
-        `SourceToSurfaceDistance`, and `IsocentrePosition`.
+        ``SurfaceEntryPoint`` parameter or a combination of
+        ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and
+        ``IsocentrePosition``.
     dose_dataset : pydicom.dataset.Dataset
         The RT DICOM dose dataset to be interpolated
     plan_dataset : pydicom.dataset.Dataset
@@ -146,13 +147,14 @@ def profile(displacements, depth, direction, dose_dataset: pydicom.Dataset,
     displacements : numpy.ndarray
         An array of displacements to interpolate within the DICOM dose
         file. 0 is defined in the DICOM z or x directions based either
-        upon the `SurfaceEntryPoint` or the `IsocenterPosition`
+        upon the ``SurfaceEntryPoint`` or the ``IsocenterPosition``
         depending on what is available within the DICOM plan file.
     depth : float
         The depth at which to interpolate within the DICOM dose file. 0 is
         defined as the surface of the phantom using either the
-        `SurfaceEntryPoint` parameter or a combination of `SourceAxisDistance`,
-        `SourceToSurfaceDistance`, and `IsocentrePosition`.
+        ``SurfaceEntryPoint`` parameter or a combination of
+        ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and
+        ``IsocentrePosition``.
     direction : str, one of ('inplane', 'inline', 'crossplane', 'crossline')
         Corresponds to the axis upon which to apply the displacements.
          - 'inplane' or 'inline' converts to DICOM z direction
