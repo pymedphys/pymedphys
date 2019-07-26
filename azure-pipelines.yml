@@ -67,46 +67,46 @@ jobs:
         testRunTitle: '$(test_title)'
       condition: succeededOrFailed()
 
-  # - job: Conda
+  - job: Conda
 
-  #   strategy:
-  #     matrix:
-  #       mac-py37:
-  #         image_name: macos-10.13
-  #         test_title: macOS py37
-  #         toxenv: py37
-  #         python: 3.7
+    strategy:
+      matrix:
+        mac-py37:
+          image_name: macos-10.13
+          test_title: macOS py37
+          toxenv: py37
+          python: 3.7
 
-  #   pool:
-  #     vmImage: $(image_name)
+    pool:
+      vmImage: $(image_name)
 
-  #   steps:
-  #   - task: CondaEnvironment@1
-  #     inputs:
-  #       createCustomEnvironment: true
-  #       environmentName: pymedphys
-  #       packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql matplotlib
-  #       updateConda: true
-  #       createOptions: --channel conda-forge
+    steps:
+    - task: CondaEnvironment@1
+      inputs:
+        createCustomEnvironment: true
+        environmentName: pymedphys
+        packageSpecs: python=$(python) pip "xlwings >= 0.15.4" pymssql matplotlib
+        updateConda: true
+        createOptions: --channel conda-forge
 
-  #   - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
-  #     displayName: Show python information
+    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+      displayName: Show python information
 
-  #   - bash: yarn
-  #     displayName: Run yarn
+    - bash: yarn
+      displayName: Run yarn
 
-  #   - bash: yarn install:test
-  #     displayName: Install dependencies for testing with yarn
+    - bash: yarn install:test
+      displayName: Install dependencies for testing with yarn
 
-  #   - bash: "pytest -v"
-  #     displayName: Run tests
+    - bash: "pytest -v"
+      displayName: Run tests
 
-  #   - task: PublishTestResults@2
-  #     displayName: Publish test results
-  #     inputs:
-  #       testResultsFiles: junit/*.xml
-  #       testRunTitle: '$(test_title)'
-  #     condition: succeededOrFailed()
+    - task: PublishTestResults@2
+      displayName: Publish test results
+      inputs:
+        testResultsFiles: junit/*.xml
+        testRunTitle: '$(test_title)'
+      condition: succeededOrFailed()
 
 
   - job: NotebookOutputs
