@@ -42,7 +42,7 @@ def load_and_normalise_mephysto(directory, regex, absolute_doses,
     directory : path like object
         The directory containing the Mephysto files.
     regex : str
-        A regex string defined such that ``re.match(regex, filepath).group(1)``
+        A regex string defined such that ``re.match(regex, mcc_filename).group(1)``
         returns the key used to look up the absolute doses.
     absolute_doses : dict
         A dictionary mapping file keys to absolute doses defined at the
