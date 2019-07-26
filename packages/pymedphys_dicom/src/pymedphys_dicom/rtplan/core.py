@@ -66,8 +66,8 @@ def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
     return source_entry_point
 
 
-def get_single_value_from_control_points(plan: pydicom.Dataset, parameter):
-    """Get a named parameter from all control points.
+def get_single_value_from_control_points(plan: pydicom.Dataset, keyword):
+    """Get a named keyword from all control points.
 
     Raises an error if all values are not the same as each other. Raises an
     error if no value is found.
@@ -78,7 +78,7 @@ def get_single_value_from_control_points(plan: pydicom.Dataset, parameter):
     for beam in plan.BeamSequence:
         for control_point in beam.ControlPointSequence:
             try:
-                value = getattr(control_point, parameter)
+                value = getattr(control_point, keyword)
             except AttributeError:
                 continue
 
@@ -88,16 +88,16 @@ def get_single_value_from_control_points(plan: pydicom.Dataset, parameter):
                 values.add(tuple(value))
 
     if not values:
-        raise DICOMEntryMissing(f"{parameter} was not found within the plan")
+        raise DICOMEntryMissing(f"{keyword} was not found within the plan")
 
     if len(values) > 1:
-        raise ValueError(f"More than one disagreeing {parameter} found")
+        raise ValueError(f"More than one disagreeing {keyword} found")
 
     return values.pop()
 
 
-def get_single_value_from_beams(plan: pydicom.Dataset, parameter):
-    """Get a named parameter from all beams.
+def get_single_value_from_beams(plan: pydicom.Dataset, keyword):
+    """Get a named keyword from all beams.
 
     Raises an error if all values are not the same as each other. Raises an
     error if no value is found.
@@ -107,7 +107,7 @@ def get_single_value_from_beams(plan: pydicom.Dataset, parameter):
 
     for beam in plan.BeamSequence:
         try:
-            value = getattr(beam, parameter)
+            value = getattr(beam, keyword)
         except AttributeError:
             continue
 
@@ -117,10 +117,10 @@ def get_single_value_from_beams(plan: pydicom.Dataset, parameter):
             values.add(tuple(value))
 
     if not values:
-        raise DICOMEntryMissing(f"{parameter} was not found within the plan")
+        raise DICOMEntryMissing(f"{keyword} was not found within the plan")
 
     if len(values) > 1:
-        raise ValueError(f"More than one disagreeing {parameter} found")
+        raise ValueError(f"More than one disagreeing {keyword} found")
 
     return values.pop()
 
