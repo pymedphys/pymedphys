@@ -302,9 +302,9 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     'DT': "20190303000900.000000",
     'LO': "Anonymous",
     'LT': "Anonymous",
-    'OB': (1).to_bytes(2, 'little'),
-    'OB or OW': (1).to_bytes(2, 'little'),
-    'OW': (1).to_bytes(2, 'little'),
+    'OB': (0).to_bytes(2, 'little'),
+    'OB or OW': (0).to_bytes(2, 'little'),
+    'OW': (0).to_bytes(2, 'little'),
     'PN': "Anonymous",
     'SH': "Anonymous",
     'SQ': [Dataset()],
@@ -676,6 +676,10 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
                         or np.isclose(float(elem.value),
                                       float(dummy_value))):
                     is_anonymised = False
+            elif elem.VR in ('OB', 'OW'):
+                if not (elem.value == ''
+                        or elem.value == (0).to_bytes(2, 'little')):
+                    is_anonymised = False
             elif not (elem.value == '' or elem.value == dummy_value):
                 is_anonymised = False
                 break
@@ -790,7 +794,10 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
             if replace_values:
                 replacement_value = get_anonymous_replacement_value(keyword)
             else:
-                replacement_value = ''
+                if BASELINE_KEYWORD_VR_DICT[keyword] in ('OB', 'OW'):
+                    replacement_value = (0).to_bytes(2, 'little')
+                else:
+                    replacement_value = ''
             setattr(ds_anon, keyword, replacement_value)
 
     return ds_anon
