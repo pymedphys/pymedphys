@@ -30,7 +30,33 @@ import pathlib
 from .mephysto import absolute_scans_from_mephysto
 
 
-def bulk_load_mephysto(directory, regex, absolute_doses, normalisation_depth):
+def load_and_normalise_mephysto(directory, regex, absolute_doses,
+                                normalisation_depth):
+    """Read and normalise a directory of Mephysto files.
+
+    Mephysto files are renormalised at the ``normalistation_depth`` to be
+    equal to the values passed within the ``absolute_doses`` dictionary.
+
+    Parameters
+    ----------
+    directory : path like object
+        The directory containing the Mephysto files.
+    regex : str
+        A regex string defined such that ``re.match(regex, filepath).group(1)``
+        returns the key used to look up the absolute doses.
+    absolute_doses : dict
+        A dictionary mapping file keys to absolute doses defined at the
+        ``normalisation_depth``.
+    normalisation_depth : float
+        The normalisation depth at which to apply the absolute doses.
+        Can also optionally pass the string ``'dmax'``. This is in mm.
+
+    Returns
+    -------
+    absolute_scans_per_field : dictionary
+        A dictionary with the same keys as ``absolute_doses`` with the
+        re-normalised depth doses and profiles contained within it.
+    """
     directory = pathlib.Path(directory)
 
     all_mephysto_files = list(directory.glob('*.mcc'))
@@ -62,7 +88,3 @@ def bulk_load_mephysto(directory, regex, absolute_doses, normalisation_depth):
     }
 
     return absolute_scans_per_field
-
-
-def bulk_compare(doses, plan, ):
-    pass
