@@ -36,7 +36,8 @@ from ..utilities import remove_file
 from .constants import (
     BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,
-    DICOM_SOP_CLASS_NAMES_MODE_PREFIXES)
+    DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
+    PYMEDPHYS_ROOT_UID)
 
 
 IDENTIFYING_KEYWORDS = ("AccessionNumber",
@@ -150,8 +151,8 @@ IDENTIFYING_KEYWORDS = ("AccessionNumber",
                         "OtherPatientIDs",
                         "OtherPatientIDsSequence",
                         "OtherPatientNames",
-                        # "OverlayComments", TODO: in repreaters dict only
-                        # "OverlayData", TODO: in repreaters dict only
+                        # "OverlayComments", # in repreaters dict only
+                        # "OverlayData", # in repreaters dict only
                         "OverlayDate",
                         "OverlayTime",
                         "PaletteColorLookupTableUID",
@@ -309,7 +310,7 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     'SQ': [Dataset()],
     'ST': "Anonymous",
     'TM': "000900.000000",
-    'UI': "1234",
+    'UI': PYMEDPHYS_ROOT_UID,
     'US': 12345}
 
 
@@ -339,11 +340,11 @@ def anonymise_dataset(
         The DICOM dataset to be anonymised.
 
     replace_values : bool, optional
-        If set to `True`, DICOM tags will be anonymised using dummy
+        If set to ``True``, DICOM tags will be anonymised using dummy
         "anonymous" values. This is often required for commercial
         software to successfully read anonymised DICOM files. If set to
-        `False`, anonymised tags are simply given empty string values.
-        Defaults to `True`.
+        ``False``, anonymised tags are simply given empty string values.
+        Defaults to ``True``.
 
     keywords_to_leave_unchanged : sequence, optional
         A sequence of DICOM keywords (corresponding to tags) to exclude
@@ -356,18 +357,18 @@ def anonymise_dataset(
         contain identifying information. Defaults to `True`.
 
     delete_unknown_tags : bool, pseudo-optional
-        If left as the default value of `None` and `ds` contains tags
-        that are not present in PyMedPhys` copy of `pydicom`'s DICOM
-        dictionary, `anonymise_dataset()` will raise an error. The
-        user must then either pass `True` or `False` to proceed. If set
-        to `True`, all unrecognised tags that haven't been listed in
-        `keywords_to_leave_unchanged` will be deleted. If set to
-        `False`, these tags are simply ignored. Pass `False` with
+        If left as the default value of ``None`` and ``ds`` contains tags
+        that are not present in PyMedPhys' copy of ``pydicom``'s DICOM
+        dictionary, ``anonymise_dataset()`` will raise an error. The
+        user must then either pass ``True`` or ``False`` to proceed. If set
+        to ``True``, all unrecognised tags that haven't been listed in
+        ``keywords_to_leave_unchanged`` will be deleted. If set to
+        ``False``, these tags are simply ignored. Pass ``False`` with
         caution, since unrecognised tags may contain identifying
         information.
 
     copy_dataset : bool, optional
-        If `True`, then a copy of `ds` is returned.
+        If ``True``, then a copy of ``ds`` is returned.
 
     Returns
     -------
@@ -669,16 +670,13 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
             dummy_value = get_anonymous_replacement_value(elem.keyword)
             if elem.VR == 'SQ':
                 if not (elem.value == [] or elem.value == dummy_value):
-                    print(elem)
                     is_anonymised = False
             elif elem.VR == 'DS':
                 if not (elem.value == ''
                         or np.isclose(float(elem.value),
                                       float(dummy_value))):
-                    print(elem)
                     is_anonymised = False
             elif not (elem.value == '' or elem.value == dummy_value):
-                print(elem)
                 is_anonymised = False
                 break
         elif elem.tag.is_private and not ignore_private_tags:
