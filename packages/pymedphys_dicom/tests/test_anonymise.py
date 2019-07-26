@@ -46,16 +46,16 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     'DT': "20190429000700.000000",
     'LO': "Smith",
     'LT': "LongText",
-    'OB': "Bytes",
-    'OB or OW': "ByteOrWord",
-    'OW': "Word",
+    'OB': bytes(2),
+    'OB or OW': bytes(2),
+    'OW': bytes(2),
     'PN': "Smith",
     'SH': "Smith",
     'SQ': [Dataset(), Dataset()],
     'ST': "Smith",
     'TM': "000700.000000",
-    'UI': "11111118",
-    'US': "11111"}
+    'UI': "1118",
+    'US': 11111}
 
 
 def _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=True,
@@ -92,14 +92,17 @@ def _get_non_anonymous_replacement_value(keyword):
 
 def test_anonymise_dataset_and_all_is_anonymised_functions():
 
-    # Create dict with one instance of every identifying keyword and
+    # Create dataset with one instance of every identifying keyword and
     # run basic anonymisation tests
-    non_anon_dict = dict.fromkeys(IDENTIFYING_KEYWORDS)
+    ds = Dataset()
+    for keyword in IDENTIFYING_KEYWORDS:
+        tag = hex(tag_for_keyword(keyword))
+        value = _get_non_anonymous_replacement_value(keyword)
+        setattr(ds, keyword, value)
 
-    for key in non_anon_dict:
-        non_anon_dict[key] = _get_non_anonymous_replacement_value(key)
+        if ds[tag].tag.group == 0x0002:
+            del ds[tag]
 
-    ds = dicom_dataset_from_dict(non_anon_dict)
     _check_is_anonymised_dataset_file_and_dir(ds, anon_is_expected=False)
 
     ds_anon = anonymise_dataset(ds)
