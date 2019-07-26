@@ -90,14 +90,17 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
     return result
 
 
-def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Dataset):
+def depth_dose(depths, dose_dataset: pydicom.Dataset,
+               plan_dataset: pydicom.Dataset):
     """Interpolates dose for defined depths within a DICOM dose dataset.
 
-    Since the DICOM dose dataset is in CT coordinates the corresponding DICOM
-    plan is also required in order to calculate the conversion between CT
-    coordinate space and depth.
+    Since the DICOM dose dataset is in CT coordinates the corresponding
+    DICOM plan is also required in order to calculate the conversion
+    between CT coordinate space and depth.
 
-    Currently only Gantry 0 beams are supported, and depth is assumed to be
+    Currently, `depth_dose()` only supports a `dose_dataset` for which
+    the patient orientation is HFS and that any beams in `plan_dataset`
+    have gantry angle equal to 0 (head up). Depth is assumed to be
     purely in the y axis direction in DICOM coordinates.
 
     Parameters
@@ -113,6 +116,7 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Data
         The RT DICOM plan used to extract surface parameters and verify gantry
         angle 0 beams are used.
     """
+    require_patient_orientation_be_HFS(dose_dataset)
     require_gantries_be_zero(plan_dataset)
     depths = np.array(depths, copy=False)
 
@@ -138,7 +142,9 @@ def profile(displacements, depth, direction, dose_dataset: pydicom.Dataset,
     DICOM plan is also required in order to calculate the conversion
     between CT coordinate space and depth and horizontal displacement.
 
-    Currently only Gantry 0 beams are supported, and depth is assumed to be
+    Currently, `profile()` only supports a `dose_dataset` for which
+    the patient orientation is HFS and that any beams in `plan_dataset`
+    have gantry angle equal to 0 (head up). Depth is assumed to be
     purely in the y axis direction in DICOM coordinates.
 
     Parameters
@@ -164,6 +170,7 @@ def profile(displacements, depth, direction, dose_dataset: pydicom.Dataset,
         parameters and verify gantry angle 0 beams are used.
     """
 
+    require_patient_orientation_be_HFS(dose_dataset)
     require_gantries_be_zero(plan_dataset)
     displacements = np.array(displacements, copy=False)
 
@@ -258,3 +265,10 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     plt.title('DVH')
     plt.xlabel('Dose (Gy)')
     plt.ylabel('Relative Volume (%)')
+
+
+def require_patient_orientation_be_HFS(ds):
+    if not np.array_equal(ds.ImageOrientationPatient,
+                          np.array([1, 0, 0, 0, 1, 0])):
+        raise ValueError("The supplied dataset has a patient "
+                         "orientation other than head-first supine.")

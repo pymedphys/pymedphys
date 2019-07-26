@@ -1,6 +1,5 @@
 import json
-from os import remove
-from os.path import abspath, basename, dirname, join as pjoin
+from os.path import abspath, dirname, join as pjoin
 
 import numpy as np
 import pydicom
