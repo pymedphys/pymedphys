@@ -37,7 +37,7 @@ import pandas as pd
 import pydicom
 
 from pymedphys_dicom.dicom import depth_dose, profile
-from pymedphys_analysis.tpscompare import bulk_load_mephysto
+from pymedphys_analysis.tpscompare import load_and_normalise_mephysto
 
 from shared import (BASELINES_DIR, DATA_DIR,
                     DICOM_DOSE_FILEPATHS, DICOM_PLAN_FILEPATH, DICOM_DIR,
@@ -81,7 +81,7 @@ def test_bulk_compare(loaded_doses, loaded_plan):
         for key in output_factors.columns
     }
 
-    absolute_scans_per_field = bulk_load_mephysto(
+    absolute_scans_per_field = load_and_normalise_mephysto(
         MEASUREMENTS_DIR, '06MV_(\d\dx\d\d)\.mcc', absolute_doses, 100)
 
     getter = operator.itemgetter('displacement', 'dose')
