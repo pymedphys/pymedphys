@@ -69,6 +69,7 @@ from .dose import (
     zyx_and_dose_from_dataset,
     dicom_dose_interpolate,
     profile,
+    require_patient_orientation_be_HFS,
     depth_dose,
 )
 
