@@ -109,6 +109,7 @@ development tools quite a breeze. Follow
 `these instructions <https://chocolatey.org/install>`__ to install Chocolatey.
 
 
+.. _system-dependencies-section:
 
 Install contributor system dependencies
 ---------------------------------------
@@ -122,8 +123,22 @@ Git LFS, yarn, and graphviz like so:
 
 
 
-Get a GitHub account
+Configure Git and get a GitHub account
 --------------------
+
+If you successfully completed the instructions in
+:ref:`system-dependencies-section`, you should now have Git installed. It is
+probably worth spending some time configuring Git according to your
+preferences - you can find a good beginners' resource on this `here
+https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup`__. There
+are lots of useful tips and tricks that can improve your Git experience. At
+a minimum, we do recommend you set your username and email from within a
+terminal as follows:
+
+.. code:: bash
+
+    git config --global user.name "Firstname Lastname"
+    git config --global user.email "example@example.com"
 
 Make a GitHub account `here <https://github.com/join>`__. Once you have an
 account, you will need commit rights to this repository in order to make
@@ -152,8 +167,10 @@ At this point you might find some of the following resources useful:
  * `Numpy for Matlab users (Scipy.org) <https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html>`__.
  * `NumPy for MATLAB users (Mathesaurus) <http://mathesaurus.sourceforge.net/matlab-numpy.html>`__.
  * `Playground and cheatsheet for learning Python <https://github.com/trekhleb/learn-python>`__.
- * `Don't be afraid to commit: Git and GitHub <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__.
- * Chapter 2 of `The Pragmatic Programmer <https://www.nceclusters.no/globalassets/filer/nce/diverse/the-pragmatic-programmer.pdf>`__.
+ * `Don't be afraid to commit: Git and GitHub
+   <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__.
+ * Chapter 2 of `The Pragmatic Programmer
+   <https://www.nceclusters.no/globalassets/filer/nce/diverse/the-pragmatic-programmer.pdf>`__.
 
 The "Don't be afraid to commit" resource will be invaluable for these next few
 steps.
@@ -171,7 +188,8 @@ running the following where `yourusername` is your Windows domain user name.
 
     setx HOME "C:\Users\yourusername"
 
-Follow `these instructions <https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/>`__
+Follow `these instructions
+<https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/>`__
 to create and add an SSH key to your GitHub account. Since you already have ssh
 built into cmder, you can skip the first steps of the tutorial.
 
@@ -185,6 +203,12 @@ prompted for a password.
 
 This will download all of PyMedPhys to your local machine.
 
+If you find that you cannot connect to GitHub via SSH (possibly due to
+IT restrictions at your institution), you can also clone via HTTPS as follows:
+
+.. code:: bash
+
+    git clone https://github.com/pymedphys/pymedphys.git
 
 
 Set up *nbstripout*
@@ -204,9 +228,8 @@ To install ``nbstripout``, run the following within the pymedphys directory:
 
 .. code:: bash
 
-    λ conda create --name pmp python=3.7 shapely
+    λ conda create --name pmp python=3.7 shapely nbstripout
     λ conda activate pmp
-    λ conda install nbstripout
     λ nbstripout --install
     λ nbstripout --is-installed && echo Success!
     Success!
