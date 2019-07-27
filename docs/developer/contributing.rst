@@ -130,7 +130,7 @@ account, you will need commit rights to this repository in order to make
 contributions. Create an issue on GitHub within the PyMedPhys repository
 `here <https://github.com/pymedphys/pymedphys/issues/new/>`__
 and include "request for commit rights" or similar in your issue's content,
-along with "@SimonBiggs" and "@Centrus007" to ensure it is seen!
+along with "@SimonBiggs" and "@Matthew-Jennings" to ensure it is seen!
 
 Whenever you wish to discuss anything about PyMedPhys, please create an issue
 on GitHub. It can be to ask for help, suggest a change, provide feedback, or
