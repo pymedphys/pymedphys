@@ -59,3 +59,10 @@ its dependencies:
     git clone https://github.com/pymedphys/pymedphys.git
     cd pymedphys
     yarn bootstrap
+
+
+Windows users can find detailed instructions for installing Git and Yarn in the
+_`Developer Guide`.
+
+
+.. _`Developer Guide`: ../developer/contributing.html#chocolatey
