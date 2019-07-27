@@ -46,20 +46,27 @@ Installing the "bleeding edge" version from GitHub
 --------------------------------------------------
 
 You can install the very latest, "bleeding edge", development version of
-PyMedPhys by directly cloning its GitHub repo and installing its dependencies
-using the following commands from within a terminal:
+PyMedPhys, but you will first need Git and Yarn. In turn, Yarn requires Nodejs.
+Perhaps the easiest way to install these is to install Chocolatey from within
+a terminal in Administrator mode using `these instructions <https://chocolatey.org/docs/installation>`__.
+Once installed, reload your terminal and run the following commands:
 
 .. code:: bash
 
-    git clone https://github.com/pymedphys/pymedphys.git
+    choco install git nodejs yarn
+
+If you already have Git installed, you can of course remove "``git``" from the
+above command.
+
+Once installation is complete, reload the terminal again and run the following
+commands to clone the ``pymedphys`` GitHub repo and install the ``pymedphys``
+package along with its dependencies:
+
+.. code:: bash
+
+    git clone git@github.com:pymedphys/pymedphys.git
+    # If you prefer HTTPS, use this link instead: https://github.com/pymedphys/pymedphys.git
     cd pymedphys
 
     conda config --add channels conda-forge
-    conda install pymedphys --only-deps
-    pip install -e .
-
-
-Note that this requires Git to be installed on your workstation. Instructions
-for installing Git can be found in the `Developer Guide`_.
-
-.. _`Developer Guide`: ../developer/contributing.html#chocolatey
+    yarn bootstrap
