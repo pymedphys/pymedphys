@@ -62,7 +62,7 @@ its dependencies:
 
 
 Windows users can find detailed instructions for installing Git and Yarn in the
-_`Developer Guide`.
+`Developer Guide`_.
 
 
 .. _`Developer Guide`: ../developer/contributing.html#chocolatey
