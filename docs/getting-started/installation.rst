@@ -41,6 +41,14 @@ Alternatively, you can install via pip as follows:
 Note that issues with some of PyMedPhys' dependencies may arise if you choose
 to install via this method.
 
+Setting up a development environment
+------------------------------------
+
+To set up a development environment please follow the
+`Developer Guide`_. That guide provides specific details
+for Windows users, but similar steps work
+on macOS and Linux also.
+
 
 Installing the "bleeding edge" version from GitHub
 --------------------------------------------------
@@ -65,4 +73,4 @@ Windows users can find detailed instructions for installing Git and Yarn in the
 `Developer Guide`_.
 
 
-.. _`Developer Guide`: ../developer/contributing.html#chocolatey
+.. _`Developer Guide`: ../developer/contributing.html
