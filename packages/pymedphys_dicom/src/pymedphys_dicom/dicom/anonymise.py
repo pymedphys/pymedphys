@@ -38,55 +38,59 @@ from .constants import (
     BaselineDicomDictionary,
     BASELINE_KEYWORD_VR_DICT,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
-    PYMEDPHYS_ROOT_UID)
+    PYMEDPHYS_ROOT_UID,
+)
 
 
 HERE = dirname(abspath(__file__))
 
-IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, 'identifying_keywords.json')
+IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 
 with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
     IDENTIFYING_KEYWORDS = json.load(infile)
 
 VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
-    'AE': "Anonymous",
-    'AS': "100Y",
-    'CS': "ANON",
-    'DA': "20190303",
-    'DS': "12345678.9",
-    'DT': "20190303000900.000000",
-    'LO': "Anonymous",
-    'LT': "Anonymous",
-    'OB': (0).to_bytes(2, 'little'),
-    'OB or OW': (0).to_bytes(2, 'little'),
-    'OW': (0).to_bytes(2, 'little'),
-    'PN': "Anonymous",
-    'SH': "Anonymous",
-    'SQ': [Dataset()],
-    'ST': "Anonymous",
-    'TM': "000900.000000",
-    'UI': PYMEDPHYS_ROOT_UID,
-    'US': 12345}
+    "AE": "Anonymous",
+    "AS": "100Y",
+    "CS": "ANON",
+    "DA": "20190303",
+    "DS": "12345678.9",
+    "DT": "20190303000900.000000",
+    "LO": "Anonymous",
+    "LT": "Anonymous",
+    "OB": (0).to_bytes(2, "little"),
+    "OB or OW": (0).to_bytes(2, "little"),
+    "OW": (0).to_bytes(2, "little"),
+    "PN": "Anonymous",
+    "SH": "Anonymous",
+    "SQ": [Dataset()],
+    "ST": "Anonymous",
+    "TM": "000900.000000",
+    "UI": PYMEDPHYS_ROOT_UID,
+    "US": 12345,
+}
 
 
 def label_dicom_filepath_as_anonymised(filepath):
     basename_anon = "{}_Anonymised.dcm".format(
-        '.'.join(basename(filepath).split('.')[:-1]))
+        ".".join(basename(filepath).split(".")[:-1])
+    )
     return pjoin(dirname(filepath), basename_anon)
 
 
-def create_filename_from_dataset(ds, dirpath=''):
+def create_filename_from_dataset(ds, dirpath=""):
     mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds.SOPClassUID.name]
     return pjoin(dirpath, "{}.{}.dcm".format(mode_prefix, ds.SOPInstanceUID))
 
 
 def anonymise_dataset(
-        ds,
-        replace_values=True,
-        keywords_to_leave_unchanged=(),
-        delete_private_tags=True,
-        delete_unknown_tags=None,
-        copy_dataset=True):
+    ds,
+    replace_values=True,
+    keywords_to_leave_unchanged=(),
+    delete_private_tags=True,
+    delete_unknown_tags=None,
+    copy_dataset=True,
+):
     r"""A simple tool to anonymise a DICOM dataset.
 
     Parameters
@@ -155,8 +159,8 @@ def anonymise_dataset(
             "`delete_unknown_tags=False` to this function. Finally, "
             "if you suspect that the PyMedPhys DICOM dictionary is out "
             "of date, please raise an issue on GitHub at "
-            "https://github.com/pymedphys/pymedphys/issues."
-            .format(unknown_keywords))
+            "https://github.com/pymedphys/pymedphys/issues.".format(unknown_keywords)
+        )
 
     elif delete_unknown_tags:
         unwanted_unknown_tags = []
@@ -168,14 +172,12 @@ def anonymise_dataset(
 
         for tag in unwanted_unknown_tags:
             if tag in ds_anon:
-                raise AssertionError(
-                    "Could not delete all unwanted, unknown tags.")
+                raise AssertionError("Could not delete all unwanted, unknown tags.")
 
     if delete_private_tags:
         ds_anon.remove_private_tags()
 
-    keywords_to_anonymise = _filter_identifying_keywords(
-        keywords_to_leave_unchanged)
+    keywords_to_anonymise = _filter_identifying_keywords(keywords_to_leave_unchanged)
 
     ds_anon = _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values)
 
@@ -184,13 +186,14 @@ def anonymise_dataset(
 
 
 def anonymise_file(
-        dicom_filepath,
-        delete_original_file=False,
-        anonymise_filename=True,
-        replace_values=True,
-        keywords_to_leave_unchanged=(),
-        delete_private_tags=True,
-        delete_unknown_tags=None):
+    dicom_filepath,
+    delete_original_file=False,
+    anonymise_filename=True,
+    replace_values=True,
+    keywords_to_leave_unchanged=(),
+    delete_private_tags=True,
+    delete_unknown_tags=None,
+):
     r"""A simple tool to anonymise a DICOM file.
 
     Parameters
@@ -252,11 +255,13 @@ def anonymise_file(
         keywords_to_leave_unchanged=keywords_to_leave_unchanged,
         delete_private_tags=delete_private_tags,
         delete_unknown_tags=delete_unknown_tags,
-        copy_dataset=False)
+        copy_dataset=False,
+    )
 
     if anonymise_filename:
         filepath_used = create_filename_from_dataset(
-            ds, dirpath=dirname(dicom_filepath))
+            ds, dirpath=dirname(dicom_filepath)
+        )
     else:
         filepath_used = dicom_filepath
 
@@ -271,13 +276,14 @@ def anonymise_file(
 
 
 def anonymise_directory(
-        dicom_dirpath,
-        delete_original_files=False,
-        anonymise_filenames=True,
-        replace_values=True,
-        keywords_to_leave_unchanged=(),
-        delete_private_tags=True,
-        delete_unknown_tags=None):
+    dicom_dirpath,
+    delete_original_files=False,
+    anonymise_filenames=True,
+    replace_values=True,
+    keywords_to_leave_unchanged=(),
+    delete_private_tags=True,
+    delete_unknown_tags=None,
+):
     r"""A simple tool to anonymise all DICOM files in a directory and
     its subdirectories.
 
@@ -332,7 +338,7 @@ def anonymise_directory(
         caution, since unrecognised tags may contain identifying
         information.
     """
-    dicom_filepaths = glob(dicom_dirpath + '/**/*.dcm', recursive=True)
+    dicom_filepaths = glob(dicom_dirpath + "/**/*.dcm", recursive=True)
     failing_filepaths = []
     errors = []
 
@@ -344,7 +350,8 @@ def anonymise_directory(
             replace_values=replace_values,
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=delete_private_tags,
-            delete_unknown_tags=delete_unknown_tags)
+            delete_unknown_tags=delete_unknown_tags,
+        )
 
     # Separate loop provides the ability to raise Exceptions from the
     # unsuccessful deletion of the original DICOM files while preventing
@@ -376,7 +383,8 @@ def anonymise_cli(args):
             replace_values=not args.clear_values,
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=not args.keep_private_tags,
-            delete_unknown_tags=handle_unknown_tags)
+            delete_unknown_tags=handle_unknown_tags,
+        )
 
     elif isdir(args.input_path):
         anonymise_directory(
@@ -386,11 +394,13 @@ def anonymise_cli(args):
             replace_values=not args.clear_values,
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=not args.keep_private_tags,
-            delete_unknown_tags=handle_unknown_tags)
+            delete_unknown_tags=handle_unknown_tags,
+        )
 
     else:
-        raise FileNotFoundError("No file or directory was found at the "
-                                "supplied input path.")
+        raise FileNotFoundError(
+            "No file or directory was found at the supplied input path."
+        )
 
 
 def is_anonymised_dataset(ds, ignore_private_tags=False):
@@ -423,19 +433,19 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     for elem in ds:
         if elem.keyword in IDENTIFYING_KEYWORDS:
             dummy_value = get_anonymous_replacement_value(elem.keyword)
-            if elem.VR == 'SQ':
+            if elem.VR == "SQ":
                 if not (elem.value == [] or elem.value == dummy_value):
                     is_anonymised = False
-            elif elem.VR == 'DS':
-                if not (elem.value == ''
-                        or np.isclose(float(elem.value),
-                                      float(dummy_value))):
+            elif elem.VR == "DS":
+                if not (
+                    elem.value == ""
+                    or np.isclose(float(elem.value), float(dummy_value))
+                ):
                     is_anonymised = False
-            elif elem.VR in ('OB', 'OW'):
-                if not (elem.value == ''
-                        or elem.value == (0).to_bytes(2, 'little')):
+            elif elem.VR in ("OB", "OW"):
+                if not (elem.value == "" or elem.value == (0).to_bytes(2, "little")):
                     is_anonymised = False
-            elif not (elem.value == '' or elem.value == dummy_value):
+            elif not (elem.value == "" or elem.value == dummy_value):
                 is_anonymised = False
                 break
         elif elem.tag.is_private and not ignore_private_tags:
@@ -505,11 +515,12 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
         been anonymised, `False` otherwise.
     """
     is_anonymised = True
-    dicom_filepaths = glob(dirpath + '/**/*.dcm', recursive=True)
+    dicom_filepaths = glob(dirpath + "/**/*.dcm", recursive=True)
 
     for dicom_filepath in dicom_filepaths:
-        if not is_anonymised_file(dicom_filepath,
-                                  ignore_private_tags=ignore_private_tags):
+        if not is_anonymised_file(
+            dicom_filepath, ignore_private_tags=ignore_private_tags
+        ):
             is_anonymised = False
             break
 
@@ -528,15 +539,15 @@ def unknown_tags_in_dicom_dataset(ds):
     exist in the PyMedPhys copy of the DICOM dictionary.
     """
 
-    non_private_tags_in_dataset = np.array(
-        non_private_tags_in_dicom_dataset(ds))
+    non_private_tags_in_dataset = np.array(non_private_tags_in_dicom_dataset(ds))
 
     are_non_private_tags_in_dict_baseline = [
-        tag in BaselineDicomDictionary.keys()
-        for tag in non_private_tags_in_dataset]
+        tag in BaselineDicomDictionary.keys() for tag in non_private_tags_in_dataset
+    ]
 
-    unknown_tags = list(non_private_tags_in_dataset[
-        np.invert(are_non_private_tags_in_dict_baseline)])
+    unknown_tags = list(
+        non_private_tags_in_dataset[np.invert(are_non_private_tags_in_dict_baseline)]
+    )
 
     return unknown_tags
 
@@ -549,10 +560,10 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
             if replace_values:
                 replacement_value = get_anonymous_replacement_value(keyword)
             else:
-                if BASELINE_KEYWORD_VR_DICT[keyword] in ('OB', 'OW'):
-                    replacement_value = (0).to_bytes(2, 'little')
+                if BASELINE_KEYWORD_VR_DICT[keyword] in ("OB", "OW"):
+                    replacement_value = (0).to_bytes(2, "little")
                 else:
-                    replacement_value = ''
+                    replacement_value = ""
             setattr(ds_anon, keyword, replacement_value)
 
     return ds_anon
