@@ -93,7 +93,7 @@ setup(
             'xlwings >= 0.15.4'
         ],
         'lint': [
-            'autopep8',
+            'black',
             'pylint',
             'mypy'
         ],
