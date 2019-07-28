@@ -66,9 +66,6 @@ def main():
     with open(version_filepath, "w") as file:
         file.write(version_file_contents)
 
-    black_command = "python -m black {}".format(version_filepath)
-    subprocess.run(black_command, check=True)
-
     semver_parsed = semver.parse(semver_string)
 
     if semver_parsed["major"] == 0:
@@ -92,6 +89,9 @@ def main():
 
     with open(dependencies_filepath, "w") as file:
         json.dump(dependencies_data, file, indent=2, sort_keys=True)
+
+    black_command = "python -m black {}".format(version_filepath)
+    subprocess.run(black_command, check=True)
 
 
 if __name__ == "__main__":
