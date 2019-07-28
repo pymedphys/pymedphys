@@ -27,9 +27,9 @@
 import os
 import json
 from glob import glob
-import subprocess
 import textwrap
 
+import black
 import semver
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(os.getcwd())))
@@ -63,8 +63,10 @@ def main():
         )
     )
 
+    version_file_contents_blackened = black.format_str(version_file_contents)
+
     with open(version_filepath, "w") as file:
-        file.write(version_file_contents)
+        file.write(version_file_contents_blackened)
 
     semver_parsed = semver.parse(semver_string)
 
@@ -89,9 +91,6 @@ def main():
 
     with open(dependencies_filepath, "w") as file:
         json.dump(dependencies_data, file, indent=2, sort_keys=True)
-
-    black_command = "python -m black {}".format(version_filepath)
-    subprocess.run(black_command, check=True)
 
 
 if __name__ == "__main__":
