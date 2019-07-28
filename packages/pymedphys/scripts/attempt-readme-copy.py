@@ -3,7 +3,7 @@ import shutil
 
 def main():
     try:
-        shutil.copy('../../README.rst', 'README.rst')
+        shutil.copy("../../README.rst", "README.rst")
     except IOError:
         pass
 

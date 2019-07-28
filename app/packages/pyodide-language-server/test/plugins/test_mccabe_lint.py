@@ -15,19 +15,19 @@ DOC_SYNTAX_ERR = """def hello()
 def test_mccabe(config):
     old_settings = config.settings
     try:
-        config.update({'plugins': {'mccabe': {'threshold': 1}}})
+        config.update({"plugins": {"mccabe": {"threshold": 1}}})
         doc = Document(DOC_URI, DOC)
         diags = mccabe_lint.pyls_lint(config, doc)
 
-        assert all([d['source'] == 'mccabe' for d in diags])
+        assert all([d["source"] == "mccabe" for d in diags])
 
         # One we're expecting is:
-        msg = 'Cyclomatic complexity too high: 1 (threshold 1)'
-        mod_import = [d for d in diags if d['message'] == msg][0]
+        msg = "Cyclomatic complexity too high: 1 (threshold 1)"
+        mod_import = [d for d in diags if d["message"] == msg][0]
 
-        assert mod_import['severity'] == lsp.DiagnosticSeverity.Warning
-        assert mod_import['range']['start'] == {'line': 1, 'character': 0}
-        assert mod_import['range']['end'] == {'line': 1, 'character': 6}
+        assert mod_import["severity"] == lsp.DiagnosticSeverity.Warning
+        assert mod_import["range"]["start"] == {"line": 1, "character": 0}
+        assert mod_import["range"]["end"] == {"line": 1, "character": 6}
     finally:
         config._settings = old_settings
 

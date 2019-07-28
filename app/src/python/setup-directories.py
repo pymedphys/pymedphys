@@ -1,4 +1,4 @@
 import os
 
-os.mkdir('input')
-os.mkdir('output')
+os.mkdir("input")
+os.mkdir("output")

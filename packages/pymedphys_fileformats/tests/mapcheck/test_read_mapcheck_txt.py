@@ -28,20 +28,19 @@ import numpy as np
 
 from pymedphys_fileformats.mapcheck import read_mapcheck_txt
 
-DATA_DIRECTORY = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), 'data'))
+DATA_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
 
 
 def test_read_mapcheck_txt():
     """Test for successful read of mapcheck file with consistent results."""
-    file_name = os.path.join(DATA_DIRECTORY, 'tomo_mapcheck_test.txt')
+    file_name = os.path.join(DATA_DIRECTORY, "tomo_mapcheck_test.txt")
     result = read_mapcheck_txt(file_name)
     assert result.dose.shape == (len(result.x), len(result.y))  # x,y -> (x,y)
-    assert result.x[0] < result.x[-1]                          # x ascending
-    assert result.y[0] < result.y[-1]                          # y ascending
-    assert len(set(result.x)) == len(set(result.x))            # x vals unique
-    assert len(set(result.y)) == len(set(result.y))            # y vals unique
-    assert np.all([i >= 0 for i in result.dose.flatten()])     # doses >= 0
+    assert result.x[0] < result.x[-1]  # x ascending
+    assert result.y[0] < result.y[-1]  # y ascending
+    assert len(set(result.x)) == len(set(result.x))  # x vals unique
+    assert len(set(result.y)) == len(set(result.y))  # y vals unique
+    assert np.all([i >= 0 for i in result.dose.flatten()])  # doses >= 0
     assert np.allclose(result.dose[20][20], 92.03876716076289)
 
 

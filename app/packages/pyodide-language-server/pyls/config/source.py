@@ -12,9 +12,9 @@ class ConfigSource(object):
 
     def __init__(self, root_path):
         self.root_path = root_path
-        self.is_windows = sys.platform == 'win32'
+        self.is_windows = sys.platform == "win32"
         self.xdg_home = os.environ.get(
-            'XDG_CONFIG_HOME', os.path.expanduser('~/.config')
+            "XDG_CONFIG_HOME", os.path.expanduser("~/.config")
         )
 
     def user_config(self):
@@ -47,7 +47,7 @@ class ConfigSource(object):
 
 def _get_opt(config, key, option, opt_type):
     """Get an option from a configparser with the given type."""
-    for opt_key in [option, option.replace('-', '_')]:
+    for opt_key in [option, option.replace("-", "_")]:
         if not config.has_option(key, opt_key):
             continue
 
@@ -75,7 +75,7 @@ def _set_opt(config_dict, path, value):
     if value is None:
         return
 
-    if '.' not in path:
+    if "." not in path:
         config_dict[path] = value
         return
 

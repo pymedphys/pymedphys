@@ -28,19 +28,22 @@ from copy import deepcopy
 
 from .core import (
     get_fraction_group_beam_sequence_and_meterset,
-    get_fraction_group_index)
+    get_fraction_group_index,
+)
 
 
 def convert_to_one_fraction_group(dicom_dataset, fraction_group_number):
     created_dicom = deepcopy(dicom_dataset)
 
     beam_sequence, _ = get_fraction_group_beam_sequence_and_meterset(
-        dicom_dataset, fraction_group_number)
+        dicom_dataset, fraction_group_number
+    )
 
     created_dicom.BeamSequence = beam_sequence
 
     fraction_group_index = get_fraction_group_index(
-        dicom_dataset, fraction_group_number)
+        dicom_dataset, fraction_group_number
+    )
 
     fraction_group = created_dicom.FractionGroupSequence[fraction_group_index]
     created_dicom.FractionGroupSequence = [fraction_group]
