@@ -1,3 +1,1 @@
-install_requires = [
-    "numpy >= 1.12",
-]
+install_requires = ["numpy >= 1.12"]
