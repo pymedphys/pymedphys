@@ -8,14 +8,13 @@ import pydicom
 from pymedphys_dicom.dicom import xyz_axes_from_dataset
 
 HERE = dirname(abspath(__file__))
-DATA_DIRECTORY = pjoin(HERE, 'data', 'dose')
-ORIENTATIONS_SUPPORTED = ['FFDL', 'FFDR', 'FFP', 'FFS',
-                          'HFDL', 'HFDR', 'HFP', 'HFS']
+DATA_DIRECTORY = pjoin(HERE, "data", "dose")
+ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
 
 
 def get_data_file(orientation_key):
     r"""Read in test DICOM files"""
-    filename = 'RD.DICOMORIENT.Dose_{}_empty.dcm'.format(orientation_key)
+    filename = "RD.DICOMORIENT.Dose_{}_empty.dcm".format(orientation_key)
     return pjoin(DATA_DIRECTORY, filename)
 
 
@@ -35,8 +34,9 @@ def run_xyz_function_tests(coord_system, save_new_baseline=False):
 
         assert set(expected_xyz.keys()) == set(ORIENTATIONS_SUPPORTED)
 
-    test_ds_dict = {key: pydicom.dcmread(get_data_file(key))
-                    for key in ORIENTATIONS_SUPPORTED}
+    test_ds_dict = {
+        key: pydicom.dcmread(get_data_file(key)) for key in ORIENTATIONS_SUPPORTED
+    }
     print()
     for orient, dicom in test_ds_dict.items():
         test_xyz = xyz_axes_from_dataset(dicom, coord_system)
@@ -73,28 +73,32 @@ def save_xyz_baseline(filename, xyz_dict):
             tuples_are_correct_length = False
 
     if not filename.endswith(".json"):
-        raise ValueError("Filename must end in \".json\"")
+        raise ValueError('Filename must end in ".json"')
 
     elif not set(xyz_dict.keys()) == set(ORIENTATIONS_SUPPORTED):
-        raise ValueError("xyz baselines must be provided for "
-                         "all eight supported patient orientations")
+        raise ValueError(
+            "xyz baselines must be provided for "
+            "all eight supported patient orientations"
+        )
 
     elif not tuples_are_correct_length:
-        raise ValueError("Each orientation's new baseline must be a tuple"
-                         "of length 3 containing x, y and z values")
+        raise ValueError(
+            "Each orientation's new baseline must be a tuple"
+            "of length 3 containing x, y and z values"
+        )
 
     else:
-        with open(pjoin(DATA_DIRECTORY, filename), 'w') as fp:
+        with open(pjoin(DATA_DIRECTORY, filename), "w") as fp:
             json.dump(xyz_dict, fp)
 
 
 def test_extract_iec_patient_xyz():
-    run_xyz_function_tests('PATIENT')
+    run_xyz_function_tests("PATIENT")
 
 
 def test_extract_iec_fixed_xyz():
-    run_xyz_function_tests('FIXED')
+    run_xyz_function_tests("FIXED")
 
 
 def test_extract_dicom_patient_xyz():
-    run_xyz_function_tests('DICOM')
+    run_xyz_function_tests("DICOM")

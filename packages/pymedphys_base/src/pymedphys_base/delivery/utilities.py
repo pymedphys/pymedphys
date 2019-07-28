@@ -44,8 +44,7 @@ def find_relevant_control_points(mu):
 
     no_change_before_and_after = no_change_before & no_change_after
 
-    irrelevant_control_point = np.hstack(
-        [start, no_change_before_and_after, end])
+    irrelevant_control_point = np.hstack([start, no_change_before_and_after, end])
     relevant_control_points = np.invert(irrelevant_control_point)
 
     return relevant_control_points
@@ -54,12 +53,9 @@ def find_relevant_control_points(mu):
 def remove_irrelevant_control_points(monitor_units, *args):
     relevant_control_points = find_relevant_control_points(monitor_units)
 
-    provided_values = tuple(
-        (monitor_units, *args))
+    provided_values = tuple((monitor_units, *args))
 
-    result = tuple(
-        np.array(item)[relevant_control_points]
-        for item in provided_values)
+    result = tuple(np.array(item)[relevant_control_points] for item in provided_values)
 
     return result
 

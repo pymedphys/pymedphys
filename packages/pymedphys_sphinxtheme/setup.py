@@ -11,13 +11,9 @@ def execfile(fname, globs, locs=None):
     exec(compile(open(fname).read(), fname, "exec"), globs, locs)
 
 
-source_path = 'src'
+source_path = "src"
 packages = find_packages(source_path)
-root_packages = [
-    package
-    for package in packages
-    if "." not in package
-]
+root_packages = [package for package in packages if "." not in package]
 
 assert len(root_packages) == 1
 package = root_packages[0]
@@ -33,51 +29,46 @@ def get_variable_from_file(filepath, variable):
     return variable_value
 
 
-version = get_variable_from_file('_version.py', '__version__')
-install_requires = get_variable_from_file(
-    '_install_requires.py', 'install_requires')
+version = get_variable_from_file("_version.py", "__version__")
+install_requires = get_variable_from_file("_install_requires.py", "install_requires")
 
 
 setup(
     name=package,
     version=version,
-    python_requires='>=3.7',
+    python_requires=">=3.7",
     author="PyMedPhys Contributors",
     author_email="developers@pymedphys.com",
-    description='',
+    description="",
     classifiers=[
-        'Development Status :: 4 - Beta',
-        'License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Topic :: Scientific/Engineering :: Medical Science Apps.',
-        'Topic :: Scientific/Engineering :: Physics',
-        'Intended Audience :: Science/Research',
-        'Intended Audience :: Healthcare Industry'
+        "Development Status :: 4 - Beta",
+        "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Topic :: Scientific/Engineering :: Medical Science Apps.",
+        "Topic :: Scientific/Engineering :: Physics",
+        "Intended Audience :: Science/Research",
+        "Intended Audience :: Healthcare Industry",
     ],
     zip_safe=False,
     entry_points={
-        'sphinx.html_themes': [
-            'pymedphys_sphinxtheme = pymedphys_sphinxtheme',
-        ]
+        "sphinx.html_themes": ["pymedphys_sphinxtheme = pymedphys_sphinxtheme"]
     },
     packages=packages,
-    package_dir={'': source_path},
+    package_dir={"": source_path},
     include_package_data=True,
-    package_data={'pymedphys_sphinxtheme': [
-        'theme.conf',
-        '*.html',
-        'static/css/*.css',
-        'static/js/*.js',
-        'static/fonts/*.*'
-    ]},
-    license='AGPL-3.0-or-later',
+    package_data={
+        "pymedphys_sphinxtheme": [
+            "theme.conf",
+            "*.html",
+            "static/css/*.css",
+            "static/js/*.js",
+            "static/fonts/*.*",
+        ]
+    },
+    license="AGPL-3.0-or-later",
     install_requires=install_requires,
     extras_require={
-        'test': [
-            'pytest',
-            "readthedocs-sphinx-ext",
-            "sphinx >= 1.4, < 1.8"
-        ]
-    }
+        "test": ["pytest", "readthedocs-sphinx-ext", "sphinx >= 1.4, < 1.8"]
+    },
 )

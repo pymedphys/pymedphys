@@ -67,5 +67,5 @@ from .core import (
     single_mlc_pair,
     get_grid,
     display_mu_density,
-    calc_mu_density_return_grid
+    calc_mu_density_return_grid,
 )

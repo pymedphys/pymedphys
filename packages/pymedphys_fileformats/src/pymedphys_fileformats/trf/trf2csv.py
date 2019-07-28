@@ -35,7 +35,7 @@ from .trf2pandas import trf2pandas
 
 
 def trf2csv_by_directory(input_directory, output_directory):
-    filepaths = glob(os.path.join(input_directory, '*.trf'))
+    filepaths = glob(os.path.join(input_directory, "*.trf"))
 
     for filepath in filepaths:
         filename = os.path.basename(filepath)
@@ -75,12 +75,12 @@ def trf2csv(trf_filepath, skip_if_exists=False):
 def trf2csv_cli(args):
 
     for glob_string in args.filepaths:
-        glob_string = glob_string.replace('[', '<[>')
-        glob_string = glob_string.replace(']', '<]>')
-        glob_string = glob_string.replace('?', '[?]')
+        glob_string = glob_string.replace("[", "<[>")
+        glob_string = glob_string.replace("]", "<]>")
+        glob_string = glob_string.replace("?", "[?]")
 
-        glob_string = glob_string.replace('<[>', '[[]')
-        glob_string = glob_string.replace('<]>', '[]]')
+        glob_string = glob_string.replace("<[>", "[[]")
+        glob_string = glob_string.replace("<]>", "[]]")
 
         filepaths = glob(glob_string)
 

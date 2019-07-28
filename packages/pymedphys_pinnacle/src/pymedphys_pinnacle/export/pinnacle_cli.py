@@ -81,8 +81,7 @@ def export_cli(args):
     logger.setLevel(log_level)
 
     ch = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     ch.setFormatter(formatter)
     ch.setLevel(log_level)
     logger.addHandler(ch)
@@ -119,16 +118,19 @@ def export_cli(args):
         if len(pat_dirs) == 0:
             logger.error(
                 "No Pinnacle Patient directories were found in the "
-                "supplied TAR archive")
+                "supplied TAR archive"
+            )
             exit()
 
         if len(pat_dirs) > 1:
             logger.error(
                 "Multiple Pinnacle Patient directories were found in "
-                "the supplied TAR archive")
+                "the supplied TAR archive"
+            )
             logger.error(
                 "The command line utility currently only support "
-                "parsing TAR archives containing one patient")
+                "parsing TAR archives containing one patient"
+            )
             exit()
 
         input_path = pat_dirs[0]
@@ -158,21 +160,26 @@ def export_cli(args):
     if not plan:
 
         if plan_name:
-            logger.error("Plan not found ("+plan_name+")")
+            logger.error("Plan not found (" + plan_name + ")")
             exit()
 
         # Select a default plan if user didn't pass in a plan name
         plan = plans[0]
         logger.warning(
-            "No plan name supplied, selecting first plan: {0}"
-            .format(plan.plan_info["PlanName"]))
+            "No plan name supplied, selecting first plan: {0}".format(
+                plan.plan_info["PlanName"]
+            )
+        )
 
     # Set the Trial if it was given
     if trial:
 
         if not plan.set_active_trial(trial):
-            logger.error("No Trial: {0} found in Plan: {1}".format(
-                trial, plan.plan_info["PlanName"]))
+            logger.error(
+                "No Trial: {0} found in Plan: {1}".format(
+                    trial, plan.plan_info["PlanName"]
+                )
+            )
             exit()
 
     # If we got up to here, we are exporting something, so make sure the
@@ -199,8 +206,7 @@ def export_cli(args):
 
         if image_series == "all":
             for image in p.images:
-                image_series_uids.append(
-                    image.image_header["series_UID"])
+                image_series_uids.append(image.image_header["series_UID"])
         else:
             image_series_uids.append(image_series)
 
@@ -217,19 +223,21 @@ def export_cli(args):
         if plan.primary_image:
 
             logger.info(
-                "Exporting primary image for plan: {0}"
-                .format(plan.plan_info["PlanName"]))
+                "Exporting primary image for plan: {0}".format(
+                    plan.plan_info["PlanName"]
+                )
+            )
 
             if primary_image_exported:
-                logger.info(
-                    "Primary image was already exported during this run")
+                logger.info("Primary image was already exported during this run")
             else:
-                p.export_image(image=plan.primary_image,
-                               export_path=output_directory)
+                p.export_image(image=plan.primary_image, export_path=output_directory)
         else:
             logger.error(
-                "No primary image to export for plan: {0}"
-                .format(plan.plan_info["PlanName"]))
+                "No primary image to export for plan: {0}".format(
+                    plan.plan_info["PlanName"]
+                )
+            )
 
     if "RTSTRUCT" in modality:
         p.export_struct(plan=plan, export_path=output_directory)
