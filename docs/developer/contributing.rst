@@ -116,7 +116,7 @@ Install contributor system dependencies
 ---------------------------------------
 
 Use Chocolatey within an administrator command prompt to install Git,
-Git LFS, yarn, and graphviz like so:
+yarn, and graphviz like so:
 
 .. code:: bash
 
