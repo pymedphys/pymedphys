@@ -27,8 +27,9 @@
 from glob import glob
 import json
 import os
-import subprocess
 import textwrap
+
+import black
 
 ROOT = os.getcwd()
 
@@ -99,11 +100,12 @@ def main():
         """
         ).format(json.dumps(install_requires, indent=4))
 
-        with open(install_requires_filepath, "w") as file:
-            file.write(install_requires_contents)
+        install_requires_contents_blackened = black.format_str(
+            install_requires_contents
+        )
 
-        black_command = "python -m black {}".format(install_requires_filepath)
-        subprocess.run(black_command, check=True)
+        with open(install_requires_filepath, "w") as file:
+            file.write(install_requires_contents_blackened)
 
     for package, dependency_store in tree.items():
         internal_dependencies = {
