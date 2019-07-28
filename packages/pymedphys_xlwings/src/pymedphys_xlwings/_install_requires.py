@@ -5,5 +5,5 @@ install_requires = [
     "pymedphys_fileformats >= 0.11.0dev0, < 0.12.0",
     "pymedphys_utilities >= 0.11.0dev0, < 0.12.0",
     "scipy",
-    "xlwings ; platform_system != \"Linux\""
+    "xlwings ; platform_system != \"Linux\"",
 ]
