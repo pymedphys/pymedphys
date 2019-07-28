@@ -24,10 +24,11 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
-import textwrap
-import json
 from glob import glob
+import json
+import os
+import subprocess
+import textwrap
 
 ROOT = os.getcwd()
 
@@ -98,15 +99,11 @@ def main():
         """
         ).format(json.dumps(install_requires, indent=4))
 
-        if install_requires:
-            install_requires_contents_black_compliant = (
-                install_requires_contents[:-3] + ",\n]\n"
-            )
-        else:
-            install_requires_contents_black_compliant = install_requires_contents
-
         with open(install_requires_filepath, "w") as file:
-            file.write(install_requires_contents_black_compliant)
+            file.write(install_requires_contents)
+
+        black_command = "python -m black {}".format(install_requires_filepath)
+        subprocess.run(black_command, check=True)
 
     for package, dependency_store in tree.items():
         internal_dependencies = {
