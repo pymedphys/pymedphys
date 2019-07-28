@@ -6,5 +6,5 @@ install_requires = [
     "pymedphys_utilities >= 0.11.0dev0, < 0.12.0",
     "scipy",
     "tqdm",
-    "xarray",
+    "xarray"
 ]
