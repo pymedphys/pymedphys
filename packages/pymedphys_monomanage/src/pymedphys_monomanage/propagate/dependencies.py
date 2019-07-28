@@ -29,7 +29,7 @@ import json
 import os
 import textwrap
 
-import black
+from ..clean import blacken_str
 
 ROOT = os.getcwd()
 
@@ -100,9 +100,7 @@ def main():
         """
         ).format(json.dumps(install_requires, indent=4))
 
-        install_requires_contents_blackened = black.format_str(
-            install_requires_contents, mode=black.FileMode()
-        )
+        install_requires_contents_blackened = blacken_str(install_requires_contents)
 
         with open(install_requires_filepath, "w") as file:
             file.write(install_requires_contents_blackened)
