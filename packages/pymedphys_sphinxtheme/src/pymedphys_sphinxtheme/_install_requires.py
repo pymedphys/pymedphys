@@ -1,2 +1,1 @@
-install_requires = ,
-]
+install_requires = []
