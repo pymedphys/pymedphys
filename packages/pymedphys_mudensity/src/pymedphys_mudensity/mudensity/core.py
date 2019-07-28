@@ -40,10 +40,15 @@ __DEFAULT_MAX_LEAF_GAP = 400
 __DEFAULT_MIN_STEP_PER_PIXEL = 10
 
 
-def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
-                    max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
-                    leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
-                    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
+def calc_mu_density(
+    mu,
+    mlc,
+    jaw,
+    grid_resolution=__DEFAULT_GRID_RESOLUTION,
+    max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
+    leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
+    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL,
+):
     """Determine the MU Density.
 
     Both jaw and mlc positions are defined in bipolar format for each control
@@ -210,28 +215,26 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
 
     divisibility_of_max_leaf_gap = np.array(max_leaf_gap / 2 / grid_resolution)
     max_leaf_gap_is_divisible = (
-        divisibility_of_max_leaf_gap.astype(int) ==
-        divisibility_of_max_leaf_gap)
+        divisibility_of_max_leaf_gap.astype(int) == divisibility_of_max_leaf_gap
+    )
 
     if not max_leaf_gap_is_divisible:
         raise ValueError(
-            "The grid resolution needs to exaclty divide half of the max leaf "
-            "gap")
+            "The grid resolution needs to exaclty divide half of the max leaf " "gap"
+        )
 
     leaf_pair_widths = np.array(leaf_pair_widths)
 
     if not np.max(np.abs(mlc)) <= max_leaf_gap / 2:
         raise ValueError(
-            "The mlc should not travel further out than half the maximum leaf "
-            "gap."
+            "The mlc should not travel further out than half the maximum leaf " "gap."
         )
 
     mu, mlc, jaw = remove_irrelevant_control_points(mu, mlc, jaw)
 
-    full_grid = get_grid(
-        max_leaf_gap, grid_resolution, leaf_pair_widths)
+    full_grid = get_grid(max_leaf_gap, grid_resolution, leaf_pair_widths)
 
-    mu_density = np.zeros((len(full_grid['jaw']), len(full_grid['mlc'])))
+    mu_density = np.zeros((len(full_grid["jaw"]), len(full_grid["mlc"])))
 
     for i in range(len(mu) - 1):
         control_point_slice = slice(i, i + 2, 1)
@@ -240,21 +243,30 @@ def calc_mu_density(mu, mlc, jaw, grid_resolution=__DEFAULT_GRID_RESOLUTION,
         delivered_mu = np.diff(mu[control_point_slice])
 
         grid, mu_density_of_slice = calc_single_control_point(
-            current_mlc, current_jaw, delivered_mu,
-            leaf_pair_widths=leaf_pair_widths, grid_resolution=grid_resolution,
-            min_step_per_pixel=min_step_per_pixel)
+            current_mlc,
+            current_jaw,
+            delivered_mu,
+            leaf_pair_widths=leaf_pair_widths,
+            grid_resolution=grid_resolution,
+            min_step_per_pixel=min_step_per_pixel,
+        )
         full_grid_mu_density_of_slice = _convert_to_full_grid(
-            grid, full_grid, mu_density_of_slice)
+            grid, full_grid, mu_density_of_slice
+        )
 
         mu_density += full_grid_mu_density_of_slice
 
     return mu_density
 
 
-def calc_single_control_point(mlc, jaw, delivered_mu=1,
-                              leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
-                              grid_resolution=__DEFAULT_GRID_RESOLUTION,
-                              min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
+def calc_single_control_point(
+    mlc,
+    jaw,
+    delivered_mu=1,
+    leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
+    grid_resolution=__DEFAULT_GRID_RESOLUTION,
+    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL,
+):
     """Calculate the MU Density for a single control point.
 
     Examples
@@ -300,35 +312,33 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
 
     if not np.all(leaf_division.astype(int) == leaf_division):
         raise ValueError(
-            "The grid resolution needs to exactly divide every leaf pair "
-            "width.")
+            "The grid resolution needs to exactly divide every leaf pair " "width."
+        )
 
     if not np.max(np.abs(jaw)) <= np.sum(leaf_pair_widths) / 2:
         raise ValueError(
-            "The jaw should not travel further out than the maximum leaf "
-            "limits.")
+            "The jaw should not travel further out than the maximum leaf " "limits."
+        )
 
-    (
-        grid, grid_leaf_map, mlc
-    ) = _determine_calc_grid_and_adjustments(
-        mlc, jaw,
-        leaf_pair_widths, grid_resolution)
+    (grid, grid_leaf_map, mlc) = _determine_calc_grid_and_adjustments(
+        mlc, jaw, leaf_pair_widths, grid_resolution
+    )
 
     positions = {
-        'mlc': {
+        "mlc": {
             1: (-mlc[0, :, 0], -mlc[1, :, 0]),  # left
-            -1: (mlc[0, :, 1], mlc[1, :, 1])  # right
+            -1: (mlc[0, :, 1], mlc[1, :, 1]),  # right
         },
-        'jaw': {
+        "jaw": {
             1: (-jaw[0::-1, 0], -jaw[1::, 0]),  # bot
-            -1: (jaw[0::-1, 1], jaw[1::, 1])  # top
-        }
+            -1: (jaw[0::-1, 1], jaw[1::, 1]),  # top
+        },
     }
 
-    time_steps = _calc_time_steps(
-        positions, grid_resolution, min_step_per_pixel)
+    time_steps = _calc_time_steps(positions, grid_resolution, min_step_per_pixel)
     blocked_by_device = _calc_blocked_by_device(
-        grid, positions, grid_resolution, time_steps)
+        grid, positions, grid_resolution, time_steps
+    )
     device_open = _calc_device_open(blocked_by_device)
     mlc_open, jaw_open = _remap_mlc_and_jaw(device_open, grid_leaf_map)
     open_fraction = _calc_open_fraction(mlc_open, jaw_open)
@@ -338,9 +348,12 @@ def calc_single_control_point(mlc, jaw, delivered_mu=1,
     return grid, mu_density
 
 
-def single_mlc_pair(left_mlc, right_mlc,
-                    grid_resolution=__DEFAULT_GRID_RESOLUTION,
-                    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
+def single_mlc_pair(
+    left_mlc,
+    right_mlc,
+    grid_resolution=__DEFAULT_GRID_RESOLUTION,
+    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL,
+):
     """Calculate the MU Density of a single leaf pair.
 
     Examples
@@ -364,53 +377,61 @@ def single_mlc_pair(left_mlc, right_mlc,
            0.096, 0.004])
     """
     leaf_pair_widths = [grid_resolution]
-    jaw = np.array([
-        [grid_resolution/2, grid_resolution/2],
-        [grid_resolution/2, grid_resolution/2]
-    ])
-    mlc = np.array([
+    jaw = np.array(
         [
-            [-left_mlc[0], right_mlc[0]],
-        ],
-        [
-            [-left_mlc[1], right_mlc[1]],
+            [grid_resolution / 2, grid_resolution / 2],
+            [grid_resolution / 2, grid_resolution / 2],
         ]
-    ])
+    )
+    mlc = np.array([[[-left_mlc[0], right_mlc[0]]], [[-left_mlc[1], right_mlc[1]]]])
 
     grid, mu_density = calc_single_control_point(
-        mlc, jaw, leaf_pair_widths=leaf_pair_widths,
-        grid_resolution=grid_resolution, min_step_per_pixel=min_step_per_pixel
+        mlc,
+        jaw,
+        leaf_pair_widths=leaf_pair_widths,
+        grid_resolution=grid_resolution,
+        min_step_per_pixel=min_step_per_pixel,
     )
 
-    return grid['mlc'], mu_density[0, :]
+    return grid["mlc"], mu_density[0, :]
 
 
-def calc_mu_density_return_grid(mu, mlc, jaw,
-                                grid_resolution=__DEFAULT_GRID_RESOLUTION,
-                                max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
-                                leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
-                                min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL):
+def calc_mu_density_return_grid(
+    mu,
+    mlc,
+    jaw,
+    grid_resolution=__DEFAULT_GRID_RESOLUTION,
+    max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
+    leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
+    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL,
+):
     """DEPRECATED. This is a temporary helper function to provide the old
     api.
     """
 
     leaf_pair_widths = np.array(leaf_pair_widths)
     mu_density = calc_mu_density(
-        mu, mlc, jaw, grid_resolution=grid_resolution,
-        max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths,
-        min_step_per_pixel=min_step_per_pixel)
+        mu,
+        mlc,
+        jaw,
+        grid_resolution=grid_resolution,
+        max_leaf_gap=max_leaf_gap,
+        leaf_pair_widths=leaf_pair_widths,
+        min_step_per_pixel=min_step_per_pixel,
+    )
 
-    full_grid = get_grid(
-        max_leaf_gap, grid_resolution, leaf_pair_widths)
+    full_grid = get_grid(max_leaf_gap, grid_resolution, leaf_pair_widths)
 
-    grid_xx, grid_yy = np.meshgrid(full_grid['mlc'], full_grid['jaw'])
+    grid_xx, grid_yy = np.meshgrid(full_grid["mlc"], full_grid["jaw"])
 
     return grid_xx, grid_yy, mu_density
 
 
-def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
-             grid_resolution=__DEFAULT_GRID_RESOLUTION,
-             leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS):
+def get_grid(
+    max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
+    grid_resolution=__DEFAULT_GRID_RESOLUTION,
+    leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
+):
     """Get the MU Density grid for plotting purposes.
 
     Examples
@@ -422,51 +443,57 @@ def get_grid(max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
 
     grid = dict()
 
-    grid['mlc'] = np.arange(
-        -max_leaf_gap/2,
-        max_leaf_gap/2 + grid_resolution,
-        grid_resolution).astype('float')
+    grid["mlc"] = np.arange(
+        -max_leaf_gap / 2, max_leaf_gap / 2 + grid_resolution, grid_resolution
+    ).astype("float")
 
-    _, top_of_reference_leaf = _determine_leaf_centres(
-        leaf_pair_widths)
+    _, top_of_reference_leaf = _determine_leaf_centres(leaf_pair_widths)
     grid_reference_position = _determine_reference_grid_position(
-        top_of_reference_leaf, grid_resolution)
+        top_of_reference_leaf, grid_resolution
+    )
 
     # It might be better to use round instead of ceil here.
     total_leaf_widths = np.sum(leaf_pair_widths)
     top_grid_pos = (
-        np.ceil(
-            (total_leaf_widths/2 - grid_reference_position)
-            / grid_resolution) *
-        grid_resolution + grid_reference_position)
+        np.ceil((total_leaf_widths / 2 - grid_reference_position) / grid_resolution)
+        * grid_resolution
+        + grid_reference_position
+    )
 
     bot_grid_pos = (
-        grid_reference_position -
-        np.ceil(
-            (total_leaf_widths/2 + grid_reference_position)
-            / grid_resolution) *
-        grid_resolution)
+        grid_reference_position
+        - np.ceil((total_leaf_widths / 2 + grid_reference_position) / grid_resolution)
+        * grid_resolution
+    )
 
-    grid['jaw'] = np.arange(
-        bot_grid_pos, top_grid_pos + grid_resolution, grid_resolution)
+    grid["jaw"] = np.arange(
+        bot_grid_pos, top_grid_pos + grid_resolution, grid_resolution
+    )
 
     return grid
 
 
-def display_mu_density_diff(grid, mudensity_eval, mudensity_ref,
-                            grid_resolution=None, colour_range=None):
-    cmap = 'bwr'
+def display_mu_density_diff(
+    grid, mudensity_eval, mudensity_ref, grid_resolution=None, colour_range=None
+):
+    cmap = "bwr"
     diff = mudensity_eval - mudensity_ref
     if colour_range is None:
         colour_range = np.max(np.abs(diff))
 
     display_mu_density(
-        grid, diff, grid_resolution=grid_resolution, cmap=cmap,
-        vmin=-colour_range, vmax=colour_range)  # pylint: disable=invalid-unary-operand-type
+        grid,
+        diff,
+        grid_resolution=grid_resolution,
+        cmap=cmap,
+        vmin=-colour_range,
+        vmax=colour_range,
+    )  # pylint: disable=invalid-unary-operand-type
 
 
-def display_mu_density(grid, mu_density, grid_resolution=None, cmap=None,
-                       vmin=None, vmax=None):
+def display_mu_density(
+    grid, mu_density, grid_resolution=None, cmap=None, vmin=None, vmax=None
+):
     """Prints a colour plot of the MU Density.
 
     Examples
@@ -474,31 +501,31 @@ def display_mu_density(grid, mu_density, grid_resolution=None, cmap=None,
     See `pymedphys.mudensity.calc_mu_density`_.
     """
     if grid_resolution is None:
-        grid_resolution = grid['mlc'][1] - grid['mlc'][0]
+        grid_resolution = grid["mlc"][1] - grid["mlc"][0]
 
-    x, y = pcolormesh_grid(grid['mlc'], grid['jaw'], grid_resolution)
+    x, y = pcolormesh_grid(grid["mlc"], grid["jaw"], grid_resolution)
     plt.pcolormesh(x, y, mu_density, cmap=cmap, vmin=vmin, vmax=vmax)
     plt.colorbar()
-    plt.title('MU density')
-    plt.xlabel('MLC direction (mm)')
-    plt.ylabel('Jaw direction (mm)')
-    plt.axis('equal')
+    plt.title("MU density")
+    plt.xlabel("MLC direction (mm)")
+    plt.ylabel("Jaw direction (mm)")
+    plt.axis("equal")
     plt.gca().invert_yaxis()
 
 
 def _calc_blocked_t(travel_diff, grid_resolution):
     blocked_t = np.ones_like(travel_diff) * np.nan
 
-    fully_blocked = travel_diff <= -grid_resolution/2
-    fully_open = travel_diff >= grid_resolution/2
+    fully_blocked = travel_diff <= -grid_resolution / 2
+    fully_open = travel_diff >= grid_resolution / 2
     blocked_t[fully_blocked] = 1
     blocked_t[fully_open] = 0
 
     transient = ~fully_blocked & ~fully_open
 
     blocked_t[transient] = (
-        (-travel_diff[transient] + grid_resolution/2) /
-        grid_resolution)
+        -travel_diff[transient] + grid_resolution / 2
+    ) / grid_resolution
 
     assert np.all(~np.isnan(blocked_t))
 
@@ -521,8 +548,7 @@ def _calc_time_steps(positions, grid_resolution, min_step_per_pixel):
     return time_steps
 
 
-def _calc_blocked_by_device(grid, positions, grid_resolution,
-                            time_steps):
+def _calc_blocked_by_device(grid, positions, grid_resolution, time_steps):
     blocked_by_device = {}
 
     for device, value in positions.items():
@@ -530,14 +556,14 @@ def _calc_blocked_by_device(grid, positions, grid_resolution,
 
         for multiplier, (start, end) in value.items():
             dt = (end - start) / (time_steps - 1)
-            travel = (
-                start[None, :] +
-                np.arange(0, time_steps)[:, None] * dt[None, :])
+            travel = start[None, :] + np.arange(0, time_steps)[:, None] * dt[None, :]
             travel_diff = multiplier * (
-                grid[device][None, None, :] - travel[:, :, None])
+                grid[device][None, None, :] - travel[:, :, None]
+            )
 
             blocked_by_device[device][multiplier] = _calc_blocked_t(
-                travel_diff, grid_resolution)
+                travel_diff, grid_resolution
+            )
 
     return blocked_by_device
 
@@ -546,10 +572,13 @@ def _calc_device_open(blocked_by_device):
     device_open = {}
 
     for device, value in blocked_by_device.items():
-        device_sum = np.sum(np.concatenate([
-            np.expand_dims(blocked, axis=0)
-            for _, blocked in value.items()
-        ], axis=0), axis=0)
+        device_sum = np.sum(
+            np.concatenate(
+                [np.expand_dims(blocked, axis=0) for _, blocked in value.items()],
+                axis=0,
+            ),
+            axis=0,
+        )
 
         device_open[device] = 1 - device_sum
 
@@ -557,8 +586,8 @@ def _calc_device_open(blocked_by_device):
 
 
 def _remap_mlc_and_jaw(device_open, grid_leaf_map):
-    mlc_open = device_open['mlc'][:, grid_leaf_map, :]
-    jaw_open = device_open['jaw'][:, 0, :]
+    mlc_open = device_open["mlc"][:, grid_leaf_map, :]
+    jaw_open = device_open["jaw"][:, 0, :]
 
     return mlc_open, jaw_open
 
@@ -573,82 +602,81 @@ def _calc_open_fraction(mlc_open, jaw_open):
 def _determine_leaf_centres(leaf_pair_widths):
     total_leaf_widths = np.sum(leaf_pair_widths)
     leaf_centres = (
-        np.cumsum(leaf_pair_widths) -
-        leaf_pair_widths/2 - total_leaf_widths/2)
+        np.cumsum(leaf_pair_widths) - leaf_pair_widths / 2 - total_leaf_widths / 2
+    )
 
-    reference_leaf_index = len(leaf_centres)//2
+    reference_leaf_index = len(leaf_centres) // 2
 
     top_of_reference_leaf = (
-        leaf_centres[reference_leaf_index] +
-        leaf_pair_widths[reference_leaf_index] / 2
+        leaf_centres[reference_leaf_index] + leaf_pair_widths[reference_leaf_index] / 2
     )
 
     return leaf_centres, top_of_reference_leaf
 
 
 def _determine_reference_grid_position(top_of_reference_leaf, grid_resolution):
-    grid_reference_position = top_of_reference_leaf - grid_resolution/2
+    grid_reference_position = top_of_reference_leaf - grid_resolution / 2
 
     return grid_reference_position
 
 
-def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths,
-                                         grid_resolution):
+def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths, grid_resolution):
     min_y = np.min(-jaw[:, 0])
     max_y = np.max(jaw[:, 1])
 
-    leaf_centres, top_of_reference_leaf = _determine_leaf_centres(
-        leaf_pair_widths)
+    leaf_centres, top_of_reference_leaf = _determine_leaf_centres(leaf_pair_widths)
     grid_reference_position = _determine_reference_grid_position(
-        top_of_reference_leaf, grid_resolution)
+        top_of_reference_leaf, grid_resolution
+    )
 
     top_grid_pos = (
-        (np.round((max_y - grid_reference_position) / grid_resolution)) *
-        grid_resolution + grid_reference_position)
+        np.round((max_y - grid_reference_position) / grid_resolution)
+    ) * grid_resolution + grid_reference_position
 
     bot_grid_pos = (
-        grid_reference_position -
-        (np.round((-min_y + grid_reference_position) / grid_resolution)) *
-        grid_resolution)
+        grid_reference_position
+        - (np.round((-min_y + grid_reference_position) / grid_resolution))
+        * grid_resolution
+    )
 
     grid = dict()
-    grid['jaw'] = np.arange(
+    grid["jaw"] = np.arange(
         bot_grid_pos, top_grid_pos + grid_resolution, grid_resolution
-    ).astype('float')
+    ).astype("float")
 
     grid_leaf_map = np.argmin(
-        np.abs(grid['jaw'][:, None] - leaf_centres[None, :]), axis=1)
+        np.abs(grid["jaw"][:, None] - leaf_centres[None, :]), axis=1
+    )
 
     adjusted_grid_leaf_map = grid_leaf_map - np.min(grid_leaf_map)
 
     leaves_to_be_calced = np.unique(grid_leaf_map)
     adjusted_mlc = mlc[:, leaves_to_be_calced, :]
 
-    min_x = np.round(
-        np.min(-adjusted_mlc[:, :, 0]) / grid_resolution) * grid_resolution
-    max_x = np.round(
-        np.max(adjusted_mlc[:, :, 1]) / grid_resolution) * grid_resolution
+    min_x = np.round(np.min(-adjusted_mlc[:, :, 0]) / grid_resolution) * grid_resolution
+    max_x = np.round(np.max(adjusted_mlc[:, :, 1]) / grid_resolution) * grid_resolution
 
-    grid['mlc'] = np.arange(
-        min_x, max_x + grid_resolution, grid_resolution
-    ).astype('float')
+    grid["mlc"] = np.arange(min_x, max_x + grid_resolution, grid_resolution).astype(
+        "float"
+    )
 
     return grid, adjusted_grid_leaf_map, adjusted_mlc
 
 
 def _convert_to_full_grid(grid, full_grid, mu_density):
-    grid_xx, grid_yy = np.meshgrid(grid['mlc'], grid['jaw'])
-    full_grid_xx, full_grid_yy = np.meshgrid(
-        full_grid['mlc'], full_grid['jaw'])
+    grid_xx, grid_yy = np.meshgrid(grid["mlc"], grid["jaw"])
+    full_grid_xx, full_grid_yy = np.meshgrid(full_grid["mlc"], full_grid["jaw"])
 
     xx_from, xx_to = np.where(
-        np.abs(full_grid_xx[None, 0, :] - grid_xx[0, :, None]) < 0.0001)
+        np.abs(full_grid_xx[None, 0, :] - grid_xx[0, :, None]) < 0.0001
+    )
     yy_from, yy_to = np.where(
-        np.abs(full_grid_yy[None, :, 0] - grid_yy[:, 0, None]) < 0.0001)
+        np.abs(full_grid_yy[None, :, 0] - grid_yy[:, 0, None]) < 0.0001
+    )
 
     full_grid_mu_density = np.zeros_like(full_grid_xx)
     full_grid_mu_density[  # pylint: disable=unsupported-assignment-operation
-        np.ix_(yy_to, xx_to)] = (
-            mu_density[np.ix_(yy_from, xx_from)])
+        np.ix_(yy_to, xx_to)
+    ] = mu_density[np.ix_(yy_from, xx_from)]
 
     return full_grid_mu_density

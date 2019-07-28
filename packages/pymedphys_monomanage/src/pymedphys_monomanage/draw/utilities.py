@@ -39,34 +39,34 @@ def save_dot_file(dot_contents, outfilepath):
         print(
             "Graph not drawn, please install graphviz and add it to "
             "your path.\nOn Windows this is done with "
-            "`choco install graphviz.portable`.\n")
+            "`choco install graphviz.portable`.\n"
+        )
 
         return
 
-    with open("temp.dot", 'w') as file:
+    with open("temp.dot", "w") as file:
         file.write(dot_contents)
 
     try:
-        tred_process = subprocess.Popen(
-            [tred, 'temp.dot'], stdout=subprocess.PIPE)
+        tred_process = subprocess.Popen([tred, "temp.dot"], stdout=subprocess.PIPE)
         data = tred_process.stdout.read()
         tred_process.wait()
-        with open("temp_reduced.dot", 'wb') as file:
+        with open("temp_reduced.dot", "wb") as file:
             file.write(data)
 
         output = subprocess.check_output(
-            [dot, '-Tsvg', 'temp_reduced.dot', '-o', 'temp.svg'])
+            [dot, "-Tsvg", "temp_reduced.dot", "-o", "temp.svg"]
+        )
 
         shutil.move("temp.svg", outfilepath)
-        shutil.move("temp_reduced.dot", os.path.splitext(
-            outfilepath)[0] + ".dot")
+        shutil.move("temp_reduced.dot", os.path.splitext(outfilepath)[0] + ".dot")
     finally:
         os.remove("temp.dot")
 
 
 def remove_prefix(text, prefix):
     if text.startswith(prefix):
-        return text[len(prefix):]
+        return text[len(prefix) :]
     else:
         return text
 
@@ -88,10 +88,7 @@ def get_levels(dependency_map):
         max_level = max(levels)
         level_map[package] = max_level + 1
 
-    levels = {
-        level: []
-        for level in range(max(level_map.values()) + 1)
-    }
+    levels = {level: [] for level in range(max(level_map.values()) + 1)}
     for package, level in level_map.items():
         levels[level].append(package)
 
@@ -108,9 +105,7 @@ def dag_from_hashmap_of_lists(dictionary):
         values = sorted(dictionary[key], reverse=True)
         dag.add_node(key)
         dag.add_nodes_from(values)
-        edge_tuples = [
-            (key, value) for value in values
-        ]
+        edge_tuples = [(key, value) for value in values]
         dag.add_edges_from(edge_tuples)
 
     return dag
@@ -118,17 +113,17 @@ def dag_from_hashmap_of_lists(dictionary):
 
 def remove_postfix(text, postfix):
     if text.endswith(postfix):
-        return text[:-len(postfix)]
+        return text[: -len(postfix)]
     else:
         return text
 
 
 def convert_path_to_package(path):
-    return remove_postfix(path.replace(os.sep, '.'), '.py')
+    return remove_postfix(path.replace(os.sep, "."), ".py")
 
 
 def create_href(text):
-    return '#{}'.format(text.replace('_', '-').replace('.', '-'))
+    return "#{}".format(text.replace("_", "-").replace(".", "-"))
 
 
 def create_link(text):
@@ -138,7 +133,6 @@ def create_link(text):
 def create_labels(label_map):
     labels = ""
     for node, label in label_map.items():
-        labels += '"{}" [label="{}"] {};\n'.format(
-            node, label, create_link(node))
+        labels += '"{}" [label="{}"] {};\n'.format(node, label, create_link(node))
 
     return labels

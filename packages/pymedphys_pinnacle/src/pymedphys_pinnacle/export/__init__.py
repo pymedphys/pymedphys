@@ -54,14 +54,8 @@
    only be used for research purposes and not clinically.
 """
 
-from .pinnacle import (
-    PinnacleExport,
-)
+from .pinnacle import PinnacleExport
 
-from .pinnacle_plan import (
-    PinnaclePlan,
-)
+from .pinnacle_plan import PinnaclePlan
 
-from .pinnacle_image import (
-    PinnacleImage,
-)
+from .pinnacle_image import PinnacleImage

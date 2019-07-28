@@ -5,9 +5,10 @@ import zipfile
 import pytest
 
 HERE = os.path.abspath(__file__)
-USER_SCRIPTS = os.path.abspath(os.path.join(HERE, '..', '..', 'user-scripts'))
+USER_SCRIPTS = os.path.abspath(os.path.join(HERE, "..", "..", "user-scripts"))
 DEMO_ZIP = os.path.abspath(
-    os.path.join(HERE, '..', '..', '..', 'data', 'demo-files.zip'))
+    os.path.join(HERE, "..", "..", "..", "data", "demo-files.zip")
+)
 
 
 @pytest.fixture(scope="session")
@@ -28,13 +29,13 @@ def temp_workingdir(tmpdir_factory):
 
 def test_gamma_calc(temp_workingdir):
     os.chdir(temp_workingdir)
-    scriptpath = os.path.join(USER_SCRIPTS, 'gamma.py')
+    scriptpath = os.path.join(USER_SCRIPTS, "gamma.py")
 
     runpy.run_path(scriptpath)
 
 
 def test_mu_density_diff(temp_workingdir):
     os.chdir(temp_workingdir)
-    scriptpath = os.path.join(USER_SCRIPTS, 'mu-density-diff.py')
+    scriptpath = os.path.join(USER_SCRIPTS, "mu-density-diff.py")
 
     runpy.run_path(scriptpath)

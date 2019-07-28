@@ -62,13 +62,16 @@ def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
         ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
     if reshape:
-        warnings.warn((
-            '`dose_from_dataset` currently reshapes the dose grid. In a '
-            'future version this will no longer occur. To begin using this '
-            'function without the reshape pass the parameter `reshape=False` '
-            'when calling `dose_from_dataset`.'), UserWarning)
-        pixels = np.transpose(
-            ds.pixel_array, (1, 2, 0))
+        warnings.warn(
+            (
+                "`dose_from_dataset` currently reshapes the dose grid. In a "
+                "future version this will no longer occur. To begin using this "
+                "function without the reshape pass the parameter `reshape=False` "
+                "when calling `dose_from_dataset`."
+            ),
+            UserWarning,
+        )
+        pixels = np.transpose(ds.pixel_array, (1, 2, 0))
     else:
         pixels = ds.pixel_array
 
@@ -135,7 +138,7 @@ def nearest_negative(diff):
 
 
 def bounding_vals(test, values):
-    npvalues = np.array(values).astype('float')
+    npvalues = np.array(values).astype("float")
     diff = npvalues - test
     upper = nearest_negative(-diff)
     lower = nearest_negative(diff)
@@ -143,34 +146,33 @@ def bounding_vals(test, values):
     return values[lower], values[upper]
 
 
-def average_bounding_profiles(ds, depth_adjust, depth_lookup,
-                              averaging_distance=0):
+def average_bounding_profiles(ds, depth_adjust, depth_lookup, averaging_distance=0):
     inplane, crossplane, depth, _ = load_dicom_data(ds, depth_adjust)
 
     if depth_lookup in depth:
-        return extract_profiles(
-            ds, depth_adjust, depth_lookup, averaging_distance)
+        return extract_profiles(ds, depth_adjust, depth_lookup, averaging_distance)
     else:
-        print(
-            'Specific depth not found, interpolating from surrounding depths')
+        print("Specific depth not found, interpolating from surrounding depths")
         shallower, deeper = bounding_vals(depth_lookup, depth)
 
         _, shallower_inplane, _, shallower_crossplane = np.array(
-            extract_profiles(ds, depth_adjust, shallower, averaging_distance))
+            extract_profiles(ds, depth_adjust, shallower, averaging_distance)
+        )
 
         _, deeper_inplane, _, deeper_crossplane = np.array(
-            extract_profiles(ds, depth_adjust, deeper, averaging_distance))
+            extract_profiles(ds, depth_adjust, deeper, averaging_distance)
+        )
 
         depth_range = deeper - shallower
         shallower_weight = 1 - (depth_lookup - shallower) / depth_range
         deeper_weight = 1 - (deeper - depth_lookup) / depth_range
 
         inplane_dose = (
-            shallower_weight * shallower_inplane +
-            deeper_weight * deeper_inplane)
+            shallower_weight * shallower_inplane + deeper_weight * deeper_inplane
+        )
         crossplane_dose = (
-            shallower_weight * shallower_crossplane +
-            deeper_weight * deeper_crossplane)
+            shallower_weight * shallower_crossplane + deeper_weight * deeper_crossplane
+        )
 
         return inplane, inplane_dose, crossplane, crossplane_dose
 
@@ -191,8 +193,7 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
     xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
 
-    x_structure, y_structure, z_structure = pull_structure(
-        structure_name, dcm_struct)
+    x_structure, y_structure, z_structure = pull_structure(structure_name, dcm_struct)
     structure_z_values = np.array([item[0] for item in z_structure])
 
     mask = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
@@ -205,16 +206,17 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
 
             assert z_structure[structure_index][0] == z_dose[dose_index]
 
-            structure_polygon = path.Path([
-                (
-                    x_structure[structure_index][i],
-                    y_structure[structure_index][i]
-                )
-                for i in range(len(x_structure[structure_index]))
-            ])
+            structure_polygon = path.Path(
+                [
+                    (x_structure[structure_index][i], y_structure[structure_index][i])
+                    for i in range(len(x_structure[structure_index]))
+                ]
+            )
             mask[:, :, dose_index] = mask[:, :, dose_index] | (
                 structure_polygon.contains_points(points).reshape(
-                    len(y_dose), len(x_dose)))
+                    len(y_dose), len(x_dose)
+                )
+            )
 
     return mask
 
@@ -227,8 +229,7 @@ def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = find_dose_within_structure(
-        structure, dcm_struct, dcm_dose)
+    structure_dose_values = find_dose_within_structure(structure, dcm_struct, dcm_dose)
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]
     bin_edge = hist[1]
@@ -242,6 +243,6 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     percent_cumulative = cumulative / cumulative[0] * 100
 
     plt.plot(bin_mid, percent_cumulative, label=structure)
-    plt.title('DVH')
-    plt.xlabel('Dose (Gy)')
-    plt.ylabel('Relative Volume (%)')
+    plt.title("DVH")
+    plt.xlabel("Dose (Gy)")
+    plt.ylabel("Relative Volume (%)")
