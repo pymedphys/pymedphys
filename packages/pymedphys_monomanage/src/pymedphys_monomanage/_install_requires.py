@@ -1,5 +1,5 @@
 install_requires = [
     "networkx",
     "semver",
-    "stdlib_list"
+    "stdlib_list",
 ]
