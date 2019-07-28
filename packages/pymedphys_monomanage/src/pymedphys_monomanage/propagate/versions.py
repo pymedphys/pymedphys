@@ -27,8 +27,8 @@
 import os
 import json
 from glob import glob
+import subprocess
 import textwrap
-
 
 import semver
 
@@ -70,6 +70,9 @@ def main():
 
     with open(version_filepath, "w") as file:
         file.write(version_file_contents)
+
+    black_command = "python -m black {}".format(version_filepath)
+    subprocess.run(black_command, check=True)
 
     semver_parsed = semver.parse(semver_string)
 
