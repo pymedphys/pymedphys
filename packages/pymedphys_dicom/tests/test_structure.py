@@ -27,70 +27,52 @@
 import numpy as np
 
 from pymedphys_dicom.dicom import (
-    dicom_dataset_from_dict, pull_structure,
-    create_contour_sequence_dict, Structure)
+    dicom_dataset_from_dict,
+    pull_structure,
+    create_contour_sequence_dict,
+    Structure,
+)
 
 
 A_STRUCTURE = Structure(
-    'A Structure Name', 10, [
-        [
-            [0, 1, 2, 0],
-            [2, 3, 4, 2],
-            [5, 5, 5, 5]
-        ],
-        [
-            [0, 1, 2, 0],
-            [2, 3, 4, 2],
-            [6, 6, 6, 6]
-        ],
-        [
-            [0, 1, 2, 0],
-            [2, 3, 4, 2],
-            [7, 7, 7, 7]
-        ]
-    ]
+    "A Structure Name",
+    10,
+    [
+        [[0, 1, 2, 0], [2, 3, 4, 2], [5, 5, 5, 5]],
+        [[0, 1, 2, 0], [2, 3, 4, 2], [6, 6, 6, 6]],
+        [[0, 1, 2, 0], [2, 3, 4, 2], [7, 7, 7, 7]],
+    ],
 )
 
 ANOTHER_STRUCTURE = Structure(
-    'Another Structure Name', 1, [
-        [
-            [5, 6, 3, 5],
-            [7, 7, 5, 7],
-            [1, 1, 1, 1]
-        ],
-        [
-            [5, 6, 3, 5],
-            [7, 7, 5, 7],
-            [2, 2, 2, 2]
-        ],
-        [
-            [5, 6, 3, 5],
-            [7, 7, 5, 7],
-            [3, 3, 3, 3]
-        ]
-    ]
+    "Another Structure Name",
+    1,
+    [
+        [[5, 6, 3, 5], [7, 7, 5, 7], [1, 1, 1, 1]],
+        [[5, 6, 3, 5], [7, 7, 5, 7], [2, 2, 2, 2]],
+        [[5, 6, 3, 5], [7, 7, 5, 7], [3, 3, 3, 3]],
+    ],
 )
 
 
 def test_pull_structure():
-    dicom_structure = dicom_dataset_from_dict({
-        'StructureSetROISequence': [
-            {
-                'ROIName': A_STRUCTURE.name,
-                'ROINumber': A_STRUCTURE.number
-            },
-            {
-                'ROIName': ANOTHER_STRUCTURE.name,
-                'ROINumber': ANOTHER_STRUCTURE.number
-            }
-        ],
-        'ROIContourSequence': [
-            # Sequence purposely placed in reverse order to ensure ROI
-            # number is being used and not list order.
-            create_contour_sequence_dict(ANOTHER_STRUCTURE),
-            create_contour_sequence_dict(A_STRUCTURE)
-        ]
-    })
+    dicom_structure = dicom_dataset_from_dict(
+        {
+            "StructureSetROISequence": [
+                {"ROIName": A_STRUCTURE.name, "ROINumber": A_STRUCTURE.number},
+                {
+                    "ROIName": ANOTHER_STRUCTURE.name,
+                    "ROINumber": ANOTHER_STRUCTURE.number,
+                },
+            ],
+            "ROIContourSequence": [
+                # Sequence purposely placed in reverse order to ensure ROI
+                # number is being used and not list order.
+                create_contour_sequence_dict(ANOTHER_STRUCTURE),
+                create_contour_sequence_dict(A_STRUCTURE),
+            ],
+        }
+    )
 
     x, y, z = pull_structure(A_STRUCTURE.name, dicom_structure)
 

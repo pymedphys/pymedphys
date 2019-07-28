@@ -28,49 +28,66 @@ from ..implementation import gamma_shell, gamma_filter_numpy
 from ..utilities import calculate_pass_rate
 
 
-def gamma_dicom(dicom_dataset_ref, dicom_dataset_eval,
-                dose_percent_threshold, distance_mm_threshold,
-                **kwargs):
+def gamma_dicom(
+    dicom_dataset_ref,
+    dicom_dataset_eval,
+    dose_percent_threshold,
+    distance_mm_threshold,
+    **kwargs
+):
 
-    axes_reference, dose_reference = zyx_and_dose_from_dataset(
-        dicom_dataset_ref)
-    axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(
-        dicom_dataset_eval)
+    axes_reference, dose_reference = zyx_and_dose_from_dataset(dicom_dataset_ref)
+    axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(dicom_dataset_eval)
 
     gamma = gamma_shell(
-        axes_reference, dose_reference,
-        axes_evaluation, dose_evaluation,
-        dose_percent_threshold, distance_mm_threshold,
-        **kwargs)
+        axes_reference,
+        dose_reference,
+        axes_evaluation,
+        dose_evaluation,
+        dose_percent_threshold,
+        distance_mm_threshold,
+        **kwargs
+    )
 
     return gamma
 
 
-def gamma_percent_pass(dcm_ref_filepath, dcm_eval_filepath,
-                       dose_percent_threshold, distance_mm_threshold,
-                       method='shell', **kwargs):
+def gamma_percent_pass(
+    dcm_ref_filepath,
+    dcm_eval_filepath,
+    dose_percent_threshold,
+    distance_mm_threshold,
+    method="shell",
+    **kwargs
+):
 
-    axes_reference, dose_reference = zyx_and_dose_from_dataset(
-        dcm_ref_filepath)
-    axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(
-        dcm_eval_filepath)
+    axes_reference, dose_reference = zyx_and_dose_from_dataset(dcm_ref_filepath)
+    axes_evaluation, dose_evaluation = zyx_and_dose_from_dataset(dcm_eval_filepath)
 
-    if method == 'shell':
+    if method == "shell":
         gamma = gamma_shell(
-            axes_reference, dose_reference,
-            axes_evaluation, dose_evaluation,
-            dose_percent_threshold, distance_mm_threshold,
-            **kwargs)
+            axes_reference,
+            dose_reference,
+            axes_evaluation,
+            dose_evaluation,
+            dose_percent_threshold,
+            distance_mm_threshold,
+            **kwargs
+        )
 
         percent_pass = calculate_pass_rate(gamma)
 
-    elif method == 'filter':
+    elif method == "filter":
         percent_pass = gamma_filter_numpy(
-            axes_reference, dose_reference,
-            axes_evaluation, dose_evaluation,
-            dose_percent_threshold, distance_mm_threshold,
-            **kwargs)
+            axes_reference,
+            dose_reference,
+            axes_evaluation,
+            dose_evaluation,
+            dose_percent_threshold,
+            distance_mm_threshold,
+            **kwargs
+        )
     else:
-        raise ValueError('method should be either `shell` or `filter`')
+        raise ValueError("method should be either `shell` or `filter`")
 
     return percent_pass

@@ -12,7 +12,7 @@ class PylintLinter(object):
     last_diags = collections.defaultdict(list)
 
     @classmethod
-    def lint(cls, document, is_saved, flags=''):
+    def lint(cls, document, is_saved, flags=""):
         """Plugin interface to pyls linter.
 
         Args:
@@ -53,11 +53,9 @@ class PylintLinter(object):
         # not handle Windows paths (it will try to perform escaping). Turn
         # backslashes into forward slashes first to avoid this issue.
         path = document.path
-        if sys.platform.startswith('win'):
-            path = path.replace('\\', '/')
-        out, _err = py_run(
-            '{} -f json {}'.format(path, flags), return_std=True
-        )
+        if sys.platform.startswith("win"):
+            path = path.replace("\\", "/")
+        out, _err = py_run("{} -f json {}".format(path, flags), return_std=True)
 
         # pylint prints nothing rather than [] when there are no diagnostics.
         # json.loads will not parse an empty string, so just return.
@@ -90,43 +88,39 @@ class PylintLinter(object):
         diagnostics = []
         for diag in json.loads(json_str):
             # pylint lines index from 1, pyls lines index from 0
-            line = diag['line'] - 1
+            line = diag["line"] - 1
             # But both index columns from 0
-            col = diag['column']
+            col = diag["column"]
 
             # It's possible that we're linting an empty file. Even an empty
             # file might fail linting if it isn't named properly.
             end_col = len(document.lines[line]) if document.lines else 0
 
             err_range = {
-                'start': {
-                    'line': line,
-                    'character': col,
-                },
-                'end': {
-                    'line': line,
-                    'character': end_col,
-                },
+                "start": {"line": line, "character": col},
+                "end": {"line": line, "character": end_col},
             }
 
-            if diag['type'] == 'convention':
+            if diag["type"] == "convention":
                 severity = lsp.DiagnosticSeverity.Information
-            elif diag['type'] == 'error':
+            elif diag["type"] == "error":
                 severity = lsp.DiagnosticSeverity.Error
-            elif diag['type'] == 'fatal':
+            elif diag["type"] == "fatal":
                 severity = lsp.DiagnosticSeverity.Error
-            elif diag['type'] == 'refactor':
+            elif diag["type"] == "refactor":
                 severity = lsp.DiagnosticSeverity.Hint
-            elif diag['type'] == 'warning':
+            elif diag["type"] == "warning":
                 severity = lsp.DiagnosticSeverity.Warning
 
-            diagnostics.append({
-                'source': 'pylint',
-                'range': err_range,
-                'message': '[{}] {}'.format(diag['symbol'], diag['message']),
-                'severity': severity,
-                'code': diag['message-id']
-            })
+            diagnostics.append(
+                {
+                    "source": "pylint",
+                    "range": err_range,
+                    "message": "[{}] {}".format(diag["symbol"], diag["message"]),
+                    "severity": severity,
+                    "code": diag["message-id"],
+                }
+            )
         cls.last_diags[document.path] = diagnostics
         return diagnostics
 
