@@ -134,8 +134,9 @@ class PinnacleImage:
 
         if not self._image_info:
             path_image_info = os.path.join(
-                self._path, "ImageSet_"+str(self._image['ImageSetID'])+".ImageInfo")
-            self.logger.debug('Reading image data from: ' + path_image_info)
+                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".ImageInfo"
+            )
+            self.logger.debug("Reading image data from: " + path_image_info)
             self._image_info = pinn_to_dict(path_image_info)
 
         return self._image_info
@@ -152,8 +153,9 @@ class PinnacleImage:
 
         if not self._image_header:
             path_image_header = os.path.join(
-                self._path, "ImageSet_"+str(self._image['ImageSetID'])+".header")
-            self.logger.debug('Reading image data from: ' + path_image_header)
+                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".header"
+            )
+            self.logger.debug("Reading image data from: " + path_image_header)
             self._image_header = {}
             with open(path_image_header, "rt") as f:
                 for line in f:
@@ -163,8 +165,9 @@ class PinnacleImage:
                         parts = line.split(" : ")
 
                     if len(parts) > 1:
-                        self._image_header[parts[0].strip()] = parts[1].replace(
-                            ';', '').replace('\n', '')
+                        self._image_header[parts[0].strip()] = (
+                            parts[1].replace(";", "").replace("\n", "")
+                        )
 
         return self._image_header
 
@@ -180,12 +183,13 @@ class PinnacleImage:
 
         if not self._image_set:
             path_image_set = os.path.join(
-                self._path, "ImageSet_"+str(self._image['ImageSetID'])+".ImageSet")
-            self.logger.debug('Reading image data from: ' + path_image_set)
+                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".ImageSet"
+            )
+            self.logger.debug("Reading image data from: " + path_image_set)
             self._image_set = pinn_to_dict(path_image_set)
 
-            parts = self._image_set['ScanTimeFromScanner'].split(' ')
-            self._image_set['scan_date'] = parts[0].replace('-', '')
-            self._image_set['scan_time'] = parts[1].replace(':', '')
+            parts = self._image_set["ScanTimeFromScanner"].split(" ")
+            self._image_set["scan_date"] = parts[0].replace("-", "")
+            self._image_set["scan_time"] = parts[1].replace(":", "")
 
         return self._image_set

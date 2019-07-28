@@ -30,13 +30,11 @@ import numpy as np
 def pcolormesh_grid(x, y, grid_resolution=None):
     if grid_resolution is None:
         diffs = np.hstack([np.diff(x), np.diff(y)])
-        assert np.all(np.abs(diffs - diffs[0]) < 10**-12)
+        assert np.all(np.abs(diffs - diffs[0]) < 10 ** -12)
 
         grid_resolution = diffs[0]
 
-    new_x = np.concatenate(
-        [x - grid_resolution/2, [x[-1] + grid_resolution/2]])
-    new_y = np.concatenate(
-        [y - grid_resolution/2, [y[-1] + grid_resolution/2]])
+    new_x = np.concatenate([x - grid_resolution / 2, [x[-1] + grid_resolution / 2]])
+    new_y = np.concatenate([y - grid_resolution / 2, [y[-1] + grid_resolution / 2]])
 
     return new_x, new_y

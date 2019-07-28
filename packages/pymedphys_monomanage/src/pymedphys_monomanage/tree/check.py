@@ -36,7 +36,7 @@ from .build import PackageTree
 def serialise_imports(imports):
     new_imports = {}
     for module_path_raw, values in imports.items():
-        module_path = module_path_raw.replace(os.sep, '/')
+        module_path = module_path_raw.replace(os.sep, "/")
         new_imports[module_path] = {}
 
         for where, a_set in values.items():
@@ -46,8 +46,8 @@ def serialise_imports(imports):
 
 
 def is_imports_json_up_to_date(directory):
-    packages = os.path.join(directory, 'packages')
-    imports_json = os.path.join(directory, 'imports.json')
+    packages = os.path.join(directory, "packages")
+    imports_json = os.path.join(directory, "imports.json")
 
     with open(imports_json) as file:
         data = json.load(file)
@@ -90,14 +90,15 @@ def commit_hook(directory):
             "    \033[1;34;1mPlease rerun your commit.\033[0;0m\n"
             "    To prevent this message in the future run `yarn tree` "
             "whenever you change the dependency structure of "
-            "PyMedPhys.\n")
+            "PyMedPhys.\n"
+        )
 
         sys.exit(1)
 
 
 def update_imports_json(directory):
-    packages = os.path.join(directory, 'packages')
-    imports_json = os.path.join(directory, 'imports.json')
+    packages = os.path.join(directory, "packages")
+    imports_json = os.path.join(directory, "imports.json")
 
-    with open(imports_json, 'w') as file:
+    with open(imports_json, "w") as file:
         file.write(serialise_imports(PackageTree(packages).imports))

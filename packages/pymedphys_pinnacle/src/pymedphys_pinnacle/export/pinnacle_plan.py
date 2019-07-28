@@ -101,7 +101,7 @@ class PinnaclePlan:
         self._struct_inst_uid = None  # UID for RTStruct instance
 
         for image in pinnacle.images:
-            if image.image['ImageSetID'] == self.plan_info["PrimaryCTImageSetID"]:
+            if image.image["ImageSetID"] == self.plan_info["PrimaryCTImageSetID"]:
                 self._primary_image = image
 
     @property
@@ -160,7 +160,7 @@ class PinnaclePlan:
 
         if not self._machine_info:
             path_machine = os.path.join(self._path, "plan.Pinnacle.Machines")
-            self.logger.debug('Reading machine data from: ' + path_machine)
+            self.logger.debug("Reading machine data from: " + path_machine)
             self._machine_info = pinn_to_dict(path_machine)
 
         return self._machine_info
@@ -177,18 +177,17 @@ class PinnaclePlan:
 
         if not self._trials:
             path_trial = os.path.join(self._path, "plan.Trial")
-            self.logger.debug('Reading trial data from: ' + path_trial)
+            self.logger.debug("Reading trial data from: " + path_trial)
             self._trials = pinn_to_dict(path_trial)
             if isinstance(self._trials, dict):
-                self._trials = [self._trials['Trial']]
+                self._trials = [self._trials["Trial"]]
 
             # Select the first trial by default
             if not self._trial_info:
                 self._trial_info = self._trials[0]
 
-            self.logger.debug('Number of trials read: ' +
-                              str(len(self._trials)))
-            self.logger.debug('Active Trial: ' + self._trial_info['Name'])
+            self.logger.debug("Number of trials read: " + str(len(self._trials)))
+            self.logger.debug("Active Trial: " + self._trial_info["Name"])
 
         return self._trials
 
@@ -207,9 +206,9 @@ class PinnaclePlan:
 
         if isinstance(trial_name, str):
             for trial in self._trials:
-                if trial['Name'] == trial_name:
+                if trial["Name"] == trial_name:
                     self._trial_info = trial
-                    self.logger.info('Active Trial set: ' + trial_name)
+                    self.logger.info("Active Trial set: " + trial_name)
                     return True
 
         return False
@@ -254,11 +253,11 @@ class PinnaclePlan:
 
         if not self._points:
             path_points = os.path.join(self._path, "plan.Points")
-            self.logger.debug('Reading points data from: ' + path_points)
+            self.logger.debug("Reading points data from: " + path_points)
             self._points = pinn_to_dict(path_points)
 
             if type(self._points) == dict:
-                self._points = [self._points['Poi']]
+                self._points = [self._points["Poi"]]
 
             if self._points == None:
                 self._points = []
@@ -277,7 +276,8 @@ class PinnaclePlan:
 
         if not self._patient_setup:
             self._patient_setup = pinn_to_dict(
-                os.path.join(self._path, "plan.PatientSetup"))
+                os.path.join(self._path, "plan.PatientSetup")
+            )
 
         pat_pos = ""
 
@@ -290,9 +290,15 @@ class PinnaclePlan:
             pat_pos = pat_pos + "S"
         elif "prone" in self._patient_setup["Position"]:
             pat_pos = pat_pos + "P"
-        elif "decubitus right" in self._patient_setup["Position"] or "Decuibitus Right" in self._patient_setup["Position"]:
+        elif (
+            "decubitus right" in self._patient_setup["Position"]
+            or "Decuibitus Right" in self._patient_setup["Position"]
+        ):
             pat_pos = pat_pos + "DR"
-        elif "decubitus left" in self._patient_setup["Position"] or "Decuibitus Left" in self._patient_setup["Position"]:
+        elif (
+            "decubitus left" in self._patient_setup["Position"]
+            or "Decuibitus Left" in self._patient_setup["Position"]
+        ):
             pat_pos = pat_pos + "DL"
 
         return pat_pos
@@ -328,7 +334,7 @@ class PinnaclePlan:
 
         return False
 
-    def generate_uids(self, uid_type='HASH'):
+    def generate_uids(self, uid_type="HASH"):
         """Generates UIDs to be used for exporting this plan.
 
         Parameters
@@ -340,28 +346,29 @@ class PinnaclePlan:
         """
 
         entropy_srcs = None
-        if uid_type == 'HASH':
+        if uid_type == "HASH":
             entropy_srcs = []
-            entropy_srcs.append(self._pinnacle.patient_info[
-                                'MedicalRecordNumber'])
-            entropy_srcs.append(self.plan_info['PlanName'])
-            entropy_srcs.append(self.trial_info['Name'])
-            entropy_srcs.append(self.trial_info[
-                                'ObjectVersion']['WriteTimeStamp'])
+            entropy_srcs.append(self._pinnacle.patient_info["MedicalRecordNumber"])
+            entropy_srcs.append(self.plan_info["PlanName"])
+            entropy_srcs.append(self.trial_info["Name"])
+            entropy_srcs.append(self.trial_info["ObjectVersion"]["WriteTimeStamp"])
 
         RTPLAN_prefix = self._uid_prefix + "1."
         self._plan_inst_uid = pydicom.uid.generate_uid(
-            prefix=RTPLAN_prefix, entropy_srcs=entropy_srcs)
+            prefix=RTPLAN_prefix, entropy_srcs=entropy_srcs
+        )
         RTDOSE_prefix = self._uid_prefix + "2."
         self._dose_inst_uid = pydicom.uid.generate_uid(
-            prefix=RTDOSE_prefix, entropy_srcs=entropy_srcs)
+            prefix=RTDOSE_prefix, entropy_srcs=entropy_srcs
+        )
         RTSTRUCT_prefix = self._uid_prefix + "3."
         self._struct_inst_uid = pydicom.uid.generate_uid(
-            prefix=RTSTRUCT_prefix, entropy_srcs=entropy_srcs)
+            prefix=RTSTRUCT_prefix, entropy_srcs=entropy_srcs
+        )
 
-        self.logger.debug('Plan Instance UID: ' + self._plan_inst_uid)
-        self.logger.debug('Dose Instance UID: ' + self._dose_inst_uid)
-        self.logger.debug('Struct Instance UID: ' + self._struct_inst_uid)
+        self.logger.debug("Plan Instance UID: " + self._plan_inst_uid)
+        self.logger.debug("Dose Instance UID: " + self._dose_inst_uid)
+        self.logger.debug("Struct Instance UID: " + self._struct_inst_uid)
 
     @property
     def plan_inst_uid(self):
@@ -425,15 +432,24 @@ class PinnaclePlan:
 
         image_header = self.primary_image.image_header
 
-        refpoint = [point['XCoord']*10, point['YCoord']*10, point['ZCoord']*10]
-        if image_header["patient_position"] == 'HFP' or image_header["patient_position"] == 'FFS':
+        refpoint = [point["XCoord"] * 10, point["YCoord"] * 10, point["ZCoord"] * 10]
+        if (
+            image_header["patient_position"] == "HFP"
+            or image_header["patient_position"] == "FFS"
+        ):
             refpoint[0] = -refpoint[0]
-        if image_header["patient_position"] == 'HFS' or image_header["patient_position"] == 'FFS':
+        if (
+            image_header["patient_position"] == "HFS"
+            or image_header["patient_position"] == "FFS"
+        ):
             refpoint[1] = -(refpoint[1])
-        if image_header["patient_position"] == 'HFS' or image_header["patient_position"] == 'HFP':
+        if (
+            image_header["patient_position"] == "HFS"
+            or image_header["patient_position"] == "HFP"
+        ):
             refpoint[2] = -(refpoint[2])
 
-        point['refpoint'] = refpoint
+        point["refpoint"] = refpoint
 
         refpoint[0] = round(refpoint[0], 5)
         refpoint[1] = round(refpoint[1], 5)

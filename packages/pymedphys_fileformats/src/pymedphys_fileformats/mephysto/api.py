@@ -28,22 +28,22 @@ import os
 
 import numpy as np
 
-from .core import (
-    pull_mephysto_item, pull_mephysto_number, pull_mephysto_data)
+from .core import pull_mephysto_item, pull_mephysto_number, pull_mephysto_data
 from .mcc2csv import file_output
 
 
 def load_single_item(filepath, index):
-    distance, relative_dose, scan_curvetype, scan_depth = load_mephysto(
-        filepath)
+    distance, relative_dose, scan_curvetype, scan_depth = load_mephysto(filepath)
 
     return (
-        distance[index], relative_dose[index],
-        scan_curvetype[index], scan_depth[index])
+        distance[index],
+        relative_dose[index],
+        scan_curvetype[index],
+        scan_depth[index],
+    )
 
 
-def load_mephysto(filepath, output_to_file=False, output_directory=None,
-                  sort=True):
+def load_mephysto(filepath, output_to_file=False, output_directory=None, sort=True):
     """Input the filepath of a mephysto .mcc file and return the data of the
     scans in four lists, distance, relative_dose, scan_curvetype, and
     scan_depth. Each respective element in these lists corresponds to an
@@ -55,8 +55,8 @@ def load_mephysto(filepath, output_to_file=False, output_directory=None,
 
     # Use the functions defined within mccread.py to pull the desired data
     distance, relative_dose = pull_mephysto_data(file_contents)
-    scan_curvetype = pull_mephysto_item('SCAN_CURVETYPE', file_contents)
-    scan_depth = pull_mephysto_number('SCAN_DEPTH', file_contents)
+    scan_curvetype = pull_mephysto_item("SCAN_CURVETYPE", file_contents)
+    scan_depth = pull_mephysto_number("SCAN_DEPTH", file_contents)
 
     # Convert python lists into numpy arrays for easier use
     distance = np.array(distance)
@@ -70,11 +70,13 @@ def load_mephysto(filepath, output_to_file=False, output_directory=None,
     if sort:
         # Find the references for where the scan type is the relevant type
         # and then use the "hstack" function to join the references together.
-        sort_ref = np.hstack([
-            np.where(scan_curvetype == 'PDD')[0],  # reference of PDDs
-            np.where(scan_curvetype == 'INPLANE_PROFILE')[0],  # inplane ref
-            np.where(scan_curvetype == 'CROSSPLANE_PROFILE')[0]  # crossplane
-        ])
+        sort_ref = np.hstack(
+            [
+                np.where(scan_curvetype == "PDD")[0],  # reference of PDDs
+                np.where(scan_curvetype == "INPLANE_PROFILE")[0],  # inplane ref
+                np.where(scan_curvetype == "CROSSPLANE_PROFILE")[0],  # crossplane
+            ]
+        )
 
         # Confirm that the length of sort_ref is the same as scan_curvetype.
         # This will be false if there exists an unexpected scan_curvetype.
@@ -94,8 +96,7 @@ def load_mephysto(filepath, output_to_file=False, output_directory=None,
             # Define output directory as a mephysto folder
             filepath_directory = os.path.dirname(filepath)
             filename = os.path.splitext(os.path.basename(filepath))[0]
-            output_directory = os.path.join(
-                filepath_directory, filename)
+            output_directory = os.path.join(filepath_directory, filename)
 
         # If the output directory does not exist create it
         if not os.path.exists(output_directory):
@@ -103,7 +104,7 @@ def load_mephysto(filepath, output_to_file=False, output_directory=None,
 
         # Call the file_output function within csvoutput.py
         file_output(
-            output_directory, distance, relative_dose,
-            scan_curvetype, scan_depth)
+            output_directory, distance, relative_dose, scan_curvetype, scan_depth
+        )
 
     return distance, relative_dose, scan_curvetype, scan_depth
