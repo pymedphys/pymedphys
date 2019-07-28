@@ -29,8 +29,9 @@ import json
 from glob import glob
 import textwrap
 
-import black
 import semver
+
+from ..clean import blacken_str
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(os.getcwd())))
 
@@ -63,9 +64,7 @@ def main():
         )
     )
 
-    version_file_contents_blackened = black.format_str(
-        version_file_contents, mode=black.FileMode()
-    )
+    version_file_contents_blackened = blacken_str(version_file_contents)
 
     with open(version_filepath, "w") as file:
         file.write(version_file_contents_blackened)
