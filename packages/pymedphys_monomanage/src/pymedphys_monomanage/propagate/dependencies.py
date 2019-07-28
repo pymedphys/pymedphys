@@ -98,8 +98,12 @@ def main():
         """
         ).format(json.dumps(install_requires, indent=4))
 
+        install_requires_contents_black_compliant = (
+            install_requires_contents[:-3] + ",\n]\n"
+        )
+
         with open(install_requires_filepath, "w") as file:
-            file.write(install_requires_contents)
+            file.write(install_requires_contents_black_compliant)
 
     for package, dependency_store in tree.items():
         internal_dependencies = {
