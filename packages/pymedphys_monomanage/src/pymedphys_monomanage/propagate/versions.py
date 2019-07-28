@@ -50,6 +50,11 @@ def main():
         "".join(loaded_version_info[3::])
     ]  # type: ignore
 
+    version_info_str = json.dumps(
+        [int(number) for number in loaded_version_info[0:3]]
+        + ["".join(loaded_version_info[3::])]
+    )  # type: ignore
+
     __version__ = ".".join(map(str, version_info[:3])) + "".join(
         version_info[3:]
     )  # type: ignore
@@ -59,7 +64,7 @@ def main():
         version_info = {}
         __version__ = "{}"
     """.format(
-            version_info, __version__
+            version_info_str, __version__
         )
     )
 
