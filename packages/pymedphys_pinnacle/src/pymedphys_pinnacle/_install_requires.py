@@ -1,1 +1,5 @@
-install_requires = ["PyYAML", "numpy >= 1.12", "pydicom"]
+install_requires = [
+    "PyYAML",
+    "numpy >= 1.12",
+    "pydicom"
+]
