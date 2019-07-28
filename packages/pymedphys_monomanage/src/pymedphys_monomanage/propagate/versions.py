@@ -63,7 +63,9 @@ def main():
         )
     )
 
-    version_file_contents_blackened = black.format_str(version_file_contents)
+    version_file_contents_blackened = black.format_str(
+        version_file_contents, mode=black.FileMode()
+    )
 
     with open(version_filepath, "w") as file:
         file.write(version_file_contents_blackened)

@@ -101,7 +101,7 @@ def main():
         ).format(json.dumps(install_requires, indent=4))
 
         install_requires_contents_blackened = black.format_str(
-            install_requires_contents
+            install_requires_contents, mode=black.FileMode()
         )
 
         with open(install_requires_filepath, "w") as file:
