@@ -57,8 +57,8 @@ import yaml
 def pinn_to_dict(filename):
 
     result = None
-    pinn_yaml = ''
-    with io.open(filename, "r", encoding='ISO-8859-1', errors='ignore') as fp:
+    pinn_yaml = ""
+    with io.open(filename, "r", encoding="ISO-8859-1", errors="ignore") as fp:
         data = fp.readlines()
 
         # Split data into smaller chunks, if first line appears more than one
@@ -70,14 +70,14 @@ def pinn_to_dict(filename):
 
             next_index = -1
 
-            if i+1 < len(indices):
-                next_index = indices[i+1]
+            if i + 1 < len(indices):
+                next_index = indices[i + 1]
 
                 # If there are multiple segments, return list, otherwise just the dict
                 if not type(result) == list:
                     result = []
 
-            split_data = data[indices[i]:next_index]
+            split_data = data[indices[i] : next_index]
 
             if type(result) == list:
                 d = yaml.safe_load(convert_to_yaml(split_data))
@@ -90,7 +90,7 @@ def pinn_to_dict(filename):
 
 def convert_to_yaml(data):
 
-    out = ''
+    out = ""
     listIndents = []
     in_comment = False
     c = 0
@@ -123,7 +123,7 @@ def convert_to_yaml(data):
         # If this line is one indentation in from a start of list,
         # add '-' for YAML sequence
         if thisIndent - 2 in listIndents:
-            line = ' ' * thisIndent + '- ' + re.sub("^\s*", "", line)
+            line = " " * thisIndent + "- " + re.sub("^\s*", "", line)
 
         # Replace ={ and = with : for assignment
         line = re.sub(" ={", " :", line)
@@ -132,7 +132,7 @@ def convert_to_yaml(data):
         # Remove semicolons at end of lines
         line = re.sub(";$", "", line)
 
-        out += '' + line
+        out += "" + line
         c += 1
 
     return out
@@ -140,6 +140,6 @@ def convert_to_yaml(data):
 
 def pinn_to_yaml(filename):
 
-    with io.open(filename, "r", encoding='ISO-8859-1', errors='ignore') as fp:
+    with io.open(filename, "r", encoding="ISO-8859-1", errors="ignore") as fp:
         data = fp.readlines()
         return convert_to_yaml(data)

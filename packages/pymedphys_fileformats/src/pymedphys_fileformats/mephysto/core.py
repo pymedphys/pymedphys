@@ -37,20 +37,29 @@ def find_scan_index(file_contents):
     # Demo of ignoring "BEGIN_SCAN_DATA" -- https://regex101.com/r/lR4pS2/4
     # Basic guide to regular expressions (regex):
     #    http://www.regular-expressions.info/quickstart.html
-    begin_scan_index = np.array([
-        i for i, item in enumerate(file_contents)
-        if re.search(r'^\tBEGIN_SCAN\s\s\d+$', item)]).astype(int)
+    begin_scan_index = np.array(
+        [
+            i
+            for i, item in enumerate(file_contents)
+            if re.search(r"^\tBEGIN_SCAN\s\s\d+$", item)
+        ]
+    ).astype(int)
 
     # Find the positions of all END_SCAN
     # Regex demo here -- https://regex101.com/r/lR4pS2/3
-    end_scan_index = np.array([
-        i for i, item in enumerate(file_contents)
-        if re.search(r'^\tEND_SCAN\s\s\d+$', item)]).astype(int)
+    end_scan_index = np.array(
+        [
+            i
+            for i, item in enumerate(file_contents)
+            if re.search(r"^\tEND_SCAN\s\s\d+$", item)
+        ]
+    ).astype(int)
 
     # Convert the indicies into the range type allowing for easy looping
     scan_index = [
-        range(begin_scan_index[i]+1, end_scan_index[i])
-        for i in range(len(begin_scan_index))]
+        range(begin_scan_index[i] + 1, end_scan_index[i])
+        for i in range(len(begin_scan_index))
+    ]
 
     return scan_index
 
@@ -62,20 +71,29 @@ def find_data_index(file_contents):
     """
     # Find the positions of BEGIN_DATA
     # Demo of match -- https://regex101.com/r/lR4pS2/5
-    begin_data_index = np.array([
-        i for i, item in enumerate(file_contents)
-        if re.search(r'^\t\tBEGIN_DATA$', item)]).astype(int)
+    begin_data_index = np.array(
+        [
+            i
+            for i, item in enumerate(file_contents)
+            if re.search(r"^\t\tBEGIN_DATA$", item)
+        ]
+    ).astype(int)
 
     # Find the positions of END_DATA
     # Demo of match -- https://regex101.com/r/lR4pS2/6
-    end_data_index = np.array([
-        i for i, item in enumerate(file_contents)
-        if re.search(r'^\t\tEND_DATA$', item)]).astype(int)
+    end_data_index = np.array(
+        [
+            i
+            for i, item in enumerate(file_contents)
+            if re.search(r"^\t\tEND_DATA$", item)
+        ]
+    ).astype(int)
 
     # Convert the indicies into the range type allowing for easy looping
     data_index = [
-        range(begin_data_index[i]+1, end_data_index[i])
-        for i in range(len(begin_data_index))]
+        range(begin_data_index[i] + 1, end_data_index[i])
+        for i in range(len(begin_data_index))
+    ]
 
     return data_index
 
@@ -95,17 +113,21 @@ def pull_mephysto_item(string, file_contents):
     # Loop over each scan index searching for requested parameter
     for index in scan_index:
         # See if any parameters match within this scan
-        match = np.array([
-            re.match(r'^\t\t' + string_test + '=(.*)$', item) is not None
-            for item in file_contents[index]])
+        match = np.array(
+            [
+                re.match(r"^\t\t" + string_test + "=(.*)$", item) is not None
+                for item in file_contents[index]
+            ]
+        )
 
         # If there is a single match then return the result
         if np.sum(match) == 1:
             relevant_line = file_contents[index][match][0]
             # Return the value that is after the equal sign
             # Example -- https://regex101.com/r/lR4pS2/7
-            result.append(re.search(
-                r'^\t\t' + string_test + '=(.*)$', relevant_line).group(1))
+            result.append(
+                re.search(r"^\t\t" + string_test + "=(.*)$", relevant_line).group(1)
+            )
 
         # If there is no matches return np.nan
         elif np.sum(match) == 0:
@@ -138,30 +160,37 @@ def pull_mephysto_data(file_contents):
     # Confirm that each data index is within the expected scan index. Raise an
     # error if it is not.
     for i in range(len(scan_index)):
-        assert (
-            (scan_index[i][0] < data_index[i][0]) &
-            (scan_index[i][-1] > data_index[i][-1])
+        assert (scan_index[i][0] < data_index[i][0]) & (
+            scan_index[i][-1] > data_index[i][-1]
         )
 
     distance = []
     # Loop through the data index and return all of the first column
     for index in data_index:
         # Demo of regex -- https://regex101.com/r/lR4pS2/10
-        distance.append(np.array([
-            re.search(
-                r'^\t\t\t([-+]?\d+\.\d+)\t\t(\d+\.\d+E[-+]?\d+)', item
-            ).group(1)
-            for item in file_contents[index]
-        ]).astype(float))
+        distance.append(
+            np.array(
+                [
+                    re.search(
+                        r"^\t\t\t([-+]?\d+\.\d+)\t\t(\d+\.\d+E[-+]?\d+)", item
+                    ).group(1)
+                    for item in file_contents[index]
+                ]
+            ).astype(float)
+        )
 
     relative_dose = []
     # Loop through the data index and return all of the second column
     for index in data_index:
-        relative_dose.append(np.array([
-            re.search(
-                r'^\t\t\t([-+]?\d+\.\d+)\t\t(\d+\.\d+E[-+]?\d+)', item
-            ).group(2)
-            for item in file_contents[index]
-        ]).astype(float))
+        relative_dose.append(
+            np.array(
+                [
+                    re.search(
+                        r"^\t\t\t([-+]?\d+\.\d+)\t\t(\d+\.\d+E[-+]?\d+)", item
+                    ).group(2)
+                    for item in file_contents[index]
+                ]
+            ).astype(float)
+        )
 
     return distance, relative_dose

@@ -55,13 +55,10 @@ from .anonymise import (
     is_anonymised_directory,
     BASELINE_KEYWORD_VR_DICT,
     IDENTIFYING_KEYWORDS,
-    label_dicom_filepath_as_anonymised
+    label_dicom_filepath_as_anonymised,
 )
 
-from .coords import (
-    coords_from_xyz_axes,
-    xyz_axes_from_dataset
-)
+from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
 
 from .dose import (
     create_dvh,
@@ -71,7 +68,7 @@ from .dose import (
     extract_profiles,
     load_dicom_data,
     axes_and_dose_from_dicom,
-    zyx_and_dose_from_dataset
+    zyx_and_dose_from_dataset,
 )
 
 from .create import dicom_dataset_from_dict
@@ -81,5 +78,8 @@ from .structure import pull_structure, create_contour_sequence_dict, Structure
 from .constants import BaselineDicomDictionary
 from .collection import DicomBase, DicomDose
 from .header import (
-    adjust_machine_name, adjust_rel_elec_density, adjust_RED_by_structure_name,
-    RED_adjustment_map_from_structure_names)
+    adjust_machine_name,
+    adjust_rel_elec_density,
+    adjust_RED_by_structure_name,
+    RED_adjustment_map_from_structure_names,
+)

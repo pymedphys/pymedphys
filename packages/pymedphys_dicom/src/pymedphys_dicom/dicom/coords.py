@@ -47,8 +47,7 @@ def coords_from_xyz_axes(xyz_axes):
         `z` coordinates of the corresponding grid (e.g. DICOM dataset's
         pixel array) from which the original axes were extracted.
     """
-    ZZ, YY, XX = np.meshgrid(
-        xyz_axes[2], xyz_axes[1], xyz_axes[0], indexing='ij')
+    ZZ, YY, XX = np.meshgrid(xyz_axes[2], xyz_axes[1], xyz_axes[0], indexing="ij")
 
     coords = np.array((XX, YY, ZZ), dtype=np.float64)
     return coords
@@ -123,13 +122,15 @@ def xyz_axes_from_dataset(ds, coord_system="DICOM"):
     position = np.array(ds.ImagePositionPatient)
     orientation = np.array(ds.ImageOrientationPatient)
 
-    if not (np.array_equal(np.abs(orientation),
-                           np.array([1, 0, 0, 0, 1, 0]))
-            or np.array_equal(np.abs(orientation),
-                              np.array([0, 1, 0, 1, 0, 0]))):
-        raise ValueError("Dose grid orientation is not supported. Dose "
-                         "grid slices must be aligned along the "
-                         "superoinferior axis of patient.")
+    if not (
+        np.array_equal(np.abs(orientation), np.array([1, 0, 0, 0, 1, 0]))
+        or np.array_equal(np.abs(orientation), np.array([0, 1, 0, 1, 0, 0]))
+    ):
+        raise ValueError(
+            "Dose grid orientation is not supported. Dose "
+            "grid slices must be aligned along the "
+            "superoinferior axis of patient."
+        )
 
     is_decubitis = orientation[0] == 0
     is_head_first = _orientation_is_head_first(orientation, is_decubitis)

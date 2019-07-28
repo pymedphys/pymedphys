@@ -31,24 +31,20 @@ import pydicom
 import xlwings as xw
 
 from pymedphys_utilities.utilities import wildcard_file_resolution
-from pymedphys_dicom.dicom import (
-    extract_depth_dose, extract_profiles, load_dicom_data)
+from pymedphys_dicom.dicom import extract_depth_dose, extract_profiles, load_dicom_data
 
 
 def arbitrary_profile_from_dicom_dose(
-        ds,
-        depth_adjust,
-        inplane_ref,
-        crossplane_ref,
-        depth_ref):
+    ds, depth_adjust, inplane_ref, crossplane_ref, depth_ref
+):
     inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
 
-    interpolation_function = RegularGridInterpolator(
-        (depth, crossplane, inplane), dose)
+    interpolation_function = RegularGridInterpolator((depth, crossplane, inplane), dose)
     points = [
         (a_depth_val, a_crossplane_val, an_inplane_val)
-        for a_depth_val, a_crossplane_val, an_inplane_val
-        in zip(depth_ref, crossplane_ref, inplane_ref)
+        for a_depth_val, a_crossplane_val, an_inplane_val in zip(
+            depth_ref, crossplane_ref, inplane_ref
+        )
     ]
 
     interpolated_dose = interpolation_function(points)
@@ -57,62 +53,63 @@ def arbitrary_profile_from_dicom_dose(
 
 
 @xw.func
-@xw.arg('dicom_path')
-@xw.arg('depth_adjust')
-@xw.arg('averaging_distance')
-@xw.ret(expand='table')
+@xw.arg("dicom_path")
+@xw.arg("depth_adjust")
+@xw.arg("averaging_distance")
+@xw.ret(expand="table")
 def depth_dose(dicom_path, depth_adjust, averaging_distance=0):
     dicom_path_found = wildcard_file_resolution(dicom_path)
 
     ds = pydicom.read_file(dicom_path_found, force=True)
 
-    depth, depth_dose_values = extract_depth_dose(
-        ds, depth_adjust, averaging_distance)
+    depth, depth_dose_values = extract_depth_dose(ds, depth_adjust, averaging_distance)
 
     return np.vstack([depth, depth_dose_values]).T
 
 
 @xw.func
-@xw.arg('dicom_path')
-@xw.arg('depth_adjust')
-@xw.arg('depth_lookup')
-@xw.arg('averaging_distance')
-@xw.ret(expand='table')
+@xw.arg("dicom_path")
+@xw.arg("depth_adjust")
+@xw.arg("depth_lookup")
+@xw.arg("averaging_distance")
+@xw.ret(expand="table")
 def inplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
     dicom_path_found = wildcard_file_resolution(dicom_path)
 
     ds = pydicom.read_file(dicom_path_found, force=True)
 
     inplane, inplane_dose, _, _ = extract_profiles(
-        ds, depth_adjust, depth_lookup, averaging_distance)
+        ds, depth_adjust, depth_lookup, averaging_distance
+    )
 
     return np.vstack([inplane, inplane_dose]).T
 
 
 @xw.func
-@xw.arg('dicom_path')
-@xw.arg('depth_adjust')
-@xw.arg('depth_lookup')
-@xw.arg('averaging_distance')
-@xw.ret(expand='table')
+@xw.arg("dicom_path")
+@xw.arg("depth_adjust")
+@xw.arg("depth_lookup")
+@xw.arg("averaging_distance")
+@xw.ret(expand="table")
 def crossplane_profile(dicom_path, depth_adjust, depth_lookup, averaging_distance=0):
     dicom_path_found = wildcard_file_resolution(dicom_path)
 
     ds = pydicom.read_file(dicom_path_found, force=True)
 
     _, _, crossplane, crossplane_dose = extract_profiles(
-        ds, depth_adjust, depth_lookup, averaging_distance)
+        ds, depth_adjust, depth_lookup, averaging_distance
+    )
 
     return np.vstack([crossplane, crossplane_dose]).T
 
 
 @xw.func
-@xw.arg('dicom_path')
-@xw.arg('depth_adjust')
-@xw.arg('inplane', np.array, empty=np.nan)
-@xw.arg('crossplane', np.array, empty=np.nan)
-@xw.arg('depth', np.array, empty=np.nan)
-@xw.ret(expand='table')
+@xw.arg("dicom_path")
+@xw.arg("depth_adjust")
+@xw.arg("inplane", np.array, empty=np.nan)
+@xw.arg("crossplane", np.array, empty=np.nan)
+@xw.arg("depth", np.array, empty=np.nan)
+@xw.ret(expand="table")
 def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
     dicom_path_found = wildcard_file_resolution(dicom_path)
 
@@ -125,8 +122,8 @@ def arbitrary_profile(dicom_path, depth_adjust, inplane, crossplane, depth):
     ds = pydicom.read_file(dicom_path_found, force=True)
 
     dose = arbitrary_profile_from_dicom_dose(
-        ds, depth_adjust, inplane[reference], crossplane[reference],
-        depth[reference])
+        ds, depth_adjust, inplane[reference], crossplane[reference], depth[reference]
+    )
 
     result = np.ones_like(inplane) * np.nan
     result[reference] = dose
