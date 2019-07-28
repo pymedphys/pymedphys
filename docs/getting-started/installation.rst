@@ -41,25 +41,36 @@ Alternatively, you can install via pip as follows:
 Note that issues with some of PyMedPhys' dependencies may arise if you choose
 to install via this method.
 
+Setting up a development environment
+------------------------------------
+
+To set up a development environment please follow the
+`Developer Guide`_. That guide provides specific details
+for Windows users, but similar steps work
+on macOS and Linux also.
+
 
 Installing the "bleeding edge" version from GitHub
 --------------------------------------------------
 
 You can install the very latest, "bleeding edge", development version of
-PyMedPhys by directly cloning its GitHub repo and installing its dependencies
-using the following commands from within a terminal:
+PyMedPhys, but you will first need Git and Yarn. You can find instructions for
+installing Git `here <https://www.atlassian.com/git/tutorials/install-git>`__
+and Yarn `here <https://yarnpkg.com/en/docs/install>`__.
+
+Once you have Git and Yarn, run the following commands in a terminal to clone
+the ``pymedphys`` GitHub repo and install the ``pymedphys`` package along with
+its dependencies:
 
 .. code:: bash
 
     git clone https://github.com/pymedphys/pymedphys.git
     cd pymedphys
-
-    conda config --add channels conda-forge
-    conda install pymedphys --only-deps
-    pip install -e .
+    yarn bootstrap
 
 
-Note that this requires Git to be installed on your workstation. Instructions
-for installing Git can be found in the `Developer Guide`_.
+Windows users can find detailed instructions for installing Git and Yarn in the
+`Developer Guide`_.
 
-.. _`Developer Guide`: ../developer/contributing.html#chocolatey
+
+.. _`Developer Guide`: ../developer/contributing.html
