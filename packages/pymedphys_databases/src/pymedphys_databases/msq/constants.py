@@ -25,12 +25,12 @@
 
 
 FIELD_TYPES = {
-    1: 'Static',
-    2: 'StepNShoot',
-    5: 'CT',
-    6: 'Port',
-    11: 'Arc',
-    12: 'Skip Arcs',
-    13: 'VMAT',
-    14: 'DMLC'
+    1: "Static",
+    2: "StepNShoot",
+    5: "CT",
+    6: "Port",
+    11: "Arc",
+    12: "Skip Arcs",
+    13: "VMAT",
+    14: "DMLC",
 }

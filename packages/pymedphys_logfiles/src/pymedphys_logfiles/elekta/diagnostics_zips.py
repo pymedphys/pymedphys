@@ -56,22 +56,23 @@ def fetch_system_diagnostics(ip, storage_directory, other_directory=None):
         storage_filepath = os.path.join(storage_directory, basename)
         other_filepath = os.path.join(other_directory, basename)
 
-        doesnt_exist_in_either_directory = (
-            not os.path.exists(storage_filepath)
-            and not os.path.exists(other_filepath)
-        )
+        doesnt_exist_in_either_directory = not os.path.exists(
+            storage_filepath
+        ) and not os.path.exists(other_filepath)
 
         if doesnt_exist_in_either_directory:
             print("    Copying {}...".format(basename))
             shutil.copyfile(nss_filepath, storage_filepath)
         else:
-            print(
-                "    {} has already been copied.".format(basename))
+            print("    {} has already been copied.".format(basename))
 
 
-def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
-                                         to_be_indexed='to_be_indexed',
-                                         already_indexed='already_indexed'):
+def fetch_system_diagnostics_multi_linac(
+    machine_ip_map,
+    storage_directory,
+    to_be_indexed="to_be_indexed",
+    already_indexed="already_indexed",
+):
     """Run `fetch_system_diagnostics` for a set of machines and corresponding
     IPs.
 
@@ -92,18 +93,19 @@ def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
     """
 
     for machine, ip in machine_ip_map.items():
-        print('\nFetching diagnostic zip files from {} @ {}'.format(
-            machine, ip))
+        print("\nFetching diagnostic zip files from {} @ {}".format(machine, ip))
         machine_storage_directory = os.path.join(
-            storage_directory, to_be_indexed, machine)
+            storage_directory, to_be_indexed, machine
+        )
         already_indexed_directory = os.path.join(
-            storage_directory, already_indexed, machine)
+            storage_directory, already_indexed, machine
+        )
 
-        pathlib.Path(machine_storage_directory).mkdir(
-            parents=True, exist_ok=True)
+        pathlib.Path(machine_storage_directory).mkdir(parents=True, exist_ok=True)
 
         fetch_system_diagnostics(
-            ip, machine_storage_directory, already_indexed_directory)
+            ip, machine_storage_directory, already_indexed_directory
+        )
 
     print("")
 
@@ -111,43 +113,42 @@ def fetch_system_diagnostics_multi_linac(machine_ip_map, storage_directory,
 def already_indexed_path(current_location, to_be_indexed, already_indexed):
     machine_and_zip_filepath = os.path.relpath(current_location, to_be_indexed)
 
-    path_to_be_moved_to = os.path.join(
-        already_indexed, machine_and_zip_filepath)
+    path_to_be_moved_to = os.path.join(already_indexed, machine_and_zip_filepath)
 
     return os.path.abspath(path_to_be_moved_to)
 
 
 def extract_diagnostic_zips_and_archive(logfile_data_directory):
-    diagnostics_directory = os.path.join(logfile_data_directory, 'diagnostics')
-    diagnostics_to_be_indexed = os.path.join(
-        diagnostics_directory, 'to_be_indexed')
-    diagnostics_already_indexed = os.path.join(
-        diagnostics_directory, 'already_indexed')
+    diagnostics_directory = os.path.join(logfile_data_directory, "diagnostics")
+    diagnostics_to_be_indexed = os.path.join(diagnostics_directory, "to_be_indexed")
+    diagnostics_already_indexed = os.path.join(diagnostics_directory, "already_indexed")
 
-    logfiles_to_be_indexed = os.path.join(
-        logfile_data_directory, 'to_be_indexed')
+    logfiles_to_be_indexed = os.path.join(logfile_data_directory, "to_be_indexed")
 
-    diagnostics_search_string = os.path.join(
-        diagnostics_to_be_indexed, '*', '*.zip')
+    diagnostics_search_string = os.path.join(diagnostics_to_be_indexed, "*", "*.zip")
 
     diagnostics_filepaths = glob(diagnostics_search_string)
 
-    print("There are {} diagnostic zips which need to be extracted".format(
-        len(diagnostics_filepaths)))
+    print(
+        "There are {} diagnostic zips which need to be extracted".format(
+            len(diagnostics_filepaths)
+        )
+    )
 
     for diagnostic_filepath in diagnostics_filepaths:
         path_to_be_moved_to = already_indexed_path(
-            diagnostic_filepath, diagnostics_to_be_indexed,
-            diagnostics_already_indexed)
+            diagnostic_filepath, diagnostics_to_be_indexed, diagnostics_already_indexed
+        )
 
         pathlib.Path(os.path.dirname(path_to_be_moved_to)).mkdir(
-            parents=True, exist_ok=True)
+            parents=True, exist_ok=True
+        )
 
         print("    Extracting {}".format(diagnostic_filepath))
 
-        with zipfile.ZipFile(diagnostic_filepath, 'r') as zip_file:
+        with zipfile.ZipFile(diagnostic_filepath, "r") as zip_file:
             for file_name in zip_file.namelist():
-                if file_name.endswith('.trf'):
+                if file_name.endswith(".trf"):
                     zip_file.extract(file_name, logfiles_to_be_indexed)
 
         shutil.move(diagnostic_filepath, path_to_be_moved_to)

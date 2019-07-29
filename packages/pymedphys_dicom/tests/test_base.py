@@ -31,20 +31,17 @@ from pydicom.filebase import DicomBytesIO
 from pymedphys_dicom.dicom import DicomBase, dicom_dataset_from_dict
 
 
-
 def test_copy():
     dont_change_string = "don't change me"
-    to_be_changed_string = 'do change me'
+    to_be_changed_string = "do change me"
 
-    new_manufactuer = 'george'
+    new_manufactuer = "george"
 
-    dataset_to_be_copied = dicom_dataset_from_dict({
-        'Manufacturer': dont_change_string
-    })
+    dataset_to_be_copied = dicom_dataset_from_dict({"Manufacturer": dont_change_string})
 
-    dataset_to_be_viewed = dicom_dataset_from_dict({
-        'Manufacturer': to_be_changed_string
-    })
+    dataset_to_be_viewed = dicom_dataset_from_dict(
+        {"Manufacturer": to_be_changed_string}
+    )
 
     dicom_base_copy = DicomBase(dataset_to_be_copied)
     dicom_base_view = DicomBase(dataset_to_be_viewed, copy=False)
@@ -57,15 +54,13 @@ def test_copy():
 
 
 def test_anonymise():
-    expected_dataset = dicom_dataset_from_dict({
-        'Manufacturer': 'PyMedPhys',
-        'PatientName': 'Anonymous'
-    })
+    expected_dataset = dicom_dataset_from_dict(
+        {"Manufacturer": "PyMedPhys", "PatientName": "Anonymous"}
+    )
 
-    dicom = DicomBase.from_dict({
-        'Manufacturer': 'PyMedPhys',
-        'PatientName': 'Python^Monte'
-    })
+    dicom = DicomBase.from_dict(
+        {"Manufacturer": "PyMedPhys", "PatientName": "Python^Monte"}
+    )
 
     dicom.anonymise(inplace=True)
 
@@ -75,10 +70,9 @@ def test_anonymise():
 def test_to_and_from_file():
     temp_file = io.BytesIO()
 
-    dicom = DicomBase.from_dict({
-        'Manufacturer': 'PyMedPhys',
-        'PatientName': 'Python^Monte'
-    })
+    dicom = DicomBase.from_dict(
+        {"Manufacturer": "PyMedPhys", "PatientName": "Python^Monte"}
+    )
 
     dicom.to_file(temp_file)
 
@@ -90,15 +84,13 @@ def test_to_and_from_file():
 
 
 def test_equal():
-    dicom1 = DicomBase.from_dict({
-        'Manufacturer': 'PyMedPhys',
-        'PatientName': 'Python^Monte'
-    })
-    dicom2 = DicomBase.from_dict({
-        'Manufacturer': 'PyMedPhys',
-        'PatientName': 'Python^Monte'
-    })
-    assert dicom1 == dicom2 # Equality from dict
+    dicom1 = DicomBase.from_dict(
+        {"Manufacturer": "PyMedPhys", "PatientName": "Python^Monte"}
+    )
+    dicom2 = DicomBase.from_dict(
+        {"Manufacturer": "PyMedPhys", "PatientName": "Python^Monte"}
+    )
+    assert dicom1 == dicom2  # Equality from dict
 
     try:
         fp1 = DicomBytesIO()
@@ -111,14 +103,14 @@ def test_equal():
         # Equality from file (implicitly also from dataset)
         assert dicom1_from_file == dicom2_from_file
 
-        dicom1_from_file.dataset.PatientName = 'test^PatientName change'
-        assert dicom1_from_file != dicom2_from_file # Negative case
+        dicom1_from_file.dataset.PatientName = "test^PatientName change"
+        assert dicom1_from_file != dicom2_from_file  # Negative case
 
-        dicom1_from_file.dataset.PatientName = 'Python^Monte'
-        assert dicom1_from_file == dicom2_from_file # Equality post re-assignment
+        dicom1_from_file.dataset.PatientName = "Python^Monte"
+        assert dicom1_from_file == dicom2_from_file  # Equality post re-assignment
 
         dicom1_from_file_copied = deepcopy(dicom1_from_file)
-        assert dicom1_from_file == dicom1_from_file_copied # Equality from deepcopy
+        assert dicom1_from_file == dicom1_from_file_copied  # Equality from deepcopy
     finally:
         fp1.close()
         fp2.close()

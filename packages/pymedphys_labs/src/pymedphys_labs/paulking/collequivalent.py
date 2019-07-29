@@ -36,16 +36,15 @@ def abutted(a, b, tolerance=1):
 
 
 def get_leaf_pair_widths(model):
-    model_map = {
-        'agility': AGILITY
-    }
+    model_map = {"agility": AGILITY}
 
     try:
         return model_map[model]
     except KeyError:
         raise ValueError(
-            '{} not implemented only the following are'
-            ' implemented:\n{}'.format(model, model_map.keys()))
+            "{} not implemented only the following are"
+            " implemented:\n{}".format(model, model_map.keys())
+        )
 
 
 def mlc_equivalent_square_fs(mlc_segments, leaf_pair_widths):
@@ -58,17 +57,18 @@ def mlc_equivalent_square_fs(mlc_segments, leaf_pair_widths):
     """
 
     assert len(leaf_pair_widths) == len(mlc_segments), (
-        'Length of `leaf_pair_widths` ({}) needs to match length of '
-        '`mlc_segments` ({})'.format(len(leaf_pair_widths), len(mlc_segments))
+        "Length of `leaf_pair_widths` ({}) needs to match length of "
+        "`mlc_segments` ({})".format(len(leaf_pair_widths), len(mlc_segments))
     )
 
     # y_component: y component of distance from (0,0) to leaf center by leaf
     # pair
     y_component = [
         (
-            -0.5*sum(leaf_pair_widths) +
-            sum(leaf_pair_widths[:i]) +
-            0.5*leaf_pair_widths[i])
+            -0.5 * sum(leaf_pair_widths)
+            + sum(leaf_pair_widths[:i])
+            + 0.5 * leaf_pair_widths[i]
+        )
         for i in range(len(leaf_pair_widths))
     ]
 
@@ -78,18 +78,19 @@ def mlc_equivalent_square_fs(mlc_segments, leaf_pair_widths):
         segment_a, segment_b = mlc_segments[i][0], mlc_segments[i][1]
         # zero for closed leaf-pairs
         if not abutted(segment_a, segment_b):
-            area += leaf_pair_widths[i]*(segment_a+segment_b)
+            area += leaf_pair_widths[i] * (segment_a + segment_b)
             # zero for leaf past mid-line
             segment_a, segment_b = max(0.0, segment_a), max(0.0, segment_b)
-            distSqrA = y_component[i]**2 + segment_a**2
-            distSqrB = y_component[i]**2 + segment_b**2
-            numer += leaf_pair_widths[i] * segment_a / \
-                distSqrA + leaf_pair_widths[i] * segment_b/distSqrB
-            denom += (leaf_pair_widths[i] / distSqrA) + \
-                (leaf_pair_widths[i] / distSqrB)
+            distSqrA = y_component[i] ** 2 + segment_a ** 2
+            distSqrB = y_component[i] ** 2 + segment_b ** 2
+            numer += (
+                leaf_pair_widths[i] * segment_a / distSqrA
+                + leaf_pair_widths[i] * segment_b / distSqrB
+            )
+            denom += (leaf_pair_widths[i] / distSqrA) + (leaf_pair_widths[i] / distSqrB)
     try:
         eff_x = 2.0 * numer / denom
         eff_y = area / eff_x
-        return 2.0*eff_x*eff_y/(eff_x+eff_y)
+        return 2.0 * eff_x * eff_y / (eff_x + eff_y)
     except ZeroDivisionError:
         return 0.0

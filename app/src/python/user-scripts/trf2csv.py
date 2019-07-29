@@ -3,10 +3,10 @@ from glob import glob
 
 from pymedphys.trf import trf2pandas
 
-input_directory = 'input'
-output_directory = 'output'
+input_directory = "input"
+output_directory = "output"
 
-filepaths = glob(os.path.join(input_directory, '*.trf'))
+filepaths = glob(os.path.join(input_directory, "*.trf"))
 
 for filepath in filepaths:
     filename = os.path.basename(filepath)
