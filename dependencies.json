@@ -145,6 +145,7 @@
         "copy",
         "functools",
         "glob",
+        "json",
         "operator",
         "os",
         "re",
