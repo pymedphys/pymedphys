@@ -1,6 +1,7 @@
 # Copyright 2017 Palantir Technologies, Inc.
 import logging
 import pkg_resources
+
 try:
     from functools import lru_cache
 except ImportError:
@@ -13,11 +14,10 @@ from pyls import _utils, hookspecs, uris, PYLS
 log = logging.getLogger(__name__)
 
 # Sources of config, first source overrides next source
-DEFAULT_CONFIG_SOURCES = ['pycodestyle']
+DEFAULT_CONFIG_SOURCES = ["pycodestyle"]
 
 
 class Config(object):
-
     def __init__(self, root_uri, init_opts, process_id, capabilities):
         self._root_path = uris.to_fs_path(root_uri)
         self._root_uri = root_uri
@@ -31,12 +31,14 @@ class Config(object):
         self._config_sources = {}
         try:
             from .flake8_conf import Flake8Config
-            self._config_sources['flake8'] = Flake8Config(self._root_path)
+
+            self._config_sources["flake8"] = Flake8Config(self._root_path)
         except ImportError:
             pass
         try:
             from .pycodestyle_conf import PyCodeStyleConfig
-            self._config_sources['pycodestyle'] = PyCodeStyleConfig(self._root_path)
+
+            self._config_sources["pycodestyle"] = PyCodeStyleConfig(self._root_path)
         except ImportError:
             pass
 
@@ -52,7 +54,9 @@ class Config(object):
             try:
                 entry_point.load()
             except ImportError as e:
-                log.warning("Failed to load %s entry point '%s': %s", PYLS, entry_point.name, e)
+                log.warning(
+                    "Failed to load %s entry point '%s': %s", PYLS, entry_point.name, e
+                )
                 self._pm.set_blocked(entry_point.name)
 
         # Load the entry points into pluggy, having blocked any failing ones
@@ -63,7 +67,9 @@ class Config(object):
                 log.info("Loaded pyls plugin %s from %s", name, plugin)
 
         for plugin_conf in self._pm.hook.pyls_settings(config=self):
-            self._plugin_settings = _utils.merge_dicts(self._plugin_settings, plugin_conf)
+            self._plugin_settings = _utils.merge_dicts(
+                self._plugin_settings, plugin_conf
+            )
 
         self._update_disabled_plugins()
 
@@ -104,14 +110,16 @@ class Config(object):
         settings.cache_clear() when the config is updated
         """
         settings = {}
-        sources = self._settings.get('configurationSources', DEFAULT_CONFIG_SOURCES)
+        sources = self._settings.get("configurationSources", DEFAULT_CONFIG_SOURCES)
 
         for source_name in reversed(sources):
             source = self._config_sources.get(source_name)
             if not source:
                 continue
             source_conf = source.user_config()
-            log.debug("Got user config from %s: %s", source.__class__.__name__, source_conf)
+            log.debug(
+                "Got user config from %s: %s", source.__class__.__name__, source_conf
+            )
             settings = _utils.merge_dicts(settings, source_conf)
         log.debug("With user configuration: %s", settings)
 
@@ -126,7 +134,9 @@ class Config(object):
             if not source:
                 continue
             source_conf = source.project_config(document_path or self._root_path)
-            log.debug("Got project config from %s: %s", source.__class__.__name__, source_conf)
+            log.debug(
+                "Got project config from %s: %s", source.__class__.__name__, source_conf
+            )
             settings = _utils.merge_dicts(settings, source_conf)
         log.debug("With project configuration: %s", settings)
 
@@ -137,7 +147,11 @@ class Config(object):
         return _utils.find_parents(root_path, path, names)
 
     def plugin_settings(self, plugin, document_path=None):
-        return self.settings(document_path=document_path).get('plugins', {}).get(plugin, {})
+        return (
+            self.settings(document_path=document_path)
+            .get("plugins", {})
+            .get(plugin, {})
+        )
 
     def update(self, settings):
         """Recursively merge the given settings into the current settings."""
@@ -149,7 +163,8 @@ class Config(object):
     def _update_disabled_plugins(self):
         # All plugins default to enabled
         self._disabled_plugins = [
-            plugin for name, plugin in self.plugin_manager.list_name_plugin()
-            if not self.settings().get('plugins', {}).get(name, {}).get('enabled', True)
+            plugin
+            for name, plugin in self.plugin_manager.list_name_plugin()
+            if not self.settings().get("plugins", {}).get(name, {}).get("enabled", True)
         ]
         log.info("Disabled plugins: %s", self._disabled_plugins)

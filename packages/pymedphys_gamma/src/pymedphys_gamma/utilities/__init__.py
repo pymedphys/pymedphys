@@ -24,5 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 from .core import (
-    create_point_combination, convert_to_ravel_index,
-    calculate_pass_rate, run_input_checks)
+    create_point_combination,
+    convert_to_ravel_index,
+    calculate_pass_rate,
+    run_input_checks,
+)
