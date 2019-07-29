@@ -32,8 +32,9 @@ from pymedphys.gamma import gamma_shell
 from pymedphys_gamma.implementation.shell import calculate_coordinates_shell
 
 
-def does_gamma_scale_as_expected(init_distance_threshold, threshold_ratio,
-                                 scales_to_test):
+def does_gamma_scale_as_expected(
+    init_distance_threshold, threshold_ratio, scales_to_test
+):
     coords, reference, evaluation, _ = get_dummy_gamma_set()
 
     all_scales = np.concatenate([[1], scales_to_test])
@@ -43,15 +44,22 @@ def does_gamma_scale_as_expected(init_distance_threshold, threshold_ratio,
 
     gamma_results = []
     for dose, distance in zip(dose_thresholds_to_test, distance_thresholds_to_test):
-        gamma_results.append(gamma_shell(
-            coords, reference,
-            coords, evaluation,
-            dose, distance, lower_percent_dose_cutoff=0))
+        gamma_results.append(
+            gamma_shell(
+                coords,
+                reference,
+                coords,
+                evaluation,
+                dose,
+                distance,
+                lower_percent_dose_cutoff=0,
+            )
+        )
 
     for i, scale in enumerate(scales_to_test):
         print(scale)
 
-        abs_diff = np.abs(gamma_results[i+1] - gamma_results[0]/scale)
+        abs_diff = np.abs(gamma_results[i + 1] - gamma_results[0] / scale)
         ref = np.where(abs_diff == np.max(abs_diff))
 
         print(np.max(abs_diff))
@@ -72,9 +80,14 @@ def test_multiple_threshold_inputs():
     coords, reference, evaluation, _ = get_dummy_gamma_set()
 
     gamma_shell(
-        coords, reference,
-        coords, evaluation,
-        [3], [0.3, 0.5], lower_percent_dose_cutoff=0)
+        coords,
+        reference,
+        coords,
+        evaluation,
+        [3],
+        [0.3, 0.5],
+        lower_percent_dose_cutoff=0,
+    )
 
 
 def test_lower_dose_threshold():
@@ -82,12 +95,12 @@ def test_lower_dose_threshold():
     ref = [0, 1, 1.9, 2, 2.1, 3, 4, 5, 10, 10]
     coords_ref = (np.arange(len(ref)),)
 
-    evl = [10]*(len(ref) + 2)
+    evl = [10] * (len(ref) + 2)
     coords_evl = (np.arange(len(evl)) - 4,)
 
     result = gamma_shell(coords_ref, ref, coords_evl, evl, 10, 1)
 
-    assert np.array_equal(ref < 0.2*np.max(ref), np.isnan(result))
+    assert np.array_equal(ref < 0.2 * np.max(ref), np.isnan(result))
 
 
 def get_dummy_gamma_set():
@@ -116,10 +129,12 @@ def test_regression_of_gamma_3d():
     """Test for changes in expected 3D gamma."""
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
-    gamma3d = np.round(gamma_shell(
-        coords, reference,
-        coords, evaluation,
-        3, 0.3, lower_percent_dose_cutoff=0), decimals=1)
+    gamma3d = np.round(
+        gamma_shell(
+            coords, reference, coords, evaluation, 3, 0.3, lower_percent_dose_cutoff=0
+        ),
+        decimals=1,
+    )
 
     assert np.all(expected_gamma == gamma3d)
 
@@ -128,10 +143,18 @@ def test_regression_of_gamma_2d():
     """Test for changes in expected 2D gamma."""
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
-    gamma2d = np.round(gamma_shell(
-        coords[1::], reference[5, :, :],
-        coords[1::], evaluation[5, :, :],
-        3, 0.3, lower_percent_dose_cutoff=0), decimals=1)
+    gamma2d = np.round(
+        gamma_shell(
+            coords[1::],
+            reference[5, :, :],
+            coords[1::],
+            evaluation[5, :, :],
+            3,
+            0.3,
+            lower_percent_dose_cutoff=0,
+        ),
+        decimals=1,
+    )
 
     assert np.all(expected_gamma[5, :, :] == gamma2d)
 
@@ -141,10 +164,18 @@ def test_regression_of_gamma_1d():
 
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
-    gamma1d = np.round(gamma_shell(
-        coords[2], reference[5, 5, :],
-        coords[2], evaluation[5, 5, :],
-        3, 0.3, lower_percent_dose_cutoff=0), decimals=1)
+    gamma1d = np.round(
+        gamma_shell(
+            coords[2],
+            reference[5, 5, :],
+            coords[2],
+            evaluation[5, 5, :],
+            3,
+            0.3,
+            lower_percent_dose_cutoff=0,
+        ),
+        decimals=1,
+    )
 
     assert np.all(expected_gamma[5, 5, :] == gamma1d)
 
@@ -159,16 +190,15 @@ def test_coords_stepsize():
     num_dimensions = 3
     distance = 1
 
-    x, y, z = calculate_coordinates_shell(
-        distance, num_dimensions, distance_step_size)
+    x, y, z = calculate_coordinates_shell(distance, num_dimensions, distance_step_size)
 
     distance_between_coords = np.sqrt(
-        (x[:, None] - x[None, :])**2 +
-        (y[:, None] - y[None, :])**2 +
-        (z[:, None] - z[None, :])**2)
+        (x[:, None] - x[None, :]) ** 2
+        + (y[:, None] - y[None, :]) ** 2
+        + (z[:, None] - z[None, :]) ** 2
+    )
 
-    distance_between_coords[
-        distance_between_coords == 0] = np.nan
+    distance_between_coords[distance_between_coords == 0] = np.nan
 
     largest_difference = np.max(np.nanmin(distance_between_coords, axis=0))
 
@@ -186,7 +216,6 @@ def test_distance_0_gives_1_point():
     num_dimensions = 3
     distance = 0
 
-    x, y, z = calculate_coordinates_shell(
-        distance, num_dimensions, distance_step_size)
+    x, y, z = calculate_coordinates_shell(distance, num_dimensions, distance_step_size)
 
     assert len(x) == 1 & len(y) == 1 & len(z) == 1

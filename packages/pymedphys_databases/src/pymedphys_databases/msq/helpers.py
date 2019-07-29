@@ -47,14 +47,11 @@ def get_treatment_times(cursor, field_id):
         WHERE
             TrackTreatment.FLD_ID = %(field_id)s
         """,
-        {
-            'field_id': field_id
-        }
+        {"field_id": field_id},
     )
 
     return pd.DataFrame(
-        data=treatment_time_results,
-        columns=['start', 'end', 'completed', 'qa_mode']
+        data=treatment_time_results, columns=["start", "end", "completed", "qa_mode"]
     )
 
 
@@ -80,25 +77,25 @@ def get_patient_fields(cursor, patient_id):
             TxField.SIT_Set_ID = Site.SIT_Set_ID AND
             Ident.IDA = %(patient_id)s
         """,
-        {
-            'patient_id': patient_id
-        }
+        {"patient_id": patient_id},
     )
 
     table = pd.DataFrame(
         data=patient_field_results,
         columns=[
-            'field_id', 'field_label', 'field_name', 'field_version',
-            'monitor_units', 'field_type', 'site'
-        ]
+            "field_id",
+            "field_label",
+            "field_name",
+            "field_version",
+            "monitor_units",
+            "field_type",
+            "site",
+        ],
     )
 
     table.drop_duplicates(inplace=True)
 
-    table['field_type'] = [
-        FIELD_TYPES[item]
-        for item in table['field_type']
-    ]
+    table["field_type"] = [FIELD_TYPES[item] for item in table["field_type"]]
 
     return table
 
@@ -131,30 +128,31 @@ def get_treatments(cursor, start, end, machine):
             TrackTreatment.Edit_DtTm >= %(start)s AND
             TrackTreatment.Create_DtTm <= %(end)s
         """,
-        {
-            'machine': machine,
-            'start': start,
-            'end': end
-        }
+        {"machine": machine, "start": start, "end": end},
     )
 
     table = pd.DataFrame(
         data=treatment_results,
         columns=[
-            'patient_id', 'last_name', 'first_name',
-            'field_id', 'field_label', 'field_name', 'field_type',
-            'monitor_units', 'field_version',
-            'qa_mode', 'completed',
-            'start', 'end'
-        ]
+            "patient_id",
+            "last_name",
+            "first_name",
+            "field_id",
+            "field_label",
+            "field_name",
+            "field_type",
+            "monitor_units",
+            "field_version",
+            "qa_mode",
+            "completed",
+            "start",
+            "end",
+        ],
     )
 
-    table['field_type'] = [
-        FIELD_TYPES[item]
-        for item in table['field_type']
-    ]
+    table["field_type"] = [FIELD_TYPES[item] for item in table["field_type"]]
 
-    table = table.sort_values('start')
+    table = table.sort_values("start")
 
     return table
 
@@ -174,15 +172,19 @@ def get_staff_name(cursor, staff_id):
         WHERE
             Staff.Staff_ID = %(staff_id)s
         """,
-        {
-            'staff_id': staff_id
-        }
+        {"staff_id": staff_id},
     )
 
     results = pd.DataFrame(
         data=data,
-        columns=['initials', 'user_name',
-                 'type', 'category', 'last_name', 'first_name']
+        columns=[
+            "initials",
+            "user_name",
+            "type",
+            "category",
+            "last_name",
+            "first_name",
+        ],
     )
 
     return results
@@ -211,22 +213,24 @@ def get_qcls_by_date(cursor, location, start, end):
             Chklist.Act_DtTm >= %(start)s AND
             Chklist.Act_DtTm < %(end)s
         """,
-        {
-            'location': location,
-            'start': start,
-            'end': end
-        }
+        {"location": location, "start": start, "end": end},
     )
 
     results = pd.DataFrame(
         data=data,
-        columns=['patient_id', 'last_name', 'first_name',
-                 'due', 'actual_completed_time', 'instructions', 'comment',
-                 'task'
-                 ]
+        columns=[
+            "patient_id",
+            "last_name",
+            "first_name",
+            "due",
+            "actual_completed_time",
+            "instructions",
+            "comment",
+            "task",
+        ],
     )
 
-    results = results.sort_values(by=['actual_completed_time'])
+    results = results.sort_values(by=["actual_completed_time"])
 
     return results
 
@@ -252,18 +256,23 @@ def get_incomplete_qcls(cursor, location):
             Staff.Last_Name = %(location)s AND
             Chklist.Complete = 0
         """,
-        {
-            'location': location
-        }
+        {"location": location},
     )
 
     results = pd.DataFrame(
         data=data,
-        columns=['patient_id', 'last_name', 'first_name',
-                 'due', 'instructions', 'comment', 'task']
+        columns=[
+            "patient_id",
+            "last_name",
+            "first_name",
+            "due",
+            "instructions",
+            "comment",
+            "task",
+        ],
     )
 
-    results = results.sort_values(by=['due'], ascending=False)
+    results = results.sort_values(by=["due"], ascending=False)
 
     return results
 
@@ -274,18 +283,19 @@ def get_incomplete_qcls_across_sites(cursors, servers, centres, locations):
     for centre in centres:
         cursor = cursors[servers[centre]]
 
-        incomplete_qcls = get_incomplete_qcls(
-            cursor, locations[centre])
-        incomplete_qcls['centre'] = [centre] * len(incomplete_qcls)
+        incomplete_qcls = get_incomplete_qcls(cursor, locations[centre])
+        incomplete_qcls["centre"] = [centre] * len(incomplete_qcls)
 
         results = results.append(incomplete_qcls)
 
-    results = results.sort_values(by='due')
+    results = results.sort_values(by="due")
 
     return results
 
 
-def get_recently_completed_qcls_across_sites(cursors, servers, centres, locations, days=7):
+def get_recently_completed_qcls_across_sites(
+    cursors, servers, centres, locations, days=7
+):
     now = datetime.datetime.now()
     days_ago = now - datetime.timedelta(days=days)
     tomorrow = now + datetime.timedelta(days=1)
@@ -299,12 +309,13 @@ def get_recently_completed_qcls_across_sites(cursors, servers, centres, location
         cursor = cursors[servers[centre]]
 
         qcls = get_qcls_by_date(
-            cursor, locations[centre], days_ago_string, tomorrow_string)
+            cursor, locations[centre], days_ago_string, tomorrow_string
+        )
 
-        qcls['centre'] = [centre] * len(qcls)
+        qcls["centre"] = [centre] * len(qcls)
 
         results = results.append(qcls)
 
-    results = results.sort_values(by='actual_completed_time', ascending=False)
+    results = results.sort_values(by="actual_completed_time", ascending=False)
 
     return results

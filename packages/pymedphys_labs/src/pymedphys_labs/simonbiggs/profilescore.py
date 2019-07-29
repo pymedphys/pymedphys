@@ -42,12 +42,12 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 # pylint: disable = C0103, C0121
 
 
-class DoseBase():
+class DoseBase:
     def __init__(self, data, coords=None, dims=None):
         self.new_xarray(data, coords=coords, dims=dims)
 
     def new_xarray(self, data, coords=None, dims=None):
-        self._xarray = xr.DataArray(data, coords, dims, name='dose')
+        self._xarray = xr.DataArray(data, coords, dims, name="dose")
 
     @property
     def data(self) -> np.ndarray:
@@ -76,7 +76,7 @@ class Dose1D(DoseBase):
         self.new_xarray(x, data)
 
     def new_xarray(self, x, data):
-        coords = [('x', x)]
+        coords = [("x", x)]
         super().new_xarray(data, coords=coords)
 
     @property
@@ -107,7 +107,7 @@ class Dose1D(DoseBase):
             return adjusted_object
 
     def plot(self):
-        return plt.plot(self.x, self.data, 'o-')
+        return plt.plot(self.x, self.data, "o-")
 
     def interactive(self):
         pass
