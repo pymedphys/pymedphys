@@ -35,14 +35,23 @@ import sys
 import numpy as np
 
 from ..utilities import (
-    create_point_combination, convert_to_ravel_index,
-    calculate_pass_rate, run_input_checks)
+    create_point_combination,
+    convert_to_ravel_index,
+    calculate_pass_rate,
+    run_input_checks,
+)
 
 
-def gamma_filter_numpy(axes_reference, dose_reference,
-                       axes_evaluation, dose_evaluation,
-                       distance_mm_threshold, dose_threshold,
-                       lower_dose_cutoff=0, **kwargs):
+def gamma_filter_numpy(
+    axes_reference,
+    dose_reference,
+    axes_evaluation,
+    dose_evaluation,
+    distance_mm_threshold,
+    dose_threshold,
+    lower_dose_cutoff=0,
+    **kwargs
+):
 
     coord_diffs = [
         coord_ref[:, None] - coord_eval[None, :]
@@ -50,23 +59,28 @@ def gamma_filter_numpy(axes_reference, dose_reference,
     ]
 
     all_in_vicinity = [
-        np.where(np.abs(diff) < distance_mm_threshold)
-        for diff in coord_diffs
+        np.where(np.abs(diff) < distance_mm_threshold) for diff in coord_diffs
     ]
 
-    ref_coord_points = create_point_combination([
-        in_vicinity[0] for in_vicinity in all_in_vicinity
-    ])
+    ref_coord_points = create_point_combination(
+        [in_vicinity[0] for in_vicinity in all_in_vicinity]
+    )
 
-    eval_coord_points = create_point_combination([
-        in_vicinity[1] for in_vicinity in all_in_vicinity
-    ])
+    eval_coord_points = create_point_combination(
+        [in_vicinity[1] for in_vicinity in all_in_vicinity]
+    )
 
-    distances = np.sqrt(np.sum([
-        coord_diff[ref_points, eval_points]**2
-        for ref_points, eval_points, coord_diff
-        in zip(ref_coord_points, eval_coord_points, coord_diffs)
-    ], axis=0))
+    distances = np.sqrt(
+        np.sum(
+            [
+                coord_diff[ref_points, eval_points] ** 2
+                for ref_points, eval_points, coord_diff in zip(
+                    ref_coord_points, eval_coord_points, coord_diffs
+                )
+            ],
+            axis=0,
+        )
+    )
 
     within_distance_threshold = distances < distance_mm_threshold
 
@@ -76,17 +90,16 @@ def gamma_filter_numpy(axes_reference, dose_reference,
 
     dose_diff = (
         dose_evaluation[
-            eval_coord_points[0, :],
-            eval_coord_points[1, :], eval_coord_points[2, :]
-        ] -
-        dose_reference[
-            ref_coord_points[0, :],
-            ref_coord_points[1, :], ref_coord_points[2, :]
+            eval_coord_points[0, :], eval_coord_points[1, :], eval_coord_points[2, :]
+        ]
+        - dose_reference[
+            ref_coord_points[0, :], ref_coord_points[1, :], ref_coord_points[2, :]
         ]
     )
 
-    gamma = np.sqrt((dose_diff / dose_threshold)**2 +
-                    (distances / distance_mm_threshold)**2)
+    gamma = np.sqrt(
+        (dose_diff / dose_threshold) ** 2 + (distances / distance_mm_threshold) ** 2
+    )
 
     gamma_pass = gamma < 1
 
@@ -94,7 +107,8 @@ def gamma_filter_numpy(axes_reference, dose_reference,
 
     ravel_index = convert_to_ravel_index(eval_pass)
     gamma_pass_array = np.zeros_like(  # pylint: disable=no-member
-        dose_evaluation).astype(np.bool)
+        dose_evaluation
+    ).astype(np.bool)
 
     gamma_pass_array = np.ravel(gamma_pass_array)
     dose_above_cut_off = np.ravel(dose_evaluation) > lower_dose_cutoff
@@ -105,25 +119,32 @@ def gamma_filter_numpy(axes_reference, dose_reference,
     return gamma_pass_percentage
 
 
-def gamma_filter_brute_force(axes_reference, dose_reference,
-                             axes_evaluation, dose_evaluation,
-                             distance_mm_threshold, dose_threshold,
-                             lower_dose_cutoff=0, **kwargs):
+def gamma_filter_brute_force(
+    axes_reference,
+    dose_reference,
+    axes_evaluation,
+    dose_evaluation,
+    distance_mm_threshold,
+    dose_threshold,
+    lower_dose_cutoff=0,
+    **kwargs
+):
 
-    xx_ref, yy_ref, zz_ref = np.meshgrid(*axes_reference, indexing='ij')
-    gamma_array = np.ones_like(  # pylint: disable=no-member
-        dose_evaluation).astype(np.float) * np.nan
+    xx_ref, yy_ref, zz_ref = np.meshgrid(*axes_reference, indexing="ij")
+    gamma_array = (
+        np.ones_like(dose_evaluation).astype(np.float)  # pylint: disable=no-member
+        * np.nan
+    )
 
-    mesh_index = np.meshgrid(*[
-        np.arange(len(coord_eval))
-        for coord_eval in axes_evaluation
-    ])
+    mesh_index = np.meshgrid(
+        *[np.arange(len(coord_eval)) for coord_eval in axes_evaluation]
+    )
 
     eval_index = np.reshape(np.array(mesh_index), (3, -1))
     run_index = np.arange(np.shape(eval_index)[1])
     np.random.shuffle(run_index)
 
-    sys.stdout.write('    ')
+    sys.stdout.write("    ")
 
     for counter, point_index in enumerate(run_index):
         i, j, k = eval_index[:, point_index]
@@ -135,26 +156,27 @@ def gamma_filter_brute_force(axes_reference, dose_reference,
             continue
 
         distance = np.sqrt(
-            (xx_ref - eval_x)**2 +
-            (yy_ref - eval_y)**2 +
-            (zz_ref - eval_z)**2
+            (xx_ref - eval_x) ** 2 + (yy_ref - eval_y) ** 2 + (zz_ref - eval_z) ** 2
         )
 
         dose_diff = dose_evaluation[i, j, k] - dose_reference
 
         gamma = np.min(
-            np.sqrt((dose_diff / dose_threshold)**2 +
-                    (distance / distance_mm_threshold)**2))
+            np.sqrt(
+                (dose_diff / dose_threshold) ** 2
+                + (distance / distance_mm_threshold) ** 2
+            )
+        )
 
         gamma_array[i, j, k] = gamma
 
         if counter // 30 == counter / 30:
-            percent_pass = str(
-                np.round(calculate_pass_rate(gamma_array), decimals=1))
+            percent_pass = str(np.round(calculate_pass_rate(gamma_array), decimals=1))
             sys.stdout.write(
-                '\rPercent Pass: {0}% | Percent Complete: {1:.2f}%'.format(
-                    percent_pass,
-                    counter / np.shape(eval_index)[1] * 100))
+                "\rPercent Pass: {0}% | Percent Complete: {1:.2f}%".format(
+                    percent_pass, counter / np.shape(eval_index)[1] * 100
+                )
+            )
             sys.stdout.flush()
 
     return calculate_pass_rate(gamma_array)

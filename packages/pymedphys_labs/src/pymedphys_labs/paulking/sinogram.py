@@ -67,18 +67,18 @@ def read_csv_file(file_name):
 
     """
 
-    with open(file_name, 'r') as csvfile:
+    with open(file_name, "r") as csvfile:
 
-        pat_name, pat_num = csvfile.readline().split('ID:')
-        pat_name = pat_name.replace('Patient name:', '')
+        pat_name, pat_num = csvfile.readline().split("ID:")
+        pat_name = pat_name.replace("Patient name:", "")
 
-        pat_name_last, pat_name_first = pat_name.split('^')
-        pat_name_last = ''.join([c for c in pat_name_last if c in LETTERS])
-        pat_name_first = ''.join([c for c in pat_name_first if c in LETTERS])
-        pat_num = ''.join([c for c in pat_num if c in DIGITS])
+        pat_name_last, pat_name_first = pat_name.split("^")
+        pat_name_last = "".join([c for c in pat_name_last if c in LETTERS])
+        pat_name_first = "".join([c for c in pat_name_first if c in LETTERS])
+        pat_num = "".join([c for c in pat_num if c in DIGITS])
 
-        document_id = pat_num + ' - ' + pat_name_last + ', ' + pat_name_first
-        reader = csv.reader(csvfile, delimiter=',')
+        document_id = pat_num + " - " + pat_name_last + ", " + pat_name_first
+        reader = csv.reader(csvfile, delimiter=",")
         array = np.asarray([line[1:] for line in reader]).astype(float)
 
     return document_id, array
@@ -106,9 +106,9 @@ def read_bin_file(file_name):
 
     """
 
-    leaf_open_times = np.fromfile(file_name, dtype=float, count=-1, sep='')
+    leaf_open_times = np.fromfile(file_name, dtype=float, count=-1, sep="")
     num_leaves = 64
-    num_projections = int(len(leaf_open_times)/num_leaves)
+    num_projections = int(len(leaf_open_times) / num_leaves)
     sinogram = np.reshape(leaf_open_times, (num_projections, num_leaves))
 
     return sinogram
@@ -191,8 +191,8 @@ def make_histogram(sinogram, num_bins=10):
     bin_min = min(lfts)
     bin_max = max(lfts)
 
-    bins_strt = np.arange(bin_min, bin_max,  bin_inc)
-    bins_stop = np.arange(bin_inc, bin_max+bin_inc, bin_inc)
+    bins_strt = np.arange(bin_min, bin_max, bin_inc)
+    bins_stop = np.arange(bin_inc, bin_max + bin_inc, bin_inc)
     bins = np.dstack((bins_strt, bins_stop))[0]
 
     counts = [0 for b in bins]

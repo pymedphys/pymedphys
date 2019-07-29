@@ -37,11 +37,12 @@ from ..docker import server_cli
 
 def docker_cli(subparsers):
     docker_parser = subparsers.add_parser(
-        'docker', help="Interface for creating a preconfigured docker server")
-    docker_subparsers = docker_parser.add_subparsers(dest='docker')
+        "docker", help="Interface for creating a preconfigured docker server"
+    )
+    docker_subparsers = docker_parser.add_subparsers(dest="docker")
 
     docker_server_parser = docker_subparsers.add_parser(
-        'server', help="Creates a preconfigured docker server."
+        "server", help="Creates a preconfigured docker server."
     )
 
     docker_server_parser.set_defaults(func=server_cli)
