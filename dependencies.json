@@ -245,6 +245,7 @@
     },
     "pymedphys_monomanage": {
       "external": [
+        "black",
         "networkx",
         "semver",
         "stdlib_list"
