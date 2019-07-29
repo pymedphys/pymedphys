@@ -24,10 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from glob import glob
+import json
 import os
 import textwrap
-import json
-from glob import glob
+
+from ..clean import blacken_str
 
 ROOT = os.getcwd()
 
@@ -98,8 +100,10 @@ def main():
         """
         ).format(json.dumps(install_requires, indent=4))
 
+        install_requires_contents_blackened = blacken_str(install_requires_contents)
+
         with open(install_requires_filepath, "w") as file:
-            file.write(install_requires_contents)
+            file.write(install_requires_contents_blackened)
 
     for package, dependency_store in tree.items():
         internal_dependencies = {
