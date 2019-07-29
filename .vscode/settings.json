@@ -13,8 +13,7 @@
   "[python]": {
     "editor.rulers": [
       72,
-      79,
-      119
+      88
     ]
   },
   "python.testing.unittestEnabled": false,

@@ -28,36 +28,37 @@ import os
 import ast
 
 from stdlib_list import stdlib_list
+
 STDLIB = set(stdlib_list())
 
 
 IMPORT_TYPES = {
-    type(ast.parse('import george').body[0]),  # type: ignore
-    type(ast.parse('import george as macdonald').body[0])}  # type: ignore
+    type(ast.parse("import george").body[0]),  # type: ignore
+    type(ast.parse("import george as macdonald").body[0]),
+}  # type: ignore
 
 IMPORT_FROM_TYPES = {
-    type(ast.parse('from george import macdonald').body[0])  # type: ignore
+    type(ast.parse("from george import macdonald").body[0])  # type: ignore
 }
 
 ALL_IMPORT_TYPES = IMPORT_TYPES.union(IMPORT_FROM_TYPES)
 
 CONVERSIONS = {
-    'attr': 'attrs',
-    'PIL': 'Pillow',
-    'Image': 'Pillow',
-    'mpl_toolkits': 'matplotlib',
-    'dateutil': 'python_dateutil',
-    'yaml': 'PyYAML'
+    "attr": "attrs",
+    "PIL": "Pillow",
+    "Image": "Pillow",
+    "mpl_toolkits": "matplotlib",
+    "dateutil": "python_dateutil",
+    "yaml": "PyYAML",
 }
 
 
 def get_imports(filepath, relative_filepath, internal_packages, depth):
-    with open(filepath, 'r') as file:
+    with open(filepath, "r") as file:
         data = file.read()
 
     parsed = ast.parse(data)
-    imports = [
-        node for node in ast.walk(parsed) if type(node) in ALL_IMPORT_TYPES]
+    imports = [node for node in ast.walk(parsed) if type(node) in ALL_IMPORT_TYPES]
 
     stdlib_imports = set()
     external_imports = set()
@@ -66,7 +67,7 @@ def get_imports(filepath, relative_filepath, internal_packages, depth):
     internal_file_imports = set()
 
     def get_base_converted_module(name):
-        name = name.split('.')[0]
+        name = name.split(".")[0]
 
         try:
             name = CONVERSIONS[name]
@@ -95,27 +96,25 @@ def get_imports(filepath, relative_filepath, internal_packages, depth):
             if an_import.level == 0:
                 add_level_0(an_import.module)
             elif an_import.level == 1 and depth == 2:
-                module_path = (
-                    relative_filepath.split(os.sep)[0:2] + [an_import.module])
-                internal_file_imports.add('.'.join(module_path))
-            elif (
-                    (an_import.level == 1 and depth == 1) or
-                    (an_import.level == 2 and depth == 2)):
-                module_path = (
-                    relative_filepath.split(os.sep)[0:1] + [an_import.module])
-                internal_module_imports.add('.'.join(module_path))
+                module_path = relative_filepath.split(os.sep)[0:2] + [an_import.module]
+                internal_file_imports.add(".".join(module_path))
+            elif (an_import.level == 1 and depth == 1) or (
+                an_import.level == 2 and depth == 2
+            ):
+                module_path = relative_filepath.split(os.sep)[0:1] + [an_import.module]
+                internal_module_imports.add(".".join(module_path))
             else:
                 raise ValueError(
-                    "Unexpected depth and import level of relative "
-                    "import")
+                    "Unexpected depth and import level of relative " "import"
+                )
 
         else:
             raise TypeError("Unexpected import type")
 
     return {
-        'stdlib': stdlib_imports,
-        'external': external_imports,
-        'internal_package': internal_package_imports,
-        'internal_module': internal_module_imports,
-        'internal_file': internal_file_imports
+        "stdlib": stdlib_imports,
+        "external": external_imports,
+        "internal_package": internal_package_imports,
+        "internal_module": internal_module_imports,
+        "internal_file": internal_file_imports,
     }

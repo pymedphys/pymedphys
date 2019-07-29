@@ -30,23 +30,9 @@ from pymedphys_mudensity.mudensity import calc_mu_density
 
 MU = [0, 30]
 
-MLC = np.array([
-    [
-        [4, -3],
-        [4, -3],
-        [4, -3]
-    ],
-    [
-        [-3, 4],
-        [-3, 4],
-        [-3, 4]
-    ]
-])
+MLC = np.array([[[4, -3], [4, -3], [4, -3]], [[-3, 4], [-3, 4], [-3, 4]]])
 
-JAW = np.array([
-    [3, 3],
-    [3, 3]
-])
+JAW = np.array([[3, 3], [3, 3]])
 
 LEAF_PAIR_WIDTHS = [2, 2, 2]
 
@@ -57,23 +43,33 @@ def test_max_leaf_gap():
     how_many_to_test = 20
 
     max_leaf_gap_init = (
-        np.ceil(max_leaf_gap_init / 2 / grid_resolution) * 2 * grid_resolution)
+        np.ceil(max_leaf_gap_init / 2 / grid_resolution) * 2 * grid_resolution
+    )
 
     multiple_max_leaf_gaps = np.arange(
         max_leaf_gap_init,
         max_leaf_gap_init + how_many_to_test * 2 * grid_resolution,
-        2 * grid_resolution)
+        2 * grid_resolution,
+    )
 
     init_mu_density = calc_mu_density(
-        MU, MLC, JAW,
+        MU,
+        MLC,
+        JAW,
         leaf_pair_widths=LEAF_PAIR_WIDTHS,
-        max_leaf_gap=max_leaf_gap_init, grid_resolution=grid_resolution)
+        max_leaf_gap=max_leaf_gap_init,
+        grid_resolution=grid_resolution,
+    )
 
     for i, max_leaf_gap in enumerate(multiple_max_leaf_gaps):
         mu_density = calc_mu_density(
-            MU, MLC, JAW,
+            MU,
+            MLC,
+            JAW,
             leaf_pair_widths=LEAF_PAIR_WIDTHS,
-            max_leaf_gap=max_leaf_gap, grid_resolution=grid_resolution)
+            max_leaf_gap=max_leaf_gap,
+            grid_resolution=grid_resolution,
+        )
 
         assert not np.all(mu_density == 0)
         if i != 0:
@@ -81,7 +77,10 @@ def test_max_leaf_gap():
 
     with pytest.raises(ValueError):
         calc_mu_density(
-            MU, MLC, JAW,
+            MU,
+            MLC,
+            JAW,
             leaf_pair_widths=LEAF_PAIR_WIDTHS,
-            max_leaf_gap=max_leaf_gap_init + 1, grid_resolution=grid_resolution
+            max_leaf_gap=max_leaf_gap_init + 1,
+            grid_resolution=grid_resolution,
         )

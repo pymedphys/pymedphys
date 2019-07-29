@@ -30,16 +30,14 @@ import numpy as np
 import pandas as pd
 
 
-def file_output(output_directory, distance, relative_dose,
-                scan_curvetype, scan_depth):
+def file_output(output_directory, distance, relative_dose, scan_curvetype, scan_depth):
     """Store the loaded mephysto data into csv files for easy user confirmation
     and use.
     """
     # Determines the filepaths for the output
-    filepaths = determine_output_filepaths(
-        output_directory, scan_curvetype, scan_depth)
+    filepaths = determine_output_filepaths(output_directory, scan_curvetype, scan_depth)
 
-    columns = ['distance (mm)', 'relative dose']
+    columns = ["distance (mm)", "relative dose"]
 
     # Loop over each curvetype and save the data to csv
     for i, curvetype in enumerate(scan_curvetype):
@@ -58,24 +56,31 @@ def determine_output_filepaths(output_directory, scan_curvetype, scan_depth):
 
     # Loop over each scan curvetype creating a relevant filepath
     for i, curvetype in enumerate(scan_curvetype):
-        if curvetype == 'PDD':
+        if curvetype == "PDD":
             # Create the filename to be pdd_[number].csv
-            filepaths.append(os.path.join(
-                output_directory, "pdd_[{0:d}].csv".format(i)))
+            filepaths.append(
+                os.path.join(output_directory, "pdd_[{0:d}].csv".format(i))
+            )
 
-        elif curvetype == 'INPLANE_PROFILE':
+        elif curvetype == "INPLANE_PROFILE":
             # Create the filename to be inplaneprofile_depth_[number].csv
-            filepaths.append(os.path.join(
-                output_directory,
-                "inplaneprofile_{0:d}mm_[{1:d}].csv".format(
-                    int(scan_depth[i]), i)))
+            filepaths.append(
+                os.path.join(
+                    output_directory,
+                    "inplaneprofile_{0:d}mm_[{1:d}].csv".format(int(scan_depth[i]), i),
+                )
+            )
 
-        elif curvetype == 'CROSSPLANE_PROFILE':
+        elif curvetype == "CROSSPLANE_PROFILE":
             # Create the filename to be crossplaneprofile_depth_[number].csv
-            filepaths.append(os.path.join(
-                output_directory,
-                "crossplaneprofile_{0:d}mm_[{1:d}].csv".format(
-                    int(scan_depth[i]), i)))
+            filepaths.append(
+                os.path.join(
+                    output_directory,
+                    "crossplaneprofile_{0:d}mm_[{1:d}].csv".format(
+                        int(scan_depth[i]), i
+                    ),
+                )
+            )
 
         else:
             # Raise an error if the curve type was not as expected

@@ -33,11 +33,10 @@ from pymedphys_fileformats.trf.trf2csv import trf2csv_cli
 
 def trf_cli(subparsers):
     trf_parser = subparsers.add_parser(
-        'trf',
-        help=(
-            'A toolbox to work with the Elekta Linac ``.trf`` binary log files.'
-        ))
-    trf_subparsers = trf_parser.add_subparsers(dest='trf')
+        "trf",
+        help=("A toolbox to work with the Elekta Linac ``.trf`` binary log files."),
+    )
+    trf_subparsers = trf_parser.add_subparsers(dest="trf")
     trf_to_csv(trf_subparsers)
 
     return trf_parser
@@ -45,15 +44,19 @@ def trf_cli(subparsers):
 
 def trf_to_csv(dicom_subparsers):
     parser = dicom_subparsers.add_parser(
-        'to-csv',
-        help='Converts ``.trf`` files to ``.csv`` table and header files.')
+        "to-csv", help="Converts ``.trf`` files to ``.csv`` table and header files."
+    )
 
     parser.add_argument(
-        'filepaths', type=str, nargs='+',
+        "filepaths",
+        type=str,
+        nargs="+",
         help=(
-            'A list of ``.trf`` filepaths that you wish to convert to ``.csv``. '
-            'Use of the glob wildcard * is enabled, which means that running '
-            '``pymedphys trf to-csv *.trf`` will convert all logfiles in the '
-            'current directory to csv files.'))
+            "A list of ``.trf`` filepaths that you wish to convert to ``.csv``. "
+            "Use of the glob wildcard * is enabled, which means that running "
+            "``pymedphys trf to-csv *.trf`` will convert all logfiles in the "
+            "current directory to csv files."
+        ),
+    )
 
     parser.set_defaults(func=trf2csv_cli)

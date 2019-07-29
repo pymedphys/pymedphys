@@ -1,3 +1,1 @@
-from pymedphys_coordsandscales.coordinates import (
-    rotate_about_z, translate
-)
+from pymedphys_coordsandscales.coordinates import rotate_about_z, translate

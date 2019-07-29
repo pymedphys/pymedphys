@@ -60,19 +60,19 @@ from zipfile import ZipFile
 from pymedphys_pinnacle import PinnacleExport
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIRECTORY = os.path.join(HERE, 'data', 'export')
+DATA_DIRECTORY = os.path.join(HERE, "data", "export")
 
 working_path = tempfile.mkdtemp()
-data_path = os.path.join(working_path, 'data')
+data_path = os.path.join(working_path, "data")
 
 
-data_zip = os.path.join(DATA_DIRECTORY, 'pinnacle_16.0_test_data.zip')
+data_zip = os.path.join(DATA_DIRECTORY, "pinnacle_16.0_test_data.zip")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def data():
 
-    zip_ref = ZipFile(data_zip, 'r')
+    zip_ref = ZipFile(data_zip, "r")
     zip_ref.extractall(data_path)
     zip_ref.close()
 
@@ -85,10 +85,9 @@ def pinn(data):
     pinn_objs = []
 
     for d in os.listdir(data):
-        pinn_dir = os.path.join(data, d, 'Pinnacle')
+        pinn_dir = os.path.join(data, d, "Pinnacle")
         for pat_dir in os.listdir(pinn_dir):
-            pinn_objs.append(PinnacleExport(
-                os.path.join(pinn_dir, pat_dir), None))
+            pinn_objs.append(PinnacleExport(os.path.join(pinn_dir, pat_dir), None))
 
     return pinn_objs
 
@@ -124,7 +123,8 @@ def test_ct(pinn):
 
     for p in pinn:
         export_path = os.path.join(
-            working_path, "output", p.patient_info['MedicalRecordNumber'], "CT")
+            working_path, "output", p.patient_info["MedicalRecordNumber"], "CT"
+        )
         os.makedirs(export_path)
 
         export_plan = p.plans[0]
@@ -133,9 +133,9 @@ def test_ct(pinn):
 
         # Get the exported CT file
         for f in os.listdir(export_path):
-            if f.startswith('CT'):
+            if f.startswith("CT"):
                 exported_ct = pydicom.read_file(os.path.join(export_path, f))
-                assert exported_ct.Modality == 'CT'
+                assert exported_ct.Modality == "CT"
 
                 # Get the ground truth CT file
                 pinn_ct = find_corresponding_dicom(exported_ct)
@@ -160,7 +160,8 @@ def test_struct(pinn):
 
     for p in pinn:
         export_path = os.path.join(
-            working_path, "output", p.patient_info['MedicalRecordNumber'], "RTSTRUCT")
+            working_path, "output", p.patient_info["MedicalRecordNumber"], "RTSTRUCT"
+        )
         os.makedirs(export_path)
 
         export_plan = p.plans[0]
@@ -169,19 +170,21 @@ def test_struct(pinn):
 
         # Get the exported struct file
         for f in os.listdir(export_path):
-            if f.startswith('RS'):
-                exported_struct = pydicom.read_file(
-                    os.path.join(export_path, f))
-                assert exported_struct.Modality == 'RTSTRUCT'
+            if f.startswith("RS"):
+                exported_struct = pydicom.read_file(os.path.join(export_path, f))
+                assert exported_struct.Modality == "RTSTRUCT"
 
         # Get the ground truth RTSTRUCT file
         pinn_struct = find_corresponding_dicom(exported_struct)
         assert pinn_struct != None
 
         assert len(pinn_struct.StructureSetROISequence) == len(
-            exported_struct.StructureSetROISequence)
+            exported_struct.StructureSetROISequence
+        )
 
-        for s1, s2 in zip(pinn_struct.StructureSetROISequence, exported_struct.StructureSetROISequence):
+        for s1, s2 in zip(
+            pinn_struct.StructureSetROISequence, exported_struct.StructureSetROISequence
+        ):
             assert s1.ROIName == s2.ROIName
 
         # TODO: Generate a mask for each contour and do a comparison of these
@@ -191,7 +194,8 @@ def test_dose(pinn):
 
     for p in pinn:
         export_path = os.path.join(
-            working_path, "output", p.patient_info['MedicalRecordNumber'], "RTDOSE")
+            working_path, "output", p.patient_info["MedicalRecordNumber"], "RTDOSE"
+        )
         os.makedirs(export_path)
 
         export_plan = p.plans[0]
@@ -200,9 +204,9 @@ def test_dose(pinn):
 
         # Get the exported RTDOSE file
         for f in os.listdir(export_path):
-            if f.startswith('RD'):
+            if f.startswith("RD"):
                 exported_dose = pydicom.read_file(os.path.join(export_path, f))
-                assert exported_dose.Modality == 'RTDOSE'
+                assert exported_dose.Modality == "RTDOSE"
                 break
 
         # Get the ground truth RTDOSE file
@@ -231,7 +235,8 @@ def test_plan(pinn):
 
     for p in pinn:
         export_path = os.path.join(
-            working_path, "output", p.patient_info['MedicalRecordNumber'], "RTPLAN")
+            working_path, "output", p.patient_info["MedicalRecordNumber"], "RTPLAN"
+        )
         os.makedirs(export_path)
 
         export_plan = p.plans[0]
@@ -240,9 +245,9 @@ def test_plan(pinn):
 
         # Get the exported RTPLAN file
         for f in os.listdir(export_path):
-            if f.startswith('RP'):
+            if f.startswith("RP"):
                 exported_plan = pydicom.read_file(os.path.join(export_path, f))
-                assert exported_plan.Modality == 'RTPLAN'
+                assert exported_plan.Modality == "RTPLAN"
                 break
 
         # Get the ground truth RTDOSE file
