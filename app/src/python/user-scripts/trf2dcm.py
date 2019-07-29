@@ -5,11 +5,11 @@ import pydicom
 
 from pymedphys import Delivery
 
-input_directory = 'input'
-output_directory = 'output'
+input_directory = "input"
+output_directory = "output"
 
-trf_filepaths = glob(os.path.join(input_directory, '*.trf'))
-dicom_filepaths = glob(os.path.join(input_directory, '*.dcm'))
+trf_filepaths = glob(os.path.join(input_directory, "*.trf"))
+dicom_filepaths = glob(os.path.join(input_directory, "*.dcm"))
 
 
 for filepath in trf_filepaths:
@@ -27,13 +27,14 @@ for filepath in trf_filepaths:
             created_dicom = delivery_data.to_dicom(dicom_template)
             print(
                 "{} appears to be an RT DICOM plan with appropriate "
-                "angle meterset combination, using this one.".format(
-                    dicom_filepath))
+                "angle meterset combination, using this one.".format(dicom_filepath)
+            )
             continue
         except AttributeError:
             print(
                 "{} does not appear to be an RT DICOM plan, "
-                "skipping...".format(dicom_filepath))
+                "skipping...".format(dicom_filepath)
+            )
 
     print("Saving newly created RT Plan DICOM")
     created_dicom.save_as(output_filepath)

@@ -159,8 +159,7 @@ def get_metersets_from_dicom(dicom_dataset, fraction_group):
     fraction_group_sequence = dicom_dataset.FractionGroupSequence
 
     fraction_group_numbers = [
-        fraction_group.FractionGroupNumber
-        for fraction_group in fraction_group_sequence
+        fraction_group.FractionGroupNumber for fraction_group in fraction_group_sequence
     ]
 
     fraction_group_index = fraction_group_numbers.index(fraction_group)
@@ -176,22 +175,24 @@ def get_metersets_from_dicom(dicom_dataset, fraction_group):
 
 def get_gantry_angles_from_dicom(dicom_dataset):
     gantry_angles = [
-        set(convert_IEC_angle_to_bipolar([
-            control_point.GantryAngle
-            for control_point in beam_sequence.ControlPointSequence
-        ]))
+        set(
+            convert_IEC_angle_to_bipolar(
+                [
+                    control_point.GantryAngle
+                    for control_point in beam_sequence.ControlPointSequence
+                ]
+            )
+        )
         for beam_sequence in dicom_dataset.BeamSequence
     ]
 
     for gantry_angle_set in gantry_angles:
         if len(gantry_angle_set) != 1:
             raise ValueError(
-                "Only a single gantry angle per beam is currently supported")
+                "Only a single gantry angle per beam is currently supported"
+            )
 
-    result = tuple(
-        list(item)[0]
-        for item in gantry_angles
-    )
+    result = tuple(list(item)[0] for item in gantry_angles)
 
     return result
 
@@ -207,7 +208,8 @@ def get_fraction_group_index(dicom_dataset, fraction_group_number):
 
 def get_referenced_beam_sequence(dicom_dataset, fraction_group_number):
     fraction_group_index = get_fraction_group_index(
-        dicom_dataset, fraction_group_number)
+        dicom_dataset, fraction_group_number
+    )
 
     fraction_group = dicom_dataset.FractionGroupSequence[fraction_group_index]
     referenced_beam_sequence = fraction_group.ReferencedBeamSequence
@@ -221,40 +223,34 @@ def get_referenced_beam_sequence(dicom_dataset, fraction_group_number):
 
 
 def get_beam_indices_of_fraction_group(dicom_dataset, fraction_group_number):
-    beam_numbers, _ = get_referenced_beam_sequence(
-        dicom_dataset, fraction_group_number)
+    beam_numbers, _ = get_referenced_beam_sequence(dicom_dataset, fraction_group_number)
 
     beam_sequence_numbers = [
-        beam_sequence.BeamNumber
-        for beam_sequence in dicom_dataset.BeamSequence
+        beam_sequence.BeamNumber for beam_sequence in dicom_dataset.BeamSequence
     ]
 
     beam_indexes = [
-        beam_sequence_numbers.index(beam_number)
-        for beam_number in beam_numbers
+        beam_sequence_numbers.index(beam_number) for beam_number in beam_numbers
     ]
 
     return beam_indexes
 
 
-def get_fraction_group_beam_sequence_and_meterset(dicom_dataset,
-                                                  fraction_group_number):
+def get_fraction_group_beam_sequence_and_meterset(dicom_dataset, fraction_group_number):
     beam_numbers, referenced_beam_sequence = get_referenced_beam_sequence(
-        dicom_dataset, fraction_group_number)
+        dicom_dataset, fraction_group_number
+    )
 
     metersets = [
-        referenced_beam.BeamMeterset
-        for referenced_beam in referenced_beam_sequence
+        referenced_beam.BeamMeterset for referenced_beam in referenced_beam_sequence
     ]
 
     beam_sequence_number_mapping = {
-        beam.BeamNumber: beam
-        for beam in dicom_dataset.BeamSequence
+        beam.BeamNumber: beam for beam in dicom_dataset.BeamSequence
     }
 
     beam_sequence = [
-        beam_sequence_number_mapping[beam_number]
-        for beam_number in beam_numbers
+        beam_sequence_number_mapping[beam_number] for beam_number in beam_numbers
     ]
 
     return beam_sequence, metersets

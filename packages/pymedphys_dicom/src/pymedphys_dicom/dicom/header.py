@@ -46,8 +46,7 @@ def adjust_machine_name(dicom_dataset, new_machine_name):
 
 def adjust_machine_name_cli(args):
     dicom_dataset = pydicom.read_file(args.input_file, force=True)
-    new_dicom_dataset = adjust_machine_name(
-        dicom_dataset, args.new_machine_name)
+    new_dicom_dataset = adjust_machine_name(dicom_dataset, args.new_machine_name)
 
     pydicom.write_file(args.output_file, new_dicom_dataset)
 
@@ -65,8 +64,9 @@ def delete_sequence_item_with_matching_key(sequence, key, value):
     return new_sequence
 
 
-def adjust_rel_elec_density(dicom_dataset, adjustment_map,
-                            ignore_missing_structure=False):
+def adjust_rel_elec_density(
+    dicom_dataset, adjustment_map, ignore_missing_structure=False
+):
     """Append or adjust relative electron densities of structures
     """
 
@@ -99,13 +99,16 @@ def adjust_rel_elec_density(dicom_dataset, adjustment_map,
             physical_properties = []
 
         physical_properties = delete_sequence_item_with_matching_key(
-            physical_properties, 'ROIPhysicalProperty', 'REL_ELEC_DENSITY')
+            physical_properties, "ROIPhysicalProperty", "REL_ELEC_DENSITY"
+        )
 
         physical_properties.append(
-            dicom_dataset_from_dict({
-                'ROIPhysicalProperty': 'REL_ELEC_DENSITY',
-                'ROIPhysicalPropertyValue': new_red
-            })
+            dicom_dataset_from_dict(
+                {
+                    "ROIPhysicalProperty": "REL_ELEC_DENSITY",
+                    "ROIPhysicalPropertyValue": new_red,
+                }
+            )
         )
 
         observation.ROIPhysicalPropertiesSequence = physical_properties
@@ -116,22 +119,22 @@ def adjust_rel_elec_density(dicom_dataset, adjustment_map,
 def adjust_RED_cli(args):
     adjustment_map = {
         key: item
-        for key, item in zip(
-            args.adjustment_map[::2], args.adjustment_map[1::2])
+        for key, item in zip(args.adjustment_map[::2], args.adjustment_map[1::2])
     }
 
     dicom_dataset = pydicom.read_file(args.input_file, force=True)
     new_dicom_dataset = adjust_rel_elec_density(
-        dicom_dataset, adjustment_map,
-        ignore_missing_structure=args.ignore_missing_structure)
+        dicom_dataset,
+        adjustment_map,
+        ignore_missing_structure=args.ignore_missing_structure,
+    )
 
     pydicom.write_file(args.output_file, new_dicom_dataset)
 
 
 def RED_adjustment_map_from_structure_names(structure_names):
-    structure_name_containing_RED_regex = r'^.*RED\s*[=:]\s*(\d+\.?\d*)\s*$'
-    pattern = re.compile(
-        structure_name_containing_RED_regex, flags=re.IGNORECASE)
+    structure_name_containing_RED_regex = r"^.*RED\s*[=:]\s*(\d+\.?\d*)\s*$"
+    pattern = re.compile(structure_name_containing_RED_regex, flags=re.IGNORECASE)
 
     adjustment_map = {
         structure: float(pattern.match(structure).group(1))
@@ -146,14 +149,12 @@ def adjust_RED_by_structure_name(dicom_dataset):
     """Adjust the structure electron density based on structure name.
     """
     structure_names = [
-        structure_set.ROIName
-        for structure_set in dicom_dataset.StructureSetROISequence
+        structure_set.ROIName for structure_set in dicom_dataset.StructureSetROISequence
     ]
 
     adjustment_map = RED_adjustment_map_from_structure_names(structure_names)
 
-    adjusted_dicom_dataset = adjust_rel_elec_density(
-        dicom_dataset, adjustment_map)
+    adjusted_dicom_dataset = adjust_rel_elec_density(dicom_dataset, adjustment_map)
 
     return adjusted_dicom_dataset
 
