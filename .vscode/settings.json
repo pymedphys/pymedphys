@@ -1,14 +1,15 @@
 {
-  "python.linting.pylintUseMinimalCheckers": false,
-  "python.linting.mypyEnabled": true,
-  "files.trimTrailingWhitespace": true,
-  "editor.formatOnSave": true,
   "editor.detectIndentation": true,
+  "editor.formatOnSave": true,
   "editor.insertSpaces": true,
   "editor.rulers": [
     79,
     119
   ],
+  "files.trimTrailingWhitespace": true,
+  "python.formatting.provider": "black",
+  "python.linting.mypyEnabled": true,
+  "python.linting.pylintUseMinimalCheckers": false,
   "[python]": {
     "editor.rulers": [
       72,

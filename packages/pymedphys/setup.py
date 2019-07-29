@@ -77,7 +77,7 @@ setup(
             "sphinx-argparse",
         ],
         "test": ["deepdiff", "pytest", "pytest-cov", "xlwings >= 0.15.4"],
-        "lint": ["autopep8", "pylint", "mypy"],
+        "lint": ["black", "pylint", "mypy"],
         "dev": ["semver"],
     },
 )
