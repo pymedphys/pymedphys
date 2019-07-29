@@ -57,10 +57,7 @@ from .anonymise import (
     label_dicom_filepath_as_anonymised,
 )
 
-from .coords import (
-    coords_from_xyz_axes,
-    xyz_axes_from_dataset,
-)
+from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
 
 from .dose import (
     create_dvh,
