@@ -89,46 +89,40 @@ def cubify_cube_definition(cube_definition):
            [ 1.,  0.,  0.],
            [ 0.,  0., -1.]])
     """
-    cube_definition_array = [
-        np.array(list(item))
-        for item in cube_definition
-    ]
+    cube_definition_array = [np.array(list(item)) for item in cube_definition]
     start = cube_definition_array[0]
-    length_decider_vector = (
-        cube_definition_array[1] - cube_definition_array[0])
+    length_decider_vector = cube_definition_array[1] - cube_definition_array[0]
     length = np.linalg.norm(length_decider_vector)
 
+    rotation_decider_vector = cube_definition_array[2] - cube_definition_array[0]
     rotation_decider_vector = (
-        cube_definition_array[2] - cube_definition_array[0])
-    rotation_decider_vector = rotation_decider_vector / \
-        np.linalg.norm(rotation_decider_vector) * length
+        rotation_decider_vector / np.linalg.norm(rotation_decider_vector) * length
+    )
 
-    orthogonal_vector = np.cross(
-        length_decider_vector, rotation_decider_vector)
-    orthogonal_vector = orthogonal_vector / \
-        np.linalg.norm(orthogonal_vector) * length
+    orthogonal_vector = np.cross(length_decider_vector, rotation_decider_vector)
+    orthogonal_vector = orthogonal_vector / np.linalg.norm(orthogonal_vector) * length
 
     orthogonal_rotation_decider_vector = np.cross(
-        orthogonal_vector, length_decider_vector)
+        orthogonal_vector, length_decider_vector
+    )
     orthogonal_rotation_decider_vector = (
-        orthogonal_rotation_decider_vector /
-        np.linalg.norm(orthogonal_rotation_decider_vector) * length)
+        orthogonal_rotation_decider_vector
+        / np.linalg.norm(orthogonal_rotation_decider_vector)
+        * length
+    )
 
     final_points = [
         tuple(start),
         tuple(start + length_decider_vector),
         tuple(start + orthogonal_rotation_decider_vector),
-        tuple(start + orthogonal_vector)
+        tuple(start + orthogonal_vector),
     ]
 
     return final_points
 
 
 def get_cube_definition_array(cube_definition):
-    cube_definition_array = [
-        np.array(list(item))
-        for item in cube_definition
-    ]
+    cube_definition_array = [np.array(list(item)) for item in cube_definition]
 
     return cube_definition_array
 
@@ -139,7 +133,7 @@ def cube_vectors(cube_definition):
     vectors = [
         cube_definition_array[1] - cube_definition_array[0],
         cube_definition_array[2] - cube_definition_array[0],
-        cube_definition_array[3] - cube_definition_array[0]
+        cube_definition_array[3] - cube_definition_array[0],
     ]
 
     return vectors
@@ -170,17 +164,16 @@ def get_bounding_box(points):
     z_min = np.min(points[:, 2])
     z_max = np.max(points[:, 2])
 
-    max_range = np.array(
-        [x_max-x_min, y_max-y_min, z_max-z_min]).max() / 2.0
+    max_range = np.array([x_max - x_min, y_max - y_min, z_max - z_min]).max() / 2.0
 
-    mid_x = (x_max+x_min) * 0.5
-    mid_y = (y_max+y_min) * 0.5
-    mid_z = (z_max+z_min) * 0.5
+    mid_x = (x_max + x_min) * 0.5
+    mid_y = (y_max + y_min) * 0.5
+    mid_z = (z_max + z_min) * 0.5
 
     return [
         [mid_y - max_range, mid_y + max_range],
         [mid_x - max_range, mid_x + max_range],
-        [mid_z - max_range, mid_z + max_range]
+        [mid_z - max_range, mid_z + max_range],
     ]
 
 
@@ -195,13 +188,13 @@ def plot_cube(cube_definition):
         [points[4], points[2], points[6], points[7]],
         [points[2], points[6], points[3], points[0]],
         [points[0], points[2], points[4], points[1]],
-        [points[3], points[6], points[7], points[5]]
+        [points[3], points[6], points[7], points[5]],
     ]
 
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
 
-    faces = Poly3DCollection(edges, linewidths=1, edgecolors='k')
+    faces = Poly3DCollection(edges, linewidths=1, edgecolors="k")
     faces.set_facecolor((0, 0, 1, 0.1))
 
     ax.add_collection3d(faces)
@@ -212,12 +205,11 @@ def plot_cube(cube_definition):
     ax.set_ylim(bounding_box[0])
     ax.set_zlim(bounding_box[2])
 
-
-#     ax.set_aspect('equal')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-    ax.set_aspect('equal')
+    #     ax.set_aspect('equal')
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    ax.set_aspect("equal")
 
     return ax
 
@@ -229,11 +221,7 @@ def test_if_in_range(point_test, point_start, point_end):
 
     vector = point_end - point_start
     dot = np.dot(point_test, vector)
-    item = [
-        dot,
-        np.dot(vector, point_start),
-        np.dot(vector, point_end)
-    ]
+    item = [dot, np.dot(vector, point_start), np.dot(vector, point_end)]
     item.sort()
 
     return item[1] == dot
@@ -241,9 +229,9 @@ def test_if_in_range(point_test, point_start, point_end):
 
 def test_if_in_cube(point_test, cube_definition):
     return (
-        test_if_in_range(point_test, cube_definition[0], cube_definition[1]) and
-        test_if_in_range(point_test, cube_definition[0], cube_definition[2]) and
-        test_if_in_range(point_test, cube_definition[0], cube_definition[3])
+        test_if_in_range(point_test, cube_definition[0], cube_definition[1])
+        and test_if_in_range(point_test, cube_definition[0], cube_definition[2])
+        and test_if_in_range(point_test, cube_definition[0], cube_definition[3])
     )
 
 
@@ -262,28 +250,27 @@ def dose_inside_cube(x_dose, y_dose, z_dose, dose, cube):
     xx, yy, zz = np.meshgrid(
         x_dose[np.invert(x_outside)],
         y_dose[np.invert(y_outside)],
-        z_dose[np.invert(z_outside)])
+        z_dose[np.invert(z_outside)],
+    )
 
     where_x = np.where(np.invert(x_outside))[0]
     where_y = np.where(np.invert(y_outside))[0]
     where_z = np.where(np.invert(z_outside))[0]
 
     bounded_dose = dose[
-        where_y[0]:where_y[-1]+1,
-        where_x[0]:where_x[-1]+1,
-        where_z[0]:where_z[-1]+1
+        where_y[0] : where_y[-1] + 1,
+        where_x[0] : where_x[-1] + 1,
+        where_z[0] : where_z[-1] + 1,
     ]
 
-    points_to_test = np.array([
-        [y, x, z, d]
-        for y, x, z, d
-        in zip(
-            np.ravel(yy),
-            np.ravel(xx),
-            np.ravel(zz),
-            np.ravel(bounded_dose)
-        )
-    ])
+    points_to_test = np.array(
+        [
+            [y, x, z, d]
+            for y, x, z, d in zip(
+                np.ravel(yy), np.ravel(xx), np.ravel(zz), np.ravel(bounded_dose)
+            )
+        ]
+    )
 
     inside_cube = [
         test_if_in_cube(point_test, cube_definition)
@@ -297,23 +284,25 @@ def dose_inside_cube(x_dose, y_dose, z_dose, dose, cube):
         points_inside_cube[:, 1],
         points_inside_cube[:, 0],
         points_inside_cube[:, 2],
-        c=points_inside_cube[:, 3], alpha=0.4
+        c=points_inside_cube[:, 3],
+        alpha=0.4,
     )
 
     return ax
 
 
 def get_interpolated_dose(coords_grid, dose_interpolation):
-    coords_grid_ij_indexing = np.array([
-        np.ravel(coords_grid[:, :, 1]),
-        np.ravel(coords_grid[:, :, 0]),
-        np.ravel(coords_grid[:, :, 2])
-    ]).T
+    coords_grid_ij_indexing = np.array(
+        [
+            np.ravel(coords_grid[:, :, 1]),
+            np.ravel(coords_grid[:, :, 0]),
+            np.ravel(coords_grid[:, :, 2]),
+        ]
+    ).T
 
     interpolated_dose = dose_interpolation(coords_grid_ij_indexing)
     coords_dim = np.shape(coords_grid)
-    interpolated_dose = np.reshape(
-        interpolated_dose, (coords_dim[0], coords_dim[1]))
+    interpolated_dose = np.reshape(interpolated_dose, (coords_dim[0], coords_dim[1]))
 
     return interpolated_dose
 
@@ -326,23 +315,25 @@ def resample_contour(contour, n=51):
 
 
 def resample_contour_set(contours, n=50):
-    resampled_contours = [resample_contour([x, y, z], n)
-                          for x, y, z in zip(*contours)]
+    resampled_contours = [resample_contour([x, y, z], n) for x, y, z in zip(*contours)]
 
     return resampled_contours
 
 
 def contour_to_points(contours):
-    resampled_contours = resample_contour_set([
-        contours[1], contours[0], contours[2]])
+    resampled_contours = resample_contour_set([contours[1], contours[0], contours[2]])
     contour_points = np.concatenate(resampled_contours, axis=1)
 
     return contour_points
 
 
-def get_structure_aligned_cube(structure_name: str,
-                               dcm_struct: pydicom.dataset.FileDataset,
-                               quiet=False, niter=10, x0=None):
+def get_structure_aligned_cube(
+    structure_name: str,
+    dcm_struct: pydicom.dataset.FileDataset,
+    quiet=False,
+    niter=10,
+    x0=None,
+):
     """Align a cube to a dicom structure set.
 
     Designed to allow arbitrary references frames within a dicom file
@@ -410,8 +401,7 @@ def get_structure_aligned_cube(structure_name: str,
 
     if x0 is None:
         concatenated_contours = [
-            np.concatenate(contour_coord)
-            for contour_coord in contours
+            np.concatenate(contour_coord) for contour_coord in contours
         ]
 
         bounds = [
@@ -419,21 +409,25 @@ def get_structure_aligned_cube(structure_name: str,
             for concatenated_contour in concatenated_contours
         ]
 
-        x0 = np.array([
-            (bounds[1][0], bounds[0][0], bounds[2][1]),
-            (bounds[1][0], bounds[0][1], bounds[2][1]),
-            (bounds[1][1], bounds[0][0], bounds[2][1])
-        ])
+        x0 = np.array(
+            [
+                (bounds[1][0], bounds[0][0], bounds[2][1]),
+                (bounds[1][0], bounds[0][1], bounds[2][1]),
+                (bounds[1][1], bounds[0][0], bounds[2][1]),
+            ]
+        )
 
     if quiet:
+
         def print_fun(x, f, accepted):
             pass
+
     else:
+
         def print_fun(x, f, accepted):
             print("at minimum %.4f accepted %d" % (f, int(accepted)))
 
-    result = basinhopping(
-        to_minimise, x0, callback=print_fun, niter=niter, stepsize=5)
+    result = basinhopping(to_minimise, x0, callback=print_fun, niter=niter, stepsize=5)
 
     cube = result.x
 
@@ -441,15 +435,12 @@ def get_structure_aligned_cube(structure_name: str,
         [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
     )
 
-    cube_definition_array = np.array([
-        np.array(list(item))
-        for item in cube_definition
-    ])
+    cube_definition_array = np.array([np.array(list(item)) for item in cube_definition])
 
     vectors = [
         cube_definition_array[1] - cube_definition_array[0],
         cube_definition_array[2] - cube_definition_array[0],
-        cube_definition_array[3] - cube_definition_array[0]
+        cube_definition_array[3] - cube_definition_array[0],
     ]
 
     return cube_definition_array, vectors
@@ -461,29 +452,25 @@ def calc_min_distance(cube_definition, contours):
     vectors = cube_vectors(cube_definition)
     unit_vectors = [vector / np.linalg.norm(vector) for vector in vectors]
 
-    plane_norms = np.array([
-        unit_vectors[1],
-        -unit_vectors[0],
-        -unit_vectors[1],
-        unit_vectors[0],
-        unit_vectors[2],
-        -unit_vectors[2]
-    ])
+    plane_norms = np.array(
+        [
+            unit_vectors[1],
+            -unit_vectors[0],
+            -unit_vectors[1],
+            unit_vectors[0],
+            unit_vectors[2],
+            -unit_vectors[2],
+        ]
+    )
 
-    plane_points = np.array([
-        vertices[0],
-        vertices[1],
-        vertices[2],
-        vertices[0],
-        vertices[0],
-        vertices[3]
-    ])
+    plane_points = np.array(
+        [vertices[0], vertices[1], vertices[2], vertices[0], vertices[0], vertices[3]]
+    )
 
     plane_origin_dist = -np.sum(plane_points * plane_norms, axis=1)
 
-    distance_to_planes = np.dot(plane_norms, contours) \
-        + plane_origin_dist[:, None]
+    distance_to_planes = np.dot(plane_norms, contours) + plane_origin_dist[:, None]
 
-    min_dist_squared = np.min(distance_to_planes**2, axis=0)
+    min_dist_squared = np.min(distance_to_planes ** 2, axis=0)
 
     return min_dist_squared

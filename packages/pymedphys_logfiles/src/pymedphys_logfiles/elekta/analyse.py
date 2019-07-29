@@ -35,9 +35,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pymedphys_utilities.utilities import (
-    get_cache_filepaths, get_mu_density_parameters,
-    get_index, get_centre, get_sql_servers, get_sql_servers_list,
-    get_filepath
+    get_cache_filepaths,
+    get_mu_density_parameters,
+    get_index,
+    get_centre,
+    get_sql_servers,
+    get_sql_servers_list,
+    get_filepath,
 )
 from pymedphys_databases.msq import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
 from pymedphys_databases.delivery import DeliveryDatabases
@@ -50,9 +54,14 @@ def analyse_single_hash(index, config, filehash, cursors):
     print(logfile_filepath)
 
     results = get_logfile_mosaiq_results(
-        index, config, logfile_filepath, field_id_key_map,
-        filehash, cursors,
-        grid_resolution=5/3)
+        index,
+        config,
+        logfile_filepath,
+        field_id_key_map,
+        filehash,
+        cursors,
+        grid_resolution=5 / 3,
+    )
 
     comparison = calc_comparison(results[2], results[3])
     print("Comparison result = {}".format(comparison))
@@ -62,25 +71,19 @@ def analyse_single_hash(index, config, filehash, cursors):
 
 
 def load_comparisons_from_cache(config):
-    (
-        comparison_storage_filepath, _
-    ) = get_cache_filepaths(config)
+    (comparison_storage_filepath, _) = get_cache_filepaths(config)
 
-    with open(comparison_storage_filepath, 'r') as comparisons_file:
+    with open(comparison_storage_filepath, "r") as comparisons_file:
         comparison_storage = json.load(comparisons_file)
 
     file_hashes = np.array(list(comparison_storage.keys()))
 
-    comparisons = np.array([
-        comparison_storage[file_hash]
-        for file_hash in file_hashes
-    ])
+    comparisons = np.array([comparison_storage[file_hash] for file_hash in file_hashes])
 
     index = get_index(config)
-    file_paths_worst_first = np.array([
-        get_filepath_from_hash(config, index, file_hash)
-        for file_hash in file_hashes
-    ])
+    file_paths_worst_first = np.array(
+        [get_filepath_from_hash(config, index, file_hash) for file_hash in file_hashes]
+    )
 
     sort_ref = np.argsort(comparisons)[::-1]
 
@@ -95,8 +98,8 @@ def get_field_id_key_map(index):
     field_id_key_map = dict()
 
     for key, value in index.items():
-        if not value['delivery_details']['qa_mode']:
-            field_id = value['delivery_details']['field_id']
+        if not value["delivery_details"]["qa_mode"]:
+            field_id = value["delivery_details"]["field_id"]
             if field_id not in field_id_key_map:
                 field_id_key_map[field_id] = []
 
@@ -110,20 +113,25 @@ def random_uncompared_logfiles(index, config, compared_hashes):
     comparison_set = set(compared_hashes)
 
     not_yet_compared = np.array(list(index_set.difference(comparison_set)))
-    field_types = np.array([
-        index[file_hash]['delivery_details']['field_type']
-        for file_hash in not_yet_compared
-    ])
+    field_types = np.array(
+        [
+            index[file_hash]["delivery_details"]["field_type"]
+            for file_hash in not_yet_compared
+        ]
+    )
 
-    file_hashes_vmat = not_yet_compared[field_types == 'VMAT']
+    file_hashes_vmat = not_yet_compared[field_types == "VMAT"]
 
-    vmat_filepaths = np.array([
-        os.path.join(
-            config['linac_logfile_data_directory'],
-            'indexed',
-            index[file_hash]['filepath'])
-        for file_hash in file_hashes_vmat
-    ])
+    vmat_filepaths = np.array(
+        [
+            os.path.join(
+                config["linac_logfile_data_directory"],
+                "indexed",
+                index[file_hash]["filepath"],
+            )
+            for file_hash in file_hashes_vmat
+        ]
+    )
 
     shuffle_index = np.arange(len(vmat_filepaths))
     np.random.shuffle(shuffle_index)
@@ -132,22 +140,19 @@ def random_uncompared_logfiles(index, config, compared_hashes):
 
 
 def mudensity_comparisons(config, plot=True, new_logfiles=False):
-    (
-        comparison_storage_filepath, comparison_storage_scratch
-    ) = get_cache_filepaths(config)
+    (comparison_storage_filepath, comparison_storage_scratch) = get_cache_filepaths(
+        config
+    )
 
     grid_resolution, ram_fraction = get_mu_density_parameters(config)
 
     index = get_index(config)
     field_id_key_map = get_field_id_key_map(index)
 
-    (
-        file_hashes, comparisons, _
-    ) = load_comparisons_from_cache(config)
+    (file_hashes, comparisons, _) = load_comparisons_from_cache(config)
 
     if new_logfiles:
-        file_hashes, _ = random_uncompared_logfiles(
-            index, config, file_hashes)
+        file_hashes, _ = random_uncompared_logfiles(index, config, file_hashes)
 
     sql_servers_list = get_sql_servers_list(config)
 
@@ -160,42 +165,61 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
 
                 if (new_logfiles) and (file_hash in comparisons):
                     raise AssertionError(
-                        "A new logfile shouldn't have already been compared")
+                        "A new logfile shouldn't have already been compared"
+                    )
 
-                if index[file_hash]['delivery_details']['qa_mode']:
-                    print('Skipping QA field')
+                if index[file_hash]["delivery_details"]["qa_mode"]:
+                    print("Skipping QA field")
                 else:
                     if file_hash in comparisons:
-                        print("Cached comparison value = {}".format(
-                            comparisons[file_hash]))
+                        print(
+                            "Cached comparison value = {}".format(
+                                comparisons[file_hash]
+                            )
+                        )
 
                     results = get_logfile_mosaiq_results(
-                        index, config, logfile_filepath, field_id_key_map,
-                        file_hash, cursors,
-                        grid_resolution=grid_resolution)
+                        index,
+                        config,
+                        logfile_filepath,
+                        field_id_key_map,
+                        file_hash,
+                        cursors,
+                        grid_resolution=grid_resolution,
+                    )
                     new_comparison = calc_comparison(results[2], results[3])
 
                     if file_hash not in comparisons:
                         update_comparison_file(
-                            file_hash, new_comparison,
+                            file_hash,
+                            new_comparison,
                             comparison_storage_filepath,
-                            comparison_storage_scratch)
-                        print("Newly calculated comparison value = {}".format(
-                            new_comparison))
+                            comparison_storage_scratch,
+                        )
+                        print(
+                            "Newly calculated comparison value = {}".format(
+                                new_comparison
+                            )
+                        )
                     elif np.abs(comparisons[file_hash] - new_comparison) > 0.00001:
                         print(
                             "Calced comparison value does not agree with the "
-                            "cached value.")
-                        print("Newly calculated comparison value = {}".format(
-                            new_comparison))
+                            "cached value."
+                        )
+                        print(
+                            "Newly calculated comparison value = {}".format(
+                                new_comparison
+                            )
+                        )
                         update_comparison_file(
-                            file_hash, new_comparison,
+                            file_hash,
+                            new_comparison,
                             comparison_storage_filepath,
-                            comparison_storage_scratch)
+                            comparison_storage_scratch,
+                        )
                         print("Overwrote the cache with the new result.")
                     else:
-                        print(
-                            "Calced comparison value agrees with the cached value")
+                        print("Calced comparison value agrees with the cached value")
                     if plot:
                         plot_results(*results)
             except KeyboardInterrupt:
@@ -207,24 +231,19 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
 
 
 def mu_density_from_delivery_data(delivery_data, grid_resolution=1):
-    mu, mlc, jaw = (
-        delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
+    mu, mlc, jaw = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
 
     grid_xx, grid_yy, mu_density = calc_mu_density(
-        mu, mlc, jaw,
-        grid_resolution=grid_resolution)
+        mu, mlc, jaw, grid_resolution=grid_resolution
+    )
 
     return grid_xx, grid_yy, mu_density
 
 
-def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index,
-                              config):
+def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index, config):
     keys = np.array(field_id_key_map[field_id])
 
-    times = np.array([
-        index[key]['local_time']
-        for key in keys
-    ]).astype(np.datetime64)
+    times = np.array([index[key]["local_time"] for key in keys]).astype(np.datetime64)
 
     sort_reference = np.argsort(times)
     keys = keys[sort_reference]
@@ -232,8 +251,7 @@ def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index,
 
     hours_4 = np.array(60 * 60 * 4).astype(np.timedelta64)
 
-    delivery_time = np.array(
-        index[filehash]['local_time']).astype(np.datetime64)
+    delivery_time = np.array(index[filehash]["local_time"]).astype(np.datetime64)
     within_4_hours_reference = np.abs(delivery_time - times) < hours_4
     within_4_hours = keys[within_4_hours_reference].tolist()
 
@@ -245,16 +263,13 @@ def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
     for filepath in filepaths:
         logfile_delivery_data = DeliveryDatabases.from_logfile(filepath)
         mu_density_results = mu_density_from_delivery_data(
-            logfile_delivery_data, grid_resolution=grid_resolution)
+            logfile_delivery_data, grid_resolution=grid_resolution
+        )
 
         logfile_results.append(mu_density_results)
 
-    grid_xx_list = [
-        result[0] for result in logfile_results
-    ]
-    grid_yy_list = [
-        result[1] for result in logfile_results
-    ]
+    grid_xx_list = [result[0] for result in logfile_results]
+    grid_yy_list = [result[1] for result in logfile_results]
 
     # assert np.array_equal(*grid_xx_list)
     # assert np.array_equal(*grid_yy_list)
@@ -262,39 +277,37 @@ def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
     grid_xx = grid_xx_list[0]
     grid_yy = grid_yy_list[0]
 
-    mu_densities = [
-        result[2] for result in logfile_results
-    ]
+    mu_densities = [result[2] for result in logfile_results]
 
     logfile_mu_density = np.sum(mu_densities, axis=0)
 
     return grid_xx, grid_yy, logfile_mu_density
 
 
-def get_logfile_mosaiq_results(index, config, filepath, field_id_key_map,
-                               filehash, cursors, grid_resolution=1):
+def get_logfile_mosaiq_results(
+    index, config, filepath, field_id_key_map, filehash, cursors, grid_resolution=1
+):
     file_info = index[filehash]
-    delivery_details = file_info['delivery_details']
-    field_id = delivery_details['field_id']
+    delivery_details = file_info["delivery_details"]
+    field_id = delivery_details["field_id"]
 
     centre = get_centre(config, file_info)
     server = get_sql_servers(config)[centre]
-    mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(
-        cursors[server], field_id)
+    mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(cursors[server], field_id)
 
     mosaiq_results = mu_density_from_delivery_data(
-        mosaiq_delivery_data, grid_resolution=grid_resolution)
+        mosaiq_delivery_data, grid_resolution=grid_resolution
+    )
 
     consecutive_keys = find_consecutive_logfiles(
-        field_id_key_map, field_id, filehash, index, config)
+        field_id_key_map, field_id, filehash, index, config
+    )
 
-    logfilepaths = [
-        get_filepath(index, config, key)
-        for key in consecutive_keys
-    ]
+    logfilepaths = [get_filepath(index, config, key) for key in consecutive_keys]
 
     logile_results = calc_and_merge_logfile_mudensity(
-        logfilepaths, grid_resolution=grid_resolution)
+        logfilepaths, grid_resolution=grid_resolution
+    )
 
     try:
         assert np.all(logile_results[0] == mosaiq_results[0])
@@ -317,8 +330,7 @@ def calc_comparison(logfile_mu_density, mosaiq_mu_density, normalisation=None):
     if normalisation is None:
         normalisation = np.sum(mosaiq_mu_density)
 
-    comparison = (
-        np.sum(np.abs(logfile_mu_density - mosaiq_mu_density)) / normalisation)
+    comparison = np.sum(np.abs(logfile_mu_density - mosaiq_mu_density)) / normalisation
 
     return comparison
 
@@ -334,38 +346,30 @@ def calc_comparison(logfile_mu_density, mosaiq_mu_density, normalisation=None):
 
 def get_filepath_from_hash(config, index, file_hash):
     return os.path.join(
-        config['linac_logfile_data_directory'],
-        'indexed',
-        index[file_hash]['filepath'])
+        config["linac_logfile_data_directory"], "indexed", index[file_hash]["filepath"]
+    )
 
 
-def plot_results(grid_xx, grid_yy, logfile_mu_density, mosaiq_mu_density,
-                 diff_colour_scale=0.1):
+def plot_results(
+    grid_xx, grid_yy, logfile_mu_density, mosaiq_mu_density, diff_colour_scale=0.1
+):
     min_val = np.min([logfile_mu_density, mosaiq_mu_density])
     max_val = np.max([logfile_mu_density, mosaiq_mu_density])
 
     plt.figure()
-    plt.pcolormesh(
-        grid_xx,
-        grid_yy,
-        logfile_mu_density,
-        vmin=min_val, vmax=max_val)
+    plt.pcolormesh(grid_xx, grid_yy, logfile_mu_density, vmin=min_val, vmax=max_val)
     plt.colorbar()
-    plt.title('Logfile MU density')
-    plt.xlabel('MLC direction (mm)')
-    plt.ylabel('Jaw direction (mm)')
+    plt.title("Logfile MU density")
+    plt.xlabel("MLC direction (mm)")
+    plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
 
     plt.figure()
-    plt.pcolormesh(
-        grid_xx,
-        grid_yy,
-        mosaiq_mu_density,
-        vmin=min_val, vmax=max_val)
+    plt.pcolormesh(grid_xx, grid_yy, mosaiq_mu_density, vmin=min_val, vmax=max_val)
     plt.colorbar()
-    plt.title('Mosaiq MU density')
-    plt.xlabel('MLC direction (mm)')
-    plt.ylabel('Jaw direction (mm)')
+    plt.title("Mosaiq MU density")
+    plt.xlabel("MLC direction (mm)")
+    plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
 
     scaled_diff = (logfile_mu_density - mosaiq_mu_density) / max_val
@@ -375,25 +379,25 @@ def plot_results(grid_xx, grid_yy, logfile_mu_density, mosaiq_mu_density,
         grid_xx,
         grid_yy,
         scaled_diff,
-        vmin=-diff_colour_scale/2, vmax=diff_colour_scale/2)
-    plt.colorbar(label='Limited colour range = {}'.format(diff_colour_scale/2))
-    plt.title('(Logfile - Mosaiq MU density) / Maximum MU Density')
-    plt.xlabel('MLC direction (mm)')
-    plt.ylabel('Jaw direction (mm)')
+        vmin=-diff_colour_scale / 2,
+        vmax=diff_colour_scale / 2,
+    )
+    plt.colorbar(label="Limited colour range = {}".format(diff_colour_scale / 2))
+    plt.title("(Logfile - Mosaiq MU density) / Maximum MU Density")
+    plt.xlabel("MLC direction (mm)")
+    plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
 
     plt.show()
 
     plt.figure()
     plt.pcolormesh(
-        grid_xx,
-        grid_yy,
-        scaled_diff,
-        vmin=-diff_colour_scale, vmax=diff_colour_scale)
-    plt.colorbar(label='Limited colour range = {}'.format(diff_colour_scale))
-    plt.title('(Logfile - Mosaiq MU density) / Maximum MU Density')
-    plt.xlabel('MLC direction (mm)')
-    plt.ylabel('Jaw direction (mm)')
+        grid_xx, grid_yy, scaled_diff, vmin=-diff_colour_scale, vmax=diff_colour_scale
+    )
+    plt.colorbar(label="Limited colour range = {}".format(diff_colour_scale))
+    plt.title("(Logfile - Mosaiq MU density) / Maximum MU Density")
+    plt.xlabel("MLC direction (mm)")
+    plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
 
     plt.show()
@@ -402,27 +406,26 @@ def plot_results(grid_xx, grid_yy, logfile_mu_density, mosaiq_mu_density,
 
     plt.figure()
     plt.pcolormesh(
-        grid_xx,
-        grid_yy,
-        scaled_diff,
-        vmin=-absolute_range, vmax=absolute_range)
-    plt.colorbar(label='No limited colour range')
-    plt.title('(Logfile - Mosaiq MU density) / Maximum MU Density')
-    plt.xlabel('MLC direction (mm)')
-    plt.ylabel('Jaw direction (mm)')
+        grid_xx, grid_yy, scaled_diff, vmin=-absolute_range, vmax=absolute_range
+    )
+    plt.colorbar(label="No limited colour range")
+    plt.title("(Logfile - Mosaiq MU density) / Maximum MU Density")
+    plt.xlabel("MLC direction (mm)")
+    plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
 
     plt.show()
 
 
-def update_comparison_file(file_hash, comparison, comparison_storage_filepath,
-                           comparison_storage_scratch):
-    with open(comparison_storage_filepath, 'r') as comparisons_file:
+def update_comparison_file(
+    file_hash, comparison, comparison_storage_filepath, comparison_storage_scratch
+):
+    with open(comparison_storage_filepath, "r") as comparisons_file:
         comparison_storage = json.load(comparisons_file)
 
     comparison_storage[file_hash] = comparison
 
-    with open(comparison_storage_scratch, 'w') as comparisons_file:
+    with open(comparison_storage_scratch, "w") as comparisons_file:
         json.dump(comparison_storage, comparisons_file)
 
     os.replace(comparison_storage_scratch, comparison_storage_filepath)

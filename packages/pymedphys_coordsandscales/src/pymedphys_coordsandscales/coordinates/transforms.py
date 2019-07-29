@@ -41,10 +41,25 @@ def rotate_about_vector(coords_to_rotate, vector, theta, active=False):
     s = sin(radians(theta))
     c = cos(radians(theta))
 
-    rotation_matrix = np.array([[c + u_x*u_x*(1-c), u_x*u_y*(1-c) - u_z*s, u_x*u_z*(1-c) + u_y*s],
-                                [u_y*u_x*(1-c) + u_z*s,     c + u_y *
-                                 u_y*(1-c), u_y*u_z*(1-c) - u_x*s],
-                                [u_z*u_x*(1-c) - u_y*s, u_z*u_y*(1-c) + u_x*s,     c + u_z*u_z*(1-c)]])
+    rotation_matrix = np.array(
+        [
+            [
+                c + u_x * u_x * (1 - c),
+                u_x * u_y * (1 - c) - u_z * s,
+                u_x * u_z * (1 - c) + u_y * s,
+            ],
+            [
+                u_y * u_x * (1 - c) + u_z * s,
+                c + u_y * u_y * (1 - c),
+                u_y * u_z * (1 - c) - u_x * s,
+            ],
+            [
+                u_z * u_x * (1 - c) - u_y * s,
+                u_z * u_y * (1 - c) + u_x * s,
+                c + u_z * u_z * (1 - c),
+            ],
+        ]
+    )
 
     # Rotation matrix above is active (unlike in other functions). Will manually transpose to avoid
     # confusion later...
@@ -61,9 +76,7 @@ def rotate_about_x(coords_to_rotate, psi, active=False):
     s = sin(radians(psi))
     c = cos(radians(psi))
 
-    x_rotation_matrix = np.array([[1, 0, 0],
-                                  [0, c, s],
-                                  [0, -s, c]])
+    x_rotation_matrix = np.array([[1, 0, 0], [0, c, s], [0, -s, c]])
 
     if active:
         x_rotation_matrix = x_rotation_matrix.transpose()
@@ -78,9 +91,7 @@ def rotate_about_y(coords_to_rotate, phi, active=False):
     s = sin(radians(phi))
     c = cos(radians(phi))
 
-    y_rotation_matrix = np.array([[c, 0, -s],
-                                  [0, 1, 0],
-                                  [s, 0, c]])
+    y_rotation_matrix = np.array([[c, 0, -s], [0, 1, 0], [s, 0, c]])
     if active:
         y_rotation_matrix = y_rotation_matrix.transpose()
 
@@ -94,9 +105,7 @@ def rotate_about_z(coords_to_rotate, theta, active=False):
     s = sin(radians(theta))
     c = cos(radians(theta))
 
-    z_rotation_matrix = np.array([[c, s, 0],
-                                  [-s, c, 0],
-                                  [0, 0, 1]])
+    z_rotation_matrix = np.array([[c, s, 0], [-s, c, 0], [0, 0, 1]])
 
     if active:
         z_rotation_matrix = z_rotation_matrix.transpose()

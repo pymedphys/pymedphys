@@ -30,8 +30,7 @@ def make_a_valid_directory_name(proposed_directory_name):
     """In the case a field label can't be used as a file name the invalid
     characters can be dropped."""
     valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-    directory_name = ''.join(
-        c for c in proposed_directory_name if c in valid_chars)
+    directory_name = "".join(c for c in proposed_directory_name if c in valid_chars)
 
     directory_name = directory_name.replace(" ", "-")
 

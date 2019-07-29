@@ -28,66 +28,60 @@ import re
 from collections import namedtuple
 
 Header = namedtuple(
-    'Header',
-    ['machine', 'date', 'timezone', 'field_label', 'field_name']
+    "Header", ["machine", "date", "timezone", "field_label", "field_name"]
 )
 
 
 def determine_header_length(trf_contents):
-    test = trf_contents.split(b'\t')
+    test = trf_contents.split(b"\t")
     row_skips = 6
-    i = next(i for i, item in enumerate(
-        test[row_skips::]) if len(item) > 3) + row_skips
-    header_length = len(b'\t'.join(test[0:i])) + 3
+    i = next(i for i, item in enumerate(test[row_skips::]) if len(item) > 3) + row_skips
+    header_length = len(b"\t".join(test[0:i])) + 3
 
     return header_length
 
 
 def decode_header(trf_header_contents):
     match = re.match(
-        br'[\x00-\x19]'                        # start bit
-        br'(\d\d/\d\d/\d\d \d\d:\d\d:\d\d Z)'  # date
-        br'[\x00-\x19]'                        # divider bit
-        br'((\+|\-)\d\d:\d\d)'                 # time zone
-        br'[\x00-\x25]'                        # divider bit
-        br'([\x20-\xFF]*)'                     # field label and name
-        br'[\x00-\x19]'                        # divider bit
-        br'([\x20-\xFF]+)'                     # machine name
-        br'[\x00-\x19]',                       # divider bit
-        trf_header_contents
+        br"[\x00-\x19]"  # start bit
+        br"(\d\d/\d\d/\d\d \d\d:\d\d:\d\d Z)"  # date
+        br"[\x00-\x19]"  # divider bit
+        br"((\+|\-)\d\d:\d\d)"  # time zone
+        br"[\x00-\x25]"  # divider bit
+        br"([\x20-\xFF]*)"  # field label and name
+        br"[\x00-\x19]"  # divider bit
+        br"([\x20-\xFF]+)"  # machine name
+        br"[\x00-\x19]",  # divider bit
+        trf_header_contents,
     )
 
     if match is None:
         print(trf_header_contents)
-        raise ValueError('Logfile header not of an expected form.')
+        raise ValueError("Logfile header not of an expected form.")
 
     groups = match.groups()
-    date = groups[0].decode('ascii')
-    timezone = groups[1].decode('ascii')
-    field = groups[3].decode('ascii')
-    machine = groups[4].decode('ascii')
+    date = groups[0].decode("ascii")
+    timezone = groups[1].decode("ascii")
+    field = groups[3].decode("ascii")
+    machine = groups[4].decode("ascii")
 
-    split_field = field.split('/')
+    split_field = field.split("/")
     if len(split_field) == 2:
         field_label, field_name = split_field
     else:
-        field_label, field_name = '', field
+        field_label, field_name = "", field
 
-    header = Header(
-        machine, date, timezone,
-        field_label, field_name)
+    header = Header(machine, date, timezone, field_label, field_name)
 
     return header
 
 
 def convert_header_section_to_string(section):
-    return ''.join([
-        chr(item)
-        for item in section[1::]])
+    return "".join([chr(item) for item in section[1::]])
 
 
 def raw_header_from_file(filepath):
-    with open(filepath, 'rb') as file:
+    with open(filepath, "rb") as file:
         trf_contents = file.read()
 
     header_length = determine_header_length(trf_contents)
