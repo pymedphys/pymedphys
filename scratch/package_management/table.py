@@ -41,18 +41,12 @@ from ...george import macdonald
 
 
 GROUPING_OPTIONS = {
-    'integrityv3': {
-        'line_grouping': 700,
-        'linac_state_codes_column': 2
-    },
-    'integrityv4': {
-        'line_grouping': 708,
-        'linac_state_codes_column': 6
-    }
+    "integrityv3": {"line_grouping": 700, "linac_state_codes_column": 2},
+    "integrityv4": {"line_grouping": 708, "linac_state_codes_column": 6},
 }
 
 LINE_GROUPING_OPTIONS = {
-    item['line_grouping']: item['linac_state_codes_column']
+    item["line_grouping"]: item["linac_state_codes_column"]
     for _, item in GROUPING_OPTIONS.items()
 }
 
@@ -63,20 +57,21 @@ def decode_rows(trf_table_contents):
 
     for grouping_option, linac_state_codes_column in LINE_GROUPING_OPTIONS.items():
         if table_byte_length / grouping_option == table_byte_length // grouping_option:
-            possible_groupings.append(
-                (grouping_option, linac_state_codes_column))
+            possible_groupings.append((grouping_option, linac_state_codes_column))
 
     if not possible_groupings:
         raise Exception("Unexpected number of bytes within file.")
 
     reference_state_codes = set(
-        np.array(list(CONFIG["linac_state_codes"].keys())).astype(int))
+        np.array(list(CONFIG["linac_state_codes"].keys())).astype(int)
+    )
 
     decoded_results = []
     for line_grouping, linac_state_codes_column in possible_groupings:
         rows = [
-            trf_table_contents[i:i+line_grouping]
-            for i in range(0, len(trf_table_contents), line_grouping)]
+            trf_table_contents[i : i + line_grouping]
+            for i in range(0, len(trf_table_contents), line_grouping)
+        ]
 
         result = decode_table_data(rows, line_grouping)
         tentative_state_codes = result[:, linac_state_codes_column]
@@ -96,7 +91,7 @@ def decode_rows(trf_table_contents):
 
 
 def decode_rows_from_file(filepath):
-    with open(filepath, 'rb') as file:
+    with open(filepath, "rb") as file:
         trf_contents = file.read()
 
     header_length = determine_header_length(trf_contents)
@@ -108,14 +103,14 @@ def decode_rows_from_file(filepath):
 
 
 def get_column_names(number_of_columns):
-    column_names = CONFIG['column_names']
+    column_names = CONFIG["column_names"]
 
     if number_of_columns == 354:
-        column_names = CONFIG['integrity_4_column_insert'] + column_names
+        column_names = CONFIG["integrity_4_column_insert"] + column_names
     elif number_of_columns == 350:
         pass
     else:
-        raise ValueError('Expected either 354 or 350 columns')
+        raise ValueError("Expected either 354 or 350 columns")
 
     return column_names
 
@@ -128,10 +123,12 @@ def decode_trf_table(trf_table_contents):
     column_names = get_column_names(number_of_columns)
 
     table_dataframe = create_dataframe(
-        decoded_rows, column_names, CONFIG['time_increment'])
+        decoded_rows, column_names, CONFIG["time_increment"]
+    )
 
     convert_data_table(
-        table_dataframe, CONFIG['linac_state_codes'], CONFIG['wedge_codes'])
+        table_dataframe, CONFIG["linac_state_codes"], CONFIG["wedge_codes"]
+    )
 
     return table_dataframe
 
@@ -146,11 +143,11 @@ def decode_column(raw_table_rows: List[str], column_number: int) -> np.ndarray:
     grouping = 2
     i = column_number * grouping
     group = slice(i, i + grouping)
-    byteorder = 'little'
+    byteorder = "little"
 
-    column = np.array([
-        decode_data_item(row, group, byteorder)
-        for row in raw_table_rows])
+    column = np.array(
+        [decode_data_item(row, group, byteorder) for row in raw_table_rows]
+    )
 
     return column
 
@@ -159,7 +156,7 @@ def decode_table_data(raw_table_rows: List[str], line_grouping) -> np.ndarray:
     """Decode the table into integer values."""
 
     result = []
-    for column_number in range(0, line_grouping//2):
+    for column_number in range(0, line_grouping // 2):
         result.append(decode_column(raw_table_rows, column_number))
 
     return np.array(result).T
@@ -176,16 +173,16 @@ def create_dataframe(data, column_names, time_increment):
 def convert_numbers_to_string(name, lookup, column: pd.core.series.Series):
     dtype = np.array([item for _, item in lookup.items()]).dtype
     result = np.empty_like(column).astype(dtype)
-    result[:] = ''
+    result[:] = ""
 
     for i, item in lookup.items():
         result[column.values == int(i)] = item
 
-    if np.any(result == ''):
+    if np.any(result == ""):
         print(lookup)
-        print(np.where(result == ''))
-        print(column[result == ''].values)
-        unconverted_entries = np.unique(column[result == ''])
+        print(np.where(result == ""))
+        print(column[result == ""].values)
+        unconverted_entries = np.unique(column[result == ""])
         raise Exception(
             "The conversion lookup list for converting {} is incomplete. "
             "The following data numbers were not converted:\n"
@@ -198,24 +195,22 @@ def convert_numbers_to_string(name, lookup, column: pd.core.series.Series):
 
 
 def convert_linac_state_codes(dataframe, linac_state_codes):
-    name = 'linac state'
-    key = 'Linac State/Actual Value (None)'
-    dataframe[key] = convert_numbers_to_string(
-        name, linac_state_codes, dataframe[key])
+    name = "linac state"
+    key = "Linac State/Actual Value (None)"
+    dataframe[key] = convert_numbers_to_string(name, linac_state_codes, dataframe[key])
 
 
 def convert_wedge_codes(dataframe, wedge_codes):
-    name = 'wedge'
-    key = 'Wedge Position/Actual Value (None)'
-    dataframe[key] = convert_numbers_to_string(
-        name, wedge_codes, dataframe[key])
+    name = "wedge"
+    key = "Wedge Position/Actual Value (None)"
+    dataframe[key] = convert_numbers_to_string(name, wedge_codes, dataframe[key])
 
 
 def apply_negative(column):
     result = np.ones_like(column).astype(np.float64) * np.nan
-    negative_values = column.values > 2**15
+    negative_values = column.values > 2 ** 15
 
-    result[negative_values] = column[negative_values] - 2**16
+    result[negative_values] = column[negative_values] - 2 ** 16
     result[np.invert(negative_values)] = column[np.invert(negative_values)]
 
     if np.any(np.isnan(result)):
@@ -226,9 +221,9 @@ def apply_negative(column):
 
 def convert_applying_negative(dataframe):
     keys = [
-        'Control point/Actual Value (None)',
-        'Table Isocentric/Scaled Actual (deg)',
-        'Table Isocentric/Positional Error (deg)'
+        "Control point/Actual Value (None)",
+        "Table Isocentric/Scaled Actual (deg)",
+        "Table Isocentric/Positional Error (deg)",
     ]
 
     for key in keys:
@@ -244,11 +239,12 @@ def negative_and_divide_by_10(column: pd.core.series.Series):
 
 def convert_negative_and_divide_by_10(dataframe: pd.core.frame.DataFrame):
     keys = [
-        'Step Dose/Actual Value (Mu)',
-        'Step Gantry/Scaled Actual (deg)',
-        'Step Gantry/Positional Error (deg)',
-        'Step Collimator/Scaled Actual (deg)',
-        'Step Collimator/Positional Error (deg)']
+        "Step Dose/Actual Value (Mu)",
+        "Step Gantry/Scaled Actual (deg)",
+        "Step Gantry/Positional Error (deg)",
+        "Step Collimator/Scaled Actual (deg)",
+        "Step Collimator/Positional Error (deg)",
+    ]
 
     for key in keys:
         dataframe[key] = negative_and_divide_by_10(dataframe[key])
@@ -268,8 +264,9 @@ def convert_remaining(dataframe: pd.core.frame.DataFrame):
         dataframe[key] = negative_and_divide_by_10(dataframe[key])
 
 
-def convert_data_table(dataframe: pd.core.frame.DataFrame, linac_state_codes,
-                       wedge_codes):
+def convert_data_table(
+    dataframe: pd.core.frame.DataFrame, linac_state_codes, wedge_codes
+):
     convert_linac_state_codes(dataframe, linac_state_codes)
     convert_wedge_codes(dataframe, wedge_codes)
 

@@ -33,8 +33,7 @@ from scipy.interpolate import RegularGridInterpolator
 import pydicom
 import pydicom.uid
 
-from ..rtplan import (get_surface_entry_point_with_fallback,
-                      require_gantries_be_zero)
+from ..rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 
 from .structure import pull_structure
 from .coords import xyz_axes_from_dataset
@@ -90,8 +89,7 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
     return result
 
 
-def depth_dose(depths, dose_dataset: pydicom.Dataset,
-               plan_dataset: pydicom.Dataset):
+def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Dataset):
     """Interpolates dose for defined depths within a DICOM dose dataset.
 
     Since the DICOM dose dataset is in CT coordinates the corresponding
@@ -134,8 +132,13 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset,
     return extracted_dose
 
 
-def profile(displacements, depth, direction, dose_dataset: pydicom.Dataset,
-            plan_dataset: pydicom.Dataset):
+def profile(
+    displacements,
+    depth,
+    direction,
+    dose_dataset: pydicom.Dataset,
+    plan_dataset: pydicom.Dataset,
+):
     """Interpolates dose for cardinal angle horizontal profiles within a
     DICOM dose dataset.
 
@@ -180,20 +183,15 @@ def profile(displacements, depth, direction, dose_dataset: pydicom.Dataset,
     depth_adjust = surface_entry_point.y
     y = [depth + depth_adjust]
 
-    if direction in ('inplane', 'inline'):
-        coords = (
-            displacements + surface_entry_point.z,
-            y, [surface_entry_point.x]
-        )
-    elif direction in ('crossplane', 'crossline'):
-        coords = (
-            [surface_entry_point.z], y,
-            displacements + surface_entry_point.x
-        )
+    if direction in ("inplane", "inline"):
+        coords = (displacements + surface_entry_point.z, y, [surface_entry_point.x])
+    elif direction in ("crossplane", "crossline"):
+        coords = ([surface_entry_point.z], y, displacements + surface_entry_point.x)
     else:
         raise ValueError(
             "Expected direction to be equal to one of "
-            "'inplane', 'inline', 'crossplane', or 'crossline'")
+            "'inplane', 'inline', 'crossplane', or 'crossline'"
+        )
 
     extracted_dose = np.squeeze(dicom_dose_interpolate(coords, dose_dataset))
 
@@ -215,8 +213,7 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
     xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
 
-    x_structure, y_structure, z_structure = pull_structure(
-        structure_name, dcm_struct)
+    x_structure, y_structure, z_structure = pull_structure(structure_name, dcm_struct)
     structure_z_values = np.array([item[0] for item in z_structure])
 
     mask = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
@@ -229,14 +226,17 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
 
             assert z_structure[structure_index][0] == z_dose[dose_index]
 
-            structure_polygon = path.Path([
-                (x_structure[structure_index][i],
-                 y_structure[structure_index][i])
-                for i in range(len(x_structure[structure_index]))
-            ])
+            structure_polygon = path.Path(
+                [
+                    (x_structure[structure_index][i], y_structure[structure_index][i])
+                    for i in range(len(x_structure[structure_index]))
+                ]
+            )
             mask[:, :, dose_index] = mask[:, :, dose_index] | (
                 structure_polygon.contains_points(points).reshape(
-                    len(y_dose), len(x_dose)))
+                    len(y_dose), len(x_dose)
+                )
+            )
 
     return mask
 
@@ -249,8 +249,7 @@ def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
 
 
 def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = find_dose_within_structure(structure, dcm_struct,
-                                                       dcm_dose)
+    structure_dose_values = find_dose_within_structure(structure, dcm_struct, dcm_dose)
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]
     bin_edge = hist[1]
@@ -264,13 +263,14 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     percent_cumulative = cumulative / cumulative[0] * 100
 
     plt.plot(bin_mid, percent_cumulative, label=structure)
-    plt.title('DVH')
-    plt.xlabel('Dose (Gy)')
-    plt.ylabel('Relative Volume (%)')
+    plt.title("DVH")
+    plt.xlabel("Dose (Gy)")
+    plt.ylabel("Relative Volume (%)")
 
 
 def require_patient_orientation_be_HFS(ds):
-    if not np.array_equal(ds.ImageOrientationPatient,
-                          np.array([1, 0, 0, 0, 1, 0])):
-        raise ValueError("The supplied dataset has a patient "
-                         "orientation other than head-first supine.")
+    if not np.array_equal(ds.ImageOrientationPatient, np.array([1, 0, 0, 0, 1, 0])):
+        raise ValueError(
+            "The supplied dataset has a patient "
+            "orientation other than head-first supine."
+        )
