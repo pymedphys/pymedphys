@@ -4,5 +4,5 @@ install_requires = [
     "pydicom",
     "pymedphys_dicom >= 0.11.0dev0, < 0.12.0",
     "pymedphys_fileformats >= 0.11.0dev0, < 0.12.0",
-    "scipy"
+    "scipy",
 ]
