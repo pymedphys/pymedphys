@@ -30,8 +30,13 @@ from ..mudensity import calc_mu_density
 
 
 class DeliveryMuDensity(Delivery):
-    def mudensity(self, gantry_angles=None, gantry_tolerance=3,
-                  grid_resolution=1, output_always_list=False):
+    def mudensity(
+        self,
+        gantry_angles=None,
+        gantry_tolerance=3,
+        grid_resolution=1,
+        output_always_list=False,
+    ):
         if gantry_angles is None:
             gantry_angles = 0
             gantry_tolerance = 500
@@ -40,11 +45,14 @@ class DeliveryMuDensity(Delivery):
 
         mudensities = []
         for delivery_data in masked_by_gantry:
-            mudensities.append(calc_mu_density(
-                delivery_data.monitor_units,
-                delivery_data.mlc,
-                delivery_data.jaw,
-                grid_resolution=grid_resolution))
+            mudensities.append(
+                calc_mu_density(
+                    delivery_data.monitor_units,
+                    delivery_data.mlc,
+                    delivery_data.jaw,
+                    grid_resolution=grid_resolution,
+                )
+            )
 
         if not output_always_list:
             if len(mudensities) == 1:

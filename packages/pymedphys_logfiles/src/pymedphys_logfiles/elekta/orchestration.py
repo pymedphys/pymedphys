@@ -38,7 +38,9 @@ import json
 import pandas as pd
 
 from .diagnostics_zips import (
-    fetch_system_diagnostics_multi_linac, extract_diagnostic_zips_and_archive,)
+    fetch_system_diagnostics_multi_linac,
+    extract_diagnostic_zips_and_archive,
+)
 from .index import index_logfiles
 
 
@@ -73,19 +75,19 @@ def orchestration(mosaiq_sql, linac_details, logfile_data_directory):
     """
 
     machine_ip_map = {
-        machine: machine_lookup['ip']
+        machine: machine_lookup["ip"]
         for machine, machine_lookup in linac_details.items()
     }
 
-    diagnostics_directory = os.path.join(logfile_data_directory, 'diagnostics')
+    diagnostics_directory = os.path.join(logfile_data_directory, "diagnostics")
 
-    print('Fetching diagnostic zip files from Linacs...')
+    print("Fetching diagnostic zip files from Linacs...")
     fetch_system_diagnostics_multi_linac(machine_ip_map, diagnostics_directory)
 
-    print('Extracting trf logfiles from diagnostics zip files...')
+    print("Extracting trf logfiles from diagnostics zip files...")
     extract_diagnostic_zips_and_archive(logfile_data_directory)
 
-    print('Indexing logfiles...')
+    print("Indexing logfiles...")
     index_logfiles(mosaiq_sql, linac_details, logfile_data_directory)
 
 
@@ -93,13 +95,12 @@ def orchestration_cli(args):
     data_directory = args.data_directory
 
     if args.mosaiq_sql is None:
-        mosaiq_sql_path = os.path.join(data_directory, 'config_mosaiq_sql.csv')
+        mosaiq_sql_path = os.path.join(data_directory, "config_mosaiq_sql.csv")
     else:
         mosaiq_sql_path = args.mosaiq_sql
 
     if args.linac_details is None:
-        linac_details_path = os.path.join(data_directory,
-                                          'config_linac_details.csv')
+        linac_details_path = os.path.join(data_directory, "config_linac_details.csv")
 
     else:
         linac_details_path = args.linac_details
@@ -111,24 +112,21 @@ def orchestration_cli(args):
 
     mosaiq_sql = {
         str(centre): {
-            "timezone": row['Timezone'],
-            "mosaiq_sql_server": row['Mosaiq SQL Server (Hostname:Port)']
+            "timezone": row["Timezone"],
+            "mosaiq_sql_server": row["Mosaiq SQL Server (Hostname:Port)"],
         }
         for centre, row in mosaiq_sql_table.iterrows()
     }
 
-    print("Mosaiq SQL configuration used:\n{}\n".format(
-        json.dumps(mosaiq_sql, indent=4)))
+    print(
+        "Mosaiq SQL configuration used:\n{}\n".format(json.dumps(mosaiq_sql, indent=4))
+    )
 
     linac_details = {
-        str(machine): {
-            "centre": row["Centre"],
-            "ip": row["IP"]
-        }
+        str(machine): {"centre": row["Centre"], "ip": row["IP"]}
         for machine, row in linac_details_table.iterrows()
     }
 
-    print("Linac configuration used:\n{}\n".format(
-        json.dumps(linac_details, indent=4)))
+    print("Linac configuration used:\n{}\n".format(json.dumps(linac_details, indent=4)))
 
     orchestration(mosaiq_sql, linac_details, data_directory)

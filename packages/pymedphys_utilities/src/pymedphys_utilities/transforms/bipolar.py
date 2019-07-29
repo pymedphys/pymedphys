@@ -38,17 +38,19 @@ def convert_IEC_angle_to_bipolar(angle):
     not_180 = np.where(np.invert(angle == 180))[0]
 
     where_closest_left_leaning = np.argmin(
-        np.abs(is_180[:, None] - not_180[None, :]), axis=1)
-    where_closest_right_leaning = len(not_180) - 1 - np.argmin(np.abs(
-        is_180[::-1, None] -
-        not_180[None, ::-1]), axis=1)[::-1]
+        np.abs(is_180[:, None] - not_180[None, :]), axis=1
+    )
+    where_closest_right_leaning = (
+        len(not_180)
+        - 1
+        - np.argmin(np.abs(is_180[::-1, None] - not_180[None, ::-1]), axis=1)[::-1]
+    )
 
     closest_left_leaning = not_180[where_closest_left_leaning]
     closest_right_leaning = not_180[where_closest_right_leaning]
 
     assert np.all(
-        np.sign(angle[closest_left_leaning]) ==
-        np.sign(angle[closest_right_leaning])
+        np.sign(angle[closest_left_leaning]) == np.sign(angle[closest_right_leaning])
     ), "Unable to automatically determine whether angle is 180 or -180"
 
     angle[is_180] = np.sign(angle[closest_left_leaning]) * angle[is_180]
