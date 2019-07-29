@@ -26,6 +26,7 @@
 from collections import namedtuple
 
 import numpy as np
+
 # from scipy.interpolate import interp1d
 
 
@@ -46,7 +47,7 @@ def read_prs(file_name):
         | Profiler.y = list of (y, dose) tuples
     """
 
-    Profiler = namedtuple('Profiler', ['cax', 'x', 'y'])
+    Profiler = namedtuple("Profiler", ["cax", "x", "y"])
 
     with open(file_name) as profiler_file:
         for row in profiler_file.readlines():
@@ -56,13 +57,13 @@ def read_prs(file_name):
             elif contents[:5] == "Data:":
                 counts = np.array(contents.split()[5:145]).astype(float)
             elif contents[:15] == "Dose Per Count:":
-                dose_per_count = (float(contents.split()[-1]))
+                dose_per_count = float(contents.split()[-1])
         assert (len(calibs)) == (len(counts)) == 140
         assert dose_per_count > 0.0
     dose = counts * dose_per_count * calibs
 
-    y_vals = [-16.4 + 0.4*i for i in range(83)]
-    x_vals = [-11.2 + 0.4*i for i in range(57)]
+    y_vals = [-16.4 + 0.4 * i for i in range(83)]
+    x_vals = [-11.2 + 0.4 * i for i in range(57)]
 
     x_prof = list(zip(y_vals, dose[:57]))
     y_prof = list(zip(x_vals, dose[57:]))

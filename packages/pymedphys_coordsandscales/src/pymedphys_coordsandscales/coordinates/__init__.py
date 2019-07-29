@@ -35,5 +35,9 @@ Available Functions
 
 
 from .transforms import (
-    rotate_about_x, rotate_about_y, rotate_about_z, translate,
-    rotate_about_vector)
+    rotate_about_x,
+    rotate_about_y,
+    rotate_about_z,
+    translate,
+    rotate_about_vector,
+)

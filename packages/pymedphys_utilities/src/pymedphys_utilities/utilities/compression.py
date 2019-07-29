@@ -30,8 +30,8 @@ from glob import glob
 
 
 def compress_test_file(filepath):
-    with open(filepath, 'rb') as load_file:
-        with lzma.open('{}.xz'.format(filepath), 'w') as save_file:
+    with open(filepath, "rb") as load_file:
+        with lzma.open("{}.xz".format(filepath), "w") as save_file:
             save_file.write(load_file.read())
 
 

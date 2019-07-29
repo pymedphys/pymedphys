@@ -27,9 +27,7 @@ def pyls(tmpdir):
     ls = PythonLanguageServer(StringIO, StringIO)
 
     ls.m_initialize(
-        processId=1,
-        rootUri=uris.from_fs_path(str(tmpdir)),
-        initializationOptions={}
+        processId=1, rootUri=uris.from_fs_path(str(tmpdir)), initializationOptions={}
     )
 
     return ls

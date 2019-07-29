@@ -29,42 +29,40 @@ import json
 
 
 def get_gantry_tolerance(index, file_hash, config):
-    machine_name = index[file_hash]['logfile_header']['machine']
-    machine_type = config['machine_map'][machine_name]['type']
-    gantry_tolerance = (
-        config['machine_types'][machine_type]['gantry_tolerance'])
+    machine_name = index[file_hash]["logfile_header"]["machine"]
+    machine_type = config["machine_map"][machine_name]["type"]
+    gantry_tolerance = config["machine_types"][machine_type]["gantry_tolerance"]
 
     return gantry_tolerance
 
 
 def get_data_directory(config):
-    return config['linac_logfile_data_directory']
+    return config["linac_logfile_data_directory"]
 
 
 def get_cache_filepaths(config):
-    mu_density_config = config['mu_density']
+    mu_density_config = config["mu_density"]
 
     comparison_storage_filepath = os.path.join(
-        get_data_directory(config),
-        mu_density_config['comparisons_cache']['primary'])
+        get_data_directory(config), mu_density_config["comparisons_cache"]["primary"]
+    )
     comparison_storage_scratch = os.path.join(
-        get_data_directory(config),
-        mu_density_config['comparisons_cache']['scratch'])
+        get_data_directory(config), mu_density_config["comparisons_cache"]["scratch"]
+    )
 
     return comparison_storage_filepath, comparison_storage_scratch
 
 
 def get_mu_density_parameters(config):
-    mu_density_config = config['mu_density']
-    grid_resolution = mu_density_config['grid_resolution']
-    ram_fraction = mu_density_config['ram_fraction']
+    mu_density_config = config["mu_density"]
+    grid_resolution = mu_density_config["grid_resolution"]
+    ram_fraction = mu_density_config["ram_fraction"]
 
     return grid_resolution, ram_fraction
 
 
 def get_index(config):
-    index_filepath = os.path.join(
-        get_data_directory(config), 'index.json')
+    index_filepath = os.path.join(get_data_directory(config), "index.json")
     with open(index_filepath) as json_data_file:
         index = json.load(json_data_file)
 
@@ -72,16 +70,16 @@ def get_index(config):
 
 
 def get_centre(config, file_info):
-    machine = file_info['logfile_header']['machine']
-    centre = config['machine_map'][machine]['centre']
+    machine = file_info["logfile_header"]["machine"]
+    centre = config["machine_map"][machine]["centre"]
     return centre
 
 
 def get_sql_servers(config):
-    centres = list(config['centres'].keys())
+    centres = list(config["centres"].keys())
 
     sql_servers = {
-        centre: config['centres'][centre]['ois_specific_data']['sql_server']
+        centre: config["centres"][centre]["ois_specific_data"]["sql_server"]
         for centre in centres
     }
 
@@ -91,18 +89,14 @@ def get_sql_servers(config):
 def get_sql_servers_list(config):
     sql_servers = get_sql_servers(config)
 
-    sql_servers_list = [
-        value
-        for _, value in sql_servers.items()
-    ]
+    sql_servers_list = [value for _, value in sql_servers.items()]
 
     return sql_servers_list
 
 
 def get_filepath(index, config, filehash):
     data_directory = get_data_directory(config)
-    relative_path = index[filehash]['filepath']
-    filepath = os.path.abspath(
-        os.path.join(data_directory, 'indexed', relative_path))
+    relative_path = index[filehash]["filepath"]
+    filepath = os.path.abspath(os.path.join(data_directory, "indexed", relative_path))
 
     return filepath

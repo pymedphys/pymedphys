@@ -15,9 +15,6 @@ def test_base_object():
 
     assert empty.monitor_units == tuple()
 
-    collection = {
-        field: getattr(empty, field)
-        for field in empty._fields
-    }
+    collection = {field: getattr(empty, field) for field in empty._fields}
 
     dummy = Delivery(**collection)

@@ -1,5 +1,3 @@
-
-
 import numpy as np
 
 
@@ -20,8 +18,7 @@ def mlc_dd2dcm(mlc):
 
     dicom_mlc_format = []
     for control_point in mlc:
-        concatenated = np.hstack(
-            [-control_point[-1::-1, 1], control_point[-1::-1, 0]])
+        concatenated = np.hstack([-control_point[-1::-1, 1], control_point[-1::-1, 0]])
         dicom_mlc_format.append(concatenated.astype(str).tolist())
 
     return dicom_mlc_format
@@ -31,13 +28,12 @@ def angle_dd2dcm(angle):
     diff = np.append(np.diff(angle), 0)
     movement = (np.empty_like(angle)).astype(str)
 
-    movement[diff > 0] = 'CW'
-    movement[diff < 0] = 'CC'
-    movement[diff == 0] = 'NONE'
+    movement[diff > 0] = "CW"
+    movement[diff < 0] = "CC"
+    movement[diff == 0] = "NONE"
 
     converted_angle = np.array(angle, copy=False)
-    converted_angle[converted_angle < 0] = (
-        converted_angle[converted_angle < 0] + 360)
+    converted_angle[converted_angle < 0] = converted_angle[converted_angle < 0] + 360
 
     converted_angle = converted_angle.astype(str).tolist()
 

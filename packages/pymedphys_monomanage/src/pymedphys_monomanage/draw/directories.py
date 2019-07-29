@@ -31,17 +31,22 @@ from copy import copy
 
 from ..tree import PackageTree
 from .utilities import (
-    save_dot_file, remove_prefix, get_levels, create_labels, create_href)
+    save_dot_file,
+    remove_prefix,
+    get_levels,
+    create_labels,
+    create_href,
+)
 
 
 ROOT = os.getcwd()
 
 
 def draw_directory_modules(save_directory):
-    package_tree = PackageTree(os.path.join(ROOT, 'packages'))
+    package_tree = PackageTree(os.path.join(ROOT, "packages"))
 
     internal_packages = copy(package_tree.roots)
-    internal_packages.remove('pymedphys')
+    internal_packages.remove("pymedphys")
 
     module_paths = [
         item
@@ -50,16 +55,14 @@ def draw_directory_modules(save_directory):
     ]
 
     modules = {
-        item: os.path.splitext(item)[0].replace(os.sep, '.')
-        for item in module_paths
+        item: os.path.splitext(item)[0].replace(os.sep, ".") for item in module_paths
     }
 
     dependencies = {
-        module.replace(os.sep, '.'): {
-            '.'.join(item.split('.')[0:2])
-            for item in
-            package_tree.descendants_dependencies(module)['internal_module'] +
-            package_tree.descendants_dependencies(module)['internal_package']
+        module.replace(os.sep, "."): {
+            ".".join(item.split(".")[0:2])
+            for item in package_tree.descendants_dependencies(module)["internal_module"]
+            + package_tree.descendants_dependencies(module)["internal_package"]
             # package_tree.descendants_dependencies(module)['internal_file'] +
             # list(package_tree.imports[module]['internal_module']) +
             # list(package_tree.imports[module]['internal_package']) +
@@ -82,20 +85,25 @@ def draw_directory_modules(save_directory):
 
     for package in internal_packages:
         build_graph_for_a_module(
-            package, package_tree, dependencies, dependents, save_directory)
+            package, package_tree, dependencies, dependents, save_directory
+        )
 
 
-def build_graph_for_a_module(graphed_package, package_tree, dependencies,
-                             dependents, save_directory):
+def build_graph_for_a_module(
+    graphed_package, package_tree, dependencies, dependents, save_directory
+):
     print(graphed_package)
 
-    current_modules = sorted([
-        item.replace(os.sep, '.')
-        for item in package_tree.digraph.neighbors(graphed_package)
-    ])
+    current_modules = sorted(
+        [
+            item.replace(os.sep, ".")
+            for item in package_tree.digraph.neighbors(graphed_package)
+        ]
+    )
 
     outfilepath = os.path.join(
-        save_directory, "{}.svg".format(graphed_package.replace(os.sep, '.')))
+        save_directory, "{}.svg".format(graphed_package.replace(os.sep, "."))
+    )
 
     if not current_modules:
         dot_file_contents = """
@@ -106,16 +114,17 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
                     style = dashed;
                 }}
             }}
-        """.format(graphed_package)
+        """.format(
+            graphed_package
+        )
 
         save_dot_file(dot_file_contents, outfilepath)
         return
 
     module_internal_relationships = {
-        module.replace(os.sep, '.'): [
-            '.'.join(item.split('.')[0:2])
-            for item in
-            package_tree.descendants_dependencies(module)['internal_module']
+        module.replace(os.sep, "."): [
+            ".".join(item.split(".")[0:2])
+            for item in package_tree.descendants_dependencies(module)["internal_module"]
         ]
         for module in sorted(list(package_tree.digraph.neighbors(graphed_package)))
     }
@@ -134,14 +143,11 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
 
     def simplify(text):
         text = remove_prefix(text, "{}.".format(graphed_package))
-        text = remove_prefix(text, 'pymedphys_')
+        text = remove_prefix(text, "pymedphys_")
 
         return text
 
-    label_map = {
-        node: simplify(node)
-        for node in all_nodes
-    }
+    label_map = {node: simplify(node) for node in all_nodes}
 
     nodes = ""
 
@@ -150,7 +156,9 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
             grouped_packages = '"; "'.join(sorted(list(levels[level])))
             nodes += """
             {{ rank = same; "{}"; }}
-            """.format(grouped_packages)
+            """.format(
+                grouped_packages
+            )
 
     edges = ""
     current_packages = ""
@@ -174,13 +182,11 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
     external_ranks = ""
     if current_dependents:
         grouped_dependents = '"; "'.join(sorted(list(current_dependents)))
-        external_ranks += '{{ rank = same; "{}"; }}\n'.format(
-            grouped_dependents)
+        external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependents)
 
     if current_dependencies:
         grouped_dependencies = '"; "'.join(sorted(list(current_dependencies)))
-        external_ranks += '{{ rank = same; "{}"; }}\n'.format(
-            grouped_dependencies)
+        external_ranks += '{{ rank = same; "{}"; }}\n'.format(grouped_dependencies)
 
     external_labels = create_labels(label_map)
 
@@ -199,7 +205,13 @@ def build_graph_for_a_module(graphed_package, package_tree, dependencies,
             {}
         }}
     """.format(
-        current_packages, graphed_package, create_href(graphed_package),
-        nodes, external_labels, external_ranks, edges)
+        current_packages,
+        graphed_package,
+        create_href(graphed_package),
+        nodes,
+        external_labels,
+        external_ranks,
+        edges,
+    )
 
     save_dot_file(dot_file_contents, outfilepath)
