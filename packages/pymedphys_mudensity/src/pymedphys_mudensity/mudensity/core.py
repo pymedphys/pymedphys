@@ -481,6 +481,7 @@ def display_mu_density_diff(
     if colour_range is None:
         colour_range = np.max(np.abs(diff))
 
+    # pylint: disable=invalid-unary-operand-type
     display_mu_density(
         grid,
         diff,
@@ -488,7 +489,7 @@ def display_mu_density_diff(
         cmap=cmap,
         vmin=-colour_range,
         vmax=colour_range,
-    )  # pylint: disable=invalid-unary-operand-type
+    )
 
 
 def display_mu_density(
