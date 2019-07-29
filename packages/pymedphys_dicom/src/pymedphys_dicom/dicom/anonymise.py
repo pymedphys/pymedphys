@@ -399,7 +399,7 @@ def anonymise_cli(args):
 
     else:
         raise FileNotFoundError(
-            "No file or directory was found at the " "supplied input path."
+            "No file or directory was found at the supplied input path."
         )
 
 
