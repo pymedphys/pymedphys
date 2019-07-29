@@ -1,2 +1,3 @@
 disable=bad-continuation
+max-line-length=88
 
