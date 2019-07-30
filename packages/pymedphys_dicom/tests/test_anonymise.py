@@ -18,7 +18,10 @@ from pymedphys_dicom.dicom import (
     anonymise_dataset,
     anonymise_directory,
     anonymise_file,
-    BaselineDicomDictionary,
+    BASELINE_DICOM_DICT,
+    BASELINE_DICOM_DICT_FILEPATH,
+    BASELINE_DICOM_REPEATERS_DICT,
+    BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
     BASELINE_KEYWORD_VR_DICT,
     IDENTIFYING_KEYWORDS,
     IDENTIFYING_KEYWORDS_FILEPATH,
@@ -157,7 +160,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
     patient_name_tag = tag_for_keyword("PatientName")
 
     try:
-        patient_name = BaselineDicomDictionary.pop(patient_name_tag)
+        patient_name = BASELINE_DICOM_DICT.pop(patient_name_tag)
 
         with pytest.raises(ValueError) as e_info:
             anonymise_dataset(ds)
@@ -184,7 +187,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
         assert patient_name_tag in ds_anon_ignore_unknown
 
     finally:
-        BaselineDicomDictionary.setdefault(patient_name_tag, patient_name)
+        BASELINE_DICOM_DICT.setdefault(patient_name_tag, patient_name)
 
     # Test copy_dataset=False:
     anonymise_dataset(ds, copy_dataset=False)
@@ -353,7 +356,7 @@ def test_anonymise_cli(tmp_path):
             remove_file(temp_anon_filepath)
 
         # TODO: File anonymisation - unknown tag handling
-        # # Calling a subprocess reloads BaselineDicomDictionary...
+        # # Calling a subprocess reloads BASELINE_DICOM_DICT...
 
         # Basic dir anonymisation
         assert not is_anonymised_directory(str(tmp_path))
@@ -370,10 +373,17 @@ def test_anonymise_cli(tmp_path):
         remove_file(temp_filepath)
 
 
-def test_tags_to_anonymise_in_dicom_dict_baseline(save_new=True):
-    baseline_keywords = [val[4] for val in BaselineDicomDictionary.values()]
+def test_tags_to_anonymise_in_dicom_dict_baseline(save_new_identifying_keywords=False, save_new_baselines=True):
+    baseline_keywords = [val[4] for val in BASELINE_DICOM_DICT.values()]
     assert set(IDENTIFYING_KEYWORDS).issubset(baseline_keywords)
 
-    if save_new:
+    if save_new_identifying_keywords:
         with open(IDENTIFYING_KEYWORDS_FILEPATH, "w") as outfile:
             json.dump(IDENTIFYING_KEYWORDS, outfile, indent=2, sort_keys=True)
+
+    if save_new_baselines:
+        with open(BASELINE_DICOM_DICT_FILEPATH, "w") as outfile:
+            json.dump(BASELINE_DICOM_DICT, outfile, indent=2, sort_keys=True)
+
+        with open(BASELINE_DICOM_REPEATERS_DICT_FILEPATH, "w") as outfile:
+            json.dump(BASELINE_DICOM_REPEATERS_DICT, outfile, indent=2, sort_keys=True)
