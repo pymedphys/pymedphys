@@ -1,4 +1,2 @@
 include LICENSE*
-include dicom/identifying_keywords.json
-include dicom/baseline_dicom_dictionary.json
-include dicom/baseline_repeaters_dictionary.json
+include dicom/*.json
