@@ -1,7 +1,6 @@
 from copy import deepcopy
 import json
 import os
-from os import makedirs
 from os.path import abspath, basename, dirname, exists, join as pjoin
 from shutil import copyfile
 import subprocess
@@ -30,7 +29,7 @@ from pymedphys_dicom.dicom import (
     is_anonymised_file,
     label_dicom_filepath_as_anonymised,
 )
-from pymedphys_dicom.utilities import remove_file, remove_dir
+from pymedphys_dicom.utilities import remove_file
 
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(HERE, "data", "anonymise")
