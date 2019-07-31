@@ -196,6 +196,12 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
 def test_anonymise_file():
     assert not is_anonymised_file(TEST_FILEPATH)
+    temp_basename = "{}_{}.dcm".format(".".join(TEST_FILEPATH.split(".")[:-1]), uuid4())
+
+    temp_filepath = pjoin(dirname(TEST_FILEPATH), temp_basename)
+    anon_private_filepath = ""
+    anon_filepath_orig = ""
+    anon_filepath_pres = ""
 
     try:
         # Private tag handling
@@ -210,11 +216,6 @@ def test_anonymise_file():
         assert basename(anon_private_filepath) == TEST_ANON_BASENAME
 
         # Deletion of original file
-        temp_basename = "{}_{}.dcm".format(
-            ".".join(TEST_FILEPATH.split(".")[:-1]), uuid4()
-        )
-
-        temp_filepath = pjoin(dirname(TEST_FILEPATH), temp_basename)
         copyfile(TEST_FILEPATH, temp_filepath)
 
         anon_filepath_orig = anonymise_file(temp_filepath, delete_original_file=True)
@@ -351,7 +352,6 @@ def test_anonymise_cli(tmp_path):
             assert not is_anonymised_file(temp_anon_filepath)
             assert is_anonymised_file(temp_anon_filepath, ignore_private_tags=True)
             assert exists(temp_filepath)
-            print(temp_filepath)
         finally:
             remove_file(temp_anon_filepath)
 
@@ -373,7 +373,9 @@ def test_anonymise_cli(tmp_path):
         remove_file(temp_filepath)
 
 
-def test_tags_to_anonymise_in_dicom_dict_baseline(save_new_identifying_keywords=False, save_new_baselines=True):
+def test_tags_to_anonymise_in_dicom_dict_baseline(
+    save_new_identifying_keywords=False, save_new_baselines=False
+):
     baseline_keywords = [val[4] for val in BASELINE_DICOM_DICT.values()]
     assert set(IDENTIFYING_KEYWORDS).issubset(baseline_keywords)
 
