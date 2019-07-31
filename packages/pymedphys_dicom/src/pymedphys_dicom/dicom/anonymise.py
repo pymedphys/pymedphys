@@ -35,8 +35,8 @@ from pydicom.dataset import Dataset
 from ..utilities import remove_file
 
 from .constants import (
-    BASELINE_DICOM_DICT,
     BASELINE_KEYWORD_VR_DICT,
+    get_baseline_dict_entry,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
     PYMEDPHYS_ROOT_UID,
 )
@@ -340,7 +340,7 @@ def anonymise_directory(
     """
     dicom_filepaths = glob(dicom_dirpath + "/**/*.dcm", recursive=True)
     failing_filepaths = []
-    errors = []
+    # errors = []
 
     for dicom_filepath in dicom_filepaths:
         anonymise_file(
@@ -541,9 +541,16 @@ def unknown_tags_in_dicom_dataset(ds):
 
     non_private_tags_in_dataset = np.array(non_private_tags_in_dicom_dataset(ds))
 
-    are_non_private_tags_in_dict_baseline = [
-        tag in BASELINE_DICOM_DICT.keys() for tag in non_private_tags_in_dataset
-    ]
+    are_non_private_tags_in_dict_baseline = []
+    for tag in non_private_tags_in_dataset:
+        try:
+            get_baseline_dict_entry(tag)
+            are_non_private_tags_in_dict_baseline.append(True)
+        except KeyError as ek:
+            if "not found in DICOM dictionary" in str(ek):
+                are_non_private_tags_in_dict_baseline.append(False)
+            else:
+                raise
 
     unknown_tags = list(
         non_private_tags_in_dataset[np.invert(are_non_private_tags_in_dict_baseline)]
