@@ -68,7 +68,7 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
 def _check_is_anonymised_dataset_file_and_dir(
     ds, tmp_path, anon_is_expected=True, ignore_private_tags=False
 ):
-    temp_filepath = str(tmp_path / "test.dcm")
+    temp_filepath = tmp_path / "test.dcm"
 
     try:
         ds.is_little_endian = True
@@ -79,11 +79,11 @@ def _check_is_anonymised_dataset_file_and_dir(
         if anon_is_expected:
             assert is_anonymised_dataset(ds, ignore_private_tags)
             assert is_anonymised_file(temp_filepath, ignore_private_tags)
-            assert is_anonymised_directory(str(tmp_path), ignore_private_tags)
+            assert is_anonymised_directory(tmp_path, ignore_private_tags)
         else:
             assert not is_anonymised_dataset(ds, ignore_private_tags)
             assert not is_anonymised_file(temp_filepath, ignore_private_tags)
-            assert not is_anonymised_directory(str(tmp_path), ignore_private_tags)
+            assert not is_anonymised_directory(tmp_path, ignore_private_tags)
     finally:
         remove_file(temp_filepath)
 
@@ -243,31 +243,31 @@ def test_anonymise_file():
 
 
 def test_anonymise_directory(tmp_path):
-    temp_filepath = str(tmp_path / "test.dcm")
+    temp_filepath = tmp_path / "test.dcm"
     temp_anon_filepath = label_dicom_filepath_as_anonymised(temp_filepath)
     try:
         copyfile(TEST_FILEPATH, temp_filepath)
-        assert not is_anonymised_directory(str(tmp_path))
+        assert not is_anonymised_directory(tmp_path)
 
         # Test file deletion
         anonymise_directory(
-            str(tmp_path), delete_original_files=False, anonymise_filenames=False
+            tmp_path, delete_original_files=False, anonymise_filenames=False
         )
         # # File should be anonymised but not dir, since original file
         # # is still present.
         assert is_anonymised_file(temp_anon_filepath)
         assert exists(temp_filepath)
-        assert not is_anonymised_directory(str(tmp_path))
+        assert not is_anonymised_directory(tmp_path)
 
         remove_file(temp_anon_filepath)
         anonymise_directory(
-            str(tmp_path), delete_original_files=True, anonymise_filenames=False
+            tmp_path, delete_original_files=True, anonymise_filenames=False
         )
         # # File and dir should be anonymised since original file should
         # # have been deleted.
         assert is_anonymised_file(temp_anon_filepath)
         assert not exists(temp_filepath)
-        assert is_anonymised_directory(str(tmp_path))
+        assert is_anonymised_directory(tmp_path)
 
     finally:
         remove_file(temp_anon_filepath)
@@ -278,10 +278,10 @@ def test_anonymise_directory(tmp_path):
 )
 def test_anonymise_cli(tmp_path):
 
-    temp_filepath = str(tmp_path / "test.dcm")
+    temp_filepath = tmp_path / "test.dcm"
     try:
         copyfile(TEST_FILEPATH, temp_filepath)
-        temp_anon_filepath = str(tmp_path / TEST_ANON_BASENAME)
+        temp_anon_filepath = tmp_path / TEST_ANON_BASENAME
         # Basic file anonymisation
         assert not is_anonymised_file(temp_filepath)
         assert not exists(temp_anon_filepath)
@@ -314,7 +314,7 @@ def test_anonymise_cli(tmp_path):
         assert not is_anonymised_file(temp_filepath)
         assert not exists(temp_anon_filepath)
 
-        temp_cleared_anon_filepath = str(tmp_path / TEST_ANON_BASENAME)
+        temp_cleared_anon_filepath = tmp_path / TEST_ANON_BASENAME
 
         anon_file_clear_command = "pymedphys dicom anonymise -c".split() + [
             temp_filepath
@@ -365,10 +365,10 @@ def test_anonymise_cli(tmp_path):
         # # Calling a subprocess reloads BASELINE_DICOM_DICT...
 
         # Basic dir anonymisation
-        assert not is_anonymised_directory(str(tmp_path))
+        assert not is_anonymised_directory(tmp_path)
         assert not exists(temp_anon_filepath)
 
-        anon_dir_command = "pymedphys dicom anonymise".split() + [str(tmp_path)]
+        anon_dir_command = "pymedphys dicom anonymise".split() + [tmp_path]
         try:
             subprocess.check_call(anon_dir_command)
             assert is_anonymised_file(temp_anon_filepath)
