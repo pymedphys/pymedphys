@@ -74,7 +74,7 @@ def _check_is_anonymised_dataset_file_and_dir(
         ds.is_little_endian = True
         ds.is_implicit_VR = True
         ds.file_meta = TEST_FILE_META
-        ds.save_as(temp_filepath, write_like_original=False)
+        ds.save_as(str(temp_filepath), write_like_original=False)
 
         if anon_is_expected:
             assert is_anonymised_dataset(ds, ignore_private_tags)
@@ -278,10 +278,10 @@ def test_anonymise_directory(tmp_path):
 )
 def test_anonymise_cli(tmp_path):
 
-    temp_filepath = tmp_path / "test.dcm"
+    temp_filepath = str(tmp_path / "test.dcm")
     try:
         copyfile(TEST_FILEPATH, temp_filepath)
-        temp_anon_filepath = tmp_path / TEST_ANON_BASENAME
+        temp_anon_filepath = str(tmp_path / TEST_ANON_BASENAME)
         # Basic file anonymisation
         assert not is_anonymised_file(temp_filepath)
         assert not exists(temp_anon_filepath)
@@ -314,7 +314,7 @@ def test_anonymise_cli(tmp_path):
         assert not is_anonymised_file(temp_filepath)
         assert not exists(temp_anon_filepath)
 
-        temp_cleared_anon_filepath = tmp_path / TEST_ANON_BASENAME
+        temp_cleared_anon_filepath = str(tmp_path / TEST_ANON_BASENAME)
 
         anon_file_clear_command = "pymedphys dicom anonymise -c".split() + [
             temp_filepath
@@ -368,7 +368,7 @@ def test_anonymise_cli(tmp_path):
         assert not is_anonymised_directory(tmp_path)
         assert not exists(temp_anon_filepath)
 
-        anon_dir_command = "pymedphys dicom anonymise".split() + [tmp_path]
+        anon_dir_command = "pymedphys dicom anonymise".split() + [str(tmp_path)]
         try:
             subprocess.check_call(anon_dir_command)
             assert is_anonymised_file(temp_anon_filepath)
