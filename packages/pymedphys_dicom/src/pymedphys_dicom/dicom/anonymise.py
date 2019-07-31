@@ -49,6 +49,27 @@ IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
     IDENTIFYING_KEYWORDS = json.load(infile)
 
+VR_ANONYMOUS_BLANK_VALUE_DICT = {
+    "AE": "Anonymous",
+    "AS": "100Y",
+    "CS": "ANON",
+    "DA": "20190303",
+    "DS": "12345678.9",
+    "DT": "20190303000900.000000",
+    "LO": "Anonymous",
+    "LT": "Anonymous",
+    "OB": (0).to_bytes(2, "little"),
+    "OB or OW": (0).to_bytes(2, "little"),
+    "OW": (0).to_bytes(2, "little"),
+    "PN": "Anonymous",
+    "SH": "Anonymous",
+    "SQ": [Dataset()],
+    "ST": "Anonymous",
+    "TM": "000900.000000",
+    "UI": PYMEDPHYS_ROOT_UID,
+    "US": 12345,
+}
+
 VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "AE": "Anonymous",
     "AS": "100Y",
@@ -432,23 +453,18 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     for elem in ds:
         if elem.keyword in IDENTIFYING_KEYWORDS:
             dummy_value = get_anonymous_replacement_value(elem.keyword)
-            if elem.VR == "SQ":
-                if not (elem.value == [] or elem.value == dummy_value):
-                    is_anonymised = False
-            elif elem.VR == "DS":
-                if not (
-                    elem.value == ""
-                    or np.isclose(float(elem.value), float(dummy_value))
+            if elem.VR == "DS":
+                if not elem.value or not np.isclose(
+                    float(elem.value), float(dummy_value)
                 ):
                     is_anonymised = False
-            elif elem.VR in ("OB", "OW"):
-                if not (elem.value == "" or elem.value == (0).to_bytes(2, "little")):
-                    is_anonymised = False
-            elif not (elem.value == "" or elem.value == dummy_value):
+                    break
+            elif not elem.value or elem.value != dummy_value:
                 is_anonymised = False
                 break
         elif elem.tag.is_private and not ignore_private_tags:
             is_anonymised = False
+            break
 
     return is_anonymised
 
@@ -597,3 +613,11 @@ def get_anonymous_replacement_value(keyword):
     """
     vr = BASELINE_KEYWORD_VR_DICT[keyword]
     return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
+
+
+def get_anonymous_blank_value(keyword):
+    """Get an appropriate blank anonymisation value for a DICOM element
+    based on its value representation (VR)
+    """
+    vr = BASELINE_KEYWORD_VR_DICT[keyword]
+    return VR_ANONYMOUS_BLANK_VALUE_DICT[vr]
