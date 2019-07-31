@@ -34,7 +34,13 @@ from pymedphys_dicom.utilities import remove_file
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(HERE, "data", "anonymise")
 TEST_FILEPATH = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
-TEST_ANON_BASENAME = "RP.1.2.826.0.1.3680043.10.188_Anonymised.dcm"
+
+# TODO: TEST_ANON_BASENAME will probably instead need to contain the
+# PYMEDPHYS_ROOT_UID (or similar) when anonymisation of UIDS is
+# implemented
+TEST_ANON_BASENAME = (
+    "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm"
+)
 TEST_FILE_META = read_file_meta_info(TEST_FILEPATH)
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
@@ -113,7 +119,8 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
     for elem in ds_anon.iterall():
 
         # TODO: AffectedSOPInstanceUID and RequestedSOPInstanceUID
-        # are not writing to file. Investigate.
+        # are not writing to file. Investigate when UID anonymisation is
+        # implemented.
         if elem.keyword in ("AffectedSOPInstanceUID", "RequestedSOPInstanceUID"):
             continue
 
@@ -307,7 +314,7 @@ def test_anonymise_cli(tmp_path):
         assert not is_anonymised_file(temp_filepath)
         assert not exists(temp_anon_filepath)
 
-        temp_cleared_anon_filepath = str(tmp_path / "RP._Anonymised.dcm")
+        temp_cleared_anon_filepath = str(tmp_path / TEST_ANON_BASENAME)
 
         anon_file_clear_command = "pymedphys dicom anonymise -c".split() + [
             temp_filepath
@@ -381,6 +388,39 @@ def test_tags_to_anonymise_in_dicom_dict_baseline(
     if save_new_identifying_keywords:
         with open(IDENTIFYING_KEYWORDS_FILEPATH, "w") as outfile:
             json.dump(IDENTIFYING_KEYWORDS, outfile, indent=2, sort_keys=True)
+
+        # TODO: Keywords to add if/when anonymisation of UIDs is implemented:
+        # "AffectedSOPInstanceUID",
+        # "ConcatenationUID",
+        # "ContextGroupExtensionCreatorUID",
+        # "CreatorVersionUID",
+        # "DeviceUID",
+        # "DigitalSignatureUID",
+        # "DimensionOrganizationUID",
+        # "DoseReferenceUID",
+        # "FailedSOPInstanceUIDList",
+        # "FiducialUID",
+        # "FrameOfReferenceUID",
+        # "InstanceCreatorUID",
+        # "IrradiationEventUID",
+        # "LargePaletteColorLookupTableUID",
+        # "MediaStorageSOPInstanceUID",
+        # "PaletteColorLookupTableUID",
+        # "ReferencedFrameOfReferenceUID",
+        # "ReferencedGeneralPurposeScheduledProcedureStepTransactionUID",
+        # "ReferencedSOPInstanceUID",
+        # "ReferencedSOPInstanceUIDInFile",
+        # "RelatedFrameOfReferenceUID",
+        # "RequestedSOPInstanceUID",
+        # "SeriesInstanceUID",
+        # "SOPInstanceUID",
+        # "StorageMediaFileSetUID",
+        # "StudyInstanceUID",
+        # "SynchronizationFrameOfReferenceUID",
+        # "TemplateExtensionCreatorUID",
+        # "TemplateExtensionOrganizationUID",
+        # "TransactionUID",
+        # "UID",
 
     if save_new_baselines:
         with open(BASELINE_DICOM_DICT_FILEPATH, "w") as outfile:
