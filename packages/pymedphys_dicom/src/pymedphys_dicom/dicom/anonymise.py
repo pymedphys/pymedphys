@@ -448,25 +448,18 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     is_anonymised : bool
         `True` if `ds` has been anonymised, `False` otherwise.
     """
-    is_anonymised = True
-
     for elem in ds:
-        if elem.keyword in IDENTIFYING_KEYWORDS:
+        if elem.keyword in IDENTIFYING_KEYWORDS and elem.value:
             dummy_value = get_anonymous_replacement_value(elem.keyword)
             if elem.VR == "DS":
-                if not elem.value or not np.isclose(
-                    float(elem.value), float(dummy_value)
-                ):
-                    is_anonymised = False
-                    break
-            elif not elem.value or elem.value != dummy_value:
-                is_anonymised = False
-                break
+                if not np.isclose(float(elem.value), float(dummy_value)):
+                    return False
+            elif elem.value != dummy_value:
+                return False
         elif elem.tag.is_private and not ignore_private_tags:
-            is_anonymised = False
-            break
+            return False
 
-    return is_anonymised
+    return True
 
 
 def is_anonymised_file(filepath, ignore_private_tags=False):
