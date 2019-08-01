@@ -4,8 +4,8 @@ from glob import glob
 
 from pymedphys.dicom import anonymise_file
 
-INPUT_DIR = 'input'
-OUTPUT_DIR = 'output'
+INPUT_DIR = "input"
+OUTPUT_DIR = "output"
 
 filepaths = glob(pjoin(INPUT_DIR, "*.dcm"))
 

@@ -40,9 +40,7 @@ def execute_sql(cursor, sql_string, parameters=None):
     try:
         cursor.execute(sql_string, parameters)
     except Exception:
-        print("sql_string:\n    {}\nparameters:\n    {}".format(
-            sql_string, parameters
-        ))
+        print("sql_string:\n    {}\nparameters:\n    {}".format(sql_string, parameters))
         raise
 
     data = []
@@ -59,32 +57,33 @@ def execute_sql(cursor, sql_string, parameters=None):
 
 def get_username_password(storage_name):
 
-    user = keyring.get_password('MosaiqSQL_username', storage_name)
-    password = keyring.get_password('MosaiqSQL_password', storage_name)
+    user = keyring.get_password("MosaiqSQL_username", storage_name)
+    password = keyring.get_password("MosaiqSQL_password", storage_name)
 
-    if user is None or user == '':
+    if user is None or user == "":
         print(
             "Provide a user that only has `db_datareader` access to the "
             "Mosaiq database at `{}`".format(storage_name)
         )
         user = input()
-        if user == '':
-            error_message = 'Username should not be blank.'
+        if user == "":
+            error_message = "Username should not be blank."
             print(error_message)
             raise ValueError(error_message)
-        keyring.set_password('MosaiqSQL_username', storage_name, user)
+        keyring.set_password("MosaiqSQL_username", storage_name, user)
 
     if password is None:
-        print("Provide password for '{}' server and '{}' user".format(
-            storage_name, user))
+        print(
+            "Provide password for '{}' server and '{}' user".format(storage_name, user)
+        )
         password = getpass()
-        keyring.set_password('MosaiqSQL_password', storage_name, password)
+        keyring.set_password("MosaiqSQL_password", storage_name, password)
 
     return user, password
 
 
 def separate_server_port_string(sql_server_and_port):
-    split_tuple = str(sql_server_and_port).split(':')
+    split_tuple = str(sql_server_and_port).split(":")
     if len(split_tuple) == 1:
         server = split_tuple[0]
         port = 1433
@@ -93,7 +92,8 @@ def separate_server_port_string(sql_server_and_port):
     else:
         raise ValueError(
             "Only one : should appear in server name,"
-            " and it should be used to divide hostname from port number")
+            " and it should be used to divide hostname from port number"
+        )
 
     return server, port
 
@@ -103,28 +103,32 @@ def try_connect_delete_user_if_fail(sql_server_and_port):
     user, password = get_username_password(sql_server_and_port)
 
     try:
-        conn = pymssql.connect(server, user, password, 'MOSAIQ', port=port)
+        conn = pymssql.connect(server, user, password, "MOSAIQ", port=port)
     except pymssql.OperationalError as error:
         error_message = error.args[0][1]
-        if error_message.startswith(b'Login failed for user'):
-            print('Login failed, wiping the saved username and password.')
+        if error_message.startswith(b"Login failed for user"):
+            print("Login failed, wiping the saved username and password.")
             try:
-                keyring.delete_password(
-                    'MosaiqSQL_username', sql_server_and_port)
-                keyring.delete_password(
-                    'MosaiqSQL_password', sql_server_and_port)
+                keyring.delete_password("MosaiqSQL_username", sql_server_and_port)
+                keyring.delete_password("MosaiqSQL_password", sql_server_and_port)
             except keyring.errors.PasswordDeleteError as error:
                 pass
-            print('Please try login again:')
+            print("Please try login again:")
             conn = try_connect_delete_user_if_fail(sql_server_and_port)
         else:
-            print("Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
-                sql_server_and_port, user, server, port))
+            print(
+                "Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
+                    sql_server_and_port, user, server, port
+                )
+            )
             raise
 
     except Exception as error:
-        print("Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
-            sql_server_and_port, user, server, port))
+        print(
+            "Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
+                sql_server_and_port, user, server, port
+            )
+        )
         raise
 
     return conn
@@ -146,8 +150,7 @@ def multi_connect(sql_server_and_ports):
     cursors = dict()
 
     for server_port in sql_server_and_ports:
-        connections[server_port], cursors[server_port] = single_connect(
-            server_port)
+        connections[server_port], cursors[server_port] = single_connect(server_port)
 
     return connections, cursors
 

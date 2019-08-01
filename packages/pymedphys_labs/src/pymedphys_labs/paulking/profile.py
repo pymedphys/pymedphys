@@ -46,7 +46,8 @@ NumpyFunction = Callable[[np.ndarray], np.ndarray]
 
 # pylint: disable = C0103, C0121, W0102
 
-class Profile():
+
+class Profile:
     """  One-dimensional distribution of intensity vs position.
 
     Attributes
@@ -74,8 +75,7 @@ class Profile():
 
     """
 
-    def __init__(self, x=np.array([]),
-                 y=np.array([]), meta={}):
+    def __init__(self, x=np.array([]), y=np.array([]), meta={}):
         """ create profile
 
         Parameters
@@ -96,8 +96,9 @@ class Profile():
         if len(self.x) < 2:
             self.interp = None
         else:
-            self.interp = interpolate.interp1d(self.x, self.y,
-                                               bounds_error=False, fill_value=0.0)
+            self.interp = interpolate.interp1d(
+                self.x, self.y, bounds_error=False, fill_value=0.0
+            )
 
     def __len__(self):
         """ # data points  """
@@ -105,9 +106,11 @@ class Profile():
 
     def __eq__(self, other):  # SAME DATA POINTS
         """ same data points """
-        if np.array_equal(self.x, other.x) and \
-           np.array_equal(self.y, other.y) and \
-           self.meta == other.meta:
+        if (
+            np.array_equal(self.x, other.x)
+            and np.array_equal(self.y, other.y)
+            and self.meta == other.meta
+        ):
             return True
         else:
             return False
@@ -124,18 +127,19 @@ class Profile():
 
         """
         try:
-            fmt_str = 'Profile object: '
-            fmt_str += '{} pts | x ({} cm -> {} cm) | y ({} -> {})'
-            return fmt_str.format(len(self.x),
-                                  min(self.x), max(self.x),
-                                  min(self.y), max(self.y))
+            fmt_str = "Profile object: "
+            fmt_str += "{} pts | x ({} cm -> {} cm) | y ({} -> {})"
+            return fmt_str.format(
+                len(self.x), min(self.x), max(self.x), min(self.y), max(self.y)
+            )
         except ValueError:
-            return ''  # EMPTY PROFILE
+            return ""  # EMPTY PROFILE
 
     def __add__(self, other):
         """ shift right """
         new_x = self.x + other
         return Profile(x=new_x, y=self.y, meta=self.meta)
+
     __radd__ = __add__
     __iadd__ = __add__
 
@@ -143,6 +147,7 @@ class Profile():
         """ shift left """
         self.x -= other
         return Profile(x=self.x, y=self.y, meta=self.meta)
+
     __rsub__ = __sub__
     __isub__ = __sub__
 
@@ -150,6 +155,7 @@ class Profile():
         """ scale y """
         self.y *= other
         return self
+
     __rmul__ = __mul__
     __imul__ = __mul__
 
@@ -222,9 +228,9 @@ class Profile():
         x_vals = np.arange(domain[0], domain[1] + increment, increment)
         y = []
         for x in x_vals:
-            if abs(x) > (centre + width/2.0):
+            if abs(x) > (centre + width / 2.0):
                 y.append(0.0)
-            elif abs(x) < (centre + width/2.0):
+            elif abs(x) < (centre + width / 2.0):
                 y.append(1.0)
             else:
                 y.append(0.5)
@@ -252,15 +258,15 @@ class Profile():
         """
 
         with open(file_name) as profiler_file:
-            munge = '\n'.join(profiler_file.readlines())
-            munge = munge.replace('\t', '').replace(': ', ':')
-            munge = munge.replace(' Time:', '\nTime:')  # BREAK 2-ITEM ROWS
-            munge = munge.replace(' Revision:', '\nRevision:')
-            munge = munge.replace('Energy:', '\nEnergy:')
-            munge = munge.replace('Dose:', '\nDose:')
-            munge = munge.replace('Collimator Angle:', '\nCollimator Angle:')
-            munge = munge.split('TYPE')[0].split('\n')  # DISCARD NON-METADATA
-            munge = [i.split(':', 1) for i in munge if i and ':' in i]
+            munge = "\n".join(profiler_file.readlines())
+            munge = munge.replace("\t", "").replace(": ", ":")
+            munge = munge.replace(" Time:", "\nTime:")  # BREAK 2-ITEM ROWS
+            munge = munge.replace(" Revision:", "\nRevision:")
+            munge = munge.replace("Energy:", "\nEnergy:")
+            munge = munge.replace("Dose:", "\nDose:")
+            munge = munge.replace("Collimator Angle:", "\nCollimator Angle:")
+            munge = munge.split("TYPE")[0].split("\n")  # DISCARD NON-METADATA
+            munge = [i.split(":", 1) for i in munge if i and ":" in i]
             munge = [i for i in munge if i[1]]  # DISCARD EMPTY ITEMS
             meta = dict(munge)
 
@@ -271,17 +277,17 @@ class Profile():
                 elif row[:5] == "Data:":
                     counts = np.array(row.split()[5:145]).astype(float)
                 elif row[:15] == "Dose Per Count:":
-                    dose_per_count = (float(row.split()[-1]))
+                    dose_per_count = float(row.split()[-1])
         dose = counts * dose_per_count * calibs
 
-        x_vals = [-11.2 + 0.4*i for i in range(57)]
+        x_vals = [-11.2 + 0.4 * i for i in range(57)]
         x_prof = list(zip(x_vals, dose[:57]))
-        y_vals = [-16.4 + 0.4*i for i in range(83)]
+        y_vals = [-16.4 + 0.4 * i for i in range(83)]
         y_prof = list(zip(y_vals, dose[57:]))
 
-        if axis == 'tvs':
+        if axis == "tvs":
             return Profile().from_tuples(x_prof, meta=meta)
-        elif axis == 'rad':
+        elif axis == "rad":
             return Profile().from_tuples(y_prof, meta=meta)
         else:
             raise TypeError("axis must be 'tvs' or 'rad'")
@@ -311,42 +317,48 @@ class Profile():
 
         """
         image_file = PIL.Image.open(file_name)
-        assert image_file.mode == 'RGB'
-        dpi_horiz, dpi_vert = image_file.info['dpi']
+        assert image_file.mode == "RGB"
+        dpi_horiz, dpi_vert = image_file.info["dpi"]
 
         image_array = mpimg.imread(file_name)
 
         # DIMENSIONS TO AVG ACROSS DIFFERENT FOR HORIZ VS VERT IMG
-        if image_array.shape[0] > 5*image_array.shape[1]:    # VERT
+        if image_array.shape[0] > 5 * image_array.shape[1]:  # VERT
             image_vector = np.average(image_array, axis=(1, 2))
-            pixel_size_in_cm = (2.54 / dpi_vert)
-        elif image_array.shape[1] > 5*image_array.shape[0]:  # HORIZ
+            pixel_size_in_cm = 2.54 / dpi_vert
+        elif image_array.shape[1] > 5 * image_array.shape[0]:  # HORIZ
             image_vector = np.average(image_array, axis=(0, 2))
-            pixel_size_in_cm = (2.54 / dpi_horiz)
+            pixel_size_in_cm = 2.54 / dpi_horiz
         else:
-            raise ValueError('The PNG file is not a narrow strip.')
+            raise ValueError("The PNG file is not a narrow strip.")
         assert step_size > 5 * pixel_size_in_cm, "step size too small"
 
         if image_vector.shape[0] % 2 == 0:
             image_vector = image_vector[:-1]  # SO ZERO DISTANCE IS MID-PIXEL
 
         length_in_cm = image_vector.shape[0] * pixel_size_in_cm
-        full_resolution_distances = np.arange(-length_in_cm/2,
-                                              length_in_cm/2,
-                                              pixel_size_in_cm)
+        full_resolution_distances = np.arange(
+            -length_in_cm / 2, length_in_cm / 2, pixel_size_in_cm
+        )
 
         # TO MOVE FROM FILM RESOLUTION TO DESIRED PROFILE RESOLUTION
-        num_pixels_to_avg_over = int(step_size/pixel_size_in_cm)
-        sample_indices = np.arange(num_pixels_to_avg_over/2,
-                                   len(full_resolution_distances),
-                                   num_pixels_to_avg_over).astype(int)
+        num_pixels_to_avg_over = int(step_size / pixel_size_in_cm)
+        sample_indices = np.arange(
+            num_pixels_to_avg_over / 2,
+            len(full_resolution_distances),
+            num_pixels_to_avg_over,
+        ).astype(int)
         downsampled_distances = list(full_resolution_distances[sample_indices])
 
         downsampled_density = []
         for idx in sample_indices:  # AVERAGE OVER THE SAMPLING WINDOW
             avg_density = np.average(
-                image_vector[int(idx - num_pixels_to_avg_over / 2):
-                             int(idx + num_pixels_to_avg_over / 2)])
+                image_vector[
+                    int(idx - num_pixels_to_avg_over / 2) : int(
+                        idx + num_pixels_to_avg_over / 2
+                    )
+                ]
+            )
             downsampled_density.append(avg_density)
 
         zipped_profile = list(zip(downsampled_distances, downsampled_density))
@@ -388,14 +400,14 @@ class Profile():
 
          """
 
-        dose_step = (max(self.y)-min(self.y)) / 100
+        dose_step = (max(self.y) - min(self.y)) / 100
         x_ = self.resample_y(dose_step).x
         y_ = self.resample_y(dose_step).y
         dists = []
         for i in range(1, len(x_)):
             val = None
-            if (y_[i]-y)*(y_[i-1]-y) < 0:
-                val = (x_[i]-((y_[i]-y)/(y_[i]-y_[i-1]))*(x_[i]-x_[i-1]))
+            if (y_[i] - y) * (y_[i - 1] - y) < 0:
+                val = x_[i] - ((y_[i] - y) / (y_[i] - y_[i - 1])) * (x_[i] - x_[i - 1])
             elif np.isclose(y_[i], y):
                 val = x_[i]
             if val and (val not in dists):
@@ -416,7 +428,7 @@ class Profile():
         else:
             return steps.min()
 
-    def plot(self, marker='o-'):
+    def plot(self, marker="o-"):
         """ profile plot
 
         Parameters
@@ -498,8 +510,7 @@ class Profile():
 
         """
 
-        temp_x = np.arange(min(self.x), max(self.x),
-                           0.01*self.get_increment())
+        temp_x = np.arange(min(self.x), max(self.x), 0.01 * self.get_increment())
         temp_y = self.interp(temp_x)
 
         resamp_x = [temp_x[0]]
@@ -580,14 +591,14 @@ class Profile():
         """
 
         lt_edge, rt_edge = self.get_edges()
-        cax = 0.5*(lt_edge + rt_edge)
+        cax = 0.5 * (lt_edge + rt_edge)
 
         new_x = []
         for _, dist in enumerate(self.x):
             if dist < cax:
-                new_x.append(-dist/lt_edge)
+                new_x.append(-dist / lt_edge)
             elif dist > cax:
-                new_x.append(dist/rt_edge)
+                new_x.append(dist / rt_edge)
             else:
                 new_x.append(0.0)
 
@@ -604,10 +615,9 @@ class Profile():
 
         """
         lt, rt = self.get_edges()
-        idx = [i for i, d in enumerate(
-            self.x) if d >= 0.8 * lt and d <= 0.8 * rt]
-        new_x = self.x[idx[0]:idx[-1]+1]
-        new_y = self.y[idx[0]:idx[-1]+1]
+        idx = [i for i, d in enumerate(self.x) if d >= 0.8 * lt and d <= 0.8 * rt]
+        new_x = self.x[idx[0] : idx[-1] + 1]
+        new_y = self.y[idx[0] : idx[-1] + 1]
 
         return Profile(x=new_x, y=new_y, meta=self.meta)
 
@@ -625,15 +635,17 @@ class Profile():
 
         """
 
-        not_umbra = {'lt': self.slice_segment(stop=self.slice_umbra().x[0]),
-                     'rt': self.slice_segment(start=self.slice_umbra().x[-1])}
+        not_umbra = {
+            "lt": self.slice_segment(stop=self.slice_umbra().x[0]),
+            "rt": self.slice_segment(start=self.slice_umbra().x[-1]),
+        }
 
-        lt_80pct = not_umbra['lt'].get_x(0.8 * not_umbra['lt'].y[-1])[-1]
-        lt_20pct = not_umbra['lt'].get_x(0.2 * not_umbra['lt'].y[-1])[-1]
+        lt_80pct = not_umbra["lt"].get_x(0.8 * not_umbra["lt"].y[-1])[-1]
+        lt_20pct = not_umbra["lt"].get_x(0.2 * not_umbra["lt"].y[-1])[-1]
         lt_penum = self.slice_segment(start=lt_20pct, stop=lt_80pct)
 
-        rt_80pct = not_umbra['rt'].get_x(0.8 * not_umbra['rt'].y[0])[-1]
-        rt_20pct = not_umbra['rt'].get_x(0.2 * not_umbra['rt'].y[0])[-1]
+        rt_80pct = not_umbra["rt"].get_x(0.8 * not_umbra["rt"].y[0])[-1]
+        rt_20pct = not_umbra["rt"].get_x(0.2 * not_umbra["rt"].y[0])[-1]
         rt_penum = self.slice_segment(start=rt_80pct, stop=rt_20pct)
 
         return (lt_penum, rt_penum)
@@ -697,7 +709,7 @@ class Profile():
 
         """
         dose = self.slice_umbra().y
-        return (max(dose)-min(dose))/np.average(dose)
+        return (max(dose) - min(dose)) / np.average(dose)
 
     def get_symmetry(self):
         """ max point diff relative to mean
@@ -711,7 +723,7 @@ class Profile():
 
         """
         dose = self.slice_umbra().y
-        return max(np.abs(np.subtract(dose, dose[::-1])/np.average(dose)))
+        return max(np.abs(np.subtract(dose, dose[::-1]) / np.average(dose)))
 
     def make_symmetric(self):
         """ avg of corresponding points
@@ -731,7 +743,7 @@ class Profile():
         new_x = np.arange(min(self.x), max(self.x), step)
         new_y = [self.y[0]]
         for n in new_x[1:-1]:  # AVOID EXTRAPOLATION
-            new_y.append(0.5*self.interp(n) + 0.5*reflected.interp(n))
+            new_y.append(0.5 * self.interp(n) + 0.5 * reflected.interp(n))
         new_y.append(reflected.y[0])
 
         return Profile(x=new_x, y=new_y, meta=self.meta)
@@ -782,25 +794,29 @@ class Profile():
         dist_step = min(self.get_increment(), other.get_increment())
 
         dist_vals_fixed = np.arange(
-            -3*abs(min(list(self.x) + list(other.x))),
-            3*abs(max(list(self.x) + list(other.x))),
-            dist_step)
+            -3 * abs(min(list(self.x) + list(other.x))),
+            3 * abs(max(list(self.x) + list(other.x))),
+            dist_step,
+        )
         dose_vals_fixed = other.interp(dist_vals_fixed)
         fixed = Profile(x=dist_vals_fixed, y=dose_vals_fixed)
 
         possible_offsets = np.arange(
             max(min(self.x), min(other.x)),
             min(max(other.x), max(self.x)) + dist_step,
-            dist_step)
+            dist_step,
+        )
 
         best_fit_qual, best_offset, flipped = 0, -np.inf, False
         for offset in possible_offsets:
-            fit_qual_norm = max(np.correlate(
-                dose_vals_fixed,
-                (self + offset).interp(fixed.x)))
-            fit_qual_flip = max(np.correlate(
-                dose_vals_fixed,
-                (self.make_flipped() + offset).interp(fixed.x)))
+            fit_qual_norm = max(
+                np.correlate(dose_vals_fixed, (self + offset).interp(fixed.x))
+            )
+            fit_qual_flip = max(
+                np.correlate(
+                    dose_vals_fixed, (self.make_flipped() + offset).interp(fixed.x)
+                )
+            )
 
             if fit_qual_norm > best_fit_qual:
                 best_fit_qual = fit_qual_norm
@@ -836,19 +852,19 @@ class Profile():
         """
 
         _, ext = os.path.splitext(reference)
-        assert ext == '.prs'
-        reference = Profile().from_snc_profiler(reference, 'rad')
+        assert ext == ".prs"
+        reference = Profile().from_snc_profiler(reference, "rad")
         _, ext = os.path.splitext(measured)
-        assert ext == '.png'
+        assert ext == ".png"
         measured = Profile().from_narrow_png(measured)
         measured = measured.align_to(reference)
 
         dist_vals = np.arange(
             max(min(measured.x), min(reference.x)),
             min(max(measured.x), max(reference.x)),
-            max(reference.get_increment(), measured.get_increment()))
+            max(reference.get_increment(), measured.get_increment()),
+        )
 
-        calib_curve = [(measured.get_y(i), reference.get_y(i))
-                       for i in dist_vals]
+        calib_curve = [(measured.get_y(i), reference.get_y(i)) for i in dist_vals]
 
         return Profile().from_tuples(calib_curve)

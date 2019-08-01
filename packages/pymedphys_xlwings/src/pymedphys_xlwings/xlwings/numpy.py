@@ -29,15 +29,15 @@ import xlwings as xw
 
 
 @xw.func
-@xw.arg('values', np.array, ndim=2)
-@xw.ret(expand='table')
+@xw.arg("values", np.array, ndim=2)
+@xw.ret(expand="table")
 def npravel(values):
     return np.expand_dims(np.ravel(values.T), axis=1)
 
 
 @xw.func
-@xw.arg('values', np.array, ndim=2)
-@xw.arg('repeats')
-@xw.ret(expand='table')
+@xw.arg("values", np.array, ndim=2)
+@xw.arg("repeats")
+@xw.ret(expand="table")
 def nprepeat(values, repeats):
     return np.expand_dims(np.repeat(values, repeats), axis=1)
