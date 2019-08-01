@@ -49,27 +49,6 @@ IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
     IDENTIFYING_KEYWORDS = json.load(infile)
 
-VR_ANONYMOUS_BLANK_VALUE_DICT = {
-    "AE": "Anonymous",
-    "AS": "100Y",
-    "CS": "ANON",
-    "DA": "20190303",
-    "DS": "12345678.9",
-    "DT": "20190303000900.000000",
-    "LO": "Anonymous",
-    "LT": "Anonymous",
-    "OB": (0).to_bytes(2, "little"),
-    "OB or OW": (0).to_bytes(2, "little"),
-    "OW": (0).to_bytes(2, "little"),
-    "PN": "Anonymous",
-    "SH": "Anonymous",
-    "SQ": [Dataset()],
-    "ST": "Anonymous",
-    "TM": "000900.000000",
-    "UI": PYMEDPHYS_ROOT_UID,
-    "US": 12345,
-}
-
 VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "AE": "Anonymous",
     "AS": "100Y",
@@ -449,13 +428,13 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
         `True` if `ds` has been anonymised, `False` otherwise.
     """
     for elem in ds:
-        if elem.keyword in IDENTIFYING_KEYWORDS and elem.value:
+        if elem.keyword in IDENTIFYING_KEYWORDS:
             dummy_value = get_anonymous_replacement_value(elem.keyword)
-            if elem.VR == "DS":
-                if not np.isclose(float(elem.value), float(dummy_value)):
+            if not elem.value in ("", [], dummy_value):
+                if elem.VR == "DS" and np.isclose(float(elem.value), float(dummy_value)):
+                    continue
+                else:
                     return False
-            elif elem.value != dummy_value:
-                return False
         elif elem.tag.is_private and not ignore_private_tags:
             return False
 
@@ -606,11 +585,3 @@ def get_anonymous_replacement_value(keyword):
     """
     vr = BASELINE_KEYWORD_VR_DICT[keyword]
     return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
-
-
-def get_anonymous_blank_value(keyword):
-    """Get an appropriate blank anonymisation value for a DICOM element
-    based on its value representation (VR)
-    """
-    vr = BASELINE_KEYWORD_VR_DICT[keyword]
-    return VR_ANONYMOUS_BLANK_VALUE_DICT[vr]
