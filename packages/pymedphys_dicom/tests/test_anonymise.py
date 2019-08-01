@@ -68,13 +68,13 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
 def _check_is_anonymised_dataset_file_and_dir(
     ds, tmp_path, anon_is_expected=True, ignore_private_tags=False
 ):
-    temp_filepath = tmp_path / "test.dcm"
+    temp_filepath = str(tmp_path / "test.dcm")
 
     try:
         ds.is_little_endian = True
         ds.is_implicit_VR = True
         ds.file_meta = TEST_FILE_META
-        ds.save_as(str(temp_filepath), write_like_original=False)
+        ds.save_as(temp_filepath, write_like_original=False)
 
         if anon_is_expected:
             assert is_anonymised_dataset(ds, ignore_private_tags)
