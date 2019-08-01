@@ -55,15 +55,16 @@ from pymedphys_logfiles.elekta.orchestration import orchestration_cli
 
 def logfile_cli(subparsers):
     logfile_parser = subparsers.add_parser(
-        'logfile', help="A toolbox for managing logfiles.")
-    logfile_subparsers = logfile_parser.add_subparsers(dest='logfile')
+        "logfile", help="A toolbox for managing logfiles."
+    )
+    logfile_subparsers = logfile_parser.add_subparsers(dest="logfile")
 
     logfile_orchestration(logfile_subparsers)
 
 
 def logfile_orchestration(logfile_subparsers):
     parser = logfile_subparsers.add_parser(
-        'orchestration',
+        "orchestration",
         help=(
             "Manages the orchestration of Elekta Linac fetching logfiles "
             "from their backup directories and then indexing the collected "
@@ -73,25 +74,32 @@ def logfile_orchestration(logfile_subparsers):
             "configuration csv files to be created, one for Mosaiq SQL "
             "configuration and the other for logfile configuration. See "
             "documentation for specification of the configuration files."
-        ))
+        ),
+    )
 
     parser.add_argument(
-        'data_directory', type=str,
-        help="The path for storing the indexed log files.")
+        "data_directory", type=str, help="The path for storing the indexed log files."
+    )
 
     parser.add_argument(
-        '-m', '--mosaiq_sql', type=str, default=None,
+        "-m",
+        "--mosaiq_sql",
+        type=str,
+        default=None,
         help=(
             "Define a custom path for the Mosaiq SQL configuration file. "
             "Defaults to ``{data_directory}/config_mosaiq_sql.csv``"
-        )
+        ),
     )
     parser.add_argument(
-        '-l', '--linac_details', type=str, default=None,
+        "-l",
+        "--linac_details",
+        type=str,
+        default=None,
         help=(
             "Define a custom path for the Linac configuration file. "
             "Defaults to ``{data_directory}/config_linac_details.csv``"
-        )
+        ),
     )
 
     parser.set_defaults(func=orchestration_cli)
