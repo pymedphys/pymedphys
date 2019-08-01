@@ -36,8 +36,9 @@ import shapely.geometry as geo
 import shapely.affinity as aff
 
 
-def spline_model(width_test, ratio_perim_area_test,
-                 width_data, ratio_perim_area_data, factor_data):
+def spline_model(
+    width_test, ratio_perim_area_test, width_data, ratio_perim_area_data, factor_data
+):
     """Return the result of the spline model.
 
     The bounding box is chosen so as to allow extrapolation. The spline orders
@@ -75,10 +76,12 @@ def spline_model(width_test, ratio_perim_area_test,
         np.min([np.min(width_data), np.min(width_test)]),
         np.max([np.max(width_data), np.max(width_test)]),
         np.min([np.min(ratio_perim_area_data), np.min(ratio_perim_area_test)]),
-        np.max([np.max(ratio_perim_area_data), np.max(ratio_perim_area_test)])]
+        np.max([np.max(ratio_perim_area_data), np.max(ratio_perim_area_test)]),
+    ]
 
     spline = SmoothBivariateSpline(
-        width_data, ratio_perim_area_data, factor_data, kx=2, ky=1, bbox=bbox)
+        width_data, ratio_perim_area_data, factor_data, kx=2, ky=1, bbox=bbox
+    )
 
     return spline.ev(width_test, ratio_perim_area_test)
 
@@ -120,11 +123,15 @@ def _single_calculate_deformability(x_test, y_test, x_data, y_data, z_data):
     adjusted_y_data = np.append(y_data, y_test)
 
     bbox = [
-        min(adjusted_x_data), max(adjusted_x_data),
-        min(adjusted_y_data), max(adjusted_y_data)]
+        min(adjusted_x_data),
+        max(adjusted_x_data),
+        min(adjusted_y_data),
+        max(adjusted_y_data),
+    ]
 
     initial_model = SmoothBivariateSpline(
-        x_data, y_data, z_data, bbox=bbox, kx=2, ky=1).ev(x_test, y_test)
+        x_data, y_data, z_data, bbox=bbox, kx=2, ky=1
+    ).ev(x_test, y_test)
 
     pos_adjusted_z_data = np.append(z_data, initial_model + deviation)
     neg_adjusted_z_data = np.append(z_data, initial_model - deviation)
@@ -136,13 +143,12 @@ def _single_calculate_deformability(x_test, y_test, x_data, y_data, z_data):
         adjusted_x_data, adjusted_y_data, neg_adjusted_z_data, kx=2, ky=1
     ).ev(x_test, y_test)
 
-    deformability_from_pos_adjustment = (
-        pos_adjusted_model - initial_model) / deviation
-    deformability_from_neg_adjustment = (
-        initial_model - neg_adjusted_model) / deviation
+    deformability_from_pos_adjustment = (pos_adjusted_model - initial_model) / deviation
+    deformability_from_neg_adjustment = (initial_model - neg_adjusted_model) / deviation
 
     deformability = np.max(
-        [deformability_from_pos_adjustment, deformability_from_neg_adjustment])
+        [deformability_from_pos_adjustment, deformability_from_neg_adjustment]
+    )
 
     return deformability
 
@@ -185,29 +191,38 @@ def calculate_deformability(x_test, y_test, x_data, y_data, z_data):
 
     if np.size(dim) == 0:
         deformability = _single_calculate_deformability(
-            x_test, y_test, x_data, y_data, z_data)
+            x_test, y_test, x_data, y_data, z_data
+        )
 
     elif np.size(dim) == 1:
-        deformability = np.array([
-            _single_calculate_deformability(
-                x_test[i], y_test[i], x_data, y_data, z_data)
-            for i in range(dim[0])
-        ])
+        deformability = np.array(
+            [
+                _single_calculate_deformability(
+                    x_test[i], y_test[i], x_data, y_data, z_data
+                )
+                for i in range(dim[0])
+            ]
+        )
 
     else:
-        deformability = np.array([[
-            _single_calculate_deformability(
-                x_test[i, j], y_test[i, j], x_data, y_data, z_data)
-            for j in range(dim[1])]
-            for i in range(dim[0])
-        ])
+        deformability = np.array(
+            [
+                [
+                    _single_calculate_deformability(
+                        x_test[i, j], y_test[i, j], x_data, y_data, z_data
+                    )
+                    for j in range(dim[1])
+                ]
+                for i in range(dim[0])
+            ]
+        )
 
     return deformability
 
 
-def spline_model_with_deformability(width_test, ratio_perim_area_test,
-                                    width_data, ratio_perim_area_data,
-                                    factor_data):
+def spline_model_with_deformability(
+    width_test, ratio_perim_area_test, width_data, ratio_perim_area_data, factor_data
+):
     """Return the spline model for points with sufficient deformability.
 
     Calls both ``spline_model`` and ``calculate_deformabilty`` and then adjusts
@@ -242,20 +257,29 @@ def spline_model_with_deformability(width_test, ratio_perim_area_test,
 
     """
     deformability = calculate_deformability(
-        width_test, ratio_perim_area_test,
-        width_data, ratio_perim_area_data, factor_data)
+        width_test,
+        ratio_perim_area_test,
+        width_data,
+        ratio_perim_area_data,
+        factor_data,
+    )
 
     model_factor = spline_model(
-        width_test, ratio_perim_area_test,
-        width_data, ratio_perim_area_data, factor_data)
+        width_test,
+        ratio_perim_area_test,
+        width_data,
+        ratio_perim_area_data,
+        factor_data,
+    )
 
     model_factor[deformability > 0.5] = np.nan
 
     return model_factor
 
 
-def calculate_percent_prediction_differences(width_data, ratio_perim_area_data,
-                                             factor_data):
+def calculate_percent_prediction_differences(
+    width_data, ratio_perim_area_data, factor_data
+):
     """Return the percent prediction differences.
 
     Calculates the model factor for each data point with that point removed
@@ -283,14 +307,16 @@ def calculate_percent_prediction_differences(width_data, ratio_perim_area_data,
     """
     predictions = [
         spline_model_with_deformability(
-            width_data[i], ratio_perim_area_data[i],
-            np.delete(width_data, i), np.delete(ratio_perim_area_data, i),
-            np.delete(factor_data, i))
+            width_data[i],
+            ratio_perim_area_data[i],
+            np.delete(width_data, i),
+            np.delete(ratio_perim_area_data, i),
+            np.delete(factor_data, i),
+        )
         for i in range(len(width_data))
     ]
 
-    percent_prediction_differences = (
-        100 * (factor_data - predictions) / factor_data)
+    percent_prediction_differences = 100 * (factor_data - predictions) / factor_data
 
     return percent_prediction_differences
 
@@ -307,8 +333,8 @@ def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
     centroid = insert.centroid
 
     furthest_distance = np.hypot(
-        np.diff(insert.bounds[::2]),
-        np.diff(insert.bounds[1::2]))
+        np.diff(insert.bounds[::2]), np.diff(insert.bounds[1::2])
+    )
 
     def minimising_function(optimiser_input):
         x, y = optimiser_input
@@ -327,8 +353,14 @@ def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
     stepsize = furthest_distance / 2
     niter_success = 50
     output = basinhopping(
-        minimising_function, x0, niter=niter, T=T, stepsize=stepsize,
-        niter_success=niter_success, callback=callback)
+        minimising_function,
+        x0,
+        niter=niter,
+        T=T,
+        stepsize=stepsize,
+        niter_success=niter_success,
+        callback=callback,
+    )
 
     circle_centre = output.x
 
@@ -358,8 +390,7 @@ def calculate_length(x, y, width):
 
 def parameterise_insert(x, y, callback=None):
     """Return the parameterisation of an insert given x and y coords."""
-    circle_centre = search_for_centre_of_largest_bounded_circle(
-        x, y, callback=callback)
+    circle_centre = search_for_centre_of_largest_bounded_circle(x, y, callback=callback)
     width = calculate_width(x, y, circle_centre)
     length = calculate_length(x, y, width)
 
@@ -370,31 +401,33 @@ def visual_alignment_of_equivalent_ellipse(x, y, width, length, callback):
     """Visually align the equivalent ellipse to the insert."""
     insert = shapely_insert(x, y)
     unit_circle = geo.Point(0, 0).buffer(1)
-    initial_ellipse = aff.scale(
-        unit_circle, xfact=width/2, yfact=length/2)
+    initial_ellipse = aff.scale(unit_circle, xfact=width / 2, yfact=length / 2)
 
     def minimising_function(optimiser_input):
         x_shift, y_shift, rotation_angle = optimiser_input
-        rotated = aff.rotate(
-            initial_ellipse, rotation_angle, use_radians=True)
-        translated = aff.translate(
-            rotated, xoff=x_shift, yoff=y_shift)
+        rotated = aff.rotate(initial_ellipse, rotation_angle, use_radians=True)
+        translated = aff.translate(rotated, xoff=x_shift, yoff=y_shift)
 
         disjoint_area = (
-            translated.difference(insert).area +
-            insert.difference(translated).area)
+            translated.difference(insert).area + insert.difference(translated).area
+        )
 
         return disjoint_area / 400
 
-    x0 = np.append(
-        np.squeeze(insert.centroid.coords), np.pi/4)
+    x0 = np.append(np.squeeze(insert.centroid.coords), np.pi / 4)
     niter = 10
     T = insert.area / 40000
     stepsize = 3
     niter_success = 2
     output = basinhopping(
-        minimising_function, x0, niter=niter, T=T, stepsize=stepsize,
-        niter_success=niter_success, callback=callback)
+        minimising_function,
+        x0,
+        niter=niter,
+        T=T,
+        stepsize=stepsize,
+        niter_success=niter_success,
+        callback=callback,
+    )
 
     x_shift, y_shift, rotation_angle = output.x
 
@@ -402,16 +435,19 @@ def visual_alignment_of_equivalent_ellipse(x, y, width, length, callback):
 
 
 def parameterise_insert_with_visual_alignment(
-        x, y, circle_callback=None,
-        visual_ellipse_callback=None,
-        complete_parameterisation_callback=None):
+    x,
+    y,
+    circle_callback=None,
+    visual_ellipse_callback=None,
+    complete_parameterisation_callback=None,
+):
     """Return an equivalent ellipse with visual alignment parameters."""
-    width, length, circle_centre = parameterise_insert(
-        x, y, callback=circle_callback)
-    if complete_parameterisation_callback is not(None):
+    width, length, circle_centre = parameterise_insert(x, y, callback=circle_callback)
+    if complete_parameterisation_callback is not (None):
         complete_parameterisation_callback(width, length, circle_centre)
     x_shift, y_shift, rotation_angle = visual_alignment_of_equivalent_ellipse(
-        x, y, width, length, callback=visual_ellipse_callback)
+        x, y, width, length, callback=visual_ellipse_callback
+    )
 
     return width, length, circle_centre, x_shift, y_shift, rotation_angle
 
@@ -419,8 +455,9 @@ def parameterise_insert_with_visual_alignment(
 def convert2_ratio_perim_area(width, length):
     """Convert width and length data into ratio of perimeter to area."""
     perimeter = (
-        np.pi / 2 *
-        (3*(width + length) - np.sqrt((3*width + length)*(3*length + width)))
+        np.pi
+        / 2
+        * (3 * (width + length) - np.sqrt((3 * width + length) * (3 * length + width)))
     )
     area = np.pi / 4 * width * length
 
@@ -430,18 +467,21 @@ def convert2_ratio_perim_area(width, length):
 def create_transformed_mesh(width_data, length_data, factor_data):
     """Return factor data meshgrid."""
     x = np.arange(
-        np.floor(np.min(width_data)) - 1,
-        np.ceil(np.max(width_data)) + 1, 0.1)
+        np.floor(np.min(width_data)) - 1, np.ceil(np.max(width_data)) + 1, 0.1
+    )
     y = np.arange(
-        np.floor(np.min(length_data)) - 1,
-        np.ceil(np.max(length_data)) + 1, 0.1)
+        np.floor(np.min(length_data)) - 1, np.ceil(np.max(length_data)) + 1, 0.1
+    )
 
     xx, yy = np.meshgrid(x, y)
 
     zz = spline_model_with_deformability(
-        xx, convert2_ratio_perim_area(xx, yy),
-        width_data, convert2_ratio_perim_area(width_data, length_data),
-        factor_data)
+        xx,
+        convert2_ratio_perim_area(xx, yy),
+        width_data,
+        convert2_ratio_perim_area(width_data, length_data),
+        factor_data,
+    )
 
     zz[xx > yy] = np.nan
 

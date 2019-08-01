@@ -6,8 +6,7 @@ from glob import glob
 
 
 def tar_filter(tar_info: tarfile.TarInfo):
-    blacklist = [
-        'tests', 'sphinxtheme']
+    blacklist = ["tests", "sphinxtheme"]
 
     for item in blacklist:
         if item in tar_info.name:
@@ -17,15 +16,14 @@ def tar_filter(tar_info: tarfile.TarInfo):
 
 
 def main():
-    with open('lerna.json') as lerna_json:
-        version = json.load(lerna_json)['version']
+    with open("lerna.json") as lerna_json:
+        version = json.load(lerna_json)["version"]
 
-    licenses = glob('LICENSE*')
+    licenses = glob("LICENSE*")
 
-    to_archive = [
-        'packages', 'package.json', 'README.rst', 'lerna.json'] + licenses
+    to_archive = ["packages", "package.json", "README.rst", "lerna.json"] + licenses
 
-    output_filename = 'v{}.tar.gz'.format(version)
+    output_filename = "v{}.tar.gz".format(version)
 
     try:
         os.remove(output_filename)

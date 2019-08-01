@@ -23,26 +23,26 @@ def main(x):
 
 def test_symbols(config):
     doc = Document(DOC_URI, DOC)
-    config.update({'plugins': {'jedi_symbols': {'all_scopes': False}}})
+    config.update({"plugins": {"jedi_symbols": {"all_scopes": False}}})
     symbols = pyls_document_symbols(config, doc)
 
     # All four symbols (import sys, a, B, main, y)
     assert len(symbols) == 5
 
     def sym(name):
-        return [s for s in symbols if s['name'] == name][0]
+        return [s for s in symbols if s["name"] == name][0]
 
     # Check we have some sane mappings to VSCode constants
-    assert sym('a')['kind'] == SymbolKind.Variable
-    assert sym('B')['kind'] == SymbolKind.Class
-    assert sym('main')['kind'] == SymbolKind.Function
+    assert sym("a")["kind"] == SymbolKind.Variable
+    assert sym("B")["kind"] == SymbolKind.Class
+    assert sym("main")["kind"] == SymbolKind.Function
 
     # Not going to get too in-depth here else we're just testing Jedi
-    assert sym('a')['location']['range']['start'] == {'line': 2, 'character': 0}
+    assert sym("a")["location"]["range"]["start"] == {"line": 2, "character": 0}
 
     # Ensure that the symbol range spans the whole definition
-    assert sym('main')['location']['range']['start'] == {'line': 9, 'character': 0}
-    assert sym('main')['location']['range']['end'] == {'line': 12, 'character': 0}
+    assert sym("main")["location"]["range"]["start"] == {"line": 9, "character": 0}
+    assert sym("main")["location"]["range"]["end"] == {"line": 12, "character": 0}
 
 
 def test_symbols_all_scopes(config):
@@ -53,13 +53,13 @@ def test_symbols_all_scopes(config):
     assert len(symbols) == 8
 
     def sym(name):
-        return [s for s in symbols if s['name'] == name][0]
+        return [s for s in symbols if s["name"] == name][0]
 
     # Check we have some sane mappings to VSCode constants
-    assert sym('a')['kind'] == SymbolKind.Variable
-    assert sym('B')['kind'] == SymbolKind.Class
-    assert sym('__init__')['kind'] == SymbolKind.Function
-    assert sym('main')['kind'] == SymbolKind.Function
+    assert sym("a")["kind"] == SymbolKind.Variable
+    assert sym("B")["kind"] == SymbolKind.Class
+    assert sym("__init__")["kind"] == SymbolKind.Function
+    assert sym("main")["kind"] == SymbolKind.Function
 
     # Not going to get too in-depth here else we're just testing Jedi
-    assert sym('a')['location']['range']['start'] == {'line': 2, 'character': 0}
+    assert sym("a")["location"]["range"]["start"] == {"line": 2, "character": 0}

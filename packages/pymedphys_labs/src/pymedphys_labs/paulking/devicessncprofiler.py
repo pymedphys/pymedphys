@@ -46,7 +46,7 @@ def read_prs(file_name):
         | Profiler.y = list of (y, dose) tuples
     """
 
-    Profiler = namedtuple('Profiler', ['cax', 'x', 'y'])
+    Profiler = namedtuple("Profiler", ["cax", "x", "y"])
 
     with open(file_name) as profiler_file:
         for row in profiler_file.readlines():
@@ -56,13 +56,13 @@ def read_prs(file_name):
             elif contents[:5] == "Data:":
                 counts = np.array(contents.split()[5:145]).astype(float)
             elif contents[:15] == "Dose Per Count:":
-                dose_per_count = (float(contents.split()[-1]))
+                dose_per_count = float(contents.split()[-1])
         assert (len(calibs)) == (len(counts)) == 140
         assert dose_per_count > 0.0
     dose = counts * dose_per_count * calibs
 
-    y_vals = [-16.4 + 0.4*i for i in range(83)]
-    x_vals = [-11.2 + 0.4*i for i in range(57)]
+    y_vals = [-16.4 + 0.4 * i for i in range(83)]
+    x_vals = [-11.2 + 0.4 * i for i in range(57)]
 
     x_prof = list(zip(y_vals, dose[:57]))
     y_prof = list(zip(x_vals, dose[57:]))
@@ -73,25 +73,63 @@ def read_prs(file_name):
     return Profiler(cax_dose, x_prof, y_prof)
 
 
-def write_prs(x_prof, y_prof,file_name=None,
-              version=7,
-              meas_date='01/01/1970', meas_time='00:00:01',
-              descrip='', instit='', file_cal="NONE", collector='Profiler2',
-              coll_sn='0000000', coll_rev='C',
-              f_ware_ver='0.0.0', s_ware_v='0.0.0.0',
-              depth='1.0', nom_gain='1', orient='Sagittal', ssd='100',
-              bm_mode='Pulsed', tray='No', align='None', interval='50',
-              room='', mach_type='', mach_mod='',mach_num='',
-              bm_modal='Photon', bm_energy='0', jaws=('5','5','5','5'),
-              wdg_type='None', wdg_ang='0', rate='0', dose='0',
-              gantry='180', collimator='180', bkg_used='true',
-              pulse_mode='true', alz_panels='0000000', cal_sn='0000000',
-              cal_rev='A', temp='-100', dose_cal = '0.001', d_at_cal='100.0',
-              abs_cal='false', energy_cal='0', cal_date='01/01/1970',
-              cal_time='00:00:01', cal_cmnts='', m_frame='false',
-              updates='0', pulses='0', time='0.0',
-              detectors=('83', '57', '0', '4'), spacing='0.4',
-              concat='false'):
+def write_prs(
+    x_prof,
+    y_prof,
+    file_name=None,
+    version=7,
+    meas_date="01/01/1970",
+    meas_time="00:00:01",
+    descrip="",
+    instit="",
+    file_cal="NONE",
+    collector="Profiler2",
+    coll_sn="0000000",
+    coll_rev="C",
+    f_ware_ver="0.0.0",
+    s_ware_v="0.0.0.0",
+    depth="1.0",
+    nom_gain="1",
+    orient="Sagittal",
+    ssd="100",
+    bm_mode="Pulsed",
+    tray="No",
+    align="None",
+    interval="50",
+    room="",
+    mach_type="",
+    mach_mod="",
+    mach_num="",
+    bm_modal="Photon",
+    bm_energy="0",
+    jaws=("5", "5", "5", "5"),
+    wdg_type="None",
+    wdg_ang="0",
+    rate="0",
+    dose="0",
+    gantry="180",
+    collimator="180",
+    bkg_used="true",
+    pulse_mode="true",
+    alz_panels="0000000",
+    cal_sn="0000000",
+    cal_rev="A",
+    temp="-100",
+    dose_cal="0.001",
+    d_at_cal="100.0",
+    abs_cal="false",
+    energy_cal="0",
+    cal_date="01/01/1970",
+    cal_time="00:00:01",
+    cal_cmnts="",
+    m_frame="false",
+    updates="0",
+    pulses="0",
+    time="0.0",
+    detectors=("83", "57", "0", "4"),
+    spacing="0.4",
+    concat="false",
+):
 
     """
     Write dose profiles to a file in the native Profiler data format.
@@ -169,15 +207,16 @@ def write_prs(x_prof, y_prof,file_name=None,
     y_prof = [(-1000, 0)] + y_prof + [(1000, 0)]
 
     # X,Y DETECTOR POSITIONS FOR DEVICE
-    x_vals = [-11.2 + 0.4*i for i in range(57)]
-    y_vals = [-16.4 + 0.4*i for i in range(83)]
+    x_vals = [-11.2 + 0.4 * i for i in range(57)]
+    y_vals = [-16.4 + 0.4 * i for i in range(83)]
 
     # X,Y COORDINATES CORRECT, DO NOT INTERPOLATE
     if [i[0] for i in x_prof] == x_vals and [i[0] for i in y_prof] == y_vals:
-        counts = ['Data:', '0', '0', '0', '0'] + \
-            [str(int(1000*i[1])) for i in x_prof + y_prof] + \
-            ['0', '0', '0', '0\n']
-
+        counts = (
+            ["Data:", "0", "0", "0", "0"]
+            + [str(int(1000 * i[1])) for i in x_prof + y_prof]
+            + ["0", "0", "0", "0\n"]
+        )
 
     else:  # INTERPOLATE X,Y COORDINATES ONTO DETECTOR POSITIONS
         interpolator = interp1d([i[0] for i in x_prof], [i[1] for i in x_prof])
@@ -189,90 +228,85 @@ def write_prs(x_prof, y_prof,file_name=None,
         counts_y = [float(i) for i in list(map(interpolator, y_vals))]
 
         # 1000 COUNTS PER CGY
-        counts = ['Data:', '0', '0', '0', '0'] + \
-            [str(int(1000*i)) for i in counts_x + counts_y] + \
-            ['0', '0', '0', '0\n']
+        counts = (
+            ["Data:", "0", "0", "0", "0"]
+            + [str(int(1000 * i)) for i in counts_x + counts_y]
+            + ["0", "0", "0", "0\n"]
+        )
 
+    prs_file = [
+        "Version:\t {}\n".format(7),
+        "Filename:\t {} \n".format("-"),
+        "Date:\t {}\t Time:\t{}\n".format(meas_date, meas_time),
+        "Description:\t{}\n".format(descrip),
+        "Institution:\t{}\n".format(instit),
+        "Calibration File:\t{}\n".format(file_cal),
+        "\tProfiler Setup\n",
+        "\n",
+        "Collector Model:\t{}\n".format(collector),
+        "Collector Serial:\t{} Revision:\t{}\n".format(coll_sn, coll_rev),
+        "Firmware Version:\t{}\n".format(f_ware_ver),
+        "Software Version:\t{}\n".format(s_ware_v),
+        "Buildup:\t{}\tcm\tWaterEquiv\n".format(depth),
+        "Nominal Gain\t{}\n".format(nom_gain),
+        "Orientation:\t{}\n".format(orient),
+        "SSD:\t{}\tcm\n".format(ssd),
+        "Beam Mode:\t{}\n".format(bm_mode),
+        "Tray Mount:\t{}\n".format(tray),
+        "Alignment:\t{}\n".format(align),
+        "Collection Interval:\t{}\n".format(interval),
+        "\n",
+        "\tMachine Data\n",
+        "Room:\t{}\n".format(room),
+        "Machine Type:\t{}\n".format(mach_type),
+        "Machine Model:\t{}\n".format(mach_mod),
+        "Machine Serial Number:\t{}\n".format(mach_num),
+        "Beam Type:\t{}\tEnergy:\t{} MeV\n".format(bm_modal, bm_energy),
+        "Collimator:\tLeft: {} Right: {} Top: {} Bottom: {} cm\n".format(*jaws),
+        "Wedge:\t{}\tat\t{}\n".format(wdg_type, wdg_ang),
+        "Rate:\t{}\tmu/Min\tDose:\t{}\n".format(rate, dose),
+        "Gantry Angle:\t{} deg\tCollimator Angle:\t{} deg\n".format(gantry, collimator),
+        "\n",
+        "\tData Flags\n",
+        "Background Used:\t{}\n".format(bkg_used),
+        "Pulse Mode:\t{}\n".format(pulse_mode),
+        "Analyze Panels:\t{}\n".format(alz_panels),
+        "\n",
+        "\tHardware Data\n",
+        "Cal-Serial Number:\t{}\n".format(cal_sn),
+        "Cal-Revision:\t{}\n".format(cal_rev),
+        "Temperature:\t{}\n".format(temp),
+        "Dose Calibration\n",
+        "Dose Per Count:\t{}\n".format(dose_cal),
+        "Dose:\t{}\n".format(d_at_cal),
+        "Absolute Calibration:\t{}\n".format(abs_cal),
+        "Energy:\t{} MV\n".format(energy_cal),
+        "TimeStamp:\t{} {}\n".format(cal_date, cal_time),
+        "Comments:\t{}\n".format(cal_cmnts),
+        "Gain Ratios for Amp0:\t\t{}\t{}\t{}\t{}\n".format(1, 2, 4, 8),
+        "Gain Ratios for Amp1:\t\t{}\t{}\t{}\t{}\n".format(1, 2, 4, 8),
+        "Gain Ratios for Amp2:\t\t{}\t{}\t{}\t{}\n".format(1, 2, 4, 8),
+        "Gain Ratios for Amp3:\t\t{}\t{}\t{}\t{}\n".format(1, 2, 4, 8),
+        "\n",
+        "Multi Frame:\t{}\n".format(m_frame),
+        "# updates:\t{}\n".format(updates),
+        "Total Pulses:\t{}\n".format(pulses),
+        "Total Time:\t{}\n".format(0.0),
+        "Detectors:\t{}\t{}\t{}\t{}\n".format(*detectors),
+        "Detector Spacing:\t{}\n".format(spacing),
+        "Concatenation:\t{}\n".format(concat),
+        "\t".join(
+            ["TYPE", "UPDATE#", "TIMETIC", "PULSES", "ERRORS"]
+            + ["X" + str(i) for i in range(1, 58)]
+            + ["Y" + str(i) for i in range(1, 84)]
+            + ["Z0", "Z1", "Z2", "Z3\n"]
+        ),
+        "\t".join(["BIAS1", "", "0", "", ""] + ["0.0"] * 143 + ["0.0\n"]),
+        "\t".join(["Calibration", "", "", "", ""] + ["1.0"] * 139 + ["1.0\n"]),
+        "\t".join(counts),
+    ]
 
-
-    prs_file = ['Version:\t {}\n'.format(7),
-                'Filename:\t {} \n'.format('-'),
-                'Date:\t {}\t Time:\t{}\n'.format(meas_date, meas_time),
-                'Description:\t{}\n'.format(descrip),
-                'Institution:\t{}\n'.format(instit),
-                'Calibration File:\t{}\n'.format(file_cal),
-                '\tProfiler Setup\n', '\n',
-                'Collector Model:\t{}\n'.format(collector),
-                'Collector Serial:\t{} Revision:\t{}\n'.format(
-                    coll_sn, coll_rev),
-                'Firmware Version:\t{}\n'.format(f_ware_ver),
-                'Software Version:\t{}\n'.format(s_ware_v),
-                'Buildup:\t{}\tcm\tWaterEquiv\n'.format(depth),
-                'Nominal Gain\t{}\n'.format(nom_gain),
-                'Orientation:\t{}\n'.format(orient),
-                'SSD:\t{}\tcm\n'.format(ssd),
-                'Beam Mode:\t{}\n'.format(bm_mode),
-                'Tray Mount:\t{}\n'.format(tray),
-                'Alignment:\t{}\n'.format(align),
-                'Collection Interval:\t{}\n'.format(interval),
-                '\n',
-                '\tMachine Data\n',
-                'Room:\t{}\n'.format(room),
-                'Machine Type:\t{}\n'.format(mach_type),
-                'Machine Model:\t{}\n'.format(mach_mod),
-                'Machine Serial Number:\t{}\n'.format(mach_num),
-                'Beam Type:\t{}\tEnergy:\t{} MeV\n'.format(
-                    bm_modal, bm_energy),
-                'Collimator:\tLeft: {} Right: {} Top: {} Bottom: {} cm\n'.format(
-                   *jaws),
-                'Wedge:\t{}\tat\t{}\n'.format(wdg_type, wdg_ang),
-                'Rate:\t{}\tmu/Min\tDose:\t{}\n'.format(rate, dose),
-                'Gantry Angle:\t{} deg\tCollimator Angle:\t{} deg\n'.format(
-                    gantry, collimator),
-                '\n',
-                '\tData Flags\n',
-                'Background Used:\t{}\n'.format(bkg_used),
-                'Pulse Mode:\t{}\n'.format(pulse_mode),
-                'Analyze Panels:\t{}\n'.format(alz_panels),
-                '\n',
-                '\tHardware Data\n',
-                'Cal-Serial Number:\t{}\n'.format(cal_sn),
-                'Cal-Revision:\t{}\n'.format(cal_rev),
-                'Temperature:\t{}\n'.format(temp),
-                'Dose Calibration\n',
-                'Dose Per Count:\t{}\n'.format(dose_cal),
-                'Dose:\t{}\n'.format(d_at_cal),
-                'Absolute Calibration:\t{}\n'.format(abs_cal),
-                'Energy:\t{} MV\n'.format(energy_cal),
-                'TimeStamp:\t{} {}\n'.format(cal_date, cal_time),
-                'Comments:\t{}\n'.format(cal_cmnts),
-                'Gain Ratios for Amp0:\t\t{}\t{}\t{}\t{}\n'.format(1, 2, 4, 8),
-                'Gain Ratios for Amp1:\t\t{}\t{}\t{}\t{}\n'.format(1, 2, 4, 8),
-                'Gain Ratios for Amp2:\t\t{}\t{}\t{}\t{}\n'.format(1, 2, 4, 8),
-                'Gain Ratios for Amp3:\t\t{}\t{}\t{}\t{}\n'.format(1, 2, 4, 8),
-                '\n',
-                'Multi Frame:\t{}\n'.format(m_frame),
-                '# updates:\t{}\n'.format(updates),
-                'Total Pulses:\t{}\n'.format(pulses),
-                'Total Time:\t{}\n'.format(0.0),
-                'Detectors:\t{}\t{}\t{}\t{}\n'.format(*detectors),
-                'Detector Spacing:\t{}\n'.format(spacing),
-                'Concatenation:\t{}\n'.format(concat),
-                '\t'.join(['TYPE',
-                           'UPDATE#',
-                           'TIMETIC',
-                           'PULSES',
-                           'ERRORS'] +
-                          ['X'+str(i) for i in range(1, 58)] +
-                          ['Y'+str(i) for i in range(1, 84)] +
-                          ['Z0', 'Z1', 'Z2', 'Z3\n']),
-                '\t'.join(['BIAS1', '', '0', '',
-                           ''] + ['0.0']*143 + ['0.0\n']),
-                '\t'.join(['Calibration', '', '', '', ''] +
-                          ['1.0']*139 + ['1.0\n']),
-                '\t'.join(counts)]
-
-    with open(file_name, 'w') as outfile:
+    with open(file_name, "w") as outfile:
         for line in prs_file:
             outfile.write(line)
     return prs_file

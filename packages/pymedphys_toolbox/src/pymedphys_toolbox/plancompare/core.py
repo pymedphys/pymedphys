@@ -32,8 +32,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_databases.msq import (
-    multi_mosaiq_connect, delivery_data_from_mosaiq)
+from pymedphys_databases.msq import multi_mosaiq_connect, delivery_data_from_mosaiq
 
 
 def plot_mu_densities(labels, mu_density_results):
@@ -44,31 +43,34 @@ def plot_mu_densities(labels, mu_density_results):
         plt.figure()
         plt.pcolormesh(xx, yy, mu_density)
         plt.colorbar()
-        plt.title('MU density | {}'.format(label))
-        plt.xlabel('MLC direction (mm)')
-        plt.ylabel('Jaw direction (mm)')
+        plt.title("MU density | {}".format(label))
+        plt.xlabel("MLC direction (mm)")
+        plt.ylabel("Jaw direction (mm)")
         plt.gca().invert_yaxis()
 
 
 def plot_gantry_collimator(labels, deliveries):
     plt.figure()
-    plt.title('Gantry Angle')
+    plt.title("Gantry Angle")
     for label, delivery_data in zip(labels, deliveries):
         plt.plot(
-            delivery_data.monitor_units, delivery_data.gantry,
-            label=label, alpha=0.5)
-    plt.xlabel('Monitor Units')
-    plt.ylabel('Gantry Angle')
+            delivery_data.monitor_units, delivery_data.gantry, label=label, alpha=0.5
+        )
+    plt.xlabel("Monitor Units")
+    plt.ylabel("Gantry Angle")
     plt.legend()
 
     plt.figure()
-    plt.title('Colimator Angle')
+    plt.title("Colimator Angle")
     for label, delivery_data in zip(labels, deliveries):
         plt.plot(
-            delivery_data.monitor_units, delivery_data.collimator,
-            label=label, alpha=0.5)
-    plt.xlabel('Monitor Units')
-    plt.ylabel('Collimator Angle')
+            delivery_data.monitor_units,
+            delivery_data.collimator,
+            label=label,
+            alpha=0.5,
+        )
+    plt.xlabel("Monitor Units")
+    plt.ylabel("Collimator Angle")
     plt.legend()
 
 
@@ -81,28 +83,24 @@ def compare_mosaiq_fields(servers, field_ids):
             for server, field_id in zip(servers, field_ids)
         ]
 
-    mu_density_results = [
-        delivery_data.mudensity()
-        for delivery_data in deliveries
-    ]
+    mu_density_results = [delivery_data.mudensity() for delivery_data in deliveries]
 
-    mu_densities = [
-        results[2]
-        for results in mu_density_results
-    ]
+    mu_densities = [results[2] for results in mu_density_results]
 
     labels = [
         "Server: `{}` | Field ID: `{}`".format(server, field_id)
-        for server, field_id in zip(servers, field_ids)]
+        for server, field_id in zip(servers, field_ids)
+    ]
 
     plot_gantry_collimator(labels, deliveries)
     plot_mu_densities(labels, mu_density_results)
 
-    mu_densities_match = np.all([
-        np.all(np.abs(mu_density_a - mu_density_b) < 0.1)
-        for mu_density_a, mu_density_b
-        in itertools.combinations(mu_densities, 2)
-    ])
+    mu_densities_match = np.all(
+        [
+            np.all(np.abs(mu_density_a - mu_density_b) < 0.1)
+            for mu_density_a, mu_density_b in itertools.combinations(mu_densities, 2)
+        ]
+    )
 
     plt.show()
     print("MU Densities match: {}".format(mu_densities_match))
