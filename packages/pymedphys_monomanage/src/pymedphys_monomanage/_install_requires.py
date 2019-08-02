@@ -1,5 +1,1 @@
-install_requires = [
-    "networkx",
-    "semver",
-    "stdlib_list"
-]
+install_requires = ["black", "networkx", "semver", "stdlib_list"]

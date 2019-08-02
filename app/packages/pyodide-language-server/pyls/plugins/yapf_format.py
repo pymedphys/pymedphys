@@ -16,9 +16,9 @@ def pyls_format_document(document):
 @hookimpl
 def pyls_format_range(document, range):  # pylint: disable=redefined-builtin
     # First we 'round' the range up/down to full lines only
-    range['start']['character'] = 0
-    range['end']['line'] += 1
-    range['end']['character'] = 0
+    range["start"]["character"] = 0
+    range["end"]["line"] += 1
+    range["end"]["character"] = 0
 
     # From Yapf docs:
     # lines: (list of tuples of integers) A list of tuples of lines, [start, end],
@@ -27,7 +27,7 @@ def pyls_format_range(document, range):  # pylint: disable=redefined-builtin
     #   than a whole file.
 
     # Add 1 for 1-indexing vs LSP's 0-indexing
-    lines = [(range['start']['line'] + 1, range['end']['line'] + 1)]
+    lines = [(range["start"]["line"] + 1, range["end"]["line"] + 1)]
     return _format(document, lines=lines)
 
 
@@ -38,7 +38,7 @@ def _format(document, lines=None):
         filename=document.filename,
         style_config=file_resources.GetDefaultStyleForDir(
             os.path.dirname(document.path)
-        )
+        ),
     )
 
     if not changed:
@@ -46,11 +46,13 @@ def _format(document, lines=None):
 
     # I'm too lazy at the moment to parse diffs into TextEdit items
     # So let's just return the entire file...
-    return [{
-        'range': {
-            'start': {'line': 0, 'character': 0},
-            # End char 0 of the line after our document
-            'end': {'line': len(document.lines), 'character': 0}
-        },
-        'newText': new_source
-    }]
+    return [
+        {
+            "range": {
+                "start": {"line": 0, "character": 0},
+                # End char 0 of the line after our document
+                "end": {"line": len(document.lines), "character": 0},
+            },
+            "newText": new_source,
+        }
+    ]

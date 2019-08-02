@@ -33,25 +33,25 @@ def add_data_to_control_point(template, data, i):
     cp = deepcopy(template)
     cp.ControlPointIndex = str(i)
 
-    cp.GantryAngle = data['gantry_angle'][i]
-    cp.GantryRotationDirection = data['gantry_movement'][i]
+    cp.GantryAngle = data["gantry_angle"][i]
+    cp.GantryRotationDirection = data["gantry_movement"][i]
 
-    cp.BeamLimitingDeviceAngle = data['collimator_angle'][i]
-    cp.BeamLimitingDeviceRotationDirection = data['collimator_movement'][i]
+    cp.BeamLimitingDeviceAngle = data["collimator_angle"][i]
+    cp.BeamLimitingDeviceRotationDirection = data["collimator_movement"][i]
 
     collimation = cp.BeamLimitingDevicePositionSequence
-    collimation[0].LeafJawPositions = data['jaw'][i]
-    collimation[1].LeafJawPositions = data['mlc'][i]
+    collimation[0].LeafJawPositions = data["jaw"][i]
+    collimation[1].LeafJawPositions = data["mlc"][i]
 
     cp.CumulativeMetersetWeight = np.around(
-        data['monitor_units'][i] / data['monitor_units'][-1], decimals=6)
+        data["monitor_units"][i] / data["monitor_units"][-1], decimals=6
+    )
 
     return cp
 
 
-def build_control_points(initial_cp_template, subsequent_cp_template,
-                         data):
-    number_of_control_points = len(data['monitor_units'])
+def build_control_points(initial_cp_template, subsequent_cp_template, data):
+    number_of_control_points = len(data["monitor_units"])
 
     cps = []
     for i in range(number_of_control_points):
@@ -65,8 +65,9 @@ def build_control_points(initial_cp_template, subsequent_cp_template,
     return cps
 
 
-def replace_fraction_group(created_dicom, beam_meterset, beam_index,
-                           fraction_group_index):
+def replace_fraction_group(
+    created_dicom, beam_meterset, beam_index, fraction_group_index
+):
     fraction_group = created_dicom.FractionGroupSequence[fraction_group_index]
     referenced_beam = fraction_group.ReferencedBeamSequence[beam_index]
     referenced_beam.BeamMeterset = str(beam_meterset)
@@ -85,7 +86,7 @@ def restore_trailing_zeros(created_dicom):
     for beam_sequence in created_dicom.BeamSequence:
         for control_point in beam_sequence.ControlPointSequence:
             current_value = float(control_point.CumulativeMetersetWeight)
-            new_value = '{0:.6f}'.format(current_value)
+            new_value = "{0:.6f}".format(current_value)
 
             control_point.CumulativeMetersetWeight = new_value
 
@@ -94,9 +95,7 @@ def merge_beam_sequences(dicoms_by_gantry_angle):
     merged = dicoms_by_gantry_angle[0]
 
     for dicom in dicoms_by_gantry_angle[1::]:
-        merged.BeamSequence.append(
-            dicom.BeamSequence[0]
-        )
+        merged.BeamSequence.append(dicom.BeamSequence[0])
         merged.FractionGroupSequence[0].ReferencedBeamSequence.append(
             dicom.FractionGroupSequence[0].ReferencedBeamSequence[0]
         )

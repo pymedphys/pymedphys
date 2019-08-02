@@ -32,7 +32,7 @@ import hashlib
 def hash_file(filename, dot_feedback=False):
     BLOCKSIZE = 65536
     hasher = hashlib.sha1()
-    with open(filename, 'rb') as afile:
+    with open(filename, "rb") as afile:
         buf = afile.read(BLOCKSIZE)
         while len(buf) > 0:
             hasher.update(buf)

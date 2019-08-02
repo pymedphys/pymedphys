@@ -39,7 +39,7 @@ import numpy as np
 from .sinogram import unshuffle, crop
 
 
-def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
+def tomo_sinogram_csv2pdf(file_name="./sinogram.csv", show=True, save=True):
     """
     Convert a CSV sinogram file into a PDF fluence map collection, by
     unshuffling the sinogram, i.e. separating leaf pattern into
@@ -61,51 +61,61 @@ def tomo_sinogram_csv2pdf(file_name='./sinogram.csv', show=True, save=True):
     """
 
     fig = plt.figure(figsize=(7.5, 11))
-    grid_spec = GridSpec(nrows=9, ncols=6, hspace=None, wspace=None,
-                         left=0.05, right=0.9, bottom=0.02, top=0.975)
+    grid_spec = GridSpec(
+        nrows=9,
+        ncols=6,
+        hspace=None,
+        wspace=None,
+        left=0.05,
+        right=0.9,
+        bottom=0.02,
+        top=0.975,
+    )
 
-    with open(file_name, 'r') as csvfile:
+    with open(file_name, "r") as csvfile:
 
         # PATIENT NAME & ID
-        pat_name, pat_num = csvfile.readline().split('ID:')
-        pat_name = pat_name.replace('Patient name:', '')
-        pat_name_last, pat_name_first = pat_name.split('^')
+        pat_name, pat_num = csvfile.readline().split("ID:")
+        pat_name = pat_name.replace("Patient name:", "")
+        pat_name_last, pat_name_first = pat_name.split("^")
 
-        pat_name_last = ''.join([c for c in pat_name_last if c in LETTERS])
-        pat_name_first = ''.join([c for c in pat_name_first if c in LETTERS])
-        pat_num = ''.join([c for c in pat_num if c in DIGITS])
+        pat_name_last = "".join([c for c in pat_name_last if c in LETTERS])
+        pat_name_first = "".join([c for c in pat_name_first if c in LETTERS])
+        pat_num = "".join([c for c in pat_num if c in DIGITS])
 
-        document_id = pat_num + ' - ' + pat_name_last + ', ' + pat_name_first
+        document_id = pat_num + " - " + pat_name_last + ", " + pat_name_first
 
         # SINOGRAM
-        reader = csv.reader(csvfile, delimiter=',')
+        reader = csv.reader(csvfile, delimiter=",")
         array = np.asarray([line[1:] for line in reader]).astype(float)
 
     result = unshuffle(crop(array))
 
-    fig.text(0.03, 0.985, document_id,
-             horizontalalignment='left', verticalalignment='center')
+    fig.text(
+        0.03, 0.985, document_id, horizontalalignment="left", verticalalignment="center"
+    )
 
     for idx, angle in enumerate(result):
         subplot = fig.add_subplot(grid_spec[idx])
-        _ = subplot.imshow(angle, cmap='gray')
+        _ = subplot.imshow(angle, cmap="gray")
         subplot.axes.get_xaxis().set_visible(False)
         subplot.axes.get_yaxis().set_visible(False)
-        subplot.set_title('{0:.0f} dg'.format(7.06*idx), fontsize=9)
+        subplot.set_title("{0:.0f} dg".format(7.06 * idx), fontsize=9)
 
     if save:
-        plt.savefig(join(dirname(file_name), document_id + ' Sinogram.pdf'))
+        plt.savefig(join(dirname(file_name), document_id + " Sinogram.pdf"))
 
     if show:
         plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
 
     try:
-        test = os.path.join(os.getcwd(), 'src', 'pymedphys',
-                            '_labs', 'paulking', 'sinogram.csv')
+        test = os.path.join(
+            os.getcwd(), "src", "pymedphys", "_labs", "paulking", "sinogram.csv"
+        )
         tomo_sinogram_csv2pdf(test, show=True, save=True)
     except IOError:
-        print('No sinogram csv file.')
+        print("No sinogram csv file.")

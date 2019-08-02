@@ -29,29 +29,29 @@ def test_pyflakes():
     diags = pyflakes_lint.pyls_lint(doc)
 
     # One we're expecting is:
-    msg = '\'sys\' imported but unused'
-    unused_import = [d for d in diags if d['message'] == msg][0]
+    msg = "'sys' imported but unused"
+    unused_import = [d for d in diags if d["message"] == msg][0]
 
-    assert unused_import['range']['start'] == {'line': 0, 'character': 0}
-    assert unused_import['severity'] == lsp.DiagnosticSeverity.Warning
+    assert unused_import["range"]["start"] == {"line": 0, "character": 0}
+    assert unused_import["severity"] == lsp.DiagnosticSeverity.Warning
 
 
 def test_syntax_error_pyflakes():
     doc = Document(DOC_URI, DOC_SYNTAX_ERR)
     diag = pyflakes_lint.pyls_lint(doc)[0]
 
-    assert diag['message'] == 'invalid syntax'
-    assert diag['range']['start'] == {'line': 0, 'character': 12}
-    assert diag['severity'] == lsp.DiagnosticSeverity.Error
+    assert diag["message"] == "invalid syntax"
+    assert diag["range"]["start"] == {"line": 0, "character": 12}
+    assert diag["severity"] == lsp.DiagnosticSeverity.Error
 
 
 def test_undefined_name_pyflakes():
     doc = Document(DOC_URI, DOC_UNDEFINED_NAME_ERR)
     diag = pyflakes_lint.pyls_lint(doc)[0]
 
-    assert diag['message'] == 'undefined name \'b\''
-    assert diag['range']['start'] == {'line': 0, 'character': 4}
-    assert diag['severity'] == lsp.DiagnosticSeverity.Error
+    assert diag["message"] == "undefined name 'b'"
+    assert diag["range"]["start"] == {"line": 0, "character": 4}
+    assert diag["severity"] == lsp.DiagnosticSeverity.Error
 
 
 def test_unicode_encoding():
@@ -59,4 +59,4 @@ def test_unicode_encoding():
     diags = pyflakes_lint.pyls_lint(doc)
 
     assert len(diags) == 1
-    assert diags[0]['message'] == '\'sys\' imported but unused'
+    assert diags[0]["message"] == "'sys' imported but unused"

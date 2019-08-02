@@ -32,8 +32,8 @@ from .graphs import write_graphs_rst
 
 
 def pre_docs_build(pymedphys_dir):
-    docs_directory = os.path.join(pymedphys_dir, 'docs')
-    docs_graphs = os.path.join(docs_directory, 'graphs')
+    docs_directory = os.path.join(pymedphys_dir, "docs")
+    docs_graphs = os.path.join(docs_directory, "graphs")
 
     draw_all(docs_graphs)
     write_graphs_rst(docs_graphs)

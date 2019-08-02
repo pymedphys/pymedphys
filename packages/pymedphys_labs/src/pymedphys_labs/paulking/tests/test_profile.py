@@ -31,46 +31,177 @@ from pymedphys_labs.paulking.profile import Profile
 # pylint: disable = E1102, C0111
 
 
-PROFILER = [(-16.4, 0.22), (-16, 0.3), (-15.6, 0.28), (-15.2, 0.3),
-            (-14.8, 0.36), (-14.4, 0.38), (-14, 0.41), (-13.6, 0.45),
-            (-13.2, 0.47), (-12.8, 0.51), (-12.4, 0.55), (-12, 0.62),
-            (-11.6, 0.67), (-11.2, 0.74), (-10.8, 0.81), (-10.4, 0.91),
-            (-10, 0.97), (-9.6, 1.12), (-9.2, 1.24), (-8.8, 1.4),
-            (-8.4, 1.56), (-8, 1.75), (-7.6, 2.06), (-7.2, 2.31),
-            (-6.8, 2.56), (-6.4, 3.14), (-6, 3.83), (-5.6, 4.98),
-            (-5.2, 8.17), (-4.8, 40.6), (-4.4, 43.34), (-4, 44.17),
-            (-3.6, 44.44), (-3.2, 44.96), (-2.8, 44.18), (-2.4, 45.16),
-            (-2, 45.54), (-1.6, 45.07), (-1.2, 45.28), (-0.8, 45.27),
-            (-0.4, 44.57), (0, 45.23), (0.4, 45.19), (0.8, 45.18),
-            (1.2, 45.37), (1.6, 45.34), (2, 45.39), (2.4, 45.32),
-            (2.8, 45.25), (3.2, 44.84), (3.6, 44.76), (4, 44.23),
-            (4.4, 43.22), (4.8, 39.14), (5.2, 7.98), (5.6, 4.89),
-            (6, 3.71), (6.4, 3.11), (6.8, 2.59), (7.2, 2.27),
-            (7.6, 1.95), (8, 1.71), (8.4, 1.46), (8.8, 1.35),
-            (9.2, 1.18), (9.6, 1.11), (10, 0.93), (10.4, 0.87),
-            (10.8, 0.78), (11.2, 0.7), (11.6, 0.64), (12, 0.6),
-            (12.4, 0.54), (12.8, 0.49), (13.2, 0.47), (13.6, 0.43),
-            (14, 0.4), (14.4, 0.39), (14.8, 0.34), (15.2, 0.33),
-            (15.6, 0.32), (16, 0.3), (16.4, 0.3)]
+PROFILER = [
+    (-16.4, 0.22),
+    (-16, 0.3),
+    (-15.6, 0.28),
+    (-15.2, 0.3),
+    (-14.8, 0.36),
+    (-14.4, 0.38),
+    (-14, 0.41),
+    (-13.6, 0.45),
+    (-13.2, 0.47),
+    (-12.8, 0.51),
+    (-12.4, 0.55),
+    (-12, 0.62),
+    (-11.6, 0.67),
+    (-11.2, 0.74),
+    (-10.8, 0.81),
+    (-10.4, 0.91),
+    (-10, 0.97),
+    (-9.6, 1.12),
+    (-9.2, 1.24),
+    (-8.8, 1.4),
+    (-8.4, 1.56),
+    (-8, 1.75),
+    (-7.6, 2.06),
+    (-7.2, 2.31),
+    (-6.8, 2.56),
+    (-6.4, 3.14),
+    (-6, 3.83),
+    (-5.6, 4.98),
+    (-5.2, 8.17),
+    (-4.8, 40.6),
+    (-4.4, 43.34),
+    (-4, 44.17),
+    (-3.6, 44.44),
+    (-3.2, 44.96),
+    (-2.8, 44.18),
+    (-2.4, 45.16),
+    (-2, 45.54),
+    (-1.6, 45.07),
+    (-1.2, 45.28),
+    (-0.8, 45.27),
+    (-0.4, 44.57),
+    (0, 45.23),
+    (0.4, 45.19),
+    (0.8, 45.18),
+    (1.2, 45.37),
+    (1.6, 45.34),
+    (2, 45.39),
+    (2.4, 45.32),
+    (2.8, 45.25),
+    (3.2, 44.84),
+    (3.6, 44.76),
+    (4, 44.23),
+    (4.4, 43.22),
+    (4.8, 39.14),
+    (5.2, 7.98),
+    (5.6, 4.89),
+    (6, 3.71),
+    (6.4, 3.11),
+    (6.8, 2.59),
+    (7.2, 2.27),
+    (7.6, 1.95),
+    (8, 1.71),
+    (8.4, 1.46),
+    (8.8, 1.35),
+    (9.2, 1.18),
+    (9.6, 1.11),
+    (10, 0.93),
+    (10.4, 0.87),
+    (10.8, 0.78),
+    (11.2, 0.7),
+    (11.6, 0.64),
+    (12, 0.6),
+    (12.4, 0.54),
+    (12.8, 0.49),
+    (13.2, 0.47),
+    (13.6, 0.43),
+    (14, 0.4),
+    (14.4, 0.39),
+    (14.8, 0.34),
+    (15.2, 0.33),
+    (15.6, 0.32),
+    (16, 0.3),
+    (16.4, 0.3),
+]
 
-WEDGED = [(-16.4, 0.27), (-16, 0.31), (-15.6, 0.29), (-15.2, 0.29),
-          (-14.8, 0.32), (-14.4, 0.33), (-14, 0.35), (-13.6, 0.38),
-          (-13.2, 0.4), (-12.8, 0.44), (-12.4, 0.46), (-12, 0.51),
-          (-11.6, 0.55), (-11.2, 0.6), (-10.8, 0.65), (-10.4, 0.7),
-          (-10, 0.74), (-9.6, 0.84), (-9.2, 0.94), (-8.8, 1.04), (-8.4, 1.14),
-          (-8, 1.25), (-7.6, 1.45), (-7.2, 1.6), (-6.8, 1.78), (-6.4, 2.14),
-          (-6, 2.66), (-5.6, 3.62), (-5.2, 6.54), (-4.8, 17.55), (-4.4, 20.07),
-          (-4, 21.37), (-3.6, 22.19), (-3.2, 23.1), (-2.8, 23.74), (-2.4, 24.56),
-          (-2, 25.49), (-1.6, 26.35), (-1.2, 27), (-0.8, 28.06), (-0.4, 28.89),
-          (0, 29.8), (0.4, 30.61), (0.8, 31.4), (1.2, 32.53), (1.6, 33.06),
-          (2, 34.15), (2.4, 34.85), (2.8, 35.65), (3.2, 36.6), (3.6, 37.04),
-          (4, 37.45), (4.4, 36.72), (4.8, 30.93), (5.2, 10.06), (5.6, 5.43),
-          (6, 3.71), (6.4, 3.01), (6.8, 2.52), (7.2, 2.19), (7.6, 1.9), (8, 1.7),
-          (8.4, 1.48), (8.8, 1.35), (9.2, 1.19), (9.6, 1.09), (10, 0.93),
-          (10.4, 0.89), (10.8, 0.78), (11.2, 0.72), (11.6, 0.65), (12, 0.6),
-          (12.4, 0.55), (12.8, 0.5), (13.2, 0.48), (13.6, 0.45), (14, 0.41),
-          (14.4, 0.4), (14.8, 0.35), (15.2, 0.33), (15.6, 0.32),
-          (16, 0.31), (16.4, 0.3)]
+WEDGED = [
+    (-16.4, 0.27),
+    (-16, 0.31),
+    (-15.6, 0.29),
+    (-15.2, 0.29),
+    (-14.8, 0.32),
+    (-14.4, 0.33),
+    (-14, 0.35),
+    (-13.6, 0.38),
+    (-13.2, 0.4),
+    (-12.8, 0.44),
+    (-12.4, 0.46),
+    (-12, 0.51),
+    (-11.6, 0.55),
+    (-11.2, 0.6),
+    (-10.8, 0.65),
+    (-10.4, 0.7),
+    (-10, 0.74),
+    (-9.6, 0.84),
+    (-9.2, 0.94),
+    (-8.8, 1.04),
+    (-8.4, 1.14),
+    (-8, 1.25),
+    (-7.6, 1.45),
+    (-7.2, 1.6),
+    (-6.8, 1.78),
+    (-6.4, 2.14),
+    (-6, 2.66),
+    (-5.6, 3.62),
+    (-5.2, 6.54),
+    (-4.8, 17.55),
+    (-4.4, 20.07),
+    (-4, 21.37),
+    (-3.6, 22.19),
+    (-3.2, 23.1),
+    (-2.8, 23.74),
+    (-2.4, 24.56),
+    (-2, 25.49),
+    (-1.6, 26.35),
+    (-1.2, 27),
+    (-0.8, 28.06),
+    (-0.4, 28.89),
+    (0, 29.8),
+    (0.4, 30.61),
+    (0.8, 31.4),
+    (1.2, 32.53),
+    (1.6, 33.06),
+    (2, 34.15),
+    (2.4, 34.85),
+    (2.8, 35.65),
+    (3.2, 36.6),
+    (3.6, 37.04),
+    (4, 37.45),
+    (4.4, 36.72),
+    (4.8, 30.93),
+    (5.2, 10.06),
+    (5.6, 5.43),
+    (6, 3.71),
+    (6.4, 3.01),
+    (6.8, 2.52),
+    (7.2, 2.19),
+    (7.6, 1.9),
+    (8, 1.7),
+    (8.4, 1.48),
+    (8.8, 1.35),
+    (9.2, 1.19),
+    (9.6, 1.09),
+    (10, 0.93),
+    (10.4, 0.89),
+    (10.8, 0.78),
+    (11.2, 0.72),
+    (11.6, 0.65),
+    (12, 0.6),
+    (12.4, 0.55),
+    (12.8, 0.5),
+    (13.2, 0.48),
+    (13.6, 0.45),
+    (14, 0.41),
+    (14.4, 0.4),
+    (14.8, 0.35),
+    (15.2, 0.33),
+    (15.6, 0.32),
+    (16, 0.31),
+    (16.4, 0.3),
+]
 
 
 def test_init():
@@ -101,17 +232,15 @@ def test_magic_methods():
     assert profiler.__str__()
     # __add__, __radd__, __iadd__
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.get_y(0),
-                      (profiler+2).get_y(2))
+    assert np.isclose(profiler.get_y(0), (profiler + 2).get_y(2))
     # __sub__, __rsub__, __isub__
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.get_y(0),
-                      (profiler-2).get_y(-2))
+    assert np.isclose(profiler.get_y(0), (profiler - 2).get_y(-2))
     # __mul__, __rmul__, __imul__
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(4*sum(profiler.y), sum((4*profiler).y))
-    assert np.isclose(4*sum(profiler.y), sum((profiler*4).y))
-    ref = 4*sum(profiler.y)
+    assert np.isclose(4 * sum(profiler.y), sum((4 * profiler).y))
+    assert np.isclose(4 * sum(profiler.y), sum((profiler * 4).y))
+    ref = 4 * sum(profiler.y)
     profiler *= 4
     assert np.isclose(sum(profiler.y), ref)
 
@@ -137,19 +266,19 @@ def test_from_pulse():
 
 def test_from_snc_profiler():
     data_directory = os.path.abspath(os.path.dirname(__file__))
-    data_directory = os.path.join(data_directory, 'data')
-    file_name = os.path.join(data_directory, 'test_varian_open.prs')
-    x_profile = Profile().from_snc_profiler(file_name, 'tvs')
-    y_profile = Profile().from_snc_profiler(file_name, 'rad')
+    data_directory = os.path.join(data_directory, "data")
+    file_name = os.path.join(data_directory, "test_varian_open.prs")
+    x_profile = Profile().from_snc_profiler(file_name, "tvs")
+    y_profile = Profile().from_snc_profiler(file_name, "rad")
     assert np.isclose(x_profile.get_y(0), 45.50562901780488)
     assert np.isclose(y_profile.get_y(0), 45.50562901780488)
-    assert x_profile.meta['SSD'] == y_profile.meta['SSD']
+    assert x_profile.meta["SSD"] == y_profile.meta["SSD"]
 
 
 def test_from_narrow_png():
     data_directory = os.path.abspath(os.path.dirname(__file__))
-    data_directory = os.path.join(data_directory, 'data')
-    file_name = os.path.join(data_directory, 'FilmCalib_EBT_vert_strip.png')
+    data_directory = os.path.join(data_directory, "data")
+    file_name = os.path.join(data_directory, "FilmCalib_EBT_vert_strip.png")
     png = Profile().from_narrow_png(file_name)
     assert np.isclose(png.get_y(0), 0.609074819347117)
 
@@ -188,11 +317,10 @@ def test_slice_segment():
 
 
 def test_resample_x():
-    profiler = Profile().from_tuples(PROFILER, meta={'depth': 10})
-    assert profiler.meta['depth'] == 10
+    profiler = Profile().from_tuples(PROFILER, meta={"depth": 10})
+    assert profiler.meta["depth"] == 10
     assert np.isclose(profiler.interp(0), profiler.resample_x(0.1).interp(0))
-    assert np.isclose(profiler.interp(6.372),
-                      profiler.resample_x(0.1).interp(6.372))
+    assert np.isclose(profiler.interp(6.372), profiler.resample_x(0.1).interp(6.372))
     resampled = profiler.resample_x(0.1)
     increments = np.diff([i for i in resampled.x])
     assert np.allclose(increments, 0.1)
@@ -282,17 +410,15 @@ def test_make_flipped():
 
 def test_align_to():
     profiler = Profile().from_tuples(PROFILER)
-    assert np.isclose(profiler.align_to(profiler+(2)).x[0], profiler.x[0] + 2)
+    assert np.isclose(profiler.align_to(profiler + (2)).x[0], profiler.x[0] + 2)
 
 
 def test_cross_calibrate():
     data_directory = os.path.abspath(os.path.dirname(__file__))
-    data_directory = os.path.join(data_directory, 'data')
-    reference_file_name = os.path.join(data_directory, 'FilmCalib.prs')
-    measured_file_name = os.path.join(
-        data_directory, 'FilmCalib_EBT_vert_strip.png')
-    cal_curve = Profile().cross_calibrate(
-        reference_file_name, measured_file_name)
+    data_directory = os.path.join(data_directory, "data")
+    reference_file_name = os.path.join(data_directory, "FilmCalib.prs")
+    measured_file_name = os.path.join(data_directory, "FilmCalib_EBT_vert_strip.png")
+    cal_curve = Profile().cross_calibrate(reference_file_name, measured_file_name)
     assert min(cal_curve.x) <= 1
     assert max(cal_curve.x) >= 0
 

@@ -33,7 +33,8 @@ from ..trf import (
     COLLIMATOR_NAME,
     Y1_LEAF_BANK_NAMES,
     Y2_LEAF_BANK_NAMES,
-    JAW_NAMES)
+    JAW_NAMES,
+)
 
 
 class DeliveryLogfile(Delivery):
@@ -45,7 +46,7 @@ class DeliveryLogfile(Delivery):
 
     @classmethod
     def from_pandas(cls, table):
-        raw_monitor_units = table['Step Dose/Actual Value (Mu)']
+        raw_monitor_units = table["Step Dose/Actual Value (Mu)"]
 
         diff = np.append([0], np.diff(raw_monitor_units))
         diff[diff < 0] = 0
@@ -55,23 +56,14 @@ class DeliveryLogfile(Delivery):
         gantry = table[GANTRY_NAME]
         collimator = table[COLLIMATOR_NAME]
 
-        y1_bank = [
-            table[name]
-            for name in Y1_LEAF_BANK_NAMES
-        ]
+        y1_bank = [table[name] for name in Y1_LEAF_BANK_NAMES]
 
-        y2_bank = [
-            table[name]
-            for name in Y2_LEAF_BANK_NAMES
-        ]
+        y2_bank = [table[name] for name in Y2_LEAF_BANK_NAMES]
 
         mlc = [y1_bank, y2_bank]
         mlc = np.swapaxes(mlc, 0, 2)
 
-        jaw = [
-            table[name]
-            for name in JAW_NAMES
-        ]
+        jaw = [table[name] for name in JAW_NAMES]
         jaw = np.swapaxes(jaw, 0, 1)
 
         return cls(monitor_units, gantry, collimator, mlc, jaw)
