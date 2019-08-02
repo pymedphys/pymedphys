@@ -534,7 +534,7 @@ def unknown_tags_in_dicom_dataset(ds):
         try:
             get_baseline_dict_entry(tag)
             are_non_private_tags_in_dict_baseline.append(True)
-        except NotInBaseLineDictError as ek:
+        except NotInBaseLineDictError:
             are_non_private_tags_in_dict_baseline.append(False)
 
     unknown_tags = list(
