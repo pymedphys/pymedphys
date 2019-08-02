@@ -36,26 +36,25 @@ import pydicom
 # pylint: disable=C0103
 
 
-Structure = namedtuple('Structure', ['name', 'number', 'coords'])
+Structure = namedtuple("Structure", ["name", "number", "coords"])
 
 
 def concatenate_a_contour_slice(x, y, z):
-    return reduce(operator.add, [[str(x_i), str(y_i), str(z_i)]
-                                 for x_i, y_i, z_i in zip(x, y, z)])
+    return reduce(
+        operator.add, [[str(x_i), str(y_i), str(z_i)] for x_i, y_i, z_i in zip(x, y, z)]
+    )
 
 
 def create_contour_sequence_dict(structure: Structure):
-    merged_contours = [concatenate_a_contour_slice(x, y, z)
-                       for x, y, z in structure.coords]
+    merged_contours = [
+        concatenate_a_contour_slice(x, y, z) for x, y, z in structure.coords
+    ]
 
     return {
-        'ReferencedROINumber': structure.number,
-        'ContourSequence': [
-            {
-                'ContourData': merged_contour
-            }
-            for merged_contour in merged_contours
-        ]
+        "ReferencedROINumber": structure.number,
+        "ContourSequence": [
+            {"ContourData": merged_contour} for merged_contour in merged_contours
+        ],
     }
 
 

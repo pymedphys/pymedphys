@@ -50,8 +50,7 @@ def _ndim_coords_from_arrays(points, ndim=None):
         n = len(p)
         for j in range(1, n):
             if p[j].shape != p[0].shape:
-                raise ValueError(
-                    "coordinate arrays do not have the same shape")
+                raise ValueError("coordinate arrays do not have the same shape")
         points = np.empty(p[0].shape + (len(points),), dtype=float)
         for j, item in enumerate(p):
             points[..., j] = item

@@ -32,8 +32,7 @@ def wildcard_file_resolution(glob_search_string):
     if len(filepaths) < 1:
         raise FileNotFoundError("No file found that matches the provided path")
     elif len(filepaths) > 1:
-        raise TypeError(
-            "More than one file found that matches the search string")
+        raise TypeError("More than one file found that matches the search string")
 
     found_filepath = filepaths[0]
 

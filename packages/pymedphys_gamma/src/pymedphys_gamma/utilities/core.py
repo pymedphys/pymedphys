@@ -35,9 +35,10 @@ def create_point_combination(coords):
 
 def convert_to_ravel_index(points):
     ravel_index = (
-        points[2, :] +
-        (points[2, -1] + 1) * points[1, :] +
-        (points[2, -1] + 1) * (points[1, -1] + 1) * points[0, :])
+        points[2, :]
+        + (points[2, -1] + 1) * points[1, :]
+        + (points[2, -1] + 1) * (points[1, -1] + 1) * points[0, :]
+    )
 
     return ravel_index
 
@@ -49,50 +50,56 @@ def calculate_pass_rate(gamma_array):
     return percent_pass
 
 
-def run_input_checks(
-        axes_reference, dose_reference,
-        axes_evaluation, dose_evaluation):
+def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evaluation):
     """Check user inputs."""
 
-    if (not isinstance(axes_evaluation, tuple)
-            or not isinstance(axes_reference, tuple)):
+    if not isinstance(axes_evaluation, tuple) or not isinstance(axes_reference, tuple):
 
-        if (isinstance(axes_evaluation, np.ndarray)
-                and isinstance(axes_reference, np.ndarray)):
+        if isinstance(axes_evaluation, np.ndarray) and isinstance(
+            axes_reference, np.ndarray
+        ):
 
-            if (len(np.shape(axes_evaluation)) == 1
-                    and len(np.shape(axes_reference)) == 1):
+            if (
+                len(np.shape(axes_evaluation)) == 1
+                and len(np.shape(axes_reference)) == 1
+            ):
 
                 axes_evaluation = (axes_evaluation,)
                 axes_reference = (axes_reference,)
 
             else:
-                raise Exception("Can only use numpy arrays as input "
-                                "for one dimensional gamma.")
+                raise Exception(
+                    "Can only use numpy arrays as input " "for one dimensional gamma."
+                )
         else:
             raise Exception(
                 "Input coordinates must be inputted as a tuple, for "
                 "one dimension input is (x,), for two dimensions, "
-                "(x, y), for three dimensions input is (x, y, z).")
+                "(x, y), for three dimensions input is (x, y, z)."
+            )
 
     reference_coords_shape = tuple([len(item) for item in axes_reference])
     if reference_coords_shape != np.shape(dose_reference):
         raise Exception(
             "Length of items in axes_reference ({}) does not match the "
             "shape of dose_reference ({})".format(
-                reference_coords_shape, np.shape(dose_reference)))
+                reference_coords_shape, np.shape(dose_reference)
+            )
+        )
 
     evaluation_coords_shape = tuple([len(item) for item in axes_evaluation])
     if evaluation_coords_shape != np.shape(dose_evaluation):
         raise Exception(
             "Length of items in axes_evaluation does not match the "
-            "shape of dose_evaluation")
+            "shape of dose_evaluation"
+        )
 
-    if not (len(np.shape(dose_evaluation)) ==
-            len(np.shape(dose_reference)) ==
-            len(axes_evaluation) ==
-            len(axes_reference)):
-        raise Exception(
-            "The dimensions of the input data do not match")
+    if not (
+        len(np.shape(dose_evaluation))
+        == len(np.shape(dose_reference))
+        == len(axes_evaluation)
+        == len(axes_reference)
+    ):
+        raise Exception("The dimensions of the input data do not match")
 
     return axes_reference, axes_evaluation
