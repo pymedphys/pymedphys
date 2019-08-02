@@ -43,6 +43,7 @@ from .constants import FIELD_TYPES
 @attr.s
 class OISDeliveryDetails(object):
     """A class containing patient information extracted from Mosaiq."""
+
     patient_id = attr.ib()
     field_id = attr.ib()
     last_name = attr.ib()
@@ -69,17 +70,16 @@ def get_field_type(cursor, field_id):
             TxField.FLD_ID = %(field_id)s
         """
 
-    parameters = {
-        'field_id': field_id,
-    }
+    parameters = {"field_id": field_id}
 
     sql_result = execute_sql(cursor, execute_string, parameters)
 
     return FIELD_TYPES[sql_result[0][0]]
 
 
-def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
-                                field_name, buffer=0) -> OISDeliveryDetails:
+def get_mosaiq_delivery_details(
+    cursor, machine, delivery_time, field_label, field_name, buffer=0
+) -> OISDeliveryDetails:
     """Identifies the patient details for a given delivery time.
 
     Args:
@@ -138,11 +138,11 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
         """
 
     parameters = {
-        'buffer': buffer,
-        'machine': machine,
-        'delivery_time': delivery_time,
-        'field_label': field_label,
-        'field_name': field_name
+        "buffer": buffer,
+        "machine": machine,
+        "delivery_time": delivery_time,
+        "field_label": field_label,
+        "field_name": field_name,
     }
 
     sql_result = execute_sql(cursor, execute_string, parameters)
@@ -151,8 +151,14 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
         for result in sql_result[1::]:
             if result != sql_result[0]:
                 if buffer != 0:
-                    return get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
-                                                       field_name, buffer=0)
+                    return get_mosaiq_delivery_details(
+                        cursor,
+                        machine,
+                        delivery_time,
+                        field_label,
+                        field_name,
+                        buffer=0,
+                    )
 
                 raise MultipleMosaiqEntries("Disagreeing entries were found.")
 
@@ -160,7 +166,8 @@ def get_mosaiq_delivery_details(cursor, machine, delivery_time, field_label,
         raise NoMosaiqEntries(
             "No Mosaiq entries were found for {}/{} at {}".format(
                 field_label, field_name, delivery_time
-            ))
+            )
+        )
 
     delivery_details = OISDeliveryDetails(*sql_result[0])
 
@@ -176,12 +183,12 @@ def mosaiq_mlc_missing_byte_workaround(raw_bytes_list):
     It is uncertain whether or not this is the correct method to restore the
     data.
     """
-    length = check_all_items_equal_length(raw_bytes_list, 'mlc bytes')
+    length = check_all_items_equal_length(raw_bytes_list, "mlc bytes")
 
     if length % 2 == 1:
         raw_bytes_list = append_x00_byte_to_all(raw_bytes_list)
 
-    check_all_items_equal_length(raw_bytes_list, 'mlc bytes')
+    check_all_items_equal_length(raw_bytes_list, "mlc bytes")
 
     return raw_bytes_list
 
@@ -197,9 +204,7 @@ def append_x00_byte_to_all(raw_bytes_list):
 
 
 def check_all_items_equal_length(items, name):
-    all_lengths = [
-        len(item) for item in items
-    ]
+    all_lengths = [len(item) for item in items]
     length = list(set(all_lengths))
 
     assert len(length) == 1, "All {} should be the same length".format(name)
@@ -212,19 +217,23 @@ def decode_msq_mlc(raw_bytes):
     """
     raw_bytes = mosaiq_mlc_missing_byte_workaround(raw_bytes)
 
-    length = check_all_items_equal_length(raw_bytes, 'mlc bytes')
+    length = check_all_items_equal_length(raw_bytes, "mlc bytes")
 
     if length % 2 == 1:
-        raise Exception(
-            'There should be an even number of bytes within an MLC record.')
+        raise Exception("There should be an even number of bytes within an MLC record.")
 
-    mlc_pos = np.array([
-        [
-            struct.unpack('<h', control_point[2*i:2*i+2])
-            for i in range(len(control_point)//2)
-        ]
-        for control_point in raw_bytes
-    ]) / 100
+    mlc_pos = (
+        np.array(
+            [
+                [
+                    struct.unpack("<h", control_point[2 * i : 2 * i + 2])
+                    for i in range(len(control_point) // 2)
+                ]
+                for control_point in raw_bytes
+            ]
+        )
+        / 100
+    )
 
     return mlc_pos
 
@@ -263,14 +272,13 @@ def delivery_data_sql(cursor, field_id):
         WHERE
             TxField.FLD_ID = %(field_id)s
         """,
-        {
-            'field_id': field_id
-        }
+        {"field_id": field_id},
     )
 
-    txfieldpoint_results = np.array(execute_sql(
-        cursor,
-        """
+    txfieldpoint_results = np.array(
+        execute_sql(
+            cursor,
+            """
         SELECT
             TxFieldPoint.[Index],
             TxFieldPoint.A_Leaf_Set,
@@ -283,10 +291,9 @@ def delivery_data_sql(cursor, field_id):
         WHERE
             TxFieldPoint.FLD_ID = %(field_id)s
         """,
-        {
-            'field_id': field_id
-        }
-    ))
+            {"field_id": field_id},
+        )
+    )
 
     return txfield_results, txfieldpoint_results
 
@@ -304,8 +311,8 @@ def fetch_and_verify_mosaiq_sql(cursor, field_id):
 
         agreement = np.all(agreements)
         if not agreement:
-            print('Mosaiq sql query gave conflicting data.')
-            print('Trying again...')
+            print("Mosaiq sql query gave conflicting data.")
+            print("Trying again...")
             reference_results = test_results
             test_results = delivery_data_sql(cursor, field_id)
 
@@ -314,7 +321,8 @@ def fetch_and_verify_mosaiq_sql(cursor, field_id):
 
 def delivery_data_from_mosaiq(cursor, field_id):
     txfield_results, txfieldpoint_results = fetch_and_verify_mosaiq_sql(
-        cursor, field_id)
+        cursor, field_id
+    )
 
     total_mu = np.array(txfield_results[0]).astype(float)
     cumulative_percentage_mu = txfieldpoint_results[:, 0].astype(float)
@@ -327,10 +335,8 @@ def delivery_data_from_mosaiq(cursor, field_id):
 
     monitor_units = np.cumsum(mu_per_control_point).tolist()
 
-    mlc_a = np.squeeze(
-        decode_msq_mlc(txfieldpoint_results[:, 1].astype(bytes))).T
-    mlc_b = np.squeeze(
-        decode_msq_mlc(txfieldpoint_results[:, 2].astype(bytes))).T
+    mlc_a = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 1].astype(bytes))).T
+    mlc_b = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 2].astype(bytes))).T
 
     msq_gantry_angle = txfieldpoint_results[:, 3].astype(float)
     msq_collimator_angle = txfieldpoint_results[:, 4].astype(float)
@@ -347,7 +353,8 @@ def delivery_data_from_mosaiq(cursor, field_id):
     jaw = np.swapaxes(jaw, 0, 1)
 
     mosaiq_delivery_data = DeliveryDatabases(
-        monitor_units, gantry, collimator, mlc, jaw)
+        monitor_units, gantry, collimator, mlc, jaw
+    )
 
     return mosaiq_delivery_data
 
@@ -356,11 +363,12 @@ def multi_fetch_and_verify_mosaiq(cursor, field_id):
     mosaiq_delivery_data = delivery_data_from_mosaiq(cursor, field_id)
     reference_data = (
         mosaiq_delivery_data.monitor_units,
-        mosaiq_delivery_data.mlc, mosaiq_delivery_data.jaw)
+        mosaiq_delivery_data.mlc,
+        mosaiq_delivery_data.jaw,
+    )
 
     delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-    test_data = (
-        delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
+    test_data = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
 
     agreement = False
 
@@ -371,15 +379,18 @@ def multi_fetch_and_verify_mosaiq(cursor, field_id):
 
         agreement = np.all(agreements)
         if not agreement:
-            print('Converted Mosaiq delivery data was conflicting.')
+            print("Converted Mosaiq delivery data was conflicting.")
             print(
-                'MU agreement: {}\nMLC agreement: {}\n'
-                'Jaw agreement: {}'.format(*agreements))
-            print('Trying again...')
+                "MU agreement: {}\nMLC agreement: {}\n"
+                "Jaw agreement: {}".format(*agreements)
+            )
+            print("Trying again...")
             reference_data = test_data
             delivery_data = delivery_data_from_mosaiq(cursor, field_id)
             test_data = (
-                delivery_data.monitor_units, delivery_data.mlc,
-                delivery_data.jaw)
+                delivery_data.monitor_units,
+                delivery_data.mlc,
+                delivery_data.jaw,
+            )
 
     return delivery_data

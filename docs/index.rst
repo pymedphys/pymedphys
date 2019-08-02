@@ -40,7 +40,6 @@
 
     developer/contributing
     developer/dependencies
-    developer/file-structure
     developer/documentation
     developer/agpl-benefits
     developer/labs/index

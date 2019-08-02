@@ -36,20 +36,14 @@ from .utilities import remove_irrelevant_control_points, to_tuple
 
 
 _DeliveryBase = namedtuple(
-    'Delivery',
-    ['monitor_units', 'gantry', 'collimator', 'mlc', 'jaw'])
+    "Delivery", ["monitor_units", "gantry", "collimator", "mlc", "jaw"]
+)
 
 
 class Delivery(_DeliveryBase):
     def __new__(cls, *args, **kwargs):
-        new_args = (
-            to_tuple(arg)
-            for arg in args
-        )
-        new_kwargs = {
-            key: to_tuple(item)
-            for key, item in kwargs.items()
-        }
+        new_args = (to_tuple(arg) for arg in args)
+        new_kwargs = {key: to_tuple(item) for key, item in kwargs.items()}
         return super().__new__(cls, *new_args, **new_kwargs)
 
     @classmethod
@@ -58,16 +52,8 @@ class Delivery(_DeliveryBase):
             tuple(),
             tuple(),
             tuple(),
-            tuple((
-                tuple((
-                    tuple(),
-                    tuple()
-                )),
-            )),
-            tuple((
-                tuple(),
-                tuple()
-            ))
+            tuple((tuple((tuple(), tuple())),)),
+            tuple((tuple(), tuple())),
         )
 
     @functools.lru_cache()
@@ -76,8 +62,12 @@ class Delivery(_DeliveryBase):
         return cls(*remove_irrelevant_control_points(*self))
 
     @functools.lru_cache()
-    def mask_by_gantry(self, angles: Union[Tuple, float, int], gantry_tolerance=3,
-                       allow_missing_angles=False):
+    def mask_by_gantry(
+        self,
+        angles: Union[Tuple, float, int],
+        gantry_tolerance=3,
+        allow_missing_angles=False,
+    ):
 
         try:
             _ = iter(angles)  # type: ignore
@@ -87,18 +77,20 @@ class Delivery(_DeliveryBase):
             iterable_angles = tuple((angles,))
 
         masks = self._gantry_angle_masks(
-            iterable_angles, gantry_tolerance, allow_missing_angles=allow_missing_angles)
+            iterable_angles, gantry_tolerance, allow_missing_angles=allow_missing_angles
+        )
 
         all_masked_delivery_data = tuple(
-            self._apply_mask_to_delivery_data(mask)
-            for mask in masks)
+            self._apply_mask_to_delivery_data(mask) for mask in masks
+        )
 
         return all_masked_delivery_data
 
     @functools.lru_cache()
     def metersets(self, gantry_angles, gantry_tolerance):
         all_masked_delivery_data = self.mask_by_gantry(
-            gantry_angles, gantry_tolerance, allow_missing_angles=True)
+            gantry_angles, gantry_tolerance, allow_missing_angles=True
+        )
 
         metersets = []
         for delivery_data in all_masked_delivery_data:
@@ -127,15 +119,14 @@ class Delivery(_DeliveryBase):
             for field in delivery_data._fields:  # pylint: disable=no-member
                 try:
                     collection[field] = np.concatenate(
-                        [collection[field], getattr(delivery_data, field)],
-                        axis=0
+                        [collection[field], getattr(delivery_data, field)], axis=0
                     )
                 except KeyError:
                     collection[field] = getattr(delivery_data, field)
 
-        mu = np.concatenate([[0], np.diff(collection['monitor_units'])])
+        mu = np.concatenate([[0], np.diff(collection["monitor_units"])])
         mu[mu < 0] = 0
-        collection['monitor_units'] = np.cumsum(mu)
+        collection["monitor_units"] = np.cumsum(mu)
 
         merged = cls(**collection)
 
@@ -146,8 +137,9 @@ class Delivery(_DeliveryBase):
 
         return self._apply_mask_to_delivery_data(near_angle)
 
-    def _gantry_angle_masks(self, gantry_angles,
-                            gantry_tol, allow_missing_angles=False):
+    def _gantry_angle_masks(
+        self, gantry_angles, gantry_tol, allow_missing_angles=False
+    ):
         masks = [
             self._gantry_angle_mask(gantry_angle, gantry_tol)
             for gantry_angle in gantry_angles
@@ -160,8 +152,9 @@ class Delivery(_DeliveryBase):
             # TODO: Apply mask by more than just gantry angle to appropriately
             # extract beam index even when multiple beams have the same gantry
             # angle
-            is_duplicate_gantry_angles = not np.sum(
-                np.abs(np.diff(np.concatenate([[0], mask, [0]])))) == 2
+            is_duplicate_gantry_angles = (
+                not np.sum(np.abs(np.diff(np.concatenate([[0], mask, [0]])))) == 2
+            )
 
             if is_duplicate_gantry_angles:
                 raise ValueError("Duplicate gantry angles not yet supported")
@@ -176,17 +169,20 @@ class Delivery(_DeliveryBase):
                 print("Allowable gantry angles = {}".format(gantry_angles))
                 gantry = np.array(self.gantry, copy=False)
                 out_of_tolerance = np.unique(
-                    gantry[np.sum(masks, axis=0) == 0]).tolist()
-                print("The gantry angles out of tolerance were {}".format(
-                    out_of_tolerance))
+                    gantry[np.sum(masks, axis=0) == 0]
+                ).tolist()
+                print(
+                    "The gantry angles out of tolerance were {}".format(
+                        out_of_tolerance
+                    )
+                )
 
                 raise
 
         return masks
 
     def _gantry_angle_mask(self, gantry_angle, gantry_angle_tol):
-        near_angle = np.abs(
-            np.array(self.gantry) - gantry_angle) <= gantry_angle_tol
+        near_angle = np.abs(np.array(self.gantry) - gantry_angle) <= gantry_angle_tol
         assert np.all(np.diff(np.where(near_angle)[0]) == 1)
 
         return near_angle
@@ -205,8 +201,8 @@ class Delivery(_DeliveryBase):
             return cls(*new_delivery_data)
 
         new_delivery_data[0] = np.round(
-            np.array(new_delivery_data[0], copy=False)
-            - first_monitor_unit_item, decimals=7
+            np.array(new_delivery_data[0], copy=False) - first_monitor_unit_item,
+            decimals=7,
         )
 
         return cls(*new_delivery_data)
