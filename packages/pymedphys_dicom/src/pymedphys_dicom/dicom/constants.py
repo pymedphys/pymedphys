@@ -89,6 +89,8 @@ DICOM_SOP_CLASS_NAMES_MODE_PREFIXES = {
     "Secondary Capture Image Storage": "SC",
 }
 
+class NotInBaseLineDictError(KeyError):
+    pass
 
 def get_baseline_dict_entry(tag):
     """Vendored from ``pydicom.datadict``
@@ -108,4 +110,4 @@ def get_baseline_dict_entry(tag):
             mask_x = datadict.mask_match(tag)
             if mask_x:
                 return BASELINE_DICOM_REPEATERS_DICT[mask_x]
-        raise KeyError("Tag {0} not found in DICOM dictionary".format(tag))
+        raise NotInBaseLineDictError("Tag {0} not found in DICOM dictionary".format(tag))
