@@ -38,6 +38,7 @@ from .constants import (
     BASELINE_KEYWORD_VR_DICT,
     get_baseline_dict_entry,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
+    NotInBaseLineDictError,
     PYMEDPHYS_ROOT_UID,
 )
 
@@ -533,11 +534,8 @@ def unknown_tags_in_dicom_dataset(ds):
         try:
             get_baseline_dict_entry(tag)
             are_non_private_tags_in_dict_baseline.append(True)
-        except KeyError as ek:
-            if "not found in DICOM dictionary" in str(ek):
-                are_non_private_tags_in_dict_baseline.append(False)
-            else:
-                raise
+        except NotInBaseLineDictError as ek:
+            are_non_private_tags_in_dict_baseline.append(False)
 
     unknown_tags = list(
         non_private_tags_in_dataset[np.invert(are_non_private_tags_in_dict_baseline)]
