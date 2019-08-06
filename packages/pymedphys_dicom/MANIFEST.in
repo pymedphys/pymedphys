@@ -1,1 +1,2 @@
 include LICENSE*
+include src/pymedphys_dicom/dicom/*.json
