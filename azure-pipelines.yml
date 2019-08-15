@@ -86,11 +86,11 @@ jobs:
       displayName: Add Conda to PATH on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    - script: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add Conda to PATH on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: sudo chown -R $USER $CONDA
+    - script: sudo chown -R $USER $CONDA
       displayName: Take ownership of Conda installation on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
@@ -103,7 +103,7 @@ jobs:
     - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show Python information
 
-    - bash: conda install --yes --quiet matplotlib pymssql
+    - script: conda install --yes --quiet matplotlib pymssql
       displayName: Install matplotlib and pymssql with Conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
