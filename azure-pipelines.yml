@@ -101,6 +101,10 @@ jobs:
       displayName: Install matplotlib and pymssql with conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
+    - bash: conda install -y shapely
+      displayName: Install shapely with conda on Windows
+      condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
     - bash: yarn
       displayName: Run yarn
 
