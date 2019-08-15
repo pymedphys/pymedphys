@@ -27,6 +27,7 @@ from copy import deepcopy
 from glob import glob
 import json
 from os.path import abspath, basename, dirname, isdir, isfile, join as pjoin
+import pprint
 
 import numpy as np
 import pydicom
@@ -144,7 +145,8 @@ def anonymise_dataset(
     unknown_tags = unknown_tags_in_dicom_dataset(ds_anon)
 
     if delete_unknown_tags is None and unknown_tags:
-        unknown_keywords = [ds_anon[tag].keyword for tag in unknown_tags]
+        unknown_tags_to_print = {hex(tag): ds_anon[tag].keyword for tag in unknown_tags}
+        printer = pprint.PrettyPrinter(width=30)
 
         raise ValueError(
             "At least one of the non-private tags within your DICOM "
@@ -160,7 +162,9 @@ def anonymise_dataset(
             "`delete_unknown_tags=False` to this function. Finally, "
             "if you suspect that the PyMedPhys DICOM dictionary is out "
             "of date, please raise an issue on GitHub at "
-            "https://github.com/pymedphys/pymedphys/issues.".format(unknown_keywords)
+            "https://github.com/pymedphys/pymedphys/issues.".format(
+                printer.pformat(unknown_tags_to_print)
+            )
         )
 
     elif delete_unknown_tags:
@@ -432,7 +436,9 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
         if elem.keyword in IDENTIFYING_KEYWORDS:
             dummy_value = get_anonymous_replacement_value(elem.keyword)
             if not elem.value in ("", [], dummy_value):
-                if elem.VR == "DS" and np.isclose(float(elem.value), float(dummy_value)):
+                if elem.VR == "DS" and np.isclose(
+                    float(elem.value), float(dummy_value)
+                ):
                     continue
                 else:
                     return False
@@ -518,7 +524,16 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
 def non_private_tags_in_dicom_dataset(ds):
     """Return all non-private tags from a DICOM dataset.
     """
-    non_private_tags = [elem.tag for elem in ds if not elem.tag.is_private]
+
+    non_private_tags = []
+
+    for elem in ds:
+        if not elem.tag.is_private and not (
+            # Ignore retired Group Length elements
+            elem.tag.element == 0
+            and elem.tag.group > 6
+        ):
+            non_private_tags.append(elem.tag)
     return non_private_tags
 
 
@@ -538,7 +553,9 @@ def unknown_tags_in_dicom_dataset(ds):
             are_non_private_tags_in_dict_baseline.append(False)
 
     unknown_tags = list(
-        non_private_tags_in_dataset[np.invert(are_non_private_tags_in_dict_baseline)]
+        non_private_tags_in_dataset[
+            np.invert(np.array(are_non_private_tags_in_dict_baseline, dtype=bool))
+        ]
     )
 
     return unknown_tags
