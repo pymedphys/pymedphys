@@ -96,21 +96,27 @@ jobs:
 
     - bash: conda config --add channels conda-forge
       displayName: Add Conda-Forge
+      noProfile: false
 
     - bash: conda config --set always_yes true
       displayName: Make Conda always pass yes
+      noProfile: false
 
     - bash: conda update --quiet conda
       displayName: Update Conda
+      noProfile: false
 
     - bash: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
       displayName: Install Python, Pip and xlwings
+      noProfile: false
 
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show Python Information
+      noProfile: false
 
     - bash: conda info --all
       displayName: Show Conda Information
+      noProfile: false
 
     - bash: conda install --quiet matplotlib pymssql
       displayName: Install matplotlib and pymssql with Conda on MacOS
@@ -119,15 +125,19 @@ jobs:
     - bash: conda install --quiet shapely
       displayName: Install shapely with Conda on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
+      noProfile: false
 
     - bash: yarn
       displayName: Run yarn
+      noProfile: false
 
     - bash: yarn install:test
       displayName: Install dependencies for testing with yarn
+      noProfile: false
 
     - bash: "pytest -v"
       displayName: Run tests
+      noProfile: false
 
     - task: PublishTestResults@2
       displayName: Publish test results
