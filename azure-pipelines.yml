@@ -83,15 +83,15 @@ jobs:
     steps:
     # https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/anaconda?view=azure-devops&tabs=vs2017
     - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
-      displayName: Add conda to PATH
+      displayName: Add conda to PATH on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
-      displayName: Add conda to PATH
+      displayName: Add conda to PATH on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - bash: sudo chown -R $USER $CONDA
-      displayName: Take ownership of conda installation
+      displayName: Take ownership of Conda installation on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - bash: conda config --add channels conda-forge
