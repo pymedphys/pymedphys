@@ -102,6 +102,13 @@ jobs:
     - script: conda config --add channels conda-forge
       displayName: Add Conda-Forge
 
+    - script: conda update --quiet conda
+      displayName: Update Conda
+
+    - script: activate
+      displayName: Activate Conda on Windows
+      condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
     - script: conda install --yes --quiet python=$(python) pip "xlwings >= 0.15.4"
       displayName: Install Python, Pip and xlwings
 
