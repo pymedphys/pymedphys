@@ -32,6 +32,8 @@
 
 import os
 
+import pytest
+
 import numpy as np
 
 from pymedphys_mudensity.mudensity import calc_mu_density
