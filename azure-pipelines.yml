@@ -86,6 +86,11 @@ jobs:
       displayName: Add Conda to PATH on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
+    # https://www.itprotoday.com/powershell/powershell-one-liner-deleting-environment-variables
+    - powershell: Remove-Item Env:\PYTHON_HOME
+      displayName: Delte PYTHON_HOME variable
+      condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
     - script: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add Conda to PATH on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
