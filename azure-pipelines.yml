@@ -94,89 +94,39 @@ jobs:
       displayName: Take ownership of Conda installation on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: conda config --add channels conda-forge
-        noProfile: false
-        noRc: false
+    - bash: bash -c "conda config --add channels conda-forge"
       displayName: Add Conda-Forge
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: conda config --set always_yes true
-        noProfile: false
-        noRc: false
+    - bash: bash -c "conda config --set always_yes true"
       displayName: Make Conda always pass yes
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: conda update --quiet conda
-        noProfile: false
-        noRc: false
+    - bash: bash -c "conda update --quiet conda"
       displayName: Update Conda
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
-        noProfile: false
-        noRc: false
+    - bash: bash -c 'conda install --quiet python=$(python) pip "xlwings >= 0.15.4"'
       displayName: Install Python, Pip and xlwings
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
-        noProfile: false
-        noRc: false
+    - bash: bash -c '"python -c \"import sys; print(sys.version); print(sys.executable)\""'
       displayName: Show Python Information
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: conda info --all
-        noProfile: false
-        noRc: false
+    - bash: bash -c 'conda info --all'
       displayName: Show Conda Information
 
     - bash: conda install --quiet matplotlib pymssql
       displayName: Install matplotlib and pymssql with Conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: conda install --quiet shapely
-        noProfile: false
-        noRc: false
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
+    - bash: bash -c 'conda install --quiet shapely'
       displayName: Install shapely with Conda on Windows
+      condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: yarn
-        noProfile: false
-        noRc: false
+    - bash: bash -c 'yarn'
       displayName: Run yarn
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: yarn install:test
-        noProfile: false
-        noRc: false
+    - bash: bash -c 'yarn install:test'
       displayName: Install dependencies for testing with yarn
 
-    - task: Bash@3
-      inputs:
-        targetType: inline
-        script: "pytest -v"
-        noProfile: false
-        noRc: false
+    - bash: bash -c 'pytest -v'
       displayName: Run tests
 
     - task: PublishTestResults@2
