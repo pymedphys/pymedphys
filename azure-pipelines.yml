@@ -143,8 +143,8 @@ jobs:
     - bash: source $CONDA/Scripts/activate && conda config --set always_yes true
       displayName: Make Conda always say yes to install
 
-    # - bash: source $CONDA/Scripts/activate && conda update --quiet conda
-    #   displayName: Update Conda
+    - bash: source $CONDA/Scripts/activate && conda update --quiet conda && conda init bash
+      displayName: Update Conda
 
     - bash: source $CONDA/Scripts/activate && conda install --quiet python=$(python)
       displayName: Install Python Version
