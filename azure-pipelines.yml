@@ -96,42 +96,42 @@ jobs:
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: conda config --add channels conda-forge
         noProfile: false
       displayName: Add Conda-Forge
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: conda config --set always_yes true
         noProfile: false
       displayName: Make Conda always pass yes
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: conda update --quiet conda
         noProfile: false
       displayName: Update Conda
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
         noProfile: false
       displayName: Install Python, Pip and xlwings
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
         noProfile: false
       displayName: Show Python Information
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: conda info --all
         noProfile: false
       displayName: Show Conda Information
@@ -142,7 +142,7 @@ jobs:
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: conda install --quiet shapely
         noProfile: false
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
@@ -150,21 +150,21 @@ jobs:
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: yarn
         noProfile: false
       displayName: Run yarn
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: yarn install:test
         noProfile: false
       displayName: Install dependencies for testing with yarn
 
     - task: Bash@3
       inputs:
-        type: inline
+        targetType: inline
         script: "pytest -v"
         noProfile: false
       displayName: Run tests
