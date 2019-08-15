@@ -164,7 +164,7 @@ def anonymise_dataset(
             "of date, please raise an issue on GitHub at "
             "https://github.com/pymedphys/pymedphys/issues.".format(
                 printer.pformat(unknown_tags_to_print)
-        )
+            )
         )
 
     elif delete_unknown_tags:
@@ -524,7 +524,16 @@ def is_anonymised_directory(dirpath, ignore_private_tags=False):
 def non_private_tags_in_dicom_dataset(ds):
     """Return all non-private tags from a DICOM dataset.
     """
-    non_private_tags = [elem.tag for elem in ds if not elem.tag.is_private]
+
+    non_private_tags = []
+
+    for elem in ds:
+        if not elem.tag.is_private and not (
+            # Ignore retired Group Length elements
+            elem.tag.element == 0
+            and elem.tag.group > 6
+        ):
+            non_private_tags.append(elem.tag)
     return non_private_tags
 
 
