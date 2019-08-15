@@ -112,7 +112,7 @@ jobs:
 
     # https://github.com/conda/conda/issues/8865#issuecomment-508865446
     - script: conda init cmd.exe
-      displayName: Activate Conda on Windows
+      displayName: Run `conda init cmd.exe`
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     - script: conda install --yes --quiet python=$(python) pip "xlwings >= 0.15.4"
