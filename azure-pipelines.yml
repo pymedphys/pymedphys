@@ -86,7 +86,8 @@ jobs:
       displayName: Add Conda to PATH on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    - script: setx PYTHON_HOME "%CONDA%"
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch&viewFallbackFrom=vsts
+    - powershell: Write-Host "##vso[task.setvariable variable=PYTHON_HOME]$env:CONDA"
       displayName: Replace PYTHON_HOME variable
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
