@@ -82,56 +82,51 @@ jobs:
 
     steps:
     # https://github.com/conda/conda/issues/8865#issuecomment-508865446
-    - script: call %CONDA%\Scripts\activate && conda init C:\windows\system32\cmd.exe
+    - bash: call $CONDA/Scripts/activate && conda init bash
       displayName: Activate Conda on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch&viewFallbackFrom=vsts
-    - powershell: Write-Host "##vso[task.setvariable variable=PYTHON_HOME]$env:CONDA"
-      displayName: Replace PYTHON_HOME variable
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-    - script: echo "##vso[task.prependpath]$CONDA/bin"
+    - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add Conda to PATH on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - script: sudo chown -R $USER $CONDA
+    - bash: sudo chown -R $USER $CONDA
       displayName: Take ownership of Conda installation on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - script: conda config --add channels conda-forge
+    - bash: conda config --add channels conda-forge
       displayName: Add Conda-Forge
 
-    - script: conda config --set always_yes true
+    - bash: conda config --set always_yes true
       displayName: Make Conda always pass yes
 
-    - script: conda update --quiet conda
+    - bash: conda update --quiet conda
       displayName: Update Conda
 
-    - script: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
+    - bash: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
       displayName: Install Python, Pip and xlwings
 
-    - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show Python Information
 
-    - script: conda info --all
+    - bash: conda info --all
       displayName: Show Conda Information
 
-    - script: conda install --quiet matplotlib pymssql
+    - bash: conda install --quiet matplotlib pymssql
       displayName: Install matplotlib and pymssql with Conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - script: conda install --quiet shapely
+    - bash: conda install --quiet shapely
       displayName: Install shapely with Conda on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    - script: yarn
+    - bash: yarn
       displayName: Run yarn
 
-    - script: yarn install:test
+    - bash: yarn install:test
       displayName: Install dependencies for testing with yarn
 
-    - script: "pytest -v"
+    - bash: "pytest -v"
       displayName: Run tests
 
     - task: PublishTestResults@2
