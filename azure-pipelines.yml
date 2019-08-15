@@ -67,7 +67,7 @@ jobs:
 
     strategy:
       matrix:
-        MacOS-Py37:
+        Py37:
           image_name: macos-10.13
           test_title: MacOS Py37
           toxenv: py37
@@ -127,7 +127,7 @@ jobs:
 
     strategy:
       matrix:
-        Windows-Py37:
+        Py37:
           image_name: vs2017-win2016
           test_title: Windows Py37
           toxenv: py37
