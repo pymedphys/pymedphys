@@ -82,13 +82,8 @@ jobs:
 
     steps:
     # https://github.com/conda/conda/issues/8865#issuecomment-508865446
-    - script: call %CONDA%\Scripts\activate
+    - script: call %CONDA%\Scripts\activate && conda init cmd.exe
       displayName: Activate Conda on Windows
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-    # https://github.com/conda/conda/issues/8865#issuecomment-508865446
-    - script: conda init cmd.exe
-      displayName: Run `conda init cmd.exe`
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch&viewFallbackFrom=vsts
