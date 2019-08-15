@@ -544,7 +544,9 @@ def unknown_tags_in_dicom_dataset(ds):
             are_non_private_tags_in_dict_baseline.append(False)
 
     unknown_tags = list(
-        non_private_tags_in_dataset[np.invert(are_non_private_tags_in_dict_baseline)]
+        non_private_tags_in_dataset[
+            np.invert(np.array(are_non_private_tags_in_dict_baseline, dtype=bool))
+        ]
     )
 
     return unknown_tags
