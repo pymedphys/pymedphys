@@ -88,7 +88,7 @@ jobs:
 
     # https://www.itprotoday.com/powershell/powershell-one-liner-deleting-environment-variables
     - powershell: Remove-Item Env:\PYTHON_HOME
-      displayName: Delte PYTHON_HOME variable
+      displayName: Delete PYTHON_HOME variable
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     - script: echo "##vso[task.prependpath]$CONDA/bin"
