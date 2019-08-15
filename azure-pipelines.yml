@@ -68,7 +68,7 @@ jobs:
       matrix:
         MacOS-Py37:
           image_name: macos-10.13
-          test_title: MacOS py37
+          test_title: MacOS Py37
           toxenv: py37
           python: 3.7
         Windows-Py37:
@@ -86,9 +86,8 @@ jobs:
       displayName: Add Conda to PATH on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    # https://www.itprotoday.com/powershell/powershell-one-liner-deleting-environment-variables
-    - powershell: Remove-Item Env:\PYTHON_HOME
-      displayName: Delete PYTHON_HOME variable
+    - script: setx PYTHON_HOME "%CONDA%"
+      displayName: Replace PYTHON_HOME variable
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     - script: echo "##vso[task.prependpath]$CONDA/bin"
