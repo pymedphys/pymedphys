@@ -99,6 +99,7 @@ jobs:
         targetType: inline
         script: conda config --add channels conda-forge
         noProfile: false
+        noRc: false
       displayName: Add Conda-Forge
 
     - task: Bash@3
@@ -106,6 +107,7 @@ jobs:
         targetType: inline
         script: conda config --set always_yes true
         noProfile: false
+        noRc: false
       displayName: Make Conda always pass yes
 
     - task: Bash@3
@@ -113,6 +115,7 @@ jobs:
         targetType: inline
         script: conda update --quiet conda
         noProfile: false
+        noRc: false
       displayName: Update Conda
 
     - task: Bash@3
@@ -120,6 +123,7 @@ jobs:
         targetType: inline
         script: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
         noProfile: false
+        noRc: false
       displayName: Install Python, Pip and xlwings
 
     - task: Bash@3
@@ -127,6 +131,7 @@ jobs:
         targetType: inline
         script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
         noProfile: false
+        noRc: false
       displayName: Show Python Information
 
     - task: Bash@3
@@ -134,6 +139,7 @@ jobs:
         targetType: inline
         script: conda info --all
         noProfile: false
+        noRc: false
       displayName: Show Conda Information
 
     - bash: conda install --quiet matplotlib pymssql
@@ -145,6 +151,7 @@ jobs:
         targetType: inline
         script: conda install --quiet shapely
         noProfile: false
+        noRc: false
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
       displayName: Install shapely with Conda on Windows
 
@@ -153,6 +160,7 @@ jobs:
         targetType: inline
         script: yarn
         noProfile: false
+        noRc: false
       displayName: Run yarn
 
     - task: Bash@3
@@ -160,6 +168,7 @@ jobs:
         targetType: inline
         script: yarn install:test
         noProfile: false
+        noRc: false
       displayName: Install dependencies for testing with yarn
 
     - task: Bash@3
@@ -167,6 +176,7 @@ jobs:
         targetType: inline
         script: "pytest -v"
         noProfile: false
+        noRc: false
       displayName: Run tests
 
     - task: PublishTestResults@2
