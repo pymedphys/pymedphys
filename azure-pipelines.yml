@@ -95,59 +95,69 @@ jobs:
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - task: Bash@3
-      script: conda config --add channels conda-forge
-      displayName: Add Conda-Forge
-      noProfile: false
+      inputs:
+        script: conda config --add channels conda-forge
+        displayName: Add Conda-Forge
+        noProfile: false
 
     - task: Bash@3
-      script: conda config --set always_yes true
-      displayName: Make Conda always pass yes
-      noProfile: false
+      inputs:
+        script: conda config --set always_yes true
+        displayName: Make Conda always pass yes
+        noProfile: false
 
     - task: Bash@3
-      script: conda update --quiet conda
-      displayName: Update Conda
-      noProfile: false
+      inputs:
+        script: conda update --quiet conda
+        displayName: Update Conda
+        noProfile: false
 
     - task: Bash@3
-      script: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
-      displayName: Install Python, Pip and xlwings
-      noProfile: false
+      inputs:
+        script: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
+        displayName: Install Python, Pip and xlwings
+        noProfile: false
 
     - task: Bash@3
-      script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
-      displayName: Show Python Information
-      noProfile: false
+      inputs:
+        script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+        displayName: Show Python Information
+        noProfile: false
 
     - task: Bash@3
-      script: conda info --all
-      displayName: Show Conda Information
-      noProfile: false
+      inputs:
+        script: conda info --all
+        displayName: Show Conda Information
+        noProfile: false
 
     - bash: conda install --quiet matplotlib pymssql
       displayName: Install matplotlib and pymssql with Conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - task: Bash@3
-      script: conda install --quiet shapely
-      displayName: Install shapely with Conda on Windows
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
-      noProfile: false
+      inputs:
+        script: conda install --quiet shapely
+        displayName: Install shapely with Conda on Windows
+        condition: eq( variables['Agent.OS'], 'Windows_NT' )
+        noProfile: false
 
     - task: Bash@3
-      script: yarn
-      displayName: Run yarn
-      noProfile: false
+      inputs:
+        script: yarn
+        displayName: Run yarn
+        noProfile: false
 
     - task: Bash@3
-      script: yarn install:test
-      displayName: Install dependencies for testing with yarn
-      noProfile: false
+      inputs:
+        script: yarn install:test
+        displayName: Install dependencies for testing with yarn
+        noProfile: false
 
     - task: Bash@3
-      script: "pytest -v"
-      displayName: Run tests
-      noProfile: false
+      inputs:
+        script: "pytest -v"
+        displayName: Run tests
+        noProfile: false
 
     - task: PublishTestResults@2
       displayName: Publish test results
