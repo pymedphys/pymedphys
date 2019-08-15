@@ -94,34 +94,30 @@ jobs:
       displayName: Take ownership of Conda installation on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: conda config --add channels conda-forge
+    - script: conda config --add channels conda-forge
       displayName: Add Conda-Forge
 
-    - bash: conda create --yes --quiet --name pymedphys python=$(python) pip "xlwings >= 0.15.4"
+    - script: conda create --yes --quiet --name pymedphys python=$(python) pip "xlwings >= 0.15.4"
       displayName: Create Anaconda environment
 
-    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
-      displayName: Show python information
+    - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+      displayName: Show Python information
 
     - bash: conda install --yes --quiet matplotlib pymssql
       displayName: Install matplotlib and pymssql with Conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: conda install --yes --quiet nomkl
-      displayName: Install nomkl with Conda on Windows
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-    - bash: conda install --yes --quiet shapely
+    - script: conda install --yes --quiet shapely
       displayName: Install shapely with Conda on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    - bash: yarn
+    - script: yarn
       displayName: Run yarn
 
-    - bash: yarn install:test
+    - script: yarn install:test
       displayName: Install dependencies for testing with yarn
 
-    - bash: "pytest -v"
+    - script: "pytest -v"
       displayName: Run tests
 
     - task: PublishTestResults@2
