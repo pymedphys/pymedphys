@@ -79,11 +79,9 @@ jobs:
     steps:
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add Conda to PATH
-      condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - bash: sudo chown -R $USER $CONDA
       displayName: Take ownership of Conda installation
-      condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - bash: conda config --add channels conda-forge
       displayName: Add Conda-Forge
