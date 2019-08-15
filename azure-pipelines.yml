@@ -1,76 +1,76 @@
 jobs:
-  - job: Tox
+  # - job: Tox
 
-    strategy:
-      matrix:
-        Pylint-All:
-          image_name: ubuntu-16.04
-          test_title: Pylint All
-          toxenv: pylint
-          python: 3.7
-        Docs:
-          image_name: ubuntu-16.04
-          test_title: Docs
-          toxenv: docs
-          python: 3.7
-        Pytest-DoctestModules:
-          image_name: ubuntu-16.04
-          test_title: Pytest with Docstrings Included
-          toxenv: doctest
-          python: 3.7
-        Linux-Py37:
-          image_name: ubuntu-16.04
-          test_title: Linux Py37
-          toxenv: py37
-          python: 3.7
+  #   strategy:
+  #     matrix:
+  #       Pylint-All:
+  #         image_name: ubuntu-16.04
+  #         test_title: Pylint All
+  #         toxenv: pylint
+  #         python: 3.7
+  #       Docs:
+  #         image_name: ubuntu-16.04
+  #         test_title: Docs
+  #         toxenv: docs
+  #         python: 3.7
+  #       Pytest-DoctestModules:
+  #         image_name: ubuntu-16.04
+  #         test_title: Pytest with Docstrings Included
+  #         toxenv: doctest
+  #         python: 3.7
+  #       Linux-Py37:
+  #         image_name: ubuntu-16.04
+  #         test_title: Linux Py37
+  #         toxenv: py37
+  #         python: 3.7
 
-    pool:
-      vmImage: $(image_name)
+  #   pool:
+  #     vmImage: $(image_name)
 
-    steps:
-    - task: UsePythonVersion@0
-      displayName: Setup Python
-      inputs:
-        versionSpec: $(python)
+  #   steps:
+  #   - task: UsePythonVersion@0
+  #     displayName: Setup Python
+  #     inputs:
+  #       versionSpec: $(python)
 
-    - bash: sudo apt-get install -y pandoc
-      displayName: Install Pandoc, need to make this only on doc run
-      condition: eq( variables['TOXENV'], 'docs' )
+  #   - bash: sudo apt-get install -y pandoc
+  #     displayName: Install Pandoc, need to make this only on doc run
+  #     condition: eq( variables['TOXENV'], 'docs' )
 
-    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
-      displayName: Show python information
+  #   - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+  #     displayName: Show python information
 
-    - bash: "python -m pip install -U pip setuptools --user"
-      displayName: Upgrade pip and setuptools
+  #   - bash: "python -m pip install -U pip setuptools --user"
+  #     displayName: Upgrade pip and setuptools
 
-    - bash: yarn
-      displayName: Run yarn
+  #   - bash: yarn
+  #     displayName: Run yarn
 
-    - bash: "python -m pip install -U tox --user"
-      displayName: Install tox
+  #   - bash: "python -m pip install -U tox --user"
+  #     displayName: Install tox
 
-    - bash: python -m tox -e $TOXENV --notest
-      displayName: Install test dependencies
+  #   - bash: python -m tox -e $TOXENV --notest
+  #     displayName: Install test dependencies
 
-    - bash: python -m tox -e $TOXENV
-      displayName: Run tests
+  #   - bash: python -m tox -e $TOXENV
+  #     displayName: Run tests
 
-    - task: PublishTestResults@2
-      displayName: Publish test results
-      inputs:
-        testResultsFiles: junit/*.xml
-        testRunTitle: '$(test_title)'
-      condition: succeededOrFailed()
+  #   - task: PublishTestResults@2
+  #     displayName: Publish test results
+  #     inputs:
+  #       testResultsFiles: junit/*.xml
+  #       testRunTitle: '$(test_title)'
+  #     condition: succeededOrFailed()
 
   - job: Conda
 
     strategy:
       matrix:
-        MacOS-Py37:
-          image_name: macos-10.13
-          test_title: MacOS Py37
-          toxenv: py37
-          python: 3.7
+        # MacOS-Py37:
+        #   image_name: macos-10.13
+        #   test_title: MacOS Py37
+        #   toxenv: py37
+        #   python: 3.7
         Windows-Py37:
           image_name: vs2017-win2016
           test_title: Windows Py37
@@ -149,50 +149,50 @@ jobs:
       condition: succeededOrFailed()
 
 
-  - job: NotebookOutputs
+  # - job: NotebookOutputs
 
-    pool:
-      vmImage: 'ubuntu-16.04'
+  #   pool:
+  #     vmImage: 'ubuntu-16.04'
 
-    steps:
-    - bash: "python -m pip install -U pip setuptools --user"
-      displayName: Upgrade pip and setuptools
+  #   steps:
+  #   - bash: "python -m pip install -U pip setuptools --user"
+  #     displayName: Upgrade pip and setuptools
 
-    - bash: python -m pip install -U "nbstripout>=0.3.5" --user
-      displayName: Install nbstripout
+  #   - bash: python -m pip install -U "nbstripout>=0.3.5" --user
+  #     displayName: Install nbstripout
 
-    - bash: find . -iname \*.ipynb | xargs -d "\n" python -m nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
-      displayName: Check that notebooks have no included output
+  #   - bash: find . -iname \*.ipynb | xargs -d "\n" python -m nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
+  #     displayName: Check that notebooks have no included output
 
 
-  - job: DependencyTree
+  # - job: DependencyTree
 
-    pool:
-      vmImage: 'ubuntu-16.04'
+  #   pool:
+  #     vmImage: 'ubuntu-16.04'
 
-    steps:
-    - task: UsePythonVersion@0
-      displayName: Setup Python
-      inputs:
-        versionSpec: 3.7
+  #   steps:
+  #   - task: UsePythonVersion@0
+  #     displayName: Setup Python
+  #     inputs:
+  #       versionSpec: 3.7
 
-    - bash: "python -m pip install -U pip setuptools --user"
-      displayName: Upgrade pip and setuptools
+  #   - bash: "python -m pip install -U pip setuptools --user"
+  #     displayName: Upgrade pip and setuptools
 
-    - bash: "python -m pip install packages/pymedphys_monomanage --user"
-      displayName: Install monomanage
+  #   - bash: "python -m pip install packages/pymedphys_monomanage --user"
+  #     displayName: Install monomanage
 
-    - bash: sudo apt-get install -y graphviz
-      displayName: Install graphviz
+  #   - bash: sudo apt-get install -y graphviz
+  #     displayName: Install graphviz
 
-    - bash: yarn
-      displayName: Run yarn
+  #   - bash: yarn
+  #     displayName: Run yarn
 
-    - bash: yarn tree
-      displayName: Build and graph dependency trees
+  #   - bash: yarn tree
+  #     displayName: Build and graph dependency trees
 
-    - bash: git add -A && git diff HEAD --name-only --exit-code -- "*.py"
-      displayName: Test if any python files were changed
+  #   - bash: git add -A && git diff HEAD --name-only --exit-code -- "*.py"
+  #     displayName: Test if any python files were changed
 
-    - bash: git add -A && git diff HEAD --name-only --exit-code -- "*.json"
-      displayName: Test if any json files were changed
+  #   - bash: git add -A && git diff HEAD --name-only --exit-code -- "*.json"
+  #     displayName: Test if any json files were changed
