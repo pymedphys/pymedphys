@@ -105,6 +105,7 @@ jobs:
     - script: conda update --quiet conda
       displayName: Update Conda
 
+    # https://github.com/conda/conda/issues/8836#issuecomment-508358830
     - script: activate
       displayName: Activate Conda on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
