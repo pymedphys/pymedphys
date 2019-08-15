@@ -105,7 +105,10 @@ jobs:
       displayName: Install Python, Pip and xlwings
 
     - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
-      displayName: Show Python information
+      displayName: Show Python Information
+
+    - script: conda info --all
+      displayName: Show Conda Information
 
     - script: conda install --yes --quiet matplotlib pymssql
       displayName: Install matplotlib and pymssql with Conda on MacOS
