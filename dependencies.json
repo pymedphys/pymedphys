@@ -148,6 +148,7 @@
         "json",
         "operator",
         "os",
+        "pprint",
         "re",
         "warnings"
       ]
