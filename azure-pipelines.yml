@@ -86,13 +86,18 @@ jobs:
       vmImage: $(image_name)
 
     steps:
-    - task: CondaEnvironment@1
-      inputs:
-        createCustomEnvironment: true
-        environmentName: pymedphys
-        packageSpecs: python=$(python) pip "xlwings >= 0.15.4"
-        updateConda: true
-        createOptions: --channel conda-forge
+    - bash: echo "##vso[task.prependpath]$CONDA/bin"
+      displayName: Add conda to PATH
+
+    - bash: sudo chown -R $USER $CONDA
+      displayName: Take ownership of conda installation
+      condition: eq( variables['Agent.OS'], 'Darwin' )
+
+    - bash: conda config --add channels conda-forge
+      displayName: Add Conda-Forge
+
+    - bash: conda create --yes --quiet --name pymedphys python=$(python) pip "xlwings >= 0.15.4"
+      displayName: Create Anaconda environment
 
     - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show python information
