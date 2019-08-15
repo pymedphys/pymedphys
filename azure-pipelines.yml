@@ -81,9 +81,14 @@ jobs:
       vmImage: $(image_name)
 
     steps:
-    # https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/anaconda?view=azure-devops&tabs=vs2017
-    - powershell: Write-Host "##vso[task.prependpath]$env:CONDA;$env:CONDA\Scripts"
-      displayName: Add Conda to PATH on Windows
+    # https://github.com/conda/conda/issues/8865#issuecomment-508865446
+    - script: call %CONDA%\Scripts\activate
+      displayName: Activate Conda on Windows
+      condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+    # https://github.com/conda/conda/issues/8865#issuecomment-508865446
+    - script: conda init cmd.exe
+      displayName: Run `conda init cmd.exe`
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch&viewFallbackFrom=vsts
@@ -102,20 +107,13 @@ jobs:
     - script: conda config --add channels conda-forge
       displayName: Add Conda-Forge
 
+    - script: conda config --set always_yes true
+      displayName: Make Conda always pass yes
+
     - script: conda update --quiet conda
       displayName: Update Conda
 
-    # https://github.com/conda/conda/issues/8865#issuecomment-508865446
-    - script: call activate
-      displayName: Activate Conda on Windows
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-    # https://github.com/conda/conda/issues/8865#issuecomment-508865446
-    - script: conda init cmd.exe
-      displayName: Run `conda init cmd.exe`
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-    - script: conda install --yes --quiet python=$(python) pip "xlwings >= 0.15.4"
+    - script: conda install --quiet python=$(python) pip "xlwings >= 0.15.4"
       displayName: Install Python, Pip and xlwings
 
     - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
@@ -124,11 +122,11 @@ jobs:
     - script: conda info --all
       displayName: Show Conda Information
 
-    - script: conda install --yes --quiet matplotlib pymssql
+    - script: conda install --quiet matplotlib pymssql
       displayName: Install matplotlib and pymssql with Conda on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - script: conda install --yes --quiet shapely
+    - script: conda install --quiet shapely
       displayName: Install shapely with Conda on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
