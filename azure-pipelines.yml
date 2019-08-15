@@ -81,6 +81,7 @@ jobs:
       vmImage: $(image_name)
 
     steps:
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/anaconda?view=azure-devops&tabs=vs2017
     - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
       displayName: Add conda to PATH
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
