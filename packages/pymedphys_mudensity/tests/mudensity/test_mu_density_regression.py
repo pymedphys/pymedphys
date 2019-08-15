@@ -43,6 +43,7 @@ DELIVERY_DATA_FILEPATH = os.path.abspath(
 )
 
 
+@pytest.mark.slow
 def test_regression():
     """The results of MU Density calculation should not change
     """
