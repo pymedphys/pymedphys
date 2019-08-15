@@ -63,64 +63,64 @@ jobs:
   #     condition: succeededOrFailed()
 
 
-  - job: MacOS
+  # - job: MacOS
 
-    strategy:
-      matrix:
-        Py37:
-          image_name: macos-10.13
-          test_title: MacOS Py37
-          toxenv: py37
-          python: 3.7
+  #   strategy:
+  #     matrix:
+  #       Py37:
+  #         image_name: macos-10.13
+  #         test_title: MacOS Py37
+  #         toxenv: py37
+  #         python: 3.7
 
-    pool:
-      vmImage: $(image_name)
+  #   pool:
+  #     vmImage: $(image_name)
 
-    steps:
-    - bash: echo "##vso[task.prependpath]$CONDA/bin"
-      displayName: Add Conda to PATH
-      condition: eq( variables['Agent.OS'], 'Darwin' )
+  #   steps:
+  #   - bash: echo "##vso[task.prependpath]$CONDA/bin"
+  #     displayName: Add Conda to PATH
+  #     condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: sudo chown -R $USER $CONDA
-      displayName: Take ownership of Conda installation
-      condition: eq( variables['Agent.OS'], 'Darwin' )
+  #   - bash: sudo chown -R $USER $CONDA
+  #     displayName: Take ownership of Conda installation
+  #     condition: eq( variables['Agent.OS'], 'Darwin' )
 
-    - bash: conda config --add channels conda-forge
-      displayName: Add Conda-Forge
+  #   - bash: conda config --add channels conda-forge
+  #     displayName: Add Conda-Forge
 
-    - bash: conda config --set always_yes true
-      displayName: Make Conda always say yes to install
+  #   - bash: conda config --set always_yes true
+  #     displayName: Make Conda always say yes to install
 
-    - bash: conda update --quiet conda
-      displayName: Update Conda
+  #   - bash: conda update --quiet conda
+  #     displayName: Update Conda
 
-    - bash: conda install --quiet python=$(python)
-      displayName: Install Python Version
+  #   - bash: conda install --quiet python=$(python)
+  #     displayName: Install Python Version
 
-    - bash: python -c "import sys; print(sys.version); print(sys.executable)"
-      displayName: Show Python Information
+  #   - bash: python -c "import sys; print(sys.version); print(sys.executable)"
+  #     displayName: Show Python Information
 
-    - bash: conda info --all
-      displayName: Show Conda Information
+  #   - bash: conda info --all
+  #     displayName: Show Conda Information
 
-    - bash: conda install --quiet pip "xlwings >= 0.15.4" matplotlib pymssql
-      displayName: Install difficult packages with Conda
+  #   - bash: conda install --quiet pip "xlwings >= 0.15.4" matplotlib pymssql
+  #     displayName: Install difficult packages with Conda
 
-    - bash: yarn
-      displayName: Run yarn
+  #   - bash: yarn
+  #     displayName: Run yarn
 
-    - bash: yarn install:test
-      displayName: Install dependencies for testing with yarn
+  #   - bash: yarn install:test
+  #     displayName: Install dependencies for testing with yarn
 
-    - bash: pytest -v
-      displayName: Run tests
+  #   - bash: pytest -v
+  #     displayName: Run tests
 
-    - task: PublishTestResults@2
-      displayName: Publish test results
-      inputs:
-        testResultsFiles: junit/*.xml
-        testRunTitle: '$(test_title)'
-      condition: succeededOrFailed()
+  #   - task: PublishTestResults@2
+  #     displayName: Publish test results
+  #     inputs:
+  #       testResultsFiles: junit/*.xml
+  #       testRunTitle: '$(test_title)'
+  #     condition: succeededOrFailed()
 
 
   - job: Windows
