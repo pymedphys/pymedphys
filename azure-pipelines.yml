@@ -62,15 +62,71 @@ jobs:
   #       testRunTitle: '$(test_title)'
   #     condition: succeededOrFailed()
 
-  - job: Conda
+
+  - job: MacOS
 
     strategy:
       matrix:
-        # MacOS-Py37:
-        #   image_name: macos-10.13
-        #   test_title: MacOS Py37
-        #   toxenv: py37
-        #   python: 3.7
+        MacOS-Py37:
+          image_name: macos-10.13
+          test_title: MacOS Py37
+          toxenv: py37
+          python: 3.7
+
+    pool:
+      vmImage: $(image_name)
+
+    steps:
+    - bash: echo "##vso[task.prependpath]$CONDA/bin"
+      displayName: Add Conda to PATH
+      condition: eq( variables['Agent.OS'], 'Darwin' )
+
+    - bash: sudo chown -R $USER $CONDA
+      displayName: Take ownership of Conda installation
+      condition: eq( variables['Agent.OS'], 'Darwin' )
+
+    - bash: conda config --add channels conda-forge
+      displayName: Add Conda-Forge
+
+    - bash: conda config --set always_yes true
+      displayName: Make Conda always pass yes
+
+    - bash: conda update --quiet conda
+      displayName: Update Conda
+
+    - bash: conda install --quiet python=$(python)
+      displayName: Install Python Version
+
+    - bash: python -c "import sys; print(sys.version); print(sys.executable)"
+      displayName: Show Python Information
+
+    - bash: conda info --all
+      displayName: Show Conda Information
+
+    - bash: conda install --quiet pip "xlwings >= 0.15.4" matplotlib pymssql
+      displayName: Install difficult packages with Conda
+
+    - bash: yarn
+      displayName: Run yarn
+
+    - bash: yarn install:test
+      displayName: Install dependencies for testing with yarn
+
+    - bash: pytest -v
+      displayName: Run tests
+
+    - task: PublishTestResults@2
+      displayName: Publish test results
+      inputs:
+        testResultsFiles: junit/*.xml
+        testRunTitle: '$(test_title)'
+      condition: succeededOrFailed()
+
+
+  - job: Windows
+
+    strategy:
+      matrix:
         Windows-Py37:
           image_name: vs2017-win2016
           test_title: Windows Py37
@@ -81,52 +137,35 @@ jobs:
       vmImage: $(image_name)
 
     steps:
-    # https://github.com/conda/conda/issues/8865#issuecomment-508865446
-    - bash: source $CONDA/Scripts/activate && conda init bash
-      displayName: Activate Conda on Windows
-      condition: eq( variables['Agent.OS'], 'Windows_NT' )
-
-    - bash: echo "##vso[task.prependpath]$CONDA/bin"
-      displayName: Add Conda to PATH on MacOS
-      condition: eq( variables['Agent.OS'], 'Darwin' )
-
-    - bash: sudo chown -R $USER $CONDA
-      displayName: Take ownership of Conda installation on MacOS
-      condition: eq( variables['Agent.OS'], 'Darwin' )
-
-    - bash: bash -c "conda config --add channels conda-forge"
+    - bash: source $CONDA/Scripts/activate && conda config --add channels conda-forge
       displayName: Add Conda-Forge
 
-    - bash: bash -c "conda config --set always_yes true"
+    - bash: source $CONDA/Scripts/activate && conda config --set always_yes true
       displayName: Make Conda always pass yes
 
-    - bash: bash -c "conda update --quiet conda"
+    - bash: source $CONDA/Scripts/activate && conda update --quiet conda
       displayName: Update Conda
 
-    - bash: bash -c 'conda install --quiet python=$(python) pip "xlwings >= 0.15.4"'
-      displayName: Install Python, Pip and xlwings
+    - bash: source $CONDA/Scripts/activate && conda install --quiet python=$(python)
+      displayName: Install Python Version
 
-    - bash: bash -c '"python -c \"import sys; print(sys.version); print(sys.executable)\""'
+    - bash: source $CONDA/Scripts/activate && python -c "import sys; print(sys.version); print(sys.executable)"
       displayName: Show Python Information
 
-    - bash: bash -c 'conda info --all'
+    - bash: source $CONDA/Scripts/activate && conda info --all
       displayName: Show Conda Information
 
-    - bash: conda install --quiet matplotlib pymssql
-      displayName: Install matplotlib and pymssql with Conda on MacOS
-      condition: eq( variables['Agent.OS'], 'Darwin' )
-
-    - bash: bash -c 'conda install --quiet shapely'
-      displayName: Install shapely with Conda on Windows
+    - bash: source $CONDA/Scripts/activate && conda install --quiet pip "xlwings >= 0.15.4" shapely
+      displayName: Install difficult packages with Conda
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
-    - bash: bash -c 'yarn'
+    - bash: source $CONDA/Scripts/activate && yarn
       displayName: Run yarn
 
-    - bash: bash -c 'yarn install:test'
+    - bash: source $CONDA/Scripts/activate && yarn install:test
       displayName: Install dependencies for testing with yarn
 
-    - bash: bash -c 'pytest -v'
+    - bash: source $CONDA/Scripts/activate && pytest -v
       displayName: Run tests
 
     - task: PublishTestResults@2
