@@ -89,7 +89,7 @@ jobs:
       displayName: Add Conda-Forge
 
     - bash: conda config --set always_yes true
-      displayName: Make Conda always pass yes
+      displayName: Make Conda always say yes to install
 
     - bash: conda update --quiet conda
       displayName: Update Conda
@@ -141,10 +141,10 @@ jobs:
       displayName: Add Conda-Forge
 
     - bash: source $CONDA/Scripts/activate && conda config --set always_yes true
-      displayName: Make Conda always pass yes
+      displayName: Make Conda always say yes to install
 
-    - bash: source $CONDA/Scripts/activate && conda update --quiet conda
-      displayName: Update Conda
+    # - bash: source $CONDA/Scripts/activate && conda update --quiet conda
+    #   displayName: Update Conda
 
     - bash: source $CONDA/Scripts/activate && conda install --quiet python=$(python)
       displayName: Install Python Version
