@@ -82,12 +82,12 @@ jobs:
 
     steps:
     # https://docs.microsoft.com/en-us/azure/devops/pipelines/languages/anaconda?view=azure-devops&tabs=vs2017
-    - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
-      displayName: Add conda to PATH on Windows
+    - powershell: Write-Host "##vso[task.prependpath]$env:CONDA;$env:CONDA\Scripts"
+      displayName: Add Conda to PATH on Windows
       condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
-      displayName: Add conda to PATH on MacOS
+      displayName: Add Conda to PATH on MacOS
       condition: eq( variables['Agent.OS'], 'Darwin' )
 
     - bash: sudo chown -R $USER $CONDA
@@ -97,8 +97,8 @@ jobs:
     - script: conda config --add channels conda-forge
       displayName: Add Conda-Forge
 
-    - script: conda create --yes --quiet --name pymedphys python=$(python) pip "xlwings >= 0.15.4"
-      displayName: Create Anaconda environment
+    - script: conda install --yes --quiet python=$(python) pip "xlwings >= 0.15.4"
+      displayName: Install Python, Pip and xlwings
 
     - script: "python -c \"import sys; print(sys.version); print(sys.executable)\""
       displayName: Show Python information
