@@ -95,6 +95,7 @@ def _get_non_anonymous_replacement_value(keyword):
     return VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
 
 
+@pytest.mark.slow
 def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
     # Create dataset with one instance of every identifying keyword and
@@ -273,6 +274,7 @@ def test_anonymise_directory(tmp_path):
         remove_file(temp_anon_filepath)
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(
     "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
 )

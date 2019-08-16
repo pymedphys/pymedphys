@@ -92,6 +92,7 @@ def pinn(data):
     return pinn_objs
 
 
+@pytest.mark.slow
 def test_pinnacle(pinn):
 
     for p in pinn:
@@ -119,6 +120,7 @@ def find_corresponding_dicom(dcm):
     return None
 
 
+@pytest.mark.slow
 def test_ct(pinn):
 
     for p in pinn:
@@ -156,6 +158,7 @@ def test_ct(pinn):
                 assert np.allclose(exported_img, pinn_img, atol=0.00001)
 
 
+@pytest.mark.slow
 def test_struct(pinn):
 
     for p in pinn:
@@ -190,6 +193,7 @@ def test_struct(pinn):
         # TODO: Generate a mask for each contour and do a comparison of these
 
 
+@pytest.mark.slow
 def test_dose(pinn):
 
     for p in pinn:
@@ -231,6 +235,7 @@ def test_dose(pinn):
         assert np.allclose(exported_vol, pinn_vol, atol=0.01)
 
 
+@pytest.mark.slow
 def test_plan(pinn):
 
     for p in pinn:
