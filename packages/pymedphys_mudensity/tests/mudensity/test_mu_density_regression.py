@@ -32,6 +32,8 @@
 
 import os
 
+import pytest
+
 import numpy as np
 
 from pymedphys_mudensity.mudensity import calc_mu_density
@@ -43,6 +45,7 @@ DELIVERY_DATA_FILEPATH = os.path.abspath(
 )
 
 
+@pytest.mark.slow
 def test_regression():
     """The results of MU Density calculation should not change
     """

@@ -74,6 +74,7 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
     return get_gantry_angles_from_dicom(loaded_dicom_dataset)
 
 
+@pytest.mark.slow
 def test_fraction_group_number(loaded_dicom_dataset, logfile_delivery_data: Delivery):
     expected = FRACTION_GROUP
 
@@ -82,6 +83,7 @@ def test_fraction_group_number(loaded_dicom_dataset, logfile_delivery_data: Deli
     assert result == expected
 
 
+@pytest.mark.slow
 def test_get_metersets_from_delivery_data(
     logfile_delivery_data, loaded_dicom_dataset, loaded_dicom_gantry_angles
 ):
@@ -99,6 +101,7 @@ def test_get_metersets_from_delivery_data(
         raise
 
 
+@pytest.mark.slow
 def test_filter_cps(logfile_delivery_data):
     filtered = logfile_delivery_data.filter_cps()
 
@@ -106,6 +109,7 @@ def test_filter_cps(logfile_delivery_data):
         assert len(getattr(logfile_delivery_data, field)) != 0
 
 
+@pytest.mark.slow
 def test_round_trip_dd2dcm2dd(loaded_dicom_dataset, logfile_delivery_data: Delivery):
     original = logfile_delivery_data.filter_cps()
     template = loaded_dicom_dataset
@@ -129,6 +133,7 @@ def test_round_trip_dd2dcm2dd(loaded_dicom_dataset, logfile_delivery_data: Deliv
     )
 
 
+@pytest.mark.slow
 def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset, loaded_dicom_gantry_angles):
     original = loaded_dicom_dataset
     delivery_data = Delivery.from_dicom(original, FRACTION_GROUP)
@@ -157,6 +162,7 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset, loaded_dicom_gantry_angles)
     assert str(single_fraction_group) == str(processed)
 
 
+@pytest.mark.slow
 def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
     dicom_delivery_data = Delivery.from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
 
