@@ -135,34 +135,44 @@
       vmImage: $(image_name)
 
     steps:
-    - script: $(CONDA)\Scripts\activate && conda config --add channels conda-forge
+    - script: %CONDA%\Scripts\activate && conda config --add channels conda-forge
+      env: CONDA: $(CONDA)
       displayName: Add Conda-Forge
 
-    - script: $(CONDA)\Scripts\activate && conda config --set always_yes true
+    - script: %CONDA%\Scripts\activate && conda config --set always_yes true
+      env: CONDA: $(CONDA)
       displayName: Make Conda always say yes to install
 
-    - script: $(CONDA)\Scripts\activate && conda update --quiet conda && conda init cmd
+    - script: %CONDA%\Scripts\activate && conda update --quiet conda && conda init cmd
+      env: CONDA: $(CONDA)
       displayName: Update Conda and run `conda init cmd`
 
-    - script: $(CONDA)\Scripts\activate && conda install --quiet python=$(python)
+    - script: %CONDA%\Scripts\activate && conda install --quiet python=$(python)
+      env: CONDA: $(CONDA)
       displayName: Install Python Version
 
-    - script: $(CONDA)\Scripts\activate && python -c "import sys; print(sys.version); print(sys.executable)"
+    - script: %CONDA%\Scripts\activate && python -c "import sys; print(sys.version); print(sys.executable)"
+      env: CONDA: $(CONDA)
       displayName: Show Python Information
 
-    - script: $(CONDA)\Scripts\activate && conda info --all
+    - script: %CONDA%\Scripts\activate && conda info --all
+      env: CONDA: $(CONDA)
       displayName: Show Conda Information
 
-    - script: $(CONDA)\Scripts\activate && conda install --quiet pip "xlwings >= 0.15.4" shapely
+    - script: %CONDA%\Scripts\activate && conda install --quiet pip "xlwings >= 0.15.4" shapely
+      env: CONDA: $(CONDA)
       displayName: Install difficult packages with Conda
 
-    - script: $(CONDA)\Scripts\activate && yarn
+    - script: %CONDA%\Scripts\activate && yarn
+      env: CONDA: $(CONDA)
       displayName: Run yarn
 
-    - script: $(CONDA)\Scripts\activate && yarn install:test
+    - script: %CONDA%\Scripts\activate && yarn install:test
+      env: CONDA: $(CONDA)
       displayName: Install dependencies for testing with yarn
 
-    - script: $(CONDA)\Scripts\activate && pytest -v
+    - script: %CONDA%\Scripts\activate && pytest -v
+      env: CONDA: $(CONDA)
       displayName: Run tests
 
     - task: PublishTestResults@2
