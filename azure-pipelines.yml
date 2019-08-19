@@ -144,7 +144,7 @@ jobs:
       displayName: Make Conda always say yes to install
 
     - script:  |
-        $(CONDA)\Scripts\activate && conda update --quiet conda && conda init cmd
+        $(CONDA)\Scripts\activate && conda update --quiet conda && conda init cmd.exe
       displayName: Update Conda and run `conda init cmd`
 
     - script:  |
