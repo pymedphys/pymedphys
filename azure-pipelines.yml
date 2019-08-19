@@ -135,34 +135,34 @@ jobs:
       vmImage: $(image_name)
 
     steps:
-    - bash: source $CONDA/Scripts/activate && conda config --add channels conda-forge
+    - script: source $CONDA/Scripts/activate && conda config --add channels conda-forge
       displayName: Add Conda-Forge
 
-    - bash: source $CONDA/Scripts/activate && conda config --set always_yes true
+    - script: source $CONDA/Scripts/activate && conda config --set always_yes true
       displayName: Make Conda always say yes to install
 
-    - bash: source $CONDA/Scripts/activate && conda update --quiet conda && conda init bash
-      displayName: Update Conda and run `conda init bash`
+    - script: source $CONDA/Scripts/activate && conda update --quiet conda && conda init cmd
+      displayName: Update Conda and run `conda init cmd`
 
-    - bash: source $CONDA/Scripts/activate && conda install --quiet python=$(python)
+    - script: source $CONDA/Scripts/activate && conda install --quiet python=$(python)
       displayName: Install Python Version
 
-    - bash: source $CONDA/Scripts/activate && python -c "import sys; print(sys.version); print(sys.executable)"
+    - script: source $CONDA/Scripts/activate && python -c "import sys; print(sys.version); print(sys.executable)"
       displayName: Show Python Information
 
-    - bash: source $CONDA/Scripts/activate && conda info --all
+    - script: source $CONDA/Scripts/activate && conda info --all
       displayName: Show Conda Information
 
-    - bash: source $CONDA/Scripts/activate && conda install --quiet pip "xlwings >= 0.15.4" shapely
+    - script: source $CONDA/Scripts/activate && conda install --quiet pip "xlwings >= 0.15.4" shapely
       displayName: Install difficult packages with Conda
 
-    - bash: source $CONDA/Scripts/activate && yarn
+    - script: source $CONDA/Scripts/activate && yarn
       displayName: Run yarn
 
-    - bash: source $CONDA/Scripts/activate && yarn install:test
+    - script: source $CONDA/Scripts/activate && yarn install:test
       displayName: Install dependencies for testing with yarn
 
-    - bash: source $CONDA/Scripts/activate && pytest -v
+    - script: source $CONDA/Scripts/activate && pytest -v
       displayName: Run tests
 
     - task: PublishTestResults@2
