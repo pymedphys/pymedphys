@@ -24,6 +24,7 @@ PyMedPhys
 
 Bringing together Medical Physicists to create quality transparent software
 that can be afforded by our peers in the third world (free).
+
 PyMedPhys, a community powered by git and continuous integration. A place to
 share, review, improve, and transparently learn off of each other’s code. 
 
