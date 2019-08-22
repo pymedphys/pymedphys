@@ -41,8 +41,7 @@ class DICOMEntryMissing(ValueError):
 def require_gantries_be_zero(plan: pydicom.Dataset):
     gantry_angles = set(get_gantry_angles_from_dicom(plan))
     if gantry_angles != set([0.0]):
-        raise ValueError(
-            "Only Gantry angles equal to 0.0 are currently supported")
+        raise ValueError("Only Gantry angles equal to 0.0 are currently supported")
 
 
 def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
@@ -53,12 +52,13 @@ def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
 
     require_gantries_be_zero(plan)
 
-    iso_raw = get_single_value_from_control_points(plan, 'IsocenterPosition')
+    iso_raw = get_single_value_from_control_points(plan, "IsocenterPosition")
     iso = Point(*[float(item) for item in iso_raw])
 
     source_to_surface = get_single_value_from_control_points(
-        plan, 'SourceToSurfaceDistance')
-    source_to_axis = get_single_value_from_beams(plan, 'SourceAxisDistance')
+        plan, "SourceToSurfaceDistance"
+    )
+    source_to_axis = get_single_value_from_beams(plan, "SourceAxisDistance")
 
     new_y_value = iso.y + source_to_surface - source_to_axis
     source_entry_point = Point(iso.x, new_y_value, iso.z)
@@ -148,9 +148,9 @@ def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
     # having this function take a beam sequence parameter, and get the entry
     # point for a given beam sequence
     surface_entry_point_raw = get_single_value_from_control_points(
-        plan, 'SurfaceEntryPoint')
-    surface_entry_point = Point(*[float(item)
-                                  for item in surface_entry_point_raw])
+        plan, "SurfaceEntryPoint"
+    )
+    surface_entry_point = Point(*[float(item) for item in surface_entry_point_raw])
 
     return surface_entry_point
 
@@ -174,25 +174,37 @@ def get_metersets_from_dicom(dicom_dataset, fraction_group):
 
 
 def get_gantry_angles_from_dicom(dicom_dataset):
-    gantry_angles = [
-        set(
-            convert_IEC_angle_to_bipolar(
-                [
-                    control_point.GantryAngle
-                    for control_point in beam_sequence.ControlPointSequence
-                ]
-            )
-        )
-        for beam_sequence in dicom_dataset.BeamSequence
-    ]
 
-    for gantry_angle_set in gantry_angles:
-        if len(gantry_angle_set) != 1:
+    beam_gantry_angles = []
+
+    for beam_sequence in dicom_dataset.BeamSequence:
+        current_gantry_angle = None
+        cp_gantry_angles_IEC = []
+        for control_point in beam_sequence.ControlPointSequence:
+            try:
+                current_gantry_angle = control_point.GantryAngle
+
+            # If a subsequent control point doesn't record a gantry
+            # angle then leave current_gantry_angle as what it was in the
+            # previous loop
+            except AttributeError:
+                if current_gantry_angle is None:
+                    raise
+
+            cp_gantry_angles_IEC.append(current_gantry_angle)
+
+        cp_gantry_angles_bipolar = convert_IEC_angle_to_bipolar(cp_gantry_angles_IEC)
+        cp_unique_gantry_angles = set(cp_gantry_angles_bipolar)
+
+        beam_gantry_angles.append(cp_unique_gantry_angles)
+
+    for cp_unique_gantry_angles in beam_gantry_angles:
+        if len(cp_unique_gantry_angles) != 1:
             raise ValueError(
                 "Only a single gantry angle per beam is currently supported"
             )
 
-    result = tuple(list(item)[0] for item in gantry_angles)
+    result = tuple(list(item)[0] for item in beam_gantry_angles)
 
     return result
 
