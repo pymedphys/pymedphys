@@ -322,7 +322,8 @@
     },
     "pymedphys_utilities": {
       "external": [
-        "numpy"
+        "numpy",
+        "scipy"
       ],
       "internal": [],
       "stdlib": [
