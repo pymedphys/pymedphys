@@ -60,6 +60,7 @@ def build_all(root, **kwargs):
             yield ret
 
 
+@pytest.mark.slow
 def test_basic():
     for (app, status, warning) in build_all("test-basic"):
         assert app.env.get_doctree("index").traverse(addnodes.toctree)
@@ -111,6 +112,7 @@ def test_basic():
             )
 
 
+@pytest.mark.slow
 def test_empty():
     """Local TOC is showing, as toctree was empty"""
     for (app, status, warning) in build_all("test-empty"):
@@ -140,6 +142,7 @@ def test_empty():
             assert local_toc not in content
 
 
+@pytest.mark.slow
 def test_missing_toctree():
     """Local TOC is showing, as toctree was missing"""
     for (app, status, warning) in build_all("test-missing-toctree"):
