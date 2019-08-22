@@ -186,7 +186,7 @@ def get_gantry_angles_from_dicom(dicom_dataset):
 
             # If a subsequent control point doesn't record a gantry
             # angle then leave current_gantry_angle as what it was in the
-            # previous loop
+            # previous iteration of the loop
             except AttributeError:
                 if current_gantry_angle is None:
                     raise
