@@ -154,8 +154,7 @@
         "operator",
         "os",
         "pprint",
-        "re",
-        "warnings"
+        "re"
       ]
     },
     "pymedphys_electronfactors": {
