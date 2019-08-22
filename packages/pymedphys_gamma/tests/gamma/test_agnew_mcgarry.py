@@ -173,6 +173,7 @@ def test_local_gamma_0_25mm():
     )
 
 
+@pytest.mark.slow
 def test_multi_inputs():
     gamma = run_gamma(
         REF_VMAT_0_25mm,

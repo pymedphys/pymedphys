@@ -1,0 +1,618 @@
+{
+  "002031xx": [
+    "CS",
+    "1-n",
+    "Source Image IDs",
+    "Retired",
+    "SourceImageIDs"
+  ],
+  "002804x0": [
+    "US",
+    "1",
+    "Rows For Nth Order Coefficients",
+    "Retired",
+    "RowsForNthOrderCoefficients"
+  ],
+  "002804x1": [
+    "US",
+    "1",
+    "Columns For Nth Order Coefficients",
+    "Retired",
+    "ColumnsForNthOrderCoefficients"
+  ],
+  "002804x2": [
+    "LO",
+    "1-n",
+    "Coefficient Coding",
+    "Retired",
+    "CoefficientCoding"
+  ],
+  "002804x3": [
+    "AT",
+    "1-n",
+    "Coefficient Coding Pointers",
+    "Retired",
+    "CoefficientCodingPointers"
+  ],
+  "002808x0": [
+    "CS",
+    "1-n",
+    "Code Label",
+    "Retired",
+    "CodeLabel"
+  ],
+  "002808x2": [
+    "US",
+    "1",
+    "Number of Tables",
+    "Retired",
+    "NumberOfTables"
+  ],
+  "002808x3": [
+    "AT",
+    "1-n",
+    "Code Table Location",
+    "Retired",
+    "CodeTableLocation"
+  ],
+  "002808x4": [
+    "US",
+    "1",
+    "Bits For Code Word",
+    "Retired",
+    "BitsForCodeWord"
+  ],
+  "002808x8": [
+    "AT",
+    "1-n",
+    "Image Data Location",
+    "Retired",
+    "ImageDataLocation"
+  ],
+  "1000xxx0": [
+    "US",
+    "3",
+    "Escape Triplet",
+    "Retired",
+    "EscapeTriplet"
+  ],
+  "1000xxx1": [
+    "US",
+    "3",
+    "Run Length Triplet",
+    "Retired",
+    "RunLengthTriplet"
+  ],
+  "1000xxx2": [
+    "US",
+    "1",
+    "Huffman Table Size",
+    "Retired",
+    "HuffmanTableSize"
+  ],
+  "1000xxx3": [
+    "US",
+    "3",
+    "Huffman Table Triplet",
+    "Retired",
+    "HuffmanTableTriplet"
+  ],
+  "1000xxx4": [
+    "US",
+    "1",
+    "Shift Table Size",
+    "Retired",
+    "ShiftTableSize"
+  ],
+  "1000xxx5": [
+    "US",
+    "3",
+    "Shift Table Triplet",
+    "Retired",
+    "ShiftTableTriplet"
+  ],
+  "1010xxxx": [
+    "US",
+    "1-n",
+    "Zonal Map",
+    "Retired",
+    "ZonalMap"
+  ],
+  "50xx0005": [
+    "US",
+    "1",
+    "Curve Dimensions",
+    "Retired",
+    "CurveDimensions"
+  ],
+  "50xx0010": [
+    "US",
+    "1",
+    "Number of Points",
+    "Retired",
+    "NumberOfPoints"
+  ],
+  "50xx0020": [
+    "CS",
+    "1",
+    "Type of Data",
+    "Retired",
+    "TypeOfData"
+  ],
+  "50xx0022": [
+    "LO",
+    "1",
+    "Curve Description",
+    "Retired",
+    "CurveDescription"
+  ],
+  "50xx0030": [
+    "SH",
+    "1-n",
+    "Axis Units",
+    "Retired",
+    "AxisUnits"
+  ],
+  "50xx0040": [
+    "SH",
+    "1-n",
+    "Axis Labels",
+    "Retired",
+    "AxisLabels"
+  ],
+  "50xx0103": [
+    "US",
+    "1",
+    "Data Value Representation",
+    "Retired",
+    "DataValueRepresentation"
+  ],
+  "50xx0104": [
+    "US",
+    "1-n",
+    "Minimum Coordinate Value",
+    "Retired",
+    "MinimumCoordinateValue"
+  ],
+  "50xx0105": [
+    "US",
+    "1-n",
+    "Maximum Coordinate Value",
+    "Retired",
+    "MaximumCoordinateValue"
+  ],
+  "50xx0106": [
+    "SH",
+    "1-n",
+    "Curve Range",
+    "Retired",
+    "CurveRange"
+  ],
+  "50xx0110": [
+    "US",
+    "1-n",
+    "Curve Data Descriptor",
+    "Retired",
+    "CurveDataDescriptor"
+  ],
+  "50xx0112": [
+    "US",
+    "1-n",
+    "Coordinate Start Value",
+    "Retired",
+    "CoordinateStartValue"
+  ],
+  "50xx0114": [
+    "US",
+    "1-n",
+    "Coordinate Step Value",
+    "Retired",
+    "CoordinateStepValue"
+  ],
+  "50xx1001": [
+    "CS",
+    "1",
+    "Curve Activation Layer",
+    "Retired",
+    "CurveActivationLayer"
+  ],
+  "50xx2000": [
+    "US",
+    "1",
+    "Audio Type",
+    "Retired",
+    "AudioType"
+  ],
+  "50xx2002": [
+    "US",
+    "1",
+    "Audio Sample Format",
+    "Retired",
+    "AudioSampleFormat"
+  ],
+  "50xx2004": [
+    "US",
+    "1",
+    "Number of Channels",
+    "Retired",
+    "NumberOfChannels"
+  ],
+  "50xx2006": [
+    "UL",
+    "1",
+    "Number of Samples",
+    "Retired",
+    "NumberOfSamples"
+  ],
+  "50xx2008": [
+    "UL",
+    "1",
+    "Sample Rate",
+    "Retired",
+    "SampleRate"
+  ],
+  "50xx200A": [
+    "UL",
+    "1",
+    "Total Time",
+    "Retired",
+    "TotalTime"
+  ],
+  "50xx200C": [
+    "OB or OW",
+    "1",
+    "Audio Sample Data",
+    "Retired",
+    "AudioSampleData"
+  ],
+  "50xx200E": [
+    "LT",
+    "1",
+    "Audio Comments",
+    "Retired",
+    "AudioComments"
+  ],
+  "50xx2500": [
+    "LO",
+    "1",
+    "Curve Label",
+    "Retired",
+    "CurveLabel"
+  ],
+  "50xx2600": [
+    "SQ",
+    "1",
+    "Curve Referenced Overlay Sequence",
+    "Retired",
+    "CurveReferencedOverlaySequence"
+  ],
+  "50xx2610": [
+    "US",
+    "1",
+    "Curve Referenced Overlay Group",
+    "Retired",
+    "CurveReferencedOverlayGroup"
+  ],
+  "50xx3000": [
+    "OB or OW",
+    "1",
+    "Curve Data",
+    "Retired",
+    "CurveData"
+  ],
+  "60xx0010": [
+    "US",
+    "1",
+    "Overlay Rows",
+    "",
+    "OverlayRows"
+  ],
+  "60xx0011": [
+    "US",
+    "1",
+    "Overlay Columns",
+    "",
+    "OverlayColumns"
+  ],
+  "60xx0012": [
+    "US",
+    "1",
+    "Overlay Planes",
+    "Retired",
+    "OverlayPlanes"
+  ],
+  "60xx0015": [
+    "IS",
+    "1",
+    "Number of Frames in Overlay",
+    "",
+    "NumberOfFramesInOverlay"
+  ],
+  "60xx0022": [
+    "LO",
+    "1",
+    "Overlay Description",
+    "",
+    "OverlayDescription"
+  ],
+  "60xx0040": [
+    "CS",
+    "1",
+    "Overlay Type",
+    "",
+    "OverlayType"
+  ],
+  "60xx0045": [
+    "LO",
+    "1",
+    "Overlay Subtype",
+    "",
+    "OverlaySubtype"
+  ],
+  "60xx0050": [
+    "SS",
+    "2",
+    "Overlay Origin",
+    "",
+    "OverlayOrigin"
+  ],
+  "60xx0051": [
+    "US",
+    "1",
+    "Image Frame Origin",
+    "",
+    "ImageFrameOrigin"
+  ],
+  "60xx0052": [
+    "US",
+    "1",
+    "Overlay Plane Origin",
+    "Retired",
+    "OverlayPlaneOrigin"
+  ],
+  "60xx0060": [
+    "CS",
+    "1",
+    "Overlay Compression Code",
+    "Retired",
+    "OverlayCompressionCode"
+  ],
+  "60xx0061": [
+    "SH",
+    "1",
+    "Overlay Compression Originator",
+    "Retired",
+    "OverlayCompressionOriginator"
+  ],
+  "60xx0062": [
+    "SH",
+    "1",
+    "Overlay Compression Label",
+    "Retired",
+    "OverlayCompressionLabel"
+  ],
+  "60xx0063": [
+    "CS",
+    "1",
+    "Overlay Compression Description",
+    "Retired",
+    "OverlayCompressionDescription"
+  ],
+  "60xx0066": [
+    "AT",
+    "1-n",
+    "Overlay Compression Step Pointers",
+    "Retired",
+    "OverlayCompressionStepPointers"
+  ],
+  "60xx0068": [
+    "US",
+    "1",
+    "Overlay Repeat Interval",
+    "Retired",
+    "OverlayRepeatInterval"
+  ],
+  "60xx0069": [
+    "US",
+    "1",
+    "Overlay Bits Grouped",
+    "Retired",
+    "OverlayBitsGrouped"
+  ],
+  "60xx0100": [
+    "US",
+    "1",
+    "Overlay Bits Allocated",
+    "",
+    "OverlayBitsAllocated"
+  ],
+  "60xx0102": [
+    "US",
+    "1",
+    "Overlay Bit Position",
+    "",
+    "OverlayBitPosition"
+  ],
+  "60xx0110": [
+    "CS",
+    "1",
+    "Overlay Format",
+    "Retired",
+    "OverlayFormat"
+  ],
+  "60xx0200": [
+    "US",
+    "1",
+    "Overlay Location",
+    "Retired",
+    "OverlayLocation"
+  ],
+  "60xx0800": [
+    "CS",
+    "1-n",
+    "Overlay Code Label",
+    "Retired",
+    "OverlayCodeLabel"
+  ],
+  "60xx0802": [
+    "US",
+    "1",
+    "Overlay Number of Tables",
+    "Retired",
+    "OverlayNumberOfTables"
+  ],
+  "60xx0803": [
+    "AT",
+    "1-n",
+    "Overlay Code Table Location",
+    "Retired",
+    "OverlayCodeTableLocation"
+  ],
+  "60xx0804": [
+    "US",
+    "1",
+    "Overlay Bits For Code Word",
+    "Retired",
+    "OverlayBitsForCodeWord"
+  ],
+  "60xx1001": [
+    "CS",
+    "1",
+    "Overlay Activation Layer",
+    "",
+    "OverlayActivationLayer"
+  ],
+  "60xx1100": [
+    "US",
+    "1",
+    "Overlay Descriptor - Gray",
+    "Retired",
+    "OverlayDescriptorGray"
+  ],
+  "60xx1101": [
+    "US",
+    "1",
+    "Overlay Descriptor - Red",
+    "Retired",
+    "OverlayDescriptorRed"
+  ],
+  "60xx1102": [
+    "US",
+    "1",
+    "Overlay Descriptor - Green",
+    "Retired",
+    "OverlayDescriptorGreen"
+  ],
+  "60xx1103": [
+    "US",
+    "1",
+    "Overlay Descriptor - Blue",
+    "Retired",
+    "OverlayDescriptorBlue"
+  ],
+  "60xx1200": [
+    "US",
+    "1-n",
+    "Overlays - Gray",
+    "Retired",
+    "OverlaysGray"
+  ],
+  "60xx1201": [
+    "US",
+    "1-n",
+    "Overlays - Red",
+    "Retired",
+    "OverlaysRed"
+  ],
+  "60xx1202": [
+    "US",
+    "1-n",
+    "Overlays - Green",
+    "Retired",
+    "OverlaysGreen"
+  ],
+  "60xx1203": [
+    "US",
+    "1-n",
+    "Overlays - Blue",
+    "Retired",
+    "OverlaysBlue"
+  ],
+  "60xx1301": [
+    "IS",
+    "1",
+    "ROI Area",
+    "",
+    "ROIArea"
+  ],
+  "60xx1302": [
+    "DS",
+    "1",
+    "ROI Mean",
+    "",
+    "ROIMean"
+  ],
+  "60xx1303": [
+    "DS",
+    "1",
+    "ROI Standard Deviation",
+    "",
+    "ROIStandardDeviation"
+  ],
+  "60xx1500": [
+    "LO",
+    "1",
+    "Overlay Label",
+    "",
+    "OverlayLabel"
+  ],
+  "60xx3000": [
+    "OB or OW",
+    "1",
+    "Overlay Data",
+    "",
+    "OverlayData"
+  ],
+  "60xx4000": [
+    "LT",
+    "1",
+    "Overlay Comments",
+    "Retired",
+    "OverlayComments"
+  ],
+  "7Fxx0010": [
+    "OB or OW",
+    "1",
+    "Variable Pixel Data",
+    "Retired",
+    "VariablePixelData"
+  ],
+  "7Fxx0011": [
+    "US",
+    "1",
+    "Variable Next Data Group",
+    "Retired",
+    "VariableNextDataGroup"
+  ],
+  "7Fxx0020": [
+    "OW",
+    "1",
+    "Variable Coefficients SDVN",
+    "Retired",
+    "VariableCoefficientsSDVN"
+  ],
+  "7Fxx0030": [
+    "OW",
+    "1",
+    "Variable Coefficients SDHN",
+    "Retired",
+    "VariableCoefficientsSDHN"
+  ],
+  "7Fxx0040": [
+    "OW",
+    "1",
+    "Variable Coefficients SDDN",
+    "Retired",
+    "VariableCoefficientsSDDN"
+  ]
+}

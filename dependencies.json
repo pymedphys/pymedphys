@@ -150,9 +150,12 @@
         "copy",
         "functools",
         "glob",
+        "json",
         "operator",
         "os",
-        "re"
+        "pprint",
+        "re",
+        "warnings"
       ]
     },
     "pymedphys_electronfactors": {
