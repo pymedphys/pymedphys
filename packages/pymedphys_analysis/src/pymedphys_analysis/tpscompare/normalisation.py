@@ -30,10 +30,16 @@ from scipy.interpolate import interp1d
 from scipy.signal import savgol_filter
 
 
-def normalise(distance, relative_dose, scan_curvetype, scan_depth,
-              pdd_normalisation_depth=None,
-              profile_normalisation_position=None, scale_to_pdd=False,
-              smoothed_normalisation=False):
+def normalise(
+    distance,
+    relative_dose,
+    scan_curvetype,
+    scan_depth,
+    pdd_normalisation_depth=None,
+    profile_normalisation_position=None,
+    scale_to_pdd=False,
+    smoothed_normalisation=False,
+):
     """Take a series of PDDs and/or profiles and normalise them according to
     a range of available options.
     """
@@ -41,16 +47,18 @@ def normalise(distance, relative_dose, scan_curvetype, scan_depth,
     scan_curvetype = np.array(scan_curvetype)
 
     # Find the references of PDDs and profiles
-    ref_of_pdd = np.where(scan_curvetype == 'PDD')[0]
+    ref_of_pdd = np.where(scan_curvetype == "PDD")[0]
     ref_of_profile = np.where(
-        (scan_curvetype == 'INPLANE_PROFILE') |
-        (scan_curvetype == 'CROSSPLANE_PROFILE'))[0]
+        (scan_curvetype == "INPLANE_PROFILE") | (scan_curvetype == "CROSSPLANE_PROFILE")
+    )[0]
 
     # Step through each PDD and normalise them
     for i in ref_of_pdd:
         relative_dose[i] = normalise_pdd(
-            relative_dose[i], depth=distance[i],
-            normalisation_depth=pdd_normalisation_depth)
+            relative_dose[i],
+            depth=distance[i],
+            normalisation_depth=pdd_normalisation_depth,
+        )
 
     # If user requested scaling to PDD run "normalise" profile with relevant
     # options
@@ -60,26 +68,32 @@ def normalise(distance, relative_dose, scan_curvetype, scan_depth,
 
         for i in ref_of_profile:
             relative_dose[i] = normalise_profile(
-                distance[i], relative_dose[i],
-                pdd_distance=pdd_distance, pdd_relative_dose=pdd_relative_dose,
+                distance[i],
+                relative_dose[i],
+                pdd_distance=pdd_distance,
+                pdd_relative_dose=pdd_relative_dose,
                 scan_depth=scan_depth[i],
                 normalisation_position=profile_normalisation_position,
                 smoothed_normalisation=smoothed_normalisation,
-                scale_to_pdd=True)
+                scale_to_pdd=True,
+            )
     # If user did not request PDD scaling run normalise_profile with basic
     # options
     else:
         for i in ref_of_profile:
             relative_dose[i] = normalise_profile(
-                distance[i], relative_dose[i],
+                distance[i],
+                relative_dose[i],
                 normalisation_position=profile_normalisation_position,
-                smoothed_normalisation=smoothed_normalisation)
+                smoothed_normalisation=smoothed_normalisation,
+            )
 
     return relative_dose
 
 
-def normalise_pdd(relative_dose, depth=None, normalisation_depth=None,
-                  smoothed_normalisation=False):
+def normalise_pdd(
+    relative_dose, depth=None, normalisation_depth=None, smoothed_normalisation=False
+):
     """Normalise a pdd at a given depth. If normalisation_depth is left
     undefined then the depth of dose maximum is used for the normalisation
     depth.
@@ -101,18 +115,24 @@ def normalise_pdd(relative_dose, depth=None, normalisation_depth=None,
     else:
         if depth is None:
             raise Exception(
-                "distance variable needs to be defined to normalise to a "
-                "depth")
+                "distance variable needs to be defined to normalise to a " "depth"
+            )
         interpolation = interp1d(depth, filtered)
         normalisation = 100 / interpolation(normalisation_depth)
 
     return relative_dose * normalisation
 
 
-def normalise_profile(distance, relative_dose,
-                      pdd_distance=None, pdd_relative_dose=None,
-                      scan_depth=None, normalisation_position='cra',
-                      scale_to_pdd=False, smoothed_normalisation=False):
+def normalise_profile(
+    distance,
+    relative_dose,
+    pdd_distance=None,
+    pdd_relative_dose=None,
+    scan_depth=None,
+    normalisation_position="cra",
+    scale_to_pdd=False,
+    smoothed_normalisation=False,
+):
     """Normalise a profile given a defined normalisation position and
     normalisation scaling
     """
@@ -121,12 +141,11 @@ def normalise_profile(distance, relative_dose,
     if scale_to_pdd:
         # If insufficient information has been supplies raise a meaningful
         # error
-        if (
-                pdd_distance is None or pdd_relative_dose is None or
-                scan_depth is None):
+        if pdd_distance is None or pdd_relative_dose is None or scan_depth is None:
             raise Exception(
                 "Scaling to PDD requires pdd_distance, pdd_relative_dose, "
-                "and scan_depth to be defined.")
+                "and scan_depth to be defined."
+            )
 
         pdd_interpolation = interp1d(pdd_distance, pdd_relative_dose)
         scaling = pdd_interpolation(scan_depth)
@@ -153,23 +172,22 @@ def normalise_profile(distance, relative_dose,
         normalisation = scaling / interpolation(float_position)
 
     # Otherwise if the user gave 'cra' (case independent) normalise at 0
-    elif normalisation_position.lower() == 'cra':
+    elif normalisation_position.lower() == "cra":
         normalisation = scaling / interpolation(0)
 
     # Otherwise if the user gave 'cm' (case independent) normalise to the
     # centre of mass
-    elif normalisation_position.lower() == 'cm':
+    elif normalisation_position.lower() == "cm":
         threshold = 0.5 * np.max(relative_dose)
         weights = relative_dose.copy()
         weights[weights < threshold] = 0
 
         centre_of_mass = np.average(distance, weights=weights)
-        normalisation = (
-            scaling / interpolation(centre_of_mass))
+        normalisation = scaling / interpolation(centre_of_mass)
 
     # Otherwise if the user gave 'max' (case independent) normalise to the
     # point of dose maximum
-    elif normalisation_position.lower() == 'max':
+    elif normalisation_position.lower() == "max":
         normalisation = scaling / np.max(relative_dose)
 
     return relative_dose * normalisation
