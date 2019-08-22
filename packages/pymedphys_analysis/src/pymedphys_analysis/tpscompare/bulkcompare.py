@@ -30,8 +30,7 @@ import pathlib
 from .mephysto import absolute_scans_from_mephysto
 
 
-def load_and_normalise_mephysto(directory, regex, absolute_doses,
-                                normalisation_depth):
+def load_and_normalise_mephysto(directory, regex, absolute_doses, normalisation_depth):
     """Read and normalise a directory of Mephysto files.
 
     Mephysto files are renormalised at the ``normalistation_depth`` to be
@@ -59,31 +58,26 @@ def load_and_normalise_mephysto(directory, regex, absolute_doses,
     """
     directory = pathlib.Path(directory)
 
-    all_mephysto_files = list(directory.glob('*.mcc'))
-    matches = [
-        re.match(regex, filepath.name) for filepath in all_mephysto_files
-    ]
-    keys = [
-        match.group(1) for match in matches if match
-    ]
+    all_mephysto_files = list(directory.glob("*.mcc"))
+    matches = [re.match(regex, filepath.name) for filepath in all_mephysto_files]
+    keys = [match.group(1) for match in matches if match]
     mephysto_files = [
-        filepath for filepath, match in zip(all_mephysto_files, matches)
-        if match
+        filepath for filepath, match in zip(all_mephysto_files, matches) if match
     ]
 
     if not set(keys).issubset(set(absolute_doses.keys())):
         keys_not_found = set(keys) - set(absolute_doses.keys())
         raise ValueError(
             "The following keys were not provided within the "
-            f"`absolute_doses` variable:\n{keys_not_found}")
+            f"`absolute_doses` variable:\n{keys_not_found}"
+        )
 
-    mephysto_file_map = {
-        key: filepath for key, filepath in zip(keys, mephysto_files)
-    }
+    mephysto_file_map = {key: filepath for key, filepath in zip(keys, mephysto_files)}
 
     absolute_scans_per_field = {
         key: absolute_scans_from_mephysto(
-            mephysto_file_map[key], absolute_doses[key], normalisation_depth)
+            mephysto_file_map[key], absolute_doses[key], normalisation_depth
+        )
         for key in keys
     }
 
