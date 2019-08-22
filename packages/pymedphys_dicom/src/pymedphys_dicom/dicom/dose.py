@@ -28,10 +28,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
 
-from scipy.interpolate import RegularGridInterpolator
-
 import pydicom
 import pydicom.uid
+
+from pymedphys_utilities.interpolate import RegularGridInterpolator
 
 from ..rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 

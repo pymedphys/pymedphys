@@ -138,8 +138,7 @@
         "matplotlib",
         "numpy",
         "packaging",
-        "pydicom",
-        "scipy"
+        "pydicom"
       ],
       "internal": [
         "pymedphys_base",
@@ -190,11 +189,11 @@
         "numpy"
       ],
       "internal": [
-        "pymedphys_dicom"
+        "pymedphys_dicom",
+        "pymedphys_utilities"
       ],
       "stdlib": [
         "dataclasses",
-        "itertools",
         "sys",
         "typing"
       ]
@@ -329,6 +328,7 @@
       "stdlib": [
         "glob",
         "hashlib",
+        "itertools",
         "json",
         "lzma",
         "os",
