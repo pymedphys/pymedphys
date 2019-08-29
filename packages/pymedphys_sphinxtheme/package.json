@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "bourbon": "~4.3",
-    "bourbon-neat": "~1.9",
+    "bourbon-neat": "~4.0",
     "browserify": "^13.0.0",
     "css-loader": "^2.1.1",
     "file-loader": "^3.0.1",

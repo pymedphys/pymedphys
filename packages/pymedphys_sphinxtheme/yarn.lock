@@ -544,12 +544,10 @@ bonjour@^3.5.0:
     multicast-dns "^6.0.1"
     multicast-dns-service-types "^1.1.0"
 
-bourbon-neat@~1.9:
-  version "1.9.1"
-  resolved "https://registry.yarnpkg.com/bourbon-neat/-/bourbon-neat-1.9.1.tgz#f7932e889bb24ac908c45d399b04bd5b0df1e949"
-  integrity sha512-W4gjJx1j+KPNF8Bg/3ecaTHPMC7IJ2pFKmYEZanWtzFk9MpM9kn+f14iXypIj8htHMRmzVByhzFhVWwuDKSTYg==
-  dependencies:
-    node-sass "^4.1.1"
+bourbon-neat@~4.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/bourbon-neat/-/bourbon-neat-4.0.0.tgz#8aa1794aafba50b13993817af5e16c449739e332"
+  integrity sha512-Ql1JdvjNvK9NbGvcBpsDkfuRRMK8fZ/mx1gRyZEy3PM/kqQ8QX0PcmKEqnZMl18YLfKaDwC0qa+e36TlDmT49g==
 
 bourbon@~4.3:
   version "4.3.4"
@@ -3355,7 +3353,7 @@ node-pre-gyp@^0.12.0:
     semver "^5.3.0"
     tar "^4"
 
-node-sass@^4.1.1, node-sass@^4.12.0:
+node-sass@^4.12.0:
   version "4.12.0"
   resolved "https://registry.yarnpkg.com/node-sass/-/node-sass-4.12.0.tgz#0914f531932380114a30cc5fa4fa63233a25f017"
   integrity sha512-A1Iv4oN+Iel6EPv77/HddXErL2a+gZ4uBeZUy+a8O35CFYTXhgA8MgLCWBtwpGZdCvTvQ9d+bQxX/QC36GDPpQ==
