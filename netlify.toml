@@ -1,6 +1,6 @@
 [build]
   command = "yarn docs:netlify"
-  publish = "docs/_build/html/*"
+  publish = "docs/_build/html"
 
 
 [[redirects]]
