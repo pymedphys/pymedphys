@@ -85,13 +85,9 @@
         "scipy"
       ],
       "internal": [
-        "pymedphys_dicom",
-        "pymedphys_fileformats"
+        "pymedphys_dicom"
       ],
-      "stdlib": [
-        "pathlib",
-        "re"
-      ]
+      "stdlib": []
     },
     "pymedphys_base": {
       "external": [
@@ -205,10 +201,10 @@
         "numpy",
         "pydicom",
         "scipy",
-        "tqdm",
-        "xarray"
+        "tqdm"
       ],
       "internal": [
+        "pymedphys_fileformats",
         "pymedphys_utilities"
       ],
       "stdlib": [
@@ -216,6 +212,8 @@
         "copy",
         "csv",
         "os",
+        "pathlib",
+        "re",
         "string",
         "subprocess",
         "sys",
