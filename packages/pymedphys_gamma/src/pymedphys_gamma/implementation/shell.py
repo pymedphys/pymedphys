@@ -38,7 +38,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..interpolate import RegularGridInterpolator
+from pymedphys_utilities.interpolate import RegularGridInterpolator
+
 from ..utilities import run_input_checks
 
 

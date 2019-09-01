@@ -24,9 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-def field_points_to_compare(side_length, penumbra_width, rotation,
-                            num_points_across_penumbra=11,
-                            num_points_across_field_edge=51):
+def field_points_to_compare(
+    side_length,
+    penumbra_width,
+    rotation,
+    num_points_across_penumbra=11,
+    num_points_across_field_edge=51,
+):
     """Points for comparison for field centre finding.
 
     Creates two sets of points centred around the origin designed
@@ -36,8 +40,7 @@ def field_points_to_compare(side_length, penumbra_width, rotation,
     """
 
 
-def penumbra_flip_diff(field, centre_to_test, side_length, penumbra_width,
-                       rotation):
+def penumbra_flip_diff(field, centre_to_test, side_length, penumbra_width, rotation):
     """Find sum of squares difference between penumbras when flipped
 
     Parameters
