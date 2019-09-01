@@ -42,6 +42,14 @@ WHITELIST = (
     "pymedphys",
 )
 
+# ALLOWED_EXTERNAL = (
+#     "numpy",
+#     "matplotlib",
+#     "pydicom",
+#     "pandas",
+#     "packaging"
+# )
+
 
 def build_wheels_with_yarn():
     yarn = shutil.which("yarn")
