@@ -94,7 +94,7 @@ class RegularGridInterpolator(object):
     --------
     Evaluate a simple example function on the points of a 3D grid:
 
-    >>> from pymedphys_gamma.interpolate.regulargrid import RegularGridInterpolator
+    >>> from pymedphys_utilities.interpolate.regulargrid import RegularGridInterpolator
     >>> def f(x, y, z):
     ...     return 2 * x**3 + 3 * y**2 - z
     >>> x = np.linspace(1, 4, 11)
