@@ -4,6 +4,9 @@ from .core import (
     get_fraction_group_beam_sequence_and_meterset,
     get_fraction_group_index,
     get_beam_indices_of_fraction_group,
+    get_surface_entry_point,
+    get_surface_entry_point_with_fallback,
+    require_gantries_be_zero,
 )
 
 from .build import (

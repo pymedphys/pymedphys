@@ -12,6 +12,8 @@ from pymedphys_dicom.dicom import (
     dose_from_dataset,
     find_dose_within_structure,
     dicom_dataset_from_dict,
+    depth_dose,
+    profile,
 )
 
 from pymedphys_dicom.rtplan import (
