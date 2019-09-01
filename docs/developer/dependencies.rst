@@ -4,4 +4,4 @@ Package Dependencies
 
 Here are graphs of how each module depends on each other.
 
-.. include:: ../graphs/graphs.rst
+.. include:: ../graphs/graphs.txt
