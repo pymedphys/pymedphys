@@ -31,18 +31,13 @@ from pymedphys_dicom.dicom import dicom_dataset_from_dict
 
 def test_dicom_from_dict():
     baseline_dataset = pydicom.Dataset()
-    baseline_dataset.Manufacturer = 'PyMedPhys'
+    baseline_dataset.Manufacturer = "PyMedPhys"
     beam_sequence = pydicom.Dataset()
-    beam_sequence.Manufacturer = 'PyMedPhys'
+    beam_sequence.Manufacturer = "PyMedPhys"
     baseline_dataset.BeamSequence = [beam_sequence]
 
-    created_dataset = dicom_dataset_from_dict({
-        'Manufacturer': 'PyMedPhys',
-        'BeamSequence': [
-            {
-                'Manufacturer': 'PyMedPhys'
-            }
-        ]
-    })
+    created_dataset = dicom_dataset_from_dict(
+        {"Manufacturer": "PyMedPhys", "BeamSequence": [{"Manufacturer": "PyMedPhys"}]}
+    )
 
     assert created_dataset == baseline_dataset

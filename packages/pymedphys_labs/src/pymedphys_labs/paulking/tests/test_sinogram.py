@@ -34,16 +34,16 @@ from pymedphys_labs.paulking.sinogram import make_histogram
 from pymedphys_labs.paulking.sinogram import find_modulation_factor
 from pymedphys_labs.paulking.sinogram import unshuffle
 
-SIN_CSV_FILE = os.path.join(
-    os.path.dirname(__file__), "./data/sinogram.csv")
+SIN_CSV_FILE = os.path.join(os.path.dirname(__file__), "./data/sinogram.csv")
 
 SIN_BIN_FILE = os.path.join(
-    os.path.dirname(__file__), "./data/MLC_all_test_old_800P.bin")
+    os.path.dirname(__file__), "./data/MLC_all_test_old_800P.bin"
+)
 
 
 def test_read_csv_file():
     pat_id, results = read_csv_file(SIN_CSV_FILE)
-    assert pat_id == '00000 - ANONYMOUS, PATIENT'
+    assert pat_id == "00000 - ANONYMOUS, PATIENT"
     num_projections = len(results)
     assert num_projections == 464
     num_leaves = len(results[0])
@@ -52,25 +52,26 @@ def test_read_csv_file():
 
 def test_read_bin_file():
     assert read_bin_file(SIN_BIN_FILE).shape == (400, 64)
+
+
 # convert this to a nested list
 
 
 def test_crop():
-    STRIP = [[0.0]*31 + [1.0]*2 + [0.0]*31,
-             [0.0]*31 + [1.0]*2 + [0.0]*31]
+    STRIP = [[0.0] * 31 + [1.0] * 2 + [0.0] * 31, [0.0] * 31 + [1.0] * 2 + [0.0] * 31]
     assert crop(STRIP) == [[1.0, 1.0], [1.0, 1.0]]
 
 
 def test_unshuffle():
-    unshuffled = unshuffle([[0]*25 + [1.0]*14 + [0]*25]*510)
-    assert len(unshuffled) == 51          # number of angles
-    assert len(unshuffled[0]) == 10       # number of projections
-    assert unshuffled[0][0][0] == 0       # first leaf is closed
+    unshuffled = unshuffle([[0] * 25 + [1.0] * 14 + [0] * 25] * 510)
+    assert len(unshuffled) == 51  # number of angles
+    assert len(unshuffled[0]) == 10  # number of projections
+    assert unshuffled[0][0][0] == 0  # first leaf is closed
 
 
 def test_make_histogram():
     sinogram = read_csv_file(SIN_CSV_FILE)[-1]
-    assert np.allclose(make_histogram(sinogram)[0][0], [0., 0.1])
+    assert np.allclose(make_histogram(sinogram)[0][0], [0.0, 0.1])
     assert make_histogram(sinogram)[0][1] == 25894
     # [(array([0. , 0.1]), 25894),
     #  (array([0.1, 0.2]), 0),

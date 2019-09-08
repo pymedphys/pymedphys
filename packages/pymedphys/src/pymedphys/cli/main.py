@@ -30,23 +30,25 @@ from .dicom import dicom_cli
 from .docker import docker_cli
 from .logfile import logfile_cli
 from .trf import trf_cli
+from .pinnacle import pinnacle_cli
 
 
 class DefaultHelpParser(argparse.ArgumentParser):
     def error(self, message):
-        sys.stderr.write('error: %s\n' % message)
+        sys.stderr.write("error: %s\n" % message)
         self.print_help()
         sys.exit(2)
 
 
 def define_parser():
-    parser = DefaultHelpParser(prog='pymedphys')
+    parser = DefaultHelpParser(prog="pymedphys")
     subparsers = parser.add_subparsers()
 
     dicom_cli(subparsers)
     docker_cli(subparsers)
     logfile_cli(subparsers)
     trf_cli(subparsers)
+    pinnacle_cli(subparsers)
 
     return parser
 
@@ -56,12 +58,11 @@ def pymedphys_cli():
 
     args = parser.parse_args()
 
-    if hasattr(args, 'func'):
+    if hasattr(args, "func"):
         args.func(args)
     else:
         subparser_names = [
-            attribute for attribute in dir(args)
-            if not attribute.startswith('_')
+            attribute for attribute in dir(args) if not attribute.startswith("_")
         ]
 
         if not subparser_names:
@@ -72,4 +73,4 @@ def pymedphys_cli():
             subparser_name = subparser_names[0]
             assert getattr(args, subparser_name) is None
 
-            parser.parse_args([subparser_name, '--help'])
+            parser.parse_args([subparser_name, "--help"])

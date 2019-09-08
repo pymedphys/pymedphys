@@ -1,8 +1,10 @@
 install_requires = [
     "Pillow",
     "matplotlib",
-    "numpy >= 1.12, < 1.16",
-    "pymedphys_utilities >= 0.8.0dev16, < 0.9.0",
+    "numpy >= 1.12",
+    "pydicom",
+    "pymedphys_fileformats >= 0.11.0dev0, < 0.12.0",
+    "pymedphys_utilities >= 0.11.0dev0, < 0.12.0",
     "scipy",
-    "xarray"
+    "tqdm",
 ]

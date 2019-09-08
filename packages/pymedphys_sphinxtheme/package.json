@@ -28,16 +28,17 @@
   "private": true,
   "scripts": {
     "bootstrap": "yarn --production && yarn webpack:prod",
+    "conda-forge": "yarn bootstrap && python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
     "pip:install:dev": "yarn bootstrap && pip install -e .",
     "pip:install:prod": "yarn bootstrap && pip install .",
     "pip:install:test": "yarn bootstrap && pip install .[test]",
     "postversion": "yarn propagate:version",
     "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
-    "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
+    "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*",
     "webpack:dev": "yarn webpack-dev-server --open --config webpack.dev.js",
     "webpack:prod": "yarn webpack --config webpack.prod.js"
   },
-  "version": "0.8.0-dev.16"
+  "version": "0.11.0-dev.0"
 }

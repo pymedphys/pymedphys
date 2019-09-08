@@ -46,18 +46,18 @@ def read_mapcheck_txt(file_name):
         | MapCheck.dose = np.array (x,y), float dose
     """
 
-    Mapcheck = namedtuple('Mapcheck', ['x', 'y', 'dose'])
+    Mapcheck = namedtuple("Mapcheck", ["x", "y", "dose"])
 
-    with open(file_name, 'r') as mapcheck_file:
-        m_chk = '\n'.join(mapcheck_file.readlines())
-        m_chk = m_chk.split('Dose Interpolated')[-1]
-        m_chk = m_chk.split('\n')[2:]
+    with open(file_name, "r") as mapcheck_file:
+        m_chk = "\n".join(mapcheck_file.readlines())
+        m_chk = m_chk.split("Dose Interpolated")[-1]
+        m_chk = m_chk.split("\n")[2:]
 
-    temp = [r for r in csv.reader(m_chk, delimiter='\t') if 'Xcm' in r]
+    temp = [r for r in csv.reader(m_chk, delimiter="\t") if "Xcm" in r]
     x_coord = np.array(temp[0][2:]).astype(float)
     y_coord, dose = np.array([]), np.array([])
 
-    for line in csv.reader(m_chk, delimiter='\t'):
+    for line in csv.reader(m_chk, delimiter="\t"):
         if len(line) > 1:
             try:
                 line = [float(r) for r in line]

@@ -22,25 +22,18 @@ PyMedPhys
 
 .. START_OF_ABOUT_IMPORT
 
-PyMedPhys aims to be a Medical Physics open source `monorepo`_ where we
-can all store, review, use, and learn off of each other's code. It is a
-library of tools that we all have access to and, because of its
+Bringing together Medical Physicists to create quality transparent software at
+a price affordable by all our peers (free)
+
+PyMedPhys, a community powered by git and continuous integration. A place to
+share, review, improve, and transparently learn off of each other’s code. 
+
+It is a library of tools that we all have access to and, because of its
 `license`_, will all have access to whatever it becomes in the future.
 It is inspired by the collaborative work of our physics peers in
 astronomy and their `Astropy Project`_.
 
-It is structured and glued together with Python, but certainly not
-limited to one programming language. A great place to begin sharing is
-the labs, a range of experimental modules where you can learn to use git
-and begin the process of code sharing and review. For example, feel free
-to submit to the labs your most useful MatLab scripts which we can help
-you glue together with Python using `oct2py`_.
-
-.. _`oct2py`: http://blink1073.github.io/oct2py/
-
 .. _`Astropy Project`: http://www.astropy.org/
-
-.. _`monorepo`: https://cacm.acm.org/magazines/2016/7/204032-why-google-stores-billions-of-lines-of-code-in-a-single-repository/fulltext
 
 .. _`license`: https://choosealicense.com/licenses/agpl-3.0/
 
@@ -82,7 +75,14 @@ along with their affiliation:
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
 
-.. _`Matthew Jennings`: https://github.com/centrus007
+.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
+
+
+* `Phillip Chlap`_
+    * `University of New South Wales`_, Australia
+    * `South Western Sydney Local Health District`_, Australia
+
+.. _`Phillip Chlap`: https://github.com/pchlap
 
 
 * `Paul King`_
@@ -102,6 +102,13 @@ along with their affiliation:
     * `Riverina Cancer Care Centre`_, Australia
 
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
+
+
+* `Pedro Martinez`_
+    * `University of Calgary`_, Canada
+    * `Tom Baker Cancer Centre`_, Canada
+
+.. _`Pedro Martinez`: https://github.com/peterg1t
 
 |
 
@@ -133,13 +140,28 @@ along with their affiliation:
 
 |
 
+.. image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UofC_logo.png
+    :target: `University of Calgary`_
+    :align: center
+    :width: 400 px
+
+|
+
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
 
+.. _`University of New South Wales`: https://www.unsw.edu.au/
+
+.. _`South Western Sydney Local Health District`: https://www.swslhd.health.nsw.gov.au/
+
 .. _`Anderson Regional Cancer Center`: http://www.andersonregional.org/CancerCenter.aspx
 
 .. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
+
+.. _`University of Calgary`: http://www.ucalgary.ca/
+
+.. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
 
 
 We want you on this list. We want you, whether you are a  clinical
