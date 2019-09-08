@@ -231,6 +231,8 @@ scratch-*
 
 graph*.svg
 
+v*.tar.gz
+
 # Paul's custom additions
 Ubuntu_GitHub
 Ubuntu_GitHub.pub

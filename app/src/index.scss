@@ -1,0 +1,45 @@
+@import '~@blueprintjs/core/lib/css/blueprint';
+@import '~@blueprintjs/core/lib/scss/variables';
+
+body {
+  margin: 0px;
+}
+
+#root {
+  padding-top: $pt-navbar-height;
+}
+
+.logo {
+  width: 45px;
+  margin-right: 15px;
+  margin-left: 15px;
+}
+
+.AppMain {
+  max-width: 700px;
+  margin: 50px auto 0 auto;
+}
+
+h2 {
+  margin: 25px 0 10px !important;
+}
+
+.floatleft {
+  float: left;
+}
+
+.floatright {
+  float: right;
+}
+
+.big-top-margin {
+  margin: 300px 0 0 0;
+}
+
+.monaco-container {
+  position: absolute;
+  top: 50px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}

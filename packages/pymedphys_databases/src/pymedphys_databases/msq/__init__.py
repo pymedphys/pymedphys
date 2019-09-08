@@ -27,10 +27,20 @@
 """A Mosaiq toolbox.
 
 Examples:
-    >>> from pymedphys.msq import mosaiq_connect
+    >>> from pymedphys.msq import (
+    ...     mosaiq_connect,
+    ...     multi_mosaiq_connect,
+    ...     get_qcls_by_date,
+    ...     get_staff_name)
 """
 
 from .connect import mosaiq_connect, multi_mosaiq_connect
 from .delivery import (
-    delivery_data_from_mosaiq, multi_fetch_and_verify_mosaiq,
-    get_mosaiq_delivery_details, OISDeliveryDetails, NoMosaiqEntries)
+    delivery_data_from_mosaiq,
+    multi_fetch_and_verify_mosaiq,
+    get_mosaiq_delivery_details,
+    OISDeliveryDetails,
+    NoMosaiqEntries,
+)
+
+from .helpers import get_qcls_by_date, get_staff_name

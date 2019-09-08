@@ -1,20 +1,22 @@
 {
   "dependencies": {
-    "pymedphys_dicom": "~0.8.0-dev.16",
-    "pymedphys_fileformats": "~0.8.0-dev.16",
-    "pymedphys_utilities": "~0.8.0-dev.16"
+    "pymedphys_dicom": "~0.11.0-dev.0",
+    "pymedphys_fileformats": "~0.11.0-dev.0",
+    "pymedphys_utilities": "~0.11.0-dev.0"
   },
   "name": "pymedphys_xlwings",
   "private": true,
   "scripts": {
-    "pip:install:dev": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install -e .')\"",
-    "pip:install:prod": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .')\"",
-    "pip:install:test": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install .[test]')\"",
+    "conda-forge": "python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
+    "install:xlwings": "python -c \"import os; os.environ['INSTALL_ON_LINUX'] = '1'; os.system('pip install xlwings');\"",
+    "pip:install:dev": "yarn install:xlwings && pip install -e .",
+    "pip:install:prod": "yarn install:xlwings && pip install .",
+    "pip:install:test": "yarn install:xlwings && pip install .[test]",
     "postversion": "yarn propagate:version",
     "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "python setup.py sdist bdist_wheel",
-    "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
+    "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.16"
+  "version": "0.11.0-dev.0"
 }

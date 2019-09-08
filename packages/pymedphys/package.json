@@ -1,20 +1,25 @@
 {
   "dependencies": {
-    "pymedphys_analysis": "~0.8.0-dev.16",
-    "pymedphys_coordsandscales": "~0.8.0-dev.16",
-    "pymedphys_databases": "~0.8.0-dev.16",
-    "pymedphys_dicom": "~0.8.0-dev.16",
-    "pymedphys_electronfactors": "~0.8.0-dev.16",
-    "pymedphys_fileformats": "~0.8.0-dev.16",
-    "pymedphys_labs": "~0.8.0-dev.16",
-    "pymedphys_logfiles": "~0.8.0-dev.16",
-    "pymedphys_utilities": "~0.8.0-dev.16",
-    "pymedphys_xlwings": "~0.8.0-dev.16"
+    "pymedphys_analysis": "~0.11.0-dev.0",
+    "pymedphys_base": "~0.11.0-dev.0",
+    "pymedphys_coordsandscales": "~0.11.0-dev.0",
+    "pymedphys_databases": "~0.11.0-dev.0",
+    "pymedphys_dicom": "~0.11.0-dev.0",
+    "pymedphys_electronfactors": "~0.11.0-dev.0",
+    "pymedphys_fileformats": "~0.11.0-dev.0",
+    "pymedphys_gamma": "~0.11.0-dev.0",
+    "pymedphys_labs": "~0.11.0-dev.0",
+    "pymedphys_logfiles": "~0.11.0-dev.0",
+    "pymedphys_mudensity": "~0.11.0-dev.0",
+    "pymedphys_pinnacle": "~0.11.0-dev.0",
+    "pymedphys_utilities": "~0.11.0-dev.0",
+    "pymedphys_xlwings": "~0.11.0-dev.0"
   },
   "name": "pymedphys",
   "private": true,
   "scripts": {
-    "copy:readme": "python -c \"import shutil; shutil.copy('../../README.rst', 'README.rst')\"",
+    "conda-forge": "yarn prerun && python -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv",
+    "copy:readme": "python ./scripts/attempt-readme-copy.py",
     "pip:install": "yarn prerun && pip install .",
     "pip:install:dev": "yarn prerun && pip install -e .",
     "pip:install:dev:all": "yarn prerun && pip install -e .[docs,test,lint,dev]",
@@ -26,8 +31,8 @@
     "prerun": "yarn copy:readme",
     "propagate:version": "python -m pymedphys_monomanage.propagate.versions",
     "pypi:build": "yarn run prerun && python setup.py sdist bdist_wheel",
-    "pypi:clean": "python -c \"import shutil; shutil.rmtree('dist'); shutil.rmtree('build')\"",
+    "pypi:clean": "python -m pymedphys_monomanage.clean.core",
     "pypi:upload": "twine upload dist/*"
   },
-  "version": "0.8.0-dev.16"
+  "version": "0.11.0-dev.0"
 }
