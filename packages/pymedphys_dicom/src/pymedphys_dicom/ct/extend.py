@@ -35,30 +35,23 @@ from ..constants.uuid import PYMEDPHYS_ROOT_UID
 
 
 def extend(input_dir, output_dir, index_to_copy, number_of_slices):
-    filepaths = glob(os.path.join(input_dir, '*'))
+    filepaths = glob(os.path.join(input_dir, "*"))
     dicom_datasets = load_dicom_into_deque(filepaths)
     extend_datasets(dicom_datasets, index_to_copy, number_of_slices)
 
-    filenames = [
-        os.path.basename(filepath)
-        for filepath in filepaths
-    ]
+    filenames = [os.path.basename(filepath) for filepath in filepaths]
 
     common_prefix = os.path.commonprefix(filenames)
 
     number_of_digits = len(str(len(dicom_datasets)))
     new_filenames = [
         "{}{}.dcm".format(
-            common_prefix,
-            dicom_dataset.SOPInstanceUID
+            common_prefix, str(dicom_dataset.InstanceNumber).zfill(number_of_digits)
         )
         for dicom_dataset in dicom_datasets
     ]
 
-    new_filepaths = [
-        os.path.join(output_dir, filename)
-        for filename in new_filenames
-    ]
+    new_filepaths = [os.path.join(output_dir, filename) for filename in new_filenames]
 
     for dicom_dataset, filepath in zip(dicom_datasets, new_filepaths):
         dicom_dataset.save_as(filepath)
@@ -72,8 +65,7 @@ def extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
 
 def load_dicom_into_deque(filepaths):
     dicom_datasets_initial_read = [
-        pydicom.dcmread(filepath, force=True)
-        for filepath in filepaths
+        pydicom.dcmread(filepath, force=True) for filepath in filepaths
     ]
 
     dicom_datasets = convert_datasets_to_deque(dicom_datasets_initial_read)
@@ -101,7 +93,8 @@ def slice_location(dicom_dataset):
 def copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
     append_method = get_append_method(dicom_datasets, index_to_copy)
     new_slice_locations = generate_new_slice_locations(
-        dicom_datasets, index_to_copy, number_of_slices)
+        dicom_datasets, index_to_copy, number_of_slices
+    )
 
     dataset_to_copy = deepcopy(dicom_datasets[index_to_copy])
 
@@ -113,7 +106,8 @@ def copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
         new_slice.SliceLocation = str(slice_location)
 
         image_position_patient_to_copy = deepcopy(
-            dicom_datasets[index_to_copy].ImagePositionPatient)
+            dicom_datasets[index_to_copy].ImagePositionPatient
+        )
         image_position_patient_to_copy[-1] = str(slice_location)
         new_slice.ImagePositionPatient = image_position_patient_to_copy
 
@@ -135,16 +129,13 @@ def generate_new_uids(dicom_datasets, uids=None):
 
 def generate_new_slice_locations(dicom_datasets, index_to_copy, number_of_slices):
     if index_to_copy == 0:
-        slice_diff = dicom_datasets[0].SliceLocation - \
-            dicom_datasets[1].SliceLocation
+        slice_diff = dicom_datasets[0].SliceLocation - dicom_datasets[1].SliceLocation
     elif index_to_copy == len(dicom_datasets) or index_to_copy == -1:
-        slice_diff = dicom_datasets[-1].SliceLocation - \
-            dicom_datasets[-2].SliceLocation
+        slice_diff = dicom_datasets[-1].SliceLocation - dicom_datasets[-2].SliceLocation
     else:
-        raise ValueError('index_to_copy must be first or last slice')
+        raise ValueError("index_to_copy must be first or last slice")
 
-    new_slice_locations = [
-        dicom_datasets[index_to_copy].SliceLocation + slice_diff]
+    new_slice_locations = [dicom_datasets[index_to_copy].SliceLocation + slice_diff]
     for _ in range(number_of_slices - 1):
         new_slice_locations.append(new_slice_locations[-1] + slice_diff)
 
@@ -153,27 +144,23 @@ def generate_new_slice_locations(dicom_datasets, index_to_copy, number_of_slices
 
 def get_append_method(dicom_datasets, index_to_copy):
     if index_to_copy == 0:
-        return 'appendleft'
+        return "appendleft"
     elif index_to_copy == len(dicom_datasets) or index_to_copy == -1:
-        return 'append'
+        return "append"
     else:
-        raise ValueError('index_to_copy must be first or last slice')
+        raise ValueError("index_to_copy must be first or last slice")
 
 
 def generate_uids(number_of_uids, randomisation_length=10, root=PYMEDPHYS_ROOT_UID):
     num_of_digits = len(str(number_of_uids))
 
-    middle_item = str(random.randint(
-        0, 10**randomisation_length)).zfill(randomisation_length)
+    middle_item = str(random.randint(0, 10 ** randomisation_length)).zfill(
+        randomisation_length
+    )
     time_stamp_item = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
 
-    last_item = [
-        str(i).zfill(num_of_digits) for i in range(number_of_uids)
-    ]
+    last_item = [str(i).zfill(num_of_digits) for i in range(number_of_uids)]
 
-    uids = [
-        '.'.join([root, middle_item, time_stamp_item, item])
-        for item in last_item
-    ]
+    uids = [".".join([root, middle_item, time_stamp_item, item]) for item in last_item]
 
     return uids
