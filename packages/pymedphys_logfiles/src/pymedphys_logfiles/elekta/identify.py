@@ -27,8 +27,7 @@
 from datetime import datetime
 from dateutil import tz
 
-from pymedphys_databases.msq import (
-    get_mosaiq_delivery_details, OISDeliveryDetails)
+from pymedphys_databases.msq import get_mosaiq_delivery_details, OISDeliveryDetails
 from pymedphys_fileformats.trf import decode_header_from_file
 
 
@@ -43,14 +42,15 @@ def date_convert(date, timezone):
     """Converts logfile UTC date to the provided timezone.
     The date is formatted to match the syntax required by Microsoft SQL."""
 
-    from_timezone = tz.gettz('UTC')
+    from_timezone = tz.gettz("UTC")
     to_timezone = tz.gettz(timezone)
 
-    utc_datetime = datetime.strptime(
-        date, '%y/%m/%d %H:%M:%S Z').replace(tzinfo=from_timezone)
+    utc_datetime = datetime.strptime(date, "%y/%m/%d %H:%M:%S Z").replace(
+        tzinfo=from_timezone
+    )
     local_time = utc_datetime.astimezone(to_timezone)
-    mosaiq_string_time = local_time.strftime('%Y-%m-%d %H:%M:%S')
-    path_string_time = local_time.strftime('%Y-%m-%d_%H%M%S')
+    mosaiq_string_time = local_time.strftime("%Y-%m-%d %H:%M:%S")
+    path_string_time = local_time.strftime("%Y-%m-%d_%H%M%S")
 
     return mosaiq_string_time, path_string_time
 
@@ -64,7 +64,11 @@ def identify_logfile(cursor, filepath, timezone) -> OISDeliveryDetails:
     mosaiq_string_time, _ = date_convert(header.date, timezone)
 
     delivery_details = get_mosaiq_delivery_details(
-        cursor, header.machine, mosaiq_string_time,
-        header.field_label, header.field_name)
+        cursor,
+        header.machine,
+        mosaiq_string_time,
+        header.field_label,
+        header.field_name,
+    )
 
     return delivery_details

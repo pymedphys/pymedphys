@@ -17,7 +17,17 @@ API
 
 Anonymisation
 -------------
-A suite of functions related to DICOM dataset anonymisation.
+A suite of functions related to DICOM anonymisation.
+
+You can find the list of DICOM keywords that are included in default
+anonymisation `here <https://github.com/pymedphys/pymedphys/blob/master/packages/pymedphys_dicom/src/pymedphys_dicom/dicom/identifying_keywords.json>`__.
+These were drawn from `DICOM Supp 142 <https://www.dicomstandard.org/supplements/>`__
+
+None of these functions anonymise UIDs, but plans are afoot to support this.
+
+**We do not yet claim conformance to any DICOM Application Level
+Confidentiality Profile**, but plan to be in a position to do so in the
+not-to-distant future.
 
 .. _`pymedphys.geometry.cubify_cube_definition`:
    geometry.html#pymedphys.geometry.cubify_cube_definition
@@ -64,4 +74,3 @@ RT Structure
 A suite of functions that apply specifically to DICOM RT Structure sets
 
 .. autofunction:: pymedphys.dicom.get_structure_aligned_cube
-

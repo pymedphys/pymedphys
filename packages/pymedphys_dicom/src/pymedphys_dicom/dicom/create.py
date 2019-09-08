@@ -48,19 +48,16 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
 
     for key, value in input_dict.items():
         if key not in DICOM_NAMES:
-            raise ValueError("{} is not within the DICOM dictionary."
-                             .format(key))
+            raise ValueError("{} is not within the DICOM dictionary.".format(key))
 
         if isinstance(value, dict):
             setattr(dataset, key, dicom_dataset_from_dict(value))
         elif isinstance(value, list):
             # TODO: Check for DICOM SQ type on this attribute
             if np.all([not isinstance(item, dict) for item in value]):
-                add_array_to_dataset(
-                    dataset, key, value)
+                add_array_to_dataset(dataset, key, value)
             elif np.all([isinstance(item, dict) for item in value]):
-                setattr(dataset, key,
-                        [dicom_dataset_from_dict(item) for item in value])
+                setattr(dataset, key, [dicom_dataset_from_dict(item) for item in value])
             else:
                 raise ValueError(
                     "{} should contain either only dictionaries, or no "
