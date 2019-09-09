@@ -26,11 +26,11 @@
 from copy import deepcopy
 
 import numpy as np
-from pydicom import Dataset
-from pydicom.datadict import DicomDictionary
+
+from ..shim import pydicom
 
 
-DICOM_NAMES = [item[-1] for _, item in DicomDictionary.items()]
+DICOM_NAMES = [item[-1] for _, item in pydicom.datadict.DicomDictionary.items()]
 
 
 def add_array_to_dataset(dataset, key, value):
@@ -42,7 +42,7 @@ def add_array_to_dataset(dataset, key, value):
 def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
     """Create a pydicom DICOM object from a dictionary"""
     if template_ds is None:
-        dataset = Dataset()
+        dataset = pydicom.Dataset()
     else:
         dataset = deepcopy(template_ds)
 

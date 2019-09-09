@@ -30,8 +30,7 @@ from os.path import abspath, basename, dirname, isdir, isfile, join as pjoin
 import pprint
 
 import numpy as np
-import pydicom
-from pydicom.dataset import Dataset
+from ..shim import pydicom
 
 from ..utilities import remove_file
 
@@ -65,7 +64,7 @@ VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "OW": (0).to_bytes(2, "little"),
     "PN": "Anonymous",
     "SH": "Anonymous",
-    "SQ": [Dataset()],
+    "SQ": [pydicom.Dataset()],
     "ST": "Anonymous",
     "TM": "000900.000000",
     "UI": PYMEDPHYS_ROOT_UID,
