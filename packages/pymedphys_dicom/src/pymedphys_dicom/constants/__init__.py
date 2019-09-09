@@ -4,6 +4,8 @@ from .core import (
     BASELINE_DICOM_REPEATERS_DICT,
     BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
     get_baseline_dict_entry,
+    DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
+    NotInBaselineError,
 )
 
 from .uuid import PYMEDPHYS_ROOT_UID
