@@ -28,7 +28,7 @@ from copy import deepcopy
 from packaging import version
 
 import numpy as np
-import pydicom
+from ..shim import pydicom
 
 from .anonymise import anonymise_dataset
 from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
