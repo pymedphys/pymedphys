@@ -21,6 +21,8 @@ from pymedphys_dicom.rtplan import (
     get_gantry_angles_from_dicom,
 )
 
+from pymedphys_dicom.ct import extend as extend_ct
+
 try:
     from pymedphys_analysis.geometry import get_structure_aligned_cube
 except ImportError:
