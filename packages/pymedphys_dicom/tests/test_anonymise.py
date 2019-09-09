@@ -13,7 +13,12 @@ from pydicom.filereader import read_file_meta_info
 from pydicom.tag import Tag
 import pytest
 
-from pymedphys_dicom.constants.core import BaselineDicomDictionary
+from pymedphys_dicom.constants import (
+    BASELINE_DICOM_DICT,
+    BASELINE_DICOM_DICT_FILEPATH,
+    BASELINE_DICOM_REPEATERS_DICT,
+    BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
+)
 
 from pymedphys_dicom.dicom import (
     anonymise_dataset,

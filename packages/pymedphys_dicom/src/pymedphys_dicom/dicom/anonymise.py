@@ -35,7 +35,7 @@ from pydicom.dataset import Dataset
 
 from ..utilities import remove_file
 
-from .constants import (
+from ..constants import (
     BASELINE_KEYWORD_VR_DICT,
     get_baseline_dict_entry,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
