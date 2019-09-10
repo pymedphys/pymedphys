@@ -30,8 +30,12 @@ from os.path import abspath, basename, dirname, join as pjoin
 from zipfile import ZipFile
 
 import numpy as np
+import pydicom
+import pytest
 
-from pymedphys_dicom.dicom import DicomDose
+from pymedphys_dicom.dicom import DicomDose, require_patient_orientation_be_HFS
+
+from test_coords import get_data_file
 
 HERE = dirname(abspath(__file__))
 DATA_DIRECTORY = pjoin(HERE, "data", "dose")
@@ -84,3 +88,32 @@ def test_DicomDose_constancy():
         assert np.allclose(
             test_dicom_dose.coords, np.array(expected_dicom_dose_dict["coords"])
         )
+
+
+def test_require_patient_orientation_be_HFS():
+    test_ds_dict = {
+        key: pydicom.dcmread(get_data_file(key)) for key in ORIENTATIONS_SUPPORTED
+    }
+
+    ds_no_orient = pydicom.dcmread(
+        pjoin(dirname(DATA_DIRECTORY), "struct", "example_structures.dcm"), force=True
+    )
+
+    test_ds_dict["no orient"] = ds_no_orient
+
+    for orient, ds in test_ds_dict.items():
+        if orient == "HFS":
+            require_patient_orientation_be_HFS(ds)
+
+        elif orient == "no orient":
+            with pytest.raises(AttributeError) as ea:
+                require_patient_orientation_be_HFS(ds)
+            assert "object has no attribute 'ImageOrientationPatient'" in str(ea.value)
+
+        else:
+            with pytest.raises(ValueError) as ev:
+                require_patient_orientation_be_HFS(ds)
+            assert (
+                "The supplied dataset has a patient orientation "
+                "other than head-first supine" in str(ev.value)
+            )
