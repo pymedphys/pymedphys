@@ -1,12 +1,12 @@
 import shutil
 
 try:
-    shutil.rmtree('dist')
+    shutil.rmtree("dist")
 except FileNotFoundError:
     pass
 
 
 try:
-    shutil.rmtree('build')
+    shutil.rmtree("build")
 except FileNotFoundError:
     pass

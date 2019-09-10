@@ -39,4 +39,5 @@ from .constants import (
     COLLIMATOR_NAME,
     Y1_LEAF_BANK_NAMES,
     Y2_LEAF_BANK_NAMES,
-    JAW_NAMES)
+    JAW_NAMES,
+)

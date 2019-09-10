@@ -28,8 +28,7 @@
 Excel via xlwings udf functionality.
 """
 
-from .dicom import (
-    depth_dose, inplane_profile, crossplane_profile, arbitrary_profile)
+from .dicom import depth_dose, inplane_profile, crossplane_profile, arbitrary_profile
 from .interpolate import linear_interpolation, nd_linear_interpolation
 from .mephysto import mephysto
 from .numpy import npravel, nprepeat

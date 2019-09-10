@@ -1,4 +1,4 @@
-﻿=========
+=========
 PyMedPhys
 =========
 
@@ -22,25 +22,18 @@ PyMedPhys
 
 .. START_OF_ABOUT_IMPORT
 
-PyMedPhys aims to be a Medical Physics open source `monorepo`_ where we
-can all store, review, use, and learn off of each other's code. It is a
-library of tools that we all have access to and, because of its
+Bringing together Medical Physicists to create quality transparent software at
+a price affordable by all our peers (free)
+
+PyMedPhys, a community powered by git and continuous integration. A place to
+share, review, improve, and transparently learn off of each other’s code. 
+
+It is a library of tools that we all have access to and, because of its
 `license`_, will all have access to whatever it becomes in the future.
 It is inspired by the collaborative work of our physics peers in
 astronomy and their `Astropy Project`_.
 
-It is structured and glued together with Python, but certainly not
-limited to one programming language. A great place to begin sharing is
-the labs, a range of experimental modules where you can learn to use git
-and begin the process of code sharing and review. For example, feel free
-to submit to the labs your most useful MatLab scripts which we can help
-you glue together with Python using `oct2py`_.
-
-.. _`oct2py`: http://blink1073.github.io/oct2py/
-
 .. _`Astropy Project`: http://www.astropy.org/
-
-.. _`monorepo`: https://cacm.acm.org/magazines/2016/7/204032-why-google-stores-billions-of-lines-of-code-in-a-single-repository/fulltext
 
 .. _`license`: https://choosealicense.com/licenses/agpl-3.0/
 

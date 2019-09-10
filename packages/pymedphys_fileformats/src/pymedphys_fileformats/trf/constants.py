@@ -28,24 +28,20 @@ import os
 import json
 
 
-CONFIG_FILEPATH = os.path.join(
-    os.path.dirname(__file__), 'config.json')
+CONFIG_FILEPATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 with open(CONFIG_FILEPATH) as json_data_file:
     CONFIG = json.load(json_data_file)
 
 Y1_LEAF_BANK_NAMES = [
-    'Y1 Leaf {}/Scaled Actual (mm)'.format(item)
-    for item in range(1, 81)
+    "Y1 Leaf {}/Scaled Actual (mm)".format(item) for item in range(1, 81)
 ]
 
 Y2_LEAF_BANK_NAMES = [
-    'Y2 Leaf {}/Scaled Actual (mm)'.format(item)
-    for item in range(1, 81)
+    "Y2 Leaf {}/Scaled Actual (mm)".format(item) for item in range(1, 81)
 ]
 
-JAW_NAMES = [
-    'X1 Diaphragm/Scaled Actual (mm)', 'X2 Diaphragm/Scaled Actual (mm)']
+JAW_NAMES = ["X1 Diaphragm/Scaled Actual (mm)", "X2 Diaphragm/Scaled Actual (mm)"]
 
-GANTRY_NAME = 'Step Gantry/Scaled Actual (deg)'
-COLLIMATOR_NAME = 'Step Collimator/Scaled Actual (deg)'
+GANTRY_NAME = "Step Gantry/Scaled Actual (deg)"
+COLLIMATOR_NAME = "Step Collimator/Scaled Actual (deg)"
