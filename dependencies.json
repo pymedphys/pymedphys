@@ -199,9 +199,11 @@
     "pymedphys_labs": {
       "external": [
         "Pillow",
+        "imageio",
         "matplotlib",
         "numpy",
         "pydicom",
+        "scikit-image",
         "scipy",
         "tqdm"
       ],
@@ -219,7 +221,8 @@
         "string",
         "subprocess",
         "sys",
-        "typing"
+        "typing",
+        "warnings"
       ]
     },
     "pymedphys_logfiles": {
