@@ -1,23 +1,24 @@
 {
-  "python.linting.pylintUseMinimalCheckers": false,
-  "python.linting.mypyEnabled": true,
-  "python.formatting.provider": "yapf",
-  "python.testing.pytestEnabled": true,
-  "files.trimTrailingWhitespace": true,
-  "editor.formatOnSave": true,
   "editor.detectIndentation": true,
+  "editor.formatOnSave": true,
   "editor.insertSpaces": true,
   "editor.rulers": [
     79,
     119
   ],
+  "files.trimTrailingWhitespace": true,
+  "python.formatting.provider": "black",
+  "python.linting.mypyEnabled": true,
+  "python.linting.pylintUseMinimalCheckers": false,
   "[python]": {
     "editor.rulers": [
       72,
-      79,
-      119
+      88
     ]
   },
+  "python.testing.unittestEnabled": false,
+  "python.testing.nosetestsEnabled": false,
+  "python.testing.pytestEnabled": true,
   "cSpell.words": [
     "affero",
     "agpl",

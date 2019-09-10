@@ -31,6 +31,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Within `dose_from_dataset` the `reshape` parameter has been removed.
+- Removed the following functions:
+  - `load_dicom_data`
+  - `axes_and_dose_from_dicom`
+  - `extract_depth_dose`
+  - `extract_profiles`
+
+### New Features
+
+- Added functions `pymedphys.dicom.depth_dose` and `pymedphys.dicom.profiles`.
+- Added function `pymedphys.mephysto.load_and_normalise_mephysto`.
+- Exposed the `trf2pandas` function via `pymedphys.fileformats.trf2pandas`.
+
 ### Improvements
 
 - Made the resolution detection of `pymedphys.plt.pcolormesh_grid` more robust.

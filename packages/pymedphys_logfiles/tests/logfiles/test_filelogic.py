@@ -29,16 +29,14 @@ from pymedphys_logfiles.elekta import already_indexed_path
 
 
 def test_file_logic():
-    diagnostics = '/a/path/to/diagnostics'
-    to_be_indexed = os.path.join(diagnostics, 'to_be_indexed')
-    already_indexed = os.path.join(diagnostics, 'already_indexed')
+    diagnostics = "/a/path/to/diagnostics"
+    to_be_indexed = os.path.join(diagnostics, "to_be_indexed")
+    already_indexed = os.path.join(diagnostics, "already_indexed")
 
-    machine_zip_file_path = 'machine/archive.zip'
+    machine_zip_file_path = "machine/archive.zip"
     current_location = os.path.join(to_be_indexed, machine_zip_file_path)
-    expected_new = os.path.abspath(
-        os.path.join(already_indexed, machine_zip_file_path))
+    expected_new = os.path.abspath(os.path.join(already_indexed, machine_zip_file_path))
 
-    converted = already_indexed_path(
-        current_location, to_be_indexed, already_indexed)
+    converted = already_indexed_path(current_location, to_be_indexed, already_indexed)
 
     assert converted == expected_new

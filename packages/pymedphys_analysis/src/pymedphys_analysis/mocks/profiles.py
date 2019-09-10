@@ -41,11 +41,13 @@ def scaled_penumbra_sig(profile_shoulder_edge=0.8):
 
 def create_profile_function(centre, field_width, penumbra_width):
     sig = scaled_penumbra_sig() * penumbra_width
-    mu = [centre - field_width/2, centre + field_width/2]
+    mu = [centre - field_width / 2, centre + field_width / 2]
 
     def profile(x):
         x = np.array(x, copy=False)
-        return gaussian_cdf(x, mu[0], sig) * gaussian_cdf(-x, -mu[1], sig)  # pylint: disable=invalid-unary-operand-type
+        return gaussian_cdf(x, mu[0], sig) * gaussian_cdf(
+            -x, -mu[1], sig  # pylint: disable=invalid-unary-operand-type
+        )
 
     return profile
 
@@ -57,12 +59,9 @@ def rotate_coords(x, y, theta):
     return x_prime, y_prime
 
 
-def create_rectangular_field_function(centre, side_lengths, penumbra_width,
-                                      rotation=0):
-    width_profile = create_profile_function(
-        0, side_lengths[0], penumbra_width)
-    length_profile = create_profile_function(
-        0, side_lengths[1], penumbra_width)
+def create_rectangular_field_function(centre, side_lengths, penumbra_width, rotation=0):
+    width_profile = create_profile_function(0, side_lengths[0], penumbra_width)
+    length_profile = create_profile_function(0, side_lengths[1], penumbra_width)
 
     theta = -rotation / 180 * np.pi
 
@@ -78,9 +77,9 @@ def create_rectangular_field_function(centre, side_lengths, penumbra_width,
     return field
 
 
-def create_square_field_function(centre, side_length, penumbra_width,
-                                 rotation=0):
+def create_square_field_function(centre, side_length, penumbra_width, rotation=0):
 
     side_lengths = [side_length, side_length]
     return create_rectangular_field_function(
-        centre, side_lengths, penumbra_width, rotation)
+        centre, side_lengths, penumbra_width, rotation
+    )

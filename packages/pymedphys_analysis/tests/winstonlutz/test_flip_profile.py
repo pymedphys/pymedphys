@@ -57,7 +57,7 @@ def test_field_points_to_compare():
     }
 
 
-@pytest.mark.skip(msg="Test not yet finished")
+@pytest.mark.xfail(reason="Test not yet finished")
 def test_profile_flip_diff():
     profile_centre = [1.7, -3.5]
     side_length = 2

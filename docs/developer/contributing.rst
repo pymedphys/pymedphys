@@ -110,27 +110,43 @@ development tools quite a breeze. Follow
 
 
 
+.. _system-dependencies-section:
+
 Install contributor system dependencies
 ---------------------------------------
 
 Use Chocolatey within an administrator command prompt to install Git,
-Git LFS, yarn, and graphviz like so:
+yarn, and graphviz like so:
 
 .. code:: bash
 
-    choco install git yarn nodejs graphviz.portable
+    choco install git nodejs yarn graphviz.portable
 
 
 
-Get a GitHub account
---------------------
+Configure Git and get a GitHub account
+--------------------------------------
+
+If you successfully completed the instructions in
+:ref:`system-dependencies-section`, you should now have Git installed. It is
+probably worth spending some time configuring Git according to your
+preferences - you can find a good beginners' resource on this
+`here <https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup>`__.
+There are lots of useful tips and tricks that can improve your Git experience.
+At a minimum, we do recommend you set your username and email from within a
+terminal as follows:
+
+.. code:: bash
+
+    git config --global user.name "Firstname Lastname"
+    git config --global user.email "example@example.com"
 
 Make a GitHub account `here <https://github.com/join>`__. Once you have an
 account, you will need commit rights to this repository in order to make
 contributions. Create an issue on GitHub within the PyMedPhys repository
 `here <https://github.com/pymedphys/pymedphys/issues/new/>`__
 and include "request for commit rights" or similar in your issue's content,
-along with "@SimonBiggs" and "@Centrus007" to ensure it is seen!
+along with "@SimonBiggs" and "@Matthew-Jennings" to ensure it is seen!
 
 Whenever you wish to discuss anything about PyMedPhys, please create an issue
 on GitHub. It can be to ask for help, suggest a change, provide feedback, or
@@ -185,6 +201,12 @@ prompted for a password.
 
 This will download all of PyMedPhys to your local machine.
 
+If you find that you cannot connect to GitHub via SSH (possibly due to
+IT restrictions at your institution), you can also clone via HTTPS as follows:
+
+.. code:: bash
+
+    git clone https://github.com/pymedphys/pymedphys.git
 
 
 Set up *nbstripout*
@@ -204,9 +226,8 @@ To install ``nbstripout``, run the following within the pymedphys directory:
 
 .. code:: bash
 
-    λ conda create --name pmp python=3.7 shapely
+    λ conda create --name pmp python=3.7 shapely nbstripout
     λ conda activate pmp
-    λ conda install nbstripout
     λ nbstripout --install
     λ nbstripout --is-installed && echo Success!
     Success!
