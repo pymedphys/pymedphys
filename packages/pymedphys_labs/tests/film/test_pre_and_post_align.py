@@ -31,18 +31,19 @@ import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_analysis.film import shift_and_rotate, get_aligned_image
-from pymedphys_analysis.film.optical_density import create_axes
+from pymedphys_labs.film import shift_and_rotate, get_aligned_image
+from pymedphys_labs.film.optical_density import create_axes
 
 from fixtures import BASELINES_DIR, prescans, postscans
 
 CREATE_BASELINE = False
 
-ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR,
-                                            'pre_post_alignment.json')
+ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR, "pre_post_alignment.json")
 
 
-def test_multi_channel_shift_and_rotate(prescans):  # pylint: disable=redefined-outer-name
+def test_multi_channel_shift_and_rotate(
+    prescans
+):  # pylint: disable=redefined-outer-name
     prescan = prescans[0]
     axes = create_axes(prescan)
 
@@ -75,12 +76,14 @@ def get_alignment(prescan, postscan, baseline=None):
     return alignment
 
 
-def test_pre_and_post_align(prescans, postscans):  # pylint: disable=redefined-outer-name
+def test_pre_and_post_align(
+    prescans, postscans
+):  # pylint: disable=redefined-outer-name
     keys = prescans.keys()
     assert keys == postscans.keys()
 
     if not CREATE_BASELINE:
-        with open(ALIGNMENT_BASELINES_FILEPATH, 'r') as a_file:
+        with open(ALIGNMENT_BASELINES_FILEPATH, "r") as a_file:
             baselines = json.load(a_file)
     else:
         baselines = {str(key): None for key in keys}
@@ -91,11 +94,11 @@ def test_pre_and_post_align(prescans, postscans):  # pylint: disable=redefined-o
     keys_to_use = [0.0, 1000.0]
 
     for key in keys_to_use:
-        results[key] = np.around(get_alignment(prescans[key],
-                                               postscans[key],
-                                               baseline=baselines[str(key)]),
-                                 decimals=4).tolist()
+        results[key] = np.around(
+            get_alignment(prescans[key], postscans[key], baseline=baselines[str(key)]),
+            decimals=4,
+        ).tolist()
 
     if CREATE_BASELINE:
-        with open(ALIGNMENT_BASELINES_FILEPATH, 'w') as a_file:
+        with open(ALIGNMENT_BASELINES_FILEPATH, "w") as a_file:
             json.dump(results, a_file)
