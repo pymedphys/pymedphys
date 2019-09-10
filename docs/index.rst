@@ -22,14 +22,6 @@
 
 .. toctree::
     :maxdepth: 1
-    :caption: Supporters
-
-    supporters/sustainable
-    supporters/supporters
-    supporters/become-a-supporter
-
-.. toctree::
-    :maxdepth: 1
     :caption: Projects
 
     projects/elekta-logfiles
