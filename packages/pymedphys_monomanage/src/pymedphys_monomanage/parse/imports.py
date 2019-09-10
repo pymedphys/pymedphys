@@ -23,7 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 import os
 import ast
 
@@ -31,11 +30,10 @@ from stdlib_list import stdlib_list
 
 STDLIB = set(stdlib_list())
 
-
 IMPORT_TYPES = {
     type(ast.parse("import george").body[0]),  # type: ignore
-    type(ast.parse("import george as macdonald").body[0]),
-}  # type: ignore
+    type(ast.parse("import george as macdonald").body[0]),  # type: ignore
+}
 
 IMPORT_FROM_TYPES = {
     type(ast.parse("from george import macdonald").body[0])  # type: ignore
@@ -49,6 +47,7 @@ CONVERSIONS = {
     "Image": "Pillow",
     "mpl_toolkits": "matplotlib",
     "dateutil": "python_dateutil",
+    "skimage": "scikit-image",
     "yaml": "PyYAML",
 }
 
