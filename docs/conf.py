@@ -32,7 +32,7 @@ def setup(app):
 
 project = "PyMedPhys"
 copyright = "2015-2019, the PyMedPhys contributors"
-author = "Simon Biggs, Matt Jennings, Paul King, Matthew Sobolewski"
+author = "PyMedPhys contributors"
 
 # The short X.Y version
 # Currently being used to create mybinder link -- potentially need to rethink
@@ -127,13 +127,13 @@ nbsphinx_prolog = r"""
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "pymedphys_sphinxtheme"
+html_theme = "sphinx_rtd_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {"analytics_id": "UA-26591325-7", "display_version": False}
+html_theme_options = {"analytics_id": "UA-26591325-7"}
 
 html_logo = "logos/pymedphys.svg"
 
