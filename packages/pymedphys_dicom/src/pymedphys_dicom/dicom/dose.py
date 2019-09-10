@@ -28,8 +28,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
 
-import pydicom
-import pydicom.uid
+from ..shim import pydicom
 
 from pymedphys_utilities.interpolate import RegularGridInterpolator
 

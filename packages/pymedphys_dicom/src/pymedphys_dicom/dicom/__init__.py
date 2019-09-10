@@ -75,13 +75,6 @@ from .create import dicom_dataset_from_dict
 
 from .structure import pull_structure, create_contour_sequence_dict, Structure
 
-from .constants import (
-    BASELINE_DICOM_DICT,
-    BASELINE_DICOM_DICT_FILEPATH,
-    BASELINE_DICOM_REPEATERS_DICT,
-    BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
-    get_baseline_dict_entry,
-)
 from .collection import DicomBase, DicomDose
 from .header import (
     adjust_machine_name,
