@@ -54,6 +54,7 @@ from .anonymise import (
     is_anonymised_directory,
     BASELINE_KEYWORD_VR_DICT,
     IDENTIFYING_KEYWORDS,
+    IDENTIFYING_KEYWORDS_FILEPATH,
     label_dicom_filepath_as_anonymised,
 )
 
@@ -63,12 +64,11 @@ from .dose import (
     create_dvh,
     dose_from_dataset,
     find_dose_within_structure,
-    extract_depth_dose,
-    extract_profiles,
-    load_dicom_data,
-    axes_and_dose_from_dicom,
     zyx_and_dose_from_dataset,
     dicom_dose_interpolate,
+    profile,
+    require_patient_orientation_be_HFS,
+    depth_dose,
 )
 
 from .create import dicom_dataset_from_dict
