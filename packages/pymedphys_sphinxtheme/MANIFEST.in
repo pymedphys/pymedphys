@@ -1,3 +1,0 @@
-graft src/pymedphys_sphinxtheme
-global-exclude *.py[co]
-include LICENSE
