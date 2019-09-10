@@ -1,7 +1,6 @@
 [build]
-  command = "yarn docs:netlify"
+  command = "sphinx-build -W docs docs/_build/html"
   publish = "docs/_build/html"
-
 
 [[redirects]]
   from = "/en/stable/*"
