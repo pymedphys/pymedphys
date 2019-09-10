@@ -26,9 +26,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_analysis.film import (align_images, interpolated_rotation,
-                                     create_image_interpolation,
-                                     shift_and_rotate)
+from pymedphys_labs.film import (
+    align_images,
+    interpolated_rotation,
+    create_image_interpolation,
+    shift_and_rotate,
+)
 from pymedphys_analysis.mocks import create_rectangular_field_function
 
 
@@ -45,12 +48,11 @@ def test_rotation_and_shift_alignment():
 
 
 def alignment_assertions(expected):
-    ref_field = create_rectangular_field_function((0, 0), (20, 25),
-                                                  5,
-                                                  rotation=0)
+    ref_field = create_rectangular_field_function((0, 0), (20, 25), 5, rotation=0)
 
     moving_field = create_rectangular_field_function(
-        (-expected[0], -expected[1]), (20, 25), 5, rotation=-expected[2])
+        (-expected[0], -expected[1]), (20, 25), 5, rotation=-expected[2]
+    )
 
     x_span = np.arange(-50, 51)
     y_span = np.arange(-60, 61)
@@ -79,13 +81,9 @@ def alignment_assertions(expected):
 
 
 def test_interpolated_rotation():
-    ref_field = create_rectangular_field_function((0, 0), (5, 7),
-                                                  2,
-                                                  rotation=30)
+    ref_field = create_rectangular_field_function((0, 0), (5, 7), 2, rotation=30)
 
-    moving_field = create_rectangular_field_function((0, 0), (5, 7),
-                                                     2,
-                                                     rotation=10)
+    moving_field = create_rectangular_field_function((0, 0), (5, 7), 2, rotation=10)
 
     x_span = np.linspace(-20, 20, 100)
     y_span = np.linspace(-30, 30, 120)
@@ -102,11 +100,11 @@ def test_interpolated_rotation():
     except AssertionError:
         plt.figure()
         plt.imshow(moving_image)
-        plt.axis('equal')
+        plt.axis("equal")
 
         plt.figure()
         plt.imshow(no_rotation)
-        plt.axis('equal')
+        plt.axis("equal")
 
         plt.show()
         raise
@@ -114,19 +112,19 @@ def test_interpolated_rotation():
     rotated = interpolated_rotation(moving_interp, (x_span, y_span), -20)
 
     try:
-        assert np.allclose(ref_image, rotated, atol=1.e-1)
+        assert np.allclose(ref_image, rotated, atol=1.0e-1)
     except AssertionError:
         plt.figure()
         plt.imshow(ref_image)
-        plt.axis('equal')
+        plt.axis("equal")
 
         plt.figure()
         plt.imshow(rotated)
-        plt.axis('equal')
+        plt.axis("equal")
 
         plt.figure()
         plt.imshow(rotated - ref_image)
-        plt.axis('equal')
+        plt.axis("equal")
 
         plt.show()
         raise
