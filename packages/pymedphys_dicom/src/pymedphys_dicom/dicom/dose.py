@@ -22,22 +22,20 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
-
-
 """A DICOM RT Dose toolbox"""
-
-import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import path
 
-import pydicom
-import pydicom.uid
+from ..shim import pydicom
+
+from pymedphys_utilities.interpolate import RegularGridInterpolator
+
+from ..rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 
 from .structure import pull_structure
-from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
-
+from .coords import xyz_axes_from_dataset
 
 # pylint: disable=C0103
 
@@ -45,136 +43,158 @@ from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
 def zyx_and_dose_from_dataset(dataset):
     x, y, z = xyz_axes_from_dataset(dataset)
     coords = (z, y, x)
-    dose = dose_from_dataset(dataset, reshape=False)
+    dose = dose_from_dataset(dataset)
 
     return coords, dose
 
 
-def dose_from_dataset(ds, set_transfer_syntax_uid=True, reshape=True):
+def dose_from_dataset(ds, set_transfer_syntax_uid=True):
     r"""Extract the dose grid from a DICOM RT Dose file.
-
-    .. deprecated:: 0.5.0
-            `dose_from_dataset` will be removed in a future version of
-            PyMedPhys in favour of a new & improved API.
     """
 
     if set_transfer_syntax_uid:
         ds.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
-    if reshape:
-        warnings.warn(
-            (
-                "`dose_from_dataset` currently reshapes the dose grid. In a "
-                "future version this will no longer occur. To begin using this "
-                "function without the reshape pass the parameter `reshape=False` "
-                "when calling `dose_from_dataset`."
-            ),
-            UserWarning,
-        )
-        pixels = np.transpose(ds.pixel_array, (1, 2, 0))
-    else:
-        pixels = ds.pixel_array
-
-    dose = pixels * ds.DoseGridScaling
+    dose = ds.pixel_array * ds.DoseGridScaling
 
     return dose
 
 
-def axes_and_dose_from_dicom(dicom_filepath):
-    ds = pydicom.dcmread(dicom_filepath, force=True)
-    axes = xyz_axes_from_dataset(ds)
-    dose = dose_from_dataset(ds)
+def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
+    """Interpolates across a DICOM dose dataset.
 
-    return axes, dose
+    Parameters
+    ----------
+    interp_coords : tuple(z, y, x)
+        A tuple of coordinates in DICOM order, z axis first, then y, then x
+        where x, y, and z are DICOM axes.
+    dose : pydicom.Dataset
+        An RT DICOM Dose object
+    """
 
+    interp_z = np.array(interp_coords[0], copy=False)[:, None, None]
+    interp_y = np.array(interp_coords[1], copy=False)[None, :, None]
+    interp_x = np.array(interp_coords[2], copy=False)[None, None, :]
 
-def load_dicom_data(ds, depth_adjust):
-    dose = dose_from_dataset(ds)
-    crossplane, vertical, inplane = xyz_axes_from_dataset(ds)
+    coords, dicom_dose_dataset = zyx_and_dose_from_dataset(dicom_dose_dataset)
+    interpolation = RegularGridInterpolator(coords, dicom_dose_dataset)
 
-    depth = vertical + depth_adjust
+    try:
+        result = interpolation((interp_z, interp_y, interp_x))
+    except ValueError:
+        print(f"coords: {coords}")
+        raise
 
-    return inplane, crossplane, depth, dose
-
-
-def extract_depth_dose(ds, depth_adjust, averaging_distance=0):
-    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
-
-    inplane_ref = abs(inplane) <= averaging_distance
-    crossplane_ref = abs(crossplane) <= averaging_distance
-
-    sheet_dose = dose[:, :, inplane_ref]
-    column_dose = sheet_dose[:, crossplane_ref, :]
-
-    depth_dose = np.mean(column_dose, axis=(1, 2))
-
-    # uncertainty = np.std(column_dose, axis=(1, 2)) / depth_dose
-    # assert np.all(uncertainty < 0.01),
-    # "Shouldn't average over more than 1% uncertainty"
-
-    return depth, depth_dose
+    return result
 
 
-def extract_profiles(ds, depth_adjust, depth_lookup, averaging_distance=0):
+def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Dataset):
+    """Interpolates dose for defined depths within a DICOM dose dataset.
 
-    inplane, crossplane, depth, dose = load_dicom_data(ds, depth_adjust)
+    Since the DICOM dose dataset is in CT coordinates the corresponding
+    DICOM plan is also required in order to calculate the conversion
+    between CT coordinate space and depth.
 
-    inplane_ref = abs(inplane) <= averaging_distance
-    crossplane_ref = abs(crossplane) <= averaging_distance
+    Currently, `depth_dose()` only supports a `dose_dataset` for which
+    the patient orientation is HFS and that any beams in `plan_dataset`
+    have gantry angle equal to 0 (head up). Depth is assumed to be
+    purely in the y axis direction in DICOM coordinates.
 
-    depth_reference = depth == depth_lookup
+    Parameters
+    ----------
+    depths : numpy.ndarray
+        An array of depths to interpolate within the DICOM dose file. 0 is
+        defined as the surface of the phantom using either the
+        ``SurfaceEntryPoint`` parameter or a combination of
+        ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and
+        ``IsocentrePosition``.
+    dose_dataset : pydicom.dataset.Dataset
+        The RT DICOM dose dataset to be interpolated
+    plan_dataset : pydicom.dataset.Dataset
+        The RT DICOM plan used to extract surface parameters and verify gantry
+        angle 0 beams are used.
+    """
+    require_patient_orientation_be_HFS(dose_dataset)
+    require_gantries_be_zero(plan_dataset)
+    depths = np.array(depths, copy=False)
 
-    dose_at_depth = dose[depth_reference, :, :]
-    inplane_dose = np.mean(dose_at_depth[:, crossplane_ref, :], axis=(0, 1))
-    crossplane_dose = np.mean(dose_at_depth[:, :, inplane_ref], axis=(0, 2))
+    surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
+    depth_adjust = surface_entry_point.y
 
-    return inplane, inplane_dose, crossplane, crossplane_dose
+    y = depths + depth_adjust
+    x, z = [surface_entry_point.x], [surface_entry_point.z]
 
+    coords = (z, y, x)
 
-def nearest_negative(diff):
-    neg_diff = np.copy(diff)
-    neg_diff[neg_diff > 0] = -np.inf
-    return np.argmax(neg_diff)
+    extracted_dose = np.squeeze(dicom_dose_interpolate(coords, dose_dataset))
 
-
-def bounding_vals(test, values):
-    npvalues = np.array(values).astype("float")
-    diff = npvalues - test
-    upper = nearest_negative(-diff)
-    lower = nearest_negative(diff)
-
-    return values[lower], values[upper]
+    return extracted_dose
 
 
-def average_bounding_profiles(ds, depth_adjust, depth_lookup, averaging_distance=0):
-    inplane, crossplane, depth, _ = load_dicom_data(ds, depth_adjust)
+def profile(
+    displacements,
+    depth,
+    direction,
+    dose_dataset: pydicom.Dataset,
+    plan_dataset: pydicom.Dataset,
+):
+    """Interpolates dose for cardinal angle horizontal profiles within a
+    DICOM dose dataset.
 
-    if depth_lookup in depth:
-        return extract_profiles(ds, depth_adjust, depth_lookup, averaging_distance)
+    Since the DICOM dose dataset is in CT coordinates the corresponding
+    DICOM plan is also required in order to calculate the conversion
+    between CT coordinate space and depth and horizontal displacement.
+
+    Currently, `profile()` only supports a `dose_dataset` for which
+    the patient orientation is HFS and that any beams in `plan_dataset`
+    have gantry angle equal to 0 (head up). Depth is assumed to be
+    purely in the y axis direction in DICOM coordinates.
+
+    Parameters
+    ----------
+    displacements : numpy.ndarray
+        An array of displacements to interpolate within the DICOM dose
+        file. 0 is defined in the DICOM z or x directions based either
+        upon the ``SurfaceEntryPoint`` or the ``IsocenterPosition``
+        depending on what is available within the DICOM plan file.
+    depth : float
+        The depth at which to interpolate within the DICOM dose file. 0 is
+        defined as the surface of the phantom using either the
+        ``SurfaceEntryPoint`` parameter or a combination of
+        ``SourceAxisDistance``, ``SourceToSurfaceDistance``, and
+        ``IsocentrePosition``.
+    direction : str, one of ('inplane', 'inline', 'crossplane', 'crossline')
+        Corresponds to the axis upon which to apply the displacements.
+         - 'inplane' or 'inline' converts to DICOM z direction
+         - 'crossplane' or 'crossline' converts to DICOM x direction
+    dose_dataset : pydicom.dataset.Dataset
+        The RT DICOM dose dataset to be interpolated
+    plan_dataset : pydicom.dataset.Dataset
+        The RT DICOM plan used to extract surface and isocentre
+        parameters and verify gantry angle 0 beams are used.
+    """
+
+    require_patient_orientation_be_HFS(dose_dataset)
+    require_gantries_be_zero(plan_dataset)
+    displacements = np.array(displacements, copy=False)
+
+    surface_entry_point = get_surface_entry_point_with_fallback(plan_dataset)
+    depth_adjust = surface_entry_point.y
+    y = [depth + depth_adjust]
+
+    if direction in ("inplane", "inline"):
+        coords = (displacements + surface_entry_point.z, y, [surface_entry_point.x])
+    elif direction in ("crossplane", "crossline"):
+        coords = ([surface_entry_point.z], y, displacements + surface_entry_point.x)
     else:
-        print("Specific depth not found, interpolating from surrounding depths")
-        shallower, deeper = bounding_vals(depth_lookup, depth)
-
-        _, shallower_inplane, _, shallower_crossplane = np.array(
-            extract_profiles(ds, depth_adjust, shallower, averaging_distance)
+        raise ValueError(
+            "Expected direction to be equal to one of "
+            "'inplane', 'inline', 'crossplane', or 'crossline'"
         )
 
-        _, deeper_inplane, _, deeper_crossplane = np.array(
-            extract_profiles(ds, depth_adjust, deeper, averaging_distance)
-        )
+    extracted_dose = np.squeeze(dicom_dose_interpolate(coords, dose_dataset))
 
-        depth_range = deeper - shallower
-        shallower_weight = 1 - (depth_lookup - shallower) / depth_range
-        deeper_weight = 1 - (deeper - depth_lookup) / depth_range
-
-        inplane_dose = (
-            shallower_weight * shallower_inplane + deeper_weight * deeper_inplane
-        )
-        crossplane_dose = (
-            shallower_weight * shallower_crossplane + deeper_weight * deeper_crossplane
-        )
-
-        return inplane, inplane_dose, crossplane, crossplane_dose
+    return extracted_dose
 
 
 def _get_indices(z_list, z_val):
@@ -188,7 +208,6 @@ def _get_indices(z_list, z_val):
 
 def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
     x_dose, y_dose, z_dose = xyz_axes_from_dataset(dcm_dose)
-    dose = dose_from_dataset(dcm_dose)
 
     xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
@@ -246,3 +265,11 @@ def create_dvh(structure, dcm_struct, dcm_dose):
     plt.title("DVH")
     plt.xlabel("Dose (Gy)")
     plt.ylabel("Relative Volume (%)")
+
+
+def require_patient_orientation_be_HFS(ds):
+    if not np.array_equal(ds.ImageOrientationPatient, np.array([1, 0, 0, 0, 1, 0])):
+        raise ValueError(
+            "The supplied dataset has a patient "
+            "orientation other than head-first supine."
+        )

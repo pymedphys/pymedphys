@@ -28,19 +28,13 @@ from copy import deepcopy
 from packaging import version
 
 import numpy as np
-import pydicom
+from ..shim import pydicom
 
-from .create import dicom_dataset_from_dict
-from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
 from .anonymise import anonymise_dataset
+from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
+from .create import dicom_dataset_from_dict
 
 # pylint: disable=W0201
-
-
-# Many thanks to the Medical Connections for offering free
-# valid UIDs (http://www.medicalconnections.co.uk/FreeUID.html)
-# Their service was used to obtain the following root UID for PyMedPhys:
-PYMEDPHYS_ROOT_UID = "1.2.826.0.1.3680043.10.188"
 
 
 class DicomBase:

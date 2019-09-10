@@ -30,7 +30,7 @@ from collections import namedtuple
 
 import numpy as np
 
-import pydicom
+from ..shim import pydicom
 
 
 # pylint: disable=C0103

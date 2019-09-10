@@ -22,7 +22,6 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
-
 """A DICOM toolbox. Available functions include:
 
 >>> from pymedphys.dicom import (
@@ -55,6 +54,7 @@ from .anonymise import (
     is_anonymised_directory,
     BASELINE_KEYWORD_VR_DICT,
     IDENTIFYING_KEYWORDS,
+    IDENTIFYING_KEYWORDS_FILEPATH,
     label_dicom_filepath_as_anonymised,
 )
 
@@ -64,18 +64,17 @@ from .dose import (
     create_dvh,
     dose_from_dataset,
     find_dose_within_structure,
-    extract_depth_dose,
-    extract_profiles,
-    load_dicom_data,
-    axes_and_dose_from_dicom,
     zyx_and_dose_from_dataset,
+    dicom_dose_interpolate,
+    profile,
+    require_patient_orientation_be_HFS,
+    depth_dose,
 )
 
 from .create import dicom_dataset_from_dict
 
 from .structure import pull_structure, create_contour_sequence_dict, Structure
 
-from .constants import BaselineDicomDictionary
 from .collection import DicomBase, DicomDose
 from .header import (
     adjust_machine_name,
