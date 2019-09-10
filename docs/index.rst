@@ -31,7 +31,6 @@
     :caption: Developer Guide
 
     developer/contributing
-    developer/dependencies
     developer/documentation
     developer/agpl-benefits
     developer/labs/index
