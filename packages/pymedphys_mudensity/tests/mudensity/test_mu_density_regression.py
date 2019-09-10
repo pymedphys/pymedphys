@@ -32,26 +32,29 @@
 
 import os
 
+import pytest
+
 import numpy as np
 
 from pymedphys_mudensity.mudensity import calc_mu_density
 
 
-DATA_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), "data")
-DELIVERY_DATA_FILEPATH = os.path.abspath(os.path.join(
-    DATA_DIRECTORY, 'mu_density_example_arrays.npz'))
+DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
+DELIVERY_DATA_FILEPATH = os.path.abspath(
+    os.path.join(DATA_DIRECTORY, "mu_density_example_arrays.npz")
+)
 
 
+@pytest.mark.slow
 def test_regression():
     """The results of MU Density calculation should not change
     """
     regress_test_arrays = np.load(DELIVERY_DATA_FILEPATH)
 
-    mu = regress_test_arrays['mu']
-    mlc = regress_test_arrays['mlc']
-    jaw = regress_test_arrays['jaw']
+    mu = regress_test_arrays["mu"]
+    mlc = regress_test_arrays["mlc"]
+    jaw = regress_test_arrays["jaw"]
 
-    cached_mu_density = regress_test_arrays['mu_density']
+    cached_mu_density = regress_test_arrays["mu_density"]
     mu_density = calc_mu_density(mu, mlc, jaw)
     assert np.allclose(mu_density, cached_mu_density, atol=0.1)

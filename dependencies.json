@@ -3,24 +3,24 @@
     "npm": {
       "external": {},
       "internal": {
-        "pymedphys": "~0.10.0",
-        "pymedphys_analysis": "~0.10.0",
-        "pymedphys_base": "~0.10.0",
-        "pymedphys_coordsandscales": "~0.10.0",
-        "pymedphys_databases": "~0.10.0",
-        "pymedphys_dicom": "~0.10.0",
-        "pymedphys_electronfactors": "~0.10.0",
-        "pymedphys_fileformats": "~0.10.0",
-        "pymedphys_gamma": "~0.10.0",
-        "pymedphys_labs": "~0.10.0",
-        "pymedphys_logfiles": "~0.10.0",
-        "pymedphys_monomanage": "~0.10.0",
-        "pymedphys_mudensity": "~0.10.0",
-        "pymedphys_pinnacle": "~0.10.0",
-        "pymedphys_sphinxtheme": "~0.10.0",
-        "pymedphys_toolbox": "~0.10.0",
-        "pymedphys_utilities": "~0.10.0",
-        "pymedphys_xlwings": "~0.10.0"
+        "pymedphys": "~0.11.0-dev.0",
+        "pymedphys_analysis": "~0.11.0-dev.0",
+        "pymedphys_base": "~0.11.0-dev.0",
+        "pymedphys_coordsandscales": "~0.11.0-dev.0",
+        "pymedphys_databases": "~0.11.0-dev.0",
+        "pymedphys_dicom": "~0.11.0-dev.0",
+        "pymedphys_electronfactors": "~0.11.0-dev.0",
+        "pymedphys_fileformats": "~0.11.0-dev.0",
+        "pymedphys_gamma": "~0.11.0-dev.0",
+        "pymedphys_labs": "~0.11.0-dev.0",
+        "pymedphys_logfiles": "~0.11.0-dev.0",
+        "pymedphys_monomanage": "~0.11.0-dev.0",
+        "pymedphys_mudensity": "~0.11.0-dev.0",
+        "pymedphys_pinnacle": "~0.11.0-dev.0",
+        "pymedphys_sphinxtheme": "~0.11.0-dev.0",
+        "pymedphys_toolbox": "~0.11.0-dev.0",
+        "pymedphys_utilities": "~0.11.0-dev.0",
+        "pymedphys_xlwings": "~0.11.0-dev.0"
       }
     },
     "pypi": {
@@ -30,24 +30,24 @@
         "xlwings": "; platform_system != \"Linux\""
       },
       "internal": {
-        "pymedphys": ">= 0.10.0, < 0.11.0",
-        "pymedphys_analysis": ">= 0.10.0, < 0.11.0",
-        "pymedphys_base": ">= 0.10.0, < 0.11.0",
-        "pymedphys_coordsandscales": ">= 0.10.0, < 0.11.0",
-        "pymedphys_databases": ">= 0.10.0, < 0.11.0",
-        "pymedphys_dicom": ">= 0.10.0, < 0.11.0",
-        "pymedphys_electronfactors": ">= 0.10.0, < 0.11.0",
-        "pymedphys_fileformats": ">= 0.10.0, < 0.11.0",
-        "pymedphys_gamma": ">= 0.10.0, < 0.11.0",
-        "pymedphys_labs": ">= 0.10.0, < 0.11.0",
-        "pymedphys_logfiles": ">= 0.10.0, < 0.11.0",
-        "pymedphys_monomanage": ">= 0.10.0, < 0.11.0",
-        "pymedphys_mudensity": ">= 0.10.0, < 0.11.0",
-        "pymedphys_pinnacle": ">= 0.10.0, < 0.11.0",
-        "pymedphys_sphinxtheme": ">= 0.10.0, < 0.11.0",
-        "pymedphys_toolbox": ">= 0.10.0, < 0.11.0",
-        "pymedphys_utilities": ">= 0.10.0, < 0.11.0",
-        "pymedphys_xlwings": ">= 0.10.0, < 0.11.0"
+        "pymedphys": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_analysis": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_base": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_coordsandscales": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_databases": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_dicom": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_electronfactors": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_fileformats": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_gamma": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_labs": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_logfiles": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_monomanage": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_mudensity": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_pinnacle": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_sphinxtheme": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_toolbox": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_utilities": ">= 0.11.0dev0, < 0.12.0",
+        "pymedphys_xlwings": ">= 0.11.0dev0, < 0.12.0"
       }
     }
   },
@@ -148,12 +148,15 @@
       "stdlib": [
         "collections",
         "copy",
+        "datetime",
         "functools",
         "glob",
+        "json",
         "operator",
         "os",
-        "re",
-        "warnings"
+        "pprint",
+        "random",
+        "re"
       ]
     },
     "pymedphys_electronfactors": {
@@ -189,11 +192,11 @@
         "numpy"
       ],
       "internal": [
-        "pymedphys_dicom"
+        "pymedphys_dicom",
+        "pymedphys_utilities"
       ],
       "stdlib": [
         "dataclasses",
-        "itertools",
         "sys",
         "typing"
       ]
@@ -205,10 +208,10 @@
         "numpy",
         "pydicom",
         "scipy",
-        "tqdm",
-        "xarray"
+        "tqdm"
       ],
       "internal": [
+        "pymedphys_fileformats",
         "pymedphys_utilities"
       ],
       "stdlib": [
@@ -216,6 +219,8 @@
         "copy",
         "csv",
         "os",
+        "pathlib",
+        "re",
         "string",
         "subprocess",
         "sys",
@@ -249,6 +254,7 @@
     },
     "pymedphys_monomanage": {
       "external": [
+        "black",
         "networkx",
         "semver",
         "stdlib_list"
@@ -321,12 +327,14 @@
     },
     "pymedphys_utilities": {
       "external": [
-        "numpy"
+        "numpy",
+        "scipy"
       ],
       "internal": [],
       "stdlib": [
         "glob",
         "hashlib",
+        "itertools",
         "json",
         "lzma",
         "os",

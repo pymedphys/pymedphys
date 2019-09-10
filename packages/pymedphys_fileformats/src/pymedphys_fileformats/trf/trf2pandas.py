@@ -34,11 +34,10 @@ from .table import decode_trf_table
 
 
 def trf2pandas(filepath):
-    with open(filepath, 'rb') as file:
+    with open(filepath, "rb") as file:
         trf_contents = file.read()
 
-    trf_header_contents, trf_table_contents = split_into_header_table(
-        trf_contents)
+    trf_header_contents, trf_table_contents = split_into_header_table(trf_contents)
 
     header_dataframe = header_as_dataframe(trf_header_contents)
 

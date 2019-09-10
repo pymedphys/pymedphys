@@ -28,21 +28,13 @@ from copy import deepcopy
 from packaging import version
 
 import numpy as np
-import pydicom
+from ..shim import pydicom
 
-from .create import dicom_dataset_from_dict
-from .coords import (
-    coords_from_xyz_axes,
-    xyz_axes_from_dataset)
 from .anonymise import anonymise_dataset
+from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
+from .create import dicom_dataset_from_dict
 
 # pylint: disable=W0201
-
-
-# Many thanks to the Medical Connections for offering free
-# valid UIDs (http://www.medicalconnections.co.uk/FreeUID.html)
-# Their service was used to obtain the following root UID for PyMedPhys:
-PYMEDPHYS_ROOT_UID = '1.2.826.0.1.3680043.10.188'
 
 
 class DicomBase:
@@ -90,17 +82,13 @@ class DicomBase:
 
     def __eq__(self, other):
         if version.parse(pydicom.__version__) <= version.parse("1.2.1"):
-            self_elems = sorted(list(self.dataset.iterall()),
-                                key=lambda x: x.tag)
-            other_elems = sorted(list(other.dataset.iterall()),
-                                 key=lambda x: x.tag)
+            self_elems = sorted(list(self.dataset.iterall()), key=lambda x: x.tag)
+            other_elems = sorted(list(other.dataset.iterall()), key=lambda x: x.tag)
             return self_elems == other_elems
         else:
             # TODO: Change for pydicom>=1.2.2?
-            self_elems = sorted(list(self.dataset.iterall()),
-                                key=lambda x: x.tag)
-            other_elems = sorted(list(other.dataset.iterall()),
-                                 key=lambda x: x.tag)
+            self_elems = sorted(list(self.dataset.iterall()), key=lambda x: x.tag)
+            other_elems = sorted(list(other.dataset.iterall()), key=lambda x: x.tag)
             return self_elems == other_elems
 
     def __ne__(self, other):
@@ -115,7 +103,6 @@ class DicomBase:
 
 
 class DicomDose(DicomBase):
-
     def __init__(self, dataset, copy=True):
         super().__init__(dataset, copy=copy)
 
@@ -133,22 +120,22 @@ class DicomDose(DicomBase):
     # but not needlessly call the entire function.
     @property
     def x(self):
-        x_value, _, _ = xyz_axes_from_dataset(self.dataset, 'DICOM')
+        x_value, _, _ = xyz_axes_from_dataset(self.dataset, "DICOM")
         return x_value
 
     @property
     def y(self):
-        _, y_value, _ = xyz_axes_from_dataset(self.dataset, 'DICOM')
+        _, y_value, _ = xyz_axes_from_dataset(self.dataset, "DICOM")
         return y_value
 
     @property
     def z(self):
-        _, _, z_value = xyz_axes_from_dataset(self.dataset, 'DICOM')
+        _, _, z_value = xyz_axes_from_dataset(self.dataset, "DICOM")
         return z_value
 
     @property
     def coords(self):
-        x, y, z = xyz_axes_from_dataset(self.dataset, 'DICOM')
+        x, y, z = xyz_axes_from_dataset(self.dataset, "DICOM")
         return coords_from_xyz_axes((x, y, z))
 
 

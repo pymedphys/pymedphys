@@ -11,12 +11,17 @@ from pymedphys_dicom.dicom import (
     create_dvh,
     dose_from_dataset,
     find_dose_within_structure,
-    dicom_dataset_from_dict
+    dicom_dataset_from_dict,
+    depth_dose,
+    profile,
 )
 
 from pymedphys_dicom.rtplan import (
     convert_to_one_fraction_group,
-    get_gantry_angles_from_dicom)
+    get_gantry_angles_from_dicom,
+)
+
+from pymedphys_dicom.ct import extend_ct
 
 try:
     from pymedphys_analysis.geometry import get_structure_aligned_cube

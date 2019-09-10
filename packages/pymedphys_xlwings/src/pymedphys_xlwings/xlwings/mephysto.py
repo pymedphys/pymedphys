@@ -33,35 +33,31 @@ from pymedphys_fileformats.mephysto import load_single_item
 
 
 @xw.func
-@xw.arg('filepath')
-@xw.arg('index')
-@xw.ret(expand='table')
+@xw.arg("filepath")
+@xw.arg("index")
+@xw.ret(expand="table")
 def mephysto(filepath, index):
     filepath_found = wildcard_file_resolution(filepath)
 
-    (
-        axis, reading, scan_curvetype, scan_depth
-    ) = load_single_item(filepath_found, int(index))
+    (axis, reading, scan_curvetype, scan_depth) = load_single_item(
+        filepath_found, int(index)
+    )
 
     second_column_header = ["Reading"]
 
     if scan_curvetype == "PDD":
-        first_column_header = [
-            "Depth Profile", "Depth (mm)"
-        ]
+        first_column_header = ["Depth Profile", "Depth (mm)"]
         second_column_header = [None] + second_column_header
     elif scan_curvetype == "INPLANE_PROFILE":
-        first_column_header = [
-            "Inplane Profile", "y (mm)"
-        ]
-        second_column_header = (
-            ["Depth = {} mm".format(scan_depth)] + second_column_header)
+        first_column_header = ["Inplane Profile", "y (mm)"]
+        second_column_header = [
+            "Depth = {} mm".format(scan_depth)
+        ] + second_column_header
     elif scan_curvetype == "CROSSPLANE_PROFILE":
-        first_column_header = [
-            "Crossplane Profile", "x (mm)"
-        ]
-        second_column_header = (
-            ["Depth = {} mm".format(scan_depth)] + second_column_header)
+        first_column_header = ["Crossplane Profile", "x (mm)"]
+        second_column_header = [
+            "Depth = {} mm".format(scan_depth)
+        ] + second_column_header
     else:
         raise ValueError("Unexpected Profile Type")
 

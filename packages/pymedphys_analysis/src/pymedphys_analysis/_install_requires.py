@@ -5,5 +5,5 @@ install_requires = [
     "pydicom",
     "pymedphys_dicom >= 0.10.0, < 0.11.0",
     "scikit-image",
-    "scipy"
+    "scipy",
 ]
