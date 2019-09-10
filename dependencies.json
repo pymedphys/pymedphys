@@ -143,12 +143,15 @@
       "stdlib": [
         "collections",
         "copy",
+        "datetime",
         "functools",
         "glob",
+        "json",
         "operator",
         "os",
-        "re",
-        "warnings"
+        "pprint",
+        "random",
+        "re"
       ]
     },
     "pymedphys_electronfactors": {
@@ -184,11 +187,11 @@
         "numpy"
       ],
       "internal": [
-        "pymedphys_dicom"
+        "pymedphys_dicom",
+        "pymedphys_utilities"
       ],
       "stdlib": [
         "dataclasses",
-        "itertools",
         "sys",
         "typing"
       ]
@@ -200,10 +203,10 @@
         "numpy",
         "pydicom",
         "scipy",
-        "tqdm",
-        "xarray"
+        "tqdm"
       ],
       "internal": [
+        "pymedphys_fileformats",
         "pymedphys_utilities"
       ],
       "stdlib": [
@@ -211,6 +214,8 @@
         "copy",
         "csv",
         "os",
+        "pathlib",
+        "re",
         "string",
         "subprocess",
         "sys",
@@ -317,12 +322,14 @@
     },
     "pymedphys_utilities": {
       "external": [
-        "numpy"
+        "numpy",
+        "scipy"
       ],
       "internal": [],
       "stdlib": [
         "glob",
         "hashlib",
+        "itertools",
         "json",
         "lzma",
         "os",

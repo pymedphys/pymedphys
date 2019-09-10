@@ -27,7 +27,7 @@
 import re
 from copy import deepcopy
 
-import pydicom
+from ..shim import pydicom
 
 from .create import dicom_dataset_from_dict
 
