@@ -26,7 +26,7 @@
 
 from collections import namedtuple
 
-import pydicom
+from ..shim import pydicom
 
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 

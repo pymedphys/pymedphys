@@ -143,12 +143,14 @@
       "stdlib": [
         "collections",
         "copy",
+        "datetime",
         "functools",
         "glob",
         "json",
         "operator",
         "os",
         "pprint",
+        "random",
         "re"
       ]
     },
