@@ -73,7 +73,6 @@ setup(
             "sphinx-autobuild",
             "sphinxcontrib-napoleon",
             "sphinx >= 1.4, < 1.8",
-            "pymedphys_sphinxtheme",
             "sphinx-argparse",
         ],
         "test": ["deepdiff", "pytest", "pytest-cov", "xlwings >= 0.15.4"],
