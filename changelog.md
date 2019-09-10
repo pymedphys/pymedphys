@@ -29,7 +29,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
-## [Unreleased]
+## [0.11.0]
 
 ### Breaking Changes
 
@@ -43,7 +43,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### New Features
 
 - Added functions `pymedphys.dicom.depth_dose` and `pymedphys.dicom.profiles`.
-- Added function `pymedphys.mephysto.load_and_normalise_mephysto`.
 - Exposed the `trf2pandas` function via `pymedphys.fileformats.trf2pandas`.
 
 ### Improvements
@@ -250,7 +249,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.10.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.11.0...master
+[0.11.0]: https://github.com/pymedphys/pymedphys/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/pymedphys/pymedphys/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/pymedphys/pymedphys/compare/v0.8.4...v0.9.0
 [0.8.4]: https://github.com/pymedphys/pymedphys/compare/v0.8.3...v0.8.4
