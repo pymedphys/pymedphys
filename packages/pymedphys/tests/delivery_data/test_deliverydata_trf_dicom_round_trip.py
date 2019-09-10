@@ -23,7 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
 import os
 
 import pytest
@@ -44,7 +43,6 @@ from pymedphys_dicom.rtplan import (
 from pymedphys import Delivery
 
 # pylint: disable=redefined-outer-name
-
 
 DIR_TO_TEST_MAP = {
     "original": {"fraction_group": 1},
