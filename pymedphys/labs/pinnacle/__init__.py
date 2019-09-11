@@ -26,7 +26,7 @@
 
 """A tool to export DICOM objects from raw Pinnacle data:
 
->>> from pymedphys.pinnacle import (
+>>> from pymedphys.labs.pinnacle import (
 ...     PinnacleExport,
 ...     PinnaclePlan,
 ...     PinnacleImage)

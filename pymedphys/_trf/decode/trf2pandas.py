@@ -46,6 +46,9 @@ def trf2pandas(filepath):
     return header_dataframe, table_dataframe
 
 
+read_trf = trf2pandas
+
+
 def split_into_header_table(trf_contents):
     header_length = determine_header_length(trf_contents)
 

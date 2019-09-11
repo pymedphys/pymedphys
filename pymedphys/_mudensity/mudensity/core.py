@@ -427,6 +427,9 @@ def calc_mu_density_return_grid(
     return grid_xx, grid_yy, mu_density
 
 
+mu_density = calc_mu_density_return_grid
+
+
 def get_grid(
     max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
     grid_resolution=__DEFAULT_GRID_RESOLUTION,
