@@ -189,6 +189,9 @@ def anonymise_dataset(
         return ds_anon
 
 
+anonymise = anonymise_dataset
+
+
 def anonymise_file(
     dicom_filepath,
     delete_original_file=False,

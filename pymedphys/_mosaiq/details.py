@@ -34,7 +34,7 @@ import numpy as np
 
 from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
 
-from ..delivery import DeliveryDatabases
+from .delivery import DeliveryDatabases
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES
