@@ -167,34 +167,27 @@ def multi_close(connections):
 
 
 @contextmanager
-def multi_mosaiq_connect(sql_server_and_ports):
+def connect(sql_server_and_ports):
     """A controlled execution class that opens and closes multiple SQL
     connections.
 
     Usage example:
-        servers = ['nbccc-msq', 'msqsql']
-        with multi_mosaiq_connect(users, servers) as cursors:
-            do_something(cursors['nbccc-msq'])
-            do_something(cursors['msqsql'])
+        import pymedphys
+
+        with pymedphys.mosaiq.connect('msqsql') as cursor:
+            do_something(cursor)
     """
+    if isinstance(sql_server_and_ports, str):
+        sql_server_and_ports = [sql_server_and_ports]
+
     connections, cursors = multi_connect(sql_server_and_ports)
     try:
+        if len(cursors) == 1:
+            cursors = cursors[0]
         yield cursors
     finally:
         multi_close(connections)
 
 
-@contextmanager
-def mosaiq_connect(sql_server_and_port):
-    """A controlled execution class that opens and closes a single SQL
-    connection to mosaiq.
-
-    Usage example:
-        with mosaiq_connect('msqsql') as cursor:
-            do_something(cursor)
-    """
-    connection, cursor = single_connect(sql_server_and_port)
-    try:
-        yield cursor
-    finally:
-        single_close(connection)
+mosaiq_connect = connect
+multi_mosaiq_connect = connect
