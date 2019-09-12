@@ -32,9 +32,9 @@ import pprint
 import numpy as np
 from pymedphys._dicom.shim import pydicom
 
-from ..utilities import remove_file
+from pymedphys._dicom.utilities import remove_file
 
-from ..constants import (
+from pymedphys._dicom.constants import (
     BASELINE_KEYWORD_VR_DICT,
     get_baseline_dict_entry,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
