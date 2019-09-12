@@ -34,7 +34,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys._utilities import (
+from pymedphys._utilities.config import (
     get_cache_filepaths,
     get_mu_density_parameters,
     get_index,
@@ -43,9 +43,10 @@ from pymedphys._utilities import (
     get_sql_servers_list,
     get_filepath,
 )
-from pymedphys.mosaiq.connect import multi_mosaiq_connect, multi_fetch_and_verify_mosaiq
-from pymedphys_databases.delivery import DeliveryDatabases
-from pymedphys_mudensity.mudensity import calc_mu_density
+from pymedphys._mosaiq.connect import multi_mosaiq_connect
+from pymedphys._mosaiq.delivery import DeliveryDatabases
+from pymedphys._mosaiq.details import multi_fetch_and_verify_mosaiq
+from pymedphys._mudensity.mudensity import calc_mu_density
 
 
 def analyse_single_hash(index, config, filehash, cursors):

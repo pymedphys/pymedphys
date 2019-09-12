@@ -32,7 +32,8 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_databases.msq import multi_mosaiq_connect, delivery_data_from_mosaiq
+from pymedphys._mosaiq.connect import multi_mosaiq_connect
+from pymedphys._mosaiq.details import delivery_data_from_mosaiq
 
 
 def plot_mu_densities(labels, mu_density_results):

@@ -28,7 +28,7 @@
 """
 
 
-from pymedphys_fileformats.trf.trf2csv import trf2csv_cli
+from pymedphys._trf.trf2csv import trf2csv_cli
 
 
 def trf_cli(subparsers):
