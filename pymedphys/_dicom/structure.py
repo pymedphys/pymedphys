@@ -30,7 +30,7 @@ from collections import namedtuple
 
 import numpy as np
 
-from ..shim import pydicom
+from pymedphys._dicom.shim import pydicom
 
 
 # pylint: disable=C0103

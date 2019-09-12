@@ -30,7 +30,7 @@ import datetime
 import random
 from collections import deque
 
-from ..shim import pydicom
+from pymedphys._dicom.shim import pydicom
 from ..constants.uuid import PYMEDPHYS_ROOT_UID
 
 

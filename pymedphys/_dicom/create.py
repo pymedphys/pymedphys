@@ -27,7 +27,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from ..shim import pydicom
+from pymedphys._dicom.shim import pydicom
 
 
 DICOM_NAMES = [item[-1] for _, item in pydicom.datadict.DicomDictionary.items()]
