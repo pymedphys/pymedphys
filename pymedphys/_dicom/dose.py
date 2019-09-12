@@ -30,9 +30,9 @@ from matplotlib import path
 
 from pymedphys._dicom.shim import pydicom
 
-from pymedphys_utilities.interpolate import RegularGridInterpolator
+from pymedphys._utilities.interpolate import RegularGridInterpolator
 
-from ..rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
+from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 
 from .structure import pull_structure
 from .coords import xyz_axes_from_dataset

@@ -31,7 +31,7 @@ import random
 from collections import deque
 
 from pymedphys._dicom.shim import pydicom
-from ..constants.uuid import PYMEDPHYS_ROOT_UID
+from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
 
 def extend(input_dir, output_dir, index_to_copy, number_of_slices):
