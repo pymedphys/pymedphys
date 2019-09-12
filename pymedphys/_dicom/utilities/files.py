@@ -1,10 +1,10 @@
-from os import remove, rmdir
+import os
 
 
 def remove_file(filepath):
     """Remove a file. Suppress error if the file does not exist."""
     try:
-        remove(filepath)
+        os.remove(filepath)
     except FileNotFoundError:
         pass
 
@@ -13,6 +13,6 @@ def remove_dir(dirpath):
     """Remove a directory. Suppress error if the directory does not
     exist."""
     try:
-        rmdir(dirpath)
+        os.rmdir(dirpath)
     except FileNotFoundError:
         pass

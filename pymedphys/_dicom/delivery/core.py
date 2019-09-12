@@ -30,8 +30,8 @@ import numpy as np
 
 from pymedphys._dicom.shim import pydicom
 
-from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
-from pymedphys_base.delivery import Delivery
+from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
+from pymedphys._base.delivery import Delivery
 
 from ..rtplan import (
     get_gantry_angles_from_dicom,
