@@ -22,7 +22,7 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-from pymedphys_dicom.dicom import zyx_and_dose_from_dataset
+from pymedphys._dicom.dose import zyx_and_dose_from_dataset
 
 from ..implementation import gamma_shell, gamma_filter_numpy
 from ..utilities import calculate_pass_rate

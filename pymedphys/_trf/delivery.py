@@ -25,10 +25,11 @@
 
 import numpy as np
 
-from pymedphys_base.delivery import Delivery
+from pymedphys._base.delivery import Delivery
 
-from ..trf import (
-    decode_trf,
+from .trf2pandas import read_trf
+
+from .constants import (
     GANTRY_NAME,
     COLLIMATOR_NAME,
     Y1_LEAF_BANK_NAMES,
@@ -40,7 +41,7 @@ from ..trf import (
 class DeliveryLogfile(Delivery):
     @classmethod
     def from_logfile(cls, filepath):
-        dataframe = decode_trf(filepath)
+        _, dataframe = read_trf(filepath)
 
         return cls.from_pandas(dataframe)
 

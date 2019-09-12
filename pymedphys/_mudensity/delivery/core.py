@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys_base.delivery import Delivery
+from pymedphys._base.delivery import Delivery
 
 from ..mudensity import calc_mu_density
 
