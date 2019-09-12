@@ -35,15 +35,15 @@ from glob import glob
 
 import attr
 
-from pymedphys_utilities.filehash import hash_file
-from pymedphys_utilities.utilities import get_sql_servers, make_a_valid_directory_name
-from pymedphys_databases.msq import (
-    multi_mosaiq_connect,
+from pymedphys._utilities.filehash import hash_file
+from pymedphys._utilities.filesystem import make_a_valid_directory_name
+from pymedphys._mosaiq.connect import multi_mosaiq_connect
+from pymedphys._mosaiq.details import (
     get_mosaiq_delivery_details,
     OISDeliveryDetails,
     NoMosaiqEntries,
 )
-from pymedphys_fileformats.trf import Header, decode_header_from_file
+from pymedphys._trf.header import Header, decode_header_from_file
 
 from .identify import date_convert
 
