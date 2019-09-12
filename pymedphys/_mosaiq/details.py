@@ -32,7 +32,7 @@ import struct
 import attr
 import numpy as np
 
-from pymedphys_utilities.transforms import convert_IEC_angle_to_bipolar
+from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
 from .delivery import DeliveryDatabases
 
