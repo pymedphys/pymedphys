@@ -27,7 +27,7 @@
 """Export DICOM objects from raw Pinnacle data.
 """
 
-from pymedphys_pinnacle import export_cli
+from pymedphys.labs.pinnacle import export_cli
 
 
 def pinnacle_cli(subparsers):

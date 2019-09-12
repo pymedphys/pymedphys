@@ -34,7 +34,7 @@ from scipy.interpolate import splprep, splev
 
 import pydicom
 
-from pymedphys_dicom.dicom import pull_structure
+from pymedphys._dicom.structure import pull_structure
 
 
 def cubify_cube_definition(cube_definition):

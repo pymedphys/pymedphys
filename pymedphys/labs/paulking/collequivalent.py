@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from pymedphys_utilities.constants import AGILITY
+from pymedphys._utilities.constants import AGILITY
 
 
 def abutted(a, b, tolerance=1):
