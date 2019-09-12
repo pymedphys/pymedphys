@@ -1,6 +1,7 @@
-from pymedphys_base.delivery import Delivery as DeliveryBase
+from ._base.delivery import Delivery as DeliveryBase
 
-to_be_combined = [DeliveryBase]
+
+to_be_combined = [DeliveryBase]  # pylint: disable=invalid-name
 
 try:
     from pymedphys_dicom.delivery import DeliveryDicom

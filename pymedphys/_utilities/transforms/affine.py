@@ -29,8 +29,9 @@ from numpy.linalg import norm
 
 
 def rotate_about_vector(coords_to_rotate, vector, theta, active=False):
-    r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the axis specified by
-    `vector`. Transforms can be active (alibi) or passive (alias). Default is passive.
+    r"""Rotates a 3 x n vector of the form np.array((x, y, z)) about the axis specified
+    by `vector`. Transforms can be active (alibi) or passive (alias). Default is
+    passive.
     """
     unit_vector = vector / norm(vector)
 
@@ -61,8 +62,8 @@ def rotate_about_vector(coords_to_rotate, vector, theta, active=False):
         ]
     )
 
-    # Rotation matrix above is active (unlike in other functions). Will manually transpose to avoid
-    # confusion later...
+    # Rotation matrix above is active (unlike in other functions). Will manually
+    # transpose to avoid confusion later...
     if not active:
         rotation_matrix = rotation_matrix.transpose()
 

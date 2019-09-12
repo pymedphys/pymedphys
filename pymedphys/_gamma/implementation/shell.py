@@ -315,6 +315,7 @@ class GammaInternalFixedOptions:
 
 gamma = gamma_shell
 
+
 def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
     still_searching_for_gamma = np.full_like(
         options.flat_dose_reference, True, dtype=bool
@@ -338,7 +339,8 @@ def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
     while distance <= options.maximum_test_distance:
         if not options.quiet:
             sys.stdout.write(
-                "\rCurrent distance: {0:.2f} mm | Number of reference points remaining: {1}".format(
+                "\rCurrent distance: {0:.2f} mm | "
+                "Number of reference points remaining: {1}".format(
                     distance, np.sum(to_be_checked)
                 )
             )
