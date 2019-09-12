@@ -32,7 +32,10 @@ from typing import Union, Tuple, List, Dict
 
 import numpy as np
 
-from .utilities import remove_irrelevant_control_points, to_tuple
+from pymedphys._utilities.controlpoints import (
+    remove_irrelevant_control_points,
+    to_tuple,
+)
 
 
 _DeliveryBase = namedtuple(
