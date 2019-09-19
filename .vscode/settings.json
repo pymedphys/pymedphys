@@ -55,5 +55,6 @@
     "scipy",
     "tolist",
     "uint"
-  ]
+  ],
+  "python.pythonPath": ".venv/bin/python"
 }
