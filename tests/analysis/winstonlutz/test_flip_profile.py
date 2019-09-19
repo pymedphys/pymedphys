@@ -27,8 +27,8 @@ import pytest
 
 import numpy as np
 
-from pymedphys_analysis.mocks.profiles import create_square_field_function
-from pymedphys_analysis.winstonlutz.profiles import (
+from pymedphys._mocks.profiles import create_square_field_function
+from pymedphys.labs.winstonlutz.profiles import (
     penumbra_flip_diff,
     field_points_to_compare,
 )
