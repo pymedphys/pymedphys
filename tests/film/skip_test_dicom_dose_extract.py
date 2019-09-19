@@ -32,7 +32,7 @@ import numpy as np
 
 import pydicom
 
-from pymedphys_dicom.dicom import dicom_dose_interpolate
+from pymedphys._dicom.dose import dicom_dose_interpolate
 from fixtures import BASELINES_DIR, DATA_DIR
 
 CREATE_BASELINE = False

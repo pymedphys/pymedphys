@@ -28,8 +28,8 @@
 import pytest
 
 import numpy as np
-from pymedphys.gamma import gamma_shell
-from pymedphys_gamma.implementation.shell import calculate_coordinates_shell
+from pymedphys._gamma.implementation import gamma_shell
+from pymedphys._gamma.implementation.shell import calculate_coordinates_shell
 
 
 def does_gamma_scale_as_expected(

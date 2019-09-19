@@ -33,7 +33,8 @@ import numpy as np
 import pydicom
 import pytest
 
-from pymedphys_dicom.dicom import DicomDose, require_patient_orientation_be_HFS
+from pymedphys._dicom.collection import DicomDose
+from pymedphys._dicom.dose import require_patient_orientation_be_HFS
 
 from test_coords import get_data_file
 
