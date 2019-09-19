@@ -26,7 +26,7 @@
 import os
 import numpy as np
 
-from pymedphys_labs.paulking.narrow_png import read_narrow_png
+from pymedphys.labs.paulking.narrow_png import read_narrow_png
 
 DATA_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
 

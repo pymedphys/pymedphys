@@ -25,7 +25,7 @@
 
 
 import os
-from pymedphys_logfiles.elekta import already_indexed_path
+from pymedphys.labs.managelogfiles import already_indexed_path
 
 
 def test_file_logic():

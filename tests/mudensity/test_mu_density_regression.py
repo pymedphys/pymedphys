@@ -36,7 +36,7 @@ import pytest
 
 import numpy as np
 
-from pymedphys_mudensity.mudensity import calc_mu_density
+from pymedphys import mu_density as calc_mu_density
 
 
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
