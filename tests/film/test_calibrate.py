@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from pymedphys_labs.film import create_dose_function
+from pymedphys.labs.film import create_dose_function
 
 
 def test_create_dose_function():

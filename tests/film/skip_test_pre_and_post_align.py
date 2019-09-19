@@ -31,8 +31,8 @@ import pytest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_labs.film import shift_and_rotate, get_aligned_image
-from pymedphys_labs.film.optical_density import create_axes
+from pymedphys.labs.film import shift_and_rotate, get_aligned_image
+from pymedphys.labs.film.optical_density import create_axes
 
 from fixtures import BASELINES_DIR, prescans, postscans
 

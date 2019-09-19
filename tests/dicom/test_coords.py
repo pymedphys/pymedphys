@@ -4,7 +4,7 @@ from os.path import abspath, dirname, join as pjoin
 import numpy as np
 import pydicom
 
-from pymedphys_dicom.dicom import xyz_axes_from_dataset
+from pymedphys._dicom.coords import xyz_axes_from_dataset
 
 HERE = dirname(abspath(__file__))
 DATA_DIRECTORY = pjoin(HERE, "data", "dose")
