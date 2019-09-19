@@ -715,10 +715,10 @@ version = "0.6.0"
 more-itertools = "*"
 
 [extras]
-all = ["attrs", "keyring", "packaging", "tqdm", "python_dateutil", "PyYAML", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "scikit-image", "pymssql", "shapely"]
+all = ["attrs", "keyring", "packaging", "tqdm", "python_dateutil", "PyYAML", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "scikit-image", "pymssql", "shapely", "pydicom"]
 
 [metadata]
-content-hash = "89d96f1f8d420d2f9f2eb181b1a27e1fbc8ba4dff4982f8793ae574193eb2c8c"
+content-hash = "5b7c978188be784c2b9b15f7efe1bcf9611c9725f601f0229dd045acded25ff8"
 python-versions = "^3.7"
 
 [metadata.hashes]

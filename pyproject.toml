@@ -70,7 +70,7 @@ all = [
     "tqdm", "python_dateutil", "PyYAML",
     "numpy", "matplotlib", "scipy", "pandas",
     "Pillow", "imageio", "scikit-image",
-    "pymssql", "shapely", "pyidcom"
+    "pymssql", "shapely", "pydicom"
 ]
 
 [build-system]
