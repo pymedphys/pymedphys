@@ -49,15 +49,17 @@
 # SOFTWARE.
 
 
-import pytest
-import pydicom
-import numpy as np
 import os
-import shutil
 import tempfile
 from zipfile import ZipFile
 
-from pymedphys_pinnacle import PinnacleExport
+import pytest
+
+import numpy as np
+
+import pydicom
+
+from pymedphys.labs.pinnacle import PinnacleExport
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIRECTORY = os.path.join(HERE, "data", "export")
