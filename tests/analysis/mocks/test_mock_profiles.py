@@ -26,7 +26,7 @@
 
 import numpy as np
 
-from pymedphys_analysis.mocks.profiles import (
+from pymedphys._mocks.profiles import (
     scaled_penumbra_sig,
     gaussian_cdf,
     create_profile_function,
