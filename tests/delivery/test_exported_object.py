@@ -1,4 +1,4 @@
-from pymedphys_base.delivery import Delivery
+from pymedphys import Delivery
 
 
 def test_object_consistency():

@@ -40,13 +40,13 @@ from .constants import (
 
 class DeliveryLogfile(Delivery):
     @classmethod
-    def from_logfile(cls, filepath):
+    def from_logfile(cls, filepath) -> Delivery:
         _, dataframe = read_trf(filepath)
 
         return cls.from_pandas(dataframe)
 
     @classmethod
-    def from_pandas(cls, table):
+    def from_pandas(cls, table) -> Delivery:
         raw_monitor_units = table["Step Dose/Actual Value (Mu)"]
 
         diff = np.append([0], np.diff(raw_monitor_units))
