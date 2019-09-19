@@ -32,9 +32,9 @@ import matplotlib.pyplot as plt
 
 import pydicom
 
-from pymedphys_utilities.algorithms import maintain_order_unique
+from pymedphys._utilities.algorithms import maintain_order_unique
 
-from pymedphys_dicom.rtplan import (
+from pymedphys._dicom.rtplan import (
     get_metersets_from_dicom,
     get_gantry_angles_from_dicom,
     convert_to_one_fraction_group,
@@ -63,7 +63,7 @@ def loaded_dicom_dataset():
 
 
 @pytest.fixture
-def logfile_delivery_data() -> Delivery:
+def logfile_delivery_data():
     return Delivery.from_logfile(LOGFILE_FILEPATH)
 
 
