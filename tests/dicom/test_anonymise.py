@@ -13,14 +13,14 @@ from pydicom.filereader import read_file_meta_info
 from pydicom.tag import Tag
 import pytest
 
-from pymedphys_dicom.constants import (
+from pymedphys._dicom.constants import (
     BASELINE_DICOM_DICT,
     BASELINE_DICOM_DICT_FILEPATH,
     BASELINE_DICOM_REPEATERS_DICT,
     BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
 )
 
-from pymedphys_dicom.dicom import (
+from pymedphys._dicom.anonymise import (
     anonymise_dataset,
     anonymise_directory,
     anonymise_file,
@@ -32,7 +32,7 @@ from pymedphys_dicom.dicom import (
     is_anonymised_file,
     label_dicom_filepath_as_anonymised,
 )
-from pymedphys_dicom.utilities import remove_file
+from pymedphys._dicom.utilities import remove_file
 
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(HERE, "data", "anonymise")
