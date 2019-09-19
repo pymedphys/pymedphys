@@ -58,6 +58,8 @@ pytest-mock = "^1.9"
 black = { version = "^19.3b0"}
 pre-commit = "^1.10"
 tox = "^3.0"
+mypy = "^0.720.0"
+pylint = "^2.3"
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.cli.main:pymedphys_cli"
