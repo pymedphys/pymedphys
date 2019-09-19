@@ -23,11 +23,10 @@ PyMedPhys
 .. START_OF_ABOUT_IMPORT
 
 Bringing together Medical Physicists to create quality transparent software at
-a price affordable by all our peers (free)
+a price affordable by all our peers, no matter what country they are from (free).
 
 PyMedPhys, a community powered by git and continuous integration. A place to
 share, review, improve, and transparently learn off of each other’s code. 
-
 It is a library of tools that we all have access to and, because of its
 `license`_, will all have access to whatever it becomes in the future.
 It is inspired by the collaborative work of our physics peers in
