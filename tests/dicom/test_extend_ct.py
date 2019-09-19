@@ -25,8 +25,8 @@
 
 from copy import deepcopy
 
-from pymedphys_dicom.dicom.create import dicom_dataset_from_dict
-from pymedphys_dicom.ct.extend import (
+from pymedphys._dicom.create import dicom_dataset_from_dict
+from pymedphys._dicom.ct.extend import (
     extend_datasets,
     generate_uids,
     convert_datasets_to_deque,

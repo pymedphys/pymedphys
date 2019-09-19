@@ -28,7 +28,8 @@ import io
 
 from pydicom.filebase import DicomBytesIO
 
-from pymedphys_dicom.dicom import DicomBase, dicom_dataset_from_dict
+from pymedphys._dicom.collection import DicomBase
+from pymedphys._dicom.create import dicom_dataset_from_dict
 
 
 def test_copy():

@@ -35,7 +35,7 @@ import pytest
 # import numpy as np
 # import matplotlib.pyplot as plt
 
-from pymedphys_labs.film import calc_net_od
+from pymedphys.labs.film import calc_net_od
 
 from fixtures import prescans, postscans
 

@@ -33,7 +33,7 @@ from contextlib import contextmanager
 import numpy as np
 import pandas as pd
 
-from pymedphys_fileformats.trf import trf2csv
+from pymedphys._trf.trf2csv import trf2csv
 
 HEADER_TAG = "_header"
 TABLE_TAG = "_table"

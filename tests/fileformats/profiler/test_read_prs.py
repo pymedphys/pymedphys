@@ -27,7 +27,7 @@ import os
 
 import numpy as np
 
-from pymedphys_fileformats.profiler import read_prs
+from pymedphys.labs.fileformats.profiler import read_prs
 
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
 

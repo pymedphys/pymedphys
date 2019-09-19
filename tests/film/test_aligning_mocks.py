@@ -26,13 +26,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys_labs.film import (
+from pymedphys.labs.film import (
     align_images,
     interpolated_rotation,
     create_image_interpolation,
     shift_and_rotate,
 )
-from pymedphys_analysis.mocks import create_rectangular_field_function
+from pymedphys._mocks.profiles import create_rectangular_field_function
 
 
 def test_shift_alignment():
