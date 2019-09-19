@@ -26,7 +26,7 @@
 
 import os
 import numpy as np
-from pymedphys_labs.paulking.profile import Profile
+from pymedphys.labs.paulking.profile import Profile
 
 # pylint: disable = E1102, C0111
 

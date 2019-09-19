@@ -36,8 +36,8 @@ import pandas as pd
 
 import pydicom
 
-from pymedphys_dicom.dicom import depth_dose, profile
-from pymedphys_labs.tpscompare import load_and_normalise_mephysto
+from pymedphys.dicom import depth_dose, profile
+from pymedphys.labs.tpscompare import load_and_normalise_mephysto
 
 from shared import (
     BASELINES_DIR,

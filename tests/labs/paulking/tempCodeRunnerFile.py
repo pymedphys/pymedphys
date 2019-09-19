@@ -1,1 +1,1 @@
-from pymedphys_labs.paulking.profile import Profile
+from pymedphys.labs.paulking.profile import Profile
