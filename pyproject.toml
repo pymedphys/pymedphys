@@ -1,0 +1,71 @@
+[tool.poetry]
+name = "pymedphys"
+version = "0.12.0dev0"
+readme = "README.rst"
+authors = [
+    "Simon Biggs <me@simonbiggs.net>",
+    "Matthew Jennings <Centrus.007@gmail.com>",
+    "Phillip Chlap",
+    "Paul King <king.r.paul@gmail.com>",
+    "Matthew Sobolewski",
+    "Jacob McAloney",
+    "Pedro Martinez"
+]
+license = "AGPL-3.0+"
+homepage = "https://pymedphys.com"
+repository = "https://github.com/pymedphys/pymedphys"
+documentation = "https://pymedphys.com"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+attrs = { version = "*", optional = true }
+keyring = { version = "*", optional = true }
+packaging = { version = "*", optional = true }
+
+tqdm = { version = "*", optional = true }
+python_dateutil = { version = "*", optional = true }
+PyYAML = { version = "*", optional = true }
+
+numpy = { version = "^1.12", optional = true }
+matplotlib = { version = "*", optional = true }
+scipy = { version = "*", optional = true }
+pandas = { version = "*", optional = true }
+
+Pillow = { version = "*", optional = true }
+imageio = { version = "*", optional = true }
+scikit-image = { version = "*", optional = true }
+
+pymssql = { version = "*", optional = true }
+
+shapely = { version = "*", optional = true }
+
+pydicom = { version = "*", optional = true }
+
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.0"
+black = "^19.3b0"
+
+[tool.poetry.scripts]
+pymedphys = "pymedphys.cli.main:pymedphys_cli"
+
+[tool.poetry.extras]
+all = [
+    "attrs", "keyring", "packaging",
+    "tqdm", "python_dateutil", "PyYAML",
+    "numpy", "matplotlib", "scipy", "pandas",
+    "Pillow", "imageio", "scikit-image",
+    "pymssql", "shapely", "pyidcom"
+]
+
+[build-system]
+requires = ["poetry>=0.12", "setuptools", "wheel"]
+build-backend = "poetry.masonry.api"
