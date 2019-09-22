@@ -26,12 +26,9 @@
 
 import numpy as np
 
+import pymedphys
+
 from pymedphys._utilities.config import get_filepath, get_gantry_tolerance
-from pymedphys._mudensity.mudensity import get_grid
-
-
-from pymedphys._mosaiq.details import multi_fetch_and_verify_mosaiq
-from pymedphys._mosaiq.delivery import DeliveryDatabases
 
 from .analyse import calc_comparison, plot_results
 
@@ -111,7 +108,6 @@ def get_field_id_from_logfile_group(index, logfile_group):
 
 
 def calc_normalisation(mosaiq_delivery_data):
-    mosaiq_delivery_data.m
     all_gantry_angles = mosaiq_delivery_data.mudensity
     mosaiq_gantry_angles = np.unique(mosaiq_delivery_data.gantry)
     number_of_gantry_angles = len(mosaiq_gantry_angles)
@@ -128,10 +124,10 @@ def calc_logfile_mu_density_bygantry(
 
     for filehash in logfile_group:
         filepath = get_filepath(index, config, filehash)
-        logfile_delivery_data = DeliveryDatabases.from_logfile(filepath)
+        logfile_delivery_data = pymedphys.Delivery.from_logfile(filepath)
 
         a_logfile_mu_density = [
-            get_grid(grid_resolution=grid_resolution),
+            pymedphys.mudensity.grid(grid_resolution=grid_resolution),
             logfile_delivery_data.mudensity(
                 gantry_angle, grid_resolution=grid_resolution
             ),
@@ -152,10 +148,10 @@ def compare_logfile_group_bygantry(
 ):
     field_id = get_field_id_from_logfile_group(index, logfile_group)
 
-    mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(cursor, field_id)
+    mosaiq_delivery_data = pymedphys.Delivery.from_mosaiq(cursor, field_id)
 
     mosaiq_mu_density = [
-        get_grid(grid_resolution=grid_resolution),
+        pymedphys.mudensity.grid(grid_resolution=grid_resolution),
         mosaiq_delivery_data.mudensity(gantry_angle, grid_resolution=grid_resolution),
     ]
 
@@ -195,7 +191,7 @@ def get_logfile_delivery_data_bygantry(
 
         for file_hash in logfile_group:
             filepath = get_filepath(index, config, file_hash)
-            logfile_delivery_data = DeliveryDatabases.from_logfile(filepath)
+            logfile_delivery_data = pymedphys.Delivery.from_logfile(filepath)
             mu = np.array(logfile_delivery_data.monitor_units)
 
             filtered = logfile_delivery_data.filter_cps()
@@ -252,7 +248,7 @@ def get_logfile_mu_density_bygantry(
                 )
                 if num_control_points > 0:
                     mu_density = [
-                        get_grid(),
+                        pymedphys.mudensity.grid(),
                         delivery_data[file_hash][mosaiq_gantry_angle].mudensity(),
                     ]
 
@@ -318,7 +314,7 @@ def get_mosaiq_mu_density_bygantry(mosaiq_delivery_data_bygantry):
 
     for mosaiq_gantry_angle in mosaiq_gantry_angles:
         mu_density = [
-            get_grid(),
+            pymedphys.mudensity.grid(),
             mosaiq_delivery_data_bygantry[mosaiq_gantry_angle].mudensity(),
         ]
         mosaiq_mu_density_bygantry[mosaiq_gantry_angle] = mu_density
@@ -392,7 +388,7 @@ def get_mu_densities_for_file_hashes(index, config, cursor, file_hashes):
     logfile_groups = group_consecutive_logfiles(file_hashes, index)
     logfile_groups = [tuple(group) for group in logfile_groups]
 
-    mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(cursor, field_id)
+    mosaiq_delivery_data = pymedphys.Delivery.from_mosaiq(cursor, field_id)
     mosaiq_gantry_angles = np.unique(mosaiq_delivery_data.gantry)
 
     logfile_delivery_data_bygantry = get_logfile_delivery_data_bygantry(

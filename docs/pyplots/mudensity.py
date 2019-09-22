@@ -1,4 +1,4 @@
-from pymedphys_mudensity.mudensity import calc_mu_density, get_grid, display_mu_density
+import pymedphys
 
 leaf_pair_widths = (5, 5, 5)
 max_leaf_gap = 10
@@ -13,10 +13,12 @@ mlc = [
 
 jaw = [[7.5, 7.5], [7.5, 7.5], [-2, 7.5], [0, 0]]
 
-grid = get_grid(max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths)
+grid = pymedphys.mudensity.grid(
+    max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths
+)
 
-mu_density = calc_mu_density(
+mu_density = pymedphys.mudensity.calculate(
     mu, mlc, jaw, max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths
 )
 
-display_mu_density(grid, mu_density)
+pymedphys.mudensity.display(grid, mu_density)

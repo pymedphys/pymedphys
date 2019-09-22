@@ -30,7 +30,7 @@ from matplotlib import path
 
 from pymedphys._dicom.shim import pydicom
 
-from pymedphys._utilities.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator
 
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 

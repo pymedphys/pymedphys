@@ -25,9 +25,6 @@
 
 
 """A Mephysto toolbox.
-
-Examples:
-    >>> from pymedphys.mephysto import load_mephysto
 """
 
 from .api import load_mephysto, load_single_item

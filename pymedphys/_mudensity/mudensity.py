@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Simon Biggs
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 from pymedphys._utilities.controlpoints import remove_irrelevant_control_points
 from pymedphys._utilities.constants import AGILITY
 
-from ..plt import pcolormesh_grid
+from .plt import pcolormesh_grid
 
 
 __DEFAULT_LEAF_PAIR_WIDTHS = AGILITY
@@ -257,7 +257,7 @@ def calc_single_control_point(
     Examples
     --------
     >>> import numpy as np
-    >>> from pymedphys_mudensity.mudensity import (
+    >>> from pymedphys._mudensity.mudensity import (
     ...     calc_single_control_point, display_mu_density)
     >>>
     >>> leaf_pair_widths = (2, 2)
@@ -346,7 +346,7 @@ def single_mlc_pair(
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>>
-    >>> from pymedphys_mudensity.mudensity import single_mlc_pair
+    >>> from pymedphys._mudensity.mudensity import single_mlc_pair
     >>>
     >>> mlc_left = (-2.3, 3.1)  # (start position, end position)
     >>> mlc_right = (0, 7.7)

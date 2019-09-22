@@ -29,9 +29,6 @@ None of these functions anonymise UIDs, but plans are afoot to support this.
 Confidentiality Profile**, but plan to be in a position to do so in the
 not-to-distant future.
 
-.. _`pymedphys.geometry.cubify_cube_definition`:
-   geometry.html#pymedphys.geometry.cubify_cube_definition
-
 .. autofunction:: pymedphys.dicom.anonymise_dataset
 
 .. autofunction:: pymedphys.dicom.anonymise_file

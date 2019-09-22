@@ -32,8 +32,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymedphys._mosaiq.connect import multi_mosaiq_connect
-from pymedphys._mosaiq.details import delivery_data_from_mosaiq
+import pymedphys
 
 
 def plot_mu_densities(labels, mu_density_results):
@@ -78,9 +77,9 @@ def plot_gantry_collimator(labels, deliveries):
 def compare_mosaiq_fields(servers, field_ids):
     unique_servers = list(set(servers))
 
-    with multi_mosaiq_connect(unique_servers) as cursors:
+    with pymedphys.mosaiq.connect(unique_servers) as cursors:
         deliveries = [
-            delivery_data_from_mosaiq(cursors[server], field_id)
+            pymedphys.Delivery.from_mosaiq(cursors[server], field_id)
             for server, field_id in zip(servers, field_ids)
         ]
 
