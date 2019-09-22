@@ -28,7 +28,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from pymedphys._dicom.shim import pydicom
+import pydicom
 
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 from pymedphys._base.delivery import DeliveryBase

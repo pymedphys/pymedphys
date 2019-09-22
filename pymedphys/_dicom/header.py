@@ -27,7 +27,7 @@
 import re
 from copy import deepcopy
 
-from pymedphys._dicom.shim import pydicom
+import pydicom
 
 from .create import dicom_dataset_from_dict
 
