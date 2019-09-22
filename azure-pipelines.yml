@@ -37,20 +37,17 @@ jobs:
       displayName: Install Pandoc, need to make this only on doc run
       condition: eq( variables['TOXENV'], 'docs' )
 
-    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+    - bash: python -c "import sys; print(sys.version); print(sys.executable)"
       displayName: Show python information
 
-    - bash: "python -m pip install -U pip setuptools --user"
+    - bash: python -m pip install -U pip setuptools --user
       displayName: Upgrade pip and setuptools
 
-    - bash: yarn
-      displayName: Run yarn
+    - bash: curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+      displayName: Install Poetry
 
-    - bash: "python -m pip install -U tox --user"
+    - bash: python -m pip install -U tox --user
       displayName: Install tox
-
-    - bash: python -m tox -e $TOXENV --notest
-      displayName: Install test dependencies
 
     - bash: python -m tox -e $TOXENV
       displayName: Run tests
@@ -63,124 +60,124 @@ jobs:
       condition: succeededOrFailed()
 
 
-  - job: MacOS
+  # - job: MacOS
 
-    strategy:
-      matrix:
-        Py37:
-          image_name: macos-10.13
-          test_title: MacOS Py37
-          toxenv: py37
-          python: 3.7
+  #   strategy:
+  #     matrix:
+  #       Py37:
+  #         image_name: macos-10.13
+  #         test_title: MacOS Py37
+  #         toxenv: py37
+  #         python: 3.7
 
-    pool:
-      vmImage: $(image_name)
+  #   pool:
+  #     vmImage: $(image_name)
 
-    steps:
-    - bash: echo "##vso[task.prependpath]$CONDA/bin"
-      displayName: Add Conda to PATH
+  #   steps:
+  #   - bash: echo "##vso[task.prependpath]$CONDA/bin"
+  #     displayName: Add Conda to PATH
 
-    - bash: sudo chown -R $USER $CONDA
-      displayName: Take ownership of Conda installation
+  #   - bash: sudo chown -R $USER $CONDA
+  #     displayName: Take ownership of Conda installation
 
-    - bash: conda config --add channels conda-forge
-      displayName: Add Conda-Forge
+  #   - bash: conda config --add channels conda-forge
+  #     displayName: Add Conda-Forge
 
-    - bash: conda config --set always_yes true
-      displayName: Make Conda always say yes to install
+  #   - bash: conda config --set always_yes true
+  #     displayName: Make Conda always say yes to install
 
-    - bash: conda update --quiet conda
-      displayName: Update Conda
+  #   - bash: conda update --quiet conda
+  #     displayName: Update Conda
 
-    - bash: conda install --quiet python=$(python)
-      displayName: Install Python Version
+  #   - bash: conda install --quiet python=$(python)
+  #     displayName: Install Python Version
 
-    - bash: python -c "import sys; print(sys.version); print(sys.executable)"
-      displayName: Show Python Information
+  #   - bash: python -c "import sys; print(sys.version); print(sys.executable)"
+  #     displayName: Show Python Information
 
-    - bash: conda info --all
-      displayName: Show Conda Information
+  #   - bash: conda info --all
+  #     displayName: Show Conda Information
 
-    - bash: conda install --quiet pip "xlwings >= 0.15.4" matplotlib pymssql
-      displayName: Install difficult packages with Conda
+  #   - bash: conda install --quiet pip "xlwings >= 0.15.4" matplotlib pymssql
+  #     displayName: Install difficult packages with Conda
 
-    - bash: yarn
-      displayName: Run yarn
+  #   - bash: yarn
+  #     displayName: Run yarn
 
-    - bash: yarn install:test
-      displayName: Install dependencies for testing with yarn
+  #   - bash: yarn install:test
+  #     displayName: Install dependencies for testing with yarn
 
-    - bash: pytest -v
-      displayName: Run tests
+  #   - bash: pytest -v
+  #     displayName: Run tests
 
-    - task: PublishTestResults@2
-      displayName: Publish test results
-      inputs:
-        testResultsFiles: junit/*.xml
-        testRunTitle: '$(test_title)'
-      condition: succeededOrFailed()
+  #   - task: PublishTestResults@2
+  #     displayName: Publish test results
+  #     inputs:
+  #       testResultsFiles: junit/*.xml
+  #       testRunTitle: '$(test_title)'
+  #     condition: succeededOrFailed()
 
 
-  - job: Windows
+  # - job: Windows
 
-    strategy:
-      matrix:
-        Py37:
-          image_name: vs2017-win2016
-          test_title: Windows Py37
-          toxenv: py37
-          python: 3.7
+  #   strategy:
+  #     matrix:
+  #       Py37:
+  #         image_name: vs2017-win2016
+  #         test_title: Windows Py37
+  #         toxenv: py37
+  #         python: 3.7
 
-    pool:
-      vmImage: $(image_name)
+  #   pool:
+  #     vmImage: $(image_name)
 
-    steps:
-    - script: |
-        $(CONDA)\Scripts\activate && conda config --add channels conda-forge
-      displayName: Add Conda-Forge
+  #   steps:
+  #   - script: |
+  #       $(CONDA)\Scripts\activate && conda config --add channels conda-forge
+  #     displayName: Add Conda-Forge
 
-    - script:  |
-        $(CONDA)\Scripts\activate && conda config --set always_yes true
-      displayName: Make Conda always say yes to install
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && conda config --set always_yes true
+  #     displayName: Make Conda always say yes to install
 
-    - script:  |
-        $(CONDA)\Scripts\activate && conda update --quiet conda && conda init cmd.exe
-      displayName: Update Conda and run `conda init cmd.exe`
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && conda update --quiet conda && conda init cmd.exe
+  #     displayName: Update Conda and run `conda init cmd.exe`
 
-    - script:  |
-        $(CONDA)\Scripts\activate && conda install --quiet python=$(python)
-      displayName: Install Python Version
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && conda install --quiet python=$(python)
+  #     displayName: Install Python Version
 
-    - script:  |
-        $(CONDA)\Scripts\activate && python -c "import sys; print(sys.version); print(sys.executable)"
-      displayName: Show Python Information
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && python -c "import sys; print(sys.version); print(sys.executable)"
+  #     displayName: Show Python Information
 
-    - script:  |
-        $(CONDA)\Scripts\activate && conda info --all
-      displayName: Show Conda Information
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && conda info --all
+  #     displayName: Show Conda Information
 
-    - script:  |
-        $(CONDA)\Scripts\activate && conda install --quiet pip "xlwings >= 0.15.4" shapely
-      displayName: Install difficult packages with Conda
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && conda install --quiet pip "xlwings >= 0.15.4" shapely
+  #     displayName: Install difficult packages with Conda
 
-    - script:  |
-        $(CONDA)\Scripts\activate && yarn
-      displayName: Run yarn
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && yarn
+  #     displayName: Run yarn
 
-    - script:  |
-        $(CONDA)\Scripts\activate && yarn install:test
-      displayName: Install dependencies for testing with yarn
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && yarn install:test
+  #     displayName: Install dependencies for testing with yarn
 
-    - script:  |
-        $(CONDA)\Scripts\activate && pytest -v
-      displayName: Run tests
+  #   - script:  |
+  #       $(CONDA)\Scripts\activate && pytest -v
+  #     displayName: Run tests
 
-    - task: PublishTestResults@2
-      displayName: Publish test results
-      inputs:
-        testResultsFiles: junit/*.xml
-        testRunTitle: '$(test_title)'
-      condition: succeededOrFailed()
+  #   - task: PublishTestResults@2
+  #     displayName: Publish test results
+  #     inputs:
+  #       testResultsFiles: junit/*.xml
+  #       testRunTitle: '$(test_title)'
+  #     condition: succeededOrFailed()
 
 
   - job: NotebookOutputs
