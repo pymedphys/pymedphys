@@ -40,16 +40,13 @@ jobs:
     - bash: python -c "import sys; print(sys.version); print(sys.executable)"
       displayName: Show python information
 
-    - bash: python -m pip install -U pip setuptools --user
-      displayName: Upgrade pip and setuptools
+    - bash: python -m pip install --upgrade pip poetry --user
+      displayName: Upgrade pip and install poetry
 
-    - bash: curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
-      displayName: Install Poetry
+    - bash: poetry install
+      displayName: Install dependencies
 
-    - bash: python -m pip install -U tox --user
-      displayName: Install tox
-
-    - bash: python -m tox -e $TOXENV
+    - bash: poetry run tox -e $TOXENV
       displayName: Run tests
 
     - task: PublishTestResults@2
