@@ -1,4 +1,4 @@
-from pymedphys._base.delivery import Delivery as DeliveryBase
+from pymedphys._base.delivery import DeliveryBase
 from pymedphys._trf.delivery import DeliveryLogfile
 from pymedphys._mudensity.delivery import DeliveryMuDensity
 

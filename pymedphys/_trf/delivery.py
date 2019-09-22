@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from pymedphys._base.delivery import Delivery
+from pymedphys._base.delivery import DeliveryBase
 
 from .trf2pandas import read_trf
 
@@ -38,15 +38,15 @@ from .constants import (
 )
 
 
-class DeliveryLogfile(Delivery):
+class DeliveryLogfile(DeliveryBase):
     @classmethod
-    def from_logfile(cls, filepath) -> Delivery:
+    def from_logfile(cls, filepath) -> DeliveryBase:
         _, dataframe = read_trf(filepath)
 
         return cls.from_pandas(dataframe)
 
     @classmethod
-    def from_pandas(cls, table) -> Delivery:
+    def from_pandas(cls, table) -> DeliveryBase:
         raw_monitor_units = table["Step Dose/Actual Value (Mu)"]
 
         diff = np.append([0], np.diff(raw_monitor_units))

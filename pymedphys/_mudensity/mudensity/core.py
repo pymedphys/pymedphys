@@ -100,9 +100,7 @@ def calc_mu_density(
     Examples
     --------
     >>> import numpy as np
-    >>>
-    >>> from pymedphys_mudensity.mudensity import (
-    ...     calc_mu_density, get_grid, display_mu_density)
+    >>> import pymedphys
     >>>
     >>> leaf_pair_widths = (5, 5, 5)
     >>> max_leaf_gap = 10
@@ -136,7 +134,7 @@ def calc_mu_density(
     ...     [0, 0]
     ... ])
     >>>
-    >>> grid = get_grid(
+    >>> grid = pymedphys.mudensity.grid(
     ...    max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths)
     >>> grid['mlc']
     array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])
@@ -145,10 +143,10 @@ def calc_mu_density(
     array([-8., -7., -6., -5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,
             5.,  6.,  7.,  8.])
     >>>
-    >>> mu_density = calc_mu_density(
+    >>> mu_density = pymedphys.mudensity.calculate(
     ...    mu, mlc, jaw, max_leaf_gap=max_leaf_gap,
     ...    leaf_pair_widths=leaf_pair_widths)
-    >>> display_mu_density(grid, mu_density)
+    >>> pymedphys.mudensity.display(grid, mu_density)
     >>>
     >>> np.round(mu_density, 1)
     array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
@@ -425,9 +423,6 @@ def calc_mu_density_return_grid(
     grid_xx, grid_yy = np.meshgrid(full_grid["mlc"], full_grid["jaw"])
 
     return grid_xx, grid_yy, mu_density
-
-
-mu_density = calc_mu_density_return_grid
 
 
 def get_grid(
