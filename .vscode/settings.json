@@ -54,6 +54,7 @@
     "pyplot",
     "pytest",
     "qcls",
+    "randomisation",
     "ref",
     "rtol",
     "scipy",

@@ -103,15 +103,15 @@ def copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices):
 
     append = getattr(dicom_datasets, append_method)
 
-    for slice_location in new_slice_locations:
+    for a_slice_location in new_slice_locations:
         new_slice = deepcopy(dataset_to_copy)
 
-        new_slice.SliceLocation = str(slice_location)
+        new_slice.SliceLocation = str(a_slice_location)
 
         image_position_patient_to_copy = deepcopy(
             dicom_datasets[index_to_copy].ImagePositionPatient
         )
-        image_position_patient_to_copy[-1] = str(slice_location)
+        image_position_patient_to_copy[-1] = str(a_slice_location)
         new_slice.ImagePositionPatient = image_position_patient_to_copy
 
         append(new_slice)
