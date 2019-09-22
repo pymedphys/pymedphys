@@ -60,7 +60,7 @@ def cubify_cube_definition(cube_definition):
     Examples
     --------
     >>> import numpy as np
-    >>> from pymedphys_analysis.geometry import cubify_cube_definition
+    >>> from pymedphys.labs.cube import cubify_cube_definition
     >>>
     >>> cube_definition = [(0, 0, 0), (0, 1, 0), (0, 0, 1)]
     >>> np.array(cubify_cube_definition(cube_definition))
@@ -370,9 +370,9 @@ def get_structure_aligned_cube(
     --------
     >>> import numpy as np
     >>> import pydicom
-    >>> from pymedphys.geometry import get_structure_aligned_cube
+    >>> from pymedphys.labs.cube import get_structure_aligned_cube
     >>>
-    >>> struct_path = 'packages/pymedphys_dicom/tests/data/struct/example_structures.dcm'
+    >>> struct_path = 'tests/dicom/data/struct/example_structures.dcm'
     >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
     >>> structure_name = 'ANT Box'
     >>> cube_definition_array, vectors = get_structure_aligned_cube(

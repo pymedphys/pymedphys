@@ -38,7 +38,7 @@ import attr
 from pymedphys._utilities.filehash import hash_file
 from pymedphys._utilities.filesystem import make_a_valid_directory_name
 from pymedphys._mosaiq.connect import multi_mosaiq_connect
-from pymedphys._mosaiq.details import (
+from pymedphys._mosaiq.delivery import (
     get_mosaiq_delivery_details,
     OISDeliveryDetails,
     NoMosaiqEntries,

@@ -25,9 +25,6 @@
 
 
 """Matplotlib toolbox.
-
-Example:
-    >>> from pymedphys.plt import pcolormesh_grid
 """
 
 

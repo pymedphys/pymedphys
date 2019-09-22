@@ -39,6 +39,7 @@
     "imread",
     "imshow",
     "interp",
+    "IMRT",
     "lzma",
     "rtplan",
     "mosaiq",
