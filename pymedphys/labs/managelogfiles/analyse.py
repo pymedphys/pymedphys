@@ -34,6 +34,8 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
+import pymedphys
+
 from pymedphys._utilities.config import (
     get_cache_filepaths,
     get_mu_density_parameters,
@@ -43,10 +45,6 @@ from pymedphys._utilities.config import (
     get_sql_servers_list,
     get_filepath,
 )
-from pymedphys._mosaiq.connect import multi_mosaiq_connect
-from pymedphys._mosaiq.delivery import DeliveryDatabases
-from pymedphys._mosaiq.details import multi_fetch_and_verify_mosaiq
-from pymedphys._mudensity.mudensity import calc_mu_density
 
 
 def analyse_single_hash(index, config, filehash, cursors):
@@ -157,7 +155,7 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
 
     sql_servers_list = get_sql_servers_list(config)
 
-    with multi_mosaiq_connect(sql_servers_list) as cursors:
+    with pymedphys.mosaiq.connect(sql_servers_list) as cursors:
         for file_hash in file_hashes:
 
             try:
@@ -231,12 +229,9 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
                 print(traceback.format_exc())
 
 
-def mu_density_from_delivery_data(delivery_data, grid_resolution=1):
-    mu, mlc, jaw = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
-
-    grid_xx, grid_yy, mu_density = calc_mu_density(
-        mu, mlc, jaw, grid_resolution=grid_resolution
-    )
+def mu_density_from_delivery_data(delivery_data: pymedphys.Delivery, grid_resolution=1):
+    grid_xx, grid_yy = pymedphys.mudensity.grid(grid_resolution=grid_resolution)
+    mu_density = delivery_data.mudensity(grid_resolution=grid_resolution)
 
     return grid_xx, grid_yy, mu_density
 
@@ -262,7 +257,7 @@ def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index, confi
 def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
     logfile_results = []
     for filepath in filepaths:
-        logfile_delivery_data = DeliveryDatabases.from_logfile(filepath)
+        logfile_delivery_data = pymedphys.Delivery.from_logfile(filepath)
         mu_density_results = mu_density_from_delivery_data(
             logfile_delivery_data, grid_resolution=grid_resolution
         )
@@ -294,7 +289,8 @@ def get_logfile_mosaiq_results(
 
     centre = get_centre(config, file_info)
     server = get_sql_servers(config)[centre]
-    mosaiq_delivery_data = multi_fetch_and_verify_mosaiq(cursors[server], field_id)
+
+    mosaiq_delivery_data = pymedphys.Delivery.from_mosaiq(cursors[server], field_id)
 
     mosaiq_results = mu_density_from_delivery_data(
         mosaiq_delivery_data, grid_resolution=grid_resolution
