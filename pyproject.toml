@@ -26,6 +26,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.7"
 
+# lib
 attrs = { version = "*", optional = true }
 keyring = { version = "*", optional = true }
 packaging = { version = "*", optional = true }
@@ -49,6 +50,16 @@ shapely = { version = "*", optional = true }
 
 pydicom = { version = "*", optional = true }
 
+# docs
+ipykernel = { version = "*", optional = true }
+jupyter_client = { version = "*", optional = true }
+m2r = { version = "*", optional = true }
+sphinx-autobuild = { version = "*", optional = true }
+sphinxcontrib-napoleon = { version = "*", optional = true }
+sphinx = { version = ">= 1.4, < 1.8", optional = true }
+sphinx-argparse = { version = "*", optional = true }
+sphinx-rtd-theme = { version = "^0.4.3", optional = true }
+
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.1"
@@ -65,7 +76,7 @@ pylint = "^2.3"
 pymedphys = "pymedphys.cli.main:pymedphys_cli"
 
 [tool.poetry.extras]
-all = [
+lib = [
     "attrs", "keyring", "packaging",
     "tqdm", "python_dateutil", "PyYAML",
     "numpy", "matplotlib", "scipy", "pandas",
@@ -73,6 +84,11 @@ all = [
     "pymssql", "shapely", "pydicom"
 ]
 
+docs = [
+    "ipykernel", "jupyter_client", "m2r", "sphinx-autobuild",
+    "sphinxcontrib-napoleon", "sphinx", "sphinx-argparse", "sphinx-rtd-theme"
+]
+
 [build-system]
-requires = ["poetry>=0.12", "setuptools", "wheel"]
+requires = ["poetry >= 0.12", "setuptools >= 35.0.2", "wheel >= 0.29.0"]
 build-backend = "poetry.masonry.api"
