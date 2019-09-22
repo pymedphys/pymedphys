@@ -170,42 +170,29 @@ def calc_mu_density(
 
     MU Density from a Mosaiq record
 
-    >>> from pymedphys_mudensity.mudensity import (
-    ...     calc_mu_density, get_grid, display_mu_density)
-    >>>
-    >>> from pymedphys_databases.msq import (
-    ...     mosaiq_connect, multi_fetch_and_verify_mosaiq)
+    >>> import pymedphys
     >>>
     >>> def mu_density_from_mosaiq(msq_server_name, field_id):
-    ...     with mosaiq_connect(msq_server_name) as cursor:
-    ...         delivery_data = multi_fetch_and_verify_mosaiq(
-    ...             cursor, field_id)
+    ...     with pymedphys.mosaiq.connect(msq_server_name) as cursor:
+    ...         delivery = pymedphys.Delivery.from_mosaiq(cursor, field_id)
     ...
-    ...
-    ...     mu = delivery_data.monitor_units
-    ...     mlc = delivery_data.mlc
-    ...     jaw = delivery_data.jaw
-    ...
-    ...     grid = get_grid()
-    ...     mu_density = calc_mu_density(mu, mlc, jaw)
-    ...     display_mu_density(grid, mu_density)
+    ...     grid = pymedphys.mudensity.grid()
+    ...     mu_density = delivery.mudensity()
+    ...     pymedphys.mudensity.display(grid, mu_density)
     >>>
     >>> mu_density_from_mosaiq('a_server_name', 11111) # doctest: +SKIP
 
 
     MU Density from a logfile at a given filepath
 
-    >>> from pymedphys_mudensity.mudensity import (
-    ...     calc_mu_density, get_grid, display_mu_density)
-    >>>
-    >>> from pymedphys import Delivery
+    >>> import pymedphys
     >>>
     >>> def mu_density_from_logfile(filepath):
     ...     delivery_data = Delivery.from_logfile(filepath)
     ...     mu_density = Delivery.mudensity()
     ...
-    ...     grid = get_grid()
-    ...     display_mu_density(grid, mu_density)
+    ...     grid = pymedphys.mudensity.grid()
+    ...     pymedphys.mudensity.display(grid, mu_density)
     >>>
     >>> mu_density_from_logfile(r"a/path/goes/here") # doctest: +SKIP
 

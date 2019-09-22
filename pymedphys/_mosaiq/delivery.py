@@ -33,8 +33,7 @@ import attr
 import numpy as np
 
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
-
-from .delivery import DeliveryDatabases
+from pymedphys._base.delivery import DeliveryBase
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES
@@ -319,78 +318,78 @@ def fetch_and_verify_mosaiq_sql(cursor, field_id):
     return test_results
 
 
-def delivery_data_from_mosaiq(cursor, field_id):
-    txfield_results, txfieldpoint_results = fetch_and_verify_mosaiq_sql(
-        cursor, field_id
-    )
+class DeliveryMosaiq(DeliveryBase):
+    @classmethod
+    def _from_mosaiq_base(cls, cursor, field_id):
+        txfield_results, txfieldpoint_results = fetch_and_verify_mosaiq_sql(
+            cursor, field_id
+        )
 
-    total_mu = np.array(txfield_results[0]).astype(float)
-    cumulative_percentage_mu = txfieldpoint_results[:, 0].astype(float)
+        total_mu = np.array(txfield_results[0]).astype(float)
+        cumulative_percentage_mu = txfieldpoint_results[:, 0].astype(float)
 
-    if np.shape(cumulative_percentage_mu) == ():
-        mu_per_control_point = [0, total_mu]
-    else:
-        cumulative_mu = cumulative_percentage_mu * total_mu / 100
-        mu_per_control_point = np.concatenate([[0], np.diff(cumulative_mu)])
+        if np.shape(cumulative_percentage_mu) == ():
+            mu_per_control_point = [0, total_mu]
+        else:
+            cumulative_mu = cumulative_percentage_mu * total_mu / 100
+            mu_per_control_point = np.concatenate([[0], np.diff(cumulative_mu)])
 
-    monitor_units = np.cumsum(mu_per_control_point).tolist()
+        monitor_units = np.cumsum(mu_per_control_point).tolist()
 
-    mlc_a = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 1].astype(bytes))).T
-    mlc_b = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 2].astype(bytes))).T
+        mlc_a = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 1].astype(bytes))).T
+        mlc_b = np.squeeze(decode_msq_mlc(txfieldpoint_results[:, 2].astype(bytes))).T
 
-    msq_gantry_angle = txfieldpoint_results[:, 3].astype(float)
-    msq_collimator_angle = txfieldpoint_results[:, 4].astype(float)
+        msq_gantry_angle = txfieldpoint_results[:, 3].astype(float)
+        msq_collimator_angle = txfieldpoint_results[:, 4].astype(float)
 
-    coll_y1 = txfieldpoint_results[:, 5].astype(float)
-    coll_y2 = txfieldpoint_results[:, 6].astype(float)
+        coll_y1 = txfieldpoint_results[:, 5].astype(float)
+        coll_y2 = txfieldpoint_results[:, 6].astype(float)
 
-    mlc, jaw = collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2)
-    gantry = convert_IEC_angle_to_bipolar(msq_gantry_angle)
-    collimator = convert_IEC_angle_to_bipolar(msq_collimator_angle)
+        mlc, jaw = collimation_to_bipolar_mm(mlc_a, mlc_b, coll_y1, coll_y2)
+        gantry = convert_IEC_angle_to_bipolar(msq_gantry_angle)
+        collimator = convert_IEC_angle_to_bipolar(msq_collimator_angle)
 
-    # TODO Tidy up this axis swap
-    mlc = np.swapaxes(mlc, 0, 2)
-    jaw = np.swapaxes(jaw, 0, 1)
+        # TODO Tidy up this axis swap
+        mlc = np.swapaxes(mlc, 0, 2)
+        jaw = np.swapaxes(jaw, 0, 1)
 
-    mosaiq_delivery_data = DeliveryDatabases(
-        monitor_units, gantry, collimator, mlc, jaw
-    )
+        mosaiq_delivery_data = cls(monitor_units, gantry, collimator, mlc, jaw)
 
-    return mosaiq_delivery_data
+        return mosaiq_delivery_data
 
+    @classmethod
+    def from_mosaiq(cls, cursor, field_id):
+        mosaiq_delivery_data = cls._from_mosaiq_base(cursor, field_id)
+        reference_data = (
+            mosaiq_delivery_data.monitor_units,
+            mosaiq_delivery_data.mlc,
+            mosaiq_delivery_data.jaw,
+        )
 
-def multi_fetch_and_verify_mosaiq(cursor, field_id):
-    mosaiq_delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-    reference_data = (
-        mosaiq_delivery_data.monitor_units,
-        mosaiq_delivery_data.mlc,
-        mosaiq_delivery_data.jaw,
-    )
+        delivery_data = cls._from_mosaiq_base(cursor, field_id)
+        test_data = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
 
-    delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-    test_data = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
+        agreement = False
 
-    agreement = False
+        while not agreement:
+            agreements = []
+            for ref, test in zip(reference_data, test_data):
+                agreements.append(np.all(ref == test))
 
-    while not agreement:
-        agreements = []
-        for ref, test in zip(reference_data, test_data):
-            agreements.append(np.all(ref == test))
+            agreement = np.all(agreements)
+            if not agreement:
+                print("Converted Mosaiq delivery data was conflicting.")
+                print(
+                    "MU agreement: {}\nMLC agreement: {}\n"
+                    "Jaw agreement: {}".format(*agreements)
+                )
+                print("Trying again...")
+                reference_data = test_data
+                delivery_data = cls._from_mosaiq_base(cursor, field_id)
+                test_data = (
+                    delivery_data.monitor_units,
+                    delivery_data.mlc,
+                    delivery_data.jaw,
+                )
 
-        agreement = np.all(agreements)
-        if not agreement:
-            print("Converted Mosaiq delivery data was conflicting.")
-            print(
-                "MU agreement: {}\nMLC agreement: {}\n"
-                "Jaw agreement: {}".format(*agreements)
-            )
-            print("Trying again...")
-            reference_data = test_data
-            delivery_data = delivery_data_from_mosaiq(cursor, field_id)
-            test_data = (
-                delivery_data.monitor_units,
-                delivery_data.mlc,
-                delivery_data.jaw,
-            )
-
-    return delivery_data
+        return delivery_data
