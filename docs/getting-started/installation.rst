@@ -4,14 +4,18 @@ Installation
 
 In order to make use of the PyMedPhys library, you'll need Python installed on
 your workstation. Although not essential, we recommend that you install the
-`Anaconda Python distribution`_. Instructions for installing Anaconda can be
-found `here`_.
+Anaconda Python distribution which is an open source, optimized Python
+(and R) distrubution. Download the latest Anaconda Python **3** (not 2) version
+from `here <https://www.anaconda.com/download/>`__.
 
-.. _`Anaconda Python distribution`: https://www.anaconda.com/distribution/
-.. _`here`: ../developer/contributing.html#python-anaconda
+.. note::
+    When installing Anaconda make sure to install it for your user only, and
+    tick the option "add to path".
+
+.. image:: ../img/add_anaconda_to_path.png
 
 Once you have a suitable Python installation, you can install the latest stable
-version of PyMedPhys via conda or pip as follows:
+version of PyMedPhys via conda or pip as described in the following sections.
 
 
 Installing via Conda from conda-forge (recommended)
