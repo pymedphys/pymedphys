@@ -36,7 +36,7 @@ import pytest
 
 import numpy as np
 
-from pymedphys import mu_density as calc_mu_density
+import pymedphys
 
 
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
@@ -56,5 +56,5 @@ def test_regression():
     jaw = regress_test_arrays["jaw"]
 
     cached_mu_density = regress_test_arrays["mu_density"]
-    mu_density = calc_mu_density(mu, mlc, jaw)
+    mu_density = pymedphys.mudensity.calculate(mu, mlc, jaw)
     assert np.allclose(mu_density, cached_mu_density, atol=0.1)
