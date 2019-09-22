@@ -30,7 +30,7 @@ from os.path import abspath, basename, dirname, isdir, isfile, join as pjoin
 import pprint
 
 import numpy as np
-from pymedphys._dicom.shim import pydicom
+import pydicom
 
 from pymedphys._dicom.utilities import remove_file
 

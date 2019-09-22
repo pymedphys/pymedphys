@@ -36,7 +36,7 @@
 import json
 from os import path
 
-from pymedphys._dicom.shim import pydicom
+import pydicom
 
 PYMEDPHYS_ROOT_UID = "1.2.826.0.1.3680043.10.188"
 
