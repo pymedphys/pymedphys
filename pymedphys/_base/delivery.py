@@ -38,12 +38,12 @@ from pymedphys._utilities.controlpoints import (
 )
 
 
-_DeliveryBase = namedtuple(
+DeliveryNamedTuple = namedtuple(
     "Delivery", ["monitor_units", "gantry", "collimator", "mlc", "jaw"]
 )
 
 
-class Delivery(_DeliveryBase):
+class DeliveryBase(DeliveryNamedTuple):
     def __new__(cls, *args, **kwargs):
         new_args = (to_tuple(arg) for arg in args)
         new_kwargs = {key: to_tuple(item) for key, item in kwargs.items()}
@@ -113,9 +113,9 @@ class Delivery(_DeliveryBase):
 
         return first.merge(*args[1::])
 
-    def merge(self, *args: Delivery):
+    def merge(self, *args: DeliveryBase):
         cls = type(self)
-        separate: List[Delivery] = [self] + [*args]
+        separate: List[DeliveryBase] = [self] + [*args]
         collection: Dict[str, Tuple] = {}
 
         for delivery_data in separate:
