@@ -50,16 +50,6 @@ shapely = { version = "*", optional = true }
 
 pydicom = { version = "*", optional = true }
 
-# docs
-ipykernel = { version = "*", optional = true }
-jupyter_client = { version = "*", optional = true }
-m2r = { version = "*", optional = true }
-sphinx-autobuild = { version = "*", optional = true }
-sphinxcontrib-napoleon = { version = "*", optional = true }
-sphinx = { version = ">= 1.4, < 1.8", optional = true }
-sphinx-argparse = { version = "*", optional = true }
-sphinx-rtd-theme = { version = "^0.4.3", optional = true }
-
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.1"
@@ -71,22 +61,28 @@ pre-commit = "^1.10"
 tox = "^3.0"
 mypy = "^0.720.0"
 pylint = "^2.3"
+pytest-pylint = "^0.14.1"
+ipykernel = "*"
+jupyter_client = "*"
+m2r = "*"
+nbsphinx = "*"
+sphinx-autobuild = "*"
+sphinxcontrib-napoleon = "*"
+sphinx = ">= 1.4, < 1.8"
+sphinx-argparse = "*"
+sphinx-rtd-theme = "^0.4.3"
+
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.cli.main:pymedphys_cli"
 
 [tool.poetry.extras]
-lib = [
+all = [
     "attrs", "keyring", "packaging",
     "tqdm", "python_dateutil", "PyYAML",
     "numpy", "matplotlib", "scipy", "pandas",
     "Pillow", "imageio", "scikit-image",
     "pymssql", "shapely", "pydicom"
-]
-
-docs = [
-    "ipykernel", "jupyter_client", "m2r", "sphinx-autobuild",
-    "sphinxcontrib-napoleon", "sphinx", "sphinx-argparse", "sphinx-rtd-theme"
 ]
 
 [build-system]
