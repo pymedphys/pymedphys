@@ -25,9 +25,6 @@
 
 
 """A logfile toolbox.
-
-Examples:
-    >>> from pymedphys.logfile import index_logfiles
 """
 
 

@@ -6,7 +6,7 @@ MU Density
 Summary
 *******
 
-.. automodule:: pymedphys_mudensity.mudensity
+.. automodule:: pymedphys.mudensity
     :no-members:
 
 .. plot:: pyplots/mudensity.py
