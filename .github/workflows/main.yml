@@ -15,6 +15,7 @@ jobs:
       - name: Linting
         run: |
           pip install pre-commit
+          rm -f .git/index.lock
           pre-commit run --all-files
 
   Linux:
