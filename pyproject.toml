@@ -26,28 +26,28 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.7"
 
-attrs = { version = "*", optional = true }
-keyring = { version = "*", optional = true }
-packaging = { version = "*", optional = true }
+attrs = "*"
+keyring = "*"
+packaging = "*"
 
-tqdm = { version = "*", optional = true }
-python_dateutil = { version = "*", optional = true }
-PyYAML = { version = "*", optional = true }
+tqdm = "*"
+python_dateutil = "*"
+PyYAML = "*"
 
-numpy = { version = "^1.12", optional = true }
-matplotlib = { version = "*", optional = true }
-scipy = { version = "*", optional = true }
-pandas = { version = "*", optional = true }
+numpy = "^1.12"
+matplotlib = "*"
+scipy = "*"
+pandas = "*"
 
-Pillow = { version = "*", optional = true }
-imageio = { version = "*", optional = true }
-scikit-image = { version = "*", optional = true }
+pydicom = "*"
 
-pymssql = { version = "*", optional = true }
+Pillow = "*"
+imageio = "*"
+scikit-image = "*"
 
-shapely = { version = "*", optional = true }
+pymssql = "*"
 
-pydicom = { version = "*", optional = true }
+shapely = "*"
 
 
 [tool.poetry.dev-dependencies]
@@ -75,15 +75,6 @@ sphinx-rtd-theme = "^0.4.3"
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.cli.main:pymedphys_cli"
-
-[tool.poetry.extras]
-all = [
-    "attrs", "keyring", "packaging",
-    "tqdm", "python_dateutil", "PyYAML",
-    "numpy", "matplotlib", "scipy", "pandas",
-    "Pillow", "imageio", "scikit-image",
-    "pymssql", "shapely", "pydicom"
-]
 
 [build-system]
 requires = ["poetry >= 0.12", "setuptools >= 35.0.2", "wheel >= 0.29.0"]
