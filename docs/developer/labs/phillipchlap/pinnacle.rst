@@ -6,7 +6,7 @@ Pinnacle Export Tool
 Summary
 *******
 
-.. automodule:: pymedphys.labs.pinnacle.export
+.. automodule:: pymedphys.labs.pinnacle
     :no-members:
 
 
