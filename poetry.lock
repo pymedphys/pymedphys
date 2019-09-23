@@ -36,7 +36,7 @@ category = "main"
 description = "Fast ASN.1 parser and serializer with definitions for private keys, public keys, certificates, CRL, OCSP, CMS, PKCS#3, PKCS#7, PKCS#8, PKCS#12, PKCS#5, X.509 and TSP"
 marker = "sys_platform == \"linux\""
 name = "asn1crypto"
-optional = true
+optional = false
 python-versions = "*"
 version = "0.24.0"
 
@@ -139,7 +139,7 @@ category = "main"
 description = "Foreign Function Interface for Python calling C code."
 marker = "sys_platform == \"linux\""
 name = "cffi"
-optional = true
+optional = false
 python-versions = "*"
 version = "1.12.3"
 
@@ -195,7 +195,7 @@ category = "main"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 marker = "sys_platform == \"linux\""
 name = "cryptography"
-optional = true
+optional = false
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
 version = "2.7"
 
@@ -208,7 +208,7 @@ six = ">=1.4.1"
 category = "main"
 description = "Composable style cycles"
 name = "cycler"
-optional = true
+optional = false
 python-versions = "*"
 version = "0.10.0"
 
@@ -275,7 +275,7 @@ version = "2.8"
 category = "main"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
 name = "imageio"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.5.0"
 
@@ -369,7 +369,7 @@ category = "main"
 description = "Low-level, pure Python DBus protocol wrapper."
 marker = "sys_platform == \"linux\""
 name = "jeepney"
-optional = true
+optional = false
 python-versions = ">=3.5"
 version = "0.4.1"
 
@@ -429,7 +429,7 @@ traitlets = "*"
 category = "main"
 description = "Store and access your passwords safely."
 name = "keyring"
-optional = true
+optional = false
 python-versions = ">=3.5"
 version = "19.2.0"
 
@@ -442,7 +442,7 @@ secretstorage = "*"
 category = "main"
 description = "A fast implementation of the Cassowary constraint solver"
 name = "kiwisolver"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.1.0"
 
@@ -493,7 +493,7 @@ version = "1.1.1"
 category = "main"
 description = "Python plotting package"
 name = "matplotlib"
-optional = true
+optional = false
 python-versions = ">=3.6"
 version = "3.1.1"
 
@@ -604,7 +604,7 @@ traitlets = "*"
 category = "main"
 description = "Python package for creating and manipulating graphs and networks"
 name = "networkx"
-optional = true
+optional = false
 python-versions = ">=3.5"
 version = "2.3"
 
@@ -623,7 +623,7 @@ version = "1.3.3"
 category = "main"
 description = "NumPy is the fundamental package for array computing with Python."
 name = "numpy"
-optional = true
+optional = false
 python-versions = ">=3.5"
 version = "1.17.2"
 
@@ -643,7 +643,7 @@ six = "*"
 category = "main"
 description = "Powerful data structures for data analysis, time series, and statistics"
 name = "pandas"
-optional = true
+optional = false
 python-versions = ">=3.5.3"
 version = "0.25.1"
 
@@ -700,7 +700,7 @@ version = "0.7.5"
 category = "main"
 description = "Python Imaging Library (Fork)"
 name = "pillow"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 version = "6.1.0"
 
@@ -789,7 +789,7 @@ category = "main"
 description = "C parser in Python"
 marker = "sys_platform == \"linux\""
 name = "pycparser"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.19"
 
@@ -797,7 +797,7 @@ version = "2.19"
 category = "main"
 description = "Pure python package for DICOM medical file reading and writing"
 name = "pydicom"
-optional = true
+optional = false
 python-versions = "*"
 version = "1.3.0"
 
@@ -827,7 +827,7 @@ mccabe = ">=0.6,<0.7"
 category = "main"
 description = "DB-API interface to Microsoft SQL Server for Python. (new Cython-based version)"
 name = "pymssql"
-optional = true
+optional = false
 python-versions = "*"
 version = "2.1.4"
 
@@ -944,7 +944,7 @@ version = "2019.2"
 category = "main"
 description = "PyWavelets, wavelet transform module"
 name = "pywavelets"
-optional = true
+optional = false
 python-versions = "*"
 version = "1.0.3"
 
@@ -965,7 +965,7 @@ category = "main"
 description = ""
 marker = "sys_platform == \"win32\""
 name = "pywin32-ctypes"
-optional = true
+optional = false
 python-versions = "*"
 version = "0.2.0"
 
@@ -1003,7 +1003,7 @@ urllib3 = ">=1.21.1,<1.25.0 || >1.25.0,<1.25.1 || >1.25.1,<1.26"
 category = "main"
 description = "Image processing routines for SciPy"
 name = "scikit-image"
-optional = true
+optional = false
 python-versions = ">=3.5"
 version = "0.15.0"
 
@@ -1019,7 +1019,7 @@ scipy = ">=0.17.0"
 category = "main"
 description = "SciPy: Scientific Library for Python"
 name = "scipy"
-optional = true
+optional = false
 python-versions = ">=3.5"
 version = "1.3.1"
 
@@ -1031,7 +1031,7 @@ category = "main"
 description = "Python bindings to FreeDesktop.org Secret Service API"
 marker = "sys_platform == \"linux\""
 name = "secretstorage"
-optional = true
+optional = false
 python-versions = ">=3.5"
 version = "3.1.1"
 
@@ -1043,7 +1043,7 @@ jeepney = "*"
 category = "main"
 description = "Geometric objects, predicates, and operations"
 name = "shapely"
-optional = true
+optional = false
 python-versions = "*"
 version = "1.6.4.post2"
 
@@ -1202,7 +1202,7 @@ version = ">=0.12,<1"
 category = "main"
 description = "Fast, Extensible Progress Meter"
 name = "tqdm"
-optional = true
+optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "4.36.1"
 
@@ -1310,11 +1310,8 @@ version = "0.6.0"
 [package.dependencies]
 more-itertools = "*"
 
-[extras]
-all = ["attrs", "keyring", "packaging", "tqdm", "python_dateutil", "PyYAML", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "scikit-image", "pymssql", "shapely", "pydicom"]
-
 [metadata]
-content-hash = "7b7cd2eaf562bc218e31c473cb24a2499080312c8244188bddf03f118b430feb"
+content-hash = "c1e83f0f99bce2ec09e52b3574d4d3a048a3539fd7a8376b75ecce3bb28600d3"
 python-versions = "^3.7"
 
 [metadata.hashes]
