@@ -104,6 +104,10 @@ class DeliveryBase(DeliveryNamedTuple):
 
         return tuple(metersets)
 
+    @property
+    def mu(self):
+        return self.monitor_units
+
     @classmethod
     def combine(cls, *args):
         first = cls(*args[0])
