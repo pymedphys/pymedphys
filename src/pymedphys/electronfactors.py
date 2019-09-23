@@ -1,3 +1,8 @@
+"""A suite of functions that model electron insert/cutout factors by
+parameterising them as equivalent ellipses.
+"""
+
+
 from ._electronfactors import (
     parameterise_insert,
     spline_model,

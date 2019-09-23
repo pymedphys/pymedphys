@@ -24,12 +24,6 @@
 
 
 """Compare two dose grids with the gamma index.
-
-This module is a python implementation of the gamma index.
-It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
-interpolating on the fly.
-This module makes use of some of the ideas presented within
-<http://dx.doi.org/10.1118/1.2721657>.
 """
 
 import sys
@@ -64,6 +58,10 @@ def gamma_shell(
     quiet=False,
 ):
     """Compare two dose grids with the gamma index.
+
+    It computes 1, 2, or 3 dimensional gamma with arbitrary gird sizes while
+    interpolating on the fly. This function makes use of some of the ideas
+    presented within <http://dx.doi.org/10.1118/1.2721657>.
 
     Parameters
     ----------
