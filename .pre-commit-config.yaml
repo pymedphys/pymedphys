@@ -1,6 +1,10 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
+-   repo: https://github.com/kynan/nbstripout
+    rev: 22f71272abcc
+    hooks:
+    -   id: nbstripout
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
@@ -15,7 +19,3 @@ repos:
     hooks:
     - id: black
       language_version: python3.7
--   repo: https://github.com/kynan/nbstripout
-    rev: 22f71272abcc
-    hooks:
-    -   id: nbstripout
