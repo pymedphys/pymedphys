@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""The tests given here are replicated using pymedphys_gamma from the
+"""The tests given here are replicated using pymedphys.gamma from the
 method given within the following paper:
 
 > C. Agnew, C. McGarry, A tool to include gamma analysis software into a

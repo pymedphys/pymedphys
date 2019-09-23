@@ -57,9 +57,6 @@ def extend(input_dir, output_dir, index_to_copy, number_of_slices):
         dicom_dataset.save_as(filepath)
 
 
-extend_ct = extend
-
-
 def extend_datasets(dicom_datasets, index_to_copy, number_of_slices, uids=None):
     copy_slices_and_append(dicom_datasets, index_to_copy, number_of_slices)
     refresh_instance_numbers(dicom_datasets)

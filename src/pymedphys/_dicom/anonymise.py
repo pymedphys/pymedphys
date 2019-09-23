@@ -94,6 +94,14 @@ def anonymise_dataset(
 ):
     r"""A simple tool to anonymise a DICOM dataset.
 
+    You can find the list of DICOM keywords that are included in default
+    anonymisation `here <./identifying_keywords.json>`__.
+    These were drawn from `DICOM Supp 142 <https://www.dicomstandard.org/supplements/>`__
+
+    **We do not yet claim conformance to any DICOM Application Level
+    Confidentiality Profile**, but plan to be in a position to do so in the
+    not-to-distant future.
+
     Parameters
     ----------
     ds : ``pydicom.dataset.Dataset``
