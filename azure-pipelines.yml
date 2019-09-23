@@ -40,7 +40,9 @@ jobs:
     - bash: python -c "import sys; print(sys.version); print(sys.executable)"
       displayName: Show python information
 
-    - bash: python -m pip install --upgrade pip poetry --user
+    - bash: |
+        python -m pip install --upgrade pip poetry
+        poetry config settings.virtualenvs.create false
       displayName: Upgrade pip and install poetry
 
     - bash: poetry install
