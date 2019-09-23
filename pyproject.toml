@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.12.0dev0"
+version = "0.12.0dev1"
 readme = "README.rst"
 authors = [
     "Simon Biggs <me@simonbiggs.net>",
