@@ -421,7 +421,7 @@ def get_grid(
 
     Examples
     --------
-    See `pymedphys.mudensity.calc_mu_density`_.
+    See `pymedphys.mudensity.calculate`_.
     """
 
     leaf_pair_widths = np.array(leaf_pair_widths)
@@ -484,7 +484,7 @@ def display_mu_density(
 
     Examples
     --------
-    See `pymedphys.mudensity.calc_mu_density`_.
+    See `pymedphys.mudensity.calculate`_.
     """
     if grid_resolution is None:
         grid_resolution = grid["mlc"][1] - grid["mlc"][0]
