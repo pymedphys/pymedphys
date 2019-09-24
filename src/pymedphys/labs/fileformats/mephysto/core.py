@@ -55,7 +55,7 @@ def find_scan_index(file_contents):
         ]
     ).astype(int)
 
-    # Convert the indicies into the range type allowing for easy looping
+    # Convert the indices into the range type allowing for easy looping
     scan_index = [
         range(begin_scan_index[i] + 1, end_scan_index[i])
         for i in range(len(begin_scan_index))
@@ -89,7 +89,7 @@ def find_data_index(file_contents):
         ]
     ).astype(int)
 
-    # Convert the indicies into the range type allowing for easy looping
+    # Convert the indices into the range type allowing for easy looping
     data_index = [
         range(begin_data_index[i] + 1, end_data_index[i])
         for i in range(len(begin_data_index))
@@ -159,7 +159,7 @@ def pull_mephysto_data(file_contents):
 
     # Confirm that each data index is within the expected scan index. Raise an
     # error if it is not.
-    for i in range(len(scan_index)):
+    for i in range(len(scan_index)):  # pylint: disable = consider-using-enumerate
         assert (scan_index[i][0] < data_index[i][0]) & (
             scan_index[i][-1] > data_index[i][-1]
         )
