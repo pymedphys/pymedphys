@@ -24,6 +24,9 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+# pylint: skip-file
+
+
 def field_points_to_compare(
     side_length,
     penumbra_width,

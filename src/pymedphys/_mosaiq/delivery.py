@@ -40,7 +40,7 @@ from .constants import FIELD_TYPES
 
 
 @attr.s
-class OISDeliveryDetails(object):
+class OISDeliveryDetails:
     """A class containing patient information extracted from Mosaiq."""
 
     patient_id = attr.ib()

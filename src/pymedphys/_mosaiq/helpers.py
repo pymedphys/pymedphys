@@ -235,9 +235,6 @@ def get_qcls_by_date(cursor, location, start, end):
     return results
 
 
-qcls = get_qcls_by_date
-
-
 def get_incomplete_qcls(cursor, location):
     data = execute_sql(
         cursor,

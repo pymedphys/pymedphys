@@ -2,6 +2,7 @@
 parameterising them as equivalent ellipses.
 """
 
+# pylint: disable = unused-import
 
 from ._electronfactors import (
     parameterise_insert,

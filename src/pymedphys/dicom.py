@@ -1,7 +1,7 @@
 """A DICOM toolbox.
 """
 
-# pylint: disable=unused-import
+# pylint: disable = unused-import
 
 from ._dicom.anonymise import anonymise
 from ._dicom.dose import (
