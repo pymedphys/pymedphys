@@ -2,8 +2,8 @@ from pymedphys import Delivery
 
 
 def test_object_consistency():
-    empty = Delivery.empty()
-    filtered = empty.filter_cps()
+    empty = Delivery._empty()
+    filtered = empty._filter_cps()  # pylint: disable = protected-access
 
     assert type(filtered.monitor_units) is tuple
 
@@ -11,7 +11,7 @@ def test_object_consistency():
 
 
 def test_base_object():
-    empty = Delivery.empty()
+    empty = Delivery._empty()
 
     assert empty.monitor_units == tuple()
 

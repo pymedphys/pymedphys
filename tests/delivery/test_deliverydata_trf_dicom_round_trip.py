@@ -88,7 +88,7 @@ def test_get_metersets_from_delivery_data(
     gantry_tol = 3
     expected = get_metersets_from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
 
-    filtered = logfile_delivery_data.filter_cps()
+    filtered = logfile_delivery_data._filter_cps()
     metersets = filtered._metersets(loaded_dicom_gantry_angles, gantry_tol)
 
     try:
@@ -103,7 +103,7 @@ def test_get_metersets_from_delivery_data(
 def test_filter_cps(logfile_delivery_data):
     # TODO why is this variable unused?
 
-    filtered = logfile_delivery_data.filter_cps()
+    filtered = logfile_delivery_data._filter_cps()
 
     for field in logfile_delivery_data._fields:
         assert len(getattr(logfile_delivery_data, field)) != 0
@@ -111,7 +111,7 @@ def test_filter_cps(logfile_delivery_data):
 
 @pytest.mark.slow
 def test_round_trip_dd2dcm2dd(loaded_dicom_dataset, logfile_delivery_data: Delivery):
-    original = logfile_delivery_data.filter_cps()
+    original = logfile_delivery_data._filter_cps()
     template = loaded_dicom_dataset
 
     dicom = original.to_dicom(template)

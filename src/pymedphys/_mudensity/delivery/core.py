@@ -41,7 +41,7 @@ class DeliveryMuDensity(DeliveryBase):
             gantry_angles = 0
             gantry_tolerance = 500
 
-        masked_by_gantry = self.mask_by_gantry(gantry_angles, gantry_tolerance)
+        masked_by_gantry = self._mask_by_gantry(gantry_angles, gantry_tolerance)
 
         mudensities = []
         for delivery_data in masked_by_gantry:

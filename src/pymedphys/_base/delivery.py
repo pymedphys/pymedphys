@@ -47,66 +47,6 @@ DeliveryNamedTuple = namedtuple(
 
 
 class DeliveryBase(DeliveryNamedTuple):
-    def __new__(cls, *args, **kwargs):
-        new_args = (to_tuple(arg) for arg in args)
-        new_kwargs = {key: to_tuple(item) for key, item in kwargs.items()}
-        return super().__new__(cls, *new_args, **new_kwargs)
-
-    @classmethod
-    def empty(cls: Type[DeliveryGeneric]) -> DeliveryGeneric:
-        return cls(
-            tuple(),
-            tuple(),
-            tuple(),
-            tuple((tuple((tuple(), tuple())),)),
-            tuple((tuple(), tuple())),
-        )
-
-    @functools.lru_cache()
-    def filter_cps(self):
-        cls = type(self)
-        return cls(*remove_irrelevant_control_points(*self))
-
-    @functools.lru_cache()
-    def mask_by_gantry(
-        self,
-        angles: Union[Tuple, float, int],
-        gantry_tolerance=3,
-        allow_missing_angles=False,
-    ):
-
-        try:
-            _ = iter(angles)  # type: ignore
-            iterable_angles = tuple(angles)  # type: ignore
-        except TypeError:
-            # Not iterable, assume just one angle provided
-            iterable_angles = tuple((angles,))
-
-        masks = self._gantry_angle_masks(
-            iterable_angles, gantry_tolerance, allow_missing_angles=allow_missing_angles
-        )
-
-        all_masked_delivery_data = tuple(
-            self._apply_mask_to_delivery_data(mask) for mask in masks
-        )
-
-        return all_masked_delivery_data
-
-    @functools.lru_cache()
-    def _metersets(self, gantry_angles, gantry_tolerance):
-        all_masked_delivery_data = self.mask_by_gantry(
-            gantry_angles, gantry_tolerance, allow_missing_angles=True
-        )
-
-        metersets = []
-        for delivery_data in all_masked_delivery_data:
-            try:
-                metersets.append(delivery_data.monitor_units[-1])
-            except IndexError:
-                continue
-
-        return tuple(metersets)
-
     @property
     def mu(self):
         return self.monitor_units
@@ -142,7 +82,67 @@ class DeliveryBase(DeliveryNamedTuple):
 
         return merged
 
-    def extract_one_gantry_angle(
+    def __new__(cls, *args, **kwargs):
+        new_args = (to_tuple(arg) for arg in args)
+        new_kwargs = {key: to_tuple(item) for key, item in kwargs.items()}
+        return super().__new__(cls, *new_args, **new_kwargs)
+
+    @classmethod
+    def _empty(cls: Type[DeliveryGeneric]) -> DeliveryGeneric:
+        return cls(
+            tuple(),
+            tuple(),
+            tuple(),
+            tuple((tuple((tuple(), tuple())),)),
+            tuple((tuple(), tuple())),
+        )
+
+    @functools.lru_cache()
+    def _filter_cps(self):
+        cls = type(self)
+        return cls(*remove_irrelevant_control_points(*self))
+
+    @functools.lru_cache()
+    def _mask_by_gantry(
+        self,
+        angles: Union[Tuple, float, int],
+        gantry_tolerance=3,
+        allow_missing_angles=False,
+    ):
+
+        try:
+            _ = iter(angles)  # type: ignore
+            iterable_angles = tuple(angles)  # type: ignore
+        except TypeError:
+            # Not iterable, assume just one angle provided
+            iterable_angles = tuple((angles,))
+
+        masks = self._gantry_angle_masks(
+            iterable_angles, gantry_tolerance, allow_missing_angles=allow_missing_angles
+        )
+
+        all_masked_delivery_data = tuple(
+            self._apply_mask_to_delivery_data(mask) for mask in masks
+        )
+
+        return all_masked_delivery_data
+
+    @functools.lru_cache()
+    def _metersets(self, gantry_angles, gantry_tolerance):
+        all_masked_delivery_data = self._mask_by_gantry(
+            gantry_angles, gantry_tolerance, allow_missing_angles=True
+        )
+
+        metersets = []
+        for delivery_data in all_masked_delivery_data:
+            try:
+                metersets.append(delivery_data.monitor_units[-1])
+            except IndexError:
+                continue
+
+        return tuple(metersets)
+
+    def _extract_one_gantry_angle(
         self: DeliveryGeneric, gantry_angle, gantry_tolerance=3
     ) -> DeliveryGeneric:
         near_angle = self._gantry_angle_mask(gantry_angle, gantry_tolerance)
