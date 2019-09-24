@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 -   repo: https://github.com/kynan/nbstripout
-    rev: 22f71272abcc
+    rev: fe155a55548c61e4eb53522e57921077acf82c00
     hooks:
     -   id: nbstripout
 -   repo: https://github.com/pre-commit/pre-commit-hooks
