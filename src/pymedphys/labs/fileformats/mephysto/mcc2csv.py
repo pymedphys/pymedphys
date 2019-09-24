@@ -40,7 +40,7 @@ def file_output(output_directory, distance, relative_dose, scan_curvetype, scan_
     columns = ["distance (mm)", "relative dose"]
 
     # Loop over each curvetype and save the data to csv
-    for i, curvetype in enumerate(scan_curvetype):
+    for i, _ in enumerate(scan_curvetype):
         # Stacks the data into one array and transposes into column orientation
         data = np.vstack([distance[i], relative_dose[i]]).T
 

@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -162,7 +162,7 @@ def normalise_profile(
     try:
         # Check if user wrote a number for normalisation position
         float_position = float(normalisation_position)
-    except:
+    except ValueError:
         # If text was written the conversion to float will fail
         float_position = None
 
@@ -189,5 +189,10 @@ def normalise_profile(
     # point of dose maximum
     elif normalisation_position.lower() == "max":
         normalisation = scaling / np.max(relative_dose)
+
+    else:
+        raise TypeError(
+            "Expected either a float for normalisation or one of 'cra', 'cm', or 'max'"
+        )
 
     return relative_dose * normalisation
