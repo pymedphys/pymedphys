@@ -23,12 +23,10 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-# See https://stackoverflow.com/a/33533514/3912576
-from __future__ import annotations
 
 from collections import namedtuple
 import functools
-from typing import Union, Tuple, List, Dict
+from typing import Union, Tuple, List, Dict, TypeVar, Type
 
 import numpy as np
 
@@ -36,6 +34,11 @@ from pymedphys._utilities.controlpoints import (
     remove_irrelevant_control_points,
     to_tuple,
 )
+
+
+# https://stackoverflow.com/a/44644576/3912576
+# Create a generic variable that can be 'Parent', or any subclass.
+DeliveryGeneric = TypeVar("DeliveryGeneric", bound="DeliveryBase")
 
 
 DeliveryNamedTuple = namedtuple(
@@ -50,7 +53,7 @@ class DeliveryBase(DeliveryNamedTuple):
         return super().__new__(cls, *new_args, **new_kwargs)
 
     @classmethod
-    def empty(cls):
+    def empty(cls: Type[DeliveryGeneric]) -> DeliveryGeneric:
         return cls(
             tuple(),
             tuple(),
@@ -90,7 +93,7 @@ class DeliveryBase(DeliveryNamedTuple):
         return all_masked_delivery_data
 
     @functools.lru_cache()
-    def metersets(self, gantry_angles, gantry_tolerance):
+    def _metersets(self, gantry_angles, gantry_tolerance):
         all_masked_delivery_data = self.mask_by_gantry(
             gantry_angles, gantry_tolerance, allow_missing_angles=True
         )
@@ -117,9 +120,9 @@ class DeliveryBase(DeliveryNamedTuple):
 
         return first.merge(*args[1::])
 
-    def merge(self, *args: DeliveryBase):
+    def merge(self: DeliveryGeneric, *args: DeliveryGeneric) -> DeliveryGeneric:
         cls = type(self)
-        separate: List[DeliveryBase] = [self] + [*args]
+        separate: List[DeliveryGeneric] = [self] + [*args]
         collection: Dict[str, Tuple] = {}
 
         for delivery_data in separate:
@@ -139,7 +142,9 @@ class DeliveryBase(DeliveryNamedTuple):
 
         return merged
 
-    def extract_one_gantry_angle(self, gantry_angle, gantry_tolerance=3):
+    def extract_one_gantry_angle(
+        self: DeliveryGeneric, gantry_angle, gantry_tolerance=3
+    ) -> DeliveryGeneric:
         near_angle = self._gantry_angle_mask(gantry_angle, gantry_tolerance)
 
         return self._apply_mask_to_delivery_data(near_angle)
@@ -194,7 +199,7 @@ class DeliveryBase(DeliveryNamedTuple):
 
         return near_angle
 
-    def _apply_mask_to_delivery_data(self, mask):
+    def _apply_mask_to_delivery_data(self: DeliveryGeneric, mask) -> DeliveryGeneric:
         cls = type(self)
 
         new_delivery_data = []
@@ -214,7 +219,7 @@ class DeliveryBase(DeliveryNamedTuple):
 
         return cls(*new_delivery_data)
 
-    def _strip_delivery_data(self, skip_size):
+    def _strip_delivery_data(self: DeliveryGeneric, skip_size) -> DeliveryGeneric:
         cls = type(self)
 
         new_delivery_data = []

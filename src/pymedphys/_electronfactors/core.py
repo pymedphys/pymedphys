@@ -225,7 +225,7 @@ def spline_model_with_deformability(
 ):
     """Return the spline model for points with sufficient deformability.
 
-    Calls both ``spline_model`` and ``calculate_deformabilty`` and then adjusts
+    Calls both ``spline_model`` and ``calculate_deformability`` and then adjusts
     the result so that points with  deformability greater than 0.5 return
     ``np.nan``.
 
@@ -443,7 +443,7 @@ def parameterise_insert_with_visual_alignment(
 ):
     """Return an equivalent ellipse with visual alignment parameters."""
     width, length, circle_centre = parameterise_insert(x, y, callback=circle_callback)
-    if complete_parameterisation_callback is not (None):
+    if complete_parameterisation_callback is not None:
         complete_parameterisation_callback(width, length, circle_centre)
     x_shift, y_shift, rotation_angle = visual_alignment_of_equivalent_ellipse(
         x, y, width, length, callback=visual_ellipse_callback

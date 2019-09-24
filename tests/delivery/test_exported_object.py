@@ -7,7 +7,7 @@ def test_object_consistency():
 
     assert type(filtered.monitor_units) is tuple
 
-    metersets = filtered.metersets(0, 0)
+    metersets = filtered._metersets(0, 0)
 
 
 def test_base_object():

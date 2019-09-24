@@ -219,7 +219,7 @@ class DeliveryDicom(DeliveryBase):
 
         gantry_angles = get_gantry_angles_from_dicom(dicom_fraction)
 
-        delivery_metersets = filtered.metersets(gantry_angles, gantry_tol)
+        delivery_metersets = filtered._metersets(gantry_angles, gantry_tol)
 
         try:
             maximmum_diff = np.max(

@@ -38,7 +38,6 @@ from ..utilities import (
     create_point_combination,
     convert_to_ravel_index,
     calculate_pass_rate,
-    run_input_checks,
 )
 
 
@@ -50,7 +49,7 @@ def gamma_filter_numpy(
     distance_mm_threshold,
     dose_threshold,
     lower_dose_cutoff=0,
-    **kwargs
+    **_
 ):
 
     coord_diffs = [
@@ -127,7 +126,7 @@ def gamma_filter_brute_force(
     distance_mm_threshold,
     dose_threshold,
     lower_dose_cutoff=0,
-    **kwargs
+    **_
 ):
 
     xx_ref, yy_ref, zz_ref = np.meshgrid(*axes_reference, indexing="ij")

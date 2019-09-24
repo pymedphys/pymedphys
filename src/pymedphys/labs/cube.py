@@ -38,7 +38,7 @@ from pymedphys._dicom.structure import pull_structure
 
 
 def cubify_cube_definition(cube_definition):
-    """Convertes a set of 3-D points into the vertices that define a cube.
+    """Converts a set of 3-D points into the vertices that define a cube.
 
     Each point is defined as a length 3 tuple.
 
@@ -178,8 +178,8 @@ def get_bounding_box(points):
 
 
 def plot_cube(cube_definition):
-    points_matpltlib_order = cube_vertices(cube_definition)
-    points = points_matpltlib_order.copy()
+    points_matplotlib_order = cube_vertices(cube_definition)
+    points = points_matplotlib_order.copy()
     points[:, 0], points[:, 1] = points[:, 1], points[:, 0].copy()
 
     edges = [
@@ -199,7 +199,7 @@ def plot_cube(cube_definition):
 
     ax.add_collection3d(faces)
 
-    bounding_box = get_bounding_box(points_matpltlib_order)
+    bounding_box = get_bounding_box(points_matplotlib_order)
 
     ax.set_xlim(bounding_box[1])
     ax.set_ylim(bounding_box[0])
@@ -308,7 +308,7 @@ def get_interpolated_dose(coords_grid, dose_interpolation):
 
 
 def resample_contour(contour, n=51):
-    tck, u = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
+    tck, _ = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
     new_points = splev(np.linspace(0, 1, n), tck)
 
     return new_points
@@ -419,12 +419,12 @@ def get_structure_aligned_cube(
 
     if quiet:
 
-        def print_fun(x, f, accepted):
+        def print_fun(x, f, accepted):  # pylint: disable = unused-argument
             pass
 
     else:
 
-        def print_fun(x, f, accepted):
+        def print_fun(x, f, accepted):  # pylint: disable = unused-argument
             print("at minimum %.4f accepted %d" % (f, int(accepted)))
 
     result = basinhopping(to_minimise, x0, callback=print_fun, niter=niter, stepsize=5)

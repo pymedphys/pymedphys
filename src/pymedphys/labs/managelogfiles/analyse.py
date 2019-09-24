@@ -53,13 +53,7 @@ def analyse_single_hash(index, config, filehash, cursors):
     print(logfile_filepath)
 
     results = get_logfile_mosaiq_results(
-        index,
-        config,
-        logfile_filepath,
-        field_id_key_map,
-        filehash,
-        cursors,
-        grid_resolution=5 / 3,
+        index, config, field_id_key_map, filehash, cursors, grid_resolution=5 / 3
     )
 
     comparison = calc_comparison(results[2], results[3])
@@ -143,7 +137,7 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
         config
     )
 
-    grid_resolution, ram_fraction = get_mu_density_parameters(config)
+    grid_resolution, _ = get_mu_density_parameters(config)
 
     index = get_index(config)
     field_id_key_map = get_field_id_key_map(index)
@@ -180,7 +174,6 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
                     results = get_logfile_mosaiq_results(
                         index,
                         config,
-                        logfile_filepath,
                         field_id_key_map,
                         file_hash,
                         cursors,
@@ -202,7 +195,7 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
                         )
                     elif np.abs(comparisons[file_hash] - new_comparison) > 0.00001:
                         print(
-                            "Calced comparison value does not agree with the "
+                            "Calculated comparison value does not agree with the "
                             "cached value."
                         )
                         print(
@@ -218,14 +211,16 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
                         )
                         print("Overwrote the cache with the new result.")
                     else:
-                        print("Calced comparison value agrees with the cached value")
+                        print(
+                            "Calculated comparison value agrees with the cached value"
+                        )
                     if plot:
                         plot_results(*results)
             except KeyboardInterrupt:
                 raise
             except AssertionError:
                 raise
-            except Exception:
+            except Exception:  # pylint: disable = broad-except
                 print(traceback.format_exc())
 
 
@@ -236,7 +231,7 @@ def mu_density_from_delivery_data(delivery_data: pymedphys.Delivery, grid_resolu
     return grid_xx, grid_yy, mu_density
 
 
-def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index, config):
+def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index):
     keys = np.array(field_id_key_map[field_id])
 
     times = np.array([index[key]["local_time"] for key in keys]).astype(np.datetime64)
@@ -281,7 +276,7 @@ def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
 
 
 def get_logfile_mosaiq_results(
-    index, config, filepath, field_id_key_map, filehash, cursors, grid_resolution=1
+    index, config, field_id_key_map, filehash, cursors, grid_resolution=1
 ):
     file_info = index[filehash]
     delivery_details = file_info["delivery_details"]
@@ -297,27 +292,27 @@ def get_logfile_mosaiq_results(
     )
 
     consecutive_keys = find_consecutive_logfiles(
-        field_id_key_map, field_id, filehash, index, config
+        field_id_key_map, field_id, filehash, index
     )
 
     logfilepaths = [get_filepath(index, config, key) for key in consecutive_keys]
 
-    logile_results = calc_and_merge_logfile_mudensity(
+    logfile_results = calc_and_merge_logfile_mudensity(
         logfilepaths, grid_resolution=grid_resolution
     )
 
     try:
-        assert np.all(logile_results[0] == mosaiq_results[0])
-        assert np.all(logile_results[1] == mosaiq_results[1])
+        assert np.all(logfile_results[0] == mosaiq_results[0])
+        assert np.all(logfile_results[1] == mosaiq_results[1])
     except AssertionError:
-        print(np.shape(logile_results[0]))
+        print(np.shape(logfile_results[0]))
         print(np.shape(mosaiq_results[0]))
         raise
 
-    grid_xx = logile_results[0]
-    grid_yy = logile_results[1]
+    grid_xx = logfile_results[0]
+    grid_yy = logfile_results[1]
 
-    logfile_mu_density = logile_results[2]
+    logfile_mu_density = logfile_results[2]
     mosaiq_mu_density = mosaiq_results[2]
 
     return grid_xx, grid_yy, logfile_mu_density, mosaiq_mu_density
@@ -330,15 +325,6 @@ def calc_comparison(logfile_mu_density, mosaiq_mu_density, normalisation=None):
     comparison = np.sum(np.abs(logfile_mu_density - mosaiq_mu_density)) / normalisation
 
     return comparison
-
-
-# def get_logfile_mosaiq_comparison(index, config, filepath, cursors,
-#                                   grid_resolution=1, ram_fraction=0.8):
-#     _, _, logfile_mu_density, mosaiq_mu_density = get_logfile_mosaiq_results(
-#         index, config, filepath, cursors, grid_resolution=grid_resolution,
-#         ram_fraction=ram_fraction)
-
-#     return calc_comparison(logfile_mu_density, mosaiq_mu_density)
 
 
 def get_filepath_from_hash(config, index, file_hash):

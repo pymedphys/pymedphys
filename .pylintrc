@@ -3,13 +3,22 @@
 disable =
     bad-continuation,
     missing-docstring,
+    empty-docstring,
     too-few-public-methods,
     too-many-arguments,
     too-many-locals,
     fixme,
-    invalid-name
+    invalid-name,
+    too-many-ancestors,
+    R0801,
+    len-as-condition,
+    no-else-raise
 
 
 [FORMAT]
 
 max-line-length=88
+
+
+extension-pkg-whitelist =
+    pymssql

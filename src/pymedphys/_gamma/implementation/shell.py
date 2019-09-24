@@ -311,9 +311,6 @@ class GammaInternalFixedOptions:
         )
 
 
-gamma = gamma_shell
-
-
 def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
     still_searching_for_gamma = np.full_like(
         options.flat_dose_reference, True, dtype=bool
