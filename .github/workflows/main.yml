@@ -15,8 +15,7 @@ jobs:
       - name: Linting
         run: |
           pip install pre-commit
-          while [ -f .git/index.lock ]; do sleep 1; done; ls -hal .git
-          pre-commit run --all-files || ls -hal .git
+          pre-commit run --all-files
 
   Linux:
     needs: Linting
