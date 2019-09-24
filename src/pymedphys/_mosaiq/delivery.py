@@ -320,6 +320,43 @@ def fetch_and_verify_mosaiq_sql(cursor, field_id):
 
 class DeliveryMosaiq(DeliveryBase):
     @classmethod
+    def from_mosaiq(cls, cursor, field_id):
+        mosaiq_delivery_data = cls._from_mosaiq_base(cursor, field_id)
+        reference_data = (
+            mosaiq_delivery_data.monitor_units,
+            mosaiq_delivery_data.mlc,
+            mosaiq_delivery_data.jaw,
+        )
+
+        delivery_data = cls._from_mosaiq_base(cursor, field_id)
+        test_data = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
+
+        agreement = False
+
+        while not agreement:
+            agreements = []
+            for ref, test in zip(reference_data, test_data):
+                agreements.append(np.all(ref == test))
+
+            agreement = np.all(agreements)
+            if not agreement:
+                print("Converted Mosaiq delivery data was conflicting.")
+                print(
+                    "MU agreement: {}\nMLC agreement: {}\n"
+                    "Jaw agreement: {}".format(*agreements)
+                )
+                print("Trying again...")
+                reference_data = test_data
+                delivery_data = cls._from_mosaiq_base(cursor, field_id)
+                test_data = (
+                    delivery_data.monitor_units,
+                    delivery_data.mlc,
+                    delivery_data.jaw,
+                )
+
+        return delivery_data
+
+    @classmethod
     def _from_mosaiq_base(cls, cursor, field_id):
         txfield_results, txfieldpoint_results = fetch_and_verify_mosaiq_sql(
             cursor, field_id
@@ -356,40 +393,3 @@ class DeliveryMosaiq(DeliveryBase):
         mosaiq_delivery_data = cls(monitor_units, gantry, collimator, mlc, jaw)
 
         return mosaiq_delivery_data
-
-    @classmethod
-    def from_mosaiq(cls, cursor, field_id):
-        mosaiq_delivery_data = cls._from_mosaiq_base(cursor, field_id)
-        reference_data = (
-            mosaiq_delivery_data.monitor_units,
-            mosaiq_delivery_data.mlc,
-            mosaiq_delivery_data.jaw,
-        )
-
-        delivery_data = cls._from_mosaiq_base(cursor, field_id)
-        test_data = (delivery_data.monitor_units, delivery_data.mlc, delivery_data.jaw)
-
-        agreement = False
-
-        while not agreement:
-            agreements = []
-            for ref, test in zip(reference_data, test_data):
-                agreements.append(np.all(ref == test))
-
-            agreement = np.all(agreements)
-            if not agreement:
-                print("Converted Mosaiq delivery data was conflicting.")
-                print(
-                    "MU agreement: {}\nMLC agreement: {}\n"
-                    "Jaw agreement: {}".format(*agreements)
-                )
-                print("Trying again...")
-                reference_data = test_data
-                delivery_data = cls._from_mosaiq_base(cursor, field_id)
-                test_data = (
-                    delivery_data.monitor_units,
-                    delivery_data.mlc,
-                    delivery_data.jaw,
-                )
-
-        return delivery_data
