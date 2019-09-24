@@ -12,7 +12,8 @@ disable =
     too-many-ancestors,
     R0801,
     len-as-condition,
-    no-else-raise
+    no-else-raise,
+    too-many-branches
 
 
 [FORMAT]
@@ -21,4 +22,5 @@ max-line-length=88
 
 
 extension-pkg-whitelist =
-    pymssql
+    pymssql,
+    numpy
