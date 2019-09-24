@@ -84,7 +84,7 @@ def create_filename_from_dataset(ds, dirpath=""):
     return pjoin(dirpath, "{}.{}.dcm".format(mode_prefix, ds.SOPInstanceUID))
 
 
-def anonymise_dataset(
+def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     ds,
     replace_values=True,
     keywords_to_leave_unchanged=(),
@@ -96,7 +96,8 @@ def anonymise_dataset(
 
     You can find the list of DICOM keywords that are included in default
     anonymisation `here <./identifying_keywords.json>`__.
-    These were drawn from `DICOM Supp 142 <https://www.dicomstandard.org/supplements/>`__
+    These were drawn from `DICOM Supp 142
+    <https://www.dicomstandard.org/supplements/>`__
 
     **We do not yet claim conformance to any DICOM Application Level
     Confidentiality Profile**, but plan to be in a position to do so in the
@@ -174,7 +175,7 @@ def anonymise_dataset(
             )
         )
 
-    elif delete_unknown_tags:
+    if delete_unknown_tags:
         unwanted_unknown_tags = []
 
         for tag in unknown_tags:
@@ -195,9 +196,6 @@ def anonymise_dataset(
 
     if copy_dataset:
         return ds_anon
-
-
-anonymise = anonymise_dataset
 
 
 def anonymise_file(

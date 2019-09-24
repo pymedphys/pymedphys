@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affrero General Public License. These aditional terms are Sections 1, 5,
+# Affero General Public License. These additional terms are Sections 1, 5,
 # 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
 # where all references to the definition "License" are instead defined to
 # mean the AGPL-3.0+.
@@ -107,7 +107,10 @@ def absolute_scans_from_mephysto(
     }
 
     for depth_test in depth_testing:
-        mephysto_distance_inplane, mephysto_normalised_dose_inplane = mephysto_absolute_profiles(
+        (
+            mephysto_distance_inplane,
+            mephysto_normalised_dose_inplane,
+        ) = mephysto_absolute_profiles(
             "INPLANE_PROFILE",
             depth_test,
             distance,
@@ -118,7 +121,10 @@ def absolute_scans_from_mephysto(
             mephysto_pdd_dose,
         )
 
-        mephysto_distance_crossplane, mephysto_normalised_dose_crossplane = mephysto_absolute_profiles(
+        (
+            mephysto_distance_crossplane,
+            mephysto_normalised_dose_crossplane,
+        ) = mephysto_absolute_profiles(
             "CROSSPLANE_PROFILE",
             depth_test,
             distance,

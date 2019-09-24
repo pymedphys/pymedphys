@@ -23,10 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+from copy import deepcopy
 
 import numpy as np
-
-from copy import deepcopy
 
 
 def add_data_to_control_point(template, data, i):

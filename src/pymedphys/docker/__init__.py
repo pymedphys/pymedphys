@@ -31,6 +31,6 @@ import subprocess
 HERE = os.path.dirname(__file__)
 
 
-def server_cli(args):
+def server_cli(args):  # pylint: disable = unused-argument
     subprocess.check_call("docker-compose build", cwd=HERE)
     subprocess.check_call("docker-compose up", cwd=HERE)
