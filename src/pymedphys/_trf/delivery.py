@@ -23,9 +23,13 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+from __future__ import annotations
+
+from typing import Type
+
 import numpy as np
 
-from pymedphys._base.delivery import DeliveryBase
+from pymedphys._base.delivery import DeliveryBase, DeliveryGeneric
 
 from .trf2pandas import read_trf
 
@@ -40,13 +44,13 @@ from .constants import (
 
 class DeliveryLogfile(DeliveryBase):
     @classmethod
-    def from_logfile(cls, filepath) -> DeliveryBase:
+    def from_logfile(cls, filepath) -> DeliveryLogfile:
         _, dataframe = read_trf(filepath)
 
-        return cls.from_pandas(dataframe)
+        return cls._from_pandas(dataframe)
 
     @classmethod
-    def from_pandas(cls, table) -> DeliveryBase:
+    def _from_pandas(cls: Type[DeliveryGeneric], table) -> DeliveryGeneric:
         raw_monitor_units = table["Step Dose/Actual Value (Mu)"]
 
         diff = np.append([0], np.diff(raw_monitor_units))

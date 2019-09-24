@@ -194,7 +194,9 @@ def get_logfile_delivery_data_bygantry(
             logfile_delivery_data = pymedphys.Delivery.from_logfile(filepath)
             mu = np.array(logfile_delivery_data.monitor_units)
 
-            filtered = logfile_delivery_data.filter_cps()
+            filtered = (
+                logfile_delivery_data._filter_cps()  # pylint: disable = protected-access
+            )
 
             mu = filtered.monitor_units
             mlc = filtered.mlc
