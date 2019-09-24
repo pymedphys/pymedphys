@@ -192,7 +192,8 @@ def normalise_profile(
 
     else:
         raise TypeError(
-            "Expected either a float for normalisation or one of 'cra', 'cm', or 'max'"
+            "Expected either a float for `normalisation_position` "
+            "or one of 'cra', 'cm', or 'max'"
         )
 
     return relative_dose * normalisation
