@@ -26,6 +26,8 @@
 """ For importing, analyzing, and comparing dose or intensity profiles
     from different sources."""
 
+# pylint: skip-file
+
 import os
 import copy
 

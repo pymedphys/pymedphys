@@ -30,6 +30,8 @@ Sinogram Toolbox
 @author: king.r.paul@gmail.com
 """
 
+# pylint: skip-file
+
 from string import digits as DIGITS
 from string import ascii_letters as LETTERS
 import csv

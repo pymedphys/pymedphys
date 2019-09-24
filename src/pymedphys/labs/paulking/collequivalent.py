@@ -24,6 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+# pylint: skip-file
+
 from pymedphys._utilities.constants import AGILITY
 
 

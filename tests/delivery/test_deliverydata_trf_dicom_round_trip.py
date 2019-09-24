@@ -89,7 +89,7 @@ def test_get_metersets_from_delivery_data(
     expected = get_metersets_from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
 
     filtered = logfile_delivery_data.filter_cps()
-    metersets = filtered.metersets(loaded_dicom_gantry_angles, gantry_tol)
+    metersets = filtered._metersets(loaded_dicom_gantry_angles, gantry_tol)
 
     try:
         assert np.all(np.abs(np.array(expected) - np.array(metersets)) <= 0.2)
@@ -101,6 +101,8 @@ def test_get_metersets_from_delivery_data(
 
 @pytest.mark.slow
 def test_filter_cps(logfile_delivery_data):
+    # TODO why is this variable unused?
+
     filtered = logfile_delivery_data.filter_cps()
 
     for field in logfile_delivery_data._fields:
