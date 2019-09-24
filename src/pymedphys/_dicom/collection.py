@@ -85,16 +85,18 @@ class DicomBase:
             self_elems = sorted(list(self.dataset.iterall()), key=lambda x: x.tag)
             other_elems = sorted(list(other.dataset.iterall()), key=lambda x: x.tag)
             return self_elems == other_elems
-        else:
-            # TODO: Change for pydicom>=1.2.2?
-            self_elems = sorted(list(self.dataset.iterall()), key=lambda x: x.tag)
-            other_elems = sorted(list(other.dataset.iterall()), key=lambda x: x.tag)
-            return self_elems == other_elems
+
+        # TODO: Change for pydicom>=1.2.2?
+        self_elems = sorted(list(self.dataset.iterall()), key=lambda x: x.tag)
+        other_elems = sorted(list(other.dataset.iterall()), key=lambda x: x.tag)
+        return self_elems == other_elems
 
     def __ne__(self, other):
         return not self == other
 
-    def anonymise(self, inplace=False):
+    def anonymise(  # pylint: disable = inconsistent-return-statements
+        self, inplace=False
+    ):
         to_copy = not inplace
         anonymised = anonymise_dataset(self.dataset, copy_dataset=to_copy)
 

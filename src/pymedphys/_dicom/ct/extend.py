@@ -145,10 +145,11 @@ def generate_new_slice_locations(dicom_datasets, index_to_copy, number_of_slices
 def get_append_method(dicom_datasets, index_to_copy):
     if index_to_copy == 0:
         return "appendleft"
-    elif index_to_copy == len(dicom_datasets) or index_to_copy == -1:
+
+    if index_to_copy == len(dicom_datasets) or index_to_copy == -1:
         return "append"
-    else:
-        raise ValueError("index_to_copy must be first or last slice")
+
+    raise ValueError("index_to_copy must be first or last slice")
 
 
 def generate_uids(number_of_uids, randomisation_length=10, root=PYMEDPHYS_ROOT_UID):

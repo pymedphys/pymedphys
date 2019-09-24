@@ -36,7 +36,7 @@ def coords_from_xyz_axes(xyz_axes):
     Parameters
     ----------
     xyz_axes : tuple
-        A tuple containing three `ndarrays` corresponding to the `x`,
+        A tuple containing three `numpy.ndarray`s corresponding to the `x`,
         `y` and `z` axes of a given 3D grid - usually a DICOM dataset's
         pixel array.
 
@@ -53,11 +53,11 @@ def coords_from_xyz_axes(xyz_axes):
     return coords
 
 
-def _orientation_is_head_first(orientation_vector, is_decubitis):
-    if is_decubitis:
+def _orientation_is_head_first(orientation_vector, is_decubitus):
+    if is_decubitus:
         return np.abs(np.sum(orientation_vector)) != 2
-    else:
-        return np.abs(np.sum(orientation_vector)) == 2
+
+    return np.abs(np.sum(orientation_vector)) == 2
 
 
 def xyz_axes_from_dataset(ds, coord_system="DICOM"):
@@ -90,7 +90,7 @@ def xyz_axes_from_dataset(ds, coord_system="DICOM"):
     Returns
     -------
     (x, y, z)
-        A tuple containing three `ndarrays` corresponding to the `x`,
+        A tuple containing three `numpy.ndarray`s corresponding to the `x`,
         `y` and `z` axes of the DICOM dataset's pixel array in the
         specified coordinate system.
 
@@ -132,8 +132,8 @@ def xyz_axes_from_dataset(ds, coord_system="DICOM"):
             "superoinferior axis of patient."
         )
 
-    is_decubitis = orientation[0] == 0
-    is_head_first = _orientation_is_head_first(orientation, is_decubitis)
+    is_decubitus = orientation[0] == 0
+    is_head_first = _orientation_is_head_first(orientation, is_decubitus)
 
     di = float(ds.PixelSpacing[0])
     dj = float(ds.PixelSpacing[1])
@@ -141,7 +141,7 @@ def xyz_axes_from_dataset(ds, coord_system="DICOM"):
     col_range = np.arange(0, ds.Columns * di, di)
     row_range = np.arange(0, ds.Rows * dj, dj)
 
-    if is_decubitis:
+    if is_decubitus:
         x_dicom_fixed = orientation[1] * position[1] + col_range
         y_dicom_fixed = orientation[3] * position[0] + row_range
     else:
