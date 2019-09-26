@@ -46,7 +46,7 @@ jobs:
         brew install freetds
 
     - name: Install Pandoc
-      if: matrix.toxenv == 'docs'
+      if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get install -y pandoc
 
