@@ -45,10 +45,15 @@ jobs:
       run: |
         brew install freetds
 
-    - name: Install Pandoc
+    - name: Install Pandoc on Ubuntu
       if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get install -y pandoc
+
+    - name: Install Pandoc on MacOS
+      if: matrix.toxenv == 'docs' && matrix.os == 'macos-latest'
+      run: |
+        brew install pandoc
 
     - name: Show python information
       run: |
