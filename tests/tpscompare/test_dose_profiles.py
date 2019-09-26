@@ -41,16 +41,16 @@ from pymedphys.labs.tpscompare import load_and_normalise_mephysto
 
 from shared import (
     BASELINES_DIR,
-    DATA_DIR,
     DICOM_DOSE_FILEPATHS,
     DICOM_PLAN_FILEPATH,
-    DICOM_DIR,
     MEASUREMENTS_DIR,
 )
 
 
 CREATE_BASELINE = False
 BASELINE_FILEPATH = os.path.join(BASELINES_DIR, "dicom_dose_profiles.json")
+
+# pylint: disable = redefined-outer-name
 
 
 @pytest.fixture
