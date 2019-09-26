@@ -49,8 +49,8 @@ def execute_sql(cursor, sql_string, parameters=None):
         row = cursor.fetchone()
         if row is None:
             break
-        else:
-            data.append(row)
+
+        data.append(row)
 
     return data
 

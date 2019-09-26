@@ -2,6 +2,7 @@
 name = "pymedphys"
 version = "0.12.0dev1"
 readme = "README.rst"
+description = "Medical Physics library"
 authors = [
     "Simon Biggs <me@simonbiggs.net>",
     "Matthew Jennings <Centrus.007@gmail.com>",

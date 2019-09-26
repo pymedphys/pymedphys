@@ -67,7 +67,9 @@ def decode_rows(trf_table_contents):
         ]
 
         result = decode_table_data(rows, line_grouping)
-        tentative_state_codes = result[:, linac_state_codes_column]
+        tentative_state_codes = result[  # pylint: disable = unsubscriptable-object
+            :, linac_state_codes_column
+        ]
 
         if set(tentative_state_codes).issubset(reference_state_codes):
             decoded_results.append(decode_table_data(rows, line_grouping))

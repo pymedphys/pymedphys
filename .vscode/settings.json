@@ -122,6 +122,7 @@
     "uint",
     "uncompared",
     "unrecognised",
+    "unsubscriptable",
     "vendored",
     "virtualenvs",
     "vmat",
