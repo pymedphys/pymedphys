@@ -34,6 +34,11 @@ jobs:
       with:
         fetch-depth: 1
 
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+
     - name: Install Pandoc
       if: matrix.toxenv == 'docs'
       run: |
