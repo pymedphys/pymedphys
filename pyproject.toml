@@ -72,6 +72,7 @@ sphinx = ">= 1.4, < 1.8"
 sphinx-argparse = "*"
 sphinx-rtd-theme = "^0.4.3"
 rope = "^0.14.0"
+jupyterlab = "^1.1"
 
 
 [tool.poetry.scripts]
