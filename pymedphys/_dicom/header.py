@@ -88,8 +88,8 @@ def adjust_rel_elec_density(
         except KeyError:
             if ignore_missing_structure:
                 continue
-            else:
-                raise
+
+            raise
 
         observation = ROI_number_to_observation_map[ROI_number]
 
@@ -117,10 +117,7 @@ def adjust_rel_elec_density(
 
 
 def adjust_RED_cli(args):
-    adjustment_map = {
-        key: item
-        for key, item in zip(args.adjustment_map[::2], args.adjustment_map[1::2])
-    }
+    adjustment_map = dict(zip(args.adjustment_map[::2], args.adjustment_map[1::2]))
 
     dicom_dataset = pydicom.read_file(args.input_file, force=True)
     new_dicom_dataset = adjust_rel_elec_density(

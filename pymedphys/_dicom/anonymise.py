@@ -448,8 +448,9 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
                     float(elem.value), float(dummy_value)
                 ):
                     continue
-                else:
-                    return False
+
+                return False
+
         elif elem.tag.is_private and not ignore_private_tags:
             return False
 
