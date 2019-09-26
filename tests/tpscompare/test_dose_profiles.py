@@ -88,7 +88,7 @@ def test_bulk_compare(loaded_doses, loaded_plan):
     }
 
     absolute_scans_per_field = load_and_normalise_mephysto(
-        MEASUREMENTS_DIR, "06MV_(\d\dx\d\d)\.mcc", absolute_doses, 100
+        MEASUREMENTS_DIR, r"06MV_(\d\dx\d\d)\.mcc", absolute_doses, 100
     )
 
     getter = operator.itemgetter("displacement", "dose")
