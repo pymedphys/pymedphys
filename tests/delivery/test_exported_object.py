@@ -7,7 +7,7 @@ def test_object_consistency():
     empty = Delivery._empty()
     filtered = empty._filter_cps()
 
-    assert isinstance(filtered.monitor_units) is tuple
+    assert isinstance(filtered.monitor_units, tuple)
 
     filtered._metersets(0, 0)
 
