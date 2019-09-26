@@ -8,7 +8,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-        fetch-depth: 1
+        with:
+          fetch-depth: 1
       - name: Set up Python 3.7
         uses: actions/setup-python@v1
         with:
@@ -30,7 +31,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-      fetch-depth: 1
+      with:
+        fetch-depth: 1
 
     - name: Install Pandoc
       if: matrix.toxenv == 'docs'
