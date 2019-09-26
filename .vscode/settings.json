@@ -54,6 +54,7 @@
     "dtype",
     "einsum",
     "elems",
+    "freetds",
     "functools",
     "hypot",
     "imageio",

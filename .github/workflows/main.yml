@@ -24,10 +24,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: ['ubuntu-latest', 'macos-latest']
         python-version: [3.7]
         toxenv: ['pylint', 'docs', 'doctest', 'runslow']
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v1
@@ -38,6 +39,11 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+
+    - name: Install FreeTDS
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install freetds
 
     - name: Install Pandoc
       if: matrix.toxenv == 'docs'
