@@ -95,7 +95,7 @@ class DeliveryDicom(DeliveryBase):
         single_beam_dicoms = []
         for beam_index, masked_delivery_data in enumerate(all_masked_delivery_data):
             single_beam_dicoms.append(
-                masked_delivery_data.to_dicom_beam(
+                masked_delivery_data._to_dicom_beam(
                     single_fraction_template, beam_index, fraction_index
                 )
             )
