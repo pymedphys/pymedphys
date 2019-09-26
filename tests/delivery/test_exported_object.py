@@ -1,13 +1,15 @@
 from pymedphys import Delivery
 
+# pylint: disable = protected-access
+
 
 def test_object_consistency():
     empty = Delivery._empty()
-    filtered = empty._filter_cps()  # pylint: disable = protected-access
+    filtered = empty._filter_cps()
 
-    assert type(filtered.monitor_units) is tuple
+    assert isinstance(filtered.monitor_units) is tuple
 
-    metersets = filtered._metersets(0, 0)
+    filtered._metersets(0, 0)
 
 
 def test_base_object():

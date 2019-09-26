@@ -52,13 +52,6 @@ def test_rotate_about_vector():
 
     test_coords_single, test_coords_multi = get_single_and_multi_test_coords()
 
-    x_s = test_coords_single[0]
-    y_s = test_coords_single[1]
-    z_s = test_coords_single[2]
-    x_m = test_coords_multi[0]
-    y_m = test_coords_multi[1]
-    z_m = test_coords_multi[2]
-
     rotation_vector = np.array((2, 2, 2))
 
     # Rotation of coords about own axis yields no change
