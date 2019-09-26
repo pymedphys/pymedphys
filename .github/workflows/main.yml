@@ -49,4 +49,5 @@ jobs:
         poetry run pytest -v
     - name: Build docs
       if: matrix.type == 'docs'
+      run: |
         poetry run sphinx-build -W docs docs/_build/html
