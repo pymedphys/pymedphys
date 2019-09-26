@@ -40,13 +40,13 @@ jobs:
       run: |
         poetry install -vvv
     - name: Pytest with Runslow
-      if: ${{ matrix.os }} == 'ubuntu-latest' && ${{ matrix.type }} == 'pytest'
+      if: matrix.os == 'ubuntu-latest' && matrix.type == 'pytest'
       run: |
         poetry run pytest -v --runslow --doctest-modules --pylint
     - name: Pytest without Runslow
-      if: ${{ matrix.os }} != 'ubuntu-latest' && ${{ matrix.type }} == 'pytest'
+      if: matrix.os != 'ubuntu-latest' && matrix.type == 'pytest'
       run: |
         poetry run pytest -v
     - name: Build docs
-      if: ${{ matrix.type }} == 'docs'
+      if: matrix.type == 'docs'
         poetry run sphinx-build -W docs docs/_build/html
