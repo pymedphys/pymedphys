@@ -40,6 +40,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Show python information
+      run: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
+
     - name: Install FreeTDS
       if: matrix.os == 'macos'
       run: |
@@ -54,10 +59,6 @@ jobs:
       if: matrix.toxenv == 'docs' && matrix.os == 'macos'
       run: |
         brew install pandoc
-
-    - name: Show python information
-      run: |
-        python -c "import sys; print(sys.version); print(sys.executable)"
 
     - name: Upgrade pip, install poetry and tox
       run: |
