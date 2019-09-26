@@ -24,11 +24,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+        os: ['ubuntu', 'macos', 'windows']
         python-version: [3.7]
         toxenv: ['pylint', 'docs', 'doctest', 'runslow']
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
 
     steps:
     - uses: actions/checkout@v1
@@ -41,19 +41,26 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install FreeTDS
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos'
       run: |
         brew install freetds
 
     - name: Install Pandoc on Ubuntu
-      if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu-latest'
+      if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu'
       run: |
         sudo apt-get install -y pandoc
 
     - name: Install Pandoc on MacOS
-      if: matrix.toxenv == 'docs' && matrix.os == 'macos-latest'
+      if: matrix.toxenv == 'docs' && matrix.os == 'macos'
       run: |
         brew install pandoc
+
+    - name: Install GEOS on Windows
+      if: matrix.os == 'windows'
+      run: |
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe
+        Miniconda3-latest-Windows-x86_64.exe /S
+        conda install geos
 
     - name: Show python information
       run: |
