@@ -35,7 +35,6 @@ jobs:
     - name: Install Poetry
       run: |
         python -m pip install --upgrade pip poetry
-        poetry config settings.virtualenvs.create false
     - name: Install dependencies
       run: |
         poetry install
