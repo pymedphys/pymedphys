@@ -64,10 +64,8 @@ jobs:
         python -m pip install --upgrade pip poetry tox
 
     - name: Run Tox
-      env:
-        TOXENV: ${{ matrix.toxenv }}
       run: |
-        poetry run tox -e $TOXENV
+        poetry run tox -e ${{ matrix.toxenv }}
 
 
   # Testing:
