@@ -3,7 +3,7 @@ name: Main
 on: [pull_request]
 
 jobs:
-  Linting:
+  Pre-Commit:
     runs-on: ubuntu-latest
 
     steps:
