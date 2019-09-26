@@ -29,7 +29,7 @@ Sinogram Toolbox
 
 @author: king.r.paul@gmail.com
 """
-
+# The following needs to be removed before leaving labs
 # pylint: skip-file
 
 from string import digits as DIGITS
