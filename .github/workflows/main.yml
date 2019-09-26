@@ -45,11 +45,6 @@ jobs:
       run: |
         brew install freetds
 
-    - name: Install Cython
-      if: matrix.os == 'macos-latest'
-      run: |
-        pip install cython
-
     - name: Install Pandoc
       if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu-latest'
       run: |
