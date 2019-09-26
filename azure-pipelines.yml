@@ -18,10 +18,10 @@ jobs:
           test_title: Pytest with Docstrings Included
           toxenv: doctest
           python: 3.7
-        Linux-Py37:
+        Run-Slow:
           image_name: ubuntu-16.04
-          test_title: Linux Py37
-          toxenv: py37
+          test_title: Run slow tests
+          toxenv: runslow
           python: 3.7
 
     pool:
