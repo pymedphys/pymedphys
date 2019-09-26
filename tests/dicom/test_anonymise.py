@@ -185,7 +185,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
             ds_anon_delete_unknown, tmp_path, anon_is_expected=True
         )
         with pytest.raises(AttributeError) as e_info:
-            ds_anon_delete_unknown.PatientName
+            ds_anon_delete_unknown.PatientName  # pylint: disable = pointless-statement
         assert str(e_info.value).count(
             "'Dataset' object has no attribute " "'PatientName'"
         )

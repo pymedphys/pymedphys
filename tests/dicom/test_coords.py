@@ -74,21 +74,20 @@ def save_xyz_baseline(filename, xyz_dict):
     if not filename.endswith(".json"):
         raise ValueError('Filename must end in ".json"')
 
-    elif not set(xyz_dict.keys()) == set(ORIENTATIONS_SUPPORTED):
+    if not set(xyz_dict.keys()) == set(ORIENTATIONS_SUPPORTED):
         raise ValueError(
             "xyz baselines must be provided for "
             "all eight supported patient orientations"
         )
 
-    elif not tuples_are_correct_length:
+    if not tuples_are_correct_length:
         raise ValueError(
             "Each orientation's new baseline must be a tuple"
             "of length 3 containing x, y and z values"
         )
 
-    else:
-        with open(pjoin(DATA_DIRECTORY, filename), "w") as fp:
-            json.dump(xyz_dict, fp)
+    with open(pjoin(DATA_DIRECTORY, filename), "w") as fp:
+        json.dump(xyz_dict, fp)
 
 
 def test_extract_iec_patient_xyz():

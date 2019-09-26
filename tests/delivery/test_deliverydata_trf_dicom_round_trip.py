@@ -23,6 +23,7 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
 import os
 
 import pytest
@@ -42,7 +43,7 @@ from pymedphys._dicom.rtplan import (
 
 from pymedphys import Delivery
 
-# pylint: disable=redefined-outer-name
+# pylint: disable = redefined-outer-name, protected-access
 
 DIR_TO_TEST_MAP = {
     "original": {"fraction_group": 1},
@@ -101,9 +102,7 @@ def test_get_metersets_from_delivery_data(
 
 @pytest.mark.slow
 def test_filter_cps(logfile_delivery_data):
-    # TODO why is this variable unused?
-
-    filtered = logfile_delivery_data._filter_cps()
+    logfile_delivery_data._filter_cps()
 
     for field in logfile_delivery_data._fields:
         assert len(getattr(logfile_delivery_data, field)) != 0
@@ -134,7 +133,7 @@ def test_round_trip_dd2dcm2dd(loaded_dicom_dataset, logfile_delivery_data: Deliv
 
 
 @pytest.mark.slow
-def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset, loaded_dicom_gantry_angles):
+def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset):
     original = loaded_dicom_dataset
     delivery_data = Delivery.from_dicom(original, FRACTION_GROUP)
     processed = delivery_data.to_dicom(original)

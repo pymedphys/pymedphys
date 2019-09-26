@@ -23,11 +23,11 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-"""Tests for npgamma."""
+"""Tests for gamma shell."""
 
-import pytest
 
 import numpy as np
+
 from pymedphys._gamma.implementation import gamma_shell
 from pymedphys._gamma.implementation.shell import calculate_coordinates_shell
 
@@ -60,12 +60,8 @@ def does_gamma_scale_as_expected(
         print(scale)
 
         abs_diff = np.abs(gamma_results[i + 1] - gamma_results[0] / scale)
-        ref = np.where(abs_diff == np.max(abs_diff))
 
         print(np.max(abs_diff))
-
-        # print(gamma_results[0][ref])
-        # print(gamma_results[i+1][ref])
 
         assert np.all(abs_diff <= 0.1)
 

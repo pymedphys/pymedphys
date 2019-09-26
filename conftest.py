@@ -27,7 +27,7 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_slow)
 
 
-def pytest_ignore_collect(path, config):
+def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
     """return True to prevent considering this path for collection.
 
     This hook is consulted for all files and directories prior to

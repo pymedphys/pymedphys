@@ -23,6 +23,8 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+# pylint: disable = unused-variable, unused-import
+
 import pytest
 
 import numpy as np
@@ -32,9 +34,6 @@ from pymedphys.labs.winstonlutz.profiles import (
     penumbra_flip_diff,
     field_points_to_compare,
 )
-
-
-# pylint: disable=bad-whitespace,C1801
 
 
 def test_field_points_to_compare():
@@ -64,7 +63,7 @@ def test_profile_flip_diff():
 
     x_to_test = [0, 1, 1.6, 1.69, 1.699, 1.7, 1.701, 1.71, 1.8, 2, 3, 10]
     y_to_test = [-2, -3, -3.499, -3.5, -3.501, -4, -5]
-    expected_smallest_indicies = (
+    expected_smallest_indices = (
         x_to_test.index(profile_centre[0]),
         y_to_test.index(profile_centre[1]),
     )
@@ -82,4 +81,4 @@ def test_profile_flip_diff():
             for x in x_to_test
         ]
 
-        assert np.all(np.argmin(flip_diffs) == expected_smallest_indicies)
+        assert np.all(np.argmin(flip_diffs) == expected_smallest_indices)
