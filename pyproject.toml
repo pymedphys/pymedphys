@@ -47,12 +47,7 @@ scikit-image = "*"
 
 pymssql = "*"
 
-shapely = [
-    { version = "*", url = "https://github.com/pymedphys/pymedphys/releases/download/v0.11.0/Shapely-1.6.4.post2-cp37-cp37m-win32.whl", system = "Windows", machine = "i386" },
-    { version = "*", url = "https://github.com/pymedphys/pymedphys/releases/download/v0.11.0/Shapely-1.6.4.post2-cp37-cp37m-win_amd64.whl", system = "Windows", machine = "x86_64" },
-    { version = "*", system = "Linux" },
-    { version = "*", system = "macOS" }
-]
+shapely = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.1"
