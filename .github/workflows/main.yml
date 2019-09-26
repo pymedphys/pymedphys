@@ -55,12 +55,16 @@ jobs:
       run: |
         brew install pandoc
 
-    - name: Install GEOS on Windows
+    - name: Install Conda on Windows
       if: matrix.os == 'windows'
       run: |
         choco install wget
         wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe
         start /wait "" Miniconda3-latest-Windows-x86_64.exe /S
+
+    - name: Install GEOS on Windows
+      if: matrix.os == 'windows'
+      run: |
         conda install geos
 
     - name: Show python information
