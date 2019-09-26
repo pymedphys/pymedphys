@@ -42,7 +42,6 @@ jobs:
 
     - bash: |
         python -m pip install --upgrade pip poetry
-        poetry config settings.virtualenvs.create false
       displayName: Upgrade pip and install poetry
 
     - bash: poetry install
