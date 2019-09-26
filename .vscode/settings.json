@@ -21,6 +21,7 @@
   "python.testing.pytestEnabled": true,
   "cSpell.words": [
     "IMRT",
+    "Miniconda",
     "PDD",
     "PDDs",
     "affero",
@@ -37,6 +38,7 @@
     "bfgs",
     "biggs",
     "bivariate",
+    "choco",
     "chown",
     "conda",
     "cubify",
@@ -56,6 +58,7 @@
     "elems",
     "freetds",
     "functools",
+    "geos",
     "hypot",
     "imageio",
     "imread",
