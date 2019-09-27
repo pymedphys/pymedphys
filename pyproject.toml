@@ -57,6 +57,7 @@ sphinx-autobuild = { version = "*", optional = true }
 sphinxcontrib-napoleon = { version = "*", optional = true }
 sphinx-argparse  = { version = "*", optional = true }
 nbsphinx  = { version = "*", optional = true }
+jupyter_client = { version = "*", optional = true }
 m2r  = { version = "*", optional = true }
 
 # pytest
@@ -91,6 +92,7 @@ sphinx-autobuild = "*"
 sphinxcontrib-napoleon = "*"
 sphinx-argparse = "*"
 nbsphinx = "*"
+jupyter_client = "*"
 m2r = "*"
 
 # Packages to include later
@@ -100,7 +102,7 @@ m2r = "*"
 [tool.poetry.extras]
 docs = [
     "nbsphinx", "m2r", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx",
-    "sphinx-argparse", "sphinx-rtd-theme"
+    "sphinx-argparse", "sphinx-rtd-theme", "jupyter_client"
 ]
 
 labs = [
