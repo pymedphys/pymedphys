@@ -78,6 +78,7 @@ jobs:
 
     - script: brew install freetds
       displayName: Install FreeTDS on MacOS
+      condition: eq( variables['IMAGE_NAME'], 'macos-10.13' )
 
     - script: sudo apt-get install -y pandoc
       displayName: Install Pandoc on Ubuntu
