@@ -29,6 +29,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+
+## [Unreleased]
+
+### Breaking Changes
+
+- The API has undergone a complete redesign. Expect most code to be broken with
+  this release.
+
 ## [0.11.0]
 
 ### Breaking Changes

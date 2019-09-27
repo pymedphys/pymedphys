@@ -1,1 +1,0 @@
-https://github.com/readthedocs/sphinx_rtd_theme/archive/feb0beb44a444f875f3369a945e6055965ee993f.zip
