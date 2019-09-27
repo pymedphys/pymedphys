@@ -45,7 +45,7 @@ jobs:
         python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
         python -c "import platform; print(platform.machine()); print(platform.release())"
 
-    - name: Install FreeTDS
+    - name: Install FreeTDS on MacOS
       if: matrix.os == 'macos'
       run: |
         brew install freetds
