@@ -42,7 +42,6 @@ pydicom = "*"
 pymssql = "*"
 shapely = "*"
 
-
 tqdm = { version = "*", optional = true }
 python_dateutil = { version = "*", optional = true }
 PyYAML = { version = "*", optional = true }
@@ -50,7 +49,6 @@ PyYAML = { version = "*", optional = true }
 Pillow = { version = "*", optional = true }
 imageio = { version = "*", optional = true }
 scikit-image = { version = "*", optional = true }
-
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.1"
@@ -92,11 +90,6 @@ pytest = [
 pylint = [
     "pylint", "pytest-pylint", "pytest", "pytest-sugar"
 ]
-
-
-
-
-
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.cli.main:pymedphys_cli"
