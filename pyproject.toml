@@ -31,6 +31,7 @@ python = "^3.7"
 attrs = "*"
 keyring = "*"
 packaging = "*"
+PyYAML = "*"
 
 numpy = "^1.12"
 matplotlib = "*"
@@ -44,7 +45,6 @@ shapely = "*"
 
 tqdm = { version = "*", optional = true }
 python_dateutil = { version = "*", optional = true }
-PyYAML = { version = "*", optional = true }
 
 Pillow = { version = "*", optional = true }
 imageio = { version = "*", optional = true }
@@ -86,7 +86,7 @@ docs = [
 ]
 
 labs = [
-    "tqdm", "python_dateutil", "PyYAML", "Pillow", "imageio", "scikit-image"
+    "tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"
 ]
 
 pytest = [
