@@ -1281,12 +1281,12 @@ testing = ["pathlib2", "contextlib2", "unittest2"]
 
 [extras]
 docs = []
-labs = ["tqdm", "python_dateutil", "PyYAML", "Pillow", "imageio", "scikit-image"]
+labs = ["tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"]
 pylint = []
 pytest = []
 
 [metadata]
-content-hash = "4b64978b70c41927e68e0820c50a0ff813743553f59a6ab47f18af60092a2f85"
+content-hash = "77b673175748a9be106c1bda6dcd9abd96cee9781d9d160967f0624fb0eada08"
 python-versions = "^3.7"
 
 [metadata.hashes]
