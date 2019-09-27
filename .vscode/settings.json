@@ -71,6 +71,7 @@
     "isfile",
     "isinf",
     "isnan",
+    "itertools",
     "junit",
     "lzma",
     "macos",
