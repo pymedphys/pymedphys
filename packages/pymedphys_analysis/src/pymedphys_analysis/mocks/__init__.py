@@ -1,1 +1,0 @@
-from .profiles import create_rectangular_field_function

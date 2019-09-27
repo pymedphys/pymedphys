@@ -1,27 +1,65 @@
 jobs:
+
+  - job: PreCommit
+
+    pool:
+      vmImage: 'ubuntu-16.04'
+
+    steps:
+    - task: UsePythonVersion@0
+      displayName: Set up Python 3.7
+      inputs:
+        versionSpec: 3.7
+
+    - script: |
+        pip install pre-commit
+        pre-commit run --all-files
+      displayName: Run Pre-Commit
+
+
   - job: Tox
 
     strategy:
       matrix:
-        Pylint-All:
+        Pylint-All-Linux:
           image_name: ubuntu-16.04
-          test_title: Pylint All
+          test_title: Pylint All Linux
           toxenv: pylint
           python: 3.7
-        Docs:
+        Docs-Linux:
           image_name: ubuntu-16.04
-          test_title: Docs
+          test_title: Docs Linux
           toxenv: docs
           python: 3.7
-        Pytest-DoctestModules:
+        Pytest-DoctestModules-Linux:
           image_name: ubuntu-16.04
-          test_title: Pytest with Docstrings Included
+          test_title: Pytest with Doctest Linux
           toxenv: doctest
           python: 3.7
-        Linux-Py37:
+        Run-Slow-Linux:
           image_name: ubuntu-16.04
-          test_title: Linux Py37
-          toxenv: py37
+          test_title: Run slow tests Linux
+          toxenv: runslow
+          python: 3.7
+        Docs-MacOS:
+          image_name: macos-10.13
+          test_title: Docs MacOS
+          toxenv: docs
+          python: 3.7
+        Pytest-DoctestModules-MacOS:
+          image_name: macos-10.13
+          test_title: Pytest with Doctest MacOS
+          toxenv: doctest
+          python: 3.7
+        Docs-Windows:
+          image_name: vs2017-win2016
+          test_title: Docs Windows
+          toxenv: docs
+          python: 3.7
+        Pytest-DoctestModules-Windows:
+          image_name: vs2017-win2016
+          test_title: Pytest with Doctest Windows
+          toxenv: doctest
           python: 3.7
 
     pool:
@@ -29,89 +67,36 @@ jobs:
 
     steps:
     - task: UsePythonVersion@0
-      displayName: Setup Python
+      displayName: Set up Python $(python)
       inputs:
         versionSpec: $(python)
 
-    - bash: sudo apt-get install -y pandoc
-      displayName: Install Pandoc, need to make this only on doc run
-      condition: eq( variables['TOXENV'], 'docs' )
-
-    - bash: "python -c \"import sys; print(sys.version); print(sys.executable)\""
+    - script: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
       displayName: Show python information
 
-    - bash: "python -m pip install -U pip setuptools --user"
-      displayName: Upgrade pip and setuptools
+    - script: brew install freetds
+      displayName: Install FreeTDS on MacOS
+      condition: eq( variables['IMAGE_NAME'], 'macos-10.13' )
 
-    - bash: yarn
-      displayName: Run yarn
+    - script: sudo apt-get install -y pandoc
+      displayName: Install Pandoc on Ubuntu
+      condition: and(eq( variables['TOXENV'], 'docs' ), eq( variables['IMAGE_NAME'], 'ubuntu-16.04' ))
 
-    - bash: "python -m pip install -U tox --user"
-      displayName: Install tox
+    - script: brew install pandoc
+      displayName: Install Pandoc on MacOS
+      condition: and(eq( variables['TOXENV'], 'docs' ), eq( variables['IMAGE_NAME'], 'macos-10.13' ))
 
-    - bash: python -m tox -e $TOXENV --notest
-      displayName: Install test dependencies
+    - script: choco install pandoc
+      displayName: Install Pandoc on Windows
+      condition: and(eq( variables['TOXENV'], 'docs' ), eq( variables['IMAGE_NAME'], 'vs2017-win2016' ))
 
-    - bash: python -m tox -e $TOXENV
-      displayName: Run tests
+    - script: python -m pip install --upgrade pip poetry tox
+      displayName: Upgrade pip, install poetry and tox
 
-    - task: PublishTestResults@2
-      displayName: Publish test results
-      inputs:
-        testResultsFiles: junit/*.xml
-        testRunTitle: '$(test_title)'
-      condition: succeededOrFailed()
-
-
-  - job: MacOS
-
-    strategy:
-      matrix:
-        Py37:
-          image_name: macos-10.13
-          test_title: MacOS Py37
-          toxenv: py37
-          python: 3.7
-
-    pool:
-      vmImage: $(image_name)
-
-    steps:
-    - bash: echo "##vso[task.prependpath]$CONDA/bin"
-      displayName: Add Conda to PATH
-
-    - bash: sudo chown -R $USER $CONDA
-      displayName: Take ownership of Conda installation
-
-    - bash: conda config --add channels conda-forge
-      displayName: Add Conda-Forge
-
-    - bash: conda config --set always_yes true
-      displayName: Make Conda always say yes to install
-
-    - bash: conda update --quiet conda
-      displayName: Update Conda
-
-    - bash: conda install --quiet python=$(python)
-      displayName: Install Python Version
-
-    - bash: python -c "import sys; print(sys.version); print(sys.executable)"
-      displayName: Show Python Information
-
-    - bash: conda info --all
-      displayName: Show Conda Information
-
-    - bash: conda install --quiet pip "xlwings >= 0.15.4" matplotlib pymssql
-      displayName: Install difficult packages with Conda
-
-    - bash: yarn
-      displayName: Run yarn
-
-    - bash: yarn install:test
-      displayName: Install dependencies for testing with yarn
-
-    - bash: pytest -v
-      displayName: Run tests
+    - script: poetry run tox -e $(toxenv)
+      displayName: Run Tox
 
     - task: PublishTestResults@2
       displayName: Publish test results
@@ -119,81 +104,3 @@ jobs:
         testResultsFiles: junit/*.xml
         testRunTitle: '$(test_title)'
       condition: succeededOrFailed()
-
-
-  - job: Windows
-
-    strategy:
-      matrix:
-        Py37:
-          image_name: vs2017-win2016
-          test_title: Windows Py37
-          toxenv: py37
-          python: 3.7
-
-    pool:
-      vmImage: $(image_name)
-
-    steps:
-    - script: |
-        $(CONDA)\Scripts\activate && conda config --add channels conda-forge
-      displayName: Add Conda-Forge
-
-    - script:  |
-        $(CONDA)\Scripts\activate && conda config --set always_yes true
-      displayName: Make Conda always say yes to install
-
-    - script:  |
-        $(CONDA)\Scripts\activate && conda update --quiet conda && conda init cmd.exe
-      displayName: Update Conda and run `conda init cmd.exe`
-
-    - script:  |
-        $(CONDA)\Scripts\activate && conda install --quiet python=$(python)
-      displayName: Install Python Version
-
-    - script:  |
-        $(CONDA)\Scripts\activate && python -c "import sys; print(sys.version); print(sys.executable)"
-      displayName: Show Python Information
-
-    - script:  |
-        $(CONDA)\Scripts\activate && conda info --all
-      displayName: Show Conda Information
-
-    - script:  |
-        $(CONDA)\Scripts\activate && conda install --quiet pip "xlwings >= 0.15.4" shapely
-      displayName: Install difficult packages with Conda
-
-    - script:  |
-        $(CONDA)\Scripts\activate && yarn
-      displayName: Run yarn
-
-    - script:  |
-        $(CONDA)\Scripts\activate && yarn install:test
-      displayName: Install dependencies for testing with yarn
-
-    - script:  |
-        $(CONDA)\Scripts\activate && pytest -v
-      displayName: Run tests
-
-    - task: PublishTestResults@2
-      displayName: Publish test results
-      inputs:
-        testResultsFiles: junit/*.xml
-        testRunTitle: '$(test_title)'
-      condition: succeededOrFailed()
-
-
-  - job: NotebookOutputs
-
-    pool:
-      vmImage: 'ubuntu-16.04'
-
-    steps:
-    - bash: "python -m pip install -U pip setuptools --user"
-      displayName: Upgrade pip and setuptools
-
-    - bash: python -m pip install -U "nbstripout>=0.3.5" --user
-      displayName: Install nbstripout
-
-    - bash: find . -iname \*.ipynb | xargs -d "\n" python -m nbstripout && git add -A && git diff HEAD --name-only --exit-code -- "*ipynb"
-      displayName: Check that notebooks have no included output
