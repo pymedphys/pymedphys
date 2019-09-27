@@ -145,6 +145,5 @@
     "zfill",
     "zlabel",
     "zlim"
-  ],
-  "python.pythonPath": "${workspaceFolder}/.venv/bin/python"
+  ]
 }

@@ -43,20 +43,38 @@ pydicom = "*"
 pymssql = "*"
 shapely = "*"
 
+# labs
 tqdm = { version = "*", optional = true }
 python_dateutil = { version = "*", optional = true }
-
 Pillow = { version = "*", optional = true }
 imageio = { version = "*", optional = true }
 scikit-image = { version = "*", optional = true }
 
+# docs
+sphinx = { version =">= 1.4, < 1.8", optional = true }
+sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
+sphinx-autobuild = { version = "*", optional = true }
+sphinxcontrib-napoleon = { version = "*", optional = true }
+sphinx-argparse  = { version = "*", optional = true }
+nbsphinx  = { version = "*", optional = true }
+m2r  = { version = "*", optional = true }
+
+# pytest
+pytest = { version ="*", optional = true }
+pytest-sugar  = { version = "*", optional = true }
+
+# pylint
+pylint  = { version = "*", optional = true }
+pytest-pylint  = { version = "*", optional = true }
+
+
 [tool.poetry.dev-dependencies]
 # Testing
-tox = "^3.0"
-pytest = "^5.1"
-pylint = "^2.3"
-pytest-sugar = "^0.9.2"
-pytest-pylint = "^0.14.1"
+tox = "*"
+pytest = "*"
+pytest-sugar = "*"
+pylint = "*"
+pytest-pylint = "*"
 
 # Git Management
 pre-commit = "^1.10"
@@ -94,7 +112,7 @@ pytest = [
 ]
 
 pylint = [
-    "pylint", "pytest-pylint", "pytest", "pytest-sugar"
+    "pylint", "pytest-pylint"
 ]
 
 [tool.poetry.scripts]
