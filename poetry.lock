@@ -328,6 +328,23 @@ testing = ["packaging", "importlib-resources"]
 
 [[package]]
 category = "main"
+description = "IPython Kernel for Jupyter"
+name = "ipykernel"
+optional = false
+python-versions = ">=3.4"
+version = "5.1.2"
+
+[package.dependencies]
+ipython = ">=5.0.0"
+jupyter-client = "*"
+tornado = ">=4.2"
+traitlets = ">=4.1.0"
+
+[package.extras]
+test = ["pytest", "pytest-cov", "nose"]
+
+[[package]]
+category = "main"
 description = "IPython: Productive Interactive Computing"
 name = "ipython"
 optional = false
@@ -579,8 +596,8 @@ category = "dev"
 description = "Optional static typing for Python"
 name = "mypy"
 optional = false
-python-versions = "*"
-version = "0.720"
+python-versions = ">=3.5"
+version = "0.730"
 
 [package.dependencies]
 mypy-extensions = ">=0.4.0,<0.5.0"
@@ -1431,13 +1448,13 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pathlib2", "contextlib2", "unittest2"]
 
 [extras]
-docs = ["nbsphinx", "m2r", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx", "sphinx-argparse", "sphinx-rtd-theme", "jupyter_client", "ipython"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "m2r"]
 labs = ["tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"]
 pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar"]
 
 [metadata]
-content-hash = "7aea6ef2a7d301f5436585f7ed720881a32f4dc355dfef560f22fc4265f40343"
+content-hash = "715cc0787982c2b1018ea2f2b8695dfbb7350622526584c67f2710dc40fa0239"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -1472,6 +1489,7 @@ idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8
 imageio = ["1a2bbbb7cd38161340fa3b14d806dfbf914abf3ee6fd4592af2afb87d049f209", "42e65aadfc3d57a1043615c92bdf6319b67589e49a0aae2b985b82144aceacad"]
 imagesize = ["3f349de3eb99145973fefb7dbe38554414e5c30abd0c8e4b970a7c9d09f3a1d8", "f3832918bc3c66617f92e35f5d70729187676313caa60c187eb0f28b8fe5e3b5"]
 importlib-metadata = ["aa18d7378b00b40847790e7c27e11673d7fed219354109d0e7b9e5b25dc3ad26", "d5f18a79777f3aa179c145737780282e27b508fc8fd688cb17c7a813e8bd39af"]
+ipykernel = ["167c3ef08450f5e060b76c749905acb0e0fbef9365899377a4a1eae728864383", "b503913e0b4cce7ed2de965457dfb2edd633e8234161a60e23f2fe2161345d12"]
 ipython = ["c4ab005921641e40a68e405e286e7a1fcc464497e14d81b6914b4fd95e5dee9b", "dd76831f065f17bddd7eaa5c781f5ea32de5ef217592cf019e34043b56895aa1"]
 ipython-genutils = ["72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8", "eb2e116e75ecef9d4d228fdc66af54269afa26ab4463042e33785b887c628ba8"]
 isort = ["54da7e92468955c4fceacd0c86bd0ec997b0e1ee80d97f67c35a78b719dccab1", "6e811fcb295968434526407adb8796944f1988c5b65e8139058f2014cbe100fd"]
@@ -1491,7 +1509,7 @@ matplotlib = ["1febd22afe1489b13c6749ea059d392c03261b2950d1d45c17e3aed812080c93"
 mccabe = ["ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42", "dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f"]
 mistune = ["59a3429db53c50b5c6bcc8a07f8848cb00d7dc8bdb431a4ab41920d201d4756e", "88a1051873018da288eee8538d476dffe1262495144b33ecb586c4ab266bb8d4"]
 more-itertools = ["409cd48d4db7052af495b09dec721011634af3753ae1ef92d2b32f73a745f832", "92b8c4b06dac4f0611c0729b2f2ede52b2e1bac1ab48f089c7ddc12e26bb60c4"]
-mypy = ["0107bff4f46a289f0e4081d59b77cef1c48ea43da5a0dbf0005d54748b26df2a", "07957f5471b3bb768c61f08690c96d8a09be0912185a27a68700f3ede99184e4", "10af62f87b6921eac50271e667cc234162a194e742d8e02fc4ddc121e129a5b0", "11fd60d2f69f0cefbe53ce551acf5b1cec1a89e7ce2d47b4e95a84eefb2899ae", "15e43d3b1546813669bd1a6ec7e6a11d2888db938e0607f7b5eef6b976671339", "352c24ba054a89bb9a35dd064ee95ab9b12903b56c72a8d3863d882e2632dc76", "437020a39417e85e22ea8edcb709612903a9924209e10b3ec6d8c9f05b79f498", "49925f9da7cee47eebf3420d7c0e00ec662ec6abb2780eb0a16260a7ba25f9c4", "6724fcd5777aa6cebfa7e644c526888c9d639bd22edd26b2a8038c674a7c34bd", "7a17613f7ea374ab64f39f03257f22b5755335b73251d0d253687a69029701ba", "cdc1151ced496ca1496272da7fc356580e95f2682be1d32377c22ddebdf73c91"]
+mypy = ["1d98fd818ad3128a5408148c9e4a5edce6ed6b58cc314283e631dd5d9216527b", "22ee018e8fc212fe601aba65d3699689dd29a26410ef0d2cc1943de7bec7e3ac", "3a24f80776edc706ec8d05329e854d5b9e464cd332e25cde10c8da2da0a0db6c", "42a78944e80770f21609f504ca6c8173f7768043205b5ac51c9144e057dcf879", "4b2b20106973548975f0c0b1112eceb4d77ed0cafe0a231a1318f3b3a22fc795", "591a9625b4d285f3ba69f541c84c0ad9e7bffa7794da3fa0585ef13cf95cb021", "5b4b70da3d8bae73b908a90bb2c387b977e59d484d22c604a2131f6f4397c1a3", "84edda1ffeda0941b2ab38ecf49302326df79947fa33d98cdcfbf8ca9cf0bb23", "b2b83d29babd61b876ae375786960a5374bba0e4aba3c293328ca6ca5dc448dd", "cc4502f84c37223a1a5ab700649b5ab1b5e4d2bf2d426907161f20672a21930b", "e29e24dd6e7f39f200a5bb55dcaa645d38a397dd5a6674f6042ef02df5795046"]
 mypy-extensions = ["37e0e956f41369209a3d5f34580150bcacfabaa57b33a15c0b25f4b5725e0812", "b16cabe759f55e3409a7d231ebd2841378fb0c27a5d1994719e340e4f429ac3e"]
 nbconvert = ["427a468ec26e7d68a529b95f578d5cbf018cb4c1f889e897681c2b6d11897695", "48d3c342057a2cf21e8df820d49ff27ab9f25fc72b8f15606bd47967333b2709"]
 nbformat = ["b9a0dbdbd45bb034f4f8893cafd6f652ea08c8c1674ba83f2dc55d3955743b0b", "f7494ef0df60766b7cabe0a3651556345a963b74dbc16bc7c18479041170d402"]
