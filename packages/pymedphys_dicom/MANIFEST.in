@@ -1,3 +1,0 @@
-include LICENSE*
-include src/pymedphys_dicom/dicom/*.json
-include src/pymedphys_dicom/constants/*.json

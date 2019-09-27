@@ -36,6 +36,3 @@ I do recommend the whole [`Git and GitHub`](https://dont-be-afraid-to-commit.rea
 * [Keeping master clean](https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/commandlinegit.html#send-me-a-pull-request)
 * [Incorporating upstream changes](https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/commandlinegit.html#incorporate-upstream-changes)
 * [Add an upstream remote](https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/remotes.html#add-a-remote)
-
-
-
