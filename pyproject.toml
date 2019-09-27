@@ -51,27 +51,33 @@ imageio = { version = "*", optional = true }
 scikit-image = { version = "*", optional = true }
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.1"
-# pytest-cov = "^2.5"
-pytest-sugar = "^0.9.2"
-# pytest-mock = "^1.9"
-black = { version = "^19.3b0"}
-pre-commit = "^1.10"
+# Testing
 tox = "^3.0"
-mypy = "^0.720.0"
+pytest = "^5.1"
 pylint = "^2.3"
+pytest-sugar = "^0.9.2"
 pytest-pylint = "^0.14.1"
-ipykernel = "*"
-ipython = "*"
-jupyter_client = "*"
-m2r = "*"
-nbsphinx = "*"
+
+# Git Management
+pre-commit = "^1.10"
+
+# VSCode linting and formatting
+black = { version = "^19.3b0"}
+mypy = "^0.720.0"
+rope = "^0.14.0"
+
+# Building documentation
+sphinx = ">= 1.4, < 1.8"
+sphinx-rtd-theme = "^0.4.3"
 sphinx-autobuild = "*"
 sphinxcontrib-napoleon = "*"
-sphinx = ">= 1.4, < 1.8"
 sphinx-argparse = "*"
-sphinx-rtd-theme = "^0.4.3"
-rope = "^0.14.0"
+nbsphinx = "*"
+m2r = "*"
+
+# Packages to include later
+# pytest-cov = "^2.5"
+# pytest-mock = "^1.9"
 
 [tool.poetry.extras]
 docs = [
