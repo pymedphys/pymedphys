@@ -112,6 +112,6 @@ jobs:
       run: |
         poetry update
 
-    - name: Run Tox
+    - name: Run Tox if anything has changed
       run: |
-        poetry run tox -e ${{ matrix.toxenv }}
+        git add -A && git diff HEAD --name-only --exit-code || poetry run tox -e ${{ matrix.toxenv }}
