@@ -29,11 +29,11 @@ First steps
 Are you new to PyMedPhys or new to Python programming? Then these resources are
 for you:
 
-* From scratch: `New to Python `_ | `Installation`_
+* From scratch: `New to Python`_ | `Installation`_
 * Tutorials: Part 1: Name | Part 2: Name
 
-.. _`New to Python `: https://docs.pymedphys.com/tutes/python
-.. _`Installation`: https://docs.pymedphys.com/tutes/install
+.. _`New to Python` : https://docs.pymedphys.com/tutes/python
+.. _`Installation` : https://docs.pymedphys.com/tutes/install
 
 
 How the documentation is organised
