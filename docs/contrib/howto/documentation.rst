@@ -1,4 +1,4 @@
-Editing documentation
+Writing documentation
 =====================
 
 This documentation site uses a toolbox called Sphinx. This particular

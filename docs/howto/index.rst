@@ -1,6 +1,6 @@
-========
-Examples
-========
+=============
+How-to Guides
+=============
 
 Reproducable Jupyter notebook examples are provided to demonstrate PyMedPhys
 library usage.

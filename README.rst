@@ -66,11 +66,14 @@ and `Daniele Procida's writeup`_.
 .. _`Daniele Procida's writeup`: https://www.divio.com/blog/documentation/
 .. _`Django documentation`: https://docs.djangoproject.com
 
-Beyond the user documentation there is also the `contributor documentation`_
-which is aimed at users who wish to share their code with the wider community
-by contributing to PyMedPhys.
+Beyond the user documentation there are two other sections, the
+`contributor documentation`_ aimed at those who wish to become a PyMedPhys
+contributor, and the `labs documentation`_ which details code contributed by
+the community that aims to one day be refined to become part of the primary
+``pymedphys`` library.
 
 .. _`contributor documentation`: https://docs.pymedphys.com/contrib
+.. _`labs documentation`: https://docs.pymedphys.com/labs
 
 What is PyMedPhys?
 ------------------
