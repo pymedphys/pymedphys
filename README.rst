@@ -59,7 +59,7 @@ you to know where to look for things:
 The above layout has been heavily inspired by both the `Django documentation`_
 and `Daniele Procida's writeup`_.
 
-.. |docs-struct| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/docs-structure.png
+.. |docs-struct| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/img/docs-structure.png
     :target: `Daniele Procida's writeup`_
 
 .. _`Daniele Procida's writeup`: https://www.divio.com/blog/documentation/
