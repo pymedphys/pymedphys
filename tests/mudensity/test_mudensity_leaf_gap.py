@@ -25,7 +25,6 @@
 
 import numpy as np
 import pytest
-
 from pymedphys._mudensity.mudensity import calc_mu_density
 
 MU = [0, 30]

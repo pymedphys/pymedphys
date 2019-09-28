@@ -50,14 +50,20 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import pydicom
-import numpy as np
+import math
+import os
+import re
+import shutil
+import struct
+import sys
+import time
 
-from pydicom.dataset import Dataset, FileDataset
-from pydicom.sequence import Sequence
-from pydicom.filebase import DicomFile
+import numpy as np
+import pydicom
 import pydicom.uid
-import sys, os, time, re, struct, shutil, math
+from pydicom.dataset import Dataset, FileDataset
+from pydicom.filebase import DicomFile
+from pydicom.sequence import Sequence
 
 from .constants import *
 

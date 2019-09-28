@@ -24,17 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
 import matplotlib.pyplot as plt
-
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
-from scipy.optimize import basinhopping
-from scipy.interpolate import splprep, splev
-
+import numpy as np
 import pydicom
-
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from pymedphys._dicom.structure import pull_structure
+from scipy.interpolate import splev, splprep
+from scipy.optimize import basinhopping
 
 
 def cubify_cube_definition(cube_definition):

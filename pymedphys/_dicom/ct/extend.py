@@ -23,12 +23,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
-from copy import deepcopy
-from glob import glob
 import datetime
+import os
 import random
 from collections import deque
+from copy import deepcopy
+from glob import glob
 
 import pydicom
 from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID

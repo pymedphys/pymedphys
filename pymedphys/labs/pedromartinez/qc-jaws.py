@@ -52,19 +52,25 @@
 # pylint: skip-file
 
 import os
-import sys
-import pydicom
-from PIL import *
 import subprocess
+import sys
+
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-from tqdm import tqdm
 import numpy as np
-from scipy.signal import butter, filtfilt
-from scipy.signal import savgol_filter
-from scipy.stats import linregress
+import pydicom
+from matplotlib.backends.backend_pdf import PdfPages
+from PIL import *
 from scipy import signal
-from scipy.signal import find_peaks, peak_prominences, peak_widths
+from scipy.signal import (
+    butter,
+    filtfilt,
+    find_peaks,
+    peak_prominences,
+    peak_widths,
+    savgol_filter,
+)
+from scipy.stats import linregress
+from tqdm import tqdm
 
 
 def running_mean(x, N):

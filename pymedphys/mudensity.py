@@ -33,5 +33,5 @@ formats
 
 
 from ._mudensity.mudensity import calc_mu_density as calculate
-from ._mudensity.mudensity import get_grid as grid
 from ._mudensity.mudensity import display_mu_density as display
+from ._mudensity.mudensity import get_grid as grid

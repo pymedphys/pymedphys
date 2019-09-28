@@ -24,17 +24,15 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from collections import namedtuple
 import functools
-from typing import Union, Tuple, List, Dict, TypeVar, Type
+from collections import namedtuple
+from typing import Dict, List, Tuple, Type, TypeVar, Union
 
 import numpy as np
-
 from pymedphys._utilities.controlpoints import (
     remove_irrelevant_control_points,
     to_tuple,
 )
-
 
 # https://stackoverflow.com/a/44644576/3912576
 # Create a generic variable that can be 'Parent', or any subclass.

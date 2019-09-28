@@ -24,9 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
 import json
-
+import os
 
 CONFIG_FILEPATH = os.path.join(os.path.dirname(__file__), "config.json")
 

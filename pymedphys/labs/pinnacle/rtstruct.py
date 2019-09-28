@@ -50,14 +50,18 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import os, time, re, random
+import os
+import random
+import re
+import time
 
 import pydicom
+import pydicom.uid
 from pydicom.dataset import Dataset, FileDataset
 from pydicom.sequence import Sequence
-import pydicom.uid
 
 from .constants import *
+
 
 # Determine which point to use for the iso center and set this value in
 # the plan object

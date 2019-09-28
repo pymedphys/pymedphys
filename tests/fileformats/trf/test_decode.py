@@ -26,13 +26,12 @@
 
 """Test end to end conversion agrees."""
 
-from glob import glob
 import os
 from contextlib import contextmanager
+from glob import glob
 
 import numpy as np
 import pandas as pd
-
 from pymedphys._trf.trf2csv import trf2csv
 
 HEADER_TAG = "_header"

@@ -24,10 +24,9 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-from scipy.optimize import basinhopping
-from scipy.interpolate import RegularGridInterpolator
-
 import skimage
+from scipy.interpolate import RegularGridInterpolator
+from scipy.optimize import basinhopping
 
 
 def align_images(

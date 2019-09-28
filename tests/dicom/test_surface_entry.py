@@ -26,16 +26,14 @@
 
 import pathlib
 
-import pytest
-
 import pydicom
-
+import pytest
+from pymedphys._dicom.collection import DicomBase
 from pymedphys._dicom.rtplan import (
     get_surface_entry_point,
     get_surface_entry_point_with_fallback,
 )
 from pymedphys._dicom.rtplan.core import DICOMEntryMissing
-from pymedphys._dicom.collection import DicomBase
 
 HERE = pathlib.Path(__file__).parent
 DATA_DIR = HERE.joinpath("data", "rtplan")

@@ -25,14 +25,14 @@
 
 
 import os
-import numpy as np
 
+import numpy as np
 from pymedphys.labs.paulking.sinogram import (
-    read_csv_file,
-    read_bin_file,
     crop,
-    make_histogram,
     find_modulation_factor,
+    make_histogram,
+    read_bin_file,
+    read_csv_file,
     unshuffle,
 )
 
