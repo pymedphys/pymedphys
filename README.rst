@@ -19,9 +19,8 @@ PyMedPhys
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
-Bringing together Medical Physicists to create quality transparent software at
-a price affordable by all our peers, no matter what country they are from
-(free).
+Bringing together Medical Physicists to create free quality transparent
+software.
 
 
 First steps
@@ -67,6 +66,10 @@ and `Daniele Procida's writeup`_.
 .. _`Daniele Procida's writeup`: https://www.divio.com/blog/documentation/
 .. _`Django documentation`: https://docs.djangoproject.com
 
+Beyond the user documentation there is also the `contributor documentation`_
+which is aimed at users who wish to share their code with the wider community.
+
+.. _`contributor documentation`: https://docs.pymedphys.com/contributors
 
 What is PyMedPhys?
 ------------------
@@ -101,7 +104,7 @@ Our Team
 
 PyMedPhys is what it is today due to its contributors.
 Core contributors and contributors who have been active in the last six months
-as well as their respective employers are listed below.
+as well as their respective employers are presented below.
 
 Core contributors
 .................
