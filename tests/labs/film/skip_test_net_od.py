@@ -33,13 +33,11 @@ the laser marked image.
 # pylint: skip-file
 
 import pytest
+from fixtures import postscans, prescans
+from pymedphys.labs.film import calc_net_od
 
 # import numpy as np
 # import matplotlib.pyplot as plt
-
-from pymedphys.labs.film import calc_net_od
-
-from fixtures import prescans, postscans
 
 
 def test_net_od(prescans, postscans):  # pylint: disable=redefined-outer-name

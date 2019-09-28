@@ -26,9 +26,7 @@
 from copy import deepcopy
 
 import numpy as np
-
 import pydicom
-
 
 DICOM_NAMES = [item[-1] for _, item in pydicom.datadict.DicomDictionary.items()]
 

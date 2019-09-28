@@ -29,7 +29,7 @@
 
 import pandas as pd
 
-from .header import decode_header, determine_header_length, Header
+from .header import Header, decode_header, determine_header_length
 from .table import decode_trf_table
 
 

@@ -56,12 +56,9 @@ import os
 import tempfile
 from zipfile import ZipFile
 
-import pytest
-
 import numpy as np
-
 import pydicom
-
+import pytest
 from pymedphys.labs.pinnacle import PinnacleExport
 
 HERE = os.path.dirname(os.path.abspath(__file__))

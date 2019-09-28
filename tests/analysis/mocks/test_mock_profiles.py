@@ -25,12 +25,11 @@
 
 
 import numpy as np
-
 from pymedphys._mocks.profiles import (
-    scaled_penumbra_sig,
-    gaussian_cdf,
     create_profile_function,
     create_square_field_function,
+    gaussian_cdf,
+    scaled_penumbra_sig,
 )
 
 

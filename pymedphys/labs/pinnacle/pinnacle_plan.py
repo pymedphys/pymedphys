@@ -58,7 +58,6 @@ import pydicom
 from .pinn_yaml import pinn_to_dict
 from .rtstruct import find_iso_center
 
-
 # Medical Connections offers free valid UIDs
 # (http://www.medicalconnections.co.uk/FreeUID.html)
 # Their service was used to obtain the following root UID for this tool:

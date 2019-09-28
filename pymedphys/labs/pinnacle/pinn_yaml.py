@@ -50,9 +50,9 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
+import io
 import re
 import sys
-import io
 
 import yaml
 

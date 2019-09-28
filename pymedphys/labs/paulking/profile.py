@@ -28,18 +28,15 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import os
 import copy
-
+import os
 from typing import Callable
-from scipy import interpolate
 
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
-# from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
 import PIL
+from scipy import interpolate
 
 # from .._level1.coreobjects import _PyMedPhysBase
 

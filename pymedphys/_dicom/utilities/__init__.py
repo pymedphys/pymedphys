@@ -1,1 +1,1 @@
-from .files import remove_file, remove_dir
+from .files import remove_dir, remove_file

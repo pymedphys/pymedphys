@@ -27,7 +27,6 @@
 
 
 import numpy as np
-
 from pymedphys._gamma.implementation import gamma_shell
 from pymedphys._gamma.implementation.shell import calculate_coordinates_shell
 

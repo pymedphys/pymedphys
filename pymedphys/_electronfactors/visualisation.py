@@ -24,13 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from .core import (
-    visual_alignment_of_equivalent_ellipse,
     create_transformed_mesh,
     parameterise_insert_with_visual_alignment,
+    visual_alignment_of_equivalent_ellipse,
 )
 
 

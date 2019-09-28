@@ -27,23 +27,21 @@
 """Analyse logfiles.
 """
 
+import json
 import os
 import traceback
-import json
 
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
 import pymedphys
-
 from pymedphys._utilities.config import (
     get_cache_filepaths,
-    get_mu_density_parameters,
-    get_index,
     get_centre,
+    get_filepath,
+    get_index,
+    get_mu_density_parameters,
     get_sql_servers,
     get_sql_servers_list,
-    get_filepath,
 )
 
 

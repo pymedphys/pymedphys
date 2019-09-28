@@ -27,7 +27,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from pymedphys.labs.film import load_cal_scans, load_image
 
 HERE = os.path.abspath(os.path.dirname(__file__))

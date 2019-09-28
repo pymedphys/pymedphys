@@ -35,9 +35,9 @@ import sys
 import numpy as np
 
 from ..utilities import (
-    create_point_combination,
-    convert_to_ravel_index,
     calculate_pass_rate,
+    convert_to_ravel_index,
+    create_point_combination,
 )
 
 
