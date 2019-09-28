@@ -51,7 +51,8 @@ you to know where to look for things:
 * `API Reference`_ is the technical reference for the public APIs exposed by
   both the ``pymedphys`` library and the ``pymedphys`` command line tool.
 * `Explanatory documents`_ provide the higher level descriptions of the
-  implementation of the tools and provides justifications for those decisions.
+  implementation of the tools and provides justifications for development
+  decisions.
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
 .. _`How-to guides`: https://docs.pymedphys.com/howto
