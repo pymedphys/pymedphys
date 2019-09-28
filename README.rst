@@ -20,7 +20,7 @@ PyMedPhys
 
 
 Bringing together Medical Physicists to create free quality transparent
-software.
+tools that we can all use.
 
 
 First steps
