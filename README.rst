@@ -26,11 +26,14 @@ tools that we can all use.
 First steps
 -----------
 
-Are you new to PyMedPhys or new to Python programming? The following resources
-are for you.
+Are you new to PyMedPhys or new to Python programming? Then these resources are
+for you:
 
-* From scratch: `Installation <https://docs.pymedphys.com/tutes/install>`_
+* From scratch: `New to Python `_ | `Installation`_
 * Tutorials: Part 1: Name | Part 2: Name
+
+.. _`New to Python `: https://docs.pymedphys.com/tutes/python
+.. _`Installation`: https://docs.pymedphys.com/tutes/install
 
 
 How the documentation is organised
