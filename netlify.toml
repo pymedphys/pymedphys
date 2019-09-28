@@ -95,6 +95,15 @@ poetry run sphinx-build -W docs docs/_build/html
   force = true
 
 [[redirects]]
+  from = "/projects/elekta-logfiles.html"
+  to = "/explain/elekta-logfiles.html"
+  status = 301
+  force = true
+
+
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200
+  status = 301
+  force = true

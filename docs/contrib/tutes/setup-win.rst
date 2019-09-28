@@ -1,5 +1,5 @@
-Recommended Setup
-========================================
+Opinionated Windows Dev Setup for PyMedPhys
+===========================================
 
 Assumptions
 -----------
@@ -8,18 +8,6 @@ These instructions assume that you are using a Windows machine and that
 you have administrator rights on your machine. Although this document
 is tailored to Windows users, PyMedPhys itself works on Windows, macOS
 and Linux.
-
-
-
-Your mission
-------------
-
-Your mission, should you choose to accept it, is to complete all of the tasks
-within this document. While doing so, please take notes of the pain points.
-Write down what feedback you have. By the end, instead of you emailing that
-feedback to us, we'd like you to use your new set up to edit this file and
-submit a merge request!
-
 
 
 Get Python & Anaconda
