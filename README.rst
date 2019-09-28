@@ -29,7 +29,7 @@ First steps
 Are you new to PyMedPhys or new to Python programming? The following resources
 are for you.
 
-* From scratch: Installation
+* From scratch: `Installation <https://docs.pymedphys.com/tutes/install>`_
 * Tutorials: Part 1: Name | Part 2: Name
 
 
@@ -50,10 +50,10 @@ you to know where to look for things:
 * `Explanatory documents`_ provide the higher level descriptions of the
   implementation of the tools and provides justifications for those decisions.
 
-.. _`Tutorials`: https://docs.pymedphys.com/tutorials
+.. _`Tutorials`: https://docs.pymedphys.com/tutes
 .. _`How-to guides`: https://docs.pymedphys.com/howto
 .. _`API Reference`: https://docs.pymedphys.com/api
-.. _`Explanatory documents`: https://docs.pymedphys.com/explanatory
+.. _`Explanatory documents`: https://docs.pymedphys.com/explain
 
 The above layout has been heavily inspired by both the `Django documentation`_
 and `Daniele Procida's writeup`_.
@@ -67,9 +67,10 @@ and `Daniele Procida's writeup`_.
 .. _`Django documentation`: https://docs.djangoproject.com
 
 Beyond the user documentation there is also the `contributor documentation`_
-which is aimed at users who wish to share their code with the wider community.
+which is aimed at users who wish to share their code with the wider community
+by contributing to PyMedPhys.
 
-.. _`contributor documentation`: https://docs.pymedphys.com/contributors
+.. _`contributor documentation`: https://docs.pymedphys.com/contrib
 
 What is PyMedPhys?
 ------------------
