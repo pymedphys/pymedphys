@@ -24,8 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
 import json
+import os
 
 
 def get_gantry_tolerance(index, file_hash, config):

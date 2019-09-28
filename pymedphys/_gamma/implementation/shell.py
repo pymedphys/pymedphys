@@ -27,15 +27,13 @@
 """
 
 import sys
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
-
 from scipy.interpolate import RegularGridInterpolator
 
 from ..utilities import run_input_checks
-
 
 DEFAULT_RAM = int(2 ** 30 * 1.5)  # 1.5 GB
 

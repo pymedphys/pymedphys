@@ -23,11 +23,10 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-from copy import deepcopy
 import io
+from copy import deepcopy
 
 from pydicom.filebase import DicomBytesIO
-
 from pymedphys._dicom.collection import DicomBase
 from pymedphys._dicom.create import dicom_dataset_from_dict
 

@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../src"))
 
-import pymedphys  # nopep8
+import pymedphys  # isort:skip
 
 
 def setup(app):

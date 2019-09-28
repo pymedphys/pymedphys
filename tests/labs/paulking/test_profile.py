@@ -30,9 +30,9 @@
 """ Test profile. """
 
 import os
+
 import numpy as np
 from pymedphys.labs.paulking.profile import Profile
-
 
 PROFILER = [
     (-16.4, 0.22),

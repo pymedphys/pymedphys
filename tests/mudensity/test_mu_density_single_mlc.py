@@ -31,7 +31,6 @@
 """
 
 import numpy as np
-
 from pymedphys._mudensity.mudensity import single_mlc_pair
 
 

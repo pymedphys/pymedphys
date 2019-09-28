@@ -26,11 +26,10 @@
 import warnings
 from pathlib import Path
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import basinhopping
-
 import imageio
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import basinhopping
 
 from .optical_density import calc_net_od
 

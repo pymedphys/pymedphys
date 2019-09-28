@@ -29,8 +29,8 @@
 from pymedphys._dicom.anonymise import anonymise_cli
 from pymedphys._dicom.header import (
     adjust_machine_name_cli,
-    adjust_RED_cli,
     adjust_RED_by_structure_name_cli,
+    adjust_RED_cli,
 )
 
 

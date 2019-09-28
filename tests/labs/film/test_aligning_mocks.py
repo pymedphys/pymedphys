@@ -23,16 +23,15 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
+from pymedphys._mocks.profiles import create_rectangular_field_function
 from pymedphys.labs.film import (
     align_images,
-    interpolated_rotation,
     create_image_interpolation,
+    interpolated_rotation,
     shift_and_rotate,
 )
-from pymedphys._mocks.profiles import create_rectangular_field_function
 
 
 def test_shift_alignment():
