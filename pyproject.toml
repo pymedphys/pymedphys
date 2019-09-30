@@ -51,7 +51,7 @@ imageio = { version = "*", optional = true }
 scikit-image = { version = "*", optional = true }
 
 # docs
-sphinx = { version =">= 1.4, < 1.8", optional = true }
+sphinx = { version =">=1.4,<2.2", optional = true }
 sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
 sphinx-autobuild = { version = "*", optional = true }
 sphinxcontrib-napoleon = { version = "*", optional = true }
@@ -88,7 +88,7 @@ mypy = "*"
 rope = "*"
 
 # Building documentation
-sphinx = ">= 1.4, < 1.8"
+sphinx = ">=1.4,<2.2"
 sphinx-rtd-theme = "*"
 sphinx-autobuild = "*"
 sphinxcontrib-napoleon = "*"
