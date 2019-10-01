@@ -108,7 +108,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip poetry tox
 
-    - name: Generate new poetry.lock file
+    - name: Run initial poetry install
+      run: |
+        poetry install
+
+    - name: Run poetry update
       run: |
         poetry update
 
