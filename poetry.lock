@@ -272,7 +272,7 @@ description = "Library for reading and writing a wide range of image, video, sci
 name = "imageio"
 optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "2.5.0"
+version = "2.6.0"
 
 [package.dependencies]
 numpy = "*"
@@ -1329,7 +1329,7 @@ entrypoints = ["589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19
 filelock = ["18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59", "929b7d63ec5b7d6b71b0fa5ac14e030b3f70b75747cef1b10da9b879fef15836"]
 identify = ["4f1fe9a59df4e80fcb0213086fcf502bc1765a01ea4fe8be48da3b65afd2a017", "d8919589bd2a5f99c66302fec0ef9027b12ae150b0b0213999ad3f695fc7296e"]
 idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
-imageio = ["1a2bbbb7cd38161340fa3b14d806dfbf914abf3ee6fd4592af2afb87d049f209", "42e65aadfc3d57a1043615c92bdf6319b67589e49a0aae2b985b82144aceacad"]
+imageio = ["1dd286bb607e32a5e8240a4782d1efd456ae191758737bf8ec54098ff2f003af", "cfafaedf42bc8cdc7d45b0886b0e332932729492a6d04d46123a8f32f95c3583"]
 imagesize = ["3f349de3eb99145973fefb7dbe38554414e5c30abd0c8e4b970a7c9d09f3a1d8", "f3832918bc3c66617f92e35f5d70729187676313caa60c187eb0f28b8fe5e3b5"]
 importlib-metadata = ["aa18d7378b00b40847790e7c27e11673d7fed219354109d0e7b9e5b25dc3ad26", "d5f18a79777f3aa179c145737780282e27b508fc8fd688cb17c7a813e8bd39af"]
 ipykernel = ["167c3ef08450f5e060b76c749905acb0e0fbef9365899377a4a1eae728864383", "b503913e0b4cce7ed2de965457dfb2edd633e8234161a60e23f2fe2161345d12"]
