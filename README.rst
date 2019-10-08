@@ -1,5 +1,7 @@
-|logo| PyMedPhys
-================
+|logo|
+
+PyMedPhys
+=========
 
 **A community effort to develop a common core package for Medical Physics
 in Python and foster a culture of peer review for in-house software through
@@ -59,16 +61,15 @@ you to know where to look for things:
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
 .. _`How-to guides`: https://docs.pymedphys.com/howto
-.. _`API Reference`: https://docs.pymedphys.com/api
+.. _`API Reference`: https://docs.pymedphys.com/ref
 .. _`Explanatory documents`: https://docs.pymedphys.com/explain
 
 The above layout has been heavily inspired by both the `Django documentation`_
 and `Daniele Procida's writeup`_.
 
-|docs-struct|
-
-.. |docs-struct| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/img/docs-structure.png
-    :target: `Daniele Procida's writeup`_
+.. figure:: https://github.com/pymedphys/pymedphys/raw/master/docs/img/docs-structure.png
+    A slide from `Daniele Procida's writeup`_ describing the documentation
+    layout.
 
 .. _`Daniele Procida's writeup`: https://www.divio.com/blog/documentation/
 .. _`Django documentation`: https://docs.djangoproject.com
