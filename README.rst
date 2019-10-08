@@ -1,5 +1,12 @@
-PyMedPhys
-=========
+|logo| PyMedPhys
+================
+
+**A community effort to develop a common core package for Medical Physics
+in Python and foster a culture of peer review for in-house software through
+open source.**
+
+.. |logo| image:: https://docs.pymedphys.com/_static/pymedphys.svg
+    :target: https://docs.pymedphys.com/
 
 |build| |pypi| |conda| |python| |license|
 
@@ -17,10 +24,6 @@ PyMedPhys
 
 .. |license| image:: https://img.shields.io/pypi/l/pymedphys.svg
     :target: https://choosealicense.com/licenses/agpl-3.0/
-
-
-Bringing together Medical Physicists to create free quality transparent
-tools that we can all use.
 
 
 First steps
