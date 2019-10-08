@@ -1,7 +1,5 @@
-|logo|
-
-PyMedPhys
-=========
+|logo| PyMedPhys
+================
 
 **A community effort to develop a common core package for Medical Physics
 in Python and foster a culture of peer review for in-house software through
