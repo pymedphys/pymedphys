@@ -4,8 +4,8 @@
     :target: https://docs.pymedphys.com/
 
 **A community effort to develop a common core package for Medical Physics
-in Python and foster a culture of peer review for in-house software through
-open source.**
+in Python and foster a culture of opening the doors on in-house software via
+peer review and open source distribution**
 
 |build| |pypi| |conda| |python| |license|
 
