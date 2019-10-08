@@ -68,6 +68,7 @@ The above layout has been heavily inspired by both the `Django documentation`_
 and `Daniele Procida's writeup`_.
 
 .. figure:: https://github.com/pymedphys/pymedphys/raw/master/docs/img/docs-structure.png
+
     A slide from `Daniele Procida's writeup`_ describing the documentation
     layout.
 
