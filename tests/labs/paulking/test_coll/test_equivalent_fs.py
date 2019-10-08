@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
+
 from pymedphys._utilities.constants import A_LEAF_TYPE, AGILITY
 from pymedphys.labs.paulking.collequivalent import mlc_equivalent_square_fs
 

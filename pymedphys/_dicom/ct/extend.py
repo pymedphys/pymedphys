@@ -31,6 +31,7 @@ from copy import deepcopy
 from glob import glob
 
 import pydicom
+
 from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
 

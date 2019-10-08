@@ -29,10 +29,13 @@ import lzma
 import operator
 import os
 
+import pytest
+
 import numpy as np
 import pandas as pd
+
 import pydicom
-import pytest
+
 from pymedphys.dicom import depth_dose, profile
 from pymedphys.labs.tpscompare import load_and_normalise_mephysto
 from shared import (

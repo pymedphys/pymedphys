@@ -27,6 +27,7 @@
 from collections import namedtuple
 
 import pydicom
+
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
 Point = namedtuple("Point", ("x", "y", "z"))

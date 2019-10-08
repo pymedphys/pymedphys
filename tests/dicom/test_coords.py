@@ -3,7 +3,9 @@ from os.path import abspath, dirname
 from os.path import join as pjoin
 
 import numpy as np
+
 import pydicom
+
 from pymedphys._dicom.coords import xyz_axes_from_dataset
 
 HERE = dirname(abspath(__file__))

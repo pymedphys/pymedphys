@@ -31,7 +31,9 @@ from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
 import numpy as np
+
 import pydicom
+
 from pymedphys._dicom.constants import (
     BASELINE_KEYWORD_VR_DICT,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
