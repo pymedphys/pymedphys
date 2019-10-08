@@ -3,9 +3,9 @@
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/pymedphys_title.png
     :target: https://docs.pymedphys.com/
 
-**A community effort to develop a common library for Medical Physics
-in Python and foster a culture of opening the doors on in-house software via
-peer review and open source distribution**
+**A community effort to develop a standard package for Medical
+Physics in Python and foster a culture of opening the doors on in-house
+software via peer review and open source distribution**
 
 |build| |pypi| |conda| |python| |license|
 
