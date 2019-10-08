@@ -24,11 +24,13 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 """A DICOM RT Dose toolbox"""
 
-import matplotlib.pyplot as plt
 import numpy as np
-import pydicom
-from matplotlib import path
 from scipy.interpolate import RegularGridInterpolator
+
+import matplotlib.pyplot as plt
+from matplotlib import path
+
+import pydicom
 
 from .coords import xyz_axes_from_dataset
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero

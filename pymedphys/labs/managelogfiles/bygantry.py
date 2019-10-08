@@ -25,6 +25,7 @@
 
 
 import numpy as np
+
 import pymedphys
 from pymedphys._utilities.config import get_filepath, get_gantry_tolerance
 

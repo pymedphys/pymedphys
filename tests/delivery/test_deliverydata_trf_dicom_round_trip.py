@@ -26,10 +26,14 @@
 
 import os
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pydicom
 import pytest
+
+import numpy as np
+
+import matplotlib.pyplot as plt
+
+import pydicom
+
 from pymedphys import Delivery
 from pymedphys._dicom.rtplan import (
     convert_to_one_fraction_group,

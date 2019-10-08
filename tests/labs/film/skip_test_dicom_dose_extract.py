@@ -33,7 +33,9 @@ import os
 from pathlib import Path
 
 import numpy as np
+
 import pydicom
+
 from fixtures import BASELINES_DIR, DATA_DIR
 from pymedphys._dicom.dose import dicom_dose_interpolate
 

@@ -27,6 +27,7 @@
 import os
 
 import numpy as np
+
 from pymedphys.labs.paulking.sinogram import (
     crop,
     find_modulation_factor,

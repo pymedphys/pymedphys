@@ -55,11 +55,9 @@ import os
 import subprocess
 import sys
 
-import matplotlib.pyplot as plt
+from tqdm import tqdm
+
 import numpy as np
-import pydicom
-from matplotlib.backends.backend_pdf import PdfPages
-from PIL import *
 from scipy import signal
 from scipy.signal import (
     butter,
@@ -70,7 +68,13 @@ from scipy.signal import (
     savgol_filter,
 )
 from scipy.stats import linregress
-from tqdm import tqdm
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+
+from PIL import *
+
+import pydicom
 
 
 def running_mean(x, N):

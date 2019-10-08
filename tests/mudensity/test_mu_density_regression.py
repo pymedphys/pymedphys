@@ -32,9 +32,11 @@
 
 import os
 
-import numpy as np
-import pymedphys
 import pytest
+
+import numpy as np
+
+import pymedphys
 
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
 DELIVERY_DATA_FILEPATH = os.path.abspath(

@@ -27,7 +27,9 @@
 from copy import deepcopy
 
 import numpy as np
+
 import pydicom
+
 from packaging import version
 
 from .anonymise import anonymise_dataset

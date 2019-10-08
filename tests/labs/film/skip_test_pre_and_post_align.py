@@ -30,9 +30,12 @@
 import json
 import os
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pytest
+
+import numpy as np
+
+import matplotlib.pyplot as plt
+
 from fixtures import BASELINES_DIR, postscans, prescans
 from pymedphys.labs.film import get_aligned_image, shift_and_rotate
 from pymedphys.labs.film.optical_density import create_axes

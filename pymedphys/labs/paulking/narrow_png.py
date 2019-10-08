@@ -27,8 +27,10 @@
 # pylint: skip-file
 
 
-import matplotlib.image as mpimg
 import numpy as np
+
+import matplotlib.image as mpimg
+
 from PIL import Image
 
 
