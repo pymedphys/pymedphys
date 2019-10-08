@@ -164,7 +164,7 @@ class DeliveryBase(DeliveryNamedTuple):
             # extract beam index even when multiple beams have the same gantry
             # angle
             is_duplicate_gantry_angles = (
-                not np.sum(np.abs(np.diff(np.concatenate([[0], mask, [0]])))) == 2
+                np.sum(np.abs(np.diff(np.concatenate([[0], mask, [0]])))) != 2
             )
 
             if is_duplicate_gantry_angles:
