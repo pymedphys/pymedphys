@@ -1,12 +1,11 @@
-|logo| PyMedPhys
-================
+|logo|
+
+.. |logo| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/pymedphys_title.png
+    :target: https://docs.pymedphys.com/
 
 **A community effort to develop a common core package for Medical Physics
 in Python and foster a culture of peer review for in-house software through
 open source.**
-
-.. |logo| image:: https://docs.pymedphys.com/_static/pymedphys.svg
-    :target: https://docs.pymedphys.com/
 
 |build| |pypi| |conda| |python| |license|
 
