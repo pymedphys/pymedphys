@@ -32,10 +32,12 @@ Are you new to PyMedPhys or new to Python programming? Then these resources are
 for you:
 
 * From scratch: `New to Python`_ | `Installation`_
-* Tutorials: Part 1: Name | Part 2: Name
+* Tutorials: `Part 1: Name`_ | `Part 2: Name`_
 
 .. _`New to Python` : https://docs.pymedphys.com/tutes/python
 .. _`Installation` : https://docs.pymedphys.com/tutes/install
+.. _`Part 1: Name` : https://docs.pymedphys.com/tutes/part-1
+.. _`Part 2: Name` : https://docs.pymedphys.com/tutes/part-2
 
 
 How the documentation is organised
