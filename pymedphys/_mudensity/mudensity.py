@@ -25,8 +25,10 @@
 
 # pylint: disable=C0103,C1801
 
-import matplotlib.pyplot as plt
 import numpy as np
+
+import matplotlib.pyplot as plt
+
 from pymedphys._utilities.constants import AGILITY
 from pymedphys._utilities.controlpoints import remove_irrelevant_control_points
 

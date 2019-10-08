@@ -32,11 +32,13 @@ import copy
 import os
 from typing import Callable
 
+import numpy as np
+from scipy import interpolate
+
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
-import numpy as np
+
 import PIL
-from scipy import interpolate
 
 # from .._level1.coreobjects import _PyMedPhysBase
 

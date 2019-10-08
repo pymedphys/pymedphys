@@ -25,8 +25,10 @@
 
 # pylint: disable = unused-variable, unused-import
 
-import numpy as np
 import pytest
+
+import numpy as np
+
 from pymedphys._mocks.profiles import create_square_field_function
 from pymedphys.labs.winstonlutz.profiles import (
     field_points_to_compare,

@@ -31,8 +31,10 @@ import json
 import os
 import traceback
 
-import matplotlib.pyplot as plt
 import numpy as np
+
+import matplotlib.pyplot as plt
+
 import pymedphys
 from pymedphys._utilities.config import (
     get_cache_filepaths,

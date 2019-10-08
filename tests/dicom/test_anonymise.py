@@ -7,12 +7,14 @@ from os.path import join as pjoin
 from shutil import copyfile
 from uuid import uuid4
 
-import pydicom
 import pytest
+
+import pydicom
 from pydicom.datadict import tag_for_keyword
 from pydicom.dataset import DataElement, Dataset
 from pydicom.filereader import read_file_meta_info
 from pydicom.tag import Tag
+
 from pymedphys._dicom.anonymise import (
     BASELINE_KEYWORD_VR_DICT,
     IDENTIFYING_KEYWORDS,

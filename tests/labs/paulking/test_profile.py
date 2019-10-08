@@ -32,6 +32,7 @@
 import os
 
 import numpy as np
+
 from pymedphys.labs.paulking.profile import Profile
 
 PROFILER = [

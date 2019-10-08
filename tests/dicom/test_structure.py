@@ -25,6 +25,7 @@
 
 
 import numpy as np
+
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.structure import (
     Structure,

@@ -29,7 +29,9 @@ import subprocess
 import uuid
 
 import numpy as np
+
 import pydicom
+
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.header import (
     RED_adjustment_map_from_structure_names,

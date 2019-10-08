@@ -34,9 +34,12 @@ http://dx.doi.org/10.1016/j.radonc.2015.11.034
 
 import os
 
-import numpy as np
-import pydicom
 import pytest
+
+import numpy as np
+
+import pydicom
+
 from pymedphys._gamma.implementation import gamma_shell
 from pymedphys._gamma.utilities import calculate_pass_rate
 

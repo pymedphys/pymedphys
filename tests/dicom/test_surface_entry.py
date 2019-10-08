@@ -26,8 +26,10 @@
 
 import pathlib
 
-import pydicom
 import pytest
+
+import pydicom
+
 from pymedphys._dicom.collection import DicomBase
 from pymedphys._dicom.rtplan import (
     get_surface_entry_point,

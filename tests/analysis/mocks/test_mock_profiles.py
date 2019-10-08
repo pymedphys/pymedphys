@@ -25,6 +25,7 @@
 
 
 import numpy as np
+
 from pymedphys._mocks.profiles import (
     create_profile_function,
     create_square_field_function,
