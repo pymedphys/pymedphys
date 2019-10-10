@@ -1,11 +1,12 @@
 Elekta Binary Logfiles
 ======================
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 .. automodule:: pymedphys.cli.trf
     :no-members:
-
-Usage
------
 
 .. argparse::
    :ref: pymedphys.cli.main.define_parser

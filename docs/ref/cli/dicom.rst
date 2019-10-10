@@ -1,11 +1,12 @@
 DICOM Files
 ===========
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 .. automodule:: pymedphys.cli.dicom
     :no-members:
-
-Usage
------
 
 .. argparse::
    :ref: pymedphys.cli.main.define_parser

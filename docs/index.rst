@@ -2,12 +2,15 @@ Overview
 ========
 
 .. contents::
+    :local:
+    :backlinks: entry
 
 .. include:: ../README.rst
    :start-after: START_OF_DOCS_IMPORT
 
 .. toctree::
-    :maxdepth: 2
+    :hidden:
+    :maxdepth: 1
     :caption: User Documentation
 
     self
@@ -17,14 +20,16 @@ Overview
     explain/index
 
 .. toctree::
-    :maxdepth: 2
+    :hidden:
+    :maxdepth: 1
     :caption: Misc
 
     genindex
     release-notes
 
 .. toctree::
-    :maxdepth: 3
+    :hidden:
+    :maxdepth: 1
     :caption: Labs Documentation
 
     labs/index
@@ -34,7 +39,8 @@ Overview
     labs/explain/index
 
 .. toctree::
-    :maxdepth: 3
+    :hidden:
+    :maxdepth: 1
     :caption: Contributor Documentation
 
     contrib/index

@@ -2,6 +2,10 @@
 MU Density
 ##########
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 *******
 Summary
 *******

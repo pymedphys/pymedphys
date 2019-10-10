@@ -1,6 +1,10 @@
 Writing documentation
 =====================
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 This documentation site uses a toolbox called Sphinx. This particular
 document aims to help contributors to improve the PyMedPhys
 documentation.

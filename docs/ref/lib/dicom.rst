@@ -2,6 +2,10 @@
 DICOM Module
 ############
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 *******
 Summary
 *******
