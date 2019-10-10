@@ -28,7 +28,7 @@ Download the latest Anaconda Python **3** version from
 When installing Anaconda make sure to install it for your user only, and tick
 the option “add to path”.
 
-.. image:: ../img/add_anaconda_to_path.png
+.. image:: /img/add_anaconda_to_path.png
 
 You might notice that Microsoft Visual Studio Code (VS Code) can be installed
 via the Anaconda installation. However, we recommend installing VS Code from
@@ -56,14 +56,14 @@ the official release `here <https://code.visualstudio.com/>`__.
 
 When installing VS Code, make sure to tick the “Open with Code” boxes:
 
-.. image:: ../img/open_with_code.png
+.. image:: /img/open_with_code.png
 
 You will need to install a few extensions in VS Code to complete your set up.
 This is very easy to do via the Extensions Marketplace once VS Code is
 installed. With VS Code running, access the marketplace by clicking this symbol
 on the left toolbar:
 
-.. image:: ../img/vscode_extensions.png
+.. image:: /img/vscode_extensions.png
 
 Search for the "Anaconda Extension Pack" and install it. Reload VS Code when
 installation has finished and you're ready to go with Python in VS Code!
