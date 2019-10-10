@@ -1,11 +1,12 @@
 Logfile Management
 ==================
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 .. automodule:: pymedphys.cli.logfile
     :no-members:
-
-Usage
------
 
 .. argparse::
    :ref: pymedphys.cli.main.define_parser
