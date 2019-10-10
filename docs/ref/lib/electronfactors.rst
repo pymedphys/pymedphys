@@ -2,6 +2,10 @@
 Electron Cutout Factors
 #######################
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 *******
 Summary
 *******

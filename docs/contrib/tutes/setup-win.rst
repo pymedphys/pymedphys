@@ -1,6 +1,10 @@
 Opinionated Windows Dev Setup for PyMedPhys
 ===========================================
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 Assumptions
 -----------
 

@@ -2,6 +2,10 @@
 Elekta Logfile Decoding and Indexing
 ====================================
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 Project aim
 -----------
 The aim of this project is to have an automated machine record based delivery

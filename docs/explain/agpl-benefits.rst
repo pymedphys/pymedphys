@@ -1,6 +1,10 @@
 Benefits of AGPL-3.0+ for Medical Physics
 =========================================
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 The aim of this document is to outline some of the benefits of Medical Physics
 code being released under an open source license. In particular the benefits
 of the AGPL-3.0+ licence. An example of a well known code base that uses this

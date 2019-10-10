@@ -1,6 +1,10 @@
 Installation
 ============
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 In order to make use of the PyMedPhys library, you'll need Python installed on
 your workstation. Although not essential, we recommend that you install the
 Anaconda Python distribution which is an open source, optimized Python

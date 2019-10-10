@@ -1,6 +1,10 @@
 Directory & File Structure
 ==================================
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 The PyMedPhys Repository
 ------------------------
 

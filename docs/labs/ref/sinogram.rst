@@ -1,6 +1,10 @@
 Sinogram
 ========
 
+.. contents::
+    :local:
+    :backlinks: entry
+
 .. automodule:: pymedphys.labs.paulking.sinogram
     :no-members:
 

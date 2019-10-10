@@ -1,15 +1,11 @@
-==========
-Interfaces
-==========
+======================
+Command Line Interface
+======================
 
-Graphical User Interfaces
--------------------------
+.. contents::
+    :local:
+    :backlinks: entry
 
-As of yet, no graphical user interfaces (GUIs) have been implemented for PyMedPhys.
-
-
-Command Line Interfaces
------------------------
 
 PyMedPhys exposes a range of its library functions to the command line as a
 command line interface (CLI). This provides the benefit of being able to call
