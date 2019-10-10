@@ -25,9 +25,9 @@ software via open source distribution and peer review**
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
-.. note::
-   The documentation links on this page are currently just placeholders as the
-   the documentation for v0.12.0 is being written.
+
+*The documentation links on this page are currently just placeholders as the
+the documentation for v0.12.0 is being written.*
 
 
 First steps
