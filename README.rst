@@ -26,7 +26,7 @@ software via open source distribution and peer review**
 
 
 
-*The documentation links on this page are currently just placeholders as the
+*The documentation links on this page are currently just placeholders while the
 documentation for* ``v0.12.0`` *is being written.*
 
 
