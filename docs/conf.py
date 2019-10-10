@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../src"))
 
-import pymedphys  # nopep8
+import pymedphys  # isort:skip
 
 
 def setup(app):
@@ -97,6 +97,7 @@ exclude_patterns = [
     ".DS_Store",
     "**.ipynb_checkpoints",
     "**.dcm",
+    "drafts",
 ]
 
 # The name of the Pygments (syntax highlighting) style to use.

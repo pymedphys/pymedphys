@@ -14,6 +14,11 @@ repos:
     -   id: check-yaml
     -   id: check-toml
     -   id: check-added-large-files
+-   repo: https://github.com/timothycrosley/isort
+    rev: e13a1685ecf34b5b629b21f21b3fead3cc5ee957
+    hooks:
+    -   id: isort
+        additional_dependencies: ['isort[pyproject]']
 -   repo: https://github.com/ambv/black
     rev: 19.3b0
     hooks:

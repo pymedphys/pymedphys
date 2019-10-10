@@ -28,15 +28,16 @@
 
 
 import csv
+from os.path import dirname, join
 from string import ascii_letters as LETTERS
 from string import digits as DIGITS
-from os.path import dirname, join
 
-from matplotlib.gridspec import GridSpec
-from matplotlib import pyplot as plt
 import numpy as np
 
-from .sinogram import unshuffle, crop
+from matplotlib import pyplot as plt
+from matplotlib.gridspec import GridSpec
+
+from .sinogram import crop, unshuffle
 
 
 def tomo_sinogram_csv2pdf(file_name="./sinogram.csv", show=True, save=True):

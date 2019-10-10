@@ -38,7 +38,6 @@ import numpy as np
 
 import pymedphys
 
-
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
 DELIVERY_DATA_FILEPATH = os.path.abspath(
     os.path.join(DATA_DIRECTORY, "mu_density_example_arrays.npz")

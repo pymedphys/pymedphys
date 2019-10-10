@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import os
+
 import numpy as np
 
 from pymedphys.labs.paulking.narrow_png import read_narrow_png

@@ -25,8 +25,8 @@
 
 
 import os
-import uuid
 import subprocess
+import uuid
 
 import numpy as np
 
@@ -34,13 +34,12 @@ import pydicom
 
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.header import (
-    adjust_machine_name,
-    adjust_rel_elec_density,
-    adjust_RED_by_structure_name,
     RED_adjustment_map_from_structure_names,
+    adjust_machine_name,
+    adjust_RED_by_structure_name,
+    adjust_rel_elec_density,
 )
 from pymedphys._dicom.utilities import remove_file
-
 
 HERE = os.path.dirname(__file__)
 ORIGINAL_DICOM_FILENAME = os.path.join(

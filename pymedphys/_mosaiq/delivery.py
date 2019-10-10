@@ -29,11 +29,11 @@
 
 import struct
 
-import attr
 import numpy as np
 
-from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
+import attr
 from pymedphys._base.delivery import DeliveryBase
+from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES

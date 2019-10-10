@@ -25,7 +25,6 @@
 
 
 import lzma
-
 from glob import glob
 
 
