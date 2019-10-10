@@ -158,8 +158,8 @@ Active contributors
 Past contributors
 .................
 
-* Matthew Sobolewski
-* Paul King
+* `Matthew Sobolewski <https://github.com/msobolewski>`_
+* `Paul King <https://github.com/kingrpaul>`_
 
 
 .. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/rccc_200x200.png
