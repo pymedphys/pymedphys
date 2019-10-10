@@ -25,17 +25,16 @@
 """A DICOM RT Dose toolbox"""
 
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
+
 import matplotlib.pyplot as plt
 from matplotlib import path
 
 import pydicom
 
-from scipy.interpolate import RegularGridInterpolator
-
-from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
-
-from .structure import pull_structure
 from .coords import xyz_axes_from_dataset
+from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
+from .structure import pull_structure
 
 # pylint: disable=C0103
 

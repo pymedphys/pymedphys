@@ -23,14 +23,14 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import sys
 import argparse
+import sys
 
 from .dicom import dicom_cli
 from .docker import docker_cli
 from .logfile import logfile_cli
-from .trf import trf_cli
 from .pinnacle import pinnacle_cli
+from .trf import trf_cli
 
 
 class DefaultHelpParser(argparse.ArgumentParser):

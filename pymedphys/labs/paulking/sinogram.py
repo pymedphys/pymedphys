@@ -32,9 +32,9 @@ Sinogram Toolbox
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-from string import digits as DIGITS
-from string import ascii_letters as LETTERS
 import csv
+from string import ascii_letters as LETTERS
+from string import digits as DIGITS
 
 import numpy as np
 

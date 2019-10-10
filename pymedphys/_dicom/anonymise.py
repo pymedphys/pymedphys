@@ -23,25 +23,25 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import json
+import pprint
 from copy import deepcopy
 from glob import glob
-import json
-from os.path import abspath, basename, dirname, isdir, isfile, join as pjoin
-import pprint
+from os.path import abspath, basename, dirname, isdir, isfile
+from os.path import join as pjoin
 
 import numpy as np
-import pydicom
 
-from pymedphys._dicom.utilities import remove_file
+import pydicom
 
 from pymedphys._dicom.constants import (
     BASELINE_KEYWORD_VR_DICT,
-    get_baseline_dict_entry,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
-    NotInBaselineError,
     PYMEDPHYS_ROOT_UID,
+    NotInBaselineError,
+    get_baseline_dict_entry,
 )
-
+from pymedphys._dicom.utilities import remove_file
 
 HERE = dirname(abspath(__file__))
 

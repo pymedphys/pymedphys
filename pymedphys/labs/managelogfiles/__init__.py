@@ -28,6 +28,6 @@
 """
 
 
-from .index import index_logfiles
-from .identify import identify_logfile
 from .diagnostics_zips import already_indexed_path
+from .identify import identify_logfile
+from .index import index_logfiles

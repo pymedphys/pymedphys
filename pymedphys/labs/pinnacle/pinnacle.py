@@ -51,17 +51,17 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import sys
-import os
 import logging
+import os
+import sys
 
-from .pinn_yaml import pinn_to_dict
-from .pinnacle_plan import PinnaclePlan
-from .pinnacle_image import PinnacleImage
-from .rtstruct import convert_struct
-from .rtplan import convert_plan
-from .rtdose import convert_dose
 from .image import convert_image
+from .pinn_yaml import pinn_to_dict
+from .pinnacle_image import PinnacleImage
+from .pinnacle_plan import PinnaclePlan
+from .rtdose import convert_dose
+from .rtplan import convert_plan
+from .rtstruct import convert_struct
 
 
 class PinnacleExport:

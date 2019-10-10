@@ -50,18 +50,18 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import sys
 import os
-import time
 import re
-import struct
 import shutil
+import struct
+import sys
+import time
 
-import pydicom
 import numpy as np
 
-from pydicom.dataset import Dataset, FileDataset
+import pydicom
 import pydicom.uid
+from pydicom.dataset import Dataset, FileDataset
 
 from .constants import *
 

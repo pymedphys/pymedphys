@@ -24,9 +24,9 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from collections import namedtuple
 import functools
-from typing import Union, Tuple, List, Dict, TypeVar, Type
+from collections import namedtuple
+from typing import Dict, List, Tuple, Type, TypeVar, Union
 
 import numpy as np
 
@@ -34,7 +34,6 @@ from pymedphys._utilities.controlpoints import (
     remove_irrelevant_control_points,
     to_tuple,
 )
-
 
 # https://stackoverflow.com/a/44644576/3912576
 # Create a generic variable that can be 'Parent', or any subclass.
@@ -165,7 +164,7 @@ class DeliveryBase(DeliveryNamedTuple):
             # extract beam index even when multiple beams have the same gantry
             # angle
             is_duplicate_gantry_angles = (
-                not np.sum(np.abs(np.diff(np.concatenate([[0], mask, [0]])))) == 2
+                np.sum(np.abs(np.diff(np.concatenate([[0], mask, [0]])))) != 2
             )
 
             if is_duplicate_gantry_angles:

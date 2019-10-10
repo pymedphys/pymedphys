@@ -27,17 +27,17 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import os
 import json
 import lzma
+import os
 from pathlib import Path
 
 import numpy as np
 
 import pydicom
 
-from pymedphys._dicom.dose import dicom_dose_interpolate
 from fixtures import BASELINES_DIR, DATA_DIR
+from pymedphys._dicom.dose import dicom_dose_interpolate
 
 CREATE_BASELINE = False
 DICOM_DOSE_BASELINE_FILEPATH = os.path.join(BASELINES_DIR, "dicom_dose_extract.json")
