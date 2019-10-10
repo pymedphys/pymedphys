@@ -78,13 +78,13 @@ poetry run sphinx-build -W docs docs/_build/html
 
 [[redirects]]
   from = "/getting-started/licensing.html"
-  to = "/explain/license/index.html"
+  to = "/explain/license.html"
   status = 301
   force = true
 
 [[redirects]]
   from = "/developer/agpl-benefits.html"
-  to = "/explain/license/agpl-benefits.html"
+  to = "/explain/agpl-benefits.html"
   status = 301
   force = true
 
