@@ -1,4 +1,4 @@
-Labs Explanatory Documentation
-==============================
+Explanatory Documents
+=====================
 
 Nothing here...
