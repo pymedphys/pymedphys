@@ -1,6 +1,5 @@
-======================
-Command Line Interface
-======================
+Command Line Tool
+=================
 
 .. contents::
     :local:
