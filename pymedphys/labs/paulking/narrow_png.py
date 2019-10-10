@@ -27,10 +27,11 @@
 # pylint: skip-file
 
 
-from PIL import Image
-
 import numpy as np
+
 import matplotlib.image as mpimg
+
+from PIL import Image
 
 
 def read_narrow_png(file_name, step_size=0.1):

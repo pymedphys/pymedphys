@@ -25,12 +25,13 @@
 
 
 import numpy as np
+
 import matplotlib.pyplot as plt
 
 from .core import (
-    visual_alignment_of_equivalent_ellipse,
     create_transformed_mesh,
     parameterise_insert_with_visual_alignment,
+    visual_alignment_of_equivalent_ellipse,
 )
 
 

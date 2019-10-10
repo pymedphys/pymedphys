@@ -55,6 +55,6 @@
 """
 
 from .pinnacle import PinnacleExport
-from .pinnacle_plan import PinnaclePlan
-from .pinnacle_image import PinnacleImage
 from .pinnacle_cli import export_cli
+from .pinnacle_image import PinnacleImage
+from .pinnacle_plan import PinnaclePlan

@@ -27,8 +27,9 @@ import warnings
 from pathlib import Path
 
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import basinhopping
+
+import matplotlib.pyplot as plt
 
 import imageio
 

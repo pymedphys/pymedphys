@@ -1,36 +1,37 @@
-from copy import deepcopy
 import json
 import os
-from os.path import abspath, basename, dirname, exists, join as pjoin
-from shutil import copyfile
 import subprocess
+from copy import deepcopy
+from os.path import abspath, basename, dirname, exists
+from os.path import join as pjoin
+from shutil import copyfile
 from uuid import uuid4
+
+import pytest
 
 import pydicom
 from pydicom.datadict import tag_for_keyword
-from pydicom.dataset import Dataset, DataElement
+from pydicom.dataset import DataElement, Dataset
 from pydicom.filereader import read_file_meta_info
 from pydicom.tag import Tag
-import pytest
 
+from pymedphys._dicom.anonymise import (
+    BASELINE_KEYWORD_VR_DICT,
+    IDENTIFYING_KEYWORDS,
+    IDENTIFYING_KEYWORDS_FILEPATH,
+    anonymise_dataset,
+    anonymise_directory,
+    anonymise_file,
+    is_anonymised_dataset,
+    is_anonymised_directory,
+    is_anonymised_file,
+    label_dicom_filepath_as_anonymised,
+)
 from pymedphys._dicom.constants import (
     BASELINE_DICOM_DICT,
     BASELINE_DICOM_DICT_FILEPATH,
     BASELINE_DICOM_REPEATERS_DICT,
     BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
-)
-
-from pymedphys._dicom.anonymise import (
-    anonymise_dataset,
-    anonymise_directory,
-    anonymise_file,
-    BASELINE_KEYWORD_VR_DICT,
-    IDENTIFYING_KEYWORDS,
-    IDENTIFYING_KEYWORDS_FILEPATH,
-    is_anonymised_dataset,
-    is_anonymised_directory,
-    is_anonymised_file,
-    label_dicom_filepath_as_anonymised,
 )
 from pymedphys._dicom.utilities import remove_file
 

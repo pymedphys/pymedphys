@@ -43,7 +43,6 @@ import pydicom
 from pymedphys._gamma.implementation import gamma_shell
 from pymedphys._gamma.utilities import calculate_pass_rate
 
-
 # pylint: disable=C0103,C1801
 
 

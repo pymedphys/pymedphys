@@ -29,19 +29,18 @@ import os
 import pytest
 
 import numpy as np
+
 import matplotlib.pyplot as plt
 
 import pydicom
 
-from pymedphys._utilities.algorithms import maintain_order_unique
-
-from pymedphys._dicom.rtplan import (
-    get_metersets_from_dicom,
-    get_gantry_angles_from_dicom,
-    convert_to_one_fraction_group,
-)
-
 from pymedphys import Delivery
+from pymedphys._dicom.rtplan import (
+    convert_to_one_fraction_group,
+    get_gantry_angles_from_dicom,
+    get_metersets_from_dicom,
+)
+from pymedphys._utilities.algorithms import maintain_order_unique
 
 # pylint: disable = redefined-outer-name, protected-access
 

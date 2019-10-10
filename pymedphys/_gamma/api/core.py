@@ -24,7 +24,7 @@
 
 from pymedphys._dicom.dose import zyx_and_dose_from_dataset
 
-from ..implementation import gamma_shell, gamma_filter_numpy
+from ..implementation import gamma_filter_numpy, gamma_shell
 from ..utilities import calculate_pass_rate
 
 

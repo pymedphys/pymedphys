@@ -24,8 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import re
 import pathlib
+import re
 
 from .mephysto import absolute_scans_from_mephysto
 

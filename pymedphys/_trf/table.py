@@ -32,7 +32,6 @@ import pandas as pd
 from .constants import CONFIG
 from .header import determine_header_length
 
-
 GROUPING_OPTIONS = {
     "integrityv3": {"line_grouping": 700, "linac_state_codes_column": 2},
     "integrityv4": {"line_grouping": 708, "linac_state_codes_column": 6},

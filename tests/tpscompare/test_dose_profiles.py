@@ -24,10 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import os
 import json
 import lzma
 import operator
+import os
 
 import pytest
 
@@ -38,14 +38,12 @@ import pydicom
 
 from pymedphys.dicom import depth_dose, profile
 from pymedphys.labs.tpscompare import load_and_normalise_mephysto
-
 from shared import (
     BASELINES_DIR,
     DICOM_DOSE_FILEPATHS,
     DICOM_PLAN_FILEPATH,
     MEASUREMENTS_DIR,
 )
-
 
 CREATE_BASELINE = False
 BASELINE_FILEPATH = os.path.join(BASELINES_DIR, "dicom_dose_profiles.json")

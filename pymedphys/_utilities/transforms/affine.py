@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import numpy as np
-from numpy import sin, cos, radians
+from numpy import cos, radians, sin
 from numpy.linalg import norm
 
 

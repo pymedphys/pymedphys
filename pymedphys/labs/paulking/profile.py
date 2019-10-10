@@ -28,17 +28,16 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import os
 import copy
-
+import os
 from typing import Callable
-from scipy import interpolate
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+from scipy import interpolate
 
-# from PIL import Image
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+
 import PIL
 
 # from .._level1.coreobjects import _PyMedPhysBase
@@ -68,8 +67,6 @@ class Profile:
     ``film = Profile().from_narrow_png("C:\\image.png")``
 
     ``profiler.cross_calibrate(film).plot(marker='o')``
-
-    .. image:: calib_curve.png
 
     Notes
     -----

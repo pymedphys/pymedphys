@@ -50,9 +50,9 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import sys
-import os
 import logging
+import os
+import sys
 import tarfile
 import tempfile
 
