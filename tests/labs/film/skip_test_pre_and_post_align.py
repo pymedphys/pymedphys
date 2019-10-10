@@ -27,18 +27,18 @@
 # The following needs to be removed before leaving labs
 # pylint: skip-file
 
-import os
 import json
+import os
 
 import pytest
 
 import numpy as np
+
 import matplotlib.pyplot as plt
 
-from pymedphys.labs.film import shift_and_rotate, get_aligned_image
+from fixtures import BASELINES_DIR, postscans, prescans
+from pymedphys.labs.film import get_aligned_image, shift_and_rotate
 from pymedphys.labs.film.optical_density import create_axes
-
-from fixtures import BASELINES_DIR, prescans, postscans
 
 CREATE_BASELINE = False
 

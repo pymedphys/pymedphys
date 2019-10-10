@@ -26,16 +26,18 @@
 
 import json
 from os import remove
-from os.path import abspath, basename, dirname, join as pjoin
+from os.path import abspath, basename, dirname
+from os.path import join as pjoin
 from zipfile import ZipFile
 
-import numpy as np
-import pydicom
 import pytest
+
+import numpy as np
+
+import pydicom
 
 from pymedphys._dicom.collection import DicomDose
 from pymedphys._dicom.dose import require_patient_orientation_be_HFS
-
 from test_coords import get_data_file
 
 HERE = dirname(abspath(__file__))

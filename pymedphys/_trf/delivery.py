@@ -31,15 +31,14 @@ import numpy as np
 
 from pymedphys._base.delivery import DeliveryBase, DeliveryGeneric
 
-from .trf2pandas import read_trf
-
 from .constants import (
-    GANTRY_NAME,
     COLLIMATOR_NAME,
+    GANTRY_NAME,
+    JAW_NAMES,
     Y1_LEAF_BANK_NAMES,
     Y2_LEAF_BANK_NAMES,
-    JAW_NAMES,
 )
+from .trf2pandas import read_trf
 
 
 class DeliveryLogfile(DeliveryBase):

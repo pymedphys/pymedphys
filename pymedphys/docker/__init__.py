@@ -27,7 +27,6 @@
 import os
 import subprocess
 
-
 HERE = os.path.dirname(__file__)
 
 

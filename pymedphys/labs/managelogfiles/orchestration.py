@@ -32,14 +32,14 @@ This zip file is then extracted into the to be indexed directory, and indexing
 is run.
 """
 
-import os
 import json
+import os
 
 import pandas as pd
 
 from .diagnostics_zips import (
-    fetch_system_diagnostics_multi_linac,
     extract_diagnostic_zips_and_archive,
+    fetch_system_diagnostics_multi_linac,
 )
 from .index import index_logfiles
 

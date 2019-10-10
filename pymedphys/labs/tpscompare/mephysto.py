@@ -28,6 +28,7 @@ import numpy as np
 import scipy.interpolate
 
 from pymedphys.labs.fileformats.mephysto import load_mephysto
+
 from .normalisation import normalise_profile
 
 

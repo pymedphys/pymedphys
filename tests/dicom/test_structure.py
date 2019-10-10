@@ -28,11 +28,10 @@ import numpy as np
 
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.structure import (
-    pull_structure,
-    create_contour_sequence_dict,
     Structure,
+    create_contour_sequence_dict,
+    pull_structure,
 )
-
 
 A_STRUCTURE = Structure(
     "A Structure Name",

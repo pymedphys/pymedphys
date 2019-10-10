@@ -30,26 +30,25 @@ import numpy as np
 
 import pydicom
 
-from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 from pymedphys._base.delivery import DeliveryBase
+from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
 from ..rtplan import (
-    get_gantry_angles_from_dicom,
     build_control_points,
-    replace_fraction_group,
-    replace_beam_sequence,
-    restore_trailing_zeros,
-    merge_beam_sequences,
-    get_fraction_group_index,
     convert_to_one_fraction_group,
     get_fraction_group_beam_sequence_and_meterset,
+    get_fraction_group_index,
+    get_gantry_angles_from_dicom,
+    merge_beam_sequences,
+    replace_beam_sequence,
+    replace_fraction_group,
+    restore_trailing_zeros,
 )
-
 from .utilities import (
-    jaw_dd2dcm,
-    mlc_dd2dcm,
     angle_dd2dcm,
     gantry_tol_from_gantry_angles,
+    jaw_dd2dcm,
+    mlc_dd2dcm,
 )
 
 
