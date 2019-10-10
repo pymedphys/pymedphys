@@ -6,8 +6,8 @@
     :target: https://docs.pymedphys.com/
 
 **A community effort to develop a standard package and platform for Medical
-Physics in Python with the aim to improve the quality of clinical in-house
-software via open source distribution and peer review**
+Physics in Python. Building transparent software together via peer review and
+open source distribution.**
 
 |build| |pypi| |conda| |python| |license|
 
