@@ -3,9 +3,9 @@
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/pymedphys_title.png
     :target: https://docs.pymedphys.com/
 
-**A community effort to develop a standard package for Medical
-Physics in Python and foster a culture of opening the doors on in-house
-software via peer review and open source distribution**
+**A community effort to develop a standard package and platform for Medical
+Physics in Python with the aim to improve the quality of clinical in-house
+software via open source distribution and peer review**
 
 |build| |pypi| |conda| |python| |license|
 
@@ -154,6 +154,12 @@ Active contributors
 
 
 |rccc| |rah| |uoc|
+
+Past contributors
+.................
+
+* Matthew Sobolewski
+* Paul King
 
 
 .. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/rccc_200x200.png
