@@ -1,6 +1,6 @@
-=========
-Licensing
-=========
+=====================
+The PyMedPhys License
+=====================
 
 PyMedPhys is a copyrighted work. Usage and distribution of PyMedPhys must
 comply with the licence under which it is distributed.

@@ -4,6 +4,5 @@ Reference Documents
 .. toctree::
     :maxdepth: 1
 
-    pinnacle
-    profile
-    sinogram
+    cli/index
+    lib/index

@@ -1,5 +1,5 @@
-Labs
-====
+Overview
+========
 
 .. CAUTION::
 
@@ -12,10 +12,7 @@ Labs
     breaks code that depends on it. Changes within the labs are not tracked
     within the `release notes </api/release-notes.html>`_.
 
-.. toctree::
-    :maxdepth: 1
-
-    tutes
-    howto
-    api
-    explain
+* :doc:`tutes/index`
+* :doc:`howto/index`
+* :doc:`ref/index`
+* :doc:`explain/index`

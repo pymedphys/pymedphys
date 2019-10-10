@@ -1,43 +1,44 @@
+Overview
+========
+
+.. contents::
+
 .. include:: ../README.rst
+   :start-after: START_OF_DOCS_IMPORT
 
 .. toctree::
-    :maxdepth: 1
-    :caption: Getting Started
+    :maxdepth: 2
+    :caption: User Documentation
 
-    getting-started/about
-    getting-started/installation
-    getting-started/licensing
-    getting-started/faq
-    getting-started/changelog
-    getting-started/roadmap
-
-.. toctree::
-    :maxdepth: 1
-    :caption: User Guide
-
-    user/interfaces/index
-    user/library/index
-    user/examples/index
+    self
+    tutes/index
+    howto/index
+    ref/index
+    explain/index
 
 .. toctree::
-    :maxdepth: 1
-    :caption: Projects
+    :maxdepth: 2
+    :caption: Misc
 
-    projects/elekta-logfiles
+    genindex
+    release-notes
 
 .. toctree::
-    :maxdepth: 1
-    :caption: Developer Guide
+    :maxdepth: 3
+    :caption: Labs Documentation
 
-    developer/contributing
-    developer/documentation
-    developer/agpl-benefits
-    developer/labs/index
+    labs/index
+    labs/tutes/index
+    labs/howto/index
+    labs/ref/index
+    labs/explain/index
 
+.. toctree::
+    :maxdepth: 3
+    :caption: Contributor Documentation
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+    contrib/index
+    contrib/tutes/index
+    contrib/howto/index
+    contrib/ref/index
+    contrib/explain/index
