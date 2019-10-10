@@ -1,5 +1,7 @@
 |logo|
 
+.. START_OF_DOCS_IMPORT
+
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/pymedphys_title.png
     :target: https://docs.pymedphys.com/
 
@@ -54,18 +56,18 @@ you to know where to look for things:
 * `Tutorials`_ take you by the hand through a series of steps to create a tool
   built with PyMedPhys for use within a Medical Physics clinic. Start here if
   you're new to PyMedPhys or Python programming.
-* `How-to guides`_ are recipes. They guide you through the steps involved in
+* `How-To guides`_ are recipes. They guide you through the steps involved in
   addressing key problems and use-cases. They are more advanced than tutorials
   and assume some knowledge of how to build tools with PyMedPhys.
-* `API Reference`_ is the technical reference for the public APIs exposed by
+* `Reference Documents`_ is the technical reference for the public APIs exposed by
   both the ``pymedphys`` library and the ``pymedphys`` command line tool.
 * `Explanatory documents`_ provide the higher level descriptions of the
   implementation of the tools and provides justifications for development
   decisions.
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
-.. _`How-to guides`: https://docs.pymedphys.com/howto
-.. _`API Reference`: https://docs.pymedphys.com/ref
+.. _`How-To guides`: https://docs.pymedphys.com/howto
+.. _`Reference Documents`: https://docs.pymedphys.com/ref
 .. _`Explanatory documents`: https://docs.pymedphys.com/explain
 
 The above layout has been heavily inspired by both the `Django documentation`_

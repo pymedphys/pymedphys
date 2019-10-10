@@ -1,4 +1,4 @@
-Labs Tutorials
-==============
+Tutorials
+=========
 
 Nothing here...

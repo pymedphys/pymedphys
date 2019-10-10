@@ -1,5 +1,5 @@
 =============
-How-to Guides
+How-To Guides
 =============
 
 Reproducable Jupyter notebook examples are provided to demonstrate PyMedPhys
