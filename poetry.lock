@@ -84,12 +84,6 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "19.2.0"
 
-[package.extras]
-azure-pipelines = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface", "pytest-azurepipelines"]
-dev = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface", "sphinx", "pre-commit"]
-docs = ["sphinx", "zope.interface"]
-tests = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface"]
-
 [[package]]
 category = "main"
 description = "Internationalization utilities"
@@ -122,9 +116,6 @@ appdirs = "*"
 attrs = ">=18.1.0"
 click = ">=6.5"
 toml = ">=0.9.4"
-
-[package.extras]
-d = ["aiohttp (>=3.3.2)", "aiohttp-cors"]
 
 [[package]]
 category = "main"
@@ -208,13 +199,6 @@ asn1crypto = ">=0.21.0"
 cffi = ">=1.8,<1.11.3 || >1.11.3"
 six = ">=1.4.1"
 
-[package.extras]
-docs = ["sphinx (>=1.6.5,<1.8.0 || >1.8.0)", "sphinx-rtd-theme"]
-docstest = ["doc8", "pyenchant (>=1.6.11)", "twine (>=1.12.0)", "sphinxcontrib-spelling (>=4.0.1)"]
-idna = ["idna (>=2.1)"]
-pep8test = ["flake8", "flake8-import-order", "pep8-naming"]
-test = ["pytest (>=3.6.0,<3.9.0 || >3.9.0,<3.9.1 || >3.9.1,<3.9.2 || >3.9.2)", "pretend", "iso8601", "pytz", "hypothesis (>=1.11.4,<3.79.2 || >3.79.2)"]
-
 [[package]]
 category = "main"
 description = "Composable style cycles"
@@ -274,9 +258,6 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.4.7"
 
-[package.extras]
-license = ["editdistance"]
-
 [[package]]
 category = "main"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -297,13 +278,6 @@ version = "2.6.1"
 numpy = "*"
 pillow = "*"
 
-[package.extras]
-ffmpeg = ["imageio-ffmpeg"]
-fits = ["astropy"]
-full = ["astropy", "gdal", "imageio-ffmpeg", "itk"]
-gdal = ["gdal"]
-itk = ["itk"]
-
 [[package]]
 category = "main"
 description = "Getting image size from png/jpeg/jpeg2000/gif file"
@@ -323,10 +297,6 @@ version = "0.23"
 [package.dependencies]
 zipp = ">=0.5"
 
-[package.extras]
-docs = ["sphinx", "rst.linker"]
-testing = ["packaging", "importlib-resources"]
-
 [[package]]
 category = "main"
 description = "IPython Kernel for Jupyter"
@@ -340,9 +310,6 @@ ipython = ">=5.0.0"
 jupyter-client = "*"
 tornado = ">=4.2"
 traitlets = ">=4.1.0"
-
-[package.extras]
-test = ["pytest", "pytest-cov", "nose"]
 
 [[package]]
 category = "main"
@@ -365,17 +332,6 @@ pygments = "*"
 setuptools = ">=18.5"
 traitlets = ">=4.2"
 
-[package.extras]
-all = ["nbconvert", "notebook", "ipywidgets", "testpath", "qtconsole", "ipyparallel", "nose (>=0.10.1)", "nbformat", "ipykernel", "pygments", "requests", "numpy", "Sphinx (>=1.3)"]
-doc = ["Sphinx (>=1.3)"]
-kernel = ["ipykernel"]
-nbconvert = ["nbconvert"]
-nbformat = ["nbformat"]
-notebook = ["notebook", "ipywidgets"]
-parallel = ["ipyparallel"]
-qtconsole = ["qtconsole"]
-test = ["nose (>=0.10.1)", "requests", "testpath", "pygments", "nbformat", "ipykernel", "numpy"]
-
 [[package]]
 category = "main"
 description = "Vestigial utilities from IPython"
@@ -392,12 +348,6 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "4.3.21"
 
-[package.extras]
-pipfile = ["pipreqs", "requirementslib"]
-pyproject = ["toml"]
-requirements = ["pipreqs", "pip-api"]
-xdg_home = ["appdirs (>=1.4.0)"]
-
 [[package]]
 category = "main"
 description = "An autocompletion tool for Python that can be used for text editors."
@@ -409,9 +359,6 @@ version = "0.15.1"
 [package.dependencies]
 parso = ">=0.5.0"
 
-[package.extras]
-testing = ["colorama", "docopt", "pytest (>=3.1.0,<5.0.0)"]
-
 [[package]]
 category = "main"
 description = "Low-level, pure Python DBus protocol wrapper."
@@ -420,9 +367,6 @@ name = "jeepney"
 optional = false
 python-versions = ">=3.5"
 version = "0.4.1"
-
-[package.extras]
-dev = ["testpath"]
 
 [[package]]
 category = "main"
@@ -434,9 +378,6 @@ version = "2.10.3"
 
 [package.dependencies]
 MarkupSafe = ">=0.23"
-
-[package.extras]
-i18n = ["Babel (>=0.8)"]
 
 [[package]]
 category = "main"
@@ -451,9 +392,6 @@ attrs = ">=17.4.0"
 pyrsistent = ">=0.14.0"
 setuptools = "*"
 six = ">=1.11.0"
-
-[package.extras]
-format = ["idna", "jsonpointer (>1.13)", "rfc3987", "strict-rfc3339", "webcolors"]
 
 [[package]]
 category = "main"
@@ -471,18 +409,16 @@ pyzmq = ">=13"
 tornado = ">=4.1"
 traitlets = "*"
 
-[package.extras]
-test = ["ipykernel", "ipython", "mock", "pytest"]
-
 [[package]]
 category = "main"
 description = "Jupyter core package. A base package on which Jupyter projects rely."
 name = "jupyter-core"
 optional = false
 python-versions = ">=2.7, !=3.0, !=3.1, !=3.2"
-version = "4.5.0"
+version = "4.6.0"
 
 [package.dependencies]
+pywin32 = ">=1.0"
 traitlets = "*"
 
 [[package]]
@@ -497,10 +433,6 @@ version = "19.2.0"
 entrypoints = "*"
 pywin32-ctypes = "<0.1.0 || >0.1.0,<0.1.1 || >0.1.1"
 secretstorage = "*"
-
-[package.extras]
-docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
-testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs", "pytest-flake8", "pytest-black-multipy"]
 
 [[package]]
 category = "main"
@@ -605,9 +537,6 @@ mypy-extensions = ">=0.4.0,<0.5.0"
 typed-ast = ">=1.4.0,<1.5.0"
 typing-extensions = ">=3.7.4"
 
-[package.extras]
-dmypy = ["psutil (>=4.0)"]
-
 [[package]]
 category = "dev"
 description = "Experimental type system extensions for programs checked with the mypy typechecker."
@@ -637,13 +566,6 @@ pygments = "*"
 testpath = "*"
 traitlets = ">=4.2"
 
-[package.extras]
-all = ["pytest", "pytest-cov", "ipykernel", "jupyter-client (>=5.3.1)", "ipywidgets (>=7)", "pebble", "tornado (>=4.0)", "sphinx (>=1.5.1)", "sphinx-rtd-theme", "nbsphinx (>=0.2.12)", "sphinxcontrib-github-alt", "ipython", "mock"]
-docs = ["sphinx (>=1.5.1)", "sphinx-rtd-theme", "nbsphinx (>=0.2.12)", "sphinxcontrib-github-alt", "ipython", "jupyter-client (>=5.3.1)"]
-execute = ["jupyter-client (>=5.3.1)"]
-serve = ["tornado (>=4.0)"]
-test = ["pytest", "pytest-cov", "ipykernel", "jupyter-client (>=5.3.1)", "ipywidgets (>=7)", "pebble", "mock"]
-
 [[package]]
 category = "main"
 description = "The Jupyter Notebook format"
@@ -657,9 +579,6 @@ ipython-genutils = "*"
 jsonschema = ">=2.4,<2.5.0 || >2.5.0"
 jupyter-core = "*"
 traitlets = ">=4.1"
-
-[package.extras]
-test = ["pytest", "pytest-cov", "testpath"]
 
 [[package]]
 category = "main"
@@ -687,19 +606,6 @@ version = "2.3"
 
 [package.dependencies]
 decorator = ">=4.3.0"
-
-[package.extras]
-all = ["numpy", "scipy", "pandas", "matplotlib", "pygraphviz", "pydot", "pyyaml", "gdal", "lxml", "nose"]
-gdal = ["gdal"]
-lxml = ["lxml"]
-matplotlib = ["matplotlib"]
-nose = ["nose"]
-numpy = ["numpy"]
-pandas = ["pandas"]
-pydot = ["pydot"]
-pygraphviz = ["pygraphviz"]
-pyyaml = ["pyyaml"]
-scipy = ["scipy"]
 
 [[package]]
 category = "dev"
@@ -742,9 +648,6 @@ numpy = ">=1.13.3"
 python-dateutil = ">=2.6.1"
 pytz = ">=2017.2"
 
-[package.extras]
-test = ["pytest (>=4.0.2)", "pytest-xdist", "hypothesis (>=3.58)"]
-
 [[package]]
 category = "main"
 description = "Utilities for writing pandoc filters in python"
@@ -760,9 +663,6 @@ name = "parso"
 optional = false
 python-versions = "*"
 version = "0.5.1"
-
-[package.extras]
-testing = ["docopt", "pytest (>=3.0.7)"]
 
 [[package]]
 category = "main"
@@ -812,9 +712,6 @@ version = "0.13.0"
 [package.dependencies.importlib-metadata]
 python = "<3.8"
 version = ">=0.12"
-
-[package.extras]
-dev = ["pre-commit", "tox"]
 
 [[package]]
 category = "main"
@@ -971,9 +868,6 @@ wcwidth = "*"
 python = "<3.8"
 version = ">=0.12"
 
-[package.extras]
-testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xmlschema"]
-
 [[package]]
 category = "main"
 description = "pytest plugin to check source code with pylint"
@@ -1078,10 +972,6 @@ chardet = ">=3.0.2,<3.1.0"
 idna = ">=2.5,<2.9"
 urllib3 = ">=1.21.1,<1.25.0 || >1.25.0,<1.25.1 || >1.25.1,<1.26"
 
-[package.extras]
-security = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)"]
-socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7)", "win-inet-pton"]
-
 [[package]]
 category = "dev"
 description = "a python refactoring library..."
@@ -1105,11 +995,6 @@ matplotlib = ">=2.0.0,<3.0.0 || >3.0.0"
 networkx = ">=2.0"
 pillow = ">=4.3.0"
 scipy = ">=0.17.0"
-
-[package.extras]
-docs = ["sphinx (>=1.3,<1.7.8 || >1.7.8)", "numpydoc (>=0.6)", "sphinx-gallery", "sphinx-copybutton", "pytest-runner", "scikit-learn", "dask (>=0.9.0)", "cloudpickle (>=0.2.1)"]
-optional = ["simpleitk", "astropy (>=1.2.0)", "tifffile", "qtpy", "pyamg", "dask (>=0.9.0)", "cloudpickle (>=0.2.1)"]
-test = ["pytest (!=3.7.3)", "pytest-cov", "pytest-localserver", "flake8", "codecov", "pytest-faulthandler"]
 
 [[package]]
 category = "main"
@@ -1142,11 +1027,6 @@ name = "shapely"
 optional = false
 python-versions = "*"
 version = "1.6.4.post2"
-
-[package.extras]
-all = ["pytest", "pytest-cov", "numpy"]
-test = ["pytest", "pytest-cov"]
-vectorized = ["numpy"]
 
 [[package]]
 category = "main"
@@ -1187,10 +1067,6 @@ six = ">=1.5"
 snowballstemmer = ">=1.1"
 sphinxcontrib-websupport = "*"
 
-[package.extras]
-test = ["mock", "pytest", "pytest-cov", "html5lib", "flake8 (>=3.5.0)", "flake8-import-order", "enum34", "mypy", "typed-ast"]
-websupport = ["sqlalchemy (>=0.9)", "whoosh (>=2.0)"]
-
 [[package]]
 category = "main"
 description = "A sphinx extension that automatically documents argparse commands and options"
@@ -1201,10 +1077,6 @@ version = "0.2.5"
 
 [package.dependencies]
 sphinx = ">=1.2.0"
-
-[package.extras]
-dev = ["pytest", "sphinx-rtd-theme"]
-markdown = ["CommonMark (>=0.5.6)"]
 
 [[package]]
 category = "main"
@@ -1254,9 +1126,6 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.1.2"
 
-[package.extras]
-test = ["pytest", "mock"]
-
 [[package]]
 category = "main"
 description = "ANSII Color formatting for output in terminal."
@@ -1272,9 +1141,6 @@ name = "testpath"
 optional = false
 python-versions = "*"
 version = "0.4.2"
-
-[package.extras]
-test = ["pathlib2"]
 
 [[package]]
 category = "dev"
@@ -1313,10 +1179,6 @@ virtualenv = ">=14.0.0"
 python = "<3.8"
 version = ">=0.12,<1"
 
-[package.extras]
-docs = ["sphinx (>=2.0.0,<3)", "towncrier (>=18.5.0)", "pygments-github-lexers (>=0.0.5)", "sphinxcontrib-autoprogram (>=0.1.5)"]
-testing = ["freezegun (>=0.3.11,<1)", "pathlib2 (>=2.3.3,<3)", "pytest (>=4.0.0,<6)", "pytest-cov (>=2.5.1,<3)", "pytest-mock (>=1.10.0,<2)", "pytest-xdist (>=1.22.2,<2)", "pytest-randomly (>=1.2.3,<2)", "flaky (>=3.4.0,<4)", "psutil (>=5.6.1,<6)"]
-
 [[package]]
 category = "main"
 description = "Fast, Extensible Progress Meter"
@@ -1324,9 +1186,6 @@ name = "tqdm"
 optional = true
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "4.36.1"
-
-[package.extras]
-dev = ["py-make (>=0.1.0)", "twine", "argopt", "pydoc-markdown"]
 
 [[package]]
 category = "main"
@@ -1340,9 +1199,6 @@ version = "4.3.3"
 decorator = "*"
 ipython-genutils = "*"
 six = "*"
-
-[package.extras]
-test = ["pytest", "mock"]
 
 [[package]]
 category = "main"
@@ -1379,11 +1235,6 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4"
 version = "1.25.6"
 
-[package.extras]
-brotli = ["brotlipy (>=0.6.0)"]
-secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "certifi", "ipaddress"]
-socks = ["PySocks (>=1.5.6,<1.5.7 || >1.5.7,<2.0)"]
-
 [[package]]
 category = "dev"
 description = "Virtual Python Environment builder"
@@ -1391,10 +1242,6 @@ name = "virtualenv"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "16.7.5"
-
-[package.extras]
-docs = ["sphinx (>=1.8.0,<2)", "towncrier (>=18.5.0)", "sphinx-rtd-theme (>=0.4.2,<1)"]
-testing = ["pytest (>=4.0.0,<5)", "coverage (>=4.5.0,<5)", "pytest-timeout (>=1.3.0,<2)", "six (>=1.10.0,<2)", "pytest-xdist", "pytest-localserver", "pypiserver", "mock", "xonsh"]
 
 [[package]]
 category = "main"
@@ -1443,10 +1290,6 @@ version = "0.6.0"
 
 [package.dependencies]
 more-itertools = "*"
-
-[package.extras]
-docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
-testing = ["pathlib2", "contextlib2", "unittest2"]
 
 [extras]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "m2r"]
@@ -1499,7 +1342,7 @@ jeepney = ["13806f91a96e9b2623fd2a81b950d763ee471454aafd9eb6d75dbe7afce428fb", "
 jinja2 = ["74320bb91f31270f9551d46522e33af46a80c3d619f4a4bf42b3164d30b5911f", "9fe95f19286cfefaa917656583d020be14e7859c6b0252588391e47db34527de"]
 jsonschema = ["5f9c0a719ca2ce14c5de2fd350a64fd2d13e8539db29836a86adc990bb1a068f", "8d4a2b7b6c2237e0199c8ea1a6d3e05bf118e289ae2b9d7ba444182a2959560d"]
 jupyter-client = ["6a6d415c62179728f6d9295b37356d8f6833e9e01c2b6e1901dc555571f57b21", "f406f214f9daa92be110d5b83d62f3451ffc73d3522db7350f0554683533ab18"]
-jupyter-core = ["2c6e7c1e9f2ac45b5c2ceea5730bc9008d92fe59d0725eac57b04c0edfba24f7", "f4fa22d6cf25f34807c995f22d2923693575c70f02557bcbfbe59bd5ec8d8b84"]
+jupyter-core = ["1368a838bba378c3c99f54c2961489831ea929ec7689a1d59d9844e584bc27dc", "85103cee6548992780912c1a0a9ec2583a4a18f1ef79a248ec0db4446500bce3"]
 keyring = ["91037ccaf0c9a112a76f7740e4a416b9457a69b66c2799421581bee710a974b3", "f5bb20ea6c57c2360daf0c591931c9ea0d7660a8d9e32ca84d63273f131ea605"]
 kiwisolver = ["05b5b061e09f60f56244adc885c4a7867da25ca387376b02c1efc29cc16bcd0f", "26f4fbd6f5e1dabff70a9ba0d2c4bd30761086454aa30dddc5b52764ee4852b7", "3b2378ad387f49cbb328205bda569b9f87288d6bc1bf4cd683c34523a2341efe", "400599c0fe58d21522cae0e8b22318e09d9729451b17ee61ba8e1e7c0346565c", "47b8cb81a7d18dbaf4fed6a61c3cecdb5adec7b4ac292bddb0d016d57e8507d5", "53eaed412477c836e1b9522c19858a8557d6e595077830146182225613b11a75", "58e626e1f7dfbb620d08d457325a4cdac65d1809680009f46bf41eaf74ad0187", "5a52e1b006bfa5be04fe4debbcdd2688432a9af4b207a3f429c74ad625022641", "5c7ca4e449ac9f99b3b9d4693debb1d6d237d1542dd6a56b3305fe8a9620f883", "682e54f0ce8f45981878756d7203fd01e188cc6c8b2c5e2cf03675390b4534d5", "79bfb2f0bd7cbf9ea256612c9523367e5ec51d7cd616ae20ca2c90f575d839a2", "7f4dd50874177d2bb060d74769210f3bce1af87a8c7cf5b37d032ebf94f0aca3", "8944a16020c07b682df861207b7e0efcd2f46c7488619cb55f65882279119389", "8aa7009437640beb2768bfd06da049bad0df85f47ff18426261acecd1cf00897", "939f36f21a8c571686eb491acfffa9c7f1ac345087281b412d63ea39ca14ec4a", "9733b7f64bd9f807832d673355f79703f81f0b3e52bfce420fc00d8cb28c6a6c", "a02f6c3e229d0b7220bd74600e9351e18bc0c361b05f29adae0d10599ae0e326", "a0c0a9f06872330d0dd31b45607197caab3c22777600e88031bfe66799e70bb0", "acc4df99308111585121db217681f1ce0eecb48d3a828a2f9bbf9773f4937e9e", "b64916959e4ae0ac78af7c3e8cef4becee0c0e9694ad477b4c6b3a536de6a544", "d3fcf0819dc3fea58be1fd1ca390851bdb719a549850e708ed858503ff25d995", "d52e3b1868a4e8fd18b5cb15055c76820df514e26aa84cc02f593d99fef6707f", "db1a5d3cc4ae943d674718d6c47d2d82488ddd94b93b9e12d24aabdbfe48caee", "e3a21a720791712ed721c7b95d433e036134de6f18c77dbe96119eaf7aa08004", "e8bf074363ce2babeb4764d94f8e65efd22e6a7c74860a4f05a6947afc020ff2", "f16814a4a96dc04bf1da7d53ee8d5b1d6decfc1a92a63349bb15d37b6a263dd9", "f2b22153870ca5cf2ab9c940d7bc38e8e9089fa0f7e5856ea195e1cf4ff43d5a", "f790f8b3dff3d53453de6a7b7ddd173d2e020fb160baff578d578065b108a05f"]
 lazy-object-proxy = ["02b260c8deb80db09325b99edf62ae344ce9bc64d68b7a634410b8e9a568edbf", "18f9c401083a4ba6e162355873f906315332ea7035803d0fd8166051e3d402e3", "1f2c6209a8917c525c1e2b55a716135ca4658a3042b5122d4e3413a4030c26ce", "2f06d97f0ca0f414f6b707c974aaf8829c2292c1c497642f63824119d770226f", "616c94f8176808f4018b39f9638080ed86f96b55370b5a9463b2ee5c926f6c5f", "63b91e30ef47ef68a30f0c3c278fbfe9822319c15f34b7538a829515b84ca2a0", "77b454f03860b844f758c5d5c6e5f18d27de899a3db367f4af06bec2e6013a8e", "83fe27ba321e4cfac466178606147d3c0aa18e8087507caec78ed5a966a64905", "84742532d39f72df959d237912344d8a1764c2d03fe58beba96a87bfa11a76d8", "874ebf3caaf55a020aeb08acead813baf5a305927a71ce88c9377970fe7ad3c2", "9f5caf2c7436d44f3cec97c2fa7791f8a675170badbfa86e1992ca1b84c37009", "a0c8758d01fcdfe7ae8e4b4017b13552efa7f1197dd7358dc9da0576f9d0328a", "a4def978d9d28cda2d960c279318d46b327632686d82b4917516c36d4c274512", "ad4f4be843dace866af5fc142509e9b9817ca0c59342fdb176ab6ad552c927f5", "ae33dd198f772f714420c5ab698ff05ff900150486c648d29951e9c70694338e", "b4a2b782b8a8c5522ad35c93e04d60e2ba7f7dcb9271ec8e8c3e08239be6c7b4", "c462eb33f6abca3b34cdedbe84d761f31a60b814e173b98ede3c81bb48967c4f", "fd135b8d35dfdcdb984828c84d695937e58cc5f49e1c854eb311c4d6aa03f4f1"]
