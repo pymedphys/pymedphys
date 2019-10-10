@@ -18,6 +18,3 @@ library usage.
 
 .. toctree::
     :maxdepth: 1
-
-    trf_mudensity
-    gamma_from_dicom
