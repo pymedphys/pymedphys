@@ -31,6 +31,10 @@ review and open source distribution.**
 *The documentation links on this page are currently just placeholders while the
 documentation for* ``v0.12.0`` *is being written.*
 
+To view the developmental documentation see https://master--pymedphys.netlify.com.
+To see the stable documentation for the most recent PyPI release see 
+https://docs.pymedphys.com.
+
 
 First steps
 -----------
