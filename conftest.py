@@ -38,7 +38,7 @@ def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
     relative_path_list = relative_path.split(os.path.sep)
 
     return (
-        relative_path_list > 1
+        len(relative_path_list) > 1
         and relative_path_list[0] == "examples"
         and relative_path_list[1] == "labs"
     )
