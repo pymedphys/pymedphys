@@ -35,12 +35,10 @@ def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
     """
 
     relative_path = os.path.relpath(str(path), os.path.dirname(__file__))
+    relative_path_list = relative_path.split(os.path.sep)
 
     return (
-        relative_path.startswith("scratch")
-        or relative_path.startswith("docs")
-        or "node_modules" in relative_path
-        or "xlwings" in relative_path
-        or "language-server" in relative_path
-        or relative_path.startswith("scripts")
+        len(relative_path_list) > 1
+        and relative_path_list[0] == "examples"
+        and relative_path_list[1] == "labs"
     )
