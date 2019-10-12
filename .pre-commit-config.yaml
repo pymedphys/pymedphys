@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 -   repo: https://github.com/SimonBiggs/nbstripout
-    rev: master
+    rev: 0a4fa37151ce3c2fb522bf64469224c831a41773
     hooks:
     -   id: nbstripout
 -   repo: https://github.com/pre-commit/pre-commit-hooks
@@ -15,7 +15,7 @@ repos:
     -   id: check-toml
     -   id: check-added-large-files
 -   repo: https://github.com/timothycrosley/isort
-    rev: e13a1685ecf34b5b629b21f21b3fead3cc5ee957
+    rev: 4.3.21
     hooks:
     -   id: isort
         additional_dependencies: ['isort[pyproject]']
