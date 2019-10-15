@@ -1,6 +1,6 @@
-===================================
-Linux Contributor Environment Setup
-===================================
+=====================================
+Windows Contributor Environment Setup
+=====================================
 
 .. contents::
     :local:
