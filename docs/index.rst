@@ -7,6 +7,22 @@ Overview
 
 .. include:: ../README.rst
    :start-after: START_OF_DOCS_IMPORT
+   :end-before: END_OF_DOCS_IMPORT
+
+.. _`New to Python`: /tutes/python.html
+.. _`Installation`: /tutes/install.html
+.. _`Part 1: Name`: /tutes/part-1.html
+.. _`Part 2: Name`: /tutes/part-2.html
+
+.. _`Tutorials`: /tutes/index.html
+.. _`How-To guides`: /howto/index.html
+.. _`Reference Documents`: /ref/index.html
+.. _`Explanatory documents`: /explain/index.html
+
+.. _`contributor documentation`: /contrib/index.html
+.. _`labs documentation`: /labs/index.html
+
+.. _`Release Notes`: /release-notes.html
 
 .. toctree::
     :hidden:
