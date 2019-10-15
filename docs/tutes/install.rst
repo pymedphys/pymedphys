@@ -22,7 +22,7 @@ version from `here <https://www.anaconda.com/download/>`__.
 .. image:: ../img/add_anaconda_to_path.png
 
 On Linux or MacOS we recommend not using your system Python and instead
-managing your Python installation using something like `pyenv`__
+managing your Python installation using something like `pyenv`_.
 
 .. _`pyenv`: https://github.com/pyenv/pyenv-installer#install
 
