@@ -191,18 +191,18 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 
-.. _`New to Python` : https://docs.pymedphys.com/tutes/python
-.. _`Installation` : https://docs.pymedphys.com/tutes/install
-.. _`Part 1: Name` : https://docs.pymedphys.com/tutes/part-1
-.. _`Part 2: Name` : https://docs.pymedphys.com/tutes/part-2
+.. _`New to Python` : https://master--pymedphys.netlify.com/tutes/python
+.. _`Installation` : https://master--pymedphys.netlify.com/tutes/install
+.. _`Part 1: Name` : https://master--pymedphys.netlify.com/tutes/part-1
+.. _`Part 2: Name` : https://master--pymedphys.netlify.com/tutes/part-2
 
 
-.. _`Tutorials`: https://docs.pymedphys.com/tutes
-.. _`How-To guides`: https://docs.pymedphys.com/howto
-.. _`Reference Documents`: https://docs.pymedphys.com/ref
-.. _`Explanatory documents`: https://docs.pymedphys.com/explain
+.. _`Tutorials`: https://master--pymedphys.netlify.com/tutes
+.. _`How-To guides`: https://master--pymedphys.netlify.com/howto
+.. _`Reference Documents`: https://master--pymedphys.netlify.com/ref
+.. _`Explanatory documents`: https://master--pymedphys.netlify.com/explain
 
-.. _`contributor documentation`: https://docs.pymedphys.com/contrib
-.. _`labs documentation`: https://docs.pymedphys.com/labs
+.. _`contributor documentation`: https://master--pymedphys.netlify.com/contrib
+.. _`labs documentation`: https://master--pymedphys.netlify.com/labs
 
 .. _`Release Notes`: http://docs.pymedphys.com/getting-started/changelog.html
