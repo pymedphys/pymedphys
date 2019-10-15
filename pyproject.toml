@@ -44,11 +44,11 @@ pymssql = "*"
 shapely = "*"
 
 # labs
-tqdm = { version = "*", optional = true }
-python_dateutil = { version = "*", optional = true }
-Pillow = { version = "*", optional = true }
-imageio = { version = "*", optional = true }
-scikit-image = { version = "*", optional = true }
+tqdm = "*"
+python_dateutil = "*"
+Pillow = "*"
+imageio = "*"
+scikit-image = "*"
 
 # docs
 sphinx = { version =">= 1.4, < 1.8", optional = true }
@@ -109,10 +109,6 @@ docs = [
     "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse",
     "nbsphinx", "jupyter_client", "ipython", "ipykernel",
     "m2r"
-]
-
-labs = [
-    "tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"
 ]
 
 pytest = [
