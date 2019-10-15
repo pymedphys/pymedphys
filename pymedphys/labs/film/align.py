@@ -23,11 +23,14 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from scipy.optimize import basinhopping
 
 import skimage
+import skimage.color.adapt_rgb
+import skimage.filters
 
 
 def align_images(
