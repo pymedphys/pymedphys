@@ -16,6 +16,7 @@ Overview
 * Run ``poetry install`` within the root of the repo
 * Run ``poetry run pre-commit install``
 * Install ``pandoc`` via your package manager
+
   * eg. ``sudo apt-get install pandoc``
 
 You're good to go.
