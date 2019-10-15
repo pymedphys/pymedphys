@@ -9,20 +9,20 @@ Overview
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 
-.. _`New to Python`: :ref:`tutes/python`
-.. _`Installation`: :ref:`tutes/install`
-.. _`Part 1: Name`: :ref:`tutes/part-1`
-.. _`Part 2: Name`: :ref:`tutes/part-2`
+.. _`New to Python`: /tutes/python.html
+.. _`Installation`: /tutes/install.html
+.. _`Part 1: Name`: /tutes/part-1.html
+.. _`Part 2: Name`: /tutes/part-2.html
 
-.. _`Tutorials`: :ref:`tutes/index`
-.. _`How-To guides`: :ref:`howto/index`
-.. _`Reference Documents`: :ref:`ref/index`
-.. _`Explanatory documents`: :ref:`explain/index`
+.. _`Tutorials`: /tutes/index.html
+.. _`How-To guides`: /howto/index.html
+.. _`Reference Documents`: /ref/index.html
+.. _`Explanatory documents`: /explain/index.html
 
-.. _`contributor documentation`: :ref:`contrib/index`
-.. _`labs documentation`: :ref:`labs/index`
+.. _`contributor documentation`: /contrib/index.html
+.. _`labs documentation`: /labs/index.html
 
-.. _`Release Notes`: release-notes
+.. _`Release Notes`: /release-notes.html
 
 .. toctree::
     :hidden:
