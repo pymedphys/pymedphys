@@ -1,9 +1,9 @@
 |logo|
 
-.. START_OF_DOCS_IMPORT
-
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/pymedphys_title.png
     :target: https://docs.pymedphys.com/
+
+.. START_OF_DOCS_IMPORT
 
 **A community effort to develop a standard library and platform for Medical
 Physics in Python. Building quality transparent software together via peer
@@ -27,7 +27,6 @@ review and open source distribution.**
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
-
 *The documentation links on this page are currently just placeholders while the
 documentation for* ``v0.12.0`` *is being written.*
 
@@ -44,12 +43,6 @@ for you:
 
 * From scratch: `New to Python`_ | `Installation`_
 * Tutorials: `Part 1: Name`_ | `Part 2: Name`_
-
-.. _`New to Python` : https://docs.pymedphys.com/tutes/python
-.. _`Installation` : https://docs.pymedphys.com/tutes/install
-.. _`Part 1: Name` : https://docs.pymedphys.com/tutes/part-1
-.. _`Part 2: Name` : https://docs.pymedphys.com/tutes/part-2
-
 
 How the documentation is organised
 ----------------------------------
@@ -69,11 +62,6 @@ you to know where to look for things:
   implementation of the tools and provides justifications for development
   decisions.
 
-.. _`Tutorials`: https://docs.pymedphys.com/tutes
-.. _`How-To guides`: https://docs.pymedphys.com/howto
-.. _`Reference Documents`: https://docs.pymedphys.com/ref
-.. _`Explanatory documents`: https://docs.pymedphys.com/explain
-
 The above layout has been heavily inspired by both the `Django documentation`_
 and `Daniele Procida's writeup`_.
 
@@ -90,9 +78,6 @@ Beyond the user documentation there are two other sections, the
 contributor, and the `labs documentation`_ which details code contributed by
 the community that aims to one day be refined to become part of the primary
 ``pymedphys`` library.
-
-.. _`contributor documentation`: https://docs.pymedphys.com/contrib
-.. _`labs documentation`: https://docs.pymedphys.com/labs
 
 What is PyMedPhys?
 ------------------
@@ -118,9 +103,7 @@ entire API will change multiple times before a ``1.0.0`` release. In practice,
 this means that upgrading ``pymedphys`` to a new version will possibly break
 any code that was using the old version of pymedphys. We try to be abreast of
 this by providing details of any breaking changes from one release to the next
-within the `Release Notes
-<http://pymedphys.com/getting-started/changelog.html>`__.
-
+within the `Release Notes`_.
 
 Our Team
 --------
@@ -203,3 +186,23 @@ Past contributors
 .. _`University of Calgary`: http://www.ucalgary.ca/
 
 .. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
+
+
+.. END_OF_DOCS_IMPORT
+
+
+.. _`New to Python` : https://docs.pymedphys.com/tutes/python
+.. _`Installation` : https://docs.pymedphys.com/tutes/install
+.. _`Part 1: Name` : https://docs.pymedphys.com/tutes/part-1
+.. _`Part 2: Name` : https://docs.pymedphys.com/tutes/part-2
+
+
+.. _`Tutorials`: https://docs.pymedphys.com/tutes
+.. _`How-To guides`: https://docs.pymedphys.com/howto
+.. _`Reference Documents`: https://docs.pymedphys.com/ref
+.. _`Explanatory documents`: https://docs.pymedphys.com/explain
+
+.. _`contributor documentation`: https://docs.pymedphys.com/contrib
+.. _`labs documentation`: https://docs.pymedphys.com/labs
+
+.. _`Release Notes`: http://docs.pymedphys.com/getting-started/changelog.html
