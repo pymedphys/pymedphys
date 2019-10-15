@@ -16,6 +16,7 @@ Anaconda Python distribution. Download the latest Anaconda **Python 3** (not 2)
 version from `here <https://www.anaconda.com/download/>`__.
 
 .. note::
+
     When installing Anaconda make sure to install it for your user only, and
     tick the option "add to path".
 
@@ -46,6 +47,7 @@ running the following command substituting in the name of the file you
 downloaded:
 
 .. code:: bash
+
     pip install ./Shapely‑1.6.4.post2‑cp37‑cp37m‑win_amd64.whl
 
 
@@ -63,16 +65,19 @@ This in particular impacts MacOS where you will need to install both
 So, do the following to install homebrew (as described at <https://brew.sh/>):
 
 .. code:: bash
+
     /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 
 Open a new shell, then run:
 
 .. code:: bash
+
     brew install freetds
 
 To install cython run:
 
 .. code:: bash
+
     pip install cython
 
 
