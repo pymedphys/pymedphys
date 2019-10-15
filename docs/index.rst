@@ -7,7 +7,7 @@ Overview
 
 .. include:: ../README.rst
    :start-after: START_OF_DOCS_IMPORT
-   :end-after: END_OF_DOCS_IMPORT
+   :end-before: END_OF_DOCS_IMPORT
 
 .. _`New to Python`: :ref:`tutes/python`
 .. _`Installation`: :ref:`tutes/install`
