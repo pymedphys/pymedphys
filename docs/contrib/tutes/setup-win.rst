@@ -12,9 +12,6 @@ Overview
 
 * Install Python 3.7
 * `Install Poetry`_
-* Install shapely from <https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely>.
-
-  * Install the downloaded wheel with pip as ``pip install ./file-name.whl``
 * Clone the PyMedPhys git repo
 * Run ``poetry install`` within the root of the repo
 * Run ``poetry run pre-commit install``
@@ -184,16 +181,6 @@ IT restrictions at your institution), you can also clone via HTTPS as follows:
 .. code:: bash
 
     git clone https://github.com/pymedphys/pymedphys.git
-
-
-Install shapely
----------------
-
-Within the root of the pymedphys repo run:
-
-.. code:: bash
-
-    pip install -r tox-requirements.txt
 
 
 Install poetry

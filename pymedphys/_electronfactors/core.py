@@ -31,8 +31,11 @@ import numpy as np
 from scipy.interpolate import SmoothBivariateSpline
 from scipy.optimize import basinhopping
 
-import shapely.affinity as aff
-import shapely.geometry as geo
+try:
+    import shapely.affinity as aff
+    import shapely.geometry as geo
+except ImportError:
+    pass
 
 
 def spline_model(
