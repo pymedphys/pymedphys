@@ -32,8 +32,8 @@ from scipy.interpolate import SmoothBivariateSpline
 from scipy.optimize import basinhopping
 
 try:
-    import shapely.affinity as aff
-    import shapely.geometry as geo
+    import shapely.affinity
+    import shapely.geometry
 except ImportError:
     pass
 
@@ -325,7 +325,7 @@ def calculate_percent_prediction_differences(
 
 def shapely_insert(x, y):
     """Return a shapely object from x and y coordinates."""
-    return geo.Polygon(np.transpose((x, y)))
+    return shapely.geometry.Polygon(np.transpose((x, y)))
 
 
 def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
@@ -340,7 +340,7 @@ def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
 
     def minimising_function(optimiser_input):
         x, y = optimiser_input
-        point = geo.Point(x, y)
+        point = shapely.geometry.Point(x, y)
 
         if insert.contains(point):
             edge_distance = point.distance(boundary)
@@ -372,7 +372,7 @@ def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
 def calculate_width(x, y, circle_centre):
     """Return the equivalent ellipse width."""
     insert = shapely_insert(x, y)
-    point = geo.Point(*circle_centre)
+    point = shapely.geometry.Point(*circle_centre)
 
     if insert.contains(point):
         distance = point.distance(insert.boundary)
@@ -402,13 +402,17 @@ def parameterise_insert(x, y, callback=None):
 def visual_alignment_of_equivalent_ellipse(x, y, width, length, callback):
     """Visually align the equivalent ellipse to the insert."""
     insert = shapely_insert(x, y)
-    unit_circle = geo.Point(0, 0).buffer(1)
-    initial_ellipse = aff.scale(unit_circle, xfact=width / 2, yfact=length / 2)
+    unit_circle = shapely.geometry.Point(0, 0).buffer(1)
+    initial_ellipse = shapely.affinity.scale(
+        unit_circle, xfact=width / 2, yfact=length / 2
+    )
 
     def minimising_function(optimiser_input):
         x_shift, y_shift, rotation_angle = optimiser_input
-        rotated = aff.rotate(initial_ellipse, rotation_angle, use_radians=True)
-        translated = aff.translate(rotated, xoff=x_shift, yoff=y_shift)
+        rotated = shapely.affinity.rotate(
+            initial_ellipse, rotation_angle, use_radians=True
+        )
+        translated = shapely.affinity.translate(rotated, xoff=x_shift, yoff=y_shift)
 
         disjoint_area = (
             translated.difference(insert).area + insert.difference(translated).area
