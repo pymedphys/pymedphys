@@ -18,3 +18,5 @@ library usage.
 
 .. toctree::
     :maxdepth: 1
+
+    electronfactors
