@@ -17,6 +17,7 @@ Overview
 * `Install Poetry`_
 * `Install git`_
 * Clone the PyMedPhys git repo
+
   * eg. ``git clone https://github.com/pymedphys/pymedphys.git``
 * Run ``poetry install`` within the root of the repo
 * Run ``poetry run pre-commit install``
