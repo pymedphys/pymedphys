@@ -35,22 +35,6 @@ PyMedPhys uses a range of dependencies, most of which can be automatically
 installed. However there are two libraries which need a few extra steps
 depending on the OS you are using.
 
-Extra step for Windows
-----------------------
-
-The ``electronfactors`` module makes use of the ``GEOS`` based package
-``shapely``.
-At this current point in time ``shapely`` cannot be installed directly from
-pip on Windows. Instead you will be required to install shapely by downloading
-the wheel from <https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely> and then
-running the following command substituting in the name of the file you
-downloaded:
-
-.. code:: bash
-
-    pip install ./Shapely‑1.6.4.post2‑cp37‑cp37m‑win_amd64.whl
-
-
 Extra steps for MacOS
 ---------------------
 
@@ -81,10 +65,10 @@ To install cython run:
     pip install cython
 
 
-Extra steps for Linux
----------------------
+Extra steps for Linux and Windows
+---------------------------------
 
-There are none, because Linux is awesome.
+At this point in time there are none.
 
 
 Installing PyMedPhys
