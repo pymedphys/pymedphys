@@ -52,10 +52,8 @@ Install contributor system dependencies
 Python
 ......
 
-Download the latest `Anaconda`_ **Python 3** version.
-
-When installing Anaconda make sure to install it for your user only, and tick
-the option "add to path".
+Download the latest `Anaconda`_ **Python 3** version. When installing Anaconda
+make sure to install it for your user only, and tick the option "add to path":
 
 .. image:: /img/add_anaconda_to_path.png
 
@@ -71,33 +69,34 @@ Download and install `VSCode`_. Make sure to tick the "Open with Code" boxes:
 Git and pandoc
 ..............
 
-Use the following links to install the following packages. If you don't have
-admin access make sure to install within your user account. When installing
-git it will ask you what default text editor to use. If you don't know what
-``vim`` is make sure to change the default setting from ``vim`` to VSCode (that
-was just installed).
+Use the following links to install git and pandoc.
 
 * `Install git`_
 * `Install pandoc`_
+
+If you don't have admin access make sure to install within your user account.
+When installing git it will ask you what default text editor to use. If you
+don't know what ``vim`` is make sure to change the default setting from ``vim``
+to VSCode (that was just installed).
 
 
 Install poetry
 ..............
 
-Within a command prompt run according to the instruction at <https://poetry.eustace.io/docs/#installation>:
+To install Poetry run the following within a command prompt:
 
 .. code:: bash
 
     curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
 
-
-You will need to close and reopen your command prompt after installing Poetry.
+What this does is detailed in the `Install Poetry`_ docs. You will need to
+close and reopen your command prompt after installing Poetry.
 
 
 Install the development version of PyMedPhys and pre-commit
 -----------------------------------------------------------
 
-To get download a copy of the PyMedPhys repository onto your machine run:
+To download a copy of the PyMedPhys repository onto your machine run:
 
 .. code:: bash
 
