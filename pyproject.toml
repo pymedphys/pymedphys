@@ -41,7 +41,7 @@ pandas = "*"
 pydicom = "*"
 
 pymssql = "*"
-shapely = "*"
+shapely = { version ="*", optional = true }
 
 # labs
 tqdm = "*"
@@ -109,6 +109,10 @@ docs = [
     "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse",
     "nbsphinx", "jupyter_client", "ipython", "ipykernel",
     "m2r"
+]
+
+extras = [
+    "shapely"
 ]
 
 pytest = [
