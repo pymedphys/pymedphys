@@ -6,27 +6,29 @@ Windows Contributor Environment Setup
     :local:
     :backlinks: entry
 
+All contributor installation steps can be completed without administration
+access. To achieve this choose "Install for my user only" when prompted.
+
 
 Overview
 ========
 
-* Install Python 3.7
+* Install Python 3.7 (with `Anaconda`_ for example)
 * `Install Poetry`_
-* Install shapely from <https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely>.
-
-  * Install the downloaded wheel with pip as ``pip install ./file-name.whl``
+* `Install git`_
 * Clone the PyMedPhys git repo
+
+  * eg. ``git clone https://github.com/pymedphys/pymedphys.git``
 * Run ``poetry install`` within the root of the repo
 * Run ``poetry run pre-commit install``
-* Install ``pandoc`` with `chocolatey`_
-
-  * eg: ``choco install pandoc``
+* `Install pandoc`_
 
 You're good to go.
 
 .. _`Install Poetry`: https://poetry.eustace.io/docs/#installation
-.. _`chocolatey`: https://chocolatey.org/install
-
+.. _`Install git`: https://git-scm.com/download/win
+.. _`Install pandoc`: https://pandoc.org/installing.html
+.. _`raising an issue`: https://github.com/pymedphys/pymedphys/issues/new
 
 Opinionated Recommendations
 ===========================
@@ -44,172 +46,69 @@ Opinionated Recommendations
 More details
 ============
 
-
-Get Python & Anaconda
----------------------
-
-Anaconda is a free, open source, optimized Python (and R) distrubution. It
-includes:
-
-- `conda <https://conda.io/docs/index.html>`__, a powerful package and
-  environment management system.
-- Python
-- Over 100 automatically installed scientific packages (`numpy`, `scipy`, etc.)
-  that have been tested to work well together, along with their dependencies.
-
-Download the latest Anaconda Python **3** version from
-`here <https://www.anaconda.com/download/>`__
-
-When installing Anaconda make sure to install it for your user only, and tick
-the option “add to path”.
-
-.. image:: /img/add_anaconda_to_path.png
-
-You might notice that Microsoft Visual Studio Code (VS Code) can be installed
-via the Anaconda installation. However, we recommend installing VS Code from
-its official install distribution as outlined below in
-:ref:`text-editor-section`. The Anaconda installer does not provide the
-opportunity to tick the “Open with Code” boxes detailed below.
-
-.. _text-editor-section:
-
-Get a text editor - VS Code
----------------------------
-
-Microsoft's Visual Studio Code is an excellent, free, open-source code editor.
-It comes with many great features for both Python and Git. You can download
-the official release `here <https://code.visualstudio.com/>`__.
-
-When installing VS Code, make sure to tick the “Open with Code” boxes:
-
-.. image:: /img/open_with_code.png
-
-You will need to install a few extensions in VS Code to complete your set up.
-This is very easy to do via the Extensions Marketplace once VS Code is
-installed. With VS Code running, access the marketplace by clicking this symbol
-on the left toolbar:
-
-.. image:: /img/vscode_extensions.png
-
-
-Get a package manager - Chocolatey
-------------------------------------------------------
-
-Chocolatey is a package manager for Windows. It makes installing software
-development tools quite a breeze. Follow
-`these instructions <https://chocolatey.org/install>`__ to install Chocolatey.
-
-
-.. _system-dependencies-section:
-
 Install contributor system dependencies
 ---------------------------------------
 
-Use Chocolatey within an administrator command prompt to install Git and pandoc
+Python
+......
 
-.. code:: bash
+Download the latest `Anaconda`_ **Python 3** version. When installing Anaconda
+make sure to install it for your user only, and tick the option "add to path":
 
-    choco install git pandoc
-
-
-Configure Git and get a GitHub account
---------------------------------------
-
-If you successfully completed the instructions in
-:ref:`system-dependencies-section`, you should now have Git installed. It is
-probably worth spending some time configuring Git according to your
-preferences - you can find a good beginners' resource on this
-`here <https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup>`__.
-There are lots of useful tips and tricks that can improve your Git experience.
-At a minimum, we do recommend you set your username and email from within a
-terminal as follows:
-
-.. code:: bash
-
-    git config --global user.name "Firstname Lastname"
-    git config --global user.email "example@example.com"
-
-Make a GitHub account `here <https://github.com/join>`__. Once you have an
-account, you will need commit rights to this repository in order to make
-contributions. Create an issue on GitHub within the PyMedPhys repository
-`here <https://github.com/pymedphys/pymedphys/issues/new/>`__
-and include "request for commit rights" or similar in your issue's content,
-along with "@SimonBiggs" and "@Matthew-Jennings" to ensure it is seen!
-
-Whenever you wish to discuss anything about PyMedPhys, please create an issue
-on GitHub. It can be to ask for help, suggest a change, provide feedback, or
-anything else regarding PyMedPhys. Write "@" followed by someone's username if
-you would like to talk to someone specifically.
-
-The real power of GitHub comes from Git itself. A great piece of Git
-documentation can be found
-`here <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__.
-Use this documentation to begin to get a feel for what Git is.
+.. image:: /img/add_anaconda_to_path.png
 
 
-Peruse some useful resources
-----------------------------
+VSCode
+......
 
-At this point you might find some of the following resources useful:
+Download and install `VSCode`_. Make sure to tick the "Open with Code" boxes:
 
- * `Numpy for Matlab users (Scipy.org) <https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html>`__.
- * `NumPy for MATLAB users (Mathesaurus) <http://mathesaurus.sourceforge.net/matlab-numpy.html>`__.
- * `Playground and cheatsheet for learning Python <https://github.com/trekhleb/learn-python>`__.
- * `Don't be afraid to commit: Git and GitHub <https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/index.html>`__.
- * Chapter 2 of `The Pragmatic Programmer <https://www.nceclusters.no/globalassets/filer/nce/diverse/the-pragmatic-programmer.pdf>`__.
-
-The "Don't be afraid to commit" resource will be invaluable for these next few
-steps.
+.. image:: /img/open_with_code.png
 
 
-Authenticate your computer to be able to access your GitHub account
--------------------------------------------------------------------
+Git and pandoc
+..............
 
-Follow `these instructions <https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/>`__
-to create and add an SSH key to your GitHub account.
+Use the following links to install git and pandoc.
 
-If all has gone well you should be able to run the following without being
-prompted for a password.
+* `Install git`_
+* `Install pandoc`_
 
-.. code:: bash
-
-    git clone git@github.com:pymedphys/pymedphys.git
-    cd pymedphys
-
-This will download all of PyMedPhys to your local machine.
-
-If you find that you cannot connect to GitHub via SSH (possibly due to
-IT restrictions at your institution), you can also clone via HTTPS as follows:
-
-.. code:: bash
-
-    git clone https://github.com/pymedphys/pymedphys.git
-
-
-Install shapely
----------------
-
-Within the root of the pymedphys repo run:
-
-.. code:: bash
-
-    pip install -r tox-requirements.txt
+If you don't have admin access make sure to install within your user account.
+When installing git it will ask you what default text editor to use. If you
+don't know what ``vim`` is make sure to change the default setting from ``vim``
+to VSCode (that was just installed).
 
 
 Install poetry
---------------
+..............
 
-Within a command prompt run according to the instruction at <https://poetry.eustace.io/docs/#installation>:
+To install Poetry run the following within a command prompt:
 
 .. code:: bash
 
     curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
 
+What this does is detailed in the `Install Poetry`_ docs. You will need to
+close and reopen your command prompt after installing Poetry.
+
 
 Install the development version of PyMedPhys and pre-commit
 -----------------------------------------------------------
 
-Run the following within the root of PyMedPhys
+To download a copy of the PyMedPhys repository onto your machine run:
+
+.. code:: bash
+
+    git clone https://github.com/pymedphys/pymedphys.git
+
+Then change into the newly created directory by running:
+
+.. code:: bash
+
+    cd pymedphys
+
+Then install PyMedPhys and set up pre-commit by running:
 
 .. code:: bash
 
