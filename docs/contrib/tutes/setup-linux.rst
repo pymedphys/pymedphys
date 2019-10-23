@@ -28,16 +28,17 @@ You're good to go.
 Opinionated Recommendations
 ===========================
 
-* Install Python with `pyenv`_
+* Install Python with pyenv
   * Install dependencies: ```sudo apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
 libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
 xz-utils tk-dev libffi-dev liblzma-dev python-openssl git```
-   * `Configure`_ pyenv
+   * `Install pyenv`_
+   * `Configure pyenv`_
 * Install `VSCode`_ as your code editor
 * Install `Jupyter Lab`_ to work with Notebooks
 
 
-.. _`pyenv`: https://github.com/pyenv/pyenv-installer#install
+.. _`Install pyenv`: https://github.com/pyenv/pyenv-installer#install
 .. _`VSCode`: https://code.visualstudio.com/Download
 .. _`Jupyter Lab`: https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html#pip
-.. _`Configure`: https://amaral.northwestern.edu/resources/guides/pyenv-tutorial
+.. _`Configure pyenv`: https://amaral.northwestern.edu/resources/guides/pyenv-tutorial
