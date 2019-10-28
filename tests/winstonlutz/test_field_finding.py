@@ -31,6 +31,8 @@ import pymedphys.labs.winstonlutz.findfield
 
 
 def test_find_initial_field_centre():
+    centre = [20, 5]
+
     field = pymedphys._mocks.profiles.create_square_field_function(
         centre=centre, side_length=10, penumbra_width=1, rotation=20
     )
@@ -44,4 +46,4 @@ def test_find_initial_field_centre():
 
     initial_centre = pymedphys.labs.winstonlutz.findfield.initial_centre(x, y, zz)
 
-    assert initial_centre == centre
+    assert np.allclose(initial_centre, centre)
