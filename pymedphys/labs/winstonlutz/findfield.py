@@ -22,3 +22,22 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+import numpy as np
+import scipy.interpolate
+import scipy.ndimage.measurements
+
+
+def initial_centre(x, y, img):
+    centre_of_mass_index = scipy.ndimage.measurements.center_of_mass(img)
+
+    centre = [
+        _interp_coords(x)(centre_of_mass_index[1]),
+        _interp_coords(y)(centre_of_mass_index[0]),
+    ]
+
+    return centre
+
+
+def _interp_coords(coord):
+    return scipy.interpolate.interp1d(np.arange(len(coord)), coord)
