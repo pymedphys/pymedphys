@@ -66,6 +66,7 @@
     "dtype",
     "einsum",
     "elems",
+    "erfinv",
     "freetds",
     "functools",
     "geos",
