@@ -33,7 +33,7 @@ import pymedphys.labs.winstonlutz.findfield
 def test_find_initial_field_centre():
     centre = [20, 5]
 
-    field = pymedphys._mocks.profiles.create_square_field_function(
+    field = pymedphys._mocks.profiles.create_square_field_function(  # pylint: disable = protected-access
         centre=centre, side_length=10, penumbra_width=1, rotation=20
     )
 
