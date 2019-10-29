@@ -26,6 +26,35 @@
 
 import numpy as np
 
+import matplotlib.transforms
+
+
+def define_penumbra_points(centre, edge_lengths, penumbra, degrees):
+    transform = matplotlib.transforms.Affine2D()
+    transform.rotate_deg(-degrees)
+    transform.translate(*centre)
+
+    (
+        xx_left_right,
+        yy_left_right,
+        xx_top_bot,
+        yy_top_bot,
+    ) = define_penumbra_points_at_origin(edge_lengths, penumbra)
+
+    xx_left_right_transformed, yy_left_right_transformed = apply_transform(
+        xx_left_right, yy_left_right, transform
+    )
+    xx_top_bot_transformed, yy_top_bot_transformed = apply_transform(
+        xx_top_bot, yy_top_bot, transform
+    )
+
+    return (
+        xx_left_right_transformed,
+        yy_left_right_transformed,
+        xx_top_bot_transformed,
+        yy_top_bot_transformed,
+    )
+
 
 def define_penumbra_points_at_origin(edge_lengths, penumbra):
     penumbra_range = np.linspace(-penumbra, penumbra, 11)
@@ -48,3 +77,16 @@ def define_penumbra_points_at_origin(edge_lengths, penumbra):
     xx_top_bot, yy_top_bot = np.meshgrid(*edge_points_top_bot[::-1])
 
     return xx_left_right, yy_left_right, xx_top_bot, yy_top_bot
+
+
+def apply_transform(xx, yy, transform):
+    xx_flat = np.ravel(xx)
+    transformed = transform @ np.vstack([xx_flat, np.ravel(yy), np.ones_like(xx_flat)])
+
+    xx_transformed = transformed[0]
+    yy_transformed = transformed[1]
+
+    xx_transformed.shape = xx.shape
+    yy_transformed.shape = yy.shape
+
+    return xx_transformed, yy_transformed
