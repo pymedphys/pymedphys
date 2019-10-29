@@ -97,7 +97,7 @@ def optimise_rotation(field, centre, edge_lengths, initial_rotation):
         niter=BASINHOPPING_NITER,
         niter_success=3,
         stepsize=90,
-        minimizer_kwargs={"method": "L-BFGS-B"},
+        minimizer_kwargs={"method": "L-BFGS-B", "tol": 0.0001},
     )
 
     predicted_rotation = result.x[0]
@@ -123,7 +123,7 @@ def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
         niter=BASINHOPPING_NITER,
         niter_success=3,
         stepsize=0.25,
-        minimizer_kwargs={"method": "L-BFGS-B", "bounds": bounds},
+        minimizer_kwargs={"method": "L-BFGS-B", "bounds": bounds, "tol": 0.0001},
     )
 
     predicted_centre = result.x
