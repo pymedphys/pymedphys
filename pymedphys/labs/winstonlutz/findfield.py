@@ -29,16 +29,25 @@ import scipy.ndimage.measurements
 
 from .interppoints import define_all_field_points, define_penumbra_points
 
+BASINHOPPING_NITER = 200
+
 
 def field_finding_loop(
-    field, edge_lengths, penumbra, initial_centre, initial_rotation=0
+    field, edge_lengths, penumbra, initial_centre, initial_rotation=0, max_loops=5
 ):
     predicted_rotation = optimise_rotation(
         field, initial_centre, edge_lengths, initial_rotation
     )
 
+    loop_num = 0
+
     while True:
         while True:
+            if loop_num > max_loops:
+                raise ValueError(
+                    f"Unable to find the field within the defined `max_loops = {max_loops}`"
+                )
+
             initial_rotation = predicted_rotation
 
             predicted_centre = optimise_centre(
@@ -57,6 +66,8 @@ def field_finding_loop(
             if np.allclose(predicted_rotation, initial_rotation):
                 break
 
+            loop_num += 1
+
         verification_centre = optimise_centre(
             field, predicted_centre, edge_lengths, penumbra, predicted_rotation
         )
@@ -71,6 +82,8 @@ def field_finding_loop(
 
         print("Field finding did not agree during verification, repeating...")
 
+        loop_num += 1
+
     centre = predicted_centre.tolist()
     return centre, predicted_rotation
 
@@ -81,7 +94,7 @@ def optimise_rotation(field, centre, edge_lengths, initial_rotation):
         to_minimise,
         initial_rotation,
         T=1,
-        niter=200,
+        niter=BASINHOPPING_NITER,
         niter_success=3,
         stepsize=90,
         minimizer_kwargs={"method": "L-BFGS-B"},
@@ -107,8 +120,8 @@ def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
         to_minimise,
         initial_centre,
         T=1,
-        niter=200,
-        niter_success=5,
+        niter=BASINHOPPING_NITER,
+        niter_success=3,
         stepsize=0.25,
         minimizer_kwargs={"method": "L-BFGS-B", "bounds": bounds},
     )

@@ -28,7 +28,7 @@
 import datetime
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import Verbosity, given, settings
 from hypothesis.strategies import floats
 
 import numpy as np
@@ -38,7 +38,11 @@ import pymedphys.labs.winstonlutz.findfield
 
 
 @pytest.mark.slow
-@settings(deadline=datetime.timedelta(milliseconds=2000))
+@settings(
+    deadline=datetime.timedelta(milliseconds=1500),
+    max_examples=10,
+    verbosity=Verbosity.verbose,
+)
 @given(
     floats(-20, 20),
     floats(-20, 20),
@@ -55,8 +59,8 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
         actual_centre, edge_lengths, penumbra, actual_rotation
     )
 
-    x = np.arange(-50, 50, 0.5)
-    y = np.arange(-50, 50, 0.5)
+    x = np.arange(-50, 50, 0.1)
+    y = np.arange(-50, 50, 0.1)
     xx, yy = np.meshgrid(x, y)
     zz = field(xx, yy)
 
