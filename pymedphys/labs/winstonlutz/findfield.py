@@ -35,13 +35,15 @@ BASINHOPPING_NITER = 200
 def field_finding_loop(
     field, edge_lengths, penumbra, initial_centre, initial_rotation=0, max_loops=5
 ):
-    predicted_rotation = optimise_rotation(
-        field, initial_centre, edge_lengths, initial_rotation
-    )
-
     loop_num = 0
 
     while True:
+        predicted_rotation = optimise_rotation(
+            field, initial_centre, edge_lengths, initial_rotation
+        )
+        predicted_centre = optimise_centre(
+            field, initial_centre, edge_lengths, penumbra, predicted_rotation
+        )
         while True:
             if loop_num > max_loops:
                 raise ValueError(
@@ -49,21 +51,17 @@ def field_finding_loop(
                 )
 
             initial_rotation = predicted_rotation
-
-            predicted_centre = optimise_centre(
-                field, initial_centre, edge_lengths, penumbra, predicted_rotation
-            )
-
-            if np.allclose(predicted_centre, initial_centre):
-                break
-
-            initial_centre = predicted_centre
-
             predicted_rotation = optimise_rotation(
                 field, predicted_centre, edge_lengths, initial_rotation
             )
-
             if np.allclose(predicted_rotation, initial_rotation):
+                break
+
+            initial_centre = predicted_centre
+            predicted_centre = optimise_centre(
+                field, initial_centre, edge_lengths, penumbra, predicted_rotation
+            )
+            if np.allclose(predicted_centre, initial_centre):
                 break
 
             loop_num += 1
@@ -75,12 +73,16 @@ def field_finding_loop(
             field, predicted_centre, edge_lengths, predicted_rotation
         )
 
-        if np.allclose(verification_centre, predicted_centre) and np.allclose(
-            verification_rotation, predicted_rotation
+        if np.allclose(
+            verification_centre, predicted_centre, rtol=0.01, atol=0.01
+        ) and np.allclose(
+            verification_rotation, predicted_rotation, rtol=0.01, atol=0.01
         ):
             break
 
         print("Field finding did not agree during verification, repeating...")
+        print(f"{predicted_centre}, {predicted_rotation}")
+        print(f"{verification_centre}, {verification_rotation}")
 
         loop_num += 1
 
@@ -97,7 +99,7 @@ def optimise_rotation(field, centre, edge_lengths, initial_rotation):
         niter=BASINHOPPING_NITER,
         niter_success=3,
         stepsize=90,
-        minimizer_kwargs={"method": "L-BFGS-B", "tol": 0.0001},
+        minimizer_kwargs={"method": "L-BFGS-B"},
     )
 
     predicted_rotation = result.x[0]
@@ -123,7 +125,7 @@ def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
         niter=BASINHOPPING_NITER,
         niter_success=3,
         stepsize=0.25,
-        minimizer_kwargs={"method": "L-BFGS-B", "bounds": bounds, "tol": 0.0001},
+        minimizer_kwargs={"method": "L-BFGS-B", "bounds": bounds},
     )
 
     predicted_centre = result.x
