@@ -25,8 +25,10 @@
 
 # pylint: disable = protected-access
 
+import datetime
+
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import floats
 
 import numpy as np
@@ -36,13 +38,14 @@ import pymedphys.labs.winstonlutz.findfield
 
 
 @pytest.mark.slow
+@settings(deadline=datetime.timedelta(milliseconds=2000))
 @given(
     floats(-20, 20),
     floats(-20, 20),
     floats(10, 20),
     floats(10, 20),
     floats(0.5, 2),
-    floats(0, 360),
+    floats(-360, 360),
 )
 def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rotation):
     edge_lengths = [x_edge, y_edge]
@@ -62,8 +65,12 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
         field, edge_lengths, penumbra, initial_centre
     )
 
-    np.allclose(actual_centre, centre)
-    np.allclose(actual_rotation % 180, rotation)
+    assert np.allclose(actual_centre, centre, rtol=0.001, atol=0.001)
+
+    if np.allclose(*edge_lengths):
+        assert np.allclose(actual_rotation % 90, rotation, rtol=0.001, atol=0.001)
+    else:
+        assert np.allclose(actual_rotation % 180, rotation, rtol=0.001, atol=0.001)
 
 
 def test_find_initial_field_centre():
