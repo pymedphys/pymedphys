@@ -88,6 +88,10 @@ def optimise_rotation(field, centre, edge_lengths, initial_rotation):
     )
 
     predicted_rotation = result.x[0]
+
+    if np.allclose(*edge_lengths, rtol=0.001, atol=0.001):
+        return predicted_rotation % 90
+
     return predicted_rotation % 180
 
 
