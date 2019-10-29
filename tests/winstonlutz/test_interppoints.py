@@ -35,6 +35,55 @@ import pymedphys._mocks.profiles
 import pymedphys.labs.winstonlutz.interppoints
 
 
+@given(
+    floats(-20, 20),
+    floats(-20, 20),
+    floats(10, 20),
+    floats(10, 20),
+    floats(0.5, 2),
+    floats(0, 360),
+)
+def test_field_interp_points(x_centre, y_centre, x_edge, y_edge, penumbra, degrees):
+
+    edge_lengths = [x_edge, y_edge]
+    centre = [x_centre, y_centre]
+
+    field = pymedphys._mocks.profiles.create_rectangular_field_function(
+        centre, edge_lengths, penumbra, degrees
+    )
+    origin_field = pymedphys._mocks.profiles.create_rectangular_field_function(
+        [0, 0], edge_lengths, penumbra, 0
+    )
+
+    (
+        xx_origin_left_right,
+        yy_origin_left_right,
+        xx_origin_top_bot,
+        yy_origin_top_bot,
+    ) = pymedphys.labs.winstonlutz.interppoints.define_penumbra_points_at_origin(
+        edge_lengths, penumbra
+    )
+
+    (
+        xx_left_right,
+        yy_left_right,
+        xx_top_bot,
+        yy_top_bot,
+    ) = pymedphys.labs.winstonlutz.interppoints.define_penumbra_points(
+        centre, edge_lengths, penumbra, degrees
+    )
+
+    assert np.allclose(
+        origin_field(xx_origin_left_right, yy_origin_left_right),
+        field(xx_left_right, yy_left_right),
+    )
+
+    assert np.allclose(
+        origin_field(xx_origin_top_bot, yy_origin_top_bot),
+        field(xx_top_bot, yy_top_bot),
+    )
+
+
 @given(floats(8, 20), floats(8, 20), floats(0.5, 2))
 def test_field_interp_at_origin(x_edge, y_edge, penumbra):
     centre = [0, 0]
