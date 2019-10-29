@@ -78,6 +78,7 @@ pytest = "*"
 pytest-sugar = "*"
 pylint = "*"
 pytest-pylint = "*"
+hypothesis = "*"
 
 # Git Management
 pre-commit = "*"

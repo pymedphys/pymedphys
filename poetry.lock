@@ -242,6 +242,17 @@ version = "3.0.12"
 
 [[package]]
 category = "dev"
+description = "A library for property based testing"
+name = "hypothesis"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+version = "4.42.0"
+
+[package.dependencies]
+attrs = ">=19.2.0"
+
+[[package]]
+category = "dev"
 description = "File identification library for Python"
 name = "identify"
 optional = false
@@ -1293,7 +1304,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar"]
 
 [metadata]
-content-hash = "d98770c0a4115e2dcc5184983999cfdef2de0c21ea4f9202c6be7d3b04042488"
+content-hash = "c31a274ee51be74074156a0b6a730c6bb9a2665575b755c29b73ec4b7cd8b991"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -1322,6 +1333,7 @@ defusedxml = ["6687150770438374ab581bb7a1b327a847dd9c5749e396102de3fad4e8a3ef93"
 docutils = ["6c4f696463b79f1fb8ba0c594b63840ebd41f059e92b31957c46b74a4599b6d0", "9e4d7ecfc600058e07ba661411a2b7de2fd0fafa17d1a7f7361cd47b1175c827", "a2aeea129088da402665e92e0b25b04b073c04b2dce4ab65caaa38b7ce2e1a99"]
 entrypoints = ["589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19", "c70dd71abe5a8c85e55e12c19bd91ccfeec11a6e99044204511f9ed547d48451"]
 filelock = ["18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59", "929b7d63ec5b7d6b71b0fa5ac14e030b3f70b75747cef1b10da9b879fef15836"]
+hypothesis = ["70a80436bdf844e2e9aaabe74100cc62b7e90c150fdd4dd864c64fcfc9bde273", "9663f911d0a0ccb0b602b424d1b599e1a3637cba0e28d669d3d2b8d33ca44516"]
 identify = ["4f1fe9a59df4e80fcb0213086fcf502bc1765a01ea4fe8be48da3b65afd2a017", "d8919589bd2a5f99c66302fec0ef9027b12ae150b0b0213999ad3f695fc7296e"]
 idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
 imageio = ["c9763e5c187ecf74091c845626b0bdcc6130a20a0de7a86ae0108e2b5335ed3f", "f44eb231b9df485874f2ffd22dfd0c3c711e7de076516b9374edea5c65bc67ae"]
