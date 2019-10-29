@@ -26,12 +26,13 @@
 
 # pylint: disable = protected-access
 
+from hypothesis import given
+from hypothesis.strategies import floats
+
 import numpy as np
 
 import pymedphys._mocks.profiles
 import pymedphys.labs.winstonlutz.createaxis
-from hypothesis import given
-from hypothesis.strategies import floats
 
 
 @given(
