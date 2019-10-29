@@ -35,27 +35,25 @@ BASINHOPPING_NITER = 200
 def field_centre_and_rotation_refining(
     field, edge_lengths, penumbra, initial_centre, initial_rotation=0
 ):
-    predicted_centre = optimise_centre(
-        field, initial_centre, edge_lengths, penumbra, initial_rotation
-    )
 
     predicted_rotation = optimise_rotation(
-        field, predicted_centre, edge_lengths, initial_rotation
+        field, initial_centre, edge_lengths, initial_rotation
     )
 
     predicted_centre = optimise_centre(
-        field, predicted_centre, edge_lengths, penumbra, predicted_rotation
+        field, initial_centre, edge_lengths, penumbra, predicted_rotation
     )
 
     predicted_rotation = optimise_rotation(
+        field, predicted_centre, edge_lengths, predicted_rotation
+    )
+
+    verification_rotation = optimise_rotation(
         field, predicted_centre, edge_lengths, predicted_rotation
     )
 
     verification_centre = optimise_centre(
         field, predicted_centre, edge_lengths, penumbra, predicted_rotation
-    )
-    verification_rotation = optimise_rotation(
-        field, predicted_centre, edge_lengths, predicted_rotation
     )
 
     check_rotation_and_centre(
