@@ -69,12 +69,14 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
         field, edge_lengths, penumbra, initial_centre
     )
 
-    assert np.allclose(actual_centre, centre, rtol=0.001, atol=0.001)
+    assert np.allclose(actual_centre, centre, rtol=0.01, atol=0.01)
 
     if np.allclose(*edge_lengths):
-        assert np.allclose(actual_rotation % 90, rotation, rtol=0.001, atol=0.001)
+        diff = (actual_rotation - rotation) % 90
+        assert diff < 0.01 or diff > 89.99
     else:
-        assert np.allclose(actual_rotation % 180, rotation, rtol=0.001, atol=0.001)
+        diff = (actual_rotation - rotation) % 180
+        assert diff < 0.01 or diff > 179.99
 
 
 def test_find_initial_field_centre():
