@@ -65,6 +65,7 @@ m2r  = { version = "*", optional = true }
 # pytest
 pytest = { version ="*", optional = true }
 pytest-sugar  = { version = "*", optional = true }
+hypothesis  = { version = "*", optional = true }
 
 # pylint
 pylint  = { version = "*", optional = true }
@@ -120,7 +121,7 @@ extras = [
 ]
 
 pytest = [
-    "pytest", "pytest-sugar"
+    "pytest", "pytest-sugar", "hypothesis"
 ]
 
 pylint = [
