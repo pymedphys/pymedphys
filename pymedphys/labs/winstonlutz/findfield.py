@@ -27,16 +27,14 @@ import numpy as np
 import scipy.interpolate
 import scipy.ndimage.measurements
 
-from .interppoints import define_penumbra_points
+from .interppoints import define_all_field_points, define_penumbra_points
 
 
 def field_finding_loop(
-    field, edge_lengths, penumbra, initial_centre=(0, 0), initial_rotation=0
+    field, edge_lengths, penumbra, initial_centre, initial_rotation=0
 ):
-    to_minimise_all = create_penumbra_minimisation(field, edge_lengths, penumbra)
-
     predicted_rotation = optimise_rotation(
-        initial_centre, initial_rotation, to_minimise_all
+        field, initial_centre, edge_lengths, initial_rotation
     )
 
     while True:
@@ -44,7 +42,7 @@ def field_finding_loop(
             initial_rotation = predicted_rotation
 
             predicted_centre = optimise_centre(
-                initial_centre, predicted_rotation, to_minimise_all, penumbra
+                field, initial_centre, edge_lengths, penumbra, predicted_rotation
             )
 
             if np.allclose(predicted_centre, initial_centre):
@@ -53,17 +51,17 @@ def field_finding_loop(
             initial_centre = predicted_centre
 
             predicted_rotation = optimise_rotation(
-                predicted_centre, initial_rotation, to_minimise_all
+                field, predicted_centre, edge_lengths, initial_rotation
             )
 
             if np.allclose(predicted_rotation, initial_rotation):
                 break
 
         verification_centre = optimise_centre(
-            predicted_centre, predicted_rotation, to_minimise_all, penumbra
+            field, predicted_centre, edge_lengths, penumbra, predicted_rotation
         )
         verification_rotation = optimise_rotation(
-            predicted_centre, predicted_rotation, to_minimise_all
+            field, predicted_centre, edge_lengths, predicted_rotation
         )
 
         if np.allclose(verification_centre, predicted_centre) and np.allclose(
@@ -75,6 +73,44 @@ def field_finding_loop(
 
     centre = predicted_centre.tolist()
     return centre, predicted_rotation
+
+
+def optimise_rotation(field, centre, edge_lengths, initial_rotation):
+    to_minimise = create_rotation_only_minimiser(field, centre, edge_lengths)
+    result = scipy.optimize.basinhopping(
+        to_minimise,
+        initial_rotation,
+        T=1,
+        niter=200,
+        niter_success=3,
+        stepsize=90,
+        minimizer_kwargs={"method": "L-BFGS-B"},
+    )
+
+    predicted_rotation = result.x[0]
+    return predicted_rotation % 180
+
+
+def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
+    bounds = [
+        (initial_centre[0] - penumbra, initial_centre[0] + penumbra),
+        (initial_centre[1] - penumbra, initial_centre[1] + penumbra),
+    ]
+
+    to_minimise = create_penumbra_minimiser(field, edge_lengths, penumbra, rotation)
+
+    result = scipy.optimize.basinhopping(
+        to_minimise,
+        initial_centre,
+        T=1,
+        niter=200,
+        niter_success=5,
+        stepsize=0.25,
+        minimizer_kwargs={"method": "L-BFGS-B", "bounds": bounds},
+    )
+
+    predicted_centre = result.x
+    return predicted_centre
 
 
 def _initial_centre(x, y, img):
@@ -92,11 +128,8 @@ def _interp_coords(coord):
     return scipy.interpolate.interp1d(np.arange(len(coord)), coord)
 
 
-def create_penumbra_minimisation(field, edge_lengths, penumbra):
-    def to_minimise(inputs):
-        centre = [inputs[0], inputs[1]]
-        rotation = inputs[2]
-
+def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
+    def to_minimise(centre):
         xx_left_right, yy_left_right, xx_top_bot, yy_top_bot = define_penumbra_points(
             centre, edge_lengths, penumbra, rotation
         )
@@ -122,57 +155,9 @@ def create_penumbra_minimisation(field, edge_lengths, penumbra):
     return to_minimise
 
 
-def create_rotation_only_to_minimise(centre, to_minimise_all):
+def create_rotation_only_minimiser(field, centre, edge_lengths):
     def to_minimise(rotation):
-        return to_minimise_all([centre[0], centre[1], rotation])
+        all_field_points = define_all_field_points(centre, edge_lengths, rotation)
+        return -np.mean(field(*all_field_points))
 
     return to_minimise
-
-
-def create_shift_only_to_minimise(rotation, to_minimise_all):
-    def to_minimise(centre):
-        return to_minimise_all([centre[0], centre[1], rotation])
-
-    return to_minimise
-
-
-def optimise_rotation(predicted_centre, initial_rotation, to_minimise_all):
-    rotation_only_to_minimise = create_rotation_only_to_minimise(
-        predicted_centre, to_minimise_all
-    )
-    result = scipy.optimize.basinhopping(
-        rotation_only_to_minimise,
-        initial_rotation,
-        T=1,
-        niter=200,
-        niter_success=3,
-        stepsize=30,
-        minimizer_kwargs={"method": "L-BFGS-B"},
-    )
-
-    predicted_rotation = result.x[0]
-    return predicted_rotation % 90
-
-
-def optimise_centre(initial_centre, predicted_rotation, to_minimise_all, penumbra):
-    bounds = [
-        (initial_centre[0] - penumbra, initial_centre[0] + penumbra),
-        (initial_centre[1] - penumbra, initial_centre[1] + penumbra),
-    ]
-
-    shift_only_to_minimise = create_shift_only_to_minimise(
-        predicted_rotation, to_minimise_all
-    )
-
-    result = scipy.optimize.basinhopping(
-        shift_only_to_minimise,
-        initial_centre,
-        T=1,
-        niter=200,
-        niter_success=5,
-        stepsize=0.25,
-        minimizer_kwargs={"method": "L-BFGS-B", "bounds": bounds},
-    )
-
-    predicted_centre = result.x
-    return predicted_centre
