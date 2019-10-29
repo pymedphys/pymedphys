@@ -33,7 +33,7 @@ BASINHOPPING_NITER = 200
 
 
 def field_centre_and_rotation_refining(
-    field, edge_lengths, penumbra, initial_centre, initial_rotation=0
+    field, edge_lengths, penumbra, initial_centre, initial_rotation=0, niter=10
 ):
 
     predicted_rotation = optimise_rotation(
@@ -44,9 +44,26 @@ def field_centre_and_rotation_refining(
         field, initial_centre, edge_lengths, penumbra, predicted_rotation
     )
 
-    predicted_rotation = optimise_rotation(
-        field, predicted_centre, edge_lengths, predicted_rotation
-    )
+    for _ in range(niter):
+        previous_rotation = predicted_rotation
+        predicted_rotation = optimise_rotation(
+            field, predicted_centre, edge_lengths, predicted_rotation
+        )
+        try:
+            check_rotation_close(edge_lengths, previous_rotation, predicted_rotation)
+            break
+        except ValueError:
+            pass
+
+        previous_centre = predicted_centre
+        predicted_centre = optimise_centre(
+            field, predicted_centre, edge_lengths, penumbra, predicted_rotation
+        )
+        try:
+            check_centre_close(previous_centre, predicted_centre)
+            break
+        except ValueError:
+            pass
 
     verification_rotation = optimise_rotation(
         field, predicted_centre, edge_lengths, predicted_rotation
@@ -75,17 +92,36 @@ def check_rotation_and_centre(
     verification_rotation,
     predicted_rotation,
 ):
-    if not np.allclose(verification_centre, predicted_centre, rtol=0.01, atol=0.01):
-        raise ValueError("Centre not able to be consistently determined.")
+    check_centre_close(verification_centre, predicted_centre)
+    check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
 
+
+def check_rotation_close(edge_lengths, verification_rotation, predicted_rotation):
     if np.allclose(*edge_lengths):
         diff = (verification_rotation - predicted_rotation) % 90
         if not (diff < 0.01 or diff > 89.99):
-            raise ValueError("Rotation not able to be consistently determined.")
+            raise ValueError(
+                _rotation_error_string(verification_rotation, predicted_rotation)
+            )
     else:
         diff = (verification_rotation - predicted_rotation) % 180
         if not (diff < 0.01 or diff > 179.99):
-            raise ValueError("Rotation not able to be consistently determined.")
+            raise ValueError(
+                _rotation_error_string(verification_rotation, predicted_rotation)
+            )
+
+
+def _rotation_error_string(verification_rotation, predicted_rotation):
+    return (
+        "Rotation not able to be consistently determined.\n"
+        f"    Predicted Rotation = {predicted_rotation}\n"
+        f"    Verification Rotation = {verification_rotation}"
+    )
+
+
+def check_centre_close(verification_centre, predicted_centre):
+    if not np.allclose(verification_centre, predicted_centre, rtol=0.01, atol=0.01):
+        raise ValueError("Centre not able to be consistently determined.")
 
 
 def optimise_rotation(field, centre, edge_lengths, initial_rotation):

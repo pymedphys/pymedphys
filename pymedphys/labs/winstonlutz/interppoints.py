@@ -92,8 +92,11 @@ def define_penumbra_points_at_origin(edge_lengths, penumbra):
 def define_all_field_points(centre, edge_lengths, rotation):
     transform = translate_and_rotate_transform(centre, rotation)
 
-    x = np.linspace(-edge_lengths[0] / 2, edge_lengths[0] / 2, 21)
-    y = np.linspace(-edge_lengths[1] / 2, edge_lengths[1] / 2, 23)
+    num_x = np.ceil(edge_lengths[0] * 4) + 1
+    num_y = np.ceil(edge_lengths[1] * 4) + 1
+
+    x = np.linspace(-edge_lengths[0] / 2, edge_lengths[0] / 2, num_x)
+    y = np.linspace(-edge_lengths[1] / 2, edge_lengths[1] / 2, num_y)
 
     xx, yy = np.meshgrid(x, y)
 

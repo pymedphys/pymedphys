@@ -72,9 +72,13 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
         field, edge_lengths, penumbra, initial_centre
     )
 
-    pymedphys.labs.winstonlutz.findfield.check_rotation_and_centre(
-        edge_lengths, actual_centre, centre, actual_rotation, rotation
-    )
+    try:
+        pymedphys.labs.winstonlutz.findfield.check_rotation_and_centre(
+            edge_lengths, actual_centre, centre, actual_rotation, rotation
+        )
+    except ValueError:
+        print("Failed during comparison to gold reference values")
+        raise
 
 
 def test_find_initial_field_centre():
