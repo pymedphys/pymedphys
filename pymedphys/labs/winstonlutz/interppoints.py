@@ -95,8 +95,8 @@ def define_all_field_points(centre, edge_lengths, rotation):
     num_x = np.ceil(edge_lengths[0] * 4) + 1
     num_y = np.ceil(edge_lengths[1] * 4) + 1
 
-    x = np.linspace(-edge_lengths[0] / 2, edge_lengths[0] / 2, num_x)
-    y = np.linspace(-edge_lengths[1] / 2, edge_lengths[1] / 2, num_y)
+    x = np.linspace(-edge_lengths[0] / 2, edge_lengths[0] / 2, int(num_x))
+    y = np.linspace(-edge_lengths[1] / 2, edge_lengths[1] / 2, int(num_y))
 
     xx, yy = np.meshgrid(x, y)
 
