@@ -56,8 +56,12 @@ def define_penumbra_points(centre, edge_lengths, penumbra, rotation):
 
 def translate_and_rotate_transform(centre, rotation):
     transform = matplotlib.transforms.Affine2D()
-    transform.rotate_deg(-rotation)
-    transform.translate(*centre)
+    try:
+        transform.rotate_deg(-rotation)
+        transform.translate(*centre)
+    except ValueError:
+        print(centre, rotation)
+        raise
 
     return transform
 

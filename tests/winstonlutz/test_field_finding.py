@@ -65,18 +65,16 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     zz = field(xx, yy)
 
     initial_centre = pymedphys.labs.winstonlutz.findfield._initial_centre(x, y, zz)
-    centre, rotation = pymedphys.labs.winstonlutz.findfield.field_finding_loop(
+    (
+        centre,
+        rotation,
+    ) = pymedphys.labs.winstonlutz.findfield.field_centre_and_rotation_refining(
         field, edge_lengths, penumbra, initial_centre
     )
 
-    assert np.allclose(actual_centre, centre, rtol=0.01, atol=0.01)
-
-    if np.allclose(*edge_lengths):
-        diff = (actual_rotation - rotation) % 90
-        assert diff < 0.01 or diff > 89.99
-    else:
-        diff = (actual_rotation - rotation) % 180
-        assert diff < 0.01 or diff > 179.99
+    pymedphys.labs.winstonlutz.findfield.check_rotation_and_centre(
+        edge_lengths, actual_centre, centre, actual_rotation, rotation
+    )
 
 
 def test_find_initial_field_centre():
