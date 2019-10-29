@@ -78,6 +78,7 @@
     "inplace",
     "inplane",
     "interp",
+    "interppoints",
     "isclose",
     "isdir",
     "isfile",
