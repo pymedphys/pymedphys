@@ -81,6 +81,6 @@ def get_file(filename):
         hashes[filename] = calculated_filehash
 
         with open(HERE.joinpath("hashes.json"), "w") as hash_file:
-            json.dump(hashes, hash_file)
+            json.dump(hashes, hash_file, indent=2, sort_keys=True)
 
     return filepath.resolve()
