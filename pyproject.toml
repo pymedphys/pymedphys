@@ -65,6 +65,7 @@ m2r  = { version = "*", optional = true }
 # pytest
 pytest = { version ="*", optional = true }
 pytest-sugar  = { version = "*", optional = true }
+hypothesis  = { version = "*", optional = true }
 
 # pylint
 pylint  = { version = "*", optional = true }
@@ -78,6 +79,7 @@ pytest = "*"
 pytest-sugar = "*"
 pylint = "*"
 pytest-pylint = "*"
+hypothesis = "*"
 
 # Git Management
 pre-commit = "*"
@@ -119,7 +121,7 @@ extras = [
 ]
 
 pytest = [
-    "pytest", "pytest-sugar"
+    "pytest", "pytest-sugar", "hypothesis"
 ]
 
 pylint = [
@@ -134,7 +136,7 @@ multi_line_output = 3
 line_length = 88
 include_trailing_comma = true
 known_third_party = [
-    "attrs", "tqdm", "pytest"
+    "attrs", "tqdm", "pytest", "hypothesis"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"
