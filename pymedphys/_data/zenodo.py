@@ -22,3 +22,65 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
+
+import json
+import pathlib
+import urllib
+import warnings
+
+import pymedphys._utilities.filehash
+
+HERE = pathlib.Path(__file__).resolve().parent
+
+
+def get_config_dir():
+    config_dir = pathlib.Path.home().joinpath(".pymedphys")
+    config_dir.mkdir(exist_ok=True)
+
+    return config_dir
+
+
+def get_data_dir():
+    data_dir = get_config_dir().joinpath("data")
+    data_dir.mkdir(exist_ok=True)
+
+    return data_dir
+
+
+def get_file(filename):
+    filepath = get_data_dir().joinpath(filename)
+
+    with open(HERE.joinpath("hashes.json"), "r") as hash_file:
+        hashes = json.load(hash_file)
+
+    if not filepath.exists():
+        with open(HERE.joinpath("urls.json"), "r") as url_file:
+            urls = json.load(url_file)
+
+        try:
+            url = urls[filename]
+        except KeyError:
+            raise ValueError(
+                "The file provided isn't within pymedphys' urls.json record."
+            )
+
+        urllib.request.urlretrieve(url, filepath)
+
+    calculated_filehash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
+        filepath
+    )
+
+    try:
+        cached_filehash = hashes[filename]
+
+        if cached_filehash != calculated_filehash:
+            raise ValueError("The file on disk does not match the recorded hash.")
+    except KeyError:
+        warnings.warn("Hash not found in hashes.json. File will be updated.")
+        hashes[filename] = calculated_filehash
+
+        with open(HERE.joinpath("hashes.json"), "w") as hash_file:
+            json.dump(hashes, hash_file)
+
+    return filepath.resolve()
