@@ -48,7 +48,7 @@ def get_data_dir():
     return data_dir
 
 
-def data_path(filename):
+def data_path(filename, redownload_on_hash_mismatch=True):
     filepath = get_data_dir().joinpath(filename)
 
     with open(HERE.joinpath("hashes.json"), "r") as hash_file:
@@ -73,14 +73,20 @@ def data_path(filename):
 
     try:
         cached_filehash = hashes[filename]
-
-        if cached_filehash != calculated_filehash:
-            raise ValueError("The file on disk does not match the recorded hash.")
     except KeyError:
         warnings.warn("Hash not found in hashes.json. File will be updated.")
         hashes[filename] = calculated_filehash
 
         with open(HERE.joinpath("hashes.json"), "w") as hash_file:
             json.dump(hashes, hash_file, indent=2, sort_keys=True)
+
+        return filepath.resolve()
+
+    if cached_filehash != calculated_filehash:
+        if redownload_on_hash_mismatch:
+            filepath.unlink()
+            return data_path(filename, redownload_on_hash_mismatch=False)
+
+        raise ValueError("The file on disk does not match the recorded hash.")
 
     return filepath.resolve()
