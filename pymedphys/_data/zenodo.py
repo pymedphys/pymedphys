@@ -48,7 +48,7 @@ def get_data_dir():
     return data_dir
 
 
-def get_file(filename):
+def data_path(filename):
     filepath = get_data_dir().joinpath(filename)
 
     with open(HERE.joinpath("hashes.json"), "r") as hash_file:
