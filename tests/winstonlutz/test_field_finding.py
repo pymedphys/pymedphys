@@ -40,7 +40,7 @@ import pymedphys.labs.winstonlutz.findfield
 @pytest.mark.slow
 @settings(
     deadline=datetime.timedelta(milliseconds=4000),
-    max_examples=10,
+    max_examples=100,
     verbosity=Verbosity.verbose,
 )
 @given(
