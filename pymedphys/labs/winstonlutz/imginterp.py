@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,22 +23,21 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Create a reproducible hash from a filepath.
-"""
 
-import hashlib
+import numpy as np
+import scipy.interpolate
 
 
-def hash_file(filename, dot_feedback=False):
-    BLOCKSIZE = 65536
-    hasher = hashlib.sha1()
-    with open(filename, "rb") as afile:
-        buf = afile.read(BLOCKSIZE)
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = afile.read(BLOCKSIZE)
+def create_interpolated_field(x, y, img):
+    interpolation = scipy.interpolate.RectBivariateSpline(x, y, img.T, kx=1, ky=1)
 
-    if dot_feedback:
-        print(".", end="", flush=True)
+    def field(x, y):
+        if np.shape(x) != np.shape(y):
+            raise ValueError("x and y required to be the same shape")
 
-    return hasher.hexdigest()
+        result = interpolation.ev(np.ravel(x), np.ravel(y))
+        result.shape = x.shape
+
+        return result
+
+    return field
