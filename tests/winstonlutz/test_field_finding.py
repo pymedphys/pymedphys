@@ -33,8 +33,26 @@ from hypothesis.strategies import floats
 
 import numpy as np
 
+import pymedphys
 import pymedphys._mocks.profiles
 import pymedphys.labs.winstonlutz.findfield
+import pymedphys.labs.winstonlutz.iview
+
+
+def test_find_field_in_image():
+    edge_lengths = [20, 20]
+
+    expected_centre = [1.46, -1.9]
+    expected_rotation = 12.1
+
+    image_path = pymedphys.data_path("wlutz_image.png")
+    x, y, img = pymedphys.labs.winstonlutz.iview.iview_image_transform(image_path)
+
+    centre, rotation = pymedphys.labs.winstonlutz.findfield.find_centre_and_rotation(
+        x, y, img, edge_lengths
+    )
+
+    assert (expected_centre, expected_rotation) == (centre, rotation)
 
 
 @pytest.mark.slow

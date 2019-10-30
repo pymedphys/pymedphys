@@ -67,7 +67,7 @@ def translate_and_rotate_transform(centre, rotation):
 
 
 def define_penumbra_points_at_origin(edge_lengths, penumbra):
-    penumbra_range = np.linspace(-penumbra, penumbra, 11)
+    penumbra_range = np.linspace(-penumbra / 2, penumbra / 2, 11)
 
     def _each_edge(current_edge_length, orthogonal_edge_length):
         half_field_range = np.linspace(
@@ -89,18 +89,30 @@ def define_penumbra_points_at_origin(edge_lengths, penumbra):
     return xx_left_right, yy_left_right, xx_top_bot, yy_top_bot
 
 
-def define_all_field_points(centre, edge_lengths, rotation):
+def define_rotation_field_points(centre, edge_lengths, penumbra, rotation):
     transform = translate_and_rotate_transform(centre, rotation)
 
-    num_x = np.ceil(edge_lengths[0] * 4) + 1
-    num_y = np.ceil(edge_lengths[1] * 4) + 1
+    x_half_range = edge_lengths[0] / 2 + penumbra / 2
+    y_half_range = edge_lengths[1] / 2 + penumbra / 2
 
-    x = np.linspace(-edge_lengths[0] / 2, edge_lengths[0] / 2, int(num_x))
-    y = np.linspace(-edge_lengths[1] / 2, edge_lengths[1] / 2, int(num_y))
+    num_x = np.ceil(x_half_range * 2 * 8) + 1
+    num_y = np.ceil(y_half_range * 2 * 8) + 1
+
+    x = np.linspace(-x_half_range, x_half_range, int(num_x))
+    y = np.linspace(-y_half_range, y_half_range, int(num_y))
 
     xx, yy = np.meshgrid(x, y)
+    xx_flat = np.ravel(xx)
+    yy_flat = np.ravel(yy)
 
-    tranformed_xx, transformed_yy = apply_transform(xx, yy, transform)
+    not_needed = (
+        (xx_flat / x_half_range) ** 2 + (yy_flat / y_half_range) ** 2
+    ) < 0.8 ** 2
+
+    xx_flat = xx_flat[np.invert(not_needed)]
+    yy_flat = yy_flat[np.invert(not_needed)]
+
+    tranformed_xx, transformed_yy = apply_transform(xx_flat, yy_flat, transform)
 
     return tranformed_xx, transformed_yy
 
