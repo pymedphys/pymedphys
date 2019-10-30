@@ -56,7 +56,7 @@ def check_aspect_ratio(edge_lengths):
             raise ValueError(
                 "For non-square rectangular fields, "
                 "to accurately determine the rotation, "
-                "need to have the small edge be less than 95%% of the long edge"
+                "need to have the small edge be less than 95% of the long edge."
             )
 
 

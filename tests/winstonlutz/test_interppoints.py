@@ -109,7 +109,7 @@ def test_field_interp_at_origin(x_edge, y_edge, penumbra):
         edge_lengths, penumbra
     )
 
-    penumbra_range = np.linspace(-penumbra, penumbra, 11)
+    penumbra_range = np.linspace(-penumbra / 2, penumbra / 2, 11)
 
     x_penumbra_left_lookup = -edge_lengths[0] / 2 + penumbra_range
     y_penumbra_bot_lookup = -edge_lengths[1] / 2 + penumbra_range
