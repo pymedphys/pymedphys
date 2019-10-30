@@ -139,9 +139,15 @@ def optimise_rotation(field, centre, edge_lengths, initial_rotation):
     predicted_rotation = result.x[0]
 
     if np.allclose(*edge_lengths, rtol=0.001, atol=0.001):
-        return predicted_rotation % 90
+        modulo_rotation = predicted_rotation % 90
+        if modulo_rotation >= 45:
+            modulo_rotation = modulo_rotation - 45
+        return modulo_rotation
 
-    return predicted_rotation % 180
+    modulo_rotation = predicted_rotation % 180
+    if modulo_rotation >= 90:
+        modulo_rotation = modulo_rotation - 90
+    return modulo_rotation
 
 
 def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
