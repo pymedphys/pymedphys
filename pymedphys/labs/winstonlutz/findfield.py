@@ -50,9 +50,20 @@ def find_centre_and_rotation(
     return centre, rotation
 
 
+def check_aspect_ratio(edge_lengths):
+    if not np.allclose(*edge_lengths):
+        if np.min(edge_lengths) > 0.95 * np.max(edge_lengths):
+            raise ValueError(
+                "For non-square rectangular fields, "
+                "to accurately determine the rotation, "
+                "need to have the small edge be less than 95%% of the long edge"
+            )
+
+
 def field_centre_and_rotation_refining(
     field, edge_lengths, penumbra, initial_centre, initial_rotation=0, niter=10
 ):
+    check_aspect_ratio(edge_lengths)
 
     predicted_rotation = optimise_rotation(
         field, initial_centre, edge_lengths, penumbra, initial_rotation
