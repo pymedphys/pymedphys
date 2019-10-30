@@ -87,6 +87,7 @@
     "isnan",
     "isort",
     "itertools",
+    "iview",
     "jarmc",
     "junit",
     "lzma",

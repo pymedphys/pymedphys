@@ -27,9 +27,27 @@ import numpy as np
 import scipy.interpolate
 import scipy.ndimage.measurements
 
-from .interppoints import define_all_field_points, define_penumbra_points
+from .imginterp import create_interpolated_field
+from .interppoints import define_penumbra_points, define_rotation_field_points
 
 BASINHOPPING_NITER = 200
+
+
+def find_centre_and_rotation(
+    x, y, img, edge_lengths, penumbra=2, initial_rotation=0, rounding=True
+):
+    field = create_interpolated_field(x, y, img)
+    initial_centre = _initial_centre(x, y, img)
+
+    centre, rotation = field_centre_and_rotation_refining(
+        field, edge_lengths, penumbra, initial_centre, initial_rotation=initial_rotation
+    )
+
+    if rounding:
+        centre = np.round(centre, decimals=2).tolist()
+        rotation = np.round(rotation, decimals=1)
+
+    return centre, rotation
 
 
 def field_centre_and_rotation_refining(
@@ -37,7 +55,7 @@ def field_centre_and_rotation_refining(
 ):
 
     predicted_rotation = optimise_rotation(
-        field, initial_centre, edge_lengths, initial_rotation
+        field, initial_centre, edge_lengths, penumbra, initial_rotation
     )
 
     predicted_centre = optimise_centre(
@@ -47,7 +65,7 @@ def field_centre_and_rotation_refining(
     for _ in range(niter):
         previous_rotation = predicted_rotation
         predicted_rotation = optimise_rotation(
-            field, predicted_centre, edge_lengths, predicted_rotation
+            field, predicted_centre, edge_lengths, penumbra, predicted_rotation
         )
         try:
             check_rotation_close(edge_lengths, previous_rotation, predicted_rotation)
@@ -66,7 +84,7 @@ def field_centre_and_rotation_refining(
             pass
 
     verification_rotation = optimise_rotation(
-        field, predicted_centre, edge_lengths, predicted_rotation
+        field, predicted_centre, edge_lengths, penumbra, predicted_rotation
     )
 
     verification_centre = optimise_centre(
@@ -99,13 +117,13 @@ def check_rotation_and_centre(
 def check_rotation_close(edge_lengths, verification_rotation, predicted_rotation):
     if np.allclose(*edge_lengths):
         diff = (verification_rotation - predicted_rotation) % 90
-        if not (diff < 0.01 or diff > 89.99):
+        if not (diff < 0.1 or diff > 89.9):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation)
             )
     else:
         diff = (verification_rotation - predicted_rotation) % 180
-        if not (diff < 0.01 or diff > 179.99):
+        if not (diff < 0.1 or diff > 179.9):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation)
             )
@@ -124,8 +142,8 @@ def check_centre_close(verification_centre, predicted_centre):
         raise ValueError("Centre not able to be consistently determined.")
 
 
-def optimise_rotation(field, centre, edge_lengths, initial_rotation):
-    to_minimise = create_rotation_only_minimiser(field, centre, edge_lengths)
+def optimise_rotation(field, centre, edge_lengths, penumbra, initial_rotation):
+    to_minimise = create_rotation_only_minimiser(field, centre, edge_lengths, penumbra)
     result = scipy.optimize.basinhopping(
         to_minimise,
         initial_rotation,
@@ -214,9 +232,11 @@ def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
     return to_minimise
 
 
-def create_rotation_only_minimiser(field, centre, edge_lengths):
+def create_rotation_only_minimiser(field, centre, edge_lengths, penumbra):
     def to_minimise(rotation):
-        all_field_points = define_all_field_points(centre, edge_lengths, rotation)
+        all_field_points = define_rotation_field_points(
+            centre, edge_lengths, penumbra, rotation
+        )
         return -np.mean(field(*all_field_points))
 
     return to_minimise
