@@ -58,7 +58,7 @@ def test_find_field_in_image():
 @pytest.mark.slow
 @settings(
     deadline=datetime.timedelta(milliseconds=4000),
-    max_examples=100,
+    max_examples=10,
     verbosity=Verbosity.verbose,
 )
 @given(
@@ -66,7 +66,7 @@ def test_find_field_in_image():
     floats(-20, 20),
     floats(10, 20),
     floats(10, 20),
-    floats(0.5, 2),
+    floats(0.5, 5),
     floats(-360, 360),
 )
 def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rotation):
