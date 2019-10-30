@@ -105,12 +105,12 @@ def define_rotation_field_points(centre, edge_lengths, penumbra, rotation):
     xx_flat = np.ravel(xx)
     yy_flat = np.ravel(yy)
 
-    not_needed = (
-        (xx_flat / x_half_range) ** 2 + (yy_flat / y_half_range) ** 2
-    ) < 0.8 ** 2
+    inside = np.logical_and(
+        (np.abs(xx_flat) < x_half_range), (np.abs(yy_flat) < y_half_range)
+    )
 
-    xx_flat = xx_flat[np.invert(not_needed)]
-    yy_flat = yy_flat[np.invert(not_needed)]
+    xx_flat = xx_flat[np.invert(inside)]
+    yy_flat = yy_flat[np.invert(inside)]
 
     tranformed_xx, transformed_yy = apply_transform(xx_flat, yy_flat, transform)
 

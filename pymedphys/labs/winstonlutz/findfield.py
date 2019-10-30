@@ -83,12 +83,12 @@ def field_centre_and_rotation_refining(
         except ValueError:
             pass
 
-    verification_rotation = optimise_rotation(
-        field, predicted_centre, edge_lengths, penumbra, predicted_rotation
+    verification_centre = optimise_centre(
+        field, initial_centre, edge_lengths, penumbra, predicted_rotation
     )
 
-    verification_centre = optimise_centre(
-        field, predicted_centre, edge_lengths, penumbra, predicted_rotation
+    verification_rotation = optimise_rotation(
+        field, predicted_centre, edge_lengths, penumbra, initial_rotation
     )
 
     check_rotation_and_centre(
@@ -119,21 +119,22 @@ def check_rotation_close(edge_lengths, verification_rotation, predicted_rotation
         diff = (verification_rotation - predicted_rotation) % 90
         if not (diff < 0.1 or diff > 89.9):
             raise ValueError(
-                _rotation_error_string(verification_rotation, predicted_rotation)
+                _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
     else:
         diff = (verification_rotation - predicted_rotation) % 180
         if not (diff < 0.1 or diff > 179.9):
             raise ValueError(
-                _rotation_error_string(verification_rotation, predicted_rotation)
+                _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
 
 
-def _rotation_error_string(verification_rotation, predicted_rotation):
+def _rotation_error_string(verification_rotation, predicted_rotation, diff):
     return (
         "Rotation not able to be consistently determined.\n"
         f"    Predicted Rotation = {predicted_rotation}\n"
-        f"    Verification Rotation = {verification_rotation}"
+        f"    Verification Rotation = {verification_rotation}\n"
+        f"    Diff = {diff}\n"
     )
 
 
@@ -149,7 +150,7 @@ def optimise_rotation(field, centre, edge_lengths, penumbra, initial_rotation):
         initial_rotation,
         T=1,
         niter=BASINHOPPING_NITER,
-        niter_success=3,
+        niter_success=5,
         stepsize=90,
         minimizer_kwargs={"method": "L-BFGS-B"},
     )
@@ -159,12 +160,12 @@ def optimise_rotation(field, centre, edge_lengths, penumbra, initial_rotation):
     if np.allclose(*edge_lengths, rtol=0.001, atol=0.001):
         modulo_rotation = predicted_rotation % 90
         if modulo_rotation >= 45:
-            modulo_rotation = modulo_rotation - 45
+            modulo_rotation = modulo_rotation - 90
         return modulo_rotation
 
     modulo_rotation = predicted_rotation % 180
     if modulo_rotation >= 90:
-        modulo_rotation = modulo_rotation - 90
+        modulo_rotation = modulo_rotation - 180
     return modulo_rotation
 
 
@@ -237,6 +238,6 @@ def create_rotation_only_minimiser(field, centre, edge_lengths, penumbra):
         all_field_points = define_rotation_field_points(
             centre, edge_lengths, penumbra, rotation
         )
-        return -np.mean(field(*all_field_points))
+        return np.mean(field(*all_field_points) ** 2)
 
     return to_minimise
