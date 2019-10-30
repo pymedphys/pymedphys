@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Cancer Care Associates
+# Copyright (C) 2019 Cancer Care Associates
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,22 +23,24 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-"""Create a reproducible hash from a filepath.
-"""
 
-import hashlib
+import numpy as np
+
+import imageio
 
 
-def hash_file(filename, dot_feedback=False):
-    BLOCKSIZE = 65536
-    hasher = hashlib.sha1()
-    with open(filename, "rb") as afile:
-        buf = afile.read(BLOCKSIZE)
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = afile.read(BLOCKSIZE)
+def iview_image_transform(image_path):
+    img = imageio.imread(image_path)
+    if np.shape(img) != (1024, 1024):
+        raise ValueError("Expect iView images to be 1024x1024 pixels")
+    img = img[:, 1:-1]
 
-    if dot_feedback:
-        print(".", end="", flush=True)
+    if img.dtype != np.dtype("uint16"):
+        raise ValueError("Expect iView images to have a pixel type of unsigned 16 bit")
+    img = 1 - img[::-1, :] / 2 ** 16
 
-    return hasher.hexdigest()
+    shape = np.shape(img)
+    x = np.arange(-shape[1] / 2, shape[1] / 2) / 4
+    y = np.arange(-shape[0] / 2, shape[0] / 2) / 4
+
+    return x, y, img
