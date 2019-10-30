@@ -73,6 +73,7 @@
     "howto",
     "hypot",
     "imageio",
+    "imginterp",
     "imread",
     "imshow",
     "inplace",

@@ -23,6 +23,29 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import numpy as np
+
+import imageio
+
+import pymedphys
+import pymedphys.labs.winstonlutz.imginterp
+
 
 def test_interp_field():
-    pass
+    image_path = pymedphys.data_path("wlutz_image.png")
+    img = imageio.imread(image_path)
+    assert np.shape(img) == (1024, 1024)
+    img = img[:, 1:-1]
+    assert np.shape(img) == (1024, 1022)
+    assert img.dtype == np.dtype("uint16")
+    img = 1 - img[::-1, :] / 2 ** 16
+    assert img.dtype == np.dtype("float64")
+
+    shape = np.shape(img)
+    x = np.arange(-shape[1] / 2, shape[1] / 2) / 4
+    y = np.arange(-shape[0] / 2, shape[0] / 2) / 4
+    xx, yy = np.meshgrid(x, y)
+
+    field = pymedphys.labs.winstonlutz.imginterp.create_interpolated_field(x, y, img)
+
+    assert np.all(field(xx, yy) == img)
