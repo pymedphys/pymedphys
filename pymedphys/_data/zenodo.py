@@ -25,9 +25,11 @@
 
 
 import json
+import os
 import pathlib
 import urllib
 import warnings
+import zipfile
 
 import pymedphys._utilities.filehash
 
@@ -51,9 +53,6 @@ def get_data_dir():
 def data_path(filename, redownload_on_hash_mismatch=True):
     filepath = get_data_dir().joinpath(filename)
 
-    with open(HERE.joinpath("hashes.json"), "r") as hash_file:
-        hashes = json.load(hash_file)
-
     if not filepath.exists():
         with open(HERE.joinpath("urls.json"), "r") as url_file:
             urls = json.load(url_file)
@@ -67,6 +66,32 @@ def data_path(filename, redownload_on_hash_mismatch=True):
 
         urllib.request.urlretrieve(url, filepath)
 
+    try:
+        hash_agrees = data_file_hash_check(filename)
+    except NoHashFound:
+        return filepath.resolve()
+
+    if not hash_agrees:
+        if redownload_on_hash_mismatch:
+            filepath.unlink()
+            return data_path(filename, redownload_on_hash_mismatch=False)
+
+        raise ValueError("The file on disk does not match the recorded hash.")
+
+    return filepath.resolve()
+
+
+class NoHashFound(KeyError):
+    pass
+
+
+def data_file_hash_check(filename):
+    filename = str(filename).replace(os.sep, "/")
+
+    with open(HERE.joinpath("hashes.json"), "r") as hash_file:
+        hashes = json.load(hash_file)
+
+    filepath = get_data_dir().joinpath(filename)
     calculated_filehash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
         filepath
     )
@@ -80,13 +105,53 @@ def data_path(filename, redownload_on_hash_mismatch=True):
         with open(HERE.joinpath("hashes.json"), "w") as hash_file:
             json.dump(hashes, hash_file, indent=2, sort_keys=True)
 
-        return filepath.resolve()
+        raise NoHashFound
 
-    if cached_filehash != calculated_filehash:
-        if redownload_on_hash_mismatch:
-            filepath.unlink()
-            return data_path(filename, redownload_on_hash_mismatch=False)
+    return cached_filehash == calculated_filehash
 
-        raise ValueError("The file on disk does not match the recorded hash.")
 
-    return filepath.resolve()
+def zip_data_paths(
+    filename, redownload_on_hash_mismatch=True, reextract_on_hash_mismatch=True
+):
+    zip_filepath = data_path(filename, redownload_on_hash_mismatch=True)
+    relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
+    extract_directory = get_data_dir().joinpath(relative_extract_directory)
+
+    with zipfile.ZipFile(zip_filepath, "r") as zip_file:
+        namelist = zip_file.namelist()
+
+        for zipped_filename in namelist:
+            if not extract_directory.joinpath(zipped_filename).exists():
+                zip_file.extract(zipped_filename, path=extract_directory)
+
+    non_matching_filepaths = []
+
+    for zipped_filename in namelist:
+        relative_filename = relative_extract_directory.joinpath(zipped_filename)
+
+        try:
+            hash_agrees = data_file_hash_check(relative_filename)
+            if not hash_agrees:
+                non_matching_filepaths.append(relative_filename)
+        except NoHashFound:
+            pass
+
+    if reextract_on_hash_mismatch:
+        for zipped_relative_filename in non_matching_filepaths:
+            extract_directory.joinpath(zipped_relative_filename).unlink()
+
+        return zip_data_paths(
+            filename,
+            redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+            reextract_on_hash_mismatch=False,
+        )
+
+    if non_matching_filepaths:
+        raise ValueError("At least one file on disk does not match the recorded hash.")
+
+    resolved_filepaths = [
+        extract_directory.joinpath(zipped_filename).resolve()
+        for zipped_filename in namelist
+    ]
+
+    return resolved_filepaths
