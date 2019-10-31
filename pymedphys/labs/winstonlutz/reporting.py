@@ -63,11 +63,11 @@ def image_analysis_figure(
     for ax in np.ravel(axs[0:2, 0:2]):
         ax.remove()
 
-    axbig = fig.add_subplot(gs[0:2, 0:2])
+    ax_big = fig.add_subplot(gs[0:2, 0:2])
 
     image_with_overlays(
         fig,
-        axbig,
+        ax_big,
         x,
         y,
         img,
@@ -156,8 +156,15 @@ def image_with_overlays(
     ax.plot(y_bb_interp[0], y_bb_interp[1], "k", lw=0.5, alpha=0.3)
 
     ax.axis("equal")
-    ax.set_xlim([np.min(x_field_interp), np.max(x_field_interp)])
-    ax.set_ylim([np.min(y_field_interp), np.max(y_field_interp)])
+    long_edge = np.sqrt(np.sum((np.array(edge_lengths)) ** 2))
+    long_edge_fraction = long_edge * 0.6
+
+    ax.set_xlim(
+        [field_centre[0] - long_edge_fraction, field_centre[0] + long_edge_fraction]
+    )
+    ax.set_ylim(
+        [field_centre[1] - long_edge_fraction, field_centre[1] + long_edge_fraction]
+    )
 
 
 def draw_by_diff(dx, dy, transform):
