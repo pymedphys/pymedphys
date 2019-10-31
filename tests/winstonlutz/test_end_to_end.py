@@ -37,7 +37,7 @@ import pymedphys.labs.winstonlutz.iview
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
-@pytest.mark("slow")
+@pytest.mark.slow
 def test_end_to_end():
     edge_lengths = [20, 20]
 
