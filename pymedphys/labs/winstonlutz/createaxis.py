@@ -25,14 +25,8 @@
 
 import numpy as np
 
-import matplotlib.transforms
 
-
-def transform_axis(x, y, translation, rotation):
-    transform = matplotlib.transforms.Affine2D()
-    transform.rotate_deg(-rotation)
-    transform.translate(*translation)
-
+def transform_axis(x, y, transform):
     transformed_x = transform @ np.vstack([x, np.zeros(len(x)), np.ones(len(x))])
     transformed_y = transform @ np.vstack([np.zeros(len(y)), y, np.ones(len(y))])
 
