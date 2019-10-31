@@ -29,15 +29,10 @@ import numpy as np
 import matplotlib.transforms
 
 
-def define_penumbra_points(centre, edge_lengths, penumbra, rotation):
+def transform_penumbra_points(points_at_origin, centre, rotation):
     transform = translate_and_rotate_transform(centre, rotation)
 
-    (
-        xx_left_right,
-        yy_left_right,
-        xx_top_bot,
-        yy_top_bot,
-    ) = define_penumbra_points_at_origin(edge_lengths, penumbra)
+    xx_left_right, yy_left_right, xx_top_bot, yy_top_bot = points_at_origin
 
     xx_left_right_transformed, yy_left_right_transformed = apply_transform(
         xx_left_right, yy_left_right, transform
@@ -89,9 +84,16 @@ def define_penumbra_points_at_origin(edge_lengths, penumbra):
     return xx_left_right, yy_left_right, xx_top_bot, yy_top_bot
 
 
-def define_rotation_field_points(centre, edge_lengths, penumbra, rotation):
+def transform_rotation_field_points(points_at_origin, centre, rotation):
     transform = translate_and_rotate_transform(centre, rotation)
 
+    xx_flat, yy_flat = points_at_origin
+    tranformed_xx, transformed_yy = apply_transform(xx_flat, yy_flat, transform)
+
+    return tranformed_xx, transformed_yy
+
+
+def define_rotation_field_points_at_origin(edge_lengths, penumbra):
     x_half_range = edge_lengths[0] / 2 + penumbra / 2
     y_half_range = edge_lengths[1] / 2 + penumbra / 2
 
@@ -112,9 +114,7 @@ def define_rotation_field_points(centre, edge_lengths, penumbra, rotation):
     xx_flat = xx_flat[np.invert(inside)]
     yy_flat = yy_flat[np.invert(inside)]
 
-    tranformed_xx, transformed_yy = apply_transform(xx_flat, yy_flat, transform)
-
-    return tranformed_xx, transformed_yy
+    return xx_flat, yy_flat
 
 
 def apply_transform(xx, yy, transform):
