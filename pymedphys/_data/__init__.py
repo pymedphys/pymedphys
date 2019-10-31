@@ -1,1 +1,1 @@
-from .zenodo import data_path
+from .zenodo import data_path, zip_data_paths
