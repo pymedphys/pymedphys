@@ -50,7 +50,7 @@ def get_data_dir():
     return data_dir
 
 
-def data_path(filename, redownload_on_hash_mismatch=True):
+def data_path(filename, skip_hashing=False, redownload_on_hash_mismatch=True):
     filepath = get_data_dir().joinpath(filename)
 
     if not filepath.exists():
@@ -66,17 +66,18 @@ def data_path(filename, redownload_on_hash_mismatch=True):
 
         urllib.request.urlretrieve(url, filepath)
 
-    try:
-        hash_agrees = data_file_hash_check(filename)
-    except NoHashFound:
-        return filepath.resolve()
+    if not skip_hashing:
+        try:
+            hash_agrees = data_file_hash_check(filename)
+        except NoHashFound:
+            return filepath.resolve()
 
-    if not hash_agrees:
-        if redownload_on_hash_mismatch:
-            filepath.unlink()
-            return data_path(filename, redownload_on_hash_mismatch=False)
+        if not hash_agrees:
+            if redownload_on_hash_mismatch:
+                filepath.unlink()
+                return data_path(filename, redownload_on_hash_mismatch=False)
 
-        raise ValueError("The file on disk does not match the recorded hash.")
+            raise ValueError("The file on disk does not match the recorded hash.")
 
     return filepath.resolve()
 
@@ -111,9 +112,16 @@ def data_file_hash_check(filename):
 
 
 def zip_data_paths(
-    filename, redownload_on_hash_mismatch=True, reextract_on_hash_mismatch=True
+    filename,
+    skip_hashing=False,
+    redownload_on_hash_mismatch=True,
+    reextract_on_hash_mismatch=True,
 ):
-    zip_filepath = data_path(filename, redownload_on_hash_mismatch=True)
+    zip_filepath = data_path(
+        filename,
+        skip_hashing=skip_hashing,
+        redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+    )
     relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
     extract_directory = get_data_dir().joinpath(relative_extract_directory)
 
@@ -124,30 +132,33 @@ def zip_data_paths(
             if not extract_directory.joinpath(zipped_filename).exists():
                 zip_file.extract(zipped_filename, path=extract_directory)
 
-    non_matching_filepaths = []
+    if not skip_hashing:
+        non_matching_filepaths = []
 
-    for zipped_filename in namelist:
-        relative_filename = relative_extract_directory.joinpath(zipped_filename)
+        for zipped_filename in namelist:
+            relative_filename = relative_extract_directory.joinpath(zipped_filename)
 
-        try:
-            hash_agrees = data_file_hash_check(relative_filename)
-            if not hash_agrees:
-                non_matching_filepaths.append(relative_filename)
-        except NoHashFound:
-            pass
+            try:
+                hash_agrees = data_file_hash_check(relative_filename)
+                if not hash_agrees:
+                    non_matching_filepaths.append(relative_filename)
+            except NoHashFound:
+                pass
 
-    if reextract_on_hash_mismatch:
-        for zipped_relative_filename in non_matching_filepaths:
-            extract_directory.joinpath(zipped_relative_filename).unlink()
+        if reextract_on_hash_mismatch:
+            for zipped_relative_filename in non_matching_filepaths:
+                extract_directory.joinpath(zipped_relative_filename).unlink()
 
-        return zip_data_paths(
-            filename,
-            redownload_on_hash_mismatch=redownload_on_hash_mismatch,
-            reextract_on_hash_mismatch=False,
-        )
+            return zip_data_paths(
+                filename,
+                redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+                reextract_on_hash_mismatch=False,
+            )
 
-    if non_matching_filepaths:
-        raise ValueError("At least one file on disk does not match the recorded hash.")
+        if non_matching_filepaths:
+            raise ValueError(
+                "At least one file on disk does not match the recorded hash."
+            )
 
     resolved_filepaths = [
         extract_directory.joinpath(zipped_filename).resolve()
