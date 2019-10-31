@@ -24,3 +24,7 @@ repos:
     hooks:
     - id: black
       language_version: python3.7
+-   repo: https://github.com/pre-commit/mirrors-pylint
+    rev: 'ba47c7b385bb79d91e35b23d4a357b45e897bc20'
+    hooks:
+    -   id: pylint
