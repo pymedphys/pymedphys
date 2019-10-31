@@ -28,6 +28,8 @@ import numpy as np
 
 import matplotlib.transforms
 
+import pymedphys._utilities.createshells
+
 
 def transform_penumbra_points(points_at_origin, centre, rotation):
     transform = translate_and_rotate_transform(centre, rotation)
@@ -128,3 +130,45 @@ def apply_transform(xx, yy, transform):
     yy_transformed.shape = yy.shape
 
     return xx_transformed, yy_transformed
+
+
+def create_bb_points_function(bb_diameter):
+    min_dist = 0.5
+    distances = np.arange(0, bb_diameter * 0.8, min_dist)
+
+    x = []
+    y = []
+    dist = []
+
+    for _, distance in enumerate(distances):
+        (
+            new_x,
+            new_y,
+        ) = pymedphys._utilities.createshells.calculate_coordinates_shell_2d(  # pylint: disable = protected-access
+            distance, min_dist
+        )
+        x.append(new_x)
+        y.append(new_y)
+        dist.append(distance * np.ones_like(new_x))
+
+    x = np.concatenate(x)
+    y = np.concatenate(y)
+    dist = np.concatenate(dist)
+
+    def points_to_check(bb_centre):
+        x_shifted = x + bb_centre[0]
+        y_shifted = y + bb_centre[1]
+
+        return x_shifted, y_shifted
+
+    return points_to_check, dist
+
+
+def create_centralised_field(field, centre, rotation):
+    transform = translate_and_rotate_transform(centre, rotation)
+
+    def new_field(x, y):
+        x_prime, y_prime = apply_transform(x, y, transform)
+        return field(x_prime, y_prime)
+
+    return new_field
