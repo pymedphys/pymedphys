@@ -60,6 +60,32 @@ def optimise_bb_centre(
 
 
 def create_bb_to_minimise(field, bb_diameter):
+    """This is a numpy vectorised version of `create_bb_to_minimise_simple`
+    """
+
+    points_to_check, dist = create_bb_points_function(bb_diameter)
+    dist_mask = np.unique(dist)[:, None] == dist[None, :]
+    num_in_mask = np.sum(dist_mask, axis=1)
+    mask_count_per_item = np.sum(num_in_mask[:, None] * dist_mask, axis=0)
+    mask_mean_lookup = np.where(dist_mask)[0]
+
+    def to_minimise(centre):
+        x, y = points_to_check(centre)
+
+        results = field(x, y)
+        masked_results = results * dist_mask
+        mask_mean = np.sum(masked_results, axis=1) / num_in_mask
+        diff_to_mean_square = (results - mask_mean[mask_mean_lookup]) ** 2
+        mean_of_layers = np.sum(diff_to_mean_square[1::] / mask_count_per_item[1::]) / (
+            len(mask_mean) - 1
+        )
+
+        return mean_of_layers
+
+    return to_minimise
+
+
+def create_bb_to_minimise_simple(field, bb_diameter):
 
     points_to_check, dist = create_bb_points_function(bb_diameter)
     dist_mask = np.unique(dist)[:, None] == dist[None, :]
