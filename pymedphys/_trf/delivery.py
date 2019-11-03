@@ -50,7 +50,7 @@ class DeliveryLogfile(DeliveryBase):
 
     @classmethod
     def _from_pandas(cls: Type[DeliveryGeneric], table) -> DeliveryGeneric:
-        raw_monitor_units = table["Step Dose/Actual Value (Mu)"]
+        raw_monitor_units = table["Dose/Raw value (1/64th Mu)"].multiply(1 / 64)
 
         diff = np.append([0], np.diff(raw_monitor_units))
         diff[diff < 0] = 0
