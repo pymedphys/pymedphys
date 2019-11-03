@@ -179,5 +179,7 @@
     "zfill",
     "zlabel",
     "zlim"
-  ]
+  ],
+  "python.linting.pylintEnabled": true,
+  "restructuredtext.confPath": "${workspaceFolder}/docs"
 }
