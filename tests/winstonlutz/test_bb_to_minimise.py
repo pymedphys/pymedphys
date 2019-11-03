@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import floats
 
 import numpy as np
@@ -35,16 +35,14 @@ import pymedphys.labs.winstonlutz.imginterp
 import pymedphys.labs.winstonlutz.iview
 
 
+@settings(deadline=None)
 @given(floats(-5, 5), floats(-5, 5))
 def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
-    image_path = pymedphys.data_path("wlutz_image.png")
+    image_path = pymedphys.data_path("wlutz_image.png", skip_hashing=True)
     x, y, img = pymedphys.labs.winstonlutz.iview.iview_image_transform(image_path)
     field = pymedphys.labs.winstonlutz.imginterp.create_interpolated_field(x, y, img)
 
-    edge_lengths = [20, 20]
     bb_diameter = 8
-    bb_radius = bb_diameter / 2
-    penumbra = 2
 
     reference_bb_centre = [1.47, -1.39]
     centre_to_test = [
