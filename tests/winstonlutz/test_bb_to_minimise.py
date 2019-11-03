@@ -34,11 +34,17 @@ import pymedphys.labs.winstonlutz.findbb
 import pymedphys.labs.winstonlutz.imginterp
 import pymedphys.labs.winstonlutz.iview
 
+image_path_cache = [None]
 
-@settings(deadline=None)
+
+@settings(deadline=None, max_examples=10)
 @given(floats(-5, 5), floats(-5, 5))
 def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
-    image_path = pymedphys.data_path("wlutz_image.png", skip_hashing=True)
+    if image_path_cache[0] is None:
+        image_path = pymedphys.data_path("wlutz_image.png", skip_hashing=True)
+        image_path_cache[0] = image_path
+    else:
+        image_path = image_path_cache[0]
     x, y, img = pymedphys.labs.winstonlutz.iview.iview_image_transform(image_path)
     field = pymedphys.labs.winstonlutz.imginterp.create_interpolated_field(x, y, img)
 
