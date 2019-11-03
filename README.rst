@@ -56,8 +56,8 @@ you to know where to look for things:
 * `How-To guides`_ are recipes. They guide you through the steps involved in
   addressing key problems and use-cases. They are more advanced than tutorials
   and assume some knowledge of how to build tools with PyMedPhys.
-* `Reference Documents`_ is the technical reference for the public APIs exposed by
-  both the ``pymedphys`` library and the ``pymedphys`` command line tool.
+* `Reference Documents`_ is the technical reference for the public APIs exposed
+  by both the ``pymedphys`` library and the ``pymedphys`` command line tool.
 * `Explanatory documents`_ provide the higher level descriptions of the
   implementation of the tools and provides justifications for development
   decisions.
