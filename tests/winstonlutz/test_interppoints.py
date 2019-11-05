@@ -64,13 +64,17 @@ def test_field_interp_points(x_centre, y_centre, x_edge, y_edge, penumbra, degre
         edge_lengths, penumbra
     )
 
+    points_at_origin = pymedphys.labs.winstonlutz.interppoints.define_penumbra_points_at_origin(
+        edge_lengths, penumbra
+    )
+
     (
         xx_left_right,
         yy_left_right,
         xx_top_bot,
         yy_top_bot,
-    ) = pymedphys.labs.winstonlutz.interppoints.define_penumbra_points(
-        centre, edge_lengths, penumbra, degrees
+    ) = pymedphys.labs.winstonlutz.interppoints.transform_penumbra_points(
+        points_at_origin, centre, degrees
     )
 
     assert np.allclose(

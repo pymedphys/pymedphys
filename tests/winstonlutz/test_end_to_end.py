@@ -23,11 +23,38 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
+import pathlib
+
+import pytest
+
 import numpy as np
+import pandas as pd
+
+import pymedphys
+import pymedphys.labs.winstonlutz.iview
+
+HERE = pathlib.Path(__file__).parent.resolve()
 
 
-def transform_axis(x, y, transform):
-    transformed_x = transform @ np.vstack([x, np.zeros(len(x)), np.ones(len(x))])
-    transformed_y = transform @ np.vstack([np.zeros(len(y)), y, np.ones(len(y))])
+@pytest.mark.slow
+def test_end_to_end():
+    edge_lengths = [20, 20]
 
-    return transformed_x[0:2], transformed_y[0:2]
+    image_paths = pymedphys.zip_data_paths("wlutz_images.zip")
+    results = pymedphys.labs.winstonlutz.iview.batch_process(
+        image_paths, edge_lengths, display_figure=False
+    )
+
+    reference_dataframe = pd.read_csv(HERE.joinpath("end_to_end.csv"))
+
+    assert np.all(np.abs(results["Rotation"] - reference_dataframe["Rotation"])) <= 0.1
+    assert (
+        np.all(
+            np.abs(
+                results.drop(columns=["Rotation"])
+                - reference_dataframe.drop(columns=["Rotation"])
+            )
+        )
+        <= 0.01
+    )
