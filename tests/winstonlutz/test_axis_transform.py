@@ -33,6 +33,7 @@ import numpy as np
 
 import pymedphys._mocks.profiles
 import pymedphys.labs.winstonlutz.createaxis
+import pymedphys.labs.winstonlutz.interppoints
 
 
 @given(
@@ -64,8 +65,12 @@ def test_transformed_field_interp(
     field_x_interp = np.linspace(-interp_size / 2, interp_size / 2, 30)
     field_y_interp = np.linspace(-interp_size / 2, interp_size / 2, 40)
 
+    transform = pymedphys.labs.winstonlutz.interppoints.translate_and_rotate_transform(
+        centre, degrees
+    )
+
     x_interp, y_interp = pymedphys.labs.winstonlutz.createaxis.transform_axis(
-        field_x_interp, field_y_interp, centre, degrees
+        field_x_interp, field_y_interp, transform
     )
 
     assert np.allclose(
