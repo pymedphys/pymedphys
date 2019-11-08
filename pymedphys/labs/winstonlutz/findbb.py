@@ -38,18 +38,35 @@ def optimise_bb_centre(
     field, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
 ):
     centralised_field = create_centralised_field(field, field_centre, field_rotation)
-    to_minimise = create_bb_to_minimise(centralised_field, bb_diameter)
+    to_minimise_edge_agreement, to_minimise_pixel_vals = create_bb_to_minimise(
+        centralised_field, bb_diameter
+    )
     bb_bounds = define_bb_bounds(bb_diameter, edge_lengths, penumbra)
 
-    bb_centre_in_centralised_field = bb_basinhopping(to_minimise, bb_bounds)
+    bb_centre_in_centralised_field = bb_basinhopping(
+        to_minimise_edge_agreement, bb_bounds
+    )
 
     if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
         raise ValueError("BB found at bounds, likely incorrect")
 
-    verification_repeat = bb_basinhopping(to_minimise, bb_bounds)
+    bb_centre_in_centralised_field_min_only = bb_basinhopping(
+        to_minimise_pixel_vals, bb_bounds
+    )
 
-    agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
-    if np.any(agreement > 0.01):
+    repeat_agreement = np.abs(
+        bb_centre_in_centralised_field_min_only - bb_centre_in_centralised_field
+    )
+    if np.any(repeat_agreement > 0.1):
+        raise ValueError(
+            "BB centre finding doesn't sufficiently agree with minimum "
+            "pixel values within field"
+        )
+
+    verification_repeat = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
+
+    repeat_agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
+    if np.any(repeat_agreement > 0.01):
         raise ValueError("BB centre not able to be consistently determined")
 
     transform = translate_and_rotate_transform(field_centre, field_rotation)
@@ -91,7 +108,7 @@ def create_bb_to_minimise(field, bb_diameter):
     mask_count_per_item = np.sum(num_in_mask[:, None] * dist_mask, axis=0)
     mask_mean_lookup = np.where(dist_mask)[0]
 
-    def to_minimise(centre):
+    def to_minimise_edge_agreement(centre):
         x, y = points_to_check(centre)
 
         results = field(x, y)
@@ -104,7 +121,13 @@ def create_bb_to_minimise(field, bb_diameter):
 
         return mean_of_layers
 
-    return to_minimise
+    def to_minimise_pixel_vals(centre):
+        x, y = points_to_check(centre)
+        results = field(x, y)
+
+        return np.mean(results)
+
+    return to_minimise_edge_agreement, to_minimise_pixel_vals
 
 
 def create_bb_to_minimise_simple(field, bb_diameter):
@@ -112,7 +135,7 @@ def create_bb_to_minimise_simple(field, bb_diameter):
     points_to_check, dist = create_bb_points_function(bb_diameter)
     dist_mask = np.unique(dist)[:, None] == dist[None, :]
 
-    def to_minimise(centre):
+    def to_minimise_edge_agreement(centre):
         x, y = points_to_check(centre)
 
         total_minimisation = 0
@@ -123,7 +146,13 @@ def create_bb_to_minimise_simple(field, bb_diameter):
 
         return total_minimisation / (len(dist_mask) - 1)
 
-    return to_minimise
+    def to_minimise_pixel_vals(centre):
+        x, y = points_to_check(centre)
+        results = field(x, y)
+
+        return np.mean(results)
+
+    return to_minimise_edge_agreement, to_minimise_pixel_vals
 
 
 def create_centralised_field(field, centre, rotation):
