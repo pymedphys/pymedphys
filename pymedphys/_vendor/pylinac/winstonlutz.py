@@ -62,10 +62,16 @@ class WLImage(image.ArrayImage):
     def __init__(self, array: np.array, *, dpi=None, sid=None, dtype=None):
         super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
         self.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
-        self.flipud()
         self._clean_edges()
         self.field_cax, self.rad_field_bounding_box = self._find_field_centroid()
-        self.bb = self._find_bb()
+        self._bb = None
+
+    @property
+    def bb(self):
+        if self._bb is None:
+            self._bb = self._find_bb()
+
+        return self._bb
 
     def _clean_edges(self, window_size: int = 2):
         """Clean the edges of the image to be near the background level."""

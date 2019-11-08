@@ -173,8 +173,19 @@ class BaseImage:
             self.invert()
 
     @property
+    def ndim(self):
+        return self.array.ndim
+
+    @property
     def shape(self):
         return self.array.shape
+
+    @property
+    def size(self):
+        return self.array.size
+
+    def sum(self):
+        return self.array.sum()
 
     def __len__(self):
         return len(self.array)
