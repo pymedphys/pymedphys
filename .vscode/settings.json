@@ -125,6 +125,7 @@
     "prependpath",
     "psutil",
     "pydicom",
+    "pylinac",
     "pylint",
     "pymedphys",
     "pymssql",
@@ -182,5 +183,6 @@
     "zlim"
   ],
   "python.linting.pylintEnabled": true,
-  "restructuredtext.confPath": "${workspaceFolder}/docs"
+  "restructuredtext.confPath": "${workspaceFolder}/docs",
+  "python.pythonPath": "/home/simon/.cache/pypoetry/virtualenvs/pymedphys-py3.7/bin/python"
 }
