@@ -33,6 +33,9 @@ from .interppoints import (
     translate_and_rotate_transform,
 )
 
+BB_MIN_SEARCH_DIST = 2
+BB_MIN_SEARCH_TOL = 0.25
+
 
 def optimise_bb_centre(
     field, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
@@ -50,17 +53,30 @@ def optimise_bb_centre(
     if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
         raise ValueError("BB found at bounds, likely incorrect")
 
+    minimise_pval_bounds = [
+        (
+            bb_centre_in_centralised_field[0] - BB_MIN_SEARCH_DIST,
+            bb_centre_in_centralised_field[0] + BB_MIN_SEARCH_DIST,
+        ),
+        (
+            bb_centre_in_centralised_field[1] - BB_MIN_SEARCH_DIST,
+            bb_centre_in_centralised_field[1] + BB_MIN_SEARCH_DIST,
+        ),
+    ]
+
     bb_centre_in_centralised_field_min_only = bb_basinhopping(
-        to_minimise_pixel_vals, bb_bounds
+        to_minimise_pixel_vals, minimise_pval_bounds
     )
 
     repeat_agreement = np.abs(
         bb_centre_in_centralised_field_min_only - bb_centre_in_centralised_field
     )
-    if np.any(repeat_agreement > 0.1):
+    if np.any(repeat_agreement > BB_MIN_SEARCH_TOL):
         raise ValueError(
             "BB centre finding doesn't sufficiently agree with minimum "
-            "pixel values within field"
+            "pixel values within field\n"
+            f"  {bb_centre_in_centralised_field}\n"
+            f"  {bb_centre_in_centralised_field_min_only}\n"
         )
 
     verification_repeat = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
@@ -102,14 +118,14 @@ def create_bb_to_minimise(field, bb_diameter):
     """This is a numpy vectorised version of `create_bb_to_minimise_simple`
     """
 
-    points_to_check, dist = create_bb_points_function(bb_diameter)
+    points_to_check_edge_agreement, dist = create_bb_points_function(bb_diameter)
     dist_mask = np.unique(dist)[:, None] == dist[None, :]
     num_in_mask = np.sum(dist_mask, axis=1)
     mask_count_per_item = np.sum(num_in_mask[:, None] * dist_mask, axis=0)
     mask_mean_lookup = np.where(dist_mask)[0]
 
     def to_minimise_edge_agreement(centre):
-        x, y = points_to_check(centre)
+        x, y = points_to_check_edge_agreement(centre)
 
         results = field(x, y)
         masked_results = results * dist_mask
@@ -121,8 +137,10 @@ def create_bb_to_minimise(field, bb_diameter):
 
         return mean_of_layers
 
+    points_to_check_min_pvals, _ = create_bb_points_function(bb_diameter * 0.5)
+
     def to_minimise_pixel_vals(centre):
-        x, y = points_to_check(centre)
+        x, y = points_to_check_min_pvals(centre)
         results = field(x, y)
 
         return np.mean(results)
@@ -132,11 +150,11 @@ def create_bb_to_minimise(field, bb_diameter):
 
 def create_bb_to_minimise_simple(field, bb_diameter):
 
-    points_to_check, dist = create_bb_points_function(bb_diameter)
+    points_to_check_edge_agreement, dist = create_bb_points_function(bb_diameter)
     dist_mask = np.unique(dist)[:, None] == dist[None, :]
 
     def to_minimise_edge_agreement(centre):
-        x, y = points_to_check(centre)
+        x, y = points_to_check_edge_agreement(centre)
 
         total_minimisation = 0
 
@@ -146,8 +164,10 @@ def create_bb_to_minimise_simple(field, bb_diameter):
 
         return total_minimisation / (len(dist_mask) - 1)
 
+    points_to_check_min_pvals, _ = create_bb_points_function(bb_diameter * 0.5)
+
     def to_minimise_pixel_vals(centre):
-        x, y = points_to_check(centre)
+        x, y = points_to_check_min_pvals(centre)
         results = field(x, y)
 
         return np.mean(results)
