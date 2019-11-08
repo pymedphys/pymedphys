@@ -41,6 +41,33 @@ def optimise_bb_centre(
     to_minimise = create_bb_to_minimise(centralised_field, bb_diameter)
     bb_bounds = define_bb_bounds(bb_diameter, edge_lengths, penumbra)
 
+    bb_centre_in_centralised_field = bb_basinhopping(to_minimise, bb_bounds)
+
+    if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
+        raise ValueError("BB found at bounds, likely incorrect")
+
+    verification_repeat = bb_basinhopping(to_minimise, bb_bounds)
+
+    agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
+    if np.any(agreement > 0.01):
+        raise ValueError("BB centre not able to be consistently determined")
+
+    transform = translate_and_rotate_transform(field_centre, field_rotation)
+    bb_centre = apply_transform(*bb_centre_in_centralised_field, transform)
+    bb_centre = np.array(bb_centre).tolist()
+
+    return bb_centre
+
+
+def check_if_at_bounds(bb_centre, bb_bounds):
+    x_at_bounds = np.any(np.array(bb_centre[0]) == np.array(bb_bounds[0]))
+    y_at_bounds = np.any(np.array(bb_centre[1]) == np.array(bb_bounds[1]))
+
+    any_at_bounds = x_at_bounds or y_at_bounds
+    return any_at_bounds
+
+
+def bb_basinhopping(to_minimise, bb_bounds):
     bb_results = scipy.optimize.basinhopping(
         to_minimise,
         [0, 0],
@@ -50,13 +77,8 @@ def optimise_bb_centre(
         stepsize=0.25,
         minimizer_kwargs={"method": "L-BFGS-B", "bounds": bb_bounds},
     )
-    bb_centre_in_centralised_field = bb_results.x
 
-    transform = translate_and_rotate_transform(field_centre, field_rotation)
-    bb_centre = apply_transform(*bb_centre_in_centralised_field, transform)
-    bb_centre = np.array(bb_centre).tolist()
-
-    return bb_centre
+    return bb_results.x
 
 
 def create_bb_to_minimise(field, bb_diameter):

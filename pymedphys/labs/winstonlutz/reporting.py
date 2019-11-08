@@ -88,6 +88,8 @@ def image_analysis_figure(
     profile_flip_plot(axs[3, 0], x_axis, field(*x_bb_interp))
     profile_flip_plot(axs[3, 1], y_axis, field(*y_bb_interp))
 
+    return fig
+
 
 def profile_flip_plot(ax, dependent, independent):
     ax.plot(dependent, independent)
