@@ -251,7 +251,7 @@ class WLImageOld(WLImage):
                 roi_sizes, _ = np.histogram(labeled_arr, bins=num_roi + 1)
                 bw_bb_img = np.where(labeled_arr == np.argsort(roi_sizes)[-3], 1, 0)
 
-                if not is_round(bw_bb_img):
+                if not is_round_old(bw_bb_img):
                     raise ValueError
                 if not is_modest_size(bw_bb_img, self.rad_field_bounding_box):
                     raise ValueError
