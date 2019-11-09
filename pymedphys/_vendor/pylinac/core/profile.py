@@ -1293,11 +1293,15 @@ def peak_detect(
     if max_number is not None and len(peak_idxs) > max_number:
         sorted_peak_vals = peak_vals.argsort()  # type: ignore  # sorts low to high
         peak_vals = peak_vals[
-            sorted_peak_vals[-max_number:]
-        ]  # pylint: disable = invalid-unary-operand-type
+            sorted_peak_vals[
+                -max_number:
+            ]  # pylint: disable = invalid-unary-operand-type
+        ]
         peak_idxs = peak_idxs[
-            sorted_peak_vals[-max_number:]
-        ]  # pylint: disable = invalid-unary-operand-type
+            sorted_peak_vals[
+                -max_number:
+            ]  # pylint: disable = invalid-unary-operand-type
+        ]
 
     # If we were looking for minimums, convert the values back to the original sign
     if find_min_instead:
