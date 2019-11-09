@@ -138,12 +138,13 @@ def zip_data_paths(
         for zipped_filename in namelist:
             relative_filename = relative_extract_directory.joinpath(zipped_filename)
 
-            try:
-                hash_agrees = data_file_hash_check(relative_filename)
-                if not hash_agrees:
-                    non_matching_filepaths.append(relative_filename)
-            except NoHashFound:
-                pass
+            if extract_directory.joinpath(zipped_filename).is_file():
+                try:
+                    hash_agrees = data_file_hash_check(relative_filename)
+                    if not hash_agrees:
+                        non_matching_filepaths.append(relative_filename)
+                except NoHashFound:
+                    pass
 
         if reextract_on_hash_mismatch:
             for zipped_relative_filename in non_matching_filepaths:
