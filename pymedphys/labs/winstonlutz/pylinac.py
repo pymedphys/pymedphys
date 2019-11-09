@@ -31,56 +31,80 @@ import pymedphys._vendor.pylinac.winstonlutz
 from .utilities import create_centralised_field, transform_point
 
 
-class PyLinacFieldBBCentres:
-    def __init__(self, field, edge_lengths, penumbra, field_centre, field_rotation):
-        centralised_straight_field = create_centralised_field(
-            field, field_centre, field_rotation
-        )
+def run_wlutz(field, edge_lengths, penumbra, field_centre, field_rotation):
+    centralised_straight_field = create_centralised_field(
+        field, field_centre, field_rotation
+    )
 
-        self._pymedphys_field_centre = field_centre
-        self._pymedphys_field_rotation = field_rotation
+    half_x_range = edge_lengths[0] / 2 + penumbra * 3
+    half_y_range = edge_lengths[1] / 2 + penumbra * 3
 
-        self._half_x_range = edge_lengths[0] / 2 + penumbra * 3
-        self._half_y_range = edge_lengths[1] / 2 + penumbra * 3
+    pixel_size = 0.1
 
-        self._pixel_size = 0.1
+    x_range = np.arange(-half_x_range, half_x_range + pixel_size, pixel_size)
+    y_range = np.arange(-half_y_range, half_y_range + pixel_size, pixel_size)
 
-        x_range = np.arange(
-            -self._half_x_range, self._half_x_range + self._pixel_size, self._pixel_size
-        )
-        y_range = np.arange(
-            -self._half_y_range, self._half_y_range + self._pixel_size, self._pixel_size
-        )
+    xx_range, yy_range = np.meshgrid(x_range, y_range)
+    centralised_image = centralised_straight_field(xx_range, yy_range)
 
-        xx_range, yy_range = np.meshgrid(x_range, y_range)
-        centralised_image = centralised_straight_field(xx_range, yy_range)
+    pylinac_new_field_centre, pylinac_new_bb_centre = run_pylinac_with_class(
+        pymedphys._vendor.pylinac.winstonlutz.WLImage,  # pylint: disable = protected-access
+        centralised_image,
+        pixel_size,
+        half_x_range,
+        half_y_range,
+        field_centre,
+        field_rotation,
+    )
 
-        self.wl_image = pymedphys._vendor.pylinac.winstonlutz.WLImage(  # pylint: disable = protected-access
-            centralised_image
-        )
-        centralised_pylinac_field_centre = [
-            self.wl_image.field_cax.x * self._pixel_size - self._half_x_range,
-            self.wl_image.field_cax.y * self._pixel_size - self._half_y_range,
-        ]
+    pylinac_old_field_centre, pylinac_old_bb_centre = run_pylinac_with_class(
+        pymedphys._vendor.pylinac.winstonlutz.WLImageOld,  # pylint: disable = protected-access
+        centralised_image,
+        pixel_size,
+        half_x_range,
+        half_y_range,
+        field_centre,
+        field_rotation,
+    )
 
-        self.field_centre = transform_point(
-            centralised_pylinac_field_centre, field_centre, field_rotation
-        )
+    return {
+        "v2.2.6": {
+            "field_centre": np.round(pylinac_old_field_centre, decimals=2).tolist(),
+            "bb_centre": np.round(pylinac_old_bb_centre, decimals=2).tolist(),
+        },
+        "v2.2.7": {
+            "field_centre": np.round(pylinac_new_field_centre, decimals=2).tolist(),
+            "bb_centre": np.round(pylinac_new_bb_centre, decimals=2).tolist(),
+        },
+    }
 
-        self._bb_centre = None
 
-    @property
-    def bb_centre(self):
-        if self._bb_centre is None:
-            centralised_pylinac_bb_centre = [
-                self.wl_image.bb.x * self._pixel_size - self._half_x_range,
-                self.wl_image.bb.y * self._pixel_size - self._half_y_range,
-            ]
+def run_pylinac_with_class(
+    class_to_use,
+    centralised_image,
+    pixel_size,
+    half_x_range,
+    half_y_range,
+    field_centre,
+    field_rotation,
+):
+    wl_image = class_to_use(centralised_image)
+    centralised_pylinac_field_centre = [
+        wl_image.field_cax.x * pixel_size - half_x_range,
+        wl_image.field_cax.y * pixel_size - half_y_range,
+    ]
 
-            self._bb_centre = transform_point(
-                centralised_pylinac_bb_centre,
-                self._pymedphys_field_centre,
-                self._pymedphys_field_rotation,
-            )
+    field_centre = transform_point(
+        centralised_pylinac_field_centre, field_centre, field_rotation
+    )
 
-        return self._bb_centre
+    centralised_pylinac_bb_centre = [
+        wl_image.bb.x * pixel_size - half_x_range,
+        wl_image.bb.y * pixel_size - half_y_range,
+    ]
+
+    bb_centre = transform_point(
+        centralised_pylinac_bb_centre, field_centre, field_rotation
+    )
+
+    return field_centre, bb_centre
