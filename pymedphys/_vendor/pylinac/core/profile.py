@@ -89,9 +89,9 @@ class ProfileMixin:
         """Invert (imcomplement) the profile."""
         orig_array = self.values
         self.values = (
-            -orig_array
+            -orig_array  # pylint: disable = invalid-unary-operand-type
             + orig_array.max()
-            + orig_array.min()  # pylint: disable = invalid-unary-operand-type
+            + orig_array.min()
         )
 
     def normalize(self, norm_val: Union[str, NumberLike] = "max"):
