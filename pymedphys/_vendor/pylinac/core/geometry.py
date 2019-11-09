@@ -14,7 +14,7 @@
 # CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-# Vendored from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
+# Adapted from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
 
 """Module for classes that represent common geometric objects or patterns."""
 import math
@@ -85,8 +85,8 @@ class Point:
                 setattr(self, attr, item)
         elif is_iterable(x):
             for attr, item in zip_longest(
-                self._attr_list, x, fillvalue=0
-            ):  # type: ignore
+                self._attr_list, x, fillvalue=0  # type: ignore
+            ):
                 setattr(self, attr, item)
         else:
             self.x = x
