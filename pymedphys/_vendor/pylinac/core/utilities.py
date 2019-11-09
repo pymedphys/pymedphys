@@ -14,7 +14,7 @@
 # CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-# Vendored from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
+# Adapted from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
 
 """Utility functions for pylinac."""
 

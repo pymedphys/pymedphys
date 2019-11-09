@@ -14,7 +14,10 @@
 # CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-# Vendored from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
+# Adapted from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
+
+# Changes to revert to v2.2.6 code determined from https://github.com/jrkerns/pylinac/compare/v2.2.6...v2.2.7#diff-49572d03390f5858885f645e7034ff24
+# and https://github.com/jrkerns/pylinac/blob/v2.2.6/pylinac/winston_lutz.py
 
 """The Winston-Lutz module loads and processes EPID images that have acquired Winston-Lutz type images.
 
@@ -45,7 +48,8 @@ from skimage import measure
 
 from .core import image
 from .core.geometry import Point, Vector
-from .core.mask import bounding_box
+from .core.mask import bounding_box, filled_area_ratio
+from .core.profile import SingleProfile
 
 GANTRY = "Gantry"
 COLLIMATOR = "Collimator"
@@ -215,3 +219,58 @@ def is_round(rprops):
     expected_fill_ratio = np.pi / 4  # area of a circle inside a square
     actual_fill_ratio = rprops.filled_area / rprops.bbox_area
     return expected_fill_ratio * 1.2 > actual_fill_ratio > expected_fill_ratio * 0.8
+
+
+def is_round_old(logical_array: np.ndarray):
+    """Decide if the ROI is circular in nature by testing the filled area vs bounding box. Used to find the BB."""
+    expected_fill_ratio = np.pi / 4
+    actual_fill_ratio = filled_area_ratio(logical_array)
+    return expected_fill_ratio * 1.2 > actual_fill_ratio > expected_fill_ratio * 0.8
+
+
+class WLImageOld(WLImage):
+    def _find_bb(self) -> Point:
+        """Find the BB within the radiation field. Iteratively searches for a circle-like object
+        by lowering a low-pass threshold value until found.
+        Returns
+        -------
+        Point
+            The weighted-pixel value location of the BB.
+        """
+        # get initial starting conditions
+        hmin, hmax = np.percentile(self.array, [5, 99.9])
+        spread = hmax - hmin
+        max_thresh = hmax
+        lower_thresh = hmax - spread / 1.5
+        # search for the BB by iteratively lowering the low-pass threshold value until the BB is found.
+        found = False
+        while not found:
+            try:
+                binary_arr = np.logical_and((max_thresh > self), (self >= lower_thresh))
+                labeled_arr, num_roi = ndimage.measurements.label(binary_arr)
+                roi_sizes, _ = np.histogram(labeled_arr, bins=num_roi + 1)
+                bw_bb_img = np.where(labeled_arr == np.argsort(roi_sizes)[-3], 1, 0)
+
+                if not is_round(bw_bb_img):
+                    raise ValueError
+                if not is_modest_size(bw_bb_img, self.rad_field_bounding_box):
+                    raise ValueError
+                if not is_symmetric(bw_bb_img):
+                    raise ValueError
+            except (IndexError, ValueError):
+                max_thresh -= 0.05 * spread
+                if max_thresh < hmin:
+                    raise ValueError(
+                        "Unable to locate the BB. Make sure the field edges do not obscure the BB and that there is no artifacts in the images."
+                    )
+            else:
+                found = True
+
+        # determine the center of mass of the BB
+        inv_img = image.ArrayImage(self.array)
+        inv_img.invert()
+        x_arr = np.abs(np.average(bw_bb_img, weights=inv_img, axis=0))
+        x_com = SingleProfile(x_arr).fwxm_center(interpolate=True)
+        y_arr = np.abs(np.average(bw_bb_img, weights=inv_img, axis=1))
+        y_com = SingleProfile(y_arr).fwxm_center(interpolate=True)
+        return Point(x_com, y_com)
