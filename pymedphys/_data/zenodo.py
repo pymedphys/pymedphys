@@ -50,7 +50,7 @@ def get_data_dir():
     return data_dir
 
 
-def data_path(filename, skip_hashing=False, redownload_on_hash_mismatch=True):
+def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True):
     filepath = get_data_dir().joinpath(filename)
 
     if not filepath.exists():
@@ -66,7 +66,7 @@ def data_path(filename, skip_hashing=False, redownload_on_hash_mismatch=True):
 
         urllib.request.urlretrieve(url, filepath)
 
-    if not skip_hashing:
+    if check_hash:
         try:
             hash_agrees = data_file_hash_check(filename)
         except NoHashFound:
@@ -113,13 +113,13 @@ def data_file_hash_check(filename):
 
 def zip_data_paths(
     filename,
-    skip_hashing=False,
+    check_hashes=True,
     redownload_on_hash_mismatch=True,
     reextract_on_hash_mismatch=True,
 ):
     zip_filepath = data_path(
         filename,
-        skip_hashing=skip_hashing,
+        check_hash=check_hashes,
         redownload_on_hash_mismatch=redownload_on_hash_mismatch,
     )
     relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
@@ -132,13 +132,24 @@ def zip_data_paths(
             if not extract_directory.joinpath(zipped_filename).exists():
                 zip_file.extract(zipped_filename, path=extract_directory)
 
-    if not skip_hashing:
+    resolved_paths = [
+        extract_directory.joinpath(zipped_filename).resolve()
+        for zipped_filename in namelist
+    ]
+
+    paths_are_files = [path.is_file() for path in resolved_paths]
+
+    resolved_filepaths = [
+        path for path, is_file in zip(resolved_paths, paths_are_files) if is_file
+    ]
+
+    if check_hashes:
         non_matching_filepaths = []
 
-        for zipped_filename in namelist:
-            relative_filename = relative_extract_directory.joinpath(zipped_filename)
+        for zipped_filename, is_file in zip(namelist, paths_are_files):
+            if is_file:
+                relative_filename = relative_extract_directory.joinpath(zipped_filename)
 
-            if extract_directory.joinpath(zipped_filename).is_file():
                 try:
                     hash_agrees = data_file_hash_check(relative_filename)
                     if not hash_agrees:
@@ -160,10 +171,5 @@ def zip_data_paths(
             raise ValueError(
                 "At least one file on disk does not match the recorded hash."
             )
-
-    resolved_filepaths = [
-        extract_directory.joinpath(zipped_filename).resolve()
-        for zipped_filename in namelist
-    ]
 
     return resolved_filepaths

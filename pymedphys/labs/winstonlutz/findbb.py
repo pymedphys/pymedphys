@@ -28,8 +28,10 @@ import numpy as np
 import scipy.optimize
 
 from .interppoints import create_bb_points_function
-from .pylinac import PyLinacFieldBBCentres
 from .utilities import create_centralised_field, transform_point
+
+# from .pylinac import PyLinacFieldBBCentres
+
 
 BB_MIN_SEARCH_DIST = 2
 BB_MIN_SEARCH_TOL = 0.25
@@ -42,7 +44,7 @@ def optimise_bb_centre(
     penumbra,
     field_centre,
     field_rotation,
-    pylinac_tol=0.1,
+    # pylinac_tol=0.1,
 ):
     centralised_field = create_centralised_field(field, field_centre, field_rotation)
     to_minimise_edge_agreement, to_minimise_pixel_vals = create_bb_to_minimise(
@@ -93,14 +95,14 @@ def optimise_bb_centre(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
 
-    pylinac = PyLinacFieldBBCentres(
-        field, edge_lengths, penumbra, field_centre, field_rotation
-    )
-    if np.any(np.abs(np.array(pylinac.bb_centre) - bb_centre) > pylinac_tol):
-        raise ValueError(
-            "The determined BB centre deviates from pylinac more "
-            "than the defined tolerance"
-        )
+    # pylinac = PyLinacFieldBBCentres(
+    #     field, edge_lengths, penumbra, field_centre, field_rotation
+    # )
+    # if np.any(np.abs(np.array(pylinac.bb_centre) - bb_centre) > pylinac_tol):
+    #     raise ValueError(
+    #         "The determined BB centre deviates from pylinac more "
+    #         "than the defined tolerance"
+    #     )
 
     return bb_centre
 
