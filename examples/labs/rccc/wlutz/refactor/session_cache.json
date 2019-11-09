@@ -1,10 +1,16 @@
 {
   "06FFF-clockwise-20191105_154959265-00": {
-    "field_centre": [
-      -0.16,
-      -3.55
-    ],
-    "field_rotation": -1.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.16,
+        -3.55
+      ],
+      "field_rotation": -1.2,
+      "bb_centre": [
+        -0.24,
+        -3.23
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -26,18 +32,20 @@
           -3.25
         ]
       }
-    },
-    "bb_centre": [
-      -0.23,
-      -3.23
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-01": {
-    "field_centre": [
-      -0.28,
-      -3.52
-    ],
-    "field_rotation": -4.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -3.52
+      ],
+      "field_rotation": -4.9,
+      "bb_centre": [
+        -0.33,
+        -3.21
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -59,18 +67,20 @@
           -3.21
         ]
       }
-    },
-    "bb_centre": [
-      -0.33,
-      -3.21
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-02": {
-    "field_centre": [
-      -0.43,
-      -3.49
-    ],
-    "field_rotation": -9.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.43,
+        -3.49
+      ],
+      "field_rotation": -9.8,
+      "bb_centre": [
+        -0.4,
+        -3.17
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -92,18 +102,20 @@
           -3.2
         ]
       }
-    },
-    "bb_centre": [
-      -0.4,
-      -3.17
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-03": {
-    "field_centre": [
-      -0.36,
-      -3.44
-    ],
-    "field_rotation": -14.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.36,
+        -3.44
+      ],
+      "field_rotation": -14.5,
+      "bb_centre": [
+        -0.51,
+        -3.1
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -125,18 +137,20 @@
           -3.13
         ]
       }
-    },
-    "bb_centre": [
-      -0.51,
-      -3.1
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-04": {
-    "field_centre": [
-      -0.4,
-      -3.35
-    ],
-    "field_rotation": -19.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.4,
+        -3.35
+      ],
+      "field_rotation": -19.5,
+      "bb_centre": [
+        -0.57,
+        -3.06
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -158,18 +172,20 @@
           -3.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.57,
-      -3.06
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-05": {
-    "field_centre": [
-      -0.43,
-      -3.2
-    ],
-    "field_rotation": -24.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.43,
+        -3.2
+      ],
+      "field_rotation": -24.4,
+      "bb_centre": [
+        -0.57,
+        -2.95
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -191,18 +207,20 @@
           -2.93
         ]
       }
-    },
-    "bb_centre": [
-      -0.57,
-      -2.95
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-06": {
-    "field_centre": [
-      -0.46,
-      -3.03
-    ],
-    "field_rotation": -29.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.46,
+        -3.03
+      ],
+      "field_rotation": -29.6,
+      "bb_centre": [
+        -0.58,
+        -2.84
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -224,18 +242,20 @@
           -2.82
         ]
       }
-    },
-    "bb_centre": [
-      -0.58,
-      -2.84
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-07": {
-    "field_centre": [
-      -0.37,
-      -2.81
-    ],
-    "field_rotation": -34.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.37,
+        -2.81
+      ],
+      "field_rotation": -34.7,
+      "bb_centre": [
+        -0.61,
+        -2.74
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -257,18 +277,20 @@
           -2.72
         ]
       }
-    },
-    "bb_centre": [
-      -0.61,
-      -2.74
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-08": {
-    "field_centre": [
-      -0.39,
-      -2.6
-    ],
-    "field_rotation": -39.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.39,
+        -2.6
+      ],
+      "field_rotation": -39.8,
+      "bb_centre": [
+        -0.64,
+        -2.64
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -290,18 +312,20 @@
           -2.6
         ]
       }
-    },
-    "bb_centre": [
-      -0.64,
-      -2.64
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-09": {
-    "field_centre": [
-      -0.35,
-      -2.38
-    ],
-    "field_rotation": -44.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.35,
+        -2.38
+      ],
+      "field_rotation": -44.9,
+      "bb_centre": [
+        -0.65,
+        -2.53
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -323,18 +347,20 @@
           -2.56
         ]
       }
-    },
-    "bb_centre": [
-      -0.65,
-      -2.53
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-10": {
-    "field_centre": [
-      -0.25,
-      -2.11
-    ],
-    "field_rotation": -50.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.25,
+        -2.11
+      ],
+      "field_rotation": -50.4,
+      "bb_centre": [
+        -0.62,
+        -2.41
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -356,18 +382,20 @@
           -2.46
         ]
       }
-    },
-    "bb_centre": [
-      -0.62,
-      -2.41
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-11": {
-    "field_centre": [
-      -0.3,
-      -1.89
-    ],
-    "field_rotation": -55.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.3,
+        -1.89
+      ],
+      "field_rotation": -55.9,
+      "bb_centre": [
+        -0.59,
+        -2.3
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -389,18 +417,20 @@
           -2.38
         ]
       }
-    },
-    "bb_centre": [
-      -0.59,
-      -2.3
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-12": {
-    "field_centre": [
-      -0.27,
-      -1.71
-    ],
-    "field_rotation": -61.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.27,
+        -1.71
+      ],
+      "field_rotation": -61.1,
+      "bb_centre": [
+        -0.53,
+        -2.2
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -422,18 +452,20 @@
           -2.28
         ]
       }
-    },
-    "bb_centre": [
-      -0.53,
-      -2.2
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-13": {
-    "field_centre": [
-      -0.28,
-      -1.57
-    ],
-    "field_rotation": -66.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -1.57
+      ],
+      "field_rotation": -66.4,
+      "bb_centre": [
+        -0.51,
+        -2.12
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -455,18 +487,20 @@
           -2.22
         ]
       }
-    },
-    "bb_centre": [
-      -0.51,
-      -2.12
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-14": {
-    "field_centre": [
-      -0.22,
-      -1.39
-    ],
-    "field_rotation": -71.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.22,
+        -1.39
+      ],
+      "field_rotation": -71.7,
+      "bb_centre": [
+        -0.47,
+        -2.08
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -488,18 +522,20 @@
           -2.13
         ]
       }
-    },
-    "bb_centre": [
-      -0.47,
-      -2.08
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-15": {
-    "field_centre": [
-      -0.13,
-      -1.27
-    ],
-    "field_rotation": -76.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.13,
+        -1.27
+      ],
+      "field_rotation": -76.9,
+      "bb_centre": [
+        -0.42,
+        -2.05
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -521,18 +557,20 @@
           -2.11
         ]
       }
-    },
-    "bb_centre": [
-      -0.42,
-      -2.05
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-16": {
-    "field_centre": [
-      -0.15,
-      -1.15
-    ],
-    "field_rotation": -82.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.15,
+        -1.15
+      ],
+      "field_rotation": -82.1,
+      "bb_centre": [
+        -0.38,
+        -2.0
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -554,18 +592,20 @@
           -2.05
         ]
       }
-    },
-    "bb_centre": [
-      -0.38,
-      -2.0
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-17": {
-    "field_centre": [
-      -0.36,
-      -1.03
-    ],
-    "field_rotation": -87.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.36,
+        -1.03
+      ],
+      "field_rotation": -87.3,
+      "bb_centre": [
+        -0.49,
+        -1.96
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -587,18 +627,20 @@
           -2.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -1.96
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-18": {
-    "field_centre": [
-      -0.61,
-      -1.01
-    ],
-    "field_rotation": 87.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.61,
+        -1.01
+      ],
+      "field_rotation": 87.2,
+      "bb_centre": [
+        -0.67,
+        -1.92
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -620,18 +662,20 @@
           -1.97
         ]
       }
-    },
-    "bb_centre": [
-      -0.67,
-      -1.92
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-19": {
-    "field_centre": [
-      -0.65,
-      -1.06
-    ],
-    "field_rotation": 82.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.65,
+        -1.06
+      ],
+      "field_rotation": 82.2,
+      "bb_centre": [
+        -0.71,
+        -1.92
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -653,18 +697,20 @@
           -1.96
         ]
       }
-    },
-    "bb_centre": [
-      -0.71,
-      -1.92
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-20": {
-    "field_centre": [
-      -0.54,
-      -1.18
-    ],
-    "field_rotation": 77.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.54,
+        -1.18
+      ],
+      "field_rotation": 77.1,
+      "bb_centre": [
+        -0.67,
+        -1.98
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -686,18 +732,20 @@
           -2.01
         ]
       }
-    },
-    "bb_centre": [
-      -0.67,
-      -1.98
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-21": {
-    "field_centre": [
-      -0.42,
-      -1.28
-    ],
-    "field_rotation": 72.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.42,
+        -1.28
+      ],
+      "field_rotation": 72.1,
+      "bb_centre": [
+        -0.59,
+        -2.05
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -719,18 +767,20 @@
           -2.08
         ]
       }
-    },
-    "bb_centre": [
-      -0.59,
-      -2.05
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-22": {
-    "field_centre": [
-      -0.33,
-      -1.41
-    ],
-    "field_rotation": 66.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.33,
+        -1.41
+      ],
+      "field_rotation": 66.7,
+      "bb_centre": [
+        -0.5,
+        -2.11
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -752,18 +802,20 @@
           -2.11
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.11
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-23": {
-    "field_centre": [
-      -0.3,
-      -1.51
-    ],
-    "field_rotation": 61.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.3,
+        -1.51
+      ],
+      "field_rotation": 61.5,
+      "bb_centre": [
+        -0.43,
+        -2.19
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -781,22 +833,24 @@
           -1.53
         ],
         "bb_centre": [
-          -0.38,
+          -0.37,
           -2.19
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -2.19
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-24": {
-    "field_centre": [
-      -0.2,
-      -1.68
-    ],
-    "field_rotation": 56.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.2,
+        -1.68
+      ],
+      "field_rotation": 56.3,
+      "bb_centre": [
+        -0.4,
+        -2.24
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -804,7 +858,7 @@
           -1.69
         ],
         "bb_centre": [
-          -0.32,
+          -0.31,
           -2.21
         ]
       },
@@ -818,18 +872,20 @@
           -2.24
         ]
       }
-    },
-    "bb_centre": [
-      -0.4,
-      -2.24
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-25": {
-    "field_centre": [
-      -0.1,
-      -1.87
-    ],
-    "field_rotation": 51.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.1,
+        -1.87
+      ],
+      "field_rotation": 51.1,
+      "bb_centre": [
+        -0.35,
+        -2.3
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -851,18 +907,20 @@
           -2.34
         ]
       }
-    },
-    "bb_centre": [
-      -0.35,
-      -2.3
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-26": {
-    "field_centre": [
-      -0.02,
-      -2.1
-    ],
-    "field_rotation": 46.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.02,
+        -2.1
+      ],
+      "field_rotation": 46.0,
+      "bb_centre": [
+        -0.31,
+        -2.39
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -884,51 +942,23 @@
           -2.38
         ]
       }
-    },
-    "bb_centre": [
-      -0.32,
-      -2.39
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-27": {
-    "field_centre": [
-      0.03,
-      -2.31
-    ],
-    "field_rotation": 40.4,
-    "pylinac": {
-      "v2.2.6": {
-        "field_centre": [
-          0.07,
-          -2.29
-        ],
-        "bb_centre": [
-          -0.23,
-          -2.51
-        ]
-      },
-      "v2.2.7": {
-        "field_centre": [
-          0.07,
-          -2.29
-        ],
-        "bb_centre": [
-          -0.21,
-          -2.54
-        ]
-      }
-    },
-    "bb_centre": [
-      -0.26,
-      -2.52
-    ]
+    "pymedphys": {}
   },
   "06FFF-clockwise-20191105_154959265-28": {
-    "field_centre": [
-      -0.02,
-      -2.48
-    ],
-    "field_rotation": 35.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.02,
+        -2.48
+      ],
+      "field_rotation": 35.5,
+      "bb_centre": [
+        -0.21,
+        -2.64
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -950,18 +980,20 @@
           -2.59
         ]
       }
-    },
-    "bb_centre": [
-      -0.2,
-      -2.64
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-29": {
-    "field_centre": [
-      0.13,
-      -2.68
-    ],
-    "field_rotation": 30.3,
+    "pymedphys": {
+      "field_centre": [
+        0.13,
+        -2.68
+      ],
+      "field_rotation": 30.3,
+      "bb_centre": [
+        -0.12,
+        -2.76
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -983,18 +1015,20 @@
           -2.71
         ]
       }
-    },
-    "bb_centre": [
-      -0.12,
-      -2.76
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-30": {
-    "field_centre": [
-      0.03,
-      -2.82
-    ],
-    "field_rotation": 25.1,
+    "pymedphys": {
+      "field_centre": [
+        0.03,
+        -2.82
+      ],
+      "field_rotation": 25.1,
+      "bb_centre": [
+        -0.16,
+        -2.86
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1016,18 +1050,20 @@
           -2.85
         ]
       }
-    },
-    "bb_centre": [
-      -0.16,
-      -2.86
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-31": {
-    "field_centre": [
-      0.05,
-      -2.95
-    ],
-    "field_rotation": 20.0,
+    "pymedphys": {
+      "field_centre": [
+        0.05,
+        -2.95
+      ],
+      "field_rotation": 20.0,
+      "bb_centre": [
+        -0.23,
+        -2.95
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1049,18 +1085,20 @@
           -2.93
         ]
       }
-    },
-    "bb_centre": [
-      -0.23,
-      -2.95
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-32": {
-    "field_centre": [
-      0.02,
-      -3.05
-    ],
-    "field_rotation": 15.0,
+    "pymedphys": {
+      "field_centre": [
+        0.02,
+        -3.05
+      ],
+      "field_rotation": 15.0,
+      "bb_centre": [
+        -0.32,
+        -2.98
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1082,18 +1120,20 @@
           -2.98
         ]
       }
-    },
-    "bb_centre": [
-      -0.32,
-      -2.98
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-33": {
-    "field_centre": [
-      -0.01,
-      -3.11
-    ],
-    "field_rotation": 10.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.01,
+        -3.11
+      ],
+      "field_rotation": 10.0,
+      "bb_centre": [
+        -0.41,
+        -3.05
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1115,18 +1155,20 @@
           -3.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.42,
-      -3.05
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-34": {
-    "field_centre": [
-      -0.17,
-      -3.16
-    ],
-    "field_rotation": 5.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.17,
+        -3.16
+      ],
+      "field_rotation": 5.0,
+      "bb_centre": [
+        -0.44,
+        -3.07
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1148,18 +1190,20 @@
           -3.07
         ]
       }
-    },
-    "bb_centre": [
-      -0.44,
-      -3.07
-    ]
+    }
   },
   "06FFF-clockwise-20191105_154959265-35": {
-    "field_centre": [
-      -0.34,
-      -3.16
-    ],
-    "field_rotation": 1.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.34,
+        -3.16
+      ],
+      "field_rotation": 1.5,
+      "bb_centre": [
+        -0.48,
+        -3.09
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1181,18 +1225,20 @@
           -3.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -3.09
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-00": {
-    "field_centre": [
-      -0.34,
-      -3.45
-    ],
-    "field_rotation": 2.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.34,
+        -3.45
+      ],
+      "field_rotation": 2.0,
+      "bb_centre": [
+        -0.5,
+        -3.1
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1214,18 +1260,20 @@
           -3.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -3.1
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-01": {
-    "field_centre": [
-      -0.13,
-      -3.57
-    ],
-    "field_rotation": 5.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.13,
+        -3.57
+      ],
+      "field_rotation": 5.8,
+      "bb_centre": [
+        -0.41,
+        -3.11
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1247,18 +1295,20 @@
           -3.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.41,
-      -3.11
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-02": {
-    "field_centre": [
-      -0.2,
-      -3.53
-    ],
-    "field_rotation": 10.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.2,
+        -3.53
+      ],
+      "field_rotation": 10.8,
+      "bb_centre": [
+        -0.34,
+        -3.1
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1280,18 +1330,20 @@
           -3.13
         ]
       }
-    },
-    "bb_centre": [
-      -0.34,
-      -3.1
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-03": {
-    "field_centre": [
-      -0.29,
-      -3.46
-    ],
-    "field_rotation": 15.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.29,
+        -3.46
+      ],
+      "field_rotation": 15.6,
+      "bb_centre": [
+        -0.22,
+        -3.06
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1313,18 +1365,20 @@
           -3.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.22,
-      -3.06
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-04": {
-    "field_centre": [
-      -0.28,
-      -3.37
-    ],
-    "field_rotation": 20.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -3.37
+      ],
+      "field_rotation": 20.6,
+      "bb_centre": [
+        -0.14,
+        -3.05
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1346,18 +1400,20 @@
           -3.02
         ]
       }
-    },
-    "bb_centre": [
-      -0.14,
-      -3.05
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-05": {
-    "field_centre": [
-      -0.3,
-      -3.24
-    ],
-    "field_rotation": 25.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.3,
+        -3.24
+      ],
+      "field_rotation": 25.6,
+      "bb_centre": [
+        -0.09,
+        -2.95
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1379,18 +1435,20 @@
           -2.94
         ]
       }
-    },
-    "bb_centre": [
-      -0.09,
-      -2.95
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-06": {
-    "field_centre": [
-      -0.19,
-      -3.08
-    ],
-    "field_rotation": 30.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.19,
+        -3.08
+      ],
+      "field_rotation": 30.6,
+      "bb_centre": [
+        -0.08,
+        -2.84
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1412,18 +1470,20 @@
           -2.8
         ]
       }
-    },
-    "bb_centre": [
-      -0.08,
-      -2.84
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-07": {
-    "field_centre": [
-      -0.38,
-      -2.86
-    ],
-    "field_rotation": 35.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.38,
+        -2.86
+      ],
+      "field_rotation": 35.7,
+      "bb_centre": [
+        -0.19,
+        -2.71
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1445,18 +1505,20 @@
           -2.68
         ]
       }
-    },
-    "bb_centre": [
-      -0.19,
-      -2.71
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-08": {
-    "field_centre": [
-      -0.4,
-      -2.71
-    ],
-    "field_rotation": 40.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.4,
+        -2.71
+      ],
+      "field_rotation": 40.8,
+      "bb_centre": [
+        -0.29,
+        -2.59
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1474,22 +1536,24 @@
           -2.68
         ],
         "bb_centre": [
-          -0.27,
+          -0.28,
           -2.56
         ]
       }
-    },
-    "bb_centre": [
-      -0.29,
-      -2.59
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-09": {
-    "field_centre": [
-      -0.43,
-      -2.51
-    ],
-    "field_rotation": 46.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.43,
+        -2.51
+      ],
+      "field_rotation": 46.0,
+      "bb_centre": [
+        -0.37,
+        -2.46
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1511,18 +1575,20 @@
           -2.44
         ]
       }
-    },
-    "bb_centre": [
-      -0.37,
-      -2.46
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-10": {
-    "field_centre": [
-      -0.46,
-      -2.35
-    ],
-    "field_rotation": 50.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.46,
+        -2.35
+      ],
+      "field_rotation": 50.8,
+      "bb_centre": [
+        -0.42,
+        -2.38
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1540,22 +1606,24 @@
           -2.33
         ],
         "bb_centre": [
-          -0.4,
+          -0.39,
           -2.38
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -2.38
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-11": {
-    "field_centre": [
-      -0.62,
-      -2.15
-    ],
-    "field_rotation": 56.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.62,
+        -2.15
+      ],
+      "field_rotation": 56.0,
+      "bb_centre": [
+        -0.5,
+        -2.31
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1577,18 +1645,20 @@
           -2.3
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.31
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-12": {
-    "field_centre": [
-      -0.69,
-      -1.96
-    ],
-    "field_rotation": 61.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.69,
+        -1.96
+      ],
+      "field_rotation": 61.2,
+      "bb_centre": [
+        -0.55,
+        -2.24
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1610,18 +1680,20 @@
           -2.24
         ]
       }
-    },
-    "bb_centre": [
-      -0.55,
-      -2.24
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-13": {
-    "field_centre": [
-      -0.75,
-      -1.8
-    ],
-    "field_rotation": 66.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.75,
+        -1.8
+      ],
+      "field_rotation": 66.3,
+      "bb_centre": [
+        -0.64,
+        -2.16
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1643,18 +1715,20 @@
           -2.16
         ]
       }
-    },
-    "bb_centre": [
-      -0.64,
-      -2.16
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-14": {
-    "field_centre": [
-      -0.84,
-      -1.63
-    ],
-    "field_rotation": 71.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.84,
+        -1.63
+      ],
+      "field_rotation": 71.2,
+      "bb_centre": [
+        -0.75,
+        -2.1
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1676,18 +1750,20 @@
           -2.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.75,
-      -2.1
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-15": {
-    "field_centre": [
-      -0.94,
-      -1.49
-    ],
-    "field_rotation": 76.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.94,
+        -1.49
+      ],
+      "field_rotation": 76.3,
+      "bb_centre": [
+        -0.82,
+        -2.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1709,18 +1785,20 @@
           -2.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.82,
-      -2.02
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-16": {
-    "field_centre": [
-      -1.05,
-      -1.34
-    ],
-    "field_rotation": 81.6,
+    "pymedphys": {
+      "field_centre": [
+        -1.05,
+        -1.34
+      ],
+      "field_rotation": 81.6,
+      "bb_centre": [
+        -0.86,
+        -1.94
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1742,18 +1820,20 @@
           -1.97
         ]
       }
-    },
-    "bb_centre": [
-      -0.86,
-      -1.94
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-17": {
-    "field_centre": [
-      -1.02,
-      -1.19
-    ],
-    "field_rotation": 86.7,
+    "pymedphys": {
+      "field_centre": [
+        -1.02,
+        -1.19
+      ],
+      "field_rotation": 86.7,
+      "bb_centre": [
+        -0.86,
+        -1.91
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1775,18 +1855,20 @@
           -1.93
         ]
       }
-    },
-    "bb_centre": [
-      -0.86,
-      -1.91
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-18": {
-    "field_centre": [
-      -0.78,
-      -1.17
-    ],
-    "field_rotation": -88.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.78,
+        -1.17
+      ],
+      "field_rotation": -88.2,
+      "bb_centre": [
+        -0.68,
+        -1.92
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1808,18 +1890,20 @@
           -2.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.68,
-      -1.92
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-19": {
-    "field_centre": [
-      -0.55,
-      -1.2
-    ],
-    "field_rotation": -82.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.55,
+        -1.2
+      ],
+      "field_rotation": -82.6,
+      "bb_centre": [
+        -0.55,
+        -1.96
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1841,18 +1925,20 @@
           -2.02
         ]
       }
-    },
-    "bb_centre": [
-      -0.55,
-      -1.96
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-20": {
-    "field_centre": [
-      -0.46,
-      -1.26
-    ],
-    "field_rotation": -77.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.46,
+        -1.26
+      ],
+      "field_rotation": -77.2,
+      "bb_centre": [
+        -0.55,
+        -2.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1874,18 +1960,20 @@
           -2.07
         ]
       }
-    },
-    "bb_centre": [
-      -0.55,
-      -2.02
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-21": {
-    "field_centre": [
-      -0.46,
-      -1.32
-    ],
-    "field_rotation": -72.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.46,
+        -1.32
+      ],
+      "field_rotation": -72.0,
+      "bb_centre": [
+        -0.56,
+        -2.07
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1907,18 +1995,20 @@
           -2.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.56,
-      -2.07
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-22": {
-    "field_centre": [
-      -0.43,
-      -1.41
-    ],
-    "field_rotation": -66.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.43,
+        -1.41
+      ],
+      "field_rotation": -66.8,
+      "bb_centre": [
+        -0.56,
+        -2.12
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1926,7 +2016,7 @@
           -1.44
         ],
         "bb_centre": [
-          -0.59,
+          -0.58,
           -2.11
         ]
       },
@@ -1940,18 +2030,20 @@
           -2.13
         ]
       }
-    },
-    "bb_centre": [
-      -0.56,
-      -2.12
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-23": {
-    "field_centre": [
-      -0.4,
-      -1.54
-    ],
-    "field_rotation": -61.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.4,
+        -1.54
+      ],
+      "field_rotation": -61.5,
+      "bb_centre": [
+        -0.54,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -1973,18 +2065,20 @@
           -2.26
         ]
       }
-    },
-    "bb_centre": [
-      -0.54,
-      -2.18
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-24": {
-    "field_centre": [
-      -0.31,
-      -1.68
-    ],
-    "field_rotation": -56.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.31,
+        -1.68
+      ],
+      "field_rotation": -56.0,
+      "bb_centre": [
+        -0.55,
+        -2.28
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2006,18 +2100,20 @@
           -2.39
         ]
       }
-    },
-    "bb_centre": [
-      -0.55,
-      -2.28
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-25": {
-    "field_centre": [
-      -0.25,
-      -1.86
-    ],
-    "field_rotation": -50.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.25,
+        -1.86
+      ],
+      "field_rotation": -50.7,
+      "bb_centre": [
+        -0.56,
+        -2.38
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2039,18 +2135,20 @@
           -2.43
         ]
       }
-    },
-    "bb_centre": [
-      -0.56,
-      -2.38
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-26": {
-    "field_centre": [
-      -0.23,
-      -2.11
-    ],
-    "field_rotation": -45.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.23,
+        -2.11
+      ],
+      "field_rotation": -45.5,
+      "bb_centre": [
+        -0.57,
+        -2.51
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2072,18 +2170,20 @@
           -2.56
         ]
       }
-    },
-    "bb_centre": [
-      -0.57,
-      -2.51
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-27": {
-    "field_centre": [
-      -0.25,
-      -2.32
-    ],
-    "field_rotation": -40.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.25,
+        -2.32
+      ],
+      "field_rotation": -40.1,
+      "bb_centre": [
+        -0.54,
+        -2.62
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2105,18 +2205,20 @@
           -2.63
         ]
       }
-    },
-    "bb_centre": [
-      -0.54,
-      -2.62
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-28": {
-    "field_centre": [
-      -0.16,
-      -2.46
-    ],
-    "field_rotation": -34.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.16,
+        -2.46
+      ],
+      "field_rotation": -34.6,
+      "bb_centre": [
+        -0.48,
+        -2.71
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2138,18 +2240,20 @@
           -2.66
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.71
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-29": {
-    "field_centre": [
-      -0.28,
-      -2.63
-    ],
-    "field_rotation": -29.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -2.63
+      ],
+      "field_rotation": -29.5,
+      "bb_centre": [
+        -0.45,
+        -2.81
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2171,18 +2275,20 @@
           -2.81
         ]
       }
-    },
-    "bb_centre": [
-      -0.45,
-      -2.81
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-30": {
-    "field_centre": [
-      -0.22,
-      -2.79
-    ],
-    "field_rotation": -24.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.22,
+        -2.79
+      ],
+      "field_rotation": -24.5,
+      "bb_centre": [
+        -0.44,
+        -2.94
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2204,18 +2310,20 @@
           -2.92
         ]
       }
-    },
-    "bb_centre": [
-      -0.44,
-      -2.94
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-31": {
-    "field_centre": [
-      -0.27,
-      -2.98
-    ],
-    "field_rotation": -19.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.27,
+        -2.98
+      ],
+      "field_rotation": -19.4,
+      "bb_centre": [
+        -0.43,
+        -3.05
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2237,18 +2345,20 @@
           -3.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -3.05
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-32": {
-    "field_centre": [
-      -0.24,
-      -3.06
-    ],
-    "field_rotation": -14.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.24,
+        -3.06
+      ],
+      "field_rotation": -14.3,
+      "bb_centre": [
+        -0.38,
+        -3.09
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2270,18 +2380,20 @@
           -3.09
         ]
       }
-    },
-    "bb_centre": [
-      -0.38,
-      -3.09
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-33": {
-    "field_centre": [
-      -0.3,
-      -3.11
-    ],
-    "field_rotation": -9.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.3,
+        -3.11
+      ],
+      "field_rotation": -9.3,
+      "bb_centre": [
+        -0.27,
+        -3.17
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2303,18 +2415,20 @@
           -3.17
         ]
       }
-    },
-    "bb_centre": [
-      -0.27,
-      -3.17
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-34": {
-    "field_centre": [
-      -0.24,
-      -3.16
-    ],
-    "field_rotation": -4.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.24,
+        -3.16
+      ],
+      "field_rotation": -4.5,
+      "bb_centre": [
+        -0.23,
+        -3.19
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2336,18 +2450,20 @@
           -3.21
         ]
       }
-    },
-    "bb_centre": [
-      -0.23,
-      -3.19
-    ]
+    }
   },
   "06FFF-counter-clockwise-20191105_154819750-35": {
-    "field_centre": [
-      -0.1,
-      -3.21
-    ],
-    "field_rotation": -0.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.1,
+        -3.21
+      ],
+      "field_rotation": -0.8,
+      "bb_centre": [
+        -0.16,
+        -3.22
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2369,18 +2485,20 @@
           -3.27
         ]
       }
-    },
-    "bb_centre": [
-      -0.16,
-      -3.22
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-00": {
-    "field_centre": [
-      0.14,
-      -3.47
-    ],
-    "field_rotation": -4.6,
+    "pymedphys": {
+      "field_centre": [
+        0.14,
+        -3.47
+      ],
+      "field_rotation": -4.6,
+      "bb_centre": [
+        -0.19,
+        -3.27
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2402,18 +2520,20 @@
           -3.24
         ]
       }
-    },
-    "bb_centre": [
-      -0.19,
-      -3.27
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-01": {
-    "field_centre": [
-      0.13,
-      -3.33
-    ],
-    "field_rotation": -14.5,
+    "pymedphys": {
+      "field_centre": [
+        0.13,
+        -3.33
+      ],
+      "field_rotation": -14.5,
+      "bb_centre": [
+        -0.39,
+        -3.19
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2435,18 +2555,20 @@
           -3.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.39,
-      -3.19
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-02": {
-    "field_centre": [
-      -0.0,
-      -3.06
-    ],
-    "field_rotation": -25.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.0,
+        -3.06
+      ],
+      "field_rotation": -25.3,
+      "bb_centre": [
+        -0.47,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2468,18 +2590,20 @@
           -3.02
         ]
       }
-    },
-    "bb_centre": [
-      -0.47,
-      -3.02
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-03": {
-    "field_centre": [
-      -0.15,
-      -2.72
-    ],
-    "field_rotation": -36.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.15,
+        -2.72
+      ],
+      "field_rotation": -36.3,
+      "bb_centre": [
+        -0.5,
+        -2.79
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2498,21 +2622,23 @@
         ],
         "bb_centre": [
           -0.48,
-          -2.75
+          -2.76
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.79
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-04": {
-    "field_centre": [
-      -0.24,
-      -2.35
-    ],
-    "field_rotation": -47.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.24,
+        -2.35
+      ],
+      "field_rotation": -47.0,
+      "bb_centre": [
+        -0.54,
+        -2.57
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2534,51 +2660,55 @@
           -2.59
         ]
       }
-    },
-    "bb_centre": [
-      -0.54,
-      -2.57
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-05": {
-    "field_centre": [
-      -0.34,
-      -2.01
-    ],
-    "field_rotation": -57.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.34,
+        -2.01
+      ],
+      "field_rotation": -58.0,
+      "bb_centre": [
+        -0.48,
+        -2.35
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
-          -0.32,
+          -0.33,
           -2.01
         ],
         "bb_centre": [
-          -0.46,
+          -0.47,
           -2.33
         ]
       },
       "v2.2.7": {
         "field_centre": [
-          -0.32,
+          -0.33,
           -2.01
         ],
         "bb_centre": [
           -0.42,
-          -2.41
+          -2.4
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.34
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-06": {
-    "field_centre": [
-      -0.32,
-      -1.75
-    ],
-    "field_rotation": -68.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.32,
+        -1.75
+      ],
+      "field_rotation": -68.5,
+      "bb_centre": [
+        -0.41,
+        -2.19
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2600,18 +2730,20 @@
           -2.19
         ]
       }
-    },
-    "bb_centre": [
-      -0.41,
-      -2.19
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-07": {
-    "field_centre": [
-      -0.17,
-      -1.56
-    ],
-    "field_rotation": -79.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.17,
+        -1.56
+      ],
+      "field_rotation": -79.4,
+      "bb_centre": [
+        -0.33,
+        -2.11
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2633,18 +2765,20 @@
           -2.13
         ]
       }
-    },
-    "bb_centre": [
-      -0.32,
-      -2.11
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-08": {
-    "field_centre": [
-      -0.44,
-      -1.42
-    ],
-    "field_rotation": 89.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.44,
+        -1.42
+      ],
+      "field_rotation": 89.4,
+      "bb_centre": [
+        -0.49,
+        -2.03
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2666,18 +2800,20 @@
           -2.07
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.03
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-09": {
-    "field_centre": [
-      -0.53,
-      -1.46
-    ],
-    "field_rotation": 79.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.53,
+        -1.46
+      ],
+      "field_rotation": 79.2,
+      "bb_centre": [
+        -0.63,
+        -2.04
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2699,18 +2835,20 @@
           -2.07
         ]
       }
-    },
-    "bb_centre": [
-      -0.63,
-      -2.04
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-10": {
-    "field_centre": [
-      -0.26,
-      -1.66
-    ],
-    "field_rotation": 68.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.26,
+        -1.66
+      ],
+      "field_rotation": 68.7,
+      "bb_centre": [
+        -0.49,
+        -2.17
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2732,18 +2870,20 @@
           -2.14
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.17
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-11": {
-    "field_centre": [
-      -0.03,
-      -1.99
-    ],
-    "field_rotation": 57.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.03,
+        -1.99
+      ],
+      "field_rotation": 57.7,
+      "bb_centre": [
+        -0.35,
+        -2.31
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2765,18 +2905,20 @@
           -2.28
         ]
       }
-    },
-    "bb_centre": [
-      -0.35,
-      -2.31
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-12": {
-    "field_centre": [
-      0.23,
-      -2.42
-    ],
-    "field_rotation": 46.8,
+    "pymedphys": {
+      "field_centre": [
+        0.23,
+        -2.42
+      ],
+      "field_rotation": 46.8,
+      "bb_centre": [
+        -0.27,
+        -2.45
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2798,18 +2940,20 @@
           -2.36
         ]
       }
-    },
-    "bb_centre": [
-      -0.27,
-      -2.45
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-13": {
-    "field_centre": [
-      0.37,
-      -2.83
-    ],
-    "field_rotation": 35.7,
+    "pymedphys": {
+      "field_centre": [
+        0.37,
+        -2.83
+      ],
+      "field_rotation": 35.7,
+      "bb_centre": [
+        -0.14,
+        -2.71
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2831,18 +2975,20 @@
           -2.64
         ]
       }
-    },
-    "bb_centre": [
-      -0.14,
-      -2.71
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-14": {
-    "field_centre": [
-      0.46,
-      -3.17
-    ],
-    "field_rotation": 24.6,
+    "pymedphys": {
+      "field_centre": [
+        0.46,
+        -3.17
+      ],
+      "field_rotation": 24.6,
+      "bb_centre": [
+        -0.1,
+        -2.93
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2864,18 +3010,20 @@
           -2.93
         ]
       }
-    },
-    "bb_centre": [
-      -0.1,
-      -2.93
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-15": {
-    "field_centre": [
-      0.46,
-      -3.39
-    ],
-    "field_rotation": 14.0,
+    "pymedphys": {
+      "field_centre": [
+        0.46,
+        -3.39
+      ],
+      "field_rotation": 14.0,
+      "bb_centre": [
+        -0.28,
+        -3.08
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2897,18 +3045,20 @@
           -3.08
         ]
       }
-    },
-    "bb_centre": [
-      -0.28,
-      -3.08
-    ]
+    }
   },
   "06MV-clockwise-20191105_150619593-16": {
-    "field_centre": [
-      0.26,
-      -3.47
-    ],
-    "field_rotation": 4.6,
+    "pymedphys": {
+      "field_centre": [
+        0.26,
+        -3.47
+      ],
+      "field_rotation": 4.6,
+      "bb_centre": [
+        -0.38,
+        -3.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2930,18 +3080,20 @@
           -3.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.38,
-      -3.14
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-00": {
-    "field_centre": [
-      -0.11,
-      -3.68
-    ],
-    "field_rotation": -4.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.11,
+        -3.68
+      ],
+      "field_rotation": -4.4,
+      "bb_centre": [
+        -0.27,
+        -3.29
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2963,18 +3115,20 @@
           -3.29
         ]
       }
-    },
-    "bb_centre": [
-      -0.27,
-      -3.29
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-01": {
-    "field_centre": [
-      -0.15,
-      -3.53
-    ],
-    "field_rotation": -14.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.15,
+        -3.53
+      ],
+      "field_rotation": -14.6,
+      "bb_centre": [
+        -0.48,
+        -3.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -2996,18 +3150,20 @@
           -3.2
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -3.18
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-02": {
-    "field_centre": [
-      -0.23,
-      -3.24
-    ],
-    "field_rotation": -25.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.23,
+        -3.24
+      ],
+      "field_rotation": -25.5,
+      "bb_centre": [
+        -0.54,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3029,18 +3185,20 @@
           -3.0
         ]
       }
-    },
-    "bb_centre": [
-      -0.54,
-      -3.02
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-03": {
-    "field_centre": [
-      -0.32,
-      -2.87
-    ],
-    "field_rotation": -36.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.32,
+        -2.87
+      ],
+      "field_rotation": -36.3,
+      "bb_centre": [
+        -0.57,
+        -2.78
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3062,18 +3220,20 @@
           -2.75
         ]
       }
-    },
-    "bb_centre": [
-      -0.57,
-      -2.78
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-04": {
-    "field_centre": [
-      -0.35,
-      -2.47
-    ],
-    "field_rotation": -47.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.35,
+        -2.47
+      ],
+      "field_rotation": -47.2,
+      "bb_centre": [
+        -0.59,
+        -2.56
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3095,18 +3255,20 @@
           -2.59
         ]
       }
-    },
-    "bb_centre": [
-      -0.59,
-      -2.56
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-05": {
-    "field_centre": [
-      -0.4,
-      -2.09
-    ],
-    "field_rotation": -58.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.4,
+        -2.09
+      ],
+      "field_rotation": -58.0,
+      "bb_centre": [
+        -0.53,
+        -2.33
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3128,18 +3290,20 @@
           -2.34
         ]
       }
-    },
-    "bb_centre": [
-      -0.53,
-      -2.33
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-06": {
-    "field_centre": [
-      -0.34,
-      -1.81
-    ],
-    "field_rotation": -68.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.34,
+        -1.81
+      ],
+      "field_rotation": -68.7,
+      "bb_centre": [
+        -0.45,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3161,18 +3325,20 @@
           -2.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.45,
-      -2.18
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-07": {
-    "field_centre": [
-      -0.19,
-      -1.58
-    ],
-    "field_rotation": -79.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.19,
+        -1.58
+      ],
+      "field_rotation": -79.6,
+      "bb_centre": [
+        -0.37,
+        -2.1
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3194,18 +3360,20 @@
           -2.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.37,
-      -2.1
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-08": {
-    "field_centre": [
-      -0.46,
-      -1.45
-    ],
-    "field_rotation": 89.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.46,
+        -1.45
+      ],
+      "field_rotation": 89.5,
+      "bb_centre": [
+        -0.55,
+        -2.03
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3227,23 +3395,25 @@
           -2.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.55,
-      -2.03
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-09": {
-    "field_centre": [
-      -0.53,
-      -1.51
-    ],
-    "field_rotation": 79.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.53,
+        -1.51
+      ],
+      "field_rotation": 79.0,
+      "bb_centre": [
+        -0.67,
+        -2.03
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
           -0.49,
-          -1.49
+          -1.5
         ],
         "bb_centre": [
           -0.63,
@@ -3253,25 +3423,27 @@
       "v2.2.7": {
         "field_centre": [
           -0.49,
-          -1.49
+          -1.5
         ],
         "bb_centre": [
           -0.63,
           -2.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.67,
-      -2.03
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-10": {
-    "field_centre": [
-      -0.25,
-      -1.68
-    ],
-    "field_rotation": 68.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.25,
+        -1.68
+      ],
+      "field_rotation": 68.3,
+      "bb_centre": [
+        -0.52,
+        -2.17
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3293,18 +3465,20 @@
           -2.17
         ]
       }
-    },
-    "bb_centre": [
-      -0.52,
-      -2.17
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-11": {
-    "field_centre": [
-      -0.05,
-      -1.95
-    ],
-    "field_rotation": 57.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.05,
+        -1.95
+      ],
+      "field_rotation": 57.6,
+      "bb_centre": [
+        -0.39,
+        -2.31
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3326,18 +3500,20 @@
           -2.26
         ]
       }
-    },
-    "bb_centre": [
-      -0.39,
-      -2.31
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-12": {
-    "field_centre": [
-      0.19,
-      -2.35
-    ],
-    "field_rotation": 46.6,
+    "pymedphys": {
+      "field_centre": [
+        0.19,
+        -2.35
+      ],
+      "field_rotation": 46.5,
+      "bb_centre": [
+        -0.3,
+        -2.45
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3359,18 +3535,20 @@
           -2.39
         ]
       }
-    },
-    "bb_centre": [
-      -0.3,
-      -2.45
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-13": {
-    "field_centre": [
-      0.28,
-      -2.74
-    ],
-    "field_rotation": 35.6,
+    "pymedphys": {
+      "field_centre": [
+        0.28,
+        -2.74
+      ],
+      "field_rotation": 35.6,
+      "bb_centre": [
+        -0.19,
+        -2.71
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3392,18 +3570,20 @@
           -2.66
         ]
       }
-    },
-    "bb_centre": [
-      -0.19,
-      -2.71
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-14": {
-    "field_centre": [
-      0.34,
-      -3.07
-    ],
-    "field_rotation": 24.7,
+    "pymedphys": {
+      "field_centre": [
+        0.34,
+        -3.07
+      ],
+      "field_rotation": 24.7,
+      "bb_centre": [
+        -0.14,
+        -2.95
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3425,18 +3605,20 @@
           -2.92
         ]
       }
-    },
-    "bb_centre": [
-      -0.14,
-      -2.95
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-15": {
-    "field_centre": [
-      0.3,
-      -3.29
-    ],
-    "field_rotation": 13.9,
+    "pymedphys": {
+      "field_centre": [
+        0.3,
+        -3.29
+      ],
+      "field_rotation": 13.9,
+      "bb_centre": [
+        -0.32,
+        -3.09
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3458,18 +3640,20 @@
           -3.08
         ]
       }
-    },
-    "bb_centre": [
-      -0.32,
-      -3.09
-    ]
+    }
   },
   "06MV-clockwise-20191105_151120703-16": {
-    "field_centre": [
-      0.06,
-      -3.37
-    ],
-    "field_rotation": 4.5,
+    "pymedphys": {
+      "field_centre": [
+        0.06,
+        -3.37
+      ],
+      "field_rotation": 4.5,
+      "bb_centre": [
+        -0.43,
+        -3.15
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3491,18 +3675,20 @@
           -3.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -3.15
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-00": {
-    "field_centre": [
-      0.09,
-      -3.66
-    ],
-    "field_rotation": -4.8,
+    "pymedphys": {
+      "field_centre": [
+        0.09,
+        -3.66
+      ],
+      "field_rotation": -4.8,
+      "bb_centre": [
+        -0.24,
+        -3.28
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3524,18 +3710,20 @@
           -3.3
         ]
       }
-    },
-    "bb_centre": [
-      -0.24,
-      -3.28
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-01": {
-    "field_centre": [
-      -0.06,
-      -3.51
-    ],
-    "field_rotation": -15.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.06,
+        -3.51
+      ],
+      "field_rotation": -15.0,
+      "bb_centre": [
+        -0.43,
+        -3.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3557,18 +3745,20 @@
           -3.16
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -3.18
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-02": {
-    "field_centre": [
-      -0.15,
-      -3.22
-    ],
-    "field_rotation": -25.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.15,
+        -3.22
+      ],
+      "field_rotation": -25.8,
+      "bb_centre": [
+        -0.49,
+        -3.01
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3590,18 +3780,20 @@
           -2.98
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -3.01
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-03": {
-    "field_centre": [
-      -0.21,
-      -2.84
-    ],
-    "field_rotation": -36.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.21,
+        -2.84
+      ],
+      "field_rotation": -36.7,
+      "bb_centre": [
+        -0.53,
+        -2.78
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3623,18 +3815,20 @@
           -2.75
         ]
       }
-    },
-    "bb_centre": [
-      -0.53,
-      -2.78
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-04": {
-    "field_centre": [
-      -0.28,
-      -2.45
-    ],
-    "field_rotation": -47.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -2.45
+      ],
+      "field_rotation": -47.6,
+      "bb_centre": [
+        -0.56,
+        -2.56
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3656,18 +3850,20 @@
           -2.58
         ]
       }
-    },
-    "bb_centre": [
-      -0.56,
-      -2.56
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-05": {
-    "field_centre": [
-      -0.33,
-      -2.08
-    ],
-    "field_rotation": -58.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.33,
+        -2.08
+      ],
+      "field_rotation": -58.6,
+      "bb_centre": [
+        -0.5,
+        -2.33
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3689,18 +3885,20 @@
           -2.36
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.33
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-06": {
-    "field_centre": [
-      -0.27,
-      -1.81
-    ],
-    "field_rotation": -69.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.27,
+        -1.81
+      ],
+      "field_rotation": -69.4,
+      "bb_centre": [
+        -0.43,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3722,18 +3920,20 @@
           -2.16
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -2.18
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-07": {
-    "field_centre": [
-      -0.13,
-      -1.6
-    ],
-    "field_rotation": -80.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.13,
+        -1.6
+      ],
+      "field_rotation": -80.3,
+      "bb_centre": [
+        -0.36,
+        -2.1
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3755,18 +3955,20 @@
           -2.1
         ]
       }
-    },
-    "bb_centre": [
-      -0.36,
-      -2.1
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-08": {
-    "field_centre": [
-      -0.42,
-      -1.45
-    ],
-    "field_rotation": 88.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.42,
+        -1.45
+      ],
+      "field_rotation": 88.5,
+      "bb_centre": [
+        -0.56,
+        -2.03
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3788,18 +3990,20 @@
           -2.08
         ]
       }
-    },
-    "bb_centre": [
-      -0.56,
-      -2.03
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-09": {
-    "field_centre": [
-      -0.45,
-      -1.49
-    ],
-    "field_rotation": 78.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.45,
+        -1.49
+      ],
+      "field_rotation": 78.1,
+      "bb_centre": [
+        -0.66,
+        -2.05
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3821,18 +4025,20 @@
           -2.08
         ]
       }
-    },
-    "bb_centre": [
-      -0.66,
-      -2.05
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-10": {
-    "field_centre": [
-      -0.19,
-      -1.68
-    ],
-    "field_rotation": 67.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.19,
+        -1.68
+      ],
+      "field_rotation": 67.3,
+      "bb_centre": [
+        -0.49,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3854,18 +4060,20 @@
           -2.16
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.18
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-11": {
-    "field_centre": [
-      0.03,
-      -2.01
-    ],
-    "field_rotation": 56.5,
+    "pymedphys": {
+      "field_centre": [
+        0.03,
+        -2.01
+      ],
+      "field_rotation": 56.5,
+      "bb_centre": [
+        -0.37,
+        -2.32
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3887,18 +4095,20 @@
           -2.28
         ]
       }
-    },
-    "bb_centre": [
-      -0.37,
-      -2.32
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-12": {
-    "field_centre": [
-      0.28,
-      -2.43
-    ],
-    "field_rotation": 45.3,
+    "pymedphys": {
+      "field_centre": [
+        0.28,
+        -2.43
+      ],
+      "field_rotation": 45.3,
+      "bb_centre": [
+        -0.28,
+        -2.48
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3920,18 +4130,20 @@
           -2.4
         ]
       }
-    },
-    "bb_centre": [
-      -0.28,
-      -2.48
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-13": {
-    "field_centre": [
-      0.4,
-      -2.82
-    ],
-    "field_rotation": 34.4,
+    "pymedphys": {
+      "field_centre": [
+        0.4,
+        -2.82
+      ],
+      "field_rotation": 34.4,
+      "bb_centre": [
+        -0.15,
+        -2.73
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3953,18 +4165,20 @@
           -2.67
         ]
       }
-    },
-    "bb_centre": [
-      -0.15,
-      -2.73
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-14": {
-    "field_centre": [
-      0.45,
-      -3.14
-    ],
-    "field_rotation": 23.3,
+    "pymedphys": {
+      "field_centre": [
+        0.45,
+        -3.14
+      ],
+      "field_rotation": 23.3,
+      "bb_centre": [
+        -0.13,
+        -2.97
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -3986,18 +4200,20 @@
           -2.95
         ]
       }
-    },
-    "bb_centre": [
-      -0.13,
-      -2.97
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-15": {
-    "field_centre": [
-      0.42,
-      -3.33
-    ],
-    "field_rotation": 12.4,
+    "pymedphys": {
+      "field_centre": [
+        0.42,
+        -3.33
+      ],
+      "field_rotation": 12.4,
+      "bb_centre": [
+        -0.31,
+        -3.09
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4019,32 +4235,34 @@
           -3.09
         ]
       }
-    },
-    "bb_centre": [
-      -0.31,
-      -3.09
-    ]
+    }
   },
   "06MV-clockwise-20191105_151521250-16": {
-    "field_centre": [
-      0.22,
-      -3.4
-    ],
-    "field_rotation": 3.6,
+    "pymedphys": {
+      "field_centre": [
+        0.22,
+        -3.4
+      ],
+      "field_rotation": 3.7,
+      "bb_centre": [
+        -0.39,
+        -3.15
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
-          0.19,
+          0.2,
           -3.45
         ],
         "bb_centre": [
           -0.43,
-          -3.16
+          -3.15
         ]
       },
       "v2.2.7": {
         "field_centre": [
-          0.19,
+          0.2,
           -3.45
         ],
         "bb_centre": [
@@ -4052,18 +4270,20 @@
           -3.19
         ]
       }
-    },
-    "bb_centre": [
-      -0.39,
-      -3.15
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-00": {
-    "field_centre": [
-      0.25,
-      -3.71
-    ],
-    "field_rotation": -2.4,
+    "pymedphys": {
+      "field_centre": [
+        0.25,
+        -3.71
+      ],
+      "field_rotation": -2.4,
+      "bb_centre": [
+        -0.19,
+        -3.28
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4085,18 +4305,20 @@
           -3.26
         ]
       }
-    },
-    "bb_centre": [
-      -0.19,
-      -3.28
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-01": {
-    "field_centre": [
-      0.03,
-      -3.68
-    ],
-    "field_rotation": -7.0,
+    "pymedphys": {
+      "field_centre": [
+        0.03,
+        -3.68
+      ],
+      "field_rotation": -7.0,
+      "bb_centre": [
+        -0.31,
+        -3.26
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4118,18 +4340,20 @@
           -3.23
         ]
       }
-    },
-    "bb_centre": [
-      -0.31,
-      -3.26
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-02": {
-    "field_centre": [
-      -0.04,
-      -3.59
-    ],
-    "field_rotation": -12.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.04,
+        -3.59
+      ],
+      "field_rotation": -12.4,
+      "bb_centre": [
+        -0.4,
+        -3.2
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4151,18 +4375,20 @@
           -3.19
         ]
       }
-    },
-    "bb_centre": [
-      -0.4,
-      -3.2
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-03": {
-    "field_centre": [
-      -0.03,
-      -3.47
-    ],
-    "field_rotation": -17.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.03,
+        -3.47
+      ],
+      "field_rotation": -17.9,
+      "bb_centre": [
+        -0.49,
+        -3.13
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4184,18 +4410,20 @@
           -3.11
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -3.13
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-04": {
-    "field_centre": [
-      -0.08,
-      -3.33
-    ],
-    "field_rotation": -23.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.08,
+        -3.33
+      ],
+      "field_rotation": -23.4,
+      "bb_centre": [
+        -0.49,
+        -3.05
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4217,18 +4445,20 @@
           -3.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -3.05
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-05": {
-    "field_centre": [
-      -0.19,
-      -3.17
-    ],
-    "field_rotation": -28.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.19,
+        -3.17
+      ],
+      "field_rotation": -28.8,
+      "bb_centre": [
+        -0.5,
+        -2.92
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4250,18 +4480,20 @@
           -2.85
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.92
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-06": {
-    "field_centre": [
-      -0.18,
-      -2.96
-    ],
-    "field_rotation": -34.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.18,
+        -2.96
+      ],
+      "field_rotation": -34.2,
+      "bb_centre": [
+        -0.52,
+        -2.81
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4283,18 +4515,20 @@
           -2.74
         ]
       }
-    },
-    "bb_centre": [
-      -0.52,
-      -2.81
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-07": {
-    "field_centre": [
-      -0.21,
-      -2.76
-    ],
-    "field_rotation": -39.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.21,
+        -2.76
+      ],
+      "field_rotation": -39.6,
+      "bb_centre": [
+        -0.55,
+        -2.7
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4316,18 +4550,20 @@
           -2.68
         ]
       }
-    },
-    "bb_centre": [
-      -0.55,
-      -2.7
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-08": {
-    "field_centre": [
-      -0.26,
-      -2.57
-    ],
-    "field_rotation": -45.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.26,
+        -2.57
+      ],
+      "field_rotation": -45.1,
+      "bb_centre": [
+        -0.59,
+        -2.59
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4349,18 +4585,20 @@
           -2.58
         ]
       }
-    },
-    "bb_centre": [
-      -0.59,
-      -2.59
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-09": {
-    "field_centre": [
-      -0.23,
-      -2.35
-    ],
-    "field_rotation": -50.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.23,
+        -2.35
+      ],
+      "field_rotation": -50.6,
+      "bb_centre": [
+        -0.56,
+        -2.46
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4368,8 +4606,8 @@
           -2.31
         ],
         "bb_centre": [
-          -0.55,
-          -2.43
+          -0.54,
+          -2.44
         ]
       },
       "v2.2.7": {
@@ -4382,18 +4620,20 @@
           -2.45
         ]
       }
-    },
-    "bb_centre": [
-      -0.56,
-      -2.46
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-10": {
-    "field_centre": [
-      -0.3,
-      -2.17
-    ],
-    "field_rotation": -56.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.3,
+        -2.17
+      ],
+      "field_rotation": -56.2,
+      "bb_centre": [
+        -0.53,
+        -2.35
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4415,18 +4655,20 @@
           -2.35
         ]
       }
-    },
-    "bb_centre": [
-      -0.53,
-      -2.35
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-11": {
-    "field_centre": [
-      -0.3,
-      -2.02
-    ],
-    "field_rotation": -61.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.3,
+        -2.02
+      ],
+      "field_rotation": -61.7,
+      "bb_centre": [
+        -0.47,
+        -2.25
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4448,18 +4690,20 @@
           -2.27
         ]
       }
-    },
-    "bb_centre": [
-      -0.47,
-      -2.25
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-12": {
-    "field_centre": [
-      -0.26,
-      -1.88
-    ],
-    "field_rotation": -67.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.26,
+        -1.88
+      ],
+      "field_rotation": -67.0,
+      "bb_centre": [
+        -0.45,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4481,18 +4725,20 @@
           -2.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.45,
-      -2.18
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-13": {
-    "field_centre": [
-      -0.18,
-      -1.74
-    ],
-    "field_rotation": -72.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.18,
+        -1.74
+      ],
+      "field_rotation": -72.5,
+      "bb_centre": [
+        -0.42,
+        -2.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4514,18 +4760,20 @@
           -2.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.42,
-      -2.14
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-14": {
-    "field_centre": [
-      -0.08,
-      -1.64
-    ],
-    "field_rotation": -77.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.08,
+        -1.64
+      ],
+      "field_rotation": -77.9,
+      "bb_centre": [
+        -0.37,
+        -2.1
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4547,18 +4795,20 @@
           -2.1
         ]
       }
-    },
-    "bb_centre": [
-      -0.37,
-      -2.1
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-15": {
-    "field_centre": [
-      -0.09,
-      -1.53
-    ],
-    "field_rotation": -83.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.09,
+        -1.53
+      ],
+      "field_rotation": -83.1,
+      "bb_centre": [
+        -0.35,
+        -2.06
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4580,18 +4830,20 @@
           -2.06
         ]
       }
-    },
-    "bb_centre": [
-      -0.35,
-      -2.06
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-16": {
-    "field_centre": [
-      -0.29,
-      -1.48
-    ],
-    "field_rotation": -89.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.29,
+        -1.48
+      ],
+      "field_rotation": -89.2,
+      "bb_centre": [
+        -0.48,
+        -2.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4613,18 +4865,20 @@
           -2.07
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.02
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-17": {
-    "field_centre": [
-      -0.47,
-      -1.42
-    ],
-    "field_rotation": 85.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.47,
+        -1.42
+      ],
+      "field_rotation": 85.8,
+      "bb_centre": [
+        -0.66,
+        -1.99
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4646,18 +4900,20 @@
           -2.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.66,
-      -1.99
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-18": {
-    "field_centre": [
-      -0.45,
-      -1.43
-    ],
-    "field_rotation": 80.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.45,
+        -1.43
+      ],
+      "field_rotation": 80.0,
+      "bb_centre": [
+        -0.67,
+        -2.0
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4679,18 +4935,20 @@
           -2.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.67,
-      -2.0
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-19": {
-    "field_centre": [
-      -0.32,
-      -1.5
-    ],
-    "field_rotation": 74.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.32,
+        -1.5
+      ],
+      "field_rotation": 74.6,
+      "bb_centre": [
+        -0.62,
+        -2.07
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4712,18 +4970,20 @@
           -2.07
         ]
       }
-    },
-    "bb_centre": [
-      -0.62,
-      -2.07
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-20": {
-    "field_centre": [
-      -0.18,
-      -1.6
-    ],
-    "field_rotation": 69.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.18,
+        -1.6
+      ],
+      "field_rotation": 69.2,
+      "bb_centre": [
+        -0.54,
+        -2.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4745,32 +5005,34 @@
           -2.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.54,
-      -2.14
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-21": {
-    "field_centre": [
-      -0.06,
-      -1.72
-    ],
-    "field_rotation": 63.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.06,
+        -1.72
+      ],
+      "field_rotation": 63.8,
+      "bb_centre": [
+        -0.44,
+        -2.2
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
-          -0.03,
+          -0.02,
           -1.71
         ],
         "bb_centre": [
           -0.36,
-          -2.16
+          -2.17
         ]
       },
       "v2.2.7": {
         "field_centre": [
-          -0.03,
+          -0.02,
           -1.71
         ],
         "bb_centre": [
@@ -4778,18 +5040,20 @@
           -2.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -2.2
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-22": {
-    "field_centre": [
-      0.04,
-      -1.88
-    ],
-    "field_rotation": 58.5,
+    "pymedphys": {
+      "field_centre": [
+        0.04,
+        -1.88
+      ],
+      "field_rotation": 58.5,
+      "bb_centre": [
+        -0.38,
+        -2.27
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4811,18 +5075,20 @@
           -2.24
         ]
       }
-    },
-    "bb_centre": [
-      -0.38,
-      -2.27
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-23": {
-    "field_centre": [
-      0.16,
-      -2.08
-    ],
-    "field_rotation": 53.0,
+    "pymedphys": {
+      "field_centre": [
+        0.16,
+        -2.08
+      ],
+      "field_rotation": 53.0,
+      "bb_centre": [
+        -0.34,
+        -2.34
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4844,18 +5110,20 @@
           -2.3
         ]
       }
-    },
-    "bb_centre": [
-      -0.34,
-      -2.34
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-24": {
-    "field_centre": [
-      0.3,
-      -2.28
-    ],
-    "field_rotation": 47.4,
+    "pymedphys": {
+      "field_centre": [
+        0.3,
+        -2.28
+      ],
+      "field_rotation": 47.4,
+      "bb_centre": [
+        -0.3,
+        -2.4
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4877,18 +5145,20 @@
           -2.36
         ]
       }
-    },
-    "bb_centre": [
-      -0.3,
-      -2.4
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-25": {
-    "field_centre": [
-      0.37,
-      -2.51
-    ],
-    "field_rotation": 41.8,
+    "pymedphys": {
+      "field_centre": [
+        0.37,
+        -2.51
+      ],
+      "field_rotation": 41.8,
+      "bb_centre": [
+        -0.24,
+        -2.53
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4910,18 +5180,20 @@
           -2.46
         ]
       }
-    },
-    "bb_centre": [
-      -0.24,
-      -2.53
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-26": {
-    "field_centre": [
-      0.38,
-      -2.68
-    ],
-    "field_rotation": 36.4,
+    "pymedphys": {
+      "field_centre": [
+        0.38,
+        -2.68
+      ],
+      "field_rotation": 36.4,
+      "bb_centre": [
+        -0.17,
+        -2.67
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4943,18 +5215,20 @@
           -2.61
         ]
       }
-    },
-    "bb_centre": [
-      -0.17,
-      -2.67
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-27": {
-    "field_centre": [
-      0.51,
-      -2.88
-    ],
-    "field_rotation": 31.0,
+    "pymedphys": {
+      "field_centre": [
+        0.51,
+        -2.88
+      ],
+      "field_rotation": 31.0,
+      "bb_centre": [
+        -0.09,
+        -2.8
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -4976,18 +5250,20 @@
           -2.76
         ]
       }
-    },
-    "bb_centre": [
-      -0.09,
-      -2.8
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-28": {
-    "field_centre": [
-      0.47,
-      -3.02
-    ],
-    "field_rotation": 25.3,
+    "pymedphys": {
+      "field_centre": [
+        0.47,
+        -3.02
+      ],
+      "field_rotation": 25.3,
+      "bb_centre": [
+        -0.11,
+        -2.9
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5009,18 +5285,20 @@
           -2.87
         ]
       }
-    },
-    "bb_centre": [
-      -0.11,
-      -2.9
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-29": {
-    "field_centre": [
-      0.49,
-      -3.17
-    ],
-    "field_rotation": 19.9,
+    "pymedphys": {
+      "field_centre": [
+        0.49,
+        -3.17
+      ],
+      "field_rotation": 19.9,
+      "bb_centre": [
+        -0.18,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5042,18 +5320,20 @@
           -2.98
         ]
       }
-    },
-    "bb_centre": [
-      -0.18,
-      -3.02
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-30": {
-    "field_centre": [
-      0.48,
-      -3.26
-    ],
-    "field_rotation": 14.4,
+    "pymedphys": {
+      "field_centre": [
+        0.48,
+        -3.26
+      ],
+      "field_rotation": 14.4,
+      "bb_centre": [
+        -0.28,
+        -3.06
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5075,18 +5355,20 @@
           -3.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.28,
-      -3.06
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-31": {
-    "field_centre": [
-      0.4,
-      -3.31
-    ],
-    "field_rotation": 9.0,
+    "pymedphys": {
+      "field_centre": [
+        0.4,
+        -3.31
+      ],
+      "field_rotation": 9.0,
+      "bb_centre": [
+        -0.38,
+        -3.11
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5108,18 +5390,20 @@
           -3.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.38,
-      -3.11
-    ]
+    }
   },
   "06MV-clockwise-20191105_151934015-32": {
-    "field_centre": [
-      0.23,
-      -3.34
-    ],
-    "field_rotation": 3.6,
+    "pymedphys": {
+      "field_centre": [
+        0.23,
+        -3.34
+      ],
+      "field_rotation": 3.6,
+      "bb_centre": [
+        -0.4,
+        -3.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5141,19 +5425,23 @@
           -3.16
         ]
       }
-    },
-    "bb_centre": [
-      -0.4,
-      -3.14
-    ]
+    }
   },
-  "06MV-clockwise-20191105_151934015-33": {},
+  "06MV-clockwise-20191105_151934015-33": {
+    "pymedphys": {}
+  },
   "06MV-counter-clockwise-20191105_150846906-00": {
-    "field_centre": [
-      0.23,
-      -3.73
-    ],
-    "field_rotation": 5.1,
+    "pymedphys": {
+      "field_centre": [
+        0.23,
+        -3.73
+      ],
+      "field_rotation": 5.1,
+      "bb_centre": [
+        -0.4,
+        -3.16
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5175,18 +5463,20 @@
           -3.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.4,
-      -3.16
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-01": {
-    "field_centre": [
-      0.27,
-      -3.68
-    ],
-    "field_rotation": 14.9,
+    "pymedphys": {
+      "field_centre": [
+        0.27,
+        -3.68
+      ],
+      "field_rotation": 14.9,
+      "bb_centre": [
+        -0.22,
+        -3.13
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5208,18 +5498,20 @@
           -3.11
         ]
       }
-    },
-    "bb_centre": [
-      -0.22,
-      -3.13
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-02": {
-    "field_centre": [
-      0.22,
-      -3.46
-    ],
-    "field_rotation": 25.8,
+    "pymedphys": {
+      "field_centre": [
+        0.22,
+        -3.46
+      ],
+      "field_rotation": 25.8,
+      "bb_centre": [
+        -0.07,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5241,18 +5533,20 @@
           -2.99
         ]
       }
-    },
-    "bb_centre": [
-      -0.07,
-      -3.02
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-03": {
-    "field_centre": [
-      0.06,
-      -3.09
-    ],
-    "field_rotation": 36.8,
+    "pymedphys": {
+      "field_centre": [
+        0.06,
+        -3.09
+      ],
+      "field_rotation": 36.8,
+      "bb_centre": [
+        -0.18,
+        -2.76
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5274,18 +5568,20 @@
           -2.73
         ]
       }
-    },
-    "bb_centre": [
-      -0.18,
-      -2.76
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-04": {
-    "field_centre": [
-      -0.11,
-      -2.69
-    ],
-    "field_rotation": 47.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.11,
+        -2.69
+      ],
+      "field_rotation": 47.6,
+      "bb_centre": [
+        -0.36,
+        -2.51
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5307,18 +5603,20 @@
           -2.45
         ]
       }
-    },
-    "bb_centre": [
-      -0.36,
-      -2.51
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-05": {
-    "field_centre": [
-      -0.4,
-      -2.27
-    ],
-    "field_rotation": 58.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.4,
+        -2.27
+      ],
+      "field_rotation": 58.5,
+      "bb_centre": [
+        -0.49,
+        -2.36
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5340,18 +5638,20 @@
           -2.34
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.35
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-06": {
-    "field_centre": [
-      -0.59,
-      -1.9
-    ],
-    "field_rotation": 69.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.59,
+        -1.9
+      ],
+      "field_rotation": 69.5,
+      "bb_centre": [
+        -0.66,
+        -2.19
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5373,18 +5673,20 @@
           -2.23
         ]
       }
-    },
-    "bb_centre": [
-      -0.66,
-      -2.2
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-07": {
-    "field_centre": [
-      -0.82,
-      -1.62
-    ],
-    "field_rotation": 80.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.82,
+        -1.62
+      ],
+      "field_rotation": 80.2,
+      "bb_centre": [
+        -0.79,
+        -2.04
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5406,18 +5708,20 @@
           -2.05
         ]
       }
-    },
-    "bb_centre": [
-      -0.79,
-      -2.04
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-08": {
-    "field_centre": [
-      -0.68,
-      -1.52
-    ],
-    "field_rotation": -89.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.68,
+        -1.52
+      ],
+      "field_rotation": -89.1,
+      "bb_centre": [
+        -0.63,
+        -2.0
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5439,18 +5743,20 @@
           -2.05
         ]
       }
-    },
-    "bb_centre": [
-      -0.63,
-      -2.0
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-09": {
-    "field_centre": [
-      -0.43,
-      -1.58
-    ],
-    "field_rotation": -78.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.43,
+        -1.58
+      ],
+      "field_rotation": -78.0,
+      "bb_centre": [
+        -0.46,
+        -2.08
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5472,18 +5778,20 @@
           -2.16
         ]
       }
-    },
-    "bb_centre": [
-      -0.46,
-      -2.08
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-10": {
-    "field_centre": [
-      -0.45,
-      -1.68
-    ],
-    "field_rotation": -67.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.45,
+        -1.68
+      ],
+      "field_rotation": -67.2,
+      "bb_centre": [
+        -0.48,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5505,18 +5813,20 @@
           -2.21
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.18
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-11": {
-    "field_centre": [
-      -0.35,
-      -1.86
-    ],
-    "field_rotation": -56.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.35,
+        -1.86
+      ],
+      "field_rotation": -56.4,
+      "bb_centre": [
+        -0.48,
+        -2.32
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5538,18 +5848,20 @@
           -2.38
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.32
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-12": {
-    "field_centre": [
-      -0.19,
-      -2.19
-    ],
-    "field_rotation": -45.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.19,
+        -2.19
+      ],
+      "field_rotation": -45.8,
+      "bb_centre": [
+        -0.48,
+        -2.55
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5571,18 +5883,20 @@
           -2.55
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.55
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-13": {
-    "field_centre": [
-      -0.05,
-      -2.54
-    ],
-    "field_rotation": -35.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.05,
+        -2.54
+      ],
+      "field_rotation": -35.0,
+      "bb_centre": [
+        -0.39,
+        -2.77
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5604,18 +5918,20 @@
           -2.78
         ]
       }
-    },
-    "bb_centre": [
-      -0.39,
-      -2.77
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-14": {
-    "field_centre": [
-      0.02,
-      -2.91
-    ],
-    "field_rotation": -24.2,
+    "pymedphys": {
+      "field_centre": [
+        0.02,
+        -2.91
+      ],
+      "field_rotation": -24.1,
+      "bb_centre": [
+        -0.36,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5637,18 +5953,20 @@
           -3.02
         ]
       }
-    },
-    "bb_centre": [
-      -0.37,
-      -3.02
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-15": {
-    "field_centre": [
-      0.06,
-      -3.2
-    ],
-    "field_rotation": -13.2,
+    "pymedphys": {
+      "field_centre": [
+        0.06,
+        -3.2
+      ],
+      "field_rotation": -13.2,
+      "bb_centre": [
+        -0.28,
+        -3.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5670,32 +5988,34 @@
           -3.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.28,
-      -3.18
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_150846906-16": {
-    "field_centre": [
-      0.19,
-      -3.33
-    ],
-    "field_rotation": -3.9,
+    "pymedphys": {
+      "field_centre": [
+        0.19,
+        -3.33
+      ],
+      "field_rotation": -3.8,
+      "bb_centre": [
+        -0.16,
+        -3.27
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
-          0.21,
+          0.2,
           -3.39
         ],
         "bb_centre": [
-          -0.13,
-          -3.25
+          -0.14,
+          -3.26
         ]
       },
       "v2.2.7": {
         "field_centre": [
-          0.21,
+          0.2,
           -3.39
         ],
         "bb_centre": [
@@ -5703,18 +6023,20 @@
           -3.29
         ]
       }
-    },
-    "bb_centre": [
-      -0.16,
-      -3.26
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-00": {
-    "field_centre": [
-      0.19,
-      -3.69
-    ],
-    "field_rotation": 5.2,
+    "pymedphys": {
+      "field_centre": [
+        0.19,
+        -3.69
+      ],
+      "field_rotation": 5.2,
+      "bb_centre": [
+        -0.41,
+        -3.17
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5736,18 +6058,20 @@
           -3.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.41,
-      -3.17
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-01": {
-    "field_centre": [
-      0.29,
-      -3.64
-    ],
-    "field_rotation": 14.9,
+    "pymedphys": {
+      "field_centre": [
+        0.29,
+        -3.64
+      ],
+      "field_rotation": 14.9,
+      "bb_centre": [
+        -0.24,
+        -3.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5769,18 +6093,20 @@
           -3.13
         ]
       }
-    },
-    "bb_centre": [
-      -0.24,
-      -3.14
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-02": {
-    "field_centre": [
-      0.25,
-      -3.43
-    ],
-    "field_rotation": 25.7,
+    "pymedphys": {
+      "field_centre": [
+        0.25,
+        -3.43
+      ],
+      "field_rotation": 25.7,
+      "bb_centre": [
+        -0.08,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5802,18 +6128,20 @@
           -3.02
         ]
       }
-    },
-    "bb_centre": [
-      -0.08,
-      -3.02
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-03": {
-    "field_centre": [
-      0.1,
-      -3.08
-    ],
-    "field_rotation": 36.7,
+    "pymedphys": {
+      "field_centre": [
+        0.1,
+        -3.08
+      ],
+      "field_rotation": 36.7,
+      "bb_centre": [
+        -0.2,
+        -2.76
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5835,18 +6163,20 @@
           -2.74
         ]
       }
-    },
-    "bb_centre": [
-      -0.2,
-      -2.76
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-04": {
-    "field_centre": [
-      -0.1,
-      -2.64
-    ],
-    "field_rotation": 47.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.1,
+        -2.64
+      ],
+      "field_rotation": 47.6,
+      "bb_centre": [
+        -0.37,
+        -2.51
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5868,18 +6198,20 @@
           -2.47
         ]
       }
-    },
-    "bb_centre": [
-      -0.37,
-      -2.51
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-05": {
-    "field_centre": [
-      -0.36,
-      -2.23
-    ],
-    "field_rotation": 58.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.36,
+        -2.23
+      ],
+      "field_rotation": 58.7,
+      "bb_centre": [
+        -0.5,
+        -2.35
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5901,18 +6233,20 @@
           -2.35
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.35
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-06": {
-    "field_centre": [
-      -0.55,
-      -1.88
-    ],
-    "field_rotation": 69.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.55,
+        -1.88
+      ],
+      "field_rotation": 69.4,
+      "bb_centre": [
+        -0.67,
+        -2.19
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5934,18 +6268,20 @@
           -2.19
         ]
       }
-    },
-    "bb_centre": [
-      -0.67,
-      -2.19
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-07": {
-    "field_centre": [
-      -0.78,
-      -1.62
-    ],
-    "field_rotation": 80.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.78,
+        -1.62
+      ],
+      "field_rotation": 80.3,
+      "bb_centre": [
+        -0.81,
+        -2.04
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -5967,18 +6303,20 @@
           -2.07
         ]
       }
-    },
-    "bb_centre": [
-      -0.81,
-      -2.04
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-08": {
-    "field_centre": [
-      -0.62,
-      -1.55
-    ],
-    "field_rotation": -88.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.62,
+        -1.55
+      ],
+      "field_rotation": -88.7,
+      "bb_centre": [
+        -0.65,
+        -2.01
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6000,18 +6338,20 @@
           -2.09
         ]
       }
-    },
-    "bb_centre": [
-      -0.65,
-      -2.01
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-09": {
-    "field_centre": [
-      -0.37,
-      -1.62
-    ],
-    "field_rotation": -78.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.37,
+        -1.62
+      ],
+      "field_rotation": -78.0,
+      "bb_centre": [
+        -0.47,
+        -2.09
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6033,18 +6373,20 @@
           -2.16
         ]
       }
-    },
-    "bb_centre": [
-      -0.47,
-      -2.09
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-10": {
-    "field_centre": [
-      -0.4,
-      -1.75
-    ],
-    "field_rotation": -67.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.4,
+        -1.75
+      ],
+      "field_rotation": -67.1,
+      "bb_centre": [
+        -0.49,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6066,18 +6408,20 @@
           -2.23
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.18
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-11": {
-    "field_centre": [
-      -0.31,
-      -1.95
-    ],
-    "field_rotation": -56.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.31,
+        -1.95
+      ],
+      "field_rotation": -56.4,
+      "bb_centre": [
+        -0.48,
+        -2.34
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6099,18 +6443,20 @@
           -2.41
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.34
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-12": {
-    "field_centre": [
-      -0.16,
-      -2.29
-    ],
-    "field_rotation": -45.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.16,
+        -2.29
+      ],
+      "field_rotation": -45.5,
+      "bb_centre": [
+        -0.48,
+        -2.57
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6132,18 +6478,20 @@
           -2.53
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.57
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-13": {
-    "field_centre": [
-      -0.04,
-      -2.64
-    ],
-    "field_rotation": -34.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.04,
+        -2.64
+      ],
+      "field_rotation": -34.8,
+      "bb_centre": [
+        -0.39,
+        -2.78
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6165,18 +6513,20 @@
           -2.8
         ]
       }
-    },
-    "bb_centre": [
-      -0.39,
-      -2.78
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-14": {
-    "field_centre": [
-      0.03,
-      -3.01
-    ],
-    "field_rotation": -23.8,
+    "pymedphys": {
+      "field_centre": [
+        0.03,
+        -3.01
+      ],
+      "field_rotation": -23.8,
+      "bb_centre": [
+        -0.36,
+        -3.03
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6198,18 +6548,20 @@
           -3.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.36,
-      -3.03
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-15": {
-    "field_centre": [
-      0.08,
-      -3.3
-    ],
-    "field_rotation": -13.0,
+    "pymedphys": {
+      "field_centre": [
+        0.08,
+        -3.3
+      ],
+      "field_rotation": -12.9,
+      "bb_centre": [
+        -0.27,
+        -3.19
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6228,21 +6580,23 @@
         ],
         "bb_centre": [
           -0.22,
-          -3.19
+          -3.2
         ]
       }
-    },
-    "bb_centre": [
-      -0.27,
-      -3.19
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151326984-16": {
-    "field_centre": [
-      0.19,
-      -3.43
-    ],
-    "field_rotation": -3.8,
+    "pymedphys": {
+      "field_centre": [
+        0.19,
+        -3.43
+      ],
+      "field_rotation": -3.8,
+      "bb_centre": [
+        -0.15,
+        -3.27
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6264,18 +6618,20 @@
           -3.28
         ]
       }
-    },
-    "bb_centre": [
-      -0.15,
-      -3.27
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-00": {
-    "field_centre": [
-      0.26,
-      -3.72
-    ],
-    "field_rotation": 2.3,
+    "pymedphys": {
+      "field_centre": [
+        0.26,
+        -3.72
+      ],
+      "field_rotation": 2.3,
+      "bb_centre": [
+        -0.43,
+        -3.17
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6297,18 +6653,20 @@
           -3.2
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -3.17
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-01": {
-    "field_centre": [
-      0.39,
-      -3.76
-    ],
-    "field_rotation": 6.8,
+    "pymedphys": {
+      "field_centre": [
+        0.39,
+        -3.76
+      ],
+      "field_rotation": 6.8,
+      "bb_centre": [
+        -0.35,
+        -3.16
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6330,18 +6688,20 @@
           -3.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.35,
-      -3.17
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-02": {
-    "field_centre": [
-      0.4,
-      -3.72
-    ],
-    "field_rotation": 12.1,
+    "pymedphys": {
+      "field_centre": [
+        0.4,
+        -3.72
+      ],
+      "field_rotation": 12.1,
+      "bb_centre": [
+        -0.25,
+        -3.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6363,18 +6723,20 @@
           -3.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.25,
-      -3.14
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-03": {
-    "field_centre": [
-      0.33,
-      -3.67
-    ],
-    "field_rotation": 17.4,
+    "pymedphys": {
+      "field_centre": [
+        0.33,
+        -3.67
+      ],
+      "field_rotation": 17.4,
+      "bb_centre": [
+        -0.15,
+        -3.11
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6396,18 +6758,20 @@
           -3.1
         ]
       }
-    },
-    "bb_centre": [
-      -0.15,
-      -3.11
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-04": {
-    "field_centre": [
-      0.26,
-      -3.53
-    ],
-    "field_rotation": 22.9,
+    "pymedphys": {
+      "field_centre": [
+        0.26,
+        -3.53
+      ],
+      "field_rotation": 22.9,
+      "bb_centre": [
+        -0.08,
+        -3.07
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6429,18 +6793,20 @@
           -3.06
         ]
       }
-    },
-    "bb_centre": [
-      -0.08,
-      -3.07
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-05": {
-    "field_centre": [
-      0.3,
-      -3.38
-    ],
-    "field_rotation": 28.4,
+    "pymedphys": {
+      "field_centre": [
+        0.3,
+        -3.38
+      ],
+      "field_rotation": 28.4,
+      "bb_centre": [
+        -0.04,
+        -2.94
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6462,18 +6828,20 @@
           -2.95
         ]
       }
-    },
-    "bb_centre": [
-      -0.04,
-      -2.94
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-06": {
-    "field_centre": [
-      0.16,
-      -3.19
-    ],
-    "field_rotation": 33.8,
+    "pymedphys": {
+      "field_centre": [
+        0.16,
+        -3.19
+      ],
+      "field_rotation": 33.8,
+      "bb_centre": [
+        -0.13,
+        -2.82
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6495,18 +6863,20 @@
           -2.82
         ]
       }
-    },
-    "bb_centre": [
-      -0.13,
-      -2.82
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-07": {
-    "field_centre": [
-      0.05,
-      -2.99
-    ],
-    "field_rotation": 39.4,
+    "pymedphys": {
+      "field_centre": [
+        0.05,
+        -2.99
+      ],
+      "field_rotation": 39.4,
+      "bb_centre": [
+        -0.24,
+        -2.69
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6528,18 +6898,20 @@
           -2.66
         ]
       }
-    },
-    "bb_centre": [
-      -0.24,
-      -2.69
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-08": {
-    "field_centre": [
-      -0.05,
-      -2.76
-    ],
-    "field_rotation": 45.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.05,
+        -2.76
+      ],
+      "field_rotation": 45.0,
+      "bb_centre": [
+        -0.33,
+        -2.54
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6558,21 +6930,23 @@
         ],
         "bb_centre": [
           -0.3,
-          -2.51
+          -2.5
         ]
       }
-    },
-    "bb_centre": [
-      -0.33,
-      -2.54
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-09": {
-    "field_centre": [
-      -0.15,
-      -2.57
-    ],
-    "field_rotation": 50.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.15,
+        -2.57
+      ],
+      "field_rotation": 50.5,
+      "bb_centre": [
+        -0.39,
+        -2.45
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6594,18 +6968,20 @@
           -2.43
         ]
       }
-    },
-    "bb_centre": [
-      -0.39,
-      -2.45
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-10": {
-    "field_centre": [
-      -0.33,
-      -2.35
-    ],
-    "field_rotation": 56.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.33,
+        -2.35
+      ],
+      "field_rotation": 56.2,
+      "bb_centre": [
+        -0.47,
+        -2.37
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6627,18 +7003,20 @@
           -2.37
         ]
       }
-    },
-    "bb_centre": [
-      -0.47,
-      -2.37
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-11": {
-    "field_centre": [
-      -0.44,
-      -2.15
-    ],
-    "field_rotation": 61.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.44,
+        -2.15
+      ],
+      "field_rotation": 61.8,
+      "bb_centre": [
+        -0.53,
+        -2.3
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6660,18 +7038,20 @@
           -2.31
         ]
       }
-    },
-    "bb_centre": [
-      -0.53,
-      -2.3
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-12": {
-    "field_centre": [
-      -0.53,
-      -1.97
-    ],
-    "field_rotation": 67.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.53,
+        -1.97
+      ],
+      "field_rotation": 67.2,
+      "bb_centre": [
+        -0.63,
+        -2.22
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6693,18 +7073,20 @@
           -2.21
         ]
       }
-    },
-    "bb_centre": [
-      -0.63,
-      -2.22
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-13": {
-    "field_centre": [
-      -0.65,
-      -1.79
-    ],
-    "field_rotation": 72.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.65,
+        -1.79
+      ],
+      "field_rotation": 72.6,
+      "bb_centre": [
+        -0.74,
+        -2.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6726,51 +7108,23 @@
           -2.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.74,
-      -2.14
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-14": {
-    "field_centre": [
-      -0.78,
-      -1.68
-    ],
-    "field_rotation": 78.1,
-    "pylinac": {
-      "v2.2.6": {
-        "field_centre": [
-          -0.77,
-          -1.72
-        ],
-        "bb_centre": [
-          -0.77,
-          -2.09
-        ]
-      },
-      "v2.2.7": {
-        "field_centre": [
-          -0.77,
-          -1.72
-        ],
-        "bb_centre": [
-          -0.76,
-          -2.09
-        ]
-      }
-    },
-    "bb_centre": [
-      -0.79,
-      -2.06
-    ]
+    "pymedphys": {}
   },
   "06MV-counter-clockwise-20191105_151714484-15": {
-    "field_centre": [
-      -0.88,
-      -1.56
-    ],
-    "field_rotation": 83.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.88,
+        -1.56
+      ],
+      "field_rotation": 83.6,
+      "bb_centre": [
+        -0.84,
+        -2.0
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6792,18 +7146,20 @@
           -2.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.84,
-      -2.0
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-16": {
-    "field_centre": [
-      -0.8,
-      -1.51
-    ],
-    "field_rotation": 89.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.8,
+        -1.51
+      ],
+      "field_rotation": 89.2,
+      "bb_centre": [
+        -0.75,
+        -2.0
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6825,18 +7181,20 @@
           -2.09
         ]
       }
-    },
-    "bb_centre": [
-      -0.75,
-      -2.0
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-17": {
-    "field_centre": [
-      -0.54,
-      -1.54
-    ],
-    "field_rotation": -85.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.54,
+        -1.54
+      ],
+      "field_rotation": -85.8,
+      "bb_centre": [
+        -0.55,
+        -2.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6858,18 +7216,20 @@
           -2.09
         ]
       }
-    },
-    "bb_centre": [
-      -0.55,
-      -2.02
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-18": {
-    "field_centre": [
-      -0.44,
-      -1.56
-    ],
-    "field_rotation": -80.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.44,
+        -1.56
+      ],
+      "field_rotation": -80.2,
+      "bb_centre": [
+        -0.49,
+        -2.06
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6891,18 +7251,20 @@
           -2.11
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.06
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-19": {
-    "field_centre": [
-      -0.43,
-      -1.6
-    ],
-    "field_rotation": -74.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.43,
+        -1.6
+      ],
+      "field_rotation": -74.9,
+      "bb_centre": [
+        -0.48,
+        -2.12
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6924,18 +7286,20 @@
           -2.16
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.12
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-20": {
-    "field_centre": [
-      -0.45,
-      -1.67
-    ],
-    "field_rotation": -69.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.45,
+        -1.67
+      ],
+      "field_rotation": -69.4,
+      "bb_centre": [
+        -0.49,
+        -2.16
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6957,18 +7321,20 @@
           -2.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.16
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-21": {
-    "field_centre": [
-      -0.44,
-      -1.73
-    ],
-    "field_rotation": -64.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.44,
+        -1.73
+      ],
+      "field_rotation": -64.0,
+      "bb_centre": [
+        -0.48,
+        -2.22
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -6990,18 +7356,20 @@
           -2.23
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.22
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-22": {
-    "field_centre": [
-      -0.37,
-      -1.83
-    ],
-    "field_rotation": -58.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.37,
+        -1.83
+      ],
+      "field_rotation": -58.4,
+      "bb_centre": [
+        -0.47,
+        -2.3
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7023,18 +7391,20 @@
           -2.28
         ]
       }
-    },
-    "bb_centre": [
-      -0.47,
-      -2.3
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-23": {
-    "field_centre": [
-      -0.32,
-      -1.97
-    ],
-    "field_rotation": -53.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.32,
+        -1.97
+      ],
+      "field_rotation": -53.0,
+      "bb_centre": [
+        -0.5,
+        -2.39
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7056,18 +7426,20 @@
           -2.48
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.39
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-24": {
-    "field_centre": [
-      -0.18,
-      -2.15
-    ],
-    "field_rotation": -47.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.18,
+        -2.15
+      ],
+      "field_rotation": -47.6,
+      "bb_centre": [
+        -0.5,
+        -2.53
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7089,18 +7461,20 @@
           -2.56
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.53
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-25": {
-    "field_centre": [
-      -0.19,
-      -2.36
-    ],
-    "field_rotation": -42.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.19,
+        -2.36
+      ],
+      "field_rotation": -42.3,
+      "bb_centre": [
+        -0.47,
+        -2.63
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7122,18 +7496,20 @@
           -2.59
         ]
       }
-    },
-    "bb_centre": [
-      -0.47,
-      -2.63
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-26": {
-    "field_centre": [
-      -0.09,
-      -2.52
-    ],
-    "field_rotation": -36.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.09,
+        -2.52
+      ],
+      "field_rotation": -36.8,
+      "bb_centre": [
+        -0.42,
+        -2.73
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7155,18 +7531,20 @@
           -2.74
         ]
       }
-    },
-    "bb_centre": [
-      -0.42,
-      -2.73
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-27": {
-    "field_centre": [
-      -0.04,
-      -2.7
-    ],
-    "field_rotation": -31.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.04,
+        -2.7
+      ],
+      "field_rotation": -31.3,
+      "bb_centre": [
+        -0.37,
+        -2.84
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7188,18 +7566,20 @@
           -2.82
         ]
       }
-    },
-    "bb_centre": [
-      -0.37,
-      -2.84
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-28": {
-    "field_centre": [
-      0.0,
-      -2.88
-    ],
-    "field_rotation": -26.0,
+    "pymedphys": {
+      "field_centre": [
+        0.0,
+        -2.88
+      ],
+      "field_rotation": -26.0,
+      "bb_centre": [
+        -0.35,
+        -2.96
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7221,18 +7601,20 @@
           -2.98
         ]
       }
-    },
-    "bb_centre": [
-      -0.35,
-      -2.96
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-29": {
-    "field_centre": [
-      0.05,
-      -3.05
-    ],
-    "field_rotation": -20.6,
+    "pymedphys": {
+      "field_centre": [
+        0.05,
+        -3.05
+      ],
+      "field_rotation": -20.6,
+      "bb_centre": [
+        -0.35,
+        -3.11
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7254,18 +7636,20 @@
           -3.08
         ]
       }
-    },
-    "bb_centre": [
-      -0.35,
-      -3.11
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-30": {
-    "field_centre": [
-      0.09,
-      -3.2
-    ],
-    "field_rotation": -14.9,
+    "pymedphys": {
+      "field_centre": [
+        0.09,
+        -3.2
+      ],
+      "field_rotation": -14.9,
+      "bb_centre": [
+        -0.31,
+        -3.16
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7287,18 +7671,20 @@
           -3.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.31,
-      -3.16
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-31": {
-    "field_centre": [
-      0.08,
-      -3.29
-    ],
-    "field_rotation": -9.6,
+    "pymedphys": {
+      "field_centre": [
+        0.08,
+        -3.29
+      ],
+      "field_rotation": -9.6,
+      "bb_centre": [
+        -0.2,
+        -3.23
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7320,18 +7706,20 @@
           -3.24
         ]
       }
-    },
-    "bb_centre": [
-      -0.2,
-      -3.24
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-32": {
-    "field_centre": [
-      0.18,
-      -3.36
-    ],
-    "field_rotation": -4.2,
+    "pymedphys": {
+      "field_centre": [
+        0.18,
+        -3.36
+      ],
+      "field_rotation": -4.2,
+      "bb_centre": [
+        -0.15,
+        -3.27
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7353,18 +7741,20 @@
           -3.26
         ]
       }
-    },
-    "bb_centre": [
-      -0.15,
-      -3.27
-    ]
+    }
   },
   "06MV-counter-clockwise-20191105_151714484-33": {
-    "field_centre": [
-      0.3,
-      -3.39
-    ],
-    "field_rotation": -1.0,
+    "pymedphys": {
+      "field_centre": [
+        0.3,
+        -3.39
+      ],
+      "field_rotation": -1.0,
+      "bb_centre": [
+        -0.12,
+        -3.29
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7386,207 +7776,241 @@
           -3.31
         ]
       }
-    },
-    "bb_centre": [
-      -0.12,
-      -3.29
-    ]
+    }
   },
   "10FFF-clockwise-20191105_160426734-00": {
-    "field_centre": [
-      -0.83,
-      -3.49
-    ],
-    "field_rotation": -2.1
+    "pymedphys": {
+      "field_centre": [
+        -0.83,
+        -3.49
+      ],
+      "field_rotation": -2.1
+    }
   },
   "10FFF-clockwise-20191105_160426734-01": {
-    "field_centre": [
-      -1.0,
-      -3.48
-    ],
-    "field_rotation": -7.1
+    "pymedphys": {
+      "field_centre": [
+        -1.0,
+        -3.48
+      ],
+      "field_rotation": -7.1
+    }
   },
   "10FFF-clockwise-20191105_160426734-02": {
-    "field_centre": [
-      -1.07,
-      -3.44
-    ],
-    "field_rotation": -12.5
+    "pymedphys": {
+      "field_centre": [
+        -1.07,
+        -3.44
+      ],
+      "field_rotation": -12.5
+    }
   },
   "10FFF-clockwise-20191105_160426734-03": {
-    "field_centre": [
-      -1.09,
-      -3.36
-    ],
-    "field_rotation": -17.9
+    "pymedphys": {
+      "field_centre": [
+        -1.09,
+        -3.36
+      ],
+      "field_rotation": -17.9
+    }
   },
   "10FFF-clockwise-20191105_160426734-04": {
-    "field_centre": [
-      -1.1,
-      -3.23
-    ],
-    "field_rotation": -23.4
+    "pymedphys": {}
   },
   "10FFF-clockwise-20191105_160426734-05": {
-    "field_centre": [
-      -1.09,
-      -3.05
-    ],
-    "field_rotation": -29.0
+    "pymedphys": {
+      "field_centre": [
+        -1.09,
+        -3.05
+      ],
+      "field_rotation": -29.0
+    }
   },
   "10FFF-clockwise-20191105_160426734-06": {
-    "field_centre": [
-      -1.02,
-      -2.81
-    ],
-    "field_rotation": -34.5
+    "pymedphys": {
+      "field_centre": [
+        -1.02,
+        -2.81
+      ],
+      "field_rotation": -34.5
+    }
   },
   "10FFF-clockwise-20191105_160426734-07": {
-    "field_centre": [
-      -1.07,
-      -2.63
-    ],
-    "field_rotation": -40.0
+    "pymedphys": {
+      "field_centre": [
+        -1.07,
+        -2.63
+      ],
+      "field_rotation": -40.0
+    }
   },
   "10FFF-clockwise-20191105_160426734-08": {
-    "field_centre": [
-      -1.07,
-      -2.42
-    ],
-    "field_rotation": -45.4
+    "pymedphys": {
+      "field_centre": [
+        -1.07,
+        -2.42
+      ],
+      "field_rotation": -45.4
+    }
   },
   "10FFF-clockwise-20191105_160426734-09": {
-    "field_centre": [
-      -1.02,
-      -2.16
-    ],
-    "field_rotation": -51.0
+    "pymedphys": {
+      "field_centre": [
+        -1.02,
+        -2.16
+      ],
+      "field_rotation": -51.1
+    }
   },
   "10FFF-clockwise-20191105_160426734-10": {
-    "field_centre": [
-      -1.0,
-      -1.95
-    ],
-    "field_rotation": -56.6
+    "pymedphys": {
+      "field_centre": [
+        -1.0,
+        -1.95
+      ],
+      "field_rotation": -56.6
+    }
   },
   "10FFF-clockwise-20191105_160426734-11": {
-    "field_centre": [
-      -0.96,
-      -1.75
-    ],
-    "field_rotation": -62.2
+    "pymedphys": {
+      "field_centre": [
+        -0.96,
+        -1.75
+      ],
+      "field_rotation": -62.2
+    }
   },
   "10FFF-clockwise-20191105_160426734-12": {
-    "field_centre": [
-      -0.83,
-      -1.57
-    ],
-    "field_rotation": -67.6
+    "pymedphys": {
+      "field_centre": [
+        -0.83,
+        -1.57
+      ],
+      "field_rotation": -67.6
+    }
   },
   "10FFF-clockwise-20191105_160426734-13": {
-    "field_centre": [
-      -0.7,
-      -1.4
-    ],
-    "field_rotation": -73.2
+    "pymedphys": {
+      "field_centre": [
+        -0.7,
+        -1.4
+      ],
+      "field_rotation": -73.2
+    }
   },
   "10FFF-clockwise-20191105_160426734-14": {
-    "field_centre": [
-      -0.63,
-      -1.29
-    ],
-    "field_rotation": -78.6
+    "pymedphys": {
+      "field_centre": [
+        -0.63,
+        -1.29
+      ],
+      "field_rotation": -78.6
+    }
   },
   "10FFF-clockwise-20191105_160426734-15": {
-    "field_centre": [
-      -0.64,
-      -1.17
-    ],
-    "field_rotation": -83.9
+    "pymedphys": {
+      "field_centre": [
+        -0.64,
+        -1.17
+      ],
+      "field_rotation": -83.9
+    }
   },
   "10FFF-clockwise-20191105_160426734-16": {
-    "field_centre": [
-      -0.8,
-      -1.06
-    ],
-    "field_rotation": -89.6
+    "pymedphys": {
+      "field_centre": [
+        -0.8,
+        -1.06
+      ],
+      "field_rotation": -89.6
+    }
   },
   "10FFF-clockwise-20191105_160426734-17": {
-    "field_centre": [
-      -0.96,
-      -1.0
-    ],
-    "field_rotation": 85.0
+    "pymedphys": {
+      "field_centre": [
+        -0.96,
+        -1.0
+      ],
+      "field_rotation": 85.0
+    }
   },
   "10FFF-clockwise-20191105_160426734-18": {
-    "field_centre": [
-      -0.97,
-      -1.09
-    ],
-    "field_rotation": 79.5
+    "pymedphys": {
+      "field_centre": [
+        -0.97,
+        -1.09
+      ],
+      "field_rotation": 79.5
+    }
   },
   "10FFF-clockwise-20191105_160426734-19": {
-    "field_centre": [
-      -0.89,
-      -1.15
-    ],
-    "field_rotation": 74.1
+    "pymedphys": {}
   },
   "10FFF-clockwise-20191105_160426734-20": {
-    "field_centre": [
-      -0.83,
-      -1.21
-    ],
-    "field_rotation": 68.5
+    "pymedphys": {
+      "field_centre": [
+        -0.83,
+        -1.21
+      ],
+      "field_rotation": 68.5
+    }
   },
   "10FFF-clockwise-20191105_160426734-21": {
-    "field_centre": [
-      -0.77,
-      -1.3
-    ],
-    "field_rotation": 62.9
+    "pymedphys": {
+      "field_centre": [
+        -0.77,
+        -1.3
+      ],
+      "field_rotation": 62.9
+    }
   },
   "10FFF-clockwise-20191105_160426734-22": {
-    "field_centre": [
-      -0.67,
-      -1.47
-    ],
-    "field_rotation": 57.4
+    "pymedphys": {
+      "field_centre": [
+        -0.67,
+        -1.47
+      ],
+      "field_rotation": 57.4
+    }
   },
   "10FFF-clockwise-20191105_160426734-23": {
-    "field_centre": [
-      -0.63,
-      -1.66
-    ],
-    "field_rotation": 51.9
+    "pymedphys": {
+      "field_centre": [
+        -0.63,
+        -1.66
+      ],
+      "field_rotation": 51.9
+    }
   },
   "10FFF-clockwise-20191105_160426734-24": {
-    "field_centre": [
-      -0.62,
-      -1.87
-    ],
-    "field_rotation": 46.2
+    "pymedphys": {
+      "field_centre": [
+        -0.62,
+        -1.87
+      ],
+      "field_rotation": 46.2
+    }
   },
   "10FFF-clockwise-20191105_160426734-25": {
-    "field_centre": [
-      -0.61,
-      -2.07
-    ],
-    "field_rotation": 40.5
+    "pymedphys": {
+      "field_centre": [
+        -0.61,
+        -2.07
+      ],
+      "field_rotation": 40.5
+    }
   },
   "10FFF-clockwise-20191105_160426734-26": {
-    "field_centre": [
-      -0.54,
-      -2.27
-    ],
-    "field_rotation": 35.0
+    "pymedphys": {}
   },
   "10FFF-clockwise-20191105_160426734-27": {
-    "field_centre": [
-      -0.55,
-      -2.6
-    ],
-    "field_rotation": 30.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.55,
+        -2.6
+      ],
+      "field_rotation": 30.1
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7611,39 +8035,43 @@
     }
   },
   "10FFF-clockwise-20191105_160426734-28": {
-    "field_centre": [
-      -0.59,
-      -2.56
-    ],
-    "field_rotation": 25.4
+    "pymedphys": {
+      "field_centre": [
+        -0.59,
+        -2.56
+      ],
+      "field_rotation": 25.4
+    }
   },
   "10FFF-clockwise-20191105_160426734-29": {
-    "field_centre": [
-      -0.71,
-      -2.76
-    ],
-    "field_rotation": 19.6
+    "pymedphys": {
+      "field_centre": [
+        -0.71,
+        -2.76
+      ],
+      "field_rotation": 19.6
+    }
   },
   "10FFF-clockwise-20191105_160426734-30": {
-    "field_centre": [
-      -0.75,
-      -2.88
-    ],
-    "field_rotation": 14.0
+    "pymedphys": {}
   },
   "10FFF-clockwise-20191105_160426734-31": {
-    "field_centre": [
-      -0.89,
-      -2.98
-    ],
-    "field_rotation": 8.5
+    "pymedphys": {
+      "field_centre": [
+        -0.89,
+        -2.98
+      ],
+      "field_rotation": 8.5
+    }
   },
   "10FFF-clockwise-20191105_160426734-32": {
-    "field_centre": [
-      -1.02,
-      -3.07
-    ],
-    "field_rotation": 2.9,
+    "pymedphys": {
+      "field_centre": [
+        -1.02,
+        -3.07
+      ],
+      "field_rotation": 2.9
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7667,277 +8095,307 @@
       }
     }
   },
-  "10FFF-clockwise-20191105_160426734-33": {},
+  "10FFF-clockwise-20191105_160426734-33": {
+    "pymedphys": {}
+  },
   "10FFF-counter-clockwise-20191105_160230750-00": {
-    "field_centre": [
-      -0.86,
-      -3.46
-    ],
-    "field_rotation": 2.4
+    "pymedphys": {
+      "field_centre": [
+        -0.86,
+        -3.46
+      ],
+      "field_rotation": 2.4
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-01": {
-    "field_centre": [
-      -0.88,
-      -3.49
-    ],
-    "field_rotation": 7.1
+    "pymedphys": {
+      "field_centre": [
+        -0.88,
+        -3.49
+      ],
+      "field_rotation": 7.1
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-02": {
-    "field_centre": [
-      -0.77,
-      -3.42
-    ],
-    "field_rotation": 12.5
+    "pymedphys": {
+      "field_centre": [
+        -0.77,
+        -3.42
+      ],
+      "field_rotation": 12.5
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-03": {
-    "field_centre": [
-      -0.81,
-      -3.33
-    ],
-    "field_rotation": 18.0
+    "pymedphys": {
+      "field_centre": [
+        -0.81,
+        -3.33
+      ],
+      "field_rotation": 18.0
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-04": {
-    "field_centre": [
-      -0.82,
-      -3.17
-    ],
-    "field_rotation": 23.6
+    "pymedphys": {
+      "field_centre": [
+        -0.82,
+        -3.17
+      ],
+      "field_rotation": 23.6
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-05": {
-    "field_centre": [
-      -0.73,
-      -2.99
-    ],
-    "field_rotation": 29.1
+    "pymedphys": {
+      "field_centre": [
+        -0.73,
+        -2.99
+      ],
+      "field_rotation": 29.1
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-06": {
-    "field_centre": [
-      -0.77,
-      -2.77
-    ],
-    "field_rotation": 34.6
+    "pymedphys": {
+      "field_centre": [
+        -0.77,
+        -2.77
+      ],
+      "field_rotation": 34.5
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-07": {
-    "field_centre": [
-      -0.88,
-      -2.54
-    ],
-    "field_rotation": 40.2
+    "pymedphys": {
+      "field_centre": [
+        -0.88,
+        -2.54
+      ],
+      "field_rotation": 40.2
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-08": {
-    "field_centre": [
-      -0.94,
-      -2.32
-    ],
-    "field_rotation": 45.7
+    "pymedphys": {
+      "field_centre": [
+        -0.94,
+        -2.32
+      ],
+      "field_rotation": 45.7
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-09": {
-    "field_centre": [
-      -0.98,
-      -2.1
-    ],
-    "field_rotation": 51.3
+    "pymedphys": {
+      "field_centre": [
+        -0.98,
+        -2.1
+      ],
+      "field_rotation": 51.3
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-10": {
-    "field_centre": [
-      -1.04,
-      -1.9
-    ],
-    "field_rotation": 57.0
+    "pymedphys": {
+      "field_centre": [
+        -1.04,
+        -1.9
+      ],
+      "field_rotation": 57.0
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-11": {
-    "field_centre": [
-      -1.13,
-      -1.7
-    ],
-    "field_rotation": 62.6
+    "pymedphys": {
+      "field_centre": [
+        -1.13,
+        -1.7
+      ],
+      "field_rotation": 62.6
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-12": {
-    "field_centre": [
-      -1.22,
-      -1.53
-    ],
-    "field_rotation": 68.0
+    "pymedphys": {
+      "field_centre": [
+        -1.22,
+        -1.53
+      ],
+      "field_rotation": 68.0
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-13": {
-    "field_centre": [
-      -1.28,
-      -1.36
-    ],
-    "field_rotation": 73.3
+    "pymedphys": {
+      "field_centre": [
+        -1.28,
+        -1.36
+      ],
+      "field_rotation": 73.3
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-14": {
-    "field_centre": [
-      -1.36,
-      -1.26
-    ],
-    "field_rotation": 78.7
+    "pymedphys": {
+      "field_centre": [
+        -1.36,
+        -1.26
+      ],
+      "field_rotation": 78.7
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-15": {
-    "field_centre": [
-      -1.37,
-      -1.16
-    ],
-    "field_rotation": 84.4
+    "pymedphys": {
+      "field_centre": [
+        -1.37,
+        -1.16
+      ],
+      "field_rotation": 84.4
+    }
   },
-  "10FFF-counter-clockwise-20191105_160230750-16": {},
+  "10FFF-counter-clockwise-20191105_160230750-16": {
+    "pymedphys": {
+      "field_centre": [
+        -1.24,
+        -1.1
+      ],
+      "field_rotation": -89.5
+    }
+  },
   "10FFF-counter-clockwise-20191105_160230750-17": {
-    "field_centre": [
-      -1.07,
-      -1.13
-    ],
-    "field_rotation": -84.8
+    "pymedphys": {
+      "field_centre": [
+        -1.07,
+        -1.13
+      ],
+      "field_rotation": -84.8
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-18": {
-    "field_centre": [
-      -1.04,
-      -1.18
-    ],
-    "field_rotation": -79.3
+    "pymedphys": {}
   },
   "10FFF-counter-clockwise-20191105_160230750-19": {
-    "field_centre": [
-      -1.06,
-      -1.23
-    ],
-    "field_rotation": -73.9,
-    "bb_centre": [
-      -1.06,
-      -1.29
-    ]
+    "pymedphys": {
+      "field_centre": [
+        -1.06,
+        -1.23
+      ],
+      "field_rotation": -73.9,
+      "bb_centre": [
+        -1.06,
+        -1.29
+      ]
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-20": {
-    "field_centre": [
-      -1.09,
-      -1.31
-    ],
-    "field_rotation": -68.2
+    "pymedphys": {
+      "field_centre": [
+        -1.09,
+        -1.31
+      ],
+      "field_rotation": -68.2
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-21": {
-    "field_centre": [
-      -1.16,
-      -1.44
-    ],
-    "field_rotation": -62.9
+    "pymedphys": {
+      "field_centre": [
+        -1.15,
+        -1.44
+      ],
+      "field_rotation": -62.9
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-22": {
-    "field_centre": [
-      -1.22,
-      -1.61
-    ],
-    "field_rotation": -57.1
+    "pymedphys": {}
   },
   "10FFF-counter-clockwise-20191105_160230750-23": {
-    "field_centre": [
-      -1.16,
-      -1.79
-    ],
-    "field_rotation": -51.6
+    "pymedphys": {
+      "field_centre": [
+        -1.16,
+        -1.79
+      ],
+      "field_rotation": -51.6
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-24": {
-    "field_centre": [
-      -1.15,
-      -2.01
-    ],
-    "field_rotation": -46.1
+    "pymedphys": {
+      "field_centre": [
+        -1.15,
+        -2.01
+      ],
+      "field_rotation": -46.1
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-25": {
-    "field_centre": [
-      -1.14,
-      -2.25
-    ],
-    "field_rotation": -40.5
+    "pymedphys": {
+      "field_centre": [
+        -1.14,
+        -2.25
+      ],
+      "field_rotation": -40.5
+    }
   },
-  "10FFF-counter-clockwise-20191105_160230750-26": {},
+  "10FFF-counter-clockwise-20191105_160230750-26": {
+    "pymedphys": {
+      "field_centre": [
+        -1.03,
+        -2.39
+      ],
+      "field_rotation": -34.9
+    }
+  },
   "10FFF-counter-clockwise-20191105_160230750-27": {
-    "field_centre": [
-      -1.14,
-      -2.69
-    ],
-    "field_rotation": -30.3,
-    "pylinac": {
-      "v2.2.6": {
-        "field_centre": [
-          -1.17,
-          -2.67
-        ],
-        "bb_centre": [
-          -0.63,
-          -2.75
-        ]
-      },
-      "v2.2.7": {
-        "field_centre": [
-          -1.17,
-          -2.67
-        ],
-        "bb_centre": [
-          -0.6,
-          -2.76
-        ]
-      }
-    },
-    "bb_centre": [
-      -0.61,
-      -2.68
-    ]
+    "pymedphys": {}
   },
   "10FFF-counter-clockwise-20191105_160230750-28": {
-    "field_centre": [
-      -1.05,
-      -2.69
-    ],
-    "field_rotation": -25.9,
-    "bb_centre": [
-      -0.72,
-      -2.97
-    ]
+    "pymedphys": {
+      "field_centre": [
+        -1.05,
+        -2.69
+      ],
+      "field_rotation": -25.9
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-29": {
-    "field_centre": [
-      -1.19,
-      -3.07
-    ],
-    "field_rotation": -20.8
+    "pymedphys": {}
   },
   "10FFF-counter-clockwise-20191105_160230750-30": {
-    "field_centre": [
-      -1.08,
-      -3.03
-    ],
-    "field_rotation": -15.2
+    "pymedphys": {
+      "field_centre": [
+        -1.08,
+        -3.03
+      ],
+      "field_rotation": -15.2
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-31": {
-    "field_centre": [
-      -1.04,
-      -3.1
-    ],
-    "field_rotation": -9.7
+    "pymedphys": {
+      "field_centre": [
+        -1.04,
+        -3.1
+      ],
+      "field_rotation": -9.7
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-32": {
-    "field_centre": [
-      -0.94,
-      -3.14
-    ],
-    "field_rotation": -4.1
+    "pymedphys": {
+      "field_centre": [
+        -0.94,
+        -3.14
+      ],
+      "field_rotation": -4.1
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-33": {
-    "field_centre": [
-      -0.84,
-      -3.15
-    ],
-    "field_rotation": -0.7,
-    "bb_centre": [
-      -0.16,
-      -3.14
-    ]
+    "pymedphys": {
+      "field_centre": [
+        -0.84,
+        -3.15
+      ],
+      "field_rotation": -0.7
+    }
   },
   "10MV-clockwise-20191105_155919218-00": {
-    "field_centre": [
-      -0.38,
-      -3.1
-    ],
-    "field_rotation": -2.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.38,
+        -3.1
+      ],
+      "field_rotation": -2.3,
+      "bb_centre": [
+        -0.3,
+        -3.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7959,18 +8417,20 @@
           -3.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.3,
-      -3.14
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-01": {
-    "field_centre": [
-      -0.53,
-      -3.09
-    ],
-    "field_rotation": -6.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.53,
+        -3.09
+      ],
+      "field_rotation": -6.9,
+      "bb_centre": [
+        -0.4,
+        -3.13
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -7992,18 +8452,20 @@
           -3.14
         ]
       }
-    },
-    "bb_centre": [
-      -0.4,
-      -3.13
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-02": {
-    "field_centre": [
-      -0.59,
-      -3.03
-    ],
-    "field_rotation": -12.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.59,
+        -3.03
+      ],
+      "field_rotation": -12.0,
+      "bb_centre": [
+        -0.5,
+        -3.08
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8025,18 +8487,20 @@
           -3.08
         ]
       }
-    },
-    "bb_centre": [
-      -0.5,
-      -3.08
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-03": {
-    "field_centre": [
-      -0.59,
-      -2.95
-    ],
-    "field_rotation": -17.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.59,
+        -2.95
+      ],
+      "field_rotation": -17.1,
+      "bb_centre": [
+        -0.59,
+        -3.01
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8058,18 +8522,20 @@
           -2.99
         ]
       }
-    },
-    "bb_centre": [
-      -0.59,
-      -3.01
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-04": {
-    "field_centre": [
-      -0.6,
-      -2.84
-    ],
-    "field_rotation": -22.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.6,
+        -2.84
+      ],
+      "field_rotation": -22.2,
+      "bb_centre": [
+        -0.62,
+        -2.95
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8091,18 +8557,20 @@
           -2.93
         ]
       }
-    },
-    "bb_centre": [
-      -0.62,
-      -2.95
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-05": {
-    "field_centre": [
-      -0.57,
-      -2.67
-    ],
-    "field_rotation": -27.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.57,
+        -2.67
+      ],
+      "field_rotation": -27.3,
+      "bb_centre": [
+        -0.62,
+        -2.84
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8124,18 +8592,20 @@
           -2.78
         ]
       }
-    },
-    "bb_centre": [
-      -0.62,
-      -2.84
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-06": {
-    "field_centre": [
-      -0.49,
-      -2.46
-    ],
-    "field_rotation": -32.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.49,
+        -2.46
+      ],
+      "field_rotation": -32.6,
+      "bb_centre": [
+        -0.61,
+        -2.73
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8157,18 +8627,20 @@
           -2.69
         ]
       }
-    },
-    "bb_centre": [
-      -0.61,
-      -2.73
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-07": {
-    "field_centre": [
-      -0.51,
-      -2.27
-    ],
-    "field_rotation": -37.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.51,
+        -2.27
+      ],
+      "field_rotation": -37.7,
+      "bb_centre": [
+        -0.65,
+        -2.64
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8190,18 +8662,20 @@
           -2.6
         ]
       }
-    },
-    "bb_centre": [
-      -0.65,
-      -2.64
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-08": {
-    "field_centre": [
-      -0.55,
-      -2.06
-    ],
-    "field_rotation": -42.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.55,
+        -2.06
+      ],
+      "field_rotation": -42.8,
+      "bb_centre": [
+        -0.68,
+        -2.53
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8223,18 +8697,20 @@
           -2.47
         ]
       }
-    },
-    "bb_centre": [
-      -0.68,
-      -2.53
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-09": {
-    "field_centre": [
-      -0.53,
-      -1.81
-    ],
-    "field_rotation": -48.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.53,
+        -1.81
+      ],
+      "field_rotation": -48.0,
+      "bb_centre": [
+        -0.68,
+        -2.4
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8256,18 +8732,20 @@
           -2.39
         ]
       }
-    },
-    "bb_centre": [
-      -0.68,
-      -2.4
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-10": {
-    "field_centre": [
-      -0.48,
-      -1.53
-    ],
-    "field_rotation": -53.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.48,
+        -1.53
+      ],
+      "field_rotation": -53.2,
+      "bb_centre": [
+        -0.64,
+        -2.29
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8289,18 +8767,20 @@
           -2.27
         ]
       }
-    },
-    "bb_centre": [
-      -0.64,
-      -2.29
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-11": {
-    "field_centre": [
-      -0.51,
-      -1.32
-    ],
-    "field_rotation": -58.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.51,
+        -1.32
+      ],
+      "field_rotation": -58.5,
+      "bb_centre": [
+        -0.6,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8322,18 +8802,20 @@
           -2.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.6,
-      -2.18
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-12": {
-    "field_centre": [
-      -0.47,
-      -1.19
-    ],
-    "field_rotation": -63.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.47,
+        -1.19
+      ],
+      "field_rotation": -63.6,
+      "bb_centre": [
+        -0.56,
+        -2.11
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8355,51 +8837,23 @@
           -2.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.56,
-      -2.11
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-13": {
-    "field_centre": [
-      -0.37,
-      -1.01
-    ],
-    "field_rotation": -68.7,
-    "pylinac": {
-      "v2.2.6": {
-        "field_centre": [
-          -0.38,
-          -1.04
-        ],
-        "bb_centre": [
-          -0.47,
-          -2.0
-        ]
-      },
-      "v2.2.7": {
-        "field_centre": [
-          -0.38,
-          -1.04
-        ],
-        "bb_centre": [
-          -0.49,
-          -2.05
-        ]
-      }
-    },
-    "bb_centre": [
-      -0.5,
-      -2.04
-    ]
+    "pymedphys": {}
   },
   "10MV-clockwise-20191105_155919218-14": {
-    "field_centre": [
-      -0.28,
-      -0.86
-    ],
-    "field_rotation": -73.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -0.86
+      ],
+      "field_rotation": -73.8,
+      "bb_centre": [
+        -0.46,
+        -2.01
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8421,18 +8875,20 @@
           -2.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.46,
-      -2.0
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-15": {
-    "field_centre": [
-      -0.25,
-      -0.76
-    ],
-    "field_rotation": -79.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.25,
+        -0.76
+      ],
+      "field_rotation": -79.0,
+      "bb_centre": [
+        -0.41,
+        -1.96
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8454,18 +8910,20 @@
           -2.07
         ]
       }
-    },
-    "bb_centre": [
-      -0.41,
-      -1.96
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-16": {
-    "field_centre": [
-      -0.29,
-      -0.65
-    ],
-    "field_rotation": -83.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.29,
+        -0.65
+      ],
+      "field_rotation": -83.8,
+      "bb_centre": [
+        -0.41,
+        -1.92
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8487,18 +8945,20 @@
           -1.96
         ]
       }
-    },
-    "bb_centre": [
-      -0.41,
-      -1.92
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-17": {
-    "field_centre": [
-      -0.46,
-      -0.58
-    ],
-    "field_rotation": -88.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.46,
+        -0.58
+      ],
+      "field_rotation": -88.8,
+      "bb_centre": [
+        -0.54,
+        -1.88
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8520,18 +8980,20 @@
           -1.93
         ]
       }
-    },
-    "bb_centre": [
-      -0.54,
-      -1.88
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-18": {
-    "field_centre": [
-      -0.64,
-      -0.55
-    ],
-    "field_rotation": 86.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.64,
+        -0.55
+      ],
+      "field_rotation": 86.1,
+      "bb_centre": [
+        -0.69,
+        -1.86
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8553,18 +9015,20 @@
           -1.89
         ]
       }
-    },
-    "bb_centre": [
-      -0.68,
-      -1.86
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-19": {
-    "field_centre": [
-      -0.71,
-      -0.68
-    ],
-    "field_rotation": 80.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.71,
+        -0.68
+      ],
+      "field_rotation": 80.7,
+      "bb_centre": [
+        -0.72,
+        -1.87
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8586,18 +9050,20 @@
           -1.88
         ]
       }
-    },
-    "bb_centre": [
-      -0.72,
-      -1.87
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-20": {
-    "field_centre": [
-      -0.65,
-      -0.72
-    ],
-    "field_rotation": 75.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.65,
+        -0.72
+      ],
+      "field_rotation": 75.9,
+      "bb_centre": [
+        -0.69,
+        -1.92
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8619,18 +9085,20 @@
           -2.0
         ]
       }
-    },
-    "bb_centre": [
-      -0.69,
-      -1.92
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-21": {
-    "field_centre": [
-      -0.6,
-      -0.83
-    ],
-    "field_rotation": 70.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.6,
+        -0.83
+      ],
+      "field_rotation": 70.7,
+      "bb_centre": [
+        -0.62,
+        -2.0
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8638,7 +9106,7 @@
           -0.83
         ],
         "bb_centre": [
-          -0.6,
+          -0.59,
           -1.97
         ]
       },
@@ -8648,22 +9116,24 @@
           -0.83
         ],
         "bb_centre": [
-          -0.61,
+          -0.6,
           -2.04
         ]
       }
-    },
-    "bb_centre": [
-      -0.62,
-      -1.99
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-22": {
-    "field_centre": [
-      -0.55,
-      -0.91
-    ],
-    "field_rotation": 65.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.55,
+        -0.91
+      ],
+      "field_rotation": 65.5,
+      "bb_centre": [
+        -0.54,
+        -2.06
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8685,18 +9155,20 @@
           -2.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.54,
-      -2.06
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-23": {
-    "field_centre": [
-      -0.48,
-      -1.1
-    ],
-    "field_rotation": 60.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.48,
+        -1.1
+      ],
+      "field_rotation": 60.2,
+      "bb_centre": [
+        -0.47,
+        -2.13
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8718,18 +9190,20 @@
           -2.17
         ]
       }
-    },
-    "bb_centre": [
-      -0.47,
-      -2.13
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-24": {
-    "field_centre": [
-      -0.39,
-      -1.3
-    ],
-    "field_rotation": 55.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.39,
+        -1.3
+      ],
+      "field_rotation": 55.3,
+      "bb_centre": [
+        -0.43,
+        -2.18
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8751,18 +9225,20 @@
           -2.19
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -2.19
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-25": {
-    "field_centre": [
-      -0.33,
-      -1.48
-    ],
-    "field_rotation": 50.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.33,
+        -1.48
+      ],
+      "field_rotation": 50.1,
+      "bb_centre": [
+        -0.39,
+        -2.25
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8784,18 +9260,20 @@
           -2.24
         ]
       }
-    },
-    "bb_centre": [
-      -0.39,
-      -2.25
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-26": {
-    "field_centre": [
-      -0.32,
-      -1.69
-    ],
-    "field_rotation": 44.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.32,
+        -1.69
+      ],
+      "field_rotation": 44.8,
+      "bb_centre": [
+        -0.36,
+        -2.35
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8817,18 +9295,20 @@
           -2.31
         ]
       }
-    },
-    "bb_centre": [
-      -0.36,
-      -2.35
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-27": {
-    "field_centre": [
-      -0.28,
-      -1.88
-    ],
-    "field_rotation": 39.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -1.88
+      ],
+      "field_rotation": 39.5,
+      "bb_centre": [
+        -0.29,
+        -2.49
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8850,18 +9330,20 @@
           -2.43
         ]
       }
-    },
-    "bb_centre": [
-      -0.29,
-      -2.49
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-28": {
-    "field_centre": [
-      -0.18,
-      -2.12
-    ],
-    "field_rotation": 34.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.18,
+        -2.12
+      ],
+      "field_rotation": 34.3,
+      "bb_centre": [
+        -0.2,
+        -2.61
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8883,18 +9365,20 @@
           -2.57
         ]
       }
-    },
-    "bb_centre": [
-      -0.2,
-      -2.61
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-29": {
-    "field_centre": [
-      -0.16,
-      -2.33
-    ],
-    "field_rotation": 28.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.16,
+        -2.33
+      ],
+      "field_rotation": 28.9,
+      "bb_centre": [
+        -0.16,
+        -2.71
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8916,18 +9400,20 @@
           -2.69
         ]
       }
-    },
-    "bb_centre": [
-      -0.16,
-      -2.71
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-30": {
-    "field_centre": [
-      -0.25,
-      -2.48
-    ],
-    "field_rotation": 23.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.25,
+        -2.48
+      ],
+      "field_rotation": 23.6,
+      "bb_centre": [
+        -0.23,
+        -2.84
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8949,18 +9435,20 @@
           -2.82
         ]
       }
-    },
-    "bb_centre": [
-      -0.23,
-      -2.84
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-31": {
-    "field_centre": [
-      -0.32,
-      -2.6
-    ],
-    "field_rotation": 18.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.32,
+        -2.6
+      ],
+      "field_rotation": 18.3,
+      "bb_centre": [
+        -0.32,
+        -2.9
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -8982,18 +9470,20 @@
           -2.9
         ]
       }
-    },
-    "bb_centre": [
-      -0.32,
-      -2.9
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-32": {
-    "field_centre": [
-      -0.31,
-      -2.69
-    ],
-    "field_rotation": 13.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.31,
+        -2.69
+      ],
+      "field_rotation": 13.1,
+      "bb_centre": [
+        -0.43,
+        -2.93
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9015,18 +9505,20 @@
           -2.93
         ]
       }
-    },
-    "bb_centre": [
-      -0.43,
-      -2.93
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-33": {
-    "field_centre": [
-      -0.45,
-      -2.79
-    ],
-    "field_rotation": 7.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.45,
+        -2.79
+      ],
+      "field_rotation": 7.9,
+      "bb_centre": [
+        -0.52,
+        -2.98
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9048,18 +9540,20 @@
           -2.96
         ]
       }
-    },
-    "bb_centre": [
-      -0.52,
-      -2.98
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-34": {
-    "field_centre": [
-      -0.55,
-      -2.86
-    ],
-    "field_rotation": 2.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.55,
+        -2.86
+      ],
+      "field_rotation": 2.8,
+      "bb_centre": [
+        -0.52,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9081,18 +9575,20 @@
           -3.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.52,
-      -3.02
-    ]
+    }
   },
   "10MV-clockwise-20191105_155919218-35": {
-    "field_centre": [
-      -0.54,
-      -2.61
-    ],
-    "field_rotation": 7.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.54,
+        -2.61
+      ],
+      "field_rotation": 7.5,
+      "bb_centre": [
+        -0.57,
+        -2.87
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9114,18 +9610,20 @@
           -2.8
         ]
       }
-    },
-    "bb_centre": [
-      -0.57,
-      -2.87
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-00": {
-    "field_centre": [
-      -0.28,
-      -3.03
-    ],
-    "field_rotation": 2.3,
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -3.03
+      ],
+      "field_rotation": 2.3,
+      "bb_centre": [
+        -0.52,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9147,18 +9645,20 @@
           -2.98
         ]
       }
-    },
-    "bb_centre": [
-      -0.52,
-      -3.02
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-01": {
-    "field_centre": [
-      -0.39,
-      -3.11
-    ],
-    "field_rotation": 6.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.39,
+        -3.11
+      ],
+      "field_rotation": 6.1,
+      "bb_centre": [
+        -0.49,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9180,18 +9680,20 @@
           -3.01
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -3.02
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-02": {
-    "field_centre": [
-      -0.32,
-      -3.05
-    ],
-    "field_rotation": 11.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.32,
+        -3.05
+      ],
+      "field_rotation": 11.2,
+      "bb_centre": [
+        -0.39,
+        -3.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9213,18 +9715,20 @@
           -3.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.39,
-      -3.02
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-03": {
-    "field_centre": [
-      -0.37,
-      -2.99
-    ],
-    "field_rotation": 16.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.37,
+        -2.99
+      ],
+      "field_rotation": 16.4,
+      "bb_centre": [
+        -0.27,
+        -2.98
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9246,18 +9750,20 @@
           -3.0
         ]
       }
-    },
-    "bb_centre": [
-      -0.27,
-      -2.98
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-04": {
-    "field_centre": [
-      -0.38,
-      -2.89
-    ],
-    "field_rotation": 21.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.38,
+        -2.89
+      ],
+      "field_rotation": 21.7,
+      "bb_centre": [
+        -0.19,
+        -2.96
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9279,18 +9785,20 @@
           -2.96
         ]
       }
-    },
-    "bb_centre": [
-      -0.19,
-      -2.96
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-05": {
-    "field_centre": [
-      -0.34,
-      -2.74
-    ],
-    "field_rotation": 27.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.34,
+        -2.74
+      ],
+      "field_rotation": 27.2,
+      "bb_centre": [
+        -0.12,
+        -2.85
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9312,18 +9820,20 @@
           -2.84
         ]
       }
-    },
-    "bb_centre": [
-      -0.13,
-      -2.85
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-06": {
-    "field_centre": [
-      -0.32,
-      -2.56
-    ],
-    "field_rotation": 32.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.32,
+        -2.56
+      ],
+      "field_rotation": 32.2,
+      "bb_centre": [
+        -0.15,
+        -2.73
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9345,18 +9855,20 @@
           -2.74
         ]
       }
-    },
-    "bb_centre": [
-      -0.15,
-      -2.74
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-07": {
-    "field_centre": [
-      -0.42,
-      -2.36
-    ],
-    "field_rotation": 37.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.42,
+        -2.36
+      ],
+      "field_rotation": 37.6,
+      "bb_centre": [
+        -0.26,
+        -2.63
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9378,18 +9890,20 @@
           -2.59
         ]
       }
-    },
-    "bb_centre": [
-      -0.26,
-      -2.63
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-08": {
-    "field_centre": [
-      -0.55,
-      -2.15
-    ],
-    "field_rotation": 42.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.55,
+        -2.15
+      ],
+      "field_rotation": 42.6,
+      "bb_centre": [
+        -0.37,
+        -2.49
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9411,18 +9925,20 @@
           -2.46
         ]
       }
-    },
-    "bb_centre": [
-      -0.37,
-      -2.49
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-09": {
-    "field_centre": [
-      -0.63,
-      -1.9
-    ],
-    "field_rotation": 47.7,
+    "pymedphys": {
+      "field_centre": [
+        -0.63,
+        -1.9
+      ],
+      "field_rotation": 47.7,
+      "bb_centre": [
+        -0.46,
+        -2.35
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9444,18 +9960,20 @@
           -2.33
         ]
       }
-    },
-    "bb_centre": [
-      -0.46,
-      -2.35
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-10": {
-    "field_centre": [
-      -0.68,
-      -1.68
-    ],
-    "field_rotation": 53.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.68,
+        -1.68
+      ],
+      "field_rotation": 53.0,
+      "bb_centre": [
+        -0.51,
+        -2.29
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9477,18 +9995,20 @@
           -2.27
         ]
       }
-    },
-    "bb_centre": [
-      -0.51,
-      -2.29
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-11": {
-    "field_centre": [
-      -0.75,
-      -1.46
-    ],
-    "field_rotation": 58.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.75,
+        -1.46
+      ],
+      "field_rotation": 58.1,
+      "bb_centre": [
+        -0.57,
+        -2.22
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9510,18 +10030,20 @@
           -2.23
         ]
       }
-    },
-    "bb_centre": [
-      -0.57,
-      -2.22
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-12": {
-    "field_centre": [
-      -0.84,
-      -1.26
-    ],
-    "field_rotation": 63.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.84,
+        -1.26
+      ],
+      "field_rotation": 63.1,
+      "bb_centre": [
+        -0.64,
+        -2.14
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9543,18 +10065,20 @@
           -2.18
         ]
       }
-    },
-    "bb_centre": [
-      -0.64,
-      -2.14
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-13": {
-    "field_centre": [
-      -0.91,
-      -1.06
-    ],
-    "field_rotation": 68.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.91,
+        -1.06
+      ],
+      "field_rotation": 68.2,
+      "bb_centre": [
+        -0.73,
+        -2.07
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9576,18 +10100,20 @@
           -2.11
         ]
       }
-    },
-    "bb_centre": [
-      -0.73,
-      -2.07
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-14": {
-    "field_centre": [
-      -0.95,
-      -0.9
-    ],
-    "field_rotation": 73.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.95,
+        -0.9
+      ],
+      "field_rotation": 73.2,
+      "bb_centre": [
+        -0.82,
+        -2.0
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9609,18 +10135,20 @@
           -2.08
         ]
       }
-    },
-    "bb_centre": [
-      -0.82,
-      -2.0
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-15": {
-    "field_centre": [
-      -1.01,
-      -0.83
-    ],
-    "field_rotation": 78.5,
+    "pymedphys": {
+      "field_centre": [
+        -1.01,
+        -0.83
+      ],
+      "field_rotation": 78.5,
+      "bb_centre": [
+        -0.86,
+        -1.92
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9642,18 +10170,20 @@
           -1.99
         ]
       }
-    },
-    "bb_centre": [
-      -0.86,
-      -1.92
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-16": {
-    "field_centre": [
-      -1.0,
-      -0.83
-    ],
-    "field_rotation": 83.6,
+    "pymedphys": {
+      "field_centre": [
+        -1.0,
+        -0.83
+      ],
+      "field_rotation": 83.6,
+      "bb_centre": [
+        -0.9,
+        -1.87
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9675,18 +10205,20 @@
           -1.85
         ]
       }
-    },
-    "bb_centre": [
-      -0.9,
-      -1.87
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-17": {
-    "field_centre": [
-      -0.87,
-      -0.77
-    ],
-    "field_rotation": 88.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.87,
+        -0.77
+      ],
+      "field_rotation": 88.8,
+      "bb_centre": [
+        -0.81,
+        -1.87
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9708,18 +10240,20 @@
           -1.86
         ]
       }
-    },
-    "bb_centre": [
-      -0.81,
-      -1.87
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-18": {
-    "field_centre": [
-      -0.68,
-      -0.7
-    ],
-    "field_rotation": -86.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.68,
+        -0.7
+      ],
+      "field_rotation": -86.6,
+      "bb_centre": [
+        -0.65,
+        -1.88
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9741,18 +10275,20 @@
           -1.89
         ]
       }
-    },
-    "bb_centre": [
-      -0.65,
-      -1.88
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-19": {
-    "field_centre": [
-      -0.59,
-      -0.71
-    ],
-    "field_rotation": -81.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.59,
+        -0.71
+      ],
+      "field_rotation": -81.2,
+      "bb_centre": [
+        -0.59,
+        -1.91
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9774,18 +10310,20 @@
           -1.92
         ]
       }
-    },
-    "bb_centre": [
-      -0.59,
-      -1.91
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-20": {
-    "field_centre": [
-      -0.57,
-      -0.77
-    ],
-    "field_rotation": -76.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.57,
+        -0.77
+      ],
+      "field_rotation": -76.3,
+      "bb_centre": [
+        -0.58,
+        -1.97
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9803,22 +10341,24 @@
           -0.79
         ],
         "bb_centre": [
-          -0.56,
+          -0.57,
           -1.98
         ]
       }
-    },
-    "bb_centre": [
-      -0.58,
-      -1.97
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-21": {
-    "field_centre": [
-      -0.57,
-      -0.87
-    ],
-    "field_rotation": -71.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.57,
+        -0.87
+      ],
+      "field_rotation": -71.0,
+      "bb_centre": [
+        -0.6,
+        -2.02
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9840,18 +10380,20 @@
           -2.03
         ]
       }
-    },
-    "bb_centre": [
-      -0.6,
-      -2.02
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-22": {
-    "field_centre": [
-      -0.61,
-      -1.01
-    ],
-    "field_rotation": -66.0,
+    "pymedphys": {
+      "field_centre": [
+        -0.61,
+        -1.01
+      ],
+      "field_rotation": -66.0,
+      "bb_centre": [
+        -0.61,
+        -2.06
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9873,18 +10415,20 @@
           -2.05
         ]
       }
-    },
-    "bb_centre": [
-      -0.61,
-      -2.06
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-23": {
-    "field_centre": [
-      -0.66,
-      -1.15
-    ],
-    "field_rotation": -60.8,
+    "pymedphys": {
+      "field_centre": [
+        -0.66,
+        -1.15
+      ],
+      "field_rotation": -60.8,
+      "bb_centre": [
+        -0.61,
+        -2.13
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9906,18 +10450,20 @@
           -2.11
         ]
       }
-    },
-    "bb_centre": [
-      -0.61,
-      -2.13
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-24": {
-    "field_centre": [
-      -0.63,
-      -1.3
-    ],
-    "field_rotation": -55.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.63,
+        -1.3
+      ],
+      "field_rotation": -55.5,
+      "bb_centre": [
+        -0.62,
+        -2.23
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9939,18 +10485,20 @@
           -2.2
         ]
       }
-    },
-    "bb_centre": [
-      -0.62,
-      -2.23
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-25": {
-    "field_centre": [
-      -0.58,
-      -1.49
-    ],
-    "field_rotation": -50.2,
+    "pymedphys": {
+      "field_centre": [
+        -0.58,
+        -1.49
+      ],
+      "field_rotation": -50.2,
+      "bb_centre": [
+        -0.63,
+        -2.32
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -9972,18 +10520,20 @@
           -2.28
         ]
       }
-    },
-    "bb_centre": [
-      -0.63,
-      -2.32
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-26": {
-    "field_centre": [
-      -0.55,
-      -1.73
-    ],
-    "field_rotation": -45.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.55,
+        -1.73
+      ],
+      "field_rotation": -45.1,
+      "bb_centre": [
+        -0.63,
+        -2.45
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10005,18 +10555,20 @@
           -2.39
         ]
       }
-    },
-    "bb_centre": [
-      -0.63,
-      -2.45
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-27": {
-    "field_centre": [
-      -0.5,
-      -1.92
-    ],
-    "field_rotation": -39.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.5,
+        -1.92
+      ],
+      "field_rotation": -39.9,
+      "bb_centre": [
+        -0.59,
+        -2.56
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10038,18 +10590,20 @@
           -2.51
         ]
       }
-    },
-    "bb_centre": [
-      -0.59,
-      -2.56
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-28": {
-    "field_centre": [
-      -0.35,
-      -2.04
-    ],
-    "field_rotation": -34.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.35,
+        -2.04
+      ],
+      "field_rotation": -34.6,
+      "bb_centre": [
+        -0.54,
+        -2.66
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10071,18 +10625,20 @@
           -2.62
         ]
       }
-    },
-    "bb_centre": [
-      -0.54,
-      -2.66
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-29": {
-    "field_centre": [
-      -0.36,
-      -2.23
-    ],
-    "field_rotation": -29.4,
+    "pymedphys": {
+      "field_centre": [
+        -0.36,
+        -2.23
+      ],
+      "field_rotation": -29.4,
+      "bb_centre": [
+        -0.48,
+        -2.76
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10104,18 +10660,20 @@
           -2.72
         ]
       }
-    },
-    "bb_centre": [
-      -0.48,
-      -2.76
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-30": {
-    "field_centre": [
-      -0.42,
-      -2.44
-    ],
-    "field_rotation": -24.1,
+    "pymedphys": {
+      "field_centre": [
+        -0.42,
+        -2.44
+      ],
+      "field_rotation": -24.1,
+      "bb_centre": [
+        -0.49,
+        -2.89
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10137,18 +10695,20 @@
           -2.86
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.89
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-31": {
-    "field_centre": [
-      -0.48,
-      -2.66
-    ],
-    "field_rotation": -18.9,
+    "pymedphys": {
+      "field_centre": [
+        -0.48,
+        -2.66
+      ],
+      "field_rotation": -18.9,
+      "bb_centre": [
+        -0.49,
+        -2.98
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10170,18 +10730,20 @@
           -2.98
         ]
       }
-    },
-    "bb_centre": [
-      -0.49,
-      -2.98
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-32": {
-    "field_centre": [
-      -0.45,
-      -2.76
-    ],
-    "field_rotation": -13.6,
+    "pymedphys": {
+      "field_centre": [
+        -0.45,
+        -2.76
+      ],
+      "field_rotation": -13.6,
+      "bb_centre": [
+        -0.41,
+        -3.04
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10203,18 +10765,20 @@
           -3.06
         ]
       }
-    },
-    "bb_centre": [
-      -0.41,
-      -3.04
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-33": {
-    "field_centre": [
-      -0.44,
-      -2.82
-    ],
-    "field_rotation": -8.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.44,
+        -2.82
+      ],
+      "field_rotation": -8.5,
+      "bb_centre": [
+        -0.31,
+        -3.11
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10236,18 +10800,20 @@
           -3.12
         ]
       }
-    },
-    "bb_centre": [
-      -0.31,
-      -3.11
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-34": {
-    "field_centre": [
-      -0.35,
-      -2.87
-    ],
-    "field_rotation": -3.5,
+    "pymedphys": {
+      "field_centre": [
+        -0.35,
+        -2.87
+      ],
+      "field_rotation": -3.5,
+      "bb_centre": [
+        -0.27,
+        -3.13
+      ]
+    },
     "pylinac": {
       "v2.2.6": {
         "field_centre": [
@@ -10269,21 +10835,19 @@
           -3.15
         ]
       }
-    },
-    "bb_centre": [
-      -0.27,
-      -3.13
-    ]
+    }
   },
   "10MV-counter-clockwise-20191105_155718531-35": {
-    "field_centre": [
-      -0.28,
-      -2.87
-    ],
-    "field_rotation": -0.9,
-    "bb_centre": [
-      -0.23,
-      -3.13
-    ]
+    "pymedphys": {
+      "field_centre": [
+        -0.28,
+        -2.87
+      ],
+      "field_rotation": -0.9,
+      "bb_centre": [
+        -0.23,
+        -3.13
+      ]
+    }
   }
 }
