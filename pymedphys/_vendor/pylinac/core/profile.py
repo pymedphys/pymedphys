@@ -75,8 +75,8 @@ def stretch(
     # perfectly normalize the array (0..1)
     stretched_array = (array - array.min()) / (array.max() - array.min())
     # stretch normalized array to new max/min
-    stretched_array *= new_max
-    stretched_array += new_min
+    stretched_array *= new_max  # pylint: disable = undefined-variable
+    stretched_array += new_min  # pylint: disable = undefined-variable
     return stretched_array.astype(array.dtype)
 
 
@@ -89,8 +89,10 @@ class ProfileMixin:
         """Invert (imcomplement) the profile."""
         orig_array = self.values
         self.values = (
-            -orig_array + orig_array.max() + orig_array.min()
-        )  # pylint: disable = invalid-unary-operand-type
+            -orig_array
+            + orig_array.max()
+            + orig_array.min()  # pylint: disable = invalid-unary-operand-type
+        )
 
     def normalize(self, norm_val: Union[str, NumberLike] = "max"):
         """Normalize the profile to the given value.
@@ -107,7 +109,7 @@ class ProfileMixin:
             val = norm_val
         self.values /= val
 
-    def stretch(self, min=0, max=1):
+    def stretch(self, min=0, max=1):  # pylint: disable = redefined-builtin
         """'Stretch' the profile to the min and max parameter values.
 
         Parameters
@@ -606,7 +608,7 @@ class MultiProfile(ProfileMixin):
             Whether to plot the peak locations as well. Will not show if a peak search has
             not yet been done.
         """
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
         ax.plot(self.values)
         if show_peaks:
             peaks_x = [peak.idx for peak in self.peaks]
@@ -963,7 +965,7 @@ class CircleProfile(MultiProfile, Circle):
         self.x_locations = np.roll(self.x_locations, -amount)
         self.y_locations = np.roll(self.y_locations, -amount)
 
-    def plot2axes(
+    def plot2axes(  # pylint: disable = arguments-differ
         self,
         axes: plt.Axes = None,
         edgecolor: str = "black",
@@ -984,7 +986,7 @@ class CircleProfile(MultiProfile, Circle):
             If True, plots the found peaks as well.
         """
         if axes is None:
-            fig, axes = plt.subplots()
+            _, axes = plt.subplots()
             axes.imshow(self.image_array)
         axes.add_patch(
             mpl_Circle(
@@ -1082,7 +1084,7 @@ class CollapsedCircleProfile(CircleProfile):
     def _profile(self) -> np.ndarray:
         """The actual profile array; private attr that is passed to MultiProfile."""
         profile = np.zeros(len(self._multi_x_locations[0]))
-        for radius, x, y in zip(
+        for _, x, y in zip(
             self._radii, self._multi_x_locations, self._multi_y_locations
         ):
             profile += ndimage.map_coordinates(self.image_array, [y, x], order=0)
@@ -1103,7 +1105,7 @@ class CollapsedCircleProfile(CircleProfile):
         :meth:`~pylinac.core.profile.CircleProfile.plot2axes` : Further parameter info.
         """
         if axes is None:
-            fig, axes = plt.subplots()
+            _, axes = plt.subplots()
             axes.imshow(self.image_array)
         axes.add_patch(
             mpl_Circle(
@@ -1184,7 +1186,7 @@ def peak_detect(
     if find_min_instead:
         values = -values
 
-    """Limit search to search region"""
+    # """Limit search to search region"""
     left_end = search_region[0]
     if is_float_like(left_end):
         left_index = int(left_end * len(values))
@@ -1212,7 +1214,7 @@ def peak_detect(
 
     values = values[left_index:right_index]
 
-    """Determine threshold value"""
+    # """Determine threshold value"""
     if isinstance(threshold, float) and threshold < 1:
         data_range = values.max() - values.min()
         threshold = threshold * data_range + values.min()
@@ -1221,12 +1223,12 @@ def peak_detect(
     elif threshold is None:
         threshold = values.min()
 
-    """Take difference"""
+    # """Take difference"""
     values_diff = np.diff(
         values.astype(float)
     )  # y and y_diff must be converted to signed type.
 
-    """Find all potential peaks"""
+    # """Find all potential peaks"""
     for idx in range(len(values_diff) - 1):
         # For each item of the diff array, check if:
         # 1) The y-value is above the threshold.
@@ -1271,7 +1273,7 @@ def peak_detect(
     peak_vals = np.array(peak_vals)
     peak_idxs = np.array(peak_idxs)
 
-    """Enforce the min_peak_distance by removing smaller peaks."""
+    # """Enforce the min_peak_distance by removing smaller peaks."""
     # For each peak, determine if the next peak is within the min peak width range.
     index = 0
     while index < len(peak_idxs) - 1:
@@ -1287,11 +1289,15 @@ def peak_detect(
         else:
             index += 1
 
-    """If Maximum Number passed, return only up to number given based on a sort of peak values."""
+    # """If Maximum Number passed, return only up to number given based on a sort of peak values."""
     if max_number is not None and len(peak_idxs) > max_number:
         sorted_peak_vals = peak_vals.argsort()  # type: ignore  # sorts low to high
-        peak_vals = peak_vals[sorted_peak_vals[-max_number:]]
-        peak_idxs = peak_idxs[sorted_peak_vals[-max_number:]]
+        peak_vals = peak_vals[
+            sorted_peak_vals[-max_number:]
+        ]  # pylint: disable = invalid-unary-operand-type
+        peak_idxs = peak_idxs[
+            sorted_peak_vals[-max_number:]
+        ]  # pylint: disable = invalid-unary-operand-type
 
     # If we were looking for minimums, convert the values back to the original sign
     if find_min_instead:
