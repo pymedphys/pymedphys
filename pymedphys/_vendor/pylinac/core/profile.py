@@ -42,8 +42,11 @@ BOTH = "both"
 
 
 def stretch(
-    array: np.ndarray, min: int = 0, max: int = 1, fill_dtype=None
-) -> np.array:  # pylint: disable = redefined-builtin
+    array: np.ndarray,
+    min: int = 0,
+    max: int = 1,
+    fill_dtype=None,  # pylint: disable = redefined-builtin
+) -> np.array:
     """'Stretch' the profile to the fit a new min and max value and interpolate in between.
     From: http://www.labri.fr/perso/nrougier/teaching/numpy.100/  exercise #17
 
