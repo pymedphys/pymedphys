@@ -1449,22 +1449,6 @@ version = "1.11.2"
 
 [[package]]
 category = "main"
-description = "Cross platform GUI toolkit for Python, \"Phoenix\" version"
-name = "wxpython"
-optional = false
-python-versions = "*"
-version = "4.0.7.post1"
-
-[package.dependencies]
-pillow = "*"
-six = "*"
-
-[package.dependencies.numpy]
-python = ">=3.0"
-version = "*"
-
-[[package]]
-category = "main"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 name = "zipp"
 optional = false
@@ -1481,7 +1465,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "a36309b0b4223c30d674ba732ed205f80dab071a8a3982b6dfd3c7c9edbc5a4e"
+content-hash = "f4e187b34848c27353f674e0cd98d89d4acee173471b0f88ade64cb46ee9d973"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -1620,5 +1604,4 @@ watchdog = ["965f658d0732de3188211932aeb0bb457587f04f63ab4c1e33eab878e9de961d"]
 wcwidth = ["3df37372226d6e63e1b1e1eda15c594bca98a22d33a23832a90998faa96bc65e", "f4ebe71925af7b40a864553f761ed559b43544f8f71746c2d756c7fe788ade7c"]
 webencodings = ["a0af1213f3c2226497a97e2b3aa01a7e4bee4f403f95be16fc9acd2947514a78", "b36a1c245f2d304965eb4e0a82848379241dc04b865afcc4aab16748587e1923"]
 wrapt = ["565a021fd19419476b9362b05eeaa094178de64f8361e44468f9e9d7843901e1"]
-wxpython = ["01f719832120ae2e78ba77cb8efa24241df2031c4d02f909ec3fd35761ce848f", "11fe401c8f9f50e66603399c238749292ee7947f6e106bc9ea7118b497dddc36", "1ad763b792e3c16826c593b1bb5b4dad449d92dd0251139856c4c479d06e273f", "32c84f9e98272377825f88060f1a3fd6156794b8e45c1709c06a33c2864cf95f", "3c52b02a0e9c59cf7b9cfe70759c3736a577ec5eb165757f1e7b02abe1e4664b", "4bc48e363ff92bee0627221de5d363d1c25e324bb0334a075de67537f57fb9b0", "53c636d3bf56550b925702c7656b1cd69b90e8a1baf5d37980e825a2ab1b3b32", "67225c8238df4a22cf9a3d26bc281c1aae1db2195b8f550bbb0dd046b7085925", "7158c162786b916c18f9c7754013703bde49b5c13cfd64cfde49f653f12e3364", "9f1d86719aa237f3c27475deecb1ecfcb56f4051037fd15e1643d7be4b42ec97", "af827401e4cf920629d376f04b543e7175f456eb57cec8081dc69fc92c04a090", "affd076ec9cdd793b81e74ebc59e79e105cdac7fcce7459f5d25afc6f726465e", "c1f0cb368c781f7bc680e98a9b23777425171cc6369fdf2a2e1a7dddf420d60f", "ce10eb1a9d798469ae24db2bc81d595c7e68934b135b8d5615f2b56dde61a9b7", "da43eaa2eea32c34a52531331b0a69bd791c237803a7c5df451509624766f7ca", "fecd6666d05b200523b31e8b6edbd3f575dc05e937e7087b6f8f3eb024e0733b"]
 zipp = ["3718b1cbcd963c7d4c5511a8240812904164b7f381b647143a89d3b98f9bcd8e", "f06903e9f1f43b12d371004b4ac7b06ab39a44adc747266928ae6debfa7b3335"]
