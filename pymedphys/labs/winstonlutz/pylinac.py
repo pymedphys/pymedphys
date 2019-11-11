@@ -69,12 +69,12 @@ def run_wlutz(field, edge_lengths, penumbra, field_centre, field_rotation):
 
     return {
         "v2.2.6": {
-            "field_centre": np.round(pylinac_old_field_centre, decimals=2).tolist(),
-            "bb_centre": np.round(pylinac_old_bb_centre, decimals=2).tolist(),
+            "field_centre": pylinac_old_field_centre,
+            "bb_centre": pylinac_old_bb_centre,
         },
         "v2.2.7": {
-            "field_centre": np.round(pylinac_new_field_centre, decimals=2).tolist(),
-            "bb_centre": np.round(pylinac_new_bb_centre, decimals=2).tolist(),
+            "field_centre": pylinac_new_field_centre,
+            "bb_centre": pylinac_new_bb_centre,
         },
     }
 
