@@ -70,6 +70,7 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
+dbfread = "^2.0"
 
 
 [tool.poetry.dev-dependencies]
@@ -103,6 +104,9 @@ m2r = "*"
 
 # Supporting JupyterLab usage
 pywin32 = {version = "224", platform = "win32"}
+
+# VSCode extension dependencies
+doc8 = "*"
 
 # Packages to include later
 # pytest-cov = "^2.5"

@@ -23,11 +23,31 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+
 import numpy as np
 
+from .findbb import optimise_bb_centre
+from .findfield import _initial_centre, field_centre_and_rotation_refining
+from .imginterp import create_interpolated_field
 
-def transform_axis(x, y, transform):
-    transformed_x = transform @ np.vstack([x, np.zeros(len(x)), np.ones(len(x))])
-    transformed_y = transform @ np.vstack([np.zeros(len(y)), y, np.ones(len(y))])
 
-    return transformed_x[0:2], transformed_y[0:2]
+def find_field_and_bb(
+    x, y, img, edge_lengths, bb_diameter, penumbra=2, initial_rotation=0, rounding=True
+):
+    field = create_interpolated_field(x, y, img)
+    initial_centre = _initial_centre(x, y, img)
+
+    field_centre, field_rotation = field_centre_and_rotation_refining(
+        field, edge_lengths, penumbra, initial_centre, initial_rotation=initial_rotation
+    )
+
+    bb_centre = optimise_bb_centre(
+        field, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
+    )
+
+    if rounding:
+        bb_centre = np.round(bb_centre, decimals=2).tolist()
+        field_centre = np.round(field_centre, decimals=2).tolist()
+        field_rotation = np.round(field_rotation, decimals=1)
+
+    return bb_centre, field_centre, field_rotation

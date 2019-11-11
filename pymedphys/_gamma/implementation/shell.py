@@ -33,6 +33,8 @@ from typing import Optional
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
+import pymedphys._utilities.createshells
+
 from ..utilities import run_input_checks
 
 DEFAULT_RAM = int(2 ** 30 * 1.5)  # 1.5 GB
@@ -435,7 +437,7 @@ def calculate_min_dose_difference(options, distance, to_be_checked, distance_ste
 
     num_dimensions = np.shape(options.flat_mesh_axes_reference)[0]
 
-    coordinates_at_distance_shell = calculate_coordinates_shell(
+    coordinates_at_distance_shell = pymedphys._utilities.createshells.calculate_coordinates_shell(  # pylint: disable = protected-access
         distance, num_dimensions, distance_step_size
     )
 
@@ -537,67 +539,3 @@ def add_shells_to_ref_coords(
     all_points = np.concatenate(coordinates_at_distance, axis=2)
 
     return all_points
-
-
-def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
-    """Create the shell of coordinate shifts for the given testing distance.
-
-    Coordinate shifts are determined to check the evaluation dose for a
-    given distance, dimension, and step size
-    """
-    if num_dimensions == 1:
-        return calculate_coordinates_shell_1d(distance)
-
-    if num_dimensions == 2:
-        return calculate_coordinates_shell_2d(distance, distance_step_size)
-
-    if num_dimensions == 3:
-        return calculate_coordinates_shell_3d(distance, distance_step_size)
-
-    raise Exception("No valid dimension")
-
-
-def calculate_coordinates_shell_1d(distance):
-    """Output the two points that are of the defined distance in one-dimension
-    """
-    if distance == 0:
-        x_coords = np.array([0])
-    else:
-        x_coords = np.array([distance, -distance])
-
-    return (x_coords,)
-
-
-def calculate_coordinates_shell_2d(distance, distance_step_size):
-    """Create points along the circumference of a circle. The spacing
-    between points is not larger than the defined distance_step_size
-    """
-    amount_to_check = np.ceil(2 * np.pi * distance / distance_step_size).astype(int) + 1
-    theta = np.linspace(0, 2 * np.pi, amount_to_check + 1)[:-1:]
-    x_coords = distance * np.cos(theta)
-    y_coords = distance * np.sin(theta)
-
-    return (x_coords, y_coords)
-
-
-def calculate_coordinates_shell_3d(distance, distance_step_size):
-    """Create points along the surface of a sphere (a shell) where no gap
-    between points is larger than the defined distance_step_size"""
-
-    number_of_rows = np.ceil(np.pi * distance / distance_step_size).astype(int) + 1
-
-    elevation = np.linspace(0, np.pi, number_of_rows)
-    row_radii = distance * np.sin(elevation)
-    row_circumference = 2 * np.pi * row_radii
-    amount_in_row = np.ceil(row_circumference / distance_step_size).astype(int) + 1
-
-    x_coords = []
-    y_coords = []
-    z_coords = []
-    for i, phi in enumerate(elevation):
-        azimuth = np.linspace(0, 2 * np.pi, amount_in_row[i] + 1)[:-1:]
-        x_coords.append(distance * np.sin(phi) * np.cos(azimuth))
-        y_coords.append(distance * np.sin(phi) * np.sin(azimuth))
-        z_coords.append(distance * np.cos(phi) * np.ones_like(azimuth))
-
-    return (np.hstack(x_coords), np.hstack(y_coords), np.hstack(z_coords))
