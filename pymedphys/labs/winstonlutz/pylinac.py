@@ -31,15 +31,21 @@ import pymedphys._vendor.pylinac.winstonlutz
 from .utilities import create_centralised_field, transform_point
 
 
-def run_wlutz(field, edge_lengths, penumbra, field_centre, field_rotation):
+def run_wlutz(
+    field,
+    edge_lengths,
+    penumbra,
+    field_centre,
+    field_rotation,
+    find_bb=True,
+    pixel_size=0.1,
+):
     centralised_straight_field = create_centralised_field(
         field, field_centre, field_rotation
     )
 
     half_x_range = edge_lengths[0] / 2 + penumbra * 3
     half_y_range = edge_lengths[1] / 2 + penumbra * 3
-
-    pixel_size = 0.1
 
     x_range = np.arange(-half_x_range, half_x_range + pixel_size, pixel_size)
     y_range = np.arange(-half_y_range, half_y_range + pixel_size, pixel_size)
@@ -55,6 +61,7 @@ def run_wlutz(field, edge_lengths, penumbra, field_centre, field_rotation):
         half_y_range,
         field_centre,
         field_rotation,
+        find_bb=find_bb,
     )
 
     pylinac_old_field_centre, pylinac_old_bb_centre = run_pylinac_with_class(
@@ -65,6 +72,7 @@ def run_wlutz(field, edge_lengths, penumbra, field_centre, field_rotation):
         half_y_range,
         field_centre,
         field_rotation,
+        find_bb=find_bb,
     )
 
     return {
@@ -87,6 +95,7 @@ def run_pylinac_with_class(
     half_y_range,
     field_centre,
     field_rotation,
+    find_bb=True,
 ):
     wl_image = class_to_use(centralised_image)
     centralised_pylinac_field_centre = [
@@ -98,13 +107,16 @@ def run_pylinac_with_class(
         centralised_pylinac_field_centre, field_centre, field_rotation
     )
 
-    centralised_pylinac_bb_centre = [
-        wl_image.bb.x * pixel_size - half_x_range,
-        wl_image.bb.y * pixel_size - half_y_range,
-    ]
+    if find_bb:
+        centralised_pylinac_bb_centre = [
+            wl_image.bb.x * pixel_size - half_x_range,
+            wl_image.bb.y * pixel_size - half_y_range,
+        ]
 
-    bb_centre = transform_point(
-        centralised_pylinac_bb_centre, field_centre, field_rotation
-    )
+        bb_centre = transform_point(
+            centralised_pylinac_bb_centre, field_centre, field_rotation
+        )
+    else:
+        bb_centre = [None, None]
 
     return field_centre, bb_centre
