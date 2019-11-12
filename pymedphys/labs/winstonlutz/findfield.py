@@ -34,8 +34,7 @@ from .interppoints import (
     transform_penumbra_points,
     transform_rotation_field_points,
 )
-
-# from .pylinac import PyLinacFieldBBCentres
+from .pylinac import run_wlutz
 
 BASINHOPPING_NITER = 200
 
@@ -74,7 +73,7 @@ def field_centre_and_rotation_refining(
     initial_centre,
     initial_rotation=0,
     niter=10,
-    # pylinac_tol=0.1,
+    pylinac_tol=0.1,
 ):
     check_aspect_ratio(edge_lengths)
 
@@ -123,14 +122,27 @@ def field_centre_and_rotation_refining(
         predicted_rotation,
     )
 
-    # pylinac = PyLinacFieldBBCentres(
-    #     field, edge_lengths, penumbra, predicted_centre, predicted_rotation
-    # )
-    # if np.any(np.abs(np.array(pylinac.field_centre) - predicted_centre) > pylinac_tol):
-    #     raise ValueError(
-    #         "The determined field centre deviates from pylinac more "
-    #         "than the defined tolerance"
-    #     )
+    pylinac = run_wlutz(
+        field,
+        edge_lengths,
+        penumbra,
+        predicted_centre,
+        predicted_rotation,
+        find_bb=False,
+    )
+    pylinac_2_2_6_out_of_tol = np.any(
+        np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
+        > pylinac_tol
+    )
+    pylinac_2_2_7_out_of_tol = np.any(
+        np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
+        > pylinac_tol
+    )
+    if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+        raise ValueError(
+            "The determined field centre deviates from pylinac more "
+            "than the defined tolerance"
+        )
 
     centre = predicted_centre.tolist()
     return centre, predicted_rotation
