@@ -72,6 +72,7 @@ pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
 dbfread = "^2.0"
 mayavi = "^4.7"
+traits = "^5.1"
 
 
 [tool.poetry.dev-dependencies]
