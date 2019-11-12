@@ -65,6 +65,8 @@ def image_analysis_figure(
 
     ax_big = fig.add_subplot(gs[0:2, 0:2])
 
+    pixel_value_label = "Scaled image pixel value"
+
     image_with_overlays(
         fig,
         ax_big,
@@ -80,13 +82,38 @@ def image_analysis_figure(
         y_field_interp,
         x_bb_interp,
         y_bb_interp,
+        pixel_value_label,
     )
 
     profile_flip_plot(axs[2, 0], x_axis, field(*x_field_interp))
+    axs[2, 0].set_xlim(
+        [edge_lengths[0] / 2 - penumbra * 2, edge_lengths[0] / 2 + penumbra * 2]
+    )
+    axs[2, 0].set_title("Flipped profile about field centre [field x-axis]")
+    axs[2, 0].set_xlabel("Distance from field centre (mm)")
+    axs[2, 0].set_ylabel(pixel_value_label)
+
     profile_flip_plot(axs[2, 1], y_axis, field(*y_field_interp))
+    axs[2, 1].set_xlim(
+        [edge_lengths[1] / 2 - penumbra * 2, edge_lengths[1] / 2 + penumbra * 2]
+    )
+    axs[2, 1].set_title("Flipped profile about field centre [field y-axis]")
+    axs[2, 1].set_xlabel("Distance from field centre (mm)")
+    axs[2, 1].set_ylabel(pixel_value_label)
 
     profile_flip_plot(axs[3, 0], x_axis, field(*x_bb_interp))
+    axs[3, 0].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
+    axs[3, 0].set_title("Flipped profile about BB centre [panel x-axis]")
+    axs[3, 0].set_xlabel("Displacement from BB centre (mm)")
+    axs[3, 0].set_ylabel(pixel_value_label)
+
     profile_flip_plot(axs[3, 1], y_axis, field(*y_bb_interp))
+    axs[3, 1].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
+    axs[3, 1].set_title("Flipped profile about BB centre [panel y-axis]")
+    axs[3, 1].set_xlabel("Displacement from BB centre (mm)")
+    axs[3, 1].set_ylabel(pixel_value_label)
+
+    plt.tight_layout()
 
     return fig
 
@@ -111,6 +138,7 @@ def image_with_overlays(
     y_field_interp,
     x_bb_interp,
     y_bb_interp,
+    pixel_value_label,
 ):
 
     bb_radius = bb_diameter / 2
@@ -135,7 +163,7 @@ def image_with_overlays(
     rect_dy = [-edge_lengths[1] / 2, edge_lengths[1], 0, -edge_lengths[1], 0]
 
     c = ax.contourf(x, y, img, 100)
-    fig.colorbar(c, ax=ax, label="Scaled image pixel value")
+    fig.colorbar(c, ax=ax, label=pixel_value_label)
 
     ax.plot([bb_centre[0]] * 2, bb_crosshair + bb_centre[1], "k", lw=1)
     ax.plot(bb_crosshair + bb_centre[0], [bb_centre[1]] * 2, "k", lw=1)
@@ -167,6 +195,9 @@ def image_with_overlays(
     ax.set_ylim(
         [field_centre[1] - long_edge_fraction, field_centre[1] + long_edge_fraction]
     )
+
+    ax.set_xlabel("iView panel absolute x-pos (mm)")
+    ax.set_ylabel("iView panel absolute y-pos (mm)")
 
 
 def draw_by_diff(dx, dy, transform):

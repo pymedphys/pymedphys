@@ -87,6 +87,7 @@
     "inplane",
     "interp",
     "interppoints",
+    "interps",
     "isclose",
     "isdir",
     "isfile",

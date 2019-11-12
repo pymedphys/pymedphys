@@ -34,7 +34,7 @@ from .interppoints import (
     transform_penumbra_points,
     transform_rotation_field_points,
 )
-from .pylinac import run_wlutz
+from .pylinac import PylinacComparisonDeviation, run_wlutz
 
 BASINHOPPING_NITER = 200
 
@@ -73,7 +73,7 @@ def field_centre_and_rotation_refining(
     initial_centre,
     initial_rotation=0,
     niter=10,
-    pylinac_tol=0.1,
+    pylinac_tol=0.2,
 ):
     check_aspect_ratio(edge_lengths)
 
@@ -133,8 +133,8 @@ def field_centre_and_rotation_refining(
         )
     except ValueError as e:
         raise ValueError(
-            "After finding the field centre during comparison to Pylinac the pylinac "  # pylint: disable = no-member
-            f"code raised the following error:\n    {e.message}"
+            "After finding the field centre during comparison to Pylinac the pylinac "
+            f"code raised the following error:\n    {e}"
         )
 
     pylinac_2_2_6_out_of_tol = np.any(
@@ -146,7 +146,7 @@ def field_centre_and_rotation_refining(
         > pylinac_tol
     )
     if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
-        raise ValueError(
+        raise PylinacComparisonDeviation(
             "The determined field centre deviates from pylinac more "
             "than the defined tolerance"
         )
