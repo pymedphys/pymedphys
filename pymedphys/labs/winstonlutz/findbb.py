@@ -28,10 +28,8 @@ import numpy as np
 import scipy.optimize
 
 from .interppoints import create_bb_points_function
+from .pylinac import run_wlutz
 from .utilities import create_centralised_field, transform_point
-
-# from .pylinac import PyLinacFieldBBCentres
-
 
 BB_MIN_SEARCH_DIST = 2
 BB_MIN_SEARCH_TOL = 0.25
@@ -44,7 +42,7 @@ def optimise_bb_centre(
     penumbra,
     field_centre,
     field_rotation,
-    # pylinac_tol=0.1,
+    pylinac_tol=0.1,
 ):
     centralised_field = create_centralised_field(field, field_centre, field_rotation)
     to_minimise_edge_agreement, to_minimise_pixel_vals = create_bb_to_minimise(
@@ -95,14 +93,20 @@ def optimise_bb_centre(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
 
-    # pylinac = PyLinacFieldBBCentres(
-    #     field, edge_lengths, penumbra, field_centre, field_rotation
-    # )
-    # if np.any(np.abs(np.array(pylinac.bb_centre) - bb_centre) > pylinac_tol):
-    #     raise ValueError(
-    #         "The determined BB centre deviates from pylinac more "
-    #         "than the defined tolerance"
-    #     )
+    pylinac = run_wlutz(
+        field, edge_lengths, penumbra, field_centre, field_rotation, find_bb=True
+    )
+    pylinac_2_2_6_out_of_tol = np.any(
+        np.abs(np.array(pylinac["v2.2.6"]["bb_centre"]) - bb_centre) > pylinac_tol
+    )
+    pylinac_2_2_7_out_of_tol = np.any(
+        np.abs(np.array(pylinac["v2.2.7"]["bb_centre"]) - bb_centre) > pylinac_tol
+    )
+    if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+        raise ValueError(
+            "The determined bb centre deviates from pylinac more "
+            "than the defined tolerance"
+        )
 
     return bb_centre
 
