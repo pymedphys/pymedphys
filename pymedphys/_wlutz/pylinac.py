@@ -31,6 +31,10 @@ import pymedphys._vendor.pylinac.winstonlutz
 from .utilities import create_centralised_field, transform_point
 
 
+class PylinacComparisonDeviation(ValueError):
+    pass
+
+
 def run_wlutz(
     field,
     edge_lengths,
