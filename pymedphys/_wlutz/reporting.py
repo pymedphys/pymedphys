@@ -53,10 +53,13 @@ def image_analysis_figure(
     y_axis = np.linspace(-y_half_bound, y_half_bound, 200)
 
     field_transform = translate_and_rotate_transform(field_centre, field_rotation)
-    bb_transform = translate_and_rotate_transform(bb_centre, 0)
-
     x_field_interp, y_field_interp = transform_axis(x_axis, y_axis, field_transform)
-    x_bb_interp, y_bb_interp = transform_axis(x_axis, y_axis, bb_transform)
+
+    if bb_centre is not None:
+        bb_transform = translate_and_rotate_transform(bb_centre, 0)
+        x_bb_interp, y_bb_interp = transform_axis(x_axis, y_axis, bb_transform)
+    else:
+        x_bb_interp, y_bb_interp = None, None
 
     fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(12, 15))
     gs = axs[0, 0].get_gridspec()
@@ -101,17 +104,18 @@ def image_analysis_figure(
     axs[2, 1].set_xlabel("Distance from field centre (mm)")
     axs[2, 1].set_ylabel(pixel_value_label)
 
-    profile_flip_plot(axs[3, 0], x_axis, field(*x_bb_interp))
-    axs[3, 0].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
-    axs[3, 0].set_title("Flipped profile about BB centre [panel x-axis]")
-    axs[3, 0].set_xlabel("Displacement from BB centre (mm)")
-    axs[3, 0].set_ylabel(pixel_value_label)
+    if bb_centre is not None:
+        profile_flip_plot(axs[3, 0], x_axis, field(*x_bb_interp))
+        axs[3, 0].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
+        axs[3, 0].set_title("Flipped profile about BB centre [panel x-axis]")
+        axs[3, 0].set_xlabel("Displacement from BB centre (mm)")
+        axs[3, 0].set_ylabel(pixel_value_label)
 
-    profile_flip_plot(axs[3, 1], y_axis, field(*y_bb_interp))
-    axs[3, 1].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
-    axs[3, 1].set_title("Flipped profile about BB centre [panel y-axis]")
-    axs[3, 1].set_xlabel("Displacement from BB centre (mm)")
-    axs[3, 1].set_ylabel(pixel_value_label)
+        profile_flip_plot(axs[3, 1], y_axis, field(*y_bb_interp))
+        axs[3, 1].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
+        axs[3, 1].set_title("Flipped profile about BB centre [panel y-axis]")
+        axs[3, 1].set_xlabel("Displacement from BB centre (mm)")
+        axs[3, 1].set_ylabel(pixel_value_label)
 
     plt.tight_layout()
 
@@ -140,8 +144,6 @@ def image_with_overlays(
     y_bb_interp,
     pixel_value_label,
 ):
-
-    bb_radius = bb_diameter / 2
     rect_crosshair_dx = [
         -edge_lengths[0] / 2,
         edge_lengths[0],
@@ -150,40 +152,45 @@ def image_with_overlays(
     ]
     rect_crosshair_dy = [-edge_lengths[1] / 2, edge_lengths[1], 0, -edge_lengths[1]]
 
-    bb_crosshair = np.array([-bb_radius, bb_radius])
-
-    t = np.linspace(0, 2 * np.pi)
-    circle_x_origin = bb_diameter / 2 * np.sin(t)
-    circle_y_origin = bb_diameter / 2 * np.cos(t)
-
-    circle_x = circle_x_origin + bb_centre[0]
-    circle_y = circle_y_origin + bb_centre[1]
-
     rect_dx = [-edge_lengths[0] / 2, 0, edge_lengths[0], 0, -edge_lengths[0]]
     rect_dy = [-edge_lengths[1] / 2, edge_lengths[1], 0, -edge_lengths[1], 0]
 
     c = ax.contourf(x, y, img, 100)
     fig.colorbar(c, ax=ax, label=pixel_value_label)
 
-    ax.plot([bb_centre[0]] * 2, bb_crosshair + bb_centre[1], "k", lw=1)
-    ax.plot(bb_crosshair + bb_centre[0], [bb_centre[1]] * 2, "k", lw=1)
-
     ax.plot(*draw_by_diff(rect_dx, rect_dy, field_transform), "k", lw=3)
     ax.plot(
         *draw_by_diff(rect_crosshair_dx, rect_crosshair_dy, field_transform), "k", lw=1
     )
 
-    ax.plot(
-        [field_centre[0], bb_centre[0]], [field_centre[1], bb_centre[1]], c="C3", lw=3
-    )
-
-    ax.plot(circle_x, circle_y, "k", lw=3)
-
     ax.plot(x_field_interp[0], x_field_interp[1], "k", lw=0.5, alpha=0.3)
     ax.plot(y_field_interp[0], y_field_interp[1], "k", lw=0.5, alpha=0.3)
 
-    ax.plot(x_bb_interp[0], x_bb_interp[1], "k", lw=0.5, alpha=0.3)
-    ax.plot(y_bb_interp[0], y_bb_interp[1], "k", lw=0.5, alpha=0.3)
+    if bb_centre is not None:
+        bb_radius = bb_diameter / 2
+        bb_crosshair = np.array([-bb_radius, bb_radius])
+
+        t = np.linspace(0, 2 * np.pi)
+        circle_x_origin = bb_diameter / 2 * np.sin(t)
+        circle_y_origin = bb_diameter / 2 * np.cos(t)
+
+        circle_x = circle_x_origin + bb_centre[0]
+        circle_y = circle_y_origin + bb_centre[1]
+
+        ax.plot([bb_centre[0]] * 2, bb_crosshair + bb_centre[1], "k", lw=1)
+        ax.plot(bb_crosshair + bb_centre[0], [bb_centre[1]] * 2, "k", lw=1)
+
+        ax.plot(circle_x, circle_y, "k", lw=3)
+
+        ax.plot(x_bb_interp[0], x_bb_interp[1], "k", lw=0.5, alpha=0.3)
+        ax.plot(y_bb_interp[0], y_bb_interp[1], "k", lw=0.5, alpha=0.3)
+
+        ax.plot(
+            [field_centre[0], bb_centre[0]],
+            [field_centre[1], bb_centre[1]],
+            c="C3",
+            lw=3,
+        )
 
     ax.axis("equal")
     long_edge = np.sqrt(np.sum((np.array(edge_lengths)) ** 2))
