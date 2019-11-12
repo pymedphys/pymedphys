@@ -162,7 +162,9 @@ class WLImage(image.ArrayImage):
                 max_thresh -= 0.05 * spread
                 if max_thresh < hmin:
                     raise ValueError(
-                        "Unable to locate the BB. Make sure the field edges do not obscure the BB and that there is no artifacts in the images."
+                        "Pylinac v2.2.7: Unable to locate the BB. Make sure the field "
+                        "edges do not obscure the BB and that there is no artifacts in "
+                        "the images."
                     )
             else:
                 found = True
@@ -261,7 +263,9 @@ class WLImageOld(WLImage):
                 max_thresh -= 0.05 * spread
                 if max_thresh < hmin:
                     raise ValueError(
-                        "Unable to locate the BB. Make sure the field edges do not obscure the BB and that there is no artifacts in the images."
+                        "Pylinac v2.2.6: Unable to locate the BB. Make sure the field "
+                        "edges do not obscure the BB and that there is no artifacts in "
+                        "the images."
                     )
             else:
                 found = True
