@@ -186,6 +186,5 @@
     "zlim"
   ],
   "python.linting.pylintEnabled": true,
-  "restructuredtext.confPath": "${workspaceFolder}/docs",
-  "python.pythonPath": "/home/simon/.cache/pypoetry/virtualenvs/pymedphys-py3.7/bin/python"
+  "restructuredtext.confPath": "${workspaceFolder}/docs"
 }
