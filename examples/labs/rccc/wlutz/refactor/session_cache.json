@@ -8307,7 +8307,13 @@
     }
   },
   "10FFF-counter-clockwise-20191105_160230750-16": {
-    "pymedphys": {}
+    "pymedphys": {
+      "field_centre": [
+        -1.2516958198816832,
+        -1.101068128004345
+      ],
+      "field_rotation": 89.4100814977911
+    }
   },
   "10FFF-counter-clockwise-20191105_160230750-17": {
     "pymedphys": {

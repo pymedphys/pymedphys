@@ -122,14 +122,21 @@ def field_centre_and_rotation_refining(
         predicted_rotation,
     )
 
-    pylinac = run_wlutz(
-        field,
-        edge_lengths,
-        penumbra,
-        predicted_centre,
-        predicted_rotation,
-        find_bb=False,
-    )
+    try:
+        pylinac = run_wlutz(
+            field,
+            edge_lengths,
+            penumbra,
+            predicted_centre,
+            predicted_rotation,
+            find_bb=False,
+        )
+    except ValueError as e:
+        raise ValueError(
+            "After finding the field centre during comparison to Pylinac the pylinac "  # pylint: disable = no-member
+            f"code raised the following error:\n    {e.message}"
+        )
+
     pylinac_2_2_6_out_of_tol = np.any(
         np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
         > pylinac_tol
@@ -185,7 +192,7 @@ def _rotation_error_string(verification_rotation, predicted_rotation, diff):
 
 def check_centre_close(verification_centre, predicted_centre):
     if not np.allclose(verification_centre, predicted_centre, rtol=0.01, atol=0.01):
-        raise ValueError("Centre not able to be consistently determined.")
+        raise ValueError("Field centre not able to be reproducibly determined.")
 
 
 def optimise_rotation(field, centre, edge_lengths, penumbra, initial_rotation):

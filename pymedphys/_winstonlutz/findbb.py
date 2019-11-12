@@ -93,9 +93,16 @@ def optimise_bb_centre(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
 
-    pylinac = run_wlutz(
-        field, edge_lengths, penumbra, field_centre, field_rotation, find_bb=True
-    )
+    try:
+        pylinac = run_wlutz(
+            field, edge_lengths, penumbra, field_centre, field_rotation, find_bb=True
+        )
+    except ValueError as e:
+        raise ValueError(
+            "After finding the bb centre during comparison to Pylinac the pylinac "  # pylint: disable = no-member
+            f"code raised the following error:\n    {e.message}"
+        )
+
     pylinac_2_2_6_out_of_tol = np.any(
         np.abs(np.array(pylinac["v2.2.6"]["bb_centre"]) - bb_centre) > pylinac_tol
     )
