@@ -432,10 +432,10 @@ def read_dicom(directory):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("direpid", type=str, help="Input the directory name")
+parser.add_argument("-p", "--path", type=str, help="Input the directory name")
 args = parser.parse_args()
 
-dirname = args.direpid
+dirname = args.path
 
 
 while True:  # example of infinite loops using try and except to catch only numbers
