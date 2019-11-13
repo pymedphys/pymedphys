@@ -335,7 +335,7 @@ def read_dicom(directory):
         list_gantry_angle = []
         list_collimator_angle = []
         list_figs = []
-        center_g0c90 = [(0, 0)]
+        # center_g0c90 = [(0, 0)]
         center_g0 = [(0, 0)]
         dx = 0
         dy = 0
@@ -428,46 +428,14 @@ def read_dicom(directory):
     # exit(0)
     sys.exit(0)
 
-    # # Normal mode:
-    # print()
-    # print("Filename.........:", file)
-    # print("Storage type.....:", dataset.SOPClassUID)
-    # print()
-    #
-    # pat_name = dataset.PatientName
-    # display_name = pat_name.family_name + ", " + pat_name.given_name
-    # print("Patient's name...:", display_name)
-    # print("Patient id.......:", dataset.PatientID)
-    # print("Modality.........:", dataset.Modality)
-    # print("Study Date.......:", dataset.StudyDate)
-    # print("Gantry angle......", dataset.GantryAngle)
-    # #
-    # # if 'PixelData' in dataset:
-    # #     rows = int(dataset.Rows)
-    # #     cols = int(dataset.Columns)
-    # #     print("Image size.......: {rows:d} x {cols:d}, {size:d} bytes".format(
-    # #         rows=rows, cols=cols, size=len(dataset.PixelData)))
-    # #     if 'PixelSpacing' in dataset:
-    # #         print("Pixel spacing....:", dataset.PixelSpacing)
-    # #
-    # # # use .get() if not sure the item exists, and want a default value if missing
-    # # print("Slice location...:", dataset.get('SliceLocation', "(missing)"))
     plt.show()
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("direpid", type=str, help="Input the directory name")
-
-# parser.add_argument('epid1',type=str,help="Input the filename")
-# parser.add_argument('epid2',type=str,help="Input the filename")
-# parser.add_argument('-a', '--add', nargs='?', type=argparse.FileType('r'), help='additional file for averaging before processing')
 args = parser.parse_args()
 
 dirname = args.direpid
-dirname = args.direpid
-
-# filename1=args.epid1
-# filename2=args.epid2
 
 
 while True:  # example of infinite loops using try and except to catch only numbers
