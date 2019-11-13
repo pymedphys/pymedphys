@@ -431,26 +431,23 @@ def read_dicom(directory):
     plt.show()
 
 
-parser = argparse.ArgumentParser()
-# parser.add_argument("-p", "--path", type=str, help="Input the directory name")
-parser.add_argument("dirname", action="store", help="Directory to list")
-args = parser.parse_args()
+parser = argparse.ArgumentParser()  # pylint: disable = invalid-name
+parser.add_argument("-d", "--directory", help="path to folder")
+args = parser.parse_args()  # pylint: disable = invalid-name
 
-dirname = args.dirname
-
-
-while True:  # example of infinite loops using try and except to catch only numbers
-    line = input("Are these files from a clinac [yes(y)/no(n)]> ")
-    try:
-        ##        if line == 'done':
-        ##            break
-        ioption = str(line.lower())
-        if ioption.startswith(("y", "yeah", "yes", "n", "no", "nope")):
-            break
-
-    except:  # pylint: disable = bare-except
-        print("Please enter a valid option:")
+if args.directory:
+    dirname = args.directory  # pylint: disable = invalid-name
+    read_dicom(dirname)
 
 
-# read_dicom(filename1,filename2,ioption)
-read_dicom(dirname)
+# while True:  # example of infinite loops using try and except to catch only numbers
+#     line = input("Are these files from a clinac [yes(y)/no(n)]> ")
+#     try:
+#         ##        if line == 'done':
+#         ##            break
+#         ioption = str(line.lower())
+#         if ioption.startswith(("y", "yeah", "yes", "n", "no", "nope")):
+#             break
+#
+#     except:  # pylint: disable = bare-except
+#         print("Please enter a valid option:")
