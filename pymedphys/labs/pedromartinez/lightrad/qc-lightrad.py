@@ -63,6 +63,8 @@ import pydicom
 
 import utils as u
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
+
 
 def point_detect(imcirclist):
     k = 0

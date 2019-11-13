@@ -49,6 +49,7 @@
 ###########################################################################################
 
 import argparse
+import inspect
 import os
 import sys
 from math import sqrt
@@ -67,6 +68,8 @@ from skimage.feature import blob_log
 import pydicom
 
 import utils as u
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
 
 
 def running_mean(x, N):
