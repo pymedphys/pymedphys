@@ -749,10 +749,11 @@ def read_dicom3D(direc, i_option):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--path", type=str, help="Input the directory name")
+# parser.add_argument("-p", "--path", type=str, help="Input the directory name")
+parser.add_argument("dirname", action="store", help="Directory to list")
 args = parser.parse_args()
 
-dirname = args.path
+dirname = args.dirname
 
 
 while True:  # example of infinite loops using try and except to catch only numbers
