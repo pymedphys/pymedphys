@@ -79,6 +79,8 @@ import peak_find as pf
 import peak_find_fieldrot as pffr
 import utils as u
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
+
 
 # axial visualization and scrolling
 def multi_slice_viewer(volume, dx, dy):
