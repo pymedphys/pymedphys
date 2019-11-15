@@ -71,6 +71,7 @@ hypothesis  = { version = "*", optional = true }
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
 dbfread = "^2.0"
+pynetdicom = "^1.4"
 
 
 [tool.poetry.dev-dependencies]
