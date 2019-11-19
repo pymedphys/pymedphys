@@ -41,7 +41,7 @@ image_path_cache = [None]
 @given(floats(-5, 5), floats(-5, 5))
 def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
     if image_path_cache[0] is None:
-        image_path = pymedphys.data_path("wlutz_image.png", skip_hashing=True)
+        image_path = pymedphys.data_path("wlutz_image.png", check_hashes=False)
         image_path_cache[0] = image_path
     else:
         image_path = image_path_cache[0]
