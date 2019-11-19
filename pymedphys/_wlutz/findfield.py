@@ -34,6 +34,7 @@ from .interppoints import (
     transform_penumbra_points,
     transform_rotation_field_points,
 )
+from .pylinac import PylinacComparisonDeviation, run_wlutz
 
 BASINHOPPING_NITER = 200
 
@@ -66,7 +67,13 @@ def check_aspect_ratio(edge_lengths):
 
 
 def field_centre_and_rotation_refining(
-    field, edge_lengths, penumbra, initial_centre, initial_rotation=0, niter=10
+    field,
+    edge_lengths,
+    penumbra,
+    initial_centre,
+    initial_rotation=0,
+    niter=10,
+    pylinac_tol=0.2,
 ):
     check_aspect_ratio(edge_lengths)
 
@@ -115,6 +122,35 @@ def field_centre_and_rotation_refining(
         predicted_rotation,
     )
 
+    try:
+        pylinac = run_wlutz(
+            field,
+            edge_lengths,
+            penumbra,
+            predicted_centre,
+            predicted_rotation,
+            find_bb=False,
+        )
+    except ValueError as e:
+        raise ValueError(
+            "After finding the field centre during comparison to Pylinac the pylinac "
+            f"code raised the following error:\n    {e}"
+        )
+
+    pylinac_2_2_6_out_of_tol = np.any(
+        np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
+        > pylinac_tol
+    )
+    pylinac_2_2_7_out_of_tol = np.any(
+        np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
+        > pylinac_tol
+    )
+    if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+        raise PylinacComparisonDeviation(
+            "The determined field centre deviates from pylinac more "
+            "than the defined tolerance"
+        )
+
     centre = predicted_centre.tolist()
     return centre, predicted_rotation
 
@@ -156,7 +192,7 @@ def _rotation_error_string(verification_rotation, predicted_rotation, diff):
 
 def check_centre_close(verification_centre, predicted_centre):
     if not np.allclose(verification_centre, predicted_centre, rtol=0.01, atol=0.01):
-        raise ValueError("Centre not able to be consistently determined.")
+        raise ValueError("Field centre not able to be reproducibly determined.")
 
 
 def optimise_rotation(field, centre, edge_lengths, penumbra, initial_rotation):
