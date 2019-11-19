@@ -27,12 +27,14 @@ and open source distribution. Open code is better science.**
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
-*The documentation links on this page are currently just placeholders while the
-documentation for* ``v0.12.0`` *is being written.*
+Docs under construction
+-----------------------
 
-To view the developmental documentation see https://master--pymedphys.netlify.com.
-To see the stable documentation for the most recent PyPI release see
-https://docs.pymedphys.com.
+This documentation is currently undergoing a major revamp. At this point in
+time many of the below links will take you to empty pages. If you are able to
+help, drop me a line at `me@simonbiggs.net`_.
+
+.. _`me@simonbiggs.net`: mailto:me@simonbiggs.net
 
 
 First steps
