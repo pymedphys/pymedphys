@@ -17,6 +17,8 @@
 # Adapted from https://raw.githubusercontent.com/jrkerns/pylinac/v2.2.6/pylinac/core/profile.py
 
 
+# pylint: disable = no-else-return, inconsistent-return-statements, too-many-nested-blocks
+
 """Module of objects that resemble or contain a profile, i.e. a 1 or 2-D f(x) representation."""
 import copy
 from functools import lru_cache

@@ -16,6 +16,8 @@
 
 # Adapted from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
 
+# pylint: disable = inconsistent-return-statements
+
 """This module holds classes for image loading and manipulation."""
 
 
