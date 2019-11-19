@@ -20,6 +20,8 @@
 # Another type checking decorator: http://code.activestate.com/recipes/454322-type-checking-decorator/
 
 
+# pylint: disable = unidiomatic-typecheck
+
 import time
 from abc import ABCMeta
 from functools import wraps

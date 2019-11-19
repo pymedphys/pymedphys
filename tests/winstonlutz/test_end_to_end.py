@@ -42,7 +42,7 @@ def test_end_to_end():
     edge_lengths = [20, 20]
 
     image_paths = pymedphys.zip_data_paths("wlutz_images.zip")
-    results = pymedphys._wlutz.iview.batch_process(
+    results = pymedphys._wlutz.iview.batch_process(  # pylint:disable = protected-access
         image_paths, edge_lengths, display_figure=False
     )
 
