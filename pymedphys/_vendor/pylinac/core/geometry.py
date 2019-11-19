@@ -16,6 +16,8 @@
 
 # Adapted from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
 
+# pylint: disable = no-else-return
+
 """Module for classes that represent common geometric objects or patterns."""
 import math
 from itertools import zip_longest
