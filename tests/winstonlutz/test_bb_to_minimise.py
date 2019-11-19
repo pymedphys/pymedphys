@@ -30,9 +30,9 @@ from hypothesis.strategies import floats
 import numpy as np
 
 import pymedphys
-import pymedphys.labs.winstonlutz.findbb
-import pymedphys.labs.winstonlutz.imginterp
-import pymedphys.labs.winstonlutz.iview
+import pymedphys._wlutz.findbb
+import pymedphys._wlutz.imginterp
+import pymedphys._wlutz.iview
 
 image_path_cache = [None]
 
@@ -41,12 +41,20 @@ image_path_cache = [None]
 @given(floats(-5, 5), floats(-5, 5))
 def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
     if image_path_cache[0] is None:
-        image_path = pymedphys.data_path("wlutz_image.png", skip_hashing=True)
+        image_path = pymedphys.data_path("wlutz_image.png", check_hash=False)
         image_path_cache[0] = image_path
     else:
         image_path = image_path_cache[0]
-    x, y, img = pymedphys.labs.winstonlutz.iview.iview_image_transform(image_path)
-    field = pymedphys.labs.winstonlutz.imginterp.create_interpolated_field(x, y, img)
+    (
+        x,
+        y,
+        img,
+    ) = pymedphys._wlutz.iview.iview_image_transform(  # pylint:disable = protected-access
+        image_path
+    )
+    field = pymedphys._wlutz.imginterp.create_interpolated_field(  # pylint:disable = protected-access
+        x, y, img
+    )
 
     bb_diameter = 8
 
@@ -56,13 +64,17 @@ def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
         reference_bb_centre[1] + bb_centre_y_deviation,
     ]
 
-    vectorised_to_minimise = pymedphys.labs.winstonlutz.findbb.create_bb_to_minimise(
+    vectorised_to_minimise = pymedphys._wlutz.findbb.create_bb_to_minimise(  # pylint:disable = protected-access
         field, bb_diameter
     )
-    simple_to_minimise = pymedphys.labs.winstonlutz.findbb.create_bb_to_minimise_simple(
+    simple_to_minimise = pymedphys._wlutz.findbb.create_bb_to_minimise_simple(  # pylint:disable = protected-access
         field, bb_diameter
     )
 
     assert np.allclose(
-        vectorised_to_minimise(centre_to_test), simple_to_minimise(centre_to_test)
+        vectorised_to_minimise[0](centre_to_test), simple_to_minimise[0](centre_to_test)
+    )
+
+    assert np.allclose(
+        vectorised_to_minimise[1](centre_to_test), simple_to_minimise[1](centre_to_test)
     )

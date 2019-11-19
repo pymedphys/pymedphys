@@ -27,12 +27,14 @@ and open source distribution. Open code is better science.**
     :target: https://choosealicense.com/licenses/agpl-3.0/
 
 
-*The documentation links on this page are currently just placeholders while the
-documentation for* ``v0.12.0`` *is being written.*
+Docs under construction
+-----------------------
 
-To view the developmental documentation see https://master--pymedphys.netlify.com.
-To see the stable documentation for the most recent PyPI release see
-https://docs.pymedphys.com.
+This documentation is currently undergoing a major revamp. At this point in
+time many of the below links will take you to empty pages. If you are able to
+help, drop me a line at `me@simonbiggs.net`_.
+
+.. _`me@simonbiggs.net`: mailto:me@simonbiggs.net
 
 
 First steps
@@ -191,18 +193,18 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 
-.. _`New to Python` : https://master--pymedphys.netlify.com/tutes/python
-.. _`Installation` : https://master--pymedphys.netlify.com/tutes/install
-.. _`Part 1: Name` : https://master--pymedphys.netlify.com/tutes/part-1
-.. _`Part 2: Name` : https://master--pymedphys.netlify.com/tutes/part-2
+.. _`New to Python` : https://docs.pymedphys.com/tutes/python
+.. _`Installation` : https://docs.pymedphys.com/tutes/install
+.. _`Part 1: Name` : https://docs.pymedphys.com/tutes/part-1
+.. _`Part 2: Name` : https://docs.pymedphys.com/tutes/part-2
 
 
-.. _`Tutorials`: https://master--pymedphys.netlify.com/tutes
-.. _`How-To guides`: https://master--pymedphys.netlify.com/howto
-.. _`Reference Documents`: https://master--pymedphys.netlify.com/ref
-.. _`Explanatory documents`: https://master--pymedphys.netlify.com/explain
+.. _`Tutorials`: https://docs.pymedphys.com/tutes
+.. _`How-To guides`: https://docs.pymedphys.com/howto
+.. _`Reference Documents`: https://docs.pymedphys.com/ref
+.. _`Explanatory documents`: https://docs.pymedphys.com/explain
 
-.. _`contributor documentation`: https://master--pymedphys.netlify.com/contrib
-.. _`labs documentation`: https://master--pymedphys.netlify.com/labs
+.. _`contributor documentation`: https://docs.pymedphys.com/contrib
+.. _`labs documentation`: https://docs.pymedphys.com/labs
 
 .. _`Release Notes`: http://docs.pymedphys.com/getting-started/changelog.html
