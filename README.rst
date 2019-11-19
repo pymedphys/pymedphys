@@ -32,7 +32,7 @@ Docs under construction
 
 This documentation is currently undergoing a major revamp. At this point in
 time many of the below links will take you to empty pages. If you are able to
-help drop me a line at `me@simonbiggs.net`_.
+help, drop me a line at `me@simonbiggs.net`_.
 
 .. _`me@simonbiggs.net`: mailto:me@simonbiggs.net
 
