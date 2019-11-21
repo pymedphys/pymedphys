@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.12.0"
+version = "0.12.1"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -23,6 +23,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)"
 ]
 
 [tool.poetry.dependencies]

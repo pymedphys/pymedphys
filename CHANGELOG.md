@@ -29,6 +29,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.12.1]
+
+### Package changes
+
+- Re-added the license classifier to the PyPI upload.
 
 ## [0.12.0]
 
