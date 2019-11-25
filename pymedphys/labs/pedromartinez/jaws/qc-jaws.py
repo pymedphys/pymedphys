@@ -58,9 +58,9 @@
 #
 ###########################################################################################
 
-
 import argparse
 import os
+import sys
 
 from tqdm import tqdm
 
@@ -77,9 +77,9 @@ import minimize_junction_X as minX
 import minimize_junction_Y as minY
 import peak_find as pf
 import peak_find_fieldrot as pffr
-import utils as u
+import utils.utils as u
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
+sys.path.insert(0, os.path.abspath(".."))
 
 
 # axial visualization and scrolling
