@@ -261,7 +261,9 @@ def anonymise_file(
         with caution, since unrecognised tags may contain identifying
         information.
     """
-    ds = pydicom.dcmread(str(dicom_filepath), force=True)
+    dicom_filepath = str(dicom_filepath)
+
+    ds = pydicom.dcmread(dicom_filepath, force=True)
 
     anonymise_dataset(
         ds=ds,
@@ -274,6 +276,8 @@ def anonymise_file(
 
     if output_filepath is None:
         output_filepath = dicom_filepath
+    else:
+        os.makedirs(os.path.split(output_filepath)[0], exist_ok=True)
 
     if anonymise_filename:
         filepath_used = create_filename_from_dataset(
@@ -283,6 +287,8 @@ def anonymise_file(
         filepath_used = output_filepath
 
     dicom_anon_filepath = label_dicom_filepath_as_anonymised(filepath_used)
+
+    print(f"{dicom_filepath} --> {dicom_anon_filepath}")
 
     ds.save_as(dicom_anon_filepath)
 
@@ -405,6 +411,7 @@ def anonymise_cli(args):
     if isfile(args.input_path):
         anonymise_file(
             dicom_filepath=args.input_path,
+            output_filepath=args.output_path,
             delete_original_file=args.delete_original_files,
             anonymise_filename=not args.preserve_filenames,
             replace_values=not args.clear_values,
@@ -416,6 +423,7 @@ def anonymise_cli(args):
     elif isdir(args.input_path):
         anonymise_directory(
             dicom_dirpath=args.input_path,
+            output_dirpath=args.output_path,
             delete_original_files=args.delete_original_files,
             anonymise_filenames=not args.preserve_filenames,
             replace_values=not args.clear_values,
