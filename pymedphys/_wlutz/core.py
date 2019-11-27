@@ -32,17 +32,36 @@ from .imginterp import create_interpolated_field
 
 
 def find_field_and_bb(
-    x, y, img, edge_lengths, bb_diameter, penumbra=2, initial_rotation=0, rounding=True
+    x,
+    y,
+    img,
+    edge_lengths,
+    bb_diameter,
+    penumbra=2,
+    initial_rotation=0,
+    rounding=True,
+    pylinac_tol=0.2,
 ):
     field = create_interpolated_field(x, y, img)
     initial_centre = _initial_centre(x, y, img)
 
     field_centre, field_rotation = field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre, initial_rotation=initial_rotation
+        field,
+        edge_lengths,
+        penumbra,
+        initial_centre,
+        initial_rotation=initial_rotation,
+        pylinac_tol=pylinac_tol,
     )
 
     bb_centre = optimise_bb_centre(
-        field, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
+        field,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+        field_centre,
+        field_rotation,
+        pylinac_tol=pylinac_tol,
     )
 
     if rounding:
