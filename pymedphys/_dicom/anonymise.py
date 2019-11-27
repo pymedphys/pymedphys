@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 import json
+import os.path
 import pprint
 from copy import deepcopy
 from glob import glob
@@ -200,6 +201,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
 
 def anonymise_file(
     dicom_filepath,
+    output_filepath=None,
     delete_original_file=False,
     anonymise_filename=True,
     replace_values=True,
@@ -270,12 +272,15 @@ def anonymise_file(
         copy_dataset=False,
     )
 
+    if output_filepath is None:
+        output_filepath = dicom_filepath
+
     if anonymise_filename:
         filepath_used = create_filename_from_dataset(
-            ds, dirpath=dirname(dicom_filepath)
+            ds, dirpath=dirname(output_filepath)
         )
     else:
-        filepath_used = dicom_filepath
+        filepath_used = output_filepath
 
     dicom_anon_filepath = label_dicom_filepath_as_anonymised(filepath_used)
 
@@ -289,6 +294,7 @@ def anonymise_file(
 
 def anonymise_directory(
     dicom_dirpath,
+    output_dirpath=None,
     delete_original_files=False,
     anonymise_filenames=True,
     replace_values=True,
@@ -350,14 +356,23 @@ def anonymise_directory(
         with caution, since unrecognised tags may contain identifying
         information.
     """
-    dicom_filepaths = glob(str(dicom_dirpath) + "/**/*.dcm", recursive=True)
+    dicom_dirpath = str(dicom_dirpath)
+
+    dicom_filepaths = glob(dicom_dirpath + "/**/*.dcm", recursive=True)
     failing_filepaths = []
     # errors = []
 
     for dicom_filepath in dicom_filepaths:
+        if output_dirpath is not None:
+            relative_path = os.path.relpath(dicom_filepath, start=dicom_dirpath)
+            output_filepath = os.path.join(output_dirpath, relative_path)
+        else:
+            output_filepath = None
+
         anonymise_file(
             dicom_filepath,
-            delete_original_file=False,
+            output_filepath=output_filepath,
+            delete_original_file=delete_original_files,
             anonymise_filename=anonymise_filenames,
             replace_values=replace_values,
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
