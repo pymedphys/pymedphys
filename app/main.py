@@ -1,10 +1,11 @@
 import multiprocessing
-import secrets
 import sys
 
-import notebook.notebookapp
-import pymedphys
 from cefpython3 import cefpython as cef
+
+import notebook.notebookapp
+
+import pymedphys
 
 IP = "127.0.0.1"
 
