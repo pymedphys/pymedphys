@@ -1386,12 +1386,12 @@ more-itertools = "*"
 [extras]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "m2r"]
 extras = ["shapely"]
-gui = ["cefpython3"]
+gui = ["cefpython3", "tornado"]
 pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "d9e0b700889431940873f3df2ae0b698964e50f6df90b1182f5f07ce22e69a0f"
+content-hash = "6d8a837cfbf0e79db9dd9b93b29010380ef87446c16557b571b1edefaa72e4cd"
 python-versions = "^3.7"
 
 [metadata.hashes]
