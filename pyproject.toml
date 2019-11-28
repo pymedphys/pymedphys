@@ -45,7 +45,7 @@ pydicom = "*"
 pynetdicom = "*"
 
 pymssql = "< 3.0.0"
-shapely = { version ="*", optional = true }
+shapely = { version = "*", optional = true }
 
 # labs
 tqdm = "*"
@@ -54,8 +54,11 @@ Pillow = "*"
 imageio = "*"
 scikit-image = "*"
 
+# gui
+cefpython3 = { version = "66.0", optional = true }
+
 # docs
-sphinx = { version =">= 1.4, < 1.8", optional = true }
+sphinx = { version = ">= 1.4, < 1.8", optional = true }
 sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
 sphinx-autobuild = { version = "*", optional = true }
 sphinxcontrib-napoleon = { version = "*", optional = true }
@@ -67,7 +70,7 @@ ipykernel = { version = "*", optional = true }
 m2r = { version = "*", optional = true }
 
 # pytest
-pytest = { version ="*", optional = true }
+pytest = { version = "*", optional = true }
 pytest-sugar  = { version = "*", optional = true }
 hypothesis  = { version = "*", optional = true }
 
@@ -111,6 +114,9 @@ pywin32 = { version = "224", platform = "win32" }
 # VSCode extension dependencies
 doc8 = "*"
 
+# gui
+cefpython3 = "66.0"
+
 # Packages to include later
 # pytest-cov = "^2.5"
 # pytest-mock = "^1.9"
@@ -125,6 +131,10 @@ docs = [
 
 extras = [
     "shapely"
+]
+
+gui = [
+    "cefpython3"
 ]
 
 pytest = [
