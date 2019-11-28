@@ -90,6 +90,7 @@
     "interp",
     "interppoints",
     "interps",
+    "ioloop",
     "isclose",
     "isdir",
     "isfile",
