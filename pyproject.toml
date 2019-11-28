@@ -54,10 +54,6 @@ Pillow = "*"
 imageio = "*"
 scikit-image = "*"
 
-# gui
-cefpython3 = { version = "66.0", optional = true }
-tornado = { version = "*", optional = true }
-
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
 sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
@@ -118,6 +114,7 @@ doc8 = "*"
 # gui
 cefpython3 = "66.0"
 tornado = "*"
+notebook = "*"
 
 # Packages to include later
 # pytest-cov = "^2.5"
@@ -133,10 +130,6 @@ docs = [
 
 extras = [
     "shapely"
-]
-
-gui = [
-    "cefpython3", "tornado"
 ]
 
 pytest = [
