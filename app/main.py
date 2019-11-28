@@ -47,6 +47,7 @@ def main():
 
     cef.Initialize()
     cef.CreateBrowserSync(url=url)
+
     cef.MessageLoop()
     cef.Shutdown()
 
