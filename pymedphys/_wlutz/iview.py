@@ -94,7 +94,9 @@ def batch_process(
 def iview_image_transform(image_path):
     img = imageio.imread(image_path)
     if np.shape(img) != (1024, 1024):
-        raise ValueError("Expect iView images to be 1024x1024 pixels")
+        raise ValueError(
+            f"Expect iView images to be 1024x1024 pixels\nShhape = {np.shape(img)}"
+        )
     img = img[:, 1:-1]
 
     if img.dtype != np.dtype("uint16"):
