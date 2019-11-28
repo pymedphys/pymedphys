@@ -113,8 +113,7 @@ doc8 = "*"
 
 # gui
 cefpython3 = "66.0"
-tornado = "*"
-notebook = "*"
+jupyterlab = "*"
 
 # Packages to include later
 # pytest-cov = "^2.5"
@@ -148,10 +147,10 @@ multi_line_output = 3
 line_length = 88
 include_trailing_comma = true
 known_third_party = [
-    "attrs", "tqdm", "pytest", "hypothesis", "cefpython3"
+    "attrs", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook", "jupyterlab"
 ]
 known_scicore = [
-    "numpy", "scipy", "pandas", "notebook"
+    "numpy", "scipy", "pandas"
 ]
 known_matplotlib = [
     "matplotlib", "mpl_toolkits"
