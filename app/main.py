@@ -1,23 +1,25 @@
 import multiprocessing
+import pathlib
 import sys
 
+import jupyterlab.labapp
 from cefpython3 import cefpython as cef
-
-import notebook.notebookapp
 
 import pymedphys
 
 IP = "127.0.0.1"
+HERE = pathlib.Path(__file__).parent.resolve()
+WORKING_DIRECTORY = HERE.joinpath("working_directory")
 
 
-class PyMedPhys(notebook.notebookapp.NotebookApp):
+class PyMedPhys(jupyterlab.labapp.LabApp):
     name = "PyMedPhys"
     version = pymedphys.__version__
     description = """
         PyMedPhys
         Kernel hosting for PyMedPhys app.
     """
-    # default_url = "/"
+    notebook_dir = str(WORKING_DIRECTORY)
     queue = None
 
     def initialize(self, argv=None):
