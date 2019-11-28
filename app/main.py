@@ -30,7 +30,7 @@ class PyMedPhys(jupyterlab.labapp.LabApp):
         return super_result
 
 
-def launch_kernel_server(queue):
+def launch_server(queue):
     PyMedPhys.launch_instance(queue=queue, ip=IP, open_browser=False)
 
 
@@ -39,8 +39,8 @@ def main():
 
     queue = multiprocessing.Queue()
 
-    kernel_process = multiprocessing.Process(target=launch_kernel_server, args=(queue,))
-    kernel_process.start()
+    server_process = multiprocessing.Process(target=launch_server, args=(queue,))
+    server_process.start()
 
     port, token = queue.get()
     url = f"http://{IP}:{port}/?token={token}"
