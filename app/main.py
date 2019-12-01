@@ -1,29 +1,54 @@
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+
 import ctypes
 import multiprocessing
 import pathlib
 import platform
 import sys
 
-import jupyterlab.labapp
 from cefpython3 import cefpython as cef
 
+import jupyterlab_server
 import pymedphys
+import traitlets
 
 IP = "127.0.0.1"
 HERE = pathlib.Path(__file__).parent.resolve()
 WORKING_DIRECTORY = HERE.joinpath("working_directory")
+BUILD = HERE.joinpath("build")
 SCREEN_SIZE = (0, 0, 1920, 1080)
 
 
-class PyMedPhys(jupyterlab.labapp.LabApp):
-    name = "PyMedPhys"
-    version = pymedphys.__version__
+class PyMedPhys(jupyterlab_server.LabServerApp):
+    default_url = traitlets.Unicode(
+        "/pymedphys", help="The default URL to redirect to from `/`"
+    )
+
     description = """
         PyMedPhys
-        Kernel hosting for PyMedPhys app.
     """
     notebook_dir = str(WORKING_DIRECTORY)
     queue = None
+
+    lab_config = jupyterlab_server.LabConfig(
+        app_name="PyMedPhys",
+        app_settings_dir=str(BUILD.joinpath("application_settings")),
+        app_version=pymedphys.__version__,
+        app_url="/pymedphys",
+        schemas_dir=str(BUILD.joinpath("schemas")),
+        static_dir=str(BUILD),
+        templates_dir=str(HERE.joinpath("templates")),
+        themes_dir=str(BUILD.joinpath("themes")),
+        user_settings_dir=str(BUILD.joinpath("user_settings")),
+        workspaces_dir=str(BUILD.joinpath("workspaces")),
+    )
+
+    def start(self):
+        settings = self.web_app.settings
+        settings.setdefault("terminals_available", True)
+
+        super().start()
 
     def initialize(self, argv=None):
         super_result = super().initialize(argv=argv)
