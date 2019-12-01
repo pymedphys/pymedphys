@@ -1,5 +1,7 @@
+import ctypes
 import multiprocessing
 import pathlib
+import platform
 import sys
 
 import jupyterlab.labapp
@@ -10,6 +12,7 @@ import pymedphys
 IP = "127.0.0.1"
 HERE = pathlib.Path(__file__).parent.resolve()
 WORKING_DIRECTORY = HERE.joinpath("working_directory")
+SCREEN_SIZE = (0, 0, 1920, 1080)
 
 
 class PyMedPhys(jupyterlab.labapp.LabApp):
@@ -42,11 +45,22 @@ def main():
     server_process = multiprocessing.Process(target=launch_server, args=(queue,))
     server_process.start()
 
+    cef.Initialize()
+    window_info = cef.WindowInfo()
+    parent_handle = 0
+    window_info.SetAsChild(parent_handle, list(SCREEN_SIZE))
+
     port, token = queue.get()
     url = f"http://{IP}:{port}/?token={token}"
+    browser = cef.CreateBrowserSync(url=url, window_info=window_info)
 
-    cef.Initialize()
-    cef.CreateBrowserSync(url=url)
+    if platform.system() == "Windows":
+        window_handle = browser.GetOuterWindowHandle()
+        insert_after_handle = 0
+        SWP_NOMOVE = 0x0002
+        ctypes.windll.user32.SetWindowPos(
+            window_handle, insert_after_handle, *SCREEN_SIZE, SWP_NOMOVE
+        )
 
     cef.MessageLoop()
     cef.Shutdown()
