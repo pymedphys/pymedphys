@@ -44,10 +44,10 @@ import sys
 import zipfile
 
 import jupyterlab_server
-import traitlets
 from cefpython3 import cefpython as cef
 
 import pymedphys
+import pymedphys._compat._optional
 
 IP = "127.0.0.1"
 HERE = pathlib.Path(__file__).parent.resolve()
@@ -56,45 +56,41 @@ BUILD = HERE.joinpath("build")
 SCREEN_SIZE = (0, 0, 1920, 1080)
 
 
-class PyMedPhys(jupyterlab_server.LabServerApp):
-    default_url = traitlets.Unicode(
-        "/pymedphys", help="The default URL to redirect to from `/`"
-    )
-
-    description = """
-        PyMedPhys
-    """
-    notebook_dir = str(WORKING_DIRECTORY)
-    queue = None
-
-    lab_config = jupyterlab_server.LabConfig(
-        app_name="PyMedPhys",
-        app_settings_dir=str(BUILD.joinpath("application_settings")),
-        app_version=pymedphys.__version__,
-        app_url="/pymedphys",
-        schemas_dir=str(BUILD.joinpath("schemas")),
-        static_dir=str(BUILD),
-        templates_dir=str(HERE.joinpath("templates")),
-        themes_dir=str(BUILD.joinpath("themes")),
-        user_settings_dir=str(BUILD.joinpath("user_settings")),
-        workspaces_dir=str(BUILD.joinpath("workspaces")),
-    )
-
-    def start(self):
-        settings = self.web_app.settings
-        settings.setdefault("terminals_available", True)
-
-        super().start()
-
-    def initialize(self, argv=None):
-        super_result = super().initialize(argv=argv)
-
-        self.queue.put((self.port, self.token))
-
-        return super_result
-
-
 def launch_server(queue):
+    class PyMedPhys(jupyterlab_server.LabServerApp):
+        default_url = "/pymedphys"
+        description = """
+            PyMedPhys
+        """
+        notebook_dir = str(WORKING_DIRECTORY)
+        queue = None
+
+        lab_config = jupyterlab_server.LabConfig(
+            app_name="PyMedPhys",
+            app_settings_dir=str(BUILD.joinpath("application_settings")),
+            app_version=pymedphys.__version__,
+            app_url="/pymedphys",
+            schemas_dir=str(BUILD.joinpath("schemas")),
+            static_dir=str(BUILD),
+            templates_dir=str(HERE.joinpath("templates")),
+            themes_dir=str(BUILD.joinpath("themes")),
+            user_settings_dir=str(BUILD.joinpath("user_settings")),
+            workspaces_dir=str(BUILD.joinpath("workspaces")),
+        )
+
+        def start(self):
+            settings = self.web_app.settings
+            settings.setdefault("terminals_available", True)
+
+            super().start()
+
+        def initialize(self, argv=None):
+            super_result = super().initialize(argv=argv)
+
+            self.queue.put((self.port, self.token))
+
+            return super_result
+
     # workaround for JupyterApp using sys.argv
     sys.argv = [sys.argv[0]]
     PyMedPhys.launch_instance(queue=queue, ip=IP, open_browser=False)
