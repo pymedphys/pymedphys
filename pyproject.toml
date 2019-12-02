@@ -45,7 +45,7 @@ pydicom = "*"
 pynetdicom = "*"
 
 pymssql = "< 3.0.0"
-shapely = { version ="*", optional = true }
+shapely = { version = "*", optional = true }
 
 # labs
 tqdm = "*"
@@ -55,7 +55,7 @@ imageio = "*"
 scikit-image = "*"
 
 # docs
-sphinx = { version =">= 1.4, < 1.8", optional = true }
+sphinx = { version = ">= 1.4, < 1.8", optional = true }
 sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
 sphinx-autobuild = { version = "*", optional = true }
 sphinxcontrib-napoleon = { version = "*", optional = true }
@@ -67,7 +67,7 @@ ipykernel = { version = "*", optional = true }
 m2r = { version = "*", optional = true }
 
 # pytest
-pytest = { version ="*", optional = true }
+pytest = { version = "*", optional = true }
 pytest-sugar  = { version = "*", optional = true }
 hypothesis  = { version = "*", optional = true }
 
@@ -111,6 +111,10 @@ pywin32 = { version = "224", platform = "win32" }
 # VSCode extension dependencies
 doc8 = "*"
 
+# gui
+cefpython3 = "66.0"
+jupyterlab_server = "*"
+
 # Packages to include later
 # pytest-cov = "^2.5"
 # pytest-mock = "^1.9"
@@ -143,7 +147,8 @@ multi_line_output = 3
 line_length = 88
 include_trailing_comma = true
 known_third_party = [
-    "attrs", "tqdm", "pytest", "hypothesis"
+    "attrs", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
+    "jupyterlab", "traitlets", "jupyterlab_server"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"
