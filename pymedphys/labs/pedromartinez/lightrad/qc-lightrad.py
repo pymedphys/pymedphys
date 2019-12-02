@@ -61,7 +61,7 @@ from skimage.feature import blob_log
 
 import pydicom
 
-import utils.utils as u
+import utils.utils as u  # pylint: disable = wrong-import-position,  no-name-in-module, import-error
 
 sys.path.insert(0, os.path.abspath(".."))
 

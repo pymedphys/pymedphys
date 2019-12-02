@@ -77,7 +77,7 @@ import minimize_junction_X as minX
 import minimize_junction_Y as minY
 import peak_find as pf
 import peak_find_fieldrot as pffr
-import utils.utils as u
+import utils.utils as u  # pylint: disable = wrong-import-position,  no-name-in-module, import-error
 
 sys.path.insert(0, os.path.abspath(".."))
 
