@@ -28,6 +28,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
+semver = "*"
 
 attrs = "*"
 keyring = "*"
@@ -113,7 +114,7 @@ doc8 = "*"
 
 # gui
 cefpython3 = "66.0"
-jupyterlab = "*"
+jupyterlab_server = "*"
 
 # Packages to include later
 # pytest-cov = "^2.5"

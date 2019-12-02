@@ -167,6 +167,7 @@
     "runslow",
     "savgol",
     "scipy",
+    "semver",
     "settingeditor",
     "simonbiggs",
     "splev",
