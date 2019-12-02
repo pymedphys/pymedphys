@@ -1,9 +1,10 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
+
 var data = require('./package.json');
 var Build = require('@jupyterlab/buildutils').Build;
 
-var names = Object.keys(data.dependencies).filter(function(name) {
+var names = Object.keys(data.dependencies).filter(function (name) {
   var packageData = require(name + '/package.json');
   return packageData.jupyterlab !== undefined;
 });

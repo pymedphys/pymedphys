@@ -26,6 +26,7 @@
 import argparse
 import sys
 
+from .app import app_cli
 from .dicom import dicom_cli
 from .docker import docker_cli
 from .logfile import logfile_cli
@@ -44,6 +45,7 @@ def define_parser():
     parser = DefaultHelpParser(prog="pymedphys")
     subparsers = parser.add_subparsers()
 
+    app_cli(subparsers)
     dicom_cli(subparsers)
     docker_cli(subparsers)
     logfile_cli(subparsers)
