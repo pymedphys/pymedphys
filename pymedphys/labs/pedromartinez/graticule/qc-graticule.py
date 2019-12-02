@@ -66,8 +66,9 @@ from skimage.feature import blob_log
 
 import pydicom
 
-import utils.utils as u
+import utils.utils as u  # pylint: disable = wrong-import-position,  no-name-in-module, import-error
 
+# import utils.utils as u
 sys.path.insert(0, os.path.abspath(".."))
 
 
@@ -125,6 +126,7 @@ def viewer(volume, dx, dy, center, title, textstr):
 
 def scalingAnalysis(ArrayDicom_o, dx, dy):  # determine scaling
     ArrayDicom = u.norm01(ArrayDicom_o)
+    # ArrayDicom = norm01(ArrayDicom_o)
     blobs_log = blob_log(
         ArrayDicom, min_sigma=1, max_sigma=5, num_sigma=20, threshold=0.15
     )  # run on windows, for some stupid reason exclude_border is not recognized in my distro at home
@@ -178,9 +180,9 @@ def scalingAnalysis(ArrayDicom_o, dx, dy):  # determine scaling
     width = ArrayDicom_o.shape[1]
     height = ArrayDicom_o.shape[0]
     extent = (0, 0 + (width * dx), 0, 0 + (height * dy))
-    img = ax.imshow(
+    img = ax.imshow(  # pylint: disable = unused-variable
         ArrayDicom_o, extent=extent, origin="lower"
-    )  # pylint: disable = unused-variable
+    )
     # fig.colorbar(img, ax=ax, orientation="vertical")
     # img = ax.imshow(ArrayDicom_o)
     ax.set_xlabel("x distance [mm]")
@@ -210,6 +212,7 @@ def scalingAnalysis(ArrayDicom_o, dx, dy):  # determine scaling
 
 def full_imageProcess(ArrayDicom_o, dx, dy, title):  # process a full image
     ArrayDicom = u.norm01(ArrayDicom_o)
+    # ArrayDicom = norm01(ArrayDicom_o)
     height = np.shape(ArrayDicom)[0]
     width = np.shape(ArrayDicom)[1]
 
@@ -254,12 +257,14 @@ def full_imageProcess(ArrayDicom_o, dx, dy, title):  # process a full image
 
     print("center=", center)
     fig, ax = viewer(u.range_invert(ArrayDicom_o), dx, dy, center, title, textstr)
+    # fig, ax = viewer(range_invert(ArrayDicom_o), dx, dy, center, title, textstr)
 
     return fig, ax, center
 
 
 def full_imageProcess_noGraph(ArrayDicom_o):  # process a full image
     ArrayDicom = u.norm01(ArrayDicom_o)
+    # ArrayDicom = norm01(ArrayDicom_o)
     height = np.shape(ArrayDicom)[0]
     width = np.shape(ArrayDicom)[1]
 
@@ -394,6 +399,7 @@ def read_dicom(directory):
                     list_title.append(title)
                     tmp_array = dataset.pixel_array
                     tmp_array = u.norm01(tmp_array)
+                    # tmp_array = norm01(tmp_array)
                     ArrayDicom = np.dstack((ArrayDicom, tmp_array))
 
             k = k + 1
