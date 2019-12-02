@@ -43,9 +43,6 @@ import platform
 import sys
 import zipfile
 
-import jupyterlab_server
-from cefpython3 import cefpython as cef
-
 import pymedphys
 import pymedphys._compat._optional
 
@@ -57,6 +54,10 @@ SCREEN_SIZE = (0, 0, 1920, 1080)
 
 
 def launch_server(queue):
+    jupyterlab_server = pymedphys._compat._optional.import_optional_dependency(  # pylint: disable = protected-access
+        "jupyterlab_server"
+    )
+
     class PyMedPhys(jupyterlab_server.LabServerApp):
         default_url = "/pymedphys"
         description = """
@@ -103,6 +104,11 @@ def main(_):
 
         with zipfile.ZipFile(cached_data, "r") as zip_file:
             zip_file.extractall(HERE)
+
+    cefpython3 = pymedphys._compat._optional.import_optional_dependency(  # pylint: disable = protected-access
+        "cefpython3"
+    )
+    cef = cefpython3.cefpython
 
     sys.excepthook = cef.ExceptHook
 

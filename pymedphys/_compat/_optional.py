@@ -41,19 +41,26 @@ import importlib
 import types
 import warnings
 
-import semver
+import packaging.specifiers
+import packaging.version
 
-VERSIONS = {"cefpython3": "66.0"}
+VERSIONS = {
+    "cefpython3": "==66.0",
+    "numpy": ">=1.12",
+    "pymssql": "<3.0.0",
+    "sphinx": ">=1.4,<1.8",
+    "sphinx-rtd-theme": ">=0.4.3",
+}
 
 message = "Missing optional dependency '{name}'. {extra} " "Use pip to install {name}."
 version_message = (
-    "PyMedPhys requires version '{version_match}' of '{name}' "
+    "PyMedPhys requires version '{specifier_string}' of '{name}' "
     "(version '{actual_version}' currently installed)."
 )
 
 
-def _get_version(module: types.ModuleType) -> str:
-    version: str = getattr(module, "__version__", None)
+def _get_version(module: types.ModuleType) -> packaging.version.Version:
+    version = packaging.version.Version(getattr(module, "__version__", None))
 
     if version is None:
         raise ImportError("Can't determine version for {}".format(module.__name__))
@@ -106,18 +113,19 @@ def import_optional_dependency(
 
         return None
 
-    version_match = VERSIONS.get(name)
+    specifier_string = VERSIONS.get(name)
 
-    if version_match:
+    if specifier_string:
+        specifier_set = packaging.specifiers.SpecifierSet(specifier_string)
         version = _get_version(module)
 
-        if not semver.match(version, version_match):
+        if not list(specifier_set.filter([version])):
             if not on_version in {"warn", "raise", "ignore"}:
                 raise ValueError(
                     "Expected one of 'warn', 'raise', or 'ignore' for `on_version`"
                 )
             msg = version_message.format(
-                version_match=version_match, name=name, actual_version=version
+                specifier_string=specifier_string, name=name, actual_version=version
             )
 
             if on_version == "warn":
