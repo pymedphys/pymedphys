@@ -24,30 +24,19 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
+# pylint: disable = protected-access
 
-from .findbb import optimise_bb_centre
-from .findfield import _initial_centre, field_centre_and_rotation_refining
-from .imginterp import create_interpolated_field
+import pymedphys._wlutz.findbb
 
 
-def find_field_and_bb(
-    x, y, img, edge_lengths, bb_diameter, penumbra=2, initial_rotation=0, rounding=True
-):
-    field = create_interpolated_field(x, y, img)
-    initial_centre = _initial_centre(x, y, img)
+def test_bb_at_bounds_check():
+    penumbra = 2
+    edge_lengths = [20, 24]
+    bb_diameter = 8
 
-    field_centre, field_rotation = field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre, initial_rotation=initial_rotation
+    bb_bounds = pymedphys._wlutz.findbb.define_bb_bounds(
+        bb_diameter, edge_lengths, penumbra
     )
-
-    bb_centre = optimise_bb_centre(
-        field, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
-    )
-
-    if rounding:
-        bb_centre = np.round(bb_centre, decimals=2).tolist()
-        field_centre = np.round(field_centre, decimals=2).tolist()
-        field_rotation = np.round(field_rotation, decimals=1)
-
-    return bb_centre, field_centre, field_rotation
+    assert pymedphys._wlutz.findbb.check_if_at_bounds((0, -7.5), bb_bounds)
+    assert not pymedphys._wlutz.findbb.check_if_at_bounds((0, -5.5), bb_bounds)
+    assert pymedphys._wlutz.findbb.check_if_at_bounds((5.5, 0), bb_bounds)

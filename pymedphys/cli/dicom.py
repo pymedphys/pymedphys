@@ -124,6 +124,14 @@ def anonymise(dicom_subparsers):
     )
 
     parser.add_argument(
+        "-o",
+        "--output_path",
+        type=str,
+        default=None,
+        help=("Output file or directory path."),
+    )
+
+    parser.add_argument(
         "-d",
         "--delete_original_files",
         action="store_true",
