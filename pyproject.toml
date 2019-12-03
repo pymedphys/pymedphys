@@ -147,8 +147,8 @@ multi_line_output = 3
 line_length = 88
 include_trailing_comma = true
 known_third_party = [
-    "attrs", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
-    "jupyterlab", "traitlets", "jupyterlab_server"
+    "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
+    "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"
