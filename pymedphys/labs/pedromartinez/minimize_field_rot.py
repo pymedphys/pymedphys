@@ -3,7 +3,7 @@ from scipy import signal
 
 import matplotlib.pyplot as plt
 
-import running_mean as rm
+from . import running_mean as rm
 
 
 # minimize junction for field rotations is done differently given the shape of the fields
