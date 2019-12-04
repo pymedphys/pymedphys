@@ -127,7 +127,7 @@ def main(_):
     browser = cef.CreateBrowserSync(url=url, window_info=window_info)
 
     if platform.system() == "Windows":
-        if not browser.IsFullScreen():
+        if not browser.IsFullscreen():
             browser.ToggleFullscreen()
 
     cef.MessageLoop()
