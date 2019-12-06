@@ -29,6 +29,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.13.2]
+
+### Bug Fix
+
+- Fixed issue where `pymedphys.mosaiq.connect` would not work for just one
+  hostname.
+
 ## [0.13.1]
 
 ### Bug Fix
@@ -281,7 +288,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.13.1...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.13.2...master
+[0.13.2]: https://github.com/pymedphys/pymedphys/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/pymedphys/pymedphys/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/pymedphys/pymedphys/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/pymedphys/pymedphys/compare/v0.12.1...v0.12.2

@@ -178,11 +178,13 @@ def connect(sql_server_and_ports):
             do_something(cursor)
     """
     if isinstance(sql_server_and_ports, str):
-        sql_server_and_ports = [sql_server_and_ports]
+        sql_server_and_ports_as_list = [sql_server_and_ports]
+    else:
+        sql_server_and_ports_as_list = list(sql_server_and_ports)
 
-    connections, cursors = multi_connect(sql_server_and_ports)
+    connections, cursors = multi_connect(sql_server_and_ports_as_list)
     try:
-        if len(sql_server_and_ports) == 1:
+        if len(sql_server_and_ports_as_list) == 1:
             cursors = cursors[sql_server_and_ports]
         yield cursors
     finally:
