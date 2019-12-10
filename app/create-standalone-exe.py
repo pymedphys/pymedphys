@@ -12,8 +12,6 @@ import pymedphys
 HERE: pathlib.Path = pathlib.Path(__file__).parent.resolve()
 EMBEDDED_PYTHON_DIR = HERE.joinpath("python")
 EMBEDDED_PYTHON_EXE = EMBEDDED_PYTHON_DIR.joinpath("python.exe")
-EMBEDDED_SCRIPTS = EMBEDDED_PYTHON_DIR.joinpath("Scripts")
-EMBEDDED_PIP_EXE = EMBEDDED_SCRIPTS.joinpath("pip.exe")
 
 PYMEDPHYS_GIT = HERE.parent
 PYMEDPHYS_DIST = PYMEDPHYS_GIT.joinpath("dist")
