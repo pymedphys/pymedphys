@@ -18,6 +18,7 @@ EMBEDDED_PIP_EXE = EMBEDDED_SCRIPTS.joinpath("pip.exe")
 
 PYMEDPHYS_GIT = HERE.parent
 PYMEDPHYS_DIST = PYMEDPHYS_GIT.joinpath("dist")
+PYMEDPHYS_REQUIREMENTS = PYMEDPHYS_GIT.joinpath("requirements.txt")
 
 # https://stackoverflow.com/a/39110
 def file_contents_replace(file_path, pattern, subst):
@@ -61,9 +62,29 @@ def main():
 
     shutil.rmtree(PYMEDPHYS_DIST)
 
+    # Waiting for https://github.com/sdispater/poetry/issues/875 to be fixed before
+    # using the following:
+    # with open(PYMEDPHYS_REQUIREMENTS, "w") as req_txt:
+    #     subprocess.call(
+    #         ["poetry", "export", "-f", "requirements.txt"],
+    #         cwd=PYMEDPHYS_GIT,
+    #         stdout=req_txt,
+    #     )
+
+    # call_embedded_python("-m", "pip", "install", "-r", PYMEDPHYS_REQUIREMENTS)
+
     subprocess.call(["poetry", "build"], cwd=PYMEDPHYS_GIT)
-    next(PYMEDPHYS_DIST.glob("*.whl"))
-    call_embedded_python("-m", "pip", "install", next(PYMEDPHYS_DIST.glob("*.whl")))
+    # call_embedded_python(
+    #     "-m", "pip", "install", next(PYMEDPHYS_DIST.glob("*.whl")), "--no-deps"
+    # )
+
+    call_embedded_python(
+        "-m",
+        "pip",
+        "install",
+        next(PYMEDPHYS_DIST.glob("*.whl")),
+        "--no-warn-script-location",
+    )
 
 
 if __name__ == "__main__":
