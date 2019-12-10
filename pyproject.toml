@@ -46,6 +46,9 @@ pynetdicom = "*"
 pymssql = "< 3.0.0"
 shapely = { version = "*", optional = true }
 
+# gui
+jupyterlab_server = { version = "*", optional = true }
+
 # labs
 tqdm = "*"
 python_dateutil = "*"
@@ -124,6 +127,10 @@ docs = [
     "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse",
     "nbsphinx", "jupyter_client", "ipython", "ipykernel",
     "m2r"
+]
+
+gui = [
+    "jupyterlab_server"
 ]
 
 extras = [

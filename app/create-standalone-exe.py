@@ -10,11 +10,9 @@ import zipfile
 import pymedphys
 
 HERE: pathlib.Path = pathlib.Path(__file__).parent.resolve()
-BUILD = HERE.joinpath("build")
-EMBEDDED_PYTHON_DIR = BUILD.joinpath("python")
+EMBEDDED_PYTHON_DIR = HERE.joinpath("python")
 EMBEDDED_PYTHON_EXE = EMBEDDED_PYTHON_DIR.joinpath("python.exe")
-EMBEDDED_SCRIPTS = EMBEDDED_PYTHON_DIR.joinpath("Scripts")
-EMBEDDED_PIP_EXE = EMBEDDED_SCRIPTS.joinpath("pip.exe")
+EMBEDDED_SITE_PACKAGES = EMBEDDED_PYTHON_DIR.joinpath("lib").joinpath("site-packages")
 
 PYMEDPHYS_GIT = HERE.parent
 PYMEDPHYS_DIST = PYMEDPHYS_GIT.joinpath("dist")
@@ -42,23 +40,14 @@ def get_embedded_python_executable():
 def call_embedded_python(*args):
     to_be_called = get_embedded_python_executable() + list(args)
     print(to_be_called)
-    subprocess.call(to_be_called, cwd=EMBEDDED_PYTHON_DIR)
+    subprocess.check_call(to_be_called, cwd=EMBEDDED_PYTHON_DIR)
 
 
 def main():
-    BUILD.mkdir(exist_ok=True)
-
     embedded_python_path = pymedphys.data_path("python-windows-64-embedded.zip")
 
     with zipfile.ZipFile(embedded_python_path, "r") as zip_obj:
         zip_obj.extractall(EMBEDDED_PYTHON_DIR)
-
-    get_pip_path = pymedphys.data_path("get-pip.py")
-    call_embedded_python(get_pip_path)
-
-    file_contents_replace(
-        next(EMBEDDED_PYTHON_DIR.glob("python*._pth")), "#import site", "import site"
-    )
 
     shutil.rmtree(PYMEDPHYS_DIST)
 
@@ -71,19 +60,22 @@ def main():
     #         stdout=req_txt,
     #     )
 
-    # call_embedded_python("-m", "pip", "install", "-r", PYMEDPHYS_REQUIREMENTS)
-
     subprocess.call(["poetry", "build"], cwd=PYMEDPHYS_GIT)
-    # call_embedded_python(
-    #     "-m", "pip", "install", next(PYMEDPHYS_DIST.glob("*.whl")), "--no-deps"
-    # )
 
-    call_embedded_python(
-        "-m",
-        "pip",
-        "install",
-        next(PYMEDPHYS_DIST.glob("*.whl")),
-        "--no-warn-script-location",
+    package_with_extras = f"{next(PYMEDPHYS_DIST.glob('*.whl'))}"
+    subprocess.call(
+        [
+            "python",
+            "-m",
+            "pip",
+            "install",
+            "--platform",
+            "win_amd64",
+            "--only-binary=:all:",
+            "--target",
+            EMBEDDED_SITE_PACKAGES,
+            package_with_extras,
+        ]
     )
 
 
