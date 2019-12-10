@@ -183,7 +183,7 @@ def connect(sql_server_and_ports):
     connections, cursors = multi_connect(sql_server_and_ports)
     try:
         if len(cursors) == 1:
-            cursors = cursors[0]
+            cursors = list(cursors.values())[0]
         yield cursors
     finally:
         multi_close(connections)

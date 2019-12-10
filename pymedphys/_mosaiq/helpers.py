@@ -1,37 +1,9 @@
-# Copyright (C) 2018 Cancer Care Associates
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
-
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
-
-"""Some helper utility functions for accessing Mosaiq SQL.
-"""
-
 import datetime
 
 import pandas as pd
 
 from .connect import execute_sql
-from .constants import FIELD_TYPES
+from .constants import FIELD_TYPES, TOLERANCE_TYPES
 
 
 def get_treatment_times(cursor, field_id):
@@ -327,6 +299,10 @@ def get_all_treatment_data(cursor, mrn):
         """
         SELECT
             Ident.IDA,
+            Patient.First_Name,
+            Patient.Last_Name,
+            Patient.Birth_DtTm,
+            Staff.Last_Name,
             TxField.FLD_ID,
             TxField.Field_Label,
             TxField.Field_Name,
@@ -336,7 +312,6 @@ def get_all_treatment_data(cursor, mrn):
             Site.Technique,
             Site.Modality,
             TxFieldPoint.Energy,
-            Site.Rx_Depth,
             Site.Dose_Tx,
             Site.Dose_Ttl,
             Site.Fractions,
@@ -369,17 +344,19 @@ def get_all_treatment_data(cursor, mrn):
             TxFieldPoint.Couch_Vrt,
             TxFieldPoint.Couch_Lat,
             TxFieldPoint.Couch_Lng,
-            TxFieldPoint.Couch_Ang
+            TxFieldPoint.Couch_Ang,
+            TxField.Tol_Tbl_ID,
+            TxField.BackupTimer
 
-        FROM Ident, TxField, Site, Patient, SiteSetup, TxFieldPoint
+        FROM Ident, TxField, Site, Patient, SiteSetup, TxFieldPoint, Staff
         WHERE
             TxField.Pat_ID1 = Ident.Pat_ID1 AND
+            TxField.Machine_ID_Staff_ID = Staff.Staff_ID AND
             TxFieldPoint.FLD_ID = TxField.FLD_ID AND
             TxFieldPoint.Point = 0 AND
             Patient.Pat_ID1 = Ident.Pat_ID1 AND
             SiteSetup.SIT_Set_ID = TxField.SIT_Set_ID AND
             TxField.SIT_Set_ID = Site.SIT_Set_ID AND
-            TxField.Version = 0 AND
             Ident.IDA = %(patient_id)s
         """,
         {"patient_id": mrn},
@@ -389,6 +366,10 @@ def get_all_treatment_data(cursor, mrn):
         data=table,
         columns=[
             "mrn",
+            "first_name",
+            "last_name",
+            "dob",
+            "machine",
             "field_id",
             "field_label",
             "field_name",
@@ -398,14 +379,13 @@ def get_all_treatment_data(cursor, mrn):
             "technique",
             "modality",
             "energy",
-            "rx_depth",
             "fraction_dose",
             "total_dose",
             "fractions",
             "notes",
             "field_version",
             "monitor_units",
-            "meterset rate",
+            "meterset_rate",
             "field_type",
             "gantry_angle",
             "collimator_angle",
@@ -432,12 +412,17 @@ def get_all_treatment_data(cursor, mrn):
             "couch_lat",
             "couch_lng",
             "couch_ang",
+            "tolerance",
+            "time",
         ],
     )
 
     mosaiq_fields.drop_duplicates(inplace=True)
     mosaiq_fields["field_type"] = [
         FIELD_TYPES[item] for item in mosaiq_fields["field_type"]
+    ]
+    mosaiq_fields["tolerance"] = [
+        TOLERANCE_TYPES[item] for item in mosaiq_fields["tolerance"]
     ]
 
     return mosaiq_fields
