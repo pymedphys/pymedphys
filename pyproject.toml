@@ -13,7 +13,7 @@ authors = [
     "Jacob McAloney",
     "Pedro Martinez"
 ]
-license = "AGPL-3.0+"
+license = "AGPL-3.0-or-later"
 homepage = "https://pymedphys.com"
 repository = "https://github.com/pymedphys/pymedphys"
 documentation = "https://pymedphys.com"
@@ -23,7 +23,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Healthcare Industry",
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)"
 ]
 
 [tool.poetry.dependencies]
