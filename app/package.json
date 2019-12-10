@@ -1,6 +1,5 @@
 {
-  "name": "@pymedphys/app",
-  "productName": "PyMedPhys",
+  "name": "pymedphys",
   "homepage": "https://pymedphys.com",
   "author": "Simon Biggs <me@simonbiggs.net>",
   "version": "0.0.0",
@@ -10,9 +9,10 @@
   },
   "build": {
     "productName": "PyMedPhys",
+    "asar": false,
     "appId": "org.pymedphys.PyMedPhys",
     "files": [
-      "build/",
+      "python/",
       "dist/",
       "node_modules/",
       "package.json"
@@ -23,7 +23,6 @@
       ]
     },
     "directories": {
-      "buildResources": "resources",
       "output": "release"
     }
   },
