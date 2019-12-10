@@ -29,6 +29,26 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.13.2]
+
+### Bug Fix
+
+- Fixed issue where `pymedphys.mosaiq.connect` would not work for just one
+  hostname.
+
+## [0.13.1]
+
+### Bug Fix
+
+- Fixed issue where `pymedphys.mosaiq.connect` would not work for just one
+  hostname.
+
+## [0.13.0]
+
+### New Feature
+
+- Made `pymedphys.mosaiq.execute` a part of the API.
+
 ## [0.12.2]
 
 ### Package changes
@@ -112,7 +132,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Dependency changes
 
-- Removed numpy version upperlimit
+- Removed numpy version upper-limit
 
 ## [0.8.0] -- 2019/06/01
 
@@ -137,7 +157,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `mudensity` module.
 - `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
   module.
-- `pymedphys.dicom.get_structure_aligned_cube` has had its `x0` paremeter
+- `pymedphys.dicom.get_structure_aligned_cube` has had its `x0` parameter
   changed from required to optional. It is no longer the first parameter
   passed to the function. By default `x0` is now determined using the min/max
   bounds of the structure.
@@ -154,7 +174,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### New Features
 
-- A DICOM anonymsation CLI! See
+- A DICOM anonymisation CLI! See
   [the DICOM Files CLI docs](../user/interfaces/cli/dicom.rst).
 - `anonymise_file()` and `anonymise_directory()`:
   - two new DICOM anonymisation
@@ -174,7 +194,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Dependency changes
 
-- Removed numpy version upperlimit
+- Removed numpy version upper-limit
 
 ## [0.7.1] -- 2019/04/05
 
@@ -268,7 +288,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.12.2...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.13.2...master
+[0.13.2]: https://github.com/pymedphys/pymedphys/compare/v0.13.1...v0.13.2
+[0.13.1]: https://github.com/pymedphys/pymedphys/compare/v0.13.0...v0.13.1
+[0.13.0]: https://github.com/pymedphys/pymedphys/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/pymedphys/pymedphys/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/pymedphys/pymedphys/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/pymedphys/pymedphys/compare/v0.11.0...v0.12.0
