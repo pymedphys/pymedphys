@@ -12,7 +12,8 @@ import pymedphys
 HERE: pathlib.Path = pathlib.Path(__file__).parent.resolve()
 EMBEDDED_PYTHON_DIR = HERE.joinpath("python")
 EMBEDDED_PYTHON_EXE = EMBEDDED_PYTHON_DIR.joinpath("python.exe")
-EMBEDDED_SITE_PACKAGES = EMBEDDED_PYTHON_DIR.joinpath("lib").joinpath("site-packages")
+EMBEDDED_SCRIPTS = EMBEDDED_PYTHON_DIR.joinpath("Scripts")
+EMBEDDED_PIP_EXE = EMBEDDED_SCRIPTS.joinpath("pip.exe")
 
 PYMEDPHYS_GIT = HERE.parent
 PYMEDPHYS_DIST = PYMEDPHYS_GIT.joinpath("dist")
@@ -44,12 +45,24 @@ def call_embedded_python(*args):
 
 
 def main():
+    shutil.rmtree(EMBEDDED_PYTHON_DIR, ignore_errors=True)
+
     embedded_python_path = pymedphys.data_path("python-windows-64-embedded.zip")
 
     with zipfile.ZipFile(embedded_python_path, "r") as zip_obj:
         zip_obj.extractall(EMBEDDED_PYTHON_DIR)
 
-    shutil.rmtree(PYMEDPHYS_DIST)
+    get_pip_path = pymedphys.data_path("get-pip.py")
+    call_embedded_python(get_pip_path)
+
+    python_path_file = next(EMBEDDED_PYTHON_DIR.glob("python*._pth"))
+    temp_python_path_file = f"{python_path_file}.temp"
+
+    file_contents_replace(python_path_file, "#import site", "import site")
+
+    call_embedded_python("-m", "pip", "--version")
+
+    shutil.rmtree(PYMEDPHYS_DIST, ignore_errors=True)
 
     # Waiting for https://github.com/sdispater/poetry/issues/875 to be fixed before
     # using the following:
@@ -60,23 +73,19 @@ def main():
     #         stdout=req_txt,
     #     )
 
+    os.rename(python_path_file, temp_python_path_file)
+
+    # call_embedded_python("-m", "pip", "install", "-r", PYMEDPHYS_REQUIREMENTS)
+
     subprocess.call(["poetry", "build"], cwd=PYMEDPHYS_GIT)
 
-    package_with_extras = f"{next(PYMEDPHYS_DIST.glob('*.whl'))}"
-    subprocess.call(
-        [
-            "python",
-            "-m",
-            "pip",
-            "install",
-            "--platform",
-            "win_amd64",
-            "--only-binary=:all:",
-            "--target",
-            EMBEDDED_SITE_PACKAGES,
-            package_with_extras,
-        ]
+    package_with_extras = f"{next(PYMEDPHYS_DIST.glob('*.whl'))}[gui]"
+
+    call_embedded_python(
+        "-m", "pip", "install", package_with_extras, "--no-warn-script-location"
     )
+
+    os.rename(temp_python_path_file, python_path_file)
 
 
 if __name__ == "__main__":
