@@ -18,12 +18,15 @@ if (!fs.existsSync(pythonDir)) {
 }
 
 let pymedphysExePath = path.join(pythonDir, 'Scripts', 'pymedphys.exe')
+let pymedphysExeCommand
 
-if (process.platform !== "win32") {
-  pymedphysExePath = `wine ${pymedphysExePath}`
+if (process.platform === "win32") {
+  pymedphysExeCommand = `start ${pymedphysExePath}`
+} else {
+  pymedphysExeCommand = `wine ${pymedphysExePath}`
 }
 
-let toBeRun = `${pymedphysExePath} app --no-browser`
+let toBeRun = `${pymedphysExeCommand} app --no-browser`
 console.log(toBeRun)
 
 let pythonServer = exec(toBeRun)
