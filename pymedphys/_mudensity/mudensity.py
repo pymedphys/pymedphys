@@ -210,7 +210,7 @@ def calc_mu_density(
 
     leaf_pair_widths = np.array(leaf_pair_widths)
 
-    if not np.max(np.abs(mlc)) <= max_leaf_gap / 2:
+    if not np.max(np.abs(mlc)) <= max_leaf_gap / 2:  # pylint: disable = unneeded-not
         raise ValueError(
             "The mlc should not travel further out than half the maximum leaf " "gap."
         )
@@ -300,7 +300,10 @@ def calc_single_control_point(
             "The grid resolution needs to exactly divide every leaf pair " "width."
         )
 
-    if not np.max(np.abs(jaw)) <= np.sum(leaf_pair_widths) / 2:
+    if (
+        not np.max(np.abs(jaw))  # pylint: disable = unneeded-not
+        <= np.sum(leaf_pair_widths) / 2
+    ):
         raise ValueError(
             "The jaw should not travel further out than the maximum leaf " "limits."
         )

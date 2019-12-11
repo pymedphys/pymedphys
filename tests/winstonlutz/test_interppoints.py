@@ -32,7 +32,7 @@ from hypothesis.strategies import floats
 import numpy as np
 
 import pymedphys._mocks.profiles
-import pymedphys.labs.winstonlutz.interppoints
+import pymedphys._wlutz.interppoints
 
 
 @given(
@@ -60,7 +60,11 @@ def test_field_interp_points(x_centre, y_centre, x_edge, y_edge, penumbra, degre
         yy_origin_left_right,
         xx_origin_top_bot,
         yy_origin_top_bot,
-    ) = pymedphys.labs.winstonlutz.interppoints.define_penumbra_points_at_origin(
+    ) = pymedphys._wlutz.interppoints.define_penumbra_points_at_origin(
+        edge_lengths, penumbra
+    )
+
+    points_at_origin = pymedphys._wlutz.interppoints.define_penumbra_points_at_origin(
         edge_lengths, penumbra
     )
 
@@ -69,8 +73,8 @@ def test_field_interp_points(x_centre, y_centre, x_edge, y_edge, penumbra, degre
         yy_left_right,
         xx_top_bot,
         yy_top_bot,
-    ) = pymedphys.labs.winstonlutz.interppoints.define_penumbra_points(
-        centre, edge_lengths, penumbra, degrees
+    ) = pymedphys._wlutz.interppoints.transform_penumbra_points(
+        points_at_origin, centre, degrees
     )
 
     assert np.allclose(
@@ -105,7 +109,7 @@ def test_field_interp_at_origin(x_edge, y_edge, penumbra):
         yy_left_right,
         xx_top_bot,
         yy_top_bot,
-    ) = pymedphys.labs.winstonlutz.interppoints.define_penumbra_points_at_origin(
+    ) = pymedphys._wlutz.interppoints.define_penumbra_points_at_origin(
         edge_lengths, penumbra
     )
 
