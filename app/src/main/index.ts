@@ -2,12 +2,21 @@
 
 import { app, BrowserWindow } from 'electron'
 import * as path from 'path'
+import * as fs from 'fs'
 import { exec } from 'child_process'
 import { BehaviorSubject } from 'rxjs'
 
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
 let mainWindow
 let pythonDir = path.resolve(path.join(__dirname, '..', '..', 'python'))
+
+if (!fs.existsSync(pythonDir)) {
+  pythonDir = path.resolve(path.join(__dirname, 'python'))
+  if (!fs.existsSync(pythonDir)) {
+    throw "No Python Directory Found"
+  }
+}
+
 let pymedphysExePath = path.join(pythonDir, 'Scripts', 'pymedphys.exe')
 
 if (process.platform !== "win32") {
