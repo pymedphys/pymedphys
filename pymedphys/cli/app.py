@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Cancer Care Associates
+# Copyright (C) 2019 Simon Biggs
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -23,17 +23,13 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-import numpy as np
 
-import matplotlib.transforms
+from pymedphys._app.gui import main
 
 
-def transform_axis(x, y, translation, rotation):
-    transform = matplotlib.transforms.Affine2D()
-    transform.rotate_deg(-rotation)
-    transform.translate(*translation)
+def app_cli(subparsers):
+    app_parser = subparsers.add_parser("app", help="A GUI")
 
-    transformed_x = transform @ np.vstack([x, np.zeros(len(x)), np.ones(len(x))])
-    transformed_y = transform @ np.vstack([np.zeros(len(y)), y, np.ones(len(y))])
+    app_parser.set_defaults(func=main)
 
-    return transformed_x[0:2], transformed_y[0:2]
+    return app_parser

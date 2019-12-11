@@ -170,10 +170,8 @@ def multi_close(connections):
 def connect(sql_server_and_ports):
     """A controlled execution class that opens and closes multiple SQL
     connections.
-
     Usage example:
-        import pymedphys
-
+        import pymedphys.mosaiq
         with pymedphys.mosaiq.connect('msqsql') as cursor:
             do_something(cursor)
     """
