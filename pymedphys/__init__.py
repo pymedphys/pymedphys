@@ -1,11 +1,10 @@
 """Module docstring."""
 
 # pylint: disable = wrong-import-position
-# isort: skip
 
 import lazy_import
 
-LAZY_MODULES = ("matplotlib", "numpy", "shapely", "pymssql")
+LAZY_MODULES = ("matplotlib.pyplot", "matplotlib", "numpy", "shapely", "pymssql")
 
 for module_name in LAZY_MODULES:
     lazy_import.lazy_module(module_name)
