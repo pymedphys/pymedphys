@@ -27,7 +27,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.6"
-apipkg = "*"
+lazy_import = "*"
 
 attrs = { version = "*", optional = true }
 keyring = { version = "*", optional = true }
