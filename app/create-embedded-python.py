@@ -37,7 +37,7 @@ def get_embedded_python_executable():
 
 
 def call_embedded_python(*args):
-    to_be_called = get_embedded_python_executable() + list(args)
+    to_be_called = [str(item) for item in get_embedded_python_executable() + list(args)]
     print(to_be_called)
     subprocess.check_call(to_be_called, cwd=EMBEDDED_PYTHON_DIR)
 
