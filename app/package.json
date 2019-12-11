@@ -6,6 +6,7 @@
   "description": "PyMedPhys App",
   "scripts": {
     "dist": "electron-webpack && electron-builder build --win --x64",
+    "dir": "electron-webpack && electron-builder --dir",
     "dev": "electron-webpack dev"
   },
   "build": {
@@ -22,6 +23,12 @@
       "target": [
         "nsis"
       ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
     },
     "directories": {
       "output": "release"
