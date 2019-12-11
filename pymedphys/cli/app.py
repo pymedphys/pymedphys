@@ -29,6 +29,7 @@ from pymedphys._app.gui import main
 
 def app_cli(subparsers):
     app_parser = subparsers.add_parser("app", help="A GUI")
+    app_parser.add_argument("--no-browser", action="store_true")
 
     app_parser.set_defaults(func=main)
 
