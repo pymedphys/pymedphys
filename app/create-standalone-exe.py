@@ -75,7 +75,7 @@ def main():
 
     # call_embedded_python("-m", "pip", "install", "-r", PYMEDPHYS_REQUIREMENTS)
 
-    subprocess.call(["poetry", "build"], cwd=PYMEDPHYS_GIT)
+    subprocess.check_call(["poetry", "build"], cwd=PYMEDPHYS_GIT)
 
     package_with_extras = f"{next(PYMEDPHYS_DIST.glob('*.whl'))}[gui]"
 
@@ -84,6 +84,8 @@ def main():
     )
 
     os.rename(temp_python_path_file, python_path_file)
+
+    subprocess.check_call(["yarn", "dist"], cwd=HERE)
 
 
 if __name__ == "__main__":

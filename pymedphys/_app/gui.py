@@ -39,8 +39,8 @@
 
 import multiprocessing
 import pathlib
-import platform
 import sys
+import webbrowser
 import zipfile
 
 import pymedphys
@@ -65,6 +65,7 @@ def launch_server(queue):
         """
         notebook_dir = str(WORKING_DIRECTORY)
         queue = None
+        log_level = 100
 
         lab_config = jupyterlab_server.LabConfig(
             app_name="PyMedPhys",
@@ -97,7 +98,7 @@ def launch_server(queue):
     PyMedPhys.launch_instance(queue=queue, ip=IP, open_browser=False)
 
 
-def main(_):
+def main(args):
     if not BUILD.is_dir():
         print("Downloading App...")
         cached_data = pymedphys.data_path("app_build.zip")
@@ -105,30 +106,15 @@ def main(_):
         with zipfile.ZipFile(cached_data, "r") as zip_file:
             zip_file.extractall(HERE)
 
-    cefpython3 = pymedphys._compat._optional.import_optional_dependency(  # pylint: disable = protected-access
-        "cefpython3"
-    )
-    cef = cefpython3.cefpython
-
-    sys.excepthook = cef.ExceptHook
-
     queue = multiprocessing.Queue()
 
     server_process = multiprocessing.Process(target=launch_server, args=(queue,))
     server_process.start()
 
-    cef.Initialize()
-    window_info = cef.WindowInfo()
-    parent_handle = 0
-    window_info.SetAsChild(parent_handle, list(SCREEN_SIZE))
-
     port, token = queue.get()
     url = f"http://{IP}:{port}/?token={token}"
-    browser = cef.CreateBrowserSync(url=url, window_info=window_info)
 
-    if platform.system() == "Windows":
-        if not browser.IsFullscreen():
-            browser.ToggleFullscreen()
+    print(f'{{"url": "{url}"}}')
 
-    cef.MessageLoop()
-    cef.Shutdown()
+    if not args.no_browser:
+        webbrowser.open(url)

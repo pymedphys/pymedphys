@@ -33,6 +33,7 @@
     "webpack": "^4.41.2"
   },
   "dependencies": {
+    "rxjs": "^6.5.3",
     "source-map-support": "^0.5.16"
   }
 }
