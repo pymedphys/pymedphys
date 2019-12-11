@@ -41,7 +41,6 @@ def get_all_dicom_treatment_info(dicomFile):
     for fraction in dicom.FractionGroupSequence:
         for beam in fraction.ReferencedBeamSequence:
             dicomBeam = []
-            beams = []
             bn = (
                 beam.ReferencedBeamNumber
             )  # pull beam reference number for simplification
