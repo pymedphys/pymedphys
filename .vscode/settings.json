@@ -141,6 +141,7 @@
     "ndarray",
     "ndimage",
     "nopep",
+    "noqa",
     "normalise",
     "normalised",
     "nsis",
