@@ -21,7 +21,7 @@ let pymedphysExePath = path.join(pythonDir, 'Scripts', 'pymedphys.exe')
 let pymedphysExeCommand
 
 if (process.platform === "win32") {
-  pymedphysExeCommand = `start ${pymedphysExePath}`
+  pymedphysExeCommand = pymedphysExePath
 } else {
   pymedphysExeCommand = `wine ${pymedphysExePath}`
 }
