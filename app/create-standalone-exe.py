@@ -43,7 +43,7 @@ def call_embedded_python(*args):
 
 
 def main():
-    shutil.rmtree(EMBEDDED_PYTHON_DIR, ignore_errors=True)
+    # shutil.rmtree(EMBEDDED_PYTHON_DIR, ignore_errors=True)
 
     embedded_python_path = pymedphys.data_path("python-windows-64-embedded.zip")
 
