@@ -7,22 +7,37 @@ import { BehaviorSubject } from 'rxjs'
 
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
 let mainWindow
-let pythonPath = path.join(__dirname, '..', '..', 'python', 'python.exe')
+let pythonDir = path.resolve(path.join(__dirname, '..', '..', 'python'))
+let pythonExePath = path.join(pythonDir, 'python.exe')
 
 if (process.platform !== "win32") {
-  pythonPath = `wine ${pythonPath}`
+  pythonExePath = `wine ${pythonExePath}`
 }
-
-let pythonServer = exec(`${pythonPath} -m pymedphys app --no-browser`)
+console.log(pythonDir)
+let pythonServer = exec(`${pythonExePath} -m pymedphys app --no-browser`, { cwd: pythonDir })
 let UrlSubject = new BehaviorSubject(null)
-pythonServer.stdout.on('data', data => UrlSubject.next(data))
+pythonServer.stdout.on('data', data => {
+  console.log(data)
+  UrlSubject.next(data)
+})
+
+pythonServer.stderr.on('data', function (data) {
+  //throw errors
+  console.log('stderr: ' + data);
+});
+
+pythonServer.on('close', function (code) {
+  console.log('child process exited with code ' + code);
+});
 
 function createMainWindow() {
   const window = new BrowserWindow({ webPreferences: { nodeIntegration: true } })
 
   UrlSubject.subscribe(data => {
     if (data !== null) {
+      console.log('boo')
       let data_object = JSON.parse(data)
+
       let url = data_object['url']
 
       window.loadURL(url)
