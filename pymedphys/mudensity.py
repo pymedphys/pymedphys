@@ -32,6 +32,13 @@ formats
 # pylint: disable = unused-import
 
 
-from ._mudensity.mudensity import calc_mu_density as calculate
-from ._mudensity.mudensity import display_mu_density as display
-from ._mudensity.mudensity import get_grid as grid
+import apipkg
+
+apipkg.initpkg(
+    __name__,
+    {
+        "calculate": "._mudensity.mudensity:calc_mu_density",
+        "display": "._mudensity.mudensity:display_mu_density",
+        "grid": "._mudensity.mudensity:get_grid",
+    },
+)

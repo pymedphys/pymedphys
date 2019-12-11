@@ -1,5 +1,13 @@
 # pylint: disable = unused-import, missing-docstring
 
-from ._mosaiq.connect import connect
-from ._mosaiq.connect import execute_sql as execute
-from ._mosaiq.helpers import get_qcls_by_date as qcls
+
+import apipkg
+
+apipkg.initpkg(
+    __name__,
+    {
+        "connect": "._mosaiq.connect:connect",
+        "execute": "._mosaiq.connect:execute_sql",
+        "qcls": "._mosaiq.helpers:get_qcls_by_date",
+    },
+)
