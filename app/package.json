@@ -5,7 +5,8 @@
   "version": "0.0.0",
   "description": "PyMedPhys App",
   "scripts": {
-    "dist": "electron-webpack && electron-builder build --win --x64"
+    "dist": "electron-webpack && electron-builder build --win --x64",
+    "dev": "electron-webpack dev"
   },
   "build": {
     "productName": "PyMedPhys",
