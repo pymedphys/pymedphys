@@ -25,5 +25,4 @@ max-line-length=88
 
 extension-pkg-whitelist =
     pymssql,
-    numpy,
-    cefpython3
+    numpy

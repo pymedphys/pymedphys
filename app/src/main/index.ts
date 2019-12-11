@@ -8,25 +8,28 @@ import { BehaviorSubject } from 'rxjs'
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
 let mainWindow
 let pythonDir = path.resolve(path.join(__dirname, '..', '..', 'python'))
-let pythonExePath = path.join(pythonDir, 'python.exe')
+let pymedphysExePath = path.join(pythonDir, 'Scripts', 'pymedphys.exe')
 
 if (process.platform !== "win32") {
-  pythonExePath = `wine ${pythonExePath}`
+  pymedphysExePath = `wine ${pymedphysExePath}`
 }
-console.log(pythonDir)
-let pythonServer = exec(`${pythonExePath} -m pymedphys app --no-browser`, { cwd: pythonDir })
+
+let toBeRun = `${pymedphysExePath} app --no-browser`
+console.log(toBeRun)
+
+let pythonServer = exec(toBeRun)
 let UrlSubject = new BehaviorSubject(null)
 pythonServer.stdout.on('data', data => {
-  console.log(data)
+  console.log('stdout: ' + data);
   UrlSubject.next(data)
 })
 
-pythonServer.stderr.on('data', function (data) {
+pythonServer.stderr.on('data', data => {
   //throw errors
   console.log('stderr: ' + data);
 });
 
-pythonServer.on('close', function (code) {
+pythonServer.on('close', code => {
   console.log('child process exited with code ' + code);
 });
 
@@ -34,13 +37,12 @@ function createMainWindow() {
   const window = new BrowserWindow({ webPreferences: { nodeIntegration: true } })
 
   UrlSubject.subscribe(data => {
-    if (data !== null) {
-      console.log('boo')
+    try {
       let data_object = JSON.parse(data)
-
       let url = data_object['url']
-
       window.loadURL(url)
+    } catch {
+
     }
   })
 
