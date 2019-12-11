@@ -154,7 +154,7 @@ Active contributors
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
 
 
-|rccc| |rah| |uoc| |uth|
+|rccc| |rah| |uth| |uoc|
 
 Past contributors
 .................
