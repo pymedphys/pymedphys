@@ -76,6 +76,7 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
+apipkg = "^1.5"
 
 
 [tool.poetry.dev-dependencies]

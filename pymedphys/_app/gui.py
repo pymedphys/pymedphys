@@ -99,13 +99,6 @@ def launch_server(queue):
 
 
 def main(args):
-    if not BUILD.is_dir():
-        print("Downloading App...")
-        cached_data = pymedphys.data_path("app_build.zip")
-
-        with zipfile.ZipFile(cached_data, "r") as zip_file:
-            zip_file.extractall(HERE)
-
     queue = multiprocessing.Queue()
 
     server_process = multiprocessing.Process(target=launch_server, args=(queue,))
@@ -114,7 +107,8 @@ def main(args):
     port, token = queue.get()
     url = f"http://{IP}:{port}/?token={token}"
 
-    print(f'{{"url": "{url}"}}')
+    sys.stdout.write(f'{{"url": "{url}"}}\n')
+    sys.stdout.flush()
 
     if not args.no_browser:
         webbrowser.open(url)
