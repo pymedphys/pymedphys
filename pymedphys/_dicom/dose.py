@@ -59,7 +59,7 @@ def dose_from_dataset(ds, set_transfer_syntax_uid=True):
     return dose
 
 
-def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
+def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
     """Interpolates across a DICOM dose dataset.
 
     Parameters
@@ -89,7 +89,7 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
     return result
 
 
-def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Dataset):
+def depth_dose(depths, dose_dataset, plan_dataset):
     """Interpolates dose for defined depths within a DICOM dose dataset.
 
     Since the DICOM dose dataset is in CT coordinates the corresponding
@@ -132,13 +132,7 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Data
     return extracted_dose
 
 
-def profile(
-    displacements,
-    depth,
-    direction,
-    dose_dataset: pydicom.Dataset,
-    plan_dataset: pydicom.Dataset,
-):
+def profile(displacements, depth, direction, dose_dataset, plan_dataset):
     """Interpolates dose for cardinal angle horizontal profiles within a
     DICOM dose dataset.
 
