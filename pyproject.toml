@@ -28,9 +28,9 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.7"
 lazy_import = "*"
+attrs = "*"
 
 # library
-attrs = { version = "*", optional = true }
 keyring = { version = "*", optional = true }
 packaging = { version = "*", optional = true }
 PyYAML = { version = "*", optional = true }
@@ -137,7 +137,7 @@ gui = [
 ]
 
 library = [
-    "attrs", "keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy",
+    "keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy",
     "pandas", "dbfread", "pydicom", "pynetdicom"
 ]
 
