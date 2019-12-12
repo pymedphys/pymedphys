@@ -53,13 +53,17 @@ def launch_server(queue, working_directory):
     JupyterLabStandalone.launch_instance(queue=queue, ip=IP, open_browser=False)
 
 
-def main(args):
+def get_build():
     if not BUILD.is_dir():
         print("Downloading JupyterLab...")
         cached_data = pymedphys.data_path("lab_build.zip")
 
         with zipfile.ZipFile(cached_data, "r") as zip_file:
             zip_file.extractall(HERE)
+
+
+def main(args):
+    get_build()
 
     queue = multiprocessing.Queue()
 
