@@ -30,7 +30,7 @@ let toBeRun = `${pymedphysExeCommand} app --no-browser`
 console.log(toBeRun)
 
 let pythonServer = exec(toBeRun)
-let UrlSubject = new BehaviorSubject(null)
+let UrlSubject = new BehaviorSubject<string>(null)
 pythonServer.stdout.on('data', data => {
   console.log('stdout: ' + data);
   UrlSubject.next(data)
@@ -49,13 +49,20 @@ function createMainWindow() {
   const window = new BrowserWindow({ webPreferences: { nodeIntegration: true } })
 
   UrlSubject.subscribe(data => {
-    try {
-      let data_object = JSON.parse(data)
-      let url = data_object['url']
-      window.loadURL(url)
-    } catch {
+    let eachLine: string[]
 
-    }
+    try {
+      eachLine = data.split(/\r?\n/)
+    } catch { }
+
+    try {
+      eachLine.forEach(line => {
+        let data_object = JSON.parse(line)
+        let url = data_object['url']
+        window.loadURL(url)
+      });
+    } catch { }
+
   })
 
   window.on('closed', () => {
