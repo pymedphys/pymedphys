@@ -34,6 +34,7 @@ import traceback
 from glob import glob
 
 import attr
+
 from pymedphys._mosaiq.connect import multi_mosaiq_connect
 from pymedphys._mosaiq.delivery import (
     NoMosaiqEntries,
