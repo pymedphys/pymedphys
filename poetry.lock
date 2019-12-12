@@ -281,7 +281,7 @@ description = "A library for property based testing"
 name = "hypothesis"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-version = "4.53.1"
+version = "4.53.2"
 
 [package.dependencies]
 attrs = ">=19.2.0"
@@ -1482,14 +1482,15 @@ version = "0.6.0"
 more-itertools = "*"
 
 [extras]
+difficult = ["pymssql", "shapely"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "m2r"]
-extras = ["shapely"]
 gui = ["jupyterlab_server"]
+library = ["attrs", "keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy", "pandas", "dbfread", "pydicom", "pynetdicom"]
 pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "68fa5be9f13239068d7f105836213d1068dd4730d7c1939030a7dab6a4930d96"
+content-hash = "edf96e7bce2e7f9b6e6316c77580c1c4024fa85ffddb9fde0c0c1feeac56773d"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -1521,7 +1522,7 @@ doc8 = ["2df89f9c1a5abfb98ab55d0175fed633cae0cf45025b8b1e0ee5ea772be28543", "d12
 docutils = ["6c4f696463b79f1fb8ba0c594b63840ebd41f059e92b31957c46b74a4599b6d0", "9e4d7ecfc600058e07ba661411a2b7de2fd0fafa17d1a7f7361cd47b1175c827", "a2aeea129088da402665e92e0b25b04b073c04b2dce4ab65caaa38b7ce2e1a99"]
 entrypoints = ["589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19", "c70dd71abe5a8c85e55e12c19bd91ccfeec11a6e99044204511f9ed547d48451"]
 filelock = ["18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59", "929b7d63ec5b7d6b71b0fa5ac14e030b3f70b75747cef1b10da9b879fef15836"]
-hypothesis = ["2c95e0c416ec13ac85efff4eef95bb4b6dbd7bfc77b2f29bf70dc4e512bfc714", "ff4b9b8286437eb323a3e0a62adb00039c4207038c229c3f5f1eff6051e376b1"]
+hypothesis = ["771370874d53089f9c8e3e2f0d5e0802a35e086b35bca26318e59c42f00499d5", "8cef9ff0d544a56d0f256491925b6ec7e9f9f3e3a43869e7c65007c7948c6a74"]
 identify = ["7782115794ec28b011702815d9f5e532244560cd2bf0789c4f09381d43befd90", "9e7521e9abeaede4d2d1092a106e418c65ddf6b3182b43930bcb3c8cfb974488"]
 idna = ["c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407", "ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c"]
 imageio = ["c9763e5c187ecf74091c845626b0bdcc6130a20a0de7a86ae0108e2b5335ed3f", "f44eb231b9df485874f2ffd22dfd0c3c711e7de076516b9374edea5c65bc67ae"]
