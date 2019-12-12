@@ -23,6 +23,7 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import functools
 import json
 import os.path
 import pprint
@@ -51,26 +52,31 @@ IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
     IDENTIFYING_KEYWORDS = json.load(infile)
 
-VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
-    "AE": "Anonymous",
-    "AS": "100Y",
-    "CS": "ANON",
-    "DA": "20190303",
-    "DS": "12345678.9",
-    "DT": "20190303000900.000000",
-    "LO": "Anonymous",
-    "LT": "Anonymous",
-    "OB": (0).to_bytes(2, "little"),
-    "OB or OW": (0).to_bytes(2, "little"),
-    "OW": (0).to_bytes(2, "little"),
-    "PN": "Anonymous",
-    "SH": "Anonymous",
-    "SQ": [pydicom.Dataset()],
-    "ST": "Anonymous",
-    "TM": "000900.000000",
-    "UI": PYMEDPHYS_ROOT_UID,
-    "US": 12345,
-}
+
+@functools.lru_cache(maxsize=1)
+def get_vr_anonymous_replacement_value_dict():
+    VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
+        "AE": "Anonymous",
+        "AS": "100Y",
+        "CS": "ANON",
+        "DA": "20190303",
+        "DS": "12345678.9",
+        "DT": "20190303000900.000000",
+        "LO": "Anonymous",
+        "LT": "Anonymous",
+        "OB": (0).to_bytes(2, "little"),
+        "OB or OW": (0).to_bytes(2, "little"),
+        "OW": (0).to_bytes(2, "little"),
+        "PN": "Anonymous",
+        "SH": "Anonymous",
+        "SQ": [pydicom.Dataset()],
+        "ST": "Anonymous",
+        "TM": "000900.000000",
+        "UI": PYMEDPHYS_ROOT_UID,
+        "US": 12345,
+    }
+
+    return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT
 
 
 def label_dicom_filepath_as_anonymised(filepath):
@@ -631,4 +637,4 @@ def get_anonymous_replacement_value(keyword):
     based on its value representation (VR)
     """
     vr = get_baseline_keyword_vr_dict()[keyword]
-    return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
+    return get_vr_anonymous_replacement_value_dict()[vr]
