@@ -29,6 +29,7 @@ import sys
 from .app import app_cli
 from .dicom import dicom_cli
 from .docker import docker_cli
+from .jupyterlab import jupyter_cli
 from .logfile import logfile_cli
 from .pinnacle import pinnacle_cli
 from .trf import trf_cli
@@ -51,6 +52,7 @@ def define_parser():
     logfile_cli(subparsers)
     trf_cli(subparsers)
     pinnacle_cli(subparsers)
+    jupyter_cli(subparsers)
 
     return parser
 

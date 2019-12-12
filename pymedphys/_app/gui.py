@@ -43,21 +43,17 @@ import sys
 import webbrowser
 import zipfile
 
+import jupyterlab_server
+
 import pymedphys
-import pymedphys._compat._optional
 
 IP = "127.0.0.1"
 HERE = pathlib.Path(__file__).parent.resolve()
 WORKING_DIRECTORY = HERE.joinpath("working_directory")
 BUILD = HERE.joinpath("build")
-SCREEN_SIZE = (0, 0, 1920, 1080)
 
 
 def launch_server(queue):
-    jupyterlab_server = pymedphys._compat._optional.import_optional_dependency(  # pylint: disable = protected-access
-        "jupyterlab_server"
-    )
-
     class PyMedPhys(jupyterlab_server.LabServerApp):
         default_url = "/pymedphys"
         description = """
