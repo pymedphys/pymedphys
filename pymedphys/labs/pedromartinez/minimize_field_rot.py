@@ -3,7 +3,7 @@ from scipy import signal
 
 import matplotlib.pyplot as plt
 
-import running_mean as rm
+from . import running_mean as rm
 
 
 def minimize_junction_fieldrot(
