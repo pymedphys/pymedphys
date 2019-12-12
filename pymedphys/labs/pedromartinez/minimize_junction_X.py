@@ -4,7 +4,7 @@ from scipy.signal import find_peaks
 
 import matplotlib.pyplot as plt
 
-import running_mean as rm
+from . import running_mean as rm
 
 
 def minimize_junction_X(amplitude, peaks, peak_type, dx):
