@@ -29,7 +29,9 @@ from pymedphys._jupyterlab.main import main
 
 
 def jupyter_cli(subparsers):
-    jupyterlab_parser = subparsers.add_parser("jupyterlab", help="A GUI")
+    jupyterlab_parser = subparsers.add_parser(
+        "jupyterlab", help="A standalone JupyterLab instance"
+    )
     jupyterlab_parser.add_argument("working_directory", nargs="?", default=os.getcwd())
 
     jupyterlab_parser.set_defaults(func=main)
