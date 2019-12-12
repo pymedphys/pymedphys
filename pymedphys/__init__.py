@@ -4,7 +4,34 @@
 
 import lazy_import
 
-LAZY_MODULES = ("matplotlib.pyplot", "matplotlib", "numpy", "shapely", "pymssql")
+LAZY_MODULES = (
+    "matplotlib.pyplot",
+    "matplotlib",
+    "numpy",
+    "shapely",
+    "pymssql",
+    "jupyterlab_server",
+    "keyring",
+    "attr",
+    "packaging",
+    "yaml",
+    "scipy.interpolate",
+    "scipy.special",
+    "scipy.optimize",
+    "scipy.ndimage.measurements",
+    "scipy.ndimage",
+    "scipy.signal",
+    "scipy",
+    "pandas",
+    "dbfread",
+    "pydicom",
+    "pynetdicom",
+    "tqdm",
+    "dateutil",
+    "PIL",
+    "imageio",
+    "skimage",
+)
 
 for module_name in LAZY_MODULES:
     lazy_import.lazy_module(module_name)
