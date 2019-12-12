@@ -24,23 +24,19 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
+# pylint: disable = protected-access
 
-import imageio
+import pymedphys._wlutz.findbb
 
 
-def iview_image_transform(image_path):
-    img = imageio.imread(image_path)
-    if np.shape(img) != (1024, 1024):
-        raise ValueError("Expect iView images to be 1024x1024 pixels")
-    img = img[:, 1:-1]
+def test_bb_at_bounds_check():
+    penumbra = 2
+    edge_lengths = [20, 24]
+    bb_diameter = 8
 
-    if img.dtype != np.dtype("uint16"):
-        raise ValueError("Expect iView images to have a pixel type of unsigned 16 bit")
-    img = 1 - img[::-1, :] / 2 ** 16
-
-    shape = np.shape(img)
-    x = np.arange(-shape[1] / 2, shape[1] / 2) / 4
-    y = np.arange(-shape[0] / 2, shape[0] / 2) / 4
-
-    return x, y, img
+    bb_bounds = pymedphys._wlutz.findbb.define_bb_bounds(
+        bb_diameter, edge_lengths, penumbra
+    )
+    assert pymedphys._wlutz.findbb.check_if_at_bounds((0, -7.5), bb_bounds)
+    assert not pymedphys._wlutz.findbb.check_if_at_bounds((0, -5.5), bb_bounds)
+    assert pymedphys._wlutz.findbb.check_if_at_bounds((5.5, 0), bb_bounds)

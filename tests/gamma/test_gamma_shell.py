@@ -23,13 +23,16 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+# pylint: disable = protected-access
+
+
 """Tests for gamma shell."""
 
 
 import numpy as np
 
-from pymedphys._gamma.implementation import gamma_shell
-from pymedphys._gamma.implementation.shell import calculate_coordinates_shell
+import pymedphys._gamma.implementation
+import pymedphys._utilities.createshells
 
 
 def does_gamma_scale_as_expected(
@@ -45,7 +48,7 @@ def does_gamma_scale_as_expected(
     gamma_results = []
     for dose, distance in zip(dose_thresholds_to_test, distance_thresholds_to_test):
         gamma_results.append(
-            gamma_shell(
+            pymedphys._gamma.implementation.gamma_shell(
                 coords,
                 reference,
                 coords,
@@ -75,7 +78,7 @@ def test_a_set_of_gamma_scaling():
 def test_multiple_threshold_inputs():
     coords, reference, evaluation, _ = get_dummy_gamma_set()
 
-    gamma_shell(
+    pymedphys._gamma.implementation.gamma_shell(
         coords,
         reference,
         coords,
@@ -94,7 +97,9 @@ def test_lower_dose_threshold():
     evl = [10] * (len(ref) + 2)
     coords_evl = (np.arange(len(evl)) - 4,)
 
-    result = gamma_shell(coords_ref, ref, coords_evl, evl, 10, 1)
+    result = pymedphys._gamma.implementation.gamma_shell(
+        coords_ref, ref, coords_evl, evl, 10, 1
+    )
 
     assert np.array_equal(ref < 0.2 * np.max(ref), np.isnan(result))
 
@@ -126,7 +131,7 @@ def test_regression_of_gamma_3d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma3d = np.round(
-        gamma_shell(
+        pymedphys._gamma.implementation.gamma_shell(
             coords, reference, coords, evaluation, 3, 0.3, lower_percent_dose_cutoff=0
         ),
         decimals=1,
@@ -140,7 +145,7 @@ def test_regression_of_gamma_2d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma2d = np.round(
-        gamma_shell(
+        pymedphys._gamma.implementation.gamma_shell(
             coords[1::],
             reference[5, :, :],
             coords[1::],
@@ -161,7 +166,7 @@ def test_regression_of_gamma_1d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma1d = np.round(
-        gamma_shell(
+        pymedphys._gamma.implementation.gamma_shell(
             coords[2],
             reference[5, 5, :],
             coords[2],
@@ -186,7 +191,9 @@ def test_coords_stepsize():
     num_dimensions = 3
     distance = 1
 
-    x, y, z = calculate_coordinates_shell(distance, num_dimensions, distance_step_size)
+    x, y, z = pymedphys._utilities.createshells.calculate_coordinates_shell(
+        distance, num_dimensions, distance_step_size
+    )
 
     distance_between_coords = np.sqrt(
         (x[:, None] - x[None, :]) ** 2
@@ -212,6 +219,8 @@ def test_distance_0_gives_1_point():
     num_dimensions = 3
     distance = 0
 
-    x, y, z = calculate_coordinates_shell(distance, num_dimensions, distance_step_size)
+    x, y, z = pymedphys._utilities.createshells.calculate_coordinates_shell(
+        distance, num_dimensions, distance_step_size
+    )
 
     assert len(x) == 1 & len(y) == 1 & len(z) == 1
