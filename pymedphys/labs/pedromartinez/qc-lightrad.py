@@ -60,8 +60,7 @@ from skimage.feature import blob_log
 
 import pydicom
 
-# from . import utils as u
-import utils.utils as u
+import utils.utils as u  # pylint: disable = no-name-in-module
 
 
 def point_detect(imcirclist):
