@@ -113,7 +113,6 @@ def main(args):
     port, token = queue.get()
     url = f"http://{IP}:{port}/?token={token}"
 
-    sys.stdout.flush()
     sys.stdout.write(f'\n{{"url": "{url}"}}\n')
     sys.stdout.flush()
 
