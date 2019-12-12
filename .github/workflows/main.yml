@@ -26,7 +26,7 @@ jobs:
       matrix:
         os: ['ubuntu', 'macos', 'windows']
         python-version: [3.7]
-        toxenv: ['pylint', 'docs', 'doctest', 'runslow']
+        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
 
     runs-on: ${{ matrix.os }}-latest
 
