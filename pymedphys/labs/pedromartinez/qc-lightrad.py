@@ -60,7 +60,8 @@ from skimage.feature import blob_log
 
 import pydicom
 
-from . import utils as u
+# from . import utils as u
+import utils.utils as u
 
 
 def point_detect(imcirclist):
