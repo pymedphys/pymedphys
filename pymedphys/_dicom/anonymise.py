@@ -36,11 +36,11 @@ import numpy as np
 import pydicom
 
 from pymedphys._dicom.constants import (
-    BASELINE_KEYWORD_VR_DICT,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
     PYMEDPHYS_ROOT_UID,
     NotInBaselineError,
     get_baseline_dict_entry,
+    get_baseline_keyword_vr_dict,
 )
 from pymedphys._dicom.utilities import remove_file
 
@@ -601,7 +601,7 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
             if replace_values:
                 replacement_value = get_anonymous_replacement_value(keyword)
             else:
-                if BASELINE_KEYWORD_VR_DICT[keyword] in ("OB", "OW"):
+                if get_baseline_keyword_vr_dict()[keyword] in ("OB", "OW"):
                     replacement_value = (0).to_bytes(2, "little")
                 else:
                     replacement_value = ""
@@ -630,5 +630,5 @@ def get_anonymous_replacement_value(keyword):
     """Get an appropriate dummy anonymisation value for a DICOM element
     based on its value representation (VR)
     """
-    vr = BASELINE_KEYWORD_VR_DICT[keyword]
+    vr = get_baseline_keyword_vr_dict()[keyword]
     return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
