@@ -114,7 +114,7 @@ def main(args):
     url = f"http://{IP}:{port}/?token={token}"
 
     sys.stdout.flush()
-    sys.stdout.write(f'{{"url": "{url}"}}\n')
+    sys.stdout.write(f'\n{{"url": "{url}"}}\n')
     sys.stdout.flush()
 
     if not args.no_browser:
