@@ -15,7 +15,6 @@ LAZY_MODULES = (
     "pymssql",
     "jupyterlab_server",
     "keyring",
-    "attr",
     "packaging",
     "yaml",
     "scipy.interpolate",
