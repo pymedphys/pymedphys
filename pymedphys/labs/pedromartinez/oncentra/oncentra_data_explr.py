@@ -87,10 +87,10 @@ def process_directory(directy):
                 )
 
 
-parser = argparse.ArgumentParser()  # pylint: disable = invalid-name
+parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--directory", help="path to folder")
-args = parser.parse_args()  # pylint: disable = invalid-name
+args = parser.parse_args()
 
 if args.directory:
-    dirname = args.directory  # pylint: disable = invalid-name
+    dirname = args.directory
     process_directory(dirname)
