@@ -25,10 +25,10 @@
 """A DICOM RT Dose toolbox"""
 
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
+import scipy.interpolate
 
+import matplotlib.path
 import matplotlib.pyplot as plt
-from matplotlib import path
 
 import pydicom
 
@@ -76,7 +76,9 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
     interp_x = np.array(interp_coords[2], copy=False)[None, None, :]
 
     coords, dicom_dose_dataset = zyx_and_dose_from_dataset(dicom_dose_dataset)
-    interpolation = RegularGridInterpolator(coords, dicom_dose_dataset)
+    interpolation = scipy.interpolate.RegularGridInterpolator(
+        coords, dicom_dose_dataset
+    )
 
     try:
         result = interpolation((interp_z, interp_y, interp_x))
@@ -224,7 +226,7 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
 
             assert z_structure[structure_index][0] == z_dose[dose_index]
 
-            structure_polygon = path.Path(
+            structure_polygon = matplotlib.path.Path(
                 [
                     (x_structure[structure_index][i], y_structure[structure_index][i])
                     for i in range(len(x_structure[structure_index]))
