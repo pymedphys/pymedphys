@@ -9,6 +9,8 @@ LAZY_MODULES = (
     "matplotlib.path",
     "matplotlib",
     "numpy",
+    "shapely.affinity",
+    "shapely.geometry",
     "shapely",
     "pymssql",
     "jupyterlab_server",
