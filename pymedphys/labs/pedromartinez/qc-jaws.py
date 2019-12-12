@@ -71,7 +71,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 import pydicom
 
-import utils.utils as u
+import utils.utils as u  # pylint: disable = no-name-in-module, import error
 
 from . import minimize_field_rot as minFR
 from . import minimize_junction_X as minX
