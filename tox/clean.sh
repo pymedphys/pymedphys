@@ -1,6 +1,6 @@
 #!/bin/bash
 set -ex
 
-pip install dist/*.whl
+pip install  --force-reinstall dist/*.whl
 pymedphys --help
 python -c "import pymedphys"
