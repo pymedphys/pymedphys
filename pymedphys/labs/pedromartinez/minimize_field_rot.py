@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 import running_mean as rm
 
 
-# minimize junction for field rotations is done differently given the shape of the fields
-def minimize_junction_fieldrot(amplitude, peaks, peak_type, dx, profilename):
+def minimize_junction_fieldrot(
+    amplitude, peaks, peak_type, dx, profilename
+):  # minimize junction for field rotations is done differently given the shape of the fields
     print("Field rotation jaw analysis...")
     # print('number of peaks=', peaks)
     amp_prev = 0
