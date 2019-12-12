@@ -141,6 +141,10 @@ library = [
     "pandas", "dbfread", "pydicom", "pynetdicom"
 ]
 
+labs = [
+    "tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"
+]
+
 difficult = [
     "pymssql", "shapely"
 ]
