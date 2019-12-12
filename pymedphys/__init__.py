@@ -6,6 +6,7 @@ import lazy_import
 
 LAZY_MODULES = (
     "matplotlib.pyplot",
+    "matplotlib.path",
     "matplotlib",
     "numpy",
     "shapely",
