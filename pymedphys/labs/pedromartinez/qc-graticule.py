@@ -66,7 +66,7 @@ from skimage.feature import blob_log
 
 import pydicom
 
-from .utils import norm01, range_invert
+import utils.utils as u
 
 
 def running_mean(x, N):
@@ -122,7 +122,7 @@ def viewer(volume, dx, dy, center, title, textstr):
 
 
 def scalingAnalysis(ArrayDicom_o, dx, dy):  # determine scaling
-    ArrayDicom = norm01(ArrayDicom_o)
+    ArrayDicom = u.norm01(ArrayDicom_o)
     # ArrayDicom = norm01(ArrayDicom_o)
     blobs_log = blob_log(
         ArrayDicom, min_sigma=1, max_sigma=5, num_sigma=20, threshold=0.15
@@ -208,7 +208,7 @@ def scalingAnalysis(ArrayDicom_o, dx, dy):  # determine scaling
 
 
 def full_imageProcess(ArrayDicom_o, dx, dy, title):  # process a full image
-    ArrayDicom = norm01(ArrayDicom_o)
+    ArrayDicom = u.norm01(ArrayDicom_o)
     # ArrayDicom = norm01(ArrayDicom_o)
     height = np.shape(ArrayDicom)[0]
     width = np.shape(ArrayDicom)[1]
@@ -253,14 +253,14 @@ def full_imageProcess(ArrayDicom_o, dx, dy, title):  # process a full image
     textstr = ""
 
     print("center=", center)
-    fig, ax = viewer(range_invert(ArrayDicom_o), dx, dy, center, title, textstr)
+    fig, ax = viewer(u.range_invert(ArrayDicom_o), dx, dy, center, title, textstr)
     # fig, ax = viewer(range_invert(ArrayDicom_o), dx, dy, center, title, textstr)
 
     return fig, ax, center
 
 
 def full_imageProcess_noGraph(ArrayDicom_o):  # process a full image
-    ArrayDicom = norm01(ArrayDicom_o)
+    ArrayDicom = u.norm01(ArrayDicom_o)
     # ArrayDicom = norm01(ArrayDicom_o)
     height = np.shape(ArrayDicom)[0]
     width = np.shape(ArrayDicom)[1]
@@ -395,7 +395,7 @@ def read_dicom(directory):
                 else:
                     list_title.append(title)
                     tmp_array = dataset.pixel_array
-                    tmp_array = norm01(tmp_array)
+                    tmp_array = u.norm01(tmp_array)
                     # tmp_array = norm01(tmp_array)
                     ArrayDicom = np.dstack((ArrayDicom, tmp_array))
 
