@@ -71,12 +71,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 import pydicom
 
-import utils.minimize_field_rot as minFR
-import utils.minimize_junction_X as minX
-import utils.minimize_junction_Y as minY
-import utils.peak_find as pf
-import utils.peak_find_fieldrot as pffr
-import utils.utils as u
+from utils import minimize_field_rot as minFR
+from utils import minimize_junction_X as minX
+from utils import minimize_junction_Y as minY
+from utils import peak_find as pf
+from utils import peak_find_fieldrot as pffr
+from utils import utils as u
 
 
 # axial visualization and scrolling
