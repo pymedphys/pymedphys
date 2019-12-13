@@ -71,12 +71,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 import pydicom
 
-import utils.minimize_field_rot as minFR
-import utils.minimize_junction_X as minX
-import utils.minimize_junction_Y as minY
-import utils.peak_find as pf
-import utils.peak_find_fieldrot as pffr
-import utils.utils as u
+from utils import minimize_field_rot as minFR  # pylint: disable=no-name-in-module
+from utils import minimize_junction_X as minX  # pylint: disable=no-name-in-module
+from utils import minimize_junction_Y as minY  # pylint: disable=no-name-in-module
+from utils import peak_find as pf  # pylint: disable=no-name-in-module
+from utils import peak_find_fieldrot as pffr  # pylint: disable=no-name-in-module
+from utils import utils as u  # pylint: disable=no-name-in-module
 
 
 # axial visualization and scrolling
