@@ -27,7 +27,6 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
-lazy_import = "*"
 attrs = "*"
 
 # library
@@ -79,7 +78,7 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
-demandimport = "^0.3.4"
+apipkg = "^1.5"
 
 
 [tool.poetry.dev-dependencies]

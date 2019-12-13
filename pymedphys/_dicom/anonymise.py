@@ -23,11 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-# fmt: off
-import demandimport  # isort:skip
-demandimport.enable()  # isort:skip
-# fmt: on
-
 
 import functools
 import json
