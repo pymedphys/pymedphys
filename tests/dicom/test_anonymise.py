@@ -10,10 +10,10 @@ from uuid import uuid4
 import pytest
 
 import pydicom
-from pydicom.datadict import tag_for_keyword
-from pydicom.dataset import DataElement, Dataset
-from pydicom.filereader import read_file_meta_info
-from pydicom.tag import Tag
+import pydicom.datadict
+import pydicom.dataset
+import pydicom.filereader
+import pydicom.tag
 
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS,
@@ -45,7 +45,7 @@ TEST_FILEPATH = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
 TEST_ANON_BASENAME = (
     "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm"
 )
-TEST_FILE_META = read_file_meta_info(TEST_FILEPATH)
+TEST_FILE_META = pydicom.filereader.read_file_meta_info(TEST_FILEPATH)
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "AE": "AnAETitle",
@@ -61,7 +61,7 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "OW": (2).to_bytes(2, "little"),
     "PN": "Smith",
     "SH": "Smith",
-    "SQ": [Dataset(), Dataset()],
+    "SQ": [pydicom.dataset.Dataset(), pydicom.dataset.Dataset()],
     "ST": "Smith",
     "TM": "000700.000000",
     "UI": "1118",
@@ -104,11 +104,11 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
     # Create dataset with one instance of every identifying keyword and
     # run basic anonymisation tests
-    ds = Dataset()
+    ds = pydicom.dataset.Dataset()
     for keyword in IDENTIFYING_KEYWORDS:
         # Ignore file meta elements for now
-        tag = hex(tag_for_keyword(keyword))
-        if Tag(tag).group == 0x0002:
+        tag = hex(pydicom.datadict.tag_for_keyword(keyword))
+        if pydicom.tag.Tag(tag).group == 0x0002:
             continue
 
         value = _get_non_anonymous_replacement_value(keyword)
@@ -144,7 +144,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
         )
 
     # Test correct handling of private tags
-    ds_anon.add(DataElement(0x0043102B, "SS", [4, 4, 0, 0]))
+    ds_anon.add(pydicom.dataset.DataElement(0x0043102B, "SS", [4, 4, 0, 0]))
     _check_is_anonymised_dataset_file_and_dir(
         ds_anon, tmp_path, anon_is_expected=False, ignore_private_tags=False
     )
@@ -168,7 +168,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
     # Test handling of unknown tags by removing PatientName from
     # baseline dict
-    patient_name_tag = tag_for_keyword("PatientName")
+    patient_name_tag = pydicom.datadict.tag_for_keyword("PatientName")
 
     try:
         patient_name = get_baseline_dicom_dict().pop(patient_name_tag)
