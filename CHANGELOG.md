@@ -28,6 +28,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Performance Improvements
 
 - nil -->
+## [Unreleased]
+
+### New Features
+
+- Added DICOM helpers functionality and updated the Mosaiq helpers as a part of the TPS/OIS comparison project. Not yet exposed as part of the API
 
 ## [0.13.2]
 
