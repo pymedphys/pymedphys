@@ -178,7 +178,7 @@ Past contributors
 .. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/uoc_200x200.png
     :target: `University of Calgary`_
 
-.. |uth| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UTHSA_logo.JPG
+.. |uth| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UTHSA_logo.png
     :target: `UT Health San Antonio`_
 
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
