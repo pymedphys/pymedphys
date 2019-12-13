@@ -66,7 +66,7 @@ from skimage.feature import blob_log
 
 import pydicom
 
-import utils as u
+import utils.utils as u
 
 
 def running_mean(x, N):
