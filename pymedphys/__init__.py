@@ -2,45 +2,9 @@
 
 # pylint: disable = wrong-import-position
 
-import lazy_import
+import demandimport
 
-LAZY_MODULES = (
-    "matplotlib.pyplot",
-    "matplotlib.path",
-    "matplotlib",
-    "numpy",
-    "shapely.affinity",
-    "shapely.geometry",
-    "shapely",
-    "pymssql",
-    "jupyterlab_server",
-    "keyring",
-    "packaging",
-    "yaml",
-    "scipy.interpolate",
-    "scipy.special",
-    "scipy.optimize",
-    "scipy.ndimage.measurements",
-    "scipy.ndimage",
-    "scipy.signal",
-    "scipy",
-    "pandas",
-    "dbfread",
-    "pydicom.uid",
-    "pydicom.dataset",
-    "pydicom.sequence",
-    "pydicom.filebase",
-    "pydicom",
-    "pynetdicom",
-    "tqdm",
-    "dateutil",
-    "PIL",
-    "imageio",
-    "skimage",
-)
-
-for module_name in LAZY_MODULES:
-    lazy_import.lazy_module(module_name)
+demandimport.enable()
 
 
 from . import dicom, electronfactors, mosaiq, mudensity  # isort:skip

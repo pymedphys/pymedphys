@@ -79,6 +79,7 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
+demandimport = "^0.3.4"
 
 
 [tool.poetry.dev-dependencies]

@@ -26,7 +26,7 @@
 import io
 from copy import deepcopy
 
-from pydicom.filebase import DicomBytesIO
+import pydicom.filebase
 
 from pymedphys._dicom.collection import DicomBase
 from pymedphys._dicom.create import dicom_dataset_from_dict
@@ -94,9 +94,9 @@ def test_equal():
     assert dicom1 == dicom2  # Equality from dict
 
     try:
-        fp1 = DicomBytesIO()
+        fp1 = pydicom.filebase.DicomBytesIO()
         dicom1.to_file(fp1)
-        fp2 = DicomBytesIO()
+        fp2 = pydicom.filebase.DicomBytesIO()
         dicom2.to_file(fp2)
 
         dicom1_from_file = DicomBase.from_file(fp1)
