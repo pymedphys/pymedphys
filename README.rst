@@ -177,7 +177,7 @@ Past contributors
 
 .. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/uoc_200x200.png
     :target: `University of Calgary`_
-    
+
 .. |uth| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UTHSA_logo.JPG
     :target: `UT Health San Antonio`_
 
