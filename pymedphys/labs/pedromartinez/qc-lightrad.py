@@ -60,7 +60,7 @@ from skimage.feature import blob_log
 
 import pydicom
 
-from .utils import find_nearest, norm01, range_invert
+import utils.utils as u
 
 
 def point_detect(imcirclist):
@@ -147,9 +147,9 @@ def read_dicom(filenm, ioptn):
     corner_pixel = ArrayDicom_mod[0, 0]
 
     if ctr_pixel > corner_pixel:
-        ArrayDicom = range_invert(ArrayDicom)
+        ArrayDicom = u.range_invert(ArrayDicom)
 
-    ArrayDicom = norm01(ArrayDicom)
+    ArrayDicom = u.norm01(ArrayDicom)
 
     # working on transforming the full image and invert it first and go from there.
     if ioptn.startswith(("y", "yeah", "yes")):
@@ -366,7 +366,7 @@ def read_dicom(filenm, ioptn):
         Page.text(0.45, 0.9, "Report", size=18)
         kk = 0  # counter for data points
         for profile in profiles:
-            _, index = find_nearest(profile, 0.5)  # find the 50% amplitude point
+            _, index = u.find_nearest(profile, 0.5)  # find the 50% amplitude point
             # value_near, index = find_nearest(profile, 0.5) # find the 50% amplitude point
 
             if (  # pylint: disable = consider-using-in
@@ -487,19 +487,19 @@ def read_dicom(filenm, ioptn):
 
         # top_edge, index_top = find_nearest(profilevert[0:height//2], 0.5) # finding the edge of the field on the top
         # bot_edge, index_bot = find_nearest(profilevert[height//2:height], 0.5) # finding the edge of the field on the bottom
-        _, index_top = find_nearest(
+        _, index_top = u.find_nearest(
             profilevert[0 : height // 2], 0.5
         )  # finding the edge of the field on the top
-        _, index_bot = find_nearest(
+        _, index_bot = u.find_nearest(
             profilevert[height // 2 : height], 0.5
         )  # finding the edge of the field on the bottom
 
         # l_edge, index_l = find_nearest(profilehorz[0:width//2], 0.5) #finding the edge of the field on the bottom
         # r_edge, index_r = find_nearest(profilehorz[width//2:width], 0.5) #finding the edge of the field on the right
-        _, index_l = find_nearest(
+        _, index_l = u.find_nearest(
             profilehorz[0 : width // 2], 0.5
         )  # finding the edge of the field on the bottom
-        _, index_r = find_nearest(
+        _, index_r = u.find_nearest(
             profilehorz[width // 2 : width], 0.5
         )  # finding the edge of the field on the right
 
