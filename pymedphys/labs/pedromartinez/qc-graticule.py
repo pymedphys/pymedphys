@@ -66,7 +66,7 @@ from skimage.feature import blob_log
 
 import pydicom
 
-import utils.utils as u
+from utils import utils as u  # pylint: disable=no-name-in-module
 
 
 def running_mean(x, N):
