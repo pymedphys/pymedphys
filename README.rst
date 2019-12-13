@@ -131,6 +131,11 @@ Core contributors
 Active contributors
 ...................
 
+* `Jake Rembish`_
+    * `UT Health San Antonio`_, USA
+
+.. _`Jake Rembish`: https://github.com/rembishj
+
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
     * `South Western Sydney Local Health District`_, Australia
@@ -149,7 +154,7 @@ Active contributors
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
 
 
-|rccc| |rah| |uoc|
+|rccc| |rah| |uth| |uoc|
 
 Past contributors
 .................
@@ -173,6 +178,9 @@ Past contributors
 .. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/uoc_200x200.png
     :target: `University of Calgary`_
 
+.. |uth| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UTHSA_logo.png
+    :target: `UT Health San Antonio`_
+
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
@@ -188,6 +196,8 @@ Past contributors
 .. _`University of Calgary`: http://www.ucalgary.ca/
 
 .. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
+
+.. _`UT Health San Antonio`: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
 
 
 .. END_OF_DOCS_IMPORT
