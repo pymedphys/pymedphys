@@ -28,15 +28,13 @@ from pathlib import Path
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
 from scipy.optimize import basinhopping
 
 import imageio
 
 from .optical_density import calc_net_od
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
-
 
 DEFAULT_CAL_STRING_END = " cGy.tif"
 

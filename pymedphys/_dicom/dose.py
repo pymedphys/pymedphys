@@ -27,14 +27,11 @@
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom, scipy
+from pymedphys._imports import plt, pydicom, scipy
 
 from .coords import xyz_axes_from_dataset
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
 from .structure import pull_structure
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
-
 
 # pylint: disable=C0103
 

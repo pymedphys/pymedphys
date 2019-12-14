@@ -27,11 +27,10 @@
 from pymedphys._imports import imageio, matplotlib
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt
 
 from .core import find_field_and_bb
 from .reporting import image_analysis_figure
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def iview_find_bb_and_field(

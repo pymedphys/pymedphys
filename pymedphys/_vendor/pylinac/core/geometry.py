@@ -25,11 +25,10 @@ from typing import Iterable, List, Optional, Tuple, Union
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
 from .typing import NumberLike
 from .utilities import is_iterable
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def tan(degrees: NumberLike) -> float:

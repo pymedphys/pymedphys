@@ -33,6 +33,7 @@ import traceback
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
 import pymedphys
 from pymedphys._utilities.config import (
@@ -44,8 +45,6 @@ from pymedphys._utilities.config import (
     get_sql_servers,
     get_sql_servers_list,
 )
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def analyse_single_hash(index, config, filehash, cursors):
