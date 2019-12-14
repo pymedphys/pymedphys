@@ -29,10 +29,9 @@
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
 from PIL import Image
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def read_narrow_png(file_name, step_size=0.1):

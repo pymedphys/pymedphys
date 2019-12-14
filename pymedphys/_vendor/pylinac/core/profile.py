@@ -26,15 +26,12 @@ from typing import List, Optional, Sequence, Tuple, Union
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
-from pymedphys._imports import scipy
+from pymedphys._imports import plt, scipy
 
 from .decorators import value_accept
 from .geometry import Circle, Point
 from .typing import NumberLike
 from .utilities import is_float_like, is_int_like
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
-
 
 LEFT = "left"
 RIGHT = "right"

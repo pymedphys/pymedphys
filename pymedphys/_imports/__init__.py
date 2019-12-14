@@ -7,6 +7,7 @@ import apipkg
 EXTERNAL_EXPORTS = (
     "matplotlib.pyplot",
     "matplotlib.path",
+    "matplotlib.patches",
     "matplotlib",
     "numpy",
     "shapely.affinity",
@@ -39,7 +40,10 @@ EXTERNAL_EXPORTS = (
     "skimage",
 )
 
-apipkg.initpkg(__name__, {item: item for item in EXTERNAL_EXPORTS})
+apipkg.initpkg(
+    __name__,
+    {**{item: item for item in EXTERNAL_EXPORTS}, **{"plt": "matplotlib.pyplot"}},
+)
 
 THIS = importlib.import_module(__name__)
 IMPORTABLES = dir(THIS)
@@ -47,6 +51,7 @@ IMPORTABLES = dir(THIS)
 # This will never actually run, but it helps pylint know what's going on
 if "numpy" not in IMPORTABLES:
     import matplotlib.pyplot
+    import matplotlib.pyplot as plt
     import matplotlib.path
     import matplotlib.patches
     import matplotlib
