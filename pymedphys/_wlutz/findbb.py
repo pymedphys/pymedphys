@@ -25,8 +25,7 @@
 
 
 from pymedphys._imports import numpy as np
-
-import scipy.optimize
+from pymedphys._imports import scipy
 
 from .interppoints import create_bb_points_function
 from .pylinac import PylinacComparisonDeviation, run_wlutz

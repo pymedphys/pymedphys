@@ -25,8 +25,7 @@
 
 
 from pymedphys._imports import numpy as np
-
-import scipy.interpolate
+from pymedphys._imports import scipy
 
 
 def create_interpolated_field(x, y, img):

@@ -24,9 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 from pymedphys._imports import numpy as np
-
-import scipy.interpolate
-import scipy.ndimage.measurements
+from pymedphys._imports import scipy
 
 from .imginterp import create_interpolated_field
 from .interppoints import (
