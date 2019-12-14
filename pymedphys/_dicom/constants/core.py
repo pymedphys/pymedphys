@@ -123,12 +123,12 @@ def get_baseline_dict_entry(tag):
     if not isinstance(tag, pydicom.tag.BaseTag):
         tag = pydicom.tag.Tag(tag)
     try:
-        return BASELINE_DICOM_DICT[tag]
+        return get_baseline_dicom_dict()[tag]
     except KeyError:
         if not tag.is_private:
             mask_x = pydicom.datadict.mask_match(tag)
             if mask_x:
-                return BASELINE_DICOM_REPEATERS_DICT[mask_x]
+                return get_baseline_dicom_repeaters_dict()[mask_x]
         raise NotInBaselineError(
             "pydicom.tag.Tag {0} not found in DICOM dictionary".format(tag)
         )
