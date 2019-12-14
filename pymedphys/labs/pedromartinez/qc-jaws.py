@@ -55,9 +55,9 @@ import os
 import subprocess
 import sys
 
+from pymedphys._imports import numpy as np
 from tqdm import tqdm
 
-import numpy as np
 from scipy import signal
 from scipy.signal import (
     butter,

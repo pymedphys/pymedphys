@@ -23,7 +23,7 @@
 
 from typing import Optional, Tuple, Union
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from .decorators import type_accept
 from .geometry import Point

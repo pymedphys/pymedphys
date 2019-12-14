@@ -24,7 +24,8 @@ import copy
 from functools import lru_cache
 from typing import List, Optional, Sequence, Tuple, Union
 
-import numpy as np
+from pymedphys._imports import numpy as np
+
 from scipy import ndimage
 from scipy.interpolate import interp1d
 

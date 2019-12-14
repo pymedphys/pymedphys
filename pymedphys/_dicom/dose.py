@@ -24,7 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 """A DICOM RT Dose toolbox"""
 
-import numpy as np
+from pymedphys._imports import numpy as np
+
 import scipy.interpolate
 
 import matplotlib.path
