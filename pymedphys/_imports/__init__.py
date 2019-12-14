@@ -86,4 +86,4 @@ if "numpy" not in IMPORTABLES:
     import imageio
     import skimage
 
-    raise (ValueError("This section of code should never run"))
+    raise ValueError("This section of code should never run")
