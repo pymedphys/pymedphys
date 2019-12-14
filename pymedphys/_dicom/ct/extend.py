@@ -30,7 +30,7 @@ from collections import deque
 from copy import deepcopy
 from glob import glob
 
-import pydicom
+from pymedphys._imports import pydicom
 
 from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 

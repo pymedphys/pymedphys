@@ -43,7 +43,7 @@ import sys
 import webbrowser
 import zipfile
 
-import jupyterlab_server
+from pymedphys._imports import jupyterlab_server
 
 import pymedphys
 

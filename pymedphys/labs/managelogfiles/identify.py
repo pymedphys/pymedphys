@@ -26,7 +26,7 @@
 
 from datetime import datetime
 
-import dateutil
+from pymedphys._imports import dateutil
 
 from pymedphys._mosaiq.delivery import OISDeliveryDetails, get_mosaiq_delivery_details
 from pymedphys._trf.header import decode_header_from_file
