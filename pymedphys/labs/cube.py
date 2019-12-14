@@ -24,7 +24,8 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
+from pymedphys._imports import numpy as np
+
 from scipy.interpolate import splev, splprep
 from scipy.optimize import basinhopping
 
@@ -58,7 +59,7 @@ def cubify_cube_definition(cube_definition):
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> from pymedphys.labs.cube import cubify_cube_definition
     >>>
     >>> cube_definition = [(0, 0, 0), (0, 1, 0), (0, 0, 1)]
@@ -367,7 +368,7 @@ def get_structure_aligned_cube(
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> import pydicom
     >>> from pymedphys.labs.cube import get_structure_aligned_cube
     >>>

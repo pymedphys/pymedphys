@@ -25,7 +25,7 @@
 
 # pylint: disable=C0103,C1801
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 import matplotlib.pyplot as plt
 
@@ -99,7 +99,7 @@ def calc_mu_density(
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> import pymedphys
     >>>
     >>> leaf_pair_widths = (5, 5, 5)
@@ -256,7 +256,7 @@ def calc_single_control_point(
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> from pymedphys._mudensity.mudensity import (
     ...     calc_single_control_point, display_mu_density)
     >>>
@@ -346,7 +346,7 @@ def single_mlc_pair(
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> import matplotlib.pyplot as plt
     >>>
     >>> from pymedphys._mudensity.mudensity import single_mlc_pair

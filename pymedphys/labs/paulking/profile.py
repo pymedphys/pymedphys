@@ -32,7 +32,8 @@ import copy
 import os
 from typing import Callable
 
-import numpy as np
+from pymedphys._imports import numpy as np
+
 from scipy import interpolate
 
 import matplotlib.image as mpimg

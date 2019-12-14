@@ -28,6 +28,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.7"
 attrs = "*"
+apipkg = "^1.5"
 
 # library
 keyring = { version = "*", optional = true }
@@ -78,7 +79,6 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
-apipkg = "^1.5"
 
 
 [tool.poetry.dev-dependencies]
@@ -166,7 +166,8 @@ line_length = 88
 include_trailing_comma = true
 known_third_party = [
     "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
-    "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil"
+    "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
+    "pymedphys._imports"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"

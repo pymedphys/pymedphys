@@ -30,7 +30,8 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
-import numpy as np
+from pymedphys._imports import numpy as np
+
 import scipy.interpolate
 
 import pymedphys._utilities.createshells

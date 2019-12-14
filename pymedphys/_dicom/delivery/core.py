@@ -26,7 +26,7 @@
 
 from copy import deepcopy
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 import pydicom
 
