@@ -85,3 +85,5 @@ if "numpy" not in IMPORTABLES:
     import PIL
     import imageio
     import skimage
+
+    raise (ValueError("This section of code should never run"))
