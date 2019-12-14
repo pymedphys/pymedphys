@@ -27,8 +27,7 @@
 import os
 
 from pymedphys._imports import numpy as np
-
-import pandas as pd
+from pymedphys._imports import pandas as pd
 
 
 def file_output(output_directory, distance, relative_dose, scan_curvetype, scan_depth):

@@ -60,9 +60,6 @@ import time
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-import pydicom.dataset
-import pydicom.uid
-
 from .constants import *
 
 # This function will create dicom image files for each slice using the
