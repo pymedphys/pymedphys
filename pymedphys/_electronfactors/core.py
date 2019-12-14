@@ -28,12 +28,7 @@
 
 
 from pymedphys._imports import numpy as np
-
-import scipy.interpolate
-import scipy.optimize
-
-import shapely.affinity
-import shapely.geometry
+from pymedphys._imports import scipy, shapely
 
 
 def spline_model(
