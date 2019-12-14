@@ -27,8 +27,7 @@
 from typing import List
 
 from pymedphys._imports import numpy as np
-
-import pandas as pd
+from pymedphys._imports import pandas as pd
 
 from .constants import CONFIG
 from .header import determine_header_length

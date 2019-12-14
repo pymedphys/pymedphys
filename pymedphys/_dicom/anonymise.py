@@ -34,8 +34,7 @@ from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
 from pymedphys._imports import numpy as np
-
-import pydicom
+from pymedphys._imports import pydicom
 
 from pymedphys._dicom.constants import (
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,

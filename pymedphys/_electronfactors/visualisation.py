@@ -24,15 +24,16 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
-
-import matplotlib.pyplot as plt
 
 from .core import (
     create_transformed_mesh,
     parameterise_insert_with_visual_alignment,
     visual_alignment_of_equivalent_ellipse,
 )
+
+plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def model_and_display(x, y):

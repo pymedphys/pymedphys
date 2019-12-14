@@ -27,11 +27,12 @@
 # pylint: skip-file
 
 
+from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
 
-import matplotlib.image as mpimg
-
 from PIL import Image
+
+plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def read_narrow_png(file_name, step_size=0.1):
