@@ -9,6 +9,8 @@ EXTERNAL_EXPORTS = (
     "matplotlib.path",
     "matplotlib.patches",
     "matplotlib",
+    "mpl_toolkits.mplot3d.art3d",
+    "mpl_toolkits",
     "numpy",
     "shapely.affinity",
     "shapely.geometry",
@@ -56,6 +58,7 @@ if "numpy" not in IMPORTABLES:
     import matplotlib.patches
     import matplotlib
     import mpl_toolkits.mplot3d.art3d
+    import mpl_toolkits
     import numpy
     import shapely.affinity
     import shapely.geometry
