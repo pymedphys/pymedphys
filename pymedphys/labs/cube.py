@@ -26,14 +26,12 @@
 
 from pymedphys._imports import matplotlib, mpl_toolkits
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom
+from pymedphys._imports import plt, pydicom
 
 from scipy.interpolate import splev, splprep
 from scipy.optimize import basinhopping
 
 from pymedphys._dicom.structure import pull_structure
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def cubify_cube_definition(cube_definition):

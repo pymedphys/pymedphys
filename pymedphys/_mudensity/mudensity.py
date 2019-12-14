@@ -25,16 +25,13 @@
 
 # pylint: disable=C0103,C1801
 
-from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
 from pymedphys._utilities.constants import AGILITY
 from pymedphys._utilities.controlpoints import remove_irrelevant_control_points
 
 from .plt import pcolormesh_grid
-
-plt = matplotlib.pyplot  # pylint: disable = invalid-name
-
 
 __DEFAULT_LEAF_PAIR_WIDTHS = AGILITY
 __DEFAULT_GRID_RESOLUTION = 1
