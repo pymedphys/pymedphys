@@ -23,7 +23,7 @@ import math
 from itertools import zip_longest
 from typing import Iterable, List, Optional, Tuple, Union
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle as mpl_Circle

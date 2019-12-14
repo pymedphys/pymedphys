@@ -27,7 +27,8 @@
 """Model insert factors and parameterise inserts as equivalent ellipses."""
 
 
-import numpy as np
+from pymedphys._imports import numpy as np
+
 import scipy.interpolate
 import scipy.optimize
 

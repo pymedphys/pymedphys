@@ -25,7 +25,7 @@
 
 import re
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def find_scan_index(file_contents):

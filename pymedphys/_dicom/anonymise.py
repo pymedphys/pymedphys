@@ -33,7 +33,7 @@ from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 import pydicom
 

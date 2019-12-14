@@ -27,7 +27,7 @@
 # pylint: skip-file
 
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 import matplotlib.image as mpimg
 
