@@ -28,7 +28,7 @@
 
 import datetime
 
-import pandas as pd
+from pymedphys._imports import pandas as pd
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES

@@ -24,16 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from pymedphys._imports import imageio, matplotlib
 from pymedphys._imports import numpy as np
-
-import pandas as pd
-
-import matplotlib.pyplot as plt
-
-import imageio
+from pymedphys._imports import pandas as pd
 
 from .core import find_field_and_bb
 from .reporting import image_analysis_figure
+
+plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def iview_find_bb_and_field(

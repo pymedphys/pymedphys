@@ -55,7 +55,8 @@ import random
 import re
 import time
 
-import pydicom
+from pymedphys._imports import pydicom
+
 import pydicom.dataset
 import pydicom.sequence
 import pydicom.uid

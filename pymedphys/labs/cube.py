@@ -24,17 +24,16 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from pymedphys._imports import matplotlib, mpl_toolkits
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from scipy.interpolate import splev, splprep
 from scipy.optimize import basinhopping
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
-import pydicom
-
 from pymedphys._dicom.structure import pull_structure
+
+plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def cubify_cube_definition(cube_definition):
@@ -194,7 +193,9 @@ def plot_cube(cube_definition):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
 
-    faces = Poly3DCollection(edges, linewidths=1, edgecolors="k")
+    faces = mpl_toolkits.mplot3d.art3d.Poly3DCollection(
+        edges, linewidths=1, edgecolors="k"
+    )
     faces.set_facecolor((0, 0, 1, 0.1))
 
     ax.add_collection3d(faces)

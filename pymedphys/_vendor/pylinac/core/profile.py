@@ -24,18 +24,17 @@ import copy
 from functools import lru_cache
 from typing import List, Optional, Sequence, Tuple, Union
 
+from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
-
-from scipy import ndimage
-from scipy.interpolate import interp1d
-
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle as mpl_Circle
+from pymedphys._imports import scipy
 
 from .decorators import value_accept
 from .geometry import Circle, Point
 from .typing import NumberLike
 from .utilities import is_float_like, is_int_like
+
+plt = matplotlib.pyplot  # pylint: disable = invalid-name
+
 
 LEFT = "left"
 RIGHT = "right"
@@ -158,9 +157,9 @@ class ProfileMixin:
                 raise TypeError("Float was passed but was not between 0 and 1")
 
         if kind == "median":
-            self.values = ndimage.median_filter(self.values, size=size)
+            self.values = scipy.ndimage.median_filter(self.values, size=size)
         elif kind == "gaussian":
-            self.values = ndimage.gaussian_filter(self.values, sigma=size)
+            self.values = scipy.ndimage.gaussian_filter(self.values, sigma=size)
 
     def __len__(self):
         return len(self.values)
@@ -358,7 +357,7 @@ class SingleProfile(ProfileMixin):
     @property
     def _values_left_interp(self) -> np.ndarray:
         """Interpolated values of the "left side" profile data."""
-        ydata_f = interp1d(
+        ydata_f = scipy.interpolate.interp1d(
             self._indices, self._values_left, kind=self.interpolation_type
         )
         y_data = ydata_f(self._indices_interp)
@@ -367,7 +366,7 @@ class SingleProfile(ProfileMixin):
     @property
     def _values_right_interp(self) -> np.ndarray:
         """Interpolated values of the "right side" profile data."""
-        ydata_f = interp1d(
+        ydata_f = scipy.interpolate.interp1d(
             self._indices, self._values_right, kind=self.interpolation_type
         )
         y_data = ydata_f(self._indices_interp)
@@ -376,7 +375,9 @@ class SingleProfile(ProfileMixin):
     @property
     def _values_interp(self) -> np.ndarray:
         """Interpolated values of the entire profile array."""
-        ydata_f = interp1d(self._indices, self.values, kind=self.interpolation_type)
+        ydata_f = scipy.interpolate.interp1d(
+            self._indices, self.values, kind=self.interpolation_type
+        )
         y_data = ydata_f(self._indices_interp)
         return y_data
 
@@ -895,7 +896,7 @@ class CircleProfile(MultiProfile, Circle):
     @property
     def _profile(self) -> np.ndarray:
         """The actual profile array; private attr that is passed to MultiProfile."""
-        return ndimage.map_coordinates(
+        return scipy.ndimage.map_coordinates(
             self.image_array, [self.y_locations, self.x_locations], order=0
         )
 
@@ -992,7 +993,7 @@ class CircleProfile(MultiProfile, Circle):
             _, axes = plt.subplots()
             axes.imshow(self.image_array)
         axes.add_patch(
-            mpl_Circle(
+            matplotlib.patches.Circle(
                 (self.center.x, self.center.y),
                 edgecolor=edgecolor,
                 radius=self.radius,
@@ -1090,7 +1091,7 @@ class CollapsedCircleProfile(CircleProfile):
         for _, x, y in zip(
             self._radii, self._multi_x_locations, self._multi_y_locations
         ):
-            profile += ndimage.map_coordinates(self.image_array, [y, x], order=0)
+            profile += scipy.ndimage.map_coordinates(self.image_array, [y, x], order=0)
         profile /= self.num_profiles
         return profile
 
@@ -1111,7 +1112,7 @@ class CollapsedCircleProfile(CircleProfile):
             _, axes = plt.subplots()
             axes.imshow(self.image_array)
         axes.add_patch(
-            mpl_Circle(
+            matplotlib.patches.Circle(
                 (self.center.x, self.center.y),
                 edgecolor=edgecolor,
                 radius=self.radius * (1 + self.width_ratio),
@@ -1119,7 +1120,7 @@ class CollapsedCircleProfile(CircleProfile):
             )
         )
         axes.add_patch(
-            mpl_Circle(
+            matplotlib.patches.Circle(
                 (self.center.x, self.center.y),
                 edgecolor=edgecolor,
                 radius=self.radius * (1 - self.width_ratio),

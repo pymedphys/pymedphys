@@ -30,8 +30,7 @@
 from contextlib import contextmanager
 from getpass import getpass
 
-import keyring
-import pymssql
+from pymedphys._imports import keyring, pymssql
 
 
 def execute_sql(cursor, sql_string, parameters=None):
