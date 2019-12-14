@@ -369,7 +369,7 @@ def get_structure_aligned_cube(
 
     Examples
     --------
-    >>> from pymedphys._imports import numpy as np
+    >>> import numpy as np
     >>> import pydicom
     >>> from pymedphys.labs.cube import get_structure_aligned_cube
     >>>

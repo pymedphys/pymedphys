@@ -61,10 +61,6 @@ import time
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-import pydicom.dataset
-import pydicom.sequence
-import pydicom.uid
-
 from .constants import *
 
 
