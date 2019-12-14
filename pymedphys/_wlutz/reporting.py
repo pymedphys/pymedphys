@@ -24,13 +24,14 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
-
-import matplotlib.pyplot as plt
 
 from .createaxis import transform_axis
 from .imginterp import create_interpolated_field
 from .interppoints import apply_transform, translate_and_rotate_transform
+
+plt = matplotlib.pyplot  # pylint: disable = invalid-name
 
 
 def image_analysis_figure(

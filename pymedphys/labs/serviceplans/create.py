@@ -28,8 +28,7 @@ import copy
 import pathlib
 
 from pymedphys._imports import numpy as np
-
-import pydicom
+from pymedphys._imports import pydicom
 
 HERE = pathlib.Path(__file__).parent
 TEMPLATE_DIR = HERE.joinpath("templates")

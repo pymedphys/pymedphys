@@ -27,8 +27,7 @@ import functools
 from copy import deepcopy
 
 from pymedphys._imports import numpy as np
-
-import pydicom
+from pymedphys._imports import pydicom
 
 
 @functools.lru_cache(maxsize=1)
