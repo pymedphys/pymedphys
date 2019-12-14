@@ -369,9 +369,10 @@ def get_structure_aligned_cube(
     --------
     >>> import numpy as np
     >>> import pydicom
+    >>> import pymedphys
     >>> from pymedphys.labs.cube import get_structure_aligned_cube
     >>>
-    >>> struct_path = 'tests/dicom/data/struct/example_structures.dcm'
+    >>> struct_path = str(pymedphys.data_path('example_structures.dcm'))
     >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
     >>> structure_name = 'ANT Box'
     >>> cube_definition_array, vectors = get_structure_aligned_cube(
