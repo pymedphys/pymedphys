@@ -29,6 +29,7 @@ classifiers = [
 python = "^3.6"
 attrs = "*"
 apipkg = "^1.5"
+dataclasses = { version = "*", python = "~3.6.0" }
 
 # library
 keyring = { version = "*", optional = true }
