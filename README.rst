@@ -9,16 +9,13 @@
 in Python. Building quality transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|build| |pypi| |conda| |python| |license|
+|build| |pypi| |python| |license|
 
 .. |build| image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
     :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pymedphys.svg
     :target: https://pypi.org/project/pymedphys/
-
-.. |conda| image:: https://img.shields.io/conda/vn/conda-forge/pymedphys.svg
-    :target: https://anaconda.org/conda-forge/pymedphys/
 
 .. |python| image:: https://img.shields.io/pypi/pyversions/pymedphys.svg
     :target: https://pypi.org/project/pymedphys/

@@ -28,61 +28,56 @@ managing your Python installation using something like `pyenv`_.
 .. _`pyenv`: https://github.com/pyenv/pyenv-installer#install
 
 
-OS specific extra steps
-=======================
-
-PyMedPhys uses a range of dependencies, most of which can be automatically
-installed. However there are two libraries which need a few extra steps
-depending on the OS you are using.
-
-Extra steps for MacOS
----------------------
-
-Due to the ``pymssql`` dependency which is used to connect to Microsoft SQL
-databases (such as Mosaiq) we need to follow some of their pre-install steps
-(<http://www.pymssql.org/en/stable/intro.html#install>).
-
-This in particular impacts MacOS where you will need to install both
-``freetds`` and ``cython`` before installing
-``pymedphys``. The easiest way to install ``freetds`` is via ``homebrew``.
-
-So, do the following to install homebrew (as described at <https://brew.sh/>):
-
-.. code:: bash
-
-    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-
-Open a new shell, then run:
-
-.. code:: bash
-
-    brew install freetds
-
-To install cython run:
-
-.. code:: bash
-
-    pip install cython
-
-
-Extra steps for Linux and Windows
----------------------------------
-
-At this point in time there are none.
-
-
 Installing PyMedPhys
 ====================
 
-Once ready, you can now install PyMedPhys via pip downloaded from PyPI:
+Once you have Python you can now install PyMedPhys via pip by typing the
+following in a terminal or command prompt:
 
 .. code:: bash
 
     pip install pymedphys
 
+You may need to open and close your terminal if you have only just installed
+Python.
 
-Installing Bleeding Edge
-========================
+Installing optional dependencies
+--------------------------------
+
+PyMedPhys has a range of optional dependencies. If while using PyMedPhys as
+installed above you get `ImportErrors` you may install all optional
+dependencies by typing the following:
+
+.. code:: bash
+
+    pip install pymedphys[library]
+
+
+If you would like to use some of the experimental libraries within the labs
+section of PyMedPhys then running the following will install all those optional
+dependencies:
+
+.. code:: bash
+
+    pip install pymedphys[labs]
+
+
+If you need either shapely (for electronfactors module) or pymssql (for the
+mosaiq module) you can either install those packages directly yourself using
+the following methods:
+
+- ``shapely`` -- <https://github.com/Toblerity/Shapely#installing-shapely-16>
+- ``pymssql`` -- ``pip install pymssql<3`` -- <https://pymssql.readthedocs.io/en/stable/intro.html#getting-started>
+
+or you can try running:
+
+.. code:: bash
+
+    pip install pymedphys[difficult]
+
+
+Installing the Bleeding Edge version of PyMedPhys
+=================================================
 
 If you wish to be able to contribute to PyMedPhys itself you are going to want
 to instead install PyMedPhys from the master branch on GitHub
