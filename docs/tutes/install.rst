@@ -71,12 +71,13 @@ dependencies needed by modules within the labs:
 Difficult optional dependencies
 -------------------------------
 
-``shapely`` for ``pymedphys.electronfactors`` module
-****************************************************
-
 There are two optional dependencies which have some extra complications when
 installing. ``shapely`` can be difficult to install on Windows, and ``pymssql``
 can be difficult to install on MacOS.
+
+
+``shapely`` for ``pymedphys.electronfactors`` module
+****************************************************
 
 If you wish to use the ``pymedphys.electronfactors`` module you will need to
 install ``shapely`` which on MacOS or Linux is as simple as:
