@@ -18,6 +18,7 @@ disable =
     too-many-instance-attributes,
     wrong-import-order,
     wrong-import-position,
+    ungrouped-imports,
 
 
 [FORMAT]
