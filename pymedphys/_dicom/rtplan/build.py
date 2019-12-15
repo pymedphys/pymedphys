@@ -25,7 +25,7 @@
 
 from copy import deepcopy
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def add_data_to_control_point(template, data, i):

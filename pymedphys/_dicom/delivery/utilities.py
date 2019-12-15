@@ -24,7 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def jaw_dd2dcm(jaw):

@@ -55,9 +55,10 @@ import os
 import subprocess
 import sys
 
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 from tqdm import tqdm
 
-import numpy as np
 from scipy import signal
 from scipy.signal import (
     butter,
@@ -73,8 +74,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 from PIL import *
-
-import pydicom
 
 
 def running_mean(x, N):

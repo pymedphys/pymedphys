@@ -26,7 +26,7 @@ jobs:
       matrix:
         os: ['ubuntu', 'macos', 'windows']
         python-version: [3.7]
-        toxenv: ['pylint', 'docs', 'doctest', 'runslow']
+        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
 
     runs-on: ${{ matrix.os }}-latest
 
@@ -69,9 +69,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip poetry tox
 
-    - name: Run Tox
+    - name: Run Tox on Windows
+      if: matrix.os == 'windows'
       run: |
-        poetry run tox -e ${{ matrix.toxenv }}
+        poetry run tox -e ${{ matrix.toxenv }}-win
+
+    - name: Run Tox on Nix
+      if: matrix.os == 'macos' || matrix.os == 'ubuntu'
+      run: |
+        poetry run tox -e ${{ matrix.toxenv }}-nix
 
 
   WithUpdates:

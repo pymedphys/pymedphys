@@ -55,10 +55,7 @@ import random
 import re
 import time
 
-import pydicom
-import pydicom.uid
-from pydicom.dataset import Dataset, FileDataset
-from pydicom.sequence import Sequence
+from pymedphys._imports import pydicom
 
 from .constants import *
 
@@ -142,17 +139,17 @@ def read_points(ds, plan):
 
         refpoint = plan.convert_point(point)
 
-        roi_contour = Dataset()
+        roi_contour = pydicom.dataset.Dataset()
         roi_contour.ReferencedROINumber = str(plan.roi_count)
         roi_contour.ROIDisplayColor = colors[point["Color"]]
-        roi_contour.ContourSequence = Sequence()
-        contour = Dataset()
+        roi_contour.ContourSequence = pydicom.sequence.Sequence()
+        contour = pydicom.dataset.Dataset()
         contour.ContourData = refpoint
         contour.ContourGeometricType = "POINT"
         contour.NumberOfContourPoints = 1
-        contour.ContourImageSequence = Sequence()
+        contour.ContourImageSequence = pydicom.sequence.Sequence()
 
-        contour_image = Dataset()
+        contour_image = pydicom.dataset.Dataset()
 
         closestvalue = abs(
             float(plan.primary_image.image_info[0]["TablePosition"])
@@ -174,7 +171,7 @@ def read_points(ds, plan):
         roi_contour.ContourSequence.append(contour)
         ds.ROIContourSequence.append(roi_contour)
 
-        structure_set_roi = Dataset()
+        structure_set_roi = pydicom.dataset.Dataset()
         structure_set_roi.ROINumber = plan.roi_count
         structure_set_roi.ROIName = point["Name"]
         plan.logger.info("Exporting point: " + point["Name"])
@@ -187,7 +184,7 @@ def read_points(ds, plan):
 
         ds.StructureSetROISequence.append(structure_set_roi)
 
-        rt_roi_observations = Dataset()
+        rt_roi_observations = pydicom.dataset.Dataset()
         rt_roi_observations.ObservationNumber = plan.roi_count
         rt_roi_observations.ReferencedROINumber = plan.roi_count
         rt_roi_observations.RTROIInterpretedType = "MARKER"
@@ -215,8 +212,8 @@ def read_roi(ds, plan):
 
     points = []
     flag_points = (
-        False
-    )  # bool value to tell me if I want to read the line in as point values
+        False  # bool value to tell me if I want to read the line in as point values
+    )
     prevroi = plan.roi_count
     plan.logger.debug("Reading ROI from: " + path_roi)
     first_points = []
@@ -241,8 +238,8 @@ def read_roi(ds, plan):
                 ].ContourData = points
                 ds.ROIContourSequence[plan.roi_count - 1].ContourSequence[
                     int(curvenum) - 1
-                ].ContourImageSequence = Sequence()
-                contour_image = Dataset()
+                ].ContourImageSequence = pydicom.sequence.Sequence()
+                contour_image = pydicom.dataset.Dataset()
 
                 closestvalue = abs(
                     float(plan.primary_image.image_info[0]["TablePosition"])
@@ -312,12 +309,12 @@ def read_roi(ds, plan):
                 plan.roi_count = (
                     plan.roi_count + 1
                 )  # increment ROI_num because I've found a new ROI
-                roi_contour = Dataset()
+                roi_contour = pydicom.dataset.Dataset()
                 roi_contour.ReferencedROINumber = str(plan.roi_count)
                 ds.ROIContourSequence.append(roi_contour)
-                structure_set_roi = Dataset()
+                structure_set_roi = pydicom.dataset.Dataset()
                 ds.StructureSetROISequence.append(roi_contour)
-                rt_roi_observations = Dataset()
+                rt_roi_observations = pydicom.dataset.Dataset()
                 ds.RTROIObservationsSequence.append(rt_roi_observations)
                 ds.StructureSetROISequence[
                     plan.roi_count - 1
@@ -333,7 +330,9 @@ def read_roi(ds, plan):
                 ].ReferencedFrameOfReferenceUID = plan.primary_image.image_info[0][
                     "FrameUID"
                 ]
-                ds.ROIContourSequence[plan.roi_count - 1].ContourSequence = Sequence()
+                ds.ROIContourSequence[
+                    plan.roi_count - 1
+                ].ContourSequence = pydicom.sequence.Sequence()
                 roiinterpretedtype = "ORGAN"
                 plan.logger.info("Exporting ROI: " + ROIName)
             if "roiinterpretedtype:" in line:
@@ -371,7 +370,7 @@ def read_roi(ds, plan):
             if "//  Curve " in line:  # found a curve
                 first_points = []
                 curvenum = re.findall(r"[-+]?\d*\.\d+|\d+", line)[0]
-                contour = Dataset()
+                contour = pydicom.dataset.Dataset()
                 ds.ROIContourSequence[plan.roi_count - 1].ContourSequence.append(
                     contour
                 )
@@ -405,7 +404,7 @@ def convert_struct(plan, export_path):
     struct_sop_instuid = plan.struct_inst_uid
 
     # Populate required values for file meta information
-    file_meta = Dataset()
+    file_meta = pydicom.dataset.Dataset()
     file_meta.MediaStorageSOPClassUID = RTStructSOPClassUID
     file_meta.TransferSyntaxUID = GTransferSyntaxUID
     file_meta.MediaStorageSOPInstanceUID = struct_sop_instuid
@@ -413,11 +412,15 @@ def convert_struct(plan, export_path):
 
     struct_filename = "RS." + struct_sop_instuid + ".dcm"
 
-    ds = FileDataset(struct_filename, {}, file_meta=file_meta, preamble=b"\x00" * 128)
-    ds = FileDataset(struct_filename, {}, file_meta=file_meta, preamble=b"\x00" * 128)
+    ds = pydicom.dataset.FileDataset(
+        struct_filename, {}, file_meta=file_meta, preamble=b"\x00" * 128
+    )
+    ds = pydicom.dataset.FileDataset(
+        struct_filename, {}, file_meta=file_meta, preamble=b"\x00" * 128
+    )
 
     struct_series_instuid = pydicom.uid.generate_uid()
-    ds.ReferencedStudySequence = Sequence()
+    ds.ReferencedStudySequence = pydicom.sequence.Sequence()
 
     # not sure what I want here, going off of template dicom file
     ds.SpecificCharacterSet = "ISO_IR 100"
@@ -432,7 +435,7 @@ def convert_struct(plan, export_path):
     # read in from
     ds.StationName = "adacp3u7"
     # ds.ManufacturersModelName = 'Pinnacle3'
-    ReferencedStudy1 = Dataset()
+    ReferencedStudy1 = pydicom.dataset.Dataset()
     ds.ReferencedStudySequence.append(ReferencedStudy1)
     # Study Component Management SOP Class (chosen from template)
     ds.ReferencedStudySequence[0].ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.2"
@@ -470,15 +473,17 @@ def convert_struct(plan, export_path):
     ds.SeriesNumber = "1"
     ds.PatientName = patient_info["FullName"]
 
-    ds.ReferencedFrameOfReferenceSequence = Sequence()
-    ReferencedFrameofReference = Dataset()
+    ds.ReferencedFrameOfReferenceSequence = pydicom.sequence.Sequence()
+    ReferencedFrameofReference = pydicom.dataset.Dataset()
     ds.ReferencedFrameOfReferenceSequence.append(ReferencedFrameofReference)
     ds.ReferencedFrameOfReferenceSequence[
         0
     ].FrameOfReferenceUID = plan.primary_image.image_info[0]["FrameUID"]
-    ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence = Sequence()
+    ds.ReferencedFrameOfReferenceSequence[
+        0
+    ].RTReferencedStudySequence = pydicom.sequence.Sequence()
 
-    RTReferencedStudy = Dataset()
+    RTReferencedStudy = pydicom.dataset.Dataset()
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence.append(
         RTReferencedStudy
     )
@@ -491,9 +496,9 @@ def convert_struct(plan, export_path):
     ds.StudyInstanceUID = plan.primary_image.image_info[0]["StudyInstanceUID"]
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[
         0
-    ].RTReferencedSeriesSequence = Sequence()
+    ].RTReferencedSeriesSequence = pydicom.sequence.Sequence()
 
-    RTReferencedSeries = Dataset()
+    RTReferencedSeries = pydicom.dataset.Dataset()
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[
         0
     ].RTReferencedSeriesSequence.append(RTReferencedSeries)
@@ -506,19 +511,19 @@ def convert_struct(plan, export_path):
     ]
     ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[
         0
-    ].RTReferencedSeriesSequence[0].ContourImageSequence = Sequence()
+    ].RTReferencedSeriesSequence[0].ContourImageSequence = pydicom.sequence.Sequence()
 
     for info in plan.primary_image.image_info:
-        contour_image = Dataset()
+        contour_image = pydicom.dataset.Dataset()
         contour_image.ReferencedSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
         contour_image.ReferencedSOPInstanceUID = info["InstanceUID"]
         ds.ReferencedFrameOfReferenceSequence[0].RTReferencedStudySequence[
             0
         ].RTReferencedSeriesSequence[0].ContourImageSequence.append(contour_image)
 
-    ds.ROIContourSequence = Sequence()
-    ds.StructureSetROISequence = Sequence()
-    ds.RTROIObservationsSequence = Sequence()
+    ds.ROIContourSequence = pydicom.sequence.Sequence()
+    ds.StructureSetROISequence = pydicom.sequence.Sequence()
+    ds.RTROIObservationsSequence = pydicom.sequence.Sequence()
 
     # Determine ISO Center
     find_iso_center(plan)

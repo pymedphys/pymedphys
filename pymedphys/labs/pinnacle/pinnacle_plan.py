@@ -53,7 +53,7 @@
 import os
 import re
 
-import pydicom
+from pymedphys._imports import pydicom
 
 from .pinn_yaml import pinn_to_dict
 from .rtstruct import find_iso_center

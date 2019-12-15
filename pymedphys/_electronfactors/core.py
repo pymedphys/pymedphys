@@ -27,15 +27,8 @@
 """Model insert factors and parameterise inserts as equivalent ellipses."""
 
 
-import numpy as np
-from scipy.interpolate import SmoothBivariateSpline
-from scipy.optimize import basinhopping
-
-try:
-    import shapely.affinity
-    import shapely.geometry
-except ImportError:
-    pass
+from pymedphys._imports import numpy as np
+from pymedphys._imports import scipy, shapely
 
 
 def spline_model(
@@ -81,7 +74,7 @@ def spline_model(
         np.max([np.max(ratio_perim_area_data), np.max(ratio_perim_area_test)]),
     ]
 
-    spline = SmoothBivariateSpline(
+    spline = scipy.interpolate.SmoothBivariateSpline(
         width_data, ratio_perim_area_data, factor_data, kx=2, ky=1, bbox=bbox
     )
 
@@ -131,17 +124,17 @@ def _single_calculate_deformability(x_test, y_test, x_data, y_data, z_data):
         max(adjusted_y_data),
     ]
 
-    initial_model = SmoothBivariateSpline(
+    initial_model = scipy.interpolate.SmoothBivariateSpline(
         x_data, y_data, z_data, bbox=bbox, kx=2, ky=1
     ).ev(x_test, y_test)
 
     pos_adjusted_z_data = np.append(z_data, initial_model + deviation)
     neg_adjusted_z_data = np.append(z_data, initial_model - deviation)
 
-    pos_adjusted_model = SmoothBivariateSpline(
+    pos_adjusted_model = scipy.interpolate.SmoothBivariateSpline(
         adjusted_x_data, adjusted_y_data, pos_adjusted_z_data, kx=2, ky=1
     ).ev(x_test, y_test)
-    neg_adjusted_model = SmoothBivariateSpline(
+    neg_adjusted_model = scipy.interpolate.SmoothBivariateSpline(
         adjusted_x_data, adjusted_y_data, neg_adjusted_z_data, kx=2, ky=1
     ).ev(x_test, y_test)
 
@@ -354,7 +347,7 @@ def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
     T = furthest_distance / 3
     stepsize = furthest_distance / 2
     niter_success = 50
-    output = basinhopping(
+    output = scipy.optimize.basinhopping(
         minimising_function,
         x0,
         niter=niter,
@@ -425,7 +418,7 @@ def visual_alignment_of_equivalent_ellipse(x, y, width, length, callback):
     T = insert.area / 40000
     stepsize = 3
     niter_success = 2
-    output = basinhopping(
+    output = scipy.optimize.basinhopping(
         minimising_function,
         x0,
         niter=niter,

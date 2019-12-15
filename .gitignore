@@ -147,3 +147,5 @@ scratch-*
 *.pdf
 
 v*.tar.gz
+
+requirements.txt

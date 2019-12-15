@@ -57,13 +57,8 @@ import struct
 import sys
 import time
 
-import numpy as np
-
-import pydicom
-import pydicom.uid
-from pydicom.dataset import Dataset, FileDataset
-from pydicom.filebase import DicomFile
-from pydicom.sequence import Sequence
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from .constants import *
 
@@ -92,16 +87,18 @@ def convert_plan(plan, export_path):
     planInstanceUID = plan.plan_inst_uid
 
     # Populate required values for file meta information
-    file_meta = Dataset()
+    file_meta = pydicom.dataset.Dataset()
     file_meta.MediaStorageSOPClassUID = RTPlanSOPClassUID
     file_meta.TransferSyntaxUID = GTransferSyntaxUID
     file_meta.MediaStorageSOPInstanceUID = planInstanceUID
     file_meta.ImplementationClassUID = GImplementationClassUID
 
-    # Create the FileDataset instance (initially no data elements, but
+    # Create the pydicom.dataset.FileDataset instance (initially no data elements, but
     # file_meta supplied)
     RPfilename = "RP." + file_meta.MediaStorageSOPInstanceUID + ".dcm"
-    ds = FileDataset(RPfilename, {}, file_meta=file_meta, preamble=b"\x00" * 128)
+    ds = pydicom.dataset.FileDataset(
+        RPfilename, {}, file_meta=file_meta, preamble=b"\x00" * 128
+    )
 
     ds.SpecificCharacterSet = "ISO_IR 100"
     ds.InstanceCreationDate = time.strftime("%Y%m%d")
@@ -148,21 +145,21 @@ def convert_plan(plan, export_path):
     # ds.PlanIntent = "" #Not sure where to get this informationd, will likely
     # be 'CURATIVE' or 'PALIATIVE'
     ds.RTPlanGeometry = "PATIENT"
-    # ds.DoseReferenceSequence = Sequence() #figure out what goes in DoseReferenceSequence... Should be like a target volume and reference point I think...
-    # ds.ToleranceTableSequence = Sequence() #figure out where to get this
+    # ds.DoseReferenceSequence = pydicom.sequence.Sequence() #figure out what goes in DoseReferenceSequence... Should be like a target volume and reference point I think...
+    # ds.ToleranceTableSequence = pydicom.sequence.Sequence() #figure out where to get this
     # information
-    ds.FractionGroupSequence = Sequence()
-    ds.BeamSequence = Sequence()
-    ds.PatientSetupSequence = Sequence()  # need one per beam
-    ds.ReferencedStructureSetSequence = Sequence()
-    ReferencedStructureSet1 = Dataset()
+    ds.FractionGroupSequence = pydicom.sequence.Sequence()
+    ds.BeamSequence = pydicom.sequence.Sequence()
+    ds.PatientSetupSequence = pydicom.sequence.Sequence()  # need one per beam
+    ds.ReferencedStructureSetSequence = pydicom.sequence.Sequence()
+    ReferencedStructureSet1 = pydicom.dataset.Dataset()
     ds.ReferencedStructureSetSequence.append(ReferencedStructureSet1)
     ds.ReferencedStructureSetSequence[0].ReferencedSOPClassUID = RTStructSOPClassUID
     ds.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID = plan.struct_inst_uid
     ds.ApprovalStatus = "UNAPPROVED"  # find out where to get this information
 
-    ds.FractionGroupSequence.append(Dataset())
-    ds.FractionGroupSequence[0].ReferencedBeamSequence = Sequence()
+    ds.FractionGroupSequence.append(pydicom.dataset.Dataset())
+    ds.FractionGroupSequence[0].ReferencedBeamSequence = pydicom.sequence.Sequence()
 
     metersetweight = ["0"]
 
@@ -178,15 +175,17 @@ def convert_plan(plan, export_path):
 
         plan.logger.info("Exporting Plan for beam: " + beam["Name"])
 
-        ds.PatientSetupSequence.append(Dataset())
+        ds.PatientSetupSequence.append(pydicom.dataset.Dataset())
         ds.PatientSetupSequence[beam_count - 1].PatientPosition = patient_position
         ds.PatientSetupSequence[beam_count - 1].PatientSetupNumber = beam_count
 
-        ds.FractionGroupSequence[0].ReferencedBeamSequence.append(Dataset())
+        ds.FractionGroupSequence[0].ReferencedBeamSequence.append(
+            pydicom.dataset.Dataset()
+        )
         ds.FractionGroupSequence[0].ReferencedBeamSequence[
             beam_count - 1
         ].ReferencedBeamNumber = beam_count
-        ds.BeamSequence.append(Dataset())
+        ds.BeamSequence.append(pydicom.dataset.Dataset())
         # figure out what to put here
         ds.BeamSequence[beam_count - 1].Manufacturer = Manufacturer
         ds.BeamSequence[beam_count - 1].BeamNumber = beam_count
@@ -195,8 +194,12 @@ def convert_plan(plan, export_path):
         ds.BeamSequence[beam_count - 1].SourceAxisDistance = "1000"
         ds.BeamSequence[beam_count - 1].FinalCumulativeMetersetWeight = "1"
         ds.BeamSequence[beam_count - 1].PrimaryDosimeterUnit = "MU"
-        ds.BeamSequence[beam_count - 1].PrimaryFluenceModeSequence = Sequence()
-        ds.BeamSequence[beam_count - 1].PrimaryFluenceModeSequence.append(Dataset())
+        ds.BeamSequence[
+            beam_count - 1
+        ].PrimaryFluenceModeSequence = pydicom.sequence.Sequence()
+        ds.BeamSequence[beam_count - 1].PrimaryFluenceModeSequence.append(
+            pydicom.dataset.Dataset()
+        )
         ds.BeamSequence[beam_count - 1].PrimaryFluenceModeSequence[
             0
         ].FluenceMode = "STANDARD"
@@ -236,7 +239,9 @@ def convert_plan(plan, export_path):
             beam_count - 1
         ].BeamDoseSpecificationPoint = doserefpt
 
-        ds.BeamSequence[beam_count - 1].ControlPointSequence = Sequence()
+        ds.BeamSequence[
+            beam_count - 1
+        ].ControlPointSequence = pydicom.sequence.Sequence()
 
         cp_manager = {}
         if "CPManagerObject" in beam["CPManager"]:
@@ -438,9 +443,11 @@ def convert_plan(plan, export_path):
             ds.BeamSequence[beam_count - 1].SourceToSurfaceDistance = beam["SSD"] * 10
 
             if numwedges > 0:
-                ds.BeamSequence[beam_count - 1].WedgeSequence = Sequence()
+                ds.BeamSequence[
+                    beam_count - 1
+                ].WedgeSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].WedgeSequence.append(
-                    Dataset()
+                    pydicom.dataset.Dataset()
                 )  # I am assuming only one wedge per beam (which makes sense because you can't change it during beam)
                 ds.BeamSequence[beam_count - 1].WedgeSequence[
                     0
@@ -455,19 +462,21 @@ def convert_plan(plan, export_path):
 
             metercount = 1
             for j in range(0, numctrlpts * 2):
-                ds.BeamSequence[beam_count - 1].ControlPointSequence.append(Dataset())
+                ds.BeamSequence[beam_count - 1].ControlPointSequence.append(
+                    pydicom.dataset.Dataset()
+                )
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
                 ].ControlPointIndex = j
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
-                ].BeamLimitingDevicePositionSequence = Sequence()
+                ].BeamLimitingDevicePositionSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
-                ].ReferencedDoseReferenceSequence = Sequence()
+                ].ReferencedDoseReferenceSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
-                ].ReferencedDoseReferenceSequence.append(Dataset())
+                ].ReferencedDoseReferenceSequence.append(pydicom.dataset.Dataset())
                 if j % 2 == 1:  # odd number control point
                     currentmeterset = currentmeterset + float(
                         metersetweight[metercount]
@@ -515,10 +524,10 @@ def convert_plan(plan, export_path):
                     if numwedges > 0:
                         ds.BeamSequence[beam_count - 1].ControlPointSequence[
                             j
-                        ].WedgePositionSequence = Sequence()
+                        ].WedgePositionSequence = pydicom.sequence.Sequence()
                         ds.BeamSequence[beam_count - 1].ControlPointSequence[
                             j
-                        ].WedgePositionSequence.append(Dataset())
+                        ].WedgePositionSequence.append(pydicom.dataset.Dataset())
                         ds.BeamSequence[beam_count - 1].ControlPointSequence[
                             j
                         ].WedgePositionSequence[0].WedgePosition = "IN"
@@ -529,12 +538,12 @@ def convert_plan(plan, export_path):
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDevicePositionSequence.append(
-                        Dataset()
+                        pydicom.dataset.Dataset()
                     )  # This will be the x jaws
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDevicePositionSequence.append(
-                        Dataset()
+                        pydicom.dataset.Dataset()
                     )  # this will be the y jaws
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
@@ -556,7 +565,7 @@ def convert_plan(plan, export_path):
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDevicePositionSequence.append(
-                        Dataset()
+                        pydicom.dataset.Dataset()
                     )  # this will be the MLC
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
@@ -590,7 +599,7 @@ def convert_plan(plan, export_path):
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDevicePositionSequence.append(
-                        Dataset()
+                        pydicom.dataset.Dataset()
                     )  # This will be the mlcs for control points other than the first
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
@@ -612,15 +621,17 @@ def convert_plan(plan, export_path):
                 ].NumberOfCompensators = "0"  # Also temporary
                 ds.BeamSequence[beam_count - 1].NumberOfBoli = "0"
                 ds.BeamSequence[beam_count - 1].NumberOfBlocks = "0"  # Temp
-                ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence = Sequence()
+                ds.BeamSequence[
+                    beam_count - 1
+                ].BeamLimitingDeviceSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence.append(
-                    Dataset()
+                    pydicom.dataset.Dataset()
                 )
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence.append(
-                    Dataset()
+                    pydicom.dataset.Dataset()
                 )
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence.append(
-                    Dataset()
+                    pydicom.dataset.Dataset()
                 )
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence[
                     0
@@ -711,8 +722,12 @@ def convert_plan(plan, export_path):
             ds.BeamSequence[beam_count - 1].NumberOfControlPoints = numctrlpts + 1
             ds.BeamSequence[beam_count - 1].SourceToSurfaceDistance = beam["SSD"] * 10
             if numwedges > 0:
-                ds.BeamSequence[beam_count - 1].WedgeSequence = Sequence()
-                ds.BeamSequence[beam_count - 1].WedgeSequence.append(Dataset())
+                ds.BeamSequence[
+                    beam_count - 1
+                ].WedgeSequence = pydicom.sequence.Sequence()
+                ds.BeamSequence[beam_count - 1].WedgeSequence.append(
+                    pydicom.dataset.Dataset()
+                )
                 # I am assuming only one wedge per beam (which makes sense
                 # because you can't change it during beam)
                 ds.BeamSequence[beam_count - 1].WedgeSequence[0].WedgeNumber = 1
@@ -725,19 +740,21 @@ def convert_plan(plan, export_path):
                 ].WedgeOrientation = wedgeorientation
                 ds.BeamSequence[beam_count - 1].WedgeSequence[0].WedgeFactor = ""
             for j in range(0, numctrlpts + 1):
-                ds.BeamSequence[beam_count - 1].ControlPointSequence.append(Dataset())
+                ds.BeamSequence[beam_count - 1].ControlPointSequence.append(
+                    pydicom.dataset.Dataset()
+                )
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
                 ].ControlPointIndex = j
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
-                ].BeamLimitingDevicePositionSequence = Sequence()
+                ].BeamLimitingDevicePositionSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
-                ].ReferencedDoseReferenceSequence = Sequence()
+                ].ReferencedDoseReferenceSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
-                ].ReferencedDoseReferenceSequence.append(Dataset())
+                ].ReferencedDoseReferenceSequence.append(pydicom.dataset.Dataset())
                 ds.BeamSequence[beam_count - 1].ControlPointSequence[
                     j
                 ].CumulativeMetersetWeight = metersetweight[j]
@@ -774,10 +791,10 @@ def convert_plan(plan, export_path):
                         0
                     ].ReferencedDoseReferenceNumber = "1"
                     if numwedges > 0:
-                        WedgePosition1 = Dataset()
+                        WedgePosition1 = pydicom.dataset.Dataset()
                         ds.BeamSequence[beam_count - 1].ControlPointSequence[
                             j
-                        ].WedgePositionSequence = Sequence()
+                        ].WedgePositionSequence = pydicom.sequence.Sequence()
                         ds.BeamSequence[beam_count - 1].ControlPointSequence[
                             j
                         ].WedgePositionSequence.append(WedgePosition1)
@@ -790,12 +807,12 @@ def convert_plan(plan, export_path):
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDevicePositionSequence.append(
-                        Dataset()
+                        pydicom.dataset.Dataset()
                     )  # This will be the x jaws
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDevicePositionSequence.append(
-                        Dataset()
+                        pydicom.dataset.Dataset()
                     )  # this will be the y jaws
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
@@ -816,7 +833,7 @@ def convert_plan(plan, export_path):
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDevicePositionSequence.append(
-                        Dataset()
+                        pydicom.dataset.Dataset()
                     )  # this will be the MLC
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
@@ -859,7 +876,9 @@ def convert_plan(plan, export_path):
                     # This will be the mlcs for control points other than the first
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
-                    ].BeamLimitingDevicePositionSequence.append(Dataset())
+                    ].BeamLimitingDevicePositionSequence.append(
+                        pydicom.dataset.Dataset()
+                    )
                     ds.BeamSequence[beam_count - 1].ControlPointSequence[
                         j
                     ].BeamLimitingDevicePositionSequence[
@@ -881,15 +900,17 @@ def convert_plan(plan, export_path):
                         0
                     ].ReferencedDoseReferenceNumber = "1"
 
-                ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence = Sequence()
+                ds.BeamSequence[
+                    beam_count - 1
+                ].BeamLimitingDeviceSequence = pydicom.sequence.Sequence()
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence.append(
-                    Dataset()
+                    pydicom.dataset.Dataset()
                 )
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence.append(
-                    Dataset()
+                    pydicom.dataset.Dataset()
                 )
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence.append(
-                    Dataset()
+                    pydicom.dataset.Dataset()
                 )
                 ds.BeamSequence[beam_count - 1].BeamLimitingDeviceSequence[
                     0

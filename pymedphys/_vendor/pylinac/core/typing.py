@@ -18,7 +18,7 @@
 
 from typing import Union
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 NumberLike = Union[int, np.float, float]
 
