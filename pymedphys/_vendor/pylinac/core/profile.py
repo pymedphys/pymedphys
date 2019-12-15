@@ -1307,7 +1307,7 @@ def peak_detect(
     # If we were looking for minimums, convert the values back to the original sign
     if find_min_instead:
         peak_vals = (
-            -peak_vals
-        )  # type: ignore  # pylint: disable = invalid-unary-operand-type
+            -peak_vals  # type: ignore  # pylint: disable = invalid-unary-operand-type
+        )
 
     return peak_vals, peak_idxs
