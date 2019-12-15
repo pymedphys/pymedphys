@@ -29,6 +29,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+
+## [Unreleased]
+
+### Breaking Changes
+
+- Moved `pymedphys pinnacle` cli command to be nested under
+ `pymedphys labs pinnacle`
+
+### Dependency Changes
+
+- Made the greater majority of the pymedphys dependencies optional. Should a
+  dependency be required during usage an error is raised informing the user to
+  install the package. To install all pymedphys dependencies as before now run
+  `pip install pymedphys[library,labs]==0.14.0`.
+
+
 ## [0.13.2]
 
 ### Bug Fix

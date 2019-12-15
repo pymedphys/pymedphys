@@ -30,9 +30,8 @@ import struct
 import subprocess
 from datetime import datetime
 
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from .typing import NumberLike
 

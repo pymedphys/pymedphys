@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import Type
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._base.delivery import DeliveryBase, DeliveryGeneric
 

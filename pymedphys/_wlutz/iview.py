@@ -24,12 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-
-import imageio
+from pymedphys._imports import imageio
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt
 
 from .core import find_field_and_bb
 from .reporting import image_analysis_figure
