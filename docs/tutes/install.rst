@@ -45,7 +45,7 @@ Installing optional dependencies
 --------------------------------
 
 PyMedPhys has a range of optional dependencies. If while using PyMedPhys as
-installed above you get `ImportErrors` you may install all optional
+installed above you get ``ImportErrors`` you may install all optional
 dependencies by typing the following:
 
 .. code:: bash
@@ -62,9 +62,9 @@ dependencies:
     pip install pymedphys[labs]
 
 
-If you need either shapely (for electronfactors module) or pymssql (for the
-mosaiq module) you can either install those packages directly yourself using
-the following methods:
+If you need either ``shapely`` (for ``pymedphys.electronfactors`` module) or
+``pymssql`` (for the ``pymedphys.mosaiq`` module) you can either install those
+packages directly yourself using the following methods:
 
 - ``shapely`` -- <https://github.com/Toblerity/Shapely#installing-shapely-16>
 - ``pymssql`` -- ``pip install pymssql<3`` -- <https://pymssql.readthedocs.io/en/stable/intro.html#getting-started>
