@@ -10,10 +10,10 @@ jobs:
       - uses: actions/checkout@v1
         with:
           fetch-depth: 1
-      - name: Set up Python 3.7
+      - name: Set up Python 3.6
         uses: actions/setup-python@v1
         with:
-          python-version: 3.7
+          python-version: 3.6
       - name: Run Pre-Commit
         run: |
           pip install pre-commit
@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        python-version: [3.7]
+        python-version: [3.6]
         toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
 
     runs-on: ${{ matrix.os }}-latest
@@ -85,7 +85,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu']
-        python-version: [3.7]
+        python-version: [3.6]
         toxenv: ['pylint', 'doctest']
 
     runs-on: ${{ matrix.os }}-latest
