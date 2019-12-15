@@ -19,7 +19,7 @@
 """Module for processing "masked" arrays, i.e. binary images."""
 from typing import Tuple
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from .geometry import Point
 from .typing import NumberLike

@@ -27,7 +27,7 @@
 """Decodes trf file.
 """
 
-import pandas as pd
+from pymedphys._imports import pandas as pd
 
 from .header import Header, decode_header, determine_header_length
 from .table import decode_trf_table

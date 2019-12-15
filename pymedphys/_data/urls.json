@@ -3,5 +3,9 @@
   "wlutz_images.zip": "https://zenodo.org/record/3523513/files/example_iView_images.zip?download=1",
   "washed_out_bb.png": "https://zenodo.org/record/3532175/files/frame_02.png?download=1",
   "wlutz_arc_session.zip": "https://zenodo.org/record/3533529/files/20191105_arc_images.zip?download=1",
-  "app_build.zip": "https://zenodo.org/record/3559567/files/build.zip?download=1"
+  "app_build.zip": "https://zenodo.org/record/3559567/files/build.zip?download=1",
+  "lab_build.zip": "https://zenodo.org/record/3572705/files/build.zip?download=1",
+  "get-pip.py": "https://bootstrap.pypa.io/get-pip.py",
+  "python-windows-64-embedded.zip": "https://www.python.org/ftp/python/3.7.5/python-3.7.5-embed-amd64.zip",
+  "example_structures.dcm": "https://zenodo.org/record/3576026/files/example_structures.dcm?download=1"
 }

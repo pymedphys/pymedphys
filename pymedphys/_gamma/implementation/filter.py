@@ -32,7 +32,7 @@ planned for the future.
 
 import sys
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from ..utilities import (
     calculate_pass_rate,

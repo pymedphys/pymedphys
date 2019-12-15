@@ -58,13 +58,8 @@ import struct
 import sys
 import time
 
-import numpy as np
-
-import pydicom
-import pydicom.uid
-from pydicom.dataset import Dataset, FileDataset
-from pydicom.filebase import DicomFile
-from pydicom.sequence import Sequence
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from .constants import *
 
@@ -115,16 +110,18 @@ def convert_dose(plan, export_path):
     planInstanceUID = plan.plan_inst_uid
 
     # Populate required values for file meta information
-    file_meta = Dataset()
+    file_meta = pydicom.dataset.Dataset()
     file_meta.MediaStorageSOPClassUID = RTDoseSOPClassUID
     file_meta.TransferSyntaxUID = GTransferSyntaxUID
     file_meta.MediaStorageSOPInstanceUID = doseInstanceUID
     file_meta.ImplementationClassUID = GImplementationClassUID
 
-    # Create the FileDataset instance (initially no data elements, but
+    # Create the pydicom.dataset.FileDataset instance (initially no data elements, but
     # file_meta supplied)
     RDfilename = "RD." + file_meta.MediaStorageSOPInstanceUID + ".dcm"
-    ds = FileDataset(RDfilename, {}, file_meta=file_meta, preamble=b"\x00" * 128)
+    ds = pydicom.dataset.FileDataset(
+        RDfilename, {}, file_meta=file_meta, preamble=b"\x00" * 128
+    )
     ds.SpecificCharacterSet = "ISO_IR 100"
     ds.InstanceCreationDate = time.strftime("%Y%m%d")
     ds.InstanceCreationTime = time.strftime("%H%M%S")
@@ -243,20 +240,22 @@ def convert_dose(plan, export_path):
     ds.DoseSummationType = "PLAN"
 
     # TODO: need to look at what is required from this block
-    ds.ReferencedRTPlanSequence = Sequence()
-    ReferencedRTPlan1 = Dataset()
+    ds.ReferencedRTPlanSequence = pydicom.sequence.Sequence()
+    ReferencedRTPlan1 = pydicom.dataset.Dataset()
     ds.ReferencedRTPlanSequence.append(ReferencedRTPlan1)
     ds.ReferencedRTPlanSequence[0].ReferencedSOPClassUID = RTPlanSOPClassUID
     ds.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID = planInstanceUID
-    ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence = Sequence()
-    ReferencedFractionGroup1 = Dataset()
+    ds.ReferencedRTPlanSequence[
+        0
+    ].ReferencedFractionGroupSequence = pydicom.sequence.Sequence()
+    ReferencedFractionGroup1 = pydicom.dataset.Dataset()
     ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence.append(
         ReferencedFractionGroup1
     )
     ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence[
         0
-    ].ReferencedBeamSequence = Sequence()
-    ReferencedBeam1 = Dataset()
+    ].ReferencedBeamSequence = pydicom.sequence.Sequence()
+    ReferencedBeam1 = pydicom.dataset.Dataset()
     ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence[
         0
     ].ReferencedBeamSequence.append(ReferencedBeam1)

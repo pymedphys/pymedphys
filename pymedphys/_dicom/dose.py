@@ -22,15 +22,12 @@
 
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+
 """A DICOM RT Dose toolbox"""
 
-import numpy as np
-from scipy.interpolate import RegularGridInterpolator
-
-import matplotlib.pyplot as plt
-from matplotlib import path
-
-import pydicom
+from pymedphys._imports import matplotlib
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt, pydicom, scipy
 
 from .coords import xyz_axes_from_dataset
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
@@ -59,7 +56,7 @@ def dose_from_dataset(ds, set_transfer_syntax_uid=True):
     return dose
 
 
-def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
+def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
     """Interpolates across a DICOM dose dataset.
 
     Parameters
@@ -76,7 +73,9 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
     interp_x = np.array(interp_coords[2], copy=False)[None, None, :]
 
     coords, dicom_dose_dataset = zyx_and_dose_from_dataset(dicom_dose_dataset)
-    interpolation = RegularGridInterpolator(coords, dicom_dose_dataset)
+    interpolation = scipy.interpolate.RegularGridInterpolator(
+        coords, dicom_dose_dataset
+    )
 
     try:
         result = interpolation((interp_z, interp_y, interp_x))
@@ -87,7 +86,7 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
     return result
 
 
-def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Dataset):
+def depth_dose(depths, dose_dataset, plan_dataset):
     """Interpolates dose for defined depths within a DICOM dose dataset.
 
     Since the DICOM dose dataset is in CT coordinates the corresponding
@@ -130,13 +129,7 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Data
     return extracted_dose
 
 
-def profile(
-    displacements,
-    depth,
-    direction,
-    dose_dataset: pydicom.Dataset,
-    plan_dataset: pydicom.Dataset,
-):
+def profile(displacements, depth, direction, dose_dataset, plan_dataset):
     """Interpolates dose for cardinal angle horizontal profiles within a
     DICOM dose dataset.
 
@@ -224,7 +217,7 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
 
             assert z_structure[structure_index][0] == z_dose[dose_index]
 
-            structure_polygon = path.Path(
+            structure_polygon = matplotlib.path.Path(
                 [
                     (x_structure[structure_index][i], y_structure[structure_index][i])
                     for i in range(len(x_structure[structure_index]))

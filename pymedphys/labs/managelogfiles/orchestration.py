@@ -35,7 +35,7 @@ is run.
 import json
 import os
 
-import pandas as pd
+from pymedphys._imports import pandas as pd
 
 from .diagnostics_zips import (
     extract_diagnostic_zips_and_archive,

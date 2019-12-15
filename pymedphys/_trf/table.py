@@ -26,8 +26,8 @@
 
 from typing import List
 
-import numpy as np
-import pandas as pd
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
 
 from .constants import CONFIG
 from .header import determine_header_length
@@ -132,7 +132,7 @@ def decode_data_item(row, group, byteorder) -> int:
     return int.from_bytes(row[group], byteorder=byteorder)
 
 
-def decode_column(raw_table_rows: List[str], column_number: int) -> np.ndarray:
+def decode_column(raw_table_rows: List[str], column_number: int):
     """Decode all of the items in a given column."""
     grouping = 2
     i = column_number * grouping
@@ -146,7 +146,7 @@ def decode_column(raw_table_rows: List[str], column_number: int) -> np.ndarray:
     return column
 
 
-def decode_table_data(raw_table_rows: List[str], line_grouping) -> np.ndarray:
+def decode_table_data(raw_table_rows: List[str], line_grouping):
     """Decode the table into integer values."""
 
     result = []
@@ -164,7 +164,7 @@ def create_dataframe(data, column_names, time_increment):
     return dataframe
 
 
-def convert_numbers_to_string(name, lookup, column: pd.core.series.Series):
+def convert_numbers_to_string(name, lookup, column):
     dtype = np.array([item for _, item in lookup.items()]).dtype
     result = np.empty_like(column).astype(dtype)
     result[:] = ""
@@ -224,14 +224,14 @@ def convert_applying_negative(dataframe):
         dataframe[key] = apply_negative(dataframe[key])
 
 
-def negative_and_divide_by_10(column: pd.core.series.Series):
+def negative_and_divide_by_10(column):
     result = apply_negative(column)
     result = result / 10
 
     return result
 
 
-def convert_negative_and_divide_by_10(dataframe: pd.core.frame.DataFrame):
+def convert_negative_and_divide_by_10(dataframe):
     keys = [
         "Step Dose/Actual Value (Mu)",
         "Step Gantry/Scaled Actual (deg)",
@@ -244,7 +244,7 @@ def convert_negative_and_divide_by_10(dataframe: pd.core.frame.DataFrame):
         dataframe[key] = negative_and_divide_by_10(dataframe[key])
 
 
-def convert_remaining(dataframe: pd.core.frame.DataFrame):
+def convert_remaining(dataframe):
     column_names = dataframe.columns
 
     for key in column_names[14:30]:
@@ -258,9 +258,7 @@ def convert_remaining(dataframe: pd.core.frame.DataFrame):
         dataframe[key] = negative_and_divide_by_10(dataframe[key])
 
 
-def convert_data_table(
-    dataframe: pd.core.frame.DataFrame, linac_state_codes, wedge_codes
-):
+def convert_data_table(dataframe, linac_state_codes, wedge_codes):
     convert_linac_state_codes(dataframe, linac_state_codes)
     convert_wedge_codes(dataframe, wedge_codes)
 

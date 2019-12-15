@@ -54,7 +54,7 @@ import io
 import re
 import sys
 
-import yaml
+from pymedphys._imports import yaml
 
 
 def pinn_to_dict(filename):

@@ -7,6 +7,14 @@ python-versions = "*"
 version = "0.7.12"
 
 [[package]]
+category = "main"
+description = "apipkg: namespace control and lazy-import mechanism"
+name = "apipkg"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "1.5"
+
+[[package]]
 category = "dev"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 name = "appdirs"
@@ -154,7 +162,7 @@ category = "main"
 description = "Foreign Function Interface for Python calling C code."
 marker = "sys_platform == \"linux\""
 name = "cffi"
-optional = false
+optional = true
 python-versions = "*"
 version = "1.13.2"
 
@@ -202,7 +210,7 @@ category = "main"
 description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 marker = "sys_platform == \"linux\""
 name = "cryptography"
-optional = false
+optional = true
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
 version = "2.8"
 
@@ -221,7 +229,7 @@ test = ["pytest (>=3.6.0,<3.9.0 || >3.9.0,<3.9.1 || >3.9.1,<3.9.2 || >3.9.2)", "
 category = "main"
 description = "Composable style cycles"
 name = "cycler"
-optional = false
+optional = true
 python-versions = "*"
 version = "0.10.0"
 
@@ -232,7 +240,7 @@ six = "*"
 category = "main"
 description = "Read DBF Files with Python"
 name = "dbfread"
-optional = false
+optional = true
 python-versions = "*"
 version = "2.0.7"
 
@@ -336,7 +344,7 @@ version = "2.8"
 category = "main"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
 name = "imageio"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.6.1"
 
@@ -466,7 +474,7 @@ category = "main"
 description = "Low-level, pure Python DBus protocol wrapper."
 marker = "sys_platform == \"linux\""
 name = "jeepney"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "0.4.1"
 
@@ -488,7 +496,7 @@ MarkupSafe = ">=0.23"
 i18n = ["Babel (>=0.8)"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "A Python implementation of the JSON5 data format."
 name = "json5"
 optional = false
@@ -549,7 +557,7 @@ pywin32 = ">=1.0"
 traitlets = "*"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "JupyterLab Server"
 name = "jupyterlab-server"
 optional = false
@@ -569,7 +577,7 @@ test = ["pytest", "requests"]
 category = "main"
 description = "Store and access your passwords safely."
 name = "keyring"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "20.0.0"
 
@@ -589,7 +597,7 @@ testing = ["pytest (>=3.5,<3.7.3 || >3.7.3)", "pytest-checkdocs (>=1.2.3)", "pyt
 category = "main"
 description = "A fast implementation of the Cassowary constraint solver"
 name = "kiwisolver"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.1.0"
 
@@ -640,7 +648,7 @@ version = "1.1.1"
 category = "main"
 description = "Python plotting package"
 name = "matplotlib"
-optional = false
+optional = true
 python-versions = ">=3.6"
 version = "3.1.2"
 
@@ -764,7 +772,7 @@ traitlets = "*"
 category = "main"
 description = "Python package for creating and manipulating graphs and networks"
 name = "networkx"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "2.4"
 
@@ -793,7 +801,7 @@ python-versions = "*"
 version = "1.3.3"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "A web-based notebook environment for interactive computing"
 name = "notebook"
 optional = false
@@ -822,7 +830,7 @@ test = ["nose", "coverage", "requests", "nose-warnings-filters", "nbval", "nose-
 category = "main"
 description = "NumPy is the fundamental package for array computing with Python."
 name = "numpy"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "1.17.4"
 
@@ -842,7 +850,7 @@ six = "*"
 category = "main"
 description = "Powerful data structures for data analysis, time series, and statistics"
 name = "pandas"
-optional = false
+optional = true
 python-versions = ">=3.5.3"
 version = "0.25.3"
 
@@ -921,7 +929,7 @@ version = "0.7.5"
 category = "main"
 description = "Python Imaging Library (Fork)"
 name = "pillow"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 version = "6.2.1"
 
@@ -983,7 +991,7 @@ python = "<3.8"
 version = "*"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Python client for the Prometheus monitoring system."
 name = "prometheus-client"
 optional = false
@@ -1026,7 +1034,7 @@ category = "main"
 description = "C parser in Python"
 marker = "sys_platform == \"linux\""
 name = "pycparser"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "2.19"
 
@@ -1034,7 +1042,7 @@ version = "2.19"
 category = "main"
 description = "Pure python package for DICOM medical file reading and writing"
 name = "pydicom"
-optional = false
+optional = true
 python-versions = "*"
 version = "1.3.0"
 
@@ -1064,7 +1072,7 @@ mccabe = ">=0.6,<0.7"
 category = "main"
 description = "DB-API interface to Microsoft SQL Server for Python. (new Cython-based version)"
 name = "pymssql"
-optional = false
+optional = true
 python-versions = "*"
 version = "2.1.4"
 
@@ -1072,7 +1080,7 @@ version = "2.1.4"
 category = "main"
 description = "A Python implementation of the DICOM networking protocol"
 name = "pynetdicom"
-optional = false
+optional = true
 python-versions = "*"
 version = "1.4.1"
 
@@ -1172,7 +1180,7 @@ version = "2019.3"
 category = "main"
 description = "PyWavelets, wavelet transform module"
 name = "pywavelets"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "1.1.1"
 
@@ -1193,12 +1201,12 @@ category = "main"
 description = ""
 marker = "sys_platform == \"win32\""
 name = "pywin32-ctypes"
-optional = false
+optional = true
 python-versions = "*"
 version = "0.2.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Python bindings for the winpty library"
 marker = "os_name == \"nt\""
 name = "pywinpty"
@@ -1271,7 +1279,7 @@ version = "0.14.0"
 category = "main"
 description = "Image processing routines for SciPy"
 name = "scikit-image"
-optional = false
+optional = true
 python-versions = ">=3.6"
 version = "0.16.2"
 
@@ -1292,7 +1300,7 @@ test = ["pytest (!=3.7.3)", "pytest-cov", "pytest-localserver", "flake8", "codec
 category = "main"
 description = "SciPy: Scientific Library for Python"
 name = "scipy"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "1.3.3"
 
@@ -1304,7 +1312,7 @@ category = "main"
 description = "Python bindings to FreeDesktop.org Secret Service API"
 marker = "sys_platform == \"linux\""
 name = "secretstorage"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "3.1.1"
 
@@ -1313,7 +1321,7 @@ cryptography = "*"
 jeepney = "*"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Send file to trash natively under Mac OS X, Windows and Linux."
 name = "send2trash"
 optional = false
@@ -1463,7 +1471,7 @@ python-versions = "*"
 version = "1.1.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Terminals served to xterm.js using Tornado websockets"
 name = "terminado"
 optional = false
@@ -1532,7 +1540,7 @@ testing = ["freezegun (>=0.3.11,<1)", "pathlib2 (>=2.3.3,<3)", "pytest (>=4.0.0,
 category = "main"
 description = "Fast, Extensible Progress Meter"
 name = "tqdm"
-optional = false
+optional = true
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 version = "4.40.2"
 
@@ -1650,19 +1658,26 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pathlib2", "contextlib2", "unittest2"]
 
 [extras]
+difficult = ["pymssql", "shapely"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "m2r"]
-extras = ["shapely"]
+gui = ["jupyterlab_server"]
+labs = ["tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"]
+library = ["keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy", "pandas", "dbfread", "pydicom", "pynetdicom"]
 pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "35f175f7bbe73d7813c45ad181374419b8e62cba4aac6da83e0857dbcceedfbd"
+content-hash = "11402da2d562c96d0f5291adfec719b540c95e662b37bc35eb586e6e19e89a30"
 python-versions = "^3.7"
 
 [metadata.files]
 alabaster = [
     {file = "alabaster-0.7.12-py2.py3-none-any.whl", hash = "sha256:446438bdcca0e05bd45ea2de1668c1d9b032e1a9154c2c259092d77031ddd359"},
     {file = "alabaster-0.7.12.tar.gz", hash = "sha256:a661d72d58e6ea8a57f7a86e37d86716863ee5e92788398526d58b26a4e4dc02"},
+]
+apipkg = [
+    {file = "apipkg-1.5-py2.py3-none-any.whl", hash = "sha256:58587dd4dc3daefad0487f6d9ae32b4542b185e1c36db6993290e7c41ca2b47c"},
+    {file = "apipkg-1.5.tar.gz", hash = "sha256:37228cda29411948b422fae072f57e31d3396d2ee1c9783775980ee9c9990af6"},
 ]
 appdirs = [
     {file = "appdirs-1.4.3-py2.py3-none-any.whl", hash = "sha256:d8b24664561d0d34ddfaec54636d502d7cea6e29c3eaf68f3df6180863e2166e"},
