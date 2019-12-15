@@ -45,8 +45,8 @@ Installing optional dependencies
 --------------------------------
 
 PyMedPhys has a range of optional dependencies. If while using PyMedPhys as
-installed above you get ``ImportErrors`` you may install all optional
-dependencies by typing the following:
+installed above you get ``ImportErrors`` you may install the primary optional
+dependencies for the main library by typing the following:
 
 .. code:: bash
 
