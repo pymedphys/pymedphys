@@ -7,9 +7,9 @@ jobs:
 
     steps:
     - task: UsePythonVersion@0
-      displayName: Set up Python 3.6
+      displayName: Set up Python 3.7
       inputs:
-        versionSpec: 3.6
+        versionSpec: 3.7
 
     - script: |
         pip install pre-commit
