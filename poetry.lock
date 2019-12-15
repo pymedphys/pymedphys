@@ -11,8 +11,8 @@ category = "main"
 description = "apipkg: namespace control and lazy-import mechanism"
 name = "apipkg"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "1.5"
+python-versions = "*"
+version = "1.2"
 
 [[package]]
 category = "dev"
@@ -1689,7 +1689,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "11a37ed27f8b3b97a7015890486629c7dae4182b042ceeb413f02c120f456dbf"
+content-hash = "57ff2975ae047aacaf266dcbeed42394827714963d4b1383e2618367e7ec58bb"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -1698,8 +1698,7 @@ alabaster = [
     {file = "alabaster-0.7.12.tar.gz", hash = "sha256:a661d72d58e6ea8a57f7a86e37d86716863ee5e92788398526d58b26a4e4dc02"},
 ]
 apipkg = [
-    {file = "apipkg-1.5-py2.py3-none-any.whl", hash = "sha256:58587dd4dc3daefad0487f6d9ae32b4542b185e1c36db6993290e7c41ca2b47c"},
-    {file = "apipkg-1.5.tar.gz", hash = "sha256:37228cda29411948b422fae072f57e31d3396d2ee1c9783775980ee9c9990af6"},
+    {file = "apipkg-1.2.zip", hash = "sha256:ea86c4660e83015b6a3faad106cdf5a8d640688a93b84b93e8b64c60815789d4"},
 ]
 appdirs = [
     {file = "appdirs-1.4.3-py2.py3-none-any.whl", hash = "sha256:d8b24664561d0d34ddfaec54636d502d7cea6e29c3eaf68f3df6180863e2166e"},
