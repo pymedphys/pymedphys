@@ -212,7 +212,7 @@ class Circle:
             Whether to fill the circle with color or leave hollow.
         """
         axes.add_patch(
-            mpl_Circle(
+            matplotlib.patches.Circle(
                 (self.center.x, self.center.y),
                 edgecolor=edgecolor,
                 radius=self.radius,
