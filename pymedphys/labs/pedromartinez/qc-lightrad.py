@@ -646,17 +646,18 @@ def read_dicom(filenm, ioptn):
         pdf.savefig(fig2)
 
 
-while True:  # example of infinite loops using try and except to catch only numbers
-    line = input("Are these files from a clinac [yes(y)/no(n)]> ")
-    try:
-        ##        if line == 'done':
-        ##            break
-        ioption = str(line.lower())
-        if ioption.startswith(("y", "yeah", "yes", "n", "no", "nope")):
-            break
+if __name__ == "__main__":
+    while True:  # example of infinite loops using try and except to catch only numbers
+        line = input("Are these files from a clinac [yes(y)/no(n)]> ")
+        try:
+            ##        if line == 'done':
+            ##            break
+            ioption = str(line.lower())
+            if ioption.startswith(("y", "yeah", "yes", "n", "no", "nope")):
+                break
 
-    except:  # pylint: disable = bare-except
-        print("Please enter a valid option:")
+        except:  # pylint: disable = bare-except
+            print("Please enter a valid option:")
 
 
 parser = argparse.ArgumentParser()
