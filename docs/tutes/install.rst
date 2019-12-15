@@ -62,9 +62,9 @@ dependencies:
     pip install pymedphys[labs]
 
 
-If you need either ``shapely`` (for ``pymedphys.electronfactors`` module) or
-``pymssql`` (for the ``pymedphys.mosaiq`` module) you can either install those
-packages directly yourself using the following methods:
+If you need either ``shapely`` (for the ``pymedphys.electronfactors`` module)
+or ``pymssql`` (for the ``pymedphys.mosaiq`` module) you can either install
+those packages directly yourself using the following methods:
 
 - ``shapely`` -- <https://github.com/Toblerity/Shapely#installing-shapely-16>
 - ``pymssql`` -- ``pip install pymssql<3`` -- <https://pymssql.readthedocs.io/en/stable/intro.html#getting-started>
