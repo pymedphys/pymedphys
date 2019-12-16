@@ -87,10 +87,11 @@ def process_directory(directy):
                 )
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--directory", help="path to folder")
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--directory", help="path to folder")
+    args = parser.parse_args()
 
-if args.directory:
-    dirname = args.directory
-    process_directory(dirname)
+    if args.directory:
+        dirname = args.directory
+        process_directory(dirname)
