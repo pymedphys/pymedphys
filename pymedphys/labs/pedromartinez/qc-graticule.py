@@ -457,10 +457,11 @@ def read_dicom(directory):
     sys.exit(0)
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--directory", help="path to folder")
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--directory", help="path to folder")
+    args = parser.parse_args()
 
-if args.directory:
-    dirname = args.directory
-    read_dicom(dirname)
+    if args.directory:
+        dirname = args.directory
+        read_dicom(dirname)
