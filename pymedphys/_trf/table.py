@@ -23,8 +23,6 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-
-import warnings
 from typing import List
 
 from pymedphys._imports import numpy as np
@@ -39,10 +37,10 @@ GROUPING_OPTIONS = {
     "unity_experimental": {"line_grouping": 700, "linac_state_codes_column": 6},
 }
 
-LINE_GROUPING_OPTIONS = {
-    item["line_grouping"]: item["linac_state_codes_column"]
-    for _, item in GROUPING_OPTIONS.items()
-}
+# LINE_GROUPING_OPTIONS = {
+#     item["line_grouping"]: item["linac_state_codes_column"]
+#     for _, item in GROUPING_OPTIONS.items()
+# }
 
 
 def decode_rows(
@@ -60,15 +58,23 @@ def decode_rows(
                 "`input_line_grouping` and `input_linac_state_codes_column`"
             )
 
-        line_grouping_options = {input_line_grouping: input_linac_state_codes_column}
+        grouping_options = {
+            "custom": {
+                "line_grouping": input_line_grouping,
+                "linac_state_codes_column": input_linac_state_codes_column,
+            }
+        }
     else:
-        line_grouping_options = LINE_GROUPING_OPTIONS
+        grouping_options = GROUPING_OPTIONS
 
-    possible_groupings = []
+    possible_groupings = {}
 
-    for grouping_option, linac_state_codes_column in line_grouping_options.items():
+    for key, item in grouping_options.items():
+        grouping_option = item["line_grouping"]
+        linac_state_codes_column = item["linac_state_codes_column"]
+
         if table_byte_length / grouping_option == table_byte_length // grouping_option:
-            possible_groupings.append((grouping_option, linac_state_codes_column))
+            possible_groupings[key] = (grouping_option, linac_state_codes_column)
 
     if not possible_groupings:
         raise ValueError("Unexpected number of bytes within file.")
@@ -81,8 +87,8 @@ def decode_rows(
         reference_state_codes = set(reference_state_code_keys)
 
     decoded_results = []
-    possible_linac_state_codes_columns = []
-    for line_grouping, linac_state_codes_column in possible_groupings:
+    possible_column_adjustment_key = []
+    for key, (line_grouping, linac_state_codes_column) in possible_groupings.items():
         rows = [
             trf_table_contents[i : i + line_grouping]
             for i in range(0, len(trf_table_contents), line_grouping)
@@ -95,7 +101,7 @@ def decode_rows(
 
         if set(tentative_state_codes).issubset(reference_state_codes):
             decoded_results.append(decode_table_data(rows, line_grouping))
-            possible_linac_state_codes_columns.append(linac_state_codes_column)
+            possible_column_adjustment_key.append(key)
 
     if not decoded_results:
         raise ValueError("Decoded table didn't pass shape test")
@@ -104,9 +110,9 @@ def decode_rows(
         raise ValueError("Can't determine version of trf file from table shape")
 
     decoded_rows = decoded_results[0]
-    final_linac_state_codes_column = possible_linac_state_codes_columns[0]
+    column_adjustment_key = possible_column_adjustment_key[0]
 
-    return decoded_rows, final_linac_state_codes_column
+    return decoded_rows, column_adjustment_key
 
 
 def decode_rows_from_file(filepath):
@@ -121,24 +127,39 @@ def decode_rows_from_file(filepath):
     return decoded_rows
 
 
-def decode_trf_table(trf_table_contents):
-    decoded_rows, linac_state_codes_column = decode_rows(trf_table_contents)
-    columns_start_at = linac_state_codes_column - 2
-
+def get_column_names(column_adjustment_key):
     column_names = CONFIG["column_names"]
-    filler_columns = [f"unknown{item}" for item in range(1, columns_start_at + 1)]
-    all_column_names = filler_columns + column_names
+
+    if column_adjustment_key == "integrityv3":
+        return column_names
+
+    filler_columns = [f"unknown{item}" for item in range(1, 5)]
+
+    column_names = filler_columns + column_names
+
+    if column_adjustment_key == "integrityv4":
+        return column_names
+
+    if column_adjustment_key != "unity_experimental":
+        raise ValueError("Unexpected `column_adjustment_key`")
+
+    column_names = [item for item in column_names if "Dlg" not in item]
+
+    return column_names
+
+
+def decode_trf_table(trf_table_contents):
+    decoded_rows, column_adjustment_key = decode_rows(trf_table_contents)
+
+    column_names = get_column_names(column_adjustment_key)
 
     number_of_columns = len(decoded_rows[0, :])
 
-    if len(all_column_names) != number_of_columns:
-        warnings.warn(
-            "Columns names are being truncated, this is very likely a problem"
-        )
-        all_column_names = all_column_names[0:number_of_columns]
+    if len(column_names) != number_of_columns:
+        raise ValueError("Columns names don't agree with number of columns")
 
     table_dataframe = create_dataframe(
-        decoded_rows, all_column_names, CONFIG["time_increment"]
+        decoded_rows, column_names, CONFIG["time_increment"]
     )
 
     convert_data_table(
