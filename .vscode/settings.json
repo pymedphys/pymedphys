@@ -116,6 +116,7 @@
     "isinf",
     "isnan",
     "isort",
+    "issubset",
     "itertools",
     "iview",
     "jarmc",
