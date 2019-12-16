@@ -659,12 +659,10 @@ if __name__ == "__main__":
         except:  # pylint: disable = bare-except
             print("Please enter a valid option:")
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", type=str, help="Input the Light/Rad file")
+    args = parser.parse_args()
 
-parser = argparse.ArgumentParser()
-parser.add_argument("file", type=str, help="Input the Light/Rad file")
-args = parser.parse_args()
+    filename = args.file
 
-filename = args.file
-
-
-read_dicom(filename, ioption)
+    read_dicom(filename, ioption)
