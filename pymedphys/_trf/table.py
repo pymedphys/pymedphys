@@ -43,16 +43,30 @@ LINE_GROUPING_OPTIONS = {
 }
 
 
-def decode_rows(trf_table_contents):
+def decode_rows(
+    trf_table_contents, input_line_grouping=None, input_linac_state_codes_column=None
+):
     table_byte_length = len(trf_table_contents)
+
+    if input_line_grouping is not None or input_linac_state_codes_column is not None:
+        if input_line_grouping is None or input_linac_state_codes_column is None:
+            raise ValueError(
+                "If customising line grouping, need to provide both "
+                "`input_line_grouping` and `input_linac_state_codes_column`"
+            )
+
+        line_grouping_options = {input_line_grouping: input_linac_state_codes_column}
+    else:
+        line_grouping_options = LINE_GROUPING_OPTIONS
+
     possible_groupings = []
 
-    for grouping_option, linac_state_codes_column in LINE_GROUPING_OPTIONS.items():
+    for grouping_option, linac_state_codes_column in line_grouping_options.items():
         if table_byte_length / grouping_option == table_byte_length // grouping_option:
             possible_groupings.append((grouping_option, linac_state_codes_column))
 
     if not possible_groupings:
-        raise Exception("Unexpected number of bytes within file.")
+        raise ValueError("Unexpected number of bytes within file.")
 
     reference_state_codes = set(
         np.array(list(CONFIG["linac_state_codes"].keys())).astype(int)
@@ -74,10 +88,10 @@ def decode_rows(trf_table_contents):
             decoded_results.append(decode_table_data(rows, line_grouping))
 
     if not decoded_results:
-        raise Exception("Decoded table didn't pass shape test")
+        raise ValueError("Decoded table didn't pass shape test")
 
     if len(decoded_results) > 1:
-        raise Exception("Can't determine version of trf file from table shape")
+        raise ValueError("Can't determine version of trf file from table shape")
 
     decoded_rows = decoded_results[0]
 
