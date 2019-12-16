@@ -747,22 +747,23 @@ def read_dicom3D(direc, i_option):
         )
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--directory", help="path to folder")
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--directory", help="path to folder")
+    args = parser.parse_args()
 
-while True:  # example of infinite loops using try and except to catch only numbers
-    line = input("Are these files from a clinac [yes(y)/no(n)]> ")
-    try:
-        ##        if line == 'done':
-        ##            break
-        ioption = str(line.lower())
-        if ioption.startswith(("y", "yeah", "yes", "n", "no", "nope")):
-            break
+    while True:  # example of infinite loops using try and except to catch only numbers
+        line = input("Are these files from a clinac [yes(y)/no(n)]> ")
+        try:
+            ##        if line == 'done':
+            ##            break
+            ioption = str(line.lower())
+            if ioption.startswith(("y", "yeah", "yes", "n", "no", "nope")):
+                break
 
-    except:  # pylint: disable = bare-except
-        print("Please enter a valid option:")
+        except:  # pylint: disable = bare-except
+            print("Please enter a valid option:")
 
-if args.directory:
-    dirname = args.directory
-    read_dicom3D(dirname, ioption)
+    if args.directory:
+        dirname = args.directory
+        read_dicom3D(dirname, ioption)
