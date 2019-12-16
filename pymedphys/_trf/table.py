@@ -24,6 +24,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
+import warnings
 from typing import List
 
 from pymedphys._imports import numpy as np
@@ -35,6 +36,7 @@ from .header import determine_header_length
 GROUPING_OPTIONS = {
     "integrityv3": {"line_grouping": 700, "linac_state_codes_column": 2},
     "integrityv4": {"line_grouping": 708, "linac_state_codes_column": 6},
+    "unity_experimental": {"line_grouping": 700, "linac_state_codes_column": 6},
 }
 
 LINE_GROUPING_OPTIONS = {
@@ -44,7 +46,10 @@ LINE_GROUPING_OPTIONS = {
 
 
 def decode_rows(
-    trf_table_contents, input_line_grouping=None, input_linac_state_codes_column=None
+    trf_table_contents,
+    input_line_grouping=None,
+    input_linac_state_codes_column=None,
+    reference_state_code_keys=None,
 ):
     table_byte_length = len(trf_table_contents)
 
@@ -68,11 +73,15 @@ def decode_rows(
     if not possible_groupings:
         raise ValueError("Unexpected number of bytes within file.")
 
-    reference_state_codes = set(
-        np.array(list(CONFIG["linac_state_codes"].keys())).astype(int)
-    )
+    if reference_state_code_keys is None:
+        reference_state_codes = set(
+            np.array(list(CONFIG["linac_state_codes"].keys())).astype(int)
+        )
+    else:
+        reference_state_codes = set(reference_state_code_keys)
 
     decoded_results = []
+    possible_linac_state_codes_columns = []
     for line_grouping, linac_state_codes_column in possible_groupings:
         rows = [
             trf_table_contents[i : i + line_grouping]
@@ -86,6 +95,7 @@ def decode_rows(
 
         if set(tentative_state_codes).issubset(reference_state_codes):
             decoded_results.append(decode_table_data(rows, line_grouping))
+            possible_linac_state_codes_columns.append(linac_state_codes_column)
 
     if not decoded_results:
         raise ValueError("Decoded table didn't pass shape test")
@@ -94,8 +104,9 @@ def decode_rows(
         raise ValueError("Can't determine version of trf file from table shape")
 
     decoded_rows = decoded_results[0]
+    final_linac_state_codes_column = possible_linac_state_codes_columns[0]
 
-    return decoded_rows
+    return decoded_rows, final_linac_state_codes_column
 
 
 def decode_rows_from_file(filepath):
@@ -105,33 +116,29 @@ def decode_rows_from_file(filepath):
     header_length = determine_header_length(trf_contents)
     trf_table_contents = trf_contents[header_length::]
 
-    decoded_rows = decode_rows(trf_table_contents)
+    decoded_rows, _ = decode_rows(trf_table_contents)
 
     return decoded_rows
 
 
-def get_column_names(number_of_columns):
-    column_names = CONFIG["column_names"]
-
-    if number_of_columns == 354:
-        column_names = CONFIG["integrity_4_column_insert"] + column_names
-    elif number_of_columns == 350:
-        pass
-    else:
-        raise ValueError("Expected either 354 or 350 columns")
-
-    return column_names
-
-
 def decode_trf_table(trf_table_contents):
-    decoded_rows = decode_rows(trf_table_contents)
+    decoded_rows, linac_state_codes_column = decode_rows(trf_table_contents)
+    columns_start_at = linac_state_codes_column - 2
+
+    column_names = CONFIG["column_names"]
+    filler_columns = [f"unknown{item}" for item in range(1, columns_start_at + 1)]
+    all_column_names = filler_columns + column_names
 
     number_of_columns = len(decoded_rows[0, :])
 
-    column_names = get_column_names(number_of_columns)
+    if len(all_column_names) != number_of_columns:
+        warnings.warn(
+            "Columns names are being truncated, this is very likely a problem"
+        )
+        all_column_names = all_column_names[0:number_of_columns]
 
     table_dataframe = create_dataframe(
-        decoded_rows, column_names, CONFIG["time_increment"]
+        decoded_rows, all_column_names, CONFIG["time_increment"]
     )
 
     convert_data_table(
