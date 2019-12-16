@@ -27,9 +27,8 @@
 import copy
 import pathlib
 
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 HERE = pathlib.Path(__file__).parent
 TEMPLATE_DIR = HERE.joinpath("templates")
@@ -58,7 +57,7 @@ def from_bipolar(angles: np.ndarray):
     return angles
 
 
-def main(energy, dose_rate):
+def main(energy, dose_rate, prepend=""):
     total_mu = "{:.6f}".format(float(dose_rate))
     dose_rate = str(int(dose_rate))
     nominal_energy = str(float("".join(i for i in energy if i in "0123456789.")))
@@ -89,12 +88,13 @@ def main(energy, dose_rate):
     coll_beam_2 = from_bipolar(np.arange(180, -1, -gantry_step_size / 2))
     coll_beam_2[0] = 179.9
 
-    directions = ["CC", "CW"]
+    gant_directions = ["CW", "CC"]
+    coll_directions = ["CC", "CW"]
 
     control_point_sequence_beam1 = create_control_point_sequence(
         vmat_example.BeamSequence[0],
         beam_collimation,
-        directions[0],
+        coll_directions[0],
         dose_rate,
         gantry_beam_1,
         coll_beam_1,
@@ -103,7 +103,7 @@ def main(energy, dose_rate):
     control_point_sequence_beam2 = create_control_point_sequence(
         vmat_example.BeamSequence[1],
         beam_collimation,
-        directions[1],
+        coll_directions[1],
         dose_rate,
         gantry_beam_2,
         coll_beam_2,
@@ -116,9 +116,11 @@ def main(energy, dose_rate):
 
     num_cps = len(gantry_beam_1)
 
-    for beam_sequence, direction in zip(plan.BeamSequence, directions):
+    for beam_sequence, direction in zip(plan.BeamSequence, gant_directions):
         beam_sequence.NumberOfControlPoints = str(num_cps)
-        beam_sequence.BeamName = f"WLutzArc-{energy}-{direction}-{dose_rate}"
+        beam_sequence.BeamName = (
+            f"WLutzArc-{prepend}-{energy}-{dose_rate.zfill(4)}-{direction}"
+        )
 
     if fff:
         for beam_sequence in plan.BeamSequence:
@@ -127,7 +129,7 @@ def main(energy, dose_rate):
     plan.FractionGroupSequence[0].ReferencedBeamSequence[0].BeamMeterset = total_mu
     plan.FractionGroupSequence[0].ReferencedBeamSequence[1].BeamMeterset = total_mu
 
-    plan.RTPlanLabel = f"{energy}-{dose_rate}"
+    plan.RTPlanLabel = f"{prepend}-{energy}-{dose_rate}"
     plan.RTPlanName = plan.RTPlanLabel
     plan.PatientID = "WLutzArc"
 

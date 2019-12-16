@@ -23,11 +23,9 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
-from __future__ import annotations
-
 from typing import Type
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._base.delivery import DeliveryBase, DeliveryGeneric
 
@@ -43,7 +41,7 @@ from .trf2pandas import read_trf
 
 class DeliveryLogfile(DeliveryBase):
     @classmethod
-    def from_logfile(cls, filepath) -> DeliveryLogfile:
+    def from_logfile(cls, filepath):
         _, dataframe = read_trf(filepath)
 
         return cls._from_pandas(dataframe)

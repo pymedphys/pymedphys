@@ -3,8 +3,7 @@
 restore_home_cache ".cache" "pip cache" &&
 restore_cwd_cache '.venv' 'python virtualenv' &&
 pip3 install -q poetry &&
-poetry config settings.virtualenvs.in-project true &&
-poetry install -vvv --no-dev -E docs &&
+poetry install -vvv --no-dev -E docs -E library -E labs &&
 poetry run sphinx-build -W docs docs/_build/html
 """
 

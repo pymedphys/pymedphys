@@ -24,43 +24,48 @@ jobs:
         Pylint-All-Linux:
           image_name: ubuntu-16.04
           test_title: Pylint All Linux
-          toxenv: pylint
-          python: 3.7
+          toxenv: pylint-nix
+          python: 3.6
         Docs-Linux:
           image_name: ubuntu-16.04
           test_title: Docs Linux
-          toxenv: docs
-          python: 3.7
+          toxenv: docs-nix
+          python: 3.6
         Pytest-DoctestModules-Linux:
           image_name: ubuntu-16.04
           test_title: Pytest with Doctest Linux
-          toxenv: doctest
-          python: 3.7
+          toxenv: doctest-nix
+          python: 3.6
         Run-Slow-Linux:
           image_name: ubuntu-16.04
           test_title: Run slow tests Linux
-          toxenv: runslow
-          python: 3.7
+          toxenv: runslow-nix
+          python: 3.6
+        Run-Clean-Linux:
+          image_name: ubuntu-16.04
+          test_title: Run clean test Linux
+          toxenv: clean-nix
+          python: 3.6
         Docs-MacOS:
           image_name: macos-10.13
           test_title: Docs MacOS
-          toxenv: docs
-          python: 3.7
+          toxenv: docs-nix
+          python: 3.6
         Pytest-DoctestModules-MacOS:
           image_name: macos-10.13
           test_title: Pytest with Doctest MacOS
-          toxenv: doctest
-          python: 3.7
+          toxenv: doctest-nix
+          python: 3.6
         Docs-Windows:
           image_name: vs2017-win2016
           test_title: Docs Windows
-          toxenv: docs
-          python: 3.7
+          toxenv: docs-win
+          python: 3.6
         Pytest-DoctestModules-Windows:
           image_name: vs2017-win2016
           test_title: Pytest with Doctest Windows
-          toxenv: doctest
-          python: 3.7
+          toxenv: doctest-win
+          python: 3.6
 
     pool:
       vmImage: $(image_name)

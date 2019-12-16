@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.13.0dev2"
+version = "0.15.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -13,46 +13,51 @@ authors = [
     "Jacob McAloney",
     "Pedro Martinez"
 ]
-license = "AGPL-3.0+"
+license = "AGPL-3.0-or-later"
 homepage = "https://pymedphys.com"
 repository = "https://github.com/pymedphys/pymedphys"
-documentation = "https://pymedphys.com"
+documentation = "https://docs.pymedphys.com"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
     "Topic :: Scientific/Engineering :: Physics",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Healthcare Industry",
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)"
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7"
-
+python = "^3.6"
 attrs = "*"
-keyring = "*"
-packaging = "*"
-PyYAML = "*"
+dataclasses = { version = "*", python = "~3.6.0" }
 
-numpy = "^1.12"
-matplotlib = "*"
-scipy = "*"
-pandas = "*"
+# library
+keyring = { version = "*", optional = true }
+packaging = { version = "*", optional = true }
+PyYAML = { version = "*", optional = true }
 
-dbfread = "*"
+numpy = { version = "^1.12", optional = true }
+matplotlib = { version = "*", optional = true }
+scipy = { version = "*", optional = true }
+pandas = { version = "*", optional = true }
 
-pydicom = "*"
-pynetdicom = "*"
+dbfread = { version = "*", optional = true }
 
-pymssql = "< 3.0.0"
+pydicom = { version = "*", optional = true }
+pynetdicom = { version = "*", optional = true }
+
+# difficult
+pymssql = { version = "< 3.0.0", optional = true }
 shapely = { version = "*", optional = true }
 
+# gui
+jupyterlab_server = { version = "*", optional = true }
+
 # labs
-tqdm = "*"
-python_dateutil = "*"
-Pillow = "*"
-imageio = "*"
-scikit-image = "*"
+tqdm = { version = "*", optional = true }
+python_dateutil = { version = "*", optional = true }
+Pillow = { version = "*", optional = true }
+imageio = { version = "*", optional = true }
+scikit-image = { version = "*", optional = true }
 
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
@@ -127,8 +132,21 @@ docs = [
     "m2r"
 ]
 
-extras = [
-    "shapely"
+gui = [
+    "jupyterlab_server"
+]
+
+library = [
+    "keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy",
+    "pandas", "dbfread", "pydicom", "pynetdicom"
+]
+
+labs = [
+    "tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"
+]
+
+difficult = [
+    "pymssql", "shapely"
 ]
 
 pytest = [
@@ -148,7 +166,8 @@ line_length = 88
 include_trailing_comma = true
 known_third_party = [
     "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
-    "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil"
+    "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
+    "pymedphys._imports"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"

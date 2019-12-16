@@ -24,14 +24,12 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
+from pymedphys._imports import mpl_toolkits
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt, pydicom
+
 from scipy.interpolate import splev, splprep
 from scipy.optimize import basinhopping
-
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
-import pydicom
 
 from pymedphys._dicom.structure import pull_structure
 
@@ -58,7 +56,7 @@ def cubify_cube_definition(cube_definition):
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> from pymedphys.labs.cube import cubify_cube_definition
     >>>
     >>> cube_definition = [(0, 0, 0), (0, 1, 0), (0, 0, 1)]
@@ -193,7 +191,9 @@ def plot_cube(cube_definition):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
 
-    faces = Poly3DCollection(edges, linewidths=1, edgecolors="k")
+    faces = mpl_toolkits.mplot3d.art3d.Poly3DCollection(
+        edges, linewidths=1, edgecolors="k"
+    )
     faces.set_facecolor((0, 0, 1, 0.1))
 
     ax.add_collection3d(faces)
@@ -369,9 +369,10 @@ def get_structure_aligned_cube(
     --------
     >>> import numpy as np
     >>> import pydicom
+    >>> import pymedphys
     >>> from pymedphys.labs.cube import get_structure_aligned_cube
     >>>
-    >>> struct_path = 'tests/dicom/data/struct/example_structures.dcm'
+    >>> struct_path = str(pymedphys.data_path('example_structures.dcm'))
     >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
     >>> structure_name = 'ANT Box'
     >>> cube_definition_array, vectors = get_structure_aligned_cube(

@@ -23,13 +23,18 @@
 # You should have received a copy of the Apache-2.0 along with this
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
+import functools
 from copy import deepcopy
 
-import numpy as np
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
-import pydicom
 
-DICOM_NAMES = [item[-1] for _, item in pydicom.datadict.DicomDictionary.items()]
+@functools.lru_cache(maxsize=1)
+def get_dicom_names():
+    DICOM_NAMES = [item[-1] for _, item in pydicom.datadict.DicomDictionary.items()]
+
+    return DICOM_NAMES
 
 
 def add_array_to_dataset(dataset, key, value):
@@ -46,7 +51,7 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
         dataset = deepcopy(template_ds)
 
     for key, value in input_dict.items():
-        if key not in DICOM_NAMES:
+        if key not in get_dicom_names():
             raise ValueError("{} is not within the DICOM dictionary.".format(key))
 
         if isinstance(value, dict):

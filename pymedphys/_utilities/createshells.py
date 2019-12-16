@@ -23,7 +23,7 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):

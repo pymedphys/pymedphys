@@ -61,9 +61,10 @@
 import argparse
 import os
 
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 from tqdm import tqdm
 
-import numpy as np
 from scipy import signal
 
 import matplotlib.pyplot as plt

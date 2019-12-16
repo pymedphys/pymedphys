@@ -36,7 +36,7 @@ import csv
 from string import ascii_letters as LETTERS
 from string import digits as DIGITS
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def read_csv_file(file_name):

@@ -31,9 +31,8 @@ import json
 import os
 import traceback
 
-import numpy as np
-
-import matplotlib.pyplot as plt
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
 import pymedphys
 from pymedphys._utilities.config import (
