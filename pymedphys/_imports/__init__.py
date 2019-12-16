@@ -2,7 +2,7 @@
 
 import importlib
 
-import apipkg
+import pymedphys._vendor.apipkg
 
 EXTERNAL_EXPORTS = (
     "matplotlib.pyplot",
@@ -42,7 +42,7 @@ EXTERNAL_EXPORTS = (
     "skimage",
 )
 
-apipkg.initpkg(
+pymedphys._vendor.apipkg.initpkg(  # pylint: disable = protected-access
     __name__,
     {**{item: item for item in EXTERNAL_EXPORTS}, **{"plt": "matplotlib.pyplot"}},
 )

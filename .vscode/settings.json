@@ -44,6 +44,7 @@
     "anonymise",
     "anonymised",
     "anonymiser",
+    "apipkg",
     "apputils",
     "arange",
     "asar",
@@ -232,6 +233,6 @@
     "zlim"
   ],
   "python.linting.pylintEnabled": true,
-  "restructuredtext.confPath": "${workspaceFolder}/docs",
+  "restructuredtext.confPath": "${workspaceFolder}\\docs",
   "git.ignoreLimitWarning": true
 }
