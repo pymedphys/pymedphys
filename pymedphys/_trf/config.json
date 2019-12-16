@@ -16,12 +16,6 @@
         "1": "In",
         "2": "Out"
     },
-    "integrity_4_column_insert": [
-        "unknown1",
-        "unknown2",
-        "unknown3",
-        "unknown4"
-    ],
     "column_names": [
         "Control point/Actual Value (None)",
         "Energy Cal Block/Set (None)",
