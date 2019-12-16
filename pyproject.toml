@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.14.1"
+version = "0.14.3"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -28,7 +28,6 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.6"
 attrs = "*"
-apipkg = ">=1.0,<=1.2"
 dataclasses = { version = "*", python = "~3.6.0" }
 
 # library
