@@ -29,6 +29,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.14.1]
+
+### Bug Fixes
+
+- Given the input to `pymedphys.gamma` is unitless, removed the units from
+  the logging output of gamma. See <https://github.com/pymedphys/pymedphys/issues/611>
 
 ## [0.14.0]
 
@@ -43,7 +49,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   dependency be required during usage an error is raised informing the user to
   install the package. To install all pymedphys dependencies as before now run
   `pip install pymedphys[library,labs]==0.14.0`.
-
 
 ## [0.13.2]
 
