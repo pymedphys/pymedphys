@@ -29,7 +29,8 @@
 
 from pymedphys._imports import pandas as pd
 
-from .header import Header, decode_header, determine_header_length
+from .header import Header, decode_header
+from .partition import split_into_header_table
 from .table import decode_trf_table
 
 
@@ -47,15 +48,6 @@ def trf2pandas(filepath):
 
 
 read_trf = trf2pandas
-
-
-def split_into_header_table(trf_contents):
-    header_length = determine_header_length(trf_contents)
-
-    trf_header_contents = trf_contents[0:header_length]
-    trf_table_contents = trf_contents[header_length::]
-
-    return trf_header_contents, trf_table_contents
 
 
 def header_as_dataframe(trf_header_contents):
