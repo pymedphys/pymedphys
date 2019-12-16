@@ -25,7 +25,7 @@
 
 """A suite of functions for handling DICOM coordinates"""
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def coords_from_xyz_axes(xyz_axes):

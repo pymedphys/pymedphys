@@ -25,7 +25,7 @@
 
 from collections import namedtuple
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 # from scipy.interpolate import interp1d
 

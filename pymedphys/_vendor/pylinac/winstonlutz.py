@@ -41,7 +41,8 @@ Features:
 
 from typing import List, Tuple
 
-import numpy as np
+from pymedphys._imports import numpy as np
+
 from scipy import ndimage
 
 from skimage import measure

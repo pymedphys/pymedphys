@@ -14,6 +14,7 @@ repos:
     -   id: check-yaml
     -   id: check-toml
     -   id: check-added-large-files
+        args: ['--maxkb', '700']
 -   repo: https://github.com/timothycrosley/isort
     rev: 4.3.21
     hooks:

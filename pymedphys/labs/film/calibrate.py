@@ -26,10 +26,10 @@
 import warnings
 from pathlib import Path
 
-import numpy as np
-from scipy.optimize import basinhopping
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
-import matplotlib.pyplot as plt
+from scipy.optimize import basinhopping
 
 import imageio
 

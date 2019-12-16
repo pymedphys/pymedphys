@@ -26,7 +26,7 @@
 
 import os
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from .core import pull_mephysto_data, pull_mephysto_item, pull_mephysto_number
 from .mcc2csv import file_output

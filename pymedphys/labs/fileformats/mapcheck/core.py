@@ -26,7 +26,7 @@
 import csv
 from collections import namedtuple
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def read_mapcheck_txt(file_name):

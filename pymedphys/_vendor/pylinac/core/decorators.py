@@ -27,7 +27,7 @@ from abc import ABCMeta
 from functools import wraps
 from inspect import signature
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def timethis(func):

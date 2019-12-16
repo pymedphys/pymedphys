@@ -23,11 +23,9 @@ import math
 from itertools import zip_longest
 from typing import Iterable, List, Optional, Tuple, Union
 
-import numpy as np
-
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle as mpl_Circle
-from matplotlib.patches import Rectangle as mpl_Rectangle
+from pymedphys._imports import matplotlib
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
 from .typing import NumberLike
 from .utilities import is_iterable
@@ -214,7 +212,7 @@ class Circle:
             Whether to fill the circle with color or leave hollow.
         """
         axes.add_patch(
-            mpl_Circle(
+            matplotlib.patches.Circle(
                 (self.center.x, self.center.y),
                 edgecolor=edgecolor,
                 radius=self.radius,
@@ -488,7 +486,7 @@ class Rectangle:
             Whether to fill the rectangle with color or leave hollow.
         """
         axes.add_patch(
-            mpl_Rectangle(
+            matplotlib.patches.Rectangle(
                 (self.bl_corner.x, self.bl_corner.y),
                 width=self.width,
                 height=self.height,

@@ -26,7 +26,7 @@
 
 from datetime import datetime
 
-from dateutil import tz
+from pymedphys._imports import dateutil
 
 from pymedphys._mosaiq.delivery import OISDeliveryDetails, get_mosaiq_delivery_details
 from pymedphys._trf.header import decode_header_from_file
@@ -42,8 +42,8 @@ def date_convert(date, timezone):
     """Converts logfile UTC date to the provided timezone.
     The date is formatted to match the syntax required by Microsoft SQL."""
 
-    from_timezone = tz.gettz("UTC")
-    to_timezone = tz.gettz(timezone)
+    from_timezone = dateutil.tz.gettz("UTC")
+    to_timezone = dateutil.tz.gettz(timezone)
 
     utc_datetime = datetime.strptime(date, "%y/%m/%d %H:%M:%S Z").replace(
         tzinfo=from_timezone

@@ -24,12 +24,10 @@
 # program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 
 
-import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-
-import imageio
+from pymedphys._imports import imageio
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt
 
 from .core import find_field_and_bb
 from .reporting import image_analysis_figure
@@ -93,10 +91,17 @@ def batch_process(
 
 def iview_image_transform(image_path):
     img = imageio.imread(image_path)
-    if np.shape(img) != (1024, 1024):
+
+    if np.shape(img) == (1024, 1024):
+        pixels_per_mm = 4
+    elif np.shape(img) == (512, 512):
+        pixels_per_mm = 2
+    else:
         raise ValueError(
-            f"Expect iView images to be 1024x1024 pixels\nShhape = {np.shape(img)}"
+            "Expect iView images to be either 1024x1024 or 512x512 "
+            f"pixels\nShape = {np.shape(img)}"
         )
+
     img = img[:, 1:-1]
 
     if img.dtype != np.dtype("uint16"):
@@ -104,7 +109,7 @@ def iview_image_transform(image_path):
     img = 1 - img[::-1, :] / 2 ** 16
 
     shape = np.shape(img)
-    x = np.arange(-shape[1] / 2, shape[1] / 2) / 4
-    y = np.arange(-shape[0] / 2, shape[0] / 2) / 4
+    x = np.arange(-shape[1] / 2, shape[1] / 2) / pixels_per_mm
+    y = np.arange(-shape[0] / 2, shape[0] / 2) / pixels_per_mm
 
     return x, y, img

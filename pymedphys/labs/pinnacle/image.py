@@ -57,11 +57,8 @@ import struct
 import sys
 import time
 
-import numpy as np
-
-import pydicom
-import pydicom.uid
-from pydicom.dataset import Dataset, FileDataset
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from .constants import *
 
@@ -117,7 +114,7 @@ def create_image_files(image, export_path):
         dateofscan = image_set["scan_date"]
         timeofscan = image_set["scan_time"]
 
-        file_meta = Dataset()
+        file_meta = pydicom.dataset.Dataset()
         file_meta.MediaStorageSOPClassUID = classuid
         file_meta.MediaStorageSOPInstanceUID = instuid
         file_meta.TransferSyntaxUID = GTransferSyntaxUID
@@ -126,7 +123,7 @@ def create_image_files(image, export_path):
         file_meta.ImplementationClassUID = GImplementationClassUID
 
         image_file_name = modality + "." + instuid + ".dcm"
-        ds = FileDataset(
+        ds = pydicom.dataset.FileDataset(
             image_file_name, {}, file_meta=file_meta, preamble=b"\x00" * 128
         )
 
@@ -268,6 +265,8 @@ def convert_image(image, export_path):
         output_file = os.path.join(
             export_path, "%s.%s.dcm" % (image.image["Modality"], imageds.SOPInstanceUID)
         )
-        currfile = FileDataset(output_file, {}, file_meta=file_meta, preamble=preamble)
+        currfile = pydicom.dataset.FileDataset(
+            output_file, {}, file_meta=file_meta, preamble=preamble
+        )
         imageds.save_as(output_file)
         image.logger.info("Exported: " + file + " to " + output_file)
