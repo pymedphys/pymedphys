@@ -39,6 +39,7 @@ def trf_cli(subparsers):
     )
     trf_subparsers = trf_parser.add_subparsers(dest="trf")
     trf_to_csv(trf_subparsers)
+    trf_detect(trf_subparsers)
 
     return trf_parser
 
