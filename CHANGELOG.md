@@ -25,9 +25,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil
 
+### Package changes
+
+- nil
+
 ### Performance Improvements
 
 - nil -->
+
+## [0.14.3]
+
+### Package changes
+
+- Updated wheel to correctly handle optional dependencies
 
 ## [0.14.2]
 
