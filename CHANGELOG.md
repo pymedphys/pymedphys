@@ -25,9 +25,72 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil
 
+### Package changes
+
+- nil
+
 ### Performance Improvements
 
 - nil -->
+
+## [0.15.0]
+
+### New Features
+
+- Experimental support for Elekta Unity trf log file decoding.
+
+## [0.14.3]
+
+### Package changes
+
+- Updated wheel to correctly handle optional dependencies.
+
+## [0.14.2]
+
+### Bug Fixes
+
+- Vendored in `apipkg` due to PyPI installation issues.
+
+## [0.14.1]
+
+### Bug Fixes
+
+- Given the input to `pymedphys.gamma` is unitless, removed the units from
+  the logging output of gamma. See <https://github.com/pymedphys/pymedphys/issues/611>
+
+## [0.14.0]
+
+### Breaking Changes
+
+- Moved `pymedphys pinnacle` cli command to be nested under
+ `pymedphys labs pinnacle`
+
+### Dependency Changes
+
+- Made the greater majority of the pymedphys dependencies optional. Should a
+  dependency be required during usage an error is raised informing the user to
+  install the package. To install all pymedphys dependencies as before now run
+  `pip install pymedphys[library,labs]==0.14.0`.
+
+## [0.13.2]
+
+### Bug Fix
+
+- Fixed issue where `pymedphys.mosaiq.connect` would not work for just one
+  hostname.
+
+## [0.13.1]
+
+### Bug Fix
+
+- Fixed issue where `pymedphys.mosaiq.connect` would not work for just one
+  hostname.
+
+## [0.13.0]
+
+### New Feature
+
+- Made `pymedphys.mosaiq.execute` a part of the API.
 
 ## [0.12.2]
 
@@ -112,7 +175,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Dependency changes
 
-- Removed numpy version upperlimit
+- Removed numpy version upper-limit
 
 ## [0.8.0] -- 2019/06/01
 
@@ -137,7 +200,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `mudensity` module.
 - `compare_mosaiq_fields` moved from the `msq` module into the `plancompare`
   module.
-- `pymedphys.dicom.get_structure_aligned_cube` has had its `x0` paremeter
+- `pymedphys.dicom.get_structure_aligned_cube` has had its `x0` parameter
   changed from required to optional. It is no longer the first parameter
   passed to the function. By default `x0` is now determined using the min/max
   bounds of the structure.
@@ -154,7 +217,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### New Features
 
-- A DICOM anonymsation CLI! See
+- A DICOM anonymisation CLI! See
   [the DICOM Files CLI docs](../user/interfaces/cli/dicom.rst).
 - `anonymise_file()` and `anonymise_directory()`:
   - two new DICOM anonymisation
@@ -174,7 +237,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Dependency changes
 
-- Removed numpy version upperlimit
+- Removed numpy version upper-limit
 
 ## [0.7.1] -- 2019/04/05
 
@@ -268,7 +331,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.12.2...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.15.0...master
+[0.15.0]: https://github.com/pymedphys/pymedphys/compare/v0.14.3...v0.15.0
+[0.14.3]: https://github.com/pymedphys/pymedphys/compare/v0.14.2...v0.14.3
+[0.14.2]: https://github.com/pymedphys/pymedphys/compare/v0.14.1...v0.14.2
+[0.14.1]: https://github.com/pymedphys/pymedphys/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/pymedphys/pymedphys/compare/v0.13.2...v0.14.0
+[0.13.2]: https://github.com/pymedphys/pymedphys/compare/v0.13.1...v0.13.2
+[0.13.1]: https://github.com/pymedphys/pymedphys/compare/v0.13.0...v0.13.1
+[0.13.0]: https://github.com/pymedphys/pymedphys/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/pymedphys/pymedphys/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/pymedphys/pymedphys/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/pymedphys/pymedphys/compare/v0.11.0...v0.12.0

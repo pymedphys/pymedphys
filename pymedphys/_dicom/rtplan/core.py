@@ -26,8 +26,6 @@
 
 from collections import namedtuple
 
-import pydicom
-
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
 Point = namedtuple("Point", ("x", "y", "z"))
@@ -37,13 +35,13 @@ class DICOMEntryMissing(ValueError):
     pass
 
 
-def require_gantries_be_zero(plan: pydicom.Dataset):
+def require_gantries_be_zero(plan):
     gantry_angles = set(get_gantry_angles_from_dicom(plan))
     if gantry_angles != set([0.0]):
         raise ValueError("Only Gantry angles equal to 0.0 are currently supported")
 
 
-def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
+def get_surface_entry_point_with_fallback(plan) -> Point:
     try:
         return get_surface_entry_point(plan)
     except DICOMEntryMissing:
@@ -65,7 +63,7 @@ def get_surface_entry_point_with_fallback(plan: pydicom.Dataset) -> Point:
     return source_entry_point
 
 
-def get_single_value_from_control_points(plan: pydicom.Dataset, keyword):
+def get_single_value_from_control_points(plan, keyword):
     """Get a named keyword from all control points.
 
     Raises an error if all values are not the same as each other. Raises an
@@ -95,7 +93,7 @@ def get_single_value_from_control_points(plan: pydicom.Dataset, keyword):
     return values.pop()
 
 
-def get_single_value_from_beams(plan: pydicom.Dataset, keyword):
+def get_single_value_from_beams(plan, keyword):
     """Get a named keyword from all beams.
 
     Raises an error if all values are not the same as each other. Raises an
@@ -124,7 +122,7 @@ def get_single_value_from_beams(plan: pydicom.Dataset, keyword):
     return values.pop()
 
 
-def get_surface_entry_point(plan: pydicom.Dataset) -> Point:
+def get_surface_entry_point(plan) -> Point:
     """
     Parameters
     ----------

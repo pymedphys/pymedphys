@@ -28,7 +28,7 @@ import operator
 from collections import namedtuple
 from functools import reduce
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 # pylint: disable=C0103
 

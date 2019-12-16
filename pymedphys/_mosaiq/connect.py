@@ -30,8 +30,7 @@
 from contextlib import contextmanager
 from getpass import getpass
 
-import keyring
-import pymssql
+from pymedphys._imports import keyring, pymssql
 
 
 def execute_sql(cursor, sql_string, parameters=None):
@@ -178,12 +177,14 @@ def connect(sql_server_and_ports):
             do_something(cursor)
     """
     if isinstance(sql_server_and_ports, str):
-        sql_server_and_ports = [sql_server_and_ports]
+        sql_server_and_ports_as_list = [sql_server_and_ports]
+    else:
+        sql_server_and_ports_as_list = list(sql_server_and_ports)
 
-    connections, cursors = multi_connect(sql_server_and_ports)
+    connections, cursors = multi_connect(sql_server_and_ports_as_list)
     try:
-        if len(cursors) == 1:
-            cursors = cursors[0]
+        if len(sql_server_and_ports_as_list) == 1:
+            cursors = cursors[sql_server_and_ports]
         yield cursors
     finally:
         multi_close(connections)

@@ -28,7 +28,7 @@ import functools
 from collections import namedtuple
 from typing import Dict, List, Tuple, Type, TypeVar, Union
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from pymedphys._utilities.controlpoints import (
     remove_irrelevant_control_points,
