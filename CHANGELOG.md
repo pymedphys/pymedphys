@@ -29,6 +29,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.14.2]
+
+### Bug Fixes
+
+- Vendored in `apipkg` due to PyPI installation issues.
+
 ## [0.14.1]
 
 ### Bug Fixes
