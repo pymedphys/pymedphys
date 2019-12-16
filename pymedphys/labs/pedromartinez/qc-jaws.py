@@ -62,15 +62,12 @@ import argparse
 import os
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom
+from pymedphys._imports import plt, pydicom
 from tqdm import tqdm
 
 from scipy import signal
 
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-
-import pydicom
 
 from pymedphys.labs.pedromartinez.utils import minimize_field_rot as minFR
 from pymedphys.labs.pedromartinez.utils import minimize_junction_X as minX
