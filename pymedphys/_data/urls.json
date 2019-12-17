@@ -7,5 +7,7 @@
   "lab_build.zip": "https://zenodo.org/record/3572705/files/build.zip?download=1",
   "get-pip.py": "https://bootstrap.pypa.io/get-pip.py",
   "python-windows-64-embedded.zip": "https://www.python.org/ftp/python/3.7.5/python-3.7.5-embed-amd64.zip",
-  "example_structures.dcm": "https://zenodo.org/record/3576026/files/example_structures.dcm?download=1"
+  "example_structures.dcm": "https://zenodo.org/record/3576026/files/example_structures.dcm?download=1",
+  "original_dose_beam_4.dcm": "https://zenodo.org/record/3382023/files/original_dose_beam_4.dcm?download=1",
+  "logfile_dose_beam_4.dcm": "https://zenodo.org/record/3382023/files/logfile_dose_beam_4.dcm?download=1"
 }
