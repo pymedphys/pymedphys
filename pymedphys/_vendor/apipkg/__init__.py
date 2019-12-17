@@ -206,16 +206,20 @@ def AliasModule(modname, modpath, attrname=None):
             return "<AliasModule %r for %r>" % (modname, x)
 
         def __getattribute__(self, name):
+
             attribute_call = f"{modname}.{name}"
             if attribute_call in sys.modules.keys():
                 return sys.modules[attribute_call]
 
             # Reverted change from https://github.com/pytest-dev/apipkg/commit/c9b997713cb77d2c1334acb7847ee6b24e3261b2
-            return getattr(getmod(), name)
-            # try:
-            #     return getattr(getmod(), name)
-            # except ImportError:
-            #     return None
+            # return getattr(getmod(), name)
+            try:
+                return getattr(getmod(), name)
+            except ImportError:
+                # Support inspection rejection
+                if name == "__file__":
+                    return None
+                raise
 
         def __setattr__(self, name, value):
             setattr(getmod(), name, value)
