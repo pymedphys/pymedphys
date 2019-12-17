@@ -212,6 +212,7 @@
     "vectorised",
     "vendored",
     "virtualenvs",
+    "visualisation",
     "vmat",
     "vmax",
     "vmin",
