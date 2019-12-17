@@ -88,7 +88,6 @@ their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
 `conda-forge`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
-.. _`license`: https://choosealicense.com/licenses/agpl-3.0/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 .. _`conda-forge`: https://anaconda.org/conda-forge/pymedphys
