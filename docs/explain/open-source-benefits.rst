@@ -1,18 +1,15 @@
-Benefits of AGPL-3.0+ for Medical Physics
-=========================================
+Benefits of Open Source for Medical Physics
+===========================================
 
 .. contents::
     :local:
     :backlinks: entry
 
 The aim of this document is to outline some of the benefits of Medical Physics
-code being released under an open source license. In particular the benefits
-of the AGPL-3.0+ licence. An example of a well known code base that uses this
-open source licence is `EGSnrc
-<https://www.nrc-cnrc.gc.ca/eng/solutions/advisory/egsnrc_index.html>`_.
+code being released under an open source license.
 
-A summary of this license and what it entails is available at
-`choose a license <https://choosealicense.com/licenses/agpl-3.0/>`_.
+A summary of the license used by PyMedPhys and what it entails is available at
+`choose a license <https://choosealicense.com/licenses/apache-2.0/>`_.
 
 Software is less dependent on a single software developer
 ---------------------------------------------------------
@@ -59,39 +56,6 @@ An example of this is the `Pylinac quality assurance tool
 physicist who works at a Varian site. Another physicist `submitted code
 improvements <https://github.com/jrkerns/pylinac/pull/67>`_ to make the software
 tool compatible with Elekta.
-
-Still possible to potentially monetise
---------------------------------------
-
-The AGPL-3.0+ requires that code include programmatic build and installation
-instructions. This means that users who are also programmers will likely be
-able to put in the work to get the software running by themselves without
-payment to the authors. However in this case there is no one being paid to
-provide user support and the default is no included warranty.
-
-As a result there still is likely a market for providing the full toolset in a
-user friendly, warranty included, batteries included, fully supported package.
-An example of a product and company that uses exactly this business model is
-the medical imaging DICOM server Orthanc which offers commercial services
-through the company `Osimis <http://www.osimis.io/en/products.html>`_.
-
-This model is also used by `multileaf consulting <https://www.multileaf.ca/>`_
-which provides paid hosting and support for the open source `QATrack+
-<http://qatrackplus.com/>`_.
-
-There is also the opportunity for advertising revenue.
-
-Protection against another actor creating a closed source competitor
---------------------------------------------------------------------
-
-By releasing the code under the AGPL-3.0+ license any future work that makes
-use of the open source code must also be released under the same license. This
-means that should another actor create a competing product to the original
-author’s should they ever distribute the code they must also release all
-changes under the AGPL-3.0+ license along with that distribution. In effect
-unless that company is willing to release all of their own code that is
-bundled with the author’s code to the community they cannot use the original
-source code to compete.
 
 Improving our work as Physicists
 --------------------------------

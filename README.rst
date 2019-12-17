@@ -21,7 +21,7 @@ and open source distribution. Open code is better science.**
     :target: https://pypi.org/project/pymedphys/
 
 .. |license| image:: https://img.shields.io/pypi/l/pymedphys.svg
-    :target: https://choosealicense.com/licenses/agpl-3.0/
+    :target: https://choosealicense.com/licenses/apache-2.0/
 
 
 Docs under construction
@@ -82,14 +82,12 @@ What is PyMedPhys?
 ------------------
 
 A place to share, review, improve, and transparently learn off of each other’s
-code. It is a library of tools that we all have access to and, because of its
-`license`_, will all have access to whatever it becomes in the future.
+code. It is an open-source library of tools that we all have access to.
 It is inspired by the collaborative work of our physics peers in astronomy and
 their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
 `conda-forge`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
-.. _`license`: https://choosealicense.com/licenses/agpl-3.0/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 .. _`conda-forge`: https://anaconda.org/conda-forge/pymedphys
