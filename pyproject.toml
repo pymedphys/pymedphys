@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.16.2"
+version = "0.17.0dev1"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -29,6 +29,7 @@ classifiers = [
 python = "^3.6"
 attrs = "*"
 dataclasses = { version = "*", python = "~3.6.0" }
+tqdm = "*"
 
 # library
 keyring = { version = "*", optional = true }
@@ -53,7 +54,6 @@ shapely = { version = "*", optional = true }
 jupyterlab_server = { version = "*", optional = true }
 
 # labs
-tqdm = { version = "*", optional = true }
 python_dateutil = { version = "*", optional = true }
 Pillow = { version = "*", optional = true }
 imageio = { version = "*", optional = true }
@@ -141,7 +141,7 @@ library = [
 ]
 
 labs = [
-    "tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"
+    "python_dateutil", "Pillow", "imageio", "scikit-image"
 ]
 
 difficult = [
