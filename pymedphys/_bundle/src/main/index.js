@@ -17,6 +17,8 @@ if (!fs.existsSync(pythonDir)) {
   }
 }
 
+let notebooksDir = path.resolve(path.join(pythonDir, '..', 'notebooks'))
+
 let pymedphysExePath = path.join(pythonDir, 'Scripts', 'pymedphys.exe')
 let pymedphysExeCommand
 
@@ -26,11 +28,11 @@ if (process.platform === "win32") {
   pymedphysExeCommand = `wine ${pymedphysExePath}`
 }
 
-let toBeRun = `${pymedphysExeCommand} app --no-browser`
+let toBeRun = `${pymedphysExeCommand} jupyterlab ${notebooksDir}`
 console.log(toBeRun)
 
 let pythonServer = exec(toBeRun)
-let UrlSubject = new BehaviorSubject<string>(null)
+let UrlSubject = new BehaviorSubject(null)
 pythonServer.stdout.on('data', data => {
   console.log('stdout: ' + data);
   UrlSubject.next(data)
@@ -49,20 +51,11 @@ function createMainWindow() {
   const window = new BrowserWindow({ webPreferences: { nodeIntegration: true } })
 
   UrlSubject.subscribe(data => {
-    let eachLine: string[]
-
     try {
-      eachLine = data.split(/\r?\n/)
+      let data_object = JSON.parse(data)
+      let url = data_object['url']
+      window.loadURL(url)
     } catch { }
-
-    try {
-      eachLine.forEach(line => {
-        let data_object = JSON.parse(line)
-        let url = data_object['url']
-        window.loadURL(url)
-      });
-    } catch { }
-
   })
 
   window.on('closed', () => {

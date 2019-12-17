@@ -16,13 +16,22 @@
 import json
 import os
 import pathlib
-import urllib
+import urllib.request
 import warnings
 import zipfile
+
+import tqdm
 
 import pymedphys._utilities.filehash
 
 HERE = pathlib.Path(__file__).resolve().parent
+
+
+class DownloadProgressBar(tqdm.tqdm):
+    def update_to(self, b=1, bsize=1, tsize=None):
+        if tsize is not None:
+            self.total = tsize
+        self.update(b * bsize - self.n)
 
 
 def get_config_dir():
@@ -53,7 +62,11 @@ def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True):
                 "The file provided isn't within pymedphys' urls.json record."
             )
 
-        urllib.request.urlretrieve(url, filepath)
+        with DownloadProgressBar(
+            unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
+        ) as t:
+
+            urllib.request.urlretrieve(url, filepath, reporthook=t.update_to)
 
     if check_hash:
         try:
