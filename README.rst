@@ -11,16 +11,16 @@ and open source distribution. Open code is better science.**
 
 |build| |pypi| |python| |license|
 
-.. |build| image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
-    :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
+.. |build| image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fpymedphys%2Fpymedphys%2Fbadge&label=build&logo=none
+    :target: https://actions-badge.atrox.dev/pymedphys/pymedphys/goto
 
-.. |pypi| image:: https://img.shields.io/pypi/v/pymedphys.svg
+.. |pypi| image:: https://img.shields.io/pypi/v/pymedphys
     :target: https://pypi.org/project/pymedphys/
 
-.. |python| image:: https://img.shields.io/pypi/pyversions/pymedphys.svg
+.. |python| image:: https://img.shields.io/pypi/pyversions/pymedphys
     :target: https://pypi.org/project/pymedphys/
 
-.. |license| image:: https://img.shields.io/pypi/l/pymedphys.svg
+.. |license| image:: https://img.shields.io/pypi/l/pymedphys
     :target: https://choosealicense.com/licenses/apache-2.0/
 
 
