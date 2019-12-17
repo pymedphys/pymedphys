@@ -33,6 +33,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [Unreleased]
+
+### New Features
+
+- Expose `pymedphys.electronfactors.plot_model` as part of the public API
+
 ## [0.15.0]
 
 ### New Features

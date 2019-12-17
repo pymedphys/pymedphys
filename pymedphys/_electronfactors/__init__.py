@@ -34,3 +34,4 @@ from .core import (
     spline_model_with_deformability,
     visual_alignment_of_equivalent_ellipse,
 )
+from .visualisation import plot_model
