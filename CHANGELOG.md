@@ -33,7 +33,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
-
 ## [Unreleased]
 
 ### Bug Fixes
@@ -42,14 +41,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   for '__file__' attribute requests for modules that are not currently
   installed.
 
-
 ## [0.16.2]
 
 ### Bug Fixes
 
 - Fixed bug with optional dependency logic within `apipkg`. Occurred whenever
   an optional submodule was called, for example `scipy.interpolate`.
-
 
 ## [0.16.1]
 
