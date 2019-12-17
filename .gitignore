@@ -149,3 +149,6 @@ scratch-*
 v*.tar.gz
 
 requirements.txt
+
+
+*.py.*.py
