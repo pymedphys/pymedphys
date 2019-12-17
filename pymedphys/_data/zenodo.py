@@ -16,7 +16,7 @@
 import json
 import os
 import pathlib
-import urllib
+import urllib.request
 import warnings
 import zipfile
 

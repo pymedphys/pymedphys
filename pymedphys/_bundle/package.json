@@ -1,22 +1,24 @@
 {
-  "name": "pymedphys",
-  "homepage": "https://pymedphys.com",
-  "author": "Simon Biggs <me@simonbiggs.net>",
+  "name": "jupyterlab",
+  "homepage": "https://jupyter.org/",
+  "author": "Jupyter Development Team",
+  "license": "Apache-2.0",
   "version": "0.0.0",
-  "description": "PyMedPhys App",
+  "description": "JupyterLab App",
   "scripts": {
     "dist": "electron-webpack && electron-builder build --win --x64",
     "dir": "electron-webpack && electron-builder --dir",
     "dev": "electron-webpack dev"
   },
   "build": {
-    "productName": "PyMedPhys",
+    "productName": "JupyterLab",
     "asar": false,
-    "appId": "org.pymedphys.PyMedPhys",
+    "appId": "org.jupyterlab.JupyterLab",
     "files": [
       "python/",
       "dist/",
       "node_modules/",
+      "notebooks/",
       "package.json"
     ],
     "nsis": {
