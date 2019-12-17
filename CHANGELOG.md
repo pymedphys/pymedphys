@@ -38,7 +38,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Package changes
 
 - The license of the package has changed from `AGPL-3.0-or-later` to
- `Apache-2.0`
+ `Apache-2.0`.
 
 ### New Features
 
