@@ -34,6 +34,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - nil -->
 
 
+## [Unreleased]
+
+### Bug Fixes
+
+- Gracefully reject ipython inspection for optional modules by returning `None`
+  for '__file__' attribute requests for modules that are not currently
+  installed.
+
+
 ## [0.16.2]
 
 ### Bug Fixes
