@@ -29,12 +29,12 @@ classifiers = [
 python = "^3.6"
 attrs = "*"
 dataclasses = { version = "*", python = "~3.6.0" }
+tqdm = "*"
 
 # library
 keyring = { version = "*", optional = true }
 packaging = { version = "*", optional = true }
 PyYAML = { version = "*", optional = true }
-tqdm = { version = "*", optional = true }
 
 numpy = { version = "^1.12", optional = true }
 matplotlib = { version = "*", optional = true }
@@ -141,7 +141,7 @@ library = [
 ]
 
 labs = [
-    "tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"
+    "python_dateutil", "Pillow", "imageio", "scikit-image"
 ]
 
 difficult = [

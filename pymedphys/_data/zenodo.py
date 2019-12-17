@@ -20,7 +20,7 @@ import urllib.request
 import warnings
 import zipfile
 
-from pymedphys._imports import tqdm
+import tqdm
 
 import pymedphys._utilities.filehash
 
