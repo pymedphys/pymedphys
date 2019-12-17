@@ -39,7 +39,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Fixed bug with optional dependency logic within `apipkg`. Occurred whenever
-  an optional submodule was called.
+  an optional submodule was called, for example `scipy.interpolate`.
 
 
 ## [0.16.1]
