@@ -21,7 +21,7 @@ and open source distribution. Open code is better science.**
     :target: https://pypi.org/project/pymedphys/
 
 .. |license| image:: https://img.shields.io/pypi/l/pymedphys.svg
-    :target: https://choosealicense.com/licenses/agpl-3.0/
+    :target: https://choosealicense.com/licenses/apache-2.0/
 
 
 Docs under construction
