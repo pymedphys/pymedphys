@@ -16,6 +16,7 @@ import argparse
 import sys
 
 from .app import app_cli
+from .bundle import bundle_cli
 from .dicom import dicom_cli
 from .docker import docker_cli
 from .jupyterlab import jupyter_cli
@@ -36,6 +37,7 @@ def define_parser():
     subparsers = parser.add_subparsers()
 
     app_cli(subparsers)
+    bundle_cli(subparsers)
     dicom_cli(subparsers)
     docker_cli(subparsers)
     jupyter_cli(subparsers)
