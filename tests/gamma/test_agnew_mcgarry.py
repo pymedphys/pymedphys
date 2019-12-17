@@ -29,7 +29,7 @@ import numpy as np
 
 import pydicom
 
-from pymedphys._gamma.implementation import gamma_shell
+import pymedphys
 from pymedphys._gamma.utilities import calculate_pass_rate
 
 # pylint: disable=C0103,C1801
@@ -94,7 +94,7 @@ def run_gamma(
     axes_evaluation = load_yx_from_dicom(ds_eval)
     dose_evaluation = dose_from_dataset(ds_eval)
 
-    gamma = gamma_shell(
+    gamma = pymedphys.gamma(
         axes_reference,
         dose_reference,
         axes_evaluation,
