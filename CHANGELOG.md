@@ -33,6 +33,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.16.1]
+
+### Aesthetic Changes
+
+- Updated the badges reported within the README.
+
 ## [0.16.0]
 
 ### Package changes
@@ -42,7 +48,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### New Features
 
-- Expose `pymedphys.electronfactors.plot_model` as part of the public API
+- Expose `pymedphys.electronfactors.plot_model` as part of the public API.
 
 ## [0.15.0]
 
@@ -342,7 +348,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.16.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.16.1...master
+[0.16.1]: https://github.com/pymedphys/pymedphys/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/pymedphys/pymedphys/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/pymedphys/pymedphys/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/pymedphys/pymedphys/compare/v0.14.2...v0.14.3
