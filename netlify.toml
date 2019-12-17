@@ -88,6 +88,12 @@ poetry run sphinx-build -W docs docs/_build/html
   force = true
 
 [[redirects]]
+  from = "/explain/agpl-benefits.html"
+  to = "/explain/open-source-benefits.html"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/developer/file-structure.html"
   to = "/contrib/explain/file-structure.html"
   status = 301

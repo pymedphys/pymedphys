@@ -82,8 +82,7 @@ What is PyMedPhys?
 ------------------
 
 A place to share, review, improve, and transparently learn off of each other’s
-code. It is a library of tools that we all have access to and, because of its
-`license`_, will all have access to whatever it becomes in the future.
+code. It is an open-source library of tools that we all have access to.
 It is inspired by the collaborative work of our physics peers in astronomy and
 their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
 `conda-forge`_.
