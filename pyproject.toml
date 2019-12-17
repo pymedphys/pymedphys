@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.16.1"
+version = "0.16.2"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -117,7 +117,6 @@ pywin32 = { version = "224", platform = "win32" }
 doc8 = "*"
 
 # gui
-cefpython3 = "66.0"
 jupyterlab_server = "*"
 
 # Packages to include later
