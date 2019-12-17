@@ -34,6 +34,7 @@ dataclasses = { version = "*", python = "~3.6.0" }
 keyring = { version = "*", optional = true }
 packaging = { version = "*", optional = true }
 PyYAML = { version = "*", optional = true }
+tqdm = { version = "*", optional = true }
 
 numpy = { version = "^1.12", optional = true }
 matplotlib = { version = "*", optional = true }
@@ -53,7 +54,6 @@ shapely = { version = "*", optional = true }
 jupyterlab_server = { version = "*", optional = true }
 
 # labs
-tqdm = { version = "*", optional = true }
 python_dateutil = { version = "*", optional = true }
 Pillow = { version = "*", optional = true }
 imageio = { version = "*", optional = true }
