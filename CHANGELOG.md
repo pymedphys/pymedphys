@@ -38,7 +38,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Package changes
 
 - The license of the package has changed from `AGPL-3.0-or-later` to
- `Apache-2.0`
+ `Apache-2.0`.
 
 ### New Features
 
@@ -342,7 +342,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.15.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.16.0...master
+[0.16.0]: https://github.com/pymedphys/pymedphys/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/pymedphys/pymedphys/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/pymedphys/pymedphys/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/pymedphys/pymedphys/compare/v0.14.1...v0.14.2
