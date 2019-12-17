@@ -18,7 +18,6 @@ import pydicom.tag
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS,
     IDENTIFYING_KEYWORDS_FILEPATH,
-    anonymise_dataset,
     anonymise_directory,
     anonymise_file,
     get_baseline_keyword_vr_dict,
@@ -34,6 +33,7 @@ from pymedphys._dicom.constants import (
     get_baseline_dicom_repeaters_dict,
 )
 from pymedphys._dicom.utilities import remove_file
+from pymedphys.dicom import anonymise as anonymise_dataset
 
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(HERE, "data", "anonymise")
