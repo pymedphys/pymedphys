@@ -135,13 +135,13 @@ def gamma_shell(
             print("Calcing using global normalisation point for gamma")
         print("Global normalisation set to {}".format(options.global_normalisation))
         print(
-            "Global dose threshold set to {} ({}%% of normalisation)".format(
+            "Global dose threshold set to {} ({}% of normalisation)".format(
                 options.global_dose_threshold, options.dose_percent_threshold
             )
         )
         print("Distance threshold set to {}".format(options.distance_mm_threshold))
         print(
-            "Lower dose cutoff set to {} ({}%% of normalisation)".format(
+            "Lower dose cutoff set to {} ({}% of normalisation)".format(
                 options.lower_dose_cutoff, lower_percent_dose_cutoff
             )
         )
