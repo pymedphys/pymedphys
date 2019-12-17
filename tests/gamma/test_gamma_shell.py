@@ -20,7 +20,7 @@
 
 import numpy as np
 
-import pymedphys._gamma.implementation
+import pymedphys
 import pymedphys._utilities.createshells
 
 
@@ -37,7 +37,7 @@ def does_gamma_scale_as_expected(
     gamma_results = []
     for dose, distance in zip(dose_thresholds_to_test, distance_thresholds_to_test):
         gamma_results.append(
-            pymedphys._gamma.implementation.gamma_shell(
+            pymedphys.gamma(
                 coords,
                 reference,
                 coords,
@@ -67,7 +67,7 @@ def test_a_set_of_gamma_scaling():
 def test_multiple_threshold_inputs():
     coords, reference, evaluation, _ = get_dummy_gamma_set()
 
-    pymedphys._gamma.implementation.gamma_shell(
+    pymedphys.gamma(
         coords,
         reference,
         coords,
@@ -86,9 +86,7 @@ def test_lower_dose_threshold():
     evl = [10] * (len(ref) + 2)
     coords_evl = (np.arange(len(evl)) - 4,)
 
-    result = pymedphys._gamma.implementation.gamma_shell(
-        coords_ref, ref, coords_evl, evl, 10, 1
-    )
+    result = pymedphys.gamma(coords_ref, ref, coords_evl, evl, 10, 1)
 
     assert np.array_equal(ref < 0.2 * np.max(ref), np.isnan(result))
 
@@ -120,7 +118,7 @@ def test_regression_of_gamma_3d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma3d = np.round(
-        pymedphys._gamma.implementation.gamma_shell(
+        pymedphys.gamma(
             coords, reference, coords, evaluation, 3, 0.3, lower_percent_dose_cutoff=0
         ),
         decimals=1,
@@ -134,7 +132,7 @@ def test_regression_of_gamma_2d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma2d = np.round(
-        pymedphys._gamma.implementation.gamma_shell(
+        pymedphys.gamma(
             coords[1::],
             reference[5, :, :],
             coords[1::],
@@ -155,7 +153,7 @@ def test_regression_of_gamma_1d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma1d = np.round(
-        pymedphys._gamma.implementation.gamma_shell(
+        pymedphys.gamma(
             coords[2],
             reference[5, 5, :],
             coords[2],
