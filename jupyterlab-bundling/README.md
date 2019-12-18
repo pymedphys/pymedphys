@@ -45,3 +45,4 @@ Then, all you should need to do is wait.
 - Allow changing of default URL (to handle a different server extension apart
   from JupyterLab)
 - Allow defining a version number
+- Support `environment.yml` files also
