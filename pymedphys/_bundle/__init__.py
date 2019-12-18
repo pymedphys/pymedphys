@@ -41,10 +41,47 @@ def main(args):
     build = cwd.joinpath("build")
     python = build.joinpath("python")
 
+    notebooks_dir = cwd.joinpath("notebooks")
+    requirements_txt = cwd.joinpath("requirements.txt")
+
+    if not notebooks_dir.exists():
+        raise ValueError(
+            "Need to have a `notebooks` directory where this command is called"
+        )
+
+    if not requirements_txt.exists():
+        raise ValueError(
+            "Need to have a `requirements.txt` file where this command is called"
+        )
+
+    copied_notebooks_dir = build.joinpath("notebooks")
+
+    try:
+        shutil.copytree(notebooks_dir, copied_notebooks_dir)
+    except FileExistsError:
+        pass
+
+    build_files_to_copy = ["package.json", "yarn.lock"]
+    build_dirs_to_copy = ["src"]
+
+    for file_to_copy in build_files_to_copy:
+        try:
+            shutil.copy2(HERE.joinpath(file_to_copy), build.joinpath(file_to_copy))
+        except FileExistsError:
+            pass
+
+    for dirs_to_copy in build_dirs_to_copy:
+        try:
+            shutil.copytree(HERE.joinpath(dirs_to_copy), build.joinpath(dirs_to_copy))
+        except FileExistsError:
+            pass
+
     if platform.system() != "Windows":
         compat_python = f"Z:{pathlib.PureWindowsPath(python)}"
     else:
         compat_python = python
+
+    path_append_string = f"set PATH={compat_python};{compat_python}\\Scripts;%PATH%"
 
     if args.clean:
         shutil.rmtree(build, ignore_errors=True)
@@ -60,78 +97,54 @@ def main(args):
         f"/D={compat_python}",
     ]
 
-    print(install_miniconda)
-
     subprocess.check_call(install_miniconda)
 
-    # embedded_python_dir = build.joinpath("python")
-    # copied_notebooks_dir = build.joinpath("notebooks")
+    for path in python.joinpath("Library", "bin").glob("*.dll"):
+        try:
+            shutil.copy2(path, python.joinpath("DLLs"))
+        except FileExistsError:
+            pass
 
-    # notebooks_dir = cwd.joinpath("notebooks")
-    # requirements_txt = cwd.joinpath("requirements.txt")
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + [
+            "cmd",
+            "/c",
+            f"{path_append_string} && pip install jupyterlab jupyter_server",
+        ]
+    )
 
-    # if not notebooks_dir.exists():
-    #     raise ValueError(
-    #         "Need to have a `notebooks` directory where this command is called"
-    #     )
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + [
+            "cmd",
+            "/c",
+            f"{path_append_string} && conda install -y -c conda-forge nodejs",
+        ]
+    )
 
-    # if not requirements_txt.exists():
-    #     raise ValueError(
-    #         "Need to have a `requirements.txt` file where this command is called"
-    #     )
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + ["cmd", "/c", f"{path_append_string} && pip install -r requirements.txt"]
+    )
 
-    # embedded_python_path = pymedphys.data_path("python-windows-64-embedded.zip")
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + [
+            "cmd",
+            "/c",
+            f"{path_append_string} && python -c 'import pymedphys._jupyterlab.main; pymedphys._jupyterlab.main.get_build()'",
+        ]
+    )
 
-    # with zipfile.ZipFile(embedded_python_path, "r") as zip_obj:
-    #     zip_obj.extractall(embedded_python_dir)
+    subprocess.check_call(
+        EXECUTION_PREPEND + ["cmd", "/c", f"{path_append_string} && jlpm"], cwd=build
+    )
 
-    # try:
-    #     shutil.copytree(notebooks_dir, copied_notebooks_dir)
-    # except FileExistsError:
-    #     pass
-
-    # get_pip_path = pymedphys.data_path("get-pip.py")
-    # call_embedded_python(embedded_python_dir, get_pip_path)
-
-    # python_path_file = next(embedded_python_dir.glob("python*._pth"))
-
-    # temp_python_path_file = f"{python_path_file}.temp"
-    # file_contents_replace(python_path_file, "#import site", "import site")
-
-    # call_embedded_python(embedded_python_dir, "-m", "pip", "--version")
-
-    # os.rename(python_path_file, temp_python_path_file)
-    # call_embedded_python(
-    #     embedded_python_dir,
-    #     "-m",
-    #     "pip",
-    #     "install",
-    #     "-r",
-    #     requirements_txt,
-    #     "--no-warn-script-location",
-    # )
-    # os.rename(temp_python_path_file, python_path_file)
-
-    # call_embedded_python(
-    #     embedded_python_dir,
-    #     "-c",
-    #     "import pymedphys._jupyterlab.main; pymedphys._jupyterlab.main.get_build()",
-    # )
-
-    # build_files_to_copy = ["package.json", "yarn.lock"]
-    # build_dirs_to_copy = ["src"]
-
-    # for file_to_copy in build_files_to_copy:
-    #     try:
-    #         shutil.copy2(HERE.joinpath(file_to_copy), build.joinpath(file_to_copy))
-    #     except FileExistsError:
-    #         pass
-
-    # for dirs_to_copy in build_dirs_to_copy:
-    #     try:
-    #         shutil.copytree(HERE.joinpath(dirs_to_copy), build.joinpath(dirs_to_copy))
-    #     except FileExistsError:
-    #         pass
+    subprocess.check_call(
+        EXECUTION_PREPEND + ["cmd", "/c", f"{path_append_string} && jlpm dist"],
+        cwd=build,
+    )
 
     # subprocess.check_call(["yarn"], cwd=build)
     # subprocess.check_call(["yarn", "dist"], cwd=build)
