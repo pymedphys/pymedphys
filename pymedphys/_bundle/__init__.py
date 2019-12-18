@@ -5,6 +5,7 @@ import platform
 import shutil
 import subprocess
 import tempfile
+import typing
 import zipfile
 
 import pymedphys
@@ -22,29 +23,46 @@ def file_contents_replace(file_path, pattern, subst):
     shutil.move(abs_path, file_path)
 
 
-def get_embedded_python_executable(embedded_python_exe):
-    if platform.system() == "Windows":
-        return [embedded_python_exe]
+if platform.system() == "Windows":
+    EXECUTION_PREPEND: typing.List[str] = []
+else:
+    EXECUTION_PREPEND = ["wine"]
 
-    return ["wine", embedded_python_exe]
 
-
-def call_embedded_python(embedded_python_dir, *args):
-    embedded_python_exe = embedded_python_dir.joinpath("python.exe")
-    to_be_called = [
-        str(item)
-        for item in get_embedded_python_executable(embedded_python_exe) + list(args)
-    ]
-    print(to_be_called)
-    subprocess.check_call(to_be_called, cwd=embedded_python_dir)
+# def call_embedded_python(embedded_python_dir, *args):
+#     embedded_python_exe = embedded_python_dir.joinpath("python.exe")
+#     to_be_called = [str(item) for item in EXECUTION_PREPEND + [embedded_python_exe] + list(args)]
+#     print(to_be_called)
+#     subprocess.check_call(to_be_called, cwd=embedded_python_dir)
 
 
 def main(args):
     cwd = pathlib.Path(os.getcwd())
     build = cwd.joinpath("build")
+    python = build.joinpath("python")
+
+    if platform.system() != "Windows":
+        compat_python = f"Z:{pathlib.PureWindowsPath(python)}"
+    else:
+        compat_python = python
 
     if args.clean:
         shutil.rmtree(build, ignore_errors=True)
+
+    miniconda_install_exe = pymedphys.data_path("miniconda.exe")
+
+    install_miniconda = EXECUTION_PREPEND + [
+        miniconda_install_exe,
+        "/InstallationType=JustMe",
+        "/RegisterPython=0",
+        "/S",
+        "/AddToPath=0",
+        f"/D={compat_python}",
+    ]
+
+    print(install_miniconda)
+
+    subprocess.check_call(install_miniconda)
 
     # embedded_python_dir = build.joinpath("python")
     # copied_notebooks_dir = build.joinpath("notebooks")
