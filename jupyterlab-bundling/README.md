@@ -2,8 +2,10 @@
 
 Here is a tool which takes as input a directory of Jupyter notebooks as well
 as a `requirements.txt` file and it creates `JupyterLab Setup.exe` which will
-allow JupyterLab to be installed on another Windows PC with an embedded Python
-environment and your notebooks.
+allow JupyterLab to be installed on another Windows PC. The destination PC
+does not need Python or any other dependencies installed. The installation
+will include a copy of the Python environment as defined within
+`requirements.txt`.
 
 ## Usage
 
