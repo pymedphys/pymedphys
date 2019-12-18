@@ -33,6 +33,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+
+## [0.17.0]
+
+### New Features
+
+- Initial alpha release of an experimental JupyterLab application bundler.
+  Run with `pymedphys bundle` in a directory that contains a notebook dir and
+  a `requirements.txt` file.
+
+
 ## [0.16.3]
 
 ### Bug Fixes
@@ -363,7 +373,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.16.3...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.17.0...master
+[0.17.0]: https://github.com/pymedphys/pymedphys/compare/v0.16.3...v0.17.0
 [0.16.3]: https://github.com/pymedphys/pymedphys/compare/v0.16.2...v0.16.3
 [0.16.2]: https://github.com/pymedphys/pymedphys/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/pymedphys/pymedphys/compare/v0.16.0...v0.16.1
