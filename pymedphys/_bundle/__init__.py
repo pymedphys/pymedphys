@@ -89,7 +89,7 @@ def main(args):
     miniconda_install_exe = pymedphys.data_path("miniconda.exe")
 
     install_miniconda = EXECUTION_PREPEND + [
-        miniconda_install_exe,
+        str(miniconda_install_exe),
         "/InstallationType=JustMe",
         "/RegisterPython=0",
         "/S",
