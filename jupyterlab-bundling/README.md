@@ -38,7 +38,7 @@ Then, all you should need to do is wait.
 - Icons aren't that of the Jupyter project
 
 
-## Future features
+## Planned features
 
 - Allow customisation of application name
 - Allow lab extensions to be declared
