@@ -83,59 +83,66 @@ def main(args):
 
     path_append_string = f"set PATH={compat_python};{compat_python}\\Scripts;%PATH%"
 
-    if args.clean:
-        shutil.rmtree(build, ignore_errors=True)
+    # if args.clean:
+    #     shutil.rmtree(build, ignore_errors=True)
 
-    miniconda_install_exe = pymedphys.data_path("miniconda.exe")
+    # miniconda_install_exe = pymedphys.data_path("miniconda.exe")
 
-    install_miniconda = EXECUTION_PREPEND + [
-        miniconda_install_exe,
-        "/InstallationType=JustMe",
-        "/RegisterPython=0",
-        "/S",
-        "/AddToPath=0",
-        f"/D={compat_python}",
-    ]
+    # install_miniconda = EXECUTION_PREPEND + [
+    #     miniconda_install_exe,
+    #     "/InstallationType=JustMe",
+    #     "/RegisterPython=0",
+    #     "/S",
+    #     "/AddToPath=0",
+    #     f"/D={compat_python}",
+    # ]
 
-    subprocess.check_call(install_miniconda)
+    # subprocess.check_call(install_miniconda)
 
-    for path in python.joinpath("Library", "bin").glob("*.dll"):
-        try:
-            shutil.copy2(path, python.joinpath("DLLs"))
-        except FileExistsError:
-            pass
+    # for path in python.joinpath("Library", "bin").glob("*.dll"):
+    #     try:
+    #         shutil.copy2(path, python.joinpath("DLLs"))
+    #     except FileExistsError:
+    #         pass
 
-    subprocess.check_call(
+    # subprocess.check_call(
+    #     EXECUTION_PREPEND
+    #     + [
+    #         "cmd",
+    #         "/c",
+    #         f"{path_append_string} && pip install jupyterlab jupyter_server",
+    #     ]
+    # )
+
+    # subprocess.check_call(
+    #     EXECUTION_PREPEND
+    #     + [
+    #         "cmd",
+    #         "/c",
+    #         f"{path_append_string} && conda install -y -c conda-forge nodejs",
+    #     ]
+    # )
+
+    # subprocess.check_call(
+    #     EXECUTION_PREPEND
+    #     + ["cmd", "/c", f"{path_append_string} && pip install -r requirements.txt"]
+    # )
+
+    fetch_jlab_build_call = " ".join(
         EXECUTION_PREPEND
         + [
             "cmd",
             "/c",
-            f"{path_append_string} && pip install jupyterlab jupyter_server",
+            '"'
+            + path_append_string
+            + " && set command=python -c 'import\\ pymedphys._jupyterlab.main;\\ pymedphys._jupyterlab.main.get_build()'"
+            + '"',
         ]
     )
 
-    subprocess.check_call(
-        EXECUTION_PREPEND
-        + [
-            "cmd",
-            "/c",
-            f"{path_append_string} && conda install -y -c conda-forge nodejs",
-        ]
-    )
+    print(fetch_jlab_build_call)
 
-    subprocess.check_call(
-        EXECUTION_PREPEND
-        + ["cmd", "/c", f"{path_append_string} && pip install -r requirements.txt"]
-    )
-
-    subprocess.check_call(
-        EXECUTION_PREPEND
-        + [
-            "cmd",
-            "/c",
-            f"{path_append_string} && python -c 'import pymedphys._jupyterlab.main; pymedphys._jupyterlab.main.get_build()'",
-        ]
-    )
+    subprocess.check_call(fetch_jlab_build_call, shell=True)
 
     subprocess.check_call(
         EXECUTION_PREPEND + ["cmd", "/c", f"{path_append_string} && jlpm"], cwd=build
@@ -145,9 +152,6 @@ def main(args):
         EXECUTION_PREPEND + ["cmd", "/c", f"{path_append_string} && jlpm dist"],
         cwd=build,
     )
-
-    # subprocess.check_call(["yarn"], cwd=build)
-    # subprocess.check_call(["yarn", "dist"], cwd=build)
 
     # final_exe = cwd.joinpath("JupyterLab Setup.exe")
     # try:
