@@ -29,8 +29,14 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        python-version: [3.6]
         toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
+        include:
+          - os: 'ubuntu'
+            python-version: 3.6
+          - os: 'windows'
+            python-version: 3.7
+          - os: 'macos'
+            python-version: 3.8
 
     runs-on: ${{ matrix.os }}-latest
 
@@ -129,3 +135,37 @@ jobs:
     - name: Run Tox if anything has changed
       run: |
         git add -A && git diff HEAD --name-only --exit-code || poetry run tox -e ${{ matrix.toxenv }}
+
+
+  Examples:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu']
+        toxenv: ['stackoverflow']
+        python-version: [3.6]
+
+    runs-on: ${{ matrix.os }}-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Show python information
+      run: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
+
+    - name: Upgrade pip, install poetry and tox
+      run: |
+        python -m pip install --upgrade pip poetry tox
+
+    - name: Run Tox
+      run: |
+        poetry run tox -e ${{ matrix.toxenv }}
