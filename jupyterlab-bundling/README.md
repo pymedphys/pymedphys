@@ -10,7 +10,7 @@ environment and your notebooks.
 Install pymedphys:
 
 ```bash
-pip install pymedphys >= 0.17.0
+pip install pymedphys>=0.17.0
 ```
 
 Create a notebooks directory as well as a `requirements.txt` file, see this
