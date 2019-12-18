@@ -5,6 +5,7 @@ import platform
 import shutil
 import subprocess
 import tempfile
+import typing
 import zipfile
 
 import pymedphys
@@ -12,38 +13,33 @@ import pymedphys
 HERE: pathlib.Path = pathlib.Path(__file__).parent.resolve()
 
 # https://stackoverflow.com/a/39110
-def file_contents_replace(file_path, pattern, subst):
-    fh, abs_path = tempfile.mkstemp()
-    with open(fh, "w") as new_file:
-        with open(file_path) as old_file:
-            for line in old_file:
-                new_file.write(line.replace(pattern, subst))
-    os.remove(file_path)
-    shutil.move(abs_path, file_path)
+# def file_contents_replace(file_path, pattern, subst):
+#     fh, abs_path = tempfile.mkstemp()
+#     with open(fh, "w") as new_file:
+#         with open(file_path) as old_file:
+#             for line in old_file:
+#                 new_file.write(line.replace(pattern, subst))
+#     os.remove(file_path)
+#     shutil.move(abs_path, file_path)
 
 
-def get_embedded_python_executable(embedded_python_exe):
-    if platform.system() == "Windows":
-        return [embedded_python_exe]
-
-    return ["wine", embedded_python_exe]
-
-
-def call_embedded_python(embedded_python_dir, *args):
-    embedded_python_exe = embedded_python_dir.joinpath("python.exe")
-    to_be_called = [
-        str(item)
-        for item in get_embedded_python_executable(embedded_python_exe) + list(args)
-    ]
-    print(to_be_called)
-    subprocess.check_call(to_be_called, cwd=embedded_python_dir)
+if platform.system() == "Windows":
+    EXECUTION_PREPEND: typing.List[str] = []
+else:
+    EXECUTION_PREPEND = ["wine"]
 
 
-def main(_):
+# def call_embedded_python(embedded_python_dir, *args):
+#     embedded_python_exe = embedded_python_dir.joinpath("python.exe")
+#     to_be_called = [str(item) for item in EXECUTION_PREPEND + [embedded_python_exe] + list(args)]
+#     print(to_be_called)
+#     subprocess.check_call(to_be_called, cwd=embedded_python_dir)
+
+
+def main(args):
     cwd = pathlib.Path(os.getcwd())
     build = cwd.joinpath("build")
-
-    embedded_python_dir = build.joinpath("python")
+    python = build.joinpath("python")
 
     notebooks_dir = cwd.joinpath("notebooks")
     requirements_txt = cwd.joinpath("requirements.txt")
@@ -58,44 +54,12 @@ def main(_):
             "Need to have a `requirements.txt` file where this command is called"
         )
 
-    # shutil.rmtree(embedded_python_dir, ignore_errors=True)
-
-    embedded_python_path = pymedphys.data_path("python-windows-64-embedded.zip")
-
-    with zipfile.ZipFile(embedded_python_path, "r") as zip_obj:
-        zip_obj.extractall(embedded_python_dir)
-
     copied_notebooks_dir = build.joinpath("notebooks")
-    shutil.rmtree(copied_notebooks_dir, ignore_errors=True)
-    shutil.copytree(notebooks_dir, copied_notebooks_dir)
 
-    get_pip_path = pymedphys.data_path("get-pip.py")
-    call_embedded_python(embedded_python_dir, get_pip_path)
-
-    python_path_file = next(embedded_python_dir.glob("python*._pth"))
-
-    temp_python_path_file = f"{python_path_file}.temp"
-    file_contents_replace(python_path_file, "#import site", "import site")
-
-    call_embedded_python(embedded_python_dir, "-m", "pip", "--version")
-
-    os.rename(python_path_file, temp_python_path_file)
-    call_embedded_python(
-        embedded_python_dir,
-        "-m",
-        "pip",
-        "install",
-        "-r",
-        requirements_txt,
-        "--no-warn-script-location",
-    )
-    os.rename(temp_python_path_file, python_path_file)
-
-    call_embedded_python(
-        embedded_python_dir,
-        "-c",
-        "import pymedphys._jupyterlab.main; pymedphys._jupyterlab.main.get_build()",
-    )
+    try:
+        shutil.copytree(notebooks_dir, copied_notebooks_dir)
+    except FileExistsError:
+        pass
 
     build_files_to_copy = ["package.json", "yarn.lock"]
     build_dirs_to_copy = ["src"]
@@ -112,8 +76,82 @@ def main(_):
         except FileExistsError:
             pass
 
-    subprocess.check_call(["yarn"], cwd=build)
-    subprocess.check_call(["yarn", "dist"], cwd=build)
+    if platform.system() != "Windows":
+        compat_python = f"Z:{pathlib.PureWindowsPath(python)}"
+    else:
+        compat_python = python
+
+    path_append_string = f"set PATH={compat_python};{compat_python}\\Scripts;%PATH%"
+
+    if args.clean:
+        shutil.rmtree(build, ignore_errors=True)
+
+    miniconda_install_exe = pymedphys.data_path("miniconda.exe")
+
+    install_miniconda = EXECUTION_PREPEND + [
+        str(miniconda_install_exe),
+        "/InstallationType=JustMe",
+        "/RegisterPython=0",
+        "/S",
+        "/AddToPath=0",
+        f"/D={compat_python}",
+    ]
+
+    subprocess.check_call(install_miniconda)
+
+    for path in python.joinpath("Library", "bin").glob("*.dll"):
+        try:
+            shutil.copy2(path, python.joinpath("DLLs"))
+        except FileExistsError:
+            pass
+
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + [
+            "cmd",
+            "/c",
+            f"{path_append_string} && pip install jupyterlab jupyter_server",
+        ]
+    )
+
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + [
+            "cmd",
+            "/c",
+            f"{path_append_string} && conda install -y -c conda-forge nodejs",
+        ]
+    )
+
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + ["cmd", "/c", f"{path_append_string} && pip install -r requirements.txt"]
+    )
+
+    fetch_jlab_build_call = " ".join(
+        EXECUTION_PREPEND
+        + [
+            "cmd",
+            "/c",
+            '"'
+            + path_append_string
+            + " && set command=python -c 'import\\ pymedphys._jupyterlab.main;\\ pymedphys._jupyterlab.main.get_build()'"
+            + '"',
+        ]
+    )
+
+    print(fetch_jlab_build_call)
+
+    subprocess.check_call(fetch_jlab_build_call, shell=True)
+
+    subprocess.check_call(
+        EXECUTION_PREPEND + ["cmd", "/c", f"{path_append_string} && jlpm"], cwd=build
+    )
+
+    subprocess.check_call(
+        EXECUTION_PREPEND + ["cmd", "/c", f"{path_append_string} && jlpm dist"],
+        cwd=build,
+    )
 
     final_exe = cwd.joinpath("JupyterLab Setup.exe")
     try:
