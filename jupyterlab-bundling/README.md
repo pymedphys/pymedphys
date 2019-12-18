@@ -15,8 +15,8 @@ Install PyMedPhys:
 pip install pymedphys>=0.17.0
 ```
 
-Create a notebooks directory as well as a `requirements.txt` file, see this
-current directory for examples.
+Create a `notebooks` directory as well as a `requirements.txt` file, see the
+directory that this README is contained within for an example.
 
 Run the following within that directory:
 
