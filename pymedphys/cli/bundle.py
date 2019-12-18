@@ -20,18 +20,9 @@ from pymedphys._bundle import main
 
 
 def bundle_cli(subparsers):
-    bundle_parser = subparsers.add_parser(
+    parser = subparsers.add_parser(
         "bundle", help=("Bundle applications into an installable executable.")
     )
-    bundle_subparsers = bundle_parser.add_subparsers(dest="bundle")
-    bundle_lab_cli(bundle_subparsers)
 
-    return bundle_parser
-
-
-def bundle_lab_cli(bundle_subparsers):
-    parser = bundle_subparsers.add_parser(
-        "jupyterlab", help="Bundles JupyterLab into an installable executable."
-    )
-
+    parser.add_argument("--clean", action="store_true")
     parser.set_defaults(func=main)
