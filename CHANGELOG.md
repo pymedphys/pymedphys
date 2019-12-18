@@ -39,8 +39,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### New Features
 
 - Initial alpha release of an experimental JupyterLab application bundler.
-  Run with `pymedphys bundle` in a directory that contains a notebook dir and
-  a `requirements.txt` file.
+  Run with `pymedphys bundle` in a directory that contains a `notebooks` dir
+  and a `requirements.txt` file.
 
 
 ## [0.16.3]
