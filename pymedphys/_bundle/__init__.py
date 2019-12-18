@@ -13,14 +13,14 @@ import pymedphys
 HERE: pathlib.Path = pathlib.Path(__file__).parent.resolve()
 
 # https://stackoverflow.com/a/39110
-def file_contents_replace(file_path, pattern, subst):
-    fh, abs_path = tempfile.mkstemp()
-    with open(fh, "w") as new_file:
-        with open(file_path) as old_file:
-            for line in old_file:
-                new_file.write(line.replace(pattern, subst))
-    os.remove(file_path)
-    shutil.move(abs_path, file_path)
+# def file_contents_replace(file_path, pattern, subst):
+#     fh, abs_path = tempfile.mkstemp()
+#     with open(fh, "w") as new_file:
+#         with open(file_path) as old_file:
+#             for line in old_file:
+#                 new_file.write(line.replace(pattern, subst))
+#     os.remove(file_path)
+#     shutil.move(abs_path, file_path)
 
 
 if platform.system() == "Windows":
@@ -83,50 +83,50 @@ def main(args):
 
     path_append_string = f"set PATH={compat_python};{compat_python}\\Scripts;%PATH%"
 
-    # if args.clean:
-    #     shutil.rmtree(build, ignore_errors=True)
+    if args.clean:
+        shutil.rmtree(build, ignore_errors=True)
 
-    # miniconda_install_exe = pymedphys.data_path("miniconda.exe")
+    miniconda_install_exe = pymedphys.data_path("miniconda.exe")
 
-    # install_miniconda = EXECUTION_PREPEND + [
-    #     miniconda_install_exe,
-    #     "/InstallationType=JustMe",
-    #     "/RegisterPython=0",
-    #     "/S",
-    #     "/AddToPath=0",
-    #     f"/D={compat_python}",
-    # ]
+    install_miniconda = EXECUTION_PREPEND + [
+        miniconda_install_exe,
+        "/InstallationType=JustMe",
+        "/RegisterPython=0",
+        "/S",
+        "/AddToPath=0",
+        f"/D={compat_python}",
+    ]
 
-    # subprocess.check_call(install_miniconda)
+    subprocess.check_call(install_miniconda)
 
-    # for path in python.joinpath("Library", "bin").glob("*.dll"):
-    #     try:
-    #         shutil.copy2(path, python.joinpath("DLLs"))
-    #     except FileExistsError:
-    #         pass
+    for path in python.joinpath("Library", "bin").glob("*.dll"):
+        try:
+            shutil.copy2(path, python.joinpath("DLLs"))
+        except FileExistsError:
+            pass
 
-    # subprocess.check_call(
-    #     EXECUTION_PREPEND
-    #     + [
-    #         "cmd",
-    #         "/c",
-    #         f"{path_append_string} && pip install jupyterlab jupyter_server",
-    #     ]
-    # )
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + [
+            "cmd",
+            "/c",
+            f"{path_append_string} && pip install jupyterlab jupyter_server",
+        ]
+    )
 
-    # subprocess.check_call(
-    #     EXECUTION_PREPEND
-    #     + [
-    #         "cmd",
-    #         "/c",
-    #         f"{path_append_string} && conda install -y -c conda-forge nodejs",
-    #     ]
-    # )
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + [
+            "cmd",
+            "/c",
+            f"{path_append_string} && conda install -y -c conda-forge nodejs",
+        ]
+    )
 
-    # subprocess.check_call(
-    #     EXECUTION_PREPEND
-    #     + ["cmd", "/c", f"{path_append_string} && pip install -r requirements.txt"]
-    # )
+    subprocess.check_call(
+        EXECUTION_PREPEND
+        + ["cmd", "/c", f"{path_append_string} && pip install -r requirements.txt"]
+    )
 
     fetch_jlab_build_call = " ".join(
         EXECUTION_PREPEND
@@ -153,10 +153,10 @@ def main(args):
         cwd=build,
     )
 
-    # final_exe = cwd.joinpath("JupyterLab Setup.exe")
-    # try:
-    #     final_exe.unlink()
-    # except FileNotFoundError:
-    #     pass
+    final_exe = cwd.joinpath("JupyterLab Setup.exe")
+    try:
+        final_exe.unlink()
+    except FileNotFoundError:
+        pass
 
-    # shutil.copy2(build.joinpath("release", "JupyterLab Setup 0.0.0.exe"), final_exe)
+    shutil.copy2(build.joinpath("release", "JupyterLab Setup 0.0.0.exe"), final_exe)
