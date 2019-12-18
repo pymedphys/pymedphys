@@ -27,5 +27,7 @@ Then, all you should need to do is wait.
 ## Known bugs
 
 - Current deal breaker bug -- the embedded JupyterLab still uses kernels on the
-  local machine -- oops.
-- Closing the application doesn't actually close the JupyterLab server
+  local machine.
+- Closing the application doesn't actually close the JupyterLab server.
+- The created exe is very large, this likely can be reduced by a factor of 2 or
+  so, but this isn't a focus at the moment.
