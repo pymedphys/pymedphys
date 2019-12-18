@@ -9,7 +9,7 @@ will include a copy of the Python environment as defined within
 
 ## Usage
 
-Install pymedphys:
+Install PyMedPhys:
 
 ```bash
 pip install pymedphys>=0.17.0
