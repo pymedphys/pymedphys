@@ -30,8 +30,6 @@ class DeliveryMonaco(
         read_trf_contents = create_read_trf_contents()
         tel_contents = read_trf_contents(tel_path)
 
-        delivery_from_tel_plan_contents(tel_contents)
-
         return cls(*delivery_from_tel_plan_contents(tel_contents))
 
 
@@ -40,6 +38,7 @@ def delivery_from_tel_plan_contents(tel_contents):
     all_controlpoint_results = re.findall(pattern, tel_contents)
 
     mu = np.cumsum([float(result[3]) for result in all_controlpoint_results])
+    print(len(mu))
 
     iec_gantry_angle = [float(result[1]) for result in all_controlpoint_results]
     bipolar_gantry_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
@@ -95,11 +94,7 @@ def get_control_point_pattern():
         f"{optional_decimal_param},({optional_decimal_param}),{optional_decimal_param},({optional_decimal_param})"
     )
 
-    weird_zeros = "       0\n0\n0"
-
-    total_pattern = (
-        f"({sixteen_rows_of_mlcs_pattern})\n{weird_ones}\n{parameters}\n{weird_zeros}"
-    )
+    total_pattern = f"({sixteen_rows_of_mlcs_pattern})\n{weird_ones}\n{parameters}"
 
     return total_pattern
 
