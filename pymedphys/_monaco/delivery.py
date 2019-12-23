@@ -14,7 +14,6 @@
 
 import functools
 import re
-import sys
 
 from pymedphys._imports import numpy as np
 
