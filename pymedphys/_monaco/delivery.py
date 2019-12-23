@@ -102,8 +102,8 @@ def get_control_point_pattern():
 def create_read_trf_contents():
     if sys.platform == "win32":
         import os
-        import win32file
-        import msvcrt
+        import win32file  # pylint: disable = import-error,
+        import msvcrt  # pylint: disable = import-error,
 
         def read_trf_contents(filepath):
             handle = win32file.CreateFile(
