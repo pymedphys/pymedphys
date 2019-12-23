@@ -47,8 +47,21 @@ def load_dicom_file(filepath):
 
 class DeliveryDicom(DeliveryBase):
     @classmethod
-    def from_dicom(cls, dicom_dataset, fraction_number):
-        (beam_sequence, metersets) = get_fraction_group_beam_sequence_and_meterset(
+    def from_dicom(cls, dicom_dataset, fraction_number=None):
+        if fraction_number is None:
+            fractions = dicom_dataset.FractionGroupSequence
+            fraction_numbers = [fraction.FractionGroupNumber for fraction in fractions]
+
+            if len(fraction_numbers) == 1:
+                fraction_number = fraction_numbers[0]
+            else:
+                raise ValueError(
+                    "There is more than one fraction in this DICOM plan, please provide"
+                    " the `fraction_number` parameter to define which one to pull.\n"
+                    f"   Fraction numbers to choose from are: {fraction_numbers}"
+                )
+
+        beam_sequence, metersets = get_fraction_group_beam_sequence_and_meterset(
             dicom_dataset, fraction_number
         )
 
