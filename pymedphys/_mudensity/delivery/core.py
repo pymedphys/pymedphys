@@ -29,8 +29,14 @@ class DeliveryMuDensity(DeliveryBase):
         if gantry_angles is None:
             gantry_angles = 0
             gantry_tolerance = 500
+        else:
+            gantry_angles = tuple(gantry_angles)
 
-        masked_by_gantry = self._mask_by_gantry(gantry_angles, gantry_tolerance)
+        filtered_delivery = self._filter_cps()
+
+        masked_by_gantry = filtered_delivery._mask_by_gantry(  # pylint: disable = protected-access
+            gantry_angles, gantry_tolerance
+        )
 
         mudensities = []
         for delivery_data in masked_by_gantry:

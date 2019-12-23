@@ -38,7 +38,6 @@ def delivery_from_tel_plan_contents(tel_contents):
     all_controlpoint_results = re.findall(pattern, tel_contents)
 
     mu = np.cumsum([float(result[3]) for result in all_controlpoint_results])
-    print(len(mu))
 
     iec_gantry_angle = [float(result[1]) for result in all_controlpoint_results]
     bipolar_gantry_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
