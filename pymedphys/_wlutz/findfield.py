@@ -94,21 +94,11 @@ def field_centre_and_rotation_refining(
         except ValueError:
             pass
 
-    # verification_centre = optimise_centre(
-    #     field, initial_centre, edge_lengths, penumbra, predicted_rotation
-    # )
-
     verification_rotation = optimise_rotation(
         field, predicted_centre, edge_lengths, penumbra, initial_rotation
     )
 
-    check_rotation_and_centre(
-        edge_lengths,
-        # verification_centre,
-        # predicted_centre,
-        verification_rotation,
-        predicted_rotation,
-    )
+    check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
 
     try:
         pylinac = run_wlutz(
@@ -145,12 +135,12 @@ def field_centre_and_rotation_refining(
 
 def check_rotation_and_centre(
     edge_lengths,
-    # verification_centre,
-    # predicted_centre,
+    verification_centre,
+    predicted_centre,
     verification_rotation,
     predicted_rotation,
 ):
-    # check_centre_close(verification_centre, predicted_centre)
+    check_centre_close(verification_centre, predicted_centre)
     check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
 
 
