@@ -149,3 +149,4 @@ scratch-*
 v*.tar.gz
 
 *.py.*.py
+*.exe
