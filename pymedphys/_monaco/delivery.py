@@ -100,10 +100,17 @@ def get_control_point_pattern():
 
 @functools.lru_cache(maxsize=1)
 def create_read_trf_contents():
-    if sys.platform == "win32":
+
+    try:
+        import win32file  # pylint: disable = import-error
+
+        has_win32file = True
+    except ImportError:
+        has_win32file = False
+
+    if has_win32file:
         import os
-        import win32file  # pylint: disable = import-error,
-        import msvcrt  # pylint: disable = import-error,
+        import msvcrt  # pylint: disable = import-error
 
         def read_trf_contents(filepath):
             handle = win32file.CreateFile(
