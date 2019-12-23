@@ -11,5 +11,5 @@
   "original_dose_beam_4.dcm": "https://zenodo.org/record/3382023/files/original_dose_beam_4.dcm?download=1",
   "logfile_dose_beam_4.dcm": "https://zenodo.org/record/3382023/files/logfile_dose_beam_4.dcm?download=1",
   "miniconda.exe": "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe",
-  "monaco_to_trf.zip": "https://zenodo.org/record/3590253/files/Monaco%20to%20TRF%20compare.zip?download=1"
+  "monaco_trf_compare.zip": "https://zenodo.org/record/3590421/files/monaco_trf_compare.zip?download=1"
 }
