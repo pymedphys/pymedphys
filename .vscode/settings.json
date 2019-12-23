@@ -95,6 +95,8 @@
     "filebrowser",
     "fileeditor",
     "findbb",
+    "fliplr",
+    "flipud",
     "fluence",
     "freetds",
     "functools",
