@@ -94,21 +94,11 @@ def field_centre_and_rotation_refining(
         except ValueError:
             pass
 
-    verification_centre = optimise_centre(
-        field, initial_centre, edge_lengths, penumbra, predicted_rotation
-    )
-
     verification_rotation = optimise_rotation(
         field, predicted_centre, edge_lengths, penumbra, initial_rotation
     )
 
-    check_rotation_and_centre(
-        edge_lengths,
-        verification_centre,
-        predicted_centre,
-        verification_rotation,
-        predicted_rotation,
-    )
+    check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
 
     try:
         pylinac = run_wlutz(
@@ -157,13 +147,13 @@ def check_rotation_and_centre(
 def check_rotation_close(edge_lengths, verification_rotation, predicted_rotation):
     if np.allclose(*edge_lengths):
         diff = (verification_rotation - predicted_rotation) % 90
-        if not (diff < 0.1 or diff > 89.9):
+        if not (diff < 0.3 or diff > 89.7):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
     else:
         diff = (verification_rotation - predicted_rotation) % 180
-        if not (diff < 0.1 or diff > 179.9):
+        if not (diff < 0.3 or diff > 179.7):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
@@ -180,7 +170,11 @@ def _rotation_error_string(verification_rotation, predicted_rotation, diff):
 
 def check_centre_close(verification_centre, predicted_centre):
     if not np.allclose(verification_centre, predicted_centre, rtol=0.01, atol=0.01):
-        raise ValueError("Field centre not able to be reproducibly determined.")
+        raise ValueError(
+            "Field centre not able to be reproducibly determined.\n"
+            f"    Verification Centre: {verification_centre}\n"
+            f"    Predicted Centre: {predicted_centre}\n"
+        )
 
 
 def optimise_rotation(field, centre, edge_lengths, penumbra, initial_rotation):
