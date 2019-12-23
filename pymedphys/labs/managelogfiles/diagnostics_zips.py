@@ -21,7 +21,7 @@ from glob import glob
 
 
 def fetch_system_diagnostics(ip, storage_directory, other_directory=None):
-    r"""Fetches and stores locally Linac system diagnositc files.
+    r"""Fetches and stores locally Linac system diagnostic files.
 
     For an Elekta Linac the system diagnostic backups are stored at
     \\IP\Backup\TCS\SDD+*.zip. These are copied to a defined local directory.
