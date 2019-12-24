@@ -58,6 +58,7 @@ jobs:
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
+        key: pymedphys-data
 
     - name: Install FreeTDS on MacOS
       if: matrix.os == 'macos'
@@ -122,6 +123,7 @@ jobs:
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
+        key: pymedphys-data
 
     - name: Install FreeTDS on MacOS
       if: matrix.os == 'macos'
