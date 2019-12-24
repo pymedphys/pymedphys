@@ -1,23 +1,37 @@
 import functools
 import os
 import pathlib
+import platform
 import stat
 import subprocess
-import sys
 
 import pymedphys
 
 
 @functools.lru_cache(maxsize=1)
 def get_jpeg_executable():
-    if sys.platform == "win32":
-        jpeg_path = pymedphys.data_path("jpeg.exe")
-    else:
+    system = platform.system()
+
+    if system == "Windows":
+        return pymedphys.data_path("jpeg.exe")
+
+    if system == "Darwin":
+        raise OSError(
+            "No lossless jpeg binary available for macOS. If you wish "
+            "have macOS support for this function please email me at "
+            "me@simonbiggs.net and we can get it included."
+        )
+    if system == "Linux":
         jpeg_path = pymedphys.data_path("jpeg")
         st = os.stat(jpeg_path)
         os.chmod(jpeg_path, st.st_mode | stat.S_IEXEC)
 
-    return jpeg_path
+        return jpeg_path
+
+    raise OSError(
+        "You are running an unknown platform. If you would like this "
+        "platform supported please email me at me@simonbiggs.net"
+    )
 
 
 def convert_lossless_jpeg(input_filepath, output_filepath=None):
