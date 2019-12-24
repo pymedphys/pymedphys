@@ -37,6 +37,7 @@ jobs:
             python-version: 3.7
           - os: 'macos'
             python-version: 3.7
+        if: ${{ matrix.os }} != 'windows' or ${{ matrix.toxenv }} != 'pylint'
 
     runs-on: ${{ matrix.os }}-latest
 
