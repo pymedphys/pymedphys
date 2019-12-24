@@ -37,6 +37,13 @@ jobs:
             python-version: 3.7
           - os: 'macos'
             python-version: 3.7
+        exclude:
+          - os: 'windows'
+            toxenv: 'pylint'
+          - os: 'windows'
+            toxenv: 'runslow'
+          - os: 'macos'
+            toxenv: 'runslow'
 
     runs-on: ${{ matrix.os }}-latest
 
