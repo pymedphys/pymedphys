@@ -34,6 +34,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - nil -->
 
 
+## [0.17.1]
+
+### Quality of life improvements
+
+- Made wlutz determination less fussy.
+
+
 ## [0.17.0]
 
 ### New Features
