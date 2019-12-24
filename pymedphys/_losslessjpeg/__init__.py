@@ -18,9 +18,10 @@ def get_jpeg_executable():
     if system == "Darwin":
         raise OSError(
             "No lossless jpeg binary available for macOS. If you wish "
-            "have macOS support for this function please email me at "
+            "to have macOS support for this function please email me at "
             "me@simonbiggs.net and we can get it included."
         )
+
     if system == "Linux":
         jpeg_path = pymedphys.data_path("jpeg")
         st = os.stat(jpeg_path)
