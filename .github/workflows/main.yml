@@ -50,6 +50,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - uses: actions/cache@v1
+      with:
+        path: ${{ home }}/.pymedphys
+
     - name: Show python information
       run: |
         python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
