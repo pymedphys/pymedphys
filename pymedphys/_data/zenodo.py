@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import functools
 import json
 import os
 import pathlib
@@ -48,6 +49,7 @@ def get_data_dir():
     return data_dir
 
 
+@functools.lru_cache()
 def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True):
     filepath = get_data_dir().joinpath(filename)
 
