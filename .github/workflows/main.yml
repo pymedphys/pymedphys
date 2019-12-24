@@ -29,14 +29,16 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
         include:
           - os: 'ubuntu'
             python-version: 3.6
+            toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
           - os: 'windows'
             python-version: 3.7
+            toxenv: ['docs', 'doctest', 'clean']
           - os: 'macos'
             python-version: 3.7
+            toxenv: ['pylint', 'docs', 'doctest', 'clean']
 
     runs-on: ${{ matrix.os }}-latest
 
