@@ -15,5 +15,6 @@
   "jpeg.exe": "https://zenodo.org/record/3592182/files/jpeg.exe?download=1",
   "jpeg": "https://zenodo.org/record/3592201/files/jpeg?download=1",
   "lossless_jpeg_test.zip": "https://zenodo.org/record/3592203/files/test.zip?download=1",
-  "pylinac_wlutz_regression_image.jpg": "https://zenodo.org/record/3592292/files/00088.1.3.46.423632.301688.1577069255.43.jpg?download=1"
+  "pylinac_wlutz_regression_image.jpg": "https://zenodo.org/record/3592292/files/00088.1.3.46.423632.301688.1577069255.43.jpg?download=1",
+  "wlutz_tensorflow_training_data.zip": "https://zenodo.org/record/3592545/files/WlutzTensorFlowTrainingData.zip?download=1"
 }
