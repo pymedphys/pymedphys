@@ -27,7 +27,7 @@ def download_with_resume(url, filepath):
     if filepath.exists():
         open_mode = "ab"
         exist_size = filepath.stat().st_size
-        no_206_url_opener.addheader(f"Range", "bytes={exist_size}-")
+        no_206_url_opener.addheader("Range", f"bytes={exist_size}-")
     else:
         open_mode = "wb"
 
@@ -35,7 +35,9 @@ def download_with_resume(url, filepath):
         with no_206_url_opener.open(url) as web_page:
             web_size = int(web_page.headers["Content-Length"])
 
-            if web_size != exist_size:
+            # print(f"Exist size: {exist_size}, web size: {web_size}")
+
+            if exist_size < web_size:
                 block_size = 8192
                 current_block = exist_size // block_size
 
@@ -55,6 +57,15 @@ def download_with_resume(url, filepath):
                         current_block += 1
 
     exist_size = filepath.stat().st_size
-    if exist_size != web_size:
-        print("Download was interupted. Resuming download...")
+    if exist_size < web_size:
+        print(
+            "Download was interupted. "
+            f"Current file size: {exist_size}, download file size: {web_size}\n"
+            "Resuming download..."
+        )
         download_with_resume(url, filepath)
+
+    if exist_size > web_size:
+        with open(filepath, "rb+") as output_file:
+            output_file.seek(web_size)
+            output_file.truncate()
