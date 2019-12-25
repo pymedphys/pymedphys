@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import functools
 import json
 import os
 import pathlib
@@ -41,9 +42,8 @@ def get_data_dir():
     return data_dir
 
 
-def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True):
-    filepath = get_data_dir().joinpath(filename)
-
+@functools.lru_cache()
+def get_url(filename):
     with open(HERE.joinpath("urls.json"), "r") as url_file:
         urls = json.load(url_file)
 
@@ -52,6 +52,12 @@ def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True):
     except KeyError:
         raise ValueError("The file provided isn't within pymedphys' urls.json record.")
 
+    return url
+
+
+def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True):
+    filepath = get_data_dir().joinpath(filename)
+    url = get_url(filename)
     download_with_resume(url, filepath)
 
     if check_hash:
