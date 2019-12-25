@@ -8,9 +8,7 @@ import tqdm
 
 
 class DownloadProgressBar(tqdm.tqdm):
-    def update_to(self, current_block=1, block_size=1, total_size=None):
-        if total_size is not None:
-            self.total = total_size
+    def update_to(self, current_block=1, block_size=1):
         self.update(current_block * block_size - self.n)
 
 
@@ -34,8 +32,8 @@ def download_with_resume(url, filepath):
         open_mode = "wb"
 
     with open(filepath, open_mode) as output_file:
-        with no_206_url_opener.open(url) as wep_page:
-            web_size = int(wep_page.headers["Content-Length"])
+        with no_206_url_opener.open(url) as web_page:
+            web_size = int(web_page.headers["Content-Length"])
 
             if web_size != exist_size:
                 block_size = 8192
@@ -43,16 +41,19 @@ def download_with_resume(url, filepath):
 
                 with DownloadProgressBar(
                     unit="B", unit_scale=True, miniters=1, desc=filepath.name
-                ) as t:
+                ) as progress:
+                    progress.total = web_size
                     while 1:
-                        t.update_to(
-                            current_block=current_block,
-                            block_size=block_size,
-                            total_size=web_size,
+                        progress.update_to(
+                            current_block=current_block, block_size=block_size
                         )
-                        data = wep_page.read(block_size)
+                        data = web_page.read(block_size)
                         if not data:
                             break
                         output_file.write(data)
 
                         current_block += 1
+
+    exist_size = filepath.stat().st_size
+    if exist_size != web_size:
+        download_with_resume(url, filepath)
