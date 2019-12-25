@@ -115,15 +115,10 @@ def data_file_hash_check(filename):
     return cached_filehash == calculated_filehash
 
 
-def zip_data_paths(
-    filename,
-    check_hashes=True,
-    redownload_on_hash_mismatch=True,
-    reextract_on_hash_mismatch=True,
-):
+def zip_data_paths(filename, check_hash=True, redownload_on_hash_mismatch=True):
     zip_filepath = data_path(
         filename,
-        check_hash=check_hashes,
+        check_hash=check_hash,
         redownload_on_hash_mismatch=redownload_on_hash_mismatch,
     )
     relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
@@ -147,33 +142,33 @@ def zip_data_paths(
         path for path, is_file in zip(resolved_paths, paths_are_files) if is_file
     ]
 
-    if check_hashes:
-        non_matching_filepaths = []
+    # if check_hashes:
+    #     non_matching_filepaths = []
 
-        for zipped_filename, is_file in zip(namelist, paths_are_files):
-            if is_file:
-                relative_filename = relative_extract_directory.joinpath(zipped_filename)
+    #     for zipped_filename, is_file in zip(namelist, paths_are_files):
+    #         if is_file:
+    #             relative_filename = relative_extract_directory.joinpath(zipped_filename)
 
-                try:
-                    hash_agrees = data_file_hash_check(relative_filename)
-                    if not hash_agrees:
-                        non_matching_filepaths.append(relative_filename)
-                except NoHashFound:
-                    pass
+    #             try:
+    #                 hash_agrees = data_file_hash_check(relative_filename)
+    #                 if not hash_agrees:
+    #                     non_matching_filepaths.append(relative_filename)
+    #             except NoHashFound:
+    #                 pass
 
-        if reextract_on_hash_mismatch:
-            for zipped_relative_filename in non_matching_filepaths:
-                extract_directory.joinpath(zipped_relative_filename).unlink()
+    #     if reextract_on_hash_mismatch:
+    #         for zipped_relative_filename in non_matching_filepaths:
+    #             extract_directory.joinpath(zipped_relative_filename).unlink()
 
-            return zip_data_paths(
-                filename,
-                redownload_on_hash_mismatch=redownload_on_hash_mismatch,
-                reextract_on_hash_mismatch=False,
-            )
+    #         return zip_data_paths(
+    #             filename,
+    #             redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+    #             reextract_on_hash_mismatch=False,
+    #         )
 
-        if non_matching_filepaths:
-            raise ValueError(
-                "At least one file on disk does not match the recorded hash."
-            )
+    #     if non_matching_filepaths:
+    #         raise ValueError(
+    #             "At least one file on disk does not match the recorded hash."
+    #         )
 
     return resolved_filepaths

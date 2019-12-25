@@ -211,6 +211,7 @@
     "subpackage",
     "superoinferior",
     "tabmanager",
+    "tensorflow",
     "toctree",
     "tolist",
     "toplevel",
