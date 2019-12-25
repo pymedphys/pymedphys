@@ -12,16 +12,20 @@ class DownloadProgressBar(tqdm.tqdm):
         self.update(current_block * block_size - self.n)
 
 
-class No206URLopener(urllib.request.FancyURLopener):
+class No206URLOpener(urllib.request.FancyURLopener):
     """ Subclass to override error 206 (partial file being sent); okay for us """
 
+    def __init__(self, *args, **kwargs):
+        urllib.request.FancyURLopener.__init__(self, *args, **kwargs)
+        self.had_a_206 = False
+
     def http_error_206(self, url, fp, errcode, errmsg, headers, data=None):
-        pass  # Ignore the expected "non-error" code
+        self.had_a_206 = True
 
 
 def download_with_resume(url, filepath):
     exist_size = 0
-    no_206_url_opener = No206URLopener()
+    no_206_url_opener = No206URLOpener()
     filepath = pathlib.Path(filepath)
 
     if filepath.exists():
@@ -31,13 +35,17 @@ def download_with_resume(url, filepath):
     else:
         open_mode = "wb"
 
-    with open(filepath, open_mode) as output_file:
-        with no_206_url_opener.open(url) as web_page:
-            web_size = int(web_page.headers["Content-Length"])
+    with no_206_url_opener.open(url) as web_page:
+        web_size = int(web_page.headers["Content-Length"])
+        if web_size == exist_size:
+            return
 
-            # print(f"Exist size: {exist_size}, web size: {web_size}")
+        if exist_size != 0 and not no_206_url_opener.had_a_206:
+            raise ValueError("Resume not supported by server")
 
-            if exist_size < web_size:
+        if exist_size < web_size:
+
+            with open(filepath, open_mode) as output_file:
                 block_size = 8192
                 current_block = exist_size // block_size
 

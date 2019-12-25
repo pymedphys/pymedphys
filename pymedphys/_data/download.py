@@ -17,13 +17,13 @@ import functools
 import json
 import os
 import pathlib
-import urllib.request
 import warnings
 import zipfile
 
 import pymedphys._utilities.filehash
 
 from .resume import download_with_resume
+from .zenodo import get_zenodo_file_urls
 
 HERE = pathlib.Path(__file__).resolve().parent
 
@@ -55,10 +55,16 @@ def get_url(filename):
     return url
 
 
-def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True):
+def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True, url=None):
     filepath = get_data_dir().joinpath(filename)
-    url = get_url(filename)
-    download_with_resume(url, filepath)
+
+    if url is None:
+        url = get_url(filename)
+
+    try:
+        download_with_resume(url, filepath)
+    except ValueError as e:
+        print(e)
 
     if check_hash:
         try:
@@ -103,6 +109,36 @@ def data_file_hash_check(filename):
         raise NoHashFound
 
     return cached_filehash == calculated_filehash
+
+
+def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=True):
+    with open(HERE.joinpath("zenodo.json"), "r") as zenodo_file:
+        zenodo = json.load(zenodo_file)
+
+    try:
+        record_id = zenodo[record_name]
+    except KeyError:
+        raise ValueError(
+            "This Zenodo record isn't recorded within this version of PyMedPhys."
+        )
+
+    file_urls = get_zenodo_file_urls(record_id)
+
+    record_directory = get_data_dir().joinpath(record_name)
+    record_directory.mkdir(exist_ok=True)
+
+    data_paths = []
+    for filename, url in file_urls.items():
+        data_paths.append(
+            data_path(
+                pathlib.Path(record_name).joinpath(filename),
+                check_hash=check_hash,
+                redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+                url=url,
+            )
+        )
+
+    return data_paths
 
 
 def zip_data_paths(filename, check_hash=True, redownload_on_hash_mismatch=True):
