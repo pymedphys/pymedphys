@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import functools
 import json
 import os
 import pathlib
@@ -21,18 +20,11 @@ import urllib.request
 import warnings
 import zipfile
 
-import tqdm
-
 import pymedphys._utilities.filehash
 
+from .resume import download_with_resume
+
 HERE = pathlib.Path(__file__).resolve().parent
-
-
-class DownloadProgressBar(tqdm.tqdm):
-    def update_to(self, b=1, bsize=1, tsize=None):
-        if tsize is not None:
-            self.total = tsize
-        self.update(b * bsize - self.n)
 
 
 def get_config_dir():
@@ -49,26 +41,18 @@ def get_data_dir():
     return data_dir
 
 
-@functools.lru_cache()
 def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True):
     filepath = get_data_dir().joinpath(filename)
 
-    if not filepath.exists():
-        with open(HERE.joinpath("urls.json"), "r") as url_file:
-            urls = json.load(url_file)
+    with open(HERE.joinpath("urls.json"), "r") as url_file:
+        urls = json.load(url_file)
 
-        try:
-            url = urls[filename]
-        except KeyError:
-            raise ValueError(
-                "The file provided isn't within pymedphys' urls.json record."
-            )
+    try:
+        url = urls[filename]
+    except KeyError:
+        raise ValueError("The file provided isn't within pymedphys' urls.json record.")
 
-        with DownloadProgressBar(
-            unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
-        ) as t:
-
-            urllib.request.urlretrieve(url, filepath, reporthook=t.update_to)
+    download_with_resume(url, filepath)
 
     if check_hash:
         try:
@@ -136,39 +120,6 @@ def zip_data_paths(filename, check_hash=True, redownload_on_hash_mismatch=True):
         for zipped_filename in namelist
     ]
 
-    paths_are_files = [path.is_file() for path in resolved_paths]
-
-    resolved_filepaths = [
-        path for path, is_file in zip(resolved_paths, paths_are_files) if is_file
-    ]
-
-    # if check_hashes:
-    #     non_matching_filepaths = []
-
-    #     for zipped_filename, is_file in zip(namelist, paths_are_files):
-    #         if is_file:
-    #             relative_filename = relative_extract_directory.joinpath(zipped_filename)
-
-    #             try:
-    #                 hash_agrees = data_file_hash_check(relative_filename)
-    #                 if not hash_agrees:
-    #                     non_matching_filepaths.append(relative_filename)
-    #             except NoHashFound:
-    #                 pass
-
-    #     if reextract_on_hash_mismatch:
-    #         for zipped_relative_filename in non_matching_filepaths:
-    #             extract_directory.joinpath(zipped_relative_filename).unlink()
-
-    #         return zip_data_paths(
-    #             filename,
-    #             redownload_on_hash_mismatch=redownload_on_hash_mismatch,
-    #             reextract_on_hash_mismatch=False,
-    #         )
-
-    #     if non_matching_filepaths:
-    #         raise ValueError(
-    #             "At least one file on disk does not match the recorded hash."
-    #         )
+    resolved_filepaths = [path for path in resolved_paths if path.is_file()]
 
     return resolved_filepaths
