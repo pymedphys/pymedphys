@@ -274,17 +274,7 @@ def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
 
 
 def create_rotation_only_minimiser(field, centre, edge_lengths, penumbra):
-    inner_points_at_origin = define_rotation_field_points_at_origin(
-        edge_lengths, penumbra
-    )
-    expanded_points_at_origin = define_rotation_field_points_at_origin(
-        edge_lengths, 3 * penumbra
-    )
-
-    points_at_origin = (
-        np.concatenate([inner_points_at_origin[0], expanded_points_at_origin[0]]),
-        np.concatenate([inner_points_at_origin[1], expanded_points_at_origin[1]]),
-    )
+    points_at_origin = define_rotation_field_points_at_origin(edge_lengths, penumbra)
 
     def to_minimise(rotation):
         all_field_points = transform_rotation_field_points(
