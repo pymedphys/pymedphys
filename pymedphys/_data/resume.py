@@ -56,4 +56,5 @@ def download_with_resume(url, filepath):
 
     exist_size = filepath.stat().st_size
     if exist_size != web_size:
+        print("Download was interupted. Resuming download...")
         download_with_resume(url, filepath)
