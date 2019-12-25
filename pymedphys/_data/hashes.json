@@ -12,11 +12,6 @@
   "lossless_jpeg_test/output.ppm": "ead2221d4796c6133374b7a918eff1e1420f68a6",
   "miniconda.exe": "12eb8a3a82b294e00b8e4d3b95a5cd3b77a9ecaf",
   "monaco_trf_compare.zip": "3e6ca8a6f3721ef424af2c447922ff2b032f0710",
-  "monaco_trf_compare/StaticAnglesNoCol/19_12_20 06_52_53 Z 1-1_2F IMRT.trf": "0cb9b0f6d33ba896714d5036e1dd4222c597f5a8",
-  "monaco_trf_compare/StaticAnglesNoCol/RP.2.16.840.1.114337.1.1.1577007273.0_Anonymised.dcm": "6752bc5520bf0d042d16524607bf6731b920687f",
-  "monaco_trf_compare/StaticAnglesNoCol/tel.1": "7cd5ca6f66b754009d2a0e79fc253fe8b26bb98f",
-  "monaco_trf_compare/VMATwithCol/RP.2.16.840.1.114337.1.1.1577057230.0_Anonymised.dcm": "85b7cfa15302efe4ce73cf9271008b0b0bc49ee2",
-  "monaco_trf_compare/VMATwithCol/tel.1": "1131f44cd78d7ba18501d74db048db80cab22ac6",
   "original_dose_beam_4.dcm": "dea5e9206a5423d9388046f902e83f620b59686f",
   "pylinac_wlutz_regression_image.jpg": "8f46084c588d5474fe11c483025bca66078e88a5",
   "python-windows-64-embedded.zip": "716b446c557bebdc4cc29f6b7c662d5a9c580956",
@@ -27,5 +22,12 @@
   "wlutz_tensorflow_training_data/0.zip": "a86a92a53a65458b8269819708dd18bc77f0e14f",
   "wlutz_tensorflow_training_data/1.zip": "29b6385591e7e75e36fe6a0cb7ad76881beec6ef",
   "wlutz_tensorflow_training_data/2.zip": "8f29dc4261f2705cad7f5353ff6c1d77c0cff895",
-  "wlutz_tensorflow_training_data/3.zip": "bea29b6b00e36be0dd8c5015a733e39594ced796"
+  "wlutz_tensorflow_training_data/3.zip": "bea29b6b00e36be0dd8c5015a733e39594ced796",
+  "wlutz_tensorflow_training_data/4.zip": "736f056748c68a5f0e4f860a70de2e1950a89513",
+  "wlutz_tensorflow_training_data/5.zip": "c0fb4485839c9d120db416e7265eadd60d80bc1b",
+  "wlutz_tensorflow_training_data/6.zip": "6f9f0e7c590b92ae685bd6986604c2dd41c5ac10",
+  "wlutz_tensorflow_training_data/7.zip": "acdc423a5128b8803f03eba1de6c724f94499447",
+  "wlutz_tensorflow_training_data/8.zip": "2d6607e0ce38d59eabfaf7565e0cff5c4aeb74fe",
+  "wlutz_tensorflow_training_data/9.zip": "51a6c2a348de418196ab8987aec322ed8bc84cfe",
+  "wlutz_tensorflow_training_data/a.zip": "7267241dec6c0d8dcb2201e2bb1a582275fa12dd"
 }
