@@ -127,25 +127,40 @@ def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=
     record_directory = get_data_dir().joinpath(record_name)
     record_directory.mkdir(exist_ok=True)
 
+    relative_record_path = pathlib.Path(record_name)
+
     data_paths = []
     for filename, url in file_urls.items():
-        data_paths.append(
-            data_path(
-                pathlib.Path(record_name).joinpath(filename),
+        save_filename = relative_record_path.joinpath(filename)
+
+        if filename.suffix == ".zip":
+            data_paths += zip_data_paths(
+                save_filename,
                 check_hash=check_hash,
                 redownload_on_hash_mismatch=redownload_on_hash_mismatch,
                 url=url,
             )
-        )
+        else:
+            data_paths.append(
+                data_path(
+                    save_filename,
+                    check_hash=check_hash,
+                    redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+                    url=url,
+                )
+            )
 
     return data_paths
 
 
-def zip_data_paths(filename, check_hash=True, redownload_on_hash_mismatch=True):
+def zip_data_paths(
+    filename, check_hash=True, redownload_on_hash_mismatch=True, url=None
+):
     zip_filepath = data_path(
         filename,
         check_hash=check_hash,
         redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+        url=url,
     )
     relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
     extract_directory = get_data_dir().joinpath(relative_extract_directory)
