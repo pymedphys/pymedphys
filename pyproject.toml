@@ -98,9 +98,6 @@ black = "^19.3b0"
 mypy = "*"
 rope = "*"
 
-# Tensorflow Attempts
-tf-nightly = { version = "*", allow-prereleases = true }
-
 # Building documentation
 sphinx = ">= 1.4, < 1.8"
 sphinx-rtd-theme = "*"
