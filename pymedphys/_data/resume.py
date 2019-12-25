@@ -50,7 +50,7 @@ def download_with_resume(url, filepath):
                 current_block = exist_size // block_size
 
                 with DownloadProgressBar(
-                    unit="B", unit_scale=True, miniters=1, desc=filepath.name
+                    unit="B", unit_scale=True, miniters=1, desc=str(filepath)
                 ) as progress:
                     progress.total = web_size
                     while 1:

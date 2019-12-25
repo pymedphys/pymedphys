@@ -131,6 +131,7 @@ def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=
 
     data_paths = []
     for filename, url in file_urls.items():
+        filename = pathlib.Path(filename)
         save_filename = relative_record_path.joinpath(filename)
 
         if filename.suffix == ".zip":
