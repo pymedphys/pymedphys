@@ -58,13 +58,11 @@ def get_url(filename):
 def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True, url=None):
     filepath = get_data_dir().joinpath(filename)
 
-    if url is None:
-        url = get_url(filename)
+    if not filepath.exists():
+        if url is None:
+            url = get_url(filename)
 
-    try:
         download_with_resume(url, filepath)
-    except ValueError as e:
-        print(e)
 
     if check_hash:
         try:
