@@ -31,7 +31,7 @@ def find_centre_and_rotation(
     x, y, img, edge_lengths, penumbra=2, initial_rotation=0, rounding=True
 ):
     field = create_interpolated_field(x, y, img)
-    initial_centre = _initial_centre(x, y, img)
+    initial_centre = get_centre_of_mass(x, y, img)
 
     centre, rotation = field_centre_and_rotation_refining(
         field, edge_lengths, penumbra, initial_centre, initial_rotation=initial_rotation
@@ -225,7 +225,7 @@ def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
     return predicted_centre
 
 
-def _initial_centre(x, y, img):
+def get_centre_of_mass(x, y, img):
     centre_of_mass_index = scipy.ndimage.measurements.center_of_mass(img)
 
     centre = [
