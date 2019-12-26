@@ -134,6 +134,7 @@
     "jarmc",
     "junit",
     "jupyterlab",
+    "keras",
     "logfile",
     "lzma",
     "macos",
