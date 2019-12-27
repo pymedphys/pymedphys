@@ -19,7 +19,7 @@
 """Pix2pix.
 """
 
-# pylint: disable = no-member
+# pylint: skip-file
 # mypy: ignore-errors
 
 from __future__ import absolute_import, division, print_function
