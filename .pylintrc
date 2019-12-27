@@ -26,8 +26,11 @@ disable =
 
 max-line-length=88
 
+ignored-modules =
+    tensorflow
+    tensorflow.keras
 
 extension-pkg-whitelist =
     pymssql,
     numpy,
-    win32file
+    win32file,
