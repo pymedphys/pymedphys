@@ -16,7 +16,7 @@
 from pymedphys._imports import numpy as np
 
 from .findbb import optimise_bb_centre
-from .findfield import _initial_centre, field_centre_and_rotation_refining
+from .findfield import field_centre_and_rotation_refining, get_centre_of_mass
 from .imginterp import create_interpolated_field
 
 
@@ -32,7 +32,7 @@ def find_field_and_bb(
     pylinac_tol=0.2,
 ):
     field = create_interpolated_field(x, y, img)
-    initial_centre = _initial_centre(x, y, img)
+    initial_centre = get_centre_of_mass(x, y, img)
 
     field_centre, field_rotation = field_centre_and_rotation_refining(
         field,
