@@ -18,6 +18,7 @@ import re
 from pymedphys._imports import numpy as np
 
 import pymedphys._base.delivery
+import pymedphys._utilities.filesystem
 import pymedphys._utilities.transforms
 
 
@@ -99,46 +100,12 @@ def get_control_point_pattern():
 
 @functools.lru_cache(maxsize=1)
 def create_read_trf_contents():
+    def read_trf_contents(filepath):
+        with pymedphys._utilities.filesystem.open_no_lock(  # pylint: disable = protected-access
+            filepath, "r"
+        ) as a_file:
+            data = a_file.read()
 
-    try:
-        import win32file  # pylint: disable = import-error
-
-        has_win32file = True
-    except ImportError:
-        has_win32file = False
-
-    if has_win32file:
-        import os
-        import msvcrt  # pylint: disable = import-error
-
-        def read_trf_contents(filepath):
-            handle = win32file.CreateFile(
-                str(filepath),
-                win32file.GENERIC_READ,
-                win32file.FILE_SHARE_DELETE
-                | win32file.FILE_SHARE_READ
-                | win32file.FILE_SHARE_WRITE,
-                None,
-                win32file.OPEN_EXISTING,
-                0,
-                None,
-            )
-
-            detached_handle = handle.Detach()
-
-            file_descriptor = msvcrt.open_osfhandle(detached_handle, os.O_RDONLY)
-
-            with open(file_descriptor) as file:
-                data = file.read()
-
-            return data
-
-    else:
-
-        def read_trf_contents(filepath):
-            with open(filepath, "r") as file:
-                data = file.read()
-
-            return data
+        return data
 
     return read_trf_contents
