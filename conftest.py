@@ -46,4 +46,5 @@ def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
         or "node_modules" in relative_path_list
         or "site-packages" in relative_path_list
         or ("_bundle" in relative_path_list and "python" in relative_path_list)
+        or "tensorflow" in relative_path_list
     )
