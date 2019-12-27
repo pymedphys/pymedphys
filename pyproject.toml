@@ -35,6 +35,7 @@ tqdm = "*"
 keyring = { version = "*", optional = true }
 packaging = { version = "*", optional = true }
 PyYAML = { version = "*", optional = true }
+requests = { version = "*", optional = true }
 
 numpy = { version = "^1.12", optional = true }
 matplotlib = { version = "*", optional = true }

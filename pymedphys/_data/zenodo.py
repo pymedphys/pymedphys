@@ -1,6 +1,6 @@
 import json
 
-import requests
+from pymedphys._imports import requests
 
 BASE_URL = "https://zenodo.org/api/records/"
 
