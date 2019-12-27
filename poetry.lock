@@ -2115,12 +2115,12 @@ docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleo
 gui = ["jupyterlab_server"]
 labs = ["python_dateutil", "Pillow", "imageio", "scikit-image"]
 library = ["keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy", "pandas", "dbfread", "pydicom", "pynetdicom", "requests"]
-ml = ["tensorflow"]
+ml = ["tensorflow", "absl-py"]
 pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "9c125f18e501ec343683cfd09f84d48306c7bab6d9a3936e700ec3c8659e86a4"
+content-hash = "fbddeb384bf42f3bdd1d0c857159dfe67ffbbc7d4fd1fbb9647d38ca4db6ed3c"
 python-versions = "^3.6"
 
 [metadata.files]
