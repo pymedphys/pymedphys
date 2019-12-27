@@ -62,6 +62,7 @@ scikit-image = { version = "*", optional = true }
 
 # ml
 tensorflow = { version = "2.1.0-rc2", optional = true }
+absl-py = { version = "*", optional = true }
 
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
@@ -142,7 +143,7 @@ gui = [
 ]
 
 ml = [
-    "tensorflow"
+    "tensorflow", "absl-py"
 ]
 
 library = [
