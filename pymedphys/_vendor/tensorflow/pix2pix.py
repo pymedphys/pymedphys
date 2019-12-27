@@ -27,18 +27,18 @@ from __future__ import absolute_import, division, print_function
 import os
 import time
 
-import tensorflow as tf  # TF2
-from absl import app, flags
+from pymedphys._imports import absl
+from pymedphys._imports import tensorflow as tf  # TF2
 
 assert tf.__version__.startswith("2")
 
-FLAGS = flags.FLAGS
+FLAGS = absl.flags.FLAGS
 
-flags.DEFINE_integer("buffer_size", 400, "Shuffle buffer size")
-flags.DEFINE_integer("batch_size", 1, "Batch Size")
-flags.DEFINE_integer("epochs", 1, "Number of epochs")
-flags.DEFINE_string("path", None, "Path to the data folder")
-flags.DEFINE_boolean("enable_function", True, "Enable Function?")
+absl.flags.DEFINE_integer("buffer_size", 400, "Shuffle buffer size")
+absl.flags.DEFINE_integer("batch_size", 1, "Batch Size")
+absl.flags.DEFINE_integer("epochs", 1, "Number of epochs")
+absl.flags.DEFINE_string("path", None, "Path to the data folder")
+absl.flags.DEFINE_boolean("enable_function", True, "Enable Function?")
 
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
@@ -541,4 +541,4 @@ def main(epochs, enable_function, path, buffer_size, batch_size):
 
 
 if __name__ == "__main__":
-    app.run(run_main)
+    absl.app.run(run_main)
