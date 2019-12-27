@@ -27,8 +27,8 @@ from __future__ import absolute_import, division, print_function
 import os
 import time
 
-from pymedphys._imports import absl
-from pymedphys._imports import tensorflow as tf  # TF2
+import absl
+import tensorflow as tf  # TF2
 
 assert tf.__version__.startswith("2")
 
