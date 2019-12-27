@@ -12,7 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import string
+
+
+@contextlib.contextmanager
+def open_no_lock(filepath, *args, **kwargs):
+    try:
+        import win32file  # pylint: disable = import-error
+
+        has_win32file = True
+    except ImportError:
+        has_win32file = False
+
+    try:
+        if has_win32file:
+            import os
+            import msvcrt  # pylint: disable = import-error
+
+            handle = win32file.CreateFile(
+                str(filepath),
+                win32file.GENERIC_READ,
+                win32file.FILE_SHARE_DELETE
+                | win32file.FILE_SHARE_READ
+                | win32file.FILE_SHARE_WRITE,
+                None,
+                win32file.OPEN_EXISTING,
+                0,
+                None,
+            )
+
+            detached_handle = handle.Detach()
+
+            file_descriptor = msvcrt.open_osfhandle(detached_handle, os.O_RDONLY)
+
+            a_file = open(file_descriptor, *args, **kwargs)
+        else:
+            a_file = open(filepath, *args, **kwargs)
+
+        yield a_file
+    finally:
+        a_file.close()
 
 
 def make_a_valid_directory_name(proposed_directory_name):
