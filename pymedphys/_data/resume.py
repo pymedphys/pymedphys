@@ -19,7 +19,15 @@ class No206URLOpener(urllib.request.FancyURLopener):
         urllib.request.FancyURLopener.__init__(self, *args, **kwargs)
         self.had_a_206 = False
 
-    def http_error_206(self, url, fp, errcode, errmsg, headers, data=None):
+    def http_error_206(
+        self,
+        url,  # pylint: disable = unused-argument
+        fp,  # pylint: disable = unused-argument
+        errcode,  # pylint: disable = unused-argument
+        errmsg,  # pylint: disable = unused-argument
+        headers,  # pylint: disable = unused-argument
+        data=None,  # pylint: disable = unused-argument
+    ):
         self.had_a_206 = True
 
 
