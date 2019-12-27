@@ -147,7 +147,7 @@ ml = [
 
 library = [
     "keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy",
-    "pandas", "dbfread", "pydicom", "pynetdicom"
+    "pandas", "dbfread", "pydicom", "pynetdicom", "requests"
 ]
 
 labs = [
