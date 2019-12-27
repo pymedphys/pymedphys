@@ -693,6 +693,24 @@ traitlets = "*"
 
 [[package]]
 category = "main"
+description = "The JupyterLab notebook server extension."
+name = "jupyterlab"
+optional = true
+python-versions = ">=3.5"
+version = "1.2.4"
+
+[package.dependencies]
+jinja2 = ">=2.10"
+jupyterlab-server = ">=1.0.0,<1.1.0"
+notebook = ">=4.3.1"
+tornado = "<6.0.0 || >6.0.0,<6.0.1 || >6.0.1,<6.0.2 || >6.0.2"
+
+[package.extras]
+docs = ["sphinx", "recommonmark", "sphinx-rtd-theme", "sphinx-copybutton"]
+test = ["pytest", "pytest-check-links", "requests"]
+
+[[package]]
+category = "main"
 description = "JupyterLab Server"
 name = "jupyterlab-server"
 optional = false
@@ -2113,14 +2131,15 @@ testing = ["pathlib2", "contextlib2", "unittest2"]
 difficult = ["pymssql", "shapely"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "m2r"]
 gui = ["jupyterlab_server"]
-labs = ["python_dateutil", "Pillow", "imageio", "scikit-image"]
-library = ["keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy", "pandas", "dbfread", "pydicom", "pynetdicom", "requests"]
+jupyter = ["jupyterlab", "pywin32"]
+labs = ["python_dateutil", "scikit-image"]
+library = ["keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy", "pandas", "dbfread", "pydicom", "pynetdicom", "requests", "Pillow", "imageio"]
 ml = ["tensorflow", "absl-py"]
 pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "fbddeb384bf42f3bdd1d0c857159dfe67ffbbc7d4fd1fbb9647d38ca4db6ed3c"
+content-hash = "e7663084bb951866068c6779b9450dbd4166ea88064beba06774494b4830897d"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2470,6 +2489,10 @@ jupyter-client = [
 jupyter-core = [
     {file = "jupyter_core-4.6.1-py2.py3-none-any.whl", hash = "sha256:464769f7387d7a62a2403d067f1ddc616655b7f77f5d810c0dd62cb54bfd0fb9"},
     {file = "jupyter_core-4.6.1.tar.gz", hash = "sha256:a183e0ec2e8f6adddf62b0a3fc6a2237e3e0056d381e536d3e7c7ecc3067e244"},
+]
+jupyterlab = [
+    {file = "jupyterlab-1.2.4-py2.py3-none-any.whl", hash = "sha256:aa8353fed65b3073607ba6a5a806699463ef8f61a7be74f29168440a1567be1e"},
+    {file = "jupyterlab-1.2.4.tar.gz", hash = "sha256:6adb88acd05b51512c37df477a18c36240823a591c2a51bf6556198414026d8f"},
 ]
 jupyterlab-server = [
     {file = "jupyterlab_server-1.0.6-py3-none-any.whl", hash = "sha256:d9c3bcf097f7ad8d8fd2f8d0c1e8a1b833671c02808e5f807088975495364447"},
