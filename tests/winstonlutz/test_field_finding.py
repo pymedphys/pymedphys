@@ -76,7 +76,7 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     xx, yy = np.meshgrid(x, y)
     zz = field(xx, yy)
 
-    initial_centre = pymedphys._wlutz.findfield._initial_centre(x, y, zz)
+    initial_centre = pymedphys._wlutz.findfield.get_centre_of_mass(x, y, zz)
     (centre, rotation) = pymedphys._wlutz.findfield.field_centre_and_rotation_refining(
         field, edge_lengths, penumbra, initial_centre
     )
@@ -104,6 +104,6 @@ def test_find_initial_field_centre():
 
     zz = field(xx, yy)
 
-    initial_centre = pymedphys._wlutz.findfield._initial_centre(x, y, zz)
+    initial_centre = pymedphys._wlutz.findfield.get_centre_of_mass(x, y, zz)
 
     assert np.allclose(initial_centre, centre)
