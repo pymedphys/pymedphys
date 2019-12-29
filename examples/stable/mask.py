@@ -51,17 +51,17 @@ def get_grids(img_size, expansion):
 
 
 def main():
-    img_size = 32
+    img_size = 16
     expansion = 4
 
     x, y, _, _ = get_grids(img_size, expansion)
 
-    bb_diameter = 8.0
+    bb_diameter = 6.0
     bb_radius = bb_diameter / 2
     bb_radius_sqrd = bb_radius ** 2
 
-    bb_centre_1 = [10.5, 10.1]
-    bb_centre_2 = [20.5, 20.1]
+    bb_centre_1 = [4.5, 4.1]
+    bb_centre_2 = [10.5, 10.1]
 
     circle_mask = get_circle_mask(bb_centre_1, bb_radius_sqrd, img_size, expansion)
     simple_circle_mask = get_simple_circle_mask(bb_centre_2, bb_radius_sqrd, x, y)
