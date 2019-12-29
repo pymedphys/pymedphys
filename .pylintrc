@@ -26,13 +26,6 @@ disable =
 
 max-line-length=88
 
-ignored-modules =
-    tensorflow
-    tensorflow
-
-ignored-classes =
-    tensorflow
-
 extension-pkg-whitelist =
     pymssql,
     numpy,
