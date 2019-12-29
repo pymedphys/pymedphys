@@ -156,6 +156,7 @@
     "mplot",
     "msvcrt",
     "mudensity",
+    "mypy",
     "nargs",
     "nbcc",
     "ndarray",
