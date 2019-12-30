@@ -30,3 +30,6 @@ extension-pkg-whitelist =
     pymssql,
     numpy,
     win32file,
+    tensorflow,
+    tensorflow.__version__,
+    tensorflow.data.experimental,
