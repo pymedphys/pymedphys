@@ -60,18 +60,19 @@ jobs:
           poetry install --no-dev -E docs -E library -E labs
 
       - name: Set Zenodo access token
+        if: ${{ contains(github.ref, 'master') }}
         env:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         run: |
           poetry run pymedphys zenodo set-token $ZENODO_ACCESS_TOKEN
 
       - name: Build docs, publish them to Zenodo if they have changed
-        if: github.ref == 'master'
+        if: ${{ contains(github.ref, 'master') }}
         run: |
           poetry run pymedphys dev docs --publish
 
       - name: Commit updated Zenodo reference
-        if: github.ref == 'master'
+        if: ${{ contains(github.ref, 'master') }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -79,13 +80,13 @@ jobs:
           pre-commit run --all-files
           git commit -m "Update Docs Zenodo Reference" -a
       - name: Push changes
-        if: github.ref == 'master'
+        if: ${{ contains(github.ref, 'master') }}
         uses: ad-m/github-push-action@02b0b75
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build docs
-        if: github.ref != 'master'
+        if: ${{ !contains(github.ref, 'master') }}
         run: |
           poetry run pymedphys dev docs
 
