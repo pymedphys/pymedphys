@@ -7,21 +7,21 @@ on:
       - master
 
 jobs:
-  Pre-Commit:
-    runs-on: ubuntu-latest
+  # Pre-Commit:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-      - name: Set up Python 3.7
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
-      - name: Run Pre-Commit
-        run: |
-          pip install pre-commit
-          pre-commit run --all-files
+  #   steps:
+  #     - uses: actions/checkout@v1
+  #       with:
+  #         fetch-depth: 1
+  #     - name: Set up Python 3.7
+  #       uses: actions/setup-python@v1
+  #       with:
+  #         python-version: 3.7
+  #     - name: Run Pre-Commit
+  #       run: |
+  #         pip install pre-commit
+  #         pre-commit run --all-files
 
   Docs:
     runs-on: ubuntu-latest
@@ -75,222 +75,222 @@ jobs:
         run: |
           poetry run pymedphys dev docs
 
-  Tox:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['ubuntu', 'macos', 'windows']
-        toxenv: ['pylint', 'doctest', 'runslow', 'clean']
-        include:
-          - os: 'ubuntu'
-            python-version: 3.6
-          - os: 'windows'
-            python-version: 3.7
-          - os: 'macos'
-            python-version: 3.7
-        exclude:
-          - os: 'windows'
-            toxenv: 'pylint'
-          - os: 'windows'
-            toxenv: 'runslow'
-          - os: 'macos'
-            toxenv: 'runslow'
+  # Tox:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: ['ubuntu', 'macos', 'windows']
+  #       toxenv: ['pylint', 'doctest', 'runslow', 'clean']
+  #       include:
+  #         - os: 'ubuntu'
+  #           python-version: 3.6
+  #         - os: 'windows'
+  #           python-version: 3.7
+  #         - os: 'macos'
+  #           python-version: 3.7
+  #       exclude:
+  #         - os: 'windows'
+  #           toxenv: 'pylint'
+  #         - os: 'windows'
+  #           toxenv: 'runslow'
+  #         - os: 'macos'
+  #           toxenv: 'runslow'
 
-    runs-on: ${{ matrix.os }}-latest
+  #   runs-on: ${{ matrix.os }}-latest
 
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #     with:
+  #       fetch-depth: 1
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
+  #   - name: Set up Python ${{ matrix.python-version }}
+  #     uses: actions/setup-python@v1
+  #     with:
+  #       python-version: ${{ matrix.python-version }}
 
-    - name: Show python information
-      run: |
-        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
-        python -c "import platform; print(platform.machine()); print(platform.release())"
+  #   - name: Show python information
+  #     run: |
+  #       python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+  #       python -c "import platform; print(platform.machine()); print(platform.release())"
 
-    - uses: actions/cache@v1
-      with:
-        path: ~/.pymedphys
-        key: pymedphys-data
+  #   - uses: actions/cache@v1
+  #     with:
+  #       path: ~/.pymedphys
+  #       key: pymedphys-data
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Linux')
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'Linux')
+  #     with:
+  #       path: ~/.cache/pip
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'macOS')
-      with:
-        path: ~/Library/Caches/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'macOS')
+  #     with:
+  #       path: ~/Library/Caches/pip
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Windows')
-      with:
-        path: ~\AppData\Local\pip\Cache
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'Windows')
+  #     with:
+  #       path: ~\AppData\Local\pip\Cache
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
 
-    - name: Install FreeTDS on MacOS
-      if: matrix.os == 'macos'
-      run: |
-        brew install freetds
+  #   - name: Install FreeTDS on MacOS
+  #     if: matrix.os == 'macos'
+  #     run: |
+  #       brew install freetds
 
-    - name: Upgrade pip, install poetry and tox
-      run: |
-        python -m pip install --upgrade pip poetry tox
+  #   - name: Upgrade pip, install poetry and tox
+  #     run: |
+  #       python -m pip install --upgrade pip poetry tox
 
-    - name: Run Tox on Windows
-      if: matrix.os == 'windows'
-      run: |
-        poetry run tox -e ${{ matrix.toxenv }}-win
+  #   - name: Run Tox on Windows
+  #     if: matrix.os == 'windows'
+  #     run: |
+  #       poetry run tox -e ${{ matrix.toxenv }}-win
 
-    - name: Run Tox on Nix
-      if: matrix.os == 'macos' || matrix.os == 'ubuntu'
-      run: |
-        poetry run tox -e ${{ matrix.toxenv }}-nix
-
-
-  WithUpdates:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['ubuntu']
-        python-version: [3.6]
-        toxenv: ['pylint', 'doctest']
-
-    runs-on: ${{ matrix.os }}-latest
-
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Show python information
-      run: |
-        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
-        python -c "import platform; print(platform.machine()); print(platform.release())"
-
-    - uses: actions/cache@v1
-      with:
-        path: ~/.pymedphys
-        key: pymedphys-data
-
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Linux')
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'macOS')
-      with:
-        path: ~/Library/Caches/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Windows')
-      with:
-        path: ~\AppData\Local\pip\Cache
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install FreeTDS on MacOS
-      if: matrix.os == 'macos'
-      run: |
-        brew install freetds
-
-    - name: Upgrade pip, install poetry and tox
-      run: |
-        python -m pip install --upgrade pip poetry tox
-
-    - name: Run initial poetry install
-      run: |
-        poetry install
-
-    - name: Run poetry update
-      run: |
-        poetry update
-
-    - name: Run Tox if anything has changed
-      run: |
-        git add -A && git diff HEAD --name-only --exit-code || poetry run tox -e ${{ matrix.toxenv }}
+  #   - name: Run Tox on Nix
+  #     if: matrix.os == 'macos' || matrix.os == 'ubuntu'
+  #     run: |
+  #       poetry run tox -e ${{ matrix.toxenv }}-nix
 
 
-  Examples:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['ubuntu']
-        toxenv: ['stackoverflow']
-        python-version: [3.6]
+  # WithUpdates:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: ['ubuntu']
+  #       python-version: [3.6]
+  #       toxenv: ['pylint', 'doctest']
 
-    runs-on: ${{ matrix.os }}-latest
+  #   runs-on: ${{ matrix.os }}-latest
 
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #     with:
+  #       fetch-depth: 1
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
+  #   - name: Set up Python ${{ matrix.python-version }}
+  #     uses: actions/setup-python@v1
+  #     with:
+  #       python-version: ${{ matrix.python-version }}
 
-    - name: Show python information
-      run: |
-        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
-        python -c "import platform; print(platform.machine()); print(platform.release())"
+  #   - name: Show python information
+  #     run: |
+  #       python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+  #       python -c "import platform; print(platform.machine()); print(platform.release())"
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Linux')
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+  #   - uses: actions/cache@v1
+  #     with:
+  #       path: ~/.pymedphys
+  #       key: pymedphys-data
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'macOS')
-      with:
-        path: ~/Library/Caches/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'Linux')
+  #     with:
+  #       path: ~/.cache/pip
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Windows')
-      with:
-        path: ~\AppData\Local\pip\Cache
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'macOS')
+  #     with:
+  #       path: ~/Library/Caches/pip
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
 
-    - name: Upgrade pip, install poetry and tox
-      run: |
-        python -m pip install --upgrade pip poetry tox
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'Windows')
+  #     with:
+  #       path: ~\AppData\Local\pip\Cache
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
 
-    - name: Run Tox
-      run: |
-        poetry run tox -e ${{ matrix.toxenv }}
+  #   - name: Install FreeTDS on MacOS
+  #     if: matrix.os == 'macos'
+  #     run: |
+  #       brew install freetds
+
+  #   - name: Upgrade pip, install poetry and tox
+  #     run: |
+  #       python -m pip install --upgrade pip poetry tox
+
+  #   - name: Run initial poetry install
+  #     run: |
+  #       poetry install
+
+  #   - name: Run poetry update
+  #     run: |
+  #       poetry update
+
+  #   - name: Run Tox if anything has changed
+  #     run: |
+  #       git add -A && git diff HEAD --name-only --exit-code || poetry run tox -e ${{ matrix.toxenv }}
+
+
+  # Examples:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       os: ['ubuntu']
+  #       toxenv: ['stackoverflow']
+  #       python-version: [3.6]
+
+  #   runs-on: ${{ matrix.os }}-latest
+
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #     with:
+  #       fetch-depth: 1
+
+  #   - name: Set up Python ${{ matrix.python-version }}
+  #     uses: actions/setup-python@v1
+  #     with:
+  #       python-version: ${{ matrix.python-version }}
+
+  #   - name: Show python information
+  #     run: |
+  #       python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+  #       python -c "import platform; print(platform.machine()); print(platform.release())"
+
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'Linux')
+  #     with:
+  #       path: ~/.cache/pip
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
+
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'macOS')
+  #     with:
+  #       path: ~/Library/Caches/pip
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
+
+  #   - uses: actions/cache@v1
+  #     if: startsWith(runner.os, 'Windows')
+  #     with:
+  #       path: ~\AppData\Local\pip\Cache
+  #       key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-pip-
+
+  #   - name: Upgrade pip, install poetry and tox
+  #     run: |
+  #       python -m pip install --upgrade pip poetry tox
+
+  #   - name: Run Tox
+  #     run: |
+  #       poetry run tox -e ${{ matrix.toxenv }}
