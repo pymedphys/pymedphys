@@ -1,10 +1,7 @@
 name: Main
 
 on:
-  pull_request:
   push:
-    branches:
-      - master
 
 jobs:
   Pre-Commit:
