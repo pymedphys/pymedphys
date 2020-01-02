@@ -22,6 +22,12 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.7
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-cache
+
       - name: Run Pre-Commit
         run: |
           pip install pre-commit
@@ -42,6 +48,8 @@ jobs:
 
   Docs:
     runs-on: ubuntu-latest
+    env:
+      is_published: "No"
 
     steps:
       - uses: actions/checkout@v1
@@ -89,12 +97,22 @@ jobs:
       - name: Build docs, publish them to Zenodo if they have changed
         if: contains(github.ref, 'master')
         run: |
-          poetry run pymedphys dev docs --publish
+          echo "::set-env name=is_published::$(poetry run pymedphys dev docs --publish)"
+
+      - uses: actions/cache@v1
+        if: env.is_published == 'Published'
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-cache
+
+      - name: Prep for Pull Request
+        if: env.is_published == 'Published'
+        run: |
           pip install pre-commit
-          pre-commit run --all-files
+          pre-commit run --all-files || true
 
       - name: Create Pull Request
-        if: contains(github.ref, 'master')
+        if: env.is_published == 'Published'
         uses: peter-evans/create-pull-request@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
