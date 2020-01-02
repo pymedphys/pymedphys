@@ -70,6 +70,20 @@ jobs:
         run: |
           poetry run pymedphys dev docs --publish
 
+      - name: Commit updated Zenodo reference
+        if: github.ref == 'master'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          pip install pre-commit
+          pre-commit run --all-files
+          git commit -m "Update Docs Zenodo Reference" -a
+      - name: Push changes
+        if: github.ref == 'master'
+        uses: ad-m/github-push-action@02b0b75
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build docs
         if: github.ref != 'master'
         run: |
