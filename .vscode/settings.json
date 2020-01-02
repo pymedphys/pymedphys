@@ -139,6 +139,7 @@
     "junit",
     "jupyterlab",
     "keras",
+    "keyrings",
     "logfile",
     "lzma",
     "macos",
