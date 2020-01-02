@@ -22,6 +22,8 @@ import urllib
 import keyring
 import requests
 
+from .zenodo import get_zenodo_record_id
+
 
 def get_zenodo_access_token(hostname):
     access_token = keyring.get_password("Zenodo", hostname)
@@ -62,6 +64,9 @@ def zenodo_api_with_helpful_fallback(url, method, **kwargs):
         keyring.delete_password("Zenodo", hostname)
         return zenodo_api_with_helpful_fallback(url, **kwargs)
 
+    if r.status_code != 200:
+        print(r.json())
+
     return r
 
 
@@ -83,9 +88,12 @@ def create_metadata(title, author=None):
     return json.dumps(metadata)
 
 
-def upload_zenodo_file(filepath, title, author=None, use_sandbox=False):
+def upload_zenodo_file(
+    filepath, title, author=None, use_sandbox=False, record_name=None
+):
     filepath = pathlib.Path(filepath)
 
+    headers = {"Content-Type": "application/json"}
     if use_sandbox:
         zenodo_url = "https://sandbox.zenodo.org/"
     else:
@@ -93,12 +101,18 @@ def upload_zenodo_file(filepath, title, author=None, use_sandbox=False):
 
     depositions_url = f"{zenodo_url}api/deposit/depositions"
 
-    headers = {"Content-Type": "application/json"}
-    r = zenodo_api_with_helpful_fallback(
-        depositions_url, "post", json={}, headers=headers
-    )
+    if record_name is not None:
+        if use_sandbox:
+            raise ValueError("Cannot use sandbox when `record_name` is provided")
 
-    deposition_id = r.json()["id"]
+        deposition_id = get_zenodo_record_id(record_name)
+    else:
+        r = zenodo_api_with_helpful_fallback(
+            depositions_url, "post", json={}, headers=headers
+        )
+
+        deposition_id = r.json()["id"]
+
     deposition_url = f"{depositions_url}/{deposition_id}"
     files_url = f"{deposition_url}/files"
 
