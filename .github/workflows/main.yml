@@ -75,21 +75,23 @@ jobs:
       - name: Run poetry install
         run: |
           poetry install --no-dev -E docs -E library -E labs
-          poetry add keyrings.alt
-          git add -A
-          git stash
 
       - name: Set Zenodo access token
         if: contains(github.ref, 'master')
         env:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         run: |
+          poetry add keyrings.alt
+          git add -A
+          git stash
           poetry run pymedphys zenodo set-token $ZENODO_ACCESS_TOKEN
 
       - name: Build docs, publish them to Zenodo if they have changed
         if: contains(github.ref, 'master')
         run: |
           poetry run pymedphys dev docs --publish
+          pip install pre-commit
+          pre-commit run --all-files
 
       - name: Create Pull Request
         if: contains(github.ref, 'master')
