@@ -3,7 +3,7 @@
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/pymedphys_title.png
     :target: https://docs.pymedphys.com/
 
-.. START_OF_DOCS_IMPORT     
+.. START_OF_DOCS_IMPORT
 
 **A community effort to develop an open standard library for Medical Physics
 in Python. Building quality transparent software together via peer review
