@@ -89,16 +89,17 @@ jobs:
       - name: Build docs, publish them to Zenodo if they have changed
         if: contains(github.ref, 'master')
         run: |
-          echo "::set-env name=is_published::$(poetry run pymedphys dev docs --publish)"
+          echo "##[set-output name=is_published;]$(poetry run pymedphys dev docs --publish)"
+        id: publishing
 
       - name: Prep for Pull Request
-        if: ${{ env.IS_PUBLISHED }} == 'Published'
+        if: ${{ steps.publishing.outputs.is_published }} == 'Published'
         run: |
           pip install pre-commit
           pre-commit run --all-files || true
 
       - name: Create Pull Request
-        if: ${{ env.IS_PUBLISHED }} == 'Published'
+        if: ${{ steps.publishing.outputs.is_published }} == 'Published'
         uses: peter-evans/create-pull-request@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
