@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Test cut
+        run: |
+          echo $GITHUB_REF
+          echo $GITHUB_REF | cut -d'/' -f3
       - uses: actions/checkout@v1
         with:
           fetch-depth: 1
