@@ -57,7 +57,7 @@ jobs:
 
       - name: Run poetry install
         run: |
-          poetry install
+          poetry install --no-dev -E docs -E library -E labs
 
       - name: Set Zenodo access token
         env:
