@@ -75,6 +75,7 @@ jobs:
       - name: Run poetry install
         run: |
           poetry install --no-dev -E docs -E library -E labs
+          poetry add keyrings.alt
 
       - name: Set Zenodo access token
         if: contains(github.ref, 'master')
@@ -95,7 +96,8 @@ jobs:
           git config --local user.name "PyMedPhys Zenodo Bot"
           pip install pre-commit
           pre-commit run --all-files || true
-          git commit -m "Update Docs Zenodo Reference" -a
+          git add pymedphys/_data/zenodo.json
+          git commit -m "Update Docs Zenodo Reference"
       - name: Push changes
         if: contains(github.ref, 'master')
         uses: ad-m/github-push-action@02b0b75
