@@ -110,17 +110,7 @@ def data_file_hash_check(filename):
 
 
 def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=True):
-    with open(HERE.joinpath("zenodo.json"), "r") as zenodo_file:
-        zenodo = json.load(zenodo_file)
-
-    try:
-        record_id = zenodo[record_name]
-    except KeyError:
-        raise ValueError(
-            "This Zenodo record isn't recorded within this version of PyMedPhys."
-        )
-
-    file_urls = get_zenodo_file_urls(record_id)
+    file_urls = get_zenodo_file_urls(record_name)
 
     record_directory = get_data_dir().joinpath(record_name)
     record_directory.mkdir(exist_ok=True)
