@@ -66,12 +66,12 @@ jobs:
           poetry run pymedphys zenodo set-token $ZENODO_ACCESS_TOKEN
 
       - name: Build docs, publish them to Zenodo if they have changed
-        if: contains(github.ref, 'master')
+        if: github.ref == 'master'
         run: |
           poetry run pymedphys dev docs --publish
 
       - name: Build docs
-        if: contains(github.ref, 'master') == False
+        if: github.ref != 'master'
         run: |
           poetry run pymedphys dev docs
 
