@@ -41,7 +41,8 @@ Are you new to PyMedPhys or new to Python programming? Then these resources are
 for you:
 
 * From scratch: `New to Python`_ | `Installation`_
-* Tutorials: `Part 1: Name`_ | `Part 2: Name`_
+* Tutorials: `Part 1: Stretching a DICOM CT`_ |
+  `Part 2: Calculating fluence from DICOM plan`_
 
 How the documentation is organised
 ----------------------------------
@@ -81,10 +82,10 @@ the community that aims to one day be refined to become part of the primary
 What is PyMedPhys?
 ------------------
 
-A place to share, review, improve, and transparently learn off of each other’s
-code. It is an open-source library of tools that we all have access to.
-It is inspired by the collaborative work of our physics peers in astronomy and
-their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
+A place to share, review, improve, and transparently learn off of each
+other’s code. It is an open-source library of tools that we all have access
+to. It is inspired by the collaborative work of our physics peers in astronomy
+and their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
 `conda-forge`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
@@ -198,10 +199,10 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 
-.. _`New to Python` : https://docs.pymedphys.com/tutes/python
-.. _`Installation` : https://docs.pymedphys.com/tutes/install
-.. _`Part 1: Name` : https://docs.pymedphys.com/tutes/part-1
-.. _`Part 2: Name` : https://docs.pymedphys.com/tutes/part-2
+.. _`New to Python`: https://docs.pymedphys.com/tutes/python
+.. _`Installation`: https://docs.pymedphys.com/tutes/install
+.. _`Part 1: Stretching a DICOM CT`: https://docs.pymedphys.com/tutes/part-1
+.. _`Part 2: Calculating fluence from DICOM plan`: https://docs.pymedphys.com/tutes/part-2
 
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
