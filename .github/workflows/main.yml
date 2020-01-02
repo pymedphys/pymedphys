@@ -1,16 +1,20 @@
 name: Main
 
 on:
-  pull_request:
   push:
-    branches:
-      - master
 
 jobs:
   Pre-Commit:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Extract branch name
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Test branch name
+        run: |
+          echo ${{ steps.extract_branch.outputs.branch }}
       - uses: actions/checkout@v1
         with:
           fetch-depth: 1
@@ -22,6 +26,19 @@ jobs:
         run: |
           pip install pre-commit
           pre-commit run --all-files
+      - name: Fix any issues
+        if: failure()
+        run: |
+          git config --local user.email "pre-commit-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git commit -m "Fix pre-commit failures" -a
+          exit 1
+      - name: Push changes
+        if: failure()
+        uses: ad-m/github-push-action@02b0b75
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
 
   Docs:
     runs-on: ubuntu-latest
@@ -60,32 +77,33 @@ jobs:
           poetry install --no-dev -E docs -E library -E labs
 
       - name: Set Zenodo access token
+        if: contains(github.ref, 'master')
         env:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
         run: |
           poetry run pymedphys zenodo set-token $ZENODO_ACCESS_TOKEN
 
       - name: Build docs, publish them to Zenodo if they have changed
-        if: github.ref == 'master'
+        if: contains(github.ref, 'master')
         run: |
           poetry run pymedphys dev docs --publish
 
       - name: Commit updated Zenodo reference
-        if: github.ref == 'master'
+        if: contains(github.ref, 'master')
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "zenodo-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Zenodo Bot"
           pip install pre-commit
-          pre-commit run --all-files
+          pre-commit run --all-files || true
           git commit -m "Update Docs Zenodo Reference" -a
       - name: Push changes
-        if: github.ref == 'master'
+        if: contains(github.ref, 'master')
         uses: ad-m/github-push-action@02b0b75
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build docs
-        if: github.ref != 'master'
+        if: contains(github.ref, 'master') == false
         run: |
           poetry run pymedphys dev docs
 
