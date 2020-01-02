@@ -8,11 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test cut
+      - name: Extract branch name
         run: |
-          echo $GITHUB_REF
-          echo $GITHUB_REF | cut -d'/' -f3
-          echo ${GITHUB_REF##*/}
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Test branch name
+        run: |
+          echo ${{ steps.extract_branch.outputs.branch }}
       - uses: actions/checkout@v1
         with:
           fetch-depth: 1
@@ -36,7 +38,7 @@ jobs:
         uses: ad-m/github-push-action@02b0b75
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ ${env.GITHUB_REF##*/} }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
 
   Docs:
     runs-on: ubuntu-latest
