@@ -93,13 +93,13 @@ jobs:
         id: publishing
 
       - name: Prep for Pull Request
-        if: ${{ steps.publishing.outputs.is_published }} == 'Published'
+        if: steps.publishing.outputs.is_published == 'Published'
         run: |
           pip install pre-commit
           pre-commit run --all-files || true
 
       - name: Create Pull Request
-        if: ${{ steps.publishing.outputs.is_published }} == 'Published'
+        if: steps.publishing.outputs.is_published == 'Published'
         uses: peter-evans/create-pull-request@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
