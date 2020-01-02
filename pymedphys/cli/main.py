@@ -24,6 +24,7 @@ from .jupyterlab import jupyter_cli
 from .labs import labs_cli
 from .logfile import logfile_cli
 from .trf import trf_cli
+from .zenodo import zenodo_cli
 
 
 class DefaultHelpParser(argparse.ArgumentParser):
@@ -46,6 +47,7 @@ def define_parser():
     logfile_cli(subparsers)
     trf_cli(subparsers)
     dev_cli(subparsers)
+    zenodo_cli(subparsers)
 
     return parser
 
