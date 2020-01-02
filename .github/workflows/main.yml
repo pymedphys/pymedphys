@@ -97,7 +97,8 @@ jobs:
       - name: Build docs, publish them to Zenodo if they have changed
         if: contains(github.ref, 'master')
         run: |
-          echo "::set-env name=is_published::$(poetry run pymedphys dev docs --publish)"
+          poetry run pymedphys dev docs
+          echo "::set-env name=is_published::$(poetry run pymedphys dev docs --publish | sed '$!d')"
 
       - uses: actions/cache@v1
         if: env.is_published == 'Published'
