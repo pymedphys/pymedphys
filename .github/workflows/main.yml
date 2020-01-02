@@ -12,6 +12,7 @@ jobs:
         run: |
           echo $GITHUB_REF
           echo $GITHUB_REF | cut -d'/' -f3
+          echo ${GITHUB_REF##*/}
       - uses: actions/checkout@v1
         with:
           fetch-depth: 1
@@ -35,7 +36,7 @@ jobs:
         uses: ad-m/github-push-action@02b0b75
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ env.GITHUB_REF }}
+          branch: ${{ ${env.GITHUB_REF##*/} }}
 
   Docs:
     runs-on: ubuntu-latest
