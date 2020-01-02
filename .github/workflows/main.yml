@@ -34,7 +34,7 @@ jobs:
         uses: ad-m/github-push-action@02b0b75
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: $${{ environment.GITHUB_REF }}
+          branch: $${{ env.GITHUB_REF }}
 
   Docs:
     runs-on: ubuntu-latest
