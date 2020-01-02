@@ -90,6 +90,8 @@ jobs:
         if: contains(github.ref, 'master')
         run: |
           poetry run pymedphys dev docs --publish
+          pip install pre-commit
+          pre-commit run --all-files
 
       - name: Create Pull Request
         if: contains(github.ref, 'master')
