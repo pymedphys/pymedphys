@@ -23,13 +23,22 @@ jobs:
           pip install pre-commit
           pre-commit run --all-files
 
+  Docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Check changes in docs
+        uses: netlify/actions/diff-includes@a34a072
+
 
   Tox:
     strategy:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
+        toxenv: ['pylint', 'doctest', 'runslow', 'clean']
         include:
           - os: 'ubuntu'
             python-version: 3.6
