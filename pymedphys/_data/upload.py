@@ -18,8 +18,7 @@ import json
 import pathlib
 import urllib
 
-import keyring
-import requests
+from pymedphys._imports import keyring, requests
 
 from .zenodo import get_zenodo_access_token, get_zenodo_record_id
 
