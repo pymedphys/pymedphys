@@ -2,9 +2,7 @@ import getpass
 import json
 import pathlib
 
-from pymedphys._imports import requests
-
-import keyring
+from pymedphys._imports import keyring, requests
 
 ZENODO_HOSTNAME = "zenodo.org"
 BASE_URL = f"https://{ZENODO_HOSTNAME}/api/records/"
