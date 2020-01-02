@@ -29,7 +29,7 @@ jobs:
       - name: Fix any issues
         if: failure()
         run: |
-          git config --local user.email "pre-commit@pymedphys.com"
+          git config --local user.email "pre-commit-bot@pymedphys.com"
           git config --local user.name "PyMedPhys Pre-Commit Bot"
           git commit -m "Fix pre-commit failures" -a
           exit 1
@@ -91,8 +91,8 @@ jobs:
       - name: Commit updated Zenodo reference
         if: contains(github.ref, 'master')
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "zenodo-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Zenodo Bot"
           pip install pre-commit
           pre-commit run --all-files || true
           git commit -m "Update Docs Zenodo Reference" -a
