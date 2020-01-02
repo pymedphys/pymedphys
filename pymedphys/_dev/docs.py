@@ -48,3 +48,5 @@ def publish_docs_to_zenodo():
     pymedphys._data.zenodo.update_zenodo_record_id(  # pylint: disable = protected-access
         record_name, record_id
     )
+
+    print("Published")
