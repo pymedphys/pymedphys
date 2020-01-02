@@ -64,9 +64,6 @@ def zenodo_api_with_helpful_fallback(url, method, **kwargs):
         keyring.delete_password("Zenodo", hostname)
         return zenodo_api_with_helpful_fallback(url, **kwargs)
 
-    if r.status_code != 200:
-        print(r.json())
-
     return r
 
 
@@ -105,7 +102,11 @@ def upload_zenodo_file(
         if use_sandbox:
             raise ValueError("Cannot use sandbox when `record_name` is provided")
 
-        deposition_id = get_zenodo_record_id(record_name)
+        old_deposition_id = get_zenodo_record_id(record_name)
+        old_deposition_url = f"{depositions_url}/{old_deposition_id}"
+        new_version_url = f"{old_deposition_url}/actions/newversion"
+        r = zenodo_api_with_helpful_fallback(new_version_url, "post")
+        deposition_id = int(r.json()["links"]["latest_draft"].split("/")[-1])
     else:
         r = zenodo_api_with_helpful_fallback(
             depositions_url, "post", json={}, headers=headers
@@ -115,6 +116,22 @@ def upload_zenodo_file(
 
     deposition_url = f"{depositions_url}/{deposition_id}"
     files_url = f"{deposition_url}/files"
+
+    r = zenodo_api_with_helpful_fallback(files_url, "get")
+    filenames = [record["filename"] for record in r.json()]
+    if filepath.name in filenames:
+        file_self_urls = [
+            record["links"]["self"]
+            for record in r.json()
+            if record["filename"] == filepath.name
+        ]
+
+        if len(file_self_urls) > 1:
+            raise ValueError("Unexpected number of file_ids found")
+
+        file_self_url = file_self_urls[0]
+
+        zenodo_api_with_helpful_fallback(file_self_url, "delete")
 
     md5 = hashlib.md5()
     with open(filepath, "rb") as upload_file:
@@ -143,3 +160,5 @@ def upload_zenodo_file(
         raise ValueError(
             f"Unexpected status code when publishing the file. Expected 202, got {r.status_code}."
         )
+
+    return deposition_id

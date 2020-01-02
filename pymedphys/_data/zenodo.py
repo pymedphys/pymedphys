@@ -16,6 +16,12 @@ def get_zenodo_file_urls(record_name):
 
 def get_all_zenodo_file_data(record_name):
     record_id = get_zenodo_record_id(record_name)
+    files = get_all_zenodo_file_data_by_id(record_id)
+
+    return files
+
+
+def get_all_zenodo_file_data_by_id(record_id):
     response = requests.get(f"{BASE_URL}{record_id}")
     data = json.loads(response.text)
     files = data["files"]
@@ -44,3 +50,13 @@ def get_zenodo_record_id(record_name):
         )
 
     return record_id
+
+
+def update_zenodo_record_id(record_name, record_id):
+    with open(HERE.joinpath("zenodo.json"), "r") as zenodo_file:
+        zenodo = json.load(zenodo_file)
+
+    zenodo[record_name] = record_id
+
+    with open(HERE.joinpath("zenodo.json"), "w") as zenodo_file:
+        json.dump(zenodo, zenodo_file, indent=2)
