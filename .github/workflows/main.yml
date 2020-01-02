@@ -86,7 +86,6 @@ jobs:
           git stash
           poetry run pymedphys zenodo set-token $ZENODO_ACCESS_TOKEN
 
-
       - name: Build docs, publish them to Zenodo if they have changed
         if: contains(github.ref, 'master')
         run: |
@@ -95,7 +94,7 @@ jobs:
       - name: Prep for Pull Request
         if: ${{ env.IS_PUBLISHED }} == 'Published'
           pip install pre-commit
-          pre-commit run --all-files
+          pre-commit run --all-files || true
 
       - name: Create Pull Request
         if: ${{ env.IS_PUBLISHED }} == 'Published'
