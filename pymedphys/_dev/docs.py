@@ -41,6 +41,10 @@ def publish_docs_to_zenodo():
         print("Zenodo's version matches the built version on disk. Skipping upload.")
         return
 
-    pymedphys._data.upload.upload_zenodo_file(  # pylint: disable = protected-access
+    record_id = pymedphys._data.upload.upload_zenodo_file(  # pylint: disable = protected-access
         zip_path, "PyMedPhys Docs", record_name=record_name
+    )
+
+    pymedphys._data.zenodo.update_zenodo_record_id(  # pylint: disable = protected-access
+        record_name, record_id
     )
