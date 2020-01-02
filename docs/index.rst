@@ -11,8 +11,9 @@ Overview
 
 .. _`New to Python`: /tutes/python.html
 .. _`Installation`: /tutes/install.html
-.. _`Part 1: Name`: /tutes/part-1.html
-.. _`Part 2: Name`: /tutes/part-2.html
+.. _`Part 1: Stretching a DICOM CT`: /tutes/part-1.html
+.. _`Part 2: Calculating fluence from DICOM plan`: /tutes/part-2.html
+
 
 .. _`Tutorials`: /tutes/index.html
 .. _`How-To guides`: /howto/index.html
