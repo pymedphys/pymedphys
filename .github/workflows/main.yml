@@ -23,13 +23,14 @@ jobs:
           pip install pre-commit
           pre-commit run --all-files
       - name: Fix any issues
-        if: cancelled()
+        if: failure()
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git commit -m "Fix pre-commit failures" -a
+          exit 1
       - name: Push changes
-        if: cancelled()
+        if: failure()
         uses: ad-m/github-push-action@02b0b75
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
