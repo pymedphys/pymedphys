@@ -29,8 +29,8 @@ jobs:
       - name: Fix any issues
         if: failure()
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "pre-commit@pymedphys.com"
+          git config --local user.name "PyMedPhys Pre-Commit Bot"
           git commit -m "Fix pre-commit failures" -a
           exit 1
       - name: Push changes
