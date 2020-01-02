@@ -22,6 +22,12 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.7
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-cache
+
       - name: Run Pre-Commit
         run: |
           pip install pre-commit
@@ -92,6 +98,12 @@ jobs:
         if: contains(github.ref, 'master')
         run: |
           echo "::set-env name=is_published::$(poetry run pymedphys dev docs --publish)"
+
+      - uses: actions/cache@v1
+        if: env.is_published == 'Published'
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-cache
 
       - name: Prep for Pull Request
         if: env.is_published == 'Published'
