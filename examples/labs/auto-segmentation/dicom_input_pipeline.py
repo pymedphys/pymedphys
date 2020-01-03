@@ -1,16 +1,21 @@
 from __future__ import print_function
+
 from glob import glob
-from skimage.transform import resize
-import pydicom
+
 import numpy as np
+
 import matplotlib.pyplot as plt
+
+from skimage.transform import resize
+
+import pydicom
 
 
 def get_file_names(data_path):
     """
     Returns a sorted list of all files in data_path with ext .dcm
     """
-    file_names = glob(data_path + '/*.dcm')
+    file_names = glob(data_path + "/*.dcm")
     file_names.sort()
     return file_names
 
