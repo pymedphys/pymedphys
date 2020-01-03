@@ -1,16 +1,20 @@
 name: Main
 
 on:
-  pull_request:
   push:
-    branches:
-      - master
 
 jobs:
   Pre-Commit:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Extract branch name
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Test branch name
+        run: |
+          echo ${{ steps.extract_branch.outputs.branch }}
       - uses: actions/checkout@v1
         with:
           fetch-depth: 1
@@ -18,11 +22,106 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.7
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-cache
+
       - name: Run Pre-Commit
         run: |
           pip install pre-commit
           pre-commit run --all-files
+      - name: Fix any issues
+        if: failure()
+        run: |
+          git config --local user.email "pre-commit-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git commit -m "Fix pre-commit failures" -a
+          exit 1
+      - name: Push changes
+        if: failure()
+        uses: ad-m/github-push-action@02b0b75
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
 
+  # Docs:
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     is_published: "No"
+
+  #   steps:
+  #     - uses: actions/checkout@v1
+  #       with:
+  #         fetch-depth: 1
+  #     - name: Set up Python 3.7
+  #       uses: actions/setup-python@v1
+  #       with:
+  #         python-version: 3.7
+
+  #     - uses: actions/cache@v1
+  #       with:
+  #         path: ~/.pymedphys
+  #         key: pymedphys-data
+
+  #     - uses: actions/cache@v1
+  #       with:
+  #         path: ~/.cache/pip
+  #         key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-pip-
+
+  #     - name: Install Pandoc
+  #       run: |
+  #         sudo apt-get install -y pandoc
+
+  #     - name: Upgrade pip, install poetry
+  #       run: |
+  #         python -m pip install --upgrade pip poetry
+
+  #     - name: Run poetry install
+  #       run: |
+  #         poetry install --no-dev -E docs -E library -E labs
+
+  #     - name: Set Zenodo access token
+  #       if: contains(github.ref, 'master')
+  #       env:
+  #         ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+  #       run: |
+  #         poetry add keyrings.alt
+  #         git add -A
+  #         git stash
+  #         poetry run pymedphys zenodo set-token $ZENODO_ACCESS_TOKEN
+
+  #     - name: Build docs, publish them to Zenodo if they have changed
+  #       if: contains(github.ref, 'master')
+  #       run: |
+  #         poetry run pymedphys dev docs
+  #         echo "::set-env name=is_published::$(poetry run pymedphys dev docs --publish | sed '$!d')"
+
+  #     - uses: actions/cache@v1
+  #       if: env.is_published == 'Published'
+  #       with:
+  #         path: ~/.cache/pre-commit
+  #         key: pre-commit-cache
+
+  #     - name: Prep for Pull Request
+  #       if: env.is_published == 'Published'
+  #       run: |
+  #         pip install pre-commit
+  #         pre-commit run --all-files || true
+
+  #     - name: Create Pull Request
+  #       if: env.is_published == 'Published'
+  #       uses: peter-evans/create-pull-request@v1
+  #       with:
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+
+  #     - name: Build docs
+  #       if: contains(github.ref, 'master') == false
+  #       run: |
+  #         poetry run pymedphys dev docs
 
   Tox:
     strategy:
@@ -95,21 +194,6 @@ jobs:
       if: matrix.os == 'macos'
       run: |
         brew install freetds
-
-    - name: Install Pandoc on Ubuntu
-      if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu'
-      run: |
-        sudo apt-get install -y pandoc
-
-    - name: Install Pandoc on MacOS
-      if: matrix.toxenv == 'docs' && matrix.os == 'macos'
-      run: |
-        brew install pandoc
-
-    - name: Install Pandoc on Windows
-      if: matrix.toxenv == 'docs' && matrix.os == 'windows'
-      run: |
-        choco install pandoc
 
     - name: Upgrade pip, install poetry and tox
       run: |
