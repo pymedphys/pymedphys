@@ -43,6 +43,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   install with `pip install pymedphys --no-deps` to have a minimal
   installation.
 
+### Quality of life improvements
+
+- Made a `shapely-helpers` package which automatically handles installation
+  of `shapely` on Windows. PyMedPhys now depends on `shapely-helpers` instead
+  of `shapely`.
+
+
 ## [0.17.1]
 
 ### Quality of life improvements
