@@ -33,6 +33,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.18.0]
+
+### Breaking Changes
+
+- Installation of PyMedPhys has been reverted to including all of its primary
+  dependencies. This was done to make the default install less confusing.
+  Nevertheless, these dependencies are mostly optional and if you wish you can
+  install with `pip install pymedphys --no-deps` to have a minimal
+  installation.
 
 ## [0.17.1]
 
@@ -380,7 +389,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.17.1...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.18.0...master
+[0.18.0]: https://github.com/pymedphys/pymedphys/compare/v0.17.1...v0.18.0
 [0.17.1]: https://github.com/pymedphys/pymedphys/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/pymedphys/pymedphys/compare/v0.16.3...v0.17.0
 [0.16.3]: https://github.com/pymedphys/pymedphys/compare/v0.16.2...v0.16.3
