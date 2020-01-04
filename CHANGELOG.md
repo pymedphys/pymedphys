@@ -37,14 +37,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Breaking Changes
 
+- Removed the optional extras tags of `library`, `labs`, and `difficult`. All
+  of these now install by default. For example PyMedPhys can no longer be
+  installed with `pip install pymedphys[library]`.
+
+### Quality of life improvements
+
 - Installation of PyMedPhys has been reverted to including all of its primary
   dependencies. This was done to make the default install less confusing.
   Nevertheless, these dependencies are mostly optional and if you wish you can
   install with `pip install pymedphys --no-deps` to have a minimal
   installation.
-
-### Quality of life improvements
-
 - Made a `shapely-helpers` package which automatically handles installation
   of `shapely` on Windows. PyMedPhys now depends on `shapely-helpers` instead
   of `shapely`.
