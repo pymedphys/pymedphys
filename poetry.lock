@@ -430,7 +430,7 @@ description = "A library for property-based testing"
 name = "hypothesis"
 optional = false
 python-versions = ">=3.5"
-version = "5.0.1"
+version = "5.1.0"
 
 [package.dependencies]
 attrs = ">=19.2.0"
@@ -611,7 +611,7 @@ marker = "sys_platform == \"linux\""
 name = "jeepney"
 optional = false
 python-versions = ">=3.5"
-version = "0.4.1"
+version = "0.4.2"
 
 [package.extras]
 dev = ["testpath"]
@@ -2123,6 +2123,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pathlib2", "contextlib2", "unittest2"]
 
 [extras]
+core = ["attrs", "dataclasses", "tqdm"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "m2r"]
 gui = ["jupyterlab_server"]
 jupyter = ["jupyterlab", "pywin32"]
@@ -2131,7 +2132,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "f6c7af38c1113af3c1e4631d4da385069db5038384f741baff6a7812aee1c1ed"
+content-hash = "416134ca64efb2452307baa1f5694c962614ec9295462482e0bb2df519b188c8"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2411,8 +2412,8 @@ h5py = [
     {file = "h5py-2.10.0.tar.gz", hash = "sha256:84412798925dc870ffd7107f045d7659e60f5d46d1c70c700375248bf6bf512d"},
 ]
 hypothesis = [
-    {file = "hypothesis-5.0.1-py3-none-any.whl", hash = "sha256:de0a577eaf3fa1437b769b38a0147a1db8d537c3643b3d89190282f34d9bdf86"},
-    {file = "hypothesis-5.0.1.tar.gz", hash = "sha256:1f2dff70fc23027abde8645fd94a49ba1044483756040045c3260a40040f1576"},
+    {file = "hypothesis-5.1.0-py3-none-any.whl", hash = "sha256:6abd5740ed05dff9efe0df18f0f7013eb4aa99c143f7177fbefb603888a990d0"},
+    {file = "hypothesis-5.1.0.tar.gz", hash = "sha256:1b03916e72265655378c5e67f27663adb1e6175fe1ad906d58997b7a04ce99ad"},
 ]
 identify = [
     {file = "identify-1.4.9-py2.py3-none-any.whl", hash = "sha256:72e9c4ed3bc713c7045b762b0d2e2115c572b85abfc1f4604f5a4fd4c6642b71"},
@@ -2459,8 +2460,8 @@ jedi = [
     {file = "jedi-0.15.2.tar.gz", hash = "sha256:e909527104a903606dd63bea6e8e888833f0ef087057829b89a18364a856f807"},
 ]
 jeepney = [
-    {file = "jeepney-0.4.1-py3-none-any.whl", hash = "sha256:f6a3f93464a0cf052f4e87da3c8b3ed1e27696758fb9739c63d3a74d9a1b6774"},
-    {file = "jeepney-0.4.1.tar.gz", hash = "sha256:13806f91a96e9b2623fd2a81b950d763ee471454aafd9eb6d75dbe7afce428fb"},
+    {file = "jeepney-0.4.2-py3-none-any.whl", hash = "sha256:6f45dce1125cf6c58a1c88123d3831f36a789f9204fbad3172eac15f8ccd08d0"},
+    {file = "jeepney-0.4.2.tar.gz", hash = "sha256:0ba6d8c597e9bef1ebd18aaec595f942a264e25c1a48f164d46120eacaa2e9bb"},
 ]
 jinja2 = [
     {file = "Jinja2-2.10.3-py2.py3-none-any.whl", hash = "sha256:74320bb91f31270f9551d46522e33af46a80c3d619f4a4bf42b3164d30b5911f"},
@@ -3271,6 +3272,7 @@ watchdog = [
 ]
 wcwidth = [
     {file = "wcwidth-0.1.8-py2.py3-none-any.whl", hash = "sha256:8fd29383f539be45b20bd4df0dc29c20ba48654a41e661925e612311e9f3c603"},
+    {file = "wcwidth-0.1.8.tar.gz", hash = "sha256:f28b3e8a6483e5d49e7f8949ac1a78314e740333ae305b4ba5defd3e74fb37a8"},
 ]
 webencodings = [
     {file = "webencodings-0.5.1-py2.py3-none-any.whl", hash = "sha256:a0af1213f3c2226497a97e2b3aa01a7e4bee4f403f95be16fc9acd2947514a78"},
