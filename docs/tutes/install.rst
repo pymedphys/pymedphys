@@ -41,69 +41,24 @@ following in a terminal or command prompt:
 You may need to open and close your terminal if you have only just installed
 Python.
 
-Installing optional dependencies
-================================
 
-Primary library optional dependencies
--------------------------------------
+A minimal installation
+----------------------
 
-PyMedPhys has a range of optional dependencies. If while using PyMedPhys as
-installed above you get ``ImportErrors`` you may install the primary optional
-dependencies for the main library by typing the following:
+The greater majority of PyMedPhys' dependencies are actually optional. They are
+only installed for simplicity for new users. You may however choose to install
+PyMedPhys without these dependencies by running:
 
 .. code:: bash
 
-    pip install pymedphys[library]
+    pip install pymedphys --no-deps
 
 
-Labs optional dependencies
---------------------------
+Installation on MacOS
+---------------------
 
-If you would like to use some of the experimental libraries within the labs
-section of PyMedPhys then running the following will install the optional
-dependencies needed by modules within the labs:
-
-.. code:: bash
-
-    pip install pymedphys[labs]
-
-
-Difficult optional dependencies
--------------------------------
-
-There are two optional dependencies which have some extra complications when
-installing. ``shapely`` can be difficult to install on Windows, and ``pymssql``
-can be difficult to install on MacOS.
-
-
-``shapely`` for ``pymedphys.electronfactors`` module
-****************************************************
-
-If you wish to use the ``pymedphys.electronfactors`` module you will need to
-install ``shapely`` which on MacOS or Linux is as simple as:
-
-.. code:: bash
-
-    pip install shapely
-
-
-On Windows however you will need to download and install a wheel from the
-following site -- <https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely>.
-
-
-``pymssql`` for ``pymedphys.mosaiq`` module
-*******************************************
-
-If you wish to use the ``pymedphys.mosaiq`` module then you will need to
-install a version of ``pymssql`` that is < 3. On Windows and Linux this is
-achieved by running:
-
-.. code:: bash
-
-    pip install pymssql<3
-
-On MacOS installing this dependency is a little more involved and can be
-achieved by first installing both ``freetds`` via ``homebrew`` and ``Cython``.
+One of PyMedPhys' dependencies is ``pymssql``. Before installing PyMedPhys on
+MacOS you need first install both ``freetds`` via ``homebrew`` and ``Cython``.
 To do this follow the steps below:
 
 To install homebrew (as described at <https://brew.sh/>):
@@ -128,7 +83,7 @@ Then you will be able to successfully run:
 
 .. code:: bash
 
-    pip install pymssql<3
+    pip install pymedphys
 
 
 Installing the Bleeding Edge version of PyMedPhys
