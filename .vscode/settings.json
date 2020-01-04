@@ -125,6 +125,7 @@
     "interppoints",
     "interps",
     "ioloop",
+    "ipykernel",
     "ipython",
     "isclose",
     "isdir",
