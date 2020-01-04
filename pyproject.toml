@@ -51,6 +51,7 @@ pydicom = "*"
 pynetdicom = "*"
 
 # difficult
+cython = "*"
 pymssql = "< 3.0.0"
 shapely-helper = "*"
 
