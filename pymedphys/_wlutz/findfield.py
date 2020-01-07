@@ -25,16 +25,17 @@ from .interppoints import (
 from .pylinac import PylinacComparisonDeviation, run_wlutz
 
 BASINHOPPING_NITER = 200
+INITIAL_ROTATION = 0
 
 
 def find_centre_and_rotation(
-    x, y, img, edge_lengths, penumbra=2, initial_rotation=0, rounding=True
+    x, y, img, edge_lengths, penumbra=2, fixed_rotation=None, rounding=True
 ):
     field = create_interpolated_field(x, y, img)
     initial_centre = get_centre_of_mass(x, y, img)
 
     centre, rotation = field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre, initial_rotation=initial_rotation
+        field, edge_lengths, penumbra, initial_centre, fixed_rotation=fixed_rotation
     )
 
     if rounding:
@@ -59,30 +60,36 @@ def field_centre_and_rotation_refining(
     edge_lengths,
     penumbra,
     initial_centre,
-    initial_rotation=0,
+    fixed_rotation=None,
     niter=10,
     pylinac_tol=0.2,
 ):
     check_aspect_ratio(edge_lengths)
 
-    predicted_rotation = optimise_rotation(
-        field, initial_centre, edge_lengths, penumbra, initial_rotation
-    )
+    if fixed_rotation is None:
+        predicted_rotation = optimise_rotation(
+            field, initial_centre, edge_lengths, penumbra
+        )
+    else:
+        predicted_rotation = fixed_rotation
 
     predicted_centre = optimise_centre(
         field, initial_centre, edge_lengths, penumbra, predicted_rotation
     )
 
     for _ in range(niter):
-        previous_rotation = predicted_rotation
-        predicted_rotation = optimise_rotation(
-            field, predicted_centre, edge_lengths, penumbra, predicted_rotation
-        )
-        try:
-            check_rotation_close(edge_lengths, previous_rotation, predicted_rotation)
-            break
-        except ValueError:
-            pass
+        if fixed_rotation is None:
+            previous_rotation = predicted_rotation
+            predicted_rotation = optimise_rotation(
+                field, predicted_centre, edge_lengths, penumbra
+            )
+            try:
+                check_rotation_close(
+                    edge_lengths, previous_rotation, predicted_rotation
+                )
+                break
+            except ValueError:
+                pass
 
         previous_centre = predicted_centre
         predicted_centre = optimise_centre(
@@ -94,11 +101,12 @@ def field_centre_and_rotation_refining(
         except ValueError:
             pass
 
-    verification_rotation = optimise_rotation(
-        field, predicted_centre, edge_lengths, penumbra, initial_rotation
-    )
+    if fixed_rotation is None:
+        verification_rotation = optimise_rotation(
+            field, predicted_centre, edge_lengths, penumbra
+        )
 
-    check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
+        check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
 
     try:
         pylinac = run_wlutz(
@@ -147,13 +155,13 @@ def check_rotation_and_centre(
 def check_rotation_close(edge_lengths, verification_rotation, predicted_rotation):
     if np.allclose(*edge_lengths):
         diff = (verification_rotation - predicted_rotation) % 90
-        if not (diff < 0.3 or diff > 89.7):
+        if not (diff < 1 or diff > 89):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
     else:
         diff = (verification_rotation - predicted_rotation) % 180
-        if not (diff < 0.3 or diff > 179.7):
+        if not (diff < 1 or diff > 179):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
@@ -177,11 +185,11 @@ def check_centre_close(verification_centre, predicted_centre):
         )
 
 
-def optimise_rotation(field, centre, edge_lengths, penumbra, initial_rotation):
+def optimise_rotation(field, centre, edge_lengths, penumbra):
     to_minimise = create_rotation_only_minimiser(field, centre, edge_lengths, penumbra)
     result = scipy.optimize.basinhopping(
         to_minimise,
-        initial_rotation,
+        INITIAL_ROTATION,
         T=1,
         niter=BASINHOPPING_NITER,
         niter_success=5,
