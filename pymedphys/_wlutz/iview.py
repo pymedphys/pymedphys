@@ -93,8 +93,14 @@ def iview_image_transform(image_path):
 
     img = img[:, 1:-1]
 
-    if img.dtype != np.dtype("uint16"):
-        raise ValueError("Expect iView images to have a pixel type of unsigned 16 bit")
+    if img.dtype != np.dtype("uint16") and img.dtype != np.dtype("int32"):
+        raise ValueError(
+            "Expect iView images to have a pixel type of unsigned 16 bit "
+            "or signed 32 bit."
+            f"Instead the type was {img.dtype}\n"
+            f"  Min pixel value was {np.min(img)}\n"
+            f"  Max pixel value was {np.max(img)}"
+        )
     img = 1 - img[::-1, :] / 2 ** 16
 
     shape = np.shape(img)
