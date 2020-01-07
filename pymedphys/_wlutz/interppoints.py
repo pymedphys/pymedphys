@@ -122,7 +122,7 @@ def apply_transform(xx, yy, transform):
 
 def create_bb_points_function(bb_diameter):
     min_dist = 0.5
-    distances = np.arange(0, bb_diameter * 0.8, min_dist)
+    distances = np.arange(0, bb_diameter * 0.4, min_dist)
 
     x = []
     y = []

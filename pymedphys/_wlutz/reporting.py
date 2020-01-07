@@ -97,13 +97,19 @@ def image_analysis_figure(
     axs[2, 1].set_ylabel(pixel_value_label)
 
     if bb_centre is not None:
-        profile_flip_plot(axs[3, 0], x_axis, field(*x_bb_interp))
+        x_mask = (x_axis >= -bb_diameter / 2 - penumbra) & (
+            x_axis <= bb_diameter / 2 + penumbra
+        )
+        profile_flip_plot(axs[3, 0], x_axis[x_mask], field(*x_bb_interp)[x_mask])
         axs[3, 0].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
         axs[3, 0].set_title("Flipped profile about BB centre [panel x-axis]")
         axs[3, 0].set_xlabel(f"Displacement from BB centre {units}")
         axs[3, 0].set_ylabel(pixel_value_label)
 
-        profile_flip_plot(axs[3, 1], y_axis, field(*y_bb_interp))
+        y_mask = (y_axis >= -bb_diameter / 2 - penumbra) & (
+            y_axis <= bb_diameter / 2 + penumbra
+        )
+        profile_flip_plot(axs[3, 1], y_axis[y_mask], field(*y_bb_interp)[y_mask])
         axs[3, 1].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
         axs[3, 1].set_title("Flipped profile about BB centre [panel y-axis]")
         axs[3, 1].set_xlabel(f"Displacement from BB centre {units}")

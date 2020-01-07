@@ -21,7 +21,8 @@ from .pylinac import PylinacComparisonDeviation, run_wlutz
 from .utilities import create_centralised_field, transform_point
 
 BB_MIN_SEARCH_DIST = 2
-BB_MIN_SEARCH_TOL = 0.25
+BB_MIN_SEARCH_TOL = np.inf
+BB_REPEAT_TOL = np.inf
 
 
 def optimise_bb_centre(
@@ -32,19 +33,20 @@ def optimise_bb_centre(
     field_centre,
     field_rotation,
     pylinac_tol=0.2,
+    ignore_pylinac=False,
 ):
     centralised_field = create_centralised_field(field, field_centre, field_rotation)
     to_minimise_edge_agreement, to_minimise_pixel_vals = create_bb_to_minimise(
         centralised_field, bb_diameter
     )
-    bb_bounds = define_bb_bounds(bb_diameter, edge_lengths, penumbra)
+    bb_bounds = define_bb_bounds(bb_diameter, edge_lengths)
 
     bb_centre_in_centralised_field = bb_basinhopping(
         to_minimise_edge_agreement, bb_bounds
     )
 
-    if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
-        raise ValueError("BB found at bounds, likely incorrect")
+    # if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
+    #     raise ValueError("BB found at bounds, likely incorrect")
 
     minimise_pval_bounds = [
         (
@@ -75,34 +77,40 @@ def optimise_bb_centre(
     verification_repeat = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
 
     repeat_agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
-    if np.any(repeat_agreement > 0.01):
+    if np.any(repeat_agreement > BB_REPEAT_TOL):
         raise ValueError("BB centre not able to be consistently determined")
 
     bb_centre = transform_point(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
 
-    try:
-        pylinac = run_wlutz(
-            field, edge_lengths, penumbra, field_centre, field_rotation, find_bb=True
-        )
-    except ValueError as e:
-        raise ValueError(
-            "After finding the bb centre during comparison to Pylinac the pylinac "
-            f"code raised the following error:\n    {e}"
-        )
+    if not ignore_pylinac:
+        try:
+            pylinac = run_wlutz(
+                field,
+                edge_lengths,
+                penumbra,
+                field_centre,
+                field_rotation,
+                find_bb=True,
+            )
+        except ValueError as e:
+            raise ValueError(
+                "After finding the bb centre during comparison to Pylinac the pylinac "
+                f"code raised the following error:\n    {e}"
+            )
 
-    pylinac_2_2_6_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.6"]["bb_centre"]) - bb_centre) > pylinac_tol
-    )
-    pylinac_2_2_7_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.7"]["bb_centre"]) - bb_centre) > pylinac_tol
-    )
-    if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
-        raise PylinacComparisonDeviation(
-            "The determined bb centre deviates from pylinac more "
-            "than the defined tolerance"
+        pylinac_2_2_6_out_of_tol = np.any(
+            np.abs(np.array(pylinac["v2.2.6"]["bb_centre"]) - bb_centre) > pylinac_tol
         )
+        pylinac_2_2_7_out_of_tol = np.any(
+            np.abs(np.array(pylinac["v2.2.7"]["bb_centre"]) - bb_centre) > pylinac_tol
+        )
+        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+            raise PylinacComparisonDeviation(
+                "The determined bb centre deviates from pylinac more "
+                "than the defined tolerance"
+            )
 
     return bb_centre
 
@@ -190,11 +198,8 @@ def create_bb_to_minimise_simple(field, bb_diameter):
     return to_minimise_edge_agreement, to_minimise_pixel_vals
 
 
-def define_bb_bounds(bb_diameter, edge_lengths, penumbra):
-    half_field_bounds = [
-        (edge_lengths[0] - penumbra / 2) / 2,
-        (edge_lengths[1] - penumbra / 2) / 2,
-    ]
+def define_bb_bounds(bb_diameter, edge_lengths):
+    half_field_bounds = [edge_lengths[0] / 2, edge_lengths[1] / 2]
 
     bb_radius = bb_diameter / 2
 
