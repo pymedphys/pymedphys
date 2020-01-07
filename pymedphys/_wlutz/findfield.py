@@ -64,9 +64,10 @@ def field_centre_and_rotation_refining(
     niter=10,
     pylinac_tol=0.2,
 ):
-    check_aspect_ratio(edge_lengths)
 
     if fixed_rotation is None:
+        check_aspect_ratio(edge_lengths)
+
         predicted_rotation = optimise_rotation(
             field, initial_centre, edge_lengths, penumbra
         )
@@ -155,13 +156,13 @@ def check_rotation_and_centre(
 def check_rotation_close(edge_lengths, verification_rotation, predicted_rotation):
     if np.allclose(*edge_lengths):
         diff = (verification_rotation - predicted_rotation) % 90
-        if not (diff < 1 or diff > 89):
+        if not (diff < 0.3 or diff > 89.7):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
     else:
         diff = (verification_rotation - predicted_rotation) % 180
-        if not (diff < 1 or diff > 179):
+        if not (diff < 0.3 or diff > 179.7):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
