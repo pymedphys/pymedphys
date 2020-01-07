@@ -37,8 +37,8 @@ def run_wlutz(
         field, field_centre, field_rotation
     )
 
-    half_x_range = edge_lengths[0] / 2 + penumbra * 3
-    half_y_range = edge_lengths[1] / 2 + penumbra * 3
+    half_x_range = edge_lengths[0] * 2 + penumbra * 3
+    half_y_range = edge_lengths[1] * 2 + penumbra * 3
 
     x_range = np.arange(-half_x_range, half_x_range + pixel_size, pixel_size)
     y_range = np.arange(-half_y_range, half_y_range + pixel_size, pixel_size)
