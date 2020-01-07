@@ -21,8 +21,8 @@ from .pylinac import PylinacComparisonDeviation, run_wlutz
 from .utilities import create_centralised_field, transform_point
 
 BB_MIN_SEARCH_DIST = 2
-BB_MIN_SEARCH_TOL = np.inf
-BB_REPEAT_TOL = np.inf
+BB_MIN_SEARCH_TOL = 1
+BB_REPEAT_TOL = 0.2
 
 
 def optimise_bb_centre(
@@ -45,8 +45,8 @@ def optimise_bb_centre(
         to_minimise_edge_agreement, bb_bounds
     )
 
-    # if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
-    #     raise ValueError("BB found at bounds, likely incorrect")
+    if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
+        raise ValueError("BB found at bounds, likely incorrect")
 
     minimise_pval_bounds = [
         (
