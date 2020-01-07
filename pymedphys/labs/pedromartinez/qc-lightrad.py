@@ -262,8 +262,8 @@ def read_dicom(filenm, ioptn):
         (
             (ROI1["edge_left"] * dx / 10),
             (ROI1["edge_right"] * dx / 10),
-            (ROI1["edge_top"] * dy / 10),
             (ROI1["edge_bottom"] * dy / 10),
+            (ROI1["edge_top"] * dy / 10),
         )
     )
 
@@ -280,8 +280,8 @@ def read_dicom(filenm, ioptn):
         (
             (ROI2["edge_left"] * dx / 10),
             (ROI2["edge_right"] * dx / 10),
-            (ROI2["edge_top"] * dy / 10),
             (ROI2["edge_bottom"] * dy / 10),
+            (ROI2["edge_top"] * dy / 10),
         )
     )
 
@@ -297,8 +297,8 @@ def read_dicom(filenm, ioptn):
         (
             (ROI3["edge_left"] * dx / 10),
             (ROI3["edge_right"] * dx / 10),
-            (ROI3["edge_top"] * dy / 10),
             (ROI3["edge_bottom"] * dy / 10),
+            (ROI3["edge_top"] * dy / 10),
         )
     )
 
@@ -315,8 +315,8 @@ def read_dicom(filenm, ioptn):
         (
             (ROI4["edge_left"] * dx / 10),
             (ROI4["edge_right"] * dx / 10),
-            (ROI4["edge_top"] * dy / 10),
             (ROI4["edge_bottom"] * dy / 10),
+            (ROI4["edge_top"] * dy / 10),
         )
     )
 
@@ -333,8 +333,8 @@ def read_dicom(filenm, ioptn):
         (
             (ROI5["edge_left"] * dx / 10),
             (ROI5["edge_right"] * dx / 10),
-            (ROI5["edge_top"] * dy / 10),
             (ROI5["edge_bottom"] * dy / 10),
+            (ROI5["edge_top"] * dy / 10),
         )
     )
 
@@ -351,8 +351,8 @@ def read_dicom(filenm, ioptn):
         (
             (ROI6["edge_left"] * dx / 10),
             (ROI6["edge_right"] * dx / 10),
-            (ROI6["edge_top"] * dy / 10),
             (ROI6["edge_bottom"] * dy / 10),
+            (ROI6["edge_top"] * dy / 10),
         )
     )
 
@@ -369,8 +369,8 @@ def read_dicom(filenm, ioptn):
         (
             (ROI7["edge_left"] * dx / 10),
             (ROI7["edge_right"] * dx / 10),
-            (ROI7["edge_top"] * dy / 10),
             (ROI7["edge_bottom"] * dy / 10),
+            (ROI7["edge_top"] * dy / 10),
         )
     )
 
@@ -387,8 +387,8 @@ def read_dicom(filenm, ioptn):
         (
             (ROI8["edge_left"] * dx / 10),
             (ROI8["edge_right"] * dx / 10),
-            (ROI8["edge_top"] * dy / 10),
             (ROI8["edge_bottom"] * dy / 10),
+            (ROI8["edge_top"] * dy / 10),
         )
     )
 
@@ -491,14 +491,14 @@ def read_dicom(filenm, ioptn):
                 )
                 ax.scatter(
                     list_extent[k][0] + xdet[k] * dx / 100,
-                    list_extent[k][3] - ydet[k] * dy / 100,
+                    list_extent[k][3] + ydet[k] * dy / 100,
                     s=30,
                     marker="P",
                     color="y",
                 )
                 ax.set_title("Bib=" + str(k + 1))
                 ax.axhline(
-                    list_extent[k][3] - index * dy / 100, color="r", linestyle="--"
+                    list_extent[k][3] + index * dy / 100, color="r", linestyle="--"
                 )
                 ax.set_xlabel("x distance [cm]")
                 ax.set_ylabel("y distance [cm]")
@@ -545,7 +545,7 @@ def read_dicom(filenm, ioptn):
                 )
                 ax.scatter(
                     list_extent[k][0] + xdet[k] * dx / 100,
-                    list_extent[k][3] - ydet[k] * dy / 100,
+                    list_extent[k][3] + ydet[k] * dy / 100,
                     s=30,
                     marker="P",
                     color="y",
