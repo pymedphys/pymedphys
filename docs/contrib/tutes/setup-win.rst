@@ -114,3 +114,11 @@ Then install PyMedPhys and set up pre-commit by running:
 
     poetry install
     poetry run pre-commit install
+
+
+Install a Jupyter Lab kernel for the development install
+--------------------------------------------------------
+
+.. code:: bash
+
+    poetry run python -m ipykernel install --user --name pymedphys-master

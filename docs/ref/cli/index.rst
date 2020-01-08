@@ -34,5 +34,4 @@ This presents what to write into the command prompt to use that CLI command.
     dicom
     trf
     logfile
-    docker
     pinnacle
