@@ -11,17 +11,17 @@ and open source distribution. Open code is better science.**
 
 |build| |pypi| |python| |license|
 
-.. |build| image:: https://dev.azure.com/pymedphys/pymedphys/_apis/build/status/pymedphys.pymedphys?branchName=master
-    :target: https://dev.azure.com/pymedphys/pymedphys/_build/latest?definitionId=4&branchName=master
+.. |build| image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fpymedphys%2Fpymedphys%2Fbadge&label=build&logo=none
+    :target: https://actions-badge.atrox.dev/pymedphys/pymedphys/goto
 
-.. |pypi| image:: https://img.shields.io/pypi/v/pymedphys.svg
+.. |pypi| image:: https://img.shields.io/pypi/v/pymedphys
     :target: https://pypi.org/project/pymedphys/
 
-.. |python| image:: https://img.shields.io/pypi/pyversions/pymedphys.svg
+.. |python| image:: https://img.shields.io/pypi/pyversions/pymedphys
     :target: https://pypi.org/project/pymedphys/
 
-.. |license| image:: https://img.shields.io/pypi/l/pymedphys.svg
-    :target: https://choosealicense.com/licenses/agpl-3.0/
+.. |license| image:: https://img.shields.io/pypi/l/pymedphys
+    :target: https://choosealicense.com/licenses/apache-2.0/
 
 
 Docs under construction
@@ -41,7 +41,8 @@ Are you new to PyMedPhys or new to Python programming? Then these resources are
 for you:
 
 * From scratch: `New to Python`_ | `Installation`_
-* Tutorials: `Part 1: Name`_ | `Part 2: Name`_
+* Tutorials: `Part 1: Stretching a DICOM CT`_ |
+  `Part 2: Calculating fluence from DICOM plan`_
 
 How the documentation is organised
 ----------------------------------
@@ -81,15 +82,13 @@ the community that aims to one day be refined to become part of the primary
 What is PyMedPhys?
 ------------------
 
-A place to share, review, improve, and transparently learn off of each other’s
-code. It is a library of tools that we all have access to and, because of its
-`license`_, will all have access to whatever it becomes in the future.
-It is inspired by the collaborative work of our physics peers in astronomy and
-their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
+A place to share, review, improve, and transparently learn off of each
+other’s code. It is an open-source library of tools that we all have access
+to. It is inspired by the collaborative work of our physics peers in astronomy
+and their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
 `conda-forge`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
-.. _`license`: https://choosealicense.com/licenses/agpl-3.0/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 .. _`conda-forge`: https://anaconda.org/conda-forge/pymedphys
@@ -200,10 +199,10 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 
-.. _`New to Python` : https://docs.pymedphys.com/tutes/python
-.. _`Installation` : https://docs.pymedphys.com/tutes/install
-.. _`Part 1: Name` : https://docs.pymedphys.com/tutes/part-1
-.. _`Part 2: Name` : https://docs.pymedphys.com/tutes/part-2
+.. _`New to Python`: https://docs.pymedphys.com/tutes/python
+.. _`Installation`: https://docs.pymedphys.com/tutes/install
+.. _`Part 1: Stretching a DICOM CT`: https://docs.pymedphys.com/tutes/part-1
+.. _`Part 2: Calculating fluence from DICOM plan`: https://docs.pymedphys.com/tutes/part-2
 
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes

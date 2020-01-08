@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.15.0"
+version = "0.18.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -13,7 +13,7 @@ authors = [
     "Jacob McAloney",
     "Pedro Martinez"
 ]
-license = "AGPL-3.0-or-later"
+license = "Apache-2.0"
 homepage = "https://pymedphys.com"
 repository = "https://github.com/pymedphys/pymedphys"
 documentation = "https://docs.pymedphys.com"
@@ -29,35 +29,46 @@ classifiers = [
 python = "^3.6"
 attrs = "*"
 dataclasses = { version = "*", python = "~3.6.0" }
+tqdm = "*"
 
 # library
-keyring = { version = "*", optional = true }
-packaging = { version = "*", optional = true }
-PyYAML = { version = "*", optional = true }
+keyring = "*"
+packaging = "*"
+PyYAML = "*"
+requests = "*"
 
-numpy = { version = "^1.12", optional = true }
-matplotlib = { version = "*", optional = true }
-scipy = { version = "*", optional = true }
-pandas = { version = "*", optional = true }
+numpy = "^1.12"
+matplotlib = "*"
+scipy = "*"
+pandas = "*"
 
-dbfread = { version = "*", optional = true }
+Pillow = "*"
+imageio = "*"
 
-pydicom = { version = "*", optional = true }
-pynetdicom = { version = "*", optional = true }
+dbfread = "*"
+
+pydicom = "*"
+pynetdicom = "*"
 
 # difficult
-pymssql = { version = "< 3.0.0", optional = true }
-shapely = { version = "*", optional = true }
+cython = "*"
+pymssql = "< 3.0.0"
+shapely-helper = "*"
+
+# labs
+python_dateutil = "*"
+scikit-image = "*"
 
 # gui
 jupyterlab_server = { version = "*", optional = true }
 
-# labs
-tqdm = { version = "*", optional = true }
-python_dateutil = { version = "*", optional = true }
-Pillow = { version = "*", optional = true }
-imageio = { version = "*", optional = true }
-scikit-image = { version = "*", optional = true }
+# ml
+tensorflow = { version = "2.1.0-rc2", optional = true }
+absl-py = { version = "*", optional = true }
+
+# jupyter
+jupyterlab = { version = "*", optional = true }
+pywin32 = { version = "224", optional = true, platform = "win32" }
 
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
@@ -110,14 +121,12 @@ ipython = "*"
 ipykernel = "*"
 m2r = "*"
 
-# Supporting JupyterLab usage
-pywin32 = { version = "224", platform = "win32" }
-
 # VSCode extension dependencies
 doc8 = "*"
+pydot = "^1.4.1"
+tensorflow-datasets = "^1.3.2"
 
 # gui
-cefpython3 = "66.0"
 jupyterlab_server = "*"
 
 # Packages to include later
@@ -136,17 +145,12 @@ gui = [
     "jupyterlab_server"
 ]
 
-library = [
-    "keyring", "packaging", "PyYAML", "numpy", "matplotlib", "scipy",
-    "pandas", "dbfread", "pydicom", "pynetdicom"
+ml = [
+    "tensorflow", "absl-py"
 ]
 
-labs = [
-    "tqdm", "python_dateutil", "Pillow", "imageio", "scikit-image"
-]
-
-difficult = [
-    "pymssql", "shapely"
+jupyter = [
+    "jupyterlab", "pywin32"
 ]
 
 pytest = [

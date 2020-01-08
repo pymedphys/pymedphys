@@ -33,6 +33,74 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.18.0]
+
+### Breaking Changes
+
+- Removed the optional extras tags of `library`, `labs`, and `difficult`. All
+  of these now install by default. For example PyMedPhys can no longer be
+  installed with `pip install pymedphys[library]`.
+
+### Quality of life improvements
+
+- Installation of PyMedPhys has been reverted to including all of its primary
+  dependencies. This was done to make the default install less confusing.
+  Nevertheless, these dependencies are mostly optional and if you wish you can
+  install with `pip install pymedphys --no-deps` to have a minimal
+  installation.
+- Made a `shapely-helpers` package which automatically handles installation
+  of `shapely` on Windows. PyMedPhys now depends on `shapely-helpers` instead
+  of `shapely`.
+
+
+## [0.17.1]
+
+### Quality of life improvements
+
+- Made wlutz determination less fussy.
+
+
+## [0.17.0]
+
+### New Features
+
+- Initial alpha release of an experimental JupyterLab application bundler.
+  Run with `pymedphys bundle` in a directory that contains a `notebooks` dir
+  and a `requirements.txt` file.
+
+
+## [0.16.3]
+
+### Bug Fixes
+
+- Gracefully reject ipython inspection for optional modules by returning `None`
+  for '__file__' attribute requests for modules that are not currently
+  installed.
+
+## [0.16.2]
+
+### Bug Fixes
+
+- Fixed bug with optional dependency logic within `apipkg`. Occurred whenever
+  an optional submodule was called, for example `scipy.interpolate`.
+
+## [0.16.1]
+
+### Aesthetic Changes
+
+- Updated the badges reported within the README.
+
+## [0.16.0]
+
+### Package changes
+
+- The license of the package has changed from `AGPL-3.0-or-later` to
+ `Apache-2.0`.
+
+### New Features
+
+- Expose `pymedphys.electronfactors.plot_model` as part of the public API.
+
 ## [0.15.0]
 
 ### New Features
@@ -331,7 +399,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.15.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.18.0...master
+[0.18.0]: https://github.com/pymedphys/pymedphys/compare/v0.17.1...v0.18.0
+[0.17.1]: https://github.com/pymedphys/pymedphys/compare/v0.17.0...v0.17.1
+[0.17.0]: https://github.com/pymedphys/pymedphys/compare/v0.16.3...v0.17.0
+[0.16.3]: https://github.com/pymedphys/pymedphys/compare/v0.16.2...v0.16.3
+[0.16.2]: https://github.com/pymedphys/pymedphys/compare/v0.16.1...v0.16.2
+[0.16.1]: https://github.com/pymedphys/pymedphys/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/pymedphys/pymedphys/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/pymedphys/pymedphys/compare/v0.14.3...v0.15.0
 [0.14.3]: https://github.com/pymedphys/pymedphys/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/pymedphys/pymedphys/compare/v0.14.1...v0.14.2

@@ -4,6 +4,5 @@ Explanatory Documents
 .. toctree::
     :maxdepth: 1
 
-    license
-    agpl-benefits
+    open-source-benefits
     elekta-logfiles
