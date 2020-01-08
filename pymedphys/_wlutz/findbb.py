@@ -21,8 +21,8 @@ from .pylinac import PylinacComparisonDeviation, run_wlutz
 from .utilities import create_centralised_field, transform_point
 
 BB_MIN_SEARCH_DIST = 2
-BB_MIN_SEARCH_TOL = 1
-BB_REPEAT_TOL = 0.2
+BB_MIN_SEARCH_TOL = 0.25
+BB_REPEAT_TOL = 0.01
 
 
 def optimise_bb_centre(
