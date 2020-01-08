@@ -1,27 +1,16 @@
 # Copyright (C) 2019 Cancer Care Associates
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 from pymedphys._imports import numpy as np
@@ -42,6 +31,7 @@ def image_analysis_figure(
     bb_diameter,
     edge_lengths,
     penumbra,
+    units="(mm)",
 ):
     field = create_interpolated_field(x, y, img)
 
@@ -67,6 +57,8 @@ def image_analysis_figure(
 
     ax_big = fig.add_subplot(gs[0:2, 0:2])
 
+    axs[0, 0] = ax_big
+
     pixel_value_label = "Scaled image pixel value"
 
     image_with_overlays(
@@ -85,6 +77,7 @@ def image_analysis_figure(
         x_bb_interp,
         y_bb_interp,
         pixel_value_label,
+        units=units,
     )
 
     profile_flip_plot(axs[2, 0], x_axis, field(*x_field_interp))
@@ -92,7 +85,7 @@ def image_analysis_figure(
         [edge_lengths[0] / 2 - penumbra * 2, edge_lengths[0] / 2 + penumbra * 2]
     )
     axs[2, 0].set_title("Flipped profile about field centre [field x-axis]")
-    axs[2, 0].set_xlabel("Distance from field centre (mm)")
+    axs[2, 0].set_xlabel(f"Distance from field centre {units}")
     axs[2, 0].set_ylabel(pixel_value_label)
 
     profile_flip_plot(axs[2, 1], y_axis, field(*y_field_interp))
@@ -100,25 +93,25 @@ def image_analysis_figure(
         [edge_lengths[1] / 2 - penumbra * 2, edge_lengths[1] / 2 + penumbra * 2]
     )
     axs[2, 1].set_title("Flipped profile about field centre [field y-axis]")
-    axs[2, 1].set_xlabel("Distance from field centre (mm)")
+    axs[2, 1].set_xlabel(f"Distance from field centre {units}")
     axs[2, 1].set_ylabel(pixel_value_label)
 
     if bb_centre is not None:
         profile_flip_plot(axs[3, 0], x_axis, field(*x_bb_interp))
         axs[3, 0].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
         axs[3, 0].set_title("Flipped profile about BB centre [panel x-axis]")
-        axs[3, 0].set_xlabel("Displacement from BB centre (mm)")
+        axs[3, 0].set_xlabel(f"Displacement from BB centre {units}")
         axs[3, 0].set_ylabel(pixel_value_label)
 
         profile_flip_plot(axs[3, 1], y_axis, field(*y_bb_interp))
         axs[3, 1].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
         axs[3, 1].set_title("Flipped profile about BB centre [panel y-axis]")
-        axs[3, 1].set_xlabel("Displacement from BB centre (mm)")
+        axs[3, 1].set_xlabel(f"Displacement from BB centre {units}")
         axs[3, 1].set_ylabel(pixel_value_label)
 
     plt.tight_layout()
 
-    return fig
+    return fig, axs
 
 
 def profile_flip_plot(ax, dependent, independent):
@@ -142,6 +135,7 @@ def image_with_overlays(
     x_bb_interp,
     y_bb_interp,
     pixel_value_label,
+    units="(mm)",
 ):
     rect_crosshair_dx = [
         -edge_lengths[0] / 2,
@@ -202,8 +196,8 @@ def image_with_overlays(
         [field_centre[1] - long_edge_fraction, field_centre[1] + long_edge_fraction]
     )
 
-    ax.set_xlabel("iView panel absolute x-pos (mm)")
-    ax.set_ylabel("iView panel absolute y-pos (mm)")
+    ax.set_xlabel(f"iView panel absolute x-pos {units}")
+    ax.set_ylabel(f"iView panel absolute y-pos {units}")
 
 
 def draw_by_diff(dx, dy, transform):
