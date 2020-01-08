@@ -19,13 +19,10 @@ import pymedphys._wlutz.findbb
 
 
 def test_bb_at_bounds_check():
-    penumbra = 2
     edge_lengths = [20, 24]
     bb_diameter = 8
 
-    bb_bounds = pymedphys._wlutz.findbb.define_bb_bounds(
-        bb_diameter, edge_lengths, penumbra
-    )
+    bb_bounds = pymedphys._wlutz.findbb.define_bb_bounds(bb_diameter, edge_lengths)
     assert pymedphys._wlutz.findbb.check_if_at_bounds((0, -7.5), bb_bounds)
     assert not pymedphys._wlutz.findbb.check_if_at_bounds((0, -5.5), bb_bounds)
     assert pymedphys._wlutz.findbb.check_if_at_bounds((5.5, 0), bb_bounds)
