@@ -19,13 +19,17 @@ disable =
     wrong-import-order,
     wrong-import-position,
     ungrouped-imports,
+    import-outside-toplevel,
 
 
 [FORMAT]
 
 max-line-length=88
 
-
 extension-pkg-whitelist =
     pymssql,
-    numpy
+    numpy,
+    win32file,
+    tensorflow,
+    tensorflow.__version__,
+    tensorflow.data.experimental,
