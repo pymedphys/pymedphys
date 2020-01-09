@@ -4,7 +4,7 @@ import pathlib
 import socket
 from datetime import datetime
 
-MINUTES_OF_DATA = 0.25
+MINUTES_OF_DATA = 30
 ICOM_HZ = 4
 SECONDS_OF_DATA = MINUTES_OF_DATA * 60
 BATCH = int(ICOM_HZ * SECONDS_OF_DATA)
