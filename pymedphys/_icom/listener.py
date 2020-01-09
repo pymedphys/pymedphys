@@ -1,11 +1,26 @@
+import lzma
 import pathlib
 import shutil
 import socket
 from datetime import datetime
 
-BATCH = 120
+MINUTES_OF_DATA = 30
+BATCH = 240 * MINUTES_OF_DATA
 BUFFER_SIZE = 16384
 ICOM_PORT = 1706
+
+
+def write_data(data, ip, holding_dir, processing_dir):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    filename = f"{ip}_{timestamp}.xz"
+
+    holding_path = holding_dir.joinpath(filename)
+    processing_path = processing_dir.joinpath(filename)
+
+    with lzma.open(holding_path, "w") as f:
+        f.write(data)
+
+    shutil.move(holding_path, processing_path)
 
 
 def listen(ip, data_dir):
@@ -26,19 +41,12 @@ def listen(ip, data_dir):
             for _ in range(BATCH):
                 data += s.recv(BUFFER_SIZE)
 
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            filename = f"{ip}_{timestamp}.txt"
+            write_data(data, ip, holding_dir, processing_dir)
 
-            holding_path = holding_dir.joinpath(filename)
-            processing_path = processing_dir.joinpath(filename)
-
-            with open(holding_path, "wb") as a_file:
-                a_file.write(data)
-
-            shutil.move(holding_path, processing_path)
     finally:
         s.close()
         print(s)
+        write_data(data, ip, holding_dir, processing_dir)
 
 
 def listen_cli(args):
