@@ -1,20 +1,35 @@
+import lzma
+import multiprocessing
 import pathlib
-import shutil
 import socket
 from datetime import datetime
 
-BATCH = 120
+MINUTES_OF_DATA = 5
+ICOM_HZ = 4
+SECONDS_OF_DATA = MINUTES_OF_DATA * 60
+BATCH = int(ICOM_HZ * SECONDS_OF_DATA)
 BUFFER_SIZE = 16384
 ICOM_PORT = 1706
 
 
+def compress_and_move_data(input_file, output_file):
+    input_file = pathlib.Path(input_file)
+    output_file = pathlib.Path(output_file)
+
+    with open(input_file, "rb") as in_file:
+        with lzma.open(output_file, "w") as out_file:
+            out_file.write(in_file.read())
+
+    input_file.unlink()
+
+
 def listen(ip, data_dir):
     data_dir = pathlib.Path(data_dir)
-    holding_dir = data_dir.joinpath("holding")
-    processing_dir = data_dir.joinpath("processing")
+    live_dir = data_dir.joinpath("live")
+    compressed_dir = data_dir.joinpath("compressed")
 
-    holding_dir.mkdir(exist_ok=True, parents=True)
-    processing_dir.mkdir(exist_ok=True)
+    live_dir.mkdir(exist_ok=True, parents=True)
+    compressed_dir.mkdir(exist_ok=True)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, ICOM_PORT))
@@ -22,23 +37,27 @@ def listen(ip, data_dir):
 
     try:
         while True:
-            data = b""
-            for _ in range(BATCH):
-                data += s.recv(BUFFER_SIZE)
-
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            filename = f"{ip}_{timestamp}.txt"
+            filename = f"{ip}_{timestamp}"
 
-            holding_path = holding_dir.joinpath(filename)
-            processing_path = processing_dir.joinpath(filename)
+            live_path = live_dir.joinpath(f"{filename}.txt")
+            compressed_path = compressed_dir.joinpath(f"{filename}.xz")
 
-            with open(holding_path, "wb") as a_file:
-                a_file.write(data)
+            with open(live_path, "ba+") as f:
+                for _ in range(BATCH):
+                    f.write(s.recv(BUFFER_SIZE))
 
-            shutil.move(holding_path, processing_path)
+            multiprocessing.Process(
+                target=compress_and_move_data, args=(live_path, compressed_path)
+            ).start()
+
     finally:
         s.close()
         print(s)
+
+        multiprocessing.Process(
+            target=compress_and_move_data, args=(live_path, compressed_path)
+        ).start()
 
 
 def listen_cli(args):
