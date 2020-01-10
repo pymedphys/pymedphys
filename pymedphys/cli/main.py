@@ -19,6 +19,7 @@ from .app import app_cli
 from .bundle import bundle_cli
 from .dev import dev_cli
 from .dicom import dicom_cli
+from .icom import icom_cli
 from .jupyterlab import jupyter_cli
 from .labs import labs_cli
 from .logfile import logfile_cli
@@ -46,6 +47,7 @@ def define_parser():
     trf_cli(subparsers)
     dev_cli(subparsers)
     zenodo_cli(subparsers)
+    icom_cli(subparsers)
 
     return parser
 
