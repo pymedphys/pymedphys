@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.19.0dev0"
+version = "0.19.0dev2"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -53,7 +53,7 @@ pynetdicom = "*"
 # difficult
 cython = "*"
 pymssql = "< 3.0.0"
-shapely-helper = "*"
+shapely = { version = "*", optional = true }
 
 # labs
 python_dateutil = "*"
@@ -147,6 +147,10 @@ gui = [
 
 ml = [
     "tensorflow", "absl-py"
+]
+
+difficult = [
+    "shapely"
 ]
 
 jupyter = [
