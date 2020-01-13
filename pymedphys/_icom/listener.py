@@ -1,6 +1,7 @@
 import lzma
 import multiprocessing
 import pathlib
+import shutil
 import socket
 from datetime import datetime
 
@@ -36,19 +37,23 @@ def listen(ip, data_dir):
     print(s)
 
     try:
+        live_path = live_dir.joinpath(f"{ip}.txt")
+
         while True:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            filename = f"{ip}_{timestamp}"
-
-            live_path = live_dir.joinpath(f"{filename}.txt")
-            compressed_path = compressed_dir.joinpath(f"{filename}.xz")
-
             with open(live_path, "ba+") as f:
                 for _ in range(BATCH):
                     f.write(s.recv(BUFFER_SIZE))
 
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            filename = f"{ip}_{timestamp}"
+
+            temp_path = live_dir.joinpath(f"{filename}.txt")
+            shutil.move(live_path, temp_path)
+
+            compressed_path = compressed_dir.joinpath(f"{filename}.xz")
+
             multiprocessing.Process(
-                target=compress_and_move_data, args=(live_path, compressed_path)
+                target=compress_and_move_data, args=(temp_path, compressed_path)
             ).start()
 
     finally:
