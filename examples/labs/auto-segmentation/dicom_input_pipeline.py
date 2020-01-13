@@ -57,15 +57,16 @@ def filter_dicom_volume(dicom_volume):
     dicom_rp = []
     dicom_rd = []
     for file in dicom_volume:
-        if hasattr(file, 'ImageType'):
+        if hasattr(file, "ImageType"):
             dicom_imaging_volume.append(file)
-        elif hasattr(file, 'StructureSetName'):
+        elif hasattr(file, "StructureSetName"):
             dicom_rs.append(file)
-        elif hasattr(file, 'BeamSequence'):
+        elif hasattr(file, "BeamSequence"):
             dicom_rp.append(file)
         else:
             dicom_rd.append(file)
     return dicom_imaging_volume, dicom_rs, dicom_rp, dicom_rd
+
 
 def clean_data_by_label():
     # TODO
@@ -86,8 +87,7 @@ def add_transfer_syntax(dicom_imaging_volume):
         try:
             file.file_meta.TransferSyntaxUID
         except AttributeError:
-            file.file_meta.TransferSyntaxUID = (
-                pydicom.uid.ImplicitVRLittleEndian)
+            file.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
         # if hasattr(file, 'file_meta.TransferSyntaxUID') is not True:
         #     file.file_meta.TransferSyntaxUID = (pydicom
         #                                         .uid.ImplicitVRLittleEndian)
@@ -101,8 +101,7 @@ def extract_pixel_array(dicom_imaging_volume):
     # TODO
     # Can make this faster by defining array size
     # Probably break the return statement down for readability.
-    return np.array(
-        [ax_slice.pixel_array for ax_slice in dicom_imaging_volume])
+    return np.array([ax_slice.pixel_array for ax_slice in dicom_imaging_volume])
 
 
 def scale_pixel_array(pixel_array_volume, scale):
@@ -117,8 +116,9 @@ def scale_pixel_array(pixel_array_volume, scale):
     # TODO
     # This should probably be done at a volume level rather
     # than looping through each slice - to speed things up.
-    return np.array([(transform.resize(ax_slice, scale))
-                     for ax_slice in pixel_array_volume])
+    return np.array(
+        [(transform.resize(ax_slice, scale)) for ax_slice in pixel_array_volume]
+    )
 
 
 def plot_pixel_array(pixel_array, index=0):
@@ -145,13 +145,14 @@ def normalise_pixel_array_volume(pixel_array_volume):
 
 def get_padding(pixel_array_volume, index, padding=5):
     # TODO
-    # Get padding ala deep-mind: index of volume +- padding 
+    # Get padding ala deep-mind: index of volume +- padding
     # Can make this faster by defining array size
     # TODO
     # At some point in the pipeline we need to handle
     # that the outer margin slices are only to be used
     # as padding
-    return  
+    return
+
 
 def strip_margin(pixel_array_volume, padding=5):
     """
@@ -167,8 +168,7 @@ def get_scaled_pixel_array_volume(data_path, scale):
     """
     file_names = get_file_names(data_path)
     dicom_volume = read_dicom_volume(file_names)
-    dicom_imaging_volume, dicom_structures, *rest = filter_dicom_volume(
-        dicom_volume)
+    dicom_imaging_volume, dicom_structures, *rest = filter_dicom_volume(dicom_volume)
 
     # Handling of dicom_imaging_volume
     dicom_imaging_volume = add_transfer_syntax(dicom_imaging_volume)
@@ -180,9 +180,12 @@ def get_scaled_pixel_array_volume(data_path, scale):
     # Handling of structures
     return scaled_pixel_array_volume, dicom_structures
 
+
 def construct_input_data(data_path, scale, output_path):
 
-    scaled_pixel_array_volume, dicom_structures = get_scaled_pixel_array_volume(data_path, scale)
+    scaled_pixel_array_volume, dicom_structures = get_scaled_pixel_array_volume(
+        data_path, scale
+    )
 
     # r
     return 0
