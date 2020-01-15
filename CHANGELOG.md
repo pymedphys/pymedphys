@@ -33,6 +33,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.19.0]
+
+### Breaking Changes
+
+- Made shapely an optional dependency once more. No longer depending on
+  `shapely-helper`.
+  - Shapely can be installed by running `pip install pymedphys[difficult]==0.19.0`
+  - This fixes an issue where `pip` refuses to install due to the
+    `shapely-helper` workaround.
+
 ## [0.18.0]
 
 ### Breaking Changes
@@ -51,7 +61,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Made a `shapely-helpers` package which automatically handles installation
   of `shapely` on Windows. PyMedPhys now depends on `shapely-helpers` instead
   of `shapely`.
-
 
 ## [0.17.1]
 
@@ -399,7 +408,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.18.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.19.0...master
+[0.19.0]: https://github.com/pymedphys/pymedphys/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/pymedphys/pymedphys/compare/v0.17.1...v0.18.0
 [0.17.1]: https://github.com/pymedphys/pymedphys/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/pymedphys/pymedphys/compare/v0.16.3...v0.17.0
