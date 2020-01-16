@@ -142,8 +142,6 @@ def strict_extract(data):
     timestamp_and_counter = DATE_PATTERN.search(data).group(0)
     timestamp = timestamp_and_counter[:-1]
     counter = int(timestamp_and_counter[-1])
-    if counter > 9:
-        counter = counter - 1
 
     result["Timestamp"] = datetime.datetime.strptime(
         timestamp.decode(), "%Y-%m-%d%H:%M:%S"
