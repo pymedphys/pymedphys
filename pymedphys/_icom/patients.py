@@ -18,7 +18,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
     reformated_timestamp = (
         start_timestamp.replace(":", "").replace("T", "_").replace("-", "")
     )
-    filename = patient_dir.joinpath(f"{reformated_timestamp}.json")
+    filename = patient_dir.joinpath(f"{reformated_timestamp}.xz")
 
     data = b""
     for item in patient_data:
