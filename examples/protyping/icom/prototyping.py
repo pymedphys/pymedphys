@@ -171,7 +171,7 @@ types = {
     "Patient Name": str,
     "Rx Site": str,
     "Field ID": str,
-    "Machine ID": str,
+    "Machine ID": int,
     "Radiation Type": str,
     "Energy": str,
     "Wedge": str,
