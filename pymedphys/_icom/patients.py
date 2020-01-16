@@ -1,70 +1,33 @@
-import functools
+import base64
+import json
 import pathlib
-import re
 
-from . import mappings, observer
-
-
-@functools.lru_cache()
-def get_extraction_regex(key):
-    regex = re.compile(rb"[0\x00pP]" + key + rb".\x00\x00\x00([a-zA-Z0-9 \.-]+)")
-    return regex
+from . import extract, observer
 
 
-def extract(data, label):
-    key, this_type, where = mappings.ICOM[label]
+def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
+    _, patient_id = extract.extract(patient_data[0], "Patient ID")
 
-    if where == "all":
-        return extract_all(data, key, this_type)
-
-    if where == "first":
-        return extract_first(data, key, this_type)
-
-    raise ValueError("Unexpected value for where")
-
-
-def extract_all(data, key, this_type):
-    result = []
-    while True:
-        data, a_result = extract_first(data, key, this_type)
-        if a_result is not None:
-            result.append(a_result)
-        else:
+    for data in patient_data:
+        _, patient_name = extract.extract(data, "Patient Name")
+        if not patient_name is None:
             break
 
-    return data, result
+    encoded = [base64.b64encode(data) for data in patient_data]
+    patient_dir = output_dir.joinpath(f"{patient_id}_{patient_name}")
+    patient_dir.mkdir(parents=True, exist_ok=True)
 
+    filename = patient_dir.joinpath(f"{start_timestamp}.json")
 
-def extract_first(data, key, this_type):
-    regex = get_extraction_regex(key)
-    match = regex.search(data)
-
-    try:
-        span = match.span()
-    except AttributeError:
-        return data, None
-
-    data = data[0 : span[0]] + data[span[1] + 1 : :]
-
-    result = match.group(1)
-    if result == b"-32767":
-        data, result = extract_first(data, key, this_type)
-    elif this_type is str:
-        result = result.decode()
-    else:
-        result = this_type(result)
-
-    return data, result
-
-
-def get_patient_id(data):
-    _, patient_id = extract(data, "Patient ID")
-    return patient_id
+    with open(filename, "w+") as f:
+        json.dump(encoded, f)
 
 
 class PatientIcomData:
     def __init__(self, output_dir):
         self._data = {}
+        self._usage_start = {}
+        self._current_patient_data = {}
         self._output_dir = pathlib.Path(output_dir)
 
     def update_data(self, ip, data):
@@ -74,8 +37,35 @@ class PatientIcomData:
             self._data[ip] = [data]
 
         timestamp = data[8:26].decode()
-        patient_id = get_patient_id(data)
-        print(f"IP: {ip} | Timestamp: {timestamp} | Patient ID: {patient_id}")
+        shrunk_data, patient_id = extract.extract(data, "Patient ID")
+        shrunk_data, patient_name = extract.extract(shrunk_data, "Patient Name")
+        shrunk_data, machine_id = extract.extract(shrunk_data, "Machine ID")
+        print(
+            f"IP: {ip} | Timestamp: {timestamp} | "
+            f"Patient ID: {patient_id} | "
+            f"Patient Name: {patient_name} | Machine ID: {machine_id}"
+        )
+
+        try:
+            usage_start = self._usage_start[ip]
+        except KeyError:
+            usage_start = None
+
+        if patient_id is not None:
+            if usage_start is None:
+                self._current_patient_data[ip] = []
+
+                timestamp = data[8:26].decode()
+                iso_timestamp = f"{timestamp[0:10]}T{timestamp[10::]}"
+                self._usage_start[ip] = iso_timestamp
+
+            self._current_patient_data[ip].append(data)
+        elif not usage_start is None:
+            save_patient_data(
+                usage_start, self._current_patient_data[ip], self._output_dir
+            )
+            self._current_patient_data[ip] = None
+            self._usage_start[ip] = None
 
 
 def archive_by_patient(directories_to_watch, output_dir):
