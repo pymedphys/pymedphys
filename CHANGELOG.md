@@ -33,6 +33,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [Unreleased]
+
+### New Features
+
+- Add icom listener CLI.
+
 ## [0.19.0]
 
 ### Breaking Changes
