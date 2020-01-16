@@ -13,7 +13,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
         if not patient_name is None:
             break
 
-    encoded = [base64.b64encode(data) for data in patient_data]
+    encoded = [base64.b64encode(data).decode() for data in patient_data]
     patient_dir = output_dir.joinpath(f"{patient_id}_{patient_name}")
     patient_dir.mkdir(parents=True, exist_ok=True)
 
