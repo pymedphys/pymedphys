@@ -17,7 +17,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
     patient_dir = output_dir.joinpath(f"{patient_id}_{patient_name}")
     patient_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = patient_dir.joinpath(f"{start_timestamp}.json")
+    filename = patient_dir.joinpath(f"{start_timestamp.replace(':', '')}.json")
 
     with open(filename, "w+") as f:
         json.dump(encoded, f)
