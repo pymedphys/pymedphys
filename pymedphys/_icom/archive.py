@@ -1,3 +1,13 @@
+from . import patients
+
+
+def archive_cli(args):
+    if args.by_patient:
+        return patients.archive_by_patient_cli(args)
+
+    raise ValueError("No archive type chosen")
+
+
 # import lzma
 # import multiprocessing
 # import pathlib
