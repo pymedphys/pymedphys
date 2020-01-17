@@ -6,7 +6,9 @@ from . import mappings
 
 @functools.lru_cache()
 def get_extraction_regex(key):
-    regex = re.compile(rb"[0\x00pP]" + key + rb".\x00\x00\x00([a-zA-Z0-9 \.-]+)")
+    regex = re.compile(
+        rb"""[0\x00pP]""" + key + rb""".\x00\x00\x00([,\-'"a-zA-Z0-9 \.-]+)"""
+    )
     return regex
 
 
