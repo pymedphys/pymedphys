@@ -64,6 +64,7 @@ def field_centre_and_rotation_refining(
     fixed_rotation=None,
     niter=10,
     pylinac_tol=0.2,
+    ignore_pylinac=False,
 ):
 
     if fixed_rotation is None:
@@ -110,34 +111,35 @@ def field_centre_and_rotation_refining(
 
         check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
 
-    try:
-        pylinac = run_wlutz(
-            field,
-            edge_lengths,
-            penumbra,
-            predicted_centre,
-            predicted_rotation,
-            find_bb=False,
-        )
-    except ValueError as e:
-        raise ValueError(
-            "After finding the field centre during comparison to Pylinac the pylinac "
-            f"code raised the following error:\n    {e}"
-        )
+    if not ignore_pylinac:
+        try:
+            pylinac = run_wlutz(
+                field,
+                edge_lengths,
+                penumbra,
+                predicted_centre,
+                predicted_rotation,
+                find_bb=False,
+            )
+        except ValueError as e:
+            raise ValueError(
+                "After finding the field centre during comparison to Pylinac the pylinac "
+                f"code raised the following error:\n    {e}"
+            )
 
-    pylinac_2_2_6_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
-        > pylinac_tol
-    )
-    pylinac_2_2_7_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
-        > pylinac_tol
-    )
-    if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
-        raise PylinacComparisonDeviation(
-            "The determined field centre deviates from pylinac more "
-            "than the defined tolerance"
+        pylinac_2_2_6_out_of_tol = np.any(
+            np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
+            > pylinac_tol
         )
+        pylinac_2_2_7_out_of_tol = np.any(
+            np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
+            > pylinac_tol
+        )
+        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+            raise PylinacComparisonDeviation(
+                "The determined field centre deviates from pylinac more "
+                "than the defined tolerance"
+            )
 
     centre = predicted_centre.tolist()
     return centre, predicted_rotation
