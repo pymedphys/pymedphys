@@ -4,6 +4,9 @@ import pathlib
 import platform
 import stat
 import subprocess
+import tempfile
+
+from pymedphys._imports import imageio
 
 import pymedphys
 
@@ -33,6 +36,20 @@ def get_jpeg_executable():
         "You are running an unknown platform. If you would like this "
         "platform supported please email me at me@simonbiggs.net"
     )
+
+
+def imread(input_filepath):
+    input_filepath = pathlib.Path(input_filepath)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = pathlib.Path(temp_dir.name)
+        temp_path = temp_dir_path.joinpath(input_filepath.name)
+
+        convert_lossless_jpeg(input_filepath, output_filepath=temp_path)
+
+        im = imageio.imread(temp_path)
+
+    return im
 
 
 def convert_lossless_jpeg(input_filepath, output_filepath=None):
