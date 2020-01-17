@@ -42,7 +42,7 @@ def imread(input_filepath):
     input_filepath = pathlib.Path(input_filepath)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir_path = pathlib.Path(temp_dir.name)
+        temp_dir_path = pathlib.Path(temp_dir)
         temp_path = temp_dir_path.joinpath(input_filepath.name)
 
         convert_lossless_jpeg(input_filepath, output_filepath=temp_path)
