@@ -17,7 +17,6 @@ from pymedphys._imports import scipy
 
 import pymedphys._vendor.pylinac.winstonlutz
 
-from .imginterp import create_interpolated_field
 from .interppoints import (
     define_penumbra_points_at_origin,
     define_rotation_field_points_at_origin,
