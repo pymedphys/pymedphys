@@ -27,7 +27,7 @@ def find_field_and_bb(
     edge_lengths,
     bb_diameter,
     penumbra=2,
-    initial_rotation=0,
+    fixed_rotation=None,
     rounding=True,
     pylinac_tol=0.2,
 ):
@@ -39,7 +39,7 @@ def find_field_and_bb(
         edge_lengths,
         penumbra,
         initial_centre,
-        initial_rotation=initial_rotation,
+        fixed_rotation=fixed_rotation,
         pylinac_tol=pylinac_tol,
     )
 
