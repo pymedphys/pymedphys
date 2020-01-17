@@ -28,6 +28,7 @@ def find_field_and_bb(
     fixed_rotation=None,
     rounding=True,
     pylinac_tol=0.2,
+    ignore_pylinac=False,
 ):
     field = imginterp.create_interpolated_field(x, y, img)
     initial_centre = findfield.get_initial_centre(x, y, img)
@@ -39,6 +40,7 @@ def find_field_and_bb(
         initial_centre,
         fixed_rotation=fixed_rotation,
         pylinac_tol=pylinac_tol,
+        ignore_pylinac=ignore_pylinac,
     )
 
     bb_centre = findbb.optimise_bb_centre(
@@ -49,6 +51,7 @@ def find_field_and_bb(
         field_centre,
         field_rotation,
         pylinac_tol=pylinac_tol,
+        ignore_pylinac=ignore_pylinac,
     )
 
     if rounding:
