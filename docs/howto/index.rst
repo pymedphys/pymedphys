@@ -2,7 +2,7 @@
 How-To Guides
 =============
 
-Reproducable Jupyter notebook examples are provided to demonstrate PyMedPhys
+Reproducible Jupyter notebook examples are provided to demonstrate PyMedPhys
 library usage.
 
 .. NOTE::
@@ -19,6 +19,5 @@ library usage.
 .. toctree::
     :maxdepth: 1
 
-    electronfactors
     ../../examples/how-to/gamma/effect-of-noise.ipynb
     ../../examples/how-to/gamma/from-dicom.ipynb
