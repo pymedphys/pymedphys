@@ -19,5 +19,5 @@ library usage.
 .. toctree::
     :maxdepth: 1
 
-    ../../examples/how-to/gamma/effect-of-noise.ipynb
-    ../../examples/how-to/gamma/from-dicom.ipynb
+    gamma/effect-of-noise.ipynb
+    gamma/from-dicom.ipynb
