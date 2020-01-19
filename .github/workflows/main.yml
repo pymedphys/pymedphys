@@ -203,10 +203,12 @@ jobs:
       if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu'
       run: |
         sudo apt-get install -y pandoc
+
     - name: Install Pandoc on MacOS
       if: matrix.toxenv == 'docs' && matrix.os == 'macos'
       run: |
         brew install pandoc
+
     - name: Install Pandoc on Windows
       if: matrix.toxenv == 'docs' && matrix.os == 'windows'
       run: |
