@@ -20,3 +20,5 @@ library usage.
     :maxdepth: 1
 
     electronfactors
+    ../../examples/how-to/gamma/effect-of-noise.ipynb
+    ../../examples/how-to/gamma/from-dicom.ipynb
