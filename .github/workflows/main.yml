@@ -199,6 +199,19 @@ jobs:
       run: |
         python -m pip install --upgrade pip poetry tox
 
+    - name: Install Pandoc on Ubuntu
+      if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu'
+      run: |
+        sudo apt-get install -y pandoc
+    - name: Install Pandoc on MacOS
+      if: matrix.toxenv == 'docs' && matrix.os == 'macos'
+      run: |
+        brew install pandoc
+    - name: Install Pandoc on Windows
+      if: matrix.toxenv == 'docs' && matrix.os == 'windows'
+      run: |
+        choco install pandoc
+
     - name: Run Tox on Windows
       if: matrix.os == 'windows'
       run: |
