@@ -37,13 +37,15 @@ def test_end_to_end():
 
     reference_dataframe = pd.read_csv(HERE.joinpath("end_to_end.csv"))
 
-    assert np.all(np.abs(results["Rotation"] - reference_dataframe["Rotation"])) <= 0.1
+    assert np.max(np.abs(results["Rotation"] - reference_dataframe["Rotation"])) <= 0.1
     assert (
-        np.all(
-            np.abs(
-                results.drop(columns=["Rotation"])
-                - reference_dataframe.drop(columns=["Rotation"])
+        np.max(
+            np.max(
+                np.abs(
+                    results.drop(columns=["Rotation"])
+                    - reference_dataframe.drop(columns=["Rotation"])
+                )
             )
         )
-        <= 0.01
+        <= 0.05
     )
