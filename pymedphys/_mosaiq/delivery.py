@@ -19,7 +19,7 @@
 import functools
 import struct
 
-import attr
+from pymedphys._imports import attr
 from pymedphys._imports import numpy as np
 
 from pymedphys._base.delivery import DeliveryBase
