@@ -110,7 +110,7 @@ def field_centre_and_rotation_refining(
 
         check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
 
-    if pylinac_tol is not None:
+    if not pylinac_tol is None:
         try:
             pylinac = run_wlutz(
                 field,
