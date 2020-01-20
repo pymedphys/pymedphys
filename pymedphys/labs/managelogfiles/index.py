@@ -22,14 +22,10 @@ import pathlib
 import traceback
 from glob import glob
 
-import attr
+from pymedphys._imports import attr
 
 from pymedphys._mosaiq.connect import multi_mosaiq_connect
-from pymedphys._mosaiq.delivery import (
-    NoMosaiqEntries,
-    OISDeliveryDetails,
-    get_mosaiq_delivery_details,
-)
+from pymedphys._mosaiq.delivery import NoMosaiqEntries, get_mosaiq_delivery_details
 from pymedphys._trf.header import Header, decode_header_from_file
 from pymedphys._utilities.filehash import hash_file
 from pymedphys._utilities.filesystem import make_a_valid_directory_name
@@ -38,7 +34,7 @@ from .identify import date_convert
 
 
 def create_logfile_directory_name(
-    centre, delivery_details: OISDeliveryDetails, header: Header, path_string_time
+    centre, delivery_details, header: Header, path_string_time
 ):
     proposed_patient_directory_name = "{}_{}_{}".format(
         delivery_details.patient_id,
@@ -78,10 +74,7 @@ def create_logfile_directory_name(
 
 
 def create_index_entry(
-    new_filepath,
-    delivery_details: OISDeliveryDetails,
-    header: Header,
-    mosaiq_string_time,
+    new_filepath, delivery_details, header: Header, mosaiq_string_time
 ):
 
     index_entry = {

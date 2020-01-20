@@ -41,6 +41,7 @@ EXTERNAL_EXPORTS = (
     "imageio",
     "skimage",
     "requests",
+    "attr",
 )
 
 pymedphys._vendor.apipkg.initpkg(  # pylint: disable = protected-access
@@ -90,5 +91,6 @@ if "numpy" not in IMPORTABLES:
     import imageio
     import skimage
     import requests
+    import attr
 
     raise ValueError("This section of code should never run")
