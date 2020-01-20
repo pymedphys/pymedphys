@@ -42,6 +42,9 @@ EXTERNAL_EXPORTS = (
     "skimage",
     "requests",
     "attr",
+    "watchdog.events",
+    "watchdog.observers",
+    "watchdog",
 )
 
 pymedphys._vendor.apipkg.initpkg(  # pylint: disable = protected-access
@@ -92,5 +95,8 @@ if "numpy" not in IMPORTABLES:
     import skimage
     import requests
     import attr
+    import watchdog
+    import watchdog.events
+    import watchdog.observers
 
     raise ValueError("This section of code should never run")
