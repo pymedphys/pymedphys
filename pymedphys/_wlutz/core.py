@@ -15,9 +15,38 @@
 
 from pymedphys._imports import numpy as np
 
-from .findbb import optimise_bb_centre
-from .findfield import field_centre_and_rotation_refining, get_centre_of_mass
-from .imginterp import create_interpolated_field
+from . import findbb, findfield, imginterp
+
+
+def find_field(
+    x,
+    y,
+    img,
+    edge_lengths,
+    penumbra=2,
+    fixed_rotation=None,
+    rounding=True,
+    pylinac_tol=0.2,
+    ignore_pylinac=False,
+):
+    field = imginterp.create_interpolated_field(x, y, img)
+    initial_centre = findfield.get_initial_centre(x, y, img)
+
+    field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
+        field,
+        edge_lengths,
+        penumbra,
+        initial_centre,
+        fixed_rotation=fixed_rotation,
+        pylinac_tol=pylinac_tol,
+        ignore_pylinac=ignore_pylinac,
+    )
+
+    if rounding:
+        field_centre = np.round(field_centre, decimals=2).tolist()
+        field_rotation = np.round(field_rotation, decimals=1)
+
+    return field, field_centre, field_rotation
 
 
 def find_field_and_bb(
@@ -30,20 +59,21 @@ def find_field_and_bb(
     fixed_rotation=None,
     rounding=True,
     pylinac_tol=0.2,
+    ignore_pylinac=False,
 ):
-    field = create_interpolated_field(x, y, img)
-    initial_centre = get_centre_of_mass(x, y, img)
-
-    field_centre, field_rotation = field_centre_and_rotation_refining(
-        field,
+    field, field_centre, field_rotation = find_field(
+        x,
+        y,
+        img,
         edge_lengths,
-        penumbra,
-        initial_centre,
+        penumbra=penumbra,
         fixed_rotation=fixed_rotation,
+        rounding=False,
         pylinac_tol=pylinac_tol,
+        ignore_pylinac=ignore_pylinac,
     )
 
-    bb_centre = optimise_bb_centre(
+    bb_centre = findbb.optimise_bb_centre(
         field,
         bb_diameter,
         edge_lengths,
@@ -51,6 +81,7 @@ def find_field_and_bb(
         field_centre,
         field_rotation,
         pylinac_tol=pylinac_tol,
+        ignore_pylinac=ignore_pylinac,
     )
 
     if rounding:

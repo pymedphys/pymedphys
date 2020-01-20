@@ -35,11 +35,9 @@ def test_find_field_in_image():
     expected_rotation = 12.1
 
     image_path = pymedphys.data_path("wlutz_image.png")
-    x, y, img = pymedphys._wlutz.iview.iview_image_transform(image_path)
+    x, y, img = pymedphys._wlutz.iview.iview_image_transform_from_path(image_path)
 
-    centre, rotation = pymedphys._wlutz.findfield.find_centre_and_rotation(
-        x, y, img, edge_lengths
-    )
+    _, centre, rotation = pymedphys._wlutz.core.find_field(x, y, img, edge_lengths)
 
     assert (expected_centre, expected_rotation) == (centre, rotation)
 
