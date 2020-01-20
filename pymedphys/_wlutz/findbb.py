@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, scipy
+from pymedphys._imports import scipy
 
-from . import imginterp, reporting
+from . import imginterp
 from .interppoints import create_bb_points_function
 from .pylinac import PylinacComparisonDeviation, run_wlutz
 from .utilities import create_centralised_field, transform_point
 
 BB_MIN_SEARCH_DIST = 2
-BB_MIN_SEARCH_TOL = 0.25
-BB_REPEAT_TOL = 0.01
+BB_REPEAT_TOL = 0.1
 
 
 def optimise_bb_centre(
@@ -34,12 +34,9 @@ def optimise_bb_centre(
     field_centre,
     field_rotation,
     pylinac_tol=0.2,
-    ignore_pylinac=False,
 ):
     centralised_field = create_centralised_field(field, field_centre, field_rotation)
-    to_minimise_edge_agreement, to_minimise_pixel_vals = create_bb_to_minimise(
-        centralised_field, bb_diameter
-    )
+    to_minimise_edge_agreement = create_bb_to_minimise(centralised_field, bb_diameter)
     bb_bounds = define_bb_bounds(bb_diameter, edge_lengths)
 
     bb_centre_in_centralised_field = bb_basinhopping(
@@ -49,59 +46,22 @@ def optimise_bb_centre(
     if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
         raise ValueError("BB found at bounds, likely incorrect")
 
-    minimise_pval_bounds = [
-        (
-            bb_centre_in_centralised_field[0] - BB_MIN_SEARCH_DIST,
-            bb_centre_in_centralised_field[0] + BB_MIN_SEARCH_DIST,
-        ),
-        (
-            bb_centre_in_centralised_field[1] - BB_MIN_SEARCH_DIST,
-            bb_centre_in_centralised_field[1] + BB_MIN_SEARCH_DIST,
-        ),
-    ]
-
-    bb_centre_in_centralised_field_min_only = bb_basinhopping(
-        to_minimise_pixel_vals, minimise_pval_bounds
-    )
-
-    repeat_agreement = np.abs(
-        bb_centre_in_centralised_field_min_only - bb_centre_in_centralised_field
-    )
-    if np.any(repeat_agreement > BB_MIN_SEARCH_TOL):
-        # bb_centre_reporting = transform_point(
-        #     bb_centre_in_centralised_field, field_centre, field_rotation
-        # )
-        # reporting.image_analysis_figure(
-        #     field.x,
-        #     field.y,
-        #     field.img,
-        #     bb_centre_reporting,
-        #     field_centre,
-        #     field_rotation,
-        #     bb_diameter,
-        #     edge_lengths,
-        #     penumbra,
-        # )
-        # plt.show()
-
-        raise ValueError(
-            "BB centre finding doesn't sufficiently agree with minimum "
-            "pixel values within field\n"
-            f"  {bb_centre_in_centralised_field}\n"
-            f"  {bb_centre_in_centralised_field_min_only}\n"
-        )
-
-    verification_repeat = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
-
-    repeat_agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
-    if np.any(repeat_agreement > BB_REPEAT_TOL):
-        raise ValueError("BB centre not able to be consistently determined")
-
     bb_centre = transform_point(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
 
-    if not ignore_pylinac:
+    verification_repeat = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
+    repeat_agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
+
+    if np.any(repeat_agreement > BB_REPEAT_TOL):
+        bb_repeated = transform_point(verification_repeat, field_centre, field_rotation)
+        raise ValueError(
+            "BB centre not able to be consistently determined\n"
+            f"  First iteration:  {bb_centre}\n"
+            f"  Second iteration: {bb_repeated}"
+        )
+
+    if not pylinac_tol is None:
         try:
             pylinac = run_wlutz(
                 field,
@@ -110,24 +70,29 @@ def optimise_bb_centre(
                 field_centre,
                 field_rotation,
                 find_bb=True,
+                pylinac_versions=("v2.2.6",),
             )
         except ValueError as e:
-            raise ValueError(
-                "After finding the bb centre during comparison to Pylinac the pylinac "
-                f"code raised the following error:\n    {e}"
+            warnings.simplefilter("always", UserWarning)
+            warnings.warn(
+                "This iteration has not been checked against pylinac. "
+                "When attempting to run pylinac instead an error was "
+                f"raised. Pylinac raised the following error:\n\n{e}\n"
             )
+            pylinac = {}
 
-        pylinac_2_2_6_out_of_tol = np.any(
-            np.abs(np.array(pylinac["v2.2.6"]["bb_centre"]) - bb_centre) > pylinac_tol
-        )
-        pylinac_2_2_7_out_of_tol = np.any(
-            np.abs(np.array(pylinac["v2.2.7"]["bb_centre"]) - bb_centre) > pylinac_tol
-        )
-        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
-            raise PylinacComparisonDeviation(
-                "The determined bb centre deviates from pylinac more "
-                "than the defined tolerance"
+        try:
+            pylinac_2_2_6_out_of_tol = np.any(
+                np.abs(np.array(pylinac["v2.2.6"]["bb_centre"]) - bb_centre)
+                > pylinac_tol
             )
+            if pylinac_2_2_6_out_of_tol:
+                raise PylinacComparisonDeviation(
+                    "The determined bb centre deviates from pylinac more "
+                    "than the defined tolerance"
+                )
+        except KeyError:
+            pass
 
     return bb_centre
 
@@ -177,15 +142,7 @@ def create_bb_to_minimise(field, bb_diameter):
 
         return mean_of_layers
 
-    points_to_check_min_pvals, _ = create_bb_points_function(bb_diameter * 0.5)
-
-    def to_minimise_pixel_vals(centre):
-        x, y = points_to_check_min_pvals(centre)
-        results = field(x, y)
-
-        return np.mean(results)
-
-    return to_minimise_edge_agreement, to_minimise_pixel_vals
+    return to_minimise_edge_agreement
 
 
 def create_bb_to_minimise_simple(field, bb_diameter):
@@ -204,15 +161,7 @@ def create_bb_to_minimise_simple(field, bb_diameter):
 
         return total_minimisation / (len(dist_mask) - 1)
 
-    points_to_check_min_pvals, _ = create_bb_points_function(bb_diameter * 0.5)
-
-    def to_minimise_pixel_vals(centre):
-        x, y = points_to_check_min_pvals(centre)
-        results = field(x, y)
-
-        return np.mean(results)
-
-    return to_minimise_edge_agreement, to_minimise_pixel_vals
+    return to_minimise_edge_agreement
 
 
 def define_bb_bounds(bb_diameter, edge_lengths):

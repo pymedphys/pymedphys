@@ -21,3 +21,4 @@ library usage.
 
     gamma/effect-of-noise.ipynb
     gamma/from-dicom.ipynb
+    wlutz/varian-dicom-example.ipynb

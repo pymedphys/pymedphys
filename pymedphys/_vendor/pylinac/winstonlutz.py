@@ -42,10 +42,7 @@ Features:
 from typing import List, Tuple
 
 from pymedphys._imports import numpy as np
-
-from scipy import ndimage
-
-from skimage import measure
+from pymedphys._imports import scipy, skimage
 
 from .core import image
 from .core.geometry import Point, Vector
@@ -64,7 +61,7 @@ ALL = "All"
 class WLImage(image.ArrayImage):
     """Holds individual Winston-Lutz EPID images, image properties, and automatically finds the field CAX and BB."""
 
-    def __init__(self, array: np.array, *, dpi=None, sid=None, dtype=None):
+    def __init__(self, array, *, dpi=None, sid=None, dtype=None):
         super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
         self.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
         self._clean_edges()
@@ -117,13 +114,13 @@ class WLImage(image.ArrayImage):
         min_val, max_val = np.percentile(self.array, [5, 99.9])
         threshold_img = self.as_binary((max_val - min_val) / 2 + min_val)
         # clean single-pixel noise from outside field
-        cleaned_img = ndimage.binary_erosion(threshold_img)
+        cleaned_img = scipy.ndimage.binary_erosion(threshold_img)
         [*edges] = bounding_box(cleaned_img)
         edges[0] -= 10
         edges[1] += 10
         edges[2] -= 10
         edges[3] += 10
-        coords = ndimage.measurements.center_of_mass(threshold_img)
+        coords = scipy.ndimage.measurements.center_of_mass(threshold_img)
         p = Point(x=coords[-1], y=coords[0])
         return p, edges
 
@@ -146,12 +143,12 @@ class WLImage(image.ArrayImage):
         while not found:
             try:
                 binary_arr = np.logical_and((max_thresh > self), (self >= lower_thresh))
-                labeled_arr, num_roi = ndimage.measurements.label(binary_arr)
+                labeled_arr, num_roi = scipy.ndimage.measurements.label(binary_arr)
                 roi_sizes, _ = np.histogram(labeled_arr, bins=num_roi + 1)
                 bw_bb_img = np.where(
                     labeled_arr == np.argsort(roi_sizes)[-3], 1, 0
                 )  # we pick the 3rd largest one because the largest is the background, 2nd is rad field, 3rd is the BB
-                bb_regionprops = measure.regionprops(bw_bb_img)[0]
+                bb_regionprops = skimage.measure.regionprops(bw_bb_img)[0]
 
                 if not is_round(bb_regionprops):
                     raise ValueError
@@ -174,7 +171,7 @@ class WLImage(image.ArrayImage):
         inv_img = image.ArrayImage(self.array)
         # we invert so BB intensity increases w/ attenuation
         inv_img.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
-        bb_rprops = measure.regionprops(bw_bb_img, intensity_image=inv_img)[0]
+        bb_rprops = skimage.measure.regionprops(bw_bb_img, intensity_image=inv_img)[0]
         return Point(bb_rprops.weighted_centroid[1], bb_rprops.weighted_centroid[0])
 
     @property
@@ -200,7 +197,7 @@ class WLImage(image.ArrayImage):
         return self.field_cax.distance_to(self.epid) / self.dpmm
 
 
-def is_symmetric(logical_array: np.ndarray) -> bool:
+def is_symmetric(logical_array) -> bool:
     """Whether the binary object's dimensions are symmetric, i.e. a perfect circle. Used to find the BB."""
     ymin, ymax, xmin, xmax = bounding_box(logical_array)
     y = abs(ymax - ymin)
@@ -210,7 +207,7 @@ def is_symmetric(logical_array: np.ndarray) -> bool:
     return True
 
 
-def is_modest_size(logical_array: np.ndarray, field_bounding_box):
+def is_modest_size(logical_array, field_bounding_box):
     """Decide whether the ROI is roughly the size of a BB; not noise and not an artifact. Used to find the BB."""
     bbox = field_bounding_box
     rad_field_area = (bbox[1] - bbox[0]) * (bbox[3] - bbox[2])
@@ -224,7 +221,7 @@ def is_round(rprops):
     return expected_fill_ratio * 1.2 > actual_fill_ratio > expected_fill_ratio * 0.8
 
 
-def is_round_old(logical_array: np.ndarray):
+def is_round_old(logical_array):
     """Decide if the ROI is circular in nature by testing the filled area vs bounding box. Used to find the BB."""
     expected_fill_ratio = np.pi / 4
     actual_fill_ratio = filled_area_ratio(logical_array)
@@ -250,7 +247,7 @@ class WLImageOld(WLImage):
         while not found:
             try:
                 binary_arr = np.logical_and((max_thresh > self), (self >= lower_thresh))
-                labeled_arr, num_roi = ndimage.measurements.label(binary_arr)
+                labeled_arr, num_roi = scipy.ndimage.measurements.label(binary_arr)
                 roi_sizes, _ = np.histogram(labeled_arr, bins=num_roi + 1)
                 bw_bb_img = np.where(labeled_arr == np.argsort(roi_sizes)[-3], 1, 0)
 
