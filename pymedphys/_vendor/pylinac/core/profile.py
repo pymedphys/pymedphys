@@ -963,7 +963,7 @@ class CircleProfile(MultiProfile, Circle):
 
     def plot2axes(  # pylint: disable = arguments-differ
         self,
-        axes: plt.Axes = None,
+        axes=None,
         edgecolor: str = "black",
         fill: bool = False,
         plot_peaks: bool = True,
