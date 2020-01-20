@@ -39,6 +39,9 @@ def test_find_field_in_image():
 
     _, centre, rotation = pymedphys._wlutz.core.find_field(x, y, img, edge_lengths)
 
+    centre = np.round(centre, 2).tolist()
+    rotation = float(np.round(rotation, 1))
+
     assert (expected_centre, expected_rotation) == (centre, rotation)
 
 
