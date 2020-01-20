@@ -83,19 +83,19 @@ jobs:
 
     - script: brew install freetds
       displayName: Install FreeTDS on MacOS
-      condition: eq( variables['IMAGE_NAME'], 'macos-10.13' )
+      condition: contains( variables['IMAGE_NAME'], 'macos' )
 
     - script: sudo apt-get install -y pandoc
       displayName: Install Pandoc on Ubuntu
-      condition: and(eq( variables['TOXENV'], 'docs' ), eq( variables['IMAGE_NAME'], 'ubuntu-16.04' ))
+      condition: and(contains( variables['TOXENV'], 'docs' ), contains( variables['IMAGE_NAME'], 'ubuntu' ))
 
     - script: brew install pandoc
       displayName: Install Pandoc on MacOS
-      condition: and(eq( variables['TOXENV'], 'docs' ), eq( variables['IMAGE_NAME'], 'macos-10.13' ))
+      condition: and(contains( variables['TOXENV'], 'docs' ), contains( variables['IMAGE_NAME'], 'macos' ))
 
     - script: choco install pandoc
       displayName: Install Pandoc on Windows
-      condition: and(eq( variables['TOXENV'], 'docs' ), eq( variables['IMAGE_NAME'], 'vs2017-win2016' ))
+      condition: and(contains( variables['TOXENV'], 'docs' ), contains( variables['IMAGE_NAME'], 'win' ))
 
     - script: python -m pip install --upgrade pip poetry tox
       displayName: Upgrade pip, install poetry and tox
