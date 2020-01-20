@@ -18,12 +18,11 @@ from pymedphys._imports import numpy as np
 from . import findbb, findfield, imginterp
 
 
-def find_field_and_bb(
+def find_field(
     x,
     y,
     img,
     edge_lengths,
-    bb_diameter,
     penumbra=2,
     fixed_rotation=None,
     rounding=True,
@@ -39,6 +38,37 @@ def find_field_and_bb(
         penumbra,
         initial_centre,
         fixed_rotation=fixed_rotation,
+        pylinac_tol=pylinac_tol,
+        ignore_pylinac=ignore_pylinac,
+    )
+
+    if rounding:
+        field_centre = np.round(field_centre, decimals=2).tolist()
+        field_rotation = np.round(field_rotation, decimals=1)
+
+    return field, field_centre, field_rotation
+
+
+def find_field_and_bb(
+    x,
+    y,
+    img,
+    edge_lengths,
+    bb_diameter,
+    penumbra=2,
+    fixed_rotation=None,
+    rounding=True,
+    pylinac_tol=0.2,
+    ignore_pylinac=False,
+):
+    field, field_centre, field_rotation = find_field(
+        x,
+        y,
+        img,
+        edge_lengths,
+        penumbra=penumbra,
+        fixed_rotation=fixed_rotation,
+        rounding=False,
         pylinac_tol=pylinac_tol,
         ignore_pylinac=ignore_pylinac,
     )
