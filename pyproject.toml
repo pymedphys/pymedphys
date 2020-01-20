@@ -26,7 +26,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-# Will not work without these two
+# Will not work without these
 python = "^3.6"
 dataclasses = { version = "*", python = "~3.6.0" }
 
