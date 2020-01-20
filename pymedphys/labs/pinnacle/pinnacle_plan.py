@@ -306,7 +306,8 @@ class PinnaclePlan:
     def iso_center(self, iso_center):
         self._iso_center = iso_center
 
-    def is_prefix_valid(self, prefix):
+    @staticmethod
+    def is_prefix_valid(prefix):
         """Check if a UID prefix is valid.
 
         Parameters

@@ -183,7 +183,8 @@ class PinnacleExport:
 
         return self._images
 
-    def export_struct(self, plan, export_path="."):
+    @staticmethod
+    def export_struct(plan, export_path="."):
         """Exports the RTSTRUCT DICOM modality.
 
         Parameters
@@ -198,7 +199,8 @@ class PinnacleExport:
         # Export Structures for plan
         convert_struct(plan, export_path)
 
-    def export_dose(self, plan, export_path="."):
+    @staticmethod
+    def export_dose(plan, export_path="."):
         """Exports the RTDOSE DICOM modality.
 
         Parameters
@@ -213,7 +215,8 @@ class PinnacleExport:
         # Export dose for plan
         convert_dose(plan, export_path)
 
-    def export_plan(self, plan, export_path="."):
+    @staticmethod
+    def export_plan(plan, export_path="."):
         """Exports the RTPLAN DICOM modality.
 
         Parameters
