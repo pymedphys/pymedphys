@@ -37,9 +37,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# The following needs to be removed before leaving labs
-# pylint: skip-file
-
+# pylint: disable = redefined-outer-name
 
 import os
 import tempfile
@@ -96,7 +94,7 @@ def test_pinnacle(pinn):
 
 def find_corresponding_dicom(dcm):
 
-    for root, dirs, files in os.walk(data_path):
+    for root, _, files in os.walk(data_path):
 
         for f in files:
             if f.endswith(".dcm"):
@@ -135,7 +133,7 @@ def test_ct(pinn):
 
                 # Get the ground truth CT file
                 pinn_ct = find_corresponding_dicom(exported_ct)
-                assert pinn_ct != None
+                assert pinn_ct is not None
 
                 # Some (very) basic sanity checks
                 assert pinn_ct.PatientID == exported_ct.PatientID
@@ -173,7 +171,7 @@ def test_struct(pinn):
 
         # Get the ground truth RTSTRUCT file
         pinn_struct = find_corresponding_dicom(exported_struct)
-        assert pinn_struct != None
+        assert pinn_struct is not None
 
         assert len(pinn_struct.StructureSetROISequence) == len(
             exported_struct.StructureSetROISequence
@@ -209,7 +207,7 @@ def test_dose(pinn):
 
         # Get the ground truth RTDOSE file
         pinn_dose = find_corresponding_dicom(exported_dose)
-        assert pinn_dose != None
+        assert pinn_dose is not None
 
         # Get the dose volumes
         exported_vol = exported_dose.pixel_array.astype(np.int16)
@@ -251,7 +249,7 @@ def test_plan(pinn):
 
         # Get the ground truth RTDOSE file
         pinn_plan = find_corresponding_dicom(exported_plan)
-        assert pinn_plan != None
+        assert pinn_plan is not None
 
         assert pinn_plan.RTPlanName == exported_plan.RTPlanName
         assert pinn_plan.RTPlanLabel == exported_plan.RTPlanLabel

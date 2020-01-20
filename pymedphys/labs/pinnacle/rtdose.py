@@ -36,21 +36,25 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import math
 import os
 import re
-import shutil
 import struct
-import sys
 import time
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from .constants import *
+from .constants import (
+    GImplementationClassUID,
+    GTransferSyntaxUID,
+    Manufacturer,
+    RTDOSEModality,
+    RTDoseSOPClassUID,
+    RTPlanSOPClassUID,
+)
 
 
 def trilinear_interpolation(idx, grid):
@@ -89,7 +93,6 @@ def convert_dose(plan, export_path):
     patient_info = plan.pinnacle.patient_info
     plan_info = plan.plan_info
     trial_info = plan.trial_info
-    machine_info = plan.machine_info
     image_info = plan.primary_image.image_info[0]
 
     patient_position = plan.patient_position
@@ -145,8 +148,6 @@ def convert_dose(plan, export_path):
     ds.StudyID = plan.primary_image.image["StudyID"]
 
     # Assume zero struct shift for now (may not the case for versions below Pinnacle 9)
-    x_shift = 0
-    y_shift = 0
     if patient_position == "HFP" or patient_position == "FFS":
         dose_origin_x = -trial_info["DoseGrid .Origin .X"] * 10
     elif patient_position == "HFS" or patient_position == "FFP":
@@ -405,8 +406,8 @@ def convert_dose(plan, export_path):
         if len(summed_pixel_values) == 0:
             summed_pixel_values = main_pix_array
         else:
-            for i in range(0, len(summed_pixel_values)):
-                summed_pixel_values[i] = summed_pixel_values[i] + main_pix_array[i]
+            for i, values in enumerate(summed_pixel_values):
+                summed_pixel_values[i] = values + main_pix_array[i]
 
     # Compute the scaling factor
     scale = max(summed_pixel_values) / 16384
@@ -417,7 +418,7 @@ def convert_dose(plan, export_path):
 
     # Scale by the scaling factor
     pixelvaluelist = []
-    for pp, element in enumerate(summed_pixel_values, 0):
+    for _, element in enumerate(summed_pixel_values, 0):
 
         if scale != 0:
             element = round(element / scale)

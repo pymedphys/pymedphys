@@ -36,8 +36,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import os
 import random
@@ -46,7 +45,14 @@ import time
 
 from pymedphys._imports import pydicom
 
-from .constants import *
+from .constants import (
+    GImplementationClassUID,
+    GTransferSyntaxUID,
+    Manufacturer,
+    RTSTRUCTModality,
+    RTStructSOPClassUID,
+    colors,
+)
 
 
 # Determine which point to use for the iso center and set this value in
@@ -201,11 +207,10 @@ def read_roi(ds, plan):
     flag_points = (
         False  # bool value to tell me if I want to read the line in as point values
     )
-    prevroi = plan.roi_count
     plan.logger.debug("Reading ROI from: %s", path_roi)
     first_points = []
     with open(path_roi, "rt") as f:
-        for num, line in enumerate(f, 1):
+        for _, line in enumerate(f, 1):
             if (
                 "};  // End of points for curve" in line
             ):  # this will tell me not to read in point values
@@ -299,7 +304,6 @@ def read_roi(ds, plan):
                 roi_contour = pydicom.dataset.Dataset()
                 roi_contour.ReferencedROINumber = str(plan.roi_count)
                 ds.ROIContourSequence.append(roi_contour)
-                structure_set_roi = pydicom.dataset.Dataset()
                 ds.StructureSetROISequence.append(roi_contour)
                 rt_roi_observations = pydicom.dataset.Dataset()
                 ds.RTROIObservationsSequence.append(rt_roi_observations)
