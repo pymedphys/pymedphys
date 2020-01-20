@@ -116,15 +116,14 @@ class PinnacleExport:
 
         if not self._patient_info:
             path_patient = os.path.join(self._path, "Patient")
-            self.logger.debug("Reading patient data from: {0}".format(path_patient))
+            self.logger.debug("Reading patient data from: %s", path_patient)
             self._patient_info = pinn_to_dict(path_patient)
 
             # Set the full patient name
-            self._patient_info["FullName"] = "{0}^{1}^{2}^".format(
-                self._patient_info["LastName"],
-                self._patient_info["FirstName"],
-                self._patient_info["MiddleName"],
-            )
+            last_name = self._patient_info["LastName"]
+            first_name = self._patient_info["FirstName"]
+            middle_name = self._patient_info["MiddleName"]
+            self._patient_info["FullName"] = f"{last_name}^{first_name}^{middle_name}^"
 
             # gets birthday string with numbers and dashes
             dobstr = self._patient_info["DateOfBirth"]
@@ -138,8 +137,8 @@ class PinnacleExport:
             dob = ""
             for num in dob_list:
                 if len(num) == 1:
-                    num = "0" + num
-                dob = dob + num
+                    num = f"0{num}"
+                dob = f"{dob}{num}"
 
             self._patient_info["DOB"] = dob
 
@@ -161,7 +160,7 @@ class PinnacleExport:
 
             self._plans = []
             for plan in self.patient_info["PlanList"]:
-                path_plan = os.path.join(self._path, "Plan_" + str(plan["PlanID"]))
+                path_plan = os.path.join(self._path, f"Plan_{plan['PlanID']}")
                 self._plans.append(PinnaclePlan(self, path_plan, plan))
 
         return self._plans
@@ -262,11 +261,10 @@ class PinnacleExport:
         for i in self.images:
             image_header = i.image_header
             self.logger.info(
-                "{0}: {1} {2}".format(
-                    image_header["modality"],
-                    image_header["series_UID"],
-                    image_header["SeriesDateTime"],
-                )
+                "%s: %s %s",
+                image_header["modality"],
+                image_header["series_UID"],
+                image_header["SeriesDateTime"],
             )
 
     def log_plan_names(self):
@@ -281,9 +279,9 @@ class PinnacleExport:
         """
 
         for p in self.plans:
-            self.logger.info("### " + p.plan_info["PlanName"] + " ###")
+            self.logger.info("### %s ###", p.plan_info["PlanName"])
             for t in p.trials:
-                self.logger.info("- " + t["Name"])
+                self.logger.info("- %s", t["Name"])
 
     def log_trial_names_in_plan(self, plan):
         """Outputs all trials found within a plan to the log.
@@ -294,7 +292,7 @@ class PinnacleExport:
                 The plan for which to log the trials.
         """
 
-        self.logger.info("### " + plan.plan_info["PlanName"] + " ###")
+        self.logger.info("### %s ###", plan.plan_info["PlanName"])
         self.logger.info(plan.path)
         for trial in plan.trials:
-            self.logger.info("- " + trial["Name"])
+            self.logger.info("- %s", trial["Name"])

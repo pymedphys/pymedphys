@@ -115,7 +115,9 @@ def convert_to_yaml(data):
         # If this line is one indentation in from a start of list,
         # add '-' for YAML sequence
         if thisIndent - 2 in listIndents:
-            line = " " * thisIndent + "- " + re.sub("^\s*", "", line)
+            spaces = " " * thisIndent
+            subbed_line = re.sub("^\s*", "", line)
+            line = f"{spaces}- {subbed_line}"
 
         # Replace ={ and = with : for assignment
         line = re.sub(" ={", " :", line)
