@@ -36,8 +36,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import logging
 import os
@@ -101,7 +100,7 @@ def export_cli(args):
         # Walk directory with extracted archive, looking for directory
         # with Patient file
         pat_dirs = []
-        for root, dirs, files in os.walk(input_path):
+        for root, _, files in os.walk(input_path):
 
             if "Patient" in files:
                 pat_dirs.append(root)
