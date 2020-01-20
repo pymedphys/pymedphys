@@ -25,7 +25,6 @@ from typing import Iterable, List, Optional, Tuple, Union
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt
 
 from .utilities import is_iterable
 

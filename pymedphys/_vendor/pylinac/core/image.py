@@ -21,7 +21,7 @@
 """This module holds classes for image loading and manipulation."""
 
 
-from typing import Optional, Tuple, Union
+from typing import Tuple
 
 from pymedphys._imports import numpy as np
 
