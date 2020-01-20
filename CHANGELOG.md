@@ -33,6 +33,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [Unreleased]
+
+### New Features
+
+- Add icom listener CLI.
+
 ## [0.19.0]
 
 ### Breaking Changes
@@ -68,7 +74,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Made wlutz determination less fussy.
 
-
 ## [0.17.0]
 
 ### New Features
@@ -76,7 +81,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Initial alpha release of an experimental JupyterLab application bundler.
   Run with `pymedphys bundle` in a directory that contains a `notebooks` dir
   and a `requirements.txt` file.
-
 
 ## [0.16.3]
 

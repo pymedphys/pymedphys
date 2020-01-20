@@ -194,6 +194,7 @@
     "plancompare",
     "prependpath",
     "psutil",
+    "pval",
     "pydicom",
     "pylinac",
     "pylint",
