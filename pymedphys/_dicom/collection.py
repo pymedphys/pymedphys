@@ -100,7 +100,7 @@ class DicomDose(DicomBase):
         self.mask = None
 
     @property
-    def values(self) -> np.ndarray:
+    def values(self):
         return self.dataset.pixel_array * self.dataset.DoseGridScaling
 
     @property

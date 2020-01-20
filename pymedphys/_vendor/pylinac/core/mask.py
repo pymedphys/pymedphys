@@ -24,14 +24,14 @@ from pymedphys._imports import numpy as np
 from .geometry import Point
 
 
-def bounding_box(array: np.array) -> Tuple[float, ...]:
+def bounding_box(array) -> Tuple[float, ...]:
     """Get the bounding box values of an ROI in a 2D array."""
     binary_arr = np.argwhere(array)
     (ymin, xmin), (ymax, xmax) = binary_arr.min(0), binary_arr.max(0) + 1
     return ymin, ymax, xmin, xmax
 
 
-def filled_area_ratio(array: np.array) -> float:
+def filled_area_ratio(array) -> float:
     """Return the ratio of filled pixels to empty pixels in the ROI bounding box.
 
     For example a solid square would be 1.0, while a sold circle would be ~0.785.
@@ -42,7 +42,7 @@ def filled_area_ratio(array: np.array) -> float:
     return float(filled_area / box_area)
 
 
-def square_ratio(array: np.array) -> float:
+def square_ratio(array) -> float:
     """Determine the width/height ratio of the ROI"""
     ymin, ymax, xmin, xmax = bounding_box(array)
     y = abs(ymax - ymin)
@@ -50,9 +50,7 @@ def square_ratio(array: np.array) -> float:
     return y / x
 
 
-def sector_mask(
-    shape: Tuple, center: Point, radius, angle_range: Tuple = (0, 360)
-) -> np.array:
+def sector_mask(shape: Tuple, center: Point, radius, angle_range: Tuple = (0, 360)):
     """Return a circular arc-shaped boolean mask.
 
     Parameters
