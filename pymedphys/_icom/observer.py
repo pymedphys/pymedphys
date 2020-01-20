@@ -1,9 +1,9 @@
 import pathlib
 import time
 
+from pymedphys._imports import watchdog
+
 import pymedphys._utilities.filesystem
-from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
 
 
 def read_and_trigger_callback(event, callback):
@@ -31,7 +31,7 @@ def create_event_handler(callback):
     def on_moved(_):
         pass
 
-    event_handler = PatternMatchingEventHandler(
+    event_handler = watchdog.events.PatternMatchingEventHandler(
         patterns="*/[0-2][0-9][0-9].txt",
         ignore_patterns="",
         ignore_directories=True,
@@ -51,7 +51,7 @@ def observe_with_callback(directories_to_watch, callback):
     observers = []
 
     for watch_path in directories_to_watch:
-        observer = Observer()
+        observer = watchdog.observers.Observer()
         observer.schedule(event_handler, watch_path, recursive=True)
 
         observers.append(observer)
