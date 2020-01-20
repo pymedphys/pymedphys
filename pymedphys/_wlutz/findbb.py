@@ -35,6 +35,7 @@ def optimise_bb_centre(
     field_rotation,
     pylinac_tol=0.2,
     ignore_pylinac=False,
+    debug=False,
 ):
     centralised_field = create_centralised_field(field, field_centre, field_rotation)
     to_minimise_edge_agreement, to_minimise_pixel_vals = create_bb_to_minimise(
@@ -68,21 +69,22 @@ def optimise_bb_centre(
         bb_centre_in_centralised_field_min_only - bb_centre_in_centralised_field
     )
     if np.any(repeat_agreement > BB_MIN_SEARCH_TOL):
-        # bb_centre_reporting = transform_point(
-        #     bb_centre_in_centralised_field, field_centre, field_rotation
-        # )
-        # reporting.image_analysis_figure(
-        #     field.x,
-        #     field.y,
-        #     field.img,
-        #     bb_centre_reporting,
-        #     field_centre,
-        #     field_rotation,
-        #     bb_diameter,
-        #     edge_lengths,
-        #     penumbra,
-        # )
-        # plt.show()
+        if debug:
+            bb_centre_reporting = transform_point(
+                bb_centre_in_centralised_field, field_centre, field_rotation
+            )
+            reporting.image_analysis_figure(
+                field.x,
+                field.y,
+                field.img,
+                bb_centre_reporting,
+                field_centre,
+                field_rotation,
+                bb_diameter,
+                edge_lengths,
+                penumbra,
+            )
+            plt.show()
 
         raise ValueError(
             "BB centre finding doesn't sufficiently agree with minimum "
