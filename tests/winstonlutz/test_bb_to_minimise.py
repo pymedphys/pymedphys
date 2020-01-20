@@ -55,9 +55,5 @@ def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
     )
 
     assert np.allclose(
-        vectorised_to_minimise[0](centre_to_test), simple_to_minimise[0](centre_to_test)
-    )
-
-    assert np.allclose(
-        vectorised_to_minimise[1](centre_to_test), simple_to_minimise[1](centre_to_test)
+        vectorised_to_minimise(centre_to_test), simple_to_minimise(centre_to_test)
     )

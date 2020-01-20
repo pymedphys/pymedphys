@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from pymedphys._imports import numpy as np
-
 from . import findbb, findfield, imginterp
 
 

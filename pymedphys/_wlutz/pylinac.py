@@ -24,6 +24,12 @@ class PylinacComparisonDeviation(ValueError):
     pass
 
 
+VERSION_TO_CLASS_MAP = {
+    "v2.2.6": pymedphys._vendor.pylinac.winstonlutz.WLImageOld,  # pylint: disable = protected-access
+    "v2.2.7": pymedphys._vendor.pylinac.winstonlutz.WLImage,  # pylint: disable = protected-access
+}
+
+
 def run_wlutz(
     field,
     edge_lengths,
@@ -32,6 +38,7 @@ def run_wlutz(
     field_rotation,
     find_bb=True,
     pixel_size=0.1,
+    pylinac_versions=("v2.2.6", "v2.2.7"),
 ):
     centralised_straight_field = create_centralised_field(
         field, field_centre, field_rotation
@@ -46,38 +53,24 @@ def run_wlutz(
     xx_range, yy_range = np.meshgrid(x_range, y_range)
     centralised_image = centralised_straight_field(xx_range, yy_range)
 
-    pylinac_new_field_centre, pylinac_new_bb_centre = run_pylinac_with_class(
-        pymedphys._vendor.pylinac.winstonlutz.WLImage,  # pylint: disable = protected-access
-        centralised_image,
-        pixel_size,
-        half_x_range,
-        half_y_range,
-        field_centre,
-        field_rotation,
-        find_bb=find_bb,
-    )
+    results = {}
+    for key in pylinac_versions:
+        pylinac_field_centre, pylinac_bb_centre = run_pylinac_with_class(
+            VERSION_TO_CLASS_MAP[key],
+            centralised_image,
+            pixel_size,
+            half_x_range,
+            half_y_range,
+            field_centre,
+            field_rotation,
+            find_bb=find_bb,
+        )
+        results[key] = {
+            "field_centre": pylinac_field_centre,
+            "bb_centre": pylinac_bb_centre,
+        }
 
-    pylinac_old_field_centre, pylinac_old_bb_centre = run_pylinac_with_class(
-        pymedphys._vendor.pylinac.winstonlutz.WLImageOld,  # pylint: disable = protected-access
-        centralised_image,
-        pixel_size,
-        half_x_range,
-        half_y_range,
-        field_centre,
-        field_rotation,
-        find_bb=find_bb,
-    )
-
-    return {
-        "v2.2.6": {
-            "field_centre": pylinac_old_field_centre,
-            "bb_centre": pylinac_old_bb_centre,
-        },
-        "v2.2.7": {
-            "field_centre": pylinac_new_field_centre,
-            "bb_centre": pylinac_new_bb_centre,
-        },
-    }
+    return results
 
 
 def run_pylinac_with_class(
