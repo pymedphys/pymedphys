@@ -96,18 +96,19 @@ def find_corresponding_dicom(dcm):
 
     for root, _, files in os.walk(data_path):
 
-        for f in files:
-            if f.endswith(".dcm"):
-                dcm_file = os.path.join(root, f)
-                ds = pydicom.read_file(dcm_file)
+        dicom_files = [f for f in files if f.endswith(".dcm")]
+        for f in dicom_files:
 
-                if ds.PatientID == dcm.PatientID and ds.Modality == dcm.Modality:
+            dcm_file = os.path.join(root, f)
+            ds = pydicom.read_file(dcm_file)
 
-                    if ds.Modality == "CT":
-                        # Also match the SliceLocation
-                        if not ds.SliceLocation == dcm.SliceLocation:
-                            continue
-                    return ds
+            if ds.PatientID == dcm.PatientID and ds.Modality == dcm.Modality:
+
+                if ds.Modality == "CT":
+                    # Also match the SliceLocation
+                    if not ds.SliceLocation == dcm.SliceLocation:
+                        continue
+                return ds
 
     return None
 

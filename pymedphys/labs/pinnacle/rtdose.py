@@ -148,19 +148,19 @@ def convert_dose(plan, export_path):
     ds.StudyID = plan.primary_image.image["StudyID"]
 
     # Assume zero struct shift for now (may not the case for versions below Pinnacle 9)
-    if patient_position == "HFP" or patient_position == "FFS":
+    if patient_position in ("HFP", "FFS"):
         dose_origin_x = -trial_info["DoseGrid .Origin .X"] * 10
-    elif patient_position == "HFS" or patient_position == "FFP":
+    elif patient_position in ("HFS", "FFP"):
         dose_origin_x = trial_info["DoseGrid .Origin .X"] * 10
 
-    if patient_position == "HFS" or patient_position == "FFS":
+    if patient_position in ("HFS", "FFS"):
         dose_origin_y = -trial_info["DoseGrid .Origin .Y"] * 10
-    elif patient_position == "HFP" or patient_position == "FFP":
+    elif patient_position in ("HFP", "FFP"):
         dose_origin_y = trial_info["DoseGrid .Origin .Y"] * 10
 
-    if patient_position == "HFS" or patient_position == "HFP":
+    if patient_position in ("HFS", "HFP"):
         dose_origin_z = -trial_info["DoseGrid .Origin .Z"] * 10
-    elif patient_position == "FFS" or patient_position == "FFP":
+    elif patient_position in ("FFS", "FFP"):
         dose_origin_z = trial_info["DoseGrid .Origin .Z"] * 10
 
     # Image Position (Patient) seems off, so going to calculate shift assuming
@@ -270,7 +270,7 @@ def convert_dose(plan, export_path):
     beam_list = trial_info["BeamList"] if trial_info["BeamList"] else []
     if len(beam_list) == 0:
         plan.logger.warning("No Beams found in Trial. Unable to generate RTDOSE.")
-        return None
+        return
 
     for beam in beam_list:
 
@@ -347,7 +347,7 @@ def convert_dose(plan, export_path):
         else:
             plan.logger.warning("Dose file not found")
             plan.logger.error("Skipping generating RTDOSE")
-            return None
+            return
 
         # Get the index within that grid of the dose reference point
         idx = [0.0, 0.0, 0.0]

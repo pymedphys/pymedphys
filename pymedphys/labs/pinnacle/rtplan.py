@@ -161,7 +161,7 @@ def convert_plan(plan, export_path):
     beam_list = trial_info["BeamList"] if trial_info["BeamList"] else []
     if len(beam_list) == 0:
         plan.logger.warning("No Beams found in Trial. Unable to generate RTPLAN.")
-        return None
+        return
     for beam in beam_list:
 
         beam_count = beam_count + 1

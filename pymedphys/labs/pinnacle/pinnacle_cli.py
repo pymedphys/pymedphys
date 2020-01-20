@@ -110,7 +110,7 @@ def export_cli(args):
                 "No Pinnacle Patient directories were found in the "
                 "supplied TAR archive"
             )
-            exit()
+            sys.exit()
 
         if len(pat_dirs) > 1:
             logger.error(
@@ -121,7 +121,7 @@ def export_cli(args):
                 "The command line utility currently only support "
                 "parsing TAR archives containing one patient"
             )
-            exit()
+            sys.exit()
 
         input_path = pat_dirs[0]
 
@@ -135,7 +135,7 @@ def export_cli(args):
         p.log_trial_names()
         logger.info("Images:")
         p.log_images()
-        exit()
+        sys.exit()
 
     logger.info("Will export modalities: %s", modality)
 
@@ -151,7 +151,7 @@ def export_cli(args):
 
         if plan_name:
             logger.error("Plan not found (%s)", plan_name)
-            exit()
+            sys.exit()
 
         # Select a default plan if user didn't pass in a plan name
         plan = plans[0]
@@ -167,13 +167,13 @@ def export_cli(args):
             logger.error(
                 "No Trial: %s found in Plan: %s", trial, plan.plan_info["PlanName"]
             )
-            exit()
+            sys.exit()
 
     # If we got up to here, we are exporting something, so make sure the
     #  output_directory was specified
     if not output_directory:
         logger.error("Specifiy an output directory with -o")
-        exit()
+        sys.exit()
 
     if not os.path.exists(output_directory):
         logger.info("Creating output directory: %s", output_directory)
@@ -183,7 +183,7 @@ def export_cli(args):
 
         if not plan.is_prefix_valid(uid_prefix):
             logger.error("UID Prefix supplied is invalid")
-            exit()
+            sys.exit()
         plan.uid_prefix = uid_prefix
 
     primary_image_exported = False
