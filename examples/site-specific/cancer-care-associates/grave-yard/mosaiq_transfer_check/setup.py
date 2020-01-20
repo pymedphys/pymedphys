@@ -10,7 +10,7 @@ setup(
     entry_points={
         "console_scripts": ["mosaiq_transfer_check=mosaiq_transfer_check:main"]
     },
-    license="AGPL3+",
+    license="Apache-2.0",
     install_requires=[
         "numpy",
         "pandas",
