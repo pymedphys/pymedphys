@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import pytest
 from hypothesis import given, settings
 from hypothesis.strategies import floats
 
@@ -24,9 +25,8 @@ import pymedphys._wlutz.imginterp
 import pymedphys._wlutz.iview
 
 
-@settings(deadline=None, max_examples=10)
-@given(floats(-5, 5), floats(-5, 5))
-def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
+@pytest.fixture
+def test_field():
     image_path = pymedphys.data_path("wlutz_image.png", check_hash=False)
     (
         x,
@@ -39,6 +39,17 @@ def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
         x, y, img
     )
 
+    return field
+
+
+@settings(deadline=None, max_examples=10)
+@given(bb_centre_x_deviation=floats(-5, 5), bb_centre_y_deviation=floats(-5, 5))
+def test_minimise_bb(
+    bb_centre_x_deviation,
+    bb_centre_y_deviation,
+    test_field,  # pylint: disable = redefined-outer-name
+):
+
     bb_diameter = 8
 
     reference_bb_centre = [1.47, -1.39]
@@ -48,12 +59,14 @@ def test_minimise_bb(bb_centre_x_deviation, bb_centre_y_deviation):
     ]
 
     vectorised_to_minimise = pymedphys._wlutz.findbb.create_bb_to_minimise(  # pylint:disable = protected-access
-        field, bb_diameter
+        test_field, bb_diameter
     )
     simple_to_minimise = pymedphys._wlutz.findbb.create_bb_to_minimise_simple(  # pylint:disable = protected-access
-        field, bb_diameter
+        test_field, bb_diameter
     )
 
     assert np.allclose(
-        vectorised_to_minimise(centre_to_test), simple_to_minimise(centre_to_test)
+        vectorised_to_minimise(centre_to_test),
+        simple_to_minimise(centre_to_test),
+        atol=0.001,
     )
