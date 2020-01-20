@@ -111,7 +111,7 @@ class Point:
             (self.x - p.x) ** 2 + (self.y - p.y) ** 2 + (self.z - p.z) ** 2
         )
 
-    def as_array(self, only_coords: bool = True) -> np.array:
+    def as_array(self, only_coords: bool = True):
         """Return the point as a numpy array."""
         if only_coords:
             return np.array([getattr(self, item) for item in self._coord_list])

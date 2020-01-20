@@ -61,7 +61,7 @@ ALL = "All"
 class WLImage(image.ArrayImage):
     """Holds individual Winston-Lutz EPID images, image properties, and automatically finds the field CAX and BB."""
 
-    def __init__(self, array: np.array, *, dpi=None, sid=None, dtype=None):
+    def __init__(self, array, *, dpi=None, sid=None, dtype=None):
         super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
         self.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
         self._clean_edges()
@@ -197,7 +197,7 @@ class WLImage(image.ArrayImage):
         return self.field_cax.distance_to(self.epid) / self.dpmm
 
 
-def is_symmetric(logical_array: np.ndarray) -> bool:
+def is_symmetric(logical_array) -> bool:
     """Whether the binary object's dimensions are symmetric, i.e. a perfect circle. Used to find the BB."""
     ymin, ymax, xmin, xmax = bounding_box(logical_array)
     y = abs(ymax - ymin)
@@ -207,7 +207,7 @@ def is_symmetric(logical_array: np.ndarray) -> bool:
     return True
 
 
-def is_modest_size(logical_array: np.ndarray, field_bounding_box):
+def is_modest_size(logical_array, field_bounding_box):
     """Decide whether the ROI is roughly the size of a BB; not noise and not an artifact. Used to find the BB."""
     bbox = field_bounding_box
     rad_field_area = (bbox[1] - bbox[0]) * (bbox[3] - bbox[2])
@@ -221,7 +221,7 @@ def is_round(rprops):
     return expected_fill_ratio * 1.2 > actual_fill_ratio > expected_fill_ratio * 0.8
 
 
-def is_round_old(logical_array: np.ndarray):
+def is_round_old(logical_array):
     """Decide if the ROI is circular in nature by testing the filled area vs bounding box. Used to find the BB."""
     expected_fill_ratio = np.pi / 4
     actual_fill_ratio = filled_area_ratio(logical_array)
