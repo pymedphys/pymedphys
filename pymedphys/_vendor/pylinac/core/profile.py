@@ -22,7 +22,7 @@
 """Module of objects that resemble or contain a profile, i.e. a 1 or 2-D f(x) representation."""
 import copy
 from functools import lru_cache
-from typing import List, Sequence, Tuple, Union
+from typing import List, Tuple, Union
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
