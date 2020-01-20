@@ -16,7 +16,6 @@
 from copy import deepcopy
 
 from packaging import version
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from .anonymise import anonymise_dataset
