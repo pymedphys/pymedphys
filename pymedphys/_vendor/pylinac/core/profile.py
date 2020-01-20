@@ -1082,7 +1082,7 @@ class CollapsedCircleProfile(CircleProfile):
 
     def plot2axes(
         self,
-        axes: plt.Axes = None,
+        axes=None,
         edgecolor: str = "black",
         fill: bool = False,
         plot_peaks: bool = True,
