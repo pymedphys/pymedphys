@@ -198,7 +198,7 @@ class BaseImage:
 class ArrayImage(BaseImage):
     """An image constructed solely from a numpy array."""
 
-    def __init__(self, array: np.array, *, dpi=None, sid=None, dtype=None):
+    def __init__(self, array, *, dpi=None, sid=None, dtype=None):
         """
         Parameters
         ----------
