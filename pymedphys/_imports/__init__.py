@@ -39,6 +39,7 @@ EXTERNAL_EXPORTS = (
     "dateutil",
     "PIL",
     "imageio",
+    "skimage.measure",
     "skimage",
     "requests",
     "attr",
@@ -92,6 +93,7 @@ if "numpy" not in IMPORTABLES:
     import dateutil
     import PIL
     import imageio
+    import skimage.measure
     import skimage
     import requests
     import attr
