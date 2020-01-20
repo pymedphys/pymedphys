@@ -33,10 +33,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
-## [Unreleased]
+## [0.20.0]
 
 ### New Features
 
+- Expose some portions of the Winston Lutz API.
 - Add icom listener CLI.
 
 ## [0.19.0]
