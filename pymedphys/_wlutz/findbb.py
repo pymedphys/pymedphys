@@ -34,7 +34,6 @@ def optimise_bb_centre(
     field_centre,
     field_rotation,
     pylinac_tol=0.2,
-    ignore_pylinac=False,
     debug=False,
 ):
     centralised_field = create_centralised_field(field, field_centre, field_rotation)
@@ -103,7 +102,7 @@ def optimise_bb_centre(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
 
-    if not ignore_pylinac:
+    if not pylinac_tol is None:
         try:
             pylinac = run_wlutz(
                 field,
