@@ -123,7 +123,7 @@ def apply_transform(xx, yy, transform):
 def create_bb_points_function(bb_diameter):
     max_distance = bb_diameter * 0.5
     min_distance = 0
-    num_steps = 10
+    num_steps = 11
     min_dist_between_points = (max_distance - min_distance) / num_steps
     distances = np.arange(
         min_distance, max_distance + min_dist_between_points, min_dist_between_points
