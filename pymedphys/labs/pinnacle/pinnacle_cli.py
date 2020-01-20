@@ -87,7 +87,7 @@ def export_cli(args):
 
         tmp_dir = tempfile.mkdtemp()
 
-        logger.info("Extracting TAR archive to: {0}".format(tmp_dir))
+        logger.info("Extracting TAR archive to: %s", tmp_dir)
 
         t = tarfile.open(input_path)
 
@@ -126,7 +126,7 @@ def export_cli(args):
 
         input_path = pat_dirs[0]
 
-        logger.info("Using Patient directory: {0}".format(input_path))
+        logger.info("Using Patient directory: %s", input_path)
 
     # Create Pinnacle object given input path
     p = PinnacleExport(input_path, logger)
@@ -138,7 +138,7 @@ def export_cli(args):
         p.log_images()
         exit()
 
-    logger.info("Will export modalities: {0}".format(modality))
+    logger.info("Will export modalities: %s", modality)
 
     # Check that the plan exists, if not select first plan
     plans = p.plans
@@ -151,15 +151,14 @@ def export_cli(args):
     if not plan:
 
         if plan_name:
-            logger.error("Plan not found (" + plan_name + ")")
+            logger.error("Plan not found (%s)", plan_name)
             exit()
 
         # Select a default plan if user didn't pass in a plan name
         plan = plans[0]
         logger.warning(
-            "No plan name supplied, selecting first plan: {0}".format(
-                plan.plan_info["PlanName"]
-            )
+            "No plan name supplied, selecting first plan: %s",
+            plan.plan_info["PlanName"],
         )
 
     # Set the Trial if it was given
@@ -167,9 +166,7 @@ def export_cli(args):
 
         if not plan.set_active_trial(trial):
             logger.error(
-                "No Trial: {0} found in Plan: {1}".format(
-                    trial, plan.plan_info["PlanName"]
-                )
+                "No Trial: %s found in Plan: %s", trial, plan.plan_info["PlanName"]
             )
             exit()
 
@@ -180,7 +177,7 @@ def export_cli(args):
         exit()
 
     if not os.path.exists(output_directory):
-        logger.info("Creating output directory: " + output_directory)
+        logger.info("Creating output directory: %s", output_directory)
         os.makedirs(output_directory)
 
     if uid_prefix:
@@ -202,7 +199,7 @@ def export_cli(args):
             image_series_uids.append(image_series)
 
         for suid in image_series_uids:
-            logger.info("Exporting image with UID: {0}".format(suid))
+            logger.info("Exporting image with UID: %s", suid)
             p.export_image(series_uid=suid, export_path=output_directory)
 
             series_uid = plan.primary_image.image_header["series_UID"]
@@ -214,9 +211,7 @@ def export_cli(args):
         if plan.primary_image:
 
             logger.info(
-                "Exporting primary image for plan: {0}".format(
-                    plan.plan_info["PlanName"]
-                )
+                "Exporting primary image for plan: %s", plan.plan_info["PlanName"]
             )
 
             if primary_image_exported:
@@ -225,9 +220,7 @@ def export_cli(args):
                 p.export_image(image=plan.primary_image, export_path=output_directory)
         else:
             logger.error(
-                "No primary image to export for plan: {0}".format(
-                    plan.plan_info["PlanName"]
-                )
+                "No primary image to export for plan: %s", plan.plan_info["PlanName"]
             )
 
     if "RTSTRUCT" in modality:
