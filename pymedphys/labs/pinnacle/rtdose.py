@@ -107,7 +107,7 @@ def convert_dose(plan, export_path):
 
     # Create the pydicom.dataset.FileDataset instance (initially no data elements, but
     # file_meta supplied)
-    RDfilename = "RD." + file_meta.MediaStorageSOPInstanceUID + ".dcm"
+    RDfilename = f"RD.{file_meta.MediaStorageSOPInstanceUID}.dcm"
     ds = pydicom.dataset.FileDataset(
         RDfilename, {}, file_meta=file_meta, preamble=b"\x00" * 128
     )
@@ -273,13 +273,12 @@ def convert_dose(plan, export_path):
 
     for beam in beam_list:
 
-        plan.logger.info("Exporting Dose for beam: " + beam["Name"])
+        plan.logger.info("Exporting Dose for beam: %s", beam["Name"])
 
         # Get the binary file for this beam
         binary_id = re.findall("\\d+", beam["DoseVolume"])[0]
-        binary_file = os.path.join(
-            plan.path, "plan.Trial.binary." + str(binary_id).zfill(3)
-        )
+        filled_binary_id = str(binary_id).zfill(3)
+        binary_file = os.path.join(plan.path, f"plan.Trial.binary.{filled_binary_id}")
 
         # Get the prescription for this beam (need this for number of fractions)
         prescription = [
@@ -289,35 +288,34 @@ def convert_dose(plan, export_path):
         ][0]
 
         # Get the prescription point
-        plan.logger.debug(
-            "PrescriptionPointName: {0}".format(beam["PrescriptionPointName"])
-        )
+        plan.logger.debug("PrescriptionPointName: %s", beam["PrescriptionPointName"])
         points = plan.points
         prescription_point = []
         for p in points:
             if p["Name"] == beam["PrescriptionPointName"]:
                 plan.logger.debug(
-                    "Presc Point: {0} {1} {2} {3}".format(
-                        p["Name"], p["XCoord"], p["YCoord"], p["ZCoord"]
-                    )
+                    "Presc Point: %s %s %s %s",
+                    p["Name"],
+                    p["XCoord"],
+                    p["YCoord"],
+                    p["ZCoord"],
                 )
                 prescription_point = plan.convert_point(p)
                 break
 
         if len(prescription_point) < 3:
             plan.logger.warning(
-                "No valid prescription point found for beam! Beam will be ignored for Dose conversion. Dose will most likely be incorrect"
+                "No valid prescription point found for beam! Beam will be ignored for "
+                "Dose conversion. Dose will most likely be incorrect"
             )
             continue
 
-        plan.logger.debug(
-            "Presc Point Dicom: {0} {1}".format(p["Name"], prescription_point)
-        )
+        plan.logger.debug("Presc Point Dicom: %s, %s", p["Name"], prescription_point)
         total_prescription = (
             beam["MonitorUnitInfo"]["PrescriptionDose"]
             * prescription["NumberOfFractions"]
         )
-        plan.logger.debug("Total Prescription {0}".format(total_prescription))
+        plan.logger.debug("Total Prescription %s", total_prescription)
 
         # Read the dose into a grid, so that we can interpolate for the prescription point and determine the MU for the grid
         dose_grid = np.zeros(
@@ -354,16 +352,16 @@ def convert_dose(plan, export_path):
         idx = [0.0, 0.0, 0.0]
         for i in range(3):
             idx[i] = -(origin[i] - prescription_point[i]) / spacing[i]
-        plan.logger.debug("Index of prescription point within grid: {0}".format(idx))
+        plan.logger.debug("Index of prescription point within grid: %s", idx)
 
         # Trilinear interpolation of that point within the dose grid
         cgy_mu = trilinear_interpolation(idx, dose_grid)
-        plan.logger.debug("cgy_mu: {0}".format(cgy_mu))
+        plan.logger.debug("cgy_mu: %s", cgy_mu)
 
         # Now that we have the cgy/mu value of the dose reference point, we can
         # extract an accurate value for MU
         beam_mu = (total_prescription / cgy_mu) / prescription["NumberOfFractions"]
-        plan.logger.debug("Beam MU: {0}".format(beam_mu))
+        plan.logger.debug("Beam MU: %s", beam_mu)
 
         pixel_data_list = []
         for z in range(trial_info["DoseGrid .Dimension .Z"] - 1, -1, -1):
@@ -413,7 +411,7 @@ def convert_dose(plan, export_path):
     # Compute the scaling factor
     scale = max(summed_pixel_values) / 16384
     ds.DoseGridScaling = scale
-    plan.logger.debug("Dose Grid Scaling: {0}".format(ds.DoseGridScaling))
+    plan.logger.debug("Dose Grid Scaling: %s", ds.DoseGridScaling)
 
     pixel_binary_block = bytes()
 
@@ -433,5 +431,5 @@ def convert_dose(plan, export_path):
 
     # Save the RTDose Dicom File
     output_file = os.path.join(export_path, RDfilename)
-    plan.logger.info("Creating Dose file: %s \n" % (output_file))
+    plan.logger.info("Creating Dose file: %s", output_file)
     ds.save_as(output_file)

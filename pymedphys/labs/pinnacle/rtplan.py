@@ -84,7 +84,7 @@ def convert_plan(plan, export_path):
 
     # Create the pydicom.dataset.FileDataset instance (initially no data elements, but
     # file_meta supplied)
-    RPfilename = "RP." + file_meta.MediaStorageSOPInstanceUID + ".dcm"
+    RPfilename = f"RP.{file_meta.MediaStorageSOPInstanceUID}.dcm"
     ds = pydicom.dataset.FileDataset(
         RPfilename, {}, file_meta=file_meta, preamble=b"\x00" * 128
     )
@@ -125,7 +125,7 @@ def convert_plan(plan, export_path):
     ds.FrameOfReferenceUID = image_info["FrameUID"]
     ds.PositionReferenceIndicator = ""
 
-    ds.RTPlanLabel = plan.plan_info["PlanName"] + ".0"
+    ds.RTPlanLabel = f"{plan.plan_info['PlanName']}.0"
     ds.RTPlanName = plan.plan_info["PlanName"]
     ds.RTPlanDescription = plan.pinnacle.patient_info["Comment"]
     ds.RTPlanDate = ds.StudyDate
@@ -162,7 +162,7 @@ def convert_plan(plan, export_path):
 
         beam_count = beam_count + 1
 
-        plan.logger.info("Exporting Plan for beam: " + beam["Name"])
+        plan.logger.info("Exporting Plan for beam: %s", beam["Name"])
 
         ds.PatientSetupSequence.append(pydicom.dataset.Dataset())
         ds.PatientSetupSequence[beam_count - 1].PatientPosition = patient_position
@@ -216,13 +216,13 @@ def convert_plan(plan, export_path):
         for point in plan.points:
             if point["Name"] == beam["PrescriptionPointName"]:
                 doserefpt = plan.convert_point(point)
-                plan.logger.debug("Dose reference point found: " + point["Name"])
+                plan.logger.debug("Dose reference point found: %s", point["Name"])
 
         if not doserefpt:
             plan.logger.debug("No dose reference point, setting to isocenter")
             doserefpt = plan.iso_center
 
-        plan.logger.debug("Dose reference point: " + str(doserefpt))
+        plan.logger.debug("Dose reference point: %s", doserefpt)
 
         ds.FractionGroupSequence[0].ReferencedBeamSequence[
             beam_count - 1
@@ -240,7 +240,7 @@ def convert_plan(plan, export_path):
 
         numctrlpts = cp_manager["NumberOfControlPoints"]
         currentmeterset = 0.0
-        plan.logger.debug("Number of control points: " + str(numctrlpts))
+        plan.logger.debug("Number of control points: %s", numctrlpts)
 
         x1 = ""
         x2 = ""
@@ -302,17 +302,17 @@ def convert_plan(plan, export_path):
                 wedgeinorout = cp["WedgeContext"]["Orientation"]
                 if "WedgeBottomToTop" == wedgeinorout:
                     wedgename = (
-                        cp["WedgeContext"]["WedgeName"].upper() + wedgeangle + "IN"
+                        f"{cp['WedgeContext']['WedgeName'].upper()}{wedgeangle}IN"
                     )
                     wedgeorientation = (
                         "0"
                     )  # temporary until I find out what to put here
                 elif "WedgeTopToBottom" == wedgeinorout:
                     wedgename = (
-                        cp["WedgeContext"]["WedgeName"].upper() + wedgeangle + "OUT"
+                        f"{cp['WedgeContext']['WedgeName'].upper()}{wedgeangle}OUT"
                     )
                     wedgeorientation = "180"
-                plan.logger.debug("Wedge name = ", wedgename)
+                plan.logger.debug("Wedge name = %s", wedgename)
             elif "UP" in cp["WedgeContext"]["WedgeName"]:
                 plan.logger.debug("Wedge present")
                 wedgetype = "STANDARD"
@@ -330,28 +330,24 @@ def convert_plan(plan, export_path):
                 elif int(wedgeangle) == 60:
                     numberinname = "15"
                 if "WedgeRightToLeft" == wedgeinorout:
-                    wedgename = "W" + str(int(wedgeangle)) + "R" + numberinname  # + "U"
+                    wedgename = f"W{int(wedgeangle)}R{numberinname}"
                     wedgeorientation = (
                         "90"
                     )  # temporary until I find out what to put here
                 elif "WedgeLeftToRight" == wedgeinorout:
-                    wedgename = "W" + str(int(wedgeangle)) + "L" + numberinname  # + "U"
+                    wedgename = f"W{int(wedgeangle)}L{numberinname}"
                     wedgeorientation = "270"
                 elif "WedgeTopToBottom" == wedgeinorout:
-                    wedgename = (
-                        "W" + str(int(wedgeangle)) + "OUT" + numberinname
-                    )  # + "U"
+                    wedgename = f"W{int(wedgeangle)}OUT{numberinname}"
                     wedgeorientation = (
                         "180"
                     )  # temporary until I find out what to put here
                 elif "WedgeBottomToTop" == wedgeinorout:
-                    wedgename = (
-                        "W" + str(int(wedgeangle)) + "IN" + numberinname
-                    )  # + "U"
+                    wedgename = f"W{int(wedgeangle)}IN{numberinname}"
                     wedgeorientation = (
                         "0"
                     )  # temporary until I find out what to put here
-                plan.logger.debug("Wedge name = ", wedgename)
+                plan.logger.debug("Wedge name = %s", wedgename)
 
         # Get the prescription for this beam
         prescription = [
@@ -382,7 +378,7 @@ def convert_plan(plan, export_path):
                         "DosePerMuAtCalibration"
                     ]
                     plan.logger.debug(
-                        "Using DosePerMuAtCalibration of: " + str(dose_per_mu_at_cal)
+                        "Using DosePerMuAtCalibration of: %s", dose_per_mu_at_cal
                     )
 
         prescripdose = beam["MonitorUnitInfo"]["PrescriptionDose"]
@@ -411,12 +407,10 @@ def convert_plan(plan, export_path):
                 gantryrotdir = "CW"
 
         plan.logger.debug(
-            "Beam MU: "
-            + str(
-                ds.FractionGroupSequence[0]
-                .ReferencedBeamSequence[beam_count - 1]
-                .BeamMeterset
-            )
+            "Beam MU: %s",
+            ds.FractionGroupSequence[0]
+            .ReferencedBeamSequence[beam_count - 1]
+            .BeamMeterset,
         )
 
         doserate = 0
@@ -1005,5 +999,5 @@ def convert_plan(plan, export_path):
 
     # Save the RTPlan Dicom File
     output_file = os.path.join(export_path, RPfilename)
-    plan.logger.info("Creating Plan file: %s \n" % (output_file))
+    plan.logger.info("Creating Plan file: %s", output_file)
     ds.save_as(output_file)
