@@ -263,7 +263,7 @@ def create_penumbra_minimiser(field, edge_lengths, penumbra, rotation):
             yy_top_bot,
         ) = transform_penumbra_points(points_at_origin, centre, rotation)
 
-        left_right_interpolated = field(xx_left_right, yy_left_right)
+        left_right_interpolated = field(xx_left_right + 1, yy_left_right)
         top_bot_interpolated = field(xx_top_bot, yy_top_bot)
 
         left_right_weighted_diff = (
