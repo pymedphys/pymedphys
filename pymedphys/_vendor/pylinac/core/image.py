@@ -21,13 +21,12 @@
 """This module holds classes for image loading and manipulation."""
 
 
-from typing import Optional, Tuple, Union
+from typing import Tuple
 
 from pymedphys._imports import numpy as np
 
 from .decorators import type_accept
 from .geometry import Point
-from .typing import NumberLike
 
 ARRAY = "Array"
 DICOM = "DICOM"
@@ -139,7 +138,7 @@ class BaseImage:
         self.array -= min_val
         return min_val
 
-    def normalize(self, norm_val: Union[str, NumberLike] = "max"):
+    def normalize(self, norm_val="max"):
         """Normalize the image values to the given value.
 
         Parameters
@@ -199,14 +198,7 @@ class BaseImage:
 class ArrayImage(BaseImage):
     """An image constructed solely from a numpy array."""
 
-    def __init__(
-        self,
-        array: np.array,
-        *,
-        dpi: NumberLike = None,
-        sid: NumberLike = None,
-        dtype=None,
-    ):
+    def __init__(self, array, *, dpi=None, sid=None, dtype=None):
         """
         Parameters
         ----------
@@ -239,7 +231,7 @@ class ArrayImage(BaseImage):
             return
 
     @property
-    def dpi(self) -> Optional[NumberLike]:
+    def dpi(self):
         """The dots-per-inch of the image, defined at isocenter."""
         dpi = None
         if self._dpi is not None:

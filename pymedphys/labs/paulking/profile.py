@@ -32,9 +32,6 @@ import PIL
 
 # from .._level1.coreobjects import _PyMedPhysBase
 
-NumpyFunction = Callable[[np.ndarray], np.ndarray]
-
-
 # pylint: disable = C0103, C0121, W0102
 
 

@@ -25,23 +25,21 @@ from typing import Iterable, List, Optional, Tuple, Union
 
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt
 
-from .typing import NumberLike
 from .utilities import is_iterable
 
 
-def tan(degrees: NumberLike) -> float:
+def tan(degrees) -> float:
     """Calculate the tangent of the given degrees."""
     return math.tan(math.radians(degrees))
 
 
-def cos(degrees: NumberLike) -> float:
+def cos(degrees) -> float:
     """Calculate the cosine of the given degrees."""
     return math.cos(math.radians(degrees))
 
 
-def sin(degrees: NumberLike) -> float:
+def sin(degrees) -> float:
     """Calculate the sine of the given degrees."""
     return math.sin(math.radians(degrees))
 
@@ -56,13 +54,7 @@ class Point:
     _coord_list: List[str] = ["x", "y", "z"]
 
     def __init__(
-        self,
-        x: NumberLike = 0,
-        y: NumberLike = 0,
-        z: NumberLike = 0,
-        idx: Optional[int] = None,
-        value: Optional[NumberLike] = None,
-        as_int: bool = False,
+        self, x=0, y=0, z=0, idx: Optional[int] = None, value=None, as_int: bool = False
     ):
         """
         Parameters
@@ -118,7 +110,7 @@ class Point:
             (self.x - p.x) ** 2 + (self.y - p.y) ** 2 + (self.z - p.z) ** 2
         )
 
-    def as_array(self, only_coords: bool = True) -> np.array:
+    def as_array(self, only_coords: bool = True):
         """Return the point as a numpy array."""
         if only_coords:
             return np.array([getattr(self, item) for item in self._coord_list])
@@ -224,11 +216,7 @@ class Circle:
 class Vector:
     """A vector with x, y, and z coordinates."""
 
-    x: NumberLike
-    y: NumberLike
-    z: NumberLike
-
-    def __init__(self, x: NumberLike = 0, y: NumberLike = 0, z: NumberLike = 0):
+    def __init__(self, x=0, y=0, z=0):
         self.x = x
         self.y = y
         self.z = z
@@ -373,7 +361,7 @@ class Line:
         denominator = np.sqrt(np.sum(np.power(lp2 - lp1, 2)))
         return numerator / denominator
 
-    def plot2axes(self, axes: plt.Axes, width: NumberLike = 1, color: str = "w"):
+    def plot2axes(self, axes, width=1, color: str = "w"):
         """Plot the line to an axes.
 
         Parameters
@@ -465,7 +453,7 @@ class Rectangle:
 
     def plot2axes(
         self,
-        axes: plt.Axes,
+        axes,
         edgecolor: str = "black",
         angle: float = 0.0,
         fill: bool = False,
