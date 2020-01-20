@@ -17,16 +17,38 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
 
-def create_interpolated_field(x, y, img):
-    interpolation = scipy.interpolate.RectBivariateSpline(x, y, img.T, kx=1, ky=1)
+class Field:
+    def __init__(self, x, y, img):
+        self._x = x
+        self._y = y
+        self._img = img
+        self._interpolation = scipy.interpolate.RectBivariateSpline(
+            x, y, img.T, kx=1, ky=1
+        )
 
-    def field(x, y):
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
+
+    @property
+    def img(self):
+        return self._img
+
+    def __call__(self, x, y):
         if np.shape(x) != np.shape(y):
             raise ValueError("x and y required to be the same shape")
 
-        result = interpolation.ev(np.ravel(x), np.ravel(y))
+        result = self._interpolation.ev(np.ravel(x), np.ravel(y))
         result.shape = x.shape
 
         return result
+
+
+def create_interpolated_field(x, y, img):
+    field = Field(x, y, img)
 
     return field

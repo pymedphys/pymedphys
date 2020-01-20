@@ -25,7 +25,7 @@ from .reporting import image_analysis_figure
 def iview_find_bb_and_field(
     image_path, edge_lengths, bb_diameter=8, penumbra=2, display_figure=True
 ):
-    x, y, img = iview_image_transform(image_path)
+    x, y, img = iview_image_transform_from_path(image_path)
 
     bb_centre, field_centre, field_rotation = find_field_and_bb(
         x, y, img, edge_lengths, bb_diameter, penumbra=penumbra
@@ -78,9 +78,13 @@ def batch_process(
     )
 
 
-def iview_image_transform(image_path):
+def iview_image_transform_from_path(image_path):
     img = imageio.imread(image_path)
 
+    return iview_image_transform(img)
+
+
+def iview_image_transform(img):
     if np.shape(img) == (1024, 1024):
         pixels_per_mm = 4
     elif np.shape(img) == (512, 512):

@@ -17,7 +17,7 @@ from datetime import datetime
 
 from pymedphys._imports import dateutil
 
-from pymedphys._mosaiq.delivery import OISDeliveryDetails, get_mosaiq_delivery_details
+from pymedphys._mosaiq.delivery import get_mosaiq_delivery_details
 from pymedphys._trf.header import decode_header_from_file
 
 # TODO Make the field identification run one whole day at a time, searching
@@ -44,7 +44,7 @@ def date_convert(date, timezone):
     return mosaiq_string_time, path_string_time
 
 
-def identify_logfile(cursor, filepath, timezone) -> OISDeliveryDetails:
+def identify_logfile(cursor, filepath, timezone):
     header = decode_header_from_file(filepath)
 
     if header.field_label == "":
