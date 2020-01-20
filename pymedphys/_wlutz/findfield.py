@@ -15,7 +15,8 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-from .imginterp import create_interpolated_field
+import pymedphys._vendor.pylinac.winstonlutz
+
 from .interppoints import (
     define_penumbra_points_at_origin,
     define_rotation_field_points_at_origin,
@@ -28,21 +29,21 @@ BASINHOPPING_NITER = 200
 INITIAL_ROTATION = 0
 
 
-def find_centre_and_rotation(
-    x, y, img, edge_lengths, penumbra=2, fixed_rotation=None, rounding=True
-):
-    field = create_interpolated_field(x, y, img)
-    initial_centre = get_centre_of_mass(x, y, img)
-
-    centre, rotation = field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre, fixed_rotation=fixed_rotation
+def get_initial_centre(x, y, img):
+    wl_image = pymedphys._vendor.pylinac.winstonlutz.WLImageOld(  # pylint: disable = protected-access
+        img
     )
+    min_x = np.min(x)
+    dx = x[1] - x[0]
+    min_y = np.min(y)
+    dy = y[1] - y[0]
 
-    if rounding:
-        centre = np.round(centre, decimals=2).tolist()
-        rotation = np.round(rotation, decimals=1)
+    field_centre = [
+        wl_image.field_cax.x * dx + min_x,
+        wl_image.field_cax.y * dy + min_y,
+    ]
 
-    return centre, rotation
+    return field_centre
 
 
 def check_aspect_ratio(edge_lengths):
@@ -63,6 +64,7 @@ def field_centre_and_rotation_refining(
     fixed_rotation=None,
     niter=10,
     pylinac_tol=0.2,
+    ignore_pylinac=False,
 ):
 
     if fixed_rotation is None:
@@ -109,34 +111,35 @@ def field_centre_and_rotation_refining(
 
         check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
 
-    try:
-        pylinac = run_wlutz(
-            field,
-            edge_lengths,
-            penumbra,
-            predicted_centre,
-            predicted_rotation,
-            find_bb=False,
-        )
-    except ValueError as e:
-        raise ValueError(
-            "After finding the field centre during comparison to Pylinac the pylinac "
-            f"code raised the following error:\n    {e}"
-        )
+    if not ignore_pylinac:
+        try:
+            pylinac = run_wlutz(
+                field,
+                edge_lengths,
+                penumbra,
+                predicted_centre,
+                predicted_rotation,
+                find_bb=False,
+            )
+        except ValueError as e:
+            raise ValueError(
+                "After finding the field centre during comparison to Pylinac the pylinac "
+                f"code raised the following error:\n    {e}"
+            )
 
-    pylinac_2_2_6_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
-        > pylinac_tol
-    )
-    pylinac_2_2_7_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
-        > pylinac_tol
-    )
-    if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
-        raise PylinacComparisonDeviation(
-            "The determined field centre deviates from pylinac more "
-            "than the defined tolerance"
+        pylinac_2_2_6_out_of_tol = np.any(
+            np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
+            > pylinac_tol
         )
+        pylinac_2_2_7_out_of_tol = np.any(
+            np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
+            > pylinac_tol
+        )
+        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+            raise PylinacComparisonDeviation(
+                "The determined field centre deviates from pylinac more "
+                "than the defined tolerance"
+            )
 
     centre = predicted_centre.tolist()
     return centre, predicted_rotation

@@ -1,15 +1,20 @@
 # Adapted from https://www.oreilly.com/library/view/python-cookbook/0596001673/ch11s06.html
 
 
+import functools
 import pathlib
 import urllib.request
 
-import tqdm
+from pymedphys._imports import tqdm
 
 
-class DownloadProgressBar(tqdm.tqdm):
-    def update_to(self, current_block=1, block_size=1):
-        self.update(current_block * block_size - self.n)
+@functools.lru_cache()
+def create_download_progress_bar():
+    class DownloadProgressBar(tqdm.tqdm):
+        def update_to(self, current_block=1, block_size=1):
+            self.update(current_block * block_size - self.n)
+
+    return DownloadProgressBar
 
 
 class No206URLOpener(urllib.request.FancyURLopener):
@@ -57,6 +62,7 @@ def download_with_resume(url, filepath):
                 block_size = 8192
                 current_block = exist_size // block_size
 
+                DownloadProgressBar = create_download_progress_bar()
                 with DownloadProgressBar(
                     unit="B", unit_scale=True, miniters=1, desc=str(filepath)
                 ) as progress:
