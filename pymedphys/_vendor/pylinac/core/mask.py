@@ -22,7 +22,6 @@ from typing import Tuple
 from pymedphys._imports import numpy as np
 
 from .geometry import Point
-from .typing import NumberLike
 
 
 def bounding_box(array: np.array) -> Tuple[float, ...]:
@@ -52,7 +51,7 @@ def square_ratio(array: np.array) -> float:
 
 
 def sector_mask(
-    shape: Tuple, center: Point, radius: NumberLike, angle_range: Tuple = (0, 360)
+    shape: Tuple, center: Point, radius, angle_range: Tuple = (0, 360)
 ) -> np.array:
     """Return a circular arc-shaped boolean mask.
 

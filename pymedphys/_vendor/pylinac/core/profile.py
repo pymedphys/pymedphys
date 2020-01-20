@@ -30,7 +30,6 @@ from pymedphys._imports import plt, scipy
 
 from .decorators import value_accept
 from .geometry import Circle, Point
-from .typing import NumberLike
 from .utilities import is_float_like, is_int_like
 
 LEFT = "left"
@@ -93,7 +92,7 @@ class ProfileMixin:
             + orig_array.min()
         )
 
-    def normalize(self, norm_val: Union[str, NumberLike] = "max"):
+    def normalize(self, norm_val="max"):
         """Normalize the profile to the given value.
 
         Parameters
@@ -133,7 +132,7 @@ class ProfileMixin:
         return min_val
 
     @value_accept(kind=("median", "gaussian"))
-    def filter(self, size: NumberLike = 0.05, kind: str = "median"):
+    def filter(self, size=0.05, kind: str = "median"):
         """Filter the profile.
 
         Parameters
@@ -505,9 +504,7 @@ class SingleProfile(ProfileMixin):
         return field_values
 
     @value_accept(field_width=(0, 1))
-    def field_edges(
-        self, field_width: float = 0.8, interpolate: bool = False
-    ) -> Tuple[NumberLike, NumberLike]:
+    def field_edges(self, field_width: float = 0.8, interpolate: bool = False):
         """Return the indices of the field width edges, based on the FWHM.
 
         See Also
@@ -1024,7 +1021,7 @@ class CollapsedCircleProfile(CircleProfile):
     def __init__(
         self,
         center: Point,
-        radius: NumberLike,
+        radius,
         image_array: np.ndarray,
         start_angle: int = 0,
         ccw: bool = True,
