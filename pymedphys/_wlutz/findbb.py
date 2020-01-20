@@ -14,8 +14,9 @@
 
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import scipy
+from pymedphys._imports import plt, scipy
 
+from . import imginterp, reporting
 from .interppoints import create_bb_points_function
 from .pylinac import PylinacComparisonDeviation, run_wlutz
 from .utilities import create_centralised_field, transform_point
@@ -26,7 +27,7 @@ BB_REPEAT_TOL = 0.01
 
 
 def optimise_bb_centre(
-    field,
+    field: imginterp.Field,
     bb_diameter,
     edge_lengths,
     penumbra,
@@ -67,6 +68,22 @@ def optimise_bb_centre(
         bb_centre_in_centralised_field_min_only - bb_centre_in_centralised_field
     )
     if np.any(repeat_agreement > BB_MIN_SEARCH_TOL):
+        # bb_centre_reporting = transform_point(
+        #     bb_centre_in_centralised_field, field_centre, field_rotation
+        # )
+        # reporting.image_analysis_figure(
+        #     field.x,
+        #     field.y,
+        #     field.img,
+        #     bb_centre_reporting,
+        #     field_centre,
+        #     field_rotation,
+        #     bb_diameter,
+        #     edge_lengths,
+        #     penumbra,
+        # )
+        # plt.show()
+
         raise ValueError(
             "BB centre finding doesn't sufficiently agree with minimum "
             "pixel values within field\n"
