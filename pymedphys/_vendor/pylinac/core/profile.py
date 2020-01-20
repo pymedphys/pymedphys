@@ -577,11 +577,10 @@ class MultiProfile(ProfileMixin):
 
     """
 
-    values: Union[np.ndarray, Sequence]
     peaks: List
     valleys: List
 
-    def __init__(self, values: Union[np.ndarray, Sequence]):
+    def __init__(self, values):
         """
         Parameters
         ----------
@@ -1127,7 +1126,7 @@ def peak_detect(
     max_number: int = None,
     search_region=(0.0, 1.0),
     find_min_instead: bool = False,
-) -> Tuple[np.ndarray, np.ndarray]:
+):
     """Find the peaks or valleys of a 1D signal.
 
     Uses the difference (np.diff) in signal to find peaks. Current limitations include:
