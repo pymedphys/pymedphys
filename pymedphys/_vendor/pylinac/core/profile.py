@@ -81,8 +81,6 @@ def stretch(
 class ProfileMixin:
     """A mixin to provide various manipulations of 1D profile data."""
 
-    values
-
     def invert(self):
         """Invert (imcomplement) the profile."""
         orig_array = self.values
@@ -172,7 +170,6 @@ class SingleProfile(ProfileMixin):
 
     interpolation_factor: int = 100
     interpolation_type: str = "linear"
-    _values  # ndarray, but Sphinx/napoleon won't compile as `np.ndarray`
 
     def __init__(self, values, normalize_sides: bool = True, initial_peak: int = None):
         """
@@ -799,12 +796,9 @@ class CircleProfile(MultiProfile, Circle):
         How the profile is/was taken; clockwise or counter-clockwise.
     """
 
-    image_array
     start_angle: Union[float, int]
     ccw: bool
     sampling_ratio: float
-    _x_locations: Optional[np.ndarray]
-    _y_locations: Optional[np.ndarray]
 
     def __init__(
         self,
