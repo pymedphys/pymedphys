@@ -121,8 +121,13 @@ def apply_transform(xx, yy, transform):
 
 
 def create_bb_points_function(bb_diameter):
-    min_dist = 0.5
-    distances = np.arange(0, bb_diameter * 0.8, min_dist)
+    max_distance = bb_diameter * 0.4
+    min_distance = bb_diameter * 0.1
+    num_steps = 10
+    min_dist_between_points = (max_distance - min_distance) / num_steps
+    distances = np.arange(
+        min_distance, max_distance + min_dist_between_points, min_dist_between_points
+    )
 
     x = []
     y = []
@@ -133,7 +138,7 @@ def create_bb_points_function(bb_diameter):
             new_x,
             new_y,
         ) = pymedphys._utilities.createshells.calculate_coordinates_shell_2d(  # pylint: disable = protected-access
-            distance, min_dist
+            distance, min_dist_between_points
         )
         x.append(new_x)
         y.append(new_y)

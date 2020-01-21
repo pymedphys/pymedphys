@@ -1,7 +1,7 @@
 """Module docstring."""
 
 
-from . import dicom, electronfactors, mosaiq, mudensity
+from . import dicom, electronfactors, mosaiq, mudensity, wlutz
 from ._data import data_path, zenodo_data_paths, zip_data_paths
 from ._delivery import Delivery
 from ._gamma.implementation.shell import gamma_shell as gamma

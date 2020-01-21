@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.19.0"
+version = "0.20.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -26,12 +26,18 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
+# Will not work without these
 python = "^3.6"
-attrs = "*"
 dataclasses = { version = "*", python = "~3.6.0" }
-tqdm = "*"
+
+#### Below here is actually optional
+# One day might create a pymedphys-core which installs the above only.
 
 # library
+tqdm = "*"
+attrs = "*"
+watchdog = "*"
+
 keyring = "*"
 packaging = "*"
 PyYAML = "*"
@@ -175,7 +181,7 @@ include_trailing_comma = true
 known_third_party = [
     "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
     "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
-    "pymedphys._imports"
+    "pymedphys._imports", "watchdog"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"
