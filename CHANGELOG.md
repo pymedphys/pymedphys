@@ -33,6 +33,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.20.0]
+
+### New Features
+
+- Expose some portions of the Winston Lutz API.
+- Add iCom listener CLI.
+
 ## [0.19.0]
 
 ### Breaking Changes
@@ -68,7 +75,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Made wlutz determination less fussy.
 
-
 ## [0.17.0]
 
 ### New Features
@@ -76,7 +82,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Initial alpha release of an experimental JupyterLab application bundler.
   Run with `pymedphys bundle` in a directory that contains a `notebooks` dir
   and a `requirements.txt` file.
-
 
 ## [0.16.3]
 
@@ -408,7 +413,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.19.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.20.0...master
+[0.20.0]: https://github.com/pymedphys/pymedphys/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/pymedphys/pymedphys/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/pymedphys/pymedphys/compare/v0.17.1...v0.18.0
 [0.17.1]: https://github.com/pymedphys/pymedphys/compare/v0.17.0...v0.17.1

@@ -16,9 +16,10 @@
 """Uses Mosaiq SQL to extract patient delivery details.
 """
 
+import functools
 import struct
 
-import attr
+from pymedphys._imports import attr
 from pymedphys._imports import numpy as np
 
 from pymedphys._base.delivery import DeliveryBase
@@ -28,17 +29,21 @@ from .connect import execute_sql
 from .constants import FIELD_TYPES
 
 
-@attr.s
-class OISDeliveryDetails:
-    """A class containing patient information extracted from Mosaiq."""
+@functools.lru_cache()
+def create_ois_delivery_details_class():
+    @attr.s
+    class OISDeliveryDetails:
+        """A class containing patient information extracted from Mosaiq."""
 
-    patient_id = attr.ib()
-    field_id = attr.ib()
-    last_name = attr.ib()
-    first_name = attr.ib()
-    qa_mode = attr.ib()
-    field_type = attr.ib()
-    beam_completed = attr.ib()
+        patient_id = attr.ib()
+        field_id = attr.ib()
+        last_name = attr.ib()
+        first_name = attr.ib()
+        qa_mode = attr.ib()
+        field_type = attr.ib()
+        beam_completed = attr.ib()
+
+    return OISDeliveryDetails
 
 
 class MultipleMosaiqEntries(Exception):
@@ -67,7 +72,7 @@ def get_field_type(cursor, field_id):
 
 def get_mosaiq_delivery_details(
     cursor, machine, delivery_time, field_label, field_name, buffer=0
-) -> OISDeliveryDetails:
+):
     """Identifies the patient details for a given delivery time.
 
     Args:
@@ -157,6 +162,7 @@ def get_mosaiq_delivery_details(
             )
         )
 
+    OISDeliveryDetails = create_ois_delivery_details_class()
     delivery_details = OISDeliveryDetails(*sql_result[0])
 
     delivery_details.field_type = FIELD_TYPES[delivery_details.field_type]
