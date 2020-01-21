@@ -13,11 +13,25 @@
 # limitations under the License.
 
 
-from pymedphys._imports import numpy as np
+from . import findbb, findfield, imginterp
 
-from .findbb import optimise_bb_centre
-from .findfield import field_centre_and_rotation_refining, get_centre_of_mass
-from .imginterp import create_interpolated_field
+
+def find_field(
+    x, y, img, edge_lengths, penumbra=2, fixed_rotation=None, pylinac_tol=0.2
+):
+    field = imginterp.create_interpolated_field(x, y, img)
+    initial_centre = findfield.get_initial_centre(x, y, img)
+
+    field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
+        field,
+        edge_lengths,
+        penumbra,
+        initial_centre,
+        fixed_rotation=fixed_rotation,
+        pylinac_tol=pylinac_tol,
+    )
+
+    return field, field_centre, field_rotation
 
 
 def find_field_and_bb(
@@ -27,23 +41,20 @@ def find_field_and_bb(
     edge_lengths,
     bb_diameter,
     penumbra=2,
-    initial_rotation=0,
-    rounding=True,
+    fixed_rotation=None,
     pylinac_tol=0.2,
 ):
-    field = create_interpolated_field(x, y, img)
-    initial_centre = get_centre_of_mass(x, y, img)
-
-    field_centre, field_rotation = field_centre_and_rotation_refining(
-        field,
+    field, field_centre, field_rotation = find_field(
+        x,
+        y,
+        img,
         edge_lengths,
-        penumbra,
-        initial_centre,
-        initial_rotation=initial_rotation,
+        penumbra=penumbra,
+        fixed_rotation=fixed_rotation,
         pylinac_tol=pylinac_tol,
     )
 
-    bb_centre = optimise_bb_centre(
+    bb_centre = findbb.optimise_bb_centre(
         field,
         bb_diameter,
         edge_lengths,
@@ -52,10 +63,5 @@ def find_field_and_bb(
         field_rotation,
         pylinac_tol=pylinac_tol,
     )
-
-    if rounding:
-        bb_centre = np.round(bb_centre, decimals=2).tolist()
-        field_centre = np.round(field_centre, decimals=2).tolist()
-        field_rotation = np.round(field_rotation, decimals=1)
 
     return bb_centre, field_centre, field_rotation

@@ -121,7 +121,7 @@ def decode_data_item(row, group, byteorder) -> int:
     return int.from_bytes(row[group], byteorder=byteorder)
 
 
-def decode_column(raw_table_rows: List[str], column_number: int) -> np.ndarray:
+def decode_column(raw_table_rows: List[str], column_number: int):
     """Decode all of the items in a given column."""
     grouping = 2
     i = column_number * grouping
@@ -135,7 +135,7 @@ def decode_column(raw_table_rows: List[str], column_number: int) -> np.ndarray:
     return column
 
 
-def decode_table_data(raw_table_rows: List[str], line_grouping) -> np.ndarray:
+def decode_table_data(raw_table_rows: List[str], line_grouping):
     """Decode the table into integer values."""
 
     result = []

@@ -39,7 +39,7 @@ def load_templates():
     return vmat_example, fff_example, collimation
 
 
-def from_bipolar(angles: np.ndarray):
+def from_bipolar(angles):
     ref = angles < 0
     angles[ref] = angles[ref] + 360
 

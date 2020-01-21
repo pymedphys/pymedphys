@@ -2149,7 +2149,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "e290a9f9681b3ab15b33927717d51882b42dd94e0f1b59b47c83861462729257"
+content-hash = "f20b3037a9933579864fdf858eedb28248294c8cbf3d296ea2c1f1de7c2549bc"
 python-versions = "^3.6"
 
 [metadata.files]

@@ -16,7 +16,6 @@
 from copy import deepcopy
 
 from packaging import version
-from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from .anonymise import anonymise_dataset
@@ -100,7 +99,7 @@ class DicomDose(DicomBase):
         self.mask = None
 
     @property
-    def values(self) -> np.ndarray:
+    def values(self):
         return self.dataset.pixel_array * self.dataset.DoseGridScaling
 
     @property
