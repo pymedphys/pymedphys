@@ -30,6 +30,15 @@ You're good to go.
 .. _`Install pandoc`: https://pandoc.org/installing.html
 .. _`raising an issue`: https://github.com/pymedphys/pymedphys/issues/new
 
+More Advanced Options
+=====================
+
+* `Setting up OpenSSH on Windows 10`_
+* `Add Jupyter Kernel to Poetry`_
+
+.. _`Setting up OpenSSH on Windows 10`: ../howto/win-open-ssh.html
+.. _`Add Jupyter Kernel to Poetry`: ../howto/add-jupyter-kernel.html
+
 Opinionated Recommendations
 ===========================
 
