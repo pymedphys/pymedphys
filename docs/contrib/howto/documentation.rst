@@ -1,6 +1,11 @@
 Writing documentation
 =====================
 
+
+.. note::
+    This document is currently out of date.
+
+
 .. contents::
     :local:
     :backlinks: entry
