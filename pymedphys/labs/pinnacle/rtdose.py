@@ -142,6 +142,7 @@ def convert_dose(plan, export_path):
 
     ds.SliceThickness = trial_info["DoseGrid .VoxelSize .Z"] * 10
     ds.SeriesInstanceUID = doseInstanceUID
+    ds.InstanceNumber = "1"
 
     ds.StudyInstanceUID = image_info["StudyInstanceUID"]
     ds.FrameOfReferenceUID = image_info["FrameUID"]
@@ -221,46 +222,29 @@ def convert_dose(plan, export_path):
         trial_info["DoseGrid .VoxelSize .X"] * 10,
         trial_info["DoseGrid .VoxelSize .Y"] * 10,
     ]
-    ds.BitsAllocated = 16  # ????
-    ds.BitsStored = 16  # ???
-    ds.HighBit = 15  # ???
+    ds.BitsAllocated = 16
+    ds.BitsStored = 16
+    ds.HighBit = 15
     ds.PixelRepresentation = 0
-    ds.DoseUnits = "GY"  # 'RELATIVE'#'GY'
+    ds.DoseUnits = "GY"
     ds.DoseType = "PHYSICAL"
     ds.DoseSummationType = "PLAN"
 
-    # TODO: need to look at what is required from this block
+    # Since DoseSummationType is PLAN, only need to reference RTPLAN here, no need to
+    # reference fraction group.
     ds.ReferencedRTPlanSequence = pydicom.sequence.Sequence()
-    ReferencedRTPlan1 = pydicom.dataset.Dataset()
-    ds.ReferencedRTPlanSequence.append(ReferencedRTPlan1)
+    ds.ReferencedRTPlanSequence.append(pydicom.dataset.Dataset())
     ds.ReferencedRTPlanSequence[0].ReferencedSOPClassUID = RTPlanSOPClassUID
     ds.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID = planInstanceUID
-    ds.ReferencedRTPlanSequence[
-        0
-    ].ReferencedFractionGroupSequence = pydicom.sequence.Sequence()
-    ReferencedFractionGroup1 = pydicom.dataset.Dataset()
-    ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence.append(
-        ReferencedFractionGroup1
-    )
-    ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence[
-        0
-    ].ReferencedBeamSequence = pydicom.sequence.Sequence()
-    ReferencedBeam1 = pydicom.dataset.Dataset()
-    ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence[
-        0
-    ].ReferencedBeamSequence.append(ReferencedBeam1)
-    ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence[
-        0
-    ].ReferencedBeamSequence[0].ReferencedBeamNumber = 0
-    ds.ReferencedRTPlanSequence[0].ReferencedFractionGroupSequence[
-        0
-    ].ReferencedFractionGroupNumber = "1"
+
     ds.TissueHeterogeneityCorrection = "IMAGE"
 
-    frameoffsetvect = []
+    grid_frame_offset_vector = []
     for p in range(0, int(trial_info["DoseGrid .Dimension .Z"])):
-        frameoffsetvect.append(p * float(trial_info["DoseGrid .VoxelSize .X"] * 10))
-    ds.GridFrameOffsetVector = frameoffsetvect
+        grid_frame_offset_vector.append(
+            p * float(trial_info["DoseGrid .VoxelSize .X"] * 10)
+        )
+    ds.GridFrameOffsetVector = grid_frame_offset_vector
 
     # Array in which to sum the dose values of all beams
     summed_pixel_values = []
@@ -318,7 +302,8 @@ def convert_dose(plan, export_path):
         )
         plan.logger.debug("Total Prescription %s", total_prescription)
 
-        # Read the dose into a grid, so that we can interpolate for the prescription point and determine the MU for the grid
+        # Read the dose into a grid, so that we can interpolate for the prescription
+        # point and determine the MU for the grid
         dose_grid = np.zeros(
             (
                 trial_info["DoseGrid .Dimension .X"],
