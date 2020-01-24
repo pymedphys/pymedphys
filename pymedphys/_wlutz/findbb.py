@@ -135,7 +135,7 @@ def create_bb_to_minimise(field, bb_diameter):
         results = field(x, y)
         masked_results = results * dist_mask
         mask_mean = np.sum(masked_results, axis=1) / num_in_mask
-        diff_to_mean_square = (results - mask_mean[mask_mean_lookup]) ** 2
+        diff_to_mean_square = np.sqrt(np.abs(results - mask_mean[mask_mean_lookup]))
         mean_of_layers = np.sum(diff_to_mean_square[1::] / mask_count_per_item[1::]) / (
             len(mask_mean) - 1
         )
@@ -157,7 +157,9 @@ def create_bb_to_minimise_simple(field, bb_diameter):
 
         for current_mask in dist_mask[1::]:
             current_layer = field(x[current_mask], y[current_mask])
-            total_minimisation += np.mean((current_layer - np.mean(current_layer)) ** 2)
+            total_minimisation += np.mean(
+                np.sqrt(np.abs(current_layer - np.mean(current_layer)))
+            )
 
         return total_minimisation / (len(dist_mask) - 1)
 
