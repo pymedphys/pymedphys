@@ -51,15 +51,16 @@ pandas = "*"
 Pillow = "*"
 imageio = "*"
 
+shapely = ">= 1.7.0"
+
 dbfread = "*"
 
-pydicom = "*"
+pydicom = "< 1.4.0"
 pynetdicom = "*"
 
 # difficult
 cython = "*"
 pymssql = "< 3.0.0"
-shapely = { version = "*", optional = true }
 
 # labs
 python_dateutil = "*"
@@ -153,10 +154,6 @@ gui = [
 
 ml = [
     "tensorflow", "absl-py"
-]
-
-difficult = [
-    "shapely"
 ]
 
 jupyter = [
