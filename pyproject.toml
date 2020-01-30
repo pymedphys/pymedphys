@@ -59,7 +59,7 @@ pynetdicom = "*"
 # difficult
 cython = "*"
 pymssql = "< 3.0.0"
-shapely = { version = "*", optional = true }
+shapely = ">= 1.7.0"
 
 # labs
 python_dateutil = "*"
@@ -153,10 +153,6 @@ gui = [
 
 ml = [
     "tensorflow", "absl-py"
-]
-
-difficult = [
-    "shapely"
 ]
 
 jupyter = [
