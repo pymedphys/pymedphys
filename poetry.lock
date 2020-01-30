@@ -1329,7 +1329,7 @@ description = "Pure python package for DICOM medical file reading and writing"
 name = "pydicom"
 optional = false
 python-versions = "*"
-version = "1.4.1"
+version = "1.3.0"
 
 [[package]]
 category = "dev"
@@ -2183,7 +2183,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "e2d99dfa0f8bdc51a6a7229ae69b36f6a85313e61477b2ded19ae839858260d7"
+content-hash = "b4c92d9c21c94ed44149a4588cd76af105d9b0cf2dc5bb56c7e069eb9dee0e3e"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2953,8 +2953,8 @@ pycparser = [
     {file = "pycparser-2.19.tar.gz", hash = "sha256:a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3"},
 ]
 pydicom = [
-    {file = "pydicom-1.4.1-py2.py3-none-any.whl", hash = "sha256:1490b78152f275daa3058ae661a5dc720d8e99d17ab7dd62862beb5e87a200e2"},
-    {file = "pydicom-1.4.1.tar.gz", hash = "sha256:881fe64316f1dbc137afec73df621a2ffa8b288b3ceb3cc639e75603cd38244e"},
+    {file = "pydicom-1.3.0-py2.py3-none-any.whl", hash = "sha256:ee3a94de180c6337e1443ce346730a784f9027f56175f61ba4dfda632693b843"},
+    {file = "pydicom-1.3.0.tar.gz", hash = "sha256:585b0a81843dd021a9baa97d955aa99b2b6aac9b46beff4c4bdc2e3cbda621c8"},
 ]
 pydot = [
     {file = "pydot-1.4.1-py2.py3-none-any.whl", hash = "sha256:67be714300c78fda5fd52f79ec994039e3f76f074948c67b5ff539b433ad354f"},
