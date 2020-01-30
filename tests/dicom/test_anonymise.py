@@ -247,7 +247,6 @@ def test_anonymise_file():
         remove_file(anon_filepath_pres)
 
 
-@pytest.mark.skip
 def test_anonymise_directory(tmp_path):
     temp_filepath = tmp_path / "test.dcm"
     temp_anon_filepath = label_dicom_filepath_as_anonymised(temp_filepath)
