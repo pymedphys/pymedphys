@@ -43,6 +43,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - `Shapely` now ships wheels for Windows. This means `shapely` will install
     normally with pip. See
     <https://github.com/Toblerity/Shapely/issues/815#issuecomment-579945334>
+- Pinned `pydicom` due to a currently unknown issue with a new version breaking
+  a `pymedphys` test.
 
 
 ## [0.20.0]
