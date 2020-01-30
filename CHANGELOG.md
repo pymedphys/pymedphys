@@ -33,6 +33,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+
+## [0.21.0]
+
+### Dependency changes
+
+- Once again made `shapely` a default dependency with the aim to make
+  installation be "batteries included".
+  - `Shapely` now ships wheels for Windows. This means `shapely` will install
+    normally with pip. See
+    <https://github.com/Toblerity/Shapely/issues/815#issuecomment-579945334>
+
+
 ## [0.20.0]
 
 ### New Features
@@ -413,7 +425,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.20.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.21.0...master
+[0.21.0]: https://github.com/pymedphys/pymedphys/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/pymedphys/pymedphys/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/pymedphys/pymedphys/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/pymedphys/pymedphys/compare/v0.17.1...v0.18.0
