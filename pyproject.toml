@@ -51,6 +51,8 @@ pandas = "*"
 Pillow = "*"
 imageio = "*"
 
+shapely = ">= 1.7.0"
+
 dbfread = "*"
 
 pydicom = "*"
@@ -59,7 +61,6 @@ pynetdicom = "*"
 # difficult
 cython = "*"
 pymssql = "< 3.0.0"
-shapely = ">= 1.7.0"
 
 # labs
 python_dateutil = "*"
