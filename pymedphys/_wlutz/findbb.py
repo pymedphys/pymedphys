@@ -37,7 +37,7 @@ def optimise_bb_centre(
 ):
     centralised_field = create_centralised_field(field, field_centre, field_rotation)
     to_minimise_edge_agreement = create_bb_to_minimise(centralised_field, bb_diameter)
-    bb_bounds = define_bb_bounds(bb_diameter, edge_lengths)
+    bb_bounds = define_bb_bounds(bb_diameter, edge_lengths, penumbra)
 
     bb_centre_in_centralised_field = bb_basinhopping(
         to_minimise_edge_agreement, bb_bounds
@@ -166,8 +166,11 @@ def create_bb_to_minimise_simple(field, bb_diameter):
     return to_minimise_edge_agreement
 
 
-def define_bb_bounds(bb_diameter, edge_lengths):
-    half_field_bounds = [edge_lengths[0] / 2, edge_lengths[1] / 2]
+def define_bb_bounds(bb_diameter, edge_lengths, penumbra):
+    half_field_bounds = [
+        (edge_lengths[0] - penumbra / 2) / 2,
+        (edge_lengths[1] - penumbra / 2) / 2,
+    ]
 
     bb_radius = bb_diameter / 2
 
