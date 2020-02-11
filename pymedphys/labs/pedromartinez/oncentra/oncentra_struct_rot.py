@@ -17,12 +17,12 @@ import argparse
 import math
 import os
 
-import inquirer
-
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 import pydicom
+
+import inquirer
 
 
 def rotate(dataset, filename, outname, struct_process):
