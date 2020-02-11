@@ -606,7 +606,7 @@ def read_dicom(filenm, ioptn):
         )  # example on how to plot a double headed arrow
         ax.text(
             (PROFILE["vertical"] + 10) * dx / 10,
-            (height // 1.25) * dy / 10,
+            (height // 2) * dy / 10,
             "Vfs="
             + str(round((height // 2 + index_bot - index_top) * dy / 10, 2))
             + "cm",

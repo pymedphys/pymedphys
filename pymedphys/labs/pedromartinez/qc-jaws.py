@@ -50,20 +50,25 @@
 import argparse
 import os
 
-from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pydicom
 from tqdm import tqdm
 
+# from pymedphys._imports import numpy as np
+# from pymedphys._imports import plt, pydicom
+import numpy as np
 from scipy import signal
 
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from pymedphys.labs.pedromartinez.utils import minimize_field_rot as minFR
-from pymedphys.labs.pedromartinez.utils import minimize_junction_X as minX
-from pymedphys.labs.pedromartinez.utils import minimize_junction_Y as minY
-from pymedphys.labs.pedromartinez.utils import peak_find as pf
-from pymedphys.labs.pedromartinez.utils import peak_find_fieldrot as pffr
-from pymedphys.labs.pedromartinez.utils import utils as u
+import pydicom
+
+# from pymedphys.labs.pedromartinez.utils import minimize_field_rot as minFR
+from utils import minimize_field_rot as minFR
+from utils import minimize_junction_X as minX
+from utils import minimize_junction_Y as minY
+from utils import peak_find as pf
+from utils import peak_find_fieldrot as pffr
+from utils import utils as u
 
 
 # axial visualization and scrolling

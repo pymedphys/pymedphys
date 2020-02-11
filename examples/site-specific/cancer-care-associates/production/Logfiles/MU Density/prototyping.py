@@ -5,6 +5,8 @@ import re
 import sys
 import traceback
 
+import IPython.display
+
 import numpy as np
 import pandas as pd
 
@@ -15,7 +17,6 @@ import imageio
 import pydicom
 
 import img2pdf
-import IPython.display
 import pymedphys
 from pymedphys._mosaiq.helpers import FIELD_TYPES
 

@@ -4,12 +4,13 @@ import sys
 import traceback
 from glob import glob
 
+import requests
+import yaml
+
 import numpy as np
 import pandas as pd
 
-import requests
 import win32com.client
-import yaml
 
 # Copyright (C) 2018 Cancer Care Associates
 

@@ -97,6 +97,7 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
+inquirer = "^2.6.3"
 
 
 [tool.poetry.dev-dependencies]
