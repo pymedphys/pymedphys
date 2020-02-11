@@ -81,42 +81,41 @@ def process_struct(filename, meas_params, dirname, structname_o):
         dataset.save_as(dirname + "/" + structname_o + ".dcm")
 
 
-parser = argparse.ArgumentParser()
-# parser.add_argument('-s', '--structure', nargs='?', type=argparse.FileType('r'), help='structure file, in DICOM format')
-parser.add_argument("structure", type=str, help="Input the structure file")
-parser.add_argument(
-    "-o",
-    "--output",
-    nargs="?",
-    type=argparse.FileType("w"),
-    help="output structure filename, the file will be located in the same folder as the original, in DICOM format",
-)
-parser.add_argument(
-    "-m",
-    "--measurement",
-    nargs=3,
-    metavar=("x", "y", "z"),
-    help="Specify the shift in x, y, z in mm",
-    type=float,
-    default=[0, 0, 0],
-)
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    # parser.add_argument('-s', '--structure', nargs='?', type=argparse.FileType('r'), help='structure file, in DICOM format')
+    parser.add_argument("structure", type=str, help="Input the structure file")
+    parser.add_argument(
+        "-o",
+        "--output",
+        nargs="?",
+        type=argparse.FileType("w"),
+        help="output structure filename, the file will be located in the same folder as the original, in DICOM format",
+    )
+    parser.add_argument(
+        "-m",
+        "--measurement",
+        nargs=3,
+        metavar=("x", "y", "z"),
+        help="Specify the shift in x, y, z in mm",
+        type=float,
+        default=[0, 0, 0],
+    )
+    args = parser.parse_args()
 
-mp = args.measurement
+    mp = args.measurement
 
+    # f = plt.figure()
+    # ax = f.add_subplot(111, projection="3d")
+    # ax.set_xlabel("x distance [mm]")
+    # ax.set_ylabel("y distance [mm]")
+    # ax.set_zlabel("z distance [mm]")
 
-# f = plt.figure()
-# ax = f.add_subplot(111, projection="3d")
-# ax.set_xlabel("x distance [mm]")
-# ax.set_ylabel("y distance [mm]")
-# ax.set_zlabel("z distance [mm]")
-
-
-if args.structure:
-    sname = args.structure
-    dname = os.path.dirname(sname)
-    if args.output:
-        sname_o = args.output
-        process_struct(sname, mp, dname, sname_o.name)
-    else:
-        process_struct(sname, mp, dname, None)
+    if args.structure:
+        sname = args.structure
+        dname = os.path.dirname(sname)
+        if args.output:
+            sname_o = args.output
+            process_struct(sname, mp, dname, sname_o.name)
+        else:
+            process_struct(sname, mp, dname, None)

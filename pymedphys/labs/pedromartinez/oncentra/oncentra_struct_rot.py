@@ -271,28 +271,28 @@ def process_struct(filename, outname):
         make_parallel(dataset, filename, outname, struct_process)
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-o",
-    "--output",
-    nargs="?",
-    type=argparse.FileType("w"),
-    help="output file, in DICOM format",
-)
-parser.add_argument(
-    "structure", type=str, help="Input the structure file, in DICOM format"
-)
-args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-o",
+        "--output",
+        nargs="?",
+        type=argparse.FileType("w"),
+        help="output file, in DICOM format",
+    )
+    parser.add_argument(
+        "structure", type=str, help="Input the structure file, in DICOM format"
+    )
+    args = parser.parse_args()
 
-# parser.add_argument('-m' ,'--measurement' , nargs=3, metavar=('x', 'y', 'z'),
-#                        help="Specify the shift in x, y, z in mm", type=float,
-#                        default=[0,0,0])
+    # parser.add_argument('-m' ,'--measurement' , nargs=3, metavar=('x', 'y', 'z'),
+    #                        help="Specify the shift in x, y, z in mm", type=float,
+    #                        default=[0,0,0])
 
-
-if args.structure:
-    structname = args.structure
-    if args.output:
-        outf = args.output
-        process_struct(structname, outf.name)
-    else:
-        process_struct(structname, None)
+    if args.structure:
+        structname = args.structure
+        if args.output:
+            outf = args.output
+            process_struct(structname, outf.name)
+        else:
+            process_struct(structname, None)
