@@ -58,7 +58,7 @@ Explanation and discussion of key topics and concepts
 `Reference`_
 ............................
 
-Technical reference for the `library`_ (modules and functions and classes),
+Technical reference for the `library`_ (modules, functions and classes),
 as well as the available `command line tools`_.
 
 
