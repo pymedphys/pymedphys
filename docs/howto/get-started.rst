@@ -94,6 +94,6 @@ to instead install PyMedPhys from the master branch on GitHub
 <https://github.com/pymedphys/pymedphys>. To achieve this follow the OS
 specific instructions within the contributor tutorials:
 
-* :doc:`../contrib/tutes/setup-linux`
-* :doc:`../contrib/tutes/setup-win`
-* :doc:`../contrib/tutes/setup-mac`
+* :doc:`advanced/setup-linux`
+* :doc:`advanced/setup-win`
+* :doc:`advanced/setup-mac`
