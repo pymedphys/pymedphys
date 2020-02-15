@@ -37,18 +37,40 @@ and their `Astropy Project`_. PyMedPhys is available on `PyPI`_ and `GitHub`_.
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 
 
-First steps
------------
+.. First steps
+.. -----------
 
-Are you new to PyMedPhys or new to Python programming? Then these resources are
-for you:
+.. Are you new to PyMedPhys or new to Python programming? Then these resources are
+.. for you:
 
-* From scratch: `New to Python`_ | `Installation`_
-* Tutorials: `Part 1: Stretching a DICOM CT`_ |
-  `Part 2: Calculating fluence from DICOM plan`_
+.. * From scratch: `New to Python`_ | `Installation`_
+.. * Tutorials: `Part 1: Stretching a DICOM CT`_ |
+..   `Part 2: Calculating fluence from DICOM plan`_
 
-How the documentation is organised
-----------------------------------
+Table of contents
+-----------------
+
+
+`Tutorials`_
+........................
+
+Get started with a hands-on introduction to PyMedPhys for beginners
+
+`How-To guides`_
+........................
+
+Guides and recipes for common problems and tasks
+
+:ref:`Background <background>`
+..............................
+
+Explanation and discussion of key topics and concepts
+
+`Reference`_
+............................
+
+Technical reference for the library, and the command line tool.
+
 
 Here is a high level overview of how the documentation is organised to help
 you to know where to look for things:
@@ -59,11 +81,9 @@ you to know where to look for things:
 * `How-To guides`_ are recipes. They guide you through the steps involved in
   addressing key problems and use-cases. They are more advanced than tutorials
   and assume some knowledge of how to build tools with PyMedPhys.
-* `Reference Documents`_ is the technical reference for the public APIs exposed
+* `Reference`_ is the technical reference for the public APIs exposed
   by both the ``pymedphys`` library and the ``pymedphys`` command line tool.
-* `Explanatory documents`_ provide the higher level descriptions of the
-  implementation of the tools and provides justifications for development
-  decisions.
+* `Background`_ explanation and discussion of key topics and concepts.
 
 The above layout has been heavily inspired by both the `Django documentation`_
 and `Daniele Procida's writeup`_.
@@ -83,7 +103,7 @@ the community that aims to one day be refined to become part of the primary
 ``pymedphys`` library.
 
 
-Beta Level of development
+Beta level of development
 -------------------------
 
 PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
@@ -104,7 +124,7 @@ Core contributors and contributors who have been active in the last six months
 as well as their respective employers are presented below.
 
 Core contributor(s)
-.................
+...................
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
@@ -114,6 +134,11 @@ Core contributor(s)
 
 Active contributors
 ...................
+
+* `Matthew Jennings`_
+    * `Royal Adelaide Hospital`_, Australia
+
+.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
 * `Jake Rembish`_
     * `UT Health San Antonio`_, USA
@@ -138,12 +163,11 @@ Active contributors
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
 
 
-|rccc| |uth| |uoc|
+|rccc| |rah| |uth| |uoc|
 
 Past contributors
 .................
 
-* `Matthew Jennings <https://github.com/Matthew-Jennings>`_
 * `Matthew Sobolewski <https://github.com/msobolewski>`_
 * `Paul King <https://github.com/kingrpaul>`_
 
@@ -196,8 +220,8 @@ Past contributors
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
 .. _`How-To guides`: https://docs.pymedphys.com/howto
-.. _`Reference Documents`: https://docs.pymedphys.com/ref
-.. _`Explanatory documents`: https://docs.pymedphys.com/explain
+.. _`Reference`: https://docs.pymedphys.com/ref
+.. _`Background`: https://docs.pymedphys.com/background
 
 .. _`contributor documentation`: https://docs.pymedphys.com/contrib
 .. _`labs documentation`: https://docs.pymedphys.com/labs
