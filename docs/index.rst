@@ -32,6 +32,10 @@ Overview
     :caption: How-to Guides
 
     howto/index
+    howto/get-started
+    howto/gamma/index
+    howto/wlutz/index
+    howto/advanced/index
 
 .. toctree::
     :hidden:
@@ -39,6 +43,11 @@ Overview
     :caption: Reference
 
     ref/index
+    ref/lib/index
+    ref/cli/index
+    release-notes
+    genindex
+
 
 .. toctree::
     :hidden:
@@ -46,11 +55,6 @@ Overview
     :caption: Background
 
     background/index
-
-.. toctree::
-    :hidden:
-    :maxdepth: 1
-    :caption: Misc
-
-    genindex
-    release-notes
+    background/open-source-benefits
+    background/elekta-logfiles
+    background/file-structure
