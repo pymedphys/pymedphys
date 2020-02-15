@@ -24,74 +24,46 @@ and open source distribution. Open code is better science.**
     :target: https://choosealicense.com/licenses/apache-2.0/
 
 
-Docs under construction
------------------------
-
-This documentation is currently undergoing a major revamp. At this point in
-time many of the below links will take you to empty pages. If you are able to
-help, drop me a line at `me@simonbiggs.net`_.
-
-.. _`me@simonbiggs.net`: mailto:me@simonbiggs.net
-
-
-First steps
------------
-
-Are you new to PyMedPhys or new to Python programming? Then these resources are
-for you:
-
-* From scratch: `New to Python`_ | `Installation`_
-* Tutorials: `Part 1: Stretching a DICOM CT`_ |
-  `Part 2: Calculating fluence from DICOM plan`_
-
-How the documentation is organised
-----------------------------------
-
-Here is a high level overview of how the documentation is organised to help
-you to know where to look for things:
-
-* `Tutorials`_ take you by the hand through a series of steps to create a tool
-  built with PyMedPhys for use within a Medical Physics clinic. Start here if
-  you're new to PyMedPhys or Python programming.
-* `How-To guides`_ are recipes. They guide you through the steps involved in
-  addressing key problems and use-cases. They are more advanced than tutorials
-  and assume some knowledge of how to build tools with PyMedPhys.
-* `Reference Documents`_ is the technical reference for the public APIs exposed
-  by both the ``pymedphys`` library and the ``pymedphys`` command line tool.
-* `Explanatory documents`_ provide the higher level descriptions of the
-  implementation of the tools and provides justifications for development
-  decisions.
-
-The above layout has been heavily inspired by both the `Django documentation`_
-and `Daniele Procida's writeup`_.
-
-.. figure:: https://github.com/pymedphys/pymedphys/raw/master/docs/img/docs-structure.png
-
-    A slide from `Daniele Procida's writeup`_ describing the documentation
-    layout.
-
-.. _`Daniele Procida's writeup`: https://www.divio.com/blog/documentation/
-.. _`Django documentation`: https://docs.djangoproject.com
-
-Beyond the user documentation there are two other sections, the
-`contributor documentation`_ aimed at those who wish to become a PyMedPhys
-contributor, and the `labs documentation`_ which details code contributed by
-the community that aims to one day be refined to become part of the primary
-``pymedphys`` library.
-
 What is PyMedPhys?
 ------------------
 
 A place to share, review, improve, and transparently learn off of each
 other’s code. It is an open-source library of tools that we all have access
 to. It is inspired by the collaborative work of our physics peers in astronomy
-and their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
-`conda-forge`_.
+and their `Astropy Project`_. PyMedPhys is available on `PyPI`_ and `GitHub`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
-.. _`conda-forge`: https://anaconda.org/conda-forge/pymedphys
+
+
+Table of contents
+-----------------
+
+`Tutorials`_
+........................
+
+Get started with a hands-on introduction to PyMedPhys for beginners
+
+`How-To guides`_
+........................
+
+Guides and recipes for common problems and tasks
+
+`Background`_
+..............................
+
+Explanation and discussion of key topics and concepts
+
+`Reference`_
+............................
+
+Technical reference for the `library`_ (modules, functions and classes),
+as well as the available `command line tools`_.
+
+
+Beta level of development
+-------------------------
 
 PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
 stay in this stage until the version number leaves ``0.x.x`` and enters
@@ -110,8 +82,8 @@ PyMedPhys is what it is today due to its contributors.
 Core contributors and contributors who have been active in the last six months
 as well as their respective employers are presented below.
 
-Core contributors
-.................
+Core contributor(s)
+...................
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
@@ -119,13 +91,13 @@ Core contributors
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
 
+Active contributors
+...................
+
 * `Matthew Jennings`_
     * `Royal Adelaide Hospital`_, Australia
 
 .. _`Matthew Jennings`: https://github.com/Matthew-Jennings
-
-Active contributors
-...................
 
 * `Jake Rembish`_
     * `UT Health San Antonio`_, USA
@@ -207,10 +179,10 @@ Past contributors
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
 .. _`How-To guides`: https://docs.pymedphys.com/howto
-.. _`Reference Documents`: https://docs.pymedphys.com/ref
-.. _`Explanatory documents`: https://docs.pymedphys.com/explain
+.. _`Reference`: https://docs.pymedphys.com/ref
+.. _`Background`: https://docs.pymedphys.com/background
 
-.. _`contributor documentation`: https://docs.pymedphys.com/contrib
-.. _`labs documentation`: https://docs.pymedphys.com/labs
+.. _`library`: https://docs.pymedphys.com/ref/lib
+.. _`command line tools`: https://docs.pymedphys.com/ref/cli
 
 .. _`Release Notes`: http://docs.pymedphys.com/getting-started/changelog.html
