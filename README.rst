@@ -37,19 +37,8 @@ and their `Astropy Project`_. PyMedPhys is available on `PyPI`_ and `GitHub`_.
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
 
 
-.. First steps
-.. -----------
-
-.. Are you new to PyMedPhys or new to Python programming? Then these resources are
-.. for you:
-
-.. * From scratch: `New to Python`_ | `Installation`_
-.. * Tutorials: `Part 1: Stretching a DICOM CT`_ |
-..   `Part 2: Calculating fluence from DICOM plan`_
-
 Table of contents
 -----------------
-
 
 `Tutorials`_
 ........................
@@ -61,7 +50,7 @@ Get started with a hands-on introduction to PyMedPhys for beginners
 
 Guides and recipes for common problems and tasks
 
-:ref:`Background <background>`
+`Background`_
 ..............................
 
 Explanation and discussion of key topics and concepts
@@ -69,38 +58,8 @@ Explanation and discussion of key topics and concepts
 `Reference`_
 ............................
 
-Technical reference for the library, and the command line tool.
-
-
-Here is a high level overview of how the documentation is organised to help
-you to know where to look for things:
-
-* `Tutorials`_ take you by the hand through a series of steps to create a tool
-  built with PyMedPhys for use within a Medical Physics clinic. Start here if
-  you're new to PyMedPhys or Python programming.
-* `How-To guides`_ are recipes. They guide you through the steps involved in
-  addressing key problems and use-cases. They are more advanced than tutorials
-  and assume some knowledge of how to build tools with PyMedPhys.
-* `Reference`_ is the technical reference for the public APIs exposed
-  by both the ``pymedphys`` library and the ``pymedphys`` command line tool.
-* `Background`_ explanation and discussion of key topics and concepts.
-
-The above layout has been heavily inspired by both the `Django documentation`_
-and `Daniele Procida's writeup`_.
-
-.. figure:: https://github.com/pymedphys/pymedphys/raw/master/docs/img/docs-structure.png
-
-    A slide from `Daniele Procida's writeup`_ describing the documentation
-    layout.
-
-.. _`Daniele Procida's writeup`: https://www.divio.com/blog/documentation/
-.. _`Django documentation`: https://docs.djangoproject.com
-
-Beyond the user documentation there are two other sections, the
-`contributor documentation`_ aimed at those who wish to become a PyMedPhys
-contributor, and the `labs documentation`_ which details code contributed by
-the community that aims to one day be refined to become part of the primary
-``pymedphys`` library.
+Technical reference for the `library`_ (modules and functions and classes),
+as well as the available `command line tools`_.
 
 
 Beta level of development
@@ -223,7 +182,7 @@ Past contributors
 .. _`Reference`: https://docs.pymedphys.com/ref
 .. _`Background`: https://docs.pymedphys.com/background
 
-.. _`contributor documentation`: https://docs.pymedphys.com/contrib
-.. _`labs documentation`: https://docs.pymedphys.com/labs
+.. _`library`: https://docs.pymedphys.com/ref/lib
+.. _`command line tools`: https://docs.pymedphys.com/ref/cli
 
 .. _`Release Notes`: http://docs.pymedphys.com/getting-started/changelog.html

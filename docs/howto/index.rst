@@ -2,15 +2,14 @@
 How-To Guides
 =============
 
-Reproducible Jupyter notebook examples are provided to demonstrate PyMedPhys
-library usage.
+Guides and recipes for common problems and tasks.
 
-.. NOTE::
+Jupyter Notebooks
+-----------------
 
-   Within each example there is a |mybinder| link.
-   By using this button a live server is booted with PyMedPhys pre-installed.
-   That way, without installing Python or PyMedPhys on your computer you can try out the
-   usage of PyMedPhys.
+Some of the how-to guides are given in Jupyter Notebook format. When this is
+the case a |mybinder| link is provided at the top of the document allowing
+you to run a live version online.
 
 
 .. |mybinder| image:: https://mybinder.org/badge_logo.svg
@@ -19,6 +18,8 @@ library usage.
 .. toctree::
     :maxdepth: 1
 
+    get-started
     gamma/effect-of-noise.ipynb
     gamma/from-dicom.ipynb
     wlutz/varian-dicom-example.ipynb
+    advanced/index
