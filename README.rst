@@ -170,13 +170,6 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
-
-.. _`New to Python`: https://docs.pymedphys.com/tutes/python
-.. _`Installation`: https://docs.pymedphys.com/tutes/install
-.. _`Part 1: Stretching a DICOM CT`: https://docs.pymedphys.com/tutes/part-1
-.. _`Part 2: Calculating fluence from DICOM plan`: https://docs.pymedphys.com/tutes/part-2
-
-
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
 .. _`How-To guides`: https://docs.pymedphys.com/howto
 .. _`Reference`: https://docs.pymedphys.com/ref
