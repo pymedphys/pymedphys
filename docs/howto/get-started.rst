@@ -1,6 +1,6 @@
-======================
-PyMedPhys Installation
-======================
+==================
+How to get started
+==================
 
 .. contents::
     :local:

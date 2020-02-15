@@ -1,5 +1,5 @@
-Overview
-========
+Labs Modules
+============
 
 .. CAUTION::
 
@@ -12,7 +12,9 @@ Overview
     breaks code that depends on it. Changes within the labs are not tracked
     within the `release notes </api/release-notes.html>`_.
 
-* :doc:`tutes/index`
-* :doc:`howto/index`
-* :doc:`ref/index`
-* :doc:`explain/index`
+.. toctree::
+    :maxdepth: 1
+
+    pinnacle
+    profile
+    sinogram
