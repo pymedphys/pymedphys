@@ -1,11 +1,6 @@
 Writing documentation
 =====================
 
-
-.. note::
-    This document is currently out of date.
-
-
 .. contents::
     :local:
     :backlinks: entry
@@ -14,27 +9,13 @@ This documentation site uses a toolbox called Sphinx. This particular
 document aims to help contributors to improve the PyMedPhys
 documentation.
 
-Prerequisites
--------------
-You can install all of the additional dependencies required to edit the
-PyMedPhys documentation by running the following command in your
-terminal:
-
-.. code:: bash
-
-    pip install -e .[docs]
-
-NB: these packages are not installed if you only run
-``pip install -e .`` or ``conda install pymedphys``.
-
-
 Starting a live update documentation server
 -------------------------------------------
 Within the root pymedphys directory run the following command:
 
 .. code:: bash
 
-    sphinx-autobuild -W -p 7070 docs docs/_build/html
+    poetry run sphinx-autobuild -W -p 7070 docs docs/_build/html
 
 Then within a web browser go to http://127.0.0.1:7070
 

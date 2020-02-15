@@ -1,4 +1,0 @@
-Explanatory Documents
-=====================
-
-Nothing here...
