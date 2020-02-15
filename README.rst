@@ -185,4 +185,4 @@ Past contributors
 .. _`library`: https://docs.pymedphys.com/ref/lib
 .. _`command line tools`: https://docs.pymedphys.com/ref/cli
 
-.. _`Release Notes`: http://docs.pymedphys.com/getting-started/changelog.html
+.. _`Release Notes`: http://docs.pymedphys.com/release-notes.html
