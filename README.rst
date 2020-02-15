@@ -50,16 +50,16 @@ Get started with a hands-on introduction to PyMedPhys for beginners
 
 Guides and recipes for common problems and tasks
 
-`Background`_
-..............................
-
-Explanation and discussion of key topics and concepts
-
 `Reference`_
 ............................
 
 Technical reference for the `library`_ (modules, functions and classes),
 as well as the available `command line tools`_.
+
+`Background`_
+..............................
+
+Explanation and discussion of key topics and concepts
 
 
 Beta level of development
@@ -170,13 +170,6 @@ Past contributors
 
 .. END_OF_DOCS_IMPORT
 
-
-.. _`New to Python`: https://docs.pymedphys.com/tutes/python
-.. _`Installation`: https://docs.pymedphys.com/tutes/install
-.. _`Part 1: Stretching a DICOM CT`: https://docs.pymedphys.com/tutes/part-1
-.. _`Part 2: Calculating fluence from DICOM plan`: https://docs.pymedphys.com/tutes/part-2
-
-
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
 .. _`How-To guides`: https://docs.pymedphys.com/howto
 .. _`Reference`: https://docs.pymedphys.com/ref
@@ -185,4 +178,4 @@ Past contributors
 .. _`library`: https://docs.pymedphys.com/ref/lib
 .. _`command line tools`: https://docs.pymedphys.com/ref/cli
 
-.. _`Release Notes`: http://docs.pymedphys.com/getting-started/changelog.html
+.. _`Release Notes`: http://docs.pymedphys.com/release-notes.html
