@@ -16,7 +16,7 @@ The PyMedPhys repository has the following general structure:
    |   README.rst
    |   LICENSE
    |   changelog.md
-   |   setup.py
+   |   pyproject.toml
    |   ...
    |
    |-- docs/
@@ -33,11 +33,6 @@ top-level files. These include:
                  repository with links to important sections. On `the PyMedPhys
                  GitHub page`_, ``README.rst`` determines the text you see
                  below the file structure.
-
-:``LICENSE-AGPL-3.0-or-later``: A text file that contains a full copy of the
-                                AGPL-3.0 license. Since PyMedPhys is licensed
-                                under the AGPL-3.0 (with additional terms from
-                                the Apache-2.0), it is included for reference.
 
 :``LICENSE``: A text file that contains a full copy of the license used by
               PyMedPhys.
@@ -68,8 +63,4 @@ so we'll disregard them for now in the interest of brevity.
 
 
 .. _`the PyMedPhys GitHub page`: https://github.com/pymedphys/pymedphys
-.. _`examples`: ../user/examples/index.html
-.. _`Installation`: ../getting-started/installation.html
-.. _`Release Notes`: ../getting-started/changelog.html
-.. _`Jupyter notebooks`: https://realpython.com/jupyter-notebook-introduction/
-.. _`continuous integration`: https://en.wikipedia.org/wiki/Continuous_integration
+.. _`Release Notes`: /release-notes.html
