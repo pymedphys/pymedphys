@@ -11,3 +11,4 @@ itself. Below is the documentation for a range of these libraries.
     gamma
     mudensity
     electronfactors
+    labs/index
