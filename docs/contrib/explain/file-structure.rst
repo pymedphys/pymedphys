@@ -14,8 +14,7 @@ The PyMedPhys repository has the following general structure:
 
    pymedphys/
    |   README.rst
-   |   LICENSE-AGPL-3.0-or-later
-   |   LICENSE-Apache-2.0
+   |   LICENSE
    |   changelog.md
    |   setup.py
    |   ...
@@ -40,17 +39,15 @@ top-level files. These include:
                                 under the AGPL-3.0 (with additional terms from
                                 the Apache-2.0), it is included for reference.
 
-:``LICENSE-Apache-2.0``: A text file that contains a full copy of the
-                         Apache-2.0 license. Since the PyMedPhys license
-                         includes terms from the Apache-2.0, it is included for
-                         reference.
+:``LICENSE``: A text file that contains a full copy of the license used by
+              PyMedPhys.
 
 :``changelog.md``: A text file containing release notes for the PyMedPhys
                    source code library. ``changelog.md`` determines the text
                    presented on the `Release Notes`_ documentation page.
 
-:``setup.py``: A Python script that facilitates easy installation of the
-               PyMedPhys library as a package for users and contributors alike.
+:``pyproject.toml``: The poetry configuration file that designates dependencies
+                     and other library related details.
 
 You'll quickly note from a cursory look through PyMedPhys that there are
 actually many more top-level files. Most of these help configure specific
