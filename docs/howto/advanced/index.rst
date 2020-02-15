@@ -8,3 +8,6 @@ Advanced How-to Guides
     setup-linux
     setup-mac
     setup-win
+    documentation
+    add-jupyter-kernel
+    win-open-ssh

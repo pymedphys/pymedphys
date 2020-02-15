@@ -3,8 +3,7 @@ Labs Modules
 
 .. CAUTION::
 
-    Here are some experimental modules that have been written by both
-    the community. They have not yet undergone
+    Here are some experimental modules. They have not yet undergone
     either sufficient testing, review, or refinement to be included within
     pymedphys proper. Consider everything under this module to be always at
     an "alpha" level of development. Consider that from any version to any

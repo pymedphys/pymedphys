@@ -1,8 +1,6 @@
-Explanatory Documents
-=====================
+Explanatory Documents Overview
+==============================
 
-.. toctree::
-    :maxdepth: 1
-
-    open-source-benefits
-    elekta-logfiles
+* :doc:`open-source-benefits`
+* :doc:`elekta-logfiles`
+* :doc:`file-structure`

@@ -1,12 +1,9 @@
-Directory & File Structure
-==================================
+Repository File Structure
+=========================
 
 .. contents::
     :local:
     :backlinks: entry
-
-The PyMedPhys Repository
-------------------------
 
 The PyMedPhys repository has the following general structure:
 
@@ -26,8 +23,7 @@ The PyMedPhys repository has the following general structure:
    |-- ...
 
 
-Just like most Python libraries, PyMedPhys contains a series of standard,
-top-level files. These include:
+PyMedPhys contains a series of top-level files. These include:
 
 :``README.rst``: A text file containing general information on the PyMedPhys
                  repository with links to important sections. On `the PyMedPhys
