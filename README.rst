@@ -24,14 +24,17 @@ and open source distribution. Open code is better science.**
     :target: https://choosealicense.com/licenses/apache-2.0/
 
 
-Docs under construction
------------------------
+What is PyMedPhys?
+------------------
 
-This documentation is currently undergoing a major revamp. At this point in
-time many of the below links will take you to empty pages. If you are able to
-help, drop me a line at `me@simonbiggs.net`_.
+A place to share, review, improve, and transparently learn off of each
+other’s code. It is an open-source library of tools that we all have access
+to. It is inspired by the collaborative work of our physics peers in astronomy
+and their `Astropy Project`_. PyMedPhys is available on `PyPI`_ and `GitHub`_.
 
-.. _`me@simonbiggs.net`: mailto:me@simonbiggs.net
+.. _`Astropy Project`: http://www.astropy.org/
+.. _`PyPI`: https://pypi.org/project/pymedphys/
+.. _`GitHub`: https://github.com/pymedphys/pymedphys
 
 
 First steps
@@ -79,19 +82,9 @@ contributor, and the `labs documentation`_ which details code contributed by
 the community that aims to one day be refined to become part of the primary
 ``pymedphys`` library.
 
-What is PyMedPhys?
-------------------
 
-A place to share, review, improve, and transparently learn off of each
-other’s code. It is an open-source library of tools that we all have access
-to. It is inspired by the collaborative work of our physics peers in astronomy
-and their `Astropy Project`_. PyMedPhys is available on `PyPI`_, `GitHub`_ and
-`conda-forge`_.
-
-.. _`Astropy Project`: http://www.astropy.org/
-.. _`PyPI`: https://pypi.org/project/pymedphys/
-.. _`GitHub`: https://github.com/pymedphys/pymedphys
-.. _`conda-forge`: https://anaconda.org/conda-forge/pymedphys
+Beta Level of development
+-------------------------
 
 PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
 stay in this stage until the version number leaves ``0.x.x`` and enters
@@ -110,7 +103,7 @@ PyMedPhys is what it is today due to its contributors.
 Core contributors and contributors who have been active in the last six months
 as well as their respective employers are presented below.
 
-Core contributors
+Core contributor(s)
 .................
 
 * `Simon Biggs`_
@@ -118,11 +111,6 @@ Core contributors
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
-
-* `Matthew Jennings`_
-    * `Royal Adelaide Hospital`_, Australia
-
-.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
 
 Active contributors
 ...................
@@ -150,11 +138,12 @@ Active contributors
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
 
 
-|rccc| |rah| |uth| |uoc|
+|rccc| |uth| |uoc|
 
 Past contributors
 .................
 
+* `Matthew Jennings <https://github.com/Matthew-Jennings>`_
 * `Matthew Sobolewski <https://github.com/msobolewski>`_
 * `Paul King <https://github.com/kingrpaul>`_
 
