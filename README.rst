@@ -50,16 +50,16 @@ Get started with a hands-on introduction to PyMedPhys for beginners
 
 Guides and recipes for common problems and tasks
 
-`Background`_
-..............................
-
-Explanation and discussion of key topics and concepts
-
 `Reference`_
 ............................
 
 Technical reference for the `library`_ (modules, functions and classes),
 as well as the available `command line tools`_.
+
+`Background`_
+..............................
+
+Explanation and discussion of key topics and concepts
 
 
 Beta level of development
