@@ -19,11 +19,10 @@ from glob import glob
 
 import numpy as np
 
-import pydicom
-
+import skimage.draw
 import skimage.transform
 
-import skimage.draw
+import pydicom
 
 
 def list_files(data_path, ext=None):
@@ -76,11 +75,11 @@ def filter_dicom_files(dicom_files):
     dicom_dose = []
 
     for file in dicom_files:
-        if hasattr(file, 'ImageType'):
+        if hasattr(file, "ImageType"):
             dicom_series.append(file)
-        elif hasattr(file, 'StructureSetName'):
+        elif hasattr(file, "StructureSetName"):
             dicom_structures.append(file)
-        elif hasattr(file, 'BeamSequence'):
+        elif hasattr(file, "BeamSequence"):
             dicom_plan.append(file)
         else:
             # TODO Add condition - will it always be DICOM dose file?
@@ -97,8 +96,7 @@ def add_transfer_syntax(dicom_series):
         try:
             dicom.file_meta.TransferSyntaxUID
         except AttributeError:
-            dicom.file_meta.TransferSyntaxUID = (
-                pydicom.uid.ImplicitVRLittleEndian)
+            dicom.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
     return dicom_series
 
 
@@ -131,20 +129,26 @@ def read_structures(dicom_structures):
     for structure_index in range(len(dicom_structures.ROIContourSequence)):
 
         structure_dict = {}
-        structure_dict['number'] = dicom_structures.ROIContourSequence[
-            structure_index].ReferencedROINumber
+        structure_dict["number"] = dicom_structures.ROIContourSequence[
+            structure_index
+        ].ReferencedROINumber
         # Double check number is correct
-        assert structure_dict[
-            'number'] == dicom_structures.StructureSetROISequence[
-                structure_index].ROINumber
-        structure_dict['name'] = dicom_structures.StructureSetROISequence[
-            structure_index].ROIName
-        structure_dict['contour_points'] = [
-            z_slice.ContourData for z_slice in dicom_structures.
-            ROIContourSequence[structure_index].ContourSequence
+        assert (
+            structure_dict["number"]
+            == dicom_structures.StructureSetROISequence[structure_index].ROINumber
+        )
+        structure_dict["name"] = dicom_structures.StructureSetROISequence[
+            structure_index
+        ].ROIName
+        structure_dict["contour_points"] = [
+            z_slice.ContourData
+            for z_slice in dicom_structures.ROIContourSequence[
+                structure_index
+            ].ContourSequence
         ]
-        structure_dict['color'] = dicom_structures.ROIContourSequence[
-            structure_index].ROIDisplayColor
+        structure_dict["color"] = dicom_structures.ROIContourSequence[
+            structure_index
+        ].ROIDisplayColor
 
         structures.append(structure_dict)
     return structures
@@ -173,15 +177,14 @@ def transform_to_array(x, y, dicom_series):
 
 def get_binary_masks(structures, dicom_series, images):
     # Should z location for each slice in patient space
-    z_slice_locations = [(dicom.ImagePositionPatient[2])
-                         for dicom in dicom_series]
+    z_slice_locations = [(dicom.ImagePositionPatient[2]) for dicom in dicom_series]
     # an array full of zeros the same shape as images
     labels = np.zeros_like(images, dtype=np.int16)
 
     # NOTE: This function only works for a single label volume output
     # See line for structure in structures[0:1] to choose
     for structure in structures[0:1]:
-        for z_slice_contour_data in structure['contour_points']:
+        for z_slice_contour_data in structure["contour_points"]:
 
             # arrance into list([x1,y1,z1], [x2, y2, z2]...)
             xyz_points = np.array(z_slice_contour_data).reshape((-1, 3))
@@ -192,14 +195,13 @@ def get_binary_masks(structures, dicom_series, images):
             x_points_on_z_slice = xyz_points[:, 0]
             y_points_on_z_slice = xyz_points[:, 1]
 
-            r, c = transform_to_array(x_points_on_z_slice, y_points_on_z_slice, dicom_series)
+            r, c = transform_to_array(
+                x_points_on_z_slice, y_points_on_z_slice, dicom_series
+            )
             rr, cc = skimage.draw.polygon(r, c)
 
             labels[z_index, rr, cc] = True
     return labels
-
-
-
 
 
 def normalise_pixel_array_volume(pixel_array_volume):
@@ -223,17 +225,17 @@ def resize_pixel_array(pixel_array, size):
     return skimage.transform.resize(pixel_array, size)
 
 
-
 def get_context(pixel_array_volume, index, context=10):
     """
     # TODO write docstring
     """
-    return pixel_array_volume[index - context:index + context + 1]
+    return pixel_array_volume[index - context : index + context + 1]
+
 
 def clean_structures(structures, structure_names):
     clean_structures = []
     for structure in structures:
-        if structure['name'] in structure_names:
+        if structure["name"] in structure_names:
             clean_structures.append(structure)
     return clean_structures
 
@@ -260,8 +262,7 @@ def get_input_data(folder, size, context=10):
     # Convert structure (x,y,z) tuple to binary mask
     labels = get_binary_masks(structures, dicom_series, images)
     # Get label colors
-    colors = np.array(
-        [np.array(structure['color']) for structure in structures])
+    colors = np.array([np.array(structure["color"]) for structure in structures])
     # Resize data
     images = resize_pixel_array(images, size)
     labels = resize_pixel_array(labels, size)
@@ -270,12 +271,6 @@ def get_input_data(folder, size, context=10):
     images = normalise_pixel_array_volume(images)
     labels = normalise_pixel_array_volume(labels)
     return images, labels, colors, structures
-
-
-
-
-
-
 
 
 # def transform_to_array(x, y, dicom_series):
@@ -290,7 +285,6 @@ def get_input_data(folder, size, context=10):
 #     r = (y - translation[1]) / scale[1]
 #     c = (x - translation[0]) / scale[0]
 #     return -r, c
-
 
 
 # def get_binary_masks(structures, dicom_series, images, structure_names):
@@ -334,7 +328,6 @@ def get_input_data(folder, size, context=10):
 #         labels = normalise_pixel_array_volume(labels)
 #         labels = np.round(labels)
 #     return images, labels
-
 
 
 # def get_binary_masks(structures, dicom_series, images, flip_r):
