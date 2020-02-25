@@ -33,22 +33,20 @@ def plot_model_data(images, masks, index=90, slices=9, corners=False):
     for i in range(slices):
         plt.subplot(3, 3, i + 1)
         # plt.imshow(images[..., i + 90], cmap="gray") # side
-        #plt.imshow(images[i + 90], cmap="gray") # side
+        # plt.imshow(images[i + 90], cmap="gray") # side
         plt.imshow(images[i + index], cmap="gray")  # side
-        #plt.contour(masks[ i + 90], levels=[0.5, 1.5, 2.5, 3.5, 4.5], colors=colors)
-        #plt.contour(masks[ i + 90])#, colors=colors)
+        # plt.contour(masks[ i + 90], levels=[0.5, 1.5, 2.5, 3.5, 4.5], colors=colors)
+        # plt.contour(masks[ i + 90])#, colors=colors)
         plt.contour(masks[i + index], corner_mask=corners)
-    plt.axis('off')
+    plt.axis("off")
 
 
 def print_structures(structures):
     for index, con in enumerate(structures):
-        num = int(con['number'])
-        name = con['name']
-        color = con['color']
-        print(
-            f"structures[{index}]: structure numer {num} - {name} - color {color}"
-        )
+        num = int(con["number"])
+        name = con["name"]
+        color = con["color"]
+        print(f"structures[{index}]: structure numer {num} - {name} - color {color}")
 
 
 def print_range(images):
@@ -63,9 +61,7 @@ def print_dicom_slice_data(dicom_slice, index=None):
     if index is not None:
         dicom_slice = dicom_slice[index]
     try:
-        print(
-            f"AnatomicalOrientationType:{dicom_slice.AnatomicalOrientationType}"
-        )
+        print(f"AnatomicalOrientationType:{dicom_slice.AnatomicalOrientationType}")
     except AttributeError:
         print(f"AnatomicalOrientationType: None - Assume BIPED not QUADRUPED")
     print(f"PatientPosition: {dicom_slice.PatientPosition}")
@@ -91,15 +87,14 @@ def print_data_split(train_images, test_images):
     perc_train = total_train_images / total_instances
     perc_test = total_test_images / total_instances
 
-    print('Total instances:', total_instances)
+    print("Total instances:", total_instances)
     print("-------------")
-    print('Total training instance:', total_train_images)
-    print('Total validation instances:', total_test_images)
+    print("Total training instance:", total_train_images)
+    print("Total validation instances:", total_test_images)
     print("=============")
-    print('Data split:')
-    print('Train:', perc_train)
-    print('Test:', perc_test)
-
+    print("Data split:")
+    print("Train:", perc_train)
+    print("Test:", perc_test)
 
 
 # def plot_training_instance(input_instance):
