@@ -33,6 +33,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.22.0]
+
+### New Features
+
+- Implemented `from_icom` method on the `pymedphys.Delivery` object. This
+  was to support calculating an MU Density from an iCOM stream.
+  - See <https://github.com/pymedphys/pymedphys/pull/733>
 
 ## [0.21.0]
 
@@ -45,7 +52,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     <https://github.com/Toblerity/Shapely/issues/815#issuecomment-579945334>
 - Pinned `pydicom` due to a currently unknown issue with a new version breaking
   a `pymedphys` test.
-
 
 ## [0.20.0]
 
@@ -427,7 +433,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.21.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.22.0...master
+[0.22.0]: https://github.com/pymedphys/pymedphys/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/pymedphys/pymedphys/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/pymedphys/pymedphys/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/pymedphys/pymedphys/compare/v0.18.0...v0.19.0
