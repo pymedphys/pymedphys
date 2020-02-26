@@ -56,7 +56,7 @@ shapely = ">= 1.7.0"
 
 dbfread = "*"
 
-pydicom = "*"
+pydicom = "< 1.4.2"
 pynetdicom = "*"
 
 # difficult
