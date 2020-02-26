@@ -54,7 +54,7 @@ def print_range(images):
         print(np.iinfo(type(images[0][0][0])))
     except ValueError:
         print(np.finfo(type(images[0][0][0])))
-    print(f"min:{np.min(images)}\nmax:{np.max(images)}")
+    # print(f"min:{np.min(images)}\nmax:{np.max(images)}")
 
 
 def print_dicom_slice_data(dicom_slice, index=None):
