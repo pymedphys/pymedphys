@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.21.0"
+version = "0.22.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -11,7 +11,8 @@ authors = [
     "Paul King <pking@pymedphys.com>",
     "Matthew Sobolewski <msobolewski@pymedphys.com>",
     "Jacob McAloney",
-    "Pedro Martinez"
+    "Pedro Martinez",
+    "Matthew Cooper <mcooper@pymedphys.com>"
 ]
 license = "Apache-2.0"
 homepage = "https://pymedphys.com"
