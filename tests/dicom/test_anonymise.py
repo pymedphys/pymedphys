@@ -15,6 +15,7 @@ import pydicom.dataset
 import pydicom.filereader
 import pydicom.tag
 
+from pymedphys._dicom import create
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS,
     IDENTIFYING_KEYWORDS_FILEPATH,
@@ -75,8 +76,8 @@ def _check_is_anonymised_dataset_file_and_dir(
     temp_filepath = str(tmp_path / "test.dcm")
 
     try:
-        ds.is_little_endian = True
-        ds.is_implicit_VR = True
+        create.set_default_transfer_syntax(ds)
+
         ds.file_meta = TEST_FILE_META
         ds.save_as(temp_filepath, write_like_original=False)
 

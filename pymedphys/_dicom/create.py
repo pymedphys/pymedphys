@@ -32,6 +32,14 @@ def add_array_to_dataset(dataset, key, value):
     setattr(dataset, key, value)
 
 
+def set_default_transfer_syntax(dataset):
+    if dataset.is_little_endian is None:
+        dataset.is_little_endian = True
+
+    if dataset.is_implicit_VR is None:
+        dataset.is_implicit_VR = False
+
+
 def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
     """Create a pydicom DICOM object from a dictionary"""
     if template_ds is None:
@@ -59,11 +67,7 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
         else:
             add_array_to_dataset(dataset, key, value)
 
-    if dataset.is_little_endian is None:
-        dataset.is_little_endian = True
-
-    if dataset.is_implicit_VR is None:
-        dataset.is_implicit_VR = True
+    set_default_transfer_syntax(dataset)
 
     return dataset
 
