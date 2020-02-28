@@ -1860,7 +1860,7 @@ description = "TensorFlow is an open source machine learning framework for every
 name = "tensorflow"
 optional = true
 python-versions = "*"
-version = "2.1.0rc2"
+version = "2.1.0"
 
 [package.dependencies]
 absl-py = ">=0.7.0"
@@ -2201,7 +2201,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "e2d99dfa0f8bdc51a6a7229ae69b36f6a85313e61477b2ded19ae839858260d7"
+content-hash = "9427885fc1fa023eba4ab409743216e08d3d8c2c85a9d863a94f697257faca85"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -3304,17 +3304,17 @@ tensorboard = [
     {file = "tensorboard-2.1.0-py3-none-any.whl", hash = "sha256:e6e64ec1e1500cc963b300895258f9605032c3a18bb40f95f2b3b12be16ff2f2"},
 ]
 tensorflow = [
-    {file = "tensorflow-2.1.0rc2-cp27-cp27m-macosx_10_11_x86_64.whl", hash = "sha256:346bee4bb810692c3dd3bc582b39d845d382851b4a9f6d8ac4ee6f91e9dc6703"},
-    {file = "tensorflow-2.1.0rc2-cp27-cp27mu-manylinux2010_x86_64.whl", hash = "sha256:b1e3f8064bab648bd82532d8a3211049e12878d9bea97b8df77e14a516af2062"},
-    {file = "tensorflow-2.1.0rc2-cp35-cp35m-macosx_10_11_x86_64.whl", hash = "sha256:a560265c380e7a5df5c5d433c4670191e8b33b167cf02a1bbb3893731bf93165"},
-    {file = "tensorflow-2.1.0rc2-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:1cd0abc027377743bc52ca539d322710b1655f000a4e073a2865aee121496ec6"},
-    {file = "tensorflow-2.1.0rc2-cp35-cp35m-win_amd64.whl", hash = "sha256:26def2022d3730a21879da4a28311cd1fbcdf888e2ced1bfde62b2a1b5e3a53f"},
-    {file = "tensorflow-2.1.0rc2-cp36-cp36m-macosx_10_11_x86_64.whl", hash = "sha256:fcbe4d64333658697e35e4f6b2b0d943b7db54ad935e7cdbc6b1cc876ef1a8a0"},
-    {file = "tensorflow-2.1.0rc2-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:54d5e6c352aa0a1fa2a547dc1e14132d55b61ca634cc0cd5c5a050fd87ff5c2e"},
-    {file = "tensorflow-2.1.0rc2-cp36-cp36m-win_amd64.whl", hash = "sha256:56e7247a8171923808be5572138fd1a9e5fe12d46b3c1648b744df8876a8de7e"},
-    {file = "tensorflow-2.1.0rc2-cp37-cp37m-macosx_10_11_x86_64.whl", hash = "sha256:8c5acb2fbb4dcfb5e5230c3e5f2a4810d71e0af7972c342fee1f82a85103e6b5"},
-    {file = "tensorflow-2.1.0rc2-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:5b22d6ec22206abcc5e0db20b4c888566949a3edc09902ca21338e1c00a400ac"},
-    {file = "tensorflow-2.1.0rc2-cp37-cp37m-win_amd64.whl", hash = "sha256:b181ab73d2f11fa2834f73d8e79f02f73b1cdfdf1086e8396188149b79c346e4"},
+    {file = "tensorflow-2.1.0-cp27-cp27m-macosx_10_11_x86_64.whl", hash = "sha256:e631f55cf30054fee3230c89a7f998fd08748aa3045651a5a760cec2c5b9f9d6"},
+    {file = "tensorflow-2.1.0-cp27-cp27mu-manylinux2010_x86_64.whl", hash = "sha256:5cfa729fc71f6f2dca0ea77ebe768ea293e723e22ecb086a0b3ab26cc1776e37"},
+    {file = "tensorflow-2.1.0-cp35-cp35m-macosx_10_11_x86_64.whl", hash = "sha256:1cf129ccda0aea616b122f34b0c4bc39da959d34c4a4d8c23ed944555c5e47ab"},
+    {file = "tensorflow-2.1.0-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:e877fbf373d5be42fb118269df1670b8d3c0df9be223904a2584a8f8ed23b082"},
+    {file = "tensorflow-2.1.0-cp35-cp35m-win_amd64.whl", hash = "sha256:513d48dd751e0076d1b1e5e498e3522891305bedd2840f3cb4b1c57ffcb7d97d"},
+    {file = "tensorflow-2.1.0-cp36-cp36m-macosx_10_11_x86_64.whl", hash = "sha256:8c0fae0f9f772ed7e3370f1b286f88c27debbcf09468e5036670ea2c67e239ec"},
+    {file = "tensorflow-2.1.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:33e4b16e8f8905ee088bf8f413dcce2820b777fdf7f799009b3a47f354ebb23f"},
+    {file = "tensorflow-2.1.0-cp36-cp36m-win_amd64.whl", hash = "sha256:c420e70d4127c2ac00054aece54cf04a1a43d5d4f25de90267f247873f1bd5a8"},
+    {file = "tensorflow-2.1.0-cp37-cp37m-macosx_10_11_x86_64.whl", hash = "sha256:2e8fc9764b7ea87687a4c80c2fbde69aeeb459a536eb5a591938d7931ab004c2"},
+    {file = "tensorflow-2.1.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:92c4f1c939de438fbe484d011e5eebe059fc8e5244cfe32a81c6891b3357d109"},
+    {file = "tensorflow-2.1.0-cp37-cp37m-win_amd64.whl", hash = "sha256:7bad8ea686a1f33d9dac13eb578c4597346789d4f826980c8bbcfbd08e7dc921"},
 ]
 tensorflow-datasets = [
     {file = "tensorflow-datasets-1.3.2.tar.gz", hash = "sha256:6c656e455403c8edc192d7555c4f27187a1f2f57c0332e454d80df6f39090e94"},
