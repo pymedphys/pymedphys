@@ -37,7 +37,7 @@ def set_default_transfer_syntax(dataset):
         dataset.is_little_endian = True
 
     if dataset.is_implicit_VR is None:
-        dataset.is_implicit_VR = True
+        dataset.is_implicit_VR = False
 
 
 def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
