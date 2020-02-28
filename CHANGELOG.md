@@ -33,7 +33,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
-
 ## [0.23.0]
 
 ### Breaking Changes
@@ -49,11 +48,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - No longer depend upon pymssql for Python 3.8.
 
-
 ### Bug Fixes
 
 - Fix `pymedphys._monaco` package path.
-
 
 ## [0.22.0]
 
