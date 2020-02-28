@@ -54,7 +54,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Fix `pymedphys._monaco` package path.
-- Fixed issue where the following header adjustment DICOM CLI tools would not
+- Fixed issue where the following header adjustment DICOM CLI tools may not
   work with `pydicom==1.4.2`. See
   <https://github.com/pymedphys/pymedphys/pull/747> and
   <https://github.com/pymedphys/pymedphys/pull/748>.
