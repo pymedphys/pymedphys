@@ -40,8 +40,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Removed `jupyter`, `bundle`, and `app` sub commands from the CLI.
 - Removed the `gui` and `jupyter` optional extra installation commands.
 - In order to support Python 3.8, the `pymssql` dependency needed to be
-  removed for that Python version. All tools that depend upon Mosaiq will not
-  currently work on Python 3.8.
+  removed for that Python version. All tools that make SQL calls to Mosaiq
+  will not currently work on Python 3.8.
 
 ### New Features
 
