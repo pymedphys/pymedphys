@@ -125,10 +125,6 @@ m2r = "*"
 # VSCode extension dependencies
 doc8 = "*"
 pydot = "^1.4.1"
-tensorflow-datasets = "^1.3.2"
-
-# gui
-jupyterlab_server = "*"
 
 # Packages to include later
 # pytest-cov = "^2.5"
