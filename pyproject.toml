@@ -6,13 +6,12 @@ description = "Medical Physics library"
 authors = [
     "PyMedPhys Contributors <developers@pymedphys.com>",
     "Simon Biggs <sbiggs@pymedphys.com>",
-    "Matthew Jennings <mjennings@pymedphys.com>>",
+    "Matthew Jennings <mjennings@pymedphys.com>",
+    "Jake Rembish",
+    "Matthew Cooper <mcooper@pymedphys.com>",
     "Phillip Chlap",
-    "Paul King <pking@pymedphys.com>",
-    "Matthew Sobolewski <msobolewski@pymedphys.com>",
     "Jacob McAloney",
-    "Pedro Martinez",
-    "Matthew Cooper <mcooper@pymedphys.com>"
+    "Pedro Martinez"
 ]
 license = "Apache-2.0"
 homepage = "https://pymedphys.com"
