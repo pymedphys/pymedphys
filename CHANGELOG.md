@@ -25,13 +25,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil
 
-### Package changes
+### Package Changes
 
 - nil
 
 ### Performance Improvements
 
 - nil -->
+
+## [0.23.0]
+
+### Breaking Changes
+
+- Removed `jupyter`, `bundle`, and `app` sub commands from the CLI.
+- Removed the `gui` and `jupyter` optional extra installation commands.
+
+### New Features
+
+- PyMedPhys now is able to be installed on Python 3.8.
+
+### Dependency Changes
+
+- No longer depend upon pymssql for Python 3.8.
+
+### Bug Fixes
+
+- Fix `pymedphys._monaco` package path.
 
 ## [0.22.0]
 
@@ -43,7 +62,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.21.0]
 
-### Dependency changes
+### Dependency Changes
 
 - Once again made `shapely` a default dependency with the aim to make
   installation be "batteries included".
