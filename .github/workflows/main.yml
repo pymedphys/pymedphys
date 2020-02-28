@@ -233,7 +233,7 @@ jobs:
       matrix:
         os: ['ubuntu']
         python-version: [3.8]
-        toxenv: ['pylint', 'doctest']
+        toxenv: ['pylint', 'runslow']
 
     runs-on: ${{ matrix.os }}-latest
 
