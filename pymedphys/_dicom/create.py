@@ -59,6 +59,12 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
         else:
             add_array_to_dataset(dataset, key, value)
 
+    if dataset.is_little_endian is None:
+        dataset.is_little_endian = True
+
+    if dataset.is_implicit_VR is None:
+        dataset.is_implicit_VR = True
+
     return dataset
 
 
