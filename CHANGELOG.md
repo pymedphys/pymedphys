@@ -462,7 +462,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.22.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.23.0...master
+[0.23.0]: https://github.com/pymedphys/pymedphys/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/pymedphys/pymedphys/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/pymedphys/pymedphys/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/pymedphys/pymedphys/compare/v0.19.0...v0.20.0
