@@ -230,7 +230,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu']
-        python-version: [3.6]
+        python-version: [3.8]
         toxenv: ['pylint', 'doctest']
 
     runs-on: ${{ matrix.os }}-latest
@@ -307,7 +307,7 @@ jobs:
       matrix:
         os: ['ubuntu']
         toxenv: ['stackoverflow']
-        python-version: [3.6]
+        python-version: [3.8]
 
     runs-on: ${{ matrix.os }}-latest
 
