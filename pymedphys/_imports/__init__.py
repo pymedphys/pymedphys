@@ -16,7 +16,6 @@ EXTERNAL_EXPORTS = (
     "shapely.geometry",
     "shapely",
     "pymssql",
-    "jupyterlab_server",
     "keyring",
     "packaging",
     "yaml",
@@ -70,7 +69,6 @@ if "numpy" not in IMPORTABLES:
     import shapely.geometry
     import shapely
     import pymssql
-    import jupyterlab_server
     import keyring
     import packaging
     import yaml
