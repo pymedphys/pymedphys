@@ -1400,6 +1400,7 @@ mccabe = ">=0.6,<0.7"
 [[package]]
 category = "main"
 description = "DB-API interface to Microsoft SQL Server for Python. (new Cython-based version)"
+marker = "python_version < \"3.8\""
 name = "pymssql"
 optional = false
 python-versions = "*"
@@ -2201,7 +2202,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "9427885fc1fa023eba4ab409743216e08d3d8c2c85a9d863a94f697257faca85"
+content-hash = "31acef3d647e0abafb7c5e8f37110a90af154586decd33374a4bdc40d97a5b26"
 python-versions = "^3.6"
 
 [metadata.files]
