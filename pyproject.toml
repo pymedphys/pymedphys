@@ -61,7 +61,7 @@ pynetdicom = "*"
 
 # difficult
 cython = "*"
-pymssql = "< 3.0.0"
+pymssql = { version = "< 3.0.0", python = "< 3.8" }
 
 # labs
 python_dateutil = "*"
