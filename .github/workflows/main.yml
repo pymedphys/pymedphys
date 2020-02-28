@@ -141,6 +141,8 @@ jobs:
             toxenv: 'pylint'
           - os: 'windows'
             toxenv: 'runslow'
+          - os: 'windows'
+            toxenv: 'doctest'
           - os: 'macos'
             toxenv: 'runslow'
 
