@@ -128,7 +128,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
+        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean', 'pytest']
         include:
           - os: 'ubuntu'
             python-version: 3.6
@@ -145,6 +145,10 @@ jobs:
             toxenv: 'doctest'
           - os: 'macos'
             toxenv: 'runslow'
+          - os: 'macos'
+            toxenv: 'pytest'
+          - os: 'ubuntu'
+            toxenv: 'pytest'
 
     runs-on: ${{ matrix.os }}-latest
 
@@ -233,7 +237,7 @@ jobs:
       matrix:
         os: ['ubuntu']
         python-version: [3.8]
-        toxenv: ['pylint', 'runslow']
+        toxenv: ['pylint', 'pytest']
 
     runs-on: ${{ matrix.os }}-latest
 
