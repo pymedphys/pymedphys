@@ -823,14 +823,6 @@ version = "8.2.0"
 
 [[package]]
 category = "dev"
-description = "Python library for arbitrary-precision floating-point arithmetic"
-name = "mpmath"
-optional = false
-python-versions = "*"
-version = "1.1.0"
-
-[[package]]
-category = "dev"
 description = "Optional static typing for Python"
 name = "mypy"
 optional = false
@@ -1666,17 +1658,6 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 six = ">=1.10.0"
 
 [[package]]
-category = "dev"
-description = "Computer algebra system (CAS) in Python"
-name = "sympy"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-version = "1.5.1"
-
-[package.dependencies]
-mpmath = ">=0.19"
-
-[[package]]
 category = "main"
 description = "TensorBoard lets you watch Tensors Flow"
 name = "tensorboard"
@@ -1967,7 +1948,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "a70c006b83f13c09fdac22e664fdff4b8cad4b7a9c256dfab37f536eee95505c"
+content-hash = "9b8c2226025053320f5c5f8dce26060135a24c99e5782486dc4ebf3ea5cc56e1"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2474,9 +2455,6 @@ mistune = [
 more-itertools = [
     {file = "more-itertools-8.2.0.tar.gz", hash = "sha256:b1ddb932186d8a6ac451e1d95844b382f55e12686d51ca0c68b6f61f2ab7a507"},
     {file = "more_itertools-8.2.0-py3-none-any.whl", hash = "sha256:5dd8bcf33e5f9513ffa06d5ad33d78f31e1931ac9a18f33d37e77a180d393a7c"},
-]
-mpmath = [
-    {file = "mpmath-1.1.0.tar.gz", hash = "sha256:fc17abe05fbab3382b61a123c398508183406fa132e0223874578e20946499f6"},
 ]
 mypy = [
     {file = "mypy-0.761-cp35-cp35m-macosx_10_6_x86_64.whl", hash = "sha256:7f672d02fffcbace4db2b05369142e0506cdcde20cea0e07c7c2171c4fd11dd6"},
@@ -3008,10 +2986,6 @@ sphinxcontrib-websupport = [
 stevedore = [
     {file = "stevedore-1.32.0-py2.py3-none-any.whl", hash = "sha256:a4e7dc759fb0f2e3e2f7d8ffe2358c19d45b9b8297f393ef1256858d82f69c9b"},
     {file = "stevedore-1.32.0.tar.gz", hash = "sha256:18afaf1d623af5950cc0f7e75e70f917784c73b652a34a12d90b309451b5500b"},
-]
-sympy = [
-    {file = "sympy-1.5.1-py2.py3-none-any.whl", hash = "sha256:4880d3a351558063bd89febda302f220dc4b88de393bba81fa6539a3966f03fa"},
-    {file = "sympy-1.5.1.tar.gz", hash = "sha256:d77901d748287d15281f5ffe5b0fef62dd38f357c2b827c44ff07f35695f4e7e"},
 ]
 tensorboard = [
     {file = "tensorboard-2.1.1-py3-none-any.whl", hash = "sha256:3a36da59d4e13fb140d04636aaf544f1a38364a7e3609a15cdaf01a5d3073b37"},
