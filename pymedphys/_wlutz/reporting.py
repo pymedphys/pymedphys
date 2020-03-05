@@ -16,9 +16,7 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt
 
-from .createaxis import transform_axis
-from .imginterp import create_interpolated_field
-from .interppoints import apply_transform, translate_and_rotate_transform
+from . import createaxis, findbb, imginterp, interppoints
 
 
 def image_analysis_figure(
@@ -33,7 +31,7 @@ def image_analysis_figure(
     penumbra,
     units="(mm)",
 ):
-    field = create_interpolated_field(x, y, img)
+    field = imginterp.create_interpolated_field(x, y, img)
 
     x_half_bound = edge_lengths[0] / 2 + penumbra * 3
     y_half_bound = edge_lengths[1] / 2 + penumbra * 3
@@ -41,12 +39,18 @@ def image_analysis_figure(
     x_axis = np.linspace(-x_half_bound, x_half_bound, 200)
     y_axis = np.linspace(-y_half_bound, y_half_bound, 200)
 
-    field_transform = translate_and_rotate_transform(field_centre, field_rotation)
-    x_field_interp, y_field_interp = transform_axis(x_axis, y_axis, field_transform)
+    field_transform = interppoints.translate_and_rotate_transform(
+        field_centre, field_rotation
+    )
+    x_field_interp, y_field_interp = createaxis.transform_axis(
+        x_axis, y_axis, field_transform
+    )
 
     if bb_centre is not None:
-        bb_transform = translate_and_rotate_transform(bb_centre, 0)
-        x_bb_interp, y_bb_interp = transform_axis(x_axis, y_axis, bb_transform)
+        bb_transform = interppoints.translate_and_rotate_transform(bb_centre, 0)
+        x_bb_interp, y_bb_interp = createaxis.transform_axis(
+            x_axis, y_axis, bb_transform
+        )
     else:
         x_bb_interp, y_bb_interp = None, None
 
@@ -210,6 +214,6 @@ def draw_by_diff(dx, dy, transform):
     draw_x = np.cumsum(dx)
     draw_y = np.cumsum(dy)
 
-    draw_x, draw_y = apply_transform(draw_x, draw_y, transform)
+    draw_x, draw_y = interppoints.apply_transform(draw_x, draw_y, transform)
 
     return draw_x, draw_y
