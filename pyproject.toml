@@ -123,7 +123,6 @@ m2r = "*"
 
 # VSCode extension dependencies
 doc8 = "*"
-sympy = "^1.5.1"
 pydot = "^1.4.1"
 
 # Packages to include later
