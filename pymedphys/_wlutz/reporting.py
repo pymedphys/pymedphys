@@ -16,7 +16,7 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt
 
-from . import createaxis, findbb, imginterp, interppoints
+from . import createaxis, imginterp, interppoints
 
 
 def image_analysis_figure(
