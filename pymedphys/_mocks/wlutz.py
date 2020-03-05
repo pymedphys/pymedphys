@@ -71,3 +71,25 @@ def create_field_with_bb_func(
         return field(x, y) * bb_attenuation_map(x - bb_centre[0], y - bb_centre[1])
 
     return field_with_bb
+
+
+def stripes_artefact_func(x, attenuation=0.05, period=1.6):
+    sin_result = np.sin(x * 2 * np.pi / period)
+    return 1 - (sin_result + 1) / 2 * attenuation
+
+
+def create_striped_field_func(field, attenuation=0.05, period=1.6):
+    def striped_field(x, y):
+        return stripes_artefact_func(x, attenuation, period) * field(x, y)
+
+    return striped_field
+
+
+def create_saturated_field_func(field, level=0.9):
+    def saturated_field(x, y):
+        result = field(x, y)
+        result[result > level] = level
+
+        return result
+
+    return saturated_field
