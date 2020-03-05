@@ -16,7 +16,8 @@
 from pymedphys._imports import numpy as np
 
 import pymedphys
-import pymedphys._mocks.wlutz
+import pymedphys._mocks.wlutz as wlutz_mocks
+import pymedphys._wlutz.reporting as reporting
 
 
 def test_normal_bb():
@@ -70,7 +71,7 @@ def create_test_image(
     bb_diameter,
     bb_max_attenuation,
 ):
-    field = pymedphys._mocks.wlutz.create_field_with_bb_func(  # pylint: disable = protected-access
+    field = wlutz_mocks.create_field_with_bb_func(
         field_centre,
         field_side_lengths,
         field_penumbra,
@@ -123,6 +124,21 @@ def run_test(
         pylinac_tol=None,
     )
 
-    assert np.allclose(bb_centre, determined_bb_centre, atol=0.001)
-    assert np.allclose(field_centre, determined_field_centre, atol=0.001)
-    assert np.allclose(field_rotation, determined_field_rotation, atol=0.01)
+    try:
+        assert np.allclose(bb_centre, determined_bb_centre, atol=0.001)
+        assert np.allclose(field_centre, determined_field_centre, atol=0.001)
+        assert np.allclose(field_rotation, determined_field_rotation, atol=0.01)
+
+    except:
+        reporting.image_analysis_figure(
+            x,
+            y,
+            img,
+            bb_centre,
+            field_centre,
+            field_rotation,
+            bb_diameter,
+            field_side_lengths,
+            field_penumbra,
+        )
+        raise
