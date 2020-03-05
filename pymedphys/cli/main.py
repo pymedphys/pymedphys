@@ -15,12 +15,9 @@
 import argparse
 import sys
 
-from .app import app_cli
-from .bundle import bundle_cli
 from .dev import dev_cli
 from .dicom import dicom_cli
 from .icom import icom_cli
-from .jupyterlab import jupyter_cli
 from .labs import labs_cli
 from .logfile import logfile_cli
 from .trf import trf_cli
@@ -38,10 +35,7 @@ def define_parser():
     parser = DefaultHelpParser(prog="pymedphys")
     subparsers = parser.add_subparsers()
 
-    app_cli(subparsers)
-    bundle_cli(subparsers)
     dicom_cli(subparsers)
-    jupyter_cli(subparsers)
     labs_cli(subparsers)
     logfile_cli(subparsers)
     trf_cli(subparsers)
