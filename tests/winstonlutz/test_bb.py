@@ -29,6 +29,47 @@ def test_normal_bb():
     bb_diameter = 8
     bb_max_attenuation = 0.3
 
+    run_test(
+        field_centre,
+        field_side_lengths,
+        field_penumbra,
+        field_rotation,
+        bb_centre,
+        bb_diameter,
+        bb_max_attenuation,
+    )
+
+
+# def test_small_bb():
+#     field_centre = [0, 0]
+#     field_side_lengths = [20, 24]
+#     field_penumbra = 2
+#     field_rotation = 20
+
+#     bb_centre = [2, 2]
+#     bb_diameter = 3
+#     bb_max_attenuation = 0.3
+
+#     run_test(
+#         field_centre,
+#         field_side_lengths,
+#         field_penumbra,
+#         field_rotation,
+#         bb_centre,
+#         bb_diameter,
+#         bb_max_attenuation,
+#     )
+
+
+def create_test_image(
+    field_centre,
+    field_side_lengths,
+    field_penumbra,
+    field_rotation,
+    bb_centre,
+    bb_diameter,
+    bb_max_attenuation,
+):
     field = pymedphys._mocks.wlutz.create_field_with_bb_func(  # pylint: disable = protected-access
         field_centre,
         field_side_lengths,
@@ -44,6 +85,29 @@ def test_normal_bb():
     xx, yy = np.meshgrid(x, y)
 
     img = field(xx, yy)
+
+    return x, y, img
+
+
+def run_test(
+    field_centre,
+    field_side_lengths,
+    field_penumbra,
+    field_rotation,
+    bb_centre,
+    bb_diameter,
+    bb_max_attenuation,
+):
+
+    x, y, img = create_test_image(
+        field_centre,
+        field_side_lengths,
+        field_penumbra,
+        field_rotation,
+        bb_centre,
+        bb_diameter,
+        bb_max_attenuation,
+    )
 
     (
         determined_bb_centre,
