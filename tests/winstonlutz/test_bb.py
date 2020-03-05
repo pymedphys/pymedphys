@@ -40,25 +40,25 @@ def test_normal_bb():
     )
 
 
-# def test_small_bb():
-#     field_centre = [0, 0]
-#     field_side_lengths = [20, 24]
-#     field_penumbra = 2
-#     field_rotation = 20
+def test_small_bb():
+    field_centre = [0, 0]
+    field_side_lengths = [20, 24]
+    field_penumbra = 2
+    field_rotation = 20
 
-#     bb_centre = [2, 2]
-#     bb_diameter = 3
-#     bb_max_attenuation = 0.3
+    bb_centre = [2, 2]
+    bb_diameter = 3
+    bb_max_attenuation = 0.3
 
-#     run_test(
-#         field_centre,
-#         field_side_lengths,
-#         field_penumbra,
-#         field_rotation,
-#         bb_centre,
-#         bb_diameter,
-#         bb_max_attenuation,
-#     )
+    run_test(
+        field_centre,
+        field_side_lengths,
+        field_penumbra,
+        field_rotation,
+        bb_centre,
+        bb_diameter,
+        bb_max_attenuation,
+    )
 
 
 def create_test_image(
