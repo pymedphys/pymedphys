@@ -72,14 +72,15 @@ def optimise_bb_centre(
                 find_bb=True,
                 pylinac_versions=("v2.2.6",),
             )
-        except ValueError as e:
-            warnings.simplefilter("always", UserWarning)
-            warnings.warn(
-                "This iteration has not been checked against pylinac. "
-                "When attempting to run pylinac instead an error was "
-                f"raised. Pylinac raised the following error:\n\n{e}\n"
-            )
-            pylinac = {}
+        except ValueError:
+            raise ValueError("While comparing result to PyLinac an error was raised")
+            # warnings.simplefilter("always", UserWarning)
+            # warnings.warn(
+            #     "This iteration has not been checked against pylinac. "
+            #     "When attempting to run pylinac instead an error was "
+            #     f"raised. Pylinac raised the following error:\n\n{e}\n"
+            # )
+            # pylinac = {}
 
         try:
             pylinac_2_2_6_out_of_tol = np.any(
@@ -167,9 +168,12 @@ def create_bb_to_minimise_simple(field, bb_diameter):
 
 
 def define_bb_bounds(bb_diameter, edge_lengths, penumbra):
+    # TODO: This does not allow the BB to search right up to the edge of the field
+    # this is a crude work around for the fact that a significantly flat area will
+    # currently be optimised for over the BB itself.
     half_field_bounds = [
-        (edge_lengths[0] - penumbra / 2) / 2,
-        (edge_lengths[1] - penumbra / 2) / 2,
+        (edge_lengths[0] - penumbra * 2) / 2,
+        (edge_lengths[1] - penumbra * 2) / 2,
     ]
 
     bb_radius = bb_diameter / 2
