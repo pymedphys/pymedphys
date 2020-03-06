@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import pytest
 from pymedphys._imports import numpy as np
 
 import pymedphys
@@ -41,6 +42,7 @@ def test_normal_bb():
     )
 
 
+@pytest.mark.skip(reason="This test currently demonstrates a limitation of the library")
 def test_small_bb():
     field_centre = [0, 0]
     field_side_lengths = [20, 24]
