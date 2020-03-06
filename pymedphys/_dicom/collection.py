@@ -18,9 +18,7 @@ from copy import deepcopy
 from packaging import version
 from pymedphys._imports import pydicom
 
-from .anonymise import anonymise_dataset
-from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
-from .create import dicom_dataset_from_dict
+from . import anonymise, coords, create
 
 # pylint: disable=W0201
 
@@ -30,11 +28,7 @@ class DicomBase:
         if copy:
             dataset = deepcopy(dataset)
 
-        if dataset.is_little_endian is None:
-            dataset.is_little_endian = True
-
-        if dataset.is_implicit_VR is None:
-            dataset.is_implicit_VR = True
+        create.set_default_transfer_syntax(dataset)
 
         self.dataset = dataset
 
@@ -58,7 +52,7 @@ class DicomBase:
         """Instantiate a DicomBase instance from a dictionary of
         DICOM keyword/value pairs.
         """
-        dataset = dicom_dataset_from_dict(dictionary)
+        dataset = create.dicom_dataset_from_dict(dictionary)
 
         return cls(dataset)
 
@@ -86,7 +80,7 @@ class DicomBase:
         self, inplace=False
     ):
         to_copy = not inplace
-        anonymised = anonymise_dataset(self.dataset, copy_dataset=to_copy)
+        anonymised = anonymise.anonymise_dataset(self.dataset, copy_dataset=to_copy)
 
         if not inplace:
             return self.__class__(anonymised)
@@ -110,23 +104,23 @@ class DicomDose(DicomBase):
     # but not needlessly call the entire function.
     @property
     def x(self):
-        x_value, _, _ = xyz_axes_from_dataset(self.dataset, "DICOM")
+        x_value, _, _ = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
         return x_value
 
     @property
     def y(self):
-        _, y_value, _ = xyz_axes_from_dataset(self.dataset, "DICOM")
+        _, y_value, _ = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
         return y_value
 
     @property
     def z(self):
-        _, _, z_value = xyz_axes_from_dataset(self.dataset, "DICOM")
+        _, _, z_value = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
         return z_value
 
     @property
     def coords(self):
-        x, y, z = xyz_axes_from_dataset(self.dataset, "DICOM")
-        return coords_from_xyz_axes((x, y, z))
+        x, y, z = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
+        return coords.coords_from_xyz_axes((x, y, z))
 
 
 class DicomImage(DicomBase):

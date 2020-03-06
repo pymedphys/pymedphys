@@ -27,8 +27,8 @@ class DeliveryMonaco(
 ):
     @classmethod
     def from_monaco(cls, tel_path):
-        read_trf_contents = create_read_trf_contents()
-        tel_contents = read_trf_contents(tel_path)
+        read_tel_contents = create_read_tel_contents()
+        tel_contents = read_tel_contents(tel_path)
 
         return cls(*delivery_from_tel_plan_contents(tel_contents))
 
@@ -99,8 +99,8 @@ def get_control_point_pattern():
 
 
 @functools.lru_cache(maxsize=1)
-def create_read_trf_contents():
-    def read_trf_contents(filepath):
+def create_read_tel_contents():
+    def read_tel_contents(filepath):
         with pymedphys._utilities.filesystem.open_no_lock(  # pylint: disable = protected-access
             filepath, "r"
         ) as a_file:
@@ -108,4 +108,4 @@ def create_read_trf_contents():
 
         return data
 
-    return read_trf_contents
+    return read_tel_contents

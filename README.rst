@@ -121,6 +121,11 @@ Active contributors
 
 .. _`Jacob McAloney`: https://github.com/JacobMcAloney
 
+* `Matthew Cooper`_
+    * University of Sydney, Australia
+
+.. _`Matthew Cooper`: https://github.com/matthewdeancooper
+
 
 |rccc| |rah| |uth| |uoc|
 
