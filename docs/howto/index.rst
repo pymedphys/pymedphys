@@ -6,5 +6,4 @@ Guides and recipes for common problems and tasks.
 
 * :doc:`get-started`
 * :doc:`gamma/index`
-* :doc:`wlutz/index`
 * :doc:`advanced/index`

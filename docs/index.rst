@@ -34,7 +34,6 @@ Overview
     howto/index
     howto/get-started
     howto/gamma/index
-    howto/wlutz/index
     howto/advanced/index
 
 .. toctree::
