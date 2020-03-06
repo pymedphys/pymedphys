@@ -67,8 +67,9 @@ python_dateutil = "*"
 scikit-image = "*"
 
 # ml
-tensorflow = { version = "2.1.0", optional = true }
-absl-py = { version = "*", optional = true }
+tf-nightly = { version = ">=2.2.0.dev20200306", optional = true, allow-prereleases = true }
+tf-estimator-nightly = { version = "*", optional = true, allow-prereleases = true }
+tb-nightly = { version = "*", optional = true, allow-prereleases = true }
 
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
@@ -138,7 +139,7 @@ docs = [
 ]
 
 ml = [
-    "tensorflow", "absl-py"
+    "tf-nightly", "tf-estimator-nightly", "tb-nightly"
 ]
 
 pytest = [
