@@ -1,18 +1,17 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.22.0"
+version = "0.23.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
     "PyMedPhys Contributors <developers@pymedphys.com>",
     "Simon Biggs <sbiggs@pymedphys.com>",
-    "Matthew Jennings <mjennings@pymedphys.com>>",
+    "Matthew Jennings <mjennings@pymedphys.com>",
+    "Jake Rembish",
+    "Matthew Cooper <mcooper@pymedphys.com>",
     "Phillip Chlap",
-    "Paul King <pking@pymedphys.com>",
-    "Matthew Sobolewski <msobolewski@pymedphys.com>",
     "Jacob McAloney",
-    "Pedro Martinez",
-    "Matthew Cooper <mcooper@pymedphys.com>"
+    "Pedro Martinez"
 ]
 license = "Apache-2.0"
 homepage = "https://pymedphys.com"
@@ -61,22 +60,15 @@ pynetdicom = "*"
 
 # difficult
 cython = "*"
-pymssql = "< 3.0.0"
+pymssql = { version = "< 3.0.0", python = "< 3.8" }
 
 # labs
 python_dateutil = "*"
 scikit-image = "*"
 
-# gui
-jupyterlab_server = { version = "*", optional = true }
-
 # ml
 tensorflow = { version = "2.1.0", optional = true }
 absl-py = { version = "*", optional = true }
-
-# jupyter
-jupyterlab = { version = "*", optional = true }
-pywin32 = { version = "224", optional = true, platform = "win32" }
 
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
@@ -132,10 +124,6 @@ m2r = "*"
 # VSCode extension dependencies
 doc8 = "*"
 pydot = "^1.4.1"
-tensorflow-datasets = "^1.3.2"
-
-# gui
-jupyterlab_server = "*"
 
 # Packages to include later
 # pytest-cov = "^2.5"
@@ -149,16 +137,8 @@ docs = [
     "m2r"
 ]
 
-gui = [
-    "jupyterlab_server"
-]
-
 ml = [
     "tensorflow", "absl-py"
-]
-
-jupyter = [
-    "jupyterlab", "pywin32"
 ]
 
 pytest = [
