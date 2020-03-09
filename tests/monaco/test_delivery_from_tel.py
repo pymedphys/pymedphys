@@ -21,7 +21,7 @@ import pymedphys
 
 
 def test_delivery_from_monaco():
-    data_paths = pymedphys.zip_data_paths("monaco_trf_compare.zip")
+    data_paths = pymedphys.zip_data_paths("tel-dicom-pairs.zip")
     dir_names = {path.parent.name for path in data_paths}
 
     assert len(dir_names) >= 2
