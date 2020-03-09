@@ -43,7 +43,7 @@ def test_delivery_from_monaco():
         assert np.allclose(
             delivery_monaco.collimator, delivery_dcm.collimator, atol=0.01
         )
-        assert np.allclose(delivery_monaco.mlc, delivery_dcm.mlc, atol=0.01)
+        assert np.allclose(delivery_monaco.mlc, delivery_dcm.mlc, atol=0.1)
         assert np.allclose(delivery_monaco.jaw, delivery_dcm.jaw, atol=0.01)
 
 
