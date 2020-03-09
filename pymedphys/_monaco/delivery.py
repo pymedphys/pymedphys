@@ -80,7 +80,7 @@ def get_control_point_pattern():
     ten_mlc_pos_pattern = ",".join([mlc_pos_pattern] * 10)
     sixteen_rows_of_mlcs_pattern = "\n".join([ten_mlc_pos_pattern] * 16)
 
-    weird_ones = "\n".join([",".join(["1"] * 6)] * 13)
+    ones_or_twos = "\n".join([",".join([r"\d"] * 6)] * 13)
 
     decimal_param = r"-?\d+\.\d+"
     optional_decimal_param = r"-?\d+(?:\.\d+)?"
@@ -93,7 +93,7 @@ def get_control_point_pattern():
         f"{optional_decimal_param},({optional_decimal_param}),{optional_decimal_param},({optional_decimal_param})"
     )
 
-    total_pattern = f"({sixteen_rows_of_mlcs_pattern})\n{weird_ones}\n{parameters}"
+    total_pattern = f"({sixteen_rows_of_mlcs_pattern})\n{ones_or_twos}\n{parameters}"
 
     return total_pattern
 
