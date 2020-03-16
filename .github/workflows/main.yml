@@ -128,12 +128,12 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean']
+        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean', 'pytest']
         include:
           - os: 'ubuntu'
             python-version: 3.6
           - os: 'windows'
-            python-version: 3.7
+            python-version: 3.8
           - os: 'macos'
             python-version: 3.7
         exclude:
@@ -141,8 +141,14 @@ jobs:
             toxenv: 'pylint'
           - os: 'windows'
             toxenv: 'runslow'
+          - os: 'windows'
+            toxenv: 'doctest'
           - os: 'macos'
             toxenv: 'runslow'
+          - os: 'macos'
+            toxenv: 'pytest'
+          - os: 'ubuntu'
+            toxenv: 'pytest'
 
     runs-on: ${{ matrix.os }}-latest
 
@@ -230,8 +236,8 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu']
-        python-version: [3.6]
-        toxenv: ['pylint', 'doctest']
+        python-version: [3.8]
+        toxenv: ['pylint', 'pytest']
 
     runs-on: ${{ matrix.os }}-latest
 
@@ -307,7 +313,7 @@ jobs:
       matrix:
         os: ['ubuntu']
         toxenv: ['stackoverflow']
-        python-version: [3.6]
+        python-version: [3.8]
 
     runs-on: ${{ matrix.os }}-latest
 
