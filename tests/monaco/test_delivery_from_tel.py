@@ -21,7 +21,7 @@ import pymedphys
 
 
 def test_delivery_from_monaco():
-    data_paths = pymedphys.zip_data_paths("monaco_trf_compare.zip")
+    data_paths = pymedphys.zip_data_paths("tel-dicom-pairs.zip")
     dir_names = {path.parent.name for path in data_paths}
 
     assert len(dir_names) >= 2
@@ -43,7 +43,7 @@ def test_delivery_from_monaco():
         assert np.allclose(
             delivery_monaco.collimator, delivery_dcm.collimator, atol=0.01
         )
-        assert np.allclose(delivery_monaco.mlc, delivery_dcm.mlc, atol=0.01)
+        assert np.allclose(delivery_monaco.mlc, delivery_dcm.mlc, atol=0.1)
         assert np.allclose(delivery_monaco.jaw, delivery_dcm.jaw, atol=0.01)
 
 

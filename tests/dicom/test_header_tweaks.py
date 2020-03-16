@@ -40,20 +40,16 @@ ADJUSTED_DICOM_FILENAME = os.path.join(
 
 
 def compare_dicom_cli(command, original, expected):
-    # TODO: Extract CLI definition from subpackages and test separately
+    pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
 
-    if "SUBPACKAGE" not in os.environ:
+    try:
+        subprocess.check_call(command)
+        cli_adjusted_ds = pydicom.read_file(ADJUSTED_DICOM_FILENAME, force=True)
 
-        pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
-
-        try:
-            subprocess.check_call(command)
-            cli_adjusted_ds = pydicom.read_file(ADJUSTED_DICOM_FILENAME, force=True)
-
-            assert str(cli_adjusted_ds) == str(expected)
-        finally:
-            remove_file(ORIGINAL_DICOM_FILENAME)
-            remove_file(ADJUSTED_DICOM_FILENAME)
+        assert str(cli_adjusted_ds) == str(expected)
+    finally:
+        remove_file(ORIGINAL_DICOM_FILENAME)
+        remove_file(ADJUSTED_DICOM_FILENAME)
 
 
 def test_adjust_machine_name():
