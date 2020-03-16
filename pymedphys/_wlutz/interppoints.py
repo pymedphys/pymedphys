@@ -108,6 +108,9 @@ def define_rotation_field_points_at_origin(edge_lengths, penumbra):
 
 
 def apply_transform(xx, yy, transform):
+    xx = np.array(xx, copy=False)
+    yy = np.array(yy, copy=False)
+
     xx_flat = np.ravel(xx)
     transformed = transform @ np.vstack([xx_flat, np.ravel(yy), np.ones_like(xx_flat)])
 

@@ -19,6 +19,7 @@ import pymedphys._icom.listener
 def icom_cli(subparsers):
     icom_parser = subparsers.add_parser("icom")
     icom_subparsers = icom_parser.add_subparsers(dest="icom")
+
     icom_listen(icom_subparsers)
     icom_archive(icom_subparsers)
 
