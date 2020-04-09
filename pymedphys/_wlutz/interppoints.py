@@ -108,6 +108,9 @@ def define_rotation_field_points_at_origin(edge_lengths, penumbra):
 
 
 def apply_transform(xx, yy, transform):
+    xx = np.array(xx, copy=False)
+    yy = np.array(yy, copy=False)
+
     xx_flat = np.ravel(xx)
     transformed = transform @ np.vstack([xx_flat, np.ravel(yy), np.ones_like(xx_flat)])
 
@@ -121,9 +124,9 @@ def apply_transform(xx, yy, transform):
 
 
 def create_bb_points_function(bb_diameter):
-    max_distance = bb_diameter * 0.4
-    min_distance = bb_diameter * 0.1
-    num_steps = 10
+    max_distance = bb_diameter * 0.5
+    min_distance = 0
+    num_steps = 11
     min_dist_between_points = (max_distance - min_distance) / num_steps
     distances = np.arange(
         min_distance, max_distance + min_dist_between_points, min_dist_between_points

@@ -527,6 +527,7 @@ def convert_struct(plan, export_path):
     ds.ApprovalStatus = "UNAPPROVED"
     # Set the transfer syntax
 
+    # TODO: Use `pymedphys._dicom.create.set_default_transfer_syntax` here
     ds.is_little_endian = True
     ds.is_implicit_VR = True
 

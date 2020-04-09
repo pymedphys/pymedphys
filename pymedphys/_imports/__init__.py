@@ -8,6 +8,7 @@ EXTERNAL_EXPORTS = (
     "matplotlib.pyplot",
     "matplotlib.path",
     "matplotlib.patches",
+    "matplotlib.transforms",
     "matplotlib",
     "mpl_toolkits.mplot3d.art3d",
     "mpl_toolkits",
@@ -16,7 +17,6 @@ EXTERNAL_EXPORTS = (
     "shapely.geometry",
     "shapely",
     "pymssql",
-    "jupyterlab_server",
     "keyring",
     "packaging",
     "yaml",
@@ -62,6 +62,7 @@ if "numpy" not in IMPORTABLES:
     import matplotlib.pyplot as plt
     import matplotlib.path
     import matplotlib.patches
+    import matplotlib.transforms
     import matplotlib
     import mpl_toolkits.mplot3d.art3d
     import mpl_toolkits
@@ -70,7 +71,6 @@ if "numpy" not in IMPORTABLES:
     import shapely.geometry
     import shapely
     import pymssql
-    import jupyterlab_server
     import keyring
     import packaging
     import yaml

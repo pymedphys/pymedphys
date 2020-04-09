@@ -14,17 +14,16 @@
 
 
 from pymedphys._imports import numpy as np
-
-from scipy.special import erf, erfinv  # pylint: disable=no-name-in-module
+from pymedphys._imports import scipy
 
 
 def gaussian_cdf(x, mu=0, sig=1):
     x = np.array(x, copy=False)
-    return 0.5 * (1 + erf((x - mu) / (sig * np.sqrt(2))))
+    return 0.5 * (1 + scipy.special.erf((x - mu) / (sig * np.sqrt(2))))
 
 
 def scaled_penumbra_sig(profile_shoulder_edge=0.8):
-    sig = 1 / (2 * np.sqrt(2) * erfinv(profile_shoulder_edge * 2 - 1))
+    sig = 1 / (2 * np.sqrt(2) * scipy.special.erfinv(profile_shoulder_edge * 2 - 1))
 
     return sig
 

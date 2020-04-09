@@ -182,7 +182,7 @@ def calc_mu_density(
     ...     grid = pymedphys.mudensity.grid()
     ...     pymedphys.mudensity.display(grid, mu_density)
     >>>
-    >>> mu_density_from_logfile(r"a/path/goes/here") # doctest: +SKIP
+    >>> mu_density_from_logfile(r"a/path/goes/here")  # doctest: +SKIP
 
     """
 
@@ -193,14 +193,18 @@ def calc_mu_density(
 
     if not max_leaf_gap_is_divisible:
         raise ValueError(
-            "The grid resolution needs to exaclty divide half of the max leaf " "gap"
+            "The grid resolution needs to exactly divide half of the max leaf gap"
         )
 
     leaf_pair_widths = np.array(leaf_pair_widths)
 
     if not np.max(np.abs(mlc)) <= max_leaf_gap / 2:  # pylint: disable = unneeded-not
+        first_failing_control_point = np.where(np.abs(mlc) > max_leaf_gap / 2)[0][0]
+
         raise ValueError(
-            "The mlc should not travel further out than half the maximum leaf " "gap."
+            "The mlc should not travel further out than half the maximum leaf gap.\n"
+            "The first failing control point has the following positions:\n"
+            f"{np.array(mlc)[first_failing_control_point, :, :]}"
         )
 
     mu, mlc, jaw = remove_irrelevant_control_points(mu, mlc, jaw)

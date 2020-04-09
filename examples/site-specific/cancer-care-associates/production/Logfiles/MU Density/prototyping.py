@@ -14,7 +14,6 @@ import imageio
 
 import pydicom
 
-import img2pdf
 import IPython.display
 import pymedphys
 from pymedphys._mosaiq.helpers import FIELD_TYPES
