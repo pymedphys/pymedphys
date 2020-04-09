@@ -25,13 +25,62 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil
 
-### Package changes
+### Package Changes
 
 - nil
 
 ### Performance Improvements
 
 - nil -->
+
+## [0.23.0]
+
+### Breaking Changes
+
+- Removed `jupyter`, `bundle`, and `app` sub commands from the CLI.
+- Removed the `gui` and `jupyter` optional extra installation commands.
+- In order to support Python 3.8, the `pymssql` dependency needed to be
+  removed for that Python version. All tools that make SQL calls to Mosaiq
+  will not currently work on Python 3.8.
+
+### New Features
+
+- PyMedPhys now is able to be installed on Python 3.8.
+
+### Dependency Changes
+
+- No longer depend upon `pymssql` for Python 3.8.
+
+### Bug Fixes
+
+- Fix `pymedphys._monaco` package path.
+- Fixed issue where the following header adjustment DICOM CLI tools may not
+  work with `pydicom==1.4.2`. See
+  <https://github.com/pymedphys/pymedphys/pull/747> and
+  <https://github.com/pymedphys/pymedphys/pull/748>.
+  - `pymedphys dicom adjust-machine-name`
+  - `pymedphys dicom adjust-RED`
+  - `pymedphys dicom adjust-RED-by-structure-name`
+
+## [0.22.0]
+
+### New Features
+
+- Implemented `from_icom` method on the `pymedphys.Delivery` object. This
+  was to support calculating an MU Density from an iCOM stream.
+  - See <https://github.com/pymedphys/pymedphys/pull/733>
+
+## [0.21.0]
+
+### Dependency Changes
+
+- Once again made `shapely` a default dependency with the aim to make
+  installation be "batteries included".
+  - `Shapely` now ships wheels for Windows. This means `shapely` will install
+    normally with pip. See
+    <https://github.com/Toblerity/Shapely/issues/815#issuecomment-579945334>
+- Pinned `pydicom` due to a currently unknown issue with a new version breaking
+  a `pymedphys` test.
 
 ## [0.20.0]
 
@@ -413,7 +462,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.20.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.23.0...master
+[0.23.0]: https://github.com/pymedphys/pymedphys/compare/v0.22.0...v0.23.0
+[0.22.0]: https://github.com/pymedphys/pymedphys/compare/v0.21.0...v0.22.0
+[0.21.0]: https://github.com/pymedphys/pymedphys/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/pymedphys/pymedphys/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/pymedphys/pymedphys/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/pymedphys/pymedphys/compare/v0.17.1...v0.18.0

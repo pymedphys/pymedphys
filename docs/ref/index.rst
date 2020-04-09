@@ -1,8 +1,5 @@
-Reference Documents
-===================
+Reference Documents Overview
+============================
 
-.. toctree::
-    :maxdepth: 1
-
-    cli/index
-    lib/index
+* :doc:`lib/index`
+* :doc:`cli/index`

@@ -33,3 +33,4 @@ extension-pkg-whitelist =
     tensorflow,
     tensorflow.__version__,
     tensorflow.data.experimental,
+    scipy.special
