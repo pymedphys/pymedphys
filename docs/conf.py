@@ -32,8 +32,9 @@ def setup(app):
 
 project = "PyMedPhys"
 copyright = (  # pylint: disable = redefined-builtin
-    "2015-2019, the PyMedPhys contributors"
+    "2015-2020, the PyMedPhys contributors"
 )
+
 author = "PyMedPhys contributors"
 
 # The short X.Y version
