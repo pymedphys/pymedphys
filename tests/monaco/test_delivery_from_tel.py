@@ -29,11 +29,11 @@ def test_delivery_from_monaco():
     for dir_name in dir_names:
         current_paths = [path for path in data_paths if path.parent.name == dir_name]
 
-        tel_path = get_file_type(current_paths, "tel")
+        tel_path = get_file_type(current_paths, "tel.1", exact_match=True)
         dcm_path = get_file_type(current_paths, "dcm")
 
         delivery_dcm = pymedphys.Delivery.from_dicom(
-            pydicom.read_file(str(dcm_path), force=True)
+            pydicom.read_file(str(dcm_path), force=True), fraction_number=1
         )
 
         delivery_monaco = pymedphys.Delivery.from_monaco(tel_path)
@@ -47,7 +47,10 @@ def test_delivery_from_monaco():
         assert np.allclose(delivery_monaco.jaw, delivery_dcm.jaw, atol=0.01)
 
 
-def get_file_type(input_paths, file_type):
-    paths = [path for path in input_paths if file_type in path.name]
+def get_file_type(input_paths, name, exact_match=False):
+    if exact_match:
+        paths = [path for path in input_paths if name == path.name]
+    else:
+        paths = [path for path in input_paths if name in path.name]
     assert len(paths) == 1
     return paths[0]
