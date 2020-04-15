@@ -36,7 +36,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
+# The following needs to be removed before leaving labs
+# pylint: skip-file
 
 import os
 
@@ -124,9 +125,9 @@ class PinnacleImage:
 
         if not self._image_info:
             path_image_info = os.path.join(
-                self._path, f"ImageSet_{self._image['ImageSetID']}.ImageInfo"
+                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".ImageInfo"
             )
-            self.logger.debug("Reading image data from: %s", path_image_info)
+            self.logger.debug("Reading image data from: " + path_image_info)
             self._image_info = pinn_to_dict(path_image_info)
 
         return self._image_info
@@ -143,9 +144,9 @@ class PinnacleImage:
 
         if not self._image_header:
             path_image_header = os.path.join(
-                self._path, f"ImageSet_{self._image['ImageSetID']}.header"
+                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".header"
             )
-            self.logger.debug("Reading image data from: %s", path_image_header)
+            self.logger.debug("Reading image data from: " + path_image_header)
             self._image_header = {}
             with open(path_image_header, "rt") as f:
                 for line in f:
@@ -173,9 +174,9 @@ class PinnacleImage:
 
         if not self._image_set:
             path_image_set = os.path.join(
-                self._path, f"ImageSet_{self._image['ImageSetID']}.ImageSet"
+                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".ImageSet"
             )
-            self.logger.debug("Reading image data from: %s", path_image_set)
+            self.logger.debug("Reading image data from: " + path_image_set)
             self._image_set = pinn_to_dict(path_image_set)
 
             parts = self._image_set["ScanTimeFromScanner"].split(" ")

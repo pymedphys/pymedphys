@@ -36,14 +36,20 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
+# The following needs to be removed before leaving labs
+# pylint: skip-file
 
 import os
+import re
+import shutil
+import struct
+import sys
+import time
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from .constants import GImplementationClassUID, GTransferSyntaxUID
+from .constants import *
 
 # This function will create dicom image files for each slice using the
 # condensed pixel data from file ImageSet_%s.img
@@ -64,10 +70,10 @@ def create_image_files(image, export_path):
     try:
         # Also should come from header file, but not always present
         modality = image_header["modality"]
-    except KeyError:
+    except:
         pass  # Incase it is not present in header
 
-    img_file = os.path.join(image.path, f"ImageSet_{image.image['ImageSetID']}.img")
+    img_file = os.path.join(image.path, "ImageSet_%s.img" % (image.image["ImageSetID"]))
     if os.path.isfile(img_file):
         allframeslist = []
         pixel_array = np.fromfile(img_file, dtype=np.short)
@@ -81,14 +87,17 @@ def create_image_files(image, export_path):
                 * int(image_header["y_dim"])
             ]
             allframeslist.append(frame_array)
-    image.logger.debug("Length of frames list: %s", len(allframeslist))
+    image.logger.debug("Length of frames list: " + str(len(allframeslist)))
     image.logger.debug(image_info[0])
 
     curframe = 0
     for info in image_info:
         sliceloc = -info["TablePosition"] * 10
         instuid = info["InstanceUID"]
+        seriesuid = info["SeriesUID"]
         classuid = info["ClassUID"]
+        frameuid = info["FrameUID"]
+        studyinstuid = info["StudyInstanceUID"]
         slicenum = info["SliceNumber"]
 
         dateofscan = image_set["scan_date"]
@@ -102,7 +111,7 @@ def create_image_files(image, export_path):
         # file is the same
         file_meta.ImplementationClassUID = GImplementationClassUID
 
-        image_file_name = f"{modality}.{instuid}.dcm"
+        image_file_name = modality + "." + instuid + ".dcm"
         ds = pydicom.dataset.FileDataset(
             image_file_name, {}, file_meta=file_meta, preamble=b"\x00" * 128
         )
@@ -182,19 +191,22 @@ def create_image_files(image, export_path):
         ds.PixelData = allframeslist[curframe].tostring()
 
         output_file = os.path.join(export_path, image_file_name)
-        image.logger.info("Creating image: %s", output_file)
+        image.logger.info("Creating image: " + output_file)
         ds.save_as(output_file)
         curframe = curframe + 1
 
 
 def convert_image(image, export_path):
 
+    patient_info = image.pinnacle.patient_info
+    image_info = image.image_info
+
     image.logger.debug(
-        "Converting image patient name, birthdate and id to match pinnacle"
+        "Converting image patient name, birthdate and id to match pinnacle\n"
     )
 
     dicom_directory = os.path.join(
-        image.path, f"ImageSet_{image.image['ImageSetID']}.DICOM"
+        image.path, "ImageSet_%s.DICOM" % str(image.image["ImageSetID"])
     )
 
     if not os.path.exists(dicom_directory):
@@ -214,17 +226,36 @@ def convert_image(image, export_path):
         imageds.PatientID = image.pinnacle.patient_info["MedicalRecordNumber"]
         imageds.PatientBirthDate = image.pinnacle.patient_info["DOB"]
 
+        # Really need to rewrite file meta? This can cause errors with different
+        # TransferSyntaxUIDs...
+        # try:
+        #     file_meta = Dataset()
+        #     file_meta.TransferSyntaxUID = GTransferSyntaxUID
+        #     file_meta.MediaStorageSOPClassUID = '1.2.840.10008.5.1.4.1.1.2'
+        #     file_meta.MediaStorageSOPInstanceUID = imageds.SOPInstanceUID
+        #     file_meta.ImplementationClassUID = GImplementationClassUID
+        #     imageds.file_meta = file_meta
+        # except:
+        #     image.logger.warn('Unable to process image: ' + file)
+        #     continue
+        #
+        # if not "SOPClassUID" in imageds:
+        #     # No SOP Class UID set, read it from the image info
+        #     imageds = image_info[0]['ClassUID']
         if not "SOPInstanceUID" in imageds:
-            image.logger.warn("Unable to process image: %s", file)
+            image.logger.warn("Unable to process image: " + file)
             continue
+        file_meta = imageds.file_meta
 
         preamble = getattr(imageds, "preamble", None)
         if not preamble:
             preamble = b"\x00" * 128
 
         output_file = os.path.join(
-            export_path, f"{image.image['Modality']}.{imageds.SOPInstanceUID}.dcm"
+            export_path, "%s.%s.dcm" % (image.image["Modality"], imageds.SOPInstanceUID)
         )
-
+        currfile = pydicom.dataset.FileDataset(
+            output_file, {}, file_meta=file_meta, preamble=preamble
+        )
         imageds.save_as(output_file)
-        image.logger.info("Exported: %s to %s", file, output_file)
+        image.logger.info("Exported: " + file + " to " + output_file)

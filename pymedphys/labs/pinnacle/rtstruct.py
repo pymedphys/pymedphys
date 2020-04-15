@@ -36,7 +36,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
+# The following needs to be removed before leaving labs
+# pylint: skip-file
 
 import os
 import random
@@ -45,14 +46,7 @@ import time
 
 from pymedphys._imports import pydicom
 
-from .constants import (
-    GImplementationClassUID,
-    GTransferSyntaxUID,
-    Manufacturer,
-    RTSTRUCTModality,
-    RTStructSOPClassUID,
-    colors,
-)
+from .constants import *
 
 
 # Determine which point to use for the iso center and set this value in
@@ -86,11 +80,13 @@ def find_iso_center(plan):
         if "PoiInterpretedType" in point.keys():
             if "ISO" in point["PoiInterpretedType"]:  # This point is Iso CenterAtZero
                 iso_center = refpoint
-                plan.logger.debug("ISO Center located: %s", iso_center)
+                plan.logger.debug("ISO Center located: " + str(iso_center))
 
     if len(iso_center) < 2:
         iso_center = ct_center
-        plan.logger.debug("Isocenter not located, setting to ct center: %s", iso_center)
+        plan.logger.debug(
+            "Isocenter not located, setting to ct center: " + str(iso_center)
+        )
 
     if len(iso_center) < 2:
         plan.logger.debug(
@@ -118,7 +114,7 @@ def find_iso_center(plan):
     plan.ct_center = ct_center
     plan.dose_ref_pt = dose_ref_pt
 
-    plan.logger.debug("Isocenter: %s", iso_center)
+    plan.logger.debug("Isocenter: " + str(iso_center))
 
 
 # Read points and insert them into the dicom dataset
@@ -167,7 +163,7 @@ def read_points(ds, plan):
         structure_set_roi = pydicom.dataset.Dataset()
         structure_set_roi.ROINumber = plan.roi_count
         structure_set_roi.ROIName = point["Name"]
-        plan.logger.info("Exporting point: %s", point["Name"])
+        plan.logger.info("Exporting point: " + point["Name"])
 
         # Not sure what this is for, just basing off template, should look into further
         structure_set_roi.ROIGenerationAlgorithm = "SEMIAUTOMATIC"
@@ -207,10 +203,11 @@ def read_roi(ds, plan):
     flag_points = (
         False  # bool value to tell me if I want to read the line in as point values
     )
-    plan.logger.debug("Reading ROI from: %s", path_roi)
+    prevroi = plan.roi_count
+    plan.logger.debug("Reading ROI from: " + path_roi)
     first_points = []
     with open(path_roi, "rt") as f:
-        for _, line in enumerate(f, 1):
+        for num, line in enumerate(f, 1):
             if (
                 "};  // End of points for curve" in line
             ):  # this will tell me not to read in point values
@@ -304,6 +301,7 @@ def read_roi(ds, plan):
                 roi_contour = pydicom.dataset.Dataset()
                 roi_contour.ReferencedROINumber = str(plan.roi_count)
                 ds.ROIContourSequence.append(roi_contour)
+                structure_set_roi = pydicom.dataset.Dataset()
                 ds.StructureSetROISequence.append(roi_contour)
                 rt_roi_observations = pydicom.dataset.Dataset()
                 ds.RTROIObservationsSequence.append(rt_roi_observations)
@@ -325,7 +323,7 @@ def read_roi(ds, plan):
                     plan.roi_count - 1
                 ].ContourSequence = pydicom.sequence.Sequence()
                 roiinterpretedtype = "ORGAN"
-                plan.logger.info("Exporting ROI: %s", ROIName)
+                plan.logger.info("Exporting ROI: " + ROIName)
             if "roiinterpretedtype:" in line:
                 roiinterpretedtype = line.split(" ")[-1].replace("\n", "")
             if "color:" in line:
@@ -336,9 +334,9 @@ def read_roi(ds, plan):
                         roi_color
                     ]
                 except KeyError:
-                    plan.logger.info("ROI Color not known: %s", roi_color)
+                    plan.logger.info("ROI Color not known: " + roi_color)
                     new_color = random.choice(list(colors))
-                    plan.logger.info("Instead, assigning color: %s", new_color)
+                    plan.logger.info("Instead, assigning color: " + new_color)
                     ds.ROIContourSequence[plan.roi_count - 1].ROIDisplayColor = colors[
                         new_color
                     ]
@@ -376,7 +374,7 @@ def read_roi(ds, plan):
             if "points=" in line:
                 flag_points = True
 
-    plan.logger.debug("patient pos: %s", image_header["patient_position"])
+    plan.logger.debug("patient pos:" + image_header["patient_position"])
 
     return ds
 
@@ -401,7 +399,7 @@ def convert_struct(plan, export_path):
     file_meta.MediaStorageSOPInstanceUID = struct_sop_instuid
     file_meta.ImplementationClassUID = GImplementationClassUID
 
-    struct_filename = f"RS.{struct_sop_instuid}.dcm"
+    struct_filename = "RS." + struct_sop_instuid + ".dcm"
 
     ds = pydicom.dataset.FileDataset(
         struct_filename, {}, file_meta=file_meta, preamble=b"\x00" * 128
@@ -533,5 +531,5 @@ def convert_struct(plan, export_path):
 
     # Save the RTDose Dicom File
     output_file = os.path.join(export_path, struct_filename)
-    plan.logger.info("Creating Struct file: %s", output_file)
+    plan.logger.info("Creating Struct file: %s \n" % (output_file))
     ds.save_as(output_file)

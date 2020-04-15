@@ -36,10 +36,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
+# The following needs to be removed before leaving labs
+# pylint: skip-file
 
 import io
 import re
+import sys
 
 from pymedphys._imports import yaml
 
@@ -47,6 +49,7 @@ from pymedphys._imports import yaml
 def pinn_to_dict(filename):
 
     result = None
+    pinn_yaml = ""
     with io.open(filename, "r", encoding="ISO-8859-1", errors="ignore") as fp:
         data = fp.readlines()
 
@@ -55,7 +58,7 @@ def pinn_to_dict(filename):
         first_line = data[0]
         indices = [i for i, line in enumerate(data) if line == first_line]
 
-        for i, _ in enumerate(indices):
+        for i in range(len(indices)):
 
             next_index = -1
 
@@ -63,12 +66,12 @@ def pinn_to_dict(filename):
                 next_index = indices[i + 1]
 
                 # If there are multiple segments, return list, otherwise just the dict
-                if not isinstance(result, list):
+                if not type(result) == list:
                     result = []
 
             split_data = data[indices[i] : next_index]
 
-            if isinstance(result, list):
+            if type(result) == list:
                 d = yaml.safe_load(convert_to_yaml(split_data))
                 result.append(d[list(d.keys())[0]])
             else:
@@ -83,19 +86,19 @@ def convert_to_yaml(data):
     listIndents = []
     in_comment = False
     c = 0
-    for _, line in enumerate(data, 0):
+    for i, line in enumerate(data, 0):
 
         # Remove comment lines
-        if re.search(r"^\/\*", line) or in_comment:
+        if re.search("^\/\*", line) or in_comment:
             in_comment = True
             continue
 
-        if re.search(r"\*\/", line):
+        if re.search("\*\/", line):
             in_comment = False
             continue
 
         # Get the indentation of this line
-        thisIndent = len(re.match(r"^\s*", line).group())
+        thisIndent = len(re.match("^\s*", line).group())
 
         # Check for start list/array
         if re.search("Array ={", line) or re.search("List ={", line):
@@ -112,9 +115,7 @@ def convert_to_yaml(data):
         # If this line is one indentation in from a start of list,
         # add '-' for YAML sequence
         if thisIndent - 2 in listIndents:
-            spaces = " " * thisIndent
-            subbed_line = re.sub(r"^\s*", "", line)
-            line = f"{spaces}- {subbed_line}"
+            line = " " * thisIndent + "- " + re.sub("^\s*", "", line)
 
         # Replace ={ and = with : for assignment
         line = re.sub(" ={", " :", line)
