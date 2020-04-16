@@ -203,12 +203,10 @@ def icom_input_method(
     patient_id="", icom_directory=DEFAULT_ICOM_DIRECTORY, key_namespace="", **_
 ):
     if advanced_mode:
-        icom_directory = (
-            st.text_input(
-                "iCOM Patient Directory",
-                str(icom_directory),
-                key=f"{key_namespace}_icom_directory",
-            ),
+        icom_directory = st.text_input(
+            "iCOM Patient Directory",
+            str(icom_directory),
+            key=f"{key_namespace}_icom_directory",
         )
 
     icom_directory = pathlib.Path(icom_directory)
