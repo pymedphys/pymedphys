@@ -44,7 +44,18 @@ SITE_DIRECTORIES = {
 site_options = list(SITE_DIRECTORIES.keys())
 
 DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
-DEFAULT_OUTPUT_DIRECTORY = r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence"
+DEFAULT_PNG_OUTPUT_DIRECTORY = r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence"
+
+GRID = pymedphys.mudensity.grid()
+COORDS = (GRID["jaw"], GRID["mlc"])
+
+DEFAULT_GAMMA_OPTIONS = {
+    "dose_percent_threshold": 2,
+    "distance_mm_threshold": 0.5,
+    "local_gamma": True,
+    "quiet": True,
+    "max_gamma": 5,
+}
 
 
 """
@@ -72,6 +83,24 @@ def cached_deliveries_loading(inputs, method_function):
     return deliveries
 
 
+@st.cache
+def load_icom_stream(icom_path):
+    with lzma.open(icom_path, "r") as f:
+        contents = f.read()
+
+    return contents
+
+
+@st.cache
+def load_icom_streams(icom_paths):
+    icom_streams = []
+
+    for icom_path in icom_paths:
+        icom_streams += [load_icom_stream(icom_path)]
+
+    return icom_streams
+
+
 def monaco_input_method(patient_id="", key_namespace="", **_):
     monaco_site = st.radio(
         "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
@@ -92,7 +121,9 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
     ]
 
     selected_monaco_plans = st.multiselect(
-        "Monaco plan", plan_names_to_choose_from, key=f"{key_namespace}_monaco_plans"
+        "Select Monaco plan(s)",
+        plan_names_to_choose_from,
+        key=f"{key_namespace}_monaco_plans",
     )
 
     tel_paths = []
@@ -109,7 +140,7 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
     results = {
         "patient_id": patient_id,
         "selected_monaco_plans": selected_monaco_plans,
-        "tel_paths": tel_paths,
+        "data_paths": tel_paths,
         "deliveries": deliveries,
     }
 
@@ -143,7 +174,9 @@ def icom_input_method(
     )
 
     selected_icom_deliveries = st.multiselect(
-        "iCOM delivery timestamp", timestamps, key=f"{key_namespace}_icom_deliveries"
+        "Select iCOM delivery timestamp(s)",
+        timestamps,
+        key=f"{key_namespace}_icom_deliveries",
     )
 
     icom_paths = []
@@ -156,7 +189,16 @@ def icom_input_method(
 
     [str(path) for path in icom_paths]
 
-    results = {"patient_id": patient_id, "icom_directory": str(icom_directory)}
+    icom_streams = load_icom_streams(icom_paths)
+    deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
+
+    results = {
+        "patient_id": patient_id,
+        "icom_directory": str(icom_directory),
+        "selected_icom_deliveries": selected_icom_deliveries,
+        "data_paths": icom_paths,
+        "deliveries": deliveries,
+    }
 
     return results
 
@@ -184,9 +226,9 @@ data_method_options = list(data_method_map.keys())
 """
 
 reference_data_method = st.selectbox("Data Input Method", data_method_options, index=0)
-reference_results = data_method_map[reference_data_method](
+reference_results = data_method_map[reference_data_method](  # type: ignore
     key_namespace="reference"
-)  # type: ignore
+)
 
 """
 ### Evaluation
@@ -218,39 +260,13 @@ escan_directory
 Path to save the image of the results for posterity
 """
 
-output_directory = pathlib.Path(
-    st.text_input("png output directory", DEFAULT_OUTPUT_DIRECTORY)
+png_output_directory = pathlib.Path(
+    st.text_input("png output directory", DEFAULT_PNG_OUTPUT_DIRECTORY)
 )
-output_directory
+png_output_directory
 
 
 ###### OLD CODE
-
-
-output_directory = pathlib.Path()
-
-GRID = pymedphys.mudensity.grid()
-COORDS = (GRID["jaw"], GRID["mlc"])
-
-GAMMA_OPTIONS = {
-    "dose_percent_threshold": 2,  # Not actually comparing dose though
-    "distance_mm_threshold": 0.5,
-    "local_gamma": True,
-    "quiet": True,
-    "max_gamma": 5,
-}
-
-"""
-## Input / Output Directory Selections
-"""
-
-
-delivery_timestamp = timestamps
-plan_names = plan_names_to_choose_from
-
-
-selected_monaco_plans = ["LSPINE/tel.1"]
-selected_icom_deliveries = ["2020-04-15 15:56:15"]
 
 
 def to_tuple(array):
@@ -271,9 +287,14 @@ def plot_gamma_hist(gamma, percent, dist):
 
 
 def plot_and_save_results(
-    mudensity_tel, mudensity_icom, gamma, header_text="", footer_text=""
+    reference_mudensity,
+    evaluation_mudensity,
+    gamma,
+    gamma_options,
+    header_text="",
+    footer_text="",
 ):
-    diff = mudensity_icom - mudensity_tel
+    diff = evaluation_mudensity - reference_mudensity
     largest_item = np.max(np.abs(diff))
 
     widths = [1, 1]
@@ -292,43 +313,43 @@ def plot_and_save_results(
     for ax in axs[4, 0:]:
         ax.remove()
 
-    axheader = fig.add_subplot(gs[0, :])
-    axhist = fig.add_subplot(gs[1, :])
-    axfooter = fig.add_subplot(gs[4, :])
+    ax_header = fig.add_subplot(gs[0, :])
+    ax_hist = fig.add_subplot(gs[1, :])
+    ax_footer = fig.add_subplot(gs[4, :])
 
-    axheader.axis("off")
-    axfooter.axis("off")
+    ax_header.axis("off")
+    ax_footer.axis("off")
 
-    axheader.text(0, 0, header_text, ha="left", wrap=True, fontsize=30)
-    axfooter.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
+    ax_header.text(0, 0, header_text, ha="left", wrap=True, fontsize=30)
+    ax_footer.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
 
     plt.sca(axs[2, 0])
-    pymedphys.mudensity.display(GRID, mudensity_tel)
-    axs[2, 0].set_title("Monaco Plan MU Density")
+    pymedphys.mudensity.display(GRID, reference_mudensity)
+    axs[2, 0].set_title("Reference MU Density")
 
     plt.sca(axs[2, 1])
-    pymedphys.mudensity.display(GRID, mudensity_icom)
-    axs[2, 1].set_title("Recorded iCOM MU Density")
+    pymedphys.mudensity.display(GRID, evaluation_mudensity)
+    axs[2, 1].set_title("Evaluation MU Density")
 
     plt.sca(axs[3, 0])
     pymedphys.mudensity.display(
         GRID, diff, cmap="seismic", vmin=-largest_item, vmax=largest_item
     )
-    plt.title("iCOM - Monaco")
+    plt.title("Evaluation - Reference")
 
     plt.sca(axs[3, 1])
     pymedphys.mudensity.display(GRID, gamma, cmap="coolwarm", vmin=0, vmax=2)
     plt.title(
         "Local Gamma | "
-        f"{GAMMA_OPTIONS['dose_percent_threshold']}%/"
-        f"{GAMMA_OPTIONS['distance_mm_threshold']}mm"
+        f"{gamma_options['dose_percent_threshold']}%/"
+        f"{gamma_options['distance_mm_threshold']}mm"
     )
 
-    plt.sca(axhist)
+    plt.sca(ax_hist)
     plot_gamma_hist(
         gamma,
-        GAMMA_OPTIONS["dose_percent_threshold"],
-        GAMMA_OPTIONS["distance_mm_threshold"],
+        gamma_options["dose_percent_threshold"],
+        gamma_options["distance_mm_threshold"],
     )
 
     return fig
@@ -344,35 +365,12 @@ def calculate_batch_mudensity(deliveries):
     return mudensity
 
 
-def run_calculation(
-    patient_id,
-    selected_monaco_plans,
-    selected_icom_deliveries,
-    monaco_directory,
-    escan_directory,
-):
-    st.write("## Output")
+def run_calculation(reference_results, evaluation_results):
+    st.write("Calculating Reference MU Density...")
+    reference_mudensity = calculate_batch_mudensity(reference_results["deliveries"])
 
-    st.write("### Monaco plan paths", [str(path) for path in tel_paths])
-
-    st.write("### iCOM log file paths", [str(path) for path in icom_paths])
-
-    icom_streams = []
-
-    for icom_path in icom_paths:
-        with lzma.open(icom_path, "r") as f:
-            icom_streams += [f.read()]
-
-    st.write("### Loading Data")
-    deliveries_tel = deliveries_from_tel(tel_paths)
-    deliveries_icom = deliveries_from_icom(icom_streams)
-
-    st.write("### Beginning calculation")
-    st.write("Calculating Monaco MU Density...")
-    mudensity_tel = calculate_batch_mudensity(deliveries_tel)
-
-    st.write("Calculating iCOM MU Density...")
-    mudensity_icom = calculate_batch_mudensity(deliveries_icom)
+    st.write("Calculating Evaluation MU Density...")
+    evaluation_mudensity = calculate_batch_mudensity(evaluation_results["deliveries"])
 
     st.write("Calculating Gamma...")
     gamma = pymedphys.gamma(
@@ -428,10 +426,4 @@ def run_calculation(
 
 
 if st.button("Run Calculation"):
-    run_calculation(
-        patient_id,
-        selected_monaco_plans,
-        selected_icom_deliveries,
-        monaco_directory,
-        escan_directory,
-    )
+    run_calculation(reference_results, evaluation_results)
