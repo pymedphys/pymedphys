@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import pymedphys
 import streamlit as st
 
+
 """
 # MU Density comparison tool
 
@@ -23,25 +24,51 @@ Tool to compare the MU Density between planned and delivery.
 """
 ## Selection of data to compare
 """
-data_type_options = [
-    "Monaco tel.1 filepath",
-    "DICOM RTPlan file upload",
-    "iCOM stream timestamp",
-    "Linac Backup `.trf` filepath",
-    "Mosaiq SQL query",
-]
+
+
+def monaco_input_method():
+    pass
+
+
+def dicom_input_method():
+    pass
+
+
+def icom_input_method():
+    pass
+
+
+def trf_input_method():
+    pass
+
+
+def mosaiq_input_method():
+    pass
+
+
+data_method_map = {
+    "Monaco tel.1 filepath": monaco_input_method,
+    "DICOM RTPlan file upload": dicom_input_method,
+    "iCOM stream timestamp": icom_input_method,
+    "Linac Backup `.trf` filepath": trf_input_method,
+    "Mosaiq SQL query": mosaiq_input_method,
+}
+
+data_method_options = list(data_method_map.keys())
 
 """
 ### Reference
 """
 
-reference_data_method = st.selectbox("Data Input Method", data_type_options, index=0)
+reference_data_method = st.selectbox("Data Input Method", data_method_options, index=0)
+reference_delivery = data_method_map[reference_data_method]()
 
 """
 ### Evaluation
 """
 
-evaluation_data_method = st.selectbox("Data Input Method", data_type_options, index=2)
+evaluation_data_method = st.selectbox("Data Input Method", data_method_options, index=2)
+evaluation_delivery = data_method_map[evaluation_data_method]()
 
 
 SITE_DIRECTORIES = {
