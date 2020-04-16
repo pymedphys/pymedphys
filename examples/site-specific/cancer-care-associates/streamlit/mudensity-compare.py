@@ -1,4 +1,4 @@
-# pylint: disable = pointless-statement, pointless-string-statement, no-value-for-parameter
+# pylint: disable = pointless-statement, pointless-string-statement, no-value-for-parameter, expression-not-assigned
 
 
 import lzma
@@ -44,6 +44,7 @@ SITE_DIRECTORIES = {
 site_options = list(SITE_DIRECTORIES.keys())
 
 DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
+DEFAULT_OUTPUT_DIRECTORY = r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence"
 
 
 """
@@ -51,9 +52,29 @@ DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
 """
 
 
+@st.cache
+def delivery_from_icom(icom_stream):
+    return pymedphys.Delivery.from_icom(icom_stream)
+
+
+@st.cache
+def delivery_from_tel(tel_path):
+    return pymedphys.Delivery.from_monaco(tel_path)
+
+
+@st.cache
+def cached_deliveries_loading(inputs, method_function):
+    deliveries = []
+
+    for an_input in inputs:
+        deliveries += [method_function(an_input)]
+
+    return deliveries
+
+
 def monaco_input_method(patient_id="", key_namespace="", **_):
     monaco_site = st.radio(
-        "Monaco Site", site_options, key=f"{key_namespace}_monaco_site"
+        "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
     )
     monaco_directory = SITE_DIRECTORIES[monaco_site]["monaco"]
     monaco_directory
@@ -70,11 +91,27 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
         f"{path.parent.name}/{path.name}" for path in all_tel_paths
     ]
 
-    st.multiselect(
-        "Monaco plan", plan_names_to_choose_from, key=f"{key_namespace}_monaco_plan"
+    selected_monaco_plans = st.multiselect(
+        "Monaco plan", plan_names_to_choose_from, key=f"{key_namespace}_monaco_plans"
     )
 
-    results = {"patient_id": patient_id}
+    tel_paths = []
+
+    for plan in selected_monaco_plans:
+        current_plans = list(monaco_directory.glob(f"*~{patient_id}/plan/{plan}"))
+        assert len(current_plans) == 1
+        tel_paths += current_plans
+
+    [str(path) for path in tel_paths]
+
+    deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
+
+    results = {
+        "patient_id": patient_id,
+        "selected_monaco_plans": selected_monaco_plans,
+        "tel_paths": tel_paths,
+        "deliveries": deliveries,
+    }
 
     return results
 
@@ -83,19 +120,41 @@ def dicom_input_method():
     pass
 
 
-def icom_input_method(patient_id="", icom_directory=DEFAULT_ICOM_DIRECTORY, **_):
+def icom_input_method(
+    patient_id="", icom_directory=DEFAULT_ICOM_DIRECTORY, key_namespace="", **_
+):
     icom_directory = pathlib.Path(
-        st.text_input("iCOM Patient Directory", str(icom_directory))
+        st.text_input("iCOM Patient Directory", str(icom_directory)),
+        key=f"{key_namespace}_icom_directory",
     )
-    str(icom_directory)
 
-    st.widgets
-
-    patient_id = st.text_input("Patient ID", patient_id).zfill(6)
+    patient_id = st.text_input(
+        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+    ).zfill(6)
     patient_id
 
     icom_deliveries = list(icom_directory.glob(f"{patient_id}_*/*.xz"))
     icom_deliveries = sorted(icom_deliveries)
+
+    icom_files_to_choose_from = [path.stem for path in icom_deliveries]
+
+    timestamps = list(
+        pd.to_datetime(icom_files_to_choose_from, format="%Y%m%d_%H%M%S").astype(str)
+    )
+
+    selected_icom_deliveries = st.multiselect(
+        "iCOM delivery timestamp", timestamps, key=f"{key_namespace}_icom_deliveries"
+    )
+
+    icom_paths = []
+
+    for icom_delivery in selected_icom_deliveries:
+        icom_filename = (
+            icom_delivery.replace(" ", "_").replace("-", "").replace(":", "")
+        )
+        icom_paths += list(icom_directory.glob(f"{patient_id}_*/{icom_filename}.xz"))
+
+    [str(path) for path in icom_paths]
 
     results = {"patient_id": patient_id, "icom_directory": str(icom_directory)}
 
@@ -125,22 +184,50 @@ data_method_options = list(data_method_map.keys())
 """
 
 reference_data_method = st.selectbox("Data Input Method", data_method_options, index=0)
-reference_results = data_method_map[reference_data_method](key_namespace="reference")
+reference_results = data_method_map[reference_data_method](
+    key_namespace="reference"
+)  # type: ignore
 
 """
 ### Evaluation
 """
 
 evaluation_data_method = st.selectbox("Data Input Method", data_method_options, index=2)
-evaluation_delivery = data_method_map[evaluation_data_method](
+evaluation_delivery = data_method_map[evaluation_data_method](  # type: ignore
     key_namespace="evaluation", **reference_results
 )
+
+
+"""
+## Output Locations
+"""
+
+"""
+### eSCAN Directory
+
+The location to save the produced pdf report.
+"""
+
+escan_site = st.radio("eScan Site", site_options)
+escan_directory = SITE_DIRECTORIES[escan_site]["escan"]
+escan_directory
+
+"""
+### Image record
+
+Path to save the image of the results for posterity
+"""
+
+output_directory = pathlib.Path(
+    st.text_input("png output directory", DEFAULT_OUTPUT_DIRECTORY)
+)
+output_directory
 
 
 ###### OLD CODE
 
 
-output_directory = pathlib.Path(r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence")
+output_directory = pathlib.Path()
 
 GRID = pymedphys.mudensity.grid()
 COORDS = (GRID["jaw"], GRID["mlc"])
@@ -157,17 +244,6 @@ GAMMA_OPTIONS = {
 ## Input / Output Directory Selections
 """
 
-
-escan_site = st.radio("eScan Site", site_options)
-escan_directory = SITE_DIRECTORIES[escan_site]["escan"]
-escan_directory
-
-
-icom_files_to_choose_from = [path.stem for path in icom_deliveries]
-
-timestamps = list(
-    pd.to_datetime(icom_files_to_choose_from, format="%Y%m%d_%H%M%S").astype(str)
-)
 
 delivery_timestamp = timestamps
 plan_names = plan_names_to_choose_from
@@ -259,26 +335,6 @@ def plot_and_save_results(
 
 
 @st.cache
-def deliveries_from_icom(icom_streams):
-    deliveries_icom = []
-
-    for icom_stream in icom_streams:
-        deliveries_icom += [pymedphys.Delivery.from_icom(icom_stream)]
-
-    return deliveries_icom
-
-
-@st.cache
-def deliveries_from_tel(tel_paths):
-    deliveries_tel = []
-
-    for tel_path in tel_paths:
-        deliveries_tel += [pymedphys.Delivery.from_monaco(tel_path)]
-
-    return deliveries_tel
-
-
-@st.cache
 def calculate_batch_mudensity(deliveries):
     mudensity = deliveries[0].mudensity()
 
@@ -297,22 +353,7 @@ def run_calculation(
 ):
     st.write("## Output")
 
-    tel_paths = []
-
-    for plan in selected_monaco_plans:
-        current_plans = list(monaco_directory.glob(f"*~{patient_id}/plan/{plan}"))
-        assert len(current_plans) == 1
-        tel_paths += current_plans
-
     st.write("### Monaco plan paths", [str(path) for path in tel_paths])
-
-    icom_paths = []
-
-    for icom_delivery in selected_icom_deliveries:
-        icom_filename = (
-            icom_delivery.replace(" ", "_").replace("-", "").replace(":", "")
-        )
-        icom_paths += list(icom_directory.glob(f"{patient_id}_*/{icom_filename}.xz"))
 
     st.write("### iCOM log file paths", [str(path) for path in icom_paths])
 
