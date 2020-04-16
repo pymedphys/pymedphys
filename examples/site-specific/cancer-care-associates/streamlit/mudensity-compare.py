@@ -14,28 +14,92 @@ import matplotlib.pyplot as plt
 import pymedphys
 import streamlit as st
 
-
 """
 # MU Density comparison tool
 
 Tool to compare the MU Density between planned and delivery.
 """
 
+SITE_DIRECTORIES = {
+    "rccc": {
+        "monaco": pathlib.Path(r"\\monacoda\FocalData\RCCC\1~Clinical"),
+        "escan": pathlib.Path(
+            r"\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs"
+        ),
+    },
+    "nbcc": {
+        "monaco": pathlib.Path(r"\\tunnel-nbcc-monaco\FOCALDATA\NBCCC\1~Clinical"),
+        "escan": pathlib.Path(r"\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs"),
+    },
+    "sash": {
+        "monaco": pathlib.Path(
+            r"\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData\SASH\1~Clinical"
+        ),
+        "escan": pathlib.Path(
+            r"\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs"
+        ),
+    },
+}
+
+site_options = list(SITE_DIRECTORIES.keys())
+
+DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
+
+
 """
 ## Selection of data to compare
 """
 
 
-def monaco_input_method():
-    pass
+def monaco_input_method(patient_id="", key_namespace="", **_):
+    monaco_site = st.radio(
+        "Monaco Site", site_options, key=f"{key_namespace}_monaco_site"
+    )
+    monaco_directory = SITE_DIRECTORIES[monaco_site]["monaco"]
+    monaco_directory
+
+    patient_id = st.text_input(
+        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+    ).zfill(6)
+    patient_id
+
+    all_tel_paths = list(monaco_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
+    all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
+
+    plan_names_to_choose_from = [
+        f"{path.parent.name}/{path.name}" for path in all_tel_paths
+    ]
+
+    st.multiselect(
+        "Monaco plan", plan_names_to_choose_from, key=f"{key_namespace}_monaco_plan"
+    )
+
+    results = {"patient_id": patient_id}
+
+    return results
 
 
 def dicom_input_method():
     pass
 
 
-def icom_input_method():
-    pass
+def icom_input_method(patient_id="", icom_directory=DEFAULT_ICOM_DIRECTORY, **_):
+    icom_directory = pathlib.Path(
+        st.text_input("iCOM Patient Directory", str(icom_directory))
+    )
+    str(icom_directory)
+
+    st.widgets
+
+    patient_id = st.text_input("Patient ID", patient_id).zfill(6)
+    patient_id
+
+    icom_deliveries = list(icom_directory.glob(f"{patient_id}_*/*.xz"))
+    icom_deliveries = sorted(icom_deliveries)
+
+    results = {"patient_id": patient_id, "icom_directory": str(icom_directory)}
+
+    return results
 
 
 def trf_input_method():
@@ -61,38 +125,21 @@ data_method_options = list(data_method_map.keys())
 """
 
 reference_data_method = st.selectbox("Data Input Method", data_method_options, index=0)
-reference_delivery = data_method_map[reference_data_method]()
+reference_results = data_method_map[reference_data_method](key_namespace="reference")
 
 """
 ### Evaluation
 """
 
 evaluation_data_method = st.selectbox("Data Input Method", data_method_options, index=2)
-evaluation_delivery = data_method_map[evaluation_data_method]()
+evaluation_delivery = data_method_map[evaluation_data_method](
+    key_namespace="evaluation", **reference_results
+)
 
 
-SITE_DIRECTORIES = {
-    "rccc": {
-        "monaco": pathlib.Path(r"\\monacoda\FocalData\RCCC\1~Clinical"),
-        "escan": pathlib.Path(
-            r"\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs"
-        ),
-    },
-    "nbcc": {
-        "monaco": pathlib.Path(r"\\tunnel-nbcc-monaco\FOCALDATA\NBCCC\1~Clinical"),
-        "escan": pathlib.Path(r"\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs"),
-    },
-    "sash": {
-        "monaco": pathlib.Path(
-            r"\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData\SASH\1~Clinical"
-        ),
-        "escan": pathlib.Path(
-            r"\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs"
-        ),
-    },
-}
+###### OLD CODE
 
-icom_directory = pathlib.Path(r"\\rccc-physicssvr\iComLogFiles\patients")
+
 output_directory = pathlib.Path(r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence")
 
 GRID = pymedphys.mudensity.grid()
@@ -110,29 +157,11 @@ GAMMA_OPTIONS = {
 ## Input / Output Directory Selections
 """
 
-site_options = list(SITE_DIRECTORIES.keys())
-
-monaco_site = st.radio("Monaco Site", site_options)
-monaco_directory = SITE_DIRECTORIES[monaco_site]["monaco"]
-monaco_directory
 
 escan_site = st.radio("eScan Site", site_options)
 escan_directory = SITE_DIRECTORIES[escan_site]["escan"]
 escan_directory
 
-patient_id = st.text_input("Patient ID").zfill(6)
-patient_id
-
-
-all_tel_paths = list(monaco_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
-all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
-
-plan_names_to_choose_from = [
-    f"{path.parent.name}/{path.name}" for path in all_tel_paths
-]
-
-icom_deliveries = list(icom_directory.glob(f"{patient_id}_*/*.xz"))
-icom_deliveries = sorted(icom_deliveries)
 
 icom_files_to_choose_from = [path.stem for path in icom_deliveries]
 
