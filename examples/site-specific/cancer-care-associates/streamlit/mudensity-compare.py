@@ -186,12 +186,13 @@ def icom_input_method(
         key=f"{key_namespace}_icom_deliveries",
     )
 
-    icom_paths = []
+    icom_filenames = [
+        path.replace(" ", "_").replace("-", "").replace(":", "")
+        for path in selected_icom_deliveries
+    ]
 
-    for icom_delivery in selected_icom_deliveries:
-        icom_filename = (
-            icom_delivery.replace(" ", "_").replace("-", "").replace(":", "")
-        )
+    icom_paths = []
+    for icom_filename in icom_filenames:
         icom_paths += list(icom_directory.glob(f"{patient_id}_*/{icom_filename}.xz"))
 
     [str(path) for path in icom_paths]
@@ -200,7 +201,7 @@ def icom_input_method(
     deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
 
     if selected_icom_deliveries:
-        identifier = f"iCOM ({', '.join(selected_icom_deliveries)})"
+        identifier = f"iCOM ({', '.join(icom_filenames)})"
     else:
         identifier = None
 
@@ -419,7 +420,11 @@ def run_calculation(
         png_output_directory.joinpath(f"{output_base_filename}.png").resolve()
     )
 
-    header_text = f"Patient ID: {patient_id}\n" f"Plan Name: {tel_path.parent.name}\n"
+    header_text = (
+        f"Patient ID: {patient_id}\n"
+        f"Reference: {reference_results['identifier']}\n"
+        f"Evaluation: {evaluation_results['identifier']}\n"
+    )
 
     reference_path_strings = "\n    ".join(
         [str(path) for path in reference_results["data_paths"]]
@@ -438,6 +443,7 @@ def run_calculation(
         reference_mudensity,
         evaluation_mudensity,
         gamma,
+        gamma_options,
         header_text=header_text,
         footer_text=footer_text,
     )
