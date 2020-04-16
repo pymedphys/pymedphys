@@ -57,6 +57,43 @@ DEFAULT_GAMMA_OPTIONS = {
     "max_gamma": 5,
 }
 
+st.sidebar.markdown(
+    """
+    ## Advanced Options
+
+    Enable advanced functionality by ticking the below.
+    """
+)
+advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
+
+if advanced_mode:
+
+    st.sidebar.markdown(
+        """
+        ### Gamma parameters
+        """
+    )
+    gamma_options = {
+        **DEFAULT_GAMMA_OPTIONS,
+        **{
+            "dose_percent_threshold": st.sidebar.number_input(
+                "MU Percent Threshold", DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"]
+            ),
+            "distance_mm_threshold": st.sidebar.number_input(
+                "Distance (mm) Threshold",
+                DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
+            ),
+            "local_gamma": st.sidebar.checkbox(
+                "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
+            ),
+            "max_gamma": st.sidebar.number_input(
+                "Max Gamma", DEFAULT_GAMMA_OPTIONS["max_gamma"]
+            ),
+        },
+    }
+else:
+    gamma_options = DEFAULT_GAMMA_OPTIONS
+
 
 """
 ## Selection of data to compare
@@ -106,12 +143,15 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
         "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
     )
     monaco_directory = SITE_DIRECTORIES[monaco_site]["monaco"]
-    monaco_directory
+
+    if advanced_mode:
+        monaco_directory
 
     patient_id = st.text_input(
         "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
     ).zfill(6)
-    patient_id
+    if advanced_mode:
+        patient_id
 
     all_tel_paths = list(monaco_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
     all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
@@ -133,7 +173,8 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
         assert len(current_plans) == 1
         tel_paths += current_plans
 
-    [str(path) for path in tel_paths]
+    if advanced_mode:
+        [str(path) for path in tel_paths]
 
     deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
 
@@ -161,15 +202,22 @@ def dicom_input_method():
 def icom_input_method(
     patient_id="", icom_directory=DEFAULT_ICOM_DIRECTORY, key_namespace="", **_
 ):
-    icom_directory = pathlib.Path(
-        st.text_input("iCOM Patient Directory", str(icom_directory)),
-        key=f"{key_namespace}_icom_directory",
-    )
+    if advanced_mode:
+        icom_directory = (
+            st.text_input(
+                "iCOM Patient Directory",
+                str(icom_directory),
+                key=f"{key_namespace}_icom_directory",
+            ),
+        )
 
-    patient_id = st.text_input(
-        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-    ).zfill(6)
-    patient_id
+    icom_directory = pathlib.Path(icom_directory)
+
+    if advanced_mode:
+        patient_id = st.text_input(
+            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+        ).zfill(6)
+        patient_id
 
     icom_deliveries = list(icom_directory.glob(f"{patient_id}_*/*.xz"))
     icom_deliveries = sorted(icom_deliveries)
@@ -195,7 +243,8 @@ def icom_input_method(
     for icom_filename in icom_filenames:
         icom_paths += list(icom_directory.glob(f"{patient_id}_*/{icom_filename}.xz"))
 
-    [str(path) for path in icom_paths]
+    if advanced_mode:
+        [str(path) for path in icom_paths]
 
     icom_streams = load_icom_streams(icom_paths)
     deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
@@ -235,11 +284,23 @@ data_method_map = {
 
 data_method_options = list(data_method_map.keys())
 
+DEFAULT_REFERENCE = "Monaco tel.1 filepath"
+DEFAULT_EVALUATION = "iCOM stream timestamp"
+
 """
 ### Reference
 """
 
-reference_data_method = st.selectbox("Data Input Method", data_method_options, index=0)
+if advanced_mode:
+    reference_data_method = st.selectbox(
+        "Data Input Method",
+        data_method_options,
+        index=data_method_options.index(DEFAULT_REFERENCE),
+    )
+
+else:
+    reference_data_method = DEFAULT_REFERENCE
+
 reference_results = data_method_map[reference_data_method](  # type: ignore
     key_namespace="reference"
 )
@@ -248,7 +309,15 @@ reference_results = data_method_map[reference_data_method](  # type: ignore
 ### Evaluation
 """
 
-evaluation_data_method = st.selectbox("Data Input Method", data_method_options, index=2)
+if advanced_mode:
+    evaluation_data_method = st.selectbox(
+        "Data Input Method",
+        data_method_options,
+        index=data_method_options.index(DEFAULT_EVALUATION),
+    )
+else:
+    evaluation_data_method = DEFAULT_EVALUATION
+
 evaluation_results = data_method_map[evaluation_data_method](  # type: ignore
     key_namespace="evaluation", **reference_results
 )
@@ -266,18 +335,24 @@ The location to save the produced pdf report.
 
 escan_site = st.radio("eScan Site", site_options)
 escan_directory = SITE_DIRECTORIES[escan_site]["escan"]
-escan_directory
 
-"""
-### Image record
+if advanced_mode:
+    escan_directory
 
-Path to save the image of the results for posterity
-"""
+if advanced_mode:
+    """
+    ### Image record
 
-png_output_directory = pathlib.Path(
-    st.text_input("png output directory", DEFAULT_PNG_OUTPUT_DIRECTORY)
-)
-png_output_directory
+    Path to save the image of the results for posterity
+    """
+
+    png_output_directory = pathlib.Path(
+        st.text_input("png output directory", DEFAULT_PNG_OUTPUT_DIRECTORY)
+    )
+    png_output_directory
+
+else:
+    png_output_directory = pathlib.Path(DEFAULT_PNG_OUTPUT_DIRECTORY)
 
 
 @st.cache
@@ -461,28 +536,6 @@ def run_calculation(
 """
 ## Calculation
 """
-
-if st.checkbox("Customise gamma parameters"):
-    gamma_options = {
-        **DEFAULT_GAMMA_OPTIONS,
-        **{
-            "dose_percent_threshold": st.number_input(
-                "MU Percent Threshold", DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"]
-            ),
-            "distance_mm_threshold": st.number_input(
-                "Distance (mm) Threshold",
-                DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
-            ),
-            "local_gamma": st.checkbox(
-                "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
-            ),
-            "max_gamma": st.number_input(
-                "Max Gamma", DEFAULT_GAMMA_OPTIONS["max_gamma"]
-            ),
-        },
-    }
-else:
-    gamma_options = DEFAULT_GAMMA_OPTIONS
 
 if st.button("Run Calculation"):
     run_calculation(
