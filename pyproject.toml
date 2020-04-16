@@ -91,6 +91,7 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
+streamlit = "^0.57.3"
 
 
 [tool.poetry.dev-dependencies]
