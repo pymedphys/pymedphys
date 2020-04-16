@@ -137,10 +137,17 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
 
     deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
 
+    if tel_paths:
+        plan_names = ", ".join([path.parent.name for path in tel_paths])
+        identifier = f"Monaco ({plan_names})"
+    else:
+        identifier = None
+
     results = {
         "patient_id": patient_id,
         "selected_monaco_plans": selected_monaco_plans,
         "data_paths": tel_paths,
+        "identifier": identifier,
         "deliveries": deliveries,
     }
 
@@ -192,11 +199,17 @@ def icom_input_method(
     icom_streams = load_icom_streams(icom_paths)
     deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
 
+    if selected_icom_deliveries:
+        identifier = f"iCOM ({', '.join(selected_icom_deliveries)})"
+    else:
+        identifier = None
+
     results = {
         "patient_id": patient_id,
         "icom_directory": str(icom_directory),
         "selected_icom_deliveries": selected_icom_deliveries,
         "data_paths": icom_paths,
+        "identifier": identifier,
         "deliveries": deliveries,
     }
 
@@ -235,7 +248,7 @@ reference_results = data_method_map[reference_data_method](  # type: ignore
 """
 
 evaluation_data_method = st.selectbox("Data Input Method", data_method_options, index=2)
-evaluation_delivery = data_method_map[evaluation_data_method](  # type: ignore
+evaluation_results = data_method_map[evaluation_data_method](  # type: ignore
     key_namespace="evaluation", **reference_results
 )
 
@@ -266,9 +279,7 @@ png_output_directory = pathlib.Path(
 png_output_directory
 
 
-###### OLD CODE
-
-
+@st.cache
 def to_tuple(array):
     return tuple(map(tuple, array))
 
@@ -365,7 +376,26 @@ def calculate_batch_mudensity(deliveries):
     return mudensity
 
 
-def run_calculation(reference_results, evaluation_results):
+@st.cache
+def calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options):
+    gamma = pymedphys.gamma(
+        COORDS,
+        to_tuple(reference_mudensity),
+        COORDS,
+        to_tuple(evaluation_mudensity),
+        **gamma_options,
+    )
+
+    return gamma
+
+
+def run_calculation(
+    reference_results,
+    evaluation_results,
+    gamma_options,
+    escan_directory,
+    png_output_directory,
+):
     st.write("Calculating Reference MU Density...")
     reference_mudensity = calculate_batch_mudensity(reference_results["deliveries"])
 
@@ -373,43 +403,40 @@ def run_calculation(reference_results, evaluation_results):
     evaluation_mudensity = calculate_batch_mudensity(evaluation_results["deliveries"])
 
     st.write("Calculating Gamma...")
-    gamma = pymedphys.gamma(
-        COORDS,
-        to_tuple(mudensity_tel),
-        COORDS,
-        to_tuple(mudensity_icom),
-        **GAMMA_OPTIONS,
-    )
+    gamma = calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options)
 
-    tel_path = tel_paths[0]
+    patient_id = reference_results["patient_id"]
 
     st.write("Creating figure...")
-    results_dir = output_directory.joinpath(
-        patient_id, tel_path.parent.name, icom_path.stem
+    output_base_filename = (
+        f"{patient_id} {reference_results['identifier']} vs "
+        f"{evaluation_results['identifier']}"
     )
-    results_dir.mkdir(exist_ok=True, parents=True)
+    pdf_filepath = str(
+        escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
+    )
+    png_filepath = str(
+        png_output_directory.joinpath(f"{output_base_filename}.png").resolve()
+    )
 
     header_text = f"Patient ID: {patient_id}\n" f"Plan Name: {tel_path.parent.name}\n"
 
-    icom_path_strings = "\n    ".join([str(icom_path) for icom_path in icom_paths])
-    tel_path_strings = "\n    ".join([str(tel_path) for tel_path in tel_paths])
-
-    footer_text = (
-        f"tel.1 file path(s): {tel_path_strings}\n"
-        f"icom file path(s): {icom_path_strings}\n"
-        f"results path: {str(results_dir)}"
+    reference_path_strings = "\n    ".join(
+        [str(path) for path in reference_results["data_paths"]]
+    )
+    evaluation_path_strings = "\n    ".join(
+        [str(path) for path in evaluation_results["data_paths"]]
     )
 
-    png_filepath = str(results_dir.joinpath("result.png").resolve())
-    pdf_filepath = str(
-        escan_directory.joinpath(
-            f"{patient_id}-{selected_monaco_plans[0].replace('/','-')}.pdf"
-        ).resolve()
+    footer_text = (
+        f"reference path(s): {reference_path_strings}\n"
+        f"evaluation path(s): {evaluation_path_strings}\n"
+        f"png record: {png_filepath}"
     )
 
     fig = plot_and_save_results(
-        mudensity_tel,
-        mudensity_icom,
+        reference_mudensity,
+        evaluation_mudensity,
         gamma,
         header_text=header_text,
         footer_text=footer_text,
@@ -425,5 +452,37 @@ def run_calculation(reference_results, evaluation_results):
     st.pyplot()
 
 
+"""
+## Calculation
+"""
+
+if st.checkbox("Customise gamma parameters"):
+    gamma_options = {
+        **DEFAULT_GAMMA_OPTIONS,
+        **{
+            "dose_percent_threshold": st.number_input(
+                "MU Percent Threshold", DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"]
+            ),
+            "distance_mm_threshold": st.number_input(
+                "Distance (mm) Threshold",
+                DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
+            ),
+            "local_gamma": st.checkbox(
+                "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
+            ),
+            "max_gamma": st.number_input(
+                "Max Gamma", DEFAULT_GAMMA_OPTIONS["max_gamma"]
+            ),
+        },
+    }
+else:
+    gamma_options = DEFAULT_GAMMA_OPTIONS
+
 if st.button("Run Calculation"):
-    run_calculation(reference_results, evaluation_results)
+    run_calculation(
+        reference_results,
+        evaluation_results,
+        gamma_options,
+        escan_directory,
+        png_output_directory,
+    )
