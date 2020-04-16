@@ -160,17 +160,27 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
         f"{path.parent.name}/{path.name}" for path in all_tel_paths
     ]
 
-    selected_monaco_plans = st.multiselect(
-        "Select Monaco plan(s)",
+    """
+    Select the Monaco plan that correspond to a patient's single fraction.
+    If a patient has multiple fraction types (such as a plan with a boost)
+    then these fraction types need to be analysed separately.
+    """
+
+    selected_monaco_plan = st.radio(
+        "Select a Monaco plan",
         plan_names_to_choose_from,
         key=f"{key_namespace}_monaco_plans",
     )
 
     tel_paths = []
 
-    for plan in selected_monaco_plans:
-        current_plans = list(monaco_directory.glob(f"*~{patient_id}/plan/{plan}"))
-        assert len(current_plans) == 1
+    if selected_monaco_plan is not None:
+        current_plans = list(
+            monaco_directory.glob(f"*~{patient_id}/plan/{selected_monaco_plan}")
+        )
+        if len(current_plans) != 1:
+            st.write("Plans found:", current_plans)
+            raise ValueError("Exactly one plan should have been found")
         tel_paths += current_plans
 
     if advanced_mode:
@@ -186,7 +196,7 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
 
     results = {
         "patient_id": patient_id,
-        "selected_monaco_plans": selected_monaco_plans,
+        "selected_monaco_plan": selected_monaco_plan,
         "data_paths": tel_paths,
         "identifier": identifier,
         "deliveries": deliveries,
@@ -226,9 +236,26 @@ def icom_input_method(
         pd.to_datetime(icom_files_to_choose_from, format="%Y%m%d_%H%M%S").astype(str)
     )
 
+    """
+    Here you need to select the timestamps that correspond to a single
+    fraction of the plan selected above. Most of the time
+    you will only need to select one timestamp here, however in some
+    cases you may need to select multiple timestamps.
+
+    This can occur if for example a single fraction was delivered in separate
+    beams due to either a beam interupt, or the fraction being spread
+    over multiple energies
+    """
+
+    if len(timestamps) == 1:
+        default_timestamp = timestamps[0]
+    else:
+        default_timestamp = []
+
     selected_icom_deliveries = st.multiselect(
         "Select iCOM delivery timestamp(s)",
         timestamps,
+        default=default_timestamp,
         key=f"{key_namespace}_icom_deliveries",
     )
 
