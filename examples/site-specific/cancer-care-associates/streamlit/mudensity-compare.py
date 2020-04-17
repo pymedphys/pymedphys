@@ -59,7 +59,31 @@ SITE_DIRECTORIES = {
     },
 }
 
+DICOM_EXPORT_LOCATIONS = {
+    site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
+    for site, directories in SITE_DIRECTORIES.items()
+}
+
+
+class InputRequired(ValueError):
+    pass
+
+
+class WrongFileType(ValueError):
+    pass
+
+
+class NoFilesFound(ValueError):
+    pass
+
+
+class NoRecordedDeliveriesFound(ValueError):
+    pass
+
+
 site_options = list(SITE_DIRECTORIES.keys())
+
+DICOM_PLAN_UID = "1.2.840.10008.5.1.4.1.1.481.5"
 
 DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
 DEFAULT_PNG_OUTPUT_DIRECTORY = r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence"
@@ -224,27 +248,117 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
     return results
 
 
-def dicom_input_method(key_namespace=""):
-    dicom_plan_bytes = st.file_uploader(
-        "DICOM RT Plan File", key=f"{key_namespace}_dicom_plan_uploader"
+def pydicom_hash_funcion(dicom):
+    return hash(dicom.SOPInstanceUID)
+
+
+@st.cache(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_funcion})
+def load_dicom_file_if_plan(filepath):
+    dcm = pydicom.read_file(str(filepath), force=True, stop_before_pixels=True)
+    if dcm.SOPClassUID == DICOM_PLAN_UID:
+        return dcm
+
+    return None
+
+
+def dicom_input_method(  # pylint: disable = too-many-return-statements
+    key_namespace="", patient_id="", **_
+):
+    FILE_UPLOAD = "File upload"
+    MONACO_SEARCH = "Search Monaco file export location"
+
+    import_method = st.radio(
+        "DICOM import method",
+        [FILE_UPLOAD, MONACO_SEARCH],
+        key=f"{key_namespace}_dicom_file_import_method",
     )
 
-    if dicom_plan_bytes is not None:
-        dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
+    if import_method == FILE_UPLOAD:
+        dicom_plan_bytes = st.file_uploader(
+            "Upload DICOM RT Plan File", key=f"{key_namespace}_dicom_plan_uploader"
+        )
 
-        patient_id = str(dicom_plan.PatientID)
-        "Patient ID: ", patient_id
+        if dicom_plan_bytes is None:
+            return {}
 
-        patient_name = str(dicom_plan.PatientName)
-        "Patient Name: ", patient_name
+        try:
+            dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
+        except:
+            st.write(WrongFileType("Does not appear to be a DICOM file"))
+            return {}
 
-        rt_plan_name = str(dicom_plan.RTPlanName)
-        "Plan Name: ", rt_plan_name
+        if dicom_plan.SOPClassUID != DICOM_PLAN_UID:
+            st.write(WrongFileType("The DICOM type needs to be an RT DICOM Plan file"))
+            return {}
 
+        data_paths = ["Uploaded DICOM file"]
+
+    if import_method == MONACO_SEARCH:
+        monaco_site = st.radio(
+            "Monaco Export Location", site_options, key=f"{key_namespace}_monaco_site"
+        )
+        monaco_export_directory = DICOM_EXPORT_LOCATIONS[monaco_site]
+        monaco_export_directory
+
+        patient_id = st.text_input(
+            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+        ).zfill(6)
+
+        found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}*.dcm"))
+
+        dicom_plans = {}
+
+        for path in found_dicom_files:
+            dcm = load_dicom_file_if_plan(path)
+            if dcm is not None:
+                dicom_plans[path.name] = dcm
+
+        dicom_plan_options = list(dicom_plans.keys())
+
+        if len(dicom_plan_options) == 0:
+            st.write(
+                NoFilesFound(
+                    f"No exported DICOM RT plans found for Patient ID {patient_id} "
+                    f"within the directory {monaco_export_directory}"
+                )
+            )
+            return {}
+
+        if len(dicom_plan_options) == 1:
+            selected_plan = dicom_plan_options[0]
+        else:
+            selected_plan = st.radio(
+                "Select DICOM Plan",
+                dicom_plan_options,
+                key=f"{key_namespace}_select_monaco_export_plan",
+            )
+
+        "DICOM file being used: ", selected_plan
+
+        dicom_plan = dicom_plans[selected_plan]
+        data_paths = [monaco_export_directory.joinpath(selected_plan)]
+
+    patient_id = str(dicom_plan.PatientID)
+    "Patient ID: ", patient_id
+
+    patient_name = str(dicom_plan.PatientName)
+    "Patient Name: ", patient_name
+
+    rt_plan_name = str(dicom_plan.RTPlanName)
+    "Plan Name: ", rt_plan_name
+
+    try:
         deliveries_all_fractions = pymedphys.Delivery.from_dicom(
             dicom_plan, fraction_number="all"
         )
+    except AttributeError:
+        st.write(WrongFileType("Does not appear to be a photon DICOM plan"))
+        return {}
 
+    fractions = list(deliveries_all_fractions.keys())
+    if len(fractions) == 1:
+        delivery = deliveries_all_fractions[fractions[0]]
+    else:
         fraction_choices = {}
 
         for fraction, delivery in deliveries_all_fractions.items():
@@ -253,23 +367,25 @@ def dicom_input_method(key_namespace=""):
             fraction_choices[f"Perscription {fraction} with {rounded_mu} MU"] = fraction
 
         fraction_selection = st.radio(
-            "Select relevant perscription", list(fraction_choices.keys())
+            "Select relevant perscription",
+            list(fraction_choices.keys()),
+            key=f"{key_namespace}_dicom_perscription_chooser",
         )
 
         fraction_number = fraction_choices[fraction_selection]
         delivery = deliveries_all_fractions[fraction_number]
 
-        deliveries = [delivery]
+    deliveries = [delivery]
 
-        identifier = f"DICOM ({rt_plan_name})"
+    identifier = f"DICOM ({rt_plan_name})"
 
-        return {
-            "patient_id": patient_id,
-            "patient_name": patient_name,
-            "data_paths": ["Uploaded DICOM file"],
-            "identifier": identifier,
-            "deliveries": deliveries,
-        }
+    return {
+        "patient_id": patient_id,
+        "patient_name": patient_name,
+        "data_paths": data_paths,
+        "identifier": identifier,
+        "deliveries": deliveries,
+    }
 
     return {}
 
@@ -312,6 +428,14 @@ def icom_input_method(
     over multiple energies
     """
 
+    if len(timestamps) == 0:
+        st.write(
+            NoRecordedDeliveriesFound(
+                f"No iCOM delivery record found for patient ID {patient_id}"
+            )
+        )
+        return {}
+
     if len(timestamps) == 1:
         default_timestamp = timestamps[0]
     else:
@@ -344,6 +468,9 @@ def icom_input_method(
     else:
         identifier = None
 
+    if len(deliveries) == 0:
+        st.write(InputRequired("Please select at least one iCOM delivery"))
+
     results = {
         "patient_id": patient_id,
         "icom_directory": str(icom_directory),
@@ -356,11 +483,11 @@ def icom_input_method(
     return results
 
 
-def trf_input_method():
+def trf_input_method(**_):
     pass
 
 
-def mosaiq_input_method():
+def mosaiq_input_method(**_):
     pass
 
 
