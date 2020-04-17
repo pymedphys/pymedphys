@@ -1,18 +1,36 @@
-# pylint: disable = pointless-statement, pointless-string-statement, no-value-for-parameter, expression-not-assigned
+# Copyright (C) 2020 Cancer Care Associates
 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# pylint: disable = pointless-statement, pointless-string-statement
+# pylint: disable = no-value-for-parameter, expression-not-assigned
 
 import lzma
 import os
 import pathlib
 import time
 
+import streamlit as st
+
 import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
 
+import pydicom
+
 import pymedphys
-import streamlit as st
 
 """
 # MU Density comparison tool
@@ -206,8 +224,54 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
     return results
 
 
-def dicom_input_method():
-    pass
+def dicom_input_method(key_namespace=""):
+    dicom_plan_bytes = st.file_uploader(
+        "DICOM RT Plan File", key=f"{key_namespace}_dicom_plan_uploader"
+    )
+
+    if dicom_plan_bytes is not None:
+        dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
+
+        patient_id = str(dicom_plan.PatientID)
+        "Patient ID: ", patient_id
+
+        patient_name = str(dicom_plan.PatientName)
+        "Patient Name: ", patient_name
+
+        rt_plan_name = str(dicom_plan.RTPlanName)
+        "Plan Name: ", rt_plan_name
+
+        deliveries_all_fractions = pymedphys.Delivery.from_dicom(
+            dicom_plan, fraction_number="all"
+        )
+
+        fraction_choices = {}
+
+        for fraction, delivery in deliveries_all_fractions.items():
+            rounded_mu = round(delivery.mu[-1], 1)
+
+            fraction_choices[f"Perscription {fraction} with {rounded_mu} MU"] = fraction
+
+        fraction_selection = st.radio(
+            "Select relevant perscription", list(fraction_choices.keys())
+        )
+
+        fraction_number = fraction_choices[fraction_selection]
+        delivery = deliveries_all_fractions[fraction_number]
+
+        deliveries = [delivery]
+
+        identifier = f"DICOM ({rt_plan_name})"
+
+        return {
+            "patient_id": patient_id,
+            "patient_name": patient_name,
+            "data_paths": ["Uploaded DICOM file"],
+            "identifier": identifier,
+            "deliveries": deliveries,
+        }
+
+    return {}
 
 
 def icom_input_method(
@@ -521,8 +585,14 @@ def run_calculation(
         png_output_directory.joinpath(f"{output_base_filename}.png").resolve()
     )
 
+    try:
+        patient_name_text = f"Patient Name: {reference_results['patient_name']}\n"
+    except KeyError:
+        patient_name_text = ""
+
     header_text = (
         f"Patient ID: {patient_id}\n"
+        f"{patient_name_text}"
         f"Reference: {reference_results['identifier']}\n"
         f"Evaluation: {evaluation_results['identifier']}\n"
     )
