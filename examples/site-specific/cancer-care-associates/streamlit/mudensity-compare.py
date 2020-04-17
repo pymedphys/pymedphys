@@ -77,17 +77,18 @@ if advanced_mode:
         **DEFAULT_GAMMA_OPTIONS,
         **{
             "dose_percent_threshold": st.sidebar.number_input(
-                "MU Percent Threshold", DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"]
+                "MU Percent Threshold",
+                value=DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"],
             ),
             "distance_mm_threshold": st.sidebar.number_input(
                 "Distance (mm) Threshold",
-                DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
+                value=DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
             ),
             "local_gamma": st.sidebar.checkbox(
                 "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
             ),
             "max_gamma": st.sidebar.number_input(
-                "Max Gamma", DEFAULT_GAMMA_OPTIONS["max_gamma"]
+                "Max Gamma", value=DEFAULT_GAMMA_OPTIONS["max_gamma"]
             ),
         },
     }
