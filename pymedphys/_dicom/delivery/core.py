@@ -48,6 +48,10 @@ def load_dicom_file(filepath):
 class DeliveryDicom(DeliveryBase):
     @classmethod
     def from_dicom(cls, dicom_dataset, fraction_number=None):
+
+        if str(fraction_number).lower() == "all":
+            return cls._load_all_fractions(dicom_dataset)
+
         if fraction_number is None:
             fractions = dicom_dataset.FractionGroupSequence
             fraction_numbers = [fraction.FractionGroupNumber for fraction in fractions]
