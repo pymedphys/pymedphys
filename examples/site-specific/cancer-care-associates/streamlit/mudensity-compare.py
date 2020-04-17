@@ -59,7 +59,14 @@ SITE_DIRECTORIES = {
     },
 }
 
+
+class InputRequired(ValueError):
+    pass
+
+
 site_options = list(SITE_DIRECTORIES.keys())
+
+DICOM_PLAN_UID = "1.2.840.10008.5.1.4.1.1.481.5"
 
 DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
 DEFAULT_PNG_OUTPUT_DIRECTORY = r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence"
@@ -230,7 +237,13 @@ def dicom_input_method(key_namespace=""):
     )
 
     if dicom_plan_bytes is not None:
-        dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
+        try:
+            dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
+        except:
+            raise ValueError("Does not appear to be a DICOM file")
+
+        if dicom_plan.SOPClassUID != DICOM_PLAN_UID:
+            raise ValueError("The DICOM type needs to be an RT DICOM Plan file")
 
         patient_id = str(dicom_plan.PatientID)
         "Patient ID: ", patient_id
@@ -245,19 +258,27 @@ def dicom_input_method(key_namespace=""):
             dicom_plan, fraction_number="all"
         )
 
-        fraction_choices = {}
+        fractions = list(deliveries_all_fractions.keys())
+        if len(fractions) == 1:
+            delivery = deliveries_all_fractions[fractions[0]]
+        else:
+            fraction_choices = {}
 
-        for fraction, delivery in deliveries_all_fractions.items():
-            rounded_mu = round(delivery.mu[-1], 1)
+            for fraction, delivery in deliveries_all_fractions.items():
+                rounded_mu = round(delivery.mu[-1], 1)
 
-            fraction_choices[f"Perscription {fraction} with {rounded_mu} MU"] = fraction
+                fraction_choices[
+                    f"Perscription {fraction} with {rounded_mu} MU"
+                ] = fraction
 
-        fraction_selection = st.radio(
-            "Select relevant perscription", list(fraction_choices.keys())
-        )
+            fraction_selection = st.radio(
+                "Select relevant perscription",
+                list(fraction_choices.keys()),
+                key=f"{key_namespace}_dicom_perscription_chooser",
+            )
 
-        fraction_number = fraction_choices[fraction_selection]
-        delivery = deliveries_all_fractions[fraction_number]
+            fraction_number = fraction_choices[fraction_selection]
+            delivery = deliveries_all_fractions[fraction_number]
 
         deliveries = [delivery]
 
@@ -343,6 +364,9 @@ def icom_input_method(
         identifier = f"iCOM ({', '.join(icom_filenames)})"
     else:
         identifier = None
+
+    if len(deliveries) == 0:
+        st.write(InputRequired("Please select at least one iCOM delivery"))
 
     results = {
         "patient_id": patient_id,
