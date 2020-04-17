@@ -64,6 +64,10 @@ class InputRequired(ValueError):
     pass
 
 
+class WrongFileType(ValueError):
+    pass
+
+
 site_options = list(SITE_DIRECTORIES.keys())
 
 DICOM_PLAN_UID = "1.2.840.10008.5.1.4.1.1.481.5"
@@ -240,10 +244,12 @@ def dicom_input_method(key_namespace=""):
         try:
             dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
         except:
-            raise ValueError("Does not appear to be a DICOM file")
+            st.write(WrongFileType("Does not appear to be a DICOM file"))
+            return {}
 
         if dicom_plan.SOPClassUID != DICOM_PLAN_UID:
-            raise ValueError("The DICOM type needs to be an RT DICOM Plan file")
+            st.write(WrongFileType("The DICOM type needs to be an RT DICOM Plan file"))
+            return {}
 
         patient_id = str(dicom_plan.PatientID)
         "Patient ID: ", patient_id
