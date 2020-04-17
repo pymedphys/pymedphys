@@ -59,12 +59,21 @@ SITE_DIRECTORIES = {
     },
 }
 
+DICOM_EXPORT_LOCATIONS = {
+    site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
+    for site, directories in SITE_DIRECTORIES.items()
+}
+
 
 class InputRequired(ValueError):
     pass
 
 
 class WrongFileType(ValueError):
+    pass
+
+
+class NoFilesFound(ValueError):
     pass
 
 
@@ -235,12 +244,24 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
     return results
 
 
-def dicom_input_method(key_namespace=""):
-    dicom_plan_bytes = st.file_uploader(
-        "DICOM RT Plan File", key=f"{key_namespace}_dicom_plan_uploader"
+def dicom_input_method(key_namespace="", patient_id="", **_):
+    FILE_UPLOAD = "File upload"
+    MONACO_SEARCH = "Search Monaco file export location"
+
+    import_method = st.radio(
+        "DICOM import method",
+        [FILE_UPLOAD, MONACO_SEARCH],
+        key=f"{key_namespace}_dicom_file_import_method",
     )
 
-    if dicom_plan_bytes is not None:
+    if import_method == FILE_UPLOAD:
+        dicom_plan_bytes = st.file_uploader(
+            "Upload DICOM RT Plan File", key=f"{key_namespace}_dicom_plan_uploader"
+        )
+
+        if dicom_plan_bytes is None:
+            return {}
+
         try:
             dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
         except:
@@ -251,52 +272,97 @@ def dicom_input_method(key_namespace=""):
             st.write(WrongFileType("The DICOM type needs to be an RT DICOM Plan file"))
             return {}
 
-        patient_id = str(dicom_plan.PatientID)
-        "Patient ID: ", patient_id
+        data_paths = ["Uploaded DICOM file"]
 
-        patient_name = str(dicom_plan.PatientName)
-        "Patient Name: ", patient_name
-
-        rt_plan_name = str(dicom_plan.RTPlanName)
-        "Plan Name: ", rt_plan_name
-
-        deliveries_all_fractions = pymedphys.Delivery.from_dicom(
-            dicom_plan, fraction_number="all"
+    if import_method == MONACO_SEARCH:
+        monaco_site = st.radio(
+            "Monaco Export Location", site_options, key=f"{key_namespace}_monaco_site"
         )
+        monaco_export_directory = DICOM_EXPORT_LOCATIONS[monaco_site]
+        monaco_export_directory
 
-        fractions = list(deliveries_all_fractions.keys())
-        if len(fractions) == 1:
-            delivery = deliveries_all_fractions[fractions[0]]
+        patient_id = st.text_input(
+            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+        ).zfill(6)
+
+        found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}*.dcm"))
+
+        dicom_plans = {}
+
+        for path in found_dicom_files:
+            dcm = pydicom.read_file(str(path), force=True, stop_before_pixels=True)
+            if dcm.SOPClassUID == DICOM_PLAN_UID:
+                dicom_plans[path.name] = dcm
+
+        dicom_plan_options = list(dicom_plans.keys())
+
+        if len(dicom_plan_options) == 0:
+            st.write(
+                NoFilesFound(
+                    f"No exported DICOM RT plans found for Patient ID {patient_id} "
+                    f"within the directory {monaco_export_directory}"
+                )
+            )
+            return {}
+
+        if len(dicom_plan_options) == 1:
+            selected_plan = dicom_plan_options[0]
         else:
-            fraction_choices = {}
-
-            for fraction, delivery in deliveries_all_fractions.items():
-                rounded_mu = round(delivery.mu[-1], 1)
-
-                fraction_choices[
-                    f"Perscription {fraction} with {rounded_mu} MU"
-                ] = fraction
-
-            fraction_selection = st.radio(
-                "Select relevant perscription",
-                list(fraction_choices.keys()),
-                key=f"{key_namespace}_dicom_perscription_chooser",
+            selected_plan = st.radio(
+                "Select DICOM Plan",
+                dicom_plan_options,
+                key=f"{key_namespace}_select_monaco_export_plan",
             )
 
-            fraction_number = fraction_choices[fraction_selection]
-            delivery = deliveries_all_fractions[fraction_number]
+        "DICOM file being used: ", selected_plan
 
-        deliveries = [delivery]
+        dicom_plan = dicom_plans[selected_plan]
+        data_paths = [monaco_export_directory.joinpath(selected_plan)]
 
-        identifier = f"DICOM ({rt_plan_name})"
+    patient_id = str(dicom_plan.PatientID)
+    "Patient ID: ", patient_id
 
-        return {
-            "patient_id": patient_id,
-            "patient_name": patient_name,
-            "data_paths": ["Uploaded DICOM file"],
-            "identifier": identifier,
-            "deliveries": deliveries,
-        }
+    patient_name = str(dicom_plan.PatientName)
+    "Patient Name: ", patient_name
+
+    rt_plan_name = str(dicom_plan.RTPlanName)
+    "Plan Name: ", rt_plan_name
+
+    deliveries_all_fractions = pymedphys.Delivery.from_dicom(
+        dicom_plan, fraction_number="all"
+    )
+
+    fractions = list(deliveries_all_fractions.keys())
+    if len(fractions) == 1:
+        delivery = deliveries_all_fractions[fractions[0]]
+    else:
+        fraction_choices = {}
+
+        for fraction, delivery in deliveries_all_fractions.items():
+            rounded_mu = round(delivery.mu[-1], 1)
+
+            fraction_choices[f"Perscription {fraction} with {rounded_mu} MU"] = fraction
+
+        fraction_selection = st.radio(
+            "Select relevant perscription",
+            list(fraction_choices.keys()),
+            key=f"{key_namespace}_dicom_perscription_chooser",
+        )
+
+        fraction_number = fraction_choices[fraction_selection]
+        delivery = deliveries_all_fractions[fraction_number]
+
+    deliveries = [delivery]
+
+    identifier = f"DICOM ({rt_plan_name})"
+
+    return {
+        "patient_id": patient_id,
+        "patient_name": patient_name,
+        "data_paths": data_paths,
+        "identifier": identifier,
+        "deliveries": deliveries,
+    }
 
     return {}
 
@@ -386,11 +452,11 @@ def icom_input_method(
     return results
 
 
-def trf_input_method():
+def trf_input_method(**_):
     pass
 
 
-def mosaiq_input_method():
+def mosaiq_input_method(**_):
     pass
 
 
