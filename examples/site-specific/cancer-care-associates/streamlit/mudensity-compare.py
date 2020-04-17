@@ -77,6 +77,10 @@ class NoFilesFound(ValueError):
     pass
 
 
+class NoRecordedDeliveriesFound(ValueError):
+    pass
+
+
 site_options = list(SITE_DIRECTORIES.keys())
 
 DICOM_PLAN_UID = "1.2.840.10008.5.1.4.1.1.481.5"
@@ -244,7 +248,22 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
     return results
 
 
-def dicom_input_method(key_namespace="", patient_id="", **_):
+def pydicom_hash_funcion(dicom):
+    return hash(dicom.SOPInstanceUID)
+
+
+@st.cache(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_funcion})
+def load_dicom_file_if_plan(filepath):
+    dcm = pydicom.read_file(str(filepath), force=True, stop_before_pixels=True)
+    if dcm.SOPClassUID == DICOM_PLAN_UID:
+        return dcm
+
+    return None
+
+
+def dicom_input_method(  # pylint: disable = too-many-return-statements
+    key_namespace="", patient_id="", **_
+):
     FILE_UPLOAD = "File upload"
     MONACO_SEARCH = "Search Monaco file export location"
 
@@ -290,8 +309,8 @@ def dicom_input_method(key_namespace="", patient_id="", **_):
         dicom_plans = {}
 
         for path in found_dicom_files:
-            dcm = pydicom.read_file(str(path), force=True, stop_before_pixels=True)
-            if dcm.SOPClassUID == DICOM_PLAN_UID:
+            dcm = load_dicom_file_if_plan(path)
+            if dcm is not None:
                 dicom_plans[path.name] = dcm
 
         dicom_plan_options = list(dicom_plans.keys())
@@ -328,9 +347,13 @@ def dicom_input_method(key_namespace="", patient_id="", **_):
     rt_plan_name = str(dicom_plan.RTPlanName)
     "Plan Name: ", rt_plan_name
 
-    deliveries_all_fractions = pymedphys.Delivery.from_dicom(
-        dicom_plan, fraction_number="all"
-    )
+    try:
+        deliveries_all_fractions = pymedphys.Delivery.from_dicom(
+            dicom_plan, fraction_number="all"
+        )
+    except AttributeError:
+        st.write(WrongFileType("Does not appear to be a photon DICOM plan"))
+        return {}
 
     fractions = list(deliveries_all_fractions.keys())
     if len(fractions) == 1:
@@ -404,6 +427,14 @@ def icom_input_method(
     beams due to either a beam interupt, or the fraction being spread
     over multiple energies
     """
+
+    if len(timestamps) == 0:
+        st.write(
+            NoRecordedDeliveriesFound(
+                f"No iCOM delivery record found for patient ID {patient_id}"
+            )
+        )
+        return {}
 
     if len(timestamps) == 1:
         default_timestamp = timestamps[0]
