@@ -20,6 +20,7 @@ import lzma
 import os
 import pathlib
 import time
+from datetime import datetime
 
 import streamlit as st
 
@@ -31,6 +32,7 @@ import matplotlib.pyplot as plt
 import pydicom
 
 import pymedphys
+import timeago
 
 """
 # MU Density comparison tool
@@ -58,6 +60,18 @@ SITE_DIRECTORIES = {
         ),
     },
 }
+
+LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {
+    "2619": r"\\rccc-physicssvr\iComLogFiles\live\192.168.100.200",
+    "2694": r"\\rccc-physicssvr\iComLogFiles\live\192.168.100.201",
+    "4299": r"\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live\192.168.17.40",
+    "9002": r"\\tunnel-sash-physics-server\SASH-DataExchange\icom\live\192.168.40.10",
+}
+
+LINAC_IDS = list(LINAC_ICOM_LIVE_STREAM_DIRECTORIES.keys())
+LINAC_INDEXED_BACKUPS_DIRECTORY = (
+    r"\\rccc-physicssvr\LinacLogFiles\diagnostics\already_indexed"
+)
 
 DICOM_EXPORT_LOCATIONS = {
     site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
@@ -99,9 +113,10 @@ DEFAULT_GAMMA_OPTIONS = {
     "max_gamma": 5,
 }
 
+
 st.sidebar.markdown(
     """
-    ## Advanced Options
+    # Advanced options
 
     Enable advanced functionality by ticking the below.
     """
@@ -112,7 +127,7 @@ if advanced_mode:
 
     st.sidebar.markdown(
         """
-        ### Gamma parameters
+        # Gamma parameters
         """
     )
     gamma_options = {
@@ -136,6 +151,53 @@ if advanced_mode:
     }
 else:
     gamma_options = DEFAULT_GAMMA_OPTIONS
+
+
+st.sidebar.markdown(
+    """
+    # Status indicators
+    """
+)
+
+
+def get_most_recent_file_and_print(linac_id, filepaths):
+    most_recent = os.path.getmtime(max(filepaths, key=os.path.getmtime))
+    now = datetime.now()
+
+    human_readable = timeago.format(most_recent, now)
+
+    st.sidebar.markdown(f"{linac_id}: `{human_readable}`")
+
+
+def icom_status(linac_id, icom_directory):
+    filepaths = pathlib.Path(icom_directory).glob("*.txt")
+    get_most_recent_file_and_print(linac_id, filepaths)
+
+
+def trf_status(linac_id, backup_directory):
+    directory = pathlib.Path(backup_directory).joinpath(linac_id)
+    filepaths = directory.glob("*.zip")
+    get_most_recent_file_and_print(linac_id, filepaths)
+
+
+if st.sidebar.button("Check status of iCOM and backups"):
+    st.sidebar.markdown(
+        """
+        ## Last recorded iCOM stream
+        """
+    )
+
+    for linac_id, icom_directory in LINAC_ICOM_LIVE_STREAM_DIRECTORIES.items():
+        icom_status(linac_id, icom_directory)
+
+    st.sidebar.markdown(
+        """
+        ## Last indexed backup
+        """
+    )
+
+    for linac_id in LINAC_IDS:
+        trf_status(linac_id, LINAC_INDEXED_BACKUPS_DIRECTORY)
 
 
 """
@@ -283,7 +345,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         try:
             dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
-        except:
+        except:  # pylint: disable = bare-except
             st.write(WrongFileType("Does not appear to be a DICOM file"))
             return {}
 
@@ -386,8 +448,6 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         "identifier": identifier,
         "deliveries": deliveries,
     }
-
-    return {}
 
 
 def icom_input_method(
@@ -504,41 +564,67 @@ data_method_options = list(data_method_map.keys())
 DEFAULT_REFERENCE = "Monaco tel.1 filepath"
 DEFAULT_EVALUATION = "iCOM stream timestamp"
 
+
+def display_deliveries(deliveries):
+    if not deliveries:
+        return
+
+    data = []
+    for delivery in deliveries:
+        num_control_points = len(delivery.mu)
+
+        if num_control_points != 0:
+            total_mu = delivery.mu[-1]
+        else:
+            total_mu = 0
+
+        data.append([total_mu, num_control_points])
+
+    columns = ["MU", "Number of Data Points"]
+    df = pd.DataFrame(data=data, columns=columns)
+    df
+
+    "Total MU: ", round(df["MU"].sum(), 1)
+
+
 """
 ### Reference
 """
 
-if advanced_mode:
-    reference_data_method = st.selectbox(
-        "Data Input Method",
-        data_method_options,
-        index=data_method_options.index(DEFAULT_REFERENCE),
+
+def get_input_data_ui(default_method, key_namespace, **previous_results):
+    if advanced_mode:
+        data_method = st.selectbox(
+            "Data Input Method",
+            data_method_options,
+            index=data_method_options.index(default_method),
+        )
+
+    else:
+        data_method = default_method
+
+    results = data_method_map[data_method](  # type: ignore
+        key_namespace=key_namespace, **previous_results
     )
 
-else:
-    reference_data_method = DEFAULT_REFERENCE
+    try:
+        display_deliveries(results["deliveries"])
+    except KeyError:
+        pass
 
-reference_results = data_method_map[reference_data_method](  # type: ignore
-    key_namespace="reference"
-)
+    return results
+
+
+reference_results = get_input_data_ui(DEFAULT_REFERENCE, "reference")
+
 
 """
 ### Evaluation
 """
 
-if advanced_mode:
-    evaluation_data_method = st.selectbox(
-        "Data Input Method",
-        data_method_options,
-        index=data_method_options.index(DEFAULT_EVALUATION),
-    )
-else:
-    evaluation_data_method = DEFAULT_EVALUATION
-
-evaluation_results = data_method_map[evaluation_data_method](  # type: ignore
-    key_namespace="evaluation", **reference_results
+evaluation_results = get_input_data_ui(
+    DEFAULT_EVALUATION, "evaluation", **reference_results
 )
-
 
 """
 ## Output Locations
