@@ -20,6 +20,7 @@ import lzma
 import os
 import pathlib
 import time
+from datetime import datetime
 
 import streamlit as st
 
@@ -31,6 +32,7 @@ import matplotlib.pyplot as plt
 import pydicom
 
 import pymedphys
+import timeago
 
 """
 # MU Density comparison tool
@@ -58,6 +60,18 @@ SITE_DIRECTORIES = {
         ),
     },
 }
+
+LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {
+    "2619": r"\\rccc-physicssvr\iComLogFiles\live\192.168.100.200",
+    "2694": r"\\rccc-physicssvr\iComLogFiles\live\192.168.100.201",
+    "4299": r"\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live\192.168.17.40",
+    "9002": r"\\tunnel-sash-physics-server\SASH-DataExchange\icom\live\192.168.40.10",
+}
+
+LINAC_IDS = list(LINAC_ICOM_LIVE_STREAM_DIRECTORIES.keys())
+LINAC_INDEXED_BACKUPS_DIRECTORY = (
+    r"\\rccc-physicssvr\LinacLogFiles\diagnostics\already_indexed"
+)
 
 DICOM_EXPORT_LOCATIONS = {
     site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
@@ -102,7 +116,7 @@ DEFAULT_GAMMA_OPTIONS = {
 
 st.sidebar.markdown(
     """
-    # Advanced Options
+    # Advanced options
 
     Enable advanced functionality by ticking the below.
     """
@@ -113,7 +127,7 @@ if advanced_mode:
 
     st.sidebar.markdown(
         """
-        ## Gamma parameters
+        # Gamma parameters
         """
     )
     gamma_options = {
@@ -137,6 +151,53 @@ if advanced_mode:
     }
 else:
     gamma_options = DEFAULT_GAMMA_OPTIONS
+
+
+st.sidebar.markdown(
+    """
+    # Status indicators
+    """
+)
+
+
+def get_most_recent_file_and_print(linac_id, filepaths):
+    most_recent = os.path.getmtime(max(filepaths, key=os.path.getmtime))
+    now = datetime.now()
+
+    human_readable = timeago.format(most_recent, now)
+
+    st.sidebar.markdown(f"{linac_id}: `{human_readable}`")
+
+
+def icom_status(linac_id, icom_directory):
+    filepaths = pathlib.Path(icom_directory).glob("*.txt")
+    get_most_recent_file_and_print(linac_id, filepaths)
+
+
+def trf_status(linac_id, backup_directory):
+    directory = pathlib.Path(backup_directory).joinpath(linac_id)
+    filepaths = directory.glob("*.zip")
+    get_most_recent_file_and_print(linac_id, filepaths)
+
+
+if st.sidebar.button("Check status of iCOM and backups"):
+    st.sidebar.markdown(
+        """
+        ## Last recorded iCOM stream
+        """
+    )
+
+    for linac_id, icom_directory in LINAC_ICOM_LIVE_STREAM_DIRECTORIES.items():
+        icom_status(linac_id, icom_directory)
+
+    st.sidebar.markdown(
+        """
+        ## Last indexed backup
+        """
+    )
+
+    for linac_id in LINAC_IDS:
+        trf_status(linac_id, LINAC_INDEXED_BACKUPS_DIRECTORY)
 
 
 """
