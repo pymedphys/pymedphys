@@ -504,6 +504,29 @@ data_method_options = list(data_method_map.keys())
 DEFAULT_REFERENCE = "Monaco tel.1 filepath"
 DEFAULT_EVALUATION = "iCOM stream timestamp"
 
+
+def display_deliveries(deliveries):
+    if not deliveries:
+        return
+
+    data = []
+    for delivery in deliveries:
+        num_control_points = len(delivery.mu)
+
+        if num_control_points != 0:
+            total_mu = delivery.mu[-1]
+        else:
+            total_mu = 0
+
+        data.append([total_mu, num_control_points])
+
+    columns = ["MU", "Number of Data Points"]
+    df = pd.DataFrame(data=data, columns=columns)
+    df
+
+    "Total MU: ", round(df["MU"].sum(), 1)
+
+
 """
 ### Reference
 """
@@ -522,6 +545,8 @@ reference_results = data_method_map[reference_data_method](  # type: ignore
     key_namespace="reference"
 )
 
+display_deliveries(reference_results["deliveries"])
+
 """
 ### Evaluation
 """
@@ -538,6 +563,8 @@ else:
 evaluation_results = data_method_map[evaluation_data_method](  # type: ignore
     key_namespace="evaluation", **reference_results
 )
+
+display_deliveries(evaluation_results["deliveries"])
 
 
 """
