@@ -99,9 +99,10 @@ DEFAULT_GAMMA_OPTIONS = {
     "max_gamma": 5,
 }
 
+
 st.sidebar.markdown(
     """
-    ## Advanced Options
+    # Advanced Options
 
     Enable advanced functionality by ticking the below.
     """
@@ -112,7 +113,7 @@ if advanced_mode:
 
     st.sidebar.markdown(
         """
-        ### Gamma parameters
+        ## Gamma parameters
         """
     )
     gamma_options = {
@@ -283,7 +284,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         try:
             dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
-        except:
+        except:  # pylint: disable = bare-except
             st.write(WrongFileType("Does not appear to be a DICOM file"))
             return {}
 
@@ -386,8 +387,6 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         "identifier": identifier,
         "deliveries": deliveries,
     }
-
-    return {}
 
 
 def icom_input_method(
@@ -531,41 +530,40 @@ def display_deliveries(deliveries):
 ### Reference
 """
 
-if advanced_mode:
-    reference_data_method = st.selectbox(
-        "Data Input Method",
-        data_method_options,
-        index=data_method_options.index(DEFAULT_REFERENCE),
+
+def get_input_data_ui(default_method, key_namespace, **previous_results):
+    if advanced_mode:
+        data_method = st.selectbox(
+            "Data Input Method",
+            data_method_options,
+            index=data_method_options.index(default_method),
+        )
+
+    else:
+        data_method = default_method
+
+    results = data_method_map[data_method](  # type: ignore
+        key_namespace=key_namespace, **previous_results
     )
 
-else:
-    reference_data_method = DEFAULT_REFERENCE
+    try:
+        display_deliveries(results["deliveries"])
+    except KeyError:
+        pass
 
-reference_results = data_method_map[reference_data_method](  # type: ignore
-    key_namespace="reference"
-)
+    return results
 
-display_deliveries(reference_results["deliveries"])
+
+reference_results = get_input_data_ui(DEFAULT_REFERENCE, "reference")
+
 
 """
 ### Evaluation
 """
 
-if advanced_mode:
-    evaluation_data_method = st.selectbox(
-        "Data Input Method",
-        data_method_options,
-        index=data_method_options.index(DEFAULT_EVALUATION),
-    )
-else:
-    evaluation_data_method = DEFAULT_EVALUATION
-
-evaluation_results = data_method_map[evaluation_data_method](  # type: ignore
-    key_namespace="evaluation", **reference_results
+evaluation_results = get_input_data_ui(
+    DEFAULT_EVALUATION, "evaluation", **reference_results
 )
-
-display_deliveries(evaluation_results["deliveries"])
-
 
 """
 ## Output Locations
