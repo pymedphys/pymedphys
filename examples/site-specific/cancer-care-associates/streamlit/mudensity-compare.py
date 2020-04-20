@@ -160,7 +160,7 @@ st.sidebar.markdown(
 )
 
 
-def get_most_recent_file_and_print(linac_id, filepaths):
+def get_most_recent_file_and_print(linac_id, filepaths):  # pylint: redefined-outer-name
     most_recent = os.path.getmtime(max(filepaths, key=os.path.getmtime))
     now = datetime.now()
 
@@ -169,12 +169,12 @@ def get_most_recent_file_and_print(linac_id, filepaths):
     st.sidebar.markdown(f"{linac_id}: `{human_readable}`")
 
 
-def icom_status(linac_id, icom_directory):
+def icom_status(linac_id, icom_directory):  # pylint: redefined-outer-name
     filepaths = pathlib.Path(icom_directory).glob("*.txt")
     get_most_recent_file_and_print(linac_id, filepaths)
 
 
-def trf_status(linac_id, backup_directory):
+def trf_status(linac_id, backup_directory):  # pylint: redefined-outer-name
     directory = pathlib.Path(backup_directory).joinpath(linac_id)
     filepaths = directory.glob("*.zip")
     get_most_recent_file_and_print(linac_id, filepaths)
@@ -254,9 +254,11 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
 
     patient_id = st.text_input(
         "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-    ).zfill(6)
+    )
     if advanced_mode:
         patient_id
+    elif patient_id == "":
+        raise st.ScriptRunner.StopException()
 
     all_tel_paths = list(monaco_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
     all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
@@ -364,7 +366,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         patient_id = st.text_input(
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-        ).zfill(6)
+        )
 
         found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}*.dcm"))
 
@@ -465,7 +467,7 @@ def icom_input_method(
     if advanced_mode:
         patient_id = st.text_input(
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-        ).zfill(6)
+        )
         patient_id
 
     icom_deliveries = list(icom_directory.glob(f"{patient_id}_*/*.xz"))
