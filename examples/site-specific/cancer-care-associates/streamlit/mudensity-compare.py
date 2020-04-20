@@ -123,34 +123,41 @@ st.sidebar.markdown(
 )
 advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-if advanced_mode:
 
-    st.sidebar.markdown(
-        """
-        # Gamma parameters
-        """
-    )
-    gamma_options = {
-        **DEFAULT_GAMMA_OPTIONS,
-        **{
-            "dose_percent_threshold": st.sidebar.number_input(
-                "MU Percent Threshold",
-                value=DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"],
-            ),
-            "distance_mm_threshold": st.sidebar.number_input(
-                "Distance (mm) Threshold",
-                value=DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
-            ),
-            "local_gamma": st.sidebar.checkbox(
-                "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
-            ),
-            "max_gamma": st.sidebar.number_input(
-                "Max Gamma", value=DEFAULT_GAMMA_OPTIONS["max_gamma"]
-            ),
-        },
-    }
-else:
-    gamma_options = DEFAULT_GAMMA_OPTIONS
+def get_gamma_options():
+    if advanced_mode:
+
+        st.sidebar.markdown(
+            """
+            # Gamma parameters
+            """
+        )
+        result = {
+            **DEFAULT_GAMMA_OPTIONS,
+            **{
+                "dose_percent_threshold": st.sidebar.number_input(
+                    "MU Percent Threshold",
+                    value=DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"],
+                ),
+                "distance_mm_threshold": st.sidebar.number_input(
+                    "Distance (mm) Threshold",
+                    value=DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
+                ),
+                "local_gamma": st.sidebar.checkbox(
+                    "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
+                ),
+                "max_gamma": st.sidebar.number_input(
+                    "Max Gamma", value=DEFAULT_GAMMA_OPTIONS["max_gamma"]
+                ),
+            },
+        }
+    else:
+        result = DEFAULT_GAMMA_OPTIONS
+
+    return result
+
+
+gamma_options = get_gamma_options()
 
 
 st.sidebar.markdown(
@@ -160,7 +167,7 @@ st.sidebar.markdown(
 )
 
 
-def get_most_recent_file_and_print(linac_id, filepaths):  # pylint: redefined-outer-name
+def get_most_recent_file_and_print(linac_id, filepaths):
     most_recent = datetime.fromtimestamp(
         os.path.getmtime(max(filepaths, key=os.path.getmtime))
     )
@@ -174,40 +181,43 @@ def get_most_recent_file_and_print(linac_id, filepaths):  # pylint: redefined-ou
     st.sidebar.markdown(f"{linac_id}: `{human_readable}`")
 
 
-def icom_status(linac_id, icom_directory):  # pylint: redefined-outer-name
+def icom_status(linac_id, icom_directory):
     filepaths = pathlib.Path(icom_directory).glob("*.txt")
     get_most_recent_file_and_print(linac_id, filepaths)
 
 
-def trf_status(linac_id, backup_directory):  # pylint: redefined-outer-name
+def trf_status(linac_id, backup_directory):
     directory = pathlib.Path(backup_directory).joinpath(linac_id)
     filepaths = directory.glob("*.zip")
     get_most_recent_file_and_print(linac_id, filepaths)
 
 
-if st.sidebar.button("Check status of iCOM and backups"):
-    st.sidebar.markdown(
-        """
-        ## Last recorded iCOM stream
-        """
-    )
+def show_status_indicators():
+    if st.sidebar.button("Check status of iCOM and backups"):
+        st.sidebar.markdown(
+            """
+            ## Last recorded iCOM stream
+            """
+        )
 
-    for linac_id, icom_directory in LINAC_ICOM_LIVE_STREAM_DIRECTORIES.items():
-        icom_status(linac_id, icom_directory)
+        for linac_id, icom_directory in LINAC_ICOM_LIVE_STREAM_DIRECTORIES.items():
+            icom_status(linac_id, icom_directory)
 
-    st.sidebar.markdown(
-        """
-        ## Last indexed backup
-        """
-    )
+        st.sidebar.markdown(
+            """
+            ## Last indexed backup
+            """
+        )
 
-    for linac_id in LINAC_IDS:
-        trf_status(linac_id, LINAC_INDEXED_BACKUPS_DIRECTORY)
+        for linac_id in LINAC_IDS:
+            trf_status(linac_id, LINAC_INDEXED_BACKUPS_DIRECTORY)
+
+    """
+    ## Selection of data to compare
+    """
 
 
-"""
-## Selection of data to compare
-"""
+show_status_indicators()
 
 
 @st.cache
