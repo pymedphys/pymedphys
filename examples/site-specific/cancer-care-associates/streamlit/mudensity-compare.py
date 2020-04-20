@@ -42,7 +42,7 @@ Tool to compare the MU Density between planned and delivery.
 
 SITE_DIRECTORIES = {
     "rccc": {
-        "monaco": pathlib.Path(r"\\monacoda\FocalData\RCCC\1~Clinical"),
+        "monaco": pathlib.Path(r"\\rccc-monacoda\FocalData\RCCC\1~Clinical"),
         "escan": pathlib.Path(
             r"\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs"
         ),
