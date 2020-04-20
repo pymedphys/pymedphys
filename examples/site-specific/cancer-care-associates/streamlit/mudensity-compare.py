@@ -257,9 +257,8 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
     )
     if advanced_mode:
         patient_id
-
-    if patient_id == "":
-        return {}
+    elif patient_id == "":
+        raise st.ScriptRunner.StopException()
 
     all_tel_paths = list(monaco_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
     all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
@@ -492,12 +491,11 @@ def icom_input_method(
     """
 
     if len(timestamps) == 0:
-        if patient_id != "":
-            st.write(
-                NoRecordedDeliveriesFound(
-                    f"No iCOM delivery record found for patient ID {patient_id}"
-                )
+        st.write(
+            NoRecordedDeliveriesFound(
+                f"No iCOM delivery record found for patient ID {patient_id}"
             )
+        )
         return {}
 
     if len(timestamps) == 1:
