@@ -161,8 +161,13 @@ st.sidebar.markdown(
 
 
 def get_most_recent_file_and_print(linac_id, filepaths):  # pylint: redefined-outer-name
-    most_recent = os.path.getmtime(max(filepaths, key=os.path.getmtime))
+    most_recent = datetime.fromtimestamp(
+        os.path.getmtime(max(filepaths, key=os.path.getmtime))
+    )
     now = datetime.now()
+
+    if most_recent > now:
+        most_recent = now
 
     human_readable = timeago.format(most_recent, now)
 
