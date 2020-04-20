@@ -16,6 +16,7 @@
 # pylint: disable = pointless-statement, pointless-string-statement
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 
+import json
 import lzma
 import os
 import pathlib
@@ -33,6 +34,7 @@ import pydicom
 
 import pymedphys
 import timeago
+from pymedphys.labs.managelogfiles import index as pmp_index
 
 """
 # MU Density comparison tool
@@ -69,14 +71,25 @@ LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {
 }
 
 LINAC_IDS = list(LINAC_ICOM_LIVE_STREAM_DIRECTORIES.keys())
-LINAC_INDEXED_BACKUPS_DIRECTORY = (
-    r"\\rccc-physicssvr\LinacLogFiles\diagnostics\already_indexed"
+
+TRF_LOGFILE_ROOT_DIR = pathlib.Path(r"\\rccc-physicssvr\LinacLogFiles")
+LINAC_INDEXED_BACKUPS_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath(
+    r"diagnostics\already_indexed"
 )
+INDEXED_TRF_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath("indexed")
 
 DICOM_EXPORT_LOCATIONS = {
     site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
     for site, directories in SITE_DIRECTORIES.items()
 }
+
+MOSAIQ_DETAILS = {
+    "rccc": {"timezone": "Australia/Sydney", "server": "msqsql:1433"},
+    "nbcc": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:31433"},
+    "sash": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:1433"},
+}
+
+MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
 
 
 class InputRequired(ValueError):
@@ -560,12 +573,76 @@ def icom_input_method(
     return results
 
 
-def trf_input_method(**_):
-    pass
+# @st.cache
+# def get_trf_index():
+#     with open(TRF_LOGFILE_ROOT_DIR.joinpath("index.json"), "r") as f:
+#         index = json.load(f)
+
+#     return index
 
 
-def mosaiq_input_method(**_):
-    pass
+@st.cache
+def read_trf(filepath):
+    return pymedphys.read_trf(filepath)
+
+
+@st.cache
+def get_logfile_mosaiq_info(headers):
+    centres = {MACHINE_CENTRE_MAP[machine_id] for machine_id in headers["machine"]}
+    mosaiq_servers = [MOSAIQ_DETAILS[centre]["server"] for centre in centres]
+
+    details = []
+    with pymedphys.mosaiq.connect(mosaiq_servers) as cursors:
+        for _, header in headers.iterrows():
+            machine_id = header["machine"]
+            centre = MACHINE_CENTRE_MAP[machine_id]
+            mosaiq_timezone = MOSAIQ_DETAILS[centre]["timezone"]
+            server = MOSAIQ_DETAILS[centre]["server"]
+            cursor = cursors[server]
+
+            field_label = header["field_label"]
+            field_name = header["field_name"]
+            utc_date = header["date"]
+
+            current_details = pmp_index.get_logfile_mosaiq_info(
+                cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
+            )
+            current_details = pd.Series(data=current_details)
+
+            details.append(current_details)
+
+    details = pd.concat(details, axis=1).T
+
+    return details
+
+
+def trf_input_method(patient_id="", key_namespace="", **_):
+    patient_id = st.text_input(
+        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+    )
+    patient_id
+
+    filepaths = list(INDEXED_TRF_DIRECTORY.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
+
+    headers = []
+    tables = []
+    for path in filepaths:
+        header, table = read_trf(path)
+        headers.append(header)
+        tables.append(table)
+
+    headers = pd.concat(headers)
+
+    results = get_logfile_mosaiq_info(headers)
+    results
+
+    st.write([str(path) for path in filepaths])
+
+    return {}
+
+
+def mosaiq_input_method(key_namespace="", **_):
+    return {}
 
 
 data_method_map = {

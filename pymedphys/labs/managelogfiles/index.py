@@ -22,6 +22,7 @@ import pathlib
 import traceback
 from glob import glob
 
+import attr
 from pymedphys._imports import attr
 
 from pymedphys._mosaiq.connect import multi_mosaiq_connect
@@ -114,6 +115,17 @@ def rename_and_handle_fileexists(old_filepath, new_filepath):
             os.remove(old_filepath)
         else:
             raise FileExistsError("File already exists and the hash does not match")
+
+
+def get_logfile_mosaiq_info(
+    cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name, buffer=240
+):
+    mosaiq_string_time, _ = date_convert(utc_date, mosaiq_timezone)
+    delivery_details = get_mosaiq_delivery_details(
+        cursor, machine_id, mosaiq_string_time, field_label, field_name, buffer=buffer
+    )
+
+    return attr.asdict(delivery_details)
 
 
 # TODO Split this function up into smaller functions for easier reuse.
