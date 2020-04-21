@@ -91,6 +91,15 @@ MOSAIQ_DETAILS = {
 }
 
 MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
+LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
+MAX_LEAF_GAP = 410
+GRID_RESOLUTION = 2
+GRID = pymedphys.mudensity.grid(
+    max_leaf_gap=MAX_LEAF_GAP,
+    grid_resolution=GRID_RESOLUTION,
+    leaf_pair_widths=LEAF_PAIR_WIDTHS,
+)
+COORDS = (GRID["jaw"], GRID["mlc"])
 
 
 class InputRequired(ValueError):
@@ -116,8 +125,6 @@ DICOM_PLAN_UID = "1.2.840.10008.5.1.4.1.1.481.5"
 DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
 DEFAULT_PNG_OUTPUT_DIRECTORY = r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence"
 
-GRID = pymedphys.mudensity.grid()
-COORDS = (GRID["jaw"], GRID["mlc"])
 
 DEFAULT_GAMMA_OPTIONS = {
     "dose_percent_threshold": 2,
@@ -930,12 +937,20 @@ def plot_and_save_results(
     return fig
 
 
-@st.cache
+@st.cache(hash_funcs={pymedphys.Delivery: hash})
+def calculate_mudensity(delivery):
+    return delivery.mudensity(
+        max_leaf_gap=MAX_LEAF_GAP,
+        grid_resolution=GRID_RESOLUTION,
+        leaf_pair_widths=LEAF_PAIR_WIDTHS,
+    )
+
+
 def calculate_batch_mudensity(deliveries):
-    mudensity = deliveries[0].mudensity()
+    mudensity = calculate_mudensity(deliveries[0])
 
     for delivery in deliveries[1::]:
-        mudensity = mudensity + delivery.mudensity()
+        mudensity = mudensity + calculate_mudensity(delivery)
 
     return mudensity
 
