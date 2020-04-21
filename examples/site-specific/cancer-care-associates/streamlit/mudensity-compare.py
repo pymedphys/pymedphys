@@ -883,7 +883,7 @@ def plot_and_save_results(
     heights = [0.5, 1, 1, 1, 0.4]
     gs_kw = dict(width_ratios=widths, height_ratios=heights)
 
-    fig, axs = plt.subplots(5, 2, figsize=(10, 15), gridspec_kw=gs_kw)
+    fig, axs = plt.subplots(5, 2, figsize=(10, 16), gridspec_kw=gs_kw)
     gs = axs[0, 0].get_gridspec()
 
     for ax in axs[0, 0:]:
@@ -1035,7 +1035,7 @@ def run_calculation(
     fig.tight_layout()
 
     st.write("Saving figure...")
-    plt.savefig(png_filepath, dpi=300)
+    plt.savefig(png_filepath, dpi=100)
     os.system(f'magick convert "{png_filepath}" "{pdf_filepath}"')
 
     st.write("## Results")
