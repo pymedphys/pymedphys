@@ -237,22 +237,23 @@ def show_status_indicators():
 show_status_indicators()
 
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def delivery_from_icom(icom_stream):
     return pymedphys.Delivery.from_icom(icom_stream)
 
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def delivery_from_tel(tel_path):
     return pymedphys.Delivery.from_monaco(tel_path)
 
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def delivery_from_trf(pandas_table):
-    return pymedphys.Delivery._from_pandas(pandas_table)
+    return pymedphys.Delivery._from_pandas(  # pylint: disable = protected-access
+        pandas_table
+    )
 
 
-@st.cache
 def cached_deliveries_loading(inputs, method_function):
     deliveries = []
 
