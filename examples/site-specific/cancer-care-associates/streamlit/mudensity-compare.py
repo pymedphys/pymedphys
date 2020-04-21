@@ -104,6 +104,10 @@ class NoFilesFound(ValueError):
     pass
 
 
+class ConflictingPatientName(ValueError):
+    pass
+
+
 class NoRecordedDeliveriesFound(ValueError):
     pass
 
@@ -241,6 +245,11 @@ def delivery_from_icom(icom_stream):
 @st.cache
 def delivery_from_tel(tel_path):
     return pymedphys.Delivery.from_monaco(tel_path)
+
+
+@st.cache
+def delivery_from_trf(pandas_table):
+    return pymedphys.Delivery._from_pandas(pandas_table)
 
 
 @st.cache
@@ -531,6 +540,8 @@ def icom_input_method(
     else:
         default_timestamp = []
 
+    timestamps = sorted(timestamps, reverse=True)
+
     selected_icom_deliveries = st.multiselect(
         "Select iCOM delivery timestamp(s)",
         timestamps,
@@ -571,14 +582,6 @@ def icom_input_method(
     }
 
     return results
-
-
-# @st.cache
-# def get_trf_index():
-#     with open(TRF_LOGFILE_ROOT_DIR.joinpath("index.json"), "r") as f:
-#         index = json.load(f)
-
-#     return index
 
 
 @st.cache
@@ -624,21 +627,79 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     filepaths = list(INDEXED_TRF_DIRECTORY.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
 
+    raw_timestamps = ["_".join(path.parent.name.split("_")[0:2]) for path in filepaths]
+    timestamps = list(
+        pd.to_datetime(raw_timestamps, format="%Y-%m-%d_%H%M%S").astype(str)
+    )
+
+    timestamp_filepath_map = dict(zip(timestamps, filepaths))
+
+    timestamps = sorted(timestamps, reverse=True)
+    # timestamps
+
+    selected_trf_deliveries = st.multiselect(
+        "Select TRF delivery timestamp(s)",
+        timestamps,
+        key=f"{key_namespace}_trf_deliveries",
+    )
+
+    """
+    #### TRF filepath(s)
+    """
+
+    selected_filepaths = [
+        timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
+    ]
+    [str(path) for path in selected_filepaths]
+
+    """
+    #### Log file header(s)
+    """
+
     headers = []
     tables = []
-    for path in filepaths:
+    for path in selected_filepaths:
         header, table = read_trf(path)
         headers.append(header)
         tables.append(table)
 
     headers = pd.concat(headers)
+    headers.reset_index(inplace=True)
+    headers.drop("index", axis=1, inplace=True)
 
-    results = get_logfile_mosaiq_info(headers)
-    results
+    headers
 
-    st.write([str(path) for path in filepaths])
+    """
+    #### Corresponding Mosaiq SQL Details
+    """
 
-    return {}
+    mosaiq_details = get_logfile_mosaiq_info(headers)
+    mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
+
+    mosaiq_details
+
+    last_name = set(mosaiq_details["last_name"])
+    first_name = set(mosaiq_details["first_name"])
+
+    if len(last_name) > 1 or len(first_name) > 1:
+        st.write(ConflictingPatientName("More than one Patient Name found"))
+        patient_name = None
+    else:
+        try:
+            patient_name = f"{list(first_name)[0]} {list(last_name)[0]}"
+        except:
+            patient_name = None
+
+    deliveries = cached_deliveries_loading(tables, delivery_from_trf)
+    identifier = None
+
+    return {
+        "patient_id": patient_id,
+        "patient_name": patient_name,
+        "data_paths": selected_filepaths,
+        "identifier": identifier,
+        "deliveries": deliveries,
+    }
 
 
 def mosaiq_input_method(key_namespace="", **_):
@@ -662,6 +723,10 @@ DEFAULT_EVALUATION = "iCOM stream timestamp"
 def display_deliveries(deliveries):
     if not deliveries:
         return
+
+    """
+    #### Overview of selected deliveries
+    """
 
     data = []
     for delivery in deliveries:
