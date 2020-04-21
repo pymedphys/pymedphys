@@ -101,15 +101,11 @@ class WrongFileType(ValueError):
     pass
 
 
-class NoFilesFound(ValueError):
-    pass
-
-
 class ConflictingPatientName(ValueError):
     pass
 
 
-class NoRecordedDeliveriesFound(ValueError):
+class NoRecordsFound(ValueError):
     pass
 
 
@@ -306,6 +302,13 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
         f"{path.parent.name}/{path.name}" for path in all_tel_paths
     ]
 
+    if len(plan_names_to_choose_from) == 0:
+        if patient_id != "":
+            st.write(
+                NoRecordsFound(f"No Monaco plans found for patient ID {patient_id}")
+            )
+        return {"patient_id": patient_id}
+
     """
     Select the Monaco plan that correspond to a patient's single fraction.
     If a patient has multiple fraction types (such as a plan with a boost)
@@ -420,12 +423,12 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         if len(dicom_plan_options) == 0:
             st.write(
-                NoFilesFound(
+                NoRecordsFound(
                     f"No exported DICOM RT plans found for Patient ID {patient_id} "
                     f"within the directory {monaco_export_directory}"
                 )
             )
-            return {}
+            return {"patient_id": patient_id}
 
         if len(dicom_plan_options) == 1:
             selected_plan = dicom_plan_options[0]
@@ -530,12 +533,13 @@ def icom_input_method(
     """
 
     if len(timestamps) == 0:
-        st.write(
-            NoRecordedDeliveriesFound(
-                f"No iCOM delivery record found for patient ID {patient_id}"
+        if patient_id != "":
+            st.write(
+                NoRecordsFound(
+                    f"No iCOM delivery record found for patient ID {patient_id}"
+                )
             )
-        )
-        return {}
+        return {"patient_id": patient_id}
 
     if len(timestamps) == 1:
         default_timestamp = timestamps[0]
@@ -638,8 +642,17 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     timestamps = sorted(timestamps, reverse=True)
 
-    if not timestamps:
-        return {}
+    if len(timestamps) == 0:
+        if patient_id != "":
+            st.write(
+                NoRecordsFound(f"No TRF log file found for patient ID {patient_id}")
+            )
+        return {"patient_id": patient_id}
+
+    if len(timestamps) == 1:
+        default_timestamp = timestamps[0]
+    else:
+        default_timestamp = []
 
     selected_trf_deliveries = st.multiselect(
         "Select TRF delivery timestamp(s)",
