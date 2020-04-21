@@ -34,7 +34,6 @@ import pydicom
 
 import pymedphys
 import timeago
-from pymedphys._utilities.controlpoints import to_tuple
 from pymedphys.labs.managelogfiles import index as pmp_index
 
 """
@@ -236,10 +235,6 @@ def show_status_indicators():
 
 
 show_status_indicators()
-
-
-def calculate_delivery_hash(delivery):
-    return hash(to_tuple(delivery))
 
 
 @st.cache(allow_output_mutation=True)
