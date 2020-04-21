@@ -16,6 +16,7 @@
 # pylint: disable = pointless-statement, pointless-string-statement
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 
+import json
 import lzma
 import os
 import pathlib
@@ -33,6 +34,7 @@ import pydicom
 
 import pymedphys
 import timeago
+from pymedphys.labs.managelogfiles import index as pmp_index
 
 """
 # MU Density comparison tool
@@ -69,14 +71,25 @@ LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {
 }
 
 LINAC_IDS = list(LINAC_ICOM_LIVE_STREAM_DIRECTORIES.keys())
-LINAC_INDEXED_BACKUPS_DIRECTORY = (
-    r"\\rccc-physicssvr\LinacLogFiles\diagnostics\already_indexed"
+
+TRF_LOGFILE_ROOT_DIR = pathlib.Path(r"\\rccc-physicssvr\LinacLogFiles")
+LINAC_INDEXED_BACKUPS_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath(
+    r"diagnostics\already_indexed"
 )
+INDEXED_TRF_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath("indexed")
 
 DICOM_EXPORT_LOCATIONS = {
     site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
     for site, directories in SITE_DIRECTORIES.items()
 }
+
+MOSAIQ_DETAILS = {
+    "rccc": {"timezone": "Australia/Sydney", "server": "msqsql:1433"},
+    "nbcc": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:31433"},
+    "sash": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:1433"},
+}
+
+MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
 
 
 class InputRequired(ValueError):
@@ -88,6 +101,10 @@ class WrongFileType(ValueError):
 
 
 class NoFilesFound(ValueError):
+    pass
+
+
+class ConflictingPatientName(ValueError):
     pass
 
 
@@ -123,34 +140,41 @@ st.sidebar.markdown(
 )
 advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-if advanced_mode:
 
-    st.sidebar.markdown(
-        """
-        # Gamma parameters
-        """
-    )
-    gamma_options = {
-        **DEFAULT_GAMMA_OPTIONS,
-        **{
-            "dose_percent_threshold": st.sidebar.number_input(
-                "MU Percent Threshold",
-                value=DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"],
-            ),
-            "distance_mm_threshold": st.sidebar.number_input(
-                "Distance (mm) Threshold",
-                value=DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
-            ),
-            "local_gamma": st.sidebar.checkbox(
-                "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
-            ),
-            "max_gamma": st.sidebar.number_input(
-                "Max Gamma", value=DEFAULT_GAMMA_OPTIONS["max_gamma"]
-            ),
-        },
-    }
-else:
-    gamma_options = DEFAULT_GAMMA_OPTIONS
+def get_gamma_options():
+    if advanced_mode:
+
+        st.sidebar.markdown(
+            """
+            # Gamma parameters
+            """
+        )
+        result = {
+            **DEFAULT_GAMMA_OPTIONS,
+            **{
+                "dose_percent_threshold": st.sidebar.number_input(
+                    "MU Percent Threshold",
+                    value=DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"],
+                ),
+                "distance_mm_threshold": st.sidebar.number_input(
+                    "Distance (mm) Threshold",
+                    value=DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
+                ),
+                "local_gamma": st.sidebar.checkbox(
+                    "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
+                ),
+                "max_gamma": st.sidebar.number_input(
+                    "Max Gamma", value=DEFAULT_GAMMA_OPTIONS["max_gamma"]
+                ),
+            },
+        }
+    else:
+        result = DEFAULT_GAMMA_OPTIONS
+
+    return result
+
+
+gamma_options = get_gamma_options()
 
 
 st.sidebar.markdown(
@@ -160,7 +184,7 @@ st.sidebar.markdown(
 )
 
 
-def get_most_recent_file_and_print(linac_id, filepaths):  # pylint: redefined-outer-name
+def get_most_recent_file_and_print(linac_id, filepaths):
     most_recent = datetime.fromtimestamp(
         os.path.getmtime(max(filepaths, key=os.path.getmtime))
     )
@@ -174,40 +198,43 @@ def get_most_recent_file_and_print(linac_id, filepaths):  # pylint: redefined-ou
     st.sidebar.markdown(f"{linac_id}: `{human_readable}`")
 
 
-def icom_status(linac_id, icom_directory):  # pylint: redefined-outer-name
+def icom_status(linac_id, icom_directory):
     filepaths = pathlib.Path(icom_directory).glob("*.txt")
     get_most_recent_file_and_print(linac_id, filepaths)
 
 
-def trf_status(linac_id, backup_directory):  # pylint: redefined-outer-name
+def trf_status(linac_id, backup_directory):
     directory = pathlib.Path(backup_directory).joinpath(linac_id)
     filepaths = directory.glob("*.zip")
     get_most_recent_file_and_print(linac_id, filepaths)
 
 
-if st.sidebar.button("Check status of iCOM and backups"):
-    st.sidebar.markdown(
-        """
-        ## Last recorded iCOM stream
-        """
-    )
+def show_status_indicators():
+    if st.sidebar.button("Check status of iCOM and backups"):
+        st.sidebar.markdown(
+            """
+            ## Last recorded iCOM stream
+            """
+        )
 
-    for linac_id, icom_directory in LINAC_ICOM_LIVE_STREAM_DIRECTORIES.items():
-        icom_status(linac_id, icom_directory)
+        for linac_id, icom_directory in LINAC_ICOM_LIVE_STREAM_DIRECTORIES.items():
+            icom_status(linac_id, icom_directory)
 
-    st.sidebar.markdown(
-        """
-        ## Last indexed backup
-        """
-    )
+        st.sidebar.markdown(
+            """
+            ## Last indexed backup
+            """
+        )
 
-    for linac_id in LINAC_IDS:
-        trf_status(linac_id, LINAC_INDEXED_BACKUPS_DIRECTORY)
+        for linac_id in LINAC_IDS:
+            trf_status(linac_id, LINAC_INDEXED_BACKUPS_DIRECTORY)
+
+    """
+    ## Selection of data to compare
+    """
 
 
-"""
-## Selection of data to compare
-"""
+show_status_indicators()
 
 
 @st.cache
@@ -218,6 +245,11 @@ def delivery_from_icom(icom_stream):
 @st.cache
 def delivery_from_tel(tel_path):
     return pymedphys.Delivery.from_monaco(tel_path)
+
+
+@st.cache
+def delivery_from_trf(pandas_table):
+    return pymedphys.Delivery._from_pandas(pandas_table)
 
 
 @st.cache
@@ -508,6 +540,8 @@ def icom_input_method(
     else:
         default_timestamp = []
 
+    timestamps = sorted(timestamps, reverse=True)
+
     selected_icom_deliveries = st.multiselect(
         "Select iCOM delivery timestamp(s)",
         timestamps,
@@ -550,12 +584,137 @@ def icom_input_method(
     return results
 
 
-def trf_input_method(**_):
-    pass
+@st.cache
+def read_trf(filepath):
+    return pymedphys.read_trf(filepath)
 
 
-def mosaiq_input_method(**_):
-    pass
+@st.cache
+def get_logfile_mosaiq_info(headers):
+    centres = {MACHINE_CENTRE_MAP[machine_id] for machine_id in headers["machine"]}
+    mosaiq_servers = [MOSAIQ_DETAILS[centre]["server"] for centre in centres]
+
+    details = []
+    with pymedphys.mosaiq.connect(mosaiq_servers) as cursors:
+        for _, header in headers.iterrows():
+            machine_id = header["machine"]
+            centre = MACHINE_CENTRE_MAP[machine_id]
+            mosaiq_timezone = MOSAIQ_DETAILS[centre]["timezone"]
+            server = MOSAIQ_DETAILS[centre]["server"]
+            cursor = cursors[server]
+
+            field_label = header["field_label"]
+            field_name = header["field_name"]
+            utc_date = header["date"]
+
+            current_details = pmp_index.get_logfile_mosaiq_info(
+                cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
+            )
+            current_details = pd.Series(data=current_details)
+
+            details.append(current_details)
+
+    details = pd.concat(details, axis=1).T
+
+    return details
+
+
+def trf_input_method(patient_id="", key_namespace="", **_):
+    patient_id = st.text_input(
+        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+    )
+    patient_id
+
+    filepaths = list(INDEXED_TRF_DIRECTORY.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
+
+    raw_timestamps = ["_".join(path.parent.name.split("_")[0:2]) for path in filepaths]
+    timestamps = list(
+        pd.to_datetime(raw_timestamps, format="%Y-%m-%d_%H%M%S").astype(str)
+    )
+
+    timestamp_filepath_map = dict(zip(timestamps, filepaths))
+
+    timestamps = sorted(timestamps, reverse=True)
+
+    if not timestamps:
+        return {}
+
+    selected_trf_deliveries = st.multiselect(
+        "Select TRF delivery timestamp(s)",
+        timestamps,
+        key=f"{key_namespace}_trf_deliveries",
+    )
+
+    if not selected_trf_deliveries:
+        return {}
+
+    """
+    #### TRF filepath(s)
+    """
+
+    selected_filepaths = [
+        timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
+    ]
+    [str(path) for path in selected_filepaths]
+
+    """
+    #### Log file header(s)
+    """
+
+    headers = []
+    tables = []
+    for path in selected_filepaths:
+        header, table = read_trf(path)
+        headers.append(header)
+        tables.append(table)
+
+    headers = pd.concat(headers)
+    headers.reset_index(inplace=True)
+    headers.drop("index", axis=1, inplace=True)
+
+    headers
+
+    """
+    #### Corresponding Mosaiq SQL Details
+    """
+
+    mosaiq_details = get_logfile_mosaiq_info(headers)
+    mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
+
+    mosaiq_details
+
+    last_name = set(mosaiq_details["last_name"])
+    first_name = set(mosaiq_details["first_name"])
+
+    if len(last_name) > 1 or len(first_name) > 1:
+        st.write(ConflictingPatientName("More than one Patient Name found"))
+        patient_name = None
+    else:
+        try:
+            patient_name = f"{list(first_name)[0]} {list(last_name)[0]}"
+        except:
+            patient_name = None
+
+    deliveries = cached_deliveries_loading(tables, delivery_from_trf)
+
+    individual_identifiers = [
+        f"{path.parent.parent.parent.parent.name} {path.parent.name}"
+        for path in selected_filepaths
+    ]
+
+    identifier = f"TRF ({', '.join(individual_identifiers)})"
+
+    return {
+        "patient_id": patient_id,
+        "patient_name": patient_name,
+        "data_paths": selected_filepaths,
+        "identifier": identifier,
+        "deliveries": deliveries,
+    }
+
+
+def mosaiq_input_method(key_namespace="", **_):
+    return {}
 
 
 data_method_map = {
@@ -575,6 +734,10 @@ DEFAULT_EVALUATION = "iCOM stream timestamp"
 def display_deliveries(deliveries):
     if not deliveries:
         return
+
+    """
+    #### Overview of selected deliveries
+    """
 
     data = []
     for delivery in deliveries:
