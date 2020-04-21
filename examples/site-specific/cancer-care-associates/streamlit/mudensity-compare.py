@@ -92,8 +92,8 @@ MOSAIQ_DETAILS = {
 
 MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
 LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
-MAX_LEAF_GAP = 410
-GRID_RESOLUTION = 2
+MAX_LEAF_GAP = 420
+GRID_RESOLUTION = 2.5
 GRID = pymedphys.mudensity.grid(
     max_leaf_gap=MAX_LEAF_GAP,
     grid_resolution=GRID_RESOLUTION,
