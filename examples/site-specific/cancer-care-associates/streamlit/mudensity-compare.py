@@ -91,6 +91,15 @@ MOSAIQ_DETAILS = {
 }
 
 MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
+LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
+MAX_LEAF_GAP = 420
+GRID_RESOLUTION = 1
+GRID = pymedphys.mudensity.grid(
+    max_leaf_gap=MAX_LEAF_GAP,
+    grid_resolution=GRID_RESOLUTION,
+    leaf_pair_widths=LEAF_PAIR_WIDTHS,
+)
+COORDS = (GRID["jaw"], GRID["mlc"])
 
 
 class InputRequired(ValueError):
@@ -116,8 +125,6 @@ DICOM_PLAN_UID = "1.2.840.10008.5.1.4.1.1.481.5"
 DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
 DEFAULT_PNG_OUTPUT_DIRECTORY = r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence"
 
-GRID = pymedphys.mudensity.grid()
-COORDS = (GRID["jaw"], GRID["mlc"])
 
 DEFAULT_GAMMA_OPTIONS = {
     "dose_percent_threshold": 2,
@@ -571,7 +578,7 @@ def icom_input_method(
     deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
 
     if selected_icom_deliveries:
-        identifier = f"iCOM ({', '.join(icom_filenames)})"
+        identifier = f"iCOM ({icom_filenames[0]})"
     else:
         identifier = None
 
@@ -717,7 +724,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         for path in selected_filepaths
     ]
 
-    identifier = f"TRF ({', '.join(individual_identifiers)})"
+    identifier = f"TRF ({individual_identifiers[0]})"
 
     return {
         "patient_id": patient_id,
@@ -873,7 +880,7 @@ def plot_and_save_results(
     largest_item = np.max(np.abs(diff))
 
     widths = [1, 1]
-    heights = [0.3, 1, 1, 1, 0.1]
+    heights = [0.5, 1, 1, 1, 0.4]
     gs_kw = dict(width_ratios=widths, height_ratios=heights)
 
     fig, axs = plt.subplots(5, 2, figsize=(10, 16), gridspec_kw=gs_kw)
@@ -895,7 +902,7 @@ def plot_and_save_results(
     ax_header.axis("off")
     ax_footer.axis("off")
 
-    ax_header.text(0, 0, header_text, ha="left", wrap=True, fontsize=30)
+    ax_header.text(0, 0, header_text, ha="left", wrap=True, fontsize=21)
     ax_footer.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
 
     plt.sca(axs[2, 0])
@@ -930,12 +937,20 @@ def plot_and_save_results(
     return fig
 
 
-@st.cache
+@st.cache(hash_funcs={pymedphys.Delivery: hash})
+def calculate_mudensity(delivery):
+    return delivery.mudensity(
+        max_leaf_gap=MAX_LEAF_GAP,
+        grid_resolution=GRID_RESOLUTION,
+        leaf_pair_widths=LEAF_PAIR_WIDTHS,
+    )
+
+
 def calculate_batch_mudensity(deliveries):
-    mudensity = deliveries[0].mudensity()
+    mudensity = calculate_mudensity(deliveries[0])
 
     for delivery in deliveries[1::]:
-        mudensity = mudensity + delivery.mudensity()
+        mudensity = mudensity + calculate_mudensity(delivery)
 
     return mudensity
 
@@ -1020,7 +1035,7 @@ def run_calculation(
     fig.tight_layout()
 
     st.write("Saving figure...")
-    plt.savefig(png_filepath, dpi=300)
+    plt.savefig(png_filepath, dpi=100)
     os.system(f'magick convert "{png_filepath}" "{pdf_filepath}"')
 
     st.write("## Results")
