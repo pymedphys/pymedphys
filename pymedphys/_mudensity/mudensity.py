@@ -32,10 +32,10 @@ def calc_mu_density(
     mu,
     mlc,
     jaw,
-    grid_resolution=__DEFAULT_GRID_RESOLUTION,
-    max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
-    leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
-    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL,
+    grid_resolution=None,
+    max_leaf_gap=None,
+    leaf_pair_widths=None,
+    min_step_per_pixel=None,
 ):
     """Determine the MU Density.
 
@@ -186,6 +186,18 @@ def calc_mu_density(
 
     """
 
+    if grid_resolution is None:
+        grid_resolution = __DEFAULT_GRID_RESOLUTION
+
+    if max_leaf_gap is None:
+        max_leaf_gap = __DEFAULT_MAX_LEAF_GAP
+
+    if leaf_pair_widths is None:
+        leaf_pair_widths = __DEFAULT_LEAF_PAIR_WIDTHS
+
+    if min_step_per_pixel is None:
+        min_step_per_pixel = __DEFAULT_MIN_STEP_PER_PIXEL
+
     divisibility_of_max_leaf_gap = np.array(max_leaf_gap / 2 / grid_resolution)
     max_leaf_gap_is_divisible = (
         divisibility_of_max_leaf_gap.astype(int) == divisibility_of_max_leaf_gap
@@ -193,7 +205,8 @@ def calc_mu_density(
 
     if not max_leaf_gap_is_divisible:
         raise ValueError(
-            "The grid resolution needs to exactly divide half of the max leaf gap"
+            "The grid resolution needs to be able to divide the max leaf gap exactly by"
+            " four"
         )
 
     leaf_pair_widths = np.array(leaf_pair_widths)
