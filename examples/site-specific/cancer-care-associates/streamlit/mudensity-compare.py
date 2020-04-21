@@ -635,13 +635,18 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     timestamp_filepath_map = dict(zip(timestamps, filepaths))
 
     timestamps = sorted(timestamps, reverse=True)
-    # timestamps
+
+    if not timestamps:
+        return {}
 
     selected_trf_deliveries = st.multiselect(
         "Select TRF delivery timestamp(s)",
         timestamps,
         key=f"{key_namespace}_trf_deliveries",
     )
+
+    if not selected_trf_deliveries:
+        return {}
 
     """
     #### TRF filepath(s)
@@ -691,7 +696,13 @@ def trf_input_method(patient_id="", key_namespace="", **_):
             patient_name = None
 
     deliveries = cached_deliveries_loading(tables, delivery_from_trf)
-    identifier = None
+
+    individual_identifiers = [
+        f"{path.parent.parent.parent.parent.name} {path.parent.name}"
+        for path in selected_filepaths
+    ]
+
+    identifier = f"TRF ({', '.join(individual_identifiers)})"
 
     return {
         "patient_id": patient_id,
