@@ -15,6 +15,7 @@
 
 # pylint: disable = pointless-statement, pointless-string-statement
 # pylint: disable = no-value-for-parameter, expression-not-assigned
+# pylint: disable = too-many-lines
 
 import json
 import lzma
