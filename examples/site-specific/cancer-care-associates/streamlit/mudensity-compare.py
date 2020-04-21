@@ -93,7 +93,7 @@ MOSAIQ_DETAILS = {
 MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
 LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
 MAX_LEAF_GAP = 420
-GRID_RESOLUTION = 2.5
+GRID_RESOLUTION = 1
 GRID = pymedphys.mudensity.grid(
     max_leaf_gap=MAX_LEAF_GAP,
     grid_resolution=GRID_RESOLUTION,
@@ -578,7 +578,7 @@ def icom_input_method(
     deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
 
     if selected_icom_deliveries:
-        identifier = f"iCOM ({', '.join(icom_filenames)})"
+        identifier = f"iCOM ({icom_filenames[0]})"
     else:
         identifier = None
 
@@ -724,7 +724,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         for path in selected_filepaths
     ]
 
-    identifier = f"TRF ({', '.join(individual_identifiers)})"
+    identifier = f"TRF ({individual_identifiers[0]})"
 
     return {
         "patient_id": patient_id,
@@ -880,10 +880,10 @@ def plot_and_save_results(
     largest_item = np.max(np.abs(diff))
 
     widths = [1, 1]
-    heights = [0.3, 1, 1, 1, 0.1]
+    heights = [0.5, 1, 1, 1, 0.4]
     gs_kw = dict(width_ratios=widths, height_ratios=heights)
 
-    fig, axs = plt.subplots(5, 2, figsize=(10, 16), gridspec_kw=gs_kw)
+    fig, axs = plt.subplots(5, 2, figsize=(10, 15), gridspec_kw=gs_kw)
     gs = axs[0, 0].get_gridspec()
 
     for ax in axs[0, 0:]:
@@ -902,7 +902,7 @@ def plot_and_save_results(
     ax_header.axis("off")
     ax_footer.axis("off")
 
-    ax_header.text(0, 0, header_text, ha="left", wrap=True, fontsize=30)
+    ax_header.text(0, 0, header_text, ha="left", wrap=True, fontsize=21)
     ax_footer.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
 
     plt.sca(axs[2, 0])
