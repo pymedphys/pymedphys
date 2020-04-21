@@ -289,7 +289,7 @@ def calc_single_control_point(
 
     if not np.all(leaf_division.astype(int) == leaf_division):
         raise ValueError(
-            "The grid resolution needs to exactly divide every leaf pair " "width."
+            "The grid resolution needs to exactly divide every leaf pair width."
         )
 
     if (
@@ -297,7 +297,8 @@ def calc_single_control_point(
         <= np.sum(leaf_pair_widths) / 2
     ):
         raise ValueError(
-            "The jaw should not travel further out than the maximum leaf " "limits."
+            "The jaw should not travel further out than the maximum leaf limits. "
+            f"Max travel was {np.max(np.abs(jaw))}"
         )
 
     (grid, grid_leaf_map, mlc) = _determine_calc_grid_and_adjustments(
