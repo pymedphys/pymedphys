@@ -22,7 +22,6 @@ import pathlib
 import traceback
 from glob import glob
 
-import attr
 from pymedphys._imports import attr
 
 from pymedphys._mosaiq.connect import multi_mosaiq_connect
