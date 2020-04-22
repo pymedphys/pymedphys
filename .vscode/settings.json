@@ -190,6 +190,7 @@
     "noqa",
     "normalise",
     "normalised",
+    "nrows",
     "nsis",
     "numpy",
     "optimiser",
