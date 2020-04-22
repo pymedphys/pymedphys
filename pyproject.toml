@@ -91,6 +91,8 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
+streamlit = "^0.57.3"
+timeago = "^1.0.14"
 
 [tool.poetry.dev-dependencies]
 # Testing
@@ -159,7 +161,8 @@ include_trailing_comma = true
 known_third_party = [
     "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
     "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
-    "pymedphys._imports", "watchdog"
+    "pymedphys._imports", "watchdog", "streamlit", "timeago", "pymssql",
+    "keyring"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"
