@@ -71,6 +71,10 @@ tf-nightly = { version = ">=2.2.0.dev20200306", optional = true, allow-prereleas
 tf-estimator-nightly = { version = "*", optional = true, allow-prereleases = true }
 tb-nightly = { version = "*", optional = true, allow-prereleases = true }
 
+# gui
+streamlit = "^0.57.3"
+timeago = "^1.0.14"
+
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
 sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
@@ -91,8 +95,6 @@ hypothesis  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
-streamlit = "^0.57.3"
-timeago = "^1.0.14"
 
 [tool.poetry.dev-dependencies]
 # Testing
