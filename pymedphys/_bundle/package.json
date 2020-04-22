@@ -1,0 +1,55 @@
+{
+  "name": "libreapp",
+  "homepage": "https://libreapp.com/",
+  "author": "Simon Biggs <me@simonbiggs.net>",
+  "license": "Apache-2.0",
+  "version": "0.1.0",
+  "description": "LibreApp",
+  "scripts": {
+    "dist": "electron-webpack && electron-builder build --win --x64",
+    "dir": "electron-webpack && electron-builder --dir",
+    "dev": "electron-webpack dev"
+  },
+  "build": {
+    "productName": "LibreApp",
+    "asar": false,
+    "appId": "org.libreapp.libreapp",
+    "files": [
+      "python/",
+      "dist/",
+      "node_modules/",
+      "notebooks/",
+      "package.json",
+      "app.py",
+      "run.py"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    },
+    "directories": {
+      "output": "release"
+    }
+  },
+  "devDependencies": {
+    "electron": "^7.1.4",
+    "electron-builder": "^21.2.0",
+    "electron-webpack": "^2.7.4",
+    "webpack": "^4.41.2"
+  },
+  "dependencies": {
+    "rxjs": "^6.5.3",
+    "source-map-support": "^0.5.16"
+  }
+}
