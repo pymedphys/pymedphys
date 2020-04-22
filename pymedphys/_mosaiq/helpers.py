@@ -89,6 +89,10 @@ def get_patient_fields(cursor, patient_id):
     return table
 
 
+# def get_patient_name(cursor, patient_id):
+#     patient_name
+
+
 def get_treatments(cursor, start, end, machine):
     treatment_results = execute_sql(
         cursor,
