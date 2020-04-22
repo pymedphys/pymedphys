@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.24.0dev0"
+version = "0.24.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -72,8 +72,8 @@ tf-estimator-nightly = { version = "*", optional = true, allow-prereleases = tru
 tb-nightly = { version = "*", optional = true, allow-prereleases = true }
 
 # gui
-streamlit = "^0.57.3"
-timeago = "^1.0.14"
+streamlit = "*"
+timeago = "*"
 
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
