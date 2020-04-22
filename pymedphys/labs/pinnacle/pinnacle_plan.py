@@ -36,8 +36,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import os
 import re
@@ -150,7 +149,7 @@ class PinnaclePlan:
 
         if not self._machine_info:
             path_machine = os.path.join(self._path, "plan.Pinnacle.Machines")
-            self.logger.debug("Reading machine data from: " + path_machine)
+            self.logger.debug("Reading machine data from: %s", path_machine)
             self._machine_info = pinn_to_dict(path_machine)
 
         return self._machine_info
@@ -167,7 +166,7 @@ class PinnaclePlan:
 
         if not self._trials:
             path_trial = os.path.join(self._path, "plan.Trial")
-            self.logger.debug("Reading trial data from: " + path_trial)
+            self.logger.debug("Reading trial data from: %s", path_trial)
             self._trials = pinn_to_dict(path_trial)
             if isinstance(self._trials, dict):
                 self._trials = [self._trials["Trial"]]
@@ -176,8 +175,8 @@ class PinnaclePlan:
             if not self._trial_info:
                 self._trial_info = self._trials[0]
 
-            self.logger.debug("Number of trials read: " + str(len(self._trials)))
-            self.logger.debug("Active Trial: " + self._trial_info["Name"])
+            self.logger.debug("Number of trials read: %s", len(self._trials))
+            self.logger.debug("Active Trial: %s", self._trial_info["Name"])
 
         return self._trials
 
@@ -198,7 +197,7 @@ class PinnaclePlan:
             for trial in self._trials:
                 if trial["Name"] == trial_name:
                     self._trial_info = trial
-                    self.logger.info("Active Trial set: " + trial_name)
+                    self.logger.info("Active Trial set: %s", trial_name)
                     return True
 
         return False
@@ -243,13 +242,13 @@ class PinnaclePlan:
 
         if not self._points:
             path_points = os.path.join(self._path, "plan.Points")
-            self.logger.debug("Reading points data from: " + path_points)
+            self.logger.debug("Reading points data from: %s", path_points)
             self._points = pinn_to_dict(path_points)
 
-            if type(self._points) == dict:
+            if isinstance(self._points, dict):
                 self._points = [self._points["Poi"]]
 
-            if self._points == None:
+            if self._points is None:
                 self._points = []
 
         return self._points
@@ -277,19 +276,19 @@ class PinnaclePlan:
             pat_pos = "FF"
 
         if "supine" in self._patient_setup["Position"]:
-            pat_pos = pat_pos + "S"
+            pat_pos = f"{pat_pos}S"
         elif "prone" in self._patient_setup["Position"]:
-            pat_pos = pat_pos + "P"
+            pat_pos = f"{pat_pos}P"
         elif (
             "decubitus right" in self._patient_setup["Position"]
             or "Decuibitus Right" in self._patient_setup["Position"]
         ):
-            pat_pos = pat_pos + "DR"
+            pat_pos = f"{pat_pos}DR"
         elif (
             "decubitus left" in self._patient_setup["Position"]
             or "Decuibitus Left" in self._patient_setup["Position"]
         ):
-            pat_pos = pat_pos + "DL"
+            pat_pos = f"{pat_pos}DL"
 
         return pat_pos
 
@@ -307,7 +306,8 @@ class PinnaclePlan:
     def iso_center(self, iso_center):
         self._iso_center = iso_center
 
-    def is_prefix_valid(self, prefix):
+    @staticmethod
+    def is_prefix_valid(prefix):
         """Check if a UID prefix is valid.
 
         Parameters
@@ -343,22 +343,22 @@ class PinnaclePlan:
             entropy_srcs.append(self.trial_info["Name"])
             entropy_srcs.append(self.trial_info["ObjectVersion"]["WriteTimeStamp"])
 
-        RTPLAN_prefix = self._uid_prefix + "1."
+        RTPLAN_prefix = f"{self._uid_prefix}1."
         self._plan_inst_uid = pydicom.uid.generate_uid(
             prefix=RTPLAN_prefix, entropy_srcs=entropy_srcs
         )
-        RTDOSE_prefix = self._uid_prefix + "2."
+        RTDOSE_prefix = f"{self._uid_prefix}2."
         self._dose_inst_uid = pydicom.uid.generate_uid(
             prefix=RTDOSE_prefix, entropy_srcs=entropy_srcs
         )
-        RTSTRUCT_prefix = self._uid_prefix + "3."
+        RTSTRUCT_prefix = f"{self._uid_prefix}3."
         self._struct_inst_uid = pydicom.uid.generate_uid(
             prefix=RTSTRUCT_prefix, entropy_srcs=entropy_srcs
         )
 
-        self.logger.debug("Plan Instance UID: " + self._plan_inst_uid)
-        self.logger.debug("Dose Instance UID: " + self._dose_inst_uid)
-        self.logger.debug("Struct Instance UID: " + self._struct_inst_uid)
+        self.logger.debug(f"Plan Instance UID: {self._plan_inst_uid}")
+        self.logger.debug(f"Dose Instance UID: {self._dose_inst_uid}")
+        self.logger.debug(f"Struct Instance UID: {self._struct_inst_uid}")
 
     @property
     def plan_inst_uid(self):

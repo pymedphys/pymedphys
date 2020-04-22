@@ -58,6 +58,12 @@ def get_url(filename):
 def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True, url=None):
     filepath = get_data_dir().joinpath(filename)
 
+    if check_hash and filepath.exists():
+        try:
+            get_cached_filehash(filename)
+        except NoHashFound:
+            filepath.unlink()  # Force a redownload
+
     if not filepath.exists():
         if url is None:
             url = get_url(filename)
@@ -84,11 +90,20 @@ class NoHashFound(KeyError):
     pass
 
 
-def data_file_hash_check(filename):
-    filename = str(filename).replace(os.sep, "/")
-
+def get_cached_filehash(filename):
     with open(HERE.joinpath("hashes.json"), "r") as hash_file:
         hashes = json.load(hash_file)
+
+    try:
+        cached_filehash = hashes[filename]
+    except KeyError:
+        raise NoHashFound
+
+    return cached_filehash
+
+
+def data_file_hash_check(filename):
+    filename = str(filename).replace(os.sep, "/")
 
     filepath = get_data_dir().joinpath(filename)
     calculated_filehash = pymedphys._utilities.filehash.hash_file(  # pylint: disable = protected-access
@@ -96,15 +111,18 @@ def data_file_hash_check(filename):
     )
 
     try:
-        cached_filehash = hashes[filename]
-    except KeyError:
+        cached_filehash = get_cached_filehash(filename)
+    except NoHashFound:
         warnings.warn("Hash not found in hashes.json. File will be updated.")
+        with open(HERE.joinpath("hashes.json"), "r") as hash_file:
+            hashes = json.load(hash_file)
+
         hashes[filename] = calculated_filehash
 
         with open(HERE.joinpath("hashes.json"), "w") as hash_file:
             json.dump(hashes, hash_file, indent=2, sort_keys=True)
 
-        raise NoHashFound
+        raise
 
     return cached_filehash == calculated_filehash
 

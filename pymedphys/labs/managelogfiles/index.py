@@ -116,6 +116,17 @@ def rename_and_handle_fileexists(old_filepath, new_filepath):
             raise FileExistsError("File already exists and the hash does not match")
 
 
+def get_logfile_mosaiq_info(
+    cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name, buffer=240
+):
+    mosaiq_string_time, _ = date_convert(utc_date, mosaiq_timezone)
+    delivery_details = get_mosaiq_delivery_details(
+        cursor, machine_id, mosaiq_string_time, field_label, field_name, buffer=buffer
+    )
+
+    return attr.asdict(delivery_details)
+
+
 # TODO Split this function up into smaller functions for easier reuse.
 def file_ready_to_be_indexed(
     cursors,

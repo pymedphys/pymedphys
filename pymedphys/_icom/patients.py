@@ -1,7 +1,29 @@
 import lzma
 import pathlib
 
+import pymedphys
+
 from . import extract, observer
+
+
+class NoMUDelivered(ValueError):
+    pass
+
+
+class UnableToReadIcom(ValueError):
+    pass
+
+
+def validate_data(data_to_be_saved):
+    try:
+        delivery = pymedphys.Delivery.from_icom(data_to_be_saved)
+    except Exception as _:
+        raise UnableToReadIcom()
+
+    if len(delivery.mu) == 0:
+        raise NoMUDelivered()
+
+    return delivery
 
 
 def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
@@ -23,6 +45,33 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
     data = b""
     for item in patient_data:
         data += item
+
+    try:
+        delivery = validate_data(data)
+        print(
+            f"Delivery with a total MU of {delivery.mu[-1]} for "
+            f"{patient_name} ({patient_id}) is being saved within "
+            f"{filename}."
+        )
+    except NoMUDelivered as _:
+        print(
+            "No MU delivered, not saving delivery data for "
+            f"{patient_name} ({patient_id})."
+        )
+    except UnableToReadIcom as _:
+        new_location = filename.parent.parent.joinpath(
+            "unknown_error_in_record", filename.parent.name, filename.name
+        )
+        new_dir = new_location.parent
+        new_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = new_location
+
+        print(
+            "Unknown error within the record for "
+            f"{patient_name} ({patient_id}). "
+            f"Will instead save the record within {str(filename)}."
+        )
 
     with lzma.open(filename, "w") as f:
         f.write(data)
