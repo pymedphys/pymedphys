@@ -12,6 +12,12 @@ pymedphys bundle
 To change the app itself, simply edit `app.py`, to change the dependencies
 bundled with the executable edit `requirements.txt`.
 
+## Extra requriements
+
+You will need `yarn` installed on your computer, see https://classic.yarnpkg.com/en/docs/install for how to do that.
+
+You can also create this Windows executable from a Linux machine, to do that, you will need to have `wine` installed.
+
 ## Not yet supported, but planned
 
 * Change version number
