@@ -15,6 +15,7 @@
 import argparse
 import sys
 
+from .bundle import bundle_cli
 from .dev import dev_cli
 from .dicom import dicom_cli
 from .icom import icom_cli
@@ -42,6 +43,7 @@ def define_parser():
     dev_cli(subparsers)
     zenodo_cli(subparsers)
     icom_cli(subparsers)
+    bundle_cli(subparsers)
 
     return parser
 
