@@ -162,7 +162,8 @@ include_trailing_comma = true
 known_third_party = [
     "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
     "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
-    "pymedphys._imports", "watchdog", "streamlit"
+    "pymedphys._imports", "watchdog", "streamlit", "timeago", "pymssql",
+    "keyring"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"

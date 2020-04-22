@@ -24,7 +24,10 @@ import pathlib
 import time
 from datetime import datetime
 
+import keyring
+import pymssql
 import streamlit as st
+import timeago
 
 import numpy as np
 import pandas as pd
@@ -34,7 +37,8 @@ import matplotlib.pyplot as plt
 import pydicom
 
 import pymedphys
-import timeago
+from pymedphys._mosaiq import connect as msq_connect
+from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys.labs.managelogfiles import index as pmp_index
 
 """
@@ -90,9 +94,10 @@ MOSAIQ_DETAILS = {
     "sash": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:1433"},
 }
 
+
 MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
 LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
-MAX_LEAF_GAP = 420
+MAX_LEAF_GAP = 410
 GRID_RESOLUTION = 1
 GRID = pymedphys.mudensity.grid(
     max_leaf_gap=MAX_LEAF_GAP,
@@ -133,6 +138,12 @@ DEFAULT_GAMMA_OPTIONS = {
     "quiet": True,
     "max_gamma": 5,
 }
+
+
+@st.cache(allow_output_mutation=True)
+def get_mosaiq_cursor(server):
+    _, cursor = msq_connect.single_connect(server)
+    return cursor
 
 
 st.sidebar.markdown(
@@ -258,6 +269,12 @@ def delivery_from_trf(pandas_table):
     )
 
 
+@st.cache(hash_funcs={pymssql.Cursor: id}, allow_output_mutation=True)
+def delivery_from_mosaiq(cursor_and_field_id):
+    cursor, field_id = cursor_and_field_id
+    return pymedphys.Delivery.from_mosaiq(cursor, field_id)
+
+
 def cached_deliveries_loading(inputs, method_function):
     deliveries = []
 
@@ -275,7 +292,6 @@ def load_icom_stream(icom_path):
     return contents
 
 
-@st.cache
 def load_icom_streams(icom_paths):
     icom_streams = []
 
@@ -608,24 +624,26 @@ def get_logfile_mosaiq_info(headers):
     mosaiq_servers = [MOSAIQ_DETAILS[centre]["server"] for centre in centres]
 
     details = []
-    with pymedphys.mosaiq.connect(mosaiq_servers) as cursors:
-        for _, header in headers.iterrows():
-            machine_id = header["machine"]
-            centre = MACHINE_CENTRE_MAP[machine_id]
-            mosaiq_timezone = MOSAIQ_DETAILS[centre]["timezone"]
-            server = MOSAIQ_DETAILS[centre]["server"]
-            cursor = cursors[server]
 
-            field_label = header["field_label"]
-            field_name = header["field_name"]
-            utc_date = header["date"]
+    cursors = [get_mosaiq_cursor(server) for server in mosaiq_servers]
 
-            current_details = pmp_index.get_logfile_mosaiq_info(
-                cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
-            )
-            current_details = pd.Series(data=current_details)
+    for _, header in headers.iterrows():
+        machine_id = header["machine"]
+        centre = MACHINE_CENTRE_MAP[machine_id]
+        mosaiq_timezone = MOSAIQ_DETAILS[centre]["timezone"]
+        server = MOSAIQ_DETAILS[centre]["server"]
+        cursor = cursors[server]
 
-            details.append(current_details)
+        field_label = header["field_label"]
+        field_name = header["field_name"]
+        utc_date = header["date"]
+
+        current_details = pmp_index.get_logfile_mosaiq_info(
+            cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
+        )
+        current_details = pd.Series(data=current_details)
+
+        details.append(current_details)
 
     details = pd.concat(details, axis=1).T
 
@@ -735,8 +753,52 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     }
 
 
-def mosaiq_input_method(key_namespace="", **_):
-    return {}
+@st.cache(hash_funcs={pymssql.Cursor: id})
+def get_patient_fields(cursor, patient_id):
+    return msq_helpers.get_patient_fields(cursor, patient_id)
+
+
+def mosaiq_input_method(patient_id="", key_namespace="", **_):
+    mosaiq_site = st.radio(
+        "Mosaiq Site", site_options, key=f"{key_namespace}_mosaiq_site"
+    )
+    server = MOSAIQ_DETAILS[mosaiq_site]["server"]
+    f"Mosaiq Hostname: `{server}`"
+
+    sql_user = keyring.get_password("MosaiqSQL_username", server)
+    f"Mosaiq SQL login being used: `{sql_user}`"
+
+    patient_id = st.text_input(
+        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+    )
+    patient_id
+
+    cursor = get_mosaiq_cursor(server)
+    patient_fields = get_patient_fields(cursor, patient_id)
+
+    """
+    #### Mosaiq patient fields
+    """
+
+    patient_fields
+
+    field_ids = patient_fields["field_id"]
+    field_ids = field_ids.values.tolist()
+
+    selected_field_ids = st.multiselect(
+        "Select Mosaiq field id(s)", field_ids, key=f"{key_namespace}_mosaiq_field_id"
+    )
+
+    cursor_and_field_ids = [(cursor, field_id) for field_id in selected_field_ids]
+    deliveries = cached_deliveries_loading(cursor_and_field_ids, delivery_from_mosaiq)
+
+    return {
+        "patient_id": patient_id,
+        "patient_name": None,
+        "data_paths": None,
+        "identifier": None,
+        "deliveries": deliveries,
+    }
 
 
 data_method_map = {
