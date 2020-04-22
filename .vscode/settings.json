@@ -167,6 +167,7 @@
     "markdownlint",
     "markdownviewer",
     "mathjax",
+    "matplotlib",
     "maxdepth",
     "maxkb",
     "mdinclude",
