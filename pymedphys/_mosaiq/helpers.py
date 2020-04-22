@@ -89,8 +89,38 @@ def get_patient_fields(cursor, patient_id):
     return table
 
 
-# def get_patient_name(cursor, patient_id):
-#     patient_name
+def get_patient_name(cursor, patient_id):
+    patient_id = str(patient_id)
+
+    patient_name_results = execute_sql(
+        cursor,
+        """
+        SELECT
+            Patient.Last_Name,
+            Patient.First_Name
+        FROM Ident, Patient
+        WHERE
+            Patient.Pat_ID1 = Ident.Pat_ID1 AND
+            Ident.IDA = %(patient_id)s
+        """,
+        {"patient_id": patient_id},
+    )
+
+    table = pd.DataFrame(data=patient_name_results, columns=["last_name", "first_name"])
+    table.drop_duplicates(inplace=True)
+
+    if len(table.index) < 1:
+        raise ValueError("No patient found with that ID")
+
+    if len(table.index) > 1:
+        raise ValueError("Multiple patients were found with that ID")
+
+    series = table.iloc[0]
+
+    last_name = series["last_name"]
+    first_name = series["first_name"]
+
+    return f"{last_name}, {first_name}"
 
 
 def get_treatments(cursor, start, end, machine):

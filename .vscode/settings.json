@@ -127,6 +127,7 @@
     "howto",
     "hstack",
     "hypot",
+    "iloc",
     "imageio",
     "imageviewer",
     "imginterp",
