@@ -24,7 +24,10 @@ import pathlib
 import time
 from datetime import datetime
 
+import keyring
+import pymssql
 import streamlit as st
+import timeago
 
 import numpy as np
 import pandas as pd
@@ -33,10 +36,7 @@ import matplotlib.pyplot as plt
 
 import pydicom
 
-import keyring
 import pymedphys
-import pymssql
-import timeago
 from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys.labs.managelogfiles import index as pmp_index
@@ -93,6 +93,7 @@ MOSAIQ_DETAILS = {
     "nbcc": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:31433"},
     "sash": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:1433"},
 }
+
 
 MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
 LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
