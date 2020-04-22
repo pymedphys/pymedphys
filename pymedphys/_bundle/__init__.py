@@ -53,8 +53,19 @@ def call_embedded_python(embedded_python_dir, *args):
 
 
 def main(_):
+
     cwd = pathlib.Path(os.getcwd())
     build = cwd.joinpath("build")
+    try:
+        shutil.rmtree(build)
+    except FileNotFoundError as _:
+        pass
+
+    final_path = cwd.joinpath("LibreApp Setup.exe")
+    try:
+        final_path.unlink()
+    except FileNotFoundError as _:
+        pass
 
     embedded_python_dir = build.joinpath("python")
     app_path = cwd.joinpath("app.py")
@@ -133,3 +144,7 @@ def main(_):
 
     subprocess.check_call(["yarn"], cwd=build)
     subprocess.check_call(["yarn", "dist"], cwd=build)
+
+    produced_exe = build.joinpath("release", "LibreApp Setup 0.1.0.exe")
+
+    shutil.copy2(produced_exe, final_path)
