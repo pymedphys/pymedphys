@@ -92,7 +92,6 @@ hypothesis  = { version = "*", optional = true }
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
 
-
 [tool.poetry.dev-dependencies]
 # Testing
 tox = "*"
