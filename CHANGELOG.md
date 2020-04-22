@@ -33,6 +33,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+
+## [0.24.0]
+
+### Breaking Changes
+
+- If `pymedphys.mosaiq.connect` is passed a list of length one, it will now
+  return a cursor within a list of length 1 instead of just returning a cursor
+  by itself.
+
+### New Features
+
+- Added a `pymedphys bundle` cli function which creates an electron streamlit
+  installation bundle.
+- Added the 'all' fractions option to `Delivery.from_dicom` which can be used
+  as `pymedphys.Delivery.from_dicom(dicom_file, fraction_number='all')`
+- Made the iCOM patient archiving only save the data if MU was delivered.
+- Added wlutz mock image generation functions
+- Handle more Monaco `tel.1` cases within `Delivery.from_monaco`
+- `get_patient_name` added to `pymedphys._mosaiq.helpers`
+
+### Algorithm Adjustments
+
+- Wlutz bb finding cost function adjusted
+  - Note, wlutz algorithm still not ready for the prime time
+
+
 ## [0.23.0]
 
 ### Breaking Changes
@@ -462,7 +488,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.23.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.24.0...master
+[0.24.0]: https://github.com/pymedphys/pymedphys/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/pymedphys/pymedphys/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/pymedphys/pymedphys/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/pymedphys/pymedphys/compare/v0.20.0...v0.21.0
