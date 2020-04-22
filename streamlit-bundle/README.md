@@ -1,4 +1,4 @@
-# Streamlit Electron App Bundling
+# Streamlit Electron App Bundling (prototype / alpha)
 
 To create your own Streamlit Electron app installer with all of its Python
 batteries included into a single installation `setup.exe` run the following
