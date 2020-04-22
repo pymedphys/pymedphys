@@ -23,7 +23,10 @@ class DeliveryMuDensity(DeliveryBase):
         self,
         gantry_angles=None,
         gantry_tolerance=3,
-        grid_resolution=1,
+        grid_resolution=None,
+        max_leaf_gap=None,
+        leaf_pair_widths=None,
+        min_step_per_pixel=None,
         output_always_list=False,
     ):
         if gantry_angles is None:
@@ -46,6 +49,9 @@ class DeliveryMuDensity(DeliveryBase):
                     delivery_data.mlc,
                     delivery_data.jaw,
                     grid_resolution=grid_resolution,
+                    max_leaf_gap=max_leaf_gap,
+                    leaf_pair_widths=leaf_pair_widths,
+                    min_step_per_pixel=min_step_per_pixel,
                 )
             )
 
