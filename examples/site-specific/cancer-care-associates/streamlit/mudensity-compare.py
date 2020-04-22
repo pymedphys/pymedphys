@@ -758,6 +758,11 @@ def get_patient_fields(cursor, patient_id):
     return msq_helpers.get_patient_fields(cursor, patient_id)
 
 
+@st.cache(hash_funcs={pymssql.Cursor: id})
+def get_patient_name(cursor, patient_id):
+    return msq_helpers.get_patient_name(cursor, patient_id)
+
+
 def mosaiq_input_method(patient_id="", key_namespace="", **_):
     mosaiq_site = st.radio(
         "Mosaiq Site", site_options, key=f"{key_namespace}_mosaiq_site"
@@ -774,6 +779,14 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
     patient_id
 
     cursor = get_mosaiq_cursor(server)
+
+    if patient_id == "":
+        return {}
+
+    patient_name = get_patient_name(cursor, patient_id)
+
+    f"Patient Name: {patient_name}"
+
     patient_fields = get_patient_fields(cursor, patient_id)
 
     """
@@ -797,7 +810,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
 
     return {
         "patient_id": patient_id,
-        "patient_name": None,
+        "patient_name": patient_name,
         "data_paths": selected_field_ids,
         "identifier": identifier,
         "deliveries": deliveries,
