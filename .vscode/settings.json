@@ -293,6 +293,5 @@
     "zlim"
   ],
   "python.linting.pylintEnabled": true,
-  "restructuredtext.confPath": "${workspaceFolder}\\docs",
   "git.ignoreLimitWarning": true
 }
