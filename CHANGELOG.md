@@ -33,6 +33,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.24.2]
+
+### Bug Fixes
+
+- Within the bundle created by `pymedphys bundle` fixed a bug where sometimes
+  the streamlit server would not start should a stdout race condition occur.
+
 ## [0.24.1]
 
 ### Bug Fixes

@@ -34,7 +34,6 @@ def _on_server_start(_):
         f'"port": {config.get_option("server.port")}'
         "}"
     )
-    sys.stdout.flush()
 
 
 def main():
@@ -83,7 +82,6 @@ def run(script_path, command_line, args):
 
     server = Server(ioloop, script_path, command_line)
 
-    sys.stdout.flush()
     server.start(_on_server_start)
     server.add_preheated_report_session()
     ioloop.start()
