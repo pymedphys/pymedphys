@@ -105,6 +105,7 @@ def main(_):
         "pip",
         "install",
         "streamlit==0.57.3",
+        "matplotlib",  # Needed since this is an undeclared dependency of streamlit
         "--no-warn-script-location",
     )
     call_embedded_python(
@@ -142,8 +143,10 @@ def main(_):
 
     shutil.copy2(app_path, build_app_path)
 
-    subprocess.check_call(["yarn"], cwd=build)
-    subprocess.check_call(["yarn", "dist"], cwd=build)
+    os.chdir(str(build))
+    os.system("yarn")
+    os.system("yarn dist")
+    os.chdir(str(cwd))
 
     produced_exe = build.joinpath("release", "LibreApp Setup 0.1.0.exe")
 

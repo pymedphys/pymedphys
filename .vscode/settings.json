@@ -73,6 +73,7 @@
     "bivariate",
     "cefpython",
     "centralised",
+    "chdir",
     "choco",
     "chown",
     "cmap",
@@ -166,6 +167,7 @@
     "markdownlint",
     "markdownviewer",
     "mathjax",
+    "matplotlib",
     "maxdepth",
     "maxkb",
     "mdinclude",
@@ -292,6 +294,5 @@
   ],
   "python.linting.pylintEnabled": true,
   "restructuredtext.confPath": "${workspaceFolder}\\docs",
-  "git.ignoreLimitWarning": true,
-  "python.pythonPath": "/home/simon/.cache/pypoetry/virtualenvs/pymedphys-OJ9w3Q6B-py3.7/bin/python"
+  "git.ignoreLimitWarning": true
 }
