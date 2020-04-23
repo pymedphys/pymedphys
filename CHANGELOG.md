@@ -33,6 +33,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.24.3]
+
+### Bug Fixes
+
+- Within the bundle created by `pymedphys bundle` fixed a bug where
+  the streamlit server will not start due stdout not flushing.
+
 ## [0.24.2]
 
 ### Bug Fixes
