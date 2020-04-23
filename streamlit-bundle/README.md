@@ -5,7 +5,7 @@ batteries included into a single installation `setup.exe` run the following
 within this directory:
 
 ```bash
-pip install pymedphys==0.24.1
+pip install pymedphys==0.24.2
 pymedphys bundle
 ```
 
