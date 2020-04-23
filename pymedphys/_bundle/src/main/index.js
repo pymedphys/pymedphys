@@ -51,11 +51,18 @@ function createMainWindow() {
 
   UrlSubject.subscribe(data => {
     try {
-      const data_object = JSON.parse(data)
-      const ip = data_object['ip']
-      const port = data_object['port']
-      const url = `http://${ip}:${port}`
-      window.loadURL(url)
+      const array = data.split(/\r?\n/)
+
+      array.forEach(row => {
+        try {
+          const data_object = JSON.parse(row)
+          const ip = data_object['ip']
+          const port = data_object['port']
+          const url = `http://${ip}:${port}`
+          window.loadURL(url)
+        } catch { }
+      })
+
     } catch { }
   })
 
@@ -82,7 +89,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
-  pythonServer.kill('SIGINT')
+  pythonServer.kill()
 })
 
 app.on('activate', () => {
