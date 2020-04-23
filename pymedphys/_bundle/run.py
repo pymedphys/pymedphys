@@ -34,6 +34,7 @@ def _on_server_start(_):
         f'"port": {config.get_option("server.port")}'
         "}"
     )
+    sys.stdout.flush()
 
 
 def main():
