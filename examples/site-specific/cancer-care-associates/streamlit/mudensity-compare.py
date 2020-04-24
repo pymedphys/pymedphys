@@ -37,6 +37,7 @@ import matplotlib.pyplot as plt
 import pydicom
 
 import pymedphys
+from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys.labs.managelogfiles import index as pmp_index
@@ -346,6 +347,11 @@ def load_icom_streams(icom_paths):
     return icom_streams
 
 
+@st.cache
+def read_monaco_patient_name(monaco_patient_directory):
+    return mnc_patient.read_patient_name(monaco_patient_directory)
+
+
 def monaco_input_method(patient_id="", key_namespace="", **_):
     monaco_site = st.radio(
         "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
@@ -362,6 +368,21 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
         patient_id
     elif patient_id == "":
         raise st.ScriptRunner.StopException()
+
+    patient_directories = monaco_directory.glob(f"*~{patient_id}")
+
+    patient_names = set()
+    for patient_directory in patient_directories:
+        patient_names.add(read_monaco_patient_name(str(patient_directory)))
+
+    patient_names = list(patient_names)
+
+    if len(patient_names) == 1:
+        patient_name = patient_names[0]
+    elif len(patient_names) == 0:
+        patient_name = ""
+    else:
+        patient_name = f"Multiple Names Found: f{', '.join(patient_names)}"
 
     all_tel_paths = list(monaco_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
     all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
@@ -413,6 +434,7 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
 
     results = {
         "patient_id": patient_id,
+        "patient_name": patient_name,
         "selected_monaco_plan": selected_monaco_plan,
         "data_paths": tel_paths,
         "identifier": identifier,
