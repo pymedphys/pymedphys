@@ -40,6 +40,7 @@ import pymedphys
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
+from pymedphys._utilities import patient as utl_patient
 from pymedphys.labs.managelogfiles import index as pmp_index
 
 """
@@ -170,8 +171,6 @@ def sidebar_overview():
             f"Patient Name: `{patient_name}`\n\n"
             f"Total MU: `{total_mu}`"
         )
-
-    set_overview_data("", "", 0)
 
     return set_overview_data
 
@@ -546,7 +545,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     f"Patient ID: `{patient_id}`"
 
     patient_name = str(dicom_plan.PatientName)
-    patient_name = mnc_patient.convert_patient_name(patient_name)
+    patient_name = utl_patient.convert_patient_name(patient_name)
 
     f"Patient Name: `{patient_name}`"
 
@@ -670,7 +669,7 @@ def icom_input_method(
     patient_names = set()
     for icom_path in icom_paths:
         patient_name = str(icom_path.parent.name).split("_")[-1]
-        patient_name = mnc_patient.convert_patient_name_from_split(
+        patient_name = utl_patient.convert_patient_name_from_split(
             *patient_name.split(", ")
         )
         patient_names.add(patient_name)
@@ -811,17 +810,15 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     mosaiq_details
 
-    last_name = set(mosaiq_details["last_name"])
-    first_name = set(mosaiq_details["first_name"])
+    patient_names = set()
+    for _, row in mosaiq_details.iterrows():
+        row
+        patient_name = utl_patient.convert_patient_name_from_split(
+            row["last_name"], row["first_name"]
+        )
+        patient_names.add(patient_name)
 
-    if len(last_name) > 1 or len(first_name) > 1:
-        st.write(ConflictingPatientName("More than one Patient Name found"))
-        patient_name = None
-    else:
-        try:
-            patient_name = f"{list(first_name)[0]} {list(last_name)[0]}"
-        except:
-            patient_name = None
+    patient_name = filter_patient_names(patient_names)
 
     deliveries = cached_deliveries_loading(tables, delivery_from_trf)
 
@@ -873,7 +870,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
 
     patient_name = get_patient_name(cursor, patient_id)
 
-    f"Patient Name: {patient_name}"
+    f"Patient Name: `{patient_name}`"
 
     patient_fields = get_patient_fields(cursor, patient_id)
 
@@ -881,6 +878,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
     #### Mosaiq patient fields
     """
 
+    patient_fields = patient_fields[patient_fields["monitor_units"] != 0]
     patient_fields
 
     field_ids = patient_fields["field_id"]
