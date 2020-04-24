@@ -352,6 +352,19 @@ def read_monaco_patient_name(monaco_patient_directory):
     return mnc_patient.read_patient_name(monaco_patient_directory)
 
 
+def filter_patient_names(patient_names):
+    patient_names = list(set(patient_names))
+
+    if len(patient_names) == 1:
+        patient_name = patient_names[0]
+    elif len(patient_names) == 0:
+        patient_name = ""
+    else:
+        patient_name = f"Multiple Names Found: f{', '.join(patient_names)}"
+
+    return patient_name
+
+
 def monaco_input_method(patient_id="", key_namespace="", **_):
     monaco_site = st.radio(
         "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
@@ -375,14 +388,9 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
     for patient_directory in patient_directories:
         patient_names.add(read_monaco_patient_name(str(patient_directory)))
 
-    patient_names = list(patient_names)
+    patient_name = filter_patient_names(patient_names)
 
-    if len(patient_names) == 1:
-        patient_name = patient_names[0]
-    elif len(patient_names) == 0:
-        patient_name = ""
-    else:
-        patient_name = f"Multiple Names Found: f{', '.join(patient_names)}"
+    f"Patient Name: `{patient_name}`"
 
     all_tel_paths = list(monaco_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
     all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
@@ -529,19 +537,21 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
                 key=f"{key_namespace}_select_monaco_export_plan",
             )
 
-        "DICOM file being used: ", selected_plan
+        f"DICOM file being used: `{selected_plan}`"
 
         dicom_plan = dicom_plans[selected_plan]
         data_paths = [monaco_export_directory.joinpath(selected_plan)]
 
     patient_id = str(dicom_plan.PatientID)
-    "Patient ID: ", patient_id
+    f"Patient ID: `{patient_id}`"
 
     patient_name = str(dicom_plan.PatientName)
-    "Patient Name: ", patient_name
+    patient_name = mnc_patient.convert_patient_name(patient_name)
+
+    f"Patient Name: `{patient_name}`"
 
     rt_plan_name = str(dicom_plan.RTPlanName)
-    "Plan Name: ", rt_plan_name
+    f"Plan Name: `{rt_plan_name}`"
 
     try:
         deliveries_all_fractions = pymedphys.Delivery.from_dicom(
@@ -657,6 +667,16 @@ def icom_input_method(
     if advanced_mode:
         [str(path) for path in icom_paths]
 
+    patient_names = set()
+    for icom_path in icom_paths:
+        patient_name = str(icom_path.parent.name).split("_")[-1]
+        patient_name = mnc_patient.convert_patient_name_from_split(
+            *patient_name.split(", ")
+        )
+        patient_names.add(patient_name)
+
+    patient_name = filter_patient_names(patient_names)
+
     icom_streams = load_icom_streams(icom_paths)
     deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
 
@@ -670,6 +690,7 @@ def icom_input_method(
 
     results = {
         "patient_id": patient_id,
+        "patient_name": patient_name,
         "icom_directory": str(icom_directory),
         "selected_icom_deliveries": selected_icom_deliveries,
         "data_paths": icom_paths,
@@ -900,7 +921,7 @@ data_method_options = list(data_method_map.keys())
 
 def display_deliveries(deliveries):
     if not deliveries:
-        return
+        return 0
 
     """
     #### Overview of selected deliveries

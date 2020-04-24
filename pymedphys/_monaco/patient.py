@@ -99,6 +99,24 @@ def get_control_point_pattern():
     return total_pattern
 
 
+def convert_patient_name_from_split(last_name, first_name):
+    patient_name = f"{str(last_name).upper()}, {str(first_name).lower().capitalize()}"
+
+    return patient_name
+
+
+def convert_patient_name(dicom_format):
+    patient_name = dicom_format.split("^")
+    if len(patient_name) != 2:
+        raise ValueError(
+            f"Expected input to be LASTNAME^FIRSTNAME, instead got {dicom_format}"
+        )
+
+    patient_name = convert_patient_name_from_split(*patient_name)
+
+    return patient_name
+
+
 def read_patient_name(patient_directory):
     patient_directory = pathlib.Path(patient_directory)
     patient_id = str(patient_directory.name).split("~")[1]
@@ -114,9 +132,7 @@ def read_patient_name(patient_directory):
     contents = read_monaco_file(demographic_file)
     patient_name = contents.split("\n")[2]
 
-    patient_name = patient_name.split("^")
-    patient_name = [name.lower().capitalize() for name in patient_name]
-    patient_name = ", ".join(patient_name)
+    patient_name = convert_patient_name(patient_name)
 
     return patient_name
 
