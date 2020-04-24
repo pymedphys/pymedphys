@@ -148,49 +148,48 @@ def get_mosaiq_cursor(server):
 
 st.sidebar.markdown(
     """
-    # Advanced options
-
-    Enable advanced functionality by ticking the below.
+    # Overview
     """
 )
-advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
+
+st.sidebar.markdown(
+    """
+    ## Reference
+    """
+)
 
 
-def get_gamma_options():
-    if advanced_mode:
+def sidebar_overview():
 
-        st.sidebar.markdown(
-            """
-            # Gamma parameters
-            """
+    overview_placeholder = st.sidebar.empty()
+
+    def set_overview_data(patient_id, patient_name, total_mu):
+        overview_placeholder.markdown(
+            f"Patient ID: `{patient_id}`\n\n"
+            f"Patient Name: `{patient_name}`\n\n"
+            f"Total MU: `{total_mu}`"
         )
-        result = {
-            **DEFAULT_GAMMA_OPTIONS,
-            **{
-                "dose_percent_threshold": st.sidebar.number_input(
-                    "MU Percent Threshold",
-                    value=DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"],
-                ),
-                "distance_mm_threshold": st.sidebar.number_input(
-                    "Distance (mm) Threshold",
-                    value=DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
-                ),
-                "local_gamma": st.sidebar.checkbox(
-                    "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
-                ),
-                "max_gamma": st.sidebar.number_input(
-                    "Max Gamma", value=DEFAULT_GAMMA_OPTIONS["max_gamma"]
-                ),
-            },
-        }
-    else:
-        result = DEFAULT_GAMMA_OPTIONS
 
-    return result
+    set_overview_data("", "", 0)
+
+    return set_overview_data
 
 
-gamma_options = get_gamma_options()
+set_reference_overview = sidebar_overview()
 
+st.sidebar.markdown(
+    """
+    ## Evaluation
+    """
+)
+
+set_evaluation_overview = sidebar_overview()
+
+
+OVERVIEW_UPDATER_MAP = {
+    "reference": set_reference_overview,
+    "evaluation": set_evaluation_overview,
+}
 
 st.sidebar.markdown(
     """
@@ -250,6 +249,52 @@ def show_status_indicators():
 
 
 show_status_indicators()
+
+
+st.sidebar.markdown(
+    """
+    # Advanced options
+
+    Enable advanced functionality by ticking the below.
+    """
+)
+advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
+
+
+def get_gamma_options():
+    if advanced_mode:
+
+        st.sidebar.markdown(
+            """
+            # Gamma parameters
+            """
+        )
+        result = {
+            **DEFAULT_GAMMA_OPTIONS,
+            **{
+                "dose_percent_threshold": st.sidebar.number_input(
+                    "MU Percent Threshold",
+                    value=DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"],
+                ),
+                "distance_mm_threshold": st.sidebar.number_input(
+                    "Distance (mm) Threshold",
+                    value=DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
+                ),
+                "local_gamma": st.sidebar.checkbox(
+                    "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
+                ),
+                "max_gamma": st.sidebar.number_input(
+                    "Max Gamma", value=DEFAULT_GAMMA_OPTIONS["max_gamma"]
+                ),
+            },
+        }
+    else:
+        result = DEFAULT_GAMMA_OPTIONS
+
+    return result
+
+
+gamma_options = get_gamma_options()
 
 
 @st.cache(allow_output_mutation=True)
@@ -625,7 +670,7 @@ def get_logfile_mosaiq_info(headers):
 
     details = []
 
-    cursors = [get_mosaiq_cursor(server) for server in mosaiq_servers]
+    cursors = {server: get_mosaiq_cursor(server) for server in mosaiq_servers}
 
     for _, header in headers.iterrows():
         machine_id = header["machine"]
@@ -817,18 +862,18 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
     }
 
 
+DEFAULT_REFERENCE = "Monaco tel.1 filepath"
+DEFAULT_EVALUATION = "iCOM record timestamp"
+
 data_method_map = {
-    "Monaco tel.1 filepath": monaco_input_method,
+    DEFAULT_REFERENCE: monaco_input_method,
     "DICOM RTPlan file upload": dicom_input_method,
-    "iCOM stream timestamp": icom_input_method,
+    DEFAULT_EVALUATION: icom_input_method,
     "Linac Backup `.trf` filepath": trf_input_method,
     "Mosaiq SQL query": mosaiq_input_method,
 }
 
 data_method_options = list(data_method_map.keys())
-
-DEFAULT_REFERENCE = "Monaco tel.1 filepath"
-DEFAULT_EVALUATION = "iCOM stream timestamp"
 
 
 def display_deliveries(deliveries):
@@ -856,6 +901,8 @@ def display_deliveries(deliveries):
 
     "Total MU: ", round(df["MU"].sum(), 1)
 
+    return total_mu
+
 
 """
 ### Reference
@@ -878,9 +925,21 @@ def get_input_data_ui(default_method, key_namespace, **previous_results):
     )
 
     try:
-        display_deliveries(results["deliveries"])
+        total_mu = round(display_deliveries(results["deliveries"]), 1)
     except KeyError:
-        pass
+        total_mu = 0
+
+    try:
+        patient_id = results["patient_id"]
+    except KeyError:
+        patient_id = ""
+
+    try:
+        patient_name = results["patient_name"]
+    except KeyError:
+        patient_name = ""
+
+    OVERVIEW_UPDATER_MAP[key_namespace](patient_id, patient_name, total_mu)
 
     return results
 
