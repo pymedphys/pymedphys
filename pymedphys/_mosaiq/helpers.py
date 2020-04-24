@@ -19,6 +19,8 @@ import datetime
 
 from pymedphys._imports import pandas as pd
 
+import pymedphys._utilities.patient
+
 from .connect import execute_sql
 from .constants import FIELD_TYPES
 
@@ -120,7 +122,11 @@ def get_patient_name(cursor, patient_id):
     last_name = series["last_name"]
     first_name = series["first_name"]
 
-    return f"{last_name}, {first_name}"
+    patient_name = pymedphys._utilities.patient.convert_patient_name_from_split(  # pylint: disable = protected-access
+        last_name, first_name
+    )
+
+    return patient_name
 
 
 def get_treatments(cursor, start, end, machine):
