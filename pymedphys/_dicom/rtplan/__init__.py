@@ -11,6 +11,7 @@ from .core import (
     get_fraction_group_beam_sequence_and_meterset,
     get_fraction_group_index,
     get_gantry_angles_from_dicom,
+    get_IEC_angles_from_cp_sequence,
     get_metersets_from_dicom,
     get_surface_entry_point,
     get_surface_entry_point_with_fallback,

@@ -391,11 +391,30 @@ def monaco_input_method(patient_id="", key_namespace="", **_):
 
     f"Patient Name: `{patient_name}`"
 
-    all_tel_paths = list(monaco_directory.glob(f"*~{patient_id}/plan/*/*tel.1"))
+    plan_directories = list(monaco_directory.glob(f"*~{patient_id}/plan"))
+    if len(plan_directories) == 0:
+        if patient_id != "":
+            st.write(
+                NoRecordsFound(
+                    f"No Monaco plan directories found for patient ID {patient_id}"
+                )
+            )
+        return {"patient_id": patient_id}
+    elif len(plan_directories) > 1:
+        raise ValueError(
+            "More than one patient plan directory found for this ID, "
+            "please only have one directory per patient. "
+            "Directories found were "
+            f"{', '.join([str(path) for path in plan_directories])}"
+        )
+
+    plan_directory = plan_directories[0]
+
+    all_tel_paths = list(plan_directory.glob("**/*tel.1"))
     all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
 
     plan_names_to_choose_from = [
-        f"{path.parent.name}/{path.name}" for path in all_tel_paths
+        str(path.relative_to(plan_directory)) for path in all_tel_paths
     ]
 
     if len(plan_names_to_choose_from) == 0:
