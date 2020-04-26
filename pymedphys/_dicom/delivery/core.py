@@ -27,6 +27,7 @@ from ..rtplan import (
     get_fraction_group_beam_sequence_and_meterset,
     get_fraction_group_index,
     get_gantry_angles_from_dicom,
+    get_IEC_angles_from_cp_sequence,
     merge_beam_sequences,
     replace_beam_sequence,
     replace_fraction_group,
@@ -177,11 +178,11 @@ class DeliveryDicom(DeliveryBase):
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
-            [control_point.GantryAngle for control_point in control_points]
+            get_IEC_angles_from_cp_sequence(control_points, "GantryAngle")
         )
 
         collimator_angles = convert_IEC_angle_to_bipolar(
-            [control_point.BeamLimitingDeviceAngle for control_point in control_points]
+            get_IEC_angles_from_cp_sequence(control_points, "BeamLimitingDeviceAngle")
         )
 
         return cls(mu, gantry_angles, collimator_angles, mlcs, jaw)
