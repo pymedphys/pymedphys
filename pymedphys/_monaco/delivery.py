@@ -103,7 +103,7 @@ def convert_mlc_string(mlc_string):
 
 @functools.lru_cache(maxsize=1)
 def get_control_point_pattern():
-    mlc_pos_pattern = r" *-?\d+\.\d"
+    mlc_pos_pattern = r" *-?\d+\.\d+"
     ten_mlc_pos_pattern = ",".join([mlc_pos_pattern] * 10)
     sixteen_rows_of_mlcs_pattern = "\n".join([ten_mlc_pos_pattern] * 16)
 
@@ -122,6 +122,8 @@ def get_control_point_pattern():
     )
 
     total_pattern = f"({sixteen_rows_of_mlcs_pattern})\n{ones_or_twos}\n{parameters}"
+
+    print(total_pattern)
 
     return total_pattern
 
