@@ -1,3 +1,5 @@
+# redirect = '\\rccc-physicssvr\pymedphys\examples\site-specific\cancer-care-associates\streamlit\config.toml'
+
 [[site]]
 name = "rccc"
 escan_directory = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
@@ -7,7 +9,7 @@ escan_directory = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
     clinic = 'RCCC\1~Clinical'  # May not need this, instead could just support all clinics
 
     [site.mosaiq]
-    timezone = "Australia/Sydney"
+    timezone = "Australia/Sydney"  # Future version may not need this
     hostname = "msqsql"
     port = 1433
 
