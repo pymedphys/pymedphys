@@ -21,6 +21,7 @@ import warnings
 import zipfile
 
 import pymedphys._utilities.filehash
+from pymedphys import _config as pmp_config
 
 from .resume import download_with_resume
 from .zenodo import get_zenodo_file_urls
@@ -28,15 +29,8 @@ from .zenodo import get_zenodo_file_urls
 HERE = pathlib.Path(__file__).resolve().parent
 
 
-def get_config_dir():
-    config_dir = pathlib.Path.home().joinpath(".pymedphys")
-    config_dir.mkdir(exist_ok=True)
-
-    return config_dir
-
-
 def get_data_dir():
-    data_dir = get_config_dir().joinpath("data")
+    data_dir = pmp_config.get_config_dir().joinpath("data")
     data_dir.mkdir(exist_ok=True)
 
     return data_dir

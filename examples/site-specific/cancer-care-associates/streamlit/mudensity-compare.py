@@ -38,6 +38,7 @@ import matplotlib.pyplot as plt
 import pydicom
 
 import pymedphys
+from pymedphys import _config as pmp_config
 from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import connect as msq_connect
@@ -56,10 +57,7 @@ HERE = pathlib.Path(__file__).parent.resolve()
 
 @st.cache
 def load_config():
-    with open(HERE.joinpath("config.toml"), "r") as f:
-        config = toml.load(f)
-
-    return config
+    return pmp_config.get_config(HERE)
 
 
 CONFIG = load_config()
