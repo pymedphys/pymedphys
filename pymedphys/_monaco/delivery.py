@@ -59,32 +59,32 @@ def delivery_from_tel_plan_contents(tel_contents):
     jaw_b = -(jaw_field_centre - jaw_gap / 2)
     jaws = np.vstack([jaw_a, jaw_b]).T.tolist()
 
-    for i in range(len(mu) - 1, -1, -1):
-        result = all_controlpoint_results[i]
-        if result[1] == "2,2":  #  A nasty hack to attempt to find static fields
-            if i == 0:
-                mu = [0] + mu
-            else:
-                mu = mu[0:i] + [mu[i - 1]] + mu[i::]
+    # for i in range(len(mu) - 1, -1, -1):
+    #     result = all_controlpoint_results[i]
+    #     if result[1] == "2,2":  #  A nasty hack to attempt to find static fields
+    #         if i == 0:
+    #             mu = [0] + mu
+    #         else:
+    #             mu = mu[0:i] + [mu[i - 1]] + mu[i::]
 
-            bipolar_gantry_angle = (
-                bipolar_gantry_angle[0:i]
-                + [bipolar_gantry_angle[i]]
-                + bipolar_gantry_angle[i::]
-            )
+    #         bipolar_gantry_angle = (
+    #             bipolar_gantry_angle[0:i]
+    #             + [bipolar_gantry_angle[i]]
+    #             + bipolar_gantry_angle[i::]
+    #         )
 
-            bipolar_coll_angle = (
-                bipolar_coll_angle[0:i]
-                + [bipolar_coll_angle[i]]
-                + bipolar_coll_angle[i::]
-            )
+    #         bipolar_coll_angle = (
+    #             bipolar_coll_angle[0:i]
+    #             + [bipolar_coll_angle[i]]
+    #             + bipolar_coll_angle[i::]
+    #         )
 
-            mlcs = mlcs[0:i] + [mlcs[i]] + mlcs[i::]
-            jaws = jaws[0:i] + [jaws[i]] + jaws[i::]
-        elif result[1] != "1,1":
-            raise ValueError(
-                "Detection for static or dynamic control points has fallen down"
-            )
+    #         mlcs = mlcs[0:i] + [mlcs[i]] + mlcs[i::]
+    #         jaws = jaws[0:i] + [jaws[i]] + jaws[i::]
+    #     elif result[1] != "1,1":
+    #         raise ValueError(
+    #             "Detection for static or dynamic control points has fallen down"
+    #         )
 
     return mu, bipolar_gantry_angle, bipolar_coll_angle, mlcs, jaws
 
