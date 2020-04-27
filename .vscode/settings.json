@@ -97,6 +97,7 @@
     "deps",
     "deque",
     "dicom",
+    "dicoms",
     "dmax",
     "docmanager",
     "docstring",

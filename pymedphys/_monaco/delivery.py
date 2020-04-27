@@ -37,27 +37,50 @@ def delivery_from_tel_plan_contents(tel_contents):
     pattern = get_control_point_pattern()
     all_controlpoint_results = re.findall(pattern, tel_contents)
 
-    mu = np.cumsum([float(result[3]) for result in all_controlpoint_results])
+    mu = np.cumsum([float(result[4]) for result in all_controlpoint_results]).tolist()
 
-    iec_gantry_angle = [float(result[1]) for result in all_controlpoint_results]
+    iec_gantry_angle = [float(result[2]) for result in all_controlpoint_results]
     bipolar_gantry_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
         iec_gantry_angle
-    )
+    ).tolist()
 
-    iec_coll_angle = [float(result[2]) for result in all_controlpoint_results]
+    iec_coll_angle = [float(result[3]) for result in all_controlpoint_results]
     bipolar_coll_angle = pymedphys._utilities.transforms.convert_IEC_angle_to_bipolar(  # pylint: disable = protected-access
         iec_coll_angle
-    )
+    ).tolist()
 
     mlcs = [convert_mlc_string(result[0]) for result in all_controlpoint_results]
 
-    jaw_gap = np.array([float(result[4]) for result in all_controlpoint_results])
+    jaw_gap = np.array([float(result[5]) for result in all_controlpoint_results])
     jaw_field_centre = np.array(
-        [float(result[5]) for result in all_controlpoint_results]
+        [float(result[6]) for result in all_controlpoint_results]
     )
     jaw_a = jaw_field_centre + jaw_gap / 2
     jaw_b = -(jaw_field_centre - jaw_gap / 2)
-    jaws = np.vstack([jaw_a, jaw_b]).T
+    jaws = np.vstack([jaw_a, jaw_b]).T.tolist()
+
+    for i in range(len(mu) - 1, -1, -1):
+        result = all_controlpoint_results[i]
+        if result[1] == "2,2":  #  A nasty hack to attempt to find static fields
+            if i == 0:
+                mu = [0] + mu
+            else:
+                mu = mu[0:i] + [mu[i - 1]] + mu[i::]
+
+            bipolar_gantry_angle = (
+                bipolar_gantry_angle[0:i]
+                + [bipolar_gantry_angle[i]]
+                + bipolar_gantry_angle[i::]
+            )
+
+            bipolar_coll_angle = (
+                bipolar_coll_angle[0:i]
+                + [bipolar_coll_angle[i]]
+                + bipolar_coll_angle[i::]
+            )
+
+            mlcs = mlcs[0:i] + [mlcs[i]] + mlcs[i::]
+            jaws = jaws[0:i] + [jaws[i]] + jaws[i::]
 
     return mu, bipolar_gantry_angle, bipolar_coll_angle, mlcs, jaws
 
@@ -86,7 +109,8 @@ def get_control_point_pattern():
     optional_decimal_param = r"-?\d+(?:\.\d+)?"
 
     parameters = (
-        "1,1\n"
+        r"(\d,\d)"
+        "\n"
         f"{decimal_param},({optional_decimal_param})\n"
         f"({optional_decimal_param})\n{decimal_param},{decimal_param},{decimal_param},{decimal_param}\n"
         f"({decimal_param}),{decimal_param},{decimal_param},{decimal_param}\n"
