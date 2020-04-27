@@ -28,6 +28,7 @@ import keyring
 import pymssql
 import streamlit as st
 import timeago
+import toml
 
 import numpy as np
 import pandas as pd
@@ -37,6 +38,7 @@ import matplotlib.pyplot as plt
 import pydicom
 
 import pymedphys
+from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
@@ -49,37 +51,39 @@ from pymedphys.labs.managelogfiles import index as pmp_index
 Tool to compare the MU Density between planned and delivery.
 """
 
+HERE = pathlib.Path(__file__).parent.resolve()
+
+
+@st.cache
+def load_config():
+    with open(HERE.joinpath("config.toml"), "r") as f:
+        config = toml.load(f)
+
+    return config
+
+
+CONFIG = load_config()
+
 SITE_DIRECTORIES = {
-    "rccc": {
-        "monaco": pathlib.Path(r"\\rccc-monacoda\FocalData\RCCC\1~Clinical"),
-        "escan": pathlib.Path(
-            r"\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs"
+    site["name"]: {
+        "monaco": pathlib.Path(site["monaco"]["focaldata"]).joinpath(
+            site["monaco"]["clinic"]
         ),
-    },
-    "nbcc": {
-        "monaco": pathlib.Path(r"\\tunnel-nbcc-monaco\FOCALDATA\NBCCC\1~Clinical"),
-        "escan": pathlib.Path(r"\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs"),
-    },
-    "sash": {
-        "monaco": pathlib.Path(
-            r"\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData\SASH\1~Clinical"
-        ),
-        "escan": pathlib.Path(
-            r"\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs"
-        ),
-    },
+        "escan": pathlib.Path(site["escan_directory"]),
+    }
+    for site in CONFIG["site"]
 }
 
-LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {
-    "2619": r"\\rccc-physicssvr\iComLogFiles\live\192.168.100.200",
-    "2694": r"\\rccc-physicssvr\iComLogFiles\live\192.168.100.201",
-    "4299": r"\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live\192.168.17.40",
-    "9002": r"\\tunnel-sash-physics-server\SASH-DataExchange\icom\live\192.168.40.10",
-}
+LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {}
+MACHINE_CENTRE_MAP = {}
+for site in CONFIG["site"]:
+    for linac in site["linac"]:
+        LINAC_ICOM_LIVE_STREAM_DIRECTORIES[linac["name"]] = linac["icom_live_directory"]
+        MACHINE_CENTRE_MAP[linac["name"]] = site["name"]
 
 LINAC_IDS = list(LINAC_ICOM_LIVE_STREAM_DIRECTORIES.keys())
 
-TRF_LOGFILE_ROOT_DIR = pathlib.Path(r"\\rccc-physicssvr\LinacLogFiles")
+TRF_LOGFILE_ROOT_DIR = pathlib.Path(CONFIG["trf_logfiles"])
 LINAC_INDEXED_BACKUPS_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath(
     r"diagnostics\already_indexed"
 )
@@ -91,13 +95,13 @@ DICOM_EXPORT_LOCATIONS = {
 }
 
 MOSAIQ_DETAILS = {
-    "rccc": {"timezone": "Australia/Sydney", "server": "msqsql:1433"},
-    "nbcc": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:31433"},
-    "sash": {"timezone": "Australia/Sydney", "server": "rccc-physicssvr:1433"},
+    site["name"]: {
+        "timezone": site["mosaiq"]["timezone"],
+        "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
+    }
+    for site in CONFIG["site"]
 }
 
-
-MACHINE_CENTRE_MAP = {"2619": "rccc", "2694": "rccc", "4299": "nbcc", "9002": "sash"}
 LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
 MAX_LEAF_GAP = 410
 GRID_RESOLUTION = 1
@@ -127,19 +131,11 @@ class NoRecordsFound(ValueError):
 
 site_options = list(SITE_DIRECTORIES.keys())
 
-DICOM_PLAN_UID = "1.2.840.10008.5.1.4.1.1.481.5"
-
-DEFAULT_ICOM_DIRECTORY = r"\\rccc-physicssvr\iComLogFiles\patients"
-DEFAULT_PNG_OUTPUT_DIRECTORY = r"\\pdc\PExIT\Physics\Patient Specific Logfile Fluence"
+DEFAULT_ICOM_DIRECTORY = CONFIG["icom"]["patient_directory"]
+DEFAULT_PNG_OUTPUT_DIRECTORY = CONFIG["output"]["png_directory"]
 
 
-DEFAULT_GAMMA_OPTIONS = {
-    "dose_percent_threshold": 2,
-    "distance_mm_threshold": 0.5,
-    "local_gamma": True,
-    "quiet": True,
-    "max_gamma": 5,
-}
+DEFAULT_GAMMA_OPTIONS = CONFIG["gamma"]
 
 
 @st.cache(allow_output_mutation=True)
