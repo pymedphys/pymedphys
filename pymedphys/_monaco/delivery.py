@@ -81,6 +81,10 @@ def delivery_from_tel_plan_contents(tel_contents):
 
             mlcs = mlcs[0:i] + [mlcs[i]] + mlcs[i::]
             jaws = jaws[0:i] + [jaws[i]] + jaws[i::]
+        elif result[1] != "1,1":
+            raise ValueError(
+                "Detection for static or dynamic control points has fallen down"
+            )
 
     return mu, bipolar_gantry_angle, bipolar_coll_angle, mlcs, jaws
 
