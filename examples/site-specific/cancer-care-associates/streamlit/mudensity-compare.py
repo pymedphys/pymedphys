@@ -83,7 +83,7 @@ for site in CONFIG["site"]:
 
 LINAC_IDS = list(LINAC_ICOM_LIVE_STREAM_DIRECTORIES.keys())
 
-TRF_LOGFILE_ROOT_DIR = pathlib.Path(CONFIG["trf_logfiles"])
+TRF_LOGFILE_ROOT_DIR = pathlib.Path(CONFIG["trf_logfiles"]["root_directory"])
 LINAC_INDEXED_BACKUPS_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath(
     r"diagnostics\already_indexed"
 )
@@ -102,6 +102,11 @@ MOSAIQ_DETAILS = {
     for site in CONFIG["site"]
 }
 
+DEFAULT_ICOM_DIRECTORY = CONFIG["icom"]["patient_directory"]
+DEFAULT_PNG_OUTPUT_DIRECTORY = CONFIG["output"]["png_directory"]
+
+DEFAULT_GAMMA_OPTIONS = CONFIG["gamma"]
+
 LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
 MAX_LEAF_GAP = 410
 GRID_RESOLUTION = 1
@@ -111,6 +116,9 @@ GRID = pymedphys.mudensity.grid(
     leaf_pair_widths=LEAF_PAIR_WIDTHS,
 )
 COORDS = (GRID["jaw"], GRID["mlc"])
+
+
+site_options = list(SITE_DIRECTORIES.keys())
 
 
 class InputRequired(ValueError):
@@ -127,15 +135,6 @@ class ConflictingPatientName(ValueError):
 
 class NoRecordsFound(ValueError):
     pass
-
-
-site_options = list(SITE_DIRECTORIES.keys())
-
-DEFAULT_ICOM_DIRECTORY = CONFIG["icom"]["patient_directory"]
-DEFAULT_PNG_OUTPUT_DIRECTORY = CONFIG["output"]["png_directory"]
-
-
-DEFAULT_GAMMA_OPTIONS = CONFIG["gamma"]
 
 
 @st.cache(allow_output_mutation=True)
