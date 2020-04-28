@@ -20,7 +20,8 @@ disable =
     wrong-import-position,
     ungrouped-imports,
     import-outside-toplevel,
-    no-else-return
+    no-else-return,
+    unbalanced-tuple-unpacking
 
 
 [FORMAT]
