@@ -19,7 +19,9 @@ describe("smoke", () => {
 
     cy.compute()
 
-    cy.get(".stMarkdown").contains('MU')
+    cy.get(".stMarkdown p").contains('Total MU:').find('code').should("have.text", '150.0')
+
+    // .get('code').should("have.text", '150.0')
 
     cy.get(".stTextInput input")
       .first()
