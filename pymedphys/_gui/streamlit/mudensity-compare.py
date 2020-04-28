@@ -139,9 +139,6 @@ def main():
     class WrongFileType(ValueError):
         pass
 
-    class ConflictingPatientName(ValueError):
-        pass
-
     class NoRecordsFound(ValueError):
         pass
 
