@@ -24,6 +24,7 @@ from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 from ..rtplan import (
     build_control_points,
     convert_to_one_fraction_group,
+    get_cp_attribute_leaning_on_prior,
     get_fraction_group_beam_sequence_and_meterset,
     get_fraction_group_index,
     get_gantry_angles_from_dicom,
@@ -140,9 +141,13 @@ class DeliveryDicom(DeliveryBase):
 
         control_points = beam.ControlPointSequence
 
+        beam_limiting_device_position_sequences = get_cp_attribute_leaning_on_prior(
+            control_points, "BeamLimitingDevicePositionSequence"
+        )
+
         mlcs = [
-            control_point.BeamLimitingDevicePositionSequence[-1].LeafJawPositions
-            for control_point in control_points
+            sequence[-1].LeafJawPositions
+            for sequence in beam_limiting_device_position_sequences
         ]
 
         mlcs = [
@@ -155,8 +160,8 @@ class DeliveryDicom(DeliveryBase):
         ]
 
         dicom_jaw = [
-            control_point.BeamLimitingDevicePositionSequence[0].LeafJawPositions
-            for control_point in control_points
+            sequence[0].LeafJawPositions
+            for sequence in beam_limiting_device_position_sequences
         ]
 
         jaw = np.array(dicom_jaw)
@@ -177,11 +182,11 @@ class DeliveryDicom(DeliveryBase):
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
-            [control_point.GantryAngle for control_point in control_points]
+            get_cp_attribute_leaning_on_prior(control_points, "GantryAngle")
         )
 
         collimator_angles = convert_IEC_angle_to_bipolar(
-            [control_point.BeamLimitingDeviceAngle for control_point in control_points]
+            get_cp_attribute_leaning_on_prior(control_points, "BeamLimitingDeviceAngle")
         )
 
         return cls(mu, gantry_angles, collimator_angles, mlcs, jaw)
