@@ -226,6 +226,7 @@
     "pynetdicom",
     "pypi",
     "pyplot",
+    "pypoetry",
     "pytest",
     "qcls",
     "randomisation",
