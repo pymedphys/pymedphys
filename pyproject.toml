@@ -91,6 +91,7 @@ m2r = { version = "*", optional = true }
 pytest = { version = "*", optional = true }
 pytest-sugar  = { version = "*", optional = true }
 hypothesis  = { version = "*", optional = true }
+psutil  = { version = "*", optional = true }
 
 # pylint
 pylint  = { version = "*", optional = true }
@@ -104,6 +105,7 @@ pytest-sugar = "*"
 pylint = "*"
 pytest-pylint = "*"
 hypothesis = "*"
+psutil = "*"
 
 # Git Management
 pre-commit = "*"
@@ -127,7 +129,6 @@ m2r = "*"
 
 # VSCode extension dependencies
 doc8 = "*"
-psutil = "^5.7.0"
 pydot = "^1.4.1"
 
 # Packages to include later
@@ -147,7 +148,7 @@ ml = [
 ]
 
 pytest = [
-    "pytest", "pytest-sugar", "hypothesis"
+    "pytest", "pytest-sugar", "hypothesis", "psutil"
 ]
 
 pylint = [
