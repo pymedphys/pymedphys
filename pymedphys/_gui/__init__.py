@@ -14,11 +14,30 @@
 # pylint: disable = protected-access
 
 import pathlib
+import shutil
 import subprocess
+
+HERE = pathlib.Path(__file__).parent.resolve()
+STREAMLIT_CONTENT_DIR = HERE.joinpath("streamlit")
+
+
+def fill_streamlit_credentials():
+    streamlit_config_dir = pathlib.Path.home().joinpath(".streamlit")
+    streamlit_config_dir.mkdir(exist_ok=True)
+
+    template_streamlit_credentials_file = STREAMLIT_CONTENT_DIR.joinpath(
+        "credentials.toml"
+    )
+    new_credential_file = streamlit_config_dir.joinpath("credentials.toml")
+
+    try:
+        shutil.copy2(template_streamlit_credentials_file, new_credential_file)
+    except FileExistsError:
+        pass
 
 
 def main(_):
-    here = pathlib.Path(__file__).parent.resolve()
+    fill_streamlit_credentials()
 
-    streamlit_script_path = str(here.joinpath("streamlit/mudensity-compare.py"))
+    streamlit_script_path = str(STREAMLIT_CONTENT_DIR.joinpath("mudensity-compare.py"))
     subprocess.check_call(["streamlit", "run", streamlit_script_path])
