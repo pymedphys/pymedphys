@@ -52,15 +52,38 @@ from pymedphys.labs.managelogfiles import index as pmp_index
 Tool to compare the MU Density between planned and delivery.
 """
 
-HERE = pathlib.Path(__file__).parent.resolve()
+
+CWD = pathlib.Path.cwd()
+
+
+# def download_and_extract_demo_data():
+#     data_paths = pymedphys.zip_data_paths(
+#         "mu-density-gui-e2e-data.zip", extract_directory=CWD
+#     )
+#     common_path = os.path.commonpath(data_paths)
+#     return common_path, data_paths
+
+
+# common_path, data_paths = download_and_extract_demo_data()
+# f"`{common_path}`"
+# [str(path) for path in data_paths]
 
 
 @st.cache
 def load_config():
-    return pmp_config.get_config(HERE)
+    try:
+        result = pmp_config.get_config()
+    except FileNotFoundError:
+        result = {}  # Download demo data and configuration
+
+    return result
 
 
 CONFIG = load_config()
+
+AVAILABLE_DATA_METHODS = CONFIG["data_methods"]["available"]
+DEFAULT_REFERENCE_ID = CONFIG["data_methods"]["default_reference"]
+DEFAULT_EVALUATION_ID = CONFIG["data_methods"]["default_evaluation"]
 
 SITE_DIRECTORIES = {
     site["name"]: {
@@ -915,16 +938,28 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
     }
 
 
-DEFAULT_REFERENCE = "Monaco tel.1 filepath"
-DEFAULT_EVALUATION = "iCOM record timestamp"
-
-data_method_map = {
-    DEFAULT_REFERENCE: monaco_input_method,
-    "DICOM RTPlan file upload": dicom_input_method,
-    DEFAULT_EVALUATION: icom_input_method,
-    "Linac Backup `.trf` filepath": trf_input_method,
-    "Mosaiq SQL query": mosaiq_input_method,
+DATA_OPTION_LABELS = {
+    "monaco": "Monaco tel.1 filepath",
+    "dicom": "DICOM RTPlan file upload",
+    "icom": "iCOM record timestamp",
+    "trf": "Linac Backup `.trf` filepath",
+    "mosaiq": "Mosaiq SQL query",
 }
+
+DATA_OPTION_FUNCTIONS = {
+    "monaco": monaco_input_method,
+    "dicom": dicom_input_method,
+    "icom": icom_input_method,
+    "trf": trf_input_method,
+    "mosaiq": mosaiq_input_method,
+}
+
+DEFAULT_REFERENCE = DATA_OPTION_LABELS[DEFAULT_REFERENCE_ID]
+DEFAULT_EVALUATION = DATA_OPTION_LABELS[DEFAULT_EVALUATION_ID]
+
+data_method_map = {}
+for method in AVAILABLE_DATA_METHODS:
+    data_method_map[DATA_OPTION_LABELS[method]] = DATA_OPTION_FUNCTIONS[method]
 
 data_method_options = list(data_method_map.keys())
 

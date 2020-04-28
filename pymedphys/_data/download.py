@@ -155,7 +155,11 @@ def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=
 
 
 def zip_data_paths(
-    filename, check_hash=True, redownload_on_hash_mismatch=True, url=None
+    filename,
+    check_hash=True,
+    redownload_on_hash_mismatch=True,
+    url=None,
+    extract_directory=None,
 ):
     zip_filepath = data_path(
         filename,
@@ -163,8 +167,12 @@ def zip_data_paths(
         redownload_on_hash_mismatch=redownload_on_hash_mismatch,
         url=url,
     )
-    relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
-    extract_directory = get_data_dir().joinpath(relative_extract_directory)
+
+    if extract_directory is None:
+        relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
+        extract_directory = get_data_dir().joinpath(relative_extract_directory)
+    else:
+        extract_directory = pathlib.Path(extract_directory)
 
     with zipfile.ZipFile(zip_filepath, "r") as zip_file:
         namelist = zip_file.namelist()
