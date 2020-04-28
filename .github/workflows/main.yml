@@ -172,7 +172,6 @@ jobs:
         key: pymedphys-data
 
     - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Linux')
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
@@ -185,7 +184,7 @@ jobs:
 
     - name: Run initial poetry install
       run: |
-        poetry install
+        poetry install --no-dev -E pytest
 
     - name: Run PyMedPhys GUI
       run: |
