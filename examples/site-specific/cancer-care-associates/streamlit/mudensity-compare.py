@@ -56,17 +56,17 @@ Tool to compare the MU Density between planned and delivery.
 CWD = pathlib.Path.cwd()
 
 
-# def download_and_extract_demo_data():
-#     data_paths = pymedphys.zip_data_paths(
-#         "mu-density-gui-e2e-data.zip", extract_directory=CWD
-#     )
-#     common_path = os.path.commonpath(data_paths)
-#     return common_path, data_paths
+def download_and_extract_demo_data():
+    data_paths = pymedphys.zip_data_paths(
+        "mu-density-gui-e2e-data.zip", extract_directory=CWD
+    )
+    common_path = os.path.commonpath(data_paths)
+    return common_path, data_paths
 
 
-# common_path, data_paths = download_and_extract_demo_data()
-# f"`{common_path}`"
-# [str(path) for path in data_paths]
+common_path, data_paths = download_and_extract_demo_data()
+f"`{common_path}`"
+[str(path) for path in data_paths]
 
 
 @st.cache
