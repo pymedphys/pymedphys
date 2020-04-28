@@ -123,8 +123,6 @@ def get_control_point_pattern():
 
     total_pattern = f"({sixteen_rows_of_mlcs_pattern})\n{ones_or_twos}\n{parameters}"
 
-    print(total_pattern)
-
     return total_pattern
 
 
