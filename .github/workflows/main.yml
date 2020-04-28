@@ -93,7 +93,7 @@ jobs:
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
-        key: pymedphys-data
+        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
 
     - uses: actions/cache@v1
       if: startsWith(runner.os, 'Linux')
@@ -187,7 +187,7 @@ jobs:
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
-        key: pymedphys-data
+        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
 
     - uses: actions/cache@v1
       with:
@@ -263,7 +263,7 @@ jobs:
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
-        key: pymedphys-data
+        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
 
     - uses: actions/cache@v1
       if: startsWith(runner.os, 'Linux')
