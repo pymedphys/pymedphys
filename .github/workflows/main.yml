@@ -166,6 +166,16 @@ jobs:
         runTests: false
         working-directory: tests/e2e
 
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+
+    - name: Show python information
+      run: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
+
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
