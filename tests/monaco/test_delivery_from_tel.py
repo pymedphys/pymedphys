@@ -19,6 +19,10 @@ import pydicom
 
 import pymedphys
 
+DIRS_TO_SKIP = (
+    "10x10",  #  3DCRT fields not yet implemented within Delivery.from_monaco
+)
+
 
 def test_delivery_from_monaco():
     data_paths = pymedphys.zip_data_paths("tel-dicom-pairs.zip")
@@ -27,6 +31,9 @@ def test_delivery_from_monaco():
     assert len(dir_names) >= 2
 
     for dir_name in dir_names:
+        if dir_name in DIRS_TO_SKIP:
+            continue
+
         current_paths = [path for path in data_paths if path.parent.name == dir_name]
 
         tel_path = get_file_type(current_paths, "tel.1", exact_match=True)

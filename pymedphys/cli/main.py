@@ -18,6 +18,7 @@ import sys
 from .bundle import bundle_cli
 from .dev import dev_cli
 from .dicom import dicom_cli
+from .gui import gui_cli
 from .icom import icom_cli
 from .labs import labs_cli
 from .logfile import logfile_cli
@@ -44,6 +45,7 @@ def define_parser():
     zenodo_cli(subparsers)
     icom_cli(subparsers)
     bundle_cli(subparsers)
+    gui_cli(subparsers)
 
     return parser
 

@@ -159,25 +159,33 @@ def get_metersets_from_dicom(dicom_dataset, fraction_group):
     return beam_metersets
 
 
+def get_cp_attribute_leaning_on_prior(control_point_sequence, attribute):
+    current_result = None
+    results = []
+    for control_point in control_point_sequence:
+        try:
+            current_result = getattr(control_point, attribute)
+
+        # If a subsequent control point doesn't record an
+        # angle then leave current_angle as what it was in the
+        # previous iteration of the loop
+        except AttributeError:
+            if current_result is None:
+                raise
+
+        results.append(current_result)
+
+    return results
+
+
 def get_gantry_angles_from_dicom(dicom_dataset):
 
     beam_gantry_angles = []
 
     for beam_sequence in dicom_dataset.BeamSequence:
-        current_gantry_angle = None
-        cp_gantry_angles_IEC = []
-        for control_point in beam_sequence.ControlPointSequence:
-            try:
-                current_gantry_angle = control_point.GantryAngle
-
-            # If a subsequent control point doesn't record a gantry
-            # angle then leave current_gantry_angle as what it was in the
-            # previous iteration of the loop
-            except AttributeError:
-                if current_gantry_angle is None:
-                    raise
-
-            cp_gantry_angles_IEC.append(current_gantry_angle)
+        cp_gantry_angles_IEC = get_cp_attribute_leaning_on_prior(
+            beam_sequence.ControlPointSequence, "GantryAngle"
+        )
 
         cp_gantry_angles_bipolar = convert_IEC_angle_to_bipolar(cp_gantry_angles_IEC)
         cp_unique_gantry_angles = set(cp_gantry_angles_bipolar)

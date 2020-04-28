@@ -21,6 +21,7 @@ import warnings
 import zipfile
 
 import pymedphys._utilities.filehash
+from pymedphys import _config as pmp_config
 
 from .resume import download_with_resume
 from .zenodo import get_zenodo_file_urls
@@ -28,15 +29,8 @@ from .zenodo import get_zenodo_file_urls
 HERE = pathlib.Path(__file__).resolve().parent
 
 
-def get_config_dir():
-    config_dir = pathlib.Path.home().joinpath(".pymedphys")
-    config_dir.mkdir(exist_ok=True)
-
-    return config_dir
-
-
 def get_data_dir():
-    data_dir = get_config_dir().joinpath("data")
+    data_dir = pmp_config.get_config_dir().joinpath("data")
     data_dir.mkdir(exist_ok=True)
 
     return data_dir
@@ -161,7 +155,11 @@ def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=
 
 
 def zip_data_paths(
-    filename, check_hash=True, redownload_on_hash_mismatch=True, url=None
+    filename,
+    check_hash=True,
+    redownload_on_hash_mismatch=True,
+    url=None,
+    extract_directory=None,
 ):
     zip_filepath = data_path(
         filename,
@@ -169,8 +167,12 @@ def zip_data_paths(
         redownload_on_hash_mismatch=redownload_on_hash_mismatch,
         url=url,
     )
-    relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
-    extract_directory = get_data_dir().joinpath(relative_extract_directory)
+
+    if extract_directory is None:
+        relative_extract_directory = pathlib.Path(os.path.splitext(filename)[0])
+        extract_directory = get_data_dir().joinpath(relative_extract_directory)
+    else:
+        extract_directory = pathlib.Path(extract_directory)
 
     with zipfile.ZipFile(zip_filepath, "r") as zip_file:
         namelist = zip_file.namelist()
