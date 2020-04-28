@@ -191,10 +191,13 @@ jobs:
       uses: cypress-io/github-action@v1
       with:
         record: true
+        start: cd tests/e2e && yarn start
       env:
         # pass the Dashboard record key as an environment variable
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        host: localhost
+        port: 8501
 
   WithUpdates:
     strategy:
