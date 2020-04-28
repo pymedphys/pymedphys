@@ -171,7 +171,7 @@ jobs:
       with:
         python-version: 3.7
 
-    - name: Show python information
+    - name: Show Python information
       run: |
         python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
         python -c "import platform; print(platform.machine()); print(platform.release())"
@@ -192,7 +192,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip poetry
 
-    - name: Run initial poetry install
+    - name: Run poetry install
       run: |
         poetry install --no-dev -E pytest
 
