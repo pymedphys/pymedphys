@@ -46,6 +46,7 @@ EXTERNAL_EXPORTS = (
     "watchdog.events",
     "watchdog.observers",
     "watchdog",
+    "toml",
 )
 
 pymedphys._vendor.apipkg.initpkg(  # pylint: disable = protected-access
@@ -100,5 +101,6 @@ if "numpy" not in IMPORTABLES:
     import watchdog
     import watchdog.events
     import watchdog.observers
+    import toml
 
     raise ValueError("This section of code should never run")
