@@ -127,6 +127,7 @@ m2r = "*"
 
 # VSCode extension dependencies
 doc8 = "*"
+psutil = "^5.7.0"
 pydot = "^1.4.1"
 
 # Packages to include later

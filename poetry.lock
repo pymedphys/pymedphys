@@ -1297,6 +1297,17 @@ setuptools = "*"
 six = ">=1.9"
 
 [[package]]
+category = "dev"
+description = "Cross-platform lib for process and system monitoring in Python."
+name = "psutil"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "5.7.0"
+
+[package.extras]
+enum = ["enum34"]
+
+[[package]]
 category = "main"
 description = "Run a subprocess in a pseudo terminal"
 marker = "sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\""
@@ -2245,7 +2256,7 @@ pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis"]
 
 [metadata]
-content-hash = "3485ee8f3cf73ce1934c3e3ffd4e0793896e92633c33fa87f76f1bb18421e90f"
+content-hash = "032ae975f471561ab7eb05640f61f33de888dc0238d993a0d397068b7f5d0069"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2947,6 +2958,19 @@ protobuf = [
     {file = "protobuf-3.11.3-py2.py3-none-any.whl", hash = "sha256:24e3b6ad259544d717902777b33966a1a069208c885576254c112663e6a5bb0f"},
     {file = "protobuf-3.11.3.tar.gz", hash = "sha256:c77c974d1dadf246d789f6dad1c24426137c9091e930dbf50e0a29c1fcf00b1f"},
 ]
+psutil = [
+    {file = "psutil-5.7.0-cp27-none-win32.whl", hash = "sha256:298af2f14b635c3c7118fd9183843f4e73e681bb6f01e12284d4d70d48a60953"},
+    {file = "psutil-5.7.0-cp27-none-win_amd64.whl", hash = "sha256:75e22717d4dbc7ca529ec5063000b2b294fc9a367f9c9ede1f65846c7955fd38"},
+    {file = "psutil-5.7.0-cp35-cp35m-win32.whl", hash = "sha256:f344ca230dd8e8d5eee16827596f1c22ec0876127c28e800d7ae20ed44c4b310"},
+    {file = "psutil-5.7.0-cp35-cp35m-win_amd64.whl", hash = "sha256:e2d0c5b07c6fe5a87fa27b7855017edb0d52ee73b71e6ee368fae268605cc3f5"},
+    {file = "psutil-5.7.0-cp36-cp36m-win32.whl", hash = "sha256:a02f4ac50d4a23253b68233b07e7cdb567bd025b982d5cf0ee78296990c22d9e"},
+    {file = "psutil-5.7.0-cp36-cp36m-win_amd64.whl", hash = "sha256:1413f4158eb50e110777c4f15d7c759521703bd6beb58926f1d562da40180058"},
+    {file = "psutil-5.7.0-cp37-cp37m-win32.whl", hash = "sha256:d008ddc00c6906ec80040d26dc2d3e3962109e40ad07fd8a12d0284ce5e0e4f8"},
+    {file = "psutil-5.7.0-cp37-cp37m-win_amd64.whl", hash = "sha256:73f35ab66c6c7a9ce82ba44b1e9b1050be2a80cd4dcc3352cc108656b115c74f"},
+    {file = "psutil-5.7.0-cp38-cp38-win32.whl", hash = "sha256:60b86f327c198561f101a92be1995f9ae0399736b6eced8f24af41ec64fb88d4"},
+    {file = "psutil-5.7.0-cp38-cp38-win_amd64.whl", hash = "sha256:d84029b190c8a66a946e28b4d3934d2ca1528ec94764b180f7d6ea57b0e75e26"},
+    {file = "psutil-5.7.0.tar.gz", hash = "sha256:685ec16ca14d079455892f25bd124df26ff9137664af445563c1bd36629b5e0e"},
+]
 ptyprocess = [
     {file = "ptyprocess-0.6.0-py2.py3-none-any.whl", hash = "sha256:d7cc528d76e76342423ca640335bd3633420dc1366f258cb31d05e865ef5ca1f"},
     {file = "ptyprocess-0.6.0.tar.gz", hash = "sha256:923f299cc5ad920c68f2bc0bc98b75b9f838b93b599941a6b63ddbc2476394c0"},
@@ -3342,9 +3366,17 @@ tf-estimator-nightly = [
     {file = "tf_estimator_nightly-2.3.0.dev2020042201-py2.py3-none-any.whl", hash = "sha256:9491de19742db205ee3ea401d8e7dcd6fef327b1d77425711432b0572f3ed789"},
 ]
 tf-nightly = [
+    {file = "tf_nightly-2.2.0.dev20200422-cp35-cp35m-macosx_10_6_intel.whl", hash = "sha256:0b8cf35d7219c11ad28e0cfaabc4555e0a15883402b32b00bfb6b135c8f09d9b"},
+    {file = "tf_nightly-2.2.0.dev20200422-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:c886001ef6d78615200d29ff6a4b5eee3f4937937d002b6773b0283c471eaec5"},
+    {file = "tf_nightly-2.2.0.dev20200422-cp35-cp35m-win_amd64.whl", hash = "sha256:1174a6757ab967050e9bdad4296678d7aa02af6d8db463b1329c275936cbd857"},
     {file = "tf_nightly-2.2.0.dev20200422-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:b0659cd90fd9ce174422a8cefe1f2cfe779ca30795aa2fab8fa7e373d8a28ba6"},
     {file = "tf_nightly-2.2.0.dev20200422-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:78862ddb8c9959cc7c22ab5b85126d7a48c088019bb0dcd6d02942de3e343d39"},
+    {file = "tf_nightly-2.2.0.dev20200422-cp36-cp36m-win_amd64.whl", hash = "sha256:47626a2f4f81e7eb21f14d227cd808c6df1b749dc47c07737417eb4b83c9ef9e"},
+    {file = "tf_nightly-2.2.0.dev20200422-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:03fe63ebf78ec3aa141b766ba97b267d816d23c24f7f19b54acd1c0f87e386f2"},
     {file = "tf_nightly-2.2.0.dev20200422-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:3520f4e95dff18191738be24eea2ec4514d8311e608f710d95d6b5b9c50adb05"},
+    {file = "tf_nightly-2.2.0.dev20200422-cp37-cp37m-win_amd64.whl", hash = "sha256:825774ab2a872d00f93cbeeb51c7b600845d3e5f36648c6fac25fa827e0f7a85"},
+    {file = "tf_nightly-2.2.0.dev20200422-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:5d83762bdcc292a3e425fce9938197ad00fb83773aa6a69ff8a9aed2f96b9ac2"},
+    {file = "tf_nightly-2.2.0.dev20200422-cp38-cp38-win_amd64.whl", hash = "sha256:00bd40740af91dc535a95b5d1c9fd2e081fab3e3b39152328185b15e03e09ffb"},
 ]
 timeago = [
     {file = "timeago-1.0.14.tar.gz", hash = "sha256:4308d0123a21c778e0ac66fb68e09c15ab6a006e152f8840902575b48aac373d"},
