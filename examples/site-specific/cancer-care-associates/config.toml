@@ -1,0 +1,81 @@
+# redirect = '\\rccc-physicssvr\pymedphys\examples\site-specific\cancer-care-associates\streamlit\config.toml'
+
+[data_methods]
+available = ["monaco", "dicom", "icom", "trf", "mosaiq"]
+default_reference = "monaco"
+default_evaluation = "icom"
+
+[[site]]
+name = "rccc"
+escan_directory = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+
+    [site.monaco]
+    focaldata = '\\rccc-monacoda\FocalData'
+    clinic = 'RCCC\1~Clinical'  # May not need this, instead could just support all clinics
+
+    [site.mosaiq]
+    timezone = "Australia/Sydney"  # Future version may not need this
+    hostname = "msqsql"
+    port = 1433
+
+    [[site.linac]]
+    name = "2619"
+    icom_live_directory = '\\rccc-physicssvr\iComLogFiles\live\192.168.100.200'
+
+    [[site.linac]]
+    name = "2694"
+    icom_live_directory = '\\rccc-physicssvr\iComLogFiles\live\192.168.100.201'
+
+
+[[site]]
+name = "nbcc"
+escan_directory = '\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
+
+    [site.monaco]
+    focaldata = '\\tunnel-nbcc-monaco\FOCALDATA'
+    clinic = 'NBCCC\1~Clinical'
+
+    [site.mosaiq]
+    timezone = "Australia/Sydney"
+    hostname = "rccc-physicssvr"
+    port = 31433
+
+    [[site.linac]]
+    name = "4299"
+    icom_live_directory = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live\192.168.17.40'
+
+
+[[site]]
+name = "sash"
+escan_directory = '\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs'
+
+    [site.monaco]
+    focaldata = '\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData'
+    clinic = 'SASH\1~Clinical'
+
+    [site.mosaiq]
+    timezone = "Australia/Sydney"
+    hostname = "rccc-physicssvr"
+    port = 1433
+
+    [[site.linac]]
+    name = "9002"
+    icom_live_directory = '\\tunnel-sash-physics-server\SASH-DataExchange\icom\live\192.168.40.10'
+
+
+[trf_logfiles]
+root_directory = '\\rccc-physicssvr\LinacLogFiles'
+
+[icom]
+patient_directory = '\\rccc-physicssvr\iComLogFiles\patients'
+
+[output]
+png_directory = '\\pdc\PExIT\Physics\Patient Specific Logfile Fluence'
+
+[gamma]
+dose_percent_threshold = 2
+distance_mm_threshold = 0.5
+local_gamma = true
+quiet = true
+max_gamma = 5
+lower_percent_dose_cutoff = 20
