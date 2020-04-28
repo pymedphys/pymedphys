@@ -22,17 +22,12 @@ import os
 import pathlib
 from datetime import datetime
 
-import keyring
-import pymssql
-import streamlit as st
-import timeago
-
-import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-
-import pydicom
+from pymedphys._imports import keyring
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt, pydicom, pymssql
+from pymedphys._imports import streamlit as st
+from pymedphys._imports import timeago
 
 import pymedphys
 from pymedphys import _config as pmp_config
