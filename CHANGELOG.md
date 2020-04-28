@@ -60,7 +60,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
   plan files.
 - Work on `pymedphys.Delivery.from_monaco()` was undergone with an attempt to
   support step and shoot plans. This work was preliminary.
-
+- Created a utility to pretty print patient names
+- Added ground work for e2e testing of `pymedphys gui` with the cypress tool.
 
 ## [0.24.3]
 
@@ -539,7 +540,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.24.3...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.25.0...master
+[0.25.0]: https://github.com/pymedphys/pymedphys/compare/v0.24.3...v0.25.0
 [0.24.3]: https://github.com/pymedphys/pymedphys/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/pymedphys/pymedphys/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/pymedphys/pymedphys/compare/v0.24.0...v0.24.1
