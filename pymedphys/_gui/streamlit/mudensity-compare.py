@@ -66,7 +66,7 @@ def load_config():
         result = pmp_config.get_config()
     except FileNotFoundError:
         download_and_extract_demo_data()
-        result = pmp_config.get_config(CWD)
+        result = pmp_config.get_config(CWD.joinpath("pymedphys-gui-demo"))
 
     return result
 
