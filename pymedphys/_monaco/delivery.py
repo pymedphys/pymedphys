@@ -18,8 +18,9 @@ import re
 from pymedphys._imports import numpy as np
 
 import pymedphys._base.delivery
-import pymedphys._utilities.filesystem
 import pymedphys._utilities.transforms
+
+from . import utility
 
 
 class DeliveryMonaco(
@@ -27,7 +28,7 @@ class DeliveryMonaco(
 ):
     @classmethod
     def from_monaco(cls, tel_path):
-        read_tel_contents = create_read_tel_contents()
+        read_tel_contents = utility.create_read_monaco_file()
         tel_contents = read_tel_contents(tel_path)
 
         return cls(*delivery_from_tel_plan_contents(tel_contents))
@@ -124,16 +125,3 @@ def get_control_point_pattern():
     total_pattern = f"({sixteen_rows_of_mlcs_pattern})\n{ones_or_twos}\n{parameters}"
 
     return total_pattern
-
-
-@functools.lru_cache(maxsize=1)
-def create_read_tel_contents():
-    def read_tel_contents(filepath):
-        with pymedphys._utilities.filesystem.open_no_lock(  # pylint: disable = protected-access
-            filepath, "r"
-        ) as a_file:
-            data = a_file.read()
-
-        return data
-
-    return read_tel_contents
