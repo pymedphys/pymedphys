@@ -91,7 +91,7 @@ jobs:
         python -c "import platform; print(platform.machine()); print(platform.release())"
 
     - name: Set up Node
-    - uses: actions/setup-node@v1
+      uses: actions/setup-node@v1
       if: matrix.toxenv == 'yarn'
 
     - name: Install Yarn
