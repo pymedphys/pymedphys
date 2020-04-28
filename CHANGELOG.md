@@ -33,6 +33,36 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - nil -->
 
+## [0.25.0]
+
+### New Features
+
+- Created the command line tool `pymedphys gui` which boots the GUI for
+  PyMedPhys within your browser. GUI at this stage is quite minimal.
+- Created a tool to handle a PyMedPhys config file, by default stored within
+  `~/.pymedphys/.config.toml`. That config file can have a `redirect` field
+  to allow configuration to be stored in a different location such as
+  within a git repo, or a network drive.
+- `pymedphys.zip_data_paths` now has a new optional parameter
+  `extract_directory`. When this parameter is passed the contents of the zip
+  downloaded zip data will be extracted to the provided directory. For example
+  now the following is possible:
+
+```python
+import pathlib
+import pymedphys
+
+CWD = pathlib.Path.cwd()
+pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
+```
+
+- `pymedphys.Delivery.from_dicom()` now supports step and shoot and 3DCRT DICOM
+  plan files.
+- Work on `pymedphys.Delivery.from_monaco()` was undergone with an attempt to
+  support step and shoot plans. This work was preliminary.
+- Created a utility to pretty print patient names
+- Added ground work for e2e testing of `pymedphys gui` with the cypress tool.
+
 ## [0.24.3]
 
 ### Bug Fixes
@@ -510,7 +540,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.24.3...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.25.0...master
+[0.25.0]: https://github.com/pymedphys/pymedphys/compare/v0.24.3...v0.25.0
 [0.24.3]: https://github.com/pymedphys/pymedphys/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/pymedphys/pymedphys/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/pymedphys/pymedphys/compare/v0.24.0...v0.24.1
