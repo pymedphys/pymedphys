@@ -1,5 +1,11 @@
 /// <reference types="cypress" />
 
+Cypress.Commands.add('compute', () => {
+  cy.get("#ReportStatus").should("be.visible")
+  cy.get("#ReportStatus").should("not.be.visible")
+})
+
+
 describe("smoke", () => {
   beforeEach(() => {
     cy.visit("http://localhost:8501/");
@@ -11,7 +17,16 @@ describe("smoke", () => {
       .first()
       .type("989898{enter}");
 
-    cy.get("#ReportStatus").should("not.be.visible")
+    cy.compute()
+
+    cy.get(".stMarkdown").contains('MU')
+
+    cy.get(".stTextInput input")
+      .first()
+      .clear()
+      .blur();
+
+    cy.compute()
 
     cy.get(".stMarkdown").contains('MU')
   });
