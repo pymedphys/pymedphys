@@ -5,6 +5,12 @@ Cypress.Commands.add('compute', () => {
   cy.get("#ReportStatus").should("not.be.visible")
 })
 
+Cypress.Commands.add('textMatch', (label, length, result) => {
+  cy.get(`.stMarkdown p:contains(${label})`).should("have.length", length).find('code').each((el) => {
+    cy.wrap(el).should("have.text", result)
+  })
+})
+
 
 describe("smoke", () => {
   beforeEach(() => {
@@ -19,17 +25,7 @@ describe("smoke", () => {
 
     cy.compute()
 
-    cy.get(".stMarkdown p").contains('Total MU:').find('code').should("have.text", '150.0')
-
-    // .get('code').should("have.text", '150.0')
-
-    cy.get(".stTextInput input")
-      .first()
-      .clear()
-      .blur();
-
-    cy.compute()
-
-    cy.get(".stMarkdown").contains('MU')
+    cy.textMatch('Total MU', 4, '150.0')
+    cy.textMatch('Patient Name', 3, 'PHYSICS, Mock')
   });
 });
