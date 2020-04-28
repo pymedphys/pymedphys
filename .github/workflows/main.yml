@@ -90,6 +90,15 @@ jobs:
         python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
         python -c "import platform; print(platform.machine()); print(platform.release())"
 
+    - name: Set up Node
+    - uses: actions/setup-node@v1
+      if: matrix.toxenv == 'yarn'
+
+    - name: Install Yarn
+      if: matrix.toxenv == 'yarn'
+      run: |
+        npm install -g yarn
+
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
