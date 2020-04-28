@@ -1,5 +1,3 @@
-# redirect = '\\rccc-physicssvr\pymedphys\examples\site-specific\cancer-care-associates\streamlit\config.toml'
-
 [data_methods]
 available = ["monaco", "dicom", "icom", "trf", "mosaiq"]
 default_reference = "monaco"
