@@ -164,6 +164,7 @@ jobs:
       uses: cypress-io/github-action@v1
       with:
         runTests: false
+        working-directory: tests/e2e
 
     - uses: actions/cache@v1
       with:
