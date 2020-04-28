@@ -15,20 +15,17 @@
 
 # pylint: disable = pointless-statement, pointless-string-statement
 # pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines
+# pylint: disable = too-many-lines, redefined-outer-name
 
-import json
 import lzma
 import os
 import pathlib
-import time
 from datetime import datetime
 
 import keyring
 import pymssql
 import streamlit as st
 import timeago
-import toml
 
 import numpy as np
 import pandas as pd
@@ -799,6 +796,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     selected_trf_deliveries = st.multiselect(
         "Select TRF delivery timestamp(s)",
         timestamps,
+        default=default_timestamp,
         key=f"{key_namespace}_trf_deliveries",
     )
 
