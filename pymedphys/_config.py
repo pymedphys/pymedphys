@@ -15,7 +15,7 @@
 
 import pathlib
 
-import toml
+from pymedphys._imports import toml
 
 
 def get_config_dir():
