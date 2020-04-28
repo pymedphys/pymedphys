@@ -1,13 +1,18 @@
 /// <reference types="cypress" />
 
-describe("st.button", () => {
+describe("smoke", () => {
   beforeEach(() => {
-    cy.visit("http://localhost:5201/");
+    cy.visit("http://localhost:8501/");
+    cy.get(".decoration").invoke("css", "display", "none");
   });
 
   it("basics", () => {
-    cy.get(".stButton").should("have.length", 1);
+    cy.get(".stTextInput input")
+      .first()
+      .type("989898{enter}");
 
-    cy.get(".stButton").matchImageSnapshot("button-widget");
+    cy.get("#ReportStatus").should("not.be.visible")
+
+    cy.get(".stMarkdown").contains('MU')
   });
 });

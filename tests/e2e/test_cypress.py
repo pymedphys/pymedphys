@@ -20,4 +20,4 @@ HERE = pathlib.Path(__file__).parent.resolve()
 
 def test_cypress():
     subprocess.check_call(["pymedphys", "gui"], cwd=HERE)
-    subprocess.check_call(["yarn", "cypress"], cwd=HERE)
+    subprocess.check_call(["yarn", "cypress", "run"], cwd=HERE)
