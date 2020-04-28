@@ -25,14 +25,23 @@
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
 
 Cypress.Commands.add('compute', () => {
-  cy.get("#ReportStatus").should("be.visible")
-  cy.get("#ReportStatus").should("not.be.visible")
+  try {
+    cy.get("#ReportStatus").should("be.visible")
+  } catch (error) { }
+
+  try {
+    cy.get("#ReportStatus").should("not.be.visible")
+  } catch (error) { }
+
 })
 
 Cypress.Commands.add('textMatch', (label, length, result) => {
-  cy.get(`.stMarkdown p:contains(${label})`).should("have.length", length).find('code').each((el) => {
-    return cy.wrap(el).should("have.text", result)
-  })
+  let text = cy.get(`.stMarkdown p:contains(${label})`).should("have.length", length)
+  if (result !== null) {
+    text.find('code').each((el) => {
+      return cy.wrap(el).should("have.text", result)
+    })
+  }
 })
 
 Cypress.Commands.add('start', () => {
