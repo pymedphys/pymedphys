@@ -160,7 +160,10 @@ jobs:
       with:
         fetch-depth: 1
 
-
+    - name: Install Cypress Dependencies
+      uses: cypress-io/github-action@v1
+      with:
+        runTests: false
 
     - uses: actions/cache@v1
       with:
@@ -190,8 +193,11 @@ jobs:
     - name: Cypress run
       uses: cypress-io/github-action@v1
       with:
+        install: false
         record: true
-        start: cd tests/e2e && yarn start
+        start: yarn start
+        working-directory: tests/e2e
+        wait-on: 'http://localhost:8501'
       env:
         # pass the Dashboard record key as an environment variable
         CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
