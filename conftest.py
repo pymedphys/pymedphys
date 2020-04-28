@@ -5,26 +5,66 @@ import os
 
 import pytest
 
+SKIPPING_CONFIG = {
+    "slow": {
+        "option": "--run-only-slow",
+        "help": "run only the slow tests",
+        "description": "mark test as slow to run",
+        "skip_otherwise": True,
+    },
+    "yarn": {
+        "option": "--run-only-yarn",
+        "help": "run only the tests that need yarn",
+        "description": "mark test as needing yarn",
+        "skip_otherwise": True,
+    },
+    "pydicom": {
+        "option": "--run-only-pydicom",
+        "help": "run only the tests that use pydicom",
+        "description": "mark test as using pydicom",
+        "skip_otherwise": False,
+    },
+    "pylinac": {
+        "option": "--run-only-pylinac",
+        "help": "run only the tests that use pylinac",
+        "description": "mark test as using pylinac",
+        "skip_otherwise": False,
+    },
+}
+
 
 # https://docs.pytest.org/en/latest/example/simple.html#control-skipping-of-tests-according-to-command-line-option
 def pytest_addoption(parser):
-    parser.addoption(
-        "--run-slow", action="store_true", default=False, help="run slow tests"
-    )
+    for _, skip_item in SKIPPING_CONFIG.items():
+        parser.addoption(
+            skip_item["option"],
+            action="store_true",
+            default=False,
+            help=skip_item["help"],
+        )
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "slow: mark test as slow to run")
+    for key, skip_item in SKIPPING_CONFIG.items():
+        config.addinivalue_line("markers", f"{key}: {skip_item['description']}")
 
 
 def pytest_collection_modifyitems(config, items):
-    if config.getoption("--run-slow"):
-        # --run-slow given in cli: do not skip slow tests
-        return
-    skip_slow = pytest.mark.skip(reason="need --run-slow option to run")
-    for item in items:
-        if "slow" in item.keywords:
-            item.add_marker(skip_slow)
+    for key, skip_item in SKIPPING_CONFIG.items():
+        if not config.getoption(skip_item["option"]):
+            if skip_item["skip_otherwise"]:
+                skip = pytest.mark.skip(
+                    reason=f"need {skip_item['option']} option to run"
+                )
+
+                for item in items:
+                    if key in item.keywords:
+                        item.add_marker(skip)
+        else:
+            skip = pytest.mark.skip(reason=f"since {skip_item['option']} was passed")
+            for item in items:
+                if key not in item.keywords:
+                    item.add_marker(skip)
 
 
 def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
