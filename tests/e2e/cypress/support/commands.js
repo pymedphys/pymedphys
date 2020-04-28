@@ -31,7 +31,7 @@ Cypress.Commands.add('compute', () => {
 
 Cypress.Commands.add('textMatch', (label, length, result) => {
   cy.get(`.stMarkdown p:contains(${label})`).should("have.length", length).find('code').each((el) => {
-    cy.wrap(el).should("have.text", result)
+    return cy.wrap(el).should("have.text", result)
   })
 })
 
