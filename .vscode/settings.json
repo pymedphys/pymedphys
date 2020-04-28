@@ -204,6 +204,7 @@
     "pacman",
     "pandoc",
     "parameterisation",
+    "pathlib",
     "pcolormesh",
     "perim",
     "pformat",
