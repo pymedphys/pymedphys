@@ -277,3 +277,5 @@ v*.tar.gz
 
 *.py.*.py
 *.exe
+
+*-demo/*
