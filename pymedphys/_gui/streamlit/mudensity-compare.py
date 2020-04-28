@@ -952,7 +952,9 @@ def main():
         df = pd.DataFrame(data=data, columns=columns)
         df
 
-        "Total MU: ", round(df["MU"].sum(), 1)
+        total_mu = round(df["MU"].sum(), 1)
+
+        f"Total MU: `{total_mu}`"
 
         return total_mu
 

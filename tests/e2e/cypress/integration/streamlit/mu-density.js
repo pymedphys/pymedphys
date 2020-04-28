@@ -26,7 +26,7 @@ describe("When using a Patient ID of 989898 and selecting the last iCOM record",
   });
 });
 
-describe("When using a Patient ID of 989898 and selecting the first second two iCOM records", () => {
+describe("When using a Patient ID of 989898 and selecting the second two iCOM records", () => {
   before(() => {
     cy.start()
 
