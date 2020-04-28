@@ -141,6 +141,9 @@ def main():
     class UnableToCreatePDF(ValueError):
         pass
 
+    class NoControlPointsFound(ValueError):
+        pass
+
     @st.cache(allow_output_mutation=True)
     def get_mosaiq_cursor(server):
         _, cursor = msq_connect.single_connect(server)
@@ -437,6 +440,17 @@ def main():
             identifier = f"Monaco ({plan_names})"
         else:
             identifier = None
+
+        if len(deliveries) == 1 and len(deliveries[0].mu) == 0:
+            st.write(
+                NoControlPointsFound(
+                    "This is likely due to an as of yet unsupported "
+                    "Monaco file format. At this point in time 3DCRT "
+                    "is not yet supported for reading directly from "
+                    "Monaco. DICOM is though, please export the plan "
+                    "to RT DICOM and import the data that way."
+                )
+            )
 
         results = {
             "patient_id": patient_id,
