@@ -57,16 +57,7 @@ CWD = pathlib.Path.cwd()
 
 
 def download_and_extract_demo_data():
-    data_paths = pymedphys.zip_data_paths(
-        "mu-density-gui-e2e-data.zip", extract_directory=CWD
-    )
-    common_path = os.path.commonpath(data_paths)
-    return common_path, data_paths
-
-
-common_path, data_paths = download_and_extract_demo_data()
-f"`{common_path}`"
-[str(path) for path in data_paths]
+    pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 
 @st.cache
@@ -74,7 +65,8 @@ def load_config():
     try:
         result = pmp_config.get_config()
     except FileNotFoundError:
-        result = {}  # Download demo data and configuration
+        download_and_extract_demo_data()
+        result = pmp_config.get_config(CWD)
 
     return result
 
@@ -115,13 +107,16 @@ DICOM_EXPORT_LOCATIONS = {
     for site, directories in SITE_DIRECTORIES.items()
 }
 
-MOSAIQ_DETAILS = {
-    site["name"]: {
-        "timezone": site["mosaiq"]["timezone"],
-        "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
+try:
+    MOSAIQ_DETAILS = {
+        site["name"]: {
+            "timezone": site["mosaiq"]["timezone"],
+            "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
+        }
+        for site in CONFIG["site"]
     }
-    for site in CONFIG["site"]
-}
+except KeyError:
+    MOSAIQ_DETAILS = {}
 
 DEFAULT_ICOM_DIRECTORY = CONFIG["icom"]["patient_directory"]
 DEFAULT_PNG_OUTPUT_DIRECTORY = CONFIG["output"]["png_directory"]
