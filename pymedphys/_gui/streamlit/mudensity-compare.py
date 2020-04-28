@@ -20,6 +20,7 @@
 import lzma
 import os
 import pathlib
+import subprocess
 from datetime import datetime
 
 from pymedphys._imports import keyring
@@ -135,6 +136,9 @@ def main():
         pass
 
     class NoRecordsFound(ValueError):
+        pass
+
+    class UnableToCreatePDF(ValueError):
         pass
 
     @st.cache(allow_output_mutation=True)
@@ -1225,7 +1229,17 @@ def main():
 
         st.write("Saving figure...")
         plt.savefig(png_filepath, dpi=100)
-        os.system(f'magick convert "{png_filepath}" "{pdf_filepath}"')
+        try:
+            subprocess.check_call(
+                f'magick convert "{png_filepath}" "{pdf_filepath}"', shell=True
+            )
+        except subprocess.CalledProcessError:
+            st.write(
+                UnableToCreatePDF(
+                    "Please install Image Magick to create PDF reports "
+                    "<https://imagemagick.org/script/download.php#windows>."
+                )
+            )
 
         st.write("## Results")
         st.pyplot()
