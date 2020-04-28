@@ -51,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        toxenv: ['pylint', 'docs', 'doctest', 'runslow', 'clean', 'pytest']
+        toxenv: ['pylint', 'docs', 'doctest', 'slow', 'clean', 'pytest', 'yarn']
         include:
           - os: 'ubuntu'
             python-version: 3.6
@@ -63,11 +63,11 @@ jobs:
           - os: 'windows'
             toxenv: 'pylint'
           - os: 'windows'
-            toxenv: 'runslow'
+            toxenv: 'slow'
           - os: 'windows'
             toxenv: 'doctest'
           - os: 'macos'
-            toxenv: 'runslow'
+            toxenv: 'slow'
           - os: 'macos'
             toxenv: 'pytest'
           - os: 'ubuntu'

@@ -16,6 +16,8 @@ import pathlib
 import subprocess
 from contextlib import contextmanager
 
+import pytest
+
 import psutil
 
 
@@ -33,8 +35,9 @@ def process(*args, **kwargs):
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
+@pytest.mark.yarn
 def test_streamlit_gui():
-    with process("pymedphys gui", cwd=HERE, shell=True) as _:
+    with process("poetry run pymedphys gui", cwd=HERE, shell=True) as _:
         subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
 
 
