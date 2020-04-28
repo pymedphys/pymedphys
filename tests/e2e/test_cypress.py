@@ -19,5 +19,9 @@ HERE = pathlib.Path(__file__).parent.resolve()
 
 
 def test_cypress():
-    subprocess.check_call(["pymedphys", "gui"], cwd=HERE)
-    subprocess.check_call(["yarn", "cypress", "run"], cwd=HERE)
+    subprocess.Popen(["pymedphys", "gui"], cwd=HERE)
+    subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
+
+
+if __name__ == "__main__":
+    test_cypress()
