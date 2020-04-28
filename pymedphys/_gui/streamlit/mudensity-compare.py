@@ -189,9 +189,12 @@ def main():
     )
 
     def get_most_recent_file_and_print(linac_id, filepaths):
-        most_recent = datetime.fromtimestamp(
-            os.path.getmtime(max(filepaths, key=os.path.getmtime))
-        )
+        if not isinstance(filepaths, list):
+            raise ValueError("Filepaths needs to be a list")
+
+        latest_filepath = max(filepaths, key=os.path.getmtime)
+
+        most_recent = datetime.fromtimestamp(os.path.getmtime(latest_filepath))
         now = datetime.now()
 
         if most_recent > now:
@@ -202,12 +205,12 @@ def main():
         st.sidebar.markdown(f"{linac_id}: `{human_readable}`")
 
     def icom_status(linac_id, icom_directory):
-        filepaths = pathlib.Path(icom_directory).glob("*.txt")
+        filepaths = list(pathlib.Path(icom_directory).glob("*.txt"))
         get_most_recent_file_and_print(linac_id, filepaths)
 
     def trf_status(linac_id, backup_directory):
         directory = pathlib.Path(backup_directory).joinpath(linac_id)
-        filepaths = directory.glob("*.zip")
+        filepaths = list(directory.glob("*.zip"))
         get_most_recent_file_and_print(linac_id, filepaths)
 
     def show_status_indicators():
