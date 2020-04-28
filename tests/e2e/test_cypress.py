@@ -14,14 +14,29 @@
 
 import pathlib
 import subprocess
+from contextlib import contextmanager
+
+import psutil
+
+
+@contextmanager
+def process(*args, **kwargs):
+    proc = subprocess.Popen(*args, **kwargs)
+    try:
+        yield proc
+    finally:
+        for child in psutil.Process(proc.pid).children(recursive=True):
+            child.kill()
+        proc.kill()
+
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
-def test_cypress():
-    subprocess.Popen(["pymedphys", "gui"], cwd=HERE)
-    subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
+def test_streamlit_gui():
+    with process("pymedphys gui", cwd=HERE, shell=True) as _:
+        subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
 
 
 if __name__ == "__main__":
-    test_cypress()
+    test_streamlit_gui()
