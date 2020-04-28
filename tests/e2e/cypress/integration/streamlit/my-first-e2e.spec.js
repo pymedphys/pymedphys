@@ -15,6 +15,7 @@ Cypress.Commands.add('textMatch', (label, length, result) => {
 describe("smoke", () => {
   beforeEach(() => {
     cy.visit("http://localhost:8501/");
+    cy.compute()
     cy.get(".decoration").invoke("css", "display", "none");
   });
 
@@ -24,6 +25,10 @@ describe("smoke", () => {
       .type("989898{enter}");
 
     cy.compute()
+
+    cy.get(".stMultiSelect")
+      .first()
+      .type("2020-04-29 07:47:29{enter}")
 
     cy.textMatch('Total MU', 4, '150.0')
     cy.textMatch('Patient Name', 3, 'PHYSICS, Mock')
