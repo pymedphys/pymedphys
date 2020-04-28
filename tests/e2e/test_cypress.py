@@ -19,6 +19,7 @@ from contextlib import contextmanager
 import pytest
 
 import psutil
+import pymedphys
 
 
 @contextmanager
@@ -37,6 +38,8 @@ HERE = pathlib.Path(__file__).parent.resolve()
 
 @pytest.mark.yarn
 def test_streamlit_gui():
+    pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=HERE)
+
     with process("poetry run pymedphys gui", cwd=HERE, shell=True) as _:
         subprocess.check_call("yarn", cwd=HERE, shell=True)
         subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
