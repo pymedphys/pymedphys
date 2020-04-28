@@ -190,6 +190,10 @@ jobs:
       run: |
         poetry run pymedphys gui &
 
+    - name: Download demo data
+      run: |
+        poetry run python -c "import pymedphys; pymedphys.zip_data_paths('mu-density-gui-e2e-data.zip')"
+
     - name: Cypress run
       uses: cypress-io/github-action@v1
       with:
