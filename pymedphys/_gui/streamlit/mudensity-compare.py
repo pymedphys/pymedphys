@@ -23,7 +23,7 @@ import pathlib
 import subprocess
 from datetime import datetime
 
-from pymedphys._imports import keyring
+from pymedphys._imports import imageio, keyring
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt, pydicom, pymssql
@@ -1080,11 +1080,16 @@ def main():
         evaluation_mudensity,
         gamma,
         gamma_options,
+        png_record_directory,
         header_text="",
         footer_text="",
     ):
         diff = evaluation_mudensity - reference_mudensity
-        largest_item = np.max(np.abs(diff))
+
+        largest_mu_density = np.max(
+            [np.max(evaluation_mudensity), np.max(reference_mudensity)]
+        )
+        largest_diff = np.max(np.abs(diff))
 
         widths = [1, 1]
         heights = [0.5, 1, 1, 1, 0.4]
@@ -1113,16 +1118,20 @@ def main():
         ax_footer.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
 
         plt.sca(axs[2, 0])
-        pymedphys.mudensity.display(GRID, reference_mudensity)
+        pymedphys.mudensity.display(
+            GRID, reference_mudensity, vmin=0, vmax=largest_mu_density
+        )
         axs[2, 0].set_title("Reference MU Density")
 
         plt.sca(axs[2, 1])
-        pymedphys.mudensity.display(GRID, evaluation_mudensity)
+        pymedphys.mudensity.display(
+            GRID, evaluation_mudensity, vmin=0, vmax=largest_mu_density
+        )
         axs[2, 1].set_title("Evaluation MU Density")
 
         plt.sca(axs[3, 0])
         pymedphys.mudensity.display(
-            GRID, diff, cmap="seismic", vmin=-largest_item, vmax=largest_item
+            GRID, diff, cmap="seismic", vmin=-largest_diff, vmax=largest_diff
         )
         plt.title("Evaluation - Reference")
 
@@ -1201,9 +1210,8 @@ def main():
         pdf_filepath = str(
             escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
         )
-        png_filepath = str(
-            png_output_directory.joinpath(f"{output_base_filename}.png").resolve()
-        )
+        png_record_directory = png_output_directory.joinpath(output_base_filename)
+        png_filepath = str(png_record_directory.joinpath("report.png").resolve())
 
         try:
             patient_name_text = f"Patient Name: {reference_results['patient_name']}\n"
@@ -1235,6 +1243,7 @@ def main():
             evaluation_mudensity,
             gamma,
             gamma_options,
+            png_record_directory,
             header_text=header_text,
             footer_text=footer_text,
         )
