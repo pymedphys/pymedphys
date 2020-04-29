@@ -51,7 +51,7 @@ describe("When using a Patient ID of 979797 in BLUE clinic and selecting the las
 
 
 
-describe("When using a Patient ID of 989898 and selecting the last iCOM record", () => {
+describe("When using a Patient ID of 989898 in RED clinic and selecting the last iCOM record", () => {
   before(() => {
     cy.start()
 
@@ -77,7 +77,7 @@ describe("When using a Patient ID of 989898 and selecting the last iCOM record",
   });
 });
 
-describe("When using a Patient ID of 989898 and selecting the second two iCOM records", () => {
+describe("When using a Patient ID of 989898 in RED clinic and selecting the second two iCOM records", () => {
   before(() => {
     cy.start()
 
