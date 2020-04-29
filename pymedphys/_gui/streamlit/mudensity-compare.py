@@ -255,8 +255,8 @@ def main():
     )
     advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-    def get_gamma_options():
-        if advanced_mode:
+    def get_gamma_options(advanced_mode_local):
+        if advanced_mode_local:
 
             st.sidebar.markdown(
                 """
@@ -287,7 +287,7 @@ def main():
 
         return result
 
-    gamma_options = get_gamma_options()
+    gamma_options = get_gamma_options(advanced_mode)
 
     @st.cache(allow_output_mutation=True)
     def delivery_from_icom(icom_stream):
@@ -347,19 +347,21 @@ def main():
 
         return patient_name
 
-    def monaco_input_method(patient_id="", key_namespace="", **_):
+    def monaco_input_method(
+        patient_id="", key_namespace="", advanced_mode_local=False, **_
+    ):
         monaco_site = st.radio(
             "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
         )
         monaco_directory = SITE_DIRECTORIES[monaco_site]["monaco"]
 
-        if advanced_mode:
+        if advanced_mode_local:
             monaco_directory
 
         patient_id = st.text_input(
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
         )
-        if advanced_mode:
+        if advanced_mode_local:
             patient_id
         elif patient_id == "":
             raise st.ScriptRunner.StopException()
@@ -430,7 +432,7 @@ def main():
                 raise ValueError("Exactly one plan should have been found")
             tel_paths += current_plans
 
-        if advanced_mode:
+        if advanced_mode_local:
             [str(path) for path in tel_paths]
 
         deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
@@ -609,9 +611,13 @@ def main():
         }
 
     def icom_input_method(
-        patient_id="", icom_directory=DEFAULT_ICOM_DIRECTORY, key_namespace="", **_
+        patient_id="",
+        icom_directory=DEFAULT_ICOM_DIRECTORY,
+        key_namespace="",
+        advanced_mode_local=False,
+        **_,
     ):
-        if advanced_mode:
+        if advanced_mode_local:
             icom_directory = st.text_input(
                 "iCOM Patient Directory",
                 str(icom_directory),
@@ -620,7 +626,7 @@ def main():
 
         icom_directory = pathlib.Path(icom_directory)
 
-        if advanced_mode:
+        if advanced_mode_local:
             patient_id = st.text_input(
                 "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
             )
@@ -682,7 +688,7 @@ def main():
                 icom_directory.glob(f"{patient_id}_*/{icom_filename}.xz")
             )
 
-        if advanced_mode:
+        if advanced_mode_local:
             [str(path) for path in icom_paths]
 
         patient_names = set()
@@ -980,8 +986,10 @@ def main():
     ### Reference
     """
 
-    def get_input_data_ui(default_method, key_namespace, **previous_results):
-        if advanced_mode:
+    def get_input_data_ui(
+        default_method, key_namespace, advanced_mode_local, **previous_results
+    ):
+        if advanced_mode_local:
             data_method = st.selectbox(
                 "Data Input Method",
                 data_method_options,
@@ -992,7 +1000,9 @@ def main():
             data_method = default_method
 
         results = data_method_map[data_method](  # type: ignore
-            key_namespace=key_namespace, **previous_results
+            key_namespace=key_namespace,
+            advanced_mode_local=advanced_mode_local,
+            **previous_results,
         )
 
         try:
@@ -1014,14 +1024,14 @@ def main():
 
         return results
 
-    reference_results = get_input_data_ui(DEFAULT_REFERENCE, "reference")
+    reference_results = get_input_data_ui(DEFAULT_REFERENCE, "reference", advanced_mode)
 
     """
     ### Evaluation
     """
 
     evaluation_results = get_input_data_ui(
-        DEFAULT_EVALUATION, "evaluation", **reference_results
+        DEFAULT_EVALUATION, "evaluation", advanced_mode, **reference_results
     )
 
     """
@@ -1290,6 +1300,10 @@ def main():
             escan_directory,
             png_output_directory,
         )
+
+    if advanced_mode:
+        if st.sidebar.checkbox("Debug Mode"):
+            pass
 
 
 if __name__ == "__main__":
