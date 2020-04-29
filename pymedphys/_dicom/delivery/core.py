@@ -180,33 +180,23 @@ class DeliveryDicom(DeliveryBase):
         if final_mu_weight is None:
             raise ValueError("FinalCumulativeMetersetWeight should not be None")
 
-        num_control_points = len(control_points)
-        original_weights = [
+        # https://dicom.innolitics.com/ciods/rt-plan/rt-beams/300a00b0/300a0111/300a0134
+
+        cumulative_meterset_weight = [
             control_point.CumulativeMetersetWeight for control_point in control_points
         ]
 
-        interpolation_used = False
-        cumulative_meterset_weight = []
-        for i, current_weight in enumerate(original_weights):
-            if current_weight is None:
-                cumulative_meterset_weight.append(float(i) / num_control_points)
-                interpolation_used = True
-            else:
-                cumulative_meterset_weight.append(current_weight)
-
-        if interpolation_used:
-            for weight in original_weights[1:-1]:
-                if weight is not None:
-                    raise ValueError(
-                        "Meterset Interpolation only supported when "
-                        "used for all control points."
-                    )
+        for weight in cumulative_meterset_weight:
+            if weight is None:
+                raise ValueError(
+                    "Cumulative Meterset weight not set within DICOM RT plan file. "
+                    "This may be due to the plan being exported from a planning system "
+                    "without the dose being calculated."
+                )
 
         mu = [
-            meterset * np.array(current_weight) / final_mu_weight
-            for control_point, current_weight in zip(
-                control_points, cumulative_meterset_weight
-            )
+            meterset * np.array(weight) / final_mu_weight
+            for control_point, weight in zip(control_points, cumulative_meterset_weight)
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
