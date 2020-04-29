@@ -25,6 +25,9 @@
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
 
 
+
+
+
 Cypress.Commands.add('compute', () => {
   let start = new Date().getTime();
   cy.get("#ReportStatus", { timeout: 8000 }).should($el => {
@@ -52,4 +55,18 @@ Cypress.Commands.add('start', () => {
   cy.visit("http://localhost:8501/");
   cy.compute()
   cy.get(".decoration").invoke("css", "display", "none");
+})
+
+
+Cypress.Commands.add('scroll', () => {
+  cy.get(".main").scrollTo("bottomLeft");
+})
+
+Cypress.Commands.add('finalScreenshot', () => {
+  cy.scroll()
+  cy.compute()
+  cy.scroll()
+  cy.compute()
+  cy.scroll()
+  cy.screenshot()
 })
