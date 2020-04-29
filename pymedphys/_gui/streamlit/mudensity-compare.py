@@ -39,12 +39,29 @@ from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._utilities import patient as utl_patient
 from pymedphys.labs.managelogfiles import index as pmp_index
 
-
 """
 # MU Density comparison tool
 
 Tool to compare the MU Density between planned and delivery.
 """
+
+DATA_OPTION_LABELS = {
+    "monaco": "Monaco tel.1 filepath",
+    "dicom": "DICOM RTPlan file upload",
+    "icom": "iCOM record timestamp",
+    "trf": "Linac Backup `.trf` filepath",
+    "mosaiq": "Mosaiq SQL query",
+}
+
+LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
+MAX_LEAF_GAP = 410
+GRID_RESOLUTION = 1
+GRID = pymedphys.mudensity.grid(
+    max_leaf_gap=MAX_LEAF_GAP,
+    grid_resolution=GRID_RESOLUTION,
+    leaf_pair_widths=LEAF_PAIR_WIDTHS,
+)
+COORDS = (GRID["jaw"], GRID["mlc"])
 
 
 def download_and_extract_demo_data(cwd):
@@ -52,7 +69,7 @@ def download_and_extract_demo_data(cwd):
 
 
 @st.cache
-def load_config():
+def get_config():
     try:
         result = pmp_config.get_config()
     except FileNotFoundError:
@@ -63,47 +80,102 @@ def load_config():
     return result
 
 
-CONFIG = load_config()
+@st.cache
+def get_available_data_methods():
+    config = get_config()
+    available_data_methods = config["data_methods"]["available"]
 
-DATA_OPTION_LABELS = {
-    "monaco": "Monaco tel.1 filepath",
-    "dicom": "DICOM RTPlan file upload",
-    "icom": "iCOM record timestamp",
-    "trf": "Linac Backup `.trf` filepath",
-    "mosaiq": "Mosaiq SQL query",
-}
+    return available_data_methods
 
-AVAILABLE_DATA_METHODS = CONFIG["data_methods"]["available"]
-DEFAULT_REFERENCE_ID = CONFIG["data_methods"]["default_reference"]
-DEFAULT_EVALUATION_ID = CONFIG["data_methods"]["default_evaluation"]
 
-SITE_DIRECTORIES = {
-    site["name"]: {
-        "monaco": pathlib.Path(site["monaco"]["focaldata"]).joinpath(
-            site["monaco"]["clinic"]
-        ),
-        "escan": pathlib.Path(site["escan_directory"]),
+@st.cache
+def get_default_reference_id():
+    config = get_config()
+    default_reference_id = config["data_methods"]["default_reference"]
+
+    return default_reference_id
+
+
+@st.cache
+def get_default_evaluation_id():
+    config = get_config()
+    default_evaluation_id = config["data_methods"]["default_evaluation"]
+
+    return default_evaluation_id
+
+
+@st.cache
+def get_site_directories():
+    config = get_config()
+    site_directories = {
+        site["name"]: {
+            "monaco": pathlib.Path(site["monaco"]["focaldata"]).joinpath(
+                site["monaco"]["clinic"]
+            ),
+            "escan": pathlib.Path(site["escan_directory"]),
+        }
+        for site in config["site"]
     }
-    for site in CONFIG["site"]
-}
 
-LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {}
-MACHINE_CENTRE_MAP = {}
-for site in CONFIG["site"]:
-    for linac in site["linac"]:
-        LINAC_ICOM_LIVE_STREAM_DIRECTORIES[linac["name"]] = linac["icom_live_directory"]
-        MACHINE_CENTRE_MAP[linac["name"]] = site["name"]
+    return site_directories
 
-TRF_LOGFILE_ROOT_DIR = pathlib.Path(CONFIG["trf_logfiles"]["root_directory"])
-LINAC_INDEXED_BACKUPS_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath(
-    "diagnostics/already_indexed"
-)
-INDEXED_TRF_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath("indexed")
 
-DICOM_EXPORT_LOCATIONS = {
-    site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
-    for site, directories in SITE_DIRECTORIES.items()
-}
+@st.cache
+def get_dicom_export_locations():
+    site_directories = get_site_directories()
+    dicom_export_locations = {
+        site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
+        for site, directories in site_directories.items()
+    }
+
+    return dicom_export_locations
+
+
+@st.cache
+def get_icom_live_stream_directories():
+    config = get_config()
+    icom_live_stream_directories = {}
+    for site in config["site"]:
+        for linac in site["linac"]:
+            icom_live_stream_directories[linac["name"]] = linac["icom_live_directory"]
+
+    return icom_live_stream_directories
+
+
+@st.cache
+def get_machine_centre_map():
+    config = get_config()
+    machine_centre_map = {}
+    for site in config["site"]:
+        for linac in site["linac"]:
+            machine_centre_map[linac["name"]] = site["name"]
+
+    return machine_centre_map
+
+
+@st.cache
+def get_logfile_root_dir():
+    config = get_config()
+    logfile_root_dir = pathlib.Path(config["trf_logfiles"]["root_directory"])
+
+    return logfile_root_dir
+
+
+@st.cache
+def get_indexed_backups_directory():
+    logfile_root_dir = get_logfile_root_dir()
+    indexed_backups_directory = logfile_root_dir.joinpath("diagnostics/already_indexed")
+
+    return indexed_backups_directory
+
+
+@st.cache
+def get_indexed_trf_directory():
+    logfile_root_dir = get_logfile_root_dir()
+    indexed_trf_directory = logfile_root_dir.joinpath("indexed")
+
+    return indexed_trf_directory
+
 
 try:
     MOSAIQ_DETAILS = {
@@ -120,16 +192,6 @@ DEFAULT_ICOM_DIRECTORY = CONFIG["icom"]["patient_directory"]
 DEFAULT_PNG_OUTPUT_DIRECTORY = CONFIG["output"]["png_directory"]
 
 DEFAULT_GAMMA_OPTIONS = CONFIG["gamma"]
-
-LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
-MAX_LEAF_GAP = 410
-GRID_RESOLUTION = 1
-GRID = pymedphys.mudensity.grid(
-    max_leaf_gap=MAX_LEAF_GAP,
-    grid_resolution=GRID_RESOLUTION,
-    leaf_pair_widths=LEAF_PAIR_WIDTHS,
-)
-COORDS = (GRID["jaw"], GRID["mlc"])
 
 
 class InputRequired(ValueError):
@@ -1309,7 +1371,7 @@ def main():
 
     gamma_options = get_gamma_options(advanced_mode)
 
-    DATA_OPTION_FUNCTIONS = {
+    data_option_functions = {
         "monaco": monaco_input_method,
         "dicom": dicom_input_method,
         "icom": icom_input_method,
@@ -1317,12 +1379,12 @@ def main():
         "mosaiq": mosaiq_input_method,
     }
 
-    DEFAULT_REFERENCE = DATA_OPTION_LABELS[DEFAULT_REFERENCE_ID]
-    DEFAULT_EVALUATION = DATA_OPTION_LABELS[DEFAULT_EVALUATION_ID]
+    default_reference = DATA_OPTION_LABELS[DEFAULT_REFERENCE_ID]
+    default_evaluation = DATA_OPTION_LABELS[DEFAULT_EVALUATION_ID]
 
     data_method_map = {}
     for method in AVAILABLE_DATA_METHODS:
-        data_method_map[DATA_OPTION_LABELS[method]] = DATA_OPTION_FUNCTIONS[method]
+        data_method_map[DATA_OPTION_LABELS[method]] = data_option_functions[method]
 
     """
     ### Reference
@@ -1331,7 +1393,7 @@ def main():
     reference_results = get_input_data_ui(
         overview_updater_map,
         data_method_map,
-        DEFAULT_REFERENCE,
+        default_reference,
         "reference",
         advanced_mode,
     )
@@ -1343,7 +1405,7 @@ def main():
     evaluation_results = get_input_data_ui(
         overview_updater_map,
         data_method_map,
-        DEFAULT_EVALUATION,
+        default_evaluation,
         "evaluation",
         advanced_mode,
         **reference_results,
