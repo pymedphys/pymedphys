@@ -25,19 +25,18 @@
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
 
 
-// Assumes a cypress timeout of 4000
 Cypress.Commands.add('compute', () => {
   let start = new Date().getTime();
-  cy.get("#ReportStatus").should($el => {
+  cy.get("#ReportStatus", { timeout: 8000 }).should($el => {
     let now = new Date().getTime();
-    if (now - start < 2000) {
+    if (now - start < 4000) {
       expect($el).to.be.visible
     } else {
       expect($el).to.not.be.visible
     }
   })
 
-  cy.get("#ReportStatus").should("not.be.visible")
+  cy.get("#ReportStatus", { timeout: 60000 }).should("not.be.visible")
 })
 
 Cypress.Commands.add('textMatch', (label, length, result) => {
