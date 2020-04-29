@@ -536,7 +536,7 @@ def main():
 
             dicom_plan_options = list(dicom_plans.keys())
 
-            if len(dicom_plan_options) == 0:
+            if len(dicom_plan_options) == 0 and patient_id != "":
                 st.write(
                     NoRecordsFound(
                         f"No exported DICOM RT plans found for Patient ID {patient_id} "
@@ -1303,7 +1303,7 @@ def main():
             png_output_directory,
         )
 
-    if advanced_mode:
+    def advanced_debugging():
         st.sidebar.markdown("# Advanced Debugging")
         if st.sidebar.button("Compare Baseline to Output Directory"):
             """
@@ -1353,8 +1353,13 @@ def main():
 
                     [str(path) for path in output_dir.rglob("*") if path.is_file()]
 
+                    return
+
                 agree = np.allclose(baseline_image, evaluation_image)
                 f"Images Agree: `{agree}`"
+
+    if advanced_mode:
+        advanced_debugging()
 
 
 if __name__ == "__main__":
