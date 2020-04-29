@@ -24,17 +24,27 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
 
-Cypress.Commands.add('compute', () => {
-  cy.get("#ReportStatus").should("be.visible").and("not.have.id", "foo")
-  cy.get("#ReportStatus").should("not.be.visible").and("not.have.id", "foo")
 
+// Assumes a cypress timeout of 4000
+Cypress.Commands.add('compute', () => {
+  let start = new Date().getTime();
+  cy.get("#ReportStatus").should($el => {
+    let now = new Date().getTime();
+    if (now - start < 2000) {
+      expect($el).to.be.visible
+    } else {
+      expect($el).to.not.be.visible
+    }
+  })
+
+  cy.get("#ReportStatus").should("not.be.visible")
 })
 
 Cypress.Commands.add('textMatch', (label, length, result) => {
   let text = cy.get(`.stMarkdown p:contains(${label})`).should("have.length", length)
   if (result !== null) {
-    text.find('code').each((el) => {
-      return cy.wrap(el).should("have.text", result)
+    text.find('code').each(($el) => {
+      return cy.wrap($el).should("have.text", result)
     })
   }
 })
