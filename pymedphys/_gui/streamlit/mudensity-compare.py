@@ -427,6 +427,7 @@ def main():
             current_plans = list(
                 monaco_directory.glob(f"*~{patient_id}/plan/{selected_monaco_plan}")
             )
+            current_plans = [path.resolve() for path in current_plans]
             if len(current_plans) != 1:
                 st.write("Plans found:", current_plans)
                 raise ValueError("Exactly one plan should have been found")
