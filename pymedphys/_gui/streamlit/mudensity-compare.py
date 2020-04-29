@@ -39,11 +39,29 @@ from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._utilities import patient as utl_patient
 from pymedphys.labs.managelogfiles import index as pmp_index
 
+
 """
 # MU Density comparison tool
 
 Tool to compare the MU Density between planned and delivery.
 """
+
+
+def download_and_extract_demo_data(cwd):
+    pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=cwd)
+
+
+@st.cache
+def load_config():
+    try:
+        result = pmp_config.get_config()
+    except FileNotFoundError:
+        cwd = pathlib.Path.cwd()
+        download_and_extract_demo_data(cwd)
+        result = pmp_config.get_config(cwd.joinpath("pymedphys-gui-demo"))
+
+    return result
+
 
 CONFIG = load_config()
 
@@ -104,22 +122,6 @@ GRID = pymedphys.mudensity.grid(
     leaf_pair_widths=LEAF_PAIR_WIDTHS,
 )
 COORDS = (GRID["jaw"], GRID["mlc"])
-
-
-def download_and_extract_demo_data(cwd):
-    pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=cwd)
-
-
-@st.cache
-def load_config():
-    try:
-        result = pmp_config.get_config()
-    except FileNotFoundError:
-        cwd = pathlib.Path.cwd()
-        download_and_extract_demo_data(cwd)
-        result = pmp_config.get_config(cwd.joinpath("pymedphys-gui-demo"))
-
-    return result
 
 
 class InputRequired(ValueError):
