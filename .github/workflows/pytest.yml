@@ -1,0 +1,208 @@
+name: PyTest
+
+on: [push]
+
+jobs:
+  Tox:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu', 'macos', 'windows']
+        toxenv: ['pylint', 'docs', 'doctest', 'slow', 'clean', 'pytest']
+        include:
+          - os: 'ubuntu'
+            python-version: 3.6
+          - os: 'windows'
+            python-version: 3.8
+          - os: 'macos'
+            python-version: 3.7
+        exclude:
+          - os: 'windows'
+            toxenv: 'pylint'
+          - os: 'windows'
+            toxenv: 'slow'
+          - os: 'windows'
+            toxenv: 'doctest'
+          - os: 'macos'
+            toxenv: 'slow'
+          - os: 'macos'
+            toxenv: 'pytest'
+          - os: 'ubuntu'
+            toxenv: 'pytest'
+
+    runs-on: ${{ matrix.os }}-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Show python information
+      run: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
+
+#####################
+# CACHE LOGIC START #
+#####################
+
+# Unfortunately at this current point in time there does not appear to be a way
+# to easily reuse content across different actions. The below section manages
+# the caching for pymedphys installations from poetry. This logic is often
+# repeated across different actions. Once action step reuse is supported this
+# section will be refactored out.
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.pymedphys
+        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'Linux')
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'macOS')
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'Windows')
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+###################
+# CACHE LOGIC END #
+###################
+
+    - name: Install FreeTDS on MacOS
+      if: matrix.os == 'macos'
+      run: |
+        brew install freetds
+
+    - name: Upgrade pip, install poetry and tox
+      run: |
+        python -m pip install --upgrade pip poetry tox
+
+    - name: Install Pandoc on Ubuntu
+      if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu'
+      run: |
+        sudo apt-get install -y pandoc
+
+    - name: Install Pandoc on MacOS
+      if: matrix.toxenv == 'docs' && matrix.os == 'macos'
+      run: |
+        brew install pandoc
+
+    - name: Install Pandoc on Windows
+      if: matrix.toxenv == 'docs' && matrix.os == 'windows'
+      run: |
+        choco install pandoc
+
+    - name: Run Tox on Windows
+      if: matrix.os == 'windows'
+      run: |
+        poetry run tox -e ${{ matrix.toxenv }}-win
+
+    - name: Run Tox on Nix
+      if: matrix.os == 'macos' || matrix.os == 'ubuntu'
+      run: |
+        poetry run tox -e ${{ matrix.toxenv }}-nix
+
+
+  WithUpdates:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu']
+        python-version: [3.7]
+        toxenv: ['pylint', 'pytest']
+
+    runs-on: ${{ matrix.os }}-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Show python information
+      run: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.pymedphys
+        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'Linux')
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'macOS')
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'Windows')
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install FreeTDS on MacOS
+      if: matrix.os == 'macos'
+      run: |
+        brew install freetds
+
+    - name: Upgrade pip, install poetry and tox
+      run: |
+        python -m pip install --upgrade pip poetry tox
+
+    - name: Run initial poetry install
+      run: |
+        poetry install
+
+    - name: Run poetry update
+      run: |
+        poetry update
+
+    - name: Run Tox if anything has changed
+      run: |
+        git add -A && git diff HEAD --name-only --exit-code || poetry run tox -e ${{ matrix.toxenv }}

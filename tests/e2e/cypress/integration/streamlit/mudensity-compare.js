@@ -52,6 +52,10 @@ describe("When running all calculations", () => {
   it("should have output files that agree with the baseline data", () => {
     cy.get(".stButton button").contains("Compare Baseline to Output Directory").click()
 
+    cy.compute()
+    cy.scroll()
+    cy.screenshot()
+
     cy.textMatch('Images Agree', 8, 'True')
   });
 });
