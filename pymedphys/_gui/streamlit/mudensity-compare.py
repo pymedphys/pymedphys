@@ -39,12 +39,71 @@ from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._utilities import patient as utl_patient
 from pymedphys.labs.managelogfiles import index as pmp_index
 
-
 """
 # MU Density comparison tool
 
 Tool to compare the MU Density between planned and delivery.
 """
+
+CONFIG = load_config()
+
+AVAILABLE_DATA_METHODS = CONFIG["data_methods"]["available"]
+DEFAULT_REFERENCE_ID = CONFIG["data_methods"]["default_reference"]
+DEFAULT_EVALUATION_ID = CONFIG["data_methods"]["default_evaluation"]
+
+SITE_DIRECTORIES = {
+    site["name"]: {
+        "monaco": pathlib.Path(site["monaco"]["focaldata"]).joinpath(
+            site["monaco"]["clinic"]
+        ),
+        "escan": pathlib.Path(site["escan_directory"]),
+    }
+    for site in CONFIG["site"]
+}
+
+LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {}
+MACHINE_CENTRE_MAP = {}
+for site in CONFIG["site"]:
+    for linac in site["linac"]:
+        LINAC_ICOM_LIVE_STREAM_DIRECTORIES[linac["name"]] = linac["icom_live_directory"]
+        MACHINE_CENTRE_MAP[linac["name"]] = site["name"]
+
+TRF_LOGFILE_ROOT_DIR = pathlib.Path(CONFIG["trf_logfiles"]["root_directory"])
+LINAC_INDEXED_BACKUPS_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath(
+    "diagnostics/already_indexed"
+)
+INDEXED_TRF_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath("indexed")
+
+DICOM_EXPORT_LOCATIONS = {
+    site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
+    for site, directories in SITE_DIRECTORIES.items()
+}
+
+try:
+    MOSAIQ_DETAILS = {
+        site["name"]: {
+            "timezone": site["mosaiq"]["timezone"],
+            "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
+        }
+        for site in CONFIG["site"]
+    }
+except KeyError:
+    MOSAIQ_DETAILS = {}
+
+DEFAULT_ICOM_DIRECTORY = CONFIG["icom"]["patient_directory"]
+DEFAULT_PNG_OUTPUT_DIRECTORY = CONFIG["output"]["png_directory"]
+
+DEFAULT_GAMMA_OPTIONS = CONFIG["gamma"]
+
+LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
+MAX_LEAF_GAP = 410
+GRID_RESOLUTION = 1
+GRID = pymedphys.mudensity.grid(
+    max_leaf_gap=MAX_LEAF_GAP,
+    grid_resolution=GRID_RESOLUTION,
+    leaf_pair_widths=LEAF_PAIR_WIDTHS,
+)
+COORDS = (GRID["jaw"], GRID["mlc"])
 
 
 def download_and_extract_demo_data(cwd):
@@ -263,6 +322,8 @@ def filter_patient_names(patient_names):
 def monaco_input_method(
     patient_id="", key_namespace="", advanced_mode_local=False, **_
 ):
+
+    site_options = list(SITE_DIRECTORIES.keys())
     monaco_site = st.radio(
         "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
     )
@@ -426,6 +487,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         data_paths = ["Uploaded DICOM file"]
 
     if import_method == MONACO_SEARCH:
+        site_options = list(DICOM_EXPORT_LOCATIONS.keys())
         monaco_site = st.radio(
             "Monaco Export Location", site_options, key=f"{key_namespace}_monaco_site"
         )
@@ -783,6 +845,8 @@ def get_patient_name(cursor, patient_id):
 
 
 def mosaiq_input_method(patient_id="", key_namespace="", **_):
+    site_options = list(MOSAIQ_DETAILS.keys())
+
     mosaiq_site = st.radio(
         "Mosaiq Site", site_options, key=f"{key_namespace}_mosaiq_site"
     )
@@ -868,9 +932,15 @@ def display_deliveries(deliveries):
 
 
 def get_input_data_ui(
-    default_method, key_namespace, advanced_mode_local, **previous_results
+    OVERVIEW_UPDATER_MAP,
+    data_method_map,
+    default_method,
+    key_namespace,
+    advanced_mode_local,
+    **previous_results,
 ):
     if advanced_mode_local:
+        data_method_options = list(data_method_map.keys())
         data_method = st.selectbox(
             "Data Input Method",
             data_method_options,
@@ -906,72 +976,285 @@ def get_input_data_ui(
     return results
 
 
-def main():
+@st.cache
+def to_tuple(array):
+    return tuple(map(tuple, array))
 
-    CONFIG = load_config()
 
-    AVAILABLE_DATA_METHODS = CONFIG["data_methods"]["available"]
-    DEFAULT_REFERENCE_ID = CONFIG["data_methods"]["default_reference"]
-    DEFAULT_EVALUATION_ID = CONFIG["data_methods"]["default_evaluation"]
+def plot_gamma_hist(gamma, percent, dist):
+    valid_gamma = gamma[~np.isnan(gamma)]
 
-    SITE_DIRECTORIES = {
-        site["name"]: {
-            "monaco": pathlib.Path(site["monaco"]["focaldata"]).joinpath(
-                site["monaco"]["clinic"]
-            ),
-            "escan": pathlib.Path(site["escan_directory"]),
-        }
-        for site in CONFIG["site"]
-    }
+    plt.hist(valid_gamma, 50, density=True)
+    pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
 
-    LINAC_ICOM_LIVE_STREAM_DIRECTORIES = {}
-    MACHINE_CENTRE_MAP = {}
-    for site in CONFIG["site"]:
-        for linac in site["linac"]:
-            LINAC_ICOM_LIVE_STREAM_DIRECTORIES[linac["name"]] = linac[
-                "icom_live_directory"
-            ]
-            MACHINE_CENTRE_MAP[linac["name"]] = site["name"]
-
-    TRF_LOGFILE_ROOT_DIR = pathlib.Path(CONFIG["trf_logfiles"]["root_directory"])
-    LINAC_INDEXED_BACKUPS_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath(
-        "diagnostics/already_indexed"
+    plt.title(
+        "Local Gamma ({0}%/{1}mm) | Percent Pass: {2:.2f} % | Mean Gamma: {3:.2f} | Max Gamma: {4:.2f}".format(
+            percent, dist, pass_ratio * 100, np.mean(valid_gamma), np.max(valid_gamma)
+        )
     )
-    INDEXED_TRF_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath("indexed")
 
-    DICOM_EXPORT_LOCATIONS = {
-        site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
-        for site, directories in SITE_DIRECTORIES.items()
-    }
 
-    try:
-        MOSAIQ_DETAILS = {
-            site["name"]: {
-                "timezone": site["mosaiq"]["timezone"],
-                "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
-            }
-            for site in CONFIG["site"]
-        }
-    except KeyError:
-        MOSAIQ_DETAILS = {}
+def plot_and_save_results(
+    reference_mudensity,
+    evaluation_mudensity,
+    gamma,
+    gamma_options,
+    png_record_directory,
+    header_text="",
+    footer_text="",
+):
+    reference_filepath = png_record_directory.joinpath("reference.png")
+    evaluation_filepath = png_record_directory.joinpath("evaluation.png")
+    diff_filepath = png_record_directory.joinpath("diff.png")
+    gamma_filepath = png_record_directory.joinpath("gamma.png")
 
-    DEFAULT_ICOM_DIRECTORY = CONFIG["icom"]["patient_directory"]
-    DEFAULT_PNG_OUTPUT_DIRECTORY = CONFIG["output"]["png_directory"]
+    diff = evaluation_mudensity - reference_mudensity
 
-    DEFAULT_GAMMA_OPTIONS = CONFIG["gamma"]
+    imageio.imwrite(reference_filepath, reference_mudensity)
+    imageio.imwrite(evaluation_filepath, evaluation_mudensity)
+    imageio.imwrite(diff_filepath, diff)
+    imageio.imwrite(gamma_filepath, gamma)
 
-    LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
-    MAX_LEAF_GAP = 410
-    GRID_RESOLUTION = 1
-    GRID = pymedphys.mudensity.grid(
+    largest_mu_density = np.max(
+        [np.max(evaluation_mudensity), np.max(reference_mudensity)]
+    )
+    largest_diff = np.max(np.abs(diff))
+
+    widths = [1, 1]
+    heights = [0.5, 1, 1, 1, 0.4]
+    gs_kw = dict(width_ratios=widths, height_ratios=heights)
+
+    fig, axs = plt.subplots(5, 2, figsize=(10, 16), gridspec_kw=gs_kw)
+    gs = axs[0, 0].get_gridspec()
+
+    for ax in axs[0, 0:]:
+        ax.remove()
+
+    for ax in axs[1, 0:]:
+        ax.remove()
+
+    for ax in axs[4, 0:]:
+        ax.remove()
+
+    ax_header = fig.add_subplot(gs[0, :])
+    ax_hist = fig.add_subplot(gs[1, :])
+    ax_footer = fig.add_subplot(gs[4, :])
+
+    ax_header.axis("off")
+    ax_footer.axis("off")
+
+    ax_header.text(0, 0, header_text, ha="left", wrap=True, fontsize=21)
+    ax_footer.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
+
+    plt.sca(axs[2, 0])
+    pymedphys.mudensity.display(
+        GRID, reference_mudensity, vmin=0, vmax=largest_mu_density
+    )
+    axs[2, 0].set_title("Reference MU Density")
+
+    plt.sca(axs[2, 1])
+    pymedphys.mudensity.display(
+        GRID, evaluation_mudensity, vmin=0, vmax=largest_mu_density
+    )
+    axs[2, 1].set_title("Evaluation MU Density")
+
+    plt.sca(axs[3, 0])
+    pymedphys.mudensity.display(
+        GRID, diff, cmap="seismic", vmin=-largest_diff, vmax=largest_diff
+    )
+    plt.title("Evaluation - Reference")
+
+    plt.sca(axs[3, 1])
+    pymedphys.mudensity.display(GRID, gamma, cmap="coolwarm", vmin=0, vmax=2)
+    plt.title(
+        "Local Gamma | "
+        f"{gamma_options['dose_percent_threshold']}%/"
+        f"{gamma_options['distance_mm_threshold']}mm"
+    )
+
+    plt.sca(ax_hist)
+    plot_gamma_hist(
+        gamma,
+        gamma_options["dose_percent_threshold"],
+        gamma_options["distance_mm_threshold"],
+    )
+
+    return fig
+
+
+@st.cache(hash_funcs={pymedphys.Delivery: hash})
+def calculate_mudensity(delivery):
+    return delivery.mudensity(
         max_leaf_gap=MAX_LEAF_GAP,
         grid_resolution=GRID_RESOLUTION,
         leaf_pair_widths=LEAF_PAIR_WIDTHS,
     )
-    COORDS = (GRID["jaw"], GRID["mlc"])
 
-    site_options = list(SITE_DIRECTORIES.keys())
 
+def calculate_batch_mudensity(deliveries):
+    mudensity = calculate_mudensity(deliveries[0])
+
+    for delivery in deliveries[1::]:
+        mudensity = mudensity + calculate_mudensity(delivery)
+
+    return mudensity
+
+
+@st.cache
+def calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options):
+    gamma = pymedphys.gamma(
+        COORDS,
+        to_tuple(reference_mudensity),
+        COORDS,
+        to_tuple(evaluation_mudensity),
+        **gamma_options,
+    )
+
+    return gamma
+
+
+def advanced_debugging(config):
+    st.sidebar.markdown("# Advanced Debugging")
+    if st.sidebar.button("Compare Baseline to Output Directory"):
+        """
+        ## Comparing Results to Baseline
+        """
+
+        baseline_directory = pathlib.Path(
+            config["debug"]["baseline_directory"]
+        ).resolve()
+
+        png_baseline_directory = baseline_directory.joinpath("png")
+
+        baseline_png_paths = [
+            path for path in (png_baseline_directory.rglob("*")) if path.is_file()
+        ]
+
+        relative_png_paths = [
+            path.relative_to(png_baseline_directory) for path in baseline_png_paths
+        ]
+
+        output_dir = pathlib.Path(config["output"]["png_directory"]).resolve()
+
+        evaluation_png_paths = [
+            output_dir.joinpath(path) for path in relative_png_paths
+        ]
+
+        for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
+
+            f"### {baseline.parent.name}/{baseline.name}"
+
+            f"`{baseline}`\n\n**vs**\n\n`{evaluation}`"
+
+            baseline_image = imageio.imread(baseline)
+
+            try:
+                evaluation_image = imageio.imread(evaluation)
+            except FileNotFoundError as e:
+                """
+                #### File was not found
+                """
+                st.write(e)
+
+                f"""
+                For debugging purposes, here are all the files that
+                were found within {str(output_dir)}
+                """
+
+                [str(path) for path in output_dir.rglob("*") if path.is_file()]
+
+                return
+
+            agree = np.allclose(baseline_image, evaluation_image)
+            f"Images Agree: `{agree}`"
+
+
+def run_calculation(
+    reference_results,
+    evaluation_results,
+    gamma_options,
+    escan_directory,
+    png_output_directory,
+):
+    st.write("Calculating Reference MU Density...")
+    reference_mudensity = calculate_batch_mudensity(reference_results["deliveries"])
+
+    st.write("Calculating Evaluation MU Density...")
+    evaluation_mudensity = calculate_batch_mudensity(evaluation_results["deliveries"])
+
+    st.write("Calculating Gamma...")
+    gamma = calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options)
+
+    patient_id = reference_results["patient_id"]
+
+    st.write("Creating figure...")
+    output_base_filename = (
+        f"{patient_id} {reference_results['identifier']} vs "
+        f"{evaluation_results['identifier']}"
+    )
+    pdf_filepath = str(
+        escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
+    )
+    png_record_directory = png_output_directory.joinpath(output_base_filename)
+    png_record_directory.mkdir(exist_ok=True)
+    png_filepath = str(png_record_directory.joinpath("report.png").resolve())
+
+    try:
+        patient_name_text = f"Patient Name: {reference_results['patient_name']}\n"
+    except KeyError:
+        patient_name_text = ""
+
+    header_text = (
+        f"Patient ID: {patient_id}\n"
+        f"{patient_name_text}"
+        f"Reference: {reference_results['identifier']}\n"
+        f"Evaluation: {evaluation_results['identifier']}\n"
+    )
+
+    reference_path_strings = "\n    ".join(
+        [str(path.resolve()) for path in reference_results["data_paths"]]
+    )
+    evaluation_path_strings = "\n    ".join(
+        [str(path.resolve()) for path in evaluation_results["data_paths"]]
+    )
+
+    footer_text = (
+        f"reference path(s): {reference_path_strings}\n"
+        f"evaluation path(s): {evaluation_path_strings}\n"
+        f"png record: {png_filepath}"
+    )
+
+    fig = plot_and_save_results(
+        reference_mudensity,
+        evaluation_mudensity,
+        gamma,
+        gamma_options,
+        png_record_directory,
+        header_text=header_text,
+        footer_text=footer_text,
+    )
+
+    fig.tight_layout()
+
+    st.write("Saving figure...")
+    plt.savefig(png_filepath, dpi=100)
+    try:
+        subprocess.check_call(
+            f'magick convert "{png_filepath}" "{pdf_filepath}"', shell=True
+        )
+    except subprocess.CalledProcessError:
+        st.write(
+            UnableToCreatePDF(
+                "Please install Image Magick to create PDF reports "
+                "<https://imagemagick.org/script/download.php#windows>."
+            )
+        )
+
+    st.write("## Results")
+    st.pyplot()
+
+
+def main():
     st.sidebar.markdown(
         """
         # Overview
@@ -1043,20 +1326,29 @@ def main():
     for method in AVAILABLE_DATA_METHODS:
         data_method_map[DATA_OPTION_LABELS[method]] = DATA_OPTION_FUNCTIONS[method]
 
-    data_method_options = list(data_method_map.keys())
-
     """
     ### Reference
     """
 
-    reference_results = get_input_data_ui(DEFAULT_REFERENCE, "reference", advanced_mode)
+    reference_results = get_input_data_ui(
+        OVERVIEW_UPDATER_MAP,
+        data_method_map,
+        DEFAULT_REFERENCE,
+        "reference",
+        advanced_mode,
+    )
 
     """
     ### Evaluation
     """
 
     evaluation_results = get_input_data_ui(
-        DEFAULT_EVALUATION, "evaluation", advanced_mode, **reference_results
+        OVERVIEW_UPDATER_MAP,
+        data_method_map,
+        DEFAULT_EVALUATION,
+        "evaluation",
+        advanced_mode,
+        **reference_results,
     )
 
     """
@@ -1069,6 +1361,7 @@ def main():
     The location to save the produced pdf report.
     """
 
+    site_options = list(SITE_DIRECTORIES.keys())
     escan_site = st.radio("eScan Site", site_options)
     escan_directory = SITE_DIRECTORIES[escan_site]["escan"]
 
@@ -1090,229 +1383,6 @@ def main():
     else:
         png_output_directory = pathlib.Path(DEFAULT_PNG_OUTPUT_DIRECTORY)
 
-    @st.cache
-    def to_tuple(array):
-        return tuple(map(tuple, array))
-
-    def plot_gamma_hist(gamma, percent, dist):
-        valid_gamma = gamma[~np.isnan(gamma)]
-
-        plt.hist(valid_gamma, 50, density=True)
-        pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
-
-        plt.title(
-            "Local Gamma ({0}%/{1}mm) | Percent Pass: {2:.2f} % | Mean Gamma: {3:.2f} | Max Gamma: {4:.2f}".format(
-                percent,
-                dist,
-                pass_ratio * 100,
-                np.mean(valid_gamma),
-                np.max(valid_gamma),
-            )
-        )
-
-    def plot_and_save_results(
-        reference_mudensity,
-        evaluation_mudensity,
-        gamma,
-        gamma_options,
-        png_record_directory,
-        header_text="",
-        footer_text="",
-    ):
-        reference_filepath = png_record_directory.joinpath("reference.png")
-        evaluation_filepath = png_record_directory.joinpath("evaluation.png")
-        diff_filepath = png_record_directory.joinpath("diff.png")
-        gamma_filepath = png_record_directory.joinpath("gamma.png")
-
-        diff = evaluation_mudensity - reference_mudensity
-
-        imageio.imwrite(reference_filepath, reference_mudensity)
-        imageio.imwrite(evaluation_filepath, evaluation_mudensity)
-        imageio.imwrite(diff_filepath, diff)
-        imageio.imwrite(gamma_filepath, gamma)
-
-        largest_mu_density = np.max(
-            [np.max(evaluation_mudensity), np.max(reference_mudensity)]
-        )
-        largest_diff = np.max(np.abs(diff))
-
-        widths = [1, 1]
-        heights = [0.5, 1, 1, 1, 0.4]
-        gs_kw = dict(width_ratios=widths, height_ratios=heights)
-
-        fig, axs = plt.subplots(5, 2, figsize=(10, 16), gridspec_kw=gs_kw)
-        gs = axs[0, 0].get_gridspec()
-
-        for ax in axs[0, 0:]:
-            ax.remove()
-
-        for ax in axs[1, 0:]:
-            ax.remove()
-
-        for ax in axs[4, 0:]:
-            ax.remove()
-
-        ax_header = fig.add_subplot(gs[0, :])
-        ax_hist = fig.add_subplot(gs[1, :])
-        ax_footer = fig.add_subplot(gs[4, :])
-
-        ax_header.axis("off")
-        ax_footer.axis("off")
-
-        ax_header.text(0, 0, header_text, ha="left", wrap=True, fontsize=21)
-        ax_footer.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
-
-        plt.sca(axs[2, 0])
-        pymedphys.mudensity.display(
-            GRID, reference_mudensity, vmin=0, vmax=largest_mu_density
-        )
-        axs[2, 0].set_title("Reference MU Density")
-
-        plt.sca(axs[2, 1])
-        pymedphys.mudensity.display(
-            GRID, evaluation_mudensity, vmin=0, vmax=largest_mu_density
-        )
-        axs[2, 1].set_title("Evaluation MU Density")
-
-        plt.sca(axs[3, 0])
-        pymedphys.mudensity.display(
-            GRID, diff, cmap="seismic", vmin=-largest_diff, vmax=largest_diff
-        )
-        plt.title("Evaluation - Reference")
-
-        plt.sca(axs[3, 1])
-        pymedphys.mudensity.display(GRID, gamma, cmap="coolwarm", vmin=0, vmax=2)
-        plt.title(
-            "Local Gamma | "
-            f"{gamma_options['dose_percent_threshold']}%/"
-            f"{gamma_options['distance_mm_threshold']}mm"
-        )
-
-        plt.sca(ax_hist)
-        plot_gamma_hist(
-            gamma,
-            gamma_options["dose_percent_threshold"],
-            gamma_options["distance_mm_threshold"],
-        )
-
-        return fig
-
-    @st.cache(hash_funcs={pymedphys.Delivery: hash})
-    def calculate_mudensity(delivery):
-        return delivery.mudensity(
-            max_leaf_gap=MAX_LEAF_GAP,
-            grid_resolution=GRID_RESOLUTION,
-            leaf_pair_widths=LEAF_PAIR_WIDTHS,
-        )
-
-    def calculate_batch_mudensity(deliveries):
-        mudensity = calculate_mudensity(deliveries[0])
-
-        for delivery in deliveries[1::]:
-            mudensity = mudensity + calculate_mudensity(delivery)
-
-        return mudensity
-
-    @st.cache
-    def calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options):
-        gamma = pymedphys.gamma(
-            COORDS,
-            to_tuple(reference_mudensity),
-            COORDS,
-            to_tuple(evaluation_mudensity),
-            **gamma_options,
-        )
-
-        return gamma
-
-    def run_calculation(
-        reference_results,
-        evaluation_results,
-        gamma_options,
-        escan_directory,
-        png_output_directory,
-    ):
-        st.write("Calculating Reference MU Density...")
-        reference_mudensity = calculate_batch_mudensity(reference_results["deliveries"])
-
-        st.write("Calculating Evaluation MU Density...")
-        evaluation_mudensity = calculate_batch_mudensity(
-            evaluation_results["deliveries"]
-        )
-
-        st.write("Calculating Gamma...")
-        gamma = calculate_gamma(
-            reference_mudensity, evaluation_mudensity, gamma_options
-        )
-
-        patient_id = reference_results["patient_id"]
-
-        st.write("Creating figure...")
-        output_base_filename = (
-            f"{patient_id} {reference_results['identifier']} vs "
-            f"{evaluation_results['identifier']}"
-        )
-        pdf_filepath = str(
-            escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
-        )
-        png_record_directory = png_output_directory.joinpath(output_base_filename)
-        png_record_directory.mkdir(exist_ok=True)
-        png_filepath = str(png_record_directory.joinpath("report.png").resolve())
-
-        try:
-            patient_name_text = f"Patient Name: {reference_results['patient_name']}\n"
-        except KeyError:
-            patient_name_text = ""
-
-        header_text = (
-            f"Patient ID: {patient_id}\n"
-            f"{patient_name_text}"
-            f"Reference: {reference_results['identifier']}\n"
-            f"Evaluation: {evaluation_results['identifier']}\n"
-        )
-
-        reference_path_strings = "\n    ".join(
-            [str(path.resolve()) for path in reference_results["data_paths"]]
-        )
-        evaluation_path_strings = "\n    ".join(
-            [str(path.resolve()) for path in evaluation_results["data_paths"]]
-        )
-
-        footer_text = (
-            f"reference path(s): {reference_path_strings}\n"
-            f"evaluation path(s): {evaluation_path_strings}\n"
-            f"png record: {png_filepath}"
-        )
-
-        fig = plot_and_save_results(
-            reference_mudensity,
-            evaluation_mudensity,
-            gamma,
-            gamma_options,
-            png_record_directory,
-            header_text=header_text,
-            footer_text=footer_text,
-        )
-
-        fig.tight_layout()
-
-        st.write("Saving figure...")
-        plt.savefig(png_filepath, dpi=100)
-        try:
-            subprocess.check_call(
-                f'magick convert "{png_filepath}" "{pdf_filepath}"', shell=True
-            )
-        except subprocess.CalledProcessError:
-            st.write(
-                UnableToCreatePDF(
-                    "Please install Image Magick to create PDF reports "
-                    "<https://imagemagick.org/script/download.php#windows>."
-                )
-            )
-
-        st.write("## Results")
-        st.pyplot()
-
     """
     ## Calculation
     """
@@ -1326,63 +1396,8 @@ def main():
             png_output_directory,
         )
 
-    def advanced_debugging():
-        st.sidebar.markdown("# Advanced Debugging")
-        if st.sidebar.button("Compare Baseline to Output Directory"):
-            """
-            ## Comparing Results to Baseline
-            """
-
-            baseline_directory = pathlib.Path(
-                CONFIG["debug"]["baseline_directory"]
-            ).resolve()
-
-            png_baseline_directory = baseline_directory.joinpath("png")
-
-            baseline_png_paths = [
-                path for path in (png_baseline_directory.rglob("*")) if path.is_file()
-            ]
-
-            relative_png_paths = [
-                path.relative_to(png_baseline_directory) for path in baseline_png_paths
-            ]
-
-            output_dir = pathlib.Path(CONFIG["output"]["png_directory"]).resolve()
-
-            evaluation_png_paths = [
-                output_dir.joinpath(path) for path in relative_png_paths
-            ]
-
-            for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
-
-                f"### {baseline.parent.name}/{baseline.name}"
-
-                f"`{baseline}`\n\n**vs**\n\n`{evaluation}`"
-
-                baseline_image = imageio.imread(baseline)
-
-                try:
-                    evaluation_image = imageio.imread(evaluation)
-                except FileNotFoundError as e:
-                    """
-                    #### File was not found
-                    """
-                    st.write(e)
-
-                    f"""
-                    For debugging purposes, here are all the files that
-                    were found within {str(output_dir)}
-                    """
-
-                    [str(path) for path in output_dir.rglob("*") if path.is_file()]
-
-                    return
-
-                agree = np.allclose(baseline_image, evaluation_image)
-                f"Images Agree: `{agree}`"
-
     if advanced_mode:
-        advanced_debugging()
+        advanced_debugging(CONFIG)
 
 
 if __name__ == "__main__":
