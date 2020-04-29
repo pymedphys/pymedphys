@@ -1,5 +1,61 @@
 /// <reference types="cypress" />
 
+describe("When running all calculations", () => {
+  before(() => {
+    cy.start()
+
+    cy.get(".stCheckbox").contains("Run in Advanced Mode").click();
+    cy.compute()
+
+    cy.get(".stTextInput input")
+      .first()
+      .type("989898{enter}");
+    cy.compute()
+
+    cy.get(".stMultiSelect")
+      .first()
+      .type("2020-04-29 07:47:29{enter}")
+    cy.compute()
+
+    cy.get(".stButton button").contains("Run Calculation").click()
+    cy.compute()
+
+    cy.get(".stSelectbox").first().type("DICOM RTPlan file upload{enter}")
+    cy.compute()
+
+    cy.get(".stRadio").first().find("input").last().click({ force: true });
+    cy.compute()
+
+    cy.get(".stRadio").each(($el, index, $lst) => {
+      if (index !== 0) {
+        cy.wrap($el).find("input").last().click({ force: true });
+        cy.compute()
+      }
+    })
+
+    cy.get(".stTextInput input")
+      .first()
+      .type("979797{enter}");
+
+    cy.compute()
+
+    cy.get(".stMultiSelect")
+      .first()
+      .type("2020-04-29 07:50:43{enter}")
+
+    cy.compute()
+
+    cy.get(".stButton button").contains("Run Calculation").click()
+
+    cy.compute()
+  });
+
+  it("should have output files that agree with the baseline data", () => {
+    cy.textMatch('Total MU', 4, '426.7')
+  });
+});
+
+
 
 describe("When pressing the status button", () => {
   before(() => {
