@@ -1310,9 +1310,13 @@ def main():
             ## Comparing Results to Baseline
             """
 
-            baseline_paths = list(
-                pathlib.Path(CONFIG["debug"]["baseline_directory"]).glob("**/*")
-            )
+            baseline_directory = pathlib.Path(
+                CONFIG["debug"]["baseline_directory"]
+            ).resolve()
+
+            baseline_paths = [
+                path for path in (baseline_directory.rglob("*")) if path.is_file()
+            ]
 
             """
             Paths to check:

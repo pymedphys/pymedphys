@@ -235,6 +235,7 @@
     "reextract",
     "ref",
     "rendermime",
+    "rglob",
     "rtdose",
     "rtol",
     "rtplan",
