@@ -18,7 +18,7 @@ describe("When running all calculations", () => {
     cy.compute()
 
     cy.get(".stButton button").contains("Run Calculation").click()
-    cy.compute()
+    cy.finalScreenshot()
 
     cy.get(".stSelectbox").first().type("DICOM RTPlan file upload{enter}")
     cy.compute()
@@ -46,8 +46,7 @@ describe("When running all calculations", () => {
     cy.compute()
 
     cy.get(".stButton button").contains("Run Calculation").click()
-
-    cy.compute()
+    cy.finalScreenshot()
   });
 
   it("should have output files that agree with the baseline data", () => {
