@@ -23,7 +23,7 @@ import pathlib
 import subprocess
 from datetime import datetime
 
-from pymedphys._imports import keyring
+from pymedphys._imports import imageio, keyring
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt, pydicom, pymssql
@@ -255,8 +255,8 @@ def main():
     )
     advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-    def get_gamma_options():
-        if advanced_mode:
+    def get_gamma_options(advanced_mode_local):
+        if advanced_mode_local:
 
             st.sidebar.markdown(
                 """
@@ -287,7 +287,7 @@ def main():
 
         return result
 
-    gamma_options = get_gamma_options()
+    gamma_options = get_gamma_options(advanced_mode)
 
     @st.cache(allow_output_mutation=True)
     def delivery_from_icom(icom_stream):
@@ -347,19 +347,21 @@ def main():
 
         return patient_name
 
-    def monaco_input_method(patient_id="", key_namespace="", **_):
+    def monaco_input_method(
+        patient_id="", key_namespace="", advanced_mode_local=False, **_
+    ):
         monaco_site = st.radio(
             "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
         )
         monaco_directory = SITE_DIRECTORIES[monaco_site]["monaco"]
 
-        if advanced_mode:
-            monaco_directory
+        if advanced_mode_local:
+            st.write(monaco_directory.resolve())
 
         patient_id = st.text_input(
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
         )
-        if advanced_mode:
+        if advanced_mode_local:
             patient_id
         elif patient_id == "":
             raise st.ScriptRunner.StopException()
@@ -388,7 +390,7 @@ def main():
                 "More than one patient plan directory found for this ID, "
                 "please only have one directory per patient. "
                 "Directories found were "
-                f"{', '.join([str(path) for path in plan_directories])}"
+                f"{', '.join([str(path.resolve()) for path in plan_directories])}"
             )
 
         plan_directory = plan_directories[0]
@@ -430,8 +432,8 @@ def main():
                 raise ValueError("Exactly one plan should have been found")
             tel_paths += current_plans
 
-        if advanced_mode:
-            [str(path) for path in tel_paths]
+        if advanced_mode_local:
+            [str(path.resolve()) for path in tel_paths]
 
         deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
 
@@ -515,13 +517,15 @@ def main():
                 key=f"{key_namespace}_monaco_site",
             )
             monaco_export_directory = DICOM_EXPORT_LOCATIONS[monaco_site]
-            monaco_export_directory
+            st.write(monaco_export_directory.resolve())
 
             patient_id = st.text_input(
                 "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
             )
 
-            found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}*.dcm"))
+            found_dicom_files = list(
+                monaco_export_directory.glob(f"{patient_id}_*.dcm")
+            )
 
             dicom_plans = {}
 
@@ -609,9 +613,13 @@ def main():
         }
 
     def icom_input_method(
-        patient_id="", icom_directory=DEFAULT_ICOM_DIRECTORY, key_namespace="", **_
+        patient_id="",
+        icom_directory=DEFAULT_ICOM_DIRECTORY,
+        key_namespace="",
+        advanced_mode_local=False,
+        **_,
     ):
-        if advanced_mode:
+        if advanced_mode_local:
             icom_directory = st.text_input(
                 "iCOM Patient Directory",
                 str(icom_directory),
@@ -620,7 +628,7 @@ def main():
 
         icom_directory = pathlib.Path(icom_directory)
 
-        if advanced_mode:
+        if advanced_mode_local:
             patient_id = st.text_input(
                 "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
             )
@@ -682,8 +690,8 @@ def main():
                 icom_directory.glob(f"{patient_id}_*/{icom_filename}.xz")
             )
 
-        if advanced_mode:
-            [str(path) for path in icom_paths]
+        if advanced_mode_local:
+            [str(path.resolve()) for path in icom_paths]
 
         patient_names = set()
         for icom_path in icom_paths:
@@ -801,7 +809,7 @@ def main():
         selected_filepaths = [
             timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
         ]
-        [str(path) for path in selected_filepaths]
+        [str(path.resolve()) for path in selected_filepaths]
 
         """
         #### Log file header(s)
@@ -980,8 +988,10 @@ def main():
     ### Reference
     """
 
-    def get_input_data_ui(default_method, key_namespace, **previous_results):
-        if advanced_mode:
+    def get_input_data_ui(
+        default_method, key_namespace, advanced_mode_local, **previous_results
+    ):
+        if advanced_mode_local:
             data_method = st.selectbox(
                 "Data Input Method",
                 data_method_options,
@@ -992,7 +1002,9 @@ def main():
             data_method = default_method
 
         results = data_method_map[data_method](  # type: ignore
-            key_namespace=key_namespace, **previous_results
+            key_namespace=key_namespace,
+            advanced_mode_local=advanced_mode_local,
+            **previous_results,
         )
 
         try:
@@ -1014,14 +1026,14 @@ def main():
 
         return results
 
-    reference_results = get_input_data_ui(DEFAULT_REFERENCE, "reference")
+    reference_results = get_input_data_ui(DEFAULT_REFERENCE, "reference", advanced_mode)
 
     """
     ### Evaluation
     """
 
     evaluation_results = get_input_data_ui(
-        DEFAULT_EVALUATION, "evaluation", **reference_results
+        DEFAULT_EVALUATION, "evaluation", advanced_mode, **reference_results
     )
 
     """
@@ -1038,7 +1050,7 @@ def main():
     escan_directory = SITE_DIRECTORIES[escan_site]["escan"]
 
     if advanced_mode:
-        escan_directory
+        st.write(escan_directory.resolve())
 
     if advanced_mode:
         """
@@ -1050,7 +1062,7 @@ def main():
         png_output_directory = pathlib.Path(
             st.text_input("png output directory", DEFAULT_PNG_OUTPUT_DIRECTORY)
         )
-        png_output_directory
+        st.write(png_output_directory.resolve())
 
     else:
         png_output_directory = pathlib.Path(DEFAULT_PNG_OUTPUT_DIRECTORY)
@@ -1080,11 +1092,26 @@ def main():
         evaluation_mudensity,
         gamma,
         gamma_options,
+        png_record_directory,
         header_text="",
         footer_text="",
     ):
+        reference_filepath = png_record_directory.joinpath("reference.png")
+        evaluation_filepath = png_record_directory.joinpath("evaluation.png")
+        diff_filepath = png_record_directory.joinpath("diff.png")
+        gamma_filepath = png_record_directory.joinpath("gamma.png")
+
         diff = evaluation_mudensity - reference_mudensity
-        largest_item = np.max(np.abs(diff))
+
+        imageio.imwrite(reference_filepath, reference_mudensity)
+        imageio.imwrite(evaluation_filepath, evaluation_mudensity)
+        imageio.imwrite(diff_filepath, diff)
+        imageio.imwrite(gamma_filepath, gamma)
+
+        largest_mu_density = np.max(
+            [np.max(evaluation_mudensity), np.max(reference_mudensity)]
+        )
+        largest_diff = np.max(np.abs(diff))
 
         widths = [1, 1]
         heights = [0.5, 1, 1, 1, 0.4]
@@ -1113,16 +1140,20 @@ def main():
         ax_footer.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
 
         plt.sca(axs[2, 0])
-        pymedphys.mudensity.display(GRID, reference_mudensity)
+        pymedphys.mudensity.display(
+            GRID, reference_mudensity, vmin=0, vmax=largest_mu_density
+        )
         axs[2, 0].set_title("Reference MU Density")
 
         plt.sca(axs[2, 1])
-        pymedphys.mudensity.display(GRID, evaluation_mudensity)
+        pymedphys.mudensity.display(
+            GRID, evaluation_mudensity, vmin=0, vmax=largest_mu_density
+        )
         axs[2, 1].set_title("Evaluation MU Density")
 
         plt.sca(axs[3, 0])
         pymedphys.mudensity.display(
-            GRID, diff, cmap="seismic", vmin=-largest_item, vmax=largest_item
+            GRID, diff, cmap="seismic", vmin=-largest_diff, vmax=largest_diff
         )
         plt.title("Evaluation - Reference")
 
@@ -1201,9 +1232,9 @@ def main():
         pdf_filepath = str(
             escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
         )
-        png_filepath = str(
-            png_output_directory.joinpath(f"{output_base_filename}.png").resolve()
-        )
+        png_record_directory = png_output_directory.joinpath(output_base_filename)
+        png_record_directory.mkdir(exist_ok=True)
+        png_filepath = str(png_record_directory.joinpath("report.png").resolve())
 
         try:
             patient_name_text = f"Patient Name: {reference_results['patient_name']}\n"
@@ -1218,10 +1249,10 @@ def main():
         )
 
         reference_path_strings = "\n    ".join(
-            [str(path) for path in reference_results["data_paths"]]
+            [str(path.resolve()) for path in reference_results["data_paths"]]
         )
         evaluation_path_strings = "\n    ".join(
-            [str(path) for path in evaluation_results["data_paths"]]
+            [str(path.resolve()) for path in evaluation_results["data_paths"]]
         )
 
         footer_text = (
@@ -1235,6 +1266,7 @@ def main():
             evaluation_mudensity,
             gamma,
             gamma_options,
+            png_record_directory,
             header_text=header_text,
             footer_text=footer_text,
         )
@@ -1270,6 +1302,46 @@ def main():
             escan_directory,
             png_output_directory,
         )
+
+    if advanced_mode:
+        st.sidebar.markdown("# Advanced Debugging")
+        if st.sidebar.button("Compare Baseline to Output Directory"):
+            """
+            ## Comparing Results to Baseline
+            """
+
+            baseline_directory = pathlib.Path(
+                CONFIG["debug"]["baseline_directory"]
+            ).resolve()
+
+            png_baseline_directory = baseline_directory.joinpath("png")
+
+            baseline_png_paths = [
+                path
+                for path in (png_baseline_directory.rglob("*.png"))
+                if path.is_file()
+            ]
+
+            relative_png_paths = [
+                path.relative_to(png_baseline_directory) for path in baseline_png_paths
+            ]
+
+            evaluation_png_paths = [
+                pathlib.Path(CONFIG["output"]["png_directory"]).joinpath(path).resolve()
+                for path in relative_png_paths
+            ]
+
+            for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
+
+                f"### {baseline.parent.name}/{baseline.name}"
+
+                f"`{baseline}`\n\n**vs**\n\n`{evaluation}`"
+
+                baseline_image = imageio.imread(baseline)
+                evaluation_image = imageio.imread(evaluation)
+
+                agree = np.allclose(baseline_image, evaluation_image)
+                f"Images Agree: `{agree}`"
 
 
 if __name__ == "__main__":

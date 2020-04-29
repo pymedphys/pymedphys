@@ -131,6 +131,9 @@ class DeliveryDicom(DeliveryBase):
 
     @classmethod
     def _from_dicom_beam(cls, beam, meterset):
+        if meterset is None:
+            raise ValueError("Meterset should not ever be None")
+
         leaf_boundaries = beam.BeamLimitingDeviceSequence[-1].LeafPositionBoundaries
         leaf_widths = np.diff(leaf_boundaries)
 
@@ -174,11 +177,27 @@ class DeliveryDicom(DeliveryBase):
 
         final_mu_weight = np.array(beam.FinalCumulativeMetersetWeight)
 
+        if final_mu_weight is None:
+            raise ValueError("FinalCumulativeMetersetWeight should not be None")
+
+        # https://dicom.innolitics.com/ciods/rt-plan/rt-beams/300a00b0/300a0111/300a0134
+        # http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.14.html#sect_C.8.8.14.1
+
+        cumulative_meterset_weight = [
+            control_point.CumulativeMetersetWeight for control_point in control_points
+        ]
+
+        for weight in cumulative_meterset_weight:
+            if weight is None:
+                raise ValueError(
+                    "Cumulative Meterset weight not set within DICOM RT plan file. "
+                    "This may be due to the plan being exported from a planning system "
+                    "without the dose being calculated."
+                )
+
         mu = [
-            meterset
-            * np.array(control_point.CumulativeMetersetWeight)
-            / final_mu_weight
-            for control_point in control_points
+            meterset * np.array(weight) / final_mu_weight
+            for control_point, weight in zip(control_points, cumulative_meterset_weight)
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
