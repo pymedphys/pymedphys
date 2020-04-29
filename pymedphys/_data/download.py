@@ -17,16 +17,38 @@ import functools
 import json
 import os
 import pathlib
+import urllib.request
 import warnings
 import zipfile
+
+from pymedphys._imports import tqdm
 
 import pymedphys._utilities.filehash
 from pymedphys import _config as pmp_config
 
-from .resume import download_with_resume
 from .zenodo import get_zenodo_file_urls
 
 HERE = pathlib.Path(__file__).resolve().parent
+
+
+@functools.lru_cache()
+def create_download_progress_bar():
+    class DownloadProgressBar(tqdm.tqdm):
+        def update_to(self, b=1, bsize=1, tsize=None):
+            if tsize is not None:
+                self.total = tsize
+            self.update(b * bsize - self.n)
+
+    return DownloadProgressBar
+
+
+def download_with_progress(url, filepath):
+    DownloadProgressBar = create_download_progress_bar()
+
+    with DownloadProgressBar(
+        unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
+    ) as t:
+        urllib.request.urlretrieve(url, filepath, reporthook=t.update_to)
 
 
 def get_data_dir():
@@ -62,7 +84,7 @@ def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True, url=N
         if url is None:
             url = get_url(filename)
 
-        download_with_resume(url, filepath)
+        download_with_progress(url, filepath)
 
     if check_hash:
         try:
