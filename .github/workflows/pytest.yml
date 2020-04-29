@@ -47,10 +47,27 @@ jobs:
         python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
         python -c "import platform; print(platform.machine()); print(platform.release())"
 
+#####################
+# CACHE LOGIC START #
+#####################
+
+# Unfortunately at this current point in time there does not appear to be a way
+# to easily reuse content across different actions. The below section manages
+# the caching for pymedphys installations from poetry. This logic is often
+# repeated across different actions. Once action step reuse is supported this
+# section will be refactored out.
+
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
         key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
 
     - uses: actions/cache@v1
       if: startsWith(runner.os, 'Linux')
@@ -59,14 +76,6 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Linux')
-      with:
-        path: ~/.cache/pypoetry/virtualenvs
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
 
     - uses: actions/cache@v1
       if: startsWith(runner.os, 'macOS')
@@ -83,6 +92,10 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
           ${{ runner.os }}-pip-
+
+###################
+# CACHE LOGIC END #
+###################
 
     - name: Install FreeTDS on MacOS
       if: matrix.os == 'macos'
