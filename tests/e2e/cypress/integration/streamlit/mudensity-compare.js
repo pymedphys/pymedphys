@@ -27,7 +27,7 @@ describe("When running all calculations", () => {
     cy.compute()
 
     cy.get(".stRadio").each(($el, index, $lst) => {
-      if (index !== 0) {
+      if (index === 1) {
         cy.wrap($el).find("input").last().click({ force: true });
         cy.compute()
       }
@@ -51,7 +51,9 @@ describe("When running all calculations", () => {
   });
 
   it("should have output files that agree with the baseline data", () => {
-    cy.textMatch('Total MU', 4, '426.7')
+    cy.get(".stButton button").contains("Compare Baseline to Output Directory").click()
+
+    cy.textMatch('Images Agree', 8, 'True')
   });
 });
 

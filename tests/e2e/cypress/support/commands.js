@@ -36,7 +36,7 @@ Cypress.Commands.add('compute', () => {
     }
   })
 
-  cy.get("#ReportStatus", { timeout: 60000 }).should("not.be.visible")
+  cy.get("#ReportStatus", { timeout: 120000 }).should("not.be.visible")
 })
 
 Cypress.Commands.add('textMatch', (label, length, result) => {
