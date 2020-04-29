@@ -177,21 +177,42 @@ def get_indexed_trf_directory():
     return indexed_trf_directory
 
 
-try:
-    MOSAIQ_DETAILS = {
+@st.cache
+def get_mosaiq_details():
+    config = get_config()
+    mosaiq_details = {
         site["name"]: {
             "timezone": site["mosaiq"]["timezone"],
             "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
         }
-        for site in CONFIG["site"]
+        for site in config["site"]
     }
-except KeyError:
-    MOSAIQ_DETAILS = {}
 
-DEFAULT_ICOM_DIRECTORY = CONFIG["icom"]["patient_directory"]
-DEFAULT_PNG_OUTPUT_DIRECTORY = CONFIG["output"]["png_directory"]
+    return mosaiq_details
 
-DEFAULT_GAMMA_OPTIONS = CONFIG["gamma"]
+
+@st.cache
+def get_default_icom_directory():
+    config = get_config()
+    default_icom_directory = config["icom"]["patient_directory"]
+
+    return default_icom_directory
+
+
+@st.cache
+def get_default_png_output_directory():
+    config = get_config()
+    default_png_output_directory = config["output"]["png_directory"]
+
+    return default_png_output_directory
+
+
+@st.cache
+def get_default_gamma_options():
+    config = get_config()
+    default_gamma_options = config["gamma"]
+
+    return default_gamma_options
 
 
 class InputRequired(ValueError):
@@ -263,7 +284,10 @@ def trf_status(linac_id, backup_directory):
 
 
 def show_status_indicators():
-    linac_ids = list(LINAC_ICOM_LIVE_STREAM_DIRECTORIES.keys())
+    linac_icom_live_stream_directories = get_icom_live_stream_directories()
+    linac_indexed_backups_directory = get_indexed_backups_directory()
+
+    linac_ids = list(linac_icom_live_stream_directories.keys())
 
     if st.sidebar.button("Check status of iCOM and backups"):
         st.sidebar.markdown(
@@ -272,7 +296,7 @@ def show_status_indicators():
             """
         )
 
-        for linac_id, icom_directory in LINAC_ICOM_LIVE_STREAM_DIRECTORIES.items():
+        for linac_id, icom_directory in linac_icom_live_stream_directories.items():
             icom_status(linac_id, icom_directory)
 
         st.sidebar.markdown(
@@ -282,7 +306,7 @@ def show_status_indicators():
         )
 
         for linac_id in linac_ids:
-            trf_status(linac_id, LINAC_INDEXED_BACKUPS_DIRECTORY)
+            trf_status(linac_id, linac_indexed_backups_directory)
 
     """
     ## Selection of data to compare
@@ -290,34 +314,35 @@ def show_status_indicators():
 
 
 def get_gamma_options(advanced_mode_local):
-    if advanced_mode_local:
+    default_gamma_options = get_default_gamma_options()
 
+    if advanced_mode_local:
         st.sidebar.markdown(
             """
             # Gamma parameters
             """
         )
         result = {
-            **DEFAULT_GAMMA_OPTIONS,
+            **default_gamma_options,
             **{
                 "dose_percent_threshold": st.sidebar.number_input(
                     "MU Percent Threshold",
-                    value=DEFAULT_GAMMA_OPTIONS["dose_percent_threshold"],
+                    value=default_gamma_options["dose_percent_threshold"],
                 ),
                 "distance_mm_threshold": st.sidebar.number_input(
                     "Distance (mm) Threshold",
-                    value=DEFAULT_GAMMA_OPTIONS["distance_mm_threshold"],
+                    value=default_gamma_options["distance_mm_threshold"],
                 ),
                 "local_gamma": st.sidebar.checkbox(
-                    "Local Gamma", DEFAULT_GAMMA_OPTIONS["local_gamma"]
+                    "Local Gamma", default_gamma_options["local_gamma"]
                 ),
                 "max_gamma": st.sidebar.number_input(
-                    "Max Gamma", value=DEFAULT_GAMMA_OPTIONS["max_gamma"]
+                    "Max Gamma", value=default_gamma_options["max_gamma"]
                 ),
             },
         }
     else:
-        result = DEFAULT_GAMMA_OPTIONS
+        result = default_gamma_options
 
     return result
 
