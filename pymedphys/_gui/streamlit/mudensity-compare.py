@@ -65,6 +65,14 @@ def load_config():
 
 CONFIG = load_config()
 
+DATA_OPTION_LABELS = {
+    "monaco": "Monaco tel.1 filepath",
+    "dicom": "DICOM RTPlan file upload",
+    "icom": "iCOM record timestamp",
+    "trf": "Linac Backup `.trf` filepath",
+    "mosaiq": "Mosaiq SQL query",
+}
+
 AVAILABLE_DATA_METHODS = CONFIG["data_methods"]["available"]
 DEFAULT_REFERENCE_ID = CONFIG["data_methods"]["default_reference"]
 DEFAULT_EVALUATION_ID = CONFIG["data_methods"]["default_evaluation"]
@@ -192,9 +200,7 @@ def trf_status(linac_id, backup_directory):
     get_most_recent_file_and_print(linac_id, filepaths)
 
 
-def show_status_indicators(
-    LINAC_ICOM_LIVE_STREAM_DIRECTORIES, LINAC_INDEXED_BACKUPS_DIRECTORY
-):
+def show_status_indicators():
     linac_ids = list(LINAC_ICOM_LIVE_STREAM_DIRECTORIES.keys())
 
     if st.sidebar.button("Check status of iCOM and backups"):
@@ -221,7 +227,7 @@ def show_status_indicators(
     """
 
 
-def get_gamma_options(advanced_mode_local, DEFAULT_GAMMA_OPTIONS):
+def get_gamma_options(advanced_mode_local):
     if advanced_mode_local:
 
         st.sidebar.markdown(
@@ -934,7 +940,7 @@ def display_deliveries(deliveries):
 
 
 def get_input_data_ui(
-    OVERVIEW_UPDATER_MAP,
+    overview_updater_map,
     data_method_map,
     default_method,
     key_namespace,
@@ -973,7 +979,7 @@ def get_input_data_ui(
     except KeyError:
         patient_name = ""
 
-    OVERVIEW_UPDATER_MAP[key_namespace](patient_id, patient_name, total_mu)
+    overview_updater_map[key_namespace](patient_id, patient_name, total_mu)
 
     return results
 
@@ -1279,7 +1285,7 @@ def main():
 
     set_evaluation_overview = sidebar_overview()
 
-    OVERVIEW_UPDATER_MAP = {
+    overview_updater_map = {
         "reference": set_reference_overview,
         "evaluation": set_evaluation_overview,
     }
@@ -1290,9 +1296,7 @@ def main():
         """
     )
 
-    show_status_indicators(
-        LINAC_ICOM_LIVE_STREAM_DIRECTORIES, LINAC_INDEXED_BACKUPS_DIRECTORY
-    )
+    show_status_indicators()
 
     st.sidebar.markdown(
         """
@@ -1303,15 +1307,7 @@ def main():
     )
     advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-    gamma_options = get_gamma_options(advanced_mode, DEFAULT_GAMMA_OPTIONS)
-
-    DATA_OPTION_LABELS = {
-        "monaco": "Monaco tel.1 filepath",
-        "dicom": "DICOM RTPlan file upload",
-        "icom": "iCOM record timestamp",
-        "trf": "Linac Backup `.trf` filepath",
-        "mosaiq": "Mosaiq SQL query",
-    }
+    gamma_options = get_gamma_options(advanced_mode)
 
     DATA_OPTION_FUNCTIONS = {
         "monaco": monaco_input_method,
@@ -1333,7 +1329,7 @@ def main():
     """
 
     reference_results = get_input_data_ui(
-        OVERVIEW_UPDATER_MAP,
+        overview_updater_map,
         data_method_map,
         DEFAULT_REFERENCE,
         "reference",
@@ -1345,7 +1341,7 @@ def main():
     """
 
     evaluation_results = get_input_data_ui(
-        OVERVIEW_UPDATER_MAP,
+        overview_updater_map,
         data_method_map,
         DEFAULT_EVALUATION,
         "evaluation",
