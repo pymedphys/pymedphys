@@ -1,0 +1,77 @@
+name: Cypress
+
+on: [push]
+
+jobs:
+  Cypress:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: Install Cypress Dependencies
+      uses: cypress-io/github-action@v1
+      with:
+        runTests: false
+        working-directory: tests/e2e
+
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+
+    - name: Show Python information
+      run: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.pymedphys
+        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
+
+    - name: Upgrade pip, install poetry
+      run: |
+        python -m pip install --upgrade pip poetry
+
+    - name: Run poetry install
+      run: |
+        poetry install --no-dev -E pytest
+
+    - name: Download demo data
+      run: |
+        poetry run python -c "import pymedphys; pymedphys.zip_data_paths('mu-density-gui-e2e-data.zip')"
+
+    - name: Run PyMedPhys GUI
+      run: |
+        poetry run pymedphys gui &
+
+    - name: Cypress run
+      uses: cypress-io/github-action@v1
+      with:
+        install: false
+        record: true
+        start: yarn start
+        working-directory: tests/e2e
+        wait-on: 'http://localhost:8501'
+      env:
+        # pass the Dashboard record key as an environment variable
+        CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        host: localhost
+        port: 8501
