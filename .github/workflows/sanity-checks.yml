@@ -1,0 +1,46 @@
+name: Sanity Checks
+
+on: [push]
+
+jobs:
+  Pre-Commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract branch name
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Test branch name
+        run: |
+          echo ${{ steps.extract_branch.outputs.branch }}
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-cache
+
+      - name: Run Pre-Commit
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files
+      - name: Fix any issues
+        if: failure()
+        run: |
+          git config --local user.email "pre-commit-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git commit -m "Fix pre-commit failures" -a
+          exit 1
+      - name: Push changes
+        if: failure()
+        uses: ad-m/github-push-action@02b0b75
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
