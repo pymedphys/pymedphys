@@ -81,30 +81,6 @@ def get_config():
 
 
 @st.cache
-def get_available_data_methods():
-    config = get_config()
-    available_data_methods = config["data_methods"]["available"]
-
-    return available_data_methods
-
-
-@st.cache
-def get_default_reference_id():
-    config = get_config()
-    default_reference_id = config["data_methods"]["default_reference"]
-
-    return default_reference_id
-
-
-@st.cache
-def get_default_evaluation_id():
-    config = get_config()
-    default_evaluation_id = config["data_methods"]["default_evaluation"]
-
-    return default_evaluation_id
-
-
-@st.cache
 def get_site_directories():
     config = get_config()
     site_directories = {
@@ -418,11 +394,13 @@ def monaco_input_method(
     patient_id="", key_namespace="", advanced_mode_local=False, **_
 ):
 
-    site_options = list(SITE_DIRECTORIES.keys())
+    site_directories = get_site_directories()
+
+    site_options = list(site_directories.keys())
     monaco_site = st.radio(
         "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
     )
-    monaco_directory = SITE_DIRECTORIES[monaco_site]["monaco"]
+    monaco_directory = site_directories[monaco_site]["monaco"]
 
     if advanced_mode_local:
         st.write(monaco_directory.resolve())
@@ -555,6 +533,8 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     FILE_UPLOAD = "File upload"
     MONACO_SEARCH = "Search Monaco file export location"
 
+    dicom_export_locations = get_dicom_export_locations()
+
     import_method = st.radio(
         "DICOM import method",
         [FILE_UPLOAD, MONACO_SEARCH],
@@ -582,11 +562,11 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         data_paths = ["Uploaded DICOM file"]
 
     if import_method == MONACO_SEARCH:
-        site_options = list(DICOM_EXPORT_LOCATIONS.keys())
+        site_options = list(dicom_export_locations.keys())
         monaco_site = st.radio(
             "Monaco Export Location", site_options, key=f"{key_namespace}_monaco_site"
         )
-        monaco_export_directory = DICOM_EXPORT_LOCATIONS[monaco_site]
+        monaco_export_directory = dicom_export_locations[monaco_site]
         st.write(monaco_export_directory.resolve())
 
         patient_id = st.text_input(
@@ -680,12 +660,11 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
 
 def icom_input_method(
-    patient_id="",
-    icom_directory=DEFAULT_ICOM_DIRECTORY,
-    key_namespace="",
-    advanced_mode_local=False,
-    **_,
+    patient_id="", icom_directory=None, key_namespace="", advanced_mode_local=False, **_
 ):
+    if icom_directory is None:
+        icom_directory = get_default_icom_directory()
+
     if advanced_mode_local:
         icom_directory = st.text_input(
             "iCOM Patient Directory",
@@ -797,8 +776,11 @@ def read_trf(filepath):
 
 @st.cache
 def get_logfile_mosaiq_info(headers):
-    centres = {MACHINE_CENTRE_MAP[machine_id] for machine_id in headers["machine"]}
-    mosaiq_servers = [MOSAIQ_DETAILS[centre]["server"] for centre in centres]
+    machine_centre_map = get_machine_centre_map()
+    mosaiq_details = get_mosaiq_details()
+
+    centres = {machine_centre_map[machine_id] for machine_id in headers["machine"]}
+    mosaiq_servers = [mosaiq_details[centre]["server"] for centre in centres]
 
     details = []
 
@@ -806,9 +788,9 @@ def get_logfile_mosaiq_info(headers):
 
     for _, header in headers.iterrows():
         machine_id = header["machine"]
-        centre = MACHINE_CENTRE_MAP[machine_id]
-        mosaiq_timezone = MOSAIQ_DETAILS[centre]["timezone"]
-        server = MOSAIQ_DETAILS[centre]["server"]
+        centre = machine_centre_map[machine_id]
+        mosaiq_timezone = mosaiq_details[centre]["timezone"]
+        server = mosaiq_details[centre]["server"]
         cursor = cursors[server]
 
         field_label = header["field_label"]
@@ -828,12 +810,14 @@ def get_logfile_mosaiq_info(headers):
 
 
 def trf_input_method(patient_id="", key_namespace="", **_):
+    indexed_trf_directory = get_indexed_trf_directory()
+
     patient_id = st.text_input(
         "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
     )
     patient_id
 
-    filepaths = list(INDEXED_TRF_DIRECTORY.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
+    filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
 
     raw_timestamps = ["_".join(path.parent.name.split("_")[0:2]) for path in filepaths]
     timestamps = list(
@@ -940,12 +924,13 @@ def get_patient_name(cursor, patient_id):
 
 
 def mosaiq_input_method(patient_id="", key_namespace="", **_):
-    site_options = list(MOSAIQ_DETAILS.keys())
+    mosaiq_details = get_mosaiq_details()
+    site_options = list(mosaiq_details.keys())
 
     mosaiq_site = st.radio(
         "Mosaiq Site", site_options, key=f"{key_namespace}_mosaiq_site"
     )
-    server = MOSAIQ_DETAILS[mosaiq_site]["server"]
+    server = mosaiq_details[mosaiq_site]["server"]
     f"Mosaiq Hostname: `{server}`"
 
     sql_user = keyring.get_password("MosaiqSQL_username", server)
@@ -1350,6 +1335,8 @@ def run_calculation(
 
 
 def main():
+    config = get_config()
+
     st.sidebar.markdown(
         """
         # Overview
@@ -1404,11 +1391,15 @@ def main():
         "mosaiq": mosaiq_input_method,
     }
 
-    default_reference = DATA_OPTION_LABELS[DEFAULT_REFERENCE_ID]
-    default_evaluation = DATA_OPTION_LABELS[DEFAULT_EVALUATION_ID]
+    default_reference_id = config["data_methods"]["default_reference"]
+    default_evaluation_id = config["data_methods"]["default_evaluation"]
+    available_data_methods = config["data_methods"]["available"]
+
+    default_reference = DATA_OPTION_LABELS[default_reference_id]
+    default_evaluation = DATA_OPTION_LABELS[default_evaluation_id]
 
     data_method_map = {}
-    for method in AVAILABLE_DATA_METHODS:
+    for method in available_data_methods:
         data_method_map[DATA_OPTION_LABELS[method]] = data_option_functions[method]
 
     """
