@@ -92,7 +92,7 @@ def main():
 
     TRF_LOGFILE_ROOT_DIR = pathlib.Path(CONFIG["trf_logfiles"]["root_directory"])
     LINAC_INDEXED_BACKUPS_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath(
-        r"diagnostics\already_indexed"
+        "diagnostics/already_indexed"
     )
     INDEXED_TRF_DIRECTORY = TRF_LOGFILE_ROOT_DIR.joinpath("indexed")
 
@@ -427,6 +427,7 @@ def main():
             current_plans = list(
                 monaco_directory.glob(f"*~{patient_id}/plan/{selected_monaco_plan}")
             )
+            current_plans = [path.resolve() for path in current_plans]
             if len(current_plans) != 1:
                 st.write("Plans found:", current_plans)
                 raise ValueError("Exactly one plan should have been found")
@@ -536,7 +537,7 @@ def main():
 
             dicom_plan_options = list(dicom_plans.keys())
 
-            if len(dicom_plan_options) == 0:
+            if len(dicom_plan_options) == 0 and patient_id != "":
                 st.write(
                     NoRecordsFound(
                         f"No exported DICOM RT plans found for Patient ID {patient_id} "
@@ -1303,7 +1304,7 @@ def main():
             png_output_directory,
         )
 
-    if advanced_mode:
+    def advanced_debugging():
         st.sidebar.markdown("# Advanced Debugging")
         if st.sidebar.button("Compare Baseline to Output Directory"):
             """
@@ -1317,18 +1318,17 @@ def main():
             png_baseline_directory = baseline_directory.joinpath("png")
 
             baseline_png_paths = [
-                path
-                for path in (png_baseline_directory.rglob("*.png"))
-                if path.is_file()
+                path for path in (png_baseline_directory.rglob("*")) if path.is_file()
             ]
 
             relative_png_paths = [
                 path.relative_to(png_baseline_directory) for path in baseline_png_paths
             ]
 
+            output_dir = pathlib.Path(CONFIG["output"]["png_directory"]).resolve()
+
             evaluation_png_paths = [
-                pathlib.Path(CONFIG["output"]["png_directory"]).joinpath(path).resolve()
-                for path in relative_png_paths
+                output_dir.joinpath(path) for path in relative_png_paths
             ]
 
             for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
@@ -1338,10 +1338,29 @@ def main():
                 f"`{baseline}`\n\n**vs**\n\n`{evaluation}`"
 
                 baseline_image = imageio.imread(baseline)
-                evaluation_image = imageio.imread(evaluation)
+
+                try:
+                    evaluation_image = imageio.imread(evaluation)
+                except FileNotFoundError as e:
+                    """
+                    #### File was not found
+                    """
+                    st.write(e)
+
+                    f"""
+                    For debugging purposes, here are all the files that
+                    were found within {str(output_dir)}
+                    """
+
+                    [str(path) for path in output_dir.rglob("*") if path.is_file()]
+
+                    return
 
                 agree = np.allclose(baseline_image, evaluation_image)
                 f"Images Agree: `{agree}`"
+
+    if advanced_mode:
+        advanced_debugging()
 
 
 if __name__ == "__main__":
