@@ -25,13 +25,8 @@
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
 
 Cypress.Commands.add('compute', () => {
-  try {
-    cy.get("#ReportStatus").should("be.visible")
-  } catch (error) { }
-
-  try {
-    cy.get("#ReportStatus").should("not.be.visible")
-  } catch (error) { }
+  cy.get("#ReportStatus").should("be.visible").and("not.have.id", "foo")
+  cy.get("#ReportStatus").should("not.be.visible").and("not.have.id", "foo")
 
 })
 

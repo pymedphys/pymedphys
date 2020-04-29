@@ -1,8 +1,6 @@
 /// <reference types="cypress" />
 
 
-// cy.get(".stButton").should("have.length", 1);
-
 describe("When pressing the status button", () => {
   before(() => {
     cy.start()
@@ -19,7 +17,6 @@ describe("When pressing the status button", () => {
     cy.textMatch('MacDonald', 2, null)
   });
 });
-
 
 
 describe("When using a Patient ID of 979797 in BLUE clinic and selecting the last iCOM record", () => {
