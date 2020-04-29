@@ -1084,7 +1084,17 @@ def main():
         header_text="",
         footer_text="",
     ):
+        reference_filepath = png_record_directory.joinpath("reference.png")
+        evaluation_filepath = png_record_directory.joinpath("evaluation.png")
+        diff_filepath = png_record_directory.joinpath("diff.png")
+        gamma_filepath = png_record_directory.joinpath("gamma.png")
+
         diff = evaluation_mudensity - reference_mudensity
+
+        imageio.imwrite(reference_filepath, reference_mudensity)
+        imageio.imwrite(evaluation_filepath, evaluation_mudensity)
+        imageio.imwrite(diff_filepath, diff)
+        imageio.imwrite(gamma_filepath, gamma)
 
         largest_mu_density = np.max(
             [np.max(evaluation_mudensity), np.max(reference_mudensity)]
@@ -1211,6 +1221,7 @@ def main():
             escan_directory.joinpath(f"{output_base_filename}.pdf").resolve()
         )
         png_record_directory = png_output_directory.joinpath(output_base_filename)
+        png_record_directory.mkdir(exist_ok=True)
         png_filepath = str(png_record_directory.joinpath("report.png").resolve())
 
         try:

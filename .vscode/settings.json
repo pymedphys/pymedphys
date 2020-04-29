@@ -139,6 +139,7 @@
     "imginterp",
     "imread",
     "imshow",
+    "imwrite",
     "inplace",
     "inplane",
     "interp",
