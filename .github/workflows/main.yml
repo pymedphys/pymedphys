@@ -203,7 +203,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-poetry-
 
-
     - name: Upgrade pip, install poetry
       run: |
         python -m pip install --upgrade pip poetry
@@ -212,13 +211,13 @@ jobs:
       run: |
         poetry install --no-dev -E pytest
 
-    - name: Run PyMedPhys GUI
-      run: |
-        poetry run pymedphys gui &
-
     - name: Download demo data
       run: |
         poetry run python -c "import pymedphys; pymedphys.zip_data_paths('mu-density-gui-e2e-data.zip')"
+
+    - name: Run PyMedPhys GUI
+      run: |
+        poetry run pymedphys gui &
 
     - name: Cypress run
       uses: cypress-io/github-action@v1
