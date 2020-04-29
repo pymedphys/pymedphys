@@ -1314,15 +1314,34 @@ def main():
                 CONFIG["debug"]["baseline_directory"]
             ).resolve()
 
-            baseline_paths = [
-                path for path in (baseline_directory.rglob("*")) if path.is_file()
+            png_baseline_directory = baseline_directory.joinpath("png")
+
+            baseline_png_paths = [
+                path
+                for path in (png_baseline_directory.rglob("*.png"))
+                if path.is_file()
             ]
 
-            """
-            Paths to check:
-            """
+            relative_png_paths = [
+                path.relative_to(png_baseline_directory) for path in baseline_png_paths
+            ]
 
-            [str(path.resolve()) for path in baseline_paths]
+            evaluation_png_paths = [
+                pathlib.Path(CONFIG["output"]["png_directory"]).joinpath(path).resolve()
+                for path in relative_png_paths
+            ]
+
+            for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
+
+                f"### {baseline.parent.name}/{baseline.name}"
+
+                f"`{baseline}`\n\n**vs**\n\n`{evaluation}`"
+
+                baseline_image = imageio.imread(baseline)
+                evaluation_image = imageio.imread(evaluation)
+
+                agree = np.allclose(baseline_image, evaluation_image)
+                f"Images Agree: `{agree}`"
 
 
 if __name__ == "__main__":
