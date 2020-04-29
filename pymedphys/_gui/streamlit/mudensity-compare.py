@@ -517,7 +517,7 @@ def main():
                 key=f"{key_namespace}_monaco_site",
             )
             monaco_export_directory = DICOM_EXPORT_LOCATIONS[monaco_site]
-            monaco_export_directory
+            st.write(monaco_export_directory.resolve())
 
             patient_id = st.text_input(
                 "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
