@@ -25,14 +25,11 @@
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
 
 
-
-
-
 Cypress.Commands.add('compute', () => {
   let start = new Date().getTime();
-  cy.get("#ReportStatus", { timeout: 8000 }).should($el => {
+  cy.get("#ReportStatus", { timeout: 4000 }).should($el => {
     let now = new Date().getTime();
-    if (now - start < 4000) {
+    if (now - start < 1000) {
       expect($el).to.be.visible
     } else {
       expect($el).to.not.be.visible

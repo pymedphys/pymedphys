@@ -181,6 +181,7 @@ class DeliveryDicom(DeliveryBase):
             raise ValueError("FinalCumulativeMetersetWeight should not be None")
 
         # https://dicom.innolitics.com/ciods/rt-plan/rt-beams/300a00b0/300a0111/300a0134
+        # http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.14.html#sect_C.8.8.14.1
 
         cumulative_meterset_weight = [
             control_point.CumulativeMetersetWeight for control_point in control_points
