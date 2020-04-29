@@ -176,14 +176,6 @@ def get_default_icom_directory():
 
 
 @st.cache
-def get_default_png_output_directory():
-    config = get_config()
-    default_png_output_directory = config["output"]["png_directory"]
-
-    return default_png_output_directory
-
-
-@st.cache
 def get_default_gamma_options():
     config = get_config()
     default_gamma_options = config["gamma"]
@@ -1193,7 +1185,9 @@ def calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options):
     return gamma
 
 
-def advanced_debugging(config):
+def advanced_debugging():
+    config = get_config()
+
     st.sidebar.markdown("# Advanced Debugging")
     if st.sidebar.button("Compare Baseline to Output Directory"):
         """
@@ -1437,12 +1431,16 @@ def main():
     The location to save the produced pdf report.
     """
 
-    site_options = list(SITE_DIRECTORIES.keys())
+    site_directories = get_site_directories()
+
+    site_options = list(site_directories.keys())
     escan_site = st.radio("eScan Site", site_options)
-    escan_directory = SITE_DIRECTORIES[escan_site]["escan"]
+    escan_directory = site_directories[escan_site]["escan"]
 
     if advanced_mode:
         st.write(escan_directory.resolve())
+
+    default_png_output_directory = config["output"]["png_directory"]
 
     if advanced_mode:
         """
@@ -1452,12 +1450,12 @@ def main():
         """
 
         png_output_directory = pathlib.Path(
-            st.text_input("png output directory", DEFAULT_PNG_OUTPUT_DIRECTORY)
+            st.text_input("png output directory", default_png_output_directory)
         )
         st.write(png_output_directory.resolve())
 
     else:
-        png_output_directory = pathlib.Path(DEFAULT_PNG_OUTPUT_DIRECTORY)
+        png_output_directory = pathlib.Path(default_png_output_directory)
 
     """
     ## Calculation
@@ -1473,7 +1471,7 @@ def main():
         )
 
     if advanced_mode:
-        advanced_debugging(CONFIG)
+        advanced_debugging()
 
 
 if __name__ == "__main__":
