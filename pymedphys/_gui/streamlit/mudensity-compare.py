@@ -356,7 +356,7 @@ def main():
         monaco_directory = SITE_DIRECTORIES[monaco_site]["monaco"]
 
         if advanced_mode_local:
-            monaco_directory
+            st.write(monaco_directory.resolve())
 
         patient_id = st.text_input(
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
@@ -390,7 +390,7 @@ def main():
                 "More than one patient plan directory found for this ID, "
                 "please only have one directory per patient. "
                 "Directories found were "
-                f"{', '.join([str(path) for path in plan_directories])}"
+                f"{', '.join([str(path.resolve()) for path in plan_directories])}"
             )
 
         plan_directory = plan_directories[0]
@@ -433,7 +433,7 @@ def main():
             tel_paths += current_plans
 
         if advanced_mode_local:
-            [str(path) for path in tel_paths]
+            [str(path.resolve()) for path in tel_paths]
 
         deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
 
@@ -523,7 +523,9 @@ def main():
                 "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
             )
 
-            found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}*.dcm"))
+            found_dicom_files = list(
+                monaco_export_directory.glob(f"{patient_id}_*.dcm")
+            )
 
             dicom_plans = {}
 
@@ -689,7 +691,7 @@ def main():
             )
 
         if advanced_mode_local:
-            [str(path) for path in icom_paths]
+            [str(path.resolve()) for path in icom_paths]
 
         patient_names = set()
         for icom_path in icom_paths:
@@ -807,7 +809,7 @@ def main():
         selected_filepaths = [
             timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
         ]
-        [str(path) for path in selected_filepaths]
+        [str(path.resolve()) for path in selected_filepaths]
 
         """
         #### Log file header(s)
@@ -1048,7 +1050,7 @@ def main():
     escan_directory = SITE_DIRECTORIES[escan_site]["escan"]
 
     if advanced_mode:
-        escan_directory
+        st.write(escan_directory.resolve())
 
     if advanced_mode:
         """
@@ -1060,7 +1062,7 @@ def main():
         png_output_directory = pathlib.Path(
             st.text_input("png output directory", DEFAULT_PNG_OUTPUT_DIRECTORY)
         )
-        png_output_directory
+        st.write(png_output_directory.resolve())
 
     else:
         png_output_directory = pathlib.Path(DEFAULT_PNG_OUTPUT_DIRECTORY)
@@ -1247,10 +1249,10 @@ def main():
         )
 
         reference_path_strings = "\n    ".join(
-            [str(path) for path in reference_results["data_paths"]]
+            [str(path.resolve()) for path in reference_results["data_paths"]]
         )
         evaluation_path_strings = "\n    ".join(
-            [str(path) for path in evaluation_results["data_paths"]]
+            [str(path.resolve()) for path in evaluation_results["data_paths"]]
         )
 
         footer_text = (
@@ -1302,8 +1304,21 @@ def main():
         )
 
     if advanced_mode:
-        if st.sidebar.checkbox("Debug Mode"):
-            pass
+        st.sidebar.markdown("# Advanced Debugging")
+        if st.sidebar.button("Compare Baseline to Output Directory"):
+            """
+            ## Comparing Results to Baseline
+            """
+
+            baseline_paths = list(
+                pathlib.Path(CONFIG["debug"]["baseline_directory"]).glob("**/*")
+            )
+
+            """
+            Paths to check:
+            """
+
+            [str(path.resolve()) for path in baseline_paths]
 
 
 if __name__ == "__main__":
