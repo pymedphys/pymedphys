@@ -131,6 +131,9 @@ class DeliveryDicom(DeliveryBase):
 
     @classmethod
     def _from_dicom_beam(cls, beam, meterset):
+        if meterset is None:
+            raise ValueError("Meterset should not ever be None")
+
         leaf_boundaries = beam.BeamLimitingDeviceSequence[-1].LeafPositionBoundaries
         leaf_widths = np.diff(leaf_boundaries)
 
@@ -174,11 +177,36 @@ class DeliveryDicom(DeliveryBase):
 
         final_mu_weight = np.array(beam.FinalCumulativeMetersetWeight)
 
+        if final_mu_weight is None:
+            raise ValueError("FinalCumulativeMetersetWeight should not be None")
+
+        num_control_points = len(control_points)
+        original_weights = [
+            control_point.CumulativeMetersetWeight for control_point in control_points
+        ]
+
+        interpolation_used = False
+        cumulative_meterset_weight = []
+        for i, current_weight in enumerate(original_weights):
+            if current_weight is None:
+                cumulative_meterset_weight.append(float(i) / num_control_points)
+                interpolation_used = True
+            else:
+                cumulative_meterset_weight.append(current_weight)
+
+        if interpolation_used:
+            for weight in original_weights[1:-1]:
+                if weight is not None:
+                    raise ValueError(
+                        "Meterset Interpolation only supported when "
+                        "used for all control points."
+                    )
+
         mu = [
-            meterset
-            * np.array(control_point.CumulativeMetersetWeight)
-            / final_mu_weight
-            for control_point in control_points
+            meterset * np.array(current_weight) / final_mu_weight
+            for control_point, current_weight in zip(
+                control_points, cumulative_meterset_weight
+            )
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
