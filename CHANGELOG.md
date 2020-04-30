@@ -35,6 +35,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [0.25.1]
 
+### Dependency Changes
+
+* Now included `psutil` as an optional dependency.
+
 ### Quality of life improvements
 
 * Now raises a descriptive error when a DICOM RT plan file's control point is
@@ -43,6 +47,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * When running `pymedphys gui` for the first time, no longer does `streamlit`
   request credentials.
   <https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/pymedphys/_gui/__init__.py#L24-L36>
+
+### Development changes
+
+* Implemented Cypress GUI testing infrastructure into the CI workflow. See
+  details at <https://dashboard.cypress.io/projects/tgt8f6/runs>.
+  * Tests -- <https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/tests/e2e/cypress/integration/streamlit/mudensity-compare.js>
+  * CI config -- <https://github.com/pymedphys/pymedphys/blob/dfd418a6dd1b8b57ba6bbfd27a498596477ceb6f/.github/workflows/cypress.yml>
 
 ## [0.25.0]
 
