@@ -105,7 +105,7 @@ marker = "sys_platform == \"win32\""
 name = "atomicwrites"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "1.3.0"
+version = "1.4.0"
 
 [[package]]
 category = "main"
@@ -174,9 +174,10 @@ description = "An easy safelist-based HTML-sanitizing tool."
 name = "bleach"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-version = "3.1.4"
+version = "3.1.5"
 
 [package.dependencies]
+packaging = "*"
 six = ">=1.9.0"
 webencodings = "*"
 
@@ -194,10 +195,10 @@ description = "The AWS SDK for Python"
 name = "boto3"
 optional = false
 python-versions = "*"
-version = "1.12.47"
+version = "1.12.49"
 
 [package.dependencies]
-botocore = ">=1.15.47,<1.16.0"
+botocore = ">=1.15.49,<1.16.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.3.0,<0.4.0"
 
@@ -207,7 +208,7 @@ description = "Low-level, data-driven core of boto 3."
 name = "botocore"
 optional = false
 python-versions = "*"
-version = "1.15.47"
+version = "1.15.49"
 
 [package.dependencies]
 docutils = ">=0.10,<0.16"
@@ -1515,7 +1516,7 @@ description = "World timezone definitions, modern and historical"
 name = "pytz"
 optional = false
 python-versions = "*"
-version = "2019.3"
+version = "2020.1"
 
 [[package]]
 category = "main"
@@ -1834,7 +1835,7 @@ description = "Sphinx API for Web Apps"
 name = "sphinxcontrib-websupport"
 optional = false
 python-versions = ">=3.5"
-version = "1.2.1"
+version = "1.2.2"
 
 [package.extras]
 lint = ["flake8"]
@@ -1890,7 +1891,7 @@ description = "TensorBoard lets you watch Tensors Flow"
 name = "tb-nightly"
 optional = true
 python-versions = ">= 2.7, != 3.0.*, != 3.1.*"
-version = "2.3.0a20200427"
+version = "2.3.0a20200429"
 
 [package.dependencies]
 absl-py = ">=0.4"
@@ -1956,7 +1957,7 @@ description = "TensorFlow Estimator."
 name = "tf-estimator-nightly"
 optional = true
 python-versions = "*"
-version = "2.3.0.dev2020042701"
+version = "2.3.0.dev2020042901"
 
 [[package]]
 category = "main"
@@ -1964,7 +1965,7 @@ description = "TensorFlow is an open source machine learning framework for every
 name = "tf-nightly"
 optional = true
 python-versions = "*"
-version = "2.2.0.dev20200427"
+version = "2.2.0.dev20200429"
 
 [package.dependencies]
 absl-py = ">=0.7.0"
@@ -2289,8 +2290,8 @@ astunparse = [
     {file = "astunparse-1.6.3.tar.gz", hash = "sha256:5ad93a8456f0d084c3456d059fd9a92cce667963232cbf763eac3bc5b7940872"},
 ]
 atomicwrites = [
-    {file = "atomicwrites-1.3.0-py2.py3-none-any.whl", hash = "sha256:03472c30eb2c5d1ba9227e4c2ca66ab8287fbfbbda3888aa93dc2e28fc6811b4"},
-    {file = "atomicwrites-1.3.0.tar.gz", hash = "sha256:75a9445bac02d8d058d5e1fe689654ba5a6556a1dfd8ce6ec55a0ed79866cfa6"},
+    {file = "atomicwrites-1.4.0-py2.py3-none-any.whl", hash = "sha256:6d1784dea7c0c8d4a5172b6c620f40b6e4cbfdf96d783691f2e1302a7b88e197"},
+    {file = "atomicwrites-1.4.0.tar.gz", hash = "sha256:ae70396ad1a434f9c7046fd2dd196fc04b12f9e91ffb859164193be8b6168a7a"},
 ]
 attrs = [
     {file = "attrs-19.3.0-py2.py3-none-any.whl", hash = "sha256:08a96c641c3a74e44eb59afb61a24f2cb9f4d7188748e76ba4bb5edfa3cb7d1c"},
@@ -2313,19 +2314,19 @@ black = [
     {file = "black-19.10b0.tar.gz", hash = "sha256:c2edb73a08e9e0e6f65a0e6af18b059b8b1cdd5bef997d7a0b181df93dc81539"},
 ]
 bleach = [
-    {file = "bleach-3.1.4-py2.py3-none-any.whl", hash = "sha256:cc8da25076a1fe56c3ac63671e2194458e0c4d9c7becfd52ca251650d517903c"},
-    {file = "bleach-3.1.4.tar.gz", hash = "sha256:e78e426105ac07026ba098f04de8abe9b6e3e98b5befbf89b51a5ef0a4292b03"},
+    {file = "bleach-3.1.5-py2.py3-none-any.whl", hash = "sha256:2bce3d8fab545a6528c8fa5d9f9ae8ebc85a56da365c7f85180bfe96a35ef22f"},
+    {file = "bleach-3.1.5.tar.gz", hash = "sha256:3c4c520fdb9db59ef139915a5db79f8b51bc2a7257ea0389f30c846883430a4b"},
 ]
 blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
 ]
 boto3 = [
-    {file = "boto3-1.12.47-py2.py3-none-any.whl", hash = "sha256:7f8b822e383c0d7656488d3b6fdc3e9c42a56fab3ed1a27c2cbc65876093cb21"},
-    {file = "boto3-1.12.47.tar.gz", hash = "sha256:84daba6d2f0c8d55477ba0b8196ffa7eb7f79d9099f768ac93eb968955877a3f"},
+    {file = "boto3-1.12.49-py2.py3-none-any.whl", hash = "sha256:5a8c918c04015147f40e498994cd85c9442f6e00b4cf87ffb04f15d6a24135f4"},
+    {file = "boto3-1.12.49.tar.gz", hash = "sha256:7b82123d25100c834b71868d60e66fca37e0691edd444fb149d004ab00bea3b4"},
 ]
 botocore = [
-    {file = "botocore-1.15.47-py2.py3-none-any.whl", hash = "sha256:cceeb6d2a1bbbd062ab54552ded5065a12b14e845aa35613fc91fd68312020c0"},
-    {file = "botocore-1.15.47.tar.gz", hash = "sha256:6c6e9db7a6e420431794faee111923e4627b4920d4d9d8b16e1a578a389b2283"},
+    {file = "botocore-1.15.49-py2.py3-none-any.whl", hash = "sha256:b805691b4dedcb2a252f52347479ff351429624a873f001b6a1c81aca03dccee"},
+    {file = "botocore-1.15.49.tar.gz", hash = "sha256:a474131ba7a7d700b91696a27e8cdcf1b473084addf92f90b269ebd8f5c3d3e0"},
 ]
 cachetools = [
     {file = "cachetools-4.1.0-py3-none-any.whl", hash = "sha256:de5d88f87781602201cde465d3afe837546663b168e8b39df67411b0bf10cefc"},
@@ -3076,8 +3077,8 @@ python-dateutil = [
     {file = "python_dateutil-2.8.1-py2.py3-none-any.whl", hash = "sha256:75bb3f31ea686f1197762692a9ee6a7550b59fc6ca3a1f4b5d7e32fb98e2da2a"},
 ]
 pytz = [
-    {file = "pytz-2019.3-py2.py3-none-any.whl", hash = "sha256:1c557d7d0e871de1f5ccd5833f60fb2550652da6be2693c1e02300743d21500d"},
-    {file = "pytz-2019.3.tar.gz", hash = "sha256:b02c06db6cf09c12dd25137e563b31700d3b80fcc4ad23abb7a315f2789819be"},
+    {file = "pytz-2020.1-py2.py3-none-any.whl", hash = "sha256:a494d53b6d39c3c6e44c3bec237336e14305e4f29bbf800b599253057fbb79ed"},
+    {file = "pytz-2020.1.tar.gz", hash = "sha256:c35965d010ce31b23eeb663ed3cc8c906275d6be1a34393a1d73a41febf4a048"},
 ]
 pywavelets = [
     {file = "PyWavelets-1.1.1-cp35-cp35m-macosx_10_6_intel.whl", hash = "sha256:35959c041ec014648575085a97b498eafbbaa824f86f6e4a59bfdef8a3fe6308"},
@@ -3324,8 +3325,8 @@ sphinxcontrib-napoleon = [
     {file = "sphinxcontrib_napoleon-0.7-py2.py3-none-any.whl", hash = "sha256:711e41a3974bdf110a484aec4c1a556799eb0b3f3b897521a018ad7e2db13fef"},
 ]
 sphinxcontrib-websupport = [
-    {file = "sphinxcontrib-websupport-1.2.1.tar.gz", hash = "sha256:545f5da4bd7757e82b8a23ce3af9500c6ffeedbcb13429fca436ad1e80bd10cf"},
-    {file = "sphinxcontrib_websupport-1.2.1-py2.py3-none-any.whl", hash = "sha256:69364896eae5d1145d82b6ee09f66d597099ef8069615e2888921ec48005470f"},
+    {file = "sphinxcontrib-websupport-1.2.2.tar.gz", hash = "sha256:33c0db6c0635b9dc3e72629b7278ca3b9fa24c156eeeaf1674be8f268831d951"},
+    {file = "sphinxcontrib_websupport-1.2.2-py2.py3-none-any.whl", hash = "sha256:c155cfa18e8b7c832b3cac0a2d41810ebacd26b26ba9624cd2f42c3496dad04b"},
 ]
 stevedore = [
     {file = "stevedore-1.32.0-py2.py3-none-any.whl", hash = "sha256:a4e7dc759fb0f2e3e2f7d8ffe2358c19d45b9b8297f393ef1256858d82f69c9b"},
@@ -3335,7 +3336,7 @@ streamlit = [
     {file = "streamlit-0.58.0-py2.py3-none-any.whl", hash = "sha256:05a1cc17d10f7c386a96a3712ec370fc9121bddd8984f5a81c1a69f7f4202e49"},
 ]
 tb-nightly = [
-    {file = "tb_nightly-2.3.0a20200427-py3-none-any.whl", hash = "sha256:cef8a1322f9f6281e8e0da1fcc6c995d51ab2dda6c932068d5f0df61823571bd"},
+    {file = "tb_nightly-2.3.0a20200429-py3-none-any.whl", hash = "sha256:55981cf45d5482d943fc31d0a349f6c8807b5aa65457a97dd71127bcaf42ea1f"},
 ]
 tensorboard-plugin-wit = [
     {file = "tensorboard_plugin_wit-1.6.0.post3-py2-none-any.whl", hash = "sha256:243f117d117f9e81a21dc64b602b2bcb256ca5ba038867b96022d02271b17106"},
@@ -3353,16 +3354,18 @@ testpath = [
     {file = "testpath-0.4.4.tar.gz", hash = "sha256:60e0a3261c149755f4399a1fff7d37523179a70fdc3abdf78de9fc2604aeec7e"},
 ]
 tf-estimator-nightly = [
-    {file = "tf_estimator_nightly-2.3.0.dev2020042701-py2.py3-none-any.whl", hash = "sha256:c92aa4094fd3ce23080ae2e450acaaf047f3c30bd11eba821a7e40e11ce91b00"},
+    {file = "tf_estimator_nightly-2.3.0.dev2020042901-py2.py3-none-any.whl", hash = "sha256:b44f7bc25978b0ed6e73e27f7b0d7751484124d23c6a7db67b27a2e96280ffee"},
 ]
 tf-nightly = [
-    {file = "tf_nightly-2.2.0.dev20200427-cp35-cp35m-macosx_10_6_intel.whl", hash = "sha256:f38988cb6ea5f0f11a25901bc19c4916263760dadd43b95b6338a1481e630a90"},
-    {file = "tf_nightly-2.2.0.dev20200427-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:fb5266f1049a10cf02d3d8a398ffc746a78a1e0a24e23db21749891621d2440f"},
-    {file = "tf_nightly-2.2.0.dev20200427-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:473521e4cf3ae62ff9dc7c60eeec46e8ec3b758170691f42c6942f639081502d"},
-    {file = "tf_nightly-2.2.0.dev20200427-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:b2e7497c5c2ddfc8bffaefcb4de70cb99768c95706f95bffc0a61d70f0d41734"},
-    {file = "tf_nightly-2.2.0.dev20200427-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:8315d905452968f6c7118053580728cdf268ba4b3451bcbb6ee960153db55df2"},
-    {file = "tf_nightly-2.2.0.dev20200427-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:6d4570116ac0e35fd4fb8ec985a5f258e0e0d1fb9bdbf048a9ce0443938762bd"},
-    {file = "tf_nightly-2.2.0.dev20200427-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:a7fd682a3adb70f87b4ba3856ba8a967d99855532eb4a42498500dacbfdd0d0b"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp35-cp35m-macosx_10_6_intel.whl", hash = "sha256:631e3eb503176cbd39697d323a0ce315ef8355766a04a163a1d70855da012227"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:33dff6974d1bd5897d13861369c8dc7baf9cdeb9ad6edffb74e041f613aca6e8"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp35-cp35m-win_amd64.whl", hash = "sha256:3ace9056fc55d0d5f7ad0e8f9ca5e0b1ec68716541a85f9b38e378512ef10304"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:528fcff7d54bf5a744a1a3b781ea0e0c061d31793b5e59ccd604b2a527ee210f"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:19cd66570045ac0110e06f8de78332d8720a9c35b7421320b06bb9ab688be6bb"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp36-cp36m-win_amd64.whl", hash = "sha256:45dcef2b9bde514166da85dabc0294661a141c07188923dbe222514516141e31"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:7d1b5d5b2e539d81715cafcb7872f2e952a351884ddfd3ae3764c764a85b7f73"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:81001c1a5649882c41478d5ccb432224a48fc388ea4f8d5c93a6ef88f41e5248"},
+    {file = "tf_nightly-2.2.0.dev20200429-cp37-cp37m-win_amd64.whl", hash = "sha256:c0fb836f832c9317bde04735f9aea2718099ca947daea758da2525b917cd5b51"},
 ]
 timeago = [
     {file = "timeago-1.0.14.tar.gz", hash = "sha256:4308d0123a21c778e0ac66fb68e09c15ab6a006e152f8840902575b48aac373d"},
