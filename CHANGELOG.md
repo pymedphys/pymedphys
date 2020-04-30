@@ -375,40 +375,40 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
   * As well as an API: See
   [the Pinnacle library docs](https://docs.pymedphys.com/user/library/pinnacle.html).
 
-## [0.9.0] -* 2019/06/06
+## [0.9.0] -- 2019/06/06
 
 ### New Features
 
 * Re-exposed `multi_mosaiq_connect`, `multi_fetch_and_verify_mosaiq`,
   `get_qcls_by_date`, and `get_staff_name` from `pymedphys.msq`.
 
-## [0.8.4] -* 2019/06/04
+## [0.8.4] -- 2019/06/04
 
 ### Package changes
 
 * Made `xlwings` not install by default if system is `Linux` within `setup.py`
 * Removed unreleased `jupyter` based GUI
 
-## [0.8.3] -* 2019/06/04
+## [0.8.3] -- 2019/06/04
 
 ### Package changes
 
 * Updated MANIFEST file within `pymedphys_fileformats` to appropriately include
   LICENSE files.
 
-## [0.8.2] -* 2019/06/01
+## [0.8.2] -- 2019/06/01
 
 ### Package changes
 
 * Included license files within the subpackage distributions
 
-## [0.8.1] -* 2019/06/01
+## [0.8.1] -- 2019/06/01
 
 ### Dependency changes
 
 * Removed numpy version upper-limit
 
-## [0.8.0] -* 2019/06/01
+## [0.8.0] -- 2019/06/01
 
 ### Breaking Changes
 
@@ -464,19 +464,19 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
   into a full grid of coordinate triplets that correspond to the original grid
   (pixel array or dose grid).
 
-## [0.7.2] -* 2019/04/05
+## [0.7.2] -- 2019/04/05
 
 ### Dependency changes
 
 * Removed numpy version upper-limit
 
-## [0.7.1] -* 2019/04/05
+## [0.7.1] -- 2019/04/05
 
 ### Performance Improvements
 
 * reduced PyPI package size by removing unnecessary development testing files.
 
-## [0.7.0] -* 2019/04/05
+## [0.7.0] -- 2019/04/05
 
 ### Breaking Changes
 
@@ -519,7 +519,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
   `pymedphys trf to-csv` within the command line to convert `.trf` files into
   `.csv` files.
 
-## [0.6.0] -* 2019/03/15
+## [0.6.0] -- 2019/03/15
 
 ### Breaking Changes
 
@@ -556,7 +556,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 * All uses of `dcm` as a variable name for instances of PyDicom Datasets have
   been converted to `ds` to match PyDicom convention.
 
-## [0.5.1] -* 2019/01/05
+## [0.5.1] -- 2019/01/05
 
 ### New Features
 
