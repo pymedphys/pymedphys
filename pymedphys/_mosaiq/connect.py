@@ -170,7 +170,6 @@ def connect(sql_server_and_ports):
         sql_server_and_ports_as_list = list(sql_server_and_ports)
         return_unnested_cursor = False
 
-
     connections, cursors = multi_connect(sql_server_and_ports)
     try:
         if return_unnested_cursor:
