@@ -10,6 +10,7 @@ from ._electronfactors import (
     convert2_ratio_perim_area,
     create_transformed_mesh,
     parameterise_insert,
+    plot_model,
     spline_model,
     spline_model_with_deformability,
     visual_alignment_of_equivalent_ellipse,

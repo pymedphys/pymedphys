@@ -1,36 +1,22 @@
 # Copyright (C) 2016-2019 Matthew Jennings and Simon Biggs
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
 """A DICOM RT Dose toolbox"""
 
-import numpy as np
-from scipy.interpolate import RegularGridInterpolator
-
-import matplotlib.pyplot as plt
-from matplotlib import path
-
-import pydicom
+from pymedphys._imports import matplotlib
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt, pydicom, scipy
 
 from .coords import xyz_axes_from_dataset
 from .rtplan import get_surface_entry_point_with_fallback, require_gantries_be_zero
@@ -59,7 +45,7 @@ def dose_from_dataset(ds, set_transfer_syntax_uid=True):
     return dose
 
 
-def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
+def dicom_dose_interpolate(interp_coords, dicom_dose_dataset):
     """Interpolates across a DICOM dose dataset.
 
     Parameters
@@ -76,7 +62,9 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
     interp_x = np.array(interp_coords[2], copy=False)[None, None, :]
 
     coords, dicom_dose_dataset = zyx_and_dose_from_dataset(dicom_dose_dataset)
-    interpolation = RegularGridInterpolator(coords, dicom_dose_dataset)
+    interpolation = scipy.interpolate.RegularGridInterpolator(
+        coords, dicom_dose_dataset
+    )
 
     try:
         result = interpolation((interp_z, interp_y, interp_x))
@@ -87,7 +75,7 @@ def dicom_dose_interpolate(interp_coords, dicom_dose_dataset: pydicom.Dataset):
     return result
 
 
-def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Dataset):
+def depth_dose(depths, dose_dataset, plan_dataset):
     """Interpolates dose for defined depths within a DICOM dose dataset.
 
     Since the DICOM dose dataset is in CT coordinates the corresponding
@@ -130,13 +118,7 @@ def depth_dose(depths, dose_dataset: pydicom.Dataset, plan_dataset: pydicom.Data
     return extracted_dose
 
 
-def profile(
-    displacements,
-    depth,
-    direction,
-    dose_dataset: pydicom.Dataset,
-    plan_dataset: pydicom.Dataset,
-):
+def profile(displacements, depth, direction, dose_dataset, plan_dataset):
     """Interpolates dose for cardinal angle horizontal profiles within a
     DICOM dose dataset.
 
@@ -224,7 +206,7 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
 
             assert z_structure[structure_index][0] == z_dose[dose_index]
 
-            structure_polygon = path.Path(
+            structure_polygon = matplotlib.path.Path(
                 [
                     (x_structure[structure_index][i], y_structure[structure_index][i])
                     for i in range(len(x_structure[structure_index]))

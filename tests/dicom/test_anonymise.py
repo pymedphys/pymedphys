@@ -10,30 +10,31 @@ from uuid import uuid4
 import pytest
 
 import pydicom
-from pydicom.datadict import tag_for_keyword
-from pydicom.dataset import DataElement, Dataset
-from pydicom.filereader import read_file_meta_info
-from pydicom.tag import Tag
+import pydicom.datadict
+import pydicom.dataset
+import pydicom.filereader
+import pydicom.tag
 
+from pymedphys._dicom import create
 from pymedphys._dicom.anonymise import (
-    BASELINE_KEYWORD_VR_DICT,
     IDENTIFYING_KEYWORDS,
     IDENTIFYING_KEYWORDS_FILEPATH,
-    anonymise_dataset,
     anonymise_directory,
     anonymise_file,
+    get_baseline_keyword_vr_dict,
     is_anonymised_dataset,
     is_anonymised_directory,
     is_anonymised_file,
     label_dicom_filepath_as_anonymised,
 )
 from pymedphys._dicom.constants import (
-    BASELINE_DICOM_DICT,
     BASELINE_DICOM_DICT_FILEPATH,
-    BASELINE_DICOM_REPEATERS_DICT,
     BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
+    get_baseline_dicom_dict,
+    get_baseline_dicom_repeaters_dict,
 )
 from pymedphys._dicom.utilities import remove_file
+from pymedphys.dicom import anonymise as anonymise_dataset
 
 HERE = dirname(abspath(__file__))
 DATA_DIR = pjoin(HERE, "data", "anonymise")
@@ -45,7 +46,7 @@ TEST_FILEPATH = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
 TEST_ANON_BASENAME = (
     "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm"
 )
-TEST_FILE_META = read_file_meta_info(TEST_FILEPATH)
+TEST_FILE_META = pydicom.filereader.read_file_meta_info(TEST_FILEPATH)
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "AE": "AnAETitle",
@@ -61,7 +62,7 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "OW": (2).to_bytes(2, "little"),
     "PN": "Smith",
     "SH": "Smith",
-    "SQ": [Dataset(), Dataset()],
+    "SQ": [pydicom.dataset.Dataset(), pydicom.dataset.Dataset()],
     "ST": "Smith",
     "TM": "000700.000000",
     "UI": "1118",
@@ -75,8 +76,8 @@ def _check_is_anonymised_dataset_file_and_dir(
     temp_filepath = str(tmp_path / "test.dcm")
 
     try:
-        ds.is_little_endian = True
-        ds.is_implicit_VR = True
+        create.set_default_transfer_syntax(ds)
+
         ds.file_meta = TEST_FILE_META
         ds.save_as(temp_filepath, write_like_original=False)
 
@@ -95,7 +96,7 @@ def _check_is_anonymised_dataset_file_and_dir(
 def _get_non_anonymous_replacement_value(keyword):
     """Get an appropriate dummy non-anonymised value for a DICOM element based
     on its value representation (VR)"""
-    vr = BASELINE_KEYWORD_VR_DICT[keyword]
+    vr = get_baseline_keyword_vr_dict()[keyword]
     return VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
 
 
@@ -104,11 +105,11 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
     # Create dataset with one instance of every identifying keyword and
     # run basic anonymisation tests
-    ds = Dataset()
+    ds = pydicom.dataset.Dataset()
     for keyword in IDENTIFYING_KEYWORDS:
         # Ignore file meta elements for now
-        tag = hex(tag_for_keyword(keyword))
-        if Tag(tag).group == 0x0002:
+        tag = hex(pydicom.datadict.tag_for_keyword(keyword))
+        if pydicom.tag.Tag(tag).group == 0x0002:
             continue
 
         value = _get_non_anonymous_replacement_value(keyword)
@@ -144,7 +145,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
         )
 
     # Test correct handling of private tags
-    ds_anon.add(DataElement(0x0043102B, "SS", [4, 4, 0, 0]))
+    ds_anon.add(pydicom.dataset.DataElement(0x0043102B, "SS", [4, 4, 0, 0]))
     _check_is_anonymised_dataset_file_and_dir(
         ds_anon, tmp_path, anon_is_expected=False, ignore_private_tags=False
     )
@@ -168,10 +169,10 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
     # Test handling of unknown tags by removing PatientName from
     # baseline dict
-    patient_name_tag = tag_for_keyword("PatientName")
+    patient_name_tag = pydicom.datadict.tag_for_keyword("PatientName")
 
     try:
-        patient_name = BASELINE_DICOM_DICT.pop(patient_name_tag)
+        patient_name = get_baseline_dicom_dict().pop(patient_name_tag)
 
         with pytest.raises(ValueError) as e_info:
             anonymise_dataset(ds)
@@ -198,7 +199,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
         assert patient_name_tag in ds_anon_ignore_unknown
 
     finally:
-        BASELINE_DICOM_DICT.setdefault(patient_name_tag, patient_name)
+        get_baseline_dicom_dict().setdefault(patient_name_tag, patient_name)
 
     # Test copy_dataset=False:
     anonymise_dataset(ds, copy_dataset=False)
@@ -388,7 +389,7 @@ def test_anonymise_cli(tmp_path):
 def test_tags_to_anonymise_in_dicom_dict_baseline(
     save_new_identifying_keywords=False, save_new_baselines=False
 ):
-    baseline_keywords = [val[4] for val in BASELINE_DICOM_DICT.values()]
+    baseline_keywords = [val[4] for val in get_baseline_dicom_dict().values()]
     assert set(IDENTIFYING_KEYWORDS).issubset(baseline_keywords)
 
     if save_new_identifying_keywords:
@@ -430,7 +431,9 @@ def test_tags_to_anonymise_in_dicom_dict_baseline(
 
     if save_new_baselines:
         with open(BASELINE_DICOM_DICT_FILEPATH, "w") as outfile:
-            json.dump(BASELINE_DICOM_DICT, outfile, indent=2, sort_keys=True)
+            json.dump(get_baseline_dicom_dict(), outfile, indent=2, sort_keys=True)
 
         with open(BASELINE_DICOM_REPEATERS_DICT_FILEPATH, "w") as outfile:
-            json.dump(BASELINE_DICOM_REPEATERS_DICT, outfile, indent=2, sort_keys=True)
+            json.dump(
+                get_baseline_dicom_repeaters_dict(), outfile, indent=2, sort_keys=True
+            )

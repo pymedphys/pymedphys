@@ -1,28 +1,17 @@
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # This work is derived from:
 # https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
@@ -47,23 +36,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import os
-import re
-import shutil
-import struct
-import sys
-import time
 
-import numpy as np
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
-import pydicom
-import pydicom.uid
-from pydicom.dataset import Dataset, FileDataset
-
-from .constants import *
+from .constants import GImplementationClassUID, GTransferSyntaxUID
 
 # This function will create dicom image files for each slice using the
 # condensed pixel data from file ImageSet_%s.img
@@ -84,10 +64,10 @@ def create_image_files(image, export_path):
     try:
         # Also should come from header file, but not always present
         modality = image_header["modality"]
-    except:
+    except KeyError:
         pass  # Incase it is not present in header
 
-    img_file = os.path.join(image.path, "ImageSet_%s.img" % (image.image["ImageSetID"]))
+    img_file = os.path.join(image.path, f"ImageSet_{image.image['ImageSetID']}.img")
     if os.path.isfile(img_file):
         allframeslist = []
         pixel_array = np.fromfile(img_file, dtype=np.short)
@@ -101,23 +81,20 @@ def create_image_files(image, export_path):
                 * int(image_header["y_dim"])
             ]
             allframeslist.append(frame_array)
-    image.logger.debug("Length of frames list: " + str(len(allframeslist)))
+    image.logger.debug("Length of frames list: %s", len(allframeslist))
     image.logger.debug(image_info[0])
 
     curframe = 0
     for info in image_info:
         sliceloc = -info["TablePosition"] * 10
         instuid = info["InstanceUID"]
-        seriesuid = info["SeriesUID"]
         classuid = info["ClassUID"]
-        frameuid = info["FrameUID"]
-        studyinstuid = info["StudyInstanceUID"]
         slicenum = info["SliceNumber"]
 
         dateofscan = image_set["scan_date"]
         timeofscan = image_set["scan_time"]
 
-        file_meta = Dataset()
+        file_meta = pydicom.dataset.Dataset()
         file_meta.MediaStorageSOPClassUID = classuid
         file_meta.MediaStorageSOPInstanceUID = instuid
         file_meta.TransferSyntaxUID = GTransferSyntaxUID
@@ -125,8 +102,8 @@ def create_image_files(image, export_path):
         # file is the same
         file_meta.ImplementationClassUID = GImplementationClassUID
 
-        image_file_name = modality + "." + instuid + ".dcm"
-        ds = FileDataset(
+        image_file_name = f"{modality}.{instuid}.dcm"
+        ds = pydicom.dataset.FileDataset(
             image_file_name, {}, file_meta=file_meta, preamble=b"\x00" * 128
         )
 
@@ -205,22 +182,19 @@ def create_image_files(image, export_path):
         ds.PixelData = allframeslist[curframe].tostring()
 
         output_file = os.path.join(export_path, image_file_name)
-        image.logger.info("Creating image: " + output_file)
+        image.logger.info("Creating image: %s", output_file)
         ds.save_as(output_file)
         curframe = curframe + 1
 
 
 def convert_image(image, export_path):
 
-    patient_info = image.pinnacle.patient_info
-    image_info = image.image_info
-
     image.logger.debug(
-        "Converting image patient name, birthdate and id to match pinnacle\n"
+        "Converting image patient name, birthdate and id to match pinnacle"
     )
 
     dicom_directory = os.path.join(
-        image.path, "ImageSet_%s.DICOM" % str(image.image["ImageSetID"])
+        image.path, f"ImageSet_{image.image['ImageSetID']}.DICOM"
     )
 
     if not os.path.exists(dicom_directory):
@@ -240,34 +214,17 @@ def convert_image(image, export_path):
         imageds.PatientID = image.pinnacle.patient_info["MedicalRecordNumber"]
         imageds.PatientBirthDate = image.pinnacle.patient_info["DOB"]
 
-        # Really need to rewrite file meta? This can cause errors with different
-        # TransferSyntaxUIDs...
-        # try:
-        #     file_meta = Dataset()
-        #     file_meta.TransferSyntaxUID = GTransferSyntaxUID
-        #     file_meta.MediaStorageSOPClassUID = '1.2.840.10008.5.1.4.1.1.2'
-        #     file_meta.MediaStorageSOPInstanceUID = imageds.SOPInstanceUID
-        #     file_meta.ImplementationClassUID = GImplementationClassUID
-        #     imageds.file_meta = file_meta
-        # except:
-        #     image.logger.warn('Unable to process image: ' + file)
-        #     continue
-        #
-        # if not "SOPClassUID" in imageds:
-        #     # No SOP Class UID set, read it from the image info
-        #     imageds = image_info[0]['ClassUID']
         if not "SOPInstanceUID" in imageds:
-            image.logger.warn("Unable to process image: " + file)
+            image.logger.warn("Unable to process image: %s", file)
             continue
-        file_meta = imageds.file_meta
 
         preamble = getattr(imageds, "preamble", None)
         if not preamble:
             preamble = b"\x00" * 128
 
         output_file = os.path.join(
-            export_path, "%s.%s.dcm" % (image.image["Modality"], imageds.SOPInstanceUID)
+            export_path, f"{image.image['Modality']}.{imageds.SOPInstanceUID}.dcm"
         )
-        currfile = FileDataset(output_file, {}, file_meta=file_meta, preamble=preamble)
+
         imageds.save_as(output_file)
-        image.logger.info("Exported: " + file + " to " + output_file)
+        image.logger.info("Exported: %s to %s", file, output_file)

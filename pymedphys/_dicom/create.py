@@ -1,41 +1,43 @@
 # Copyright (C) 2019 Simon Biggs
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
-
+import functools
 from copy import deepcopy
 
-import numpy as np
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
-import pydicom
 
-DICOM_NAMES = [item[-1] for _, item in pydicom.datadict.DicomDictionary.items()]
+@functools.lru_cache(maxsize=1)
+def get_dicom_names():
+    DICOM_NAMES = [item[-1] for _, item in pydicom.datadict.DicomDictionary.items()]
+
+    return DICOM_NAMES
 
 
 def add_array_to_dataset(dataset, key, value):
     if isinstance(value, np.ndarray):
         value = value.tolist()
     setattr(dataset, key, value)
+
+
+def set_default_transfer_syntax(dataset):
+    if dataset.is_little_endian is None:
+        dataset.is_little_endian = True
+
+    if dataset.is_implicit_VR is None:
+        dataset.is_implicit_VR = True
 
 
 def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
@@ -46,7 +48,7 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
         dataset = deepcopy(template_ds)
 
     for key, value in input_dict.items():
-        if key not in DICOM_NAMES:
+        if key not in get_dicom_names():
             raise ValueError("{} is not within the DICOM dictionary.".format(key))
 
         if isinstance(value, dict):
@@ -64,6 +66,8 @@ def dicom_dataset_from_dict(input_dict: dict, template_ds=None):
                 )
         else:
             add_array_to_dataset(dataset, key, value)
+
+    set_default_transfer_syntax(dataset)
 
     return dataset
 

@@ -1,0 +1,2 @@
+include mosaiq_transfer_check/report_template.html
+include mosaiq_transfer_check/user_interface.ipynb

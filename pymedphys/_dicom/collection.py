@@ -1,40 +1,24 @@
 # Copyright (C) 2019 Simon Biggs, Matt Jennings
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 from copy import deepcopy
 
 from packaging import version
+from pymedphys._imports import pydicom
 
-import numpy as np
-
-import pydicom
-
-from .anonymise import anonymise_dataset
-from .coords import coords_from_xyz_axes, xyz_axes_from_dataset
-from .create import dicom_dataset_from_dict
+from . import anonymise, coords, create
 
 # pylint: disable=W0201
 
@@ -44,11 +28,7 @@ class DicomBase:
         if copy:
             dataset = deepcopy(dataset)
 
-        if dataset.is_little_endian is None:
-            dataset.is_little_endian = True
-
-        if dataset.is_implicit_VR is None:
-            dataset.is_implicit_VR = True
+        create.set_default_transfer_syntax(dataset)
 
         self.dataset = dataset
 
@@ -72,7 +52,7 @@ class DicomBase:
         """Instantiate a DicomBase instance from a dictionary of
         DICOM keyword/value pairs.
         """
-        dataset = dicom_dataset_from_dict(dictionary)
+        dataset = create.dicom_dataset_from_dict(dictionary)
 
         return cls(dataset)
 
@@ -100,7 +80,7 @@ class DicomBase:
         self, inplace=False
     ):
         to_copy = not inplace
-        anonymised = anonymise_dataset(self.dataset, copy_dataset=to_copy)
+        anonymised = anonymise.anonymise_dataset(self.dataset, copy_dataset=to_copy)
 
         if not inplace:
             return self.__class__(anonymised)
@@ -113,7 +93,7 @@ class DicomDose(DicomBase):
         self.mask = None
 
     @property
-    def values(self) -> np.ndarray:
+    def values(self):
         return self.dataset.pixel_array * self.dataset.DoseGridScaling
 
     @property
@@ -124,23 +104,23 @@ class DicomDose(DicomBase):
     # but not needlessly call the entire function.
     @property
     def x(self):
-        x_value, _, _ = xyz_axes_from_dataset(self.dataset, "DICOM")
+        x_value, _, _ = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
         return x_value
 
     @property
     def y(self):
-        _, y_value, _ = xyz_axes_from_dataset(self.dataset, "DICOM")
+        _, y_value, _ = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
         return y_value
 
     @property
     def z(self):
-        _, _, z_value = xyz_axes_from_dataset(self.dataset, "DICOM")
+        _, _, z_value = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
         return z_value
 
     @property
     def coords(self):
-        x, y, z = xyz_axes_from_dataset(self.dataset, "DICOM")
-        return coords_from_xyz_axes((x, y, z))
+        x, y, z = coords.xyz_axes_from_dataset(self.dataset, "DICOM")
+        return coords.coords_from_xyz_axes((x, y, z))
 
 
 class DicomImage(DicomBase):
