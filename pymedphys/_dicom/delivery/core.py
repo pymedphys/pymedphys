@@ -1,34 +1,22 @@
 # Copyright (C) 2019 Cancer Care Associates and Simon Biggs
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 from copy import deepcopy
 
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from pymedphys._base.delivery import DeliveryBase
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
@@ -36,6 +24,7 @@ from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 from ..rtplan import (
     build_control_points,
     convert_to_one_fraction_group,
+    get_cp_attribute_leaning_on_prior,
     get_fraction_group_beam_sequence_and_meterset,
     get_fraction_group_index,
     get_gantry_angles_from_dicom,
@@ -59,8 +48,25 @@ def load_dicom_file(filepath):
 
 class DeliveryDicom(DeliveryBase):
     @classmethod
-    def from_dicom(cls, dicom_dataset, fraction_number):
-        (beam_sequence, metersets) = get_fraction_group_beam_sequence_and_meterset(
+    def from_dicom(cls, dicom_dataset, fraction_number=None):
+
+        if str(fraction_number).lower() == "all":
+            return cls._load_all_fractions(dicom_dataset)
+
+        if fraction_number is None:
+            fractions = dicom_dataset.FractionGroupSequence
+            fraction_numbers = [fraction.FractionGroupNumber for fraction in fractions]
+
+            if len(fraction_numbers) == 1:
+                fraction_number = fraction_numbers[0]
+            else:
+                raise ValueError(
+                    "There is more than one fraction in this DICOM plan, please provide"
+                    " the `fraction_number` parameter to define which one to pull.\n"
+                    f"   Fraction numbers to choose from are: {fraction_numbers}"
+                )
+
+        beam_sequence, metersets = get_fraction_group_beam_sequence_and_meterset(
             dicom_dataset, fraction_number
         )
 
@@ -125,6 +131,9 @@ class DeliveryDicom(DeliveryBase):
 
     @classmethod
     def _from_dicom_beam(cls, beam, meterset):
+        if meterset is None:
+            raise ValueError("Meterset should not ever be None")
+
         leaf_boundaries = beam.BeamLimitingDeviceSequence[-1].LeafPositionBoundaries
         leaf_widths = np.diff(leaf_boundaries)
 
@@ -135,9 +144,13 @@ class DeliveryDicom(DeliveryBase):
 
         control_points = beam.ControlPointSequence
 
+        beam_limiting_device_position_sequences = get_cp_attribute_leaning_on_prior(
+            control_points, "BeamLimitingDevicePositionSequence"
+        )
+
         mlcs = [
-            control_point.BeamLimitingDevicePositionSequence[-1].LeafJawPositions
-            for control_point in control_points
+            sequence[-1].LeafJawPositions
+            for sequence in beam_limiting_device_position_sequences
         ]
 
         mlcs = [
@@ -150,8 +163,8 @@ class DeliveryDicom(DeliveryBase):
         ]
 
         dicom_jaw = [
-            control_point.BeamLimitingDevicePositionSequence[0].LeafJawPositions
-            for control_point in control_points
+            sequence[0].LeafJawPositions
+            for sequence in beam_limiting_device_position_sequences
         ]
 
         jaw = np.array(dicom_jaw)
@@ -164,19 +177,35 @@ class DeliveryDicom(DeliveryBase):
 
         final_mu_weight = np.array(beam.FinalCumulativeMetersetWeight)
 
+        if final_mu_weight is None:
+            raise ValueError("FinalCumulativeMetersetWeight should not be None")
+
+        # https://dicom.innolitics.com/ciods/rt-plan/rt-beams/300a00b0/300a0111/300a0134
+        # http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.14.html#sect_C.8.8.14.1
+
+        cumulative_meterset_weight = [
+            control_point.CumulativeMetersetWeight for control_point in control_points
+        ]
+
+        for weight in cumulative_meterset_weight:
+            if weight is None:
+                raise ValueError(
+                    "Cumulative Meterset weight not set within DICOM RT plan file. "
+                    "This may be due to the plan being exported from a planning system "
+                    "without the dose being calculated."
+                )
+
         mu = [
-            meterset
-            * np.array(control_point.CumulativeMetersetWeight)
-            / final_mu_weight
-            for control_point in control_points
+            meterset * np.array(weight) / final_mu_weight
+            for control_point, weight in zip(control_points, cumulative_meterset_weight)
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
-            [control_point.GantryAngle for control_point in control_points]
+            get_cp_attribute_leaning_on_prior(control_points, "GantryAngle")
         )
 
         collimator_angles = convert_IEC_angle_to_bipolar(
-            [control_point.BeamLimitingDeviceAngle for control_point in control_points]
+            get_cp_attribute_leaning_on_prior(control_points, "BeamLimitingDeviceAngle")
         )
 
         return cls(mu, gantry_angles, collimator_angles, mlcs, jaw)

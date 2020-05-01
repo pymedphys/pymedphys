@@ -15,15 +15,25 @@ disable =
     too-many-branches,
     too-many-statements,
     line-too-long,
-    too-many-instance-attributes
+    too-many-instance-attributes,
+    wrong-import-order,
+    wrong-import-position,
+    ungrouped-imports,
+    import-outside-toplevel,
+    no-else-return,
+    unbalanced-tuple-unpacking
 
 
 [FORMAT]
 
 max-line-length=88
 
-
 extension-pkg-whitelist =
     pymssql,
     numpy,
-    cefpython3
+    win32file,
+    tensorflow,
+    tensorflow.__version__,
+    tensorflow.data.experimental,
+    scipy.special,
+    win32api

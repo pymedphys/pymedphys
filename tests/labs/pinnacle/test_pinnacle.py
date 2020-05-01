@@ -1,28 +1,17 @@
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # This work is derived from:
 # https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
@@ -48,9 +37,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# The following needs to be removed before leaving labs
-# pylint: skip-file
-
+# pylint: disable = redefined-outer-name
 
 import os
 import tempfile
@@ -107,20 +94,21 @@ def test_pinnacle(pinn):
 
 def find_corresponding_dicom(dcm):
 
-    for root, dirs, files in os.walk(data_path):
+    for root, _, files in os.walk(data_path):
 
-        for f in files:
-            if f.endswith(".dcm"):
-                dcm_file = os.path.join(root, f)
-                ds = pydicom.read_file(dcm_file)
+        dicom_files = [f for f in files if f.endswith(".dcm")]
+        for f in dicom_files:
 
-                if ds.PatientID == dcm.PatientID and ds.Modality == dcm.Modality:
+            dcm_file = os.path.join(root, f)
+            ds = pydicom.read_file(dcm_file)
 
-                    if ds.Modality == "CT":
-                        # Also match the SliceLocation
-                        if not ds.SliceLocation == dcm.SliceLocation:
-                            continue
-                    return ds
+            if ds.PatientID == dcm.PatientID and ds.Modality == dcm.Modality:
+
+                if ds.Modality == "CT":
+                    # Also match the SliceLocation
+                    if not ds.SliceLocation == dcm.SliceLocation:
+                        continue
+                return ds
 
     return None
 
@@ -146,7 +134,7 @@ def test_ct(pinn):
 
                 # Get the ground truth CT file
                 pinn_ct = find_corresponding_dicom(exported_ct)
-                assert pinn_ct != None
+                assert pinn_ct is not None
 
                 # Some (very) basic sanity checks
                 assert pinn_ct.PatientID == exported_ct.PatientID
@@ -184,7 +172,7 @@ def test_struct(pinn):
 
         # Get the ground truth RTSTRUCT file
         pinn_struct = find_corresponding_dicom(exported_struct)
-        assert pinn_struct != None
+        assert pinn_struct is not None
 
         assert len(pinn_struct.StructureSetROISequence) == len(
             exported_struct.StructureSetROISequence
@@ -220,7 +208,7 @@ def test_dose(pinn):
 
         # Get the ground truth RTDOSE file
         pinn_dose = find_corresponding_dicom(exported_dose)
-        assert pinn_dose != None
+        assert pinn_dose is not None
 
         # Get the dose volumes
         exported_vol = exported_dose.pixel_array.astype(np.int16)
@@ -262,7 +250,7 @@ def test_plan(pinn):
 
         # Get the ground truth RTDOSE file
         pinn_plan = find_corresponding_dicom(exported_plan)
-        assert pinn_plan != None
+        assert pinn_plan is not None
 
         assert pinn_plan.RTPlanName == exported_plan.RTPlanName
         assert pinn_plan.RTPlanLabel == exported_plan.RTPlanLabel

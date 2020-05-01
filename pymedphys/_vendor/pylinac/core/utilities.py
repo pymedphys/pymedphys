@@ -30,11 +30,8 @@ import struct
 import subprocess
 from datetime import datetime
 
-import numpy as np
-
-import pydicom
-
-from .typing import NumberLike
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 
 def clear_data_files():
@@ -68,7 +65,7 @@ def assign2machine(source_file: str, machine_file: str):
     dcm_source.save_as(source_file)
 
 
-def is_close(val: NumberLike, target, delta: NumberLike = 1):
+def is_close(val, target, delta=1):
     """Return whether the value is near the target value(s).
 
     Parameters
@@ -113,7 +110,7 @@ def typed_property(name, expected_type_or_tuple_of_types):
     return prop
 
 
-def simple_round(number: NumberLike, decimals: int = 0):
+def simple_round(number, decimals: int = 0):
     """Round a number to the given number of decimals. Fixes small floating number errors."""
     num = int(round(number * 10 ** decimals))
     num /= 10 ** decimals

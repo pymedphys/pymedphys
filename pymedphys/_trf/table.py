@@ -1,33 +1,21 @@
 # Copyright (C) 2018 Cancer Care Associates
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
-
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from typing import List
 
-import numpy as np
-import pandas as pd
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
 
 from .constants import CONFIG
 from .header import determine_header_length
@@ -35,31 +23,61 @@ from .header import determine_header_length
 GROUPING_OPTIONS = {
     "integrityv3": {"line_grouping": 700, "linac_state_codes_column": 2},
     "integrityv4": {"line_grouping": 708, "linac_state_codes_column": 6},
+    "unity_experimental": {"line_grouping": 700, "linac_state_codes_column": 6},
 }
 
-LINE_GROUPING_OPTIONS = {
-    item["line_grouping"]: item["linac_state_codes_column"]
-    for _, item in GROUPING_OPTIONS.items()
-}
+# LINE_GROUPING_OPTIONS = {
+#     item["line_grouping"]: item["linac_state_codes_column"]
+#     for _, item in GROUPING_OPTIONS.items()
+# }
 
 
-def decode_rows(trf_table_contents):
+def decode_rows(
+    trf_table_contents,
+    input_line_grouping=None,
+    input_linac_state_codes_column=None,
+    reference_state_code_keys=None,
+):
     table_byte_length = len(trf_table_contents)
-    possible_groupings = []
 
-    for grouping_option, linac_state_codes_column in LINE_GROUPING_OPTIONS.items():
+    if input_line_grouping is not None or input_linac_state_codes_column is not None:
+        if input_line_grouping is None or input_linac_state_codes_column is None:
+            raise ValueError(
+                "If customising line grouping, need to provide both "
+                "`input_line_grouping` and `input_linac_state_codes_column`"
+            )
+
+        grouping_options = {
+            "custom": {
+                "line_grouping": input_line_grouping,
+                "linac_state_codes_column": input_linac_state_codes_column,
+            }
+        }
+    else:
+        grouping_options = GROUPING_OPTIONS
+
+    possible_groupings = {}
+
+    for key, item in grouping_options.items():
+        grouping_option = item["line_grouping"]
+        linac_state_codes_column = item["linac_state_codes_column"]
+
         if table_byte_length / grouping_option == table_byte_length // grouping_option:
-            possible_groupings.append((grouping_option, linac_state_codes_column))
+            possible_groupings[key] = (grouping_option, linac_state_codes_column)
 
     if not possible_groupings:
-        raise Exception("Unexpected number of bytes within file.")
+        raise ValueError("Unexpected number of bytes within file.")
 
-    reference_state_codes = set(
-        np.array(list(CONFIG["linac_state_codes"].keys())).astype(int)
-    )
+    if reference_state_code_keys is None:
+        reference_state_codes = set(
+            np.array(list(CONFIG["linac_state_codes"].keys())).astype(int)
+        )
+    else:
+        reference_state_codes = set(reference_state_code_keys)
 
     decoded_results = []
-    for line_grouping, linac_state_codes_column in possible_groupings:
+    possible_column_adjustment_key = []
+    for key, (line_grouping, linac_state_codes_column) in possible_groupings.items():
         rows = [
             trf_table_contents[i : i + line_grouping]
             for i in range(0, len(trf_table_contents), line_grouping)
@@ -72,16 +90,18 @@ def decode_rows(trf_table_contents):
 
         if set(tentative_state_codes).issubset(reference_state_codes):
             decoded_results.append(decode_table_data(rows, line_grouping))
+            possible_column_adjustment_key.append(key)
 
     if not decoded_results:
-        raise Exception("Decoded table didn't pass shape test")
+        raise ValueError("Decoded table didn't pass shape test")
 
     if len(decoded_results) > 1:
-        raise Exception("Can't determine version of trf file from table shape")
+        raise ValueError("Can't determine version of trf file from table shape")
 
     decoded_rows = decoded_results[0]
+    column_adjustment_key = possible_column_adjustment_key[0]
 
-    return decoded_rows
+    return decoded_rows, column_adjustment_key
 
 
 def decode_rows_from_file(filepath):
@@ -91,30 +111,41 @@ def decode_rows_from_file(filepath):
     header_length = determine_header_length(trf_contents)
     trf_table_contents = trf_contents[header_length::]
 
-    decoded_rows = decode_rows(trf_table_contents)
+    decoded_rows, _ = decode_rows(trf_table_contents)
 
     return decoded_rows
 
 
-def get_column_names(number_of_columns):
+def get_column_names(column_adjustment_key):
     column_names = CONFIG["column_names"]
 
-    if number_of_columns == 354:
-        column_names = CONFIG["integrity_4_column_insert"] + column_names
-    elif number_of_columns == 350:
-        pass
-    else:
-        raise ValueError("Expected either 354 or 350 columns")
+    if column_adjustment_key == "integrityv3":
+        return column_names
+
+    filler_columns = [f"unknown{item}" for item in range(1, 5)]
+
+    column_names = filler_columns + column_names
+
+    if column_adjustment_key == "integrityv4":
+        return column_names
+
+    if column_adjustment_key != "unity_experimental":
+        raise ValueError("Unexpected `column_adjustment_key`")
+
+    column_names = [item for item in column_names if "Dlg" not in item]
 
     return column_names
 
 
 def decode_trf_table(trf_table_contents):
-    decoded_rows = decode_rows(trf_table_contents)
+    decoded_rows, column_adjustment_key = decode_rows(trf_table_contents)
+
+    column_names = get_column_names(column_adjustment_key)
 
     number_of_columns = len(decoded_rows[0, :])
 
-    column_names = get_column_names(number_of_columns)
+    if len(column_names) != number_of_columns:
+        raise ValueError("Columns names don't agree with number of columns")
 
     table_dataframe = create_dataframe(
         decoded_rows, column_names, CONFIG["time_increment"]
@@ -132,7 +163,7 @@ def decode_data_item(row, group, byteorder) -> int:
     return int.from_bytes(row[group], byteorder=byteorder)
 
 
-def decode_column(raw_table_rows: List[str], column_number: int) -> np.ndarray:
+def decode_column(raw_table_rows: List[str], column_number: int):
     """Decode all of the items in a given column."""
     grouping = 2
     i = column_number * grouping
@@ -146,7 +177,7 @@ def decode_column(raw_table_rows: List[str], column_number: int) -> np.ndarray:
     return column
 
 
-def decode_table_data(raw_table_rows: List[str], line_grouping) -> np.ndarray:
+def decode_table_data(raw_table_rows: List[str], line_grouping):
     """Decode the table into integer values."""
 
     result = []
@@ -164,7 +195,7 @@ def create_dataframe(data, column_names, time_increment):
     return dataframe
 
 
-def convert_numbers_to_string(name, lookup, column: pd.core.series.Series):
+def convert_numbers_to_string(name, lookup, column):
     dtype = np.array([item for _, item in lookup.items()]).dtype
     result = np.empty_like(column).astype(dtype)
     result[:] = ""
@@ -224,14 +255,14 @@ def convert_applying_negative(dataframe):
         dataframe[key] = apply_negative(dataframe[key])
 
 
-def negative_and_divide_by_10(column: pd.core.series.Series):
+def negative_and_divide_by_10(column):
     result = apply_negative(column)
     result = result / 10
 
     return result
 
 
-def convert_negative_and_divide_by_10(dataframe: pd.core.frame.DataFrame):
+def convert_negative_and_divide_by_10(dataframe):
     keys = [
         "Step Dose/Actual Value (Mu)",
         "Step Gantry/Scaled Actual (deg)",
@@ -244,7 +275,7 @@ def convert_negative_and_divide_by_10(dataframe: pd.core.frame.DataFrame):
         dataframe[key] = negative_and_divide_by_10(dataframe[key])
 
 
-def convert_remaining(dataframe: pd.core.frame.DataFrame):
+def convert_remaining(dataframe):
     column_names = dataframe.columns
 
     for key in column_names[14:30]:
@@ -258,9 +289,7 @@ def convert_remaining(dataframe: pd.core.frame.DataFrame):
         dataframe[key] = negative_and_divide_by_10(dataframe[key])
 
 
-def convert_data_table(
-    dataframe: pd.core.frame.DataFrame, linac_state_codes, wedge_codes
-):
+def convert_data_table(dataframe, linac_state_codes, wedge_codes):
     convert_linac_state_codes(dataframe, linac_state_codes)
     convert_wedge_codes(dataframe, wedge_codes)
 

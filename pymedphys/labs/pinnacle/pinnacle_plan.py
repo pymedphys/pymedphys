@@ -1,28 +1,17 @@
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # This work is derived from:
 # https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
@@ -47,13 +36,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import os
 import re
 
-import pydicom
+from pymedphys._imports import pydicom
 
 from .pinn_yaml import pinn_to_dict
 from .rtstruct import find_iso_center
@@ -161,7 +149,7 @@ class PinnaclePlan:
 
         if not self._machine_info:
             path_machine = os.path.join(self._path, "plan.Pinnacle.Machines")
-            self.logger.debug("Reading machine data from: " + path_machine)
+            self.logger.debug("Reading machine data from: %s", path_machine)
             self._machine_info = pinn_to_dict(path_machine)
 
         return self._machine_info
@@ -178,7 +166,7 @@ class PinnaclePlan:
 
         if not self._trials:
             path_trial = os.path.join(self._path, "plan.Trial")
-            self.logger.debug("Reading trial data from: " + path_trial)
+            self.logger.debug("Reading trial data from: %s", path_trial)
             self._trials = pinn_to_dict(path_trial)
             if isinstance(self._trials, dict):
                 self._trials = [self._trials["Trial"]]
@@ -187,8 +175,8 @@ class PinnaclePlan:
             if not self._trial_info:
                 self._trial_info = self._trials[0]
 
-            self.logger.debug("Number of trials read: " + str(len(self._trials)))
-            self.logger.debug("Active Trial: " + self._trial_info["Name"])
+            self.logger.debug("Number of trials read: %s", len(self._trials))
+            self.logger.debug("Active Trial: %s", self._trial_info["Name"])
 
         return self._trials
 
@@ -209,7 +197,7 @@ class PinnaclePlan:
             for trial in self._trials:
                 if trial["Name"] == trial_name:
                     self._trial_info = trial
-                    self.logger.info("Active Trial set: " + trial_name)
+                    self.logger.info("Active Trial set: %s", trial_name)
                     return True
 
         return False
@@ -254,13 +242,13 @@ class PinnaclePlan:
 
         if not self._points:
             path_points = os.path.join(self._path, "plan.Points")
-            self.logger.debug("Reading points data from: " + path_points)
+            self.logger.debug("Reading points data from: %s", path_points)
             self._points = pinn_to_dict(path_points)
 
-            if type(self._points) == dict:
+            if isinstance(self._points, dict):
                 self._points = [self._points["Poi"]]
 
-            if self._points == None:
+            if self._points is None:
                 self._points = []
 
         return self._points
@@ -288,19 +276,19 @@ class PinnaclePlan:
             pat_pos = "FF"
 
         if "supine" in self._patient_setup["Position"]:
-            pat_pos = pat_pos + "S"
+            pat_pos = f"{pat_pos}S"
         elif "prone" in self._patient_setup["Position"]:
-            pat_pos = pat_pos + "P"
+            pat_pos = f"{pat_pos}P"
         elif (
             "decubitus right" in self._patient_setup["Position"]
             or "Decuibitus Right" in self._patient_setup["Position"]
         ):
-            pat_pos = pat_pos + "DR"
+            pat_pos = f"{pat_pos}DR"
         elif (
             "decubitus left" in self._patient_setup["Position"]
             or "Decuibitus Left" in self._patient_setup["Position"]
         ):
-            pat_pos = pat_pos + "DL"
+            pat_pos = f"{pat_pos}DL"
 
         return pat_pos
 
@@ -318,7 +306,8 @@ class PinnaclePlan:
     def iso_center(self, iso_center):
         self._iso_center = iso_center
 
-    def is_prefix_valid(self, prefix):
+    @staticmethod
+    def is_prefix_valid(prefix):
         """Check if a UID prefix is valid.
 
         Parameters
@@ -354,22 +343,22 @@ class PinnaclePlan:
             entropy_srcs.append(self.trial_info["Name"])
             entropy_srcs.append(self.trial_info["ObjectVersion"]["WriteTimeStamp"])
 
-        RTPLAN_prefix = self._uid_prefix + "1."
+        RTPLAN_prefix = f"{self._uid_prefix}1."
         self._plan_inst_uid = pydicom.uid.generate_uid(
             prefix=RTPLAN_prefix, entropy_srcs=entropy_srcs
         )
-        RTDOSE_prefix = self._uid_prefix + "2."
+        RTDOSE_prefix = f"{self._uid_prefix}2."
         self._dose_inst_uid = pydicom.uid.generate_uid(
             prefix=RTDOSE_prefix, entropy_srcs=entropy_srcs
         )
-        RTSTRUCT_prefix = self._uid_prefix + "3."
+        RTSTRUCT_prefix = f"{self._uid_prefix}3."
         self._struct_inst_uid = pydicom.uid.generate_uid(
             prefix=RTSTRUCT_prefix, entropy_srcs=entropy_srcs
         )
 
-        self.logger.debug("Plan Instance UID: " + self._plan_inst_uid)
-        self.logger.debug("Dose Instance UID: " + self._dose_inst_uid)
-        self.logger.debug("Struct Instance UID: " + self._struct_inst_uid)
+        self.logger.debug(f"Plan Instance UID: {self._plan_inst_uid}")
+        self.logger.debug(f"Dose Instance UID: {self._dose_inst_uid}")
+        self.logger.debug(f"Struct Instance UID: {self._struct_inst_uid}")
 
     @property
     def plan_inst_uid(self):

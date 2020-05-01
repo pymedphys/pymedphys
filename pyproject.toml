@@ -1,58 +1,81 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.14.0dev1"
+
+version = "0.25.1"
+
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
     "PyMedPhys Contributors <developers@pymedphys.com>",
     "Simon Biggs <sbiggs@pymedphys.com>",
-    "Matthew Jennings <mjennings@pymedphys.com>>",
+    "Matthew Jennings <mjennings@pymedphys.com>",
+    "Jake Rembish",
+    "Matthew Cooper <mcooper@pymedphys.com>",
     "Phillip Chlap",
-    "Paul King <pking@pymedphys.com>",
-    "Matthew Sobolewski <msobolewski@pymedphys.com>",
     "Jacob McAloney",
     "Pedro Martinez"
 ]
-license = "AGPL-3.0+"
+license = "Apache-2.0"
 homepage = "https://pymedphys.com"
 repository = "https://github.com/pymedphys/pymedphys"
-documentation = "https://pymedphys.com"
+documentation = "https://docs.pymedphys.com"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
     "Topic :: Scientific/Engineering :: Physics",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Healthcare Industry",
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)"
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+# Will not work without these
+python = "^3.6"
+dataclasses = { version = "*", python = "~3.6.0" }
 
+#### Below here is actually optional
+# One day might create a pymedphys-core which installs the above only.
+
+# library
+tqdm = "*"
 attrs = "*"
+watchdog = "*"
+
 keyring = "*"
 packaging = "*"
 PyYAML = "*"
+requests = "*"
 
 numpy = "^1.12"
 matplotlib = "*"
 scipy = "*"
 pandas = "*"
 
+Pillow = "*"
+imageio = "*"
+
+shapely = ">= 1.7.0"
+
 dbfread = "*"
 
 pydicom = "*"
 pynetdicom = "*"
 
-pymssql = "< 3.0.0"
-shapely = { version = "*", optional = true }
+# difficult
+cython = "*"
+pymssql = { version = "< 3.0.0", python = "< 3.8" }
 
 # labs
-tqdm = "*"
 python_dateutil = "*"
-Pillow = "*"
-imageio = "*"
 scikit-image = "*"
+
+# ml
+tf-nightly = { version = ">=2.2.0.dev20200306", optional = true, allow-prereleases = true }
+tf-estimator-nightly = { version = "*", optional = true, allow-prereleases = true }
+tb-nightly = { version = "*", optional = true, allow-prereleases = true }
+
+# gui
+streamlit = "*"
+timeago = "*"
 
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
@@ -70,11 +93,11 @@ m2r = { version = "*", optional = true }
 pytest = { version = "*", optional = true }
 pytest-sugar  = { version = "*", optional = true }
 hypothesis  = { version = "*", optional = true }
+psutil  = { version = "*", optional = true }
 
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
-
 
 [tool.poetry.dev-dependencies]
 # Testing
@@ -84,6 +107,7 @@ pytest-sugar = "*"
 pylint = "*"
 pytest-pylint = "*"
 hypothesis = "*"
+psutil = "*"
 
 # Git Management
 pre-commit = "*"
@@ -105,15 +129,9 @@ ipython = "*"
 ipykernel = "*"
 m2r = "*"
 
-# Supporting JupyterLab usage
-pywin32 = { version = "224", platform = "win32" }
-
 # VSCode extension dependencies
 doc8 = "*"
-
-# gui
-cefpython3 = "66.0"
-jupyterlab_server = "*"
+pydot = "^1.4.1"
 
 # Packages to include later
 # pytest-cov = "^2.5"
@@ -127,12 +145,12 @@ docs = [
     "m2r"
 ]
 
-extras = [
-    "shapely"
+ml = [
+    "tf-nightly", "tf-estimator-nightly", "tb-nightly"
 ]
 
 pytest = [
-    "pytest", "pytest-sugar", "hypothesis"
+    "pytest", "pytest-sugar", "hypothesis", "psutil"
 ]
 
 pylint = [
@@ -148,7 +166,9 @@ line_length = 88
 include_trailing_comma = true
 known_third_party = [
     "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
-    "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil"
+    "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
+    "pymedphys._imports", "watchdog", "streamlit", "timeago", "pymssql",
+    "keyring"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"

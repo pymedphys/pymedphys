@@ -1,28 +1,17 @@
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # This work is derived from:
 # https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
@@ -47,8 +36,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import logging
 import os
@@ -98,7 +86,7 @@ def export_cli(args):
 
         tmp_dir = tempfile.mkdtemp()
 
-        logger.info("Extracting TAR archive to: {0}".format(tmp_dir))
+        logger.info("Extracting TAR archive to: %s", tmp_dir)
 
         t = tarfile.open(input_path)
 
@@ -112,7 +100,7 @@ def export_cli(args):
         # Walk directory with extracted archive, looking for directory
         # with Patient file
         pat_dirs = []
-        for root, dirs, files in os.walk(input_path):
+        for root, _, files in os.walk(input_path):
 
             if "Patient" in files:
                 pat_dirs.append(root)
@@ -122,7 +110,7 @@ def export_cli(args):
                 "No Pinnacle Patient directories were found in the "
                 "supplied TAR archive"
             )
-            exit()
+            sys.exit()
 
         if len(pat_dirs) > 1:
             logger.error(
@@ -133,11 +121,11 @@ def export_cli(args):
                 "The command line utility currently only support "
                 "parsing TAR archives containing one patient"
             )
-            exit()
+            sys.exit()
 
         input_path = pat_dirs[0]
 
-        logger.info("Using Patient directory: {0}".format(input_path))
+        logger.info("Using Patient directory: %s", input_path)
 
     # Create Pinnacle object given input path
     p = PinnacleExport(input_path, logger)
@@ -147,9 +135,9 @@ def export_cli(args):
         p.log_trial_names()
         logger.info("Images:")
         p.log_images()
-        exit()
+        sys.exit()
 
-    logger.info("Will export modalities: {0}".format(modality))
+    logger.info("Will export modalities: %s", modality)
 
     # Check that the plan exists, if not select first plan
     plans = p.plans
@@ -162,15 +150,14 @@ def export_cli(args):
     if not plan:
 
         if plan_name:
-            logger.error("Plan not found (" + plan_name + ")")
-            exit()
+            logger.error("Plan not found (%s)", plan_name)
+            sys.exit()
 
         # Select a default plan if user didn't pass in a plan name
         plan = plans[0]
         logger.warning(
-            "No plan name supplied, selecting first plan: {0}".format(
-                plan.plan_info["PlanName"]
-            )
+            "No plan name supplied, selecting first plan: %s",
+            plan.plan_info["PlanName"],
         )
 
     # Set the Trial if it was given
@@ -178,27 +165,25 @@ def export_cli(args):
 
         if not plan.set_active_trial(trial):
             logger.error(
-                "No Trial: {0} found in Plan: {1}".format(
-                    trial, plan.plan_info["PlanName"]
-                )
+                "No Trial: %s found in Plan: %s", trial, plan.plan_info["PlanName"]
             )
-            exit()
+            sys.exit()
 
     # If we got up to here, we are exporting something, so make sure the
     #  output_directory was specified
     if not output_directory:
         logger.error("Specifiy an output directory with -o")
-        exit()
+        sys.exit()
 
     if not os.path.exists(output_directory):
-        logger.info("Creating output directory: " + output_directory)
+        logger.info("Creating output directory: %s", output_directory)
         os.makedirs(output_directory)
 
     if uid_prefix:
 
         if not plan.is_prefix_valid(uid_prefix):
             logger.error("UID Prefix supplied is invalid")
-            exit()
+            sys.exit()
         plan.uid_prefix = uid_prefix
 
     primary_image_exported = False
@@ -213,7 +198,7 @@ def export_cli(args):
             image_series_uids.append(image_series)
 
         for suid in image_series_uids:
-            logger.info("Exporting image with UID: {0}".format(suid))
+            logger.info("Exporting image with UID: %s", suid)
             p.export_image(series_uid=suid, export_path=output_directory)
 
             series_uid = plan.primary_image.image_header["series_UID"]
@@ -225,9 +210,7 @@ def export_cli(args):
         if plan.primary_image:
 
             logger.info(
-                "Exporting primary image for plan: {0}".format(
-                    plan.plan_info["PlanName"]
-                )
+                "Exporting primary image for plan: %s", plan.plan_info["PlanName"]
             )
 
             if primary_image_exported:
@@ -236,9 +219,7 @@ def export_cli(args):
                 p.export_image(image=plan.primary_image, export_path=output_directory)
         else:
             logger.error(
-                "No primary image to export for plan: {0}".format(
-                    plan.plan_info["PlanName"]
-                )
+                "No primary image to export for plan: %s", plan.plan_info["PlanName"]
             )
 
     if "RTSTRUCT" in modality:

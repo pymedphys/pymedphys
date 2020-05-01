@@ -1,26 +1,15 @@
 # Copyright (C) 2015-2018 Simon Biggs
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 """Compare two dose grids with the gamma index.
@@ -28,10 +17,10 @@
 
 import sys
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Callable, Optional
 
-import numpy as np
-from scipy.interpolate import RegularGridInterpolator
+from pymedphys._imports import numpy as np
+from pymedphys._imports import scipy
 
 import pymedphys._utilities.createshells
 
@@ -49,7 +38,7 @@ def gamma_shell(
     distance_mm_threshold,
     lower_percent_dose_cutoff=20,
     interp_fraction=10,
-    max_gamma=np.inf,
+    max_gamma=None,
     local_gamma=False,
     global_normalisation=None,
     skip_once_passed=False,
@@ -113,10 +102,13 @@ def gamma_shell(
 
     Returns
     -------
-    gamma : np.ndarray
+    gamma
         The array of gamma values the same shape as that
         given by the reference coordinates and dose.
     """
+
+    if max_gamma is None:
+        max_gamma = np.inf
 
     options = GammaInternalFixedOptions.from_user_inputs(
         axes_reference,
@@ -141,15 +133,15 @@ def gamma_shell(
             print("Calcing using local normalisation point for gamma")
         else:
             print("Calcing using global normalisation point for gamma")
-        print("Global normalisation set to {} Gy".format(options.global_normalisation))
+        print("Global normalisation set to {}".format(options.global_normalisation))
         print(
-            "Global dose threshold set to {} Gy ({}%)".format(
+            "Global dose threshold set to {} ({}% of normalisation)".format(
                 options.global_dose_threshold, options.dose_percent_threshold
             )
         )
-        print("Distance threshold set to {} mm".format(options.distance_mm_threshold))
+        print("Distance threshold set to {}".format(options.distance_mm_threshold))
         print(
-            "Lower dose cutoff set to {} Gy ({}%)".format(
+            "Lower dose cutoff set to {} ({}% of normalisation)".format(
                 options.lower_dose_cutoff, lower_percent_dose_cutoff
             )
         )
@@ -196,16 +188,16 @@ def expand_dims_to_1d(array):
 
 @dataclass(frozen=True)
 class GammaInternalFixedOptions:
-    flat_mesh_axes_reference: np.ndarray
-    flat_dose_reference: np.ndarray
-    reference_points_to_calc: np.ndarray
-    dose_percent_threshold: np.ndarray
-    distance_mm_threshold: np.ndarray
-    evaluation_interpolation: RegularGridInterpolator
+    flat_mesh_axes_reference: Any
+    flat_dose_reference: Any
+    reference_points_to_calc: Any
+    dose_percent_threshold: Any
+    distance_mm_threshold: Any
+    evaluation_interpolation: Callable
     interp_fraction: int
     max_gamma: float
     lower_dose_cutoff: float = 0
-    maximum_test_distance: float = np.inf
+    maximum_test_distance: float = -1
     global_normalisation: Optional[float] = None
     local_gamma: bool = False
     skip_once_passed: bool = False
@@ -216,6 +208,9 @@ class GammaInternalFixedOptions:
         self.set_defaults()
 
     def set_defaults(self):
+        if self.maximum_test_distance == -1:
+            object.__setattr__(self, "maximum_test_distance", np.inf)
+
         if self.global_normalisation is None:
             object.__setattr__(
                 self, "global_normalisation", np.max(self.flat_dose_reference)
@@ -236,7 +231,7 @@ class GammaInternalFixedOptions:
         distance_mm_threshold,
         lower_percent_dose_cutoff=20,
         interp_fraction=10,
-        max_gamma=np.inf,
+        max_gamma=None,
         local_gamma=False,
         global_normalisation=None,
         skip_once_passed=False,
@@ -244,6 +239,8 @@ class GammaInternalFixedOptions:
         ram_available=None,
         quiet=False,
     ):
+        if max_gamma is None:
+            max_gamma = np.inf
 
         axes_reference, axes_evaluation = run_input_checks(
             axes_reference, dose_reference, axes_evaluation, dose_evaluation
@@ -259,7 +256,7 @@ class GammaInternalFixedOptions:
 
         maximum_test_distance = np.max(distance_mm_threshold) * max_gamma
 
-        evaluation_interpolation = RegularGridInterpolator(
+        evaluation_interpolation = scipy.interpolate.RegularGridInterpolator(
             axes_evaluation,
             np.array(dose_evaluation),
             bounds_error=False,
@@ -311,7 +308,7 @@ class GammaInternalFixedOptions:
         )
 
 
-def gamma_loop(options: GammaInternalFixedOptions) -> np.ndarray:
+def gamma_loop(options: GammaInternalFixedOptions):
     still_searching_for_gamma = np.full_like(
         options.flat_dose_reference, True, dtype=bool
     )

@@ -1,36 +1,22 @@
 # Copyright (C) 2019 Cancer Care Associates
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
-import numpy as np
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
-import matplotlib.pyplot as plt
-
-from .createaxis import transform_axis
-from .imginterp import create_interpolated_field
-from .interppoints import apply_transform, translate_and_rotate_transform
+from . import createaxis, imginterp, interppoints
 
 
 def image_analysis_figure(
@@ -43,8 +29,9 @@ def image_analysis_figure(
     bb_diameter,
     edge_lengths,
     penumbra,
+    units="(mm)",
 ):
-    field = create_interpolated_field(x, y, img)
+    field = imginterp.create_interpolated_field(x, y, img)
 
     x_half_bound = edge_lengths[0] / 2 + penumbra * 3
     y_half_bound = edge_lengths[1] / 2 + penumbra * 3
@@ -52,12 +39,18 @@ def image_analysis_figure(
     x_axis = np.linspace(-x_half_bound, x_half_bound, 200)
     y_axis = np.linspace(-y_half_bound, y_half_bound, 200)
 
-    field_transform = translate_and_rotate_transform(field_centre, field_rotation)
-    x_field_interp, y_field_interp = transform_axis(x_axis, y_axis, field_transform)
+    field_transform = interppoints.translate_and_rotate_transform(
+        field_centre, field_rotation
+    )
+    x_field_interp, y_field_interp = createaxis.transform_axis(
+        x_axis, y_axis, field_transform
+    )
 
     if bb_centre is not None:
-        bb_transform = translate_and_rotate_transform(bb_centre, 0)
-        x_bb_interp, y_bb_interp = transform_axis(x_axis, y_axis, bb_transform)
+        bb_transform = interppoints.translate_and_rotate_transform(bb_centre, 0)
+        x_bb_interp, y_bb_interp = createaxis.transform_axis(
+            x_axis, y_axis, bb_transform
+        )
     else:
         x_bb_interp, y_bb_interp = None, None
 
@@ -67,6 +60,8 @@ def image_analysis_figure(
         ax.remove()
 
     ax_big = fig.add_subplot(gs[0:2, 0:2])
+
+    axs[0, 0] = ax_big
 
     pixel_value_label = "Scaled image pixel value"
 
@@ -86,6 +81,7 @@ def image_analysis_figure(
         x_bb_interp,
         y_bb_interp,
         pixel_value_label,
+        units=units,
     )
 
     profile_flip_plot(axs[2, 0], x_axis, field(*x_field_interp))
@@ -93,7 +89,7 @@ def image_analysis_figure(
         [edge_lengths[0] / 2 - penumbra * 2, edge_lengths[0] / 2 + penumbra * 2]
     )
     axs[2, 0].set_title("Flipped profile about field centre [field x-axis]")
-    axs[2, 0].set_xlabel("Distance from field centre (mm)")
+    axs[2, 0].set_xlabel(f"Distance from field centre {units}")
     axs[2, 0].set_ylabel(pixel_value_label)
 
     profile_flip_plot(axs[2, 1], y_axis, field(*y_field_interp))
@@ -101,25 +97,31 @@ def image_analysis_figure(
         [edge_lengths[1] / 2 - penumbra * 2, edge_lengths[1] / 2 + penumbra * 2]
     )
     axs[2, 1].set_title("Flipped profile about field centre [field y-axis]")
-    axs[2, 1].set_xlabel("Distance from field centre (mm)")
+    axs[2, 1].set_xlabel(f"Distance from field centre {units}")
     axs[2, 1].set_ylabel(pixel_value_label)
 
     if bb_centre is not None:
-        profile_flip_plot(axs[3, 0], x_axis, field(*x_bb_interp))
+        x_mask = (x_axis >= -bb_diameter / 2 - penumbra) & (
+            x_axis <= bb_diameter / 2 + penumbra
+        )
+        profile_flip_plot(axs[3, 0], x_axis[x_mask], field(*x_bb_interp)[x_mask])
         axs[3, 0].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
         axs[3, 0].set_title("Flipped profile about BB centre [panel x-axis]")
-        axs[3, 0].set_xlabel("Displacement from BB centre (mm)")
+        axs[3, 0].set_xlabel(f"Displacement from BB centre {units}")
         axs[3, 0].set_ylabel(pixel_value_label)
 
-        profile_flip_plot(axs[3, 1], y_axis, field(*y_bb_interp))
+        y_mask = (y_axis >= -bb_diameter / 2 - penumbra) & (
+            y_axis <= bb_diameter / 2 + penumbra
+        )
+        profile_flip_plot(axs[3, 1], y_axis[y_mask], field(*y_bb_interp)[y_mask])
         axs[3, 1].set_xlim([-bb_diameter / 2 - penumbra, bb_diameter / 2 + penumbra])
         axs[3, 1].set_title("Flipped profile about BB centre [panel y-axis]")
-        axs[3, 1].set_xlabel("Displacement from BB centre (mm)")
+        axs[3, 1].set_xlabel(f"Displacement from BB centre {units}")
         axs[3, 1].set_ylabel(pixel_value_label)
 
     plt.tight_layout()
 
-    return fig
+    return fig, axs
 
 
 def profile_flip_plot(ax, dependent, independent):
@@ -143,6 +145,7 @@ def image_with_overlays(
     x_bb_interp,
     y_bb_interp,
     pixel_value_label,
+    units="(mm)",
 ):
     rect_crosshair_dx = [
         -edge_lengths[0] / 2,
@@ -203,14 +206,14 @@ def image_with_overlays(
         [field_centre[1] - long_edge_fraction, field_centre[1] + long_edge_fraction]
     )
 
-    ax.set_xlabel("iView panel absolute x-pos (mm)")
-    ax.set_ylabel("iView panel absolute y-pos (mm)")
+    ax.set_xlabel(f"iView panel absolute x-pos {units}")
+    ax.set_ylabel(f"iView panel absolute y-pos {units}")
 
 
 def draw_by_diff(dx, dy, transform):
     draw_x = np.cumsum(dx)
     draw_y = np.cumsum(dy)
 
-    draw_x, draw_y = apply_transform(draw_x, draw_y, transform)
+    draw_x, draw_y = interppoints.apply_transform(draw_x, draw_y, transform)
 
     return draw_x, draw_y
