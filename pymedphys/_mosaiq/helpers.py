@@ -479,6 +479,4 @@ def get_all_treatment_data(cursor, mrn):
         FIELD_TYPES[item] for item in mosaiq_fields["field_type"]
     ]
 
-
     return mosaiq_fields
-
