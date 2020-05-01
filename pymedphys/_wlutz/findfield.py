@@ -1,33 +1,22 @@
 # Copyright (C) 2019 Cancer Care Associates
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
+from pymedphys._imports import numpy as np
+from pymedphys._imports import scipy
 
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+import pymedphys._vendor.pylinac.winstonlutz
 
-import numpy as np
-import scipy.interpolate
-import scipy.ndimage.measurements
-
-from .imginterp import create_interpolated_field
 from .interppoints import (
     define_penumbra_points_at_origin,
     define_rotation_field_points_at_origin,
@@ -37,23 +26,24 @@ from .interppoints import (
 from .pylinac import PylinacComparisonDeviation, run_wlutz
 
 BASINHOPPING_NITER = 200
+INITIAL_ROTATION = 0
 
 
-def find_centre_and_rotation(
-    x, y, img, edge_lengths, penumbra=2, initial_rotation=0, rounding=True
-):
-    field = create_interpolated_field(x, y, img)
-    initial_centre = _initial_centre(x, y, img)
-
-    centre, rotation = field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre, initial_rotation=initial_rotation
+def get_initial_centre(x, y, img):
+    wl_image = pymedphys._vendor.pylinac.winstonlutz.WLImageOld(  # pylint: disable = protected-access
+        img
     )
+    min_x = np.min(x)
+    dx = x[1] - x[0]
+    min_y = np.min(y)
+    dy = y[1] - y[0]
 
-    if rounding:
-        centre = np.round(centre, decimals=2).tolist()
-        rotation = np.round(rotation, decimals=1)
+    field_centre = [
+        wl_image.field_cax.x * dx + min_x,
+        wl_image.field_cax.y * dy + min_y,
+    ]
 
-    return centre, rotation
+    return field_centre
 
 
 def check_aspect_ratio(edge_lengths):
@@ -71,30 +61,37 @@ def field_centre_and_rotation_refining(
     edge_lengths,
     penumbra,
     initial_centre,
-    initial_rotation=0,
+    fixed_rotation=None,
     niter=10,
     pylinac_tol=0.2,
 ):
-    check_aspect_ratio(edge_lengths)
 
-    predicted_rotation = optimise_rotation(
-        field, initial_centre, edge_lengths, penumbra, initial_rotation
-    )
+    if fixed_rotation is None:
+        check_aspect_ratio(edge_lengths)
+
+        predicted_rotation = optimise_rotation(
+            field, initial_centre, edge_lengths, penumbra
+        )
+    else:
+        predicted_rotation = fixed_rotation
 
     predicted_centre = optimise_centre(
         field, initial_centre, edge_lengths, penumbra, predicted_rotation
     )
 
     for _ in range(niter):
-        previous_rotation = predicted_rotation
-        predicted_rotation = optimise_rotation(
-            field, predicted_centre, edge_lengths, penumbra, predicted_rotation
-        )
-        try:
-            check_rotation_close(edge_lengths, previous_rotation, predicted_rotation)
-            break
-        except ValueError:
-            pass
+        if fixed_rotation is None:
+            previous_rotation = predicted_rotation
+            predicted_rotation = optimise_rotation(
+                field, predicted_centre, edge_lengths, penumbra
+            )
+            try:
+                check_rotation_close(
+                    edge_lengths, previous_rotation, predicted_rotation
+                )
+                break
+            except ValueError:
+                pass
 
         previous_centre = predicted_centre
         predicted_centre = optimise_centre(
@@ -106,50 +103,42 @@ def field_centre_and_rotation_refining(
         except ValueError:
             pass
 
-    verification_centre = optimise_centre(
-        field, initial_centre, edge_lengths, penumbra, predicted_rotation
-    )
-
-    verification_rotation = optimise_rotation(
-        field, predicted_centre, edge_lengths, penumbra, initial_rotation
-    )
-
-    check_rotation_and_centre(
-        edge_lengths,
-        verification_centre,
-        predicted_centre,
-        verification_rotation,
-        predicted_rotation,
-    )
-
-    try:
-        pylinac = run_wlutz(
-            field,
-            edge_lengths,
-            penumbra,
-            predicted_centre,
-            predicted_rotation,
-            find_bb=False,
-        )
-    except ValueError as e:
-        raise ValueError(
-            "After finding the field centre during comparison to Pylinac the pylinac "
-            f"code raised the following error:\n    {e}"
+    if fixed_rotation is None:
+        verification_rotation = optimise_rotation(
+            field, predicted_centre, edge_lengths, penumbra
         )
 
-    pylinac_2_2_6_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
-        > pylinac_tol
-    )
-    pylinac_2_2_7_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
-        > pylinac_tol
-    )
-    if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
-        raise PylinacComparisonDeviation(
-            "The determined field centre deviates from pylinac more "
-            "than the defined tolerance"
+        check_rotation_close(edge_lengths, verification_rotation, predicted_rotation)
+
+    if not pylinac_tol is None:
+        try:
+            pylinac = run_wlutz(
+                field,
+                edge_lengths,
+                penumbra,
+                predicted_centre,
+                predicted_rotation,
+                find_bb=False,
+            )
+        except ValueError as e:
+            raise ValueError(
+                "After finding the field centre during comparison to Pylinac the pylinac "
+                f"code raised the following error:\n    {e}"
+            )
+
+        pylinac_2_2_6_out_of_tol = np.any(
+            np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
+            > pylinac_tol
         )
+        pylinac_2_2_7_out_of_tol = np.any(
+            np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
+            > pylinac_tol
+        )
+        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+            raise PylinacComparisonDeviation(
+                "The determined field centre deviates from pylinac more "
+                "than the defined tolerance"
+            )
 
     centre = predicted_centre.tolist()
     return centre, predicted_rotation
@@ -169,13 +158,13 @@ def check_rotation_and_centre(
 def check_rotation_close(edge_lengths, verification_rotation, predicted_rotation):
     if np.allclose(*edge_lengths):
         diff = (verification_rotation - predicted_rotation) % 90
-        if not (diff < 0.1 or diff > 89.9):
+        if not (diff < 0.3 or diff > 89.7):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
     else:
         diff = (verification_rotation - predicted_rotation) % 180
-        if not (diff < 0.1 or diff > 179.9):
+        if not (diff < 0.3 or diff > 179.7):
             raise ValueError(
                 _rotation_error_string(verification_rotation, predicted_rotation, diff)
             )
@@ -192,14 +181,18 @@ def _rotation_error_string(verification_rotation, predicted_rotation, diff):
 
 def check_centre_close(verification_centre, predicted_centre):
     if not np.allclose(verification_centre, predicted_centre, rtol=0.01, atol=0.01):
-        raise ValueError("Field centre not able to be reproducibly determined.")
+        raise ValueError(
+            "Field centre not able to be reproducibly determined.\n"
+            f"    Verification Centre: {verification_centre}\n"
+            f"    Predicted Centre: {predicted_centre}\n"
+        )
 
 
-def optimise_rotation(field, centre, edge_lengths, penumbra, initial_rotation):
+def optimise_rotation(field, centre, edge_lengths, penumbra):
     to_minimise = create_rotation_only_minimiser(field, centre, edge_lengths, penumbra)
     result = scipy.optimize.basinhopping(
         to_minimise,
-        initial_rotation,
+        INITIAL_ROTATION,
         T=1,
         niter=BASINHOPPING_NITER,
         niter_success=5,
@@ -243,7 +236,7 @@ def optimise_centre(field, initial_centre, edge_lengths, penumbra, rotation):
     return predicted_centre
 
 
-def _initial_centre(x, y, img):
+def get_centre_of_mass(x, y, img):
     centre_of_mass_index = scipy.ndimage.measurements.center_of_mass(img)
 
     centre = [

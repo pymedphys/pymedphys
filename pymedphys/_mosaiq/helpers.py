@@ -1,34 +1,25 @@
 # Copyright (C) 2018 Cancer Care Associates
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Some helper utility functions for accessing Mosaiq SQL.
 """
 
 import datetime
 
-import pandas as pd
+from pymedphys._imports import pandas as pd
+
+import pymedphys._utilities.patient
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES, TOLERANCE_TYPES
@@ -98,6 +89,44 @@ def get_patient_fields(cursor, patient_id):
     table["field_type"] = [FIELD_TYPES[item] for item in table["field_type"]]
 
     return table
+
+
+def get_patient_name(cursor, patient_id):
+    patient_id = str(patient_id)
+
+    patient_name_results = execute_sql(
+        cursor,
+        """
+        SELECT
+            Patient.Last_Name,
+            Patient.First_Name
+        FROM Ident, Patient
+        WHERE
+            Patient.Pat_ID1 = Ident.Pat_ID1 AND
+            Ident.IDA = %(patient_id)s
+        """,
+        {"patient_id": patient_id},
+    )
+
+    table = pd.DataFrame(data=patient_name_results, columns=["last_name", "first_name"])
+    table.drop_duplicates(inplace=True)
+
+    if len(table.index) < 1:
+        raise ValueError("No patient found with that ID")
+
+    if len(table.index) > 1:
+        raise ValueError("Multiple patients were found with that ID")
+
+    series = table.iloc[0]
+
+    last_name = series["last_name"]
+    first_name = series["first_name"]
+
+    patient_name = pymedphys._utilities.patient.convert_patient_name_from_split(  # pylint: disable = protected-access
+        last_name, first_name
+    )
+
+    return patient_name
 
 
 def get_treatments(cursor, start, end, machine):
@@ -449,8 +478,7 @@ def get_all_treatment_data(cursor, mrn):
     mosaiq_fields["field_type"] = [
         FIELD_TYPES[item] for item in mosaiq_fields["field_type"]
     ]
-    mosaiq_fields["tolerance"] = [
-        TOLERANCE_TYPES[item] for item in mosaiq_fields["tolerance"]
-    ]
+
 
     return mosaiq_fields
+

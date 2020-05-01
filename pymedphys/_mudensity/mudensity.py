@@ -1,33 +1,21 @@
 # Copyright (C) 2019 Simon Biggs
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # pylint: disable=C0103,C1801
 
-import numpy as np
-
-import matplotlib.pyplot as plt
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt
 
 from pymedphys._utilities.constants import AGILITY
 from pymedphys._utilities.controlpoints import remove_irrelevant_control_points
@@ -44,10 +32,10 @@ def calc_mu_density(
     mu,
     mlc,
     jaw,
-    grid_resolution=__DEFAULT_GRID_RESOLUTION,
-    max_leaf_gap=__DEFAULT_MAX_LEAF_GAP,
-    leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
-    min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL,
+    grid_resolution=None,
+    max_leaf_gap=None,
+    leaf_pair_widths=None,
+    min_step_per_pixel=None,
 ):
     """Determine the MU Density.
 
@@ -99,7 +87,7 @@ def calc_mu_density(
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> import pymedphys
     >>>
     >>> leaf_pair_widths = (5, 5, 5)
@@ -194,9 +182,21 @@ def calc_mu_density(
     ...     grid = pymedphys.mudensity.grid()
     ...     pymedphys.mudensity.display(grid, mu_density)
     >>>
-    >>> mu_density_from_logfile(r"a/path/goes/here") # doctest: +SKIP
+    >>> mu_density_from_logfile(r"a/path/goes/here")  # doctest: +SKIP
 
     """
+
+    if grid_resolution is None:
+        grid_resolution = __DEFAULT_GRID_RESOLUTION
+
+    if max_leaf_gap is None:
+        max_leaf_gap = __DEFAULT_MAX_LEAF_GAP
+
+    if leaf_pair_widths is None:
+        leaf_pair_widths = __DEFAULT_LEAF_PAIR_WIDTHS
+
+    if min_step_per_pixel is None:
+        min_step_per_pixel = __DEFAULT_MIN_STEP_PER_PIXEL
 
     divisibility_of_max_leaf_gap = np.array(max_leaf_gap / 2 / grid_resolution)
     max_leaf_gap_is_divisible = (
@@ -205,14 +205,19 @@ def calc_mu_density(
 
     if not max_leaf_gap_is_divisible:
         raise ValueError(
-            "The grid resolution needs to exaclty divide half of the max leaf " "gap"
+            "The grid resolution needs to be able to divide the max leaf gap exactly by"
+            " four"
         )
 
     leaf_pair_widths = np.array(leaf_pair_widths)
 
     if not np.max(np.abs(mlc)) <= max_leaf_gap / 2:  # pylint: disable = unneeded-not
+        first_failing_control_point = np.where(np.abs(mlc) > max_leaf_gap / 2)[0][0]
+
         raise ValueError(
-            "The mlc should not travel further out than half the maximum leaf " "gap."
+            "The mlc should not travel further out than half the maximum leaf gap.\n"
+            "The first failing control point has the following positions:\n"
+            f"{np.array(mlc)[first_failing_control_point, :, :]}"
         )
 
     mu, mlc, jaw = remove_irrelevant_control_points(mu, mlc, jaw)
@@ -256,7 +261,7 @@ def calc_single_control_point(
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> from pymedphys._mudensity.mudensity import (
     ...     calc_single_control_point, display_mu_density)
     >>>
@@ -297,7 +302,7 @@ def calc_single_control_point(
 
     if not np.all(leaf_division.astype(int) == leaf_division):
         raise ValueError(
-            "The grid resolution needs to exactly divide every leaf pair " "width."
+            "The grid resolution needs to exactly divide every leaf pair width."
         )
 
     if (
@@ -305,7 +310,8 @@ def calc_single_control_point(
         <= np.sum(leaf_pair_widths) / 2
     ):
         raise ValueError(
-            "The jaw should not travel further out than the maximum leaf " "limits."
+            "The jaw should not travel further out than the maximum leaf limits. "
+            f"Max travel was {np.max(np.abs(jaw))}"
         )
 
     (grid, grid_leaf_map, mlc) = _determine_calc_grid_and_adjustments(
@@ -346,7 +352,7 @@ def single_mlc_pair(
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from pymedphys._imports import numpy as np
     >>> import matplotlib.pyplot as plt
     >>>
     >>> from pymedphys._mudensity.mudensity import single_mlc_pair

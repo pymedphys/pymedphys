@@ -1,28 +1,17 @@
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # This work is derived from:
 # https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
@@ -47,8 +36,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import os
 
@@ -136,9 +124,9 @@ class PinnacleImage:
 
         if not self._image_info:
             path_image_info = os.path.join(
-                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".ImageInfo"
+                self._path, f"ImageSet_{self._image['ImageSetID']}.ImageInfo"
             )
-            self.logger.debug("Reading image data from: " + path_image_info)
+            self.logger.debug("Reading image data from: %s", path_image_info)
             self._image_info = pinn_to_dict(path_image_info)
 
         return self._image_info
@@ -155,9 +143,9 @@ class PinnacleImage:
 
         if not self._image_header:
             path_image_header = os.path.join(
-                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".header"
+                self._path, f"ImageSet_{self._image['ImageSetID']}.header"
             )
-            self.logger.debug("Reading image data from: " + path_image_header)
+            self.logger.debug("Reading image data from: %s", path_image_header)
             self._image_header = {}
             with open(path_image_header, "rt") as f:
                 for line in f:
@@ -185,9 +173,9 @@ class PinnacleImage:
 
         if not self._image_set:
             path_image_set = os.path.join(
-                self._path, "ImageSet_" + str(self._image["ImageSetID"]) + ".ImageSet"
+                self._path, f"ImageSet_{self._image['ImageSetID']}.ImageSet"
             )
-            self.logger.debug("Reading image data from: " + path_image_set)
+            self.logger.debug("Reading image data from: %s", path_image_set)
             self._image_set = pinn_to_dict(path_image_set)
 
             parts = self._image_set["ScanTimeFromScanner"].split(" ")

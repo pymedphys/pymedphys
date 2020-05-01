@@ -1,28 +1,17 @@
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # This work is derived from:
 # https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
@@ -48,8 +37,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# The following needs to be removed before leaving labs
-# pylint: skip-file
 
 import logging
 import os
@@ -127,15 +114,14 @@ class PinnacleExport:
 
         if not self._patient_info:
             path_patient = os.path.join(self._path, "Patient")
-            self.logger.debug("Reading patient data from: {0}".format(path_patient))
+            self.logger.debug("Reading patient data from: %s", path_patient)
             self._patient_info = pinn_to_dict(path_patient)
 
             # Set the full patient name
-            self._patient_info["FullName"] = "{0}^{1}^{2}^".format(
-                self._patient_info["LastName"],
-                self._patient_info["FirstName"],
-                self._patient_info["MiddleName"],
-            )
+            last_name = self._patient_info["LastName"]
+            first_name = self._patient_info["FirstName"]
+            middle_name = self._patient_info["MiddleName"]
+            self._patient_info["FullName"] = f"{last_name}^{first_name}^{middle_name}^"
 
             # gets birthday string with numbers and dashes
             dobstr = self._patient_info["DateOfBirth"]
@@ -149,8 +135,8 @@ class PinnacleExport:
             dob = ""
             for num in dob_list:
                 if len(num) == 1:
-                    num = "0" + num
-                dob = dob + num
+                    num = f"0{num}"
+                dob = f"{dob}{num}"
 
             self._patient_info["DOB"] = dob
 
@@ -172,7 +158,7 @@ class PinnacleExport:
 
             self._plans = []
             for plan in self.patient_info["PlanList"]:
-                path_plan = os.path.join(self._path, "Plan_" + str(plan["PlanID"]))
+                path_plan = os.path.join(self._path, f"Plan_{plan['PlanID']}")
                 self._plans.append(PinnaclePlan(self, path_plan, plan))
 
         return self._plans
@@ -197,7 +183,8 @@ class PinnacleExport:
 
         return self._images
 
-    def export_struct(self, plan, export_path="."):
+    @staticmethod
+    def export_struct(plan, export_path="."):
         """Exports the RTSTRUCT DICOM modality.
 
         Parameters
@@ -212,7 +199,8 @@ class PinnacleExport:
         # Export Structures for plan
         convert_struct(plan, export_path)
 
-    def export_dose(self, plan, export_path="."):
+    @staticmethod
+    def export_dose(plan, export_path="."):
         """Exports the RTDOSE DICOM modality.
 
         Parameters
@@ -227,7 +215,8 @@ class PinnacleExport:
         # Export dose for plan
         convert_dose(plan, export_path)
 
-    def export_plan(self, plan, export_path="."):
+    @staticmethod
+    def export_plan(plan, export_path="."):
         """Exports the RTPLAN DICOM modality.
 
         Parameters
@@ -273,11 +262,10 @@ class PinnacleExport:
         for i in self.images:
             image_header = i.image_header
             self.logger.info(
-                "{0}: {1} {2}".format(
-                    image_header["modality"],
-                    image_header["series_UID"],
-                    image_header["SeriesDateTime"],
-                )
+                "%s: %s %s",
+                image_header["modality"],
+                image_header["series_UID"],
+                image_header["SeriesDateTime"],
             )
 
     def log_plan_names(self):
@@ -292,9 +280,9 @@ class PinnacleExport:
         """
 
         for p in self.plans:
-            self.logger.info("### " + p.plan_info["PlanName"] + " ###")
+            self.logger.info("### %s ###", p.plan_info["PlanName"])
             for t in p.trials:
-                self.logger.info("- " + t["Name"])
+                self.logger.info("- %s", t["Name"])
 
     def log_trial_names_in_plan(self, plan):
         """Outputs all trials found within a plan to the log.
@@ -305,7 +293,7 @@ class PinnacleExport:
                 The plan for which to log the trials.
         """
 
-        self.logger.info("### " + plan.plan_info["PlanName"] + " ###")
+        self.logger.info("### %s ###", plan.plan_info["PlanName"])
         self.logger.info(plan.path)
         for trial in plan.trials:
-            self.logger.info("- " + trial["Name"])
+            self.logger.info("- %s", trial["Name"])

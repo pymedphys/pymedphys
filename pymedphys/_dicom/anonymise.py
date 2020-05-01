@@ -1,28 +1,19 @@
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
 
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
-
+import functools
 import json
 import os.path
 import pprint
@@ -31,16 +22,15 @@ from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from pymedphys._dicom.constants import (
-    BASELINE_KEYWORD_VR_DICT,
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
     PYMEDPHYS_ROOT_UID,
     NotInBaselineError,
     get_baseline_dict_entry,
+    get_baseline_keyword_vr_dict,
 )
 from pymedphys._dicom.utilities import remove_file
 
@@ -51,26 +41,31 @@ IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
     IDENTIFYING_KEYWORDS = json.load(infile)
 
-VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
-    "AE": "Anonymous",
-    "AS": "100Y",
-    "CS": "ANON",
-    "DA": "20190303",
-    "DS": "12345678.9",
-    "DT": "20190303000900.000000",
-    "LO": "Anonymous",
-    "LT": "Anonymous",
-    "OB": (0).to_bytes(2, "little"),
-    "OB or OW": (0).to_bytes(2, "little"),
-    "OW": (0).to_bytes(2, "little"),
-    "PN": "Anonymous",
-    "SH": "Anonymous",
-    "SQ": [pydicom.Dataset()],
-    "ST": "Anonymous",
-    "TM": "000900.000000",
-    "UI": PYMEDPHYS_ROOT_UID,
-    "US": 12345,
-}
+
+@functools.lru_cache(maxsize=1)
+def get_vr_anonymous_replacement_value_dict():
+    VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
+        "AE": "Anonymous",
+        "AS": "100Y",
+        "CS": "ANON",
+        "DA": "20190303",
+        "DS": "12345678.9",
+        "DT": "20190303000900.000000",
+        "LO": "Anonymous",
+        "LT": "Anonymous",
+        "OB": (0).to_bytes(2, "little"),
+        "OB or OW": (0).to_bytes(2, "little"),
+        "OW": (0).to_bytes(2, "little"),
+        "PN": "Anonymous",
+        "SH": "Anonymous",
+        "SQ": [pydicom.Dataset()],
+        "ST": "Anonymous",
+        "TM": "000900.000000",
+        "UI": PYMEDPHYS_ROOT_UID,
+        "US": 12345,
+    }
+
+    return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT
 
 
 def label_dicom_filepath_as_anonymised(filepath):
@@ -466,7 +461,7 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     for elem in ds:
         if elem.keyword in IDENTIFYING_KEYWORDS:
             dummy_value = get_anonymous_replacement_value(elem.keyword)
-            if not elem.value in ("", [], dummy_value):
+            if not elem.value in ("", [], dummy_value, None):
                 if elem.VR == "DS" and np.isclose(
                     float(elem.value), float(dummy_value)
                 ):
@@ -601,7 +596,7 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
             if replace_values:
                 replacement_value = get_anonymous_replacement_value(keyword)
             else:
-                if BASELINE_KEYWORD_VR_DICT[keyword] in ("OB", "OW"):
+                if get_baseline_keyword_vr_dict()[keyword] in ("OB", "OW"):
                     replacement_value = (0).to_bytes(2, "little")
                 else:
                     replacement_value = ""
@@ -630,5 +625,5 @@ def get_anonymous_replacement_value(keyword):
     """Get an appropriate dummy anonymisation value for a DICOM element
     based on its value representation (VR)
     """
-    vr = BASELINE_KEYWORD_VR_DICT[keyword]
-    return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
+    vr = get_baseline_keyword_vr_dict()[keyword]
+    return get_vr_anonymous_replacement_value_dict()[vr]

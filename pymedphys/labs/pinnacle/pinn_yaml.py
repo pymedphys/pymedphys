@@ -1,28 +1,17 @@
 # Copyright (C) 2019 South Western Sydney Local Health District,
 # University of New South Wales
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # This work is derived from:
 # https://github.com/AndrewWAlexander/Pinnacle-tar-DICOM
@@ -47,20 +36,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# The following needs to be removed before leaving labs
-# pylint: skip-file
+
 
 import io
 import re
-import sys
 
-import yaml
+from pymedphys._imports import yaml
 
 
 def pinn_to_dict(filename):
 
     result = None
-    pinn_yaml = ""
     with io.open(filename, "r", encoding="ISO-8859-1", errors="ignore") as fp:
         data = fp.readlines()
 
@@ -69,7 +55,7 @@ def pinn_to_dict(filename):
         first_line = data[0]
         indices = [i for i, line in enumerate(data) if line == first_line]
 
-        for i in range(len(indices)):
+        for i, _ in enumerate(indices):
 
             next_index = -1
 
@@ -77,12 +63,12 @@ def pinn_to_dict(filename):
                 next_index = indices[i + 1]
 
                 # If there are multiple segments, return list, otherwise just the dict
-                if not type(result) == list:
+                if not isinstance(result, list):
                     result = []
 
             split_data = data[indices[i] : next_index]
 
-            if type(result) == list:
+            if isinstance(result, list):
                 d = yaml.safe_load(convert_to_yaml(split_data))
                 result.append(d[list(d.keys())[0]])
             else:
@@ -97,19 +83,19 @@ def convert_to_yaml(data):
     listIndents = []
     in_comment = False
     c = 0
-    for i, line in enumerate(data, 0):
+    for _, line in enumerate(data, 0):
 
         # Remove comment lines
-        if re.search("^\/\*", line) or in_comment:
+        if re.search(r"^\/\*", line) or in_comment:
             in_comment = True
             continue
 
-        if re.search("\*\/", line):
+        if re.search(r"\*\/", line):
             in_comment = False
             continue
 
         # Get the indentation of this line
-        thisIndent = len(re.match("^\s*", line).group())
+        thisIndent = len(re.match(r"^\s*", line).group())
 
         # Check for start list/array
         if re.search("Array ={", line) or re.search("List ={", line):
@@ -126,7 +112,9 @@ def convert_to_yaml(data):
         # If this line is one indentation in from a start of list,
         # add '-' for YAML sequence
         if thisIndent - 2 in listIndents:
-            line = " " * thisIndent + "- " + re.sub("^\s*", "", line)
+            spaces = " " * thisIndent
+            subbed_line = re.sub(r"^\s*", "", line)
+            line = f"{spaces}- {subbed_line}"
 
         # Replace ={ and = with : for assignment
         line = re.sub(" ={", " :", line)

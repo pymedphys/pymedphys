@@ -1,53 +1,42 @@
 # Copyright (C) 2019 Cancer Care Associates
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
+# import warnings
 
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt, scipy
 
-
-import numpy as np
-import scipy.optimize
-
-from .interppoints import create_bb_points_function
-from .pylinac import PylinacComparisonDeviation, run_wlutz
-from .utilities import create_centralised_field, transform_point
+from . import imginterp, interppoints, pylinac, reporting, utilities
 
 BB_MIN_SEARCH_DIST = 2
-BB_MIN_SEARCH_TOL = 0.25
+BB_REPEAT_TOL = 0.1
 
 
 def optimise_bb_centre(
-    field,
+    field: imginterp.Field,
     bb_diameter,
     edge_lengths,
     penumbra,
     field_centre,
     field_rotation,
     pylinac_tol=0.2,
+    debug=True,
 ):
-    centralised_field = create_centralised_field(field, field_centre, field_rotation)
-    to_minimise_edge_agreement, to_minimise_pixel_vals = create_bb_to_minimise(
-        centralised_field, bb_diameter
+    centralised_field = utilities.create_centralised_field(
+        field, field_centre, field_rotation
     )
+    to_minimise_edge_agreement = create_bb_to_minimise(centralised_field, bb_diameter)
     bb_bounds = define_bb_bounds(bb_diameter, edge_lengths, penumbra)
 
     bb_centre_in_centralised_field = bb_basinhopping(
@@ -57,63 +46,83 @@ def optimise_bb_centre(
     if check_if_at_bounds(bb_centre_in_centralised_field, bb_bounds):
         raise ValueError("BB found at bounds, likely incorrect")
 
-    minimise_pval_bounds = [
-        (
-            bb_centre_in_centralised_field[0] - BB_MIN_SEARCH_DIST,
-            bb_centre_in_centralised_field[0] + BB_MIN_SEARCH_DIST,
-        ),
-        (
-            bb_centre_in_centralised_field[1] - BB_MIN_SEARCH_DIST,
-            bb_centre_in_centralised_field[1] + BB_MIN_SEARCH_DIST,
-        ),
-    ]
-
-    bb_centre_in_centralised_field_min_only = bb_basinhopping(
-        to_minimise_pixel_vals, minimise_pval_bounds
-    )
-
-    repeat_agreement = np.abs(
-        bb_centre_in_centralised_field_min_only - bb_centre_in_centralised_field
-    )
-    if np.any(repeat_agreement > BB_MIN_SEARCH_TOL):
-        raise ValueError(
-            "BB centre finding doesn't sufficiently agree with minimum "
-            "pixel values within field\n"
-            f"  {bb_centre_in_centralised_field}\n"
-            f"  {bb_centre_in_centralised_field_min_only}\n"
-        )
-
-    verification_repeat = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
-
-    repeat_agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
-    if np.any(repeat_agreement > 0.01):
-        raise ValueError("BB centre not able to be consistently determined")
-
-    bb_centre = transform_point(
+    bb_centre = utilities.transform_point(
         bb_centre_in_centralised_field, field_centre, field_rotation
     )
 
-    try:
-        pylinac = run_wlutz(
-            field, edge_lengths, penumbra, field_centre, field_rotation, find_bb=True
+    verification_repeat = bb_basinhopping(to_minimise_edge_agreement, bb_bounds)
+    repeat_agreement = np.abs(verification_repeat - bb_centre_in_centralised_field)
+
+    if np.any(repeat_agreement > BB_REPEAT_TOL):
+        bb_repeated = utilities.transform_point(
+            verification_repeat, field_centre, field_rotation
         )
-    except ValueError as e:
+        if debug:
+            reporting.image_analysis_figure(
+                field.x,
+                field.y,
+                field.img,
+                bb_centre,
+                field_centre,
+                field_rotation,
+                bb_diameter,
+                edge_lengths,
+                penumbra,
+            )
+            plt.title("First iteration")
+
+            reporting.image_analysis_figure(
+                field.x,
+                field.y,
+                field.img,
+                bb_repeated,
+                field_centre,
+                field_rotation,
+                bb_diameter,
+                edge_lengths,
+                penumbra,
+            )
+            plt.title("Second iteration")
+            plt.show()
         raise ValueError(
-            "After finding the bb centre during comparison to Pylinac the pylinac "
-            f"code raised the following error:\n    {e}"
+            "BB centre not able to be consistently determined\n"
+            f"  First iteration:  {bb_centre}\n"
+            f"  Second iteration: {bb_repeated}"
         )
 
-    pylinac_2_2_6_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.6"]["bb_centre"]) - bb_centre) > pylinac_tol
-    )
-    pylinac_2_2_7_out_of_tol = np.any(
-        np.abs(np.array(pylinac["v2.2.7"]["bb_centre"]) - bb_centre) > pylinac_tol
-    )
-    if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
-        raise PylinacComparisonDeviation(
-            "The determined bb centre deviates from pylinac more "
-            "than the defined tolerance"
-        )
+    if not pylinac_tol is None:
+        try:
+            pylinac_result = pylinac.run_wlutz(
+                field,
+                edge_lengths,
+                penumbra,
+                field_centre,
+                field_rotation,
+                find_bb=True,
+                pylinac_versions=("v2.2.6",),
+            )
+        except ValueError:
+            raise ValueError("While comparing result to PyLinac an error was raised")
+            # warnings.simplefilter("always", UserWarning)
+            # warnings.warn(
+            #     "This iteration has not been checked against pylinac. "
+            #     "When attempting to run pylinac instead an error was "
+            #     f"raised. Pylinac raised the following error:\n\n{e}\n"
+            # )
+            # pylinac = {}
+
+        try:
+            pylinac_2_2_6_out_of_tol = np.any(
+                np.abs(np.array(pylinac_result["v2.2.6"]["bb_centre"]) - bb_centre)
+                > pylinac_tol
+            )
+            if pylinac_2_2_6_out_of_tol:
+                raise pylinac.PylinacComparisonDeviation(
+                    "The determined bb centre deviates from pylinac more "
+                    "than the defined tolerance"
+                )
+        except KeyError:
+            pass
 
     return bb_centre
 
@@ -144,7 +153,9 @@ def create_bb_to_minimise(field, bb_diameter):
     """This is a numpy vectorised version of `create_bb_to_minimise_simple`
     """
 
-    points_to_check_edge_agreement, dist = create_bb_points_function(bb_diameter)
+    points_to_check_edge_agreement, dist = interppoints.create_bb_points_function(
+        bb_diameter
+    )
     dist_mask = np.unique(dist)[:, None] == dist[None, :]
     num_in_mask = np.sum(dist_mask, axis=1)
     mask_count_per_item = np.sum(num_in_mask[:, None] * dist_mask, axis=0)
@@ -163,20 +174,14 @@ def create_bb_to_minimise(field, bb_diameter):
 
         return mean_of_layers
 
-    points_to_check_min_pvals, _ = create_bb_points_function(bb_diameter * 0.5)
-
-    def to_minimise_pixel_vals(centre):
-        x, y = points_to_check_min_pvals(centre)
-        results = field(x, y)
-
-        return np.mean(results)
-
-    return to_minimise_edge_agreement, to_minimise_pixel_vals
+    return to_minimise_edge_agreement
 
 
 def create_bb_to_minimise_simple(field, bb_diameter):
 
-    points_to_check_edge_agreement, dist = create_bb_points_function(bb_diameter)
+    points_to_check_edge_agreement, dist = interppoints.create_bb_points_function(
+        bb_diameter
+    )
     dist_mask = np.unique(dist)[:, None] == dist[None, :]
 
     def to_minimise_edge_agreement(centre):
@@ -190,21 +195,16 @@ def create_bb_to_minimise_simple(field, bb_diameter):
 
         return total_minimisation / (len(dist_mask) - 1)
 
-    points_to_check_min_pvals, _ = create_bb_points_function(bb_diameter * 0.5)
-
-    def to_minimise_pixel_vals(centre):
-        x, y = points_to_check_min_pvals(centre)
-        results = field(x, y)
-
-        return np.mean(results)
-
-    return to_minimise_edge_agreement, to_minimise_pixel_vals
+    return to_minimise_edge_agreement
 
 
 def define_bb_bounds(bb_diameter, edge_lengths, penumbra):
+    # TODO: This does not allow the BB to search right up to the edge of the field
+    # this is a crude work around for the fact that a significantly flat area will
+    # currently be optimised for over the BB itself.
     half_field_bounds = [
-        (edge_lengths[0] - penumbra / 2) / 2,
-        (edge_lengths[1] - penumbra / 2) / 2,
+        (edge_lengths[0] - penumbra * 2) / 2,
+        (edge_lengths[1] - penumbra * 2) / 2,
     ]
 
     bb_radius = bb_diameter / 2

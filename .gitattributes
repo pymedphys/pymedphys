@@ -1,5 +1,2 @@
-*.ipynb filter=nbstripout
-*.ipynb diff=ipynb
-
 # line-specific gitignore filters
 .vscode/settings.json filter=gitignore-python-env-in-vscode-settings

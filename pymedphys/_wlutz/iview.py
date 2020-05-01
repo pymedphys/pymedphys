@@ -1,35 +1,22 @@
 # Copyright (C) 2019 Cancer Care Associates
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
-import numpy as np
-import pandas as pd
-
-import matplotlib.pyplot as plt
-
-import imageio
+from pymedphys._imports import imageio
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt
 
 from .core import find_field_and_bb
 from .reporting import image_analysis_figure
@@ -38,7 +25,7 @@ from .reporting import image_analysis_figure
 def iview_find_bb_and_field(
     image_path, edge_lengths, bb_diameter=8, penumbra=2, display_figure=True
 ):
-    x, y, img = iview_image_transform(image_path)
+    x, y, img = iview_image_transform_from_path(image_path)
 
     bb_centre, field_centre, field_rotation = find_field_and_bb(
         x, y, img, edge_lengths, bb_diameter, penumbra=penumbra
@@ -91,20 +78,37 @@ def batch_process(
     )
 
 
-def iview_image_transform(image_path):
+def iview_image_transform_from_path(image_path):
     img = imageio.imread(image_path)
-    if np.shape(img) != (1024, 1024):
+
+    return iview_image_transform(img)
+
+
+def iview_image_transform(img):
+    if np.shape(img) == (1024, 1024):
+        pixels_per_mm = 4
+    elif np.shape(img) == (512, 512):
+        pixels_per_mm = 2
+    else:
         raise ValueError(
-            f"Expect iView images to be 1024x1024 pixels\nShhape = {np.shape(img)}"
+            "Expect iView images to be either 1024x1024 or 512x512 "
+            f"pixels\nShape = {np.shape(img)}"
         )
+
     img = img[:, 1:-1]
 
-    if img.dtype != np.dtype("uint16"):
-        raise ValueError("Expect iView images to have a pixel type of unsigned 16 bit")
+    if img.dtype != np.dtype("uint16") and img.dtype != np.dtype("int32"):
+        raise ValueError(
+            "Expect iView images to have a pixel type of unsigned 16 bit "
+            "or signed 32 bit."
+            f"Instead the type was {img.dtype}\n"
+            f"  Min pixel value was {np.min(img)}\n"
+            f"  Max pixel value was {np.max(img)}"
+        )
     img = 1 - img[::-1, :] / 2 ** 16
 
     shape = np.shape(img)
-    x = np.arange(-shape[1] / 2, shape[1] / 2) / 4
-    y = np.arange(-shape[0] / 2, shape[0] / 2) / 4
+    x = np.arange(-shape[1] / 2, shape[1] / 2) / pixels_per_mm
+    y = np.arange(-shape[0] / 2, shape[0] / 2) / pixels_per_mm
 
     return x, y, img

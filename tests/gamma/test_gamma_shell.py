@@ -1,26 +1,15 @@
 # Copyright (C) 2015, 2019 Simon Biggs
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 # pylint: disable = protected-access
@@ -31,7 +20,7 @@
 
 import numpy as np
 
-import pymedphys._gamma.implementation
+import pymedphys
 import pymedphys._utilities.createshells
 
 
@@ -48,7 +37,7 @@ def does_gamma_scale_as_expected(
     gamma_results = []
     for dose, distance in zip(dose_thresholds_to_test, distance_thresholds_to_test):
         gamma_results.append(
-            pymedphys._gamma.implementation.gamma_shell(
+            pymedphys.gamma(
                 coords,
                 reference,
                 coords,
@@ -78,7 +67,7 @@ def test_a_set_of_gamma_scaling():
 def test_multiple_threshold_inputs():
     coords, reference, evaluation, _ = get_dummy_gamma_set()
 
-    pymedphys._gamma.implementation.gamma_shell(
+    pymedphys.gamma(
         coords,
         reference,
         coords,
@@ -97,9 +86,7 @@ def test_lower_dose_threshold():
     evl = [10] * (len(ref) + 2)
     coords_evl = (np.arange(len(evl)) - 4,)
 
-    result = pymedphys._gamma.implementation.gamma_shell(
-        coords_ref, ref, coords_evl, evl, 10, 1
-    )
+    result = pymedphys.gamma(coords_ref, ref, coords_evl, evl, 10, 1)
 
     assert np.array_equal(ref < 0.2 * np.max(ref), np.isnan(result))
 
@@ -131,7 +118,7 @@ def test_regression_of_gamma_3d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma3d = np.round(
-        pymedphys._gamma.implementation.gamma_shell(
+        pymedphys.gamma(
             coords, reference, coords, evaluation, 3, 0.3, lower_percent_dose_cutoff=0
         ),
         decimals=1,
@@ -145,7 +132,7 @@ def test_regression_of_gamma_2d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma2d = np.round(
-        pymedphys._gamma.implementation.gamma_shell(
+        pymedphys.gamma(
             coords[1::],
             reference[5, :, :],
             coords[1::],
@@ -166,7 +153,7 @@ def test_regression_of_gamma_1d():
     coords, reference, evaluation, expected_gamma = get_dummy_gamma_set()
 
     gamma1d = np.round(
-        pymedphys._gamma.implementation.gamma_shell(
+        pymedphys.gamma(
             coords[2],
             reference[5, 5, :],
             coords[2],

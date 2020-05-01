@@ -1,37 +1,26 @@
 # Copyright (C) 2018 Cancer Care Associates
 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version (the "AGPL-3.0+").
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU Affero General Public License and the additional terms for more
-# details.
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# You should have received a copy of the GNU Affero General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-# ADDITIONAL TERMS are also included as allowed by Section 7 of the GNU
-# Affero General Public License. These additional terms are Sections 1, 5,
-# 6, 7, 8, and 9 from the Apache License, Version 2.0 (the "Apache-2.0")
-# where all references to the definition "License" are instead defined to
-# mean the AGPL-3.0+.
-
-# You should have received a copy of the Apache-2.0 along with this
-# program. If not, see <http://www.apache.org/licenses/LICENSE-2.0>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 """Uses Mosaiq SQL to extract patient delivery details.
 """
 
+import functools
 import struct
 
-import attr
-
-import numpy as np
+from pymedphys._imports import attr
+from pymedphys._imports import numpy as np
 
 from pymedphys._base.delivery import DeliveryBase
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
@@ -40,17 +29,21 @@ from .connect import execute_sql
 from .constants import FIELD_TYPES
 
 
-@attr.s
-class OISDeliveryDetails:
-    """A class containing patient information extracted from Mosaiq."""
+@functools.lru_cache()
+def create_ois_delivery_details_class():
+    @attr.s
+    class OISDeliveryDetails:
+        """A class containing patient information extracted from Mosaiq."""
 
-    patient_id = attr.ib()
-    field_id = attr.ib()
-    last_name = attr.ib()
-    first_name = attr.ib()
-    qa_mode = attr.ib()
-    field_type = attr.ib()
-    beam_completed = attr.ib()
+        patient_id = attr.ib()
+        field_id = attr.ib()
+        last_name = attr.ib()
+        first_name = attr.ib()
+        qa_mode = attr.ib()
+        field_type = attr.ib()
+        beam_completed = attr.ib()
+
+    return OISDeliveryDetails
 
 
 class MultipleMosaiqEntries(Exception):
@@ -79,7 +72,7 @@ def get_field_type(cursor, field_id):
 
 def get_mosaiq_delivery_details(
     cursor, machine, delivery_time, field_label, field_name, buffer=0
-) -> OISDeliveryDetails:
+):
     """Identifies the patient details for a given delivery time.
 
     Args:
@@ -169,6 +162,7 @@ def get_mosaiq_delivery_details(
             )
         )
 
+    OISDeliveryDetails = create_ois_delivery_details_class()
     delivery_details = OISDeliveryDetails(*sql_result[0])
 
     delivery_details.field_type = FIELD_TYPES[delivery_details.field_type]

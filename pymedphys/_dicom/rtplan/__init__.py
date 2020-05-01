@@ -8,6 +8,7 @@ from .build import (
 )
 from .core import (
     get_beam_indices_of_fraction_group,
+    get_cp_attribute_leaning_on_prior,
     get_fraction_group_beam_sequence_and_meterset,
     get_fraction_group_index,
     get_gantry_angles_from_dicom,

@@ -22,18 +22,14 @@
 """Module of objects that resemble or contain a profile, i.e. a 1 or 2-D f(x) representation."""
 import copy
 from functools import lru_cache
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import List, Tuple, Union
 
-import numpy as np
-from scipy import ndimage
-from scipy.interpolate import interp1d
-
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle as mpl_Circle
+from pymedphys._imports import matplotlib
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt, scipy
 
 from .decorators import value_accept
 from .geometry import Circle, Point
-from .typing import NumberLike
 from .utilities import is_float_like, is_int_like
 
 LEFT = "left"
@@ -44,11 +40,11 @@ BOTH = "both"
 
 
 def stretch(
-    array: np.ndarray,
+    array,
     min: int = 0,  # pylint: disable = redefined-builtin
     max: int = 1,  # pylint: disable = redefined-builtin
     fill_dtype=None,
-) -> np.array:
+):
     """'Stretch' the profile to the fit a new min and max value and interpolate in between.
     From: http://www.labri.fr/perso/nrougier/teaching/numpy.100/  exercise #17
 
@@ -85,8 +81,6 @@ def stretch(
 class ProfileMixin:
     """A mixin to provide various manipulations of 1D profile data."""
 
-    values: np.ndarray
-
     def invert(self):
         """Invert (imcomplement) the profile."""
         orig_array = self.values
@@ -96,7 +90,7 @@ class ProfileMixin:
             + orig_array.min()
         )
 
-    def normalize(self, norm_val: Union[str, NumberLike] = "max"):
+    def normalize(self, norm_val="max"):
         """Normalize the profile to the given value.
 
         Parameters
@@ -136,7 +130,7 @@ class ProfileMixin:
         return min_val
 
     @value_accept(kind=("median", "gaussian"))
-    def filter(self, size: NumberLike = 0.05, kind: str = "median"):
+    def filter(self, size=0.05, kind: str = "median"):
         """Filter the profile.
 
         Parameters
@@ -157,9 +151,9 @@ class ProfileMixin:
                 raise TypeError("Float was passed but was not between 0 and 1")
 
         if kind == "median":
-            self.values = ndimage.median_filter(self.values, size=size)
+            self.values = scipy.ndimage.median_filter(self.values, size=size)
         elif kind == "gaussian":
-            self.values = ndimage.gaussian_filter(self.values, sigma=size)
+            self.values = scipy.ndimage.gaussian_filter(self.values, sigma=size)
 
     def __len__(self):
         return len(self.values)
@@ -176,11 +170,8 @@ class SingleProfile(ProfileMixin):
 
     interpolation_factor: int = 100
     interpolation_type: str = "linear"
-    _values: np.ndarray  # ndarray, but Sphinx/napoleon won't compile as `np.ndarray`
 
-    def __init__(
-        self, values: np.ndarray, normalize_sides: bool = True, initial_peak: int = None
-    ):
+    def __init__(self, values, normalize_sides: bool = True, initial_peak: int = None):
         """
         Parameters
         ----------
@@ -198,7 +189,7 @@ class SingleProfile(ProfileMixin):
         self._normalize_sides = normalize_sides
 
     @property
-    def values(self) -> np.ndarray:
+    def values(self):
         """The profile array."""
         return self._values
 
@@ -219,7 +210,7 @@ class SingleProfile(ProfileMixin):
         return self.values[: self._initial_peak_idx].min()
 
     @property
-    def _values_right(self) -> np.ndarray:
+    def _values_right(self):
         """The "right side" y data."""
         if self._normalize_sides:
             return self.values - self._right_side_min
@@ -227,7 +218,7 @@ class SingleProfile(ProfileMixin):
             return self._grounded_values
 
     @property
-    def _values_left(self) -> np.ndarray:
+    def _values_left(self):
         """The "left side" y data."""
         if self._normalize_sides:
             return self.values - self._left_side_min
@@ -235,7 +226,7 @@ class SingleProfile(ProfileMixin):
             return self._grounded_values
 
     @property
-    def _grounded_values(self) -> np.ndarray:
+    def _grounded_values(self):
         """Ground the profile such that the lowest value is 0.
         """
         min_val = self.values.min()
@@ -355,32 +346,34 @@ class SingleProfile(ProfileMixin):
             return peak
 
     @property
-    def _values_left_interp(self) -> np.ndarray:
+    def _values_left_interp(self):
         """Interpolated values of the "left side" profile data."""
-        ydata_f = interp1d(
+        ydata_f = scipy.interpolate.interp1d(
             self._indices, self._values_left, kind=self.interpolation_type
         )
         y_data = ydata_f(self._indices_interp)
         return y_data
 
     @property
-    def _values_right_interp(self) -> np.ndarray:
+    def _values_right_interp(self):
         """Interpolated values of the "right side" profile data."""
-        ydata_f = interp1d(
+        ydata_f = scipy.interpolate.interp1d(
             self._indices, self._values_right, kind=self.interpolation_type
         )
         y_data = ydata_f(self._indices_interp)
         return y_data
 
     @property
-    def _values_interp(self) -> np.ndarray:
+    def _values_interp(self):
         """Interpolated values of the entire profile array."""
-        ydata_f = interp1d(self._indices, self.values, kind=self.interpolation_type)
+        ydata_f = scipy.interpolate.interp1d(
+            self._indices, self.values, kind=self.interpolation_type
+        )
         y_data = ydata_f(self._indices_interp)
         return y_data
 
     @property
-    def _indices_interp(self) -> np.ndarray:
+    def _indices_interp(self):
         """Interpolated values of the profile index data."""
         return np.linspace(
             start=0,
@@ -389,7 +382,7 @@ class SingleProfile(ProfileMixin):
         )
 
     @property
-    def _indices(self) -> np.ndarray:
+    def _indices(self):
         """Values of the profile index data."""
         return np.linspace(start=0, stop=len(self.values) - 1, num=len(self.values))
 
@@ -487,7 +480,7 @@ class SingleProfile(ProfileMixin):
         return pen
 
     @value_accept(field_width=(0, 1))
-    def field_values(self, field_width: float = 0.8) -> np.ndarray:
+    def field_values(self, field_width: float = 0.8):
         """Return a subarray of the values of the profile for the given field width.
         This is helpful for doing, e.g., flatness or symmetry calculations, where you
         want to calculate something over the field, not the whole profile.
@@ -506,9 +499,7 @@ class SingleProfile(ProfileMixin):
         return field_values
 
     @value_accept(field_width=(0, 1))
-    def field_edges(
-        self, field_width: float = 0.8, interpolate: bool = False
-    ) -> Tuple[NumberLike, NumberLike]:
+    def field_edges(self, field_width: float = 0.8, interpolate: bool = False):
         """Return the indices of the field width edges, based on the FWHM.
 
         See Also
@@ -586,11 +577,10 @@ class MultiProfile(ProfileMixin):
 
     """
 
-    values: Union[np.ndarray, Sequence]
     peaks: List
     valleys: List
 
-    def __init__(self, values: Union[np.ndarray, Sequence]):
+    def __init__(self, values):
         """
         Parameters
         ----------
@@ -625,7 +615,7 @@ class MultiProfile(ProfileMixin):
         max_number: int = None,
         search_region: Tuple = (0.0, 1.0),
         kind: str = "index",
-    ) -> np.ndarray:
+    ):
         """Find the peaks of the profile using a simple maximum value search. This also sets the `peaks` attribute.
 
         Parameters
@@ -805,18 +795,15 @@ class CircleProfile(MultiProfile, Circle):
         How the profile is/was taken; clockwise or counter-clockwise.
     """
 
-    image_array: np.ndarray
     start_angle: Union[float, int]
     ccw: bool
     sampling_ratio: float
-    _x_locations: Optional[np.ndarray]
-    _y_locations: Optional[np.ndarray]
 
     def __init__(
         self,
         center: Point,
         radius,
-        image_array: np.ndarray,
+        image_array,
         start_angle: Union[float, int] = 0,
         ccw: bool = True,
         sampling_ratio: float = 1.0,
@@ -858,7 +845,7 @@ class CircleProfile(MultiProfile, Circle):
         return np.pi * self.radius * 2 * self.sampling_ratio
 
     @property
-    def _radians(self) -> np.ndarray:
+    def _radians(self):
         interval = (2 * np.pi) / self.size
         rads = np.arange(
             0 + self.start_angle, (2 * np.pi) + self.start_angle - interval, interval
@@ -868,7 +855,7 @@ class CircleProfile(MultiProfile, Circle):
         return rads
 
     @property
-    def x_locations(self) -> np.ndarray:
+    def x_locations(self):
         """The x-locations of the profile values."""
         if self._x_locations is None:
             return np.cos(self._radians) * self.radius + self.center.x
@@ -876,11 +863,11 @@ class CircleProfile(MultiProfile, Circle):
             return self._x_locations
 
     @x_locations.setter
-    def x_locations(self, array: np.ndarray):
+    def x_locations(self, array):
         self._x_locations = array
 
     @property
-    def y_locations(self) -> np.ndarray:
+    def y_locations(self):
         """The x-locations of the profile values."""
         if self._y_locations is None:
             return np.sin(self._radians) * self.radius + self.center.y
@@ -888,13 +875,13 @@ class CircleProfile(MultiProfile, Circle):
             return self._y_locations
 
     @y_locations.setter
-    def y_locations(self, array: np.ndarray):
+    def y_locations(self, array):
         self._y_locations = array
 
     @property
-    def _profile(self) -> np.ndarray:
+    def _profile(self):
         """The actual profile array; private attr that is passed to MultiProfile."""
-        return ndimage.map_coordinates(
+        return scipy.ndimage.map_coordinates(
             self.image_array, [self.y_locations, self.x_locations], order=0
         )
 
@@ -905,7 +892,7 @@ class CircleProfile(MultiProfile, Circle):
         max_number: int = None,
         search_region: Tuple[float, float] = (0.0, 1.0),
         kind: str = "index",
-    ) -> np.ndarray:
+    ):
         """Overloads Profile to also map peak locations to the image."""
         array = super().find_peaks(
             threshold, min_distance, max_number, search_region, kind
@@ -920,7 +907,7 @@ class CircleProfile(MultiProfile, Circle):
         max_number: int = None,
         search_region=(0.0, 1.0),
         kind: str = "index",
-    ) -> np.ndarray:
+    ):
         """Overload Profile to also map valley locations to the image."""
         array = super().find_valleys(
             threshold, min_distance, max_number, search_region, kind
@@ -939,7 +926,7 @@ class CircleProfile(MultiProfile, Circle):
         interpolate: bool = False,
         interpolation_factor: int = 100,
         interpolation_type: str = "linear",
-    ) -> np.ndarray:
+    ):
         """Overloads Profile to also map the peak locations to the image."""
         array = super().find_fwxm_peaks(
             x,
@@ -969,7 +956,7 @@ class CircleProfile(MultiProfile, Circle):
 
     def plot2axes(  # pylint: disable = arguments-differ
         self,
-        axes: plt.Axes = None,
+        axes=None,
         edgecolor: str = "black",
         fill: bool = False,
         plot_peaks: bool = True,
@@ -991,7 +978,7 @@ class CircleProfile(MultiProfile, Circle):
             _, axes = plt.subplots()
             axes.imshow(self.image_array)
         axes.add_patch(
-            mpl_Circle(
+            matplotlib.patches.Circle(
                 (self.center.x, self.center.y),
                 edgecolor=edgecolor,
                 radius=self.radius,
@@ -1005,7 +992,7 @@ class CircleProfile(MultiProfile, Circle):
             axes.scatter(x_locs, y_locs, s=40, marker="x", c=edgecolor)
 
     @staticmethod
-    def _ensure_array_size(array: np.ndarray, min_width, min_height):
+    def _ensure_array_size(array, min_width, min_height):
         """Ensure the array size of inputs are greater than the minimums."""
         height = array.shape[0]
         width = array.shape[1]
@@ -1025,8 +1012,8 @@ class CollapsedCircleProfile(CircleProfile):
     def __init__(
         self,
         center: Point,
-        radius: NumberLike,
-        image_array: np.ndarray,
+        radius,
+        image_array,
         start_angle: int = 0,
         ccw: bool = True,
         sampling_ratio: float = 1.0,
@@ -1051,7 +1038,7 @@ class CollapsedCircleProfile(CircleProfile):
         super().__init__(center, radius, image_array, start_angle, ccw, sampling_ratio)
 
     @property
-    def _radii(self) -> np.ndarray:
+    def _radii(self):
         return np.linspace(
             start=self.radius * (1 - self.width_ratio),
             stop=self.radius * (1 + self.width_ratio),
@@ -1083,19 +1070,19 @@ class CollapsedCircleProfile(CircleProfile):
         return y
 
     @property
-    def _profile(self) -> np.ndarray:
+    def _profile(self):
         """The actual profile array; private attr that is passed to MultiProfile."""
         profile = np.zeros(len(self._multi_x_locations[0]))
         for _, x, y in zip(
             self._radii, self._multi_x_locations, self._multi_y_locations
         ):
-            profile += ndimage.map_coordinates(self.image_array, [y, x], order=0)
+            profile += scipy.ndimage.map_coordinates(self.image_array, [y, x], order=0)
         profile /= self.num_profiles
         return profile
 
     def plot2axes(
         self,
-        axes: plt.Axes = None,
+        axes=None,
         edgecolor: str = "black",
         fill: bool = False,
         plot_peaks: bool = True,
@@ -1110,7 +1097,7 @@ class CollapsedCircleProfile(CircleProfile):
             _, axes = plt.subplots()
             axes.imshow(self.image_array)
         axes.add_patch(
-            mpl_Circle(
+            matplotlib.patches.Circle(
                 (self.center.x, self.center.y),
                 edgecolor=edgecolor,
                 radius=self.radius * (1 + self.width_ratio),
@@ -1118,7 +1105,7 @@ class CollapsedCircleProfile(CircleProfile):
             )
         )
         axes.add_patch(
-            mpl_Circle(
+            matplotlib.patches.Circle(
                 (self.center.x, self.center.y),
                 edgecolor=edgecolor,
                 radius=self.radius * (1 - self.width_ratio),
@@ -1133,13 +1120,13 @@ class CollapsedCircleProfile(CircleProfile):
 
 
 def peak_detect(
-    values: np.ndarray,
+    values,
     threshold: Union[float, int] = None,
     min_distance: Union[float, int] = 10,
     max_number: int = None,
     search_region=(0.0, 1.0),
     find_min_instead: bool = False,
-) -> Tuple[np.ndarray, np.ndarray]:
+):
     """Find the peaks or valleys of a 1D signal.
 
     Uses the difference (np.diff) in signal to find peaks. Current limitations include:
@@ -1307,6 +1294,8 @@ def peak_detect(
 
     # If we were looking for minimums, convert the values back to the original sign
     if find_min_instead:
-        peak_vals = -peak_vals  # type: ignore
+        peak_vals = (
+            -peak_vals  # type: ignore  # pylint: disable = invalid-unary-operand-type
+        )
 
     return peak_vals, peak_idxs
