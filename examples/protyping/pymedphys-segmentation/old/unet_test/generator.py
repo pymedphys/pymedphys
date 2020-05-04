@@ -6,7 +6,6 @@ import numpy as np
 import skimage.draw
 import skimage.transform
 
-# Perhaps use tf.io instead
 import pydicom
 
 import tensorflow as tf
