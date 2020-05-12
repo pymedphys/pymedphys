@@ -4,11 +4,10 @@ import sys
 import traceback
 from glob import glob
 
-import requests
-
 import numpy as np
 import pandas as pd
 
+import requests
 import win32com.client
 import yaml
 
