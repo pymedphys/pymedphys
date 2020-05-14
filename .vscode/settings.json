@@ -99,6 +99,7 @@
     "dbfread",
     "dcmread",
     "decubitus",
+    "dedupe",
     "deidentified",
     "deps",
     "deque",
