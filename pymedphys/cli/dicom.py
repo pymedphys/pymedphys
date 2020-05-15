@@ -48,7 +48,7 @@ def merge_contours(dicom_subparsers):
     parser.add_argument("input_file", type=str)
     parser.add_argument("output_file", type=str)
     parser.add_argument(
-        "structures",
+        "--structures",
         type=str,
         default=None,
         nargs="+",
