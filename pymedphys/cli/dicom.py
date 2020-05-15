@@ -47,6 +47,15 @@ def merge_contours(dicom_subparsers):
 
     parser.add_argument("input_file", type=str)
     parser.add_argument("output_file", type=str)
+    parser.add_argument(
+        "structures",
+        type=str,
+        nargs="+",
+        help=(
+            "The structures for which to run the merge on. If not "
+            "provided, then all structures will be processed."
+        ),
+    )
     parser.set_defaults(func=merge_contours_cli)
 
 
