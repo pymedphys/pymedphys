@@ -33,6 +33,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [0.27.0]
+
+### New Features
+
+* Added an optional `--structures` flag to `pymedphys dicom merge-contours`.
+  This allows you to only compute the merge for those structures named.
+
 ## [0.26.0]
 
 ### New Features
