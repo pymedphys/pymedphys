@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
+import subprocess
+import tempfile
+
 import pydicom
 
 import pymedphys
@@ -36,3 +40,16 @@ def test_structure_dedupe():
             pymedphys.dicom.merge_contours(item, inplace=True)
 
         assert str(input_dcm) == str(baseline_dcm)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_filename = str(pathlib.Path(temp_dir).joinpath("temp.dcm"))
+
+            command = "pymedphys dicom merge-contours".split() + [
+                str(input_path),
+                output_filename,
+            ]
+            subprocess.check_call(command)
+
+            cli_dcm = pydicom.read_file(output_filename, force=True)
+
+        assert str(cli_dcm) == str(baseline_dcm)
