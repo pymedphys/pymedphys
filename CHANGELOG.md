@@ -33,6 +33,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [0.27.0]
+
+### New Features
+
+* Added an optional `--structures` flag to `pymedphys dicom merge-contours`.
+  This allows you to only compute the merge for those structures named.
+
 ## [0.26.0]
 
 ### New Features
@@ -573,7 +580,9 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.25.1...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.27.0...master
+[0.27.0]: https://github.com/pymedphys/pymedphys/compare/v0.26.0...v0.27.0
+[0.26.0]: https://github.com/pymedphys/pymedphys/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/pymedphys/pymedphys/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/pymedphys/pymedphys/compare/v0.24.3...v0.25.0
 [0.24.3]: https://github.com/pymedphys/pymedphys/compare/v0.24.2...v0.24.3
