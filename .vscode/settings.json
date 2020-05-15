@@ -118,6 +118,7 @@
     "dtype",
     "dtypes",
     "einsum",
+    "elec",
     "electronfactors",
     "elems",
     "erfinv",

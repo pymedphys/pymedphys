@@ -21,6 +21,7 @@ from pymedphys._dicom.header import (
     adjust_RED_by_structure_name_cli,
     adjust_RED_cli,
 )
+from pymedphys._dicom.structure.merge import merge_contours_cli
 
 
 def dicom_cli(subparsers):
@@ -30,11 +31,23 @@ def dicom_cli(subparsers):
     dicom_subparsers = dicom_parser.add_subparsers(dest="dicom")
 
     anonymise(dicom_subparsers)
+    merge_contours(dicom_subparsers)
     adjust_machine_name(dicom_subparsers)
     adjust_rel_elec_density(dicom_subparsers)
     adjust_RED_by_structure_name(dicom_subparsers)
 
     return dicom_parser
+
+
+def merge_contours(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        "merge-contours",
+        help="Merge overlapping contours within a DICOM structure file",
+    )
+
+    parser.add_argument("input_file", type=str)
+    parser.add_argument("output_file", type=str)
+    parser.set_defaults(func=merge_contours_cli)
 
 
 def adjust_machine_name(dicom_subparsers):
