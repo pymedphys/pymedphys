@@ -172,7 +172,12 @@ def create_new_contour_sequence(
 def merge_contours(  # pylint:disable = inconsistent-return-statements
     roi_contour_sequence, inplace=False
 ):
-    contour_sequence = roi_contour_sequence.ContourSequence
+    try:
+        contour_sequence = roi_contour_sequence.ContourSequence
+    except AttributeError:
+        print(roi_contour_sequence)
+        raise
+
     contours_by_z, image_sequence_by_z = extract_contours_and_image_sequences(
         contour_sequence
     )
@@ -197,5 +202,8 @@ def merge_contours(  # pylint:disable = inconsistent-return-statements
 
 def merge_contours_cli(args):
     dicom_dataset = pydicom.read_file(args.input_file, force=True)
-    merge_contours(dicom_dataset.ROIContourSequence, inplace=True)
+
+    for roi_contour_sequence in dicom_dataset.ROIContourSequence:
+        merge_contours(roi_contour_sequence, inplace=True)
+
     pydicom.write_file(args.output_file, dicom_dataset)
