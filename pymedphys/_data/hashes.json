@@ -1,6 +1,5 @@
 {
   "app_build.zip": "58c7eb4dda91091466cf792399a7aa7ceb11911a",
-  "dedupe-contour.dcm": "301111a2274bbf3edeb26c7736537e6bc121ca9c",
   "denis_wlutz_images.zip": "bb2e559fc7325e54622748257bd72424401e631b",
   "difficult_wlutz_image.ppm": "7ec9d26ec5c02f050c887e8bdadde131e3748501",
   "example_structures.dcm": "3600a63d8f29f2b6b42dff37f280f3d45aff2a32",
@@ -19,6 +18,7 @@
   "original_dose_beam_4.dcm": "dea5e9206a5423d9388046f902e83f620b59686f",
   "pylinac_wlutz_regression_image.jpg": "8f46084c588d5474fe11c483025bca66078e88a5",
   "python-windows-64-embedded.zip": "e837b2de3a03112e6283e32ca1ab72d0c3bfc04f",
+  "structure-deduplication.zip": "b4509f520c38f864969dac98000443e2218ff5ab",
   "tel-dicom-pairs.zip": "41a6e48bab9117f3bf0876fb4759378e7690dd7b",
   "washed_out_bb.png": "06c7c32a1a4be6d2ebade915f28a998e3039c3a4",
   "wlutz_arc_session.zip": "5db4f8becdaed134010b83a03fbd3a638745521c",
