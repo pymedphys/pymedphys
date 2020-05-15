@@ -54,14 +54,14 @@ def pull_coords_from_contour_sequence(contour_sequence):
     return x, y, z
 
 
-def pull_structure(structure_name, dcm_struct):
+def get_roi_contour_sequence_by_name(structure_name, dcm_struct):
     ROI_name_to_number_map = {
         structure_set.ROIName: structure_set.ROINumber
         for structure_set in dcm_struct.StructureSetROISequence
     }
 
     ROI_number_to_contour_map = {
-        contour.ReferencedROINumber: contour.ContourSequence
+        contour.ReferencedROINumber: contour
         for contour in dcm_struct.ROIContourSequence
     }
 
@@ -70,7 +70,15 @@ def pull_structure(structure_name, dcm_struct):
     except KeyError:
         raise ValueError("Structure name not found (case sensitive)")
 
-    contour_sequence = ROI_number_to_contour_map[ROI_number]
+    roi_contour_sequence = ROI_number_to_contour_map[ROI_number]
+
+    return roi_contour_sequence
+
+
+def pull_structure(structure_name, dcm_struct):
+    roi_contour_sequence = get_roi_contour_sequence_by_name(structure_name, dcm_struct)
+    contour_sequence = roi_contour_sequence.ContourSequence
+
     x, y, z = pull_coords_from_contour_sequence(contour_sequence)
 
     return x, y, z
