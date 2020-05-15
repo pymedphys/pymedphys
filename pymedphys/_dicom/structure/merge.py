@@ -193,3 +193,9 @@ def merge_contours(  # pylint:disable = inconsistent-return-statements
         return new_roi_contour_sequence
     else:
         roi_contour_sequence.ContourSequence = new_contour_sequence
+
+
+def merge_contours_cli(args):
+    dicom_dataset = pydicom.read_file(args.input_file, force=True)
+    merge_contours(dicom_dataset.ROIContourSequence, inplace=True)
+    pydicom.write_file(args.output_file, dicom_dataset)
