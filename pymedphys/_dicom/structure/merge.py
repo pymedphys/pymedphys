@@ -169,7 +169,9 @@ def create_new_contour_sequence(
     return new_contour_sequence
 
 
-def merge_contours(roi_contour_sequence, inplace=False):
+def merge_contours(  # pylint:disable = inconsistent-return-statements
+    roi_contour_sequence, inplace=False
+):
     contour_sequence = roi_contour_sequence.ContourSequence
     contours_by_z, image_sequence_by_z = extract_contours_and_image_sequences(
         contour_sequence
