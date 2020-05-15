@@ -33,6 +33,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [0.26.0]
+
+### New Features
+
+* Created a function to merge overlapping contours that have the same name
+  within a DICOM structure file.
+  * Underlying function -- <https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/_dicom/structure/merge.py#L172-L200>
+  * API exposure -- <https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/dicom.py#L13>
+* Exposed the above command as a part of the CLI. It is runnable with `pymedphys dicom merge-contours`
+  * CLI exposure -- <https://github.com/pymedphys/pymedphys/blob/8b9284a8bc9a948646c9d8c0723d9959c61ae089/pymedphys/cli/dicom.py#L42-L50>
+
 ## [0.25.1]
 
 ### Dependency Changes
