@@ -15,6 +15,7 @@ EXTERNAL_EXPORTS = (
     "numpy",
     "shapely.affinity",
     "shapely.geometry",
+    "shapely.ops",
     "shapely",
     "pymssql",
     "keyring",
@@ -72,6 +73,7 @@ if "numpy" not in IMPORTABLES:
     import numpy
     import shapely.affinity
     import shapely.geometry
+    import shapely.ops
     import shapely
     import pymssql
     import keyring
