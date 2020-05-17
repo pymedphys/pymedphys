@@ -730,9 +730,13 @@ def icom_input_method(
     patient_names = set()
     for icom_path in icom_paths:
         patient_name = str(icom_path.parent.name).split("_")[-1]
-        patient_name = utl_patient.convert_patient_name_from_split(
-            *patient_name.split(", ")
-        )
+        try:
+            patient_name = utl_patient.convert_patient_name_from_split(
+                *patient_name.split(", ")
+            )
+        except:  # pylint: disable = bare-except
+            pass
+
         patient_names.add(patient_name)
 
     patient_name = filter_patient_names(patient_names)
