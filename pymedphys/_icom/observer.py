@@ -20,12 +20,14 @@ def read_and_trigger_callback(event, callback):
 
 def create_event_handler(callback):
     def on_created(event):
+        print(f"File created: {event.src_path}")
         read_and_trigger_callback(event, callback)
 
     def on_deleted(_):
         pass
 
     def on_modified(event):
+        print(f"File modified: {event.src_path}")
         read_and_trigger_callback(event, callback)
 
     def on_moved(_):
