@@ -37,10 +37,10 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
     patient_dir = output_dir.joinpath(f"{patient_id}_{patient_name}")
     patient_dir.mkdir(parents=True, exist_ok=True)
 
-    reformated_timestamp = (
+    reformatted_timestamp = (
         start_timestamp.replace(":", "").replace("T", "_").replace("-", "")
     )
-    filename = patient_dir.joinpath(f"{reformated_timestamp}.xz")
+    filename = patient_dir.joinpath(f"{reformatted_timestamp}.xz")
 
     data = b""
     for item in patient_data:
@@ -89,6 +89,10 @@ class PatientIcomData:
 
     def update_data(self, ip, data):
         try:
+            if self._data[ip][-1][26] == data[26]:
+                print("Skip this data item, duplicate of previous data item.")
+                return
+
             self._data[ip].append(data)
         except KeyError:
             self._data[ip] = [data]
