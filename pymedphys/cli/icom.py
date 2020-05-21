@@ -21,7 +21,6 @@ def icom_cli(subparsers):
     icom_subparsers = icom_parser.add_subparsers(dest="icom")
 
     icom_listen(icom_subparsers)
-    icom_archive(icom_subparsers)
 
     return icom_parser
 
@@ -33,15 +32,4 @@ def icom_listen(icom_subparsers):
     parser.add_argument("directory")
     parser.set_defaults(
         func=pymedphys._icom.listener.listen_cli  # pylint: disable = protected-access
-    )
-
-
-def icom_archive(icom_subparsers):
-    parser = icom_subparsers.add_parser("archive")
-
-    parser.add_argument("directories", nargs="*")
-    parser.add_argument("--by-patient", action="store_true")
-    parser.add_argument("--output-dir")
-    parser.set_defaults(
-        func=pymedphys._icom.archive.archive_cli  # pylint: disable = protected-access
     )

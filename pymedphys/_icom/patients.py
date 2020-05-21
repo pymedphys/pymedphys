@@ -141,10 +141,3 @@ def archive_by_patient(directories_to_watch, output_dir):
         patient_icom_data.update_data(ip, data)
 
     observer.observe_with_callback(directories_to_watch, archive_by_patient_callback)
-
-
-def archive_by_patient_cli(args):
-    directories_to_watch = args.directories
-    output_dir = args.output_dir
-
-    archive_by_patient(directories_to_watch, output_dir)
