@@ -33,7 +33,6 @@ def listen(ip, data_dir):
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, ICOM_PORT))
-    s.settimeout(30)
     print(s)
 
     try:
