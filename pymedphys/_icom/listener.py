@@ -4,6 +4,8 @@ import socket
 import time
 import traceback
 
+from . import patients
+
 BUFFER_SIZE = 256
 ICOM_PORT = 1706
 
@@ -37,6 +39,13 @@ def listen(ip, data_dir):
 
     data_dir = pathlib.Path(data_dir)
     live_dir = data_dir.joinpath("live")
+    patients_dir = data_dir.joinpath("patients")
+
+    patient_icom_data = patients.PatientIcomData(patients_dir)
+
+    def archive_by_patient(ip, data):
+        patient_icom_data.update_data(ip, data)
+
     ip_directory = live_dir.joinpath(ip)
     ip_directory.mkdir(exist_ok=True, parents=True)
 
@@ -64,11 +73,11 @@ def listen(ip, data_dir):
             previous_start_location = get_start_location_from_date_span(span)
             for match in matches:
                 new_start_location = get_start_location_from_date_span(match.span())
-                save_an_icom_batch(
-                    date_pattern,
-                    ip_directory,
-                    data[previous_start_location:new_start_location],
-                )
+                data_to_save = data[previous_start_location:new_start_location]
+
+                save_an_icom_batch(date_pattern, ip_directory, data_to_save)
+                archive_by_patient(ip, data_to_save)
+
                 previous_start_location = new_start_location
 
             data = data[previous_start_location::]
