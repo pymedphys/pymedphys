@@ -54,6 +54,7 @@ def observe_with_callback(directories_to_watch, callback):
 
     for watch_path in directories_to_watch:
         observer = watchdog.observers.Observer()
+        # observer = watchdog.observers.polling.PollingObserver()
         observer.schedule(event_handler, watch_path, recursive=True)
 
         observers.append(observer)

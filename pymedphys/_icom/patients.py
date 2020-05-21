@@ -91,8 +91,13 @@ class PatientIcomData:
         try:
             if self._data[ip][-1][26] == data[26]:
                 print("Skip this data item, duplicate of previous data item.")
+                if self._data[ip][-1] != data:
+                    raise ValueError("Duplicate ID, but not duplicate data!")
+
                 return
 
+            if (self._data[ip][-1][26] + 1) % 256 != data[26]:
+                raise ValueError("Data stream appears to be arriving out of order")
             self._data[ip].append(data)
         except KeyError:
             self._data[ip] = [data]
