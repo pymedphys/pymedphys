@@ -29,10 +29,7 @@ def listen(ip, data_dir):
     data_dir = pathlib.Path(data_dir)
     live_dir = data_dir.joinpath("live")
     ip_directory = live_dir.joinpath(ip)
-    compressed_dir = data_dir.joinpath("compressed")
-
     ip_directory.mkdir(exist_ok=True, parents=True)
-    compressed_dir.mkdir(exist_ok=True)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, ICOM_PORT))
