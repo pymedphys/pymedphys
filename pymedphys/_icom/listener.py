@@ -1,6 +1,8 @@
 import pathlib
 import re
 import socket
+import time
+import traceback
 
 BUFFER_SIZE = 65536
 ICOM_PORT = 1706
@@ -40,4 +42,17 @@ def listen(ip, data_dir):
 
 
 def listen_cli(args):
-    listen(args.ip, args.directory)
+    while True:
+        try:
+            listen(args.ip, args.directory)
+        except KeyboardInterrupt:
+            raise
+        except:  # pylint: disable = bare-except
+            traceback.print_exc()
+
+        print(
+            "The iCOM listener dropped out. Will wait 15 minutes, and "
+            "then retry connection."
+        )
+
+        time.sleep(60 * 15)
