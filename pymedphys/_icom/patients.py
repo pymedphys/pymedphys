@@ -58,6 +58,9 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
             "No MU delivered, not saving delivery data for "
             f"{patient_name} ({patient_id})."
         )
+
+        return
+
     except UnableToReadIcom as _:
         new_location = filename.parent.parent.joinpath(
             "unknown_error_in_record", filename.parent.name, filename.name
