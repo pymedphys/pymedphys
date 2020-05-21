@@ -23,6 +23,15 @@ def get_start_location_from_date_span(span):
     return span[0] - 8
 
 
+def initialise_socket(ip):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((ip, ICOM_PORT))
+    s.settimeout(10)
+    print(s)
+
+    return s
+
+
 def listen(ip, data_dir):
     date_pattern = re.compile(rb"\d\d\d\d-\d\d-\d\d\d\d:\d\d:\d\d")
 
@@ -31,10 +40,7 @@ def listen(ip, data_dir):
     ip_directory = live_dir.joinpath(ip)
     ip_directory.mkdir(exist_ok=True, parents=True)
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((ip, ICOM_PORT))
-    s.settimeout(10)
-    print(s)
+    s = initialise_socket(ip)
 
     try:
         data = b""
@@ -43,6 +49,10 @@ def listen(ip, data_dir):
             try:
                 data += s.recv(BUFFER_SIZE)
             except socket.timeout:
+                print(s)
+                s.close()
+                print(s)
+                s = initialise_socket(ip)
                 continue
 
             matches = date_pattern.finditer(data)
