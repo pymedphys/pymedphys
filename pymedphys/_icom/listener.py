@@ -33,13 +33,17 @@ def listen(ip, data_dir):
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, ICOM_PORT))
+    s.settimeout(10)
     print(s)
 
     try:
         data = b""
 
         while True:
-            data += s.recv(BUFFER_SIZE)
+            try:
+                data += s.recv(BUFFER_SIZE)
+            except socket.timeout:
+                continue
 
             matches = date_pattern.finditer(data)
             try:
