@@ -46,6 +46,7 @@ EXTERNAL_EXPORTS = (
     "attr",
     "watchdog.events",
     "watchdog.observers",
+    "watchdog.observers.polling",
     "watchdog",
     "toml",
     "streamlit",
@@ -105,6 +106,7 @@ if "numpy" not in IMPORTABLES:
     import watchdog
     import watchdog.events
     import watchdog.observers
+    import watchdog.observers.polling
     import toml
     import streamlit
     import timeago

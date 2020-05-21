@@ -20,12 +20,14 @@ def read_and_trigger_callback(event, callback):
 
 def create_event_handler(callback):
     def on_created(event):
+        print(f"File created: {event.src_path}")
         read_and_trigger_callback(event, callback)
 
     def on_deleted(_):
         pass
 
     def on_modified(event):
+        print(f"File modified: {event.src_path}")
         read_and_trigger_callback(event, callback)
 
     def on_moved(_):
@@ -52,6 +54,7 @@ def observe_with_callback(directories_to_watch, callback):
 
     for watch_path in directories_to_watch:
         observer = watchdog.observers.Observer()
+        # observer = watchdog.observers.polling.PollingObserver()
         observer.schedule(event_handler, watch_path, recursive=True)
 
         observers.append(observer)
