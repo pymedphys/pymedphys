@@ -964,14 +964,12 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
 
     cursor_and_field_ids = [(cursor, field_id) for field_id in selected_field_ids]
     deliveries = cached_deliveries_loading(cursor_and_field_ids, delivery_from_mosaiq)
-    identifier = (
-        f"Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
-    )
+    identifier = f"{mosaiq_site} Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
 
     return {
         "patient_id": patient_id,
         "patient_name": patient_name,
-        "data_paths": selected_field_ids,
+        "data_paths": [],
         "identifier": identifier,
         "deliveries": deliveries,
     }
