@@ -971,7 +971,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
     return {
         "patient_id": patient_id,
         "patient_name": patient_name,
-        "data_paths": selected_field_ids,
+        "data_paths": [],
         "identifier": identifier,
         "deliveries": deliveries,
     }
