@@ -1,9 +1,13 @@
+import logging
 import lzma
 import pathlib
 
 import pymedphys
 
 from . import extract, observer
+
+# TODO: Convert logging to use lazy formatting
+# see https://docs.python.org/3/howto/logging.html#optimization
 
 
 class NoMUDelivered(ValueError):
@@ -48,13 +52,13 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
 
     try:
         delivery = validate_data(data)
-        print(
+        logging.info(  # pylint: disable = logging-fstring-interpolation
             f"Delivery with a total MU of {delivery.mu[-1]} for "
             f"{patient_name} ({patient_id}) is being saved within "
             f"{filename}."
         )
     except NoMUDelivered as _:
-        print(
+        logging.info(  # pylint: disable = logging-fstring-interpolation
             "No MU delivered, not saving delivery data for "
             f"{patient_name} ({patient_id})."
         )
@@ -70,7 +74,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
 
         filename = new_location
 
-        print(
+        logging.warning(  # pylint: disable = logging-fstring-interpolation
             "Unknown error within the record for "
             f"{patient_name} ({patient_id}). "
             f"Will instead save the record within {str(filename)}."
@@ -90,7 +94,7 @@ class PatientIcomData:
     def update_data(self, ip, data):
         try:
             if self._data[ip][-1][26] == data[26]:
-                print("Skip this data item, duplicate of previous data item.")
+                logging.warning("Skip this data item, duplicate of previous data item.")
                 if self._data[ip][-1] != data:
                     raise ValueError("Duplicate ID, but not duplicate data!")
 
@@ -106,7 +110,7 @@ class PatientIcomData:
         shrunk_data, patient_id = extract.extract(data, "Patient ID")
         shrunk_data, patient_name = extract.extract(shrunk_data, "Patient Name")
         shrunk_data, machine_id = extract.extract(shrunk_data, "Machine ID")
-        print(
+        logging.info(  # pylint: disable = logging-fstring-interpolation
             f"IP: {ip} | Timestamp: {timestamp} | "
             f"Patient ID: {patient_id} | "
             f"Patient Name: {patient_name} | Machine ID: {machine_id}"
