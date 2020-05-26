@@ -54,6 +54,9 @@ PyMedPhys GUI that utilises these iCOM records.
 * Should an error occur within `pymedphys icom listener` CLI it will now pause
   for 15 minutes and then reattempt a connection.
 * Add in extra sanity checks within the iCOM patient indexing tooling.
+* Added a `--debug` and `--verbose` flag to the PyMedPhys CLI which allows
+  users to set the logging level. These logging levels are currently only
+  utilised within the `pymedphys icom listen` CLI. [`cli/main.py#L51-L70`](https://github.com/pymedphys/pymedphys/blob/9c7c7e3c2d7fb49d30b418dca2fa28e6982ff97e/pymedphys/cli/main.py#L51-L70)
 
 ### Bug fixes
 
