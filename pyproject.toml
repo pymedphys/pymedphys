@@ -43,7 +43,7 @@ packaging = "*"
 PyYAML = "*"
 requests = "*"
 
-numpy = ">=1.12"
+numpy = ">= 1.12"
 matplotlib = "*"
 scipy = "*"
 pandas = "*"
