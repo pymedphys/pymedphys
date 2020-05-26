@@ -612,7 +612,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.27.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.28.0...master
+[0.28.0]: https://github.com/pymedphys/pymedphys/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/pymedphys/pymedphys/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/pymedphys/pymedphys/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/pymedphys/pymedphys/compare/v0.25.0...v0.25.1
