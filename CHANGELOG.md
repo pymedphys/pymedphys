@@ -33,6 +33,38 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [0.28.0]
+
+### Overview
+
+This release primarily focused on changes regarding the iCOM listener and the
+PyMedPhys GUI that utilises these iCOM records.
+
+### Breaking changes
+
+* Removed the `pymedphys icom archive` CLI command, this archiving is now built
+  directly into the listener itself.
+
+### New Features
+
+* The `pymedphys icom listener` CLI command now will collect the icom stream
+  into beam delivery batches and index them by patient name. This functionality
+  used to be undergone within the `pymedphys icom archive` CLI, but this
+  functionality has now been merged into the listener. [`listener.py#L79`](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L79)
+* Should an error occur within `pymedphys icom listener` CLI it will now pause
+  for 15 minutes and then reattempt a connection.
+* Add in extra sanity checks within the iCOM patient indexing tooling.
+
+### Bug fixes
+
+* Reduced the buffer size of the iCOM listener. [`listener.py#L9`](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L9)
+* If either the listener is turned off and then on again, or it is interrupted
+  the next time an iCOM stream socket is opened the Linac appears to send a
+  larger batch containing prior irradiations. The listener code was adjusted
+  to handle these extra bursts. [`listener.py#L57-L83`](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L57-L83)
+* Made PyMedPhys GUI skip name formatting attempt if the original patient name
+  format was not as expected. [`mudensity-compare.py#L733-L738`](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_gui/streamlit/mudensity-compare.py#L733-L738)
+
 ## [0.27.0]
 
 ### New Features
