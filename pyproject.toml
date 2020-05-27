@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.28.0dev1"
+version = "0.28.1"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -43,7 +43,7 @@ packaging = "*"
 PyYAML = "*"
 requests = "*"
 
-numpy = "^1.12"
+numpy = ">= 1.12"
 matplotlib = "*"
 scipy = "*"
 pandas = "*"

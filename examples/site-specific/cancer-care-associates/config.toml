@@ -65,7 +65,11 @@ escan_directory = '\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs'
 root_directory = '\\rccc-physicssvr\LinacLogFiles'
 
 [icom]
-patient_directory = '\\rccc-physicssvr\iComLogFiles\patients'
+patient_directories = [
+    '\\rccc-physicssvr\iComLogFiles\patients',
+    '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\patients',
+    '\\tunnel-sash-physics-server\SASH-DataExchange\icom\patients',
+]
 
 [output]
 png_directory = '\\pdc\PExIT\Physics\Patient Specific Logfile Fluence'

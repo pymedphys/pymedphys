@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import logging
 import sys
 
 from .bundle import bundle_cli
@@ -46,6 +47,27 @@ def define_parser():
     icom_cli(subparsers)
     bundle_cli(subparsers)
     gui_cli(subparsers)
+
+    # https://stackoverflow.com/a/20663028/3912576
+    parser.add_argument(
+        "-d",
+        "--debug",
+        help="Print debugging statements",
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG,
+        default=logging.WARNING,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Be verbose",
+        action="store_const",
+        dest="loglevel",
+        const=logging.INFO,
+    )
+    args = parser.parse_args()
+    logging.basicConfig(level=args.loglevel)
 
     return parser
 
