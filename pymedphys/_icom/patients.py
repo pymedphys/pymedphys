@@ -1,6 +1,7 @@
 import logging
 import lzma
 import pathlib
+import traceback
 
 import pymedphys
 
@@ -22,6 +23,7 @@ def validate_data(data_to_be_saved):
     try:
         delivery = pymedphys.Delivery.from_icom(data_to_be_saved)
     except Exception as _:
+        traceback.print_exc()
         raise UnableToReadIcom()
 
     if len(delivery.mu) == 0:
