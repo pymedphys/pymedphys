@@ -40,4 +40,4 @@ def main(_):
     fill_streamlit_credentials()
 
     streamlit_script_path = str(STREAMLIT_CONTENT_DIR.joinpath("mudensity-compare.py"))
-    subprocess.check_call(["streamlit", "run", streamlit_script_path])
+    subprocess.check_call(["streamlit", "run", streamlit_script_path], shell=True)
