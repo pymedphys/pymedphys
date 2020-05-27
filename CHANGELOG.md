@@ -33,6 +33,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [0.29.0]
+
+### Breaking changes
+
+* Changed the `patient_directories` icom parameter to accept a list of paths
+  instead of a single path.
+* Changed `pymedphys gui` iCOM path resolution logic to instead search over
+  a list of paths.
+
 ## [0.28.0]
 
 ### Overview
