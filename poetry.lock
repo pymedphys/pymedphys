@@ -847,18 +847,6 @@ tornado = "*"
 
 [[package]]
 category = "main"
-description = "Markdown and reStructuredText in a single file."
-name = "m2r"
-optional = false
-python-versions = "*"
-version = "0.2.1"
-
-[package.dependencies]
-docutils = "*"
-mistune = "*"
-
-[[package]]
-category = "main"
 description = "Python implementation of Markdown."
 name = "markdown"
 optional = true
@@ -1961,7 +1949,7 @@ description = "TensorFlow Estimator."
 name = "tf-estimator-nightly"
 optional = true
 python-versions = "*"
-version = "2.3.0.dev2020052101"
+version = "2.3.0.dev2020052616"
 
 [[package]]
 category = "main"
@@ -2256,13 +2244,13 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [extras]
-docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "m2r"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
 ml = ["tf-nightly", "tf-estimator-nightly", "tb-nightly"]
 pylint = ["pylint", "pytest-pylint"]
 pytest = ["pytest", "pytest-sugar", "hypothesis", "psutil"]
 
 [metadata]
-content-hash = "173530df35f8718e9d4d83e39f3ae1eeefb4f39316f1aa2b5d5a177b88b1636b"
+content-hash = "18321e58771fbed4514fac13a230e4d68ac2ab11127457bab7da0f28734eaf8e"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2695,9 +2683,6 @@ lazy-object-proxy = [
 livereload = [
     {file = "livereload-2.6.1-py2.py3-none-any.whl", hash = "sha256:78d55f2c268a8823ba499305dcac64e28ddeb9a92571e12d543cd304faf5817b"},
     {file = "livereload-2.6.1.tar.gz", hash = "sha256:89254f78d7529d7ea0a3417d224c34287ebfe266b05e67e51facaf82c27f0f66"},
-]
-m2r = [
-    {file = "m2r-0.2.1.tar.gz", hash = "sha256:bf90bad66cda1164b17e5ba4a037806d2443f2a4d5ddc9f6a5554a0322aaed99"},
 ]
 markdown = [
     {file = "Markdown-3.2.2-py3-none-any.whl", hash = "sha256:c467cd6233885534bf0fe96e62e3cf46cfc1605112356c4f9981512b8174de59"},
@@ -3352,7 +3337,7 @@ testpath = [
     {file = "testpath-0.4.4.tar.gz", hash = "sha256:60e0a3261c149755f4399a1fff7d37523179a70fdc3abdf78de9fc2604aeec7e"},
 ]
 tf-estimator-nightly = [
-    {file = "tf_estimator_nightly-2.3.0.dev2020052101-py2.py3-none-any.whl", hash = "sha256:c44ad28b0772a350fbe5eb4d84c98b6ab173167c58d9ae29ba7689c70b402f5b"},
+    {file = "tf_estimator_nightly-2.3.0.dev2020052616-py2.py3-none-any.whl", hash = "sha256:54e7369b196456e87bf85100664fe6c7deba74ca49d53817a825b11650b5a4cd"},
 ]
 tf-nightly = [
     {file = "tf_nightly-2.3.0.dev20200526-cp35-cp35m-macosx_10_6_intel.whl", hash = "sha256:280a402c7b010554e33b8198998cc6c5d109c719e469011abfb3a602b3af37fb"},
