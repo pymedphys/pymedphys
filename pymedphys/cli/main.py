@@ -66,8 +66,6 @@ def define_parser():
         dest="loglevel",
         const=logging.INFO,
     )
-    args = parser.parse_args()
-    logging.basicConfig(level=args.loglevel)
 
     return parser
 
@@ -76,6 +74,7 @@ def pymedphys_cli():
     parser = define_parser()
 
     args = parser.parse_args()
+    logging.basicConfig(level=args.loglevel)
 
     if hasattr(args, "func"):
         args.func(args)
