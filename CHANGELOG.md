@@ -33,6 +33,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [0.29.1]
+
+### Bug fixes
+
+* Fix issue in some Windows environments where running `pymedphys gui` would
+  not find the streamlit installation. [`_gui/__init__.py`](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
+
 ## [0.29.0]
 
 ### Breaking changes
@@ -624,7 +631,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.29.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...master
+[0.29.1]: https://github.com/pymedphys/pymedphys/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/pymedphys/pymedphys/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/pymedphys/pymedphys/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/pymedphys/pymedphys/compare/v0.26.0...v0.27.0
