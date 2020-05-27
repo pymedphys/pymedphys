@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD024 -->
+<!-- markdownlint-disable MD024 MD039 -->
 
 # Release Notes
 
@@ -38,16 +38,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug fixes
 
 * Fix issue in some Windows environments where running `pymedphys gui` would
-  not find the streamlit installation. [`_gui/__init__.py`](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
+  not find the streamlit installation. [ `_gui/__init__.py` ](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
 
 ## [0.29.0]
 
 ### Breaking changes
 
 * Changed the `patient_directories` icom parameter to accept a list of paths
-  instead of a single path within the pymedphys `config.toml`. [`config.toml#L67-L72`](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/examples/site-specific/cancer-care-associates/config.toml#L67-L72)
+  instead of a single path within the pymedphys `config.toml`. [ `config.toml#L67-L72` ](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/examples/site-specific/cancer-care-associates/config.toml#L67-L72)
 * Changed `pymedphys gui` iCOM path resolution logic to instead search over
-  a list of paths instead of just one path as before. [`mudensity-compare.py#L668-L670`](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/pymedphys/_gui/streamlit/mudensity-compare.py#L668-L670)
+  a list of paths instead of just one path as before. [ `mudensity-compare.py#L668-L670` ](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/pymedphys/_gui/streamlit/mudensity-compare.py#L668-L670)
 
 ## [0.28.0]
 
@@ -66,23 +66,23 @@ PyMedPhys GUI that utilises these iCOM records.
 * The `pymedphys icom listener` CLI command now will collect the icom stream
   into beam delivery batches and index them by patient name. This functionality
   used to be undergone within the `pymedphys icom archive` CLI, but this
-  functionality has now been merged into the listener. [`listener.py#L79`](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L79)
+  functionality has now been merged into the listener. [ `listener.py#L79` ](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L79)
 * Should an error occur within `pymedphys icom listener` CLI it will now pause
   for 15 minutes and then reattempt a connection.
 * Add in extra sanity checks within the iCOM patient indexing tooling.
 * Added a `--debug` and `--verbose` flag to the PyMedPhys CLI which allows
   users to set the logging level. These logging levels are currently only
-  utilised within the `pymedphys icom listen` CLI. [`cli/main.py#L51-L70`](https://github.com/pymedphys/pymedphys/blob/9c7c7e3c2d7fb49d30b418dca2fa28e6982ff97e/pymedphys/cli/main.py#L51-L70)
+  utilised within the `pymedphys icom listen` CLI. [ `cli/main.py#L51-L70` ](https://github.com/pymedphys/pymedphys/blob/9c7c7e3c2d7fb49d30b418dca2fa28e6982ff97e/pymedphys/cli/main.py#L51-L70)
 
 ### Bug fixes
 
-* Reduced the buffer size of the iCOM listener. [`listener.py#L9`](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L9)
+* Reduced the buffer size of the iCOM listener. [ `listener.py#L9` ](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L9)
 * If either the listener is turned off and then on again, or it is interrupted
   the next time an iCOM stream socket is opened the Linac appears to send a
   larger batch containing prior irradiations. The listener code was adjusted
-  to handle these extra bursts. [`listener.py#L57-L83`](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L57-L83)
+  to handle these extra bursts. [ `listener.py#L57-L83` ](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L57-L83)
 * Made PyMedPhys GUI skip name formatting attempt if the original patient name
-  format was not as expected. [`mudensity-compare.py#L733-L738`](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_gui/streamlit/mudensity-compare.py#L733-L738)
+  format was not as expected. [ `mudensity-compare.py#L733-L738` ](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_gui/streamlit/mudensity-compare.py#L733-L738)
 
 ## [0.27.0]
 
