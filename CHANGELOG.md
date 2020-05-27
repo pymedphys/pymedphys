@@ -33,6 +33,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [0.29.0]
+
+### Breaking changes
+
+* Changed the `patient_directories` icom parameter to accept a list of paths
+  instead of a single path within the pymedphys `config.toml`. [`config.toml#L67-L72`](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/examples/site-specific/cancer-care-associates/config.toml#L67-L72)
+* Changed `pymedphys gui` iCOM path resolution logic to instead search over
+  a list of paths instead of just one path as before. [`mudensity-compare.py#L668-L670`](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/pymedphys/_gui/streamlit/mudensity-compare.py#L668-L670)
+
 ## [0.28.0]
 
 ### Overview
@@ -615,7 +624,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.28.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.29.0...master
+[0.29.0]: https://github.com/pymedphys/pymedphys/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/pymedphys/pymedphys/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/pymedphys/pymedphys/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/pymedphys/pymedphys/compare/v0.25.1...v0.26.0
