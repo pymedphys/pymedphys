@@ -14,7 +14,15 @@ DOCS_HTML_BUILD_DIR = DOCS_BUILD_DIR.joinpath("html")
 
 def build_docs(args):
     subprocess.check_call(
-        ["poetry", "run", "sphinx-build", "-W", str(DOCS_DIR), str(DOCS_HTML_BUILD_DIR)]
+        [
+            "poetry",
+            "run",
+            "sphinx-build",
+            "-W",
+            str(DOCS_DIR),
+            str(DOCS_HTML_BUILD_DIR),
+        ],
+        shell=True,
     )
 
     if args.publish:

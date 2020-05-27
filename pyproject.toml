@@ -85,7 +85,6 @@ nbsphinx  = { version = "*", optional = true }
 jupyter_client = { version = "*", optional = true }
 ipython = { version = "*", optional = true }
 ipykernel = { version = "*", optional = true }
-m2r = { version = "*", optional = true }
 
 # pytest
 pytest = { version = "*", optional = true }
@@ -125,7 +124,6 @@ nbsphinx = "*"
 jupyter_client = "*"
 ipython = "*"
 ipykernel = "*"
-m2r = "*"
 
 # VSCode extension dependencies
 doc8 = "*"
@@ -139,8 +137,7 @@ pydot = "^1.4.1"
 docs = [
     "sphinx", "sphinx-rtd-theme",
     "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse",
-    "nbsphinx", "jupyter_client", "ipython", "ipykernel",
-    "m2r"
+    "nbsphinx", "jupyter_client", "ipython", "ipykernel"
 ]
 
 ml = [
