@@ -653,6 +653,10 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
 def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
     icom_directories = get_default_icom_directories()
+
+    if advanced_mode_local:
+        "iCOM patient directories", icom_directories
+
     icom_directories = [pathlib.Path(path) for path in icom_directories]
 
     if advanced_mode_local:
