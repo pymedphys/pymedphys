@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import re
 import socket
@@ -29,7 +30,7 @@ def initialise_socket(ip):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, ICOM_PORT))
     s.settimeout(10)
-    print(s)
+    logging.info(s)
 
     return s
 
@@ -58,9 +59,10 @@ def listen(ip, data_dir):
             try:
                 data += s.recv(BUFFER_SIZE)
             except socket.timeout:
-                print(s)
+                logging.warning("Socket connection timed out, retrying connection")
+                logging.info(s)
                 s.close()
-                print(s)
+                logging.info(s)
                 s = initialise_socket(ip)
                 continue
 
@@ -84,7 +86,7 @@ def listen(ip, data_dir):
 
     finally:
         s.close()
-        print(s)
+        logging.info(s)
 
 
 def listen_cli(args):
@@ -94,9 +96,9 @@ def listen_cli(args):
         except KeyboardInterrupt:
             raise
         except:  # pylint: disable = bare-except
-            traceback.print_exc()
+            logging.error(traceback.print_exc())
 
-        print(
+        logging.warning(
             "The iCOM listener dropped out. Will wait 15 minutes, and "
             "then retry connection."
         )
