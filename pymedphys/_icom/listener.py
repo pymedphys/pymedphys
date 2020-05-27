@@ -96,7 +96,7 @@ def listen_cli(args):
         except KeyboardInterrupt:
             raise
         except:  # pylint: disable = bare-except
-            logging.error(traceback.print_exc())
+            traceback.print_exc()
 
         logging.warning(
             "The iCOM listener dropped out. Will wait 15 minutes, and "
