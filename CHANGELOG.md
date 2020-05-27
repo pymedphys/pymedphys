@@ -33,6 +33,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [0.29.1]
+
+### Bug fixes
+
+* Fix issue in some Windows environments where running `pymedphys gui` would
+  not find the streamlit installation. [`_gui/__init__.py`](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
+
 ## [0.29.0]
 
 ### Breaking changes
