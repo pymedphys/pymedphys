@@ -19,25 +19,20 @@
 """End to end regression testing.
 """
 
-import os
-
 import pytest
 
 import numpy as np
 
 import pymedphys
 
-DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
-DELIVERY_DATA_FILEPATH = os.path.abspath(
-    os.path.join(DATA_DIRECTORY, "mu_density_example_arrays.npz")
-)
-
 
 @pytest.mark.slow
 def test_regression():
     """The results of MU Density calculation should not change
     """
-    regress_test_arrays = np.load(DELIVERY_DATA_FILEPATH)
+
+    data_filepath = pymedphys.data_path("mu_density_example_arrays.npz")
+    regress_test_arrays = np.load(data_filepath)
 
     mu = regress_test_arrays["mu"]
     mlc = regress_test_arrays["mlc"]

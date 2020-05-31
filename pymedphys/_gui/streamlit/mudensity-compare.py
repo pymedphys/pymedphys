@@ -168,9 +168,9 @@ def get_mosaiq_details():
 
 
 @st.cache
-def get_default_icom_directory():
+def get_default_icom_directories():
     config = get_config()
-    default_icom_directory = config["icom"]["patient_directory"]
+    default_icom_directory = config["icom"]["patient_directories"]
 
     return default_icom_directory
 
@@ -651,20 +651,13 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     }
 
 
-def icom_input_method(
-    patient_id="", icom_directory=None, key_namespace="", advanced_mode_local=False, **_
-):
-    if icom_directory is None:
-        icom_directory = get_default_icom_directory()
+def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
+    icom_directories = get_default_icom_directories()
 
     if advanced_mode_local:
-        icom_directory = st.text_input(
-            "iCOM Patient Directory",
-            str(icom_directory),
-            key=f"{key_namespace}_icom_directory",
-        )
+        "iCOM patient directories", icom_directories
 
-    icom_directory = pathlib.Path(icom_directory)
+    icom_directories = [pathlib.Path(path) for path in icom_directories]
 
     if advanced_mode_local:
         patient_id = st.text_input(
@@ -672,7 +665,10 @@ def icom_input_method(
         )
         patient_id
 
-    icom_deliveries = list(icom_directory.glob(f"{patient_id}_*/*.xz"))
+    icom_deliveries = []
+    for path in icom_directories:
+        icom_deliveries += list(path.glob(f"{patient_id}_*/*.xz"))
+
     icom_deliveries = sorted(icom_deliveries)
 
     icom_files_to_choose_from = [path.stem for path in icom_deliveries]
@@ -681,6 +677,8 @@ def icom_input_method(
         pd.to_datetime(icom_files_to_choose_from, format="%Y%m%d_%H%M%S").astype(str)
     )
 
+    choice_path_map = dict(zip(timestamps, icom_deliveries))
+
     """
     Here you need to select the timestamps that correspond to a single
     fraction of the plan selected above. Most of the time
@@ -688,7 +686,7 @@ def icom_input_method(
     cases you may need to select multiple timestamps.
 
     This can occur if for example a single fraction was delivered in separate
-    beams due to either a beam interupt, or the fraction being spread
+    beams due to either a beam interrupt, or the fraction being spread
     over multiple energies
     """
 
@@ -721,8 +719,8 @@ def icom_input_method(
     ]
 
     icom_paths = []
-    for icom_filename in icom_filenames:
-        icom_paths += list(icom_directory.glob(f"{patient_id}_*/{icom_filename}.xz"))
+    for selected in selected_icom_deliveries:
+        icom_paths.append(choice_path_map[selected])
 
     if advanced_mode_local:
         [str(path.resolve()) for path in icom_paths]
@@ -730,9 +728,13 @@ def icom_input_method(
     patient_names = set()
     for icom_path in icom_paths:
         patient_name = str(icom_path.parent.name).split("_")[-1]
-        patient_name = utl_patient.convert_patient_name_from_split(
-            *patient_name.split(", ")
-        )
+        try:
+            patient_name = utl_patient.convert_patient_name_from_split(
+                *patient_name.split(", ")
+            )
+        except:  # pylint: disable = bare-except
+            pass
+
         patient_names.add(patient_name)
 
     patient_name = filter_patient_names(patient_names)
@@ -751,7 +753,6 @@ def icom_input_method(
     results = {
         "patient_id": patient_id,
         "patient_name": patient_name,
-        "icom_directory": str(icom_directory),
         "selected_icom_deliveries": selected_icom_deliveries,
         "data_paths": icom_paths,
         "identifier": identifier,
@@ -960,14 +961,12 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
 
     cursor_and_field_ids = [(cursor, field_id) for field_id in selected_field_ids]
     deliveries = cached_deliveries_loading(cursor_and_field_ids, delivery_from_mosaiq)
-    identifier = (
-        f"Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
-    )
+    identifier = f"{mosaiq_site} Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
 
     return {
         "patient_id": patient_id,
         "patient_name": patient_name,
-        "data_paths": selected_field_ids,
+        "data_paths": [],
         "identifier": identifier,
         "deliveries": deliveries,
     }

@@ -21,8 +21,6 @@ method given within the following paper:
 http://dx.doi.org/10.1016/j.radonc.2015.11.034
 """
 
-import os
-
 import pytest
 
 import numpy as np
@@ -30,26 +28,14 @@ import numpy as np
 import pydicom
 
 import pymedphys
+from pymedphys._data import download
 from pymedphys._gamma.utilities import calculate_pass_rate
 
 # pylint: disable=C0103,C1801
 
 
-DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data", "agnew_mcgarry_images")
-
-REF_VMAT_1mm = os.path.abspath(
-    os.path.join(DATA_DIRECTORY, "H&N_VMAT_Reference_1mmPx.dcm")
-)
-EVAL_VMAT_1mm = os.path.abspath(
-    os.path.join(DATA_DIRECTORY, "H&N_VMAT_Evaluated_1mmPx.dcm")
-)
-
-REF_VMAT_0_25mm = os.path.abspath(
-    os.path.join(DATA_DIRECTORY, "H&N_VMAT_Reference_0_25mmPx.dcm")
-)
-EVAL_VMAT_0_25mm = os.path.abspath(
-    os.path.join(DATA_DIRECTORY, "H&N_VMAT_Evaluated_0_25mmPx.dcm")
-)
+def get_data_file(filename):
+    return download.get_file_within_data_zip("gamma_test_data.zip", filename)
 
 
 RANDOM_SUBSET = 50000
@@ -138,16 +124,29 @@ def local_gamma(
 
 def test_max_gamma():
     local_gamma(
-        REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6, random_subset=RANDOM_SUBSET, max_gamma=1.4
+        get_data_file("H&N_VMAT_Reference_1mmPx.dcm"),
+        get_data_file("H&N_VMAT_Evaluated_1mmPx.dcm"),
+        93.6,
+        random_subset=RANDOM_SUBSET,
+        max_gamma=1.4,
     )
 
     local_gamma(
-        REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6, random_subset=RANDOM_SUBSET, max_gamma=1.0001
+        get_data_file("H&N_VMAT_Reference_1mmPx.dcm"),
+        get_data_file("H&N_VMAT_Evaluated_1mmPx.dcm"),
+        93.6,
+        random_subset=RANDOM_SUBSET,
+        max_gamma=1.0001,
     )
 
 
 def test_local_gamma_1mm():
-    local_gamma(REF_VMAT_1mm, EVAL_VMAT_1mm, 93.6, random_subset=RANDOM_SUBSET)
+    local_gamma(
+        get_data_file("H&N_VMAT_Reference_1mmPx.dcm"),
+        get_data_file("H&N_VMAT_Evaluated_1mmPx.dcm"),
+        93.6,
+        random_subset=RANDOM_SUBSET,
+    )
 
 
 LOCAL_GAMMA_0_25_BASELINE = 96.9
@@ -155,8 +154,8 @@ LOCAL_GAMMA_0_25_BASELINE = 96.9
 
 def test_local_gamma_0_25mm():
     local_gamma(
-        REF_VMAT_0_25mm,
-        EVAL_VMAT_0_25mm,
+        get_data_file("H&N_VMAT_Reference_0_25mmPx.dcm"),
+        get_data_file("H&N_VMAT_Evaluated_0_25mmPx.dcm"),
         LOCAL_GAMMA_0_25_BASELINE,
         random_subset=RANDOM_SUBSET,
     )
@@ -165,8 +164,8 @@ def test_local_gamma_0_25mm():
 @pytest.mark.slow
 def test_multi_inputs():
     gamma = run_gamma(
-        REF_VMAT_0_25mm,
-        EVAL_VMAT_0_25mm,
+        get_data_file("H&N_VMAT_Reference_0_25mmPx.dcm"),
+        get_data_file("H&N_VMAT_Evaluated_0_25mmPx.dcm"),
         random_subset=RANDOM_SUBSET,
         max_gamma=1.0001,
         dose_threshold=[1, 0.2],

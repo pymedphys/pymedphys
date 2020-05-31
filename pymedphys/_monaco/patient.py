@@ -34,6 +34,9 @@ def read_patient_name(patient_directory):
     contents = read_monaco_file(demographic_file)
     patient_name = contents.split("\n")[2]
 
-    patient_name = pmp_util_patient.convert_patient_name(patient_name)
+    try:
+        patient_name = pmp_util_patient.convert_patient_name(patient_name)
+    except:  # pylint: disable = bare-except
+        pass
 
     return patient_name
