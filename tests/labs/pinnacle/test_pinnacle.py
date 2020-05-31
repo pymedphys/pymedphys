@@ -49,22 +49,21 @@ import numpy as np
 
 import pydicom
 
+from pymedphys._data import download
 from pymedphys.labs.pinnacle import PinnacleExport
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIRECTORY = os.path.join(HERE, "data", "export")
 
 working_path = tempfile.mkdtemp()
 data_path = os.path.join(working_path, "data")
 
 
-data_zip = os.path.join(DATA_DIRECTORY, "pinnacle_16.0_test_data.zip")
+def get_online_data(filename):
+    return download.get_file_within_data_zip("pinnacle_test_data.zip", filename)
 
 
 @pytest.fixture(scope="session")
 def data():
 
-    zip_ref = ZipFile(data_zip, "r")
+    zip_ref = ZipFile(get_online_data("pinnacle_16.0_test_data.zip"), "r")
     zip_ref.extractall(data_path)
     zip_ref.close()
 

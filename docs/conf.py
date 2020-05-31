@@ -16,11 +16,10 @@
 # pylint: disable = C0413, C0103
 
 import os
-import sys
 
-sys.path.insert(0, os.path.abspath("../src"))
+import pymedphys
 
-import pymedphys  # isort:skip
+os.system("pandoc ../CHANGELOG.md --from markdown --to rst -s -o ../CHANGELOG.rst")
 
 
 def setup(app):
@@ -66,7 +65,6 @@ extensions = [
     "sphinxarg.ext",
     "matplotlib.sphinxext.plot_directive",
     "sphinxcontrib.napoleon",
-    "m2r",
     "nbsphinx",
 ]
 
@@ -78,7 +76,7 @@ templates_path = ["_templates"]
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = [".rst", ".md"]
+source_suffix = [".rst"]
 # source_suffix = '.rst'
 
 # The master toctree document.

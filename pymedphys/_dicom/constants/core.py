@@ -37,6 +37,8 @@ from os import path
 
 from pymedphys._imports import pydicom
 
+from pymedphys._data import download
+
 # Many thanks to the Medical Connections for offering free
 # valid UIDs (http://www.medicalconnections.co.uk/FreeUID.html)
 # Their service was used to obtain the following root UID for PyMedPhys:
@@ -45,7 +47,6 @@ PYMEDPHYS_ROOT_UID = "1.2.826.0.1.3680043.10.188"
 
 # Each dict entry is pydicom.tag.Tag : (VR, VM, Name, Retired, Keyword)
 HERE = path.dirname(path.abspath(__file__))
-BASELINE_DICOM_DICT_FILEPATH = path.join(HERE, "baseline_dicom_dictionary.json")
 BASELINE_DICOM_REPEATERS_DICT_FILEPATH = path.join(
     HERE, "baseline_repeaters_dictionary.json"
 )
@@ -53,7 +54,12 @@ BASELINE_DICOM_REPEATERS_DICT_FILEPATH = path.join(
 
 @functools.lru_cache(maxsize=1)
 def get_baseline_dicom_dict():
-    with open(BASELINE_DICOM_DICT_FILEPATH) as in_file:
+
+    baseline_dicom_dict_filepath = download.zip_data_paths(
+        "baseline_dicom_dictionary.zip"
+    )[0]
+
+    with open(baseline_dicom_dict_filepath) as in_file:
         BASELINE_DICOM_DICT = json.load(in_file)
         BASELINE_DICOM_DICT = {
             pydicom.tag.Tag(int(key)): BASELINE_DICOM_DICT[key]

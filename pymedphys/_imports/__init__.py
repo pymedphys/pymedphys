@@ -15,6 +15,7 @@ EXTERNAL_EXPORTS = (
     "numpy",
     "shapely.affinity",
     "shapely.geometry",
+    "shapely.ops",
     "shapely",
     "pymssql",
     "keyring",
@@ -45,6 +46,7 @@ EXTERNAL_EXPORTS = (
     "attr",
     "watchdog.events",
     "watchdog.observers",
+    "watchdog.observers.polling",
     "watchdog",
     "toml",
     "streamlit",
@@ -72,6 +74,7 @@ if "numpy" not in IMPORTABLES:
     import numpy
     import shapely.affinity
     import shapely.geometry
+    import shapely.ops
     import shapely
     import pymssql
     import keyring
@@ -103,6 +106,7 @@ if "numpy" not in IMPORTABLES:
     import watchdog
     import watchdog.events
     import watchdog.observers
+    import watchdog.observers.polling
     import toml
     import streamlit
     import timeago
