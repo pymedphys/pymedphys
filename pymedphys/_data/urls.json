@@ -20,5 +20,8 @@
   "difficult_wlutz_image.ppm": "https://zenodo.org/record/3620937/files/frame_01.ppm?download=1",
   "tel-dicom-pairs.zip": "https://zenodo.org/record/3767548/files/tel-dicom-pairs.zip?download=1",
   "mu-density-gui-e2e-data.zip": "https://zenodo.org/record/3776844/files/mu-density-gui-e2e-data.zip?download=1",
-  "structure-deduplication.zip": "https://zenodo.org/record/3828058/files/structure-deduplication.zip?download=1"
+  "structure-deduplication.zip": "https://zenodo.org/record/3828058/files/structure-deduplication.zip?download=1",
+  "mu_density_example_arrays.npz": "",
+  "dicom_dose_test_data.zip": "",
+  "water_phantom.zip": ""
 }
