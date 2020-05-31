@@ -22,7 +22,7 @@ from pymedphys._imports import pandas as pd
 import pymedphys._utilities.patient
 
 from .connect import execute_sql
-from .constants import FIELD_TYPES, TOLERANCE_TYPES
+from .constants import FIELD_TYPES
 
 
 def get_treatment_times(cursor, field_id):
