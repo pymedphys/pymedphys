@@ -17,6 +17,7 @@ import os
 
 import numpy as np
 
+from pymedphys._data import download
 from pymedphys.labs.paulking.sinogram import (
     crop,
     find_modulation_factor,
@@ -26,15 +27,11 @@ from pymedphys.labs.paulking.sinogram import (
     unshuffle,
 )
 
-SIN_CSV_FILE = os.path.join(os.path.dirname(__file__), "./data/sinogram.csv")
-
-SIN_BIN_FILE = os.path.join(
-    os.path.dirname(__file__), "./data/MLC_all_test_old_800P.bin"
-)
-
 
 def test_read_csv_file():
-    pat_id, results = read_csv_file(SIN_CSV_FILE)
+    pat_id, results = read_csv_file(
+        download.get_file_within_data_zip("paulking_test_data.zip", "sinogram.csv")
+    )
     assert pat_id == "00000 - ANONYMOUS, PATIENT"
     num_projections = len(results)
     assert num_projections == 464
@@ -43,7 +40,11 @@ def test_read_csv_file():
 
 
 def test_read_bin_file():
-    assert read_bin_file(SIN_BIN_FILE).shape == (400, 64)
+    assert read_bin_file(
+        download.get_file_within_data_zip(
+            "paulking_test_data.zip", "MLC_all_test_old_800P.bin"
+        )
+    ).shape == (400, 64)
 
 
 # convert this to a nested list
@@ -74,12 +75,3 @@ def test_make_histogram():
 def test_find_modulation_factor():
     sinogram = read_csv_file(SIN_CSV_FILE)[-1]
     assert np.isclose(find_modulation_factor(sinogram), 2.762391)
-
-
-if __name__ == "__main__":
-    test_read_csv_file()
-    test_read_bin_file()
-    test_crop()
-    test_unshuffle()
-    test_make_histogram()
-    test_find_modulation_factor()
