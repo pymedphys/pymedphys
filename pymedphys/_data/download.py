@@ -17,6 +17,7 @@ import functools
 import json
 import os
 import pathlib
+import urllib.error
 import urllib.request
 import warnings
 import zipfile
@@ -26,7 +27,7 @@ from pymedphys._imports import tqdm
 import pymedphys._utilities.filehash
 from pymedphys import _config as pmp_config
 
-from .zenodo import get_zenodo_file_urls
+from . import retry, zenodo
 
 HERE = pathlib.Path(__file__).resolve().parent
 
@@ -42,6 +43,7 @@ def create_download_progress_bar():
     return DownloadProgressBar
 
 
+@retry.retry(urllib.error.HTTPError)
 def download_with_progress(url, filepath):
     DownloadProgressBar = create_download_progress_bar()
 
@@ -156,7 +158,7 @@ def data_file_hash_check(filename):
 
 
 def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=True):
-    file_urls = get_zenodo_file_urls(record_name)
+    file_urls = zenodo.get_zenodo_file_urls(record_name)
 
     record_directory = get_data_dir().joinpath(record_name)
     record_directory.mkdir(exist_ok=True)
