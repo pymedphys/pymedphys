@@ -19,8 +19,6 @@
 """End to end regression testing.
 """
 
-import os
-
 import pytest
 
 import numpy as np
