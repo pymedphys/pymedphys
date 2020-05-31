@@ -159,7 +159,8 @@ def connect(sql_server_and_ports):
     """A controlled execution class that opens and closes multiple SQL
     connections.
     Usage example:
-        import pymedphys.mosaiq
+        import pymedphys
+
         with pymedphys.mosaiq.connect('msqsql') as cursor:
             do_something(cursor)
     """
@@ -170,7 +171,7 @@ def connect(sql_server_and_ports):
         sql_server_and_ports_as_list = list(sql_server_and_ports)
         return_unnested_cursor = False
 
-    connections, cursors = multi_connect(sql_server_and_ports)
+    connections, cursors = multi_connect(sql_server_and_ports_as_list)
     try:
         if return_unnested_cursor:
             cursors = cursors[sql_server_and_ports]
