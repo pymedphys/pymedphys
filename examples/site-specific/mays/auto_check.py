@@ -4,7 +4,7 @@ import tkinter
 import pandas as pd
 
 from compare import compare_to_mosaiq
-from pymedphys._dicom.rtplan.helpers import get_all_dicom_treatment_info
+from helpers import get_all_dicom_treatment_info
 from pymedphys._mosaiq import connect
 from pymedphys._mosaiq.helpers import get_all_treatment_data
 
