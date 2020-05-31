@@ -17,6 +17,7 @@ import json
 import lzma
 import operator
 import os
+from pathlib import Path
 
 import pytest
 
@@ -25,14 +26,19 @@ import pandas as pd
 
 import pydicom
 
+from pymedphys._data import download
 from pymedphys.dicom import depth_dose, profile
 from pymedphys.labs.tpscompare import load_and_normalise_mephysto
-from shared import (
-    BASELINES_DIR,
-    DICOM_DOSE_FILEPATHS,
-    DICOM_PLAN_FILEPATH,
-    MEASUREMENTS_DIR,
-)
+
+HERE = Path(__file__).parent.resolve()
+DATA_DIR = HERE.joinpath("data")
+
+DICOM_DIR = DATA_DIR.joinpath("DICOM")
+DICOM_DOSE_FILEPATHS = {"05x05": "06MV_05x05.dcm.xz", "10x10": "06MV_10x10.dcm.xz"}
+DICOM_PLAN_FILEPATH = "06MV_plan.dcm"
+
+MEASUREMENTS_DIR = DATA_DIR.joinpath("measurements")
+BASELINES_DIR = DATA_DIR.joinpath("baselines")
 
 CREATE_BASELINE = False
 BASELINE_FILEPATH = os.path.join(BASELINES_DIR, "dicom_dose_profiles.json")
@@ -46,7 +52,11 @@ def loaded_doses():
 
     for key, filepath in DICOM_DOSE_FILEPATHS.items():
 
-        with lzma.open(filepath) as a_file:
+        resolved_filepath = str(
+            download.get_file_within_data_zip("tps_compare_dicom_files.zip", filepath)
+        )
+
+        with lzma.open(resolved_filepath) as a_file:
             doses[key] = pydicom.dcmread(a_file, force=True)
 
     return doses
@@ -54,7 +64,14 @@ def loaded_doses():
 
 @pytest.fixture
 def loaded_plan():
-    plan = pydicom.read_file(str(DICOM_PLAN_FILEPATH), force=True)
+    plan = pydicom.read_file(
+        str(
+            download.get_file_within_data_zip(
+                "tps_compare_dicom_files.zip", DICOM_PLAN_FILEPATH
+            )
+        ),
+        force=True,
+    )
 
     return plan
 

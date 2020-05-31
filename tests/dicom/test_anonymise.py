@@ -27,12 +27,7 @@ from pymedphys._dicom.anonymise import (
     is_anonymised_file,
     label_dicom_filepath_as_anonymised,
 )
-from pymedphys._dicom.constants import (
-    BASELINE_DICOM_DICT_FILEPATH,
-    BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
-    get_baseline_dicom_dict,
-    get_baseline_dicom_repeaters_dict,
-)
+from pymedphys._dicom.constants import get_baseline_dicom_dict
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.dicom import anonymise as anonymise_dataset
 
@@ -386,9 +381,7 @@ def test_anonymise_cli(tmp_path):
         remove_file(temp_filepath)
 
 
-def test_tags_to_anonymise_in_dicom_dict_baseline(
-    save_new_identifying_keywords=False, save_new_baselines=False
-):
+def test_tags_to_anonymise_in_dicom_dict_baseline(save_new_identifying_keywords=False):
     baseline_keywords = [val[4] for val in get_baseline_dicom_dict().values()]
     assert set(IDENTIFYING_KEYWORDS).issubset(baseline_keywords)
 
@@ -428,12 +421,3 @@ def test_tags_to_anonymise_in_dicom_dict_baseline(
         # "TemplateExtensionOrganizationUID",
         # "TransactionUID",
         # "UID",
-
-    if save_new_baselines:
-        with open(BASELINE_DICOM_DICT_FILEPATH, "w") as outfile:
-            json.dump(get_baseline_dicom_dict(), outfile, indent=2, sort_keys=True)
-
-        with open(BASELINE_DICOM_REPEATERS_DICT_FILEPATH, "w") as outfile:
-            json.dump(
-                get_baseline_dicom_repeaters_dict(), outfile, indent=2, sort_keys=True
-            )
