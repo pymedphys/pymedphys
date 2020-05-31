@@ -58,6 +58,15 @@ def get_data_dir():
     return data_dir
 
 
+def get_file_within_data_zip(zip_name, file_name):
+    dose_data_files = pymedphys.zip_data_paths(zip_name)
+    path_match = [path for path in dose_data_files if path.name == file_name]
+
+    assert len(path_match) == 1
+
+    return str(path_match[0])
+
+
 @functools.lru_cache()
 def get_url(filename):
     with open(HERE.joinpath("urls.json"), "r") as url_file:
