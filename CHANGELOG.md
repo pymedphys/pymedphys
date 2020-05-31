@@ -4,8 +4,7 @@
 
 All notable changes to this project will be documented in this file.
 
-This project adheres to
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!--  Template
 ## [Unreleased]
@@ -33,6 +32,13 @@ This project adheres to
 ### Performance Improvements
 
 * nil -->
+
+## [Unreleased]
+
+### New Features
+
+- Added DICOM helpers functionality and updated the Mosaiq helpers as a part of
+  the TPS/OIS comparison project. Not yet exposed as part of the API.
 
 ## [0.29.1]
 
@@ -373,12 +379,6 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
   install the package. To install all pymedphys dependencies as before now run
   `pip install pymedphys[library,labs]==0.14.0`.
 
-## [Unreleased]
-
-### New Features
-
-- Added DICOM helpers functionality and updated the Mosaiq helpers as a part of
-  the TPS/OIS comparison project. Not yet exposed as part of the API.
 
 ## [0.13.2]
 
