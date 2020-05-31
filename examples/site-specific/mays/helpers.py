@@ -20,7 +20,7 @@ import pandas as pd
 
 import pydicom
 
-from pymedphys._mosaiq.constants import TOLERANCE_TYPES
+import tolerance_constants
 
 
 def get_all_dicom_treatment_info(dicomFile):
@@ -235,6 +235,8 @@ def get_all_dicom_treatment_info(dicomFile):
         ],
     )
 
-    table["tolerance"] = [TOLERANCE_TYPES[item] for item in table["tolerance"]]
+    table["tolerance"] = [
+        tolerance_constants.TOLERANCE_TYPES[item] for item in table["tolerance"]
+    ]
 
     return table
