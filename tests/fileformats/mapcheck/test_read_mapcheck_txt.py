@@ -16,6 +16,7 @@ import os
 
 import numpy as np
 
+import pymedphys
 from pymedphys.labs.fileformats.mapcheck import read_mapcheck_txt
 
 DATA_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
@@ -23,8 +24,10 @@ DATA_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), "data")
 
 def test_read_mapcheck_txt():
     """Test for successful read of mapcheck file with consistent results."""
-    file_name = os.path.join(DATA_DIRECTORY, "tomo_mapcheck_test.txt")
-    result = read_mapcheck_txt(file_name)
+
+    file_path = pymedphys.data_path("tomo_mapcheck_test.txt")
+
+    result = read_mapcheck_txt(file_path)
     assert result.dose.shape == (len(result.x), len(result.y))  # x,y -> (x,y)
     assert result.x[0] < result.x[-1]  # x ascending
     assert result.y[0] < result.y[-1]  # y ascending
@@ -32,7 +35,3 @@ def test_read_mapcheck_txt():
     assert len(set(result.y)) == len(set(result.y))  # y vals unique
     assert np.all([i >= 0 for i in result.dose.flatten()])  # doses >= 0
     assert np.allclose(result.dose[20][20], 92.03876716076289)
-
-
-if __name__ == "__main__":
-    test_read_mapcheck_txt()
