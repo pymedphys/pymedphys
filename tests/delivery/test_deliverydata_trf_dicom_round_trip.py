@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-import os
-
 import pytest
 
 import numpy as np
@@ -23,6 +21,7 @@ import matplotlib.pyplot as plt
 
 import pydicom
 
+import pymedphys
 from pymedphys import Delivery
 from pymedphys._dicom.rtplan import (
     convert_to_one_fraction_group,
@@ -41,19 +40,32 @@ DIR_TO_TEST_MAP = {
 DIR_TO_TEST = "multi_fraction_groups"
 FRACTION_GROUP = DIR_TO_TEST_MAP[DIR_TO_TEST]["fraction_group"]
 
-DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data", DIR_TO_TEST)
-DICOM_FILEPATH = os.path.abspath(os.path.join(DATA_DIRECTORY, "rtplan.dcm"))
-LOGFILE_FILEPATH = os.path.abspath(os.path.join(DATA_DIRECTORY, "imrt.trf"))
+
+def get_file_in_dir(directory, filename):
+    all_paths = pymedphys.zip_data_paths("delivery_test_data.zip")
+    filtered = [
+        path
+        for path in all_paths
+        if path.parent.name == directory and path.name == filename
+    ]
+
+    assert len(filtered) == 1
+
+    return str(filtered[0])
 
 
 @pytest.fixture
 def loaded_dicom_dataset():
-    return pydicom.dcmread(DICOM_FILEPATH, force=True)
+    path = get_file_in_dir(DIR_TO_TEST, "rtplan.dcm")
+
+    return pydicom.dcmread(path, force=True)
 
 
 @pytest.fixture
 def logfile_delivery_data():
-    return Delivery.from_logfile(LOGFILE_FILEPATH)
+    path = get_file_in_dir(DIR_TO_TEST, "imrt.trf")
+
+    return Delivery.from_logfile(path)
 
 
 @pytest.fixture
