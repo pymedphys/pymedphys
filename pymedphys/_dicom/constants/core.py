@@ -37,7 +37,7 @@ from os import path
 
 from pymedphys._imports import pydicom
 
-import pymedphys
+from pymedphys._data import download
 
 # Many thanks to the Medical Connections for offering free
 # valid UIDs (http://www.medicalconnections.co.uk/FreeUID.html)
@@ -55,7 +55,7 @@ BASELINE_DICOM_REPEATERS_DICT_FILEPATH = path.join(
 @functools.lru_cache(maxsize=1)
 def get_baseline_dicom_dict():
 
-    baseline_dicom_dict_filepath = pymedphys.zip_data_paths(
+    baseline_dicom_dict_filepath = download.zip_data_paths(
         "baseline_dicom_dictionary.zip"
     )[0]
 
