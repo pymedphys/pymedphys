@@ -25,5 +25,6 @@
   "dicom_dose_test_data.zip": "https://zenodo.org/record/3870436/files/dicom_dose_test_data.zip?download=1",
   "water_phantom.zip": "",
   "baseline_dicom_dictionary.zip": "https://zenodo.org/record/3870436/files/baseline_dicom_dictionary.zip?download=1",
-  "tomo_mapcheck_test.txt": "https://zenodo.org/record/3870436/files/tomo_mapcheck_test.txt?download=1"
+  "tomo_mapcheck_test.txt": "https://zenodo.org/record/3870436/files/tomo_mapcheck_test.txt?download=1",
+  "profiler_test_data.zip": "https://zenodo.org/record/3870436/files/profiler_test_data.zip?download=1"
 }
