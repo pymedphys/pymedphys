@@ -16,24 +16,28 @@ import os
 
 import numpy as np
 
+from pymedphys._data import download
 from pymedphys.labs.fileformats.profiler import read_prs
 
 DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
 
 
 def test_read_prs():
+    data_zip_name = "profiler_test_data.zip"
 
-    file_name = os.path.join(DATA_DIRECTORY, "test_varian_open.prs")
+    file_name = download.get_file_within_data_zip(data_zip_name, "test_varian_open.prs")
     assert np.allclose(read_prs(file_name).cax, 45.50562901780488)
     assert np.allclose(read_prs(file_name).x[0][1], 0.579460838649598)
     assert np.allclose(read_prs(file_name).y[0][1], 0.2910764234184594)
 
-    file_name = os.path.join(DATA_DIRECTORY, "test_varian_wedge.prs")
+    file_name = download.get_file_within_data_zip(
+        data_zip_name, "test_varian_wedge.prs"
+    )
     assert np.allclose(read_prs(file_name).cax, 21.863167869662274)
     assert np.allclose(read_prs(file_name).x[0][1], 0.5626051581458927)
     assert np.allclose(read_prs(file_name).y[0][1], 0.260042064635505)
 
-    file_name = os.path.join(DATA_DIRECTORY, "test_tomo_50mm.prs")
+    file_name = download.get_file_within_data_zip(data_zip_name, "test_tomo_50mm.prs")
     assert np.allclose(read_prs(file_name).cax, 784.320114110518)
     assert np.allclose(read_prs(file_name).x[0][1], 563.4064789252321)
     assert np.allclose(read_prs(file_name).y[0][1], 1.8690221773721463)

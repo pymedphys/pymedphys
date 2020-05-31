@@ -20,5 +20,16 @@
   "difficult_wlutz_image.ppm": "https://zenodo.org/record/3620937/files/frame_01.ppm?download=1",
   "tel-dicom-pairs.zip": "https://zenodo.org/record/3767548/files/tel-dicom-pairs.zip?download=1",
   "mu-density-gui-e2e-data.zip": "https://zenodo.org/record/3776844/files/mu-density-gui-e2e-data.zip?download=1",
-  "structure-deduplication.zip": "https://zenodo.org/record/3828058/files/structure-deduplication.zip?download=1"
+  "structure-deduplication.zip": "https://zenodo.org/record/3828058/files/structure-deduplication.zip?download=1",
+  "mu_density_example_arrays.npz": "https://zenodo.org/record/3870436/files/mu_density_example_arrays.npz?download=1",
+  "dicom_dose_test_data.zip": "https://zenodo.org/record/3870436/files/dicom_dose_test_data.zip?download=1",
+  "water_phantom.zip": "https://zenodo.org/record/3870436/files/water_phantom.zip?download=1",
+  "baseline_dicom_dictionary.zip": "https://zenodo.org/record/3870436/files/baseline_dicom_dictionary.zip?download=1",
+  "tomo_mapcheck_test.txt": "https://zenodo.org/record/3870436/files/tomo_mapcheck_test.txt?download=1",
+  "profiler_test_data.zip": "https://zenodo.org/record/3870436/files/profiler_test_data.zip?download=1",
+  "gamma_test_data.zip": "https://zenodo.org/record/3870436/files/gamma_test_data.zip?download=1",
+  "paulking_test_data.zip": "https://zenodo.org/record/3870436/files/paulking_test_data.zip?download=1",
+  "tps_compare_dicom_files.zip": "https://zenodo.org/record/3870436/files/tps_compare_dicom_files.zip?download=1",
+  "delivery_test_data.zip": "https://zenodo.org/record/3870436/files/delivery_test_data.zip?download=1",
+  "pinnacle_test_data.zip": "https://zenodo.org/record/3870436/files/pinnacle_test_data.zip?download=1"
 }
