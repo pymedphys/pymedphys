@@ -14,12 +14,24 @@
 
 
 FIELD_TYPES = {
+    0: "Unspecified",
     1: "Static",
     2: "StepNShoot",
+    3: "Setup",
+    4: "kV Setup",
     5: "CT",
     6: "Port",
+    7: "Fixed",
+    8: "Dynamic",
+    9: "MV CT",
     11: "Arc",
     12: "Skip Arcs",
     13: "VMAT",
     14: "DMLC",
+    15: "Helical",
+    16: "Fixed Angle",
+    17: "Path",
+    18: "Shot",
+    20: "User Defined",
+    21: "PDR",
 }
