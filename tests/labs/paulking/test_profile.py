@@ -22,6 +22,7 @@ import os
 
 import numpy as np
 
+from pymedphys._data import download
 from pymedphys.labs.paulking.profile import Profile
 
 PROFILER = [
@@ -197,6 +198,10 @@ WEDGED = [
 ]
 
 
+def get_data_file(filename):
+    return download.get_file_within_data_zip("paulking_test_data.zip", filename)
+
+
 def test_init():
     assert np.allclose(Profile(x=[0], y=[0]).x, [0])
 
@@ -258,9 +263,8 @@ def test_from_pulse():
 
 
 def test_from_snc_profiler():
-    data_directory = os.path.abspath(os.path.dirname(__file__))
-    data_directory = os.path.join(data_directory, "data")
-    file_name = os.path.join(data_directory, "test_varian_open.prs")
+    file_name = get_data_file("test_varian_open.prs")
+
     x_profile = Profile().from_snc_profiler(file_name, "tvs")
     y_profile = Profile().from_snc_profiler(file_name, "rad")
     assert np.isclose(x_profile.get_y(0), 45.50562901780488)
@@ -269,9 +273,8 @@ def test_from_snc_profiler():
 
 
 def test_from_narrow_png():
-    data_directory = os.path.abspath(os.path.dirname(__file__))
-    data_directory = os.path.join(data_directory, "data")
-    file_name = os.path.join(data_directory, "FilmCalib_EBT_vert_strip.png")
+    file_name = get_data_file("FilmCalib_EBT_vert_strip.png")
+
     png = Profile().from_narrow_png(file_name)
     assert np.isclose(png.get_y(0), 0.609074819347117)
 
@@ -407,41 +410,9 @@ def test_align_to():
 
 
 def test_cross_calibrate():
-    data_directory = os.path.abspath(os.path.dirname(__file__))
-    data_directory = os.path.join(data_directory, "data")
-    reference_file_name = os.path.join(data_directory, "FilmCalib.prs")
-    measured_file_name = os.path.join(data_directory, "FilmCalib_EBT_vert_strip.png")
+    reference_file_name = get_data_file("FilmCalib.prs")
+    measured_file_name = get_data_file("FilmCalib_EBT_vert_strip.png")
+
     cal_curve = Profile().cross_calibrate(reference_file_name, measured_file_name)
     assert min(cal_curve.x) <= 1
     assert max(cal_curve.x) >= 0
-
-
-if __name__ == "__main__":
-    test_init()
-    test_interp()
-    test_magic_methods()
-    test_from_lists()
-    test_from_tuples()
-    test_from_pulse()
-    test_from_snc_profiler()
-    test_from_narrow_png()
-    test_get_y()
-    test_get_x()
-    test_get_increment()
-    test_slice_segment()
-    test_resample_x()
-    test_resample_y()
-    test_make_normal_y()
-    test_get_edges()
-    test_make_normal_x()
-    test_slice_umbra()
-    test_slice_penumbra()
-    test_slice_shoulders()
-    test_slice_tails()
-    test_get_flatness()
-    test_get_symmetry()
-    test_make_symmetric()
-    test_make_centered()
-    test_make_flipped()
-    test_align_to()
-    test_cross_calibrate()

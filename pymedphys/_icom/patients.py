@@ -1,9 +1,14 @@
+import logging
 import lzma
 import pathlib
+import traceback
 
 import pymedphys
 
 from . import extract, observer
+
+# TODO: Convert logging to use lazy formatting
+# see https://docs.python.org/3/howto/logging.html#optimization
 
 
 class NoMUDelivered(ValueError):
@@ -18,6 +23,7 @@ def validate_data(data_to_be_saved):
     try:
         delivery = pymedphys.Delivery.from_icom(data_to_be_saved)
     except Exception as _:
+        traceback.print_exc()
         raise UnableToReadIcom()
 
     if len(delivery.mu) == 0:
@@ -37,10 +43,10 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
     patient_dir = output_dir.joinpath(f"{patient_id}_{patient_name}")
     patient_dir.mkdir(parents=True, exist_ok=True)
 
-    reformated_timestamp = (
+    reformatted_timestamp = (
         start_timestamp.replace(":", "").replace("T", "_").replace("-", "")
     )
-    filename = patient_dir.joinpath(f"{reformated_timestamp}.xz")
+    filename = patient_dir.joinpath(f"{reformatted_timestamp}.xz")
 
     data = b""
     for item in patient_data:
@@ -48,16 +54,19 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
 
     try:
         delivery = validate_data(data)
-        print(
+        logging.info(  # pylint: disable = logging-fstring-interpolation
             f"Delivery with a total MU of {delivery.mu[-1]} for "
             f"{patient_name} ({patient_id}) is being saved within "
             f"{filename}."
         )
     except NoMUDelivered as _:
-        print(
+        logging.info(  # pylint: disable = logging-fstring-interpolation
             "No MU delivered, not saving delivery data for "
             f"{patient_name} ({patient_id})."
         )
+
+        return
+
     except UnableToReadIcom as _:
         new_location = filename.parent.parent.joinpath(
             "unknown_error_in_record", filename.parent.name, filename.name
@@ -67,7 +76,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
 
         filename = new_location
 
-        print(
+        logging.warning(  # pylint: disable = logging-fstring-interpolation
             "Unknown error within the record for "
             f"{patient_name} ({patient_id}). "
             f"Will instead save the record within {str(filename)}."
@@ -86,6 +95,15 @@ class PatientIcomData:
 
     def update_data(self, ip, data):
         try:
+            if self._data[ip][-1][26] == data[26]:
+                logging.warning("Skip this data item, duplicate of previous data item.")
+                if self._data[ip][-1] != data:
+                    raise ValueError("Duplicate ID, but not duplicate data!")
+
+                return
+
+            if (self._data[ip][-1][26] + 1) % 256 != data[26]:
+                raise ValueError("Data stream appears to be arriving out of order")
             self._data[ip].append(data)
         except KeyError:
             self._data[ip] = [data]
@@ -94,7 +112,7 @@ class PatientIcomData:
         shrunk_data, patient_id = extract.extract(data, "Patient ID")
         shrunk_data, patient_name = extract.extract(shrunk_data, "Patient Name")
         shrunk_data, machine_id = extract.extract(shrunk_data, "Machine ID")
-        print(
+        logging.info(  # pylint: disable = logging-fstring-interpolation
             f"IP: {ip} | Timestamp: {timestamp} | "
             f"Patient ID: {patient_id} | "
             f"Patient Name: {patient_name} | Machine ID: {machine_id}"
@@ -129,10 +147,3 @@ def archive_by_patient(directories_to_watch, output_dir):
         patient_icom_data.update_data(ip, data)
 
     observer.observe_with_callback(directories_to_watch, archive_by_patient_callback)
-
-
-def archive_by_patient_cli(args):
-    directories_to_watch = args.directories
-    output_dir = args.output_dir
-
-    archive_by_patient(directories_to_watch, output_dir)

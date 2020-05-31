@@ -10,3 +10,4 @@ from ._dicom.dose import (
     profile,
     zyx_and_dose_from_dataset,
 )
+from ._dicom.structure.merge import merge_contours
