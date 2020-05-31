@@ -28,5 +28,6 @@
   "tomo_mapcheck_test.txt": "https://zenodo.org/record/3870436/files/tomo_mapcheck_test.txt?download=1",
   "profiler_test_data.zip": "https://zenodo.org/record/3870436/files/profiler_test_data.zip?download=1",
   "gamma_test_data.zip": "https://zenodo.org/record/3870436/files/gamma_test_data.zip?download=1",
-  "paulking_test_data.zip": "https://zenodo.org/record/3870436/files/paulking_test_data.zip?download=1"
+  "paulking_test_data.zip": "https://zenodo.org/record/3870436/files/paulking_test_data.zip?download=1",
+  "tps_compare_dicom_files.zip": "https://zenodo.org/record/3870436/files/tps_compare_dicom_files.zip?download=1"
 }

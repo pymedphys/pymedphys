@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-import os
-
 import numpy as np
 
 from pymedphys._data import download
@@ -28,10 +26,12 @@ from pymedphys.labs.paulking.sinogram import (
 )
 
 
+def get_sinogram_csv_path():
+    return download.get_file_within_data_zip("paulking_test_data.zip", "sinogram.csv")
+
+
 def test_read_csv_file():
-    pat_id, results = read_csv_file(
-        download.get_file_within_data_zip("paulking_test_data.zip", "sinogram.csv")
-    )
+    pat_id, results = read_csv_file(get_sinogram_csv_path())
     assert pat_id == "00000 - ANONYMOUS, PATIENT"
     num_projections = len(results)
     assert num_projections == 464
@@ -63,7 +63,7 @@ def test_unshuffle():
 
 
 def test_make_histogram():
-    sinogram = read_csv_file(SIN_CSV_FILE)[-1]
+    sinogram = read_csv_file(get_sinogram_csv_path())[-1]
     assert np.allclose(make_histogram(sinogram)[0][0], [0.0, 0.1])
     assert make_histogram(sinogram)[0][1] == 25894
     # [(array([0. , 0.1]), 25894),
@@ -73,5 +73,5 @@ def test_make_histogram():
 
 
 def test_find_modulation_factor():
-    sinogram = read_csv_file(SIN_CSV_FILE)[-1]
+    sinogram = read_csv_file(get_sinogram_csv_path())[-1]
     assert np.isclose(find_modulation_factor(sinogram), 2.762391)
