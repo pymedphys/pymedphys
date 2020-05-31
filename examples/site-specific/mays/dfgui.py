@@ -4,9 +4,9 @@
 from __future__ import absolute_import, division, print_function
 
 # unused import required to allow 'eval' of date filters
-import datetime
+import datetime  # pylint: disable = unused-import
 from bisect import bisect
-from datetime import date
+from datetime import date  # pylint: disable = unused-import
 
 import numpy as np
 import pandas as pd
