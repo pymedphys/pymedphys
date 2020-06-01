@@ -220,6 +220,7 @@
     "prependpath",
     "psutil",
     "pval",
+    "pyargs",
     "pydeck",
     "pydicom",
     "pylinac",
