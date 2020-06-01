@@ -16,12 +16,7 @@ def imread(input_filepath):
 def convert_lossless_jpeg(input_filepath, output_filepath=None):
     input_filepath = pathlib.Path(input_filepath)
     if output_filepath is None:
-        output_filepath = input_filepath.parent.joinpath(f"{input_filepath.stem}.ppm")
+        output_filepath = input_filepath.parent.joinpath(f"{input_filepath.stem}.tif")
 
     im = imread(input_filepath)
-    try:
-        imageio.imwrite(str(output_filepath), im, format="PPMRAW-FI")
-    except RuntimeError:
-        imageio.plugins.freeimage.download()
-        importlib.reload(imageio)
-        imageio.imwrite(str(output_filepath), im, format="PPMRAW-FI")
+    imageio.imwrite(str(output_filepath), im, format="TIFF")
