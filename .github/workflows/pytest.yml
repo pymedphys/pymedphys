@@ -24,11 +24,11 @@ jobs:
           - os: 'windows'
             toxenv: 'doctest'
           - os: 'macos'
+            toxenv: 'pylint'
+          - os: 'macos'
             toxenv: 'slow'
           - os: 'macos'
-            toxenv: 'pytest'
-          - os: 'ubuntu'
-            toxenv: 'pytest'
+            toxenv: 'doctest'
 
     runs-on: ${{ matrix.os }}-latest
 
