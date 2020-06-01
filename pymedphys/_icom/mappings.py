@@ -3,7 +3,7 @@ ICOM = {
     "Patient Name": (b"\x10\x00PN\x00P", str, "first"),
     "Rx Site": (b"\x01\x10LO\x00P", str, "first"),
     "Field ID": (b"\x03\x10LO\x00P", str, "first"),
-    "Machine ID": (b"\xb2\x00SH\x00P", int, "first"),
+    "Machine ID": (b"\xb2\x00SH\x00P", str, "first"),
     "Radiation Type": (b"\xc6\x00CS\x00R", str, "first"),
     "Energy": (b"\x14\x01SH\x00R", str, "first"),
     "Wedge": (b"\x18\x01CS\x00R", str, "first"),

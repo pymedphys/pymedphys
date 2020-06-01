@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.30.0dev0"
+version = "0.30.0dev4"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -86,7 +86,7 @@ jupyter_client = { version = "*", optional = true }
 ipython = { version = "*", optional = true }
 ipykernel = { version = "*", optional = true }
 
-# pytest
+# tests
 pytest = { version = "*", optional = true }
 pytest-sugar  = { version = "*", optional = true }
 hypothesis  = { version = "*", optional = true }
@@ -144,12 +144,8 @@ ml = [
     "tf-nightly", "tf-estimator-nightly", "tb-nightly"
 ]
 
-pytest = [
-    "pytest", "pytest-sugar", "hypothesis", "psutil"
-]
-
-pylint = [
-    "pylint", "pytest-pylint"
+tests = [
+    "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"
 ]
 
 [tool.poetry.scripts]
