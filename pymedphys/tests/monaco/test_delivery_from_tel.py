@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 
 import numpy as np
 
@@ -24,6 +25,7 @@ DIRS_TO_SKIP = (
 )
 
 
+@pytest.mark.pydicom
 def test_delivery_from_monaco():
     data_paths = pymedphys.zip_data_paths("tel-dicom-pairs.zip")
     dir_names = {path.parent.name for path in data_paths}
