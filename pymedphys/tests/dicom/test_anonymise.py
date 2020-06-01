@@ -96,6 +96,7 @@ def _get_non_anonymous_replacement_value(keyword):
 
 
 @pytest.mark.slow
+@pytest.mark.pydicom
 def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
     # Create dataset with one instance of every identifying keyword and
@@ -201,6 +202,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
     assert is_anonymised_dataset(ds)
 
 
+@pytest.mark.pydicom
 def test_anonymise_file():
     assert not is_anonymised_file(TEST_FILEPATH)
     temp_basename = "{}_{}.dcm".format(".".join(TEST_FILEPATH.split(".")[:-1]), uuid4())
@@ -243,6 +245,7 @@ def test_anonymise_file():
         remove_file(anon_filepath_pres)
 
 
+@pytest.mark.pydicom
 def test_anonymise_directory(tmp_path):
     temp_filepath = tmp_path / "test.dcm"
     temp_anon_filepath = label_dicom_filepath_as_anonymised(temp_filepath)
@@ -275,6 +278,7 @@ def test_anonymise_directory(tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.pydicom
 @pytest.mark.skipif(
     "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
 )
@@ -381,6 +385,7 @@ def test_anonymise_cli(tmp_path):
         remove_file(temp_filepath)
 
 
+@pytest.mark.pydicom
 def test_tags_to_anonymise_in_dicom_dict_baseline(save_new_identifying_keywords=False):
     baseline_keywords = [val[4] for val in get_baseline_dicom_dict().values()]
     assert set(IDENTIFYING_KEYWORDS).issubset(baseline_keywords)

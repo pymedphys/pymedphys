@@ -15,6 +15,8 @@
 
 import numpy as np
 
+import pytest
+
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.structure import (
     Structure,
@@ -43,6 +45,7 @@ ANOTHER_STRUCTURE = Structure(
 )
 
 
+@pytest.mark.pydicom
 def test_pull_structure():
     dicom_structure = dicom_dataset_from_dict(
         {

@@ -76,6 +76,7 @@ def loaded_plan():
     return plan
 
 
+@pytest.mark.pydicom
 def test_bulk_compare(loaded_doses, loaded_plan):
     absolute_dose_table = pd.read_csv(
         MEASUREMENTS_DIR.joinpath("AbsoluteDose.csv"), index_col=0
@@ -108,6 +109,7 @@ def test_bulk_compare(loaded_doses, loaded_plan):
         assert np.std(diff) <= 0.05
 
 
+@pytest.mark.pydicom
 def test_baseline_profiles(loaded_doses, loaded_plan):
     baselines = {}
 

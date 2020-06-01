@@ -71,6 +71,7 @@ def run_xyz_function_tests(coord_system):
         assert np.array_equal(test_xyz[2], expected_xyz[orient][2])
 
 
+@pytest.mark.pydicom
 @pytest.mark.skip(
     reason=(
         "Test previously had a short circuit and did not run final "
@@ -82,9 +83,11 @@ def test_extract_iec_patient_xyz():
     run_xyz_function_tests("PATIENT")
 
 
+@pytest.mark.pydicom
 def test_extract_iec_fixed_xyz():
     run_xyz_function_tests("FIXED")
 
 
+@pytest.mark.pydicom
 def test_extract_dicom_patient_xyz():
     run_xyz_function_tests("DICOM")

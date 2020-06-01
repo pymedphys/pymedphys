@@ -31,6 +31,7 @@ DATA_DIR = HERE.joinpath("data", "rtplan")
 DICOM_PLAN_FILEPATH = DATA_DIR.joinpath("06MV_plan.dcm")
 
 
+@pytest.mark.pydicom
 def test_surface_entry_with_fallback():
     should_fail_with_unsupported_gantry = DicomBase.from_dict(
         {"BeamSequence": [{"ControlPointSequence": [{"GantryAngle": "5.0"}]}]}
@@ -55,6 +56,7 @@ def test_surface_entry_with_fallback():
     assert get_surface_entry_point_with_fallback(plan_dataset) == (0.0, -300.0, 0.0)
 
 
+@pytest.mark.pydicom
 def test_surface_entry():
     plan = pydicom.read_file(str(DICOM_PLAN_FILEPATH), force=True)
 

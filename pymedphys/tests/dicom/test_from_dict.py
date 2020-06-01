@@ -13,11 +13,14 @@
 # limitations under the License.
 
 
+import pytest
+
 import pydicom
 
 from pymedphys._dicom.create import dicom_dataset_from_dict
 
 
+@pytest.mark.pydicom
 def test_dicom_from_dict():
     baseline_dataset = pydicom.Dataset()
     baseline_dataset.Manufacturer = "PyMedPhys"

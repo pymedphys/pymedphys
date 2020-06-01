@@ -17,6 +17,8 @@ import os
 import subprocess
 import uuid
 
+import pytest
+
 import numpy as np
 
 import pydicom
@@ -52,6 +54,7 @@ def compare_dicom_cli(command, original, expected):
         remove_file(ADJUSTED_DICOM_FILENAME)
 
 
+@pytest.mark.pydicom
 def test_adjust_machine_name():
     new_name = "new_name"
 
@@ -87,6 +90,7 @@ def test_adjust_machine_name():
     compare_dicom_cli(command, original_ds, expected_ds)
 
 
+@pytest.mark.pydicom
 def test_electron_density_append():
     adjustment_map = {
         "to_be_changed 1": 1.0,
@@ -201,6 +205,7 @@ def test_electron_density_append():
     compare_dicom_cli(command, original_ds, expected_ds)
 
 
+@pytest.mark.pydicom
 def test_structure_name_parse():
     structure_names = [
         "a RED=1",
@@ -225,6 +230,7 @@ def test_structure_name_parse():
     assert expected_adjustment_map == adjustment_map
 
 
+@pytest.mark.pydicom
 def test_structure_name_based_RED_append():
     electron_density_to_use = 0.5
 

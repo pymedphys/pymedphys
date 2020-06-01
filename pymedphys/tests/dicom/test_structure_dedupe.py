@@ -16,11 +16,14 @@ import pathlib
 import subprocess
 import tempfile
 
+import pytest
+
 import pydicom
 
 import pymedphys
 
 
+@pytest.mark.pydicom
 def test_structure_dedupe():
     data_paths = pymedphys.zip_data_paths("structure-deduplication.zip")
 
