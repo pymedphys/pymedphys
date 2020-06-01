@@ -95,6 +95,7 @@ psutil  = { version = "*", optional = true }
 # pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
+pylibjpeg-libjpeg = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
 # Testing

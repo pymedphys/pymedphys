@@ -1293,7 +1293,7 @@ enum = ["enum34"]
 [[package]]
 category = "main"
 description = "Run a subprocess in a pseudo terminal"
-marker = "sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\""
+marker = "python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\") or python_version >= \"3.4\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\")"
 name = "ptyprocess"
 optional = false
 python-versions = "*"
@@ -1382,6 +1382,17 @@ name = "pygments"
 optional = false
 python-versions = ">=3.5"
 version = "2.6.1"
+
+[[package]]
+category = "main"
+description = "A Python wrapper for libjpeg, with a focus on use as a plugin for for pylibjpeg"
+name = "pylibjpeg-libjpeg"
+optional = false
+python-versions = ">=3.6"
+version = "1.0.0"
+
+[package.dependencies]
+numpy = ">=1.16.0"
 
 [[package]]
 category = "main"
@@ -2249,7 +2260,7 @@ ml = ["tf-nightly", "tf-estimator-nightly", "tb-nightly"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "7016541e00c2db13c6b09b7357fe06faba012dcdbbd01b960aa0eb73032b13d9"
+content-hash = "dd2da67087505f9d0f1d6c88e41aeae466943fcc18d645d7f69fdf560f7c3bc6"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -3013,6 +3024,24 @@ pydot = [
 pygments = [
     {file = "Pygments-2.6.1-py3-none-any.whl", hash = "sha256:ff7a40b4860b727ab48fad6360eb351cc1b33cbf9b15a0f689ca5353e9463324"},
     {file = "Pygments-2.6.1.tar.gz", hash = "sha256:647344a061c249a3b74e230c739f434d7ea4d8b1d5f3721bc0f3558049b38f44"},
+]
+pylibjpeg-libjpeg = [
+    {file = "pylibjpeg-libjpeg-1.0.0.tar.gz", hash = "sha256:bccacd3bb152a226fa07d13026ed380a5a8cc22687f9e37296cc48b13e208cb7"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:a75540a09aebb8aded70fd59a10b75fa77c5473ff93b987e412f52ada65316a3"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-manylinux2010_i686.whl", hash = "sha256:b128c80b57f670d1a91927901233e2084135a7af2130a767498edfbc6ad0e13b"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:2dfce465c7e68821115a03b20db9043e01792abb779ef4304f735f3c5fa8ede6"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-win32.whl", hash = "sha256:a7b6cbfcc2a6cd6f097d727517b44fe43729afc9e4a02fd0d6c8a003a98e74c8"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-win_amd64.whl", hash = "sha256:e6bb24c0388ac4c9f7eb5b4474827bfd725b1069bf83df75c1fc60e66325c4f8"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-macosx_10_6_intel.whl", hash = "sha256:2562c6a5bf0678352f5bf58f7f4f636fb8f14ceea53f70fb509c01f5f6c10141"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-manylinux2010_i686.whl", hash = "sha256:31a6e9fef41f8b07eee97cb66a43215ad804e2dd93b64bfe094739fde60311bb"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:86fc6a130fc03c8b5b8cb2e907f23323adf6e8c8480775540ecd898305fefe23"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-win32.whl", hash = "sha256:eca40d98d3d2cea7d259fba20fc4b6664ea6ceffee6b801382355962848e7966"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-win_amd64.whl", hash = "sha256:a83cdf26c811e4840b533ec8a23d86553e6b1194a2418d646348983b4c5a0783"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:86d1cde689b2077d17e96250949fb45e62fc40f0bc510a52563e820b4176fb88"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-manylinux2010_i686.whl", hash = "sha256:72b3b468553dfcacc1305d43a2c4cefc3a4c00ae0e8c08b47400edd7fb5aa9f3"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:d60f304c8b65baa689bf06469379f18f465c48092beb5f475bdaab261f8af809"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-win32.whl", hash = "sha256:928bc3080e87b4b99170dd2a189a593c6f13c76341932cece4940758ac90b884"},
+    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-win_amd64.whl", hash = "sha256:c1d396f832d3a835851e3ccd2f409ef732e5516b32c7908ba06b46ef981d934b"},
 ]
 pylint = [
     {file = "pylint-2.5.2-py3-none-any.whl", hash = "sha256:dd506acce0427e9e08fb87274bcaa953d38b50a58207170dbf5b36cf3e16957b"},
