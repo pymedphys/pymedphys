@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-import numpy as np
-
 import pytest
+
+import numpy as np
 
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.structure import (
