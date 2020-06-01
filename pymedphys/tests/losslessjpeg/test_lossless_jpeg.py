@@ -12,9 +12,6 @@ import pymedphys
 import pymedphys._losslessjpeg
 
 
-@pytest.mark.skipif(
-    platform.system() == "Darwin", reason="No macos binary has been built"
-)
 def test_lossless_jpeg():
     testing_data = pymedphys.zip_data_paths("lossless_jpeg_test.zip")
 

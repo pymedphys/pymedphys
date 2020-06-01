@@ -1,3 +1,4 @@
+import importlib
 import pathlib
 
 from pymedphys._imports import imageio, libjpeg
@@ -22,4 +23,5 @@ def convert_lossless_jpeg(input_filepath, output_filepath=None):
         imageio.imwrite(str(output_filepath), im, format="PPMRAW-FI")
     except RuntimeError:
         imageio.plugins.freeimage.download()
+        importlib.reload(imageio)
         imageio.imwrite(str(output_filepath), im, format="PPMRAW-FI")
