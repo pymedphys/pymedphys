@@ -51,6 +51,7 @@ EXTERNAL_EXPORTS = (
     "toml",
     "streamlit",
     "timeago",
+    "libjpeg",
 )
 
 pymedphys._vendor.apipkg.initpkg(  # pylint: disable = protected-access
@@ -110,5 +111,6 @@ if "numpy" not in IMPORTABLES:
     import toml
     import streamlit
     import timeago
+    import libjpeg
 
     raise ValueError("This section of code should never run")
