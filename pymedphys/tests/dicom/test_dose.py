@@ -37,6 +37,7 @@ DATA_DIRECTORY = pjoin(HERE, "data", "dose")
 ORIENTATIONS_SUPPORTED = ["FFDL", "FFDR", "FFP", "FFS", "HFDL", "HFDR", "HFP", "HFS"]
 
 
+@pytest.mark.pydicom
 def test_dicom_dose_constancy():
     wedge_basline_filename = "wedge_dose_baseline.json"
 
@@ -65,6 +66,7 @@ def test_dicom_dose_constancy():
     )
 
 
+@pytest.mark.pydicom
 def test_require_patient_orientation_be_HFS():
     test_ds_dict = {
         key: pydicom.dcmread(test_coords.get_data_file(key))

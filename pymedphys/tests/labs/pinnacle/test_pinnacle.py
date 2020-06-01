@@ -113,6 +113,7 @@ def find_corresponding_dicom(dcm):
 
 
 @pytest.mark.slow
+@pytest.mark.pydicom
 def test_ct(pinn):
 
     for p in pinn:
@@ -186,6 +187,7 @@ def test_struct(pinn):
 
 
 @pytest.mark.slow
+@pytest.mark.pydicom
 def test_dose(pinn):
 
     for p in pinn:
@@ -228,6 +230,7 @@ def test_dose(pinn):
 
 
 @pytest.mark.slow
+@pytest.mark.pydicom
 def test_plan(pinn):
 
     for p in pinn:

@@ -122,6 +122,7 @@ def local_gamma(
     assert np.round(gamma_pass, decimals=1) == result
 
 
+@pytest.mark.pydicom
 def test_max_gamma():
     local_gamma(
         get_data_file("H&N_VMAT_Reference_1mmPx.dcm"),
@@ -140,6 +141,7 @@ def test_max_gamma():
     )
 
 
+@pytest.mark.pydicom
 def test_local_gamma_1mm():
     local_gamma(
         get_data_file("H&N_VMAT_Reference_1mmPx.dcm"),
@@ -152,6 +154,7 @@ def test_local_gamma_1mm():
 LOCAL_GAMMA_0_25_BASELINE = 96.9
 
 
+@pytest.mark.pydicom
 def test_local_gamma_0_25mm():
     local_gamma(
         get_data_file("H&N_VMAT_Reference_0_25mmPx.dcm"),
@@ -162,6 +165,7 @@ def test_local_gamma_0_25mm():
 
 
 @pytest.mark.slow
+@pytest.mark.pydicom
 def test_multi_inputs():
     gamma = run_gamma(
         get_data_file("H&N_VMAT_Reference_0_25mmPx.dcm"),

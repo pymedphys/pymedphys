@@ -15,12 +15,15 @@
 import io
 from copy import deepcopy
 
+import pytest
+
 import pydicom.filebase
 
 from pymedphys._dicom.collection import DicomBase
 from pymedphys._dicom.create import dicom_dataset_from_dict
 
 
+@pytest.mark.pydicom
 def test_copy():
     dont_change_string = "don't change me"
     to_be_changed_string = "do change me"
@@ -43,6 +46,7 @@ def test_copy():
     assert dataset_to_be_viewed.Manufacturer == new_manufactuer
 
 
+@pytest.mark.pydicom
 def test_anonymise():
     expected_dataset = dicom_dataset_from_dict(
         {"Manufacturer": "PyMedPhys", "PatientName": "Anonymous"}
@@ -57,6 +61,7 @@ def test_anonymise():
     assert dicom.dataset == expected_dataset
 
 
+@pytest.mark.pydicom
 def test_to_and_from_file():
     temp_file = io.BytesIO()
 
@@ -73,6 +78,7 @@ def test_to_and_from_file():
     assert new_dicom == dicom
 
 
+@pytest.mark.pydicom
 def test_equal():
     dicom1 = DicomBase.from_dict(
         {"Manufacturer": "PyMedPhys", "PatientName": "Python^Monte"}

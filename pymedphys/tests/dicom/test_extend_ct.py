@@ -15,6 +15,8 @@
 
 from copy import deepcopy
 
+import pytest
+
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.ct.extend import (
     convert_datasets_to_deque,
@@ -39,6 +41,7 @@ def make_datasets(uuids, slice_locations):
     return convert_datasets_to_deque(initial_datasets)
 
 
+@pytest.mark.pydicom
 def test_extend_datasets():
     initial_uuids = generate_uids(4)
     final_uuids = generate_uids(7)
@@ -69,6 +72,7 @@ def test_extend_datasets():
     assert resulting_dataset_right == expected_datasets_right
 
 
+@pytest.mark.pydicom
 def test_out_of_order():
     initial_uuids = generate_uids(4)
     final_uuids = generate_uids(7)
