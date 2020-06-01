@@ -170,6 +170,7 @@
     "jupyterlab",
     "keras",
     "keyrings",
+    "libjpeg",
     "logfile",
     "lzma",
     "macos",
