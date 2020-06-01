@@ -80,6 +80,7 @@ def pymedphys_cli():
         try:
             args.func(args, remaining)
         except TypeError:
+            parser.parse_args()
             args.func(args)
     else:
         subparser_names = [
