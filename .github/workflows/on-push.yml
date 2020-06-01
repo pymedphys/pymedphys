@@ -3,6 +3,53 @@ name: Tox
 on: [push]
 
 jobs:
+
+# =============================================================================
+
+  Pre-Commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract branch name
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Test branch name
+        run: |
+          echo ${{ steps.extract_branch.outputs.branch }}
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-cache
+
+      - name: Run Pre-Commit
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files
+      - name: Fix any issues
+        if: failure()
+        run: |
+          git config --local user.email "pre-commit-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git commit -m "Fix pre-commit failures" -a
+          exit 1
+      - name: Push changes
+        if: failure()
+        uses: ad-m/github-push-action@02b0b75
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
+
+# =============================================================================
+
   Tox:
     strategy:
       fail-fast: false
@@ -30,6 +77,7 @@ jobs:
           - os: 'macos'
             toxenv: 'doctest'
 
+    needs: Pre-Commit
     runs-on: ${{ matrix.os }}-latest
 
     steps:
@@ -131,6 +179,67 @@ jobs:
       run: |
         poetry run tox -e ${{ matrix.toxenv }}-nix
 
+# =============================================================================
+
+  StackOverflow:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu']
+        toxenv: ['stackoverflow']
+        python-version: [3.8]
+
+    needs: Tox
+    runs-on: ${{ matrix.os }}-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Show python information
+      run: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'Linux')
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'macOS')
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'Windows')
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Upgrade pip, install poetry and tox
+      run: |
+        python -m pip install --upgrade pip poetry tox
+
+    - name: Run Tox
+      run: |
+        poetry run tox -e ${{ matrix.toxenv }}
+
+# =============================================================================
 
   WithUpdates:
     strategy:
@@ -140,6 +249,7 @@ jobs:
         python-version: [3.7]
         toxenv: ['pylint', 'pytest']
 
+    needs: Tox
     runs-on: ${{ matrix.os }}-latest
 
     steps:
@@ -207,8 +317,7 @@ jobs:
       run: |
         git add -A && git diff HEAD --name-only --exit-code || poetry run tox -e ${{ matrix.toxenv }}
 
-
-
+# =============================================================================
 
   Cypress:
     strategy:
