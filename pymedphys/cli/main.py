@@ -79,20 +79,25 @@ def pymedphys_cli():
     if hasattr(args, "func"):
         try:
             args.func(args, remaining)
+            return
         except TypeError:
-            parser.parse_args()
-            args.func(args)
+            pass
+
+        parser.parse_args()
+        args.func(args)
+
+        return
+
+    subparser_names = [
+        attribute for attribute in dir(args) if not attribute.startswith("_")
+    ]
+
+    if not subparser_names:
+        parser.print_help()
     else:
-        subparser_names = [
-            attribute for attribute in dir(args) if not attribute.startswith("_")
-        ]
+        assert len(subparser_names) == 1
 
-        if not subparser_names:
-            parser.print_help()
-        else:
-            assert len(subparser_names) == 1
+        subparser_name = subparser_names[0]
+        assert getattr(args, subparser_name) is None
 
-            subparser_name = subparser_names[0]
-            assert getattr(args, subparser_name) is None
-
-            parser.parse_args([subparser_name, "--help"])
+        parser.parse_args([subparser_name, "--help"])
