@@ -1,8 +1,5 @@
 import pathlib
-import platform
 import tempfile
-
-import pytest
 
 import numpy as np
 
