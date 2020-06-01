@@ -73,11 +73,14 @@ def define_parser():
 def pymedphys_cli():
     parser = define_parser()
 
-    args = parser.parse_args()
+    args, remaining = parser.parse_known_args()
     logging.basicConfig(level=args.loglevel)
 
     if hasattr(args, "func"):
-        args.func(args)
+        try:
+            args.func(args, remaining)
+        except TypeError:
+            args.func(args)
     else:
         subparser_names = [
             attribute for attribute in dir(args) if not attribute.startswith("_")

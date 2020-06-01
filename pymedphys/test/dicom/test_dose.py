@@ -29,7 +29,8 @@ import pymedphys
 from pymedphys._data import download
 from pymedphys._dicom.collection import DicomDose
 from pymedphys._dicom.dose import require_patient_orientation_be_HFS
-from test_coords import get_data_file
+
+from . import test_coords
 
 HERE = dirname(abspath(__file__))
 DATA_DIRECTORY = pjoin(HERE, "data", "dose")
@@ -66,7 +67,8 @@ def test_dicom_dose_constancy():
 
 def test_require_patient_orientation_be_HFS():
     test_ds_dict = {
-        key: pydicom.dcmread(get_data_file(key)) for key in ORIENTATIONS_SUPPORTED
+        key: pydicom.dcmread(test_coords.get_data_file(key))
+        for key in ORIENTATIONS_SUPPORTED
     }
 
     ds_no_orient = pydicom.dcmread(
