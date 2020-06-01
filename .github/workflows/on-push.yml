@@ -77,7 +77,6 @@ jobs:
           - os: 'macos'
             toxenv: 'doctest'
 
-    needs: Pre-Commit
     runs-on: ${{ matrix.os }}-latest
 
     steps:
