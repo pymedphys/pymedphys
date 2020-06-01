@@ -145,11 +145,7 @@ ml = [
 ]
 
 tests = [
-    "pytest", "pytest-sugar", "hypothesis", "psutil"
-]
-
-pylint = [
-    "pylint", "pytest-pylint"
+    "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"
 ]
 
 [tool.poetry.scripts]
