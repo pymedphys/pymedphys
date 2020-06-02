@@ -21,6 +21,8 @@ def save_an_icom_batch(date_pattern, ip_directory, data_to_save):
     with open(filepath, "bw+") as f:
         f.write(data_to_save)
 
+    logging.debug("Saved stream to %(filepath)s", {"filepath": filepath})
+
 
 def get_start_location_from_date_span(span):
     return span[0] - 8
