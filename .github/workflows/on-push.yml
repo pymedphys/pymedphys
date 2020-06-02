@@ -54,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu', 'macos', 'windows']
+        os: ['ubuntu', 'macos']
         toxenv: ['pylint', 'docs', 'doctest', 'clean', 'pytest']
         include:
           - os: 'ubuntu'
