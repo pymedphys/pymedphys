@@ -187,7 +187,7 @@ ToxSecond:
           python-version: 3.6
         - toxenv: 'yarn'
           python-version: 3.6
-        - toxenv: 'yarn'
+        - toxenv: 'stackoverflow'
           python-version: 3.8
 
   needs: ToxFirst
