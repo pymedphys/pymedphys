@@ -80,74 +80,55 @@ jobs:
       with:
         fetch-depth: 1
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Show python information
-      run: |
-        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
-        python -c "import platform; print(platform.machine()); print(platform.release())"
-
-#####################
-# CACHE LOGIC START #
-#####################
-
-# Unfortunately at this current point in time there does not appear to be a way
-# to easily reuse content across different actions. The below section manages
-# the caching for pymedphys installations from poetry. This logic is often
-# repeated across different actions. Once action step reuse is supported this
-# section will be refactored out.
-
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
         key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
 
-    - uses: actions/cache@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
       with:
-        path: ~/.cache/pypoetry/virtualenvs
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
+        python-version: ${{ matrix.python-version }}
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Linux')
+    - name: Get full Python version
+      id: full-python-version
+      shell: bash
+      run: |
+        echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
+
+    - name: Install poetry
+      shell: bash
+      run: |
+        curl -fsS -o get-poetry.py https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py
+        python get-poetry.py --preview -y
+        echo "::set-env name=PATH::$HOME/.poetry/bin:$PATH"
+    - name: Configure poetry
+      shell: bash
+      run: |
+        poetry config virtualenvs.in-project true
+
+    - name: Set up cache
+      uses: actions/cache@v2
+      id: cache
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'macOS')
-      with:
-        path: ~/Library/Caches/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+    - name: Ensure cache is healthy
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Windows')
-      with:
-        path: ~\AppData\Local\pip\Cache
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-###################
-# CACHE LOGIC END #
-###################
+    - name: Install dependencies
+      shell: bash
+      run: |
+        poetry install --no-dev
 
     - name: Install FreeTDS on MacOS
       if: matrix.os == 'macos'
       run: |
         brew install freetds
-
-    - name: Upgrade pip, install poetry and tox
-      run: |
-        python -m pip install --upgrade pip poetry tox
 
     - name: Install Pandoc on Ubuntu
       if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu'
@@ -198,53 +179,74 @@ jobs:
       with:
         fetch-depth: 1
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Show python information
-      run: |
-        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
-        python -c "import platform; print(platform.machine()); print(platform.release())"
-
-  #####################
-  # CACHE LOGIC START #
-  #####################
-
-  # Unfortunately at this current point in time there does not appear to be a way
-  # to easily reuse content across different actions. The below section manages
-  # the caching for pymedphys installations from poetry. This logic is often
-  # repeated across different actions. Once action step reuse is supported this
-  # section will be refactored out.
-
     - uses: actions/cache@v1
       with:
         path: ~/.pymedphys
         key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
 
-    - uses: actions/cache@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
       with:
-        path: ~/.cache/pypoetry/virtualenvs
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
+        python-version: ${{ matrix.python-version }}
 
-    - uses: actions/cache@v1
-      if: startsWith(runner.os, 'Linux')
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-  ###################
-  # CACHE LOGIC END #
-  ###################
-
-    - name: Upgrade pip, install poetry and tox
+    - name: Get full Python version
+      id: full-python-version
+      shell: bash
       run: |
-        python -m pip install --upgrade pip poetry tox
+        echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
+
+    - name: Install poetry
+      shell: bash
+      run: |
+        curl -fsS -o get-poetry.py https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py
+        python get-poetry.py --preview -y
+        echo "::set-env name=PATH::$HOME/.poetry/bin:$PATH"
+    - name: Configure poetry
+      shell: bash
+      run: |
+        poetry config virtualenvs.in-project true
+
+    - name: Set up cache
+      uses: actions/cache@v2
+      id: cache
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Ensure cache is healthy
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        poetry install --no-dev
+
+    - name: Install FreeTDS on MacOS
+      if: matrix.os == 'macos'
+      run: |
+        brew install freetds
+
+    - name: Install Pandoc on Ubuntu
+      if: matrix.toxenv == 'docs' && matrix.os == 'ubuntu'
+      run: |
+        sudo apt-get install -y pandoc
+
+    - name: Install Pandoc on MacOS
+      if: matrix.toxenv == 'docs' && matrix.os == 'macos'
+      run: |
+        brew install pandoc
+
+    - name: Install Pandoc on Windows
+      if: matrix.toxenv == 'docs' && matrix.os == 'windows'
+      run: |
+        choco install pandoc
+
+    - name: Run Tox on Windows
+      if: matrix.os == 'windows'
+      run: |
+        poetry run tox -e ${{ matrix.toxenv }}-win
 
     - name: Run Tox on Nix
       if: matrix.os == 'macos' || matrix.os == 'ubuntu'
