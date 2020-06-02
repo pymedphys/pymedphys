@@ -131,6 +131,7 @@
     "flipud",
     "fluence",
     "freetds",
+    "fstring",
     "funcs",
     "functools",
     "genindex",
