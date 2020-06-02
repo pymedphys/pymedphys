@@ -190,6 +190,7 @@ ToxSecond:
         - toxenv: 'yarn'
           python-version: 3.8
 
+  needs: ToxFirst
   runs-on: ${{ matrix.os }}-latest
 
   steps:
