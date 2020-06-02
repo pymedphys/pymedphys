@@ -401,7 +401,7 @@ jobs:
 
     - name: Run poetry install
       run: |
-        poetry install --no-dev -E pytest
+        poetry install --no-dev -E tests
 
     - name: Download demo data
       run: |
