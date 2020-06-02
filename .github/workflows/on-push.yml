@@ -176,80 +176,80 @@ jobs:
 
 # =============================================================================
 
-ToxSecond:
-  strategy:
-    fail-fast: false
-    matrix:
-      os: ['ubuntu']
-      toxenv: ['slow', 'yarn', 'stackoverflow']
-      include:
-        - toxenv: 'slow'
-          python-version: 3.6
-        - toxenv: 'yarn'
-          python-version: 3.6
-        - toxenv: 'stackoverflow'
-          python-version: 3.8
+  ToxSecond:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu']
+        toxenv: ['slow', 'yarn', 'stackoverflow']
+        include:
+          - toxenv: 'slow'
+            python-version: 3.6
+          - toxenv: 'yarn'
+            python-version: 3.6
+          - toxenv: 'stackoverflow'
+            python-version: 3.8
 
-  needs: ToxFirst
-  runs-on: ${{ matrix.os }}-latest
+    needs: ToxFirst
+    runs-on: ${{ matrix.os }}-latest
 
-  steps:
-  - uses: actions/checkout@v1
-    with:
-      fetch-depth: 1
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
 
-  - name: Set up Python ${{ matrix.python-version }}
-    uses: actions/setup-python@v1
-    with:
-      python-version: ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
 
-  - name: Show python information
-    run: |
-      python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
-      python -c "import platform; print(platform.machine()); print(platform.release())"
+    - name: Show python information
+      run: |
+        python -c "import sys; print(sys.version); print(sys.executable); print(sys.platform)"
+        python -c "import platform; print(platform.machine()); print(platform.release())"
 
-#####################
-# CACHE LOGIC START #
-#####################
+  #####################
+  # CACHE LOGIC START #
+  #####################
 
-# Unfortunately at this current point in time there does not appear to be a way
-# to easily reuse content across different actions. The below section manages
-# the caching for pymedphys installations from poetry. This logic is often
-# repeated across different actions. Once action step reuse is supported this
-# section will be refactored out.
+  # Unfortunately at this current point in time there does not appear to be a way
+  # to easily reuse content across different actions. The below section manages
+  # the caching for pymedphys installations from poetry. This logic is often
+  # repeated across different actions. Once action step reuse is supported this
+  # section will be refactored out.
 
-  - uses: actions/cache@v1
-    with:
-      path: ~/.pymedphys
-      key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
+    - uses: actions/cache@v1
+      with:
+        path: ~/.pymedphys
+        key: pymedphys-data-${{ hashFiles('**/hashes.json') }}
 
-  - uses: actions/cache@v1
-    with:
-      path: ~/.cache/pypoetry/virtualenvs
-      key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      restore-keys: |
-        ${{ runner.os }}-poetry-
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
 
-  - uses: actions/cache@v1
-    if: startsWith(runner.os, 'Linux')
-    with:
-      path: ~/.cache/pip
-      key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-      restore-keys: |
-        ${{ runner.os }}-pip-
+    - uses: actions/cache@v1
+      if: startsWith(runner.os, 'Linux')
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
 
-###################
-# CACHE LOGIC END #
-###################
+  ###################
+  # CACHE LOGIC END #
+  ###################
 
-  - name: Upgrade pip, install poetry and tox
-    run: |
-      python -m pip install --upgrade pip poetry tox
+    - name: Upgrade pip, install poetry and tox
+      run: |
+        python -m pip install --upgrade pip poetry tox
 
-  - name: Run Tox on Nix
-    if: matrix.os == 'macos' || matrix.os == 'ubuntu'
-    run: |
-      poetry run tox -e ${{ matrix.toxenv }}-nix
+    - name: Run Tox on Nix
+      if: matrix.os == 'macos' || matrix.os == 'ubuntu'
+      run: |
+        poetry run tox -e ${{ matrix.toxenv }}-nix
 
 # =============================================================================
 
