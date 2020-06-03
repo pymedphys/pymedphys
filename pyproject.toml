@@ -57,6 +57,7 @@ dbfread = "*"
 
 pydicom = "*"
 pynetdicom = "*"
+pylibjpeg-libjpeg = "*"
 
 # difficult
 cython = "*"
@@ -91,11 +92,12 @@ pytest = { version = "*", optional = true }
 pytest-sugar  = { version = "*", optional = true }
 hypothesis  = { version = "*", optional = true }
 psutil  = { version = "*", optional = true }
-
-# pylint
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
-pylibjpeg-libjpeg = "^1.0.0"
+
+# tox
+tox = { version = "*", optional = true }
+
 
 [tool.poetry.dev-dependencies]
 # Testing
@@ -147,6 +149,10 @@ ml = [
 
 tests = [
     "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"
+]
+
+tox = [
+    "tox"
 ]
 
 [tool.poetry.scripts]

@@ -37,7 +37,7 @@ toolz = "*"
 dev = ["black", "docutils", "ipython", "flake8", "pytest", "sphinx", "m2r", "vega-datasets", "recommonmark"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 name = "appdirs"
 optional = false
@@ -195,10 +195,10 @@ description = "The AWS SDK for Python"
 name = "boto3"
 optional = false
 python-versions = "*"
-version = "1.13.19"
+version = "1.13.20"
 
 [package.dependencies]
-botocore = ">=1.16.19,<1.17.0"
+botocore = ">=1.16.20,<1.17.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.3.0,<0.4.0"
 
@@ -208,7 +208,7 @@ description = "Low-level, data-driven core of boto 3."
 name = "botocore"
 optional = false
 python-versions = "*"
-version = "1.16.19"
+version = "1.16.20"
 
 [package.dependencies]
 docutils = ">=0.10,<0.16"
@@ -353,7 +353,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 version = "0.6.0"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Distribution utilities"
 name = "distlib"
 optional = false
@@ -400,7 +400,7 @@ python-versions = "*"
 version = "0.0.3"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "A platform independent file lock."
 name = "filelock"
 optional = false
@@ -565,7 +565,7 @@ docs = ["sphinx", "rst.linker"]
 testing = ["packaging", "importlib-resources"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Read resources from Python packages"
 marker = "python_version < \"3.7\""
 name = "importlib-resources"
@@ -1293,7 +1293,7 @@ enum = ["enum34"]
 [[package]]
 category = "main"
 description = "Run a subprocess in a pseudo terminal"
-marker = "python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\") or python_version >= \"3.4\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\")"
+marker = "sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\""
 name = "ptyprocess"
 optional = false
 python-versions = "*"
@@ -1894,7 +1894,7 @@ description = "TensorBoard lets you watch Tensors Flow"
 name = "tb-nightly"
 optional = true
 python-versions = ">= 2.7, != 3.0.*, != 3.1.*"
-version = "2.3.0a20200531"
+version = "2.3.0a20200601"
 
 [package.dependencies]
 absl-py = ">=0.4"
@@ -1968,7 +1968,7 @@ description = "TensorFlow is an open source machine learning framework for every
 name = "tf-nightly"
 optional = true
 python-versions = "*"
-version = "2.3.0.dev20200531"
+version = "2.3.0.dev20200601"
 
 [package.dependencies]
 absl-py = ">=0.7.0"
@@ -2036,7 +2036,7 @@ python-versions = ">= 2.7, !=3.0.*, !=3.1.*, !=3.2.*, != 3.3.*"
 version = "5.1.1"
 
 [[package]]
-category = "dev"
+category = "main"
 description = "tox is a generic virtualenv management and test command line tool"
 name = "tox"
 optional = false
@@ -2144,7 +2144,7 @@ six = ">=1.4.0"
 test = ["pytest (>=2.2.3)", "flake8 (>=2.4.0)", "isort (>=4.2.2)"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Virtual Python Environment builder"
 name = "virtualenv"
 optional = false
@@ -2185,11 +2185,11 @@ watchmedo = ["PyYAML (>=3.10)", "argh (>=0.24.1)"]
 
 [[package]]
 category = "main"
-description = "Measures number of Terminal column cells of wide-character codes"
+description = "Measures the displayed width of unicode strings in a terminal"
 name = "wcwidth"
 optional = false
 python-versions = "*"
-version = "0.1.9"
+version = "0.2.2"
 
 [[package]]
 category = "main"
@@ -2258,9 +2258,10 @@ testing = ["jaraco.itertools", "func-timeout"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
 ml = ["tf-nightly", "tf-estimator-nightly", "tb-nightly"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
+tox = ["tox"]
 
 [metadata]
-content-hash = "dd2da67087505f9d0f1d6c88e41aeae466943fcc18d645d7f69fdf560f7c3bc6"
+content-hash = "1d7d91611ca2482d417d3cb90b62b2086926d03c711a4d6897a7b86412858a52"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2331,12 +2332,12 @@ blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
 ]
 boto3 = [
-    {file = "boto3-1.13.19-py2.py3-none-any.whl", hash = "sha256:2e58368d32171f42100353007fb48fe583ea9deafd0ec556aa2bc1ce1582d06d"},
-    {file = "boto3-1.13.19.tar.gz", hash = "sha256:c774003dc13d6de74b5e19d2b84d625da4456e64bd97f44baa1fcf40d808d29a"},
+    {file = "boto3-1.13.20-py2.py3-none-any.whl", hash = "sha256:f59d0bd230ed3a4b932c5c4e497a0e0ff3c93b46b7e8cde54efb6fe10c8266ba"},
+    {file = "boto3-1.13.20.tar.gz", hash = "sha256:26f8564b46d009b8f4c6470a6d6cde147b282a197339c7e31cbb0fe9fd9e5f5d"},
 ]
 botocore = [
-    {file = "botocore-1.16.19-py2.py3-none-any.whl", hash = "sha256:7b8b1f082665c8670b9aa70143ee527c5d04939fe027a63ac5958359be20ccb0"},
-    {file = "botocore-1.16.19.tar.gz", hash = "sha256:5cb537e7a4cf2d59a2a8dfbbc8e14ec3bc5b640eb81a1bf3bb0523c0a75e6b1b"},
+    {file = "botocore-1.16.20-py2.py3-none-any.whl", hash = "sha256:990f3fc33dec746829740b1a9e1fe86183cdc96aedba6a632ccfcbae03e097cc"},
+    {file = "botocore-1.16.20.tar.gz", hash = "sha256:d4cc47ac989a7f1d2992ef7679fb423a7966f687becf623a291a555a2d7ce1c0"},
 ]
 cachetools = [
     {file = "cachetools-4.1.0-py3-none-any.whl", hash = "sha256:de5d88f87781602201cde465d3afe837546663b168e8b39df67411b0bf10cefc"},
@@ -3354,7 +3355,7 @@ streamlit = [
     {file = "streamlit-0.60.0-py2.py3-none-any.whl", hash = "sha256:2f493a40ba636507e97600e31952adbb74ad5741f9910f256d1c6c9e87082fa5"},
 ]
 tb-nightly = [
-    {file = "tb_nightly-2.3.0a20200531-py3-none-any.whl", hash = "sha256:5694ddb8ffe3d144ee7136a3330bd1639cfc7aa6a2a5750371d3807ea2dd7167"},
+    {file = "tb_nightly-2.3.0a20200601-py3-none-any.whl", hash = "sha256:ef46ec779e8638be8e2ed06c19f6a66ba74bf5f0850eab95499a5eb1b5a35957"},
 ]
 tensorboard-plugin-wit = [
     {file = "tensorboard_plugin_wit-1.6.0.post3-py2-none-any.whl", hash = "sha256:243f117d117f9e81a21dc64b602b2bcb256ca5ba038867b96022d02271b17106"},
@@ -3375,13 +3376,13 @@ tf-estimator-nightly = [
     {file = "tf_estimator_nightly-2.3.0.dev2020060101-py2.py3-none-any.whl", hash = "sha256:3d51c8b96398af45143800f9ee58d8ffd5187ed45a5d7d6f23531832a2ddaebf"},
 ]
 tf-nightly = [
-    {file = "tf_nightly-2.3.0.dev20200531-cp35-cp35m-macosx_10_6_intel.whl", hash = "sha256:97ef23b8f5a2c2e247bc57caf1d6a8abb68ea3c80b09b442dc731ca68a6e89d9"},
-    {file = "tf_nightly-2.3.0.dev20200531-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:dc1ea4a13c632d9c0baf47624ffa7ca818dd37e8b65576fe36b8a352c067aa94"},
-    {file = "tf_nightly-2.3.0.dev20200531-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:718093705a9d3ce376d11f99a10ff1e065b86360cf55e207537e98a93cf95fbe"},
-    {file = "tf_nightly-2.3.0.dev20200531-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:cb4728dd2a47d1419b7c5fd7e028399426f70c88e6ce50102f457c51c99a2595"},
-    {file = "tf_nightly-2.3.0.dev20200531-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:44e6d4a5ab4a91c4b943487925c5b5055aa502fcec22816e3a0f80beb1b2aae6"},
-    {file = "tf_nightly-2.3.0.dev20200531-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:d7c980a0c599455290a5672ea44612ece9ba45091923ccac78a6033724136751"},
-    {file = "tf_nightly-2.3.0.dev20200531-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:a75b603a8e249d20217876baaf8c7f030ceefb9082d9c2821b39d809d1c3bae9"},
+    {file = "tf_nightly-2.3.0.dev20200601-cp35-cp35m-macosx_10_6_intel.whl", hash = "sha256:c823223c35a37357c8b1933e8aea59603df043c941e75d885eb8b7b00477f2fb"},
+    {file = "tf_nightly-2.3.0.dev20200601-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:7ac1742678faac4d9106012aa5e870d882873587d4b5525595a7beca64b2ac0b"},
+    {file = "tf_nightly-2.3.0.dev20200601-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:b66de9e06886b58e8f79bada22414cb4709473ea8018b0734bf7b77737d75573"},
+    {file = "tf_nightly-2.3.0.dev20200601-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:0cb8e9ec6d02116aa235a83281aaacef5dba7f134b9f9de45ba5d6e46e8a95b1"},
+    {file = "tf_nightly-2.3.0.dev20200601-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:31ef24c73e40b9adaf478b285c3e6d8916e97cc6c1e635f45e6a1c2cce2fbb91"},
+    {file = "tf_nightly-2.3.0.dev20200601-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:3c36cc0666569962a8d96f55966f4d7cfe972b0082b67746044c5d7f343d1c9d"},
+    {file = "tf_nightly-2.3.0.dev20200601-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:e2b5615990d71e724bf5bc9f74c28bf79d70e955f7b22815b6ce38f0b5ef21aa"},
 ]
 tifffile = [
     {file = "tifffile-2020.5.30-py3-none-any.whl", hash = "sha256:d76c1718c0407b25c6fce624e8446faded9572b23f52f699345044593f2c441a"},
@@ -3465,8 +3466,8 @@ watchdog = [
     {file = "watchdog-0.10.2.tar.gz", hash = "sha256:c560efb643faed5ef28784b2245cf8874f939569717a4a12826a173ac644456b"},
 ]
 wcwidth = [
-    {file = "wcwidth-0.1.9-py2.py3-none-any.whl", hash = "sha256:cafe2186b3c009a04067022ce1dcd79cb38d8d65ee4f4791b8888d6599d1bbe1"},
-    {file = "wcwidth-0.1.9.tar.gz", hash = "sha256:ee73862862a156bf77ff92b09034fc4825dd3af9cf81bc5b360668d425f3c5f1"},
+    {file = "wcwidth-0.2.2-py2.py3-none-any.whl", hash = "sha256:b651b6b081476420e4e9ae61239ac4c1b49d0c5ace42b2e81dc2ff49ed50c566"},
+    {file = "wcwidth-0.2.2.tar.gz", hash = "sha256:3de2e41158cb650b91f9654cbf9a3e053cee0719c9df4ddc11e4b568669e9829"},
 ]
 webencodings = [
     {file = "webencodings-0.5.1-py2.py3-none-any.whl", hash = "sha256:a0af1213f3c2226497a97e2b3aa01a7e4bee4f403f95be16fc9acd2947514a78"},
