@@ -53,43 +53,17 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task:
-          [
-            'pylint', 'docs', 'doctest', 'clean',
-            'pytest', 'slow', 'stackoverflow', 'updates',
-            'cypress'
-          ]
+        task: ['tests', 'docs', 'stackoverflow', 'updates']
         exclude:
           - os: 'windows'
-            task: 'pylint'
-          - os: 'windows'
-            task: 'doctest'
-          - os: 'windows'
-            task: 'slow'
-          - os: 'windows'
             task: 'stackoverflow'
           - os: 'windows'
             task: 'updates'
-          - os: 'windows'
-            task: 'cypress'
-          - os: 'macos'
-            task: 'pylint'
-          - os: 'macos'
-            task: 'doctest'
-          - os: 'macos'
-            task: 'slow'
+
           - os: 'macos'
             task: 'stackoverflow'
           - os: 'macos'
             task: 'updates'
-          - os: 'macos'
-            task: 'cypress'
-          - os: 'macos'
-            task: 'docs'
-          - os: 'macos'
-            task: 'clean'
-          - os: 'windows'
-            task: 'clean'
 
         include:
           - os: 'ubuntu'
@@ -98,24 +72,6 @@ jobs:
             python-version: 3.7
           - os: 'macos'
             python-version: 3.7
-          - task: 'docs'
-            install-type: 'docs'
-          - task: 'pylint'
-            install-type: 'tests'
-          - task: 'pytest'
-            install-type: 'tests'
-          - task: 'slow'
-            install-type: 'tests'
-          - task: 'doctest'
-            install-type: 'tests'
-          - task: 'cypress'
-            install-type: 'tests'
-          - task: 'stackoverflow'
-            install-type: 'plain'
-          - task: 'clean'
-            install-type: 'no-deps'
-          - task: 'updates'
-            install-type: 'tests-with-updates'
 
     runs-on: ${{ matrix.os }}-latest
 
@@ -133,20 +89,51 @@ jobs:
       run: |
         echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
+# Set up pip
+
     - name: Get pip cache dir
       id: pip-cache
       run: |
         python -m pip install -U pip # to ensure version > 20 to have cache dir
         echo "::set-output name=dir::$(pip cache dir)"
+
     - name: Pip Cache
       uses: actions/cache@v2
       with:
         path: ${{ steps.pip-cache.outputs.dir }}
-        key: pip-${{ matrix.install-type }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
+        key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
+
+# Install poetry
 
     - name: Install poetry
       run: |
         pip install poetry
+
+# No import and run CLI with no dependencies
+
+    - name: Build wheel and install core dependencies
+      if: matrix.task == 'tests'
+      run: |
+        poetry build --format wheel
+        pip install -r requirements-core.txt
+
+    - name: Install wheel
+      if: matrix.task == 'tests' && matrix.os == 'windows'
+      run: |
+        python -m pip install (Get-Item .\dist\*.whl) --no-dependencies
+
+    - name: Install wheel
+      if: matrix.task == 'tests' && matrix.os != 'windows'
+      run: |
+        python -m pip install ./dist/*.whl --no-dependencies
+
+    - name: Run clean tests
+      if: matrix.task == 'tests'
+      run: |
+        pymedphys --help
+        python -c "import pymedphys"
+
+# Set up Poetry
 
     - name: Configure poetry
       run: |
@@ -154,88 +141,65 @@ jobs:
 
     - name: Poetry Cache
       uses: actions/cache@v2
-      id: cache
+      id: poetry-cache
       with:
         path: .venv
-        key: venv-${{ matrix.install-type }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+        key: venv-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
     - name: Ensure cache is healthy
-      if: steps.cache.outputs.cache-hit == 'true'
+      if: steps.poetry-cache.outputs.cache-hit == 'true'
       shell: bash
       run: |
         poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
 
-
-# INSTALLATIONS
-
-## System installs
-
-    - uses: actions/setup-node@v1
-      if: matrix.task == 'yarn'
+# System installs
 
     - name: Install FreeTDS on MacOS
-      if: matrix.os == 'macos' && matrix.task != 'clean' && matrix.task != 'stackoverflow'
+      if: matrix.os == 'macos'
       run: |
         brew install freetds
 
     - name: Install Pandoc on Ubuntu
-      if: matrix.install-type == 'docs' && matrix.os == 'ubuntu'
+      if: matrix.task == 'docs' && matrix.os == 'ubuntu'
       run: |
         sudo apt-get install -y pandoc
 
     - name: Install Pandoc on MacOS
-      if: matrix.install-type == 'docs' && matrix.os == 'macos'
+      if: matrix.task == 'docs' && matrix.os == 'macos'
       run: |
         brew install pandoc
 
     - name: Install Pandoc on Windows
-      if: matrix.install-type == 'docs' && matrix.os == 'windows'
+      if: matrix.task == 'docs' && matrix.os == 'windows'
       run: |
         choco install pandoc
-
-## No dependencies
-
-    - name: Build wheel and install core dependencies
-      if: matrix.install-type == 'no-deps'
-      run: |
-        poetry build --format wheel
-        pip install -r requirements-core.txt
-
-    - name: Install wheel
-      if: matrix.install-type == 'no-deps' && matrix.os == 'windows'
-      run: |
-        python -m pip install (Get-Item .\dist\*.whl) --no-dependencies
-
-    - name: Install wheel
-      if: matrix.install-type == 'no-deps' && matrix.os != 'windows'
-      run: |
-        python -m pip install ./dist/*.whl --no-dependencies
 
 ## Plain install
 
     - name: Run a plain installation
-      if: matrix.install-type == 'plain'
+      if: matrix.task == 'stackoverflow'
       run: |
         poetry install --no-dev
+
 
 ## Install with Documentation Environment
 
     - name: Run a docs installation
-      if: matrix.install-type == 'docs'
+      if: matrix.task == 'docs'
       run: |
         poetry install --no-dev -E docs
 
 ## Install with Tests Environment
 
     - name: Run a tests installation
-      if: matrix.install-type == 'tests'
+      if: matrix.task == 'tests'
       run: |
         poetry install --no-dev -E tests
 
 ## Update all packages and then install with tests environment and
 
     - name: Update all packages then install with tests environment
-      if: matrix.install-type == 'tests-with-updates'
+      if: matrix.task == 'updates'
       run: |
         poetry update
         poetry install --no-dev -E tests
@@ -244,61 +208,52 @@ jobs:
 # Download all data for consistent cache
 
     - name: Get PyMedPhys cache directory
-      if: matrix.task != 'clean'
-      id: pymedphys-cache
+      id: pymedphys-cache-location
       run: |
         echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
 
     - name: PyMedPhys Cache
-      if: matrix.task != 'clean'
+      id: pymedphys-cache
       uses: actions/cache@v2
       with:
-        path: ${{ steps.pymedphys-cache.outputs.dir }}
+        path: ${{ steps.pymedphys-cache-location.outputs.dir }}
         key: pymedphys-${{ hashFiles('**/hashes.json') }}
 
     - name: Download all PyMedPhys data for a consistent cache
-      if: matrix.task != 'clean'
+      if: steps.pymedphys-cache.outputs.cache-hit != 'true'
       run: |
         poetry run python -c "from pymedphys._data import download; download.download_all()"
 
 
 # TESTS
 
-## Clean
+## Pytest
 
-    - name: Run clean tests
-      if: matrix.task == 'clean'
+    - name: Run basic pytest tests
+      if: matrix.task == 'tests' || matrix.task == 'updates'
       run: |
-        pymedphys --help
-        python -c "import pymedphys"
+        poetry run pymedphys dev tests -v
 
 ## Doctest
 
     - name: Run doctest tests
-      if: matrix.task == 'doctest'
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
         poetry run pymedphys dev tests -v --doctest-modules
 
 ## Pylint
 
     - name: Run pylint tests
-      if: matrix.task == 'pylint' || matrix.task == 'updates'
+      if: matrix.os == 'ubuntu' && ( matrix.task == 'tests' || matrix.task == 'updates' )
       run: |
         poetry run pymedphys dev tests --pylint --pylint-jobs=1
 
 ## Slow
 
     - name: Run slow tests
-      if: matrix.task == 'slow'
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
         poetry run pymedphys dev tests -v --run-only-slow
-
-## Pytest
-
-    - name: Run basic pytest tests
-      if: matrix.task == 'pytest' || matrix.task == 'updates'
-      run: |
-        poetry run pymedphys dev tests -v
 
 ## Docs
 
@@ -316,19 +271,22 @@ jobs:
 
 ## Cypress
 
+    - uses: actions/setup-node@v1
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+
     - name: Initially run Cypress tests only locally, without dashboard integration
-      if: matrix.task == 'cypress'
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
         poetry run pymedphys dev tests -v -s --run-only-yarn
 
     - name: Delete GUI demo data and run the PyMedPhys GUI
-      if: failure() && matrix.task == 'cypress'
+      if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
         rm -rf pymedphys-gui-demo
         poetry run pymedphys gui &
 
     - name: Run Cypress through the dashboard tool so as to see the failures
-      if: failure() && matrix.task == 'cypress'
+      if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
       uses: cypress-io/github-action@v1
       with:
         install: false
