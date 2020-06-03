@@ -59,23 +59,6 @@ jobs:
             'pytest', 'slow', 'yarn', 'stackoverflow', 'updates',
             'cypress'
           ]
-        include:
-          - os: 'ubuntu'
-            python-version: 3.6
-          - os: 'windows'
-            python-version: 3.7
-          - os: 'macos'
-            python-version: 3.7
-          - task: 'docs'
-            install-type: 'docs'
-          - task: ['pylint', 'pytest', 'yarn', 'slow', 'doctest', 'cypress']
-            install-type: 'tests'
-          - task: 'stackoverflow'
-            install-type: 'plain'
-          - task: 'clean'
-            install-type: 'no-deps'
-          - task: 'updates'
-            install-type: 'tests-with-updates'
         exclude:
           - os: 'windows'
             task: 'pylint'
@@ -105,6 +88,34 @@ jobs:
             task: 'updates'
           - os: 'macos'
             task: 'cypress'
+
+        include:
+          - os: 'ubuntu'
+            python-version: 3.6
+          - os: 'windows'
+            python-version: 3.7
+          - os: 'macos'
+            python-version: 3.7
+          - task: 'docs'
+            install-type: 'docs'
+          - task: 'pylint'
+            install-type: 'tests'
+          - task: 'pytest'
+            install-type: 'tests'
+          - task: 'yarn'
+            install-type: 'tests'
+          - task: 'slow'
+            install-type: 'tests'
+          - task: 'doctest'
+            install-type: 'tests'
+          - task: 'cypress'
+            install-type: 'tests'
+          - task: 'stackoverflow'
+            install-type: 'plain'
+          - task: 'clean'
+            install-type: 'no-deps'
+          - task: 'updates'
+            install-type: 'tests-with-updates'
 
     runs-on: ${{ matrix.os }}-latest
 
