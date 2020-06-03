@@ -6,7 +6,7 @@ jobs:
 
 # =============================================================================
 
-  Pre-Commit:
+  PreCommit:
     runs-on: ubuntu-latest
 
     steps:
@@ -48,7 +48,7 @@ jobs:
 
 # =============================================================================
 
-  ToxFirst:
+  TestingMatrix:
     strategy:
       fail-fast: false
       matrix:
@@ -61,6 +61,14 @@ jobs:
             python-version: 3.7
           - os: 'macos'
             python-version: 3.7
+          - task: 'docs'
+            install-type: 'docs'
+          - task: ['pylint', 'pytest', 'yarn', 'slow', 'doctest']
+            install-type: 'tests'
+          - task: 'stackoverflow'
+            install-type: 'plain'
+          - task: 'clean'
+            install-type: 'no-deps'
         exclude:
           - os: 'windows'
             task: ['pylint', 'doctest', 'slow', 'yarn', 'stackoverflow']
@@ -101,7 +109,7 @@ jobs:
       id: cache
       with:
         path: .venv
-        key: venv-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+        key: venv-${{ matrix.install-type }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
     - name: Ensure cache is healthy
       if: steps.cache.outputs.cache-hit == 'true'
@@ -109,25 +117,77 @@ jobs:
       run: |
         poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
 
-# =============================================================================
-#                                     CLEAN
-# =============================================================================
+
+# INSTALLATIONS
+
+## System installs
+
+    - uses: actions/setup-node@v1
+      if: matrix.install-type == 'yarn'
+
+    - name: Install FreeTDS on MacOS
+      if: matrix.os == 'macos' && matrix.task != clean && matrix.task != stackoverflow
+      run: |
+        brew install freetds
+
+    - name: Install Pandoc on Ubuntu
+      if: matrix.install-type == 'docs' && matrix.os == 'ubuntu'
+      run: |
+        sudo apt-get install -y pandoc
+
+    - name: Install Pandoc on MacOS
+      if: matrix.install-type == 'docs' && matrix.os == 'macos'
+      run: |
+        brew install pandoc
+
+    - name: Install Pandoc on Windows
+      if: matrix.install-type == 'docs' && matrix.os == 'windows'
+      run: |
+        choco install pandoc
+
+## No dependencies
 
     - name: Build wheel and install core dependencies
-      if: matrix.task == 'clean'
+      if: matrix.install-type == 'no-deps'
       run: |
         poetry build --format wheel
         pip install -r requirements-core.txt
 
     - name: Install wheel
-      if: matrix.task == 'clean' && matrix.os == 'windows'
+      if: matrix.install-type == 'no-deps' && matrix.os == 'windows'
       run: |
         python -m pip install (Get-Item .\dist\*.whl) --no-dependencies
 
     - name: Install wheel
-      if: matrix.task == 'clean' && matrix.os != 'windows'
+      if: matrix.install-type == 'no-deps' && matrix.os != 'windows'
       run: |
         python -m pip install ./dist/*.whl --no-dependencies
+
+## Plain install
+
+    - name: Run a plain installation
+      if: matrix.install-type == 'plain'
+      run: |
+        poetry install --no-dev
+
+## Install with Documentation Environment
+
+    - name: Run a docs installation
+      if: matrix.install-type == 'docs'
+      run: |
+        poetry install --no-dev -E docs
+
+## Install with Documentation Environment
+
+    - name: Run a tests installation
+      if: matrix.install-type == 'tests'
+      run: |
+        poetry install --no-dev -E tests
+
+
+# TESTS
+
+## Clean
 
     - name: Run clean tests
       if: matrix.task == 'clean'
@@ -135,8 +195,33 @@ jobs:
         pymedphys --help
         python -c "import pymedphys"
 
+## Doctest
 
+    - name: Run doctest tests
+      if: matrix.task == 'doctest'
+      run: |
+        poetry run pymedphys dev tests -v --doctest-modules
 
+## Pylint
+
+    - name: Run pylint tests
+      if: matrix.task == 'pylint'
+      run: |
+        poetry run pymedphys dev tests --pylint --pylint-jobs=1
+
+## Slow
+
+    - name: Run slow tests
+      if: matrix.task == 'slow'
+      run: |
+        poetry run pymedphys dev tests -v --run-only-slow
+
+## Yarn
+
+    - name: Run tests that need yarn
+      if: matrix.task == 'yarn'
+      run: |
+        poetry run pymedphys dev tests -v -s --run-only-yarn
 
 
 
