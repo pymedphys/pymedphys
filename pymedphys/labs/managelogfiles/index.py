@@ -249,8 +249,11 @@ def index_logfiles(centre_map, machine_map, logfile_data_directory):
         for _, details in centre_details.items()
     ]
 
-    with open(index_filepath, "r") as json_data_file:
-        index = json.load(json_data_file)
+    try:
+        with open(index_filepath, "r") as json_data_file:
+            index = json.load(json_data_file)
+    except FileNotFoundError:
+        index = {}
 
     indexset = set(index.keys())
 
