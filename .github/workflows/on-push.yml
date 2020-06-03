@@ -52,7 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu', 'macos']
+        os: ['ubuntu', 'macos', 'windows']
         task:
           [
             'pylint', 'docs', 'doctest', 'clean',
@@ -78,9 +78,33 @@ jobs:
             install-type: 'tests-with-updates'
         exclude:
           - os: 'windows'
-            task: ['pylint', 'doctest', 'slow', 'yarn', 'stackoverflow', 'updates', 'cypress']
+            task: 'pylint'
+          - os: 'windows'
+            task: 'doctest'
+          - os: 'windows'
+            task: 'slow'
+          - os: 'windows'
+            task: 'yarn'
+          - os: 'windows'
+            task: 'stackoverflow'
+          - os: 'windows'
+            task: 'updates'
+          - os: 'windows'
+            task: 'cypress'
           - os: 'macos'
-            task: ['pylint', 'doctest', 'slow', 'yarn', 'stackoverflow', 'updates', 'cypress']
+            task: 'pylint'
+          - os: 'macos'
+            task: 'doctest'
+          - os: 'macos'
+            task: 'slow'
+          - os: 'macos'
+            task: 'yarn'
+          - os: 'macos'
+            task: 'stackoverflow'
+          - os: 'macos'
+            task: 'updates'
+          - os: 'macos'
+            task: 'cypress'
 
     runs-on: ${{ matrix.os }}-latest
 
