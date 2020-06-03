@@ -132,6 +132,17 @@ jobs:
       run: |
         echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
+    - name: Get pip cache dir
+      id: pip-cache
+      run: |
+        python -m pip install -U pip # to ensure version > 20 to have cache dir
+        echo "::set-output name=dir::$(pip cache dir)"
+    - name: pip cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ steps.pip-cache.outputs.dir }}
+        key: pip-${{ matrix.install-type }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
+
     - name: Install poetry
       run: |
         pip install poetry
