@@ -288,13 +288,13 @@ jobs:
         poetry run pymedphys dev tests -v -s --run-only-yarn
 
     - name: Delete GUI demo data and run the PyMedPhys GUI
-      if: matrix.task == 'cypress' && ${{ failure() }}
+      if: ${{ failure() }} && matrix.task == 'cypress'
       run: |
         rm -rf pymedphys-gui-demo
         poetry run pymedphys gui &
 
     - name: Run Cypress through the dashboard tool so as to see the failures
-      if: matrix.task == 'cypress' && ${{ failure() }}
+      if: ${{ failure() }} && matrix.task == 'cypress'
       uses: cypress-io/github-action@v1
       with:
         install: false
