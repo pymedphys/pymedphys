@@ -168,7 +168,7 @@ jobs:
       if: matrix.task == 'yarn'
 
     - name: Install FreeTDS on MacOS
-      if: matrix.os == 'macos' && matrix.task != clean && matrix.task != stackoverflow
+      if: matrix.os == 'macos' && matrix.task != 'clean' && matrix.task != 'stackoverflow'
       run: |
         brew install freetds
 
