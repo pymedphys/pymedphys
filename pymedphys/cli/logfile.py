@@ -22,9 +22,9 @@ Requires two configuration csv files detailed as following:
 
 ::
 
-                  , Timezone        , Mosaiq SQL Server (Hostname:Port)
-    a_centre      , Australia/Sydney, mosaiq:1433
-    another_centre, Australia/Sydney, another-mosaiq:1433
+    ,Timezone,Mosaiq SQL Server (Hostname:Port)
+    a_centre,Australia/Sydney,mosaiq:1433
+    another_centre,Australia/Sydney,another-mosaiq:1433
 
 
 ``config_linac_details.csv``
@@ -32,10 +32,10 @@ Requires two configuration csv files detailed as following:
 
 ::
 
-        , Centre        , IP
-    1234, a_centre      , 192.168.150.40
-    1236, a_centre      , 192.168.150.41
-    1238, another_centre, 10.0.0.40
+    ,Centre,IP
+    1234,a_centre,192.168.150.40
+    1236,a_centre,192.168.150.41
+    1238,another_centre,10.0.0.40
 """
 
 
