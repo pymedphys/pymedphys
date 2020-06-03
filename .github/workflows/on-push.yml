@@ -103,6 +103,12 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
 
+# Install poetry
+
+    - name: Install poetry
+      run: |
+        pip install poetry
+
 # No import and run CLI with no dependencies
 
     - name: Build wheel and install core dependencies
@@ -128,10 +134,6 @@ jobs:
         python -c "import pymedphys"
 
 # Set up Poetry
-
-    - name: Install poetry
-      run: |
-        pip install poetry
 
     - name: Configure poetry
       run: |
