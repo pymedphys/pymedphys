@@ -48,7 +48,7 @@ jobs:
 
 # =============================================================================
 
-  TestingMatrix:
+  Tests:
     strategy:
       fail-fast: false
       matrix:
