@@ -84,6 +84,12 @@ jobs:
             task: 'updates'
           - os: 'macos'
             task: 'cypress'
+          - os: 'macos'
+            task: 'docs'
+          - os: 'macos'
+            task: 'clean'
+          - os: 'windows'
+            task: 'clean'
 
         include:
           - os: 'ubuntu'
