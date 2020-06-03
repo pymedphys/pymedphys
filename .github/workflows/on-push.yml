@@ -285,6 +285,13 @@ jobs:
       run: |
         poetry run pymedphys dev docs
 
+## Stackoverflow
+
+    - name: Run stackoverflow example(s)
+      if: matrix.task == 'stackoverflow'
+      run: |
+        poetry run python ./examples/stackoverflow/gamma.py
+
 ## Cypress
 
     - name: Initially run Cypress tests only locally, without dashboard integration
