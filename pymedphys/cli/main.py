@@ -16,7 +16,6 @@ import argparse
 import logging
 import sys
 
-from .bundle import bundle_cli
 from .dev import dev_cli
 from .dicom import dicom_cli
 from .gui import gui_cli
@@ -45,7 +44,6 @@ def define_parser():
     dev_cli(subparsers)
     zenodo_cli(subparsers)
     icom_cli(subparsers)
-    bundle_cli(subparsers)
     gui_cli(subparsers)
 
     # https://stackoverflow.com/a/20663028/3912576

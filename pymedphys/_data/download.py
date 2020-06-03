@@ -73,16 +73,30 @@ def get_file_within_data_zip(zip_name, file_name):
 
 
 @functools.lru_cache()
+def get_url_map():
+    with open(HERE.joinpath("urls.json"), "r") as f:
+        url_map = json.load(f)
+
+    return url_map
+
+
 def get_url(filename):
-    with open(HERE.joinpath("urls.json"), "r") as url_file:
-        urls = json.load(url_file)
+    url_map = get_url_map()
 
     try:
-        url = urls[filename]
+        url = url_map[filename]
     except KeyError:
         raise ValueError("The file provided isn't within pymedphys' urls.json record.")
 
     return url
+
+
+def download_all():
+    paths = []
+    for file_name in get_url_map().keys():
+        paths.append(data_path(file_name))
+
+    return paths
 
 
 def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True, url=None):
