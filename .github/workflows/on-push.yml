@@ -237,11 +237,17 @@ jobs:
 
 # Download all data for consistent cache
 
+    - name: Get PyMedPhys cache directory
+      if: matrix.task != 'clean'
+      id: pymedphys-cache
+      run: |
+        echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
+
     - name: PyMedPhys Cache
       if: matrix.task != 'clean'
       uses: actions/cache@v2
       with:
-        path: ~/.pymedphys
+        path: ${{ steps.pymedphys-cache.outputs.dir }}
         key: pymedphys-${{ hashFiles('**/hashes.json') }}
 
     - name: Download all PyMedPhys data for a consistent cache
