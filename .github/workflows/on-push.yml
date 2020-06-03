@@ -56,7 +56,7 @@ jobs:
         task:
           [
             'pylint', 'docs', 'doctest', 'clean',
-            'pytest', 'slow', 'yarn', 'stackoverflow', 'updates',
+            'pytest', 'slow', 'stackoverflow', 'updates',
             'cypress'
           ]
         exclude:
@@ -266,13 +266,6 @@ jobs:
       run: |
         poetry run pymedphys dev tests -v --run-only-slow
 
-## Yarn
-
-    - name: Run tests that need yarn
-      if: matrix.task == 'yarn'
-      run: |
-        poetry run pymedphys dev tests -v -s --run-only-yarn
-
 ## Pytest
 
     - name: Run basic pytest tests
@@ -289,25 +282,19 @@ jobs:
 
 ## Cypress
 
-    - name: Download GUI demo data
+    - name: Initially run Cypress tests only locally, without dashboard integration
       if: matrix.task == 'cypress'
       run: |
-        poetry run python -c "import pymedphys; pymedphys.zip_data_paths('mu-density-gui-e2e-data.zip')"
+        poetry run pymedphys dev tests -v -s --run-only-yarn
 
-    - name: Run PyMedPhys GUI
-      if: matrix.task == 'cypress'
+    - name: Delete GUI demo data and run the PyMedPhys GUI
+      if: matrix.task == 'cypress' && ${{ failure() }}
       run: |
+        rm -rf pymedphys-gui-demo
         poetry run pymedphys gui &
 
-    - name: Install Cypress Dependencies
-      if: matrix.task == 'cypress'
-      uses: cypress-io/github-action@v1
-      with:
-        runTests: false
-        working-directory: tests/e2e
-
-    - name: Cypress run
-      if: matrix.task == 'cypress'
+    - name: Run Cypress through the dashboard tool so as to see the failures
+      if: matrix.task == 'cypress' && ${{ failure() }}
       uses: cypress-io/github-action@v1
       with:
         install: false
