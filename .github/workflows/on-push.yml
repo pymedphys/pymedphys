@@ -235,7 +235,7 @@ jobs:
         poetry install --no-dev -E tests
 
 
-# Download data for consistent cache
+# Download all data for consistent cache
 
     - name: PyMedPhys Cache
       if: matrix.task != 'clean'
