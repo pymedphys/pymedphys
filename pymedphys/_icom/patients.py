@@ -182,6 +182,9 @@ class PatientIcomData:
             self._current_patient_data[ip] = None
             self._usage_start[ip] = None
 
+        else:
+            logging.debug("No delivery is currently being recorded.")
+
 
 def archive_by_patient(directories_to_watch, output_dir):
     patient_icom_data = PatientIcomData(output_dir)
