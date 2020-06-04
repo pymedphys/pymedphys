@@ -20,13 +20,20 @@ class UnableToReadIcom(ValueError):
 
 
 def validate_data(data_to_be_saved):
+    logging.debug("Validating an iCOM dataset.")
+
     try:
         delivery = pymedphys.Delivery.from_icom(data_to_be_saved)
+        logging.debug("iCOM dataset was found to be valid.")
     except Exception as _:
+        logging.debug("Was not able to transform the iCOM dataset.")
+
         traceback.print_exc()
         raise UnableToReadIcom()
 
     if len(delivery.mu) == 0:
+        logging.debug("Was able to read the iCOM dataset, but no MU was delivered.")
+
         raise NoMUDelivered()
 
     return delivery
@@ -35,13 +42,30 @@ def validate_data(data_to_be_saved):
 def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
     _, patient_id = extract.extract(patient_data[0], "Patient ID")
 
+    logging.debug(
+        "When preparing patient record to be saved, the patient id was "
+        "%(patient_id)s",
+        {"patient_id": patient_id},
+    )
+
     for data in patient_data:
         _, patient_name = extract.extract(data, "Patient Name")
         if not patient_name is None:
             break
 
+    logging.debug(
+        "When preparing patient record to be saved, the patient name was "
+        "%(patient_name)s",
+        {"patient_name": patient_name},
+    )
+
     patient_dir = output_dir.joinpath(f"{patient_id}_{patient_name}")
     patient_dir.mkdir(parents=True, exist_ok=True)
+
+    logging.debug(
+        "The patient archive directory to be used is %(patient_dir)s.",
+        {"patient_dir": patient_dir},
+    )
 
     reformatted_timestamp = (
         start_timestamp.replace(":", "").replace("T", "_").replace("-", "")
@@ -131,13 +155,35 @@ class PatientIcomData:
                 iso_timestamp = f"{timestamp[0:10]}T{timestamp[10::]}"
                 self._usage_start[ip] = iso_timestamp
 
+                logging.debug(
+                    "Starting data collection for patient id %(patient_id)s. "
+                    "Recording started at %(usage_start)s.",
+                    {"usage_start": self._usage_start[ip], "patient_id": patient_id},
+                )
+
             self._current_patient_data[ip].append(data)
+
+            logging.debug(
+                "iCOM stream appended to the data being collected for "
+                "patient id %(patient_id)s.",
+                {"patient_id": patient_id},
+            )
+
         elif not usage_start is None:
+            logging.debug(
+                "Delivery that started at %(usage_start)s appears to "
+                "have completed.",
+                {"usage_start": usage_start},
+            )
+
             save_patient_data(
                 usage_start, self._current_patient_data[ip], self._output_dir
             )
             self._current_patient_data[ip] = None
             self._usage_start[ip] = None
+
+        else:
+            logging.debug("No delivery is currently being recorded.")
 
 
 def archive_by_patient(directories_to_watch, output_dir):
