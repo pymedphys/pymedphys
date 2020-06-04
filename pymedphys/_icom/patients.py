@@ -79,7 +79,7 @@ def save_patient_data(start_timestamp, patient_data, output_dir: pathlib.Path):
     try:
         delivery = validate_data(data)
         logging.info(  # pylint: disable = logging-fstring-interpolation
-            f"Delivery with a total MU of {delivery.mu[-1]} for "
+            f"Delivery with a total MU of {round(delivery.mu[-1],1)} for "
             f"{patient_name} ({patient_id}) is being saved within "
             f"{filename}."
         )
