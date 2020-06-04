@@ -10,7 +10,7 @@
 # cache_cwd_directory ".venv" "python virtualenv"
 
   command = """
-pip3 install -q poetry &&
+pip install poetry &&
 poetry config virtualenvs.in-project true &&
 poetry install -vvv --no-dev -E docs &&
 poetry run pymedphys dev docs &&
