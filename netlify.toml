@@ -1,19 +1,19 @@
 [build]
 # Current directory usage for poetry is for caching purposes
 
+# restore_cwd_cache '.venv' 'python virtualenv' &&
 # restore_home_cache ".cache" "pip cache" &&
 # restore_home_cache ".pymedphys" "pymedphys cache" &&
 
 # cache_home_directory ".cache" "pip cache" &&
 # cache_home_directory ".pymedphys" "pymedphys cache" &&
+# cache_cwd_directory ".venv" "python virtualenv"
 
   command = """
-restore_cwd_cache '.venv' 'python virtualenv' &&
 pip3 install -q poetry &&
 poetry config virtualenvs.in-project true &&
 poetry install -vvv --no-dev -E docs &&
 poetry run pymedphys dev docs &&
-cache_cwd_directory ".venv" "python virtualenv"
 """
 
   publish = "docs/_build/html"
