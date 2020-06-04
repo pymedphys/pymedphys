@@ -13,7 +13,7 @@
 pip install poetry &&
 poetry config virtualenvs.in-project true &&
 poetry install -vvv --no-dev -E docs &&
-poetry run pymedphys dev docs &&
+poetry run pymedphys dev docs
 """
 
   publish = "docs/_build/html"
