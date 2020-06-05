@@ -48,6 +48,14 @@ def define_parser():
 
     # https://stackoverflow.com/a/20663028/3912576
     parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Be verbose",
+        action="store_const",
+        dest="loglevel",
+        const=logging.INFO,
+    )
+    parser.add_argument(
         "-d",
         "--debug",
         help="Print debugging statements",
@@ -55,14 +63,6 @@ def define_parser():
         dest="loglevel",
         const=logging.DEBUG,
         default=logging.WARNING,
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Be verbose",
-        action="store_const",
-        dest="loglevel",
-        const=logging.INFO,
     )
 
     return parser
