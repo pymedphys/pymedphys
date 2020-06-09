@@ -87,6 +87,11 @@ def create_index_entry(
     return index_entry
 
 
+# CODE SMELL: The logic within `file_already_in_index` is actually
+# already handled by `rename_and_handle_fileexists`. This is
+# unnecessarily duplicated.
+
+
 def file_already_in_index(indexed_filepath, to_be_indexed_filepath, filehash):
     try:
         new_hash = hash_file(indexed_filepath)
@@ -105,6 +110,8 @@ def file_already_in_index(indexed_filepath, to_be_indexed_filepath, filehash):
 
 
 def rename_and_handle_fileexists(old_filepath, new_filepath):
+    pathlib.Path(new_filepath).parent.mkdir(parents=True, exist_ok=True)
+
     try:
         os.rename(old_filepath, new_filepath)
     except FileExistsError:
