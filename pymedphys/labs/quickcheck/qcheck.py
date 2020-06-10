@@ -33,7 +33,7 @@ class QuickCheck:
         self.MSG = b""
         self.raw_MSG = ""
         self.measurements = pd.DataFrame()
-        self.data = []
+        self.data = ""
         self.raw_data = ""
         self.connected = False
 
@@ -57,8 +57,8 @@ class QuickCheck:
             + codecs.decode("0a", "hex")
         )
 
-    def send_quickcheck(self, MESSAGE):
-        self.raw_MSG = MESSAGE
+    def send_quickcheck(self, message):
+        self.raw_MSG = message
         self.prepare_qcheck()
         max_retries = 3
         n_retry = 0
@@ -77,7 +77,7 @@ class QuickCheck:
                           Connection Error  - Reached max retries
                           Quickcheck device unreachable, please check your settings"""
                     )
-                    self.data = []
+                    self.data = ""
                     break
                 else:
                     print("Connection Timeout")
@@ -90,15 +90,15 @@ class QuickCheck:
         m = {}  # Dictionary with measurements
         if data_split[0] == "MEASGET":
             #  MD section:__________________________________________________________
-            MD = re.findall("MD=\[(.*?)\]", self.data)[0]
-            m["MD_ID"] = np.int(re.findall("ID=(.*?);", MD)[0])
-            meas_date = re.findall("Date=(.*?);", MD)[0]
+            MD = re.findall(r"MD=\[(.*?)\]", self.data)[0]
+            m["MD_ID"] = np.int(re.findall(r"ID=(.*?);", MD)[0])
+            meas_date = re.findall(r"Date=(.*?);", MD)[0]
             m["MD_Date"] = datetime.datetime.strptime(meas_date, "%Y-%m-%d").date()
-            meas_time = re.findall("Time=(.*?)$", MD)[0]
+            meas_time = re.findall(r"Time=(.*?)$", MD)[0]
             m["MD_Time"] = datetime.datetime.strptime(meas_time, "%H:%M:%S").time()
             m["MD_DateTime"] = datetime.datetime.combine(m["MD_Date"], m["MD_Time"])
             #  MV section:__________________________________________________________
-            str_val = re.findall("MV=\[(.*?)\]", self.data)[0]
+            str_val = re.findall(r"MV=\[(.*?)\]", self.data)[0]
             m["MV_CAX"] = np.float(re.findall("CAX=(.*?);", str_val)[0])
             m["MV_G10"] = np.float(re.findall("G10=(.*?);", str_val)[0])
             m["MV_L10"] = np.float(re.findall("L10=(.*?);", str_val)[0])
@@ -118,10 +118,10 @@ class QuickCheck:
             m["MV_ExpTime"] = np.float(re.findall("ExpTime=(.*?)$", str_val)[0])
 
             #  AV section:__________________________________________________________
-            AV = re.findall("AV=\[(.*?)\]\]", self.data)[0]
+            AV = re.findall(r"AV=\[(.*?)\]\]", self.data)[0]
             AV = AV + "]"  # add last character ]
             for s in ("CAX", "FLAT", "SYMGT", "SYMLR", "BQF", "We"):
-                str_val = re.findall(s + "=\[(.*?)\]", AV)[0]
+                str_val = re.findall(s + r"=\[(.*?)\]", AV)[0]
                 m["AV_" + s + "_Min"] = np.float(re.findall("Min=(.*?);", str_val)[0])
                 m["AV_" + s + "_Max"] = np.float(re.findall("Max=(.*?);", str_val)[0])
                 m["AV_" + s + "_Target"] = np.float(
@@ -134,29 +134,29 @@ class QuickCheck:
                 m["AV_" + s + "_Valid"] = np.int(re.findall("Valid=(.*?)$", str_val)[0])
 
             #  WORK section:__________________________________________________________
-            str_val = re.findall("WORK=\[(.*?)\]", self.data)[0]
+            str_val = re.findall(r"WORK=\[(.*?)\]", self.data)[0]
 
             m["WORK_ID"] = np.int(re.findall("ID=(.*?);", str_val)[0])
             m["WORK_Name"] = re.findall("Name=(.*?)$", str_val)[0]
 
             #  TASK section:__________________________________________________________
-            str_val = re.findall("TASK=\[(.*?)\];MV", self.data)[0]
-            m["TASK_ID"] = np.int(re.findall("ID=(.*?);", str_val)[0])
-            m["TASK_TUnit"] = re.findall("TUnit=(.*?);", str_val)[0]
-            m["TASK_En"] = np.int(re.findall("En=(.*?);", str_val)[0])
-            m["TASK_Mod"] = re.findall("Mod=(.*?);", str_val)[0]
-            m["TASK_Fs"] = re.findall("Fs=(.*?);", str_val)[0]
-            m["TASK_SSD"] = np.int(re.findall("SDD=(.*?);", str_val)[0])
-            m["TASK_Ga"] = np.int(re.findall("Ga=(.*?);", str_val)[0])
-            m["TASK_We"] = np.int(re.findall("We=(.*?);", str_val)[0])
-            m["TASK_MU"] = np.int(re.findall("MU=(.*?);", str_val)[0])
-            m["TASK_My"] = np.float(re.findall("My=(.*?);", str_val)[0])
-            m["TASK_Info"] = re.findall("Info=(.*?)$", str_val)[0]
+            str_val = re.findall(r"TASK=\[(.*?)\];MV", self.data)[0]
+            m["TASK_ID"] = np.int(re.findall(r"ID=(.*?);", str_val)[0])
+            m["TASK_TUnit"] = re.findall(r"TUnit=(.*?);", str_val)[0]
+            m["TASK_En"] = np.int(re.findall(r"En=(.*?);", str_val)[0])
+            m["TASK_Mod"] = re.findall(r"Mod=(.*?);", str_val)[0]
+            m["TASK_Fs"] = re.findall(r"Fs=(.*?);", str_val)[0]
+            m["TASK_SSD"] = np.int(re.findall(r"SDD=(.*?);", str_val)[0])
+            m["TASK_Ga"] = np.int(re.findall(r"Ga=(.*?);", str_val)[0])
+            m["TASK_We"] = np.int(re.findall(r"We=(.*?);", str_val)[0])
+            m["TASK_MU"] = np.int(re.findall(r"MU=(.*?);", str_val)[0])
+            m["TASK_My"] = np.float(re.findall(r"My=(.*?);", str_val)[0])
+            m["TASK_Info"] = re.findall(r"Info=(.*?)$", str_val)[0]
 
-            str_val = re.findall("Prot=\[(.*?)\];", str_val)[0]
-            m["TASK_Prot_Name"] = re.findall("Name=(.*?);", str_val)[0]
-            m["TASK_Prot_Flat"] = np.int(re.findall("Flat=(.*?);", str_val)[0])
-            m["TASK_Prot_Sym"] = np.int(re.findall("Sym=(.*?)$", str_val)[0])
+            str_val = re.findall(r"Prot=\[(.*?)\];", str_val)[0]
+            m["TASK_Prot_Name"] = re.findall(r"Name=(.*?);", str_val)[0]
+            m["TASK_Prot_Flat"] = np.int(re.findall(r"Flat=(.*?);", str_val)[0])
+            m["TASK_Prot_Sym"] = np.int(re.findall(r"Sym=(.*?)$", str_val)[0])
         elif data_split[0] == "MEASCNT":
             m[data_split[0]] = np.int(data_split[1:][0])
         elif data_split[0] in ("PTW", "SER", "KEY"):
