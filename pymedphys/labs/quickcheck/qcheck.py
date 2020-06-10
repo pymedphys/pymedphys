@@ -1,18 +1,27 @@
 # -*- coding: utf-8 -*-
-"""
-Class based QUICKCHECK connection
+# Copyright (C) 2020 Rafael Ayala
 
-@author: Rafael Ayala
-"""
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import codecs
 import datetime
 import re
 import socket
 
-from tqdm import tqdm
-
-import numpy as np
-import pandas as pd
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import tqdm
 
 
 class QuickCheck:
@@ -57,7 +66,7 @@ class QuickCheck:
         while True:
             try:
                 self.sock.sendto(self.MSG, (self.ip, self.port))
-                self.raw_data, addr = self.sock.recvfrom(4096)
+                self.raw_data, _ = self.sock.recvfrom(4096)
                 data = self.raw_data.decode(encoding="utf-8")
                 self.data = data.strip("\r\n")
                 break
@@ -148,28 +157,23 @@ class QuickCheck:
             m["TASK_Prot_Name"] = re.findall("Name=(.*?);", str_val)[0]
             m["TASK_Prot_Flat"] = np.int(re.findall("Flat=(.*?);", str_val)[0])
             m["TASK_Prot_Sym"] = np.int(re.findall("Sym=(.*?)$", str_val)[0])
-            return m
         elif data_split[0] == "MEASCNT":
             m[data_split[0]] = np.int(data_split[1:][0])
-            return m
         elif data_split[0] in ("PTW", "SER", "KEY"):
             m[data_split[0]] = data_split[1:]
-            return m
+        return m
 
     def get_measurements(self):
         self.send_quickcheck("MEASCNT")
-        m = self.parse_measurements()
-        try:
-            n_meas = m["MEASCNT"]
-        except:
+        if "MEASCNT" not in self.data:
             self.send_quickcheck("MEASCNT")
-            m = self.parse_measurements()
-            n_meas = m["MEASCNT"]
+        m = self.parse_measurements()
+        n_meas = m["MEASCNT"]
         print("Receiving Quickcheck measurements")
         meas_list = []
-        for m in tqdm(range(n_meas)):
+        for m in tqdm.tqdm(range(n_meas)):
             control = False
-            while control == False:
+            while not control:
                 self.send_quickcheck("MEASGET;INDEX-MEAS=" + "%d" % (m,))
                 control = self.raw_MSG in self.data
 
