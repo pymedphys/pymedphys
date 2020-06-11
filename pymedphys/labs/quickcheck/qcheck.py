@@ -78,11 +78,11 @@ class QuickCheck:
                     )
                     self.data = ""
                     break
-                else:
-                    print("Connection Timeout")
-                    n_retry += 1
-                    print("Retrying connection {}/{}".format(n_retry, max_retries))
-                    continue
+
+                print("Connection Timeout")
+                n_retry += 1
+                print("Retrying connection {}/{}".format(n_retry, max_retries))
+                continue
 
     def parse_measurements(self):
         data_split = self.data.split(";")
