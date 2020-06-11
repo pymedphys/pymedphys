@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2020 Rafael Ayala
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from .pinnacle import pinnacle_cli
-from .quickcheck import quickcheck_cli
-
-
-def labs_cli(subparsers):
-    labs_parser = subparsers.add_parser(
-        "labs", help="Highly experimental tools, not recommended for use."
-    )
-    labs_subparsers = labs_parser.add_subparsers(dest="labs")
-
-    pinnacle_cli(labs_subparsers)
-    quickcheck_cli(labs_subparsers)
-    return labs_parser
+from .quickcheck_cli import export_cli
