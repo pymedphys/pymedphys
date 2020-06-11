@@ -126,8 +126,13 @@ Active contributors
 
 .. _`Matthew Cooper`: https://github.com/matthewdeancooper
 
+* `Rafael Ayala`_
+    * `Hospital General Universitario Gregorio Marañón`_, Spain
 
-|rccc| |rah| |uth| |uoc|
+.. _`Rafael Ayala`: https://github.com/ayalalazaro
+
+
+|rccc| |rah| |uth| |uoc| |hgugm|
 
 Past contributors
 .................
@@ -154,6 +159,9 @@ Past contributors
 .. |uth| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UTHSA_logo.png
     :target: `UT Health San Antonio`_
 
+.. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/HGUGM_200x200.png
+    :target: `Hospital General Universitario Gregorio Marañón`_
+
 .. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
 
 .. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
@@ -172,6 +180,7 @@ Past contributors
 
 .. _`UT Health San Antonio`: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
 
+.. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
 
 .. END_OF_DOCS_IMPORT
 

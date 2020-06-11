@@ -97,23 +97,27 @@ class QuickCheck:
             m["MD_DateTime"] = datetime.datetime.combine(m["MD_Date"], m["MD_Time"])
             #  MV section:__________________________________________________________
             str_val = re.findall(r"MV=\[(.*?)\]", self.data)[0]
-            m["MV_CAX"] = np.float(re.findall("CAX=(.*?);", str_val)[0])
-            m["MV_G10"] = np.float(re.findall("G10=(.*?);", str_val)[0])
-            m["MV_L10"] = np.float(re.findall("L10=(.*?);", str_val)[0])
-            m["MV_T10"] = np.float(re.findall("T10=(.*?);", str_val)[0])
-            m["MV_R10"] = np.float(re.findall("R10=(.*?);", str_val)[0])
-            m["MV_G20"] = np.float(re.findall("G20=(.*?);", str_val)[0])
-            m["MV_L20"] = np.float(re.findall("L20=(.*?);", str_val)[0])
-            m["MV_T20"] = np.float(re.findall("T20=(.*?);", str_val)[0])
-            m["MV_R20"] = np.float(re.findall("R20=(.*?);", str_val)[0])
-            m["MV_E1"] = np.float(re.findall("E1=(.*?);", str_val)[0])
-            m["MV_E2"] = np.float(re.findall("E2=(.*?);", str_val)[0])
-            m["MV_E3"] = np.float(re.findall("E3=(.*?);", str_val)[0])
-            m["MV_E4"] = np.float(re.findall("E4=(.*?);", str_val)[0])
-            m["MV_Temp"] = np.float(re.findall("Temp=(.*?);", str_val)[0])
-            m["MV_Press"] = np.float(re.findall("Press=(.*?);", str_val)[0])
-            m["MV_CAXRate"] = np.float(re.findall("CAXRate=(.*?);", str_val)[0])
-            m["MV_ExpTime"] = np.float(re.findall("ExpTime=(.*?)$", str_val)[0])
+            regex_map = {
+                "MV_CAX": "CAX=(.*?);",
+                "MV_G10": "G10=(.*?);",
+                "MV_L10": "L10=(.*?);",
+                "MV_T10": "T10=(.*?);",
+                "MV_R10": "R10=(.*?);",
+                "MV_G20": "G20=(.*?);",
+                "MV_L20": "L20=(.*?);",
+                "MV_T20": "T20=(.*?);",
+                "MV_R20": "R20=(.*?);",
+                "MV_E1": "E1=(.*?);",
+                "MV_E2": "E2=(.*?);",
+                "MV_E3": "E3=(.*?);",
+                "MV_E4": "E4=(.*?);",
+                "MV_Temp": "Temp=(.*?);",
+                "MV_Press": "Press=(.*?);",
+                "MV_CAXRate": "CAXRate=(.*?);",
+                "MV_ExpTime": "ExpTime=(.*?)$",
+            }
+            for key, pattern in regex_map.items():
+                m[key] = np.float(re.findall(pattern, str_val)[0])
 
             #  AV section:__________________________________________________________
             AV = re.findall(r"AV=\[(.*?)\]\]", self.data)[0]
