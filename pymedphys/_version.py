@@ -1,4 +1,4 @@
 # pylint: disable=invalid-name, missing-docstring
 
-version_info = [0, 30, 0, "dev8"]
-__version__ = "0.30.0dev8"
+version_info = [0, 30, 0, "dev9"]
+__version__ = "0.30.0dev9"
