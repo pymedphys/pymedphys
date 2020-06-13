@@ -89,6 +89,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   not run.
 * Fixed a case where on some Windows environments `pymedphys gui` would not
   run.
+* Fixed issue where the `pymedphys logfile orchestration` CLI would not be able
+  to create an `index.json`, or a range of the needed directories on its first
+  run.
+  * See the [PyMedPhys forum discussion](https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/5mFZig1cAgAJ) for more details.
+
 
 ### Documentation updates
 
@@ -706,7 +711,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...master
+[0.30.0]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...v0.30.0
 [0.29.1]: https://github.com/pymedphys/pymedphys/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/pymedphys/pymedphys/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/pymedphys/pymedphys/compare/v0.27.0...v0.28.0
