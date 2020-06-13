@@ -1,6 +1,6 @@
 name: OnPush
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
 
@@ -107,6 +107,7 @@ jobs:
 
     - name: Install poetry
       run: |
+        pip install --upgrade pip
         pip install poetry
 
 # No import and run CLI with no dependencies
@@ -289,7 +290,7 @@ jobs:
       if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
       uses: cypress-io/github-action@v1
       with:
-        install: false
+        install: true
         record: true
         start: yarn start
         working-directory: tests/e2e
