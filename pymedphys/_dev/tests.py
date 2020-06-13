@@ -7,7 +7,7 @@ LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 
 def run_tests(_, remaining):
     original_cwd = os.getcwd()
-    os.chdir(LIBRARY_ROOT)
+    os.chdir(LIBRARY_ROOT.parent)
 
     try:
         command = " ".join(
