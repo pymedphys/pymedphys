@@ -153,16 +153,42 @@ def get_indexed_trf_directory():
     return indexed_trf_directory
 
 
+class MosaiqConfigNotFound(ValueError):
+    pass
+
+
+class MosaiqConfigNotValid(ValueError):
+    pass
+
+
+def mosaiq_config_not_found():
+    return MosaiqConfigNotFound(
+        "A Mosaiq connection does not appear to be configured within"
+        " your config.toml file. The patient's details will not be able "
+        " to be found."
+    )
+
+
 @st.cache
 def get_mosaiq_details():
     config = get_config()
-    mosaiq_details = {
-        site["name"]: {
-            "timezone": site["mosaiq"]["timezone"],
-            "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
+
+    try:
+        for site in config["site"]:
+            _ = site["mosaiq"]
+    except KeyError:
+        raise mosaiq_config_not_found()
+
+    try:
+        mosaiq_details = {
+            site["name"]: {
+                "timezone": site["mosaiq"]["timezone"],
+                "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
+            }
+            for site in config["site"]
         }
-        for site in config["site"]
-    }
+    except KeyError:
+        raise MosaiqConfigNotValid("Mosaiq configuration does not appear to be valid")
 
     return mosaiq_details
 
@@ -506,11 +532,11 @@ def monaco_input_method(
     return results
 
 
-def pydicom_hash_funcion(dicom):
+def pydicom_hash_function(dicom):
     return hash(dicom.SOPInstanceUID)
 
 
-@st.cache(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_funcion})
+@st.cache(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_function})
 def load_dicom_file_if_plan(filepath):
     dcm = pydicom.read_file(str(filepath), force=True, stop_before_pixels=True)
     if dcm.SOPClassUID == DICOM_PLAN_UID:
@@ -869,11 +895,30 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     headers
 
+    individual_identifiers = [
+        f"{path.parent.parent.parent.parent.name} {path.parent.name}"
+        for path in selected_filepaths
+    ]
+
+    identifier = f"TRF ({individual_identifiers[0]})"
+    deliveries = cached_deliveries_loading(tables, delivery_from_trf)
+
+    try:
+        mosaiq_details = get_logfile_mosaiq_info(headers)
+    except MosaiqConfigNotFound:
+        st.write(mosaiq_config_not_found())
+        return {
+            "patient_id": patient_id,
+            "patient_name": "",
+            "data_paths": selected_filepaths,
+            "identifier": identifier,
+            "deliveries": deliveries,
+        }
+
     """
     #### Corresponding Mosaiq SQL Details
     """
 
-    mosaiq_details = get_logfile_mosaiq_info(headers)
     mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
 
     mosaiq_details
@@ -887,15 +932,6 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         patient_names.add(patient_name)
 
     patient_name = filter_patient_names(patient_names)
-
-    deliveries = cached_deliveries_loading(tables, delivery_from_trf)
-
-    individual_identifiers = [
-        f"{path.parent.parent.parent.parent.name} {path.parent.name}"
-        for path in selected_filepaths
-    ]
-
-    identifier = f"TRF ({individual_identifiers[0]})"
 
     return {
         "patient_id": patient_id,
