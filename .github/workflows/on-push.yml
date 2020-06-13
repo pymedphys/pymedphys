@@ -289,7 +289,7 @@ jobs:
       if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
       uses: cypress-io/github-action@v1
       with:
-        install: false
+        install: true
         record: true
         start: yarn start
         working-directory: tests/e2e
