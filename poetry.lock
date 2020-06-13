@@ -1368,8 +1368,8 @@ category = "main"
 description = "Pure python package for DICOM medical file reading and writing"
 name = "pydicom"
 optional = false
-python-versions = "*"
-version = "1.4.2"
+python-versions = ">=3.5"
+version = "2.0.0"
 
 [[package]]
 category = "dev"
@@ -2241,7 +2241,7 @@ ml = ["tf-nightly", "tf-estimator-nightly", "tb-nightly"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "58e210fb4fa848d99cb3e3ccf58e03fe36e42577f7e0ab9ce5fb4b6d9d7d2eb1"
+content-hash = "cc5d2ef36204b6154cde660baa3f30cde36dd79c796aee742922afb37d70471c"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -3002,8 +3002,8 @@ pydeck = [
     {file = "pydeck-0.4.0b2.tar.gz", hash = "sha256:1a81722774117ea586c48db370821c3094e6d4f849ab3825167f05f1b307b50c"},
 ]
 pydicom = [
-    {file = "pydicom-1.4.2-py2.py3-none-any.whl", hash = "sha256:f315ba2296346f4f9913c269618201e170b9326362e2ada6041ca91b7cb2117b"},
-    {file = "pydicom-1.4.2.tar.gz", hash = "sha256:9488495a9f3e202d1219f7cb165aee0de31efd512d938c0226d34147ce860391"},
+    {file = "pydicom-2.0.0-py3-none-any.whl", hash = "sha256:667c5bf9ca52f440e538c9d03ce86b04555c10d069472a5db53103fe40d310c0"},
+    {file = "pydicom-2.0.0.tar.gz", hash = "sha256:594c91f715c415ef439f498351ae68fb770c776fc5aa72f3c87eb500dc2a7470"},
 ]
 pydot = [
     {file = "pydot-1.4.1-py2.py3-none-any.whl", hash = "sha256:67be714300c78fda5fd52f79ec994039e3f76f074948c67b5ff539b433ad354f"},
