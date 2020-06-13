@@ -57,7 +57,7 @@ dbfread = "*"
 
 pydicom = "*"
 pynetdicom = "*"
-pylibjpeg-libjpeg = "1.0.0"
+pylibjpeg-libjpeg = "*"
 
 # difficult
 cython = "*"
