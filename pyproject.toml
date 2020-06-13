@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.30.0dev9"
+version = "0.30.0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -95,13 +95,9 @@ psutil  = { version = "*", optional = true }
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
 
-# tox
-tox = { version = "*", optional = true }
-
 
 [tool.poetry.dev-dependencies]
 # Testing
-tox = "*"
 pytest = "*"
 pytest-sugar = "*"
 pylint = "*"
@@ -149,10 +145,6 @@ ml = [
 
 tests = [
     "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"
-]
-
-tox = [
-    "tox"
 ]
 
 [tool.poetry.scripts]
