@@ -55,7 +55,7 @@ shapely = ">= 1.7.0"
 
 dbfread = "*"
 
-pydicom = "*"
+pydicom = "1.4.2"
 pynetdicom = "*"
 pylibjpeg-libjpeg = "1.0.0"
 
@@ -97,14 +97,6 @@ pytest-pylint  = { version = "*", optional = true }
 
 
 [tool.poetry.dev-dependencies]
-# Testing
-pytest = "*"
-pytest-sugar = "*"
-pylint = "*"
-pytest-pylint = "*"
-hypothesis = "*"
-psutil = "*"
-
 # Git Management
 pre-commit = "*"
 
@@ -113,24 +105,9 @@ black = "^19.3b0"
 mypy = "*"
 rope = "*"
 
-# Building documentation
-sphinx = ">= 1.4, < 1.8"
-sphinx-rtd-theme = "*"
-sphinx-autobuild = "*"
-sphinxcontrib-napoleon = "*"
-sphinx-argparse = "*"
-nbsphinx = "*"
-jupyter_client = "*"
-ipython = "*"
-ipykernel = "*"
-
 # VSCode extension dependencies
 doc8 = "*"
 pydot = "^1.4.1"
-
-# Packages to include later
-# pytest-cov = "^2.5"
-# pytest-mock = "^1.9"
 
 [tool.poetry.extras]
 docs = [
