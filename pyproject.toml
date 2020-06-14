@@ -71,6 +71,7 @@ scikit-image = "*"
 tf-nightly = { version = ">=2.2.0.dev20200306", optional = true, allow-prereleases = true }
 tf-estimator-nightly = { version = "*", optional = true, allow-prereleases = true }
 tb-nightly = { version = "*", optional = true, allow-prereleases = true }
+tensorflow-io-nightly = { version = "*", optional = true, allow-prereleases = true }
 
 # gui
 streamlit = "*"
