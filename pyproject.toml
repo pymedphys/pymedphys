@@ -136,7 +136,7 @@ known_third_party = [
     "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
     "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
     "pymedphys._imports", "watchdog", "streamlit", "timeago", "pymssql",
-    "keyring"
+    "keyring", "tkinter"
 ]
 known_scicore = [
     "numpy", "scipy", "pandas"
