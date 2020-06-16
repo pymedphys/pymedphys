@@ -166,7 +166,9 @@ def get_structure_names_by_uids(structure_set_paths, names_map):
 
 def get_cached_structure_names_by_uids(data_path_root, structure_set_paths, names_map):
     data_path_root = pathlib.Path(data_path_root)
-    structure_names_cache_path = data_path_root.joinpath("structure-names-cache.json")
+    structure_names_mapping_cache_path = data_path_root.joinpath(
+        "structure-names-mapping-cache.json"
+    )
 
     relative_structure_set_paths = {
         key: str(pathlib.Path(path).relative_to(data_path_root))
@@ -174,7 +176,7 @@ def get_cached_structure_names_by_uids(data_path_root, structure_set_paths, name
     }
 
     try:
-        with open(structure_names_cache_path) as f:
+        with open(structure_names_mapping_cache_path) as f:
             structure_names_cache = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         structure_names_cache = {
@@ -205,7 +207,7 @@ def get_cached_structure_names_by_uids(data_path_root, structure_set_paths, name
         ] = relative_structure_set_paths
         structure_names_cache["names_map_when_run"] = names_map
 
-        with open(structure_names_cache_path, "w") as f:
+        with open(structure_names_mapping_cache_path, "w") as f:
             json.dump(structure_names_cache, f)
 
     structure_names_by_ct_uid = structure_names_cache["structure_names_by_ct_uid"]
