@@ -68,10 +68,10 @@ python_dateutil = "*"
 scikit-image = "*"
 
 # ml
-tf-nightly = { version = ">=2.2.0.dev20200306", optional = true, allow-prereleases = true }
-tf-estimator-nightly = { version = "*", optional = true, allow-prereleases = true }
-tb-nightly = { version = "*", optional = true, allow-prereleases = true }
-tensorflow-io-nightly = { version = "*", optional = true, allow-prereleases = true }
+tensorflow = { version = ">=2.2.0", optional = true}
+tensorflow-estimator = { version = "*", optional = true}
+tensorboard  = { version = "*", optional = true }
+tensorflow-io = { version = "*", optional = true }
 
 # gui
 streamlit = "*"
@@ -118,7 +118,7 @@ docs = [
 ]
 
 ml = [
-    "tf-nightly", "tf-estimator-nightly", "tb-nightly"
+    "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io"
 ]
 
 tests = [
