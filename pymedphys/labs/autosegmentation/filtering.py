@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import pathlib
 
 from pymedphys._imports import pydicom
 
@@ -68,16 +69,50 @@ def load_names_mapping(path):
     return names_map
 
 
-def verify_all_names_have_mapping(structure_set_paths, names_map):
-    names_in_dicom_files = set()
+def verify_all_names_have_mapping(data_path_root, structure_set_paths, names_map):
+    data_path_root = pathlib.Path(data_path_root)
+    raw_structure_names_cache_path = data_path_root.joinpath(
+        "raw-structure-names-cache.json"
+    )
 
-    for _, path in structure_set_paths.items():
-        dcm = pydicom.read_file(
-            path, force=True, specific_tags=["StructureSetROISequence"]
-        )
-        for item in dcm.StructureSetROISequence:
-            names_in_dicom_files.add(item.ROIName)
+    relative_structure_set_paths = {
+        key: str(pathlib.Path(path).relative_to(data_path_root))
+        for key, path in structure_set_paths.items()
+    }
 
+    try:
+        with open(raw_structure_names_cache_path) as f:
+            raw_structure_names_cache = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        raw_structure_names_cache = {
+            "names_in_dicom_files": [],
+            "structure_set_paths_when_run": {},
+        }
+
+    cache_valid = (
+        raw_structure_names_cache["structure_set_paths_when_run"]
+        == relative_structure_set_paths
+    )
+
+    if not cache_valid:
+        names_in_dicom_files = set()
+
+        for _, path in structure_set_paths.items():
+            dcm = pydicom.read_file(
+                path, force=True, specific_tags=["StructureSetROISequence"]
+            )
+            for item in dcm.StructureSetROISequence:
+                names_in_dicom_files.add(item.ROIName)
+
+        raw_structure_names_cache = {
+            "names_in_dicom_files": list(names_in_dicom_files),
+            "structure_set_paths_when_run": relative_structure_set_paths,
+        }
+
+        with open(raw_structure_names_cache_path, "w") as f:
+            json.dump(raw_structure_names_cache, f)
+
+    names_in_dicom_files = set(raw_structure_names_cache["names_in_dicom_files"])
     mapped_names = set(names_map.keys())
 
     false_mapping = mapped_names.difference(names_in_dicom_files)
