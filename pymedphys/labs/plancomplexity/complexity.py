@@ -18,58 +18,56 @@ on plans from any other TPS
 
 *******************************************************************************
 """
-
-from MetricsClasses import ModulationComplexity, BeamComplexity
-#from PlanOperations import openPlan
-#import MetricsInfo
 import traceback
+from pathlib import Path
 
 import tkinter as tk
 from tkinter import filedialog
-from pathlib import Path
+
 import pydicom
 
+from .classes import BeamComplexity, ModulationComplexity
 
 try:
     root = tk.Tk()
     root.withdraw()
-    
+
     path = filedialog.askopenfilename()
     path = Path(path)
     path = str(path)
     ds = pydicom.dcmread(path)
-       
+
     mcs = ModulationComplexity(ds=ds)
     mcs_all = mcs.calcMCS()
-    
+
     bc = BeamComplexity(ds=ds)
     bc_all = bc.calcBeamComplexity()
-    
+
     beamNames = mcs_all[0].keys()
 
-    n=0
+    n = 0
     for b in beamNames:
         beamType = mcs_all[1].get(b)
-        mcs = round(mcs_all[0].get(b),3)
-        ba = round(bc_all[0].get(b),1)
-        bi = round(bc_all[1].get(b),2)
-        bm = round(bc_all[2].get(b),3)
-        n = n+1
-        
-        print(f"""
+        mcs = round(mcs_all[0].get(b), 3)
+        ba = round(bc_all[0].get(b), 1)
+        bi = round(bc_all[1].get(b), 2)
+        bm = round(bc_all[2].get(b), 3)
+        n = n + 1
+
+        print(
+            f"""
   Printing beam complexity report:
       Beam name: {b}
       Beam type: {beamType}
-      
+
       Modulation Complexity Score: {mcs}
       Beam Area: {ba}
       Beam irregularity: {bi}
-      Beam modulation: {bm}""")
+      Beam modulation: {bm}"""
+        )
 
 except Exception as e:
     print("Unknown error occured. Program will exit")
-    print("Error: ",e)
-    
+    print("Error: ", e)
+
     traceback.print_exc()
-
-
