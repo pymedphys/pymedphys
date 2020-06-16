@@ -101,10 +101,20 @@ def get_uid_cache(data_path_root):
         with open(uid_cache_path, "w") as f:
             json.dump(uid_cache, f)
 
+    ct_uid_to_structure_uid = uid_cache["ct_uid_to_structure_uid"]
+
+    structure_uid_to_ct_uids = {}
+    for ct_uid, structure_uid in ct_uid_to_structure_uid.items():
+        try:
+            structure_uid_to_ct_uids[structure_uid].append(ct_uid)
+        except KeyError:
+            structure_uid_to_ct_uids[structure_uid] = [ct_uid]
+
     return (
         resolve_paths(data_path_root, uid_cache["ct_image_paths"]),
         resolve_paths(data_path_root, uid_cache["structure_set_paths"]),
-        uid_cache["ct_uid_to_structure_uid"],
+        ct_uid_to_structure_uid,
+        structure_uid_to_ct_uids,
     )
 
 
