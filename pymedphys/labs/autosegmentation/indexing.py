@@ -168,8 +168,9 @@ def get_cached_structure_names_by_uids(data_path_root, structure_set_paths, name
     data_path_root = pathlib.Path(data_path_root)
     structure_names_cache_path = data_path_root.joinpath("structure-names-cache.json")
 
-    structure_set_paths = {
-        str(key): str(item) for key, item in structure_set_paths.items()
+    relative_structure_set_paths = {
+        key: str(pathlib.Path(path).relative_to(data_path_root))
+        for key, path in structure_set_paths.items()
     }
 
     try:
@@ -184,26 +185,32 @@ def get_cached_structure_names_by_uids(data_path_root, structure_set_paths, name
         }
 
     cache_valid = (
-        structure_names_cache["structure_set_paths_when_run"] == structure_set_paths
+        structure_names_cache["structure_set_paths_when_run"]
+        == relative_structure_set_paths
         and structure_names_cache["names_map_when_run"] == names_map
     )
 
-    if cache_valid:
-        return structure_names_cache
+    if not cache_valid:
+        (
+            structure_names_by_ct_uid,
+            structure_names_by_structure_set_uid,
+        ) = get_structure_names_by_uids(structure_set_paths, names_map)
 
-    (
-        structure_names_by_ct_uid,
-        structure_names_by_structure_set_uid,
-    ) = get_structure_names_by_uids(structure_set_paths, names_map)
+        structure_names_cache["structure_names_by_ct_uid"] = structure_names_by_ct_uid
+        structure_names_cache[
+            "structure_names_by_structure_set_uid"
+        ] = structure_names_by_structure_set_uid
+        structure_names_cache[
+            "structure_set_paths_when_run"
+        ] = relative_structure_set_paths
+        structure_names_cache["names_map_when_run"] = names_map
 
-    structure_names_cache["structure_names_by_ct_uid"] = structure_names_by_ct_uid
-    structure_names_cache[
+        with open(structure_names_cache_path, "w") as f:
+            json.dump(structure_names_cache, f)
+
+    structure_names_by_ct_uid = structure_names_cache["structure_names_by_ct_uid"]
+    structure_names_by_structure_set_uid = structure_names_cache[
         "structure_names_by_structure_set_uid"
-    ] = structure_names_by_structure_set_uid
-    structure_names_cache["structure_set_paths_when_run"] = structure_set_paths
-    structure_names_cache["names_map_when_run"] = names_map
+    ]
 
-    with open(structure_names_cache_path, "w") as f:
-        json.dump(structure_names_cache, f)
-
-    return structure_names_cache
+    return structure_names_by_ct_uid, structure_names_by_structure_set_uid
