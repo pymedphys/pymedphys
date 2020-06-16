@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 
 from pymedphys._imports import pydicom
 
@@ -55,6 +56,18 @@ def filter_ct_uids(
     return filtered_ct_uids
 
 
+def load_names_mapping(path):
+    with open(path) as f:
+        name_mappings_config = json.load(f)
+        names_map = name_mappings_config["names_map"]
+        ignore_list = name_mappings_config["ignore_list"]
+
+        for key in ignore_list:
+            names_map[key] = None
+
+    return names_map
+
+
 def verify_all_names_have_mapping(structure_set_paths, names_map):
     names_in_dicom_files = set()
 
@@ -67,7 +80,12 @@ def verify_all_names_have_mapping(structure_set_paths, names_map):
 
     mapped_names = set(names_map.keys())
 
-    names_mapped_that_dont_exist = mapped_names.difference(names_in_dicom_files)
-    names_not_yet_mapped = names_in_dicom_files.difference(mapped_names)
+    false_mapping = mapped_names.difference(names_in_dicom_files)
+    to_be_mapped = names_in_dicom_files.difference(mapped_names)
 
-    return names_mapped_that_dont_exist, names_not_yet_mapped
+    result = {
+        "Names mapped that don't exist in DICOM files": false_mapping,
+        "Names within DICOM files that have not been mapped yet": to_be_mapped,
+    }
+
+    return result
