@@ -177,7 +177,7 @@ jobs:
 
 ## Plain install
 
-    - name: Run a plain installation
+    - name: Install a plain environment
       if: matrix.task == 'stackoverflow'
       run: |
         poetry install --no-dev
@@ -185,21 +185,21 @@ jobs:
 
 ## Install with Documentation Environment
 
-    - name: Run a docs installation
+    - name: Install a docs environment
       if: matrix.task == 'docs'
       run: |
         poetry install --no-dev -E docs
 
 ## Install with Tests Environment
 
-    - name: Run a tests installation
+    - name: Install a tests environment
       if: matrix.task == 'tests'
       run: |
         poetry install --no-dev -E tests
 
 ## Install Machine Learning Dependencies
 
-    - name: Run a tests installation
+    - name: Install a machine learning environment
       if: matrix.task == 'tests' && matrix.os == 'ubuntu'
       run: |
         poetry install --no-dev -E ml
