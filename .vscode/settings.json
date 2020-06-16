@@ -165,6 +165,7 @@
     "isnan",
     "isort",
     "issubset",
+    "issuperset",
     "iterrows",
     "itertools",
     "iview",
