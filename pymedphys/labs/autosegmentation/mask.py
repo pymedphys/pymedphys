@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt, skimage
@@ -86,8 +87,12 @@ def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
 
 
 def get_contours_from_mask(x_grid, y_grid, mask):
-    cs = plt.contour(x_grid, y_grid, mask, [0])
+    fig, ax = plt.subplots()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        cs = ax.contour(x_grid, y_grid, mask, [0])
+
     contours = [path.vertices for path in cs.collections[0].get_paths()]
-    plt.close()
+    plt.close(fig)
 
     return contours

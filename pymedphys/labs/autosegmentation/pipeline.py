@@ -231,15 +231,13 @@ def create_numpy_input_output(
     masks = np.nan * np.ones((*ct_size, len(structures_to_learn)))
 
     for i, structure in enumerate(structures_to_learn):
-        if not structure in contours_on_this_slice:
+        if structure in contours_on_this_slice:
+            original_contours = contours_by_ct_uid[ct_uid][structure]
+            _, _, masks[:, :, i] = mask.calculate_anti_aliased_mask(
+                original_contours, dcm_ct
+            )
+        else:
             masks[:, :, i] = np.zeros(ct_size) - 1
-
-            continue
-
-        original_contours = contours_by_ct_uid[ct_uid][structure]
-        _, _, masks[:, :, i] = mask.calculate_anti_aliased_mask(
-            original_contours, dcm_ct
-        )
 
     assert np.sum(np.isnan(masks)) == 0
 
