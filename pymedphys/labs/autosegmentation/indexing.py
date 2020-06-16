@@ -148,9 +148,8 @@ def get_structure_names_by_uids(structure_set_paths, names_map):
                 continue
 
             for contour_sequence_item in roi_contour_sequence_item.ContourSequence:
-                ct_uid = contour_sequence_item.ContourImageSequence[
-                    0
-                ].ReferencedSOPInstanceUID
+                contour_imaging_sequence = contour_sequence_item.ContourImageSequence
+                ct_uid = contour_imaging_sequence[0].ReferencedSOPInstanceUID
 
                 try:
                     structure_names_by_ct_uid[ct_uid].add(structure_name)

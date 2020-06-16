@@ -26,7 +26,6 @@ from . import filtering, indexing, mask
 
 
 def create_datasets(data_path_root, names_map, structures_to_learn, filters):
-
     data_path_root = pathlib.Path(data_path_root)
     dicom_directory = data_path_root.joinpath("dicom")
 
@@ -166,30 +165,7 @@ def create_numpy_generator_dataset(
     return dataset
 
 
-def create_numpy_input_output(
-    structure_set_paths,
-    ct_image_paths,
-    ct_uid_to_structure_uid,
-    names_map,
-    structures_to_learn,
-    ct_uid,
-):
-    structure_uid = ct_uid_to_structure_uid[ct_uid]
-
-    structure_set_path = structure_set_paths[structure_uid]
-
-    structure_set = pydicom.read_file(
-        structure_set_path,
-        force=True,
-        specific_tags=["ROIContourSequence", "StructureSetROISequence"],
-    )
-
-    number_to_name_map = {
-        roi_sequence_item.ROINumber: names_map[roi_sequence_item.ROIName]
-        for roi_sequence_item in structure_set.StructureSetROISequence
-        if names_map[roi_sequence_item.ROIName] is not None
-    }
-
+def get_contours_by_ct_uid(structure_set, number_to_name_map):
     contours_by_ct_uid = {}
 
     for roi_contour_sequence_item in structure_set.ROIContourSequence:
@@ -219,10 +195,36 @@ def create_numpy_input_output(
                     contour_sequence_item.ContourData
                 ]
 
+    return contours_by_ct_uid
+
+
+def create_numpy_input_output(
+    structure_set_paths,
+    ct_image_paths,
+    ct_uid_to_structure_uid,
+    names_map,
+    structures_to_learn,
+    ct_uid,
+):
     ct_path = ct_image_paths[ct_uid]
     dcm_ct = pydicom.read_file(ct_path, force=True)
     dcm_ct.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
+    structure_uid = ct_uid_to_structure_uid[ct_uid]
+    structure_set_path = structure_set_paths[structure_uid]
+    structure_set = pydicom.read_file(
+        structure_set_path,
+        force=True,
+        specific_tags=["ROIContourSequence", "StructureSetROISequence"],
+    )
+
+    number_to_name_map = {
+        roi_sequence_item.ROINumber: names_map[roi_sequence_item.ROIName]
+        for roi_sequence_item in structure_set.StructureSetROISequence
+        if names_map[roi_sequence_item.ROIName] is not None
+    }
+
+    contours_by_ct_uid = get_contours_by_ct_uid(structure_set, number_to_name_map)
     contours_on_this_slice = contours_by_ct_uid[ct_uid].keys()
 
     x_grid, y_grid, ct_size = mask.get_grid(dcm_ct)
