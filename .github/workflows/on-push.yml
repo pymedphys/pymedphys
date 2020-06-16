@@ -197,6 +197,13 @@ jobs:
       run: |
         poetry install --no-dev -E tests
 
+## Install Machine Learning Dependencies
+
+    - name: Run a tests installation
+      if: matrix.task == 'tests' && matrix.os == 'ubuntu'
+      run: |
+        poetry install --no-dev -E ml
+
 ## Update all packages and then install with tests environment and
 
     - name: Update all packages then install with tests environment
