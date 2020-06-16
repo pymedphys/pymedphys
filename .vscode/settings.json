@@ -260,6 +260,7 @@
     "semver",
     "settingeditor",
     "setup",
+    "setuptools",
     "simonbiggs",
     "skipif",
     "splev",
