@@ -1396,7 +1396,7 @@ description = "A Python wrapper for libjpeg, with a focus on use as a plugin for
 name = "pylibjpeg-libjpeg"
 optional = false
 python-versions = ">=3.6"
-version = "1.0.0"
+version = "1.1.0"
 
 [package.dependencies]
 numpy = ">=1.16.0"
@@ -2258,7 +2258,7 @@ ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "e87d4c0a7bbe2f217c19fbc3cbdd1e92f936813fe7f2849bf232f36c76658962"
+content-hash = "c0b2e9bb110ce9c09340e0065c74f81f18948e29669896e03586727b6de29137"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -3031,22 +3031,21 @@ pygments = [
     {file = "Pygments-2.6.1.tar.gz", hash = "sha256:647344a061c249a3b74e230c739f434d7ea4d8b1d5f3721bc0f3558049b38f44"},
 ]
 pylibjpeg-libjpeg = [
-    {file = "pylibjpeg-libjpeg-1.0.0.tar.gz", hash = "sha256:bccacd3bb152a226fa07d13026ed380a5a8cc22687f9e37296cc48b13e208cb7"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:a75540a09aebb8aded70fd59a10b75fa77c5473ff93b987e412f52ada65316a3"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-manylinux2010_i686.whl", hash = "sha256:b128c80b57f670d1a91927901233e2084135a7af2130a767498edfbc6ad0e13b"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:2dfce465c7e68821115a03b20db9043e01792abb779ef4304f735f3c5fa8ede6"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-win32.whl", hash = "sha256:a7b6cbfcc2a6cd6f097d727517b44fe43729afc9e4a02fd0d6c8a003a98e74c8"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp36-cp36m-win_amd64.whl", hash = "sha256:e6bb24c0388ac4c9f7eb5b4474827bfd725b1069bf83df75c1fc60e66325c4f8"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-macosx_10_6_intel.whl", hash = "sha256:2562c6a5bf0678352f5bf58f7f4f636fb8f14ceea53f70fb509c01f5f6c10141"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-manylinux2010_i686.whl", hash = "sha256:31a6e9fef41f8b07eee97cb66a43215ad804e2dd93b64bfe094739fde60311bb"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:86fc6a130fc03c8b5b8cb2e907f23323adf6e8c8480775540ecd898305fefe23"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-win32.whl", hash = "sha256:eca40d98d3d2cea7d259fba20fc4b6664ea6ceffee6b801382355962848e7966"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp37-cp37m-win_amd64.whl", hash = "sha256:a83cdf26c811e4840b533ec8a23d86553e6b1194a2418d646348983b4c5a0783"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:86d1cde689b2077d17e96250949fb45e62fc40f0bc510a52563e820b4176fb88"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-manylinux2010_i686.whl", hash = "sha256:72b3b468553dfcacc1305d43a2c4cefc3a4c00ae0e8c08b47400edd7fb5aa9f3"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:d60f304c8b65baa689bf06469379f18f465c48092beb5f475bdaab261f8af809"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-win32.whl", hash = "sha256:928bc3080e87b4b99170dd2a189a593c6f13c76341932cece4940758ac90b884"},
-    {file = "pylibjpeg_libjpeg-1.0.0-cp38-cp38-win_amd64.whl", hash = "sha256:c1d396f832d3a835851e3ccd2f409ef732e5516b32c7908ba06b46ef981d934b"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:cdd32af2e8609a5a8fba43206877e84c402e0277e0e63eb8778ccd2aaf440113"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp36-cp36m-manylinux2010_i686.whl", hash = "sha256:d9bafd2303472c5c37c861e0f2772cc412450be9a6ce29876a114d7b1fc0e546"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:098f698074db7bf3cd3e16a73f274d696b498f42067dd40e3219346efc0efbed"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp36-cp36m-win32.whl", hash = "sha256:306120e99cf662d6eabeb180cff3f07f514eec6cb1fa8128259e84aa1b34f47c"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp36-cp36m-win_amd64.whl", hash = "sha256:0ae40b43a3fd55f57ca337de8858c9a6409aa90e76ac1d0c8b095619b913be4c"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:6cc328c19b25f632a909df2007493166e246166e6717baaf1a3a7f4f9f89dcd8"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp37-cp37m-manylinux2010_i686.whl", hash = "sha256:203be389e91b99daf1af2467086be550838b91be3eee1b06b196ddc2b40dd5e7"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:b01d89f2b65e6b3a5b296c1d9440dfd9c3b5aa3f1ed0b39db35fdcf53dc5b7c3"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp37-cp37m-win32.whl", hash = "sha256:4e5dd8fe673015508808229e9358f68fff7f2f9f2acc69d42ea4d824a2d22bde"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp37-cp37m-win_amd64.whl", hash = "sha256:6a5f3133b3222afc7db9fe1a692f6e10ae07cb30f52639837d51873144109dc1"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:eda3aa29947b28d386bdb4d2ddd5182d14742a8f59d534e39adbb670f203f6e6"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp38-cp38-manylinux2010_i686.whl", hash = "sha256:937dd7b010a038f64875a3f60ee571ec316d39630d9bf45d21cfb0539ce4cf4a"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:251fd0ac810f8e1fd371f813e6efd2779ee21ab1fd95132ed801f72e08371a65"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp38-cp38-win32.whl", hash = "sha256:f43e033f88e642818c211257c02bad998a7bc86fd48fd42b22a2f5fdcbcd2ee8"},
+    {file = "pylibjpeg_libjpeg-1.1.0-cp38-cp38-win_amd64.whl", hash = "sha256:1c34982447d416d38ff797d8e60f000488019581871b9c05906c7592645e5a8e"},
 ]
 pylint = [
     {file = "pylint-2.5.3-py3-none-any.whl", hash = "sha256:d0ece7d223fe422088b0e8f13fa0a1e8eb745ebffcb8ed53d3e95394b6101a1c"},
@@ -3242,7 +3241,7 @@ rope = [
     {file = "rope-0.17.0.tar.gz", hash = "sha256:658ad6705f43dcf3d6df379da9486529cf30e02d9ea14c5682aa80eb33b649e1"},
 ]
 rsa = [
-    {file = "rsa-4.6-py2.py3-none-any.whl", hash = "sha256:23778f5523461cf86ae075f9482a99317f362bca752ae57cb118044066f4026f"},
+    {file = "rsa-4.6-py3-none-any.whl", hash = "sha256:6166864e23d6b5195a5cfed6cd9fed0fe774e226d8f854fcb23b7bbef0350233"},
     {file = "rsa-4.6.tar.gz", hash = "sha256:109ea5a66744dd859bf16fe904b8d8b627adafb9408753161e766a92e7d681fa"},
 ]
 s3transfer = [
