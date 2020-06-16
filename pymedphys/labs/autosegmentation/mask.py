@@ -39,12 +39,26 @@ def reduce_expanded_mask(expanded_mask, img_size, expansion):
     )
 
 
-def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
-    dx, dy, Cx, Cy, Ox, Oy = get_image_transformation_parameters(dcm_ct)
+def get_grid(dcm_ct, transformation_params=None):
+    if transformation_params is None:
+        dx, dy, Cx, Cy, Ox, Oy = get_image_transformation_parameters(dcm_ct)
+    else:
+        dx, dy, Cx, Cy, Ox, Oy = transformation_params
 
     ct_size = np.shape(dcm_ct.pixel_array)
     x_grid = np.arange(Cx, Cx + ct_size[0] * dx * Ox, dx * Ox)
     y_grid = np.arange(Cy, Cy + ct_size[1] * dy * Oy, dy * Oy)
+
+    return x_grid, y_grid, ct_size
+
+
+def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
+    transformation_params = get_image_transformation_parameters(dcm_ct)
+    dx, dy, Cx, Cy, Ox, Oy = transformation_params
+
+    x_grid, y_grid, ct_size = get_grid(
+        dcm_ct, transformation_params=transformation_params
+    )
 
     new_ct_size = np.array(ct_size) * expansion
 
