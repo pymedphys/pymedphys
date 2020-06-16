@@ -273,6 +273,7 @@
     "superoinferior",
     "tabmanager",
     "tensorflow",
+    "tfrecord",
     "toctree",
     "tolist",
     "toplevel",

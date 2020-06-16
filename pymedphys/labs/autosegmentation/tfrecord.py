@@ -21,13 +21,17 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def serialise(ct_uid, input_array, output_array):
+def serialise(ct_uid, x_grid, y_grid, input_array, output_array):
     ct_uid = tf.io.serialize_tensor(ct_uid)
+    x_grid = tf.io.serialize_tensor(x_grid)
+    y_grid = tf.io.serialize_tensor(y_grid)
     input_array = tf.io.serialize_tensor(input_array)
     output_array = tf.io.serialize_tensor(output_array)
 
     feature = {
         "ct_uid": _bytes_feature(ct_uid),
+        "x_grid": _bytes_feature(x_grid),
+        "y_grid": _bytes_feature(y_grid),
         "input_array": _bytes_feature(input_array),
         "output_array": _bytes_feature(output_array),
     }
@@ -37,14 +41,14 @@ def serialise(ct_uid, input_array, output_array):
 
 
 # Details on this from https://www.tensorflow.org/tutorials/load_data/tfrecord
-def tf_serialise(ct_uid, input_array, output_array):
+def tf_serialise(ct_uid, x_grid, y_grid, input_array, output_array):
     tf_string = tf.py_function(
-        serialise, (ct_uid, input_array, output_array), tf.string
+        serialise, (ct_uid, x_grid, y_grid, input_array, output_array), tf.string
     )
     return tf.reshape(tf_string, ())
 
 
-def write_tfrecord(path,):
-
+def write_tfrecord(path, dataset):
+    serialised_dataset = dataset.map(tf_serialise)
     writer = tf.data.experimental.TFRecordWriter(path)
     writer.write(serialised_dataset)

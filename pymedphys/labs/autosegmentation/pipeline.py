@@ -121,10 +121,9 @@ def create_numpy_input_output(
     dcm_ct = pydicom.read_file(ct_path, force=True)
     dcm_ct.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
-    ct_size = np.shape(dcm_ct.pixel_array)
-
     contours_on_this_slice = contours_by_ct_uid[ct_uid].keys()
 
+    x_grid, y_grid, ct_size = mask.get_grid(dcm_ct)
     masks = np.nan * np.ones((*ct_size, len(structures_to_learn)))
 
     for i, structure in enumerate(structures_to_learn):
@@ -134,7 +133,7 @@ def create_numpy_input_output(
             continue
 
         original_contours = contours_by_ct_uid[ct_uid][structure]
-        x_grid, y_grid, masks[:, :, i] = mask.calculate_anti_aliased_mask(
+        _, _, masks[:, :, i] = mask.calculate_anti_aliased_mask(
             original_contours, dcm_ct
         )
 
