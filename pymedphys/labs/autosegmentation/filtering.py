@@ -13,6 +13,9 @@
 # limitations under the License.
 
 
+from pymedphys._imports import pydicom
+
+
 def filter_ct_uids(
     structure_uid_to_ct_uids,
     structure_names_by_structure_set_uid,
@@ -50,3 +53,21 @@ def filter_ct_uids(
             filtered_ct_uids.append(ct_uid)
 
     return filtered_ct_uids
+
+
+def verify_all_names_have_mapping(structure_set_paths, names_map):
+    names_in_dicom_files = set()
+
+    for _, path in structure_set_paths.items():
+        dcm = pydicom.read_file(
+            path, force=True, specific_tags=["StructureSetROISequence"]
+        )
+        for item in dcm.StructureSetROISequence:
+            names_in_dicom_files.add(item.ROIName)
+
+    mapped_names = set(names_map.keys())
+
+    names_mapped_that_dont_exist = mapped_names.difference(names_in_dicom_files)
+    names_not_yet_mapped = names_in_dicom_files.difference(mapped_names)
+
+    return names_mapped_that_dont_exist, names_not_yet_mapped
