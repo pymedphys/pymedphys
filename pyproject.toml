@@ -55,7 +55,7 @@ shapely = ">= 1.7.0"
 
 dbfread = "*"
 
-pydicom = "*"
+pydicom = ">=2.0.0"
 pynetdicom = "*"
 pylibjpeg-libjpeg = "*"
 
@@ -68,9 +68,10 @@ python_dateutil = "*"
 scikit-image = "*"
 
 # ml
-tf-nightly = { version = ">=2.2.0.dev20200306", optional = true, allow-prereleases = true }
-tf-estimator-nightly = { version = "*", optional = true, allow-prereleases = true }
-tb-nightly = { version = "*", optional = true, allow-prereleases = true }
+tensorflow = { version = ">=2.2.0", optional = true}
+tensorflow-estimator = { version = "*", optional = true}
+tensorboard  = { version = "*", optional = true }
+tensorflow-io = { version = "*", optional = true }
 
 # gui
 streamlit = "*"
@@ -97,14 +98,6 @@ pytest-pylint  = { version = "*", optional = true }
 
 
 [tool.poetry.dev-dependencies]
-# Testing
-pytest = "*"
-pytest-sugar = "*"
-pylint = "*"
-pytest-pylint = "*"
-hypothesis = "*"
-psutil = "*"
-
 # Git Management
 pre-commit = "*"
 
@@ -113,24 +106,9 @@ black = "^19.3b0"
 mypy = "*"
 rope = "*"
 
-# Building documentation
-sphinx = ">= 1.4, < 1.8"
-sphinx-rtd-theme = "*"
-sphinx-autobuild = "*"
-sphinxcontrib-napoleon = "*"
-sphinx-argparse = "*"
-nbsphinx = "*"
-jupyter_client = "*"
-ipython = "*"
-ipykernel = "*"
-
 # VSCode extension dependencies
 doc8 = "*"
 pydot = "^1.4.1"
-
-# Packages to include later
-# pytest-cov = "^2.5"
-# pytest-mock = "^1.9"
 
 [tool.poetry.extras]
 docs = [
@@ -140,7 +118,7 @@ docs = [
 ]
 
 ml = [
-    "tf-nightly", "tf-estimator-nightly", "tb-nightly"
+    "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io"
 ]
 
 tests = [
@@ -179,5 +157,5 @@ sections = [
 ]
 
 [build-system]
-requires = ["poetry >= 0.12", "setuptools >= 35.0.2", "wheel >= 0.29.0"]
+requires = ["poetry >= 1.0.9", "setuptools >= 42.0.0", "wheel >= 0.29.0"]
 build-backend = "poetry.masonry.api"
