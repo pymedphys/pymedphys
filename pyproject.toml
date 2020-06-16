@@ -157,5 +157,5 @@ sections = [
 ]
 
 [build-system]
-requires = ["poetry >= 0.12", "setuptools >= 35.0.2", "wheel >= 0.29.0"]
+requires = ["poetry >= 1.0.9", "setuptools >= 35.0.2", "wheel >= 0.29.0"]
 build-backend = "poetry.masonry.api"
