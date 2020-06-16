@@ -48,7 +48,32 @@ def tf_serialise(ct_uid, x_grid, y_grid, input_array, output_array):
     return tf.reshape(tf_string, ())
 
 
-def write_tfrecord(path, dataset):
+def write(path, dataset):
     serialised_dataset = dataset.map(tf_serialise)
     writer = tf.data.experimental.TFRecordWriter(path)
     writer.write(serialised_dataset)
+
+
+def read(path):
+    parse_features = {
+        "ct_uid": tf.io.FixedLenFeature([], tf.string),
+        "x_grid": tf.io.FixedLenFeature([], tf.string),
+        "y_grid": tf.io.FixedLenFeature([], tf.string),
+        "input_array": tf.io.FixedLenFeature([], tf.string),
+        "output_array": tf.io.FixedLenFeature([], tf.string),
+    }
+
+    def _parse_dataset(example_proto):
+        parsed = tf.io.parse_single_example(example_proto, parse_features)
+        ct_uid = tf.io.parse_tensor(parsed["ct_uid"], tf.string)
+        x_grid = tf.io.parse_tensor(parsed["x_grid"], tf.float64)
+        y_grid = tf.io.parse_tensor(parsed["y_grid"], tf.float64)
+        input_array = tf.io.parse_tensor(parsed["input_array"], tf.int32)
+        output_array = tf.io.parse_tensor(parsed["output_array"], tf.float64)
+
+        return ct_uid, x_grid, y_grid, input_array, output_array
+
+    raw_dataset = tf.data.TFRecordDataset(path)
+    parsed_dataset = raw_dataset.map(_parse_dataset)
+
+    return parsed_dataset
