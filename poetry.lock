@@ -195,10 +195,10 @@ description = "The AWS SDK for Python"
 name = "boto3"
 optional = false
 python-versions = "*"
-version = "1.14.2"
+version = "1.14.3"
 
 [package.dependencies]
-botocore = ">=1.17.2,<1.18.0"
+botocore = ">=1.17.3,<1.18.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.3.0,<0.4.0"
 
@@ -208,7 +208,7 @@ description = "Low-level, data-driven core of boto 3."
 name = "botocore"
 optional = false
 python-versions = "*"
-version = "1.17.2"
+version = "1.17.3"
 
 [package.dependencies]
 docutils = ">=0.10,<0.16"
@@ -913,7 +913,7 @@ description = "More routines for operating on iterables, beyond itertools"
 name = "more-itertools"
 optional = true
 python-versions = ">=3.5"
-version = "8.3.0"
+version = "8.4.0"
 
 [[package]]
 category = "dev"
@@ -1312,7 +1312,7 @@ description = "library with cross-python path, ini-parsing, io, code, log facili
 name = "py"
 optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "1.8.1"
+version = "1.8.2"
 
 [[package]]
 category = "main"
@@ -1898,32 +1898,6 @@ watchdog = "*"
 [[package]]
 category = "main"
 description = "TensorBoard lets you watch Tensors Flow"
-name = "tb-nightly"
-optional = true
-python-versions = ">= 2.7, != 3.0.*, != 3.1.*"
-version = "2.3.0a20200613"
-
-[package.dependencies]
-absl-py = ">=0.4"
-google-auth = ">=1.6.3,<2"
-google-auth-oauthlib = ">=0.4.1,<0.5"
-grpcio = ">=1.24.3"
-markdown = ">=2.6.8"
-numpy = ">=1.12.0"
-protobuf = ">=3.6.0"
-requests = ">=2.21.0,<3"
-setuptools = ">=41.0.0"
-six = ">=1.10.0"
-tensorboard-plugin-wit = ">=1.6.0"
-werkzeug = ">=0.11.15"
-
-[package.dependencies.wheel]
-python = ">=3"
-version = ">=0.26"
-
-[[package]]
-category = "main"
-description = "TensorBoard lets you watch Tensors Flow"
 name = "tensorboard"
 optional = true
 python-versions = ">= 2.7, != 3.0.*, != 3.1.*"
@@ -1999,10 +1973,10 @@ version = "2.2.0"
 [[package]]
 category = "main"
 description = "TensorFlow IO"
-name = "tensorflow-io-nightly"
+name = "tensorflow-io"
 optional = true
 python-versions = "*"
-version = "0.13.0.dev20200510223343"
+version = "0.13.0"
 
 [package.dependencies]
 tensorflow = ">=2.2.0,<2.3.0"
@@ -2038,41 +2012,6 @@ version = "0.4.4"
 
 [package.extras]
 test = ["pathlib2"]
-
-[[package]]
-category = "main"
-description = "TensorFlow Estimator."
-name = "tf-estimator-nightly"
-optional = true
-python-versions = "*"
-version = "2.3.0.dev2020061401"
-
-[[package]]
-category = "main"
-description = "TensorFlow is an open source machine learning framework for everyone."
-name = "tf-nightly"
-optional = true
-python-versions = "*"
-version = "2.3.0.dev20200613"
-
-[package.dependencies]
-absl-py = ">=0.7.0"
-astunparse = "1.6.3"
-gast = "0.3.3"
-google-pasta = ">=0.1.8"
-grpcio = ">=1.8.6"
-h5py = ">=2.10.0,<2.11.0"
-keras-preprocessing = ">=1.1.1,<1.2"
-numpy = ">=1.16.0,<2.0"
-opt-einsum = ">=2.3.2"
-protobuf = ">=3.9.2"
-scipy = "1.4.1"
-six = ">=1.12.0"
-tb-nightly = ">=2.3.0a0,<2.4.0a0"
-termcolor = ">=1.1.0"
-tf-estimator-nightly = "*"
-wheel = ">=0.26"
-wrapt = ">=1.11.1"
 
 [[package]]
 category = "main"
@@ -2315,11 +2254,11 @@ testing = ["jaraco.itertools", "func-timeout"]
 
 [extras]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
-ml = ["tf-nightly", "tf-estimator-nightly", "tb-nightly"]
+ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "4e7f05c0765fe023bf698aee3150cba0b686ef855e832083ff7e433ce3724ebf"
+content-hash = "e87d4c0a7bbe2f217c19fbc3cbdd1e92f936813fe7f2849bf232f36c76658962"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2390,12 +2329,12 @@ blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
 ]
 boto3 = [
-    {file = "boto3-1.14.2-py2.py3-none-any.whl", hash = "sha256:caa4fbb9de8d8c229a183a551cb314fe208ec264545d4d825022d863d33e9b7b"},
-    {file = "boto3-1.14.2.tar.gz", hash = "sha256:a33e465831fb95af2e57576927f33746be620ba236252f8e1291c1c31cf63625"},
+    {file = "boto3-1.14.3-py2.py3-none-any.whl", hash = "sha256:522f7db49c77e7be41ce2517bc762c19b25ba4fb2ef970e03a1927c73ccd449e"},
+    {file = "boto3-1.14.3.tar.gz", hash = "sha256:1ba870c6be35ac31758af95e0666d6311242774c7528e64f3721c8b5e09057e1"},
 ]
 botocore = [
-    {file = "botocore-1.17.2-py2.py3-none-any.whl", hash = "sha256:4e347b77e17c5a619afd59a5209b251107c3d7d5f842ec169694492f3820f75b"},
-    {file = "botocore-1.17.2.tar.gz", hash = "sha256:01788bfa280397ba96991cd74e706628620310c7d8b8b43b0818df3bad3daaeb"},
+    {file = "botocore-1.17.3-py2.py3-none-any.whl", hash = "sha256:0ad4fb7b731e924490305584f7dcfd3e9fe955b307392b054a3d132a902a2528"},
+    {file = "botocore-1.17.3.tar.gz", hash = "sha256:13f4d92589ae9bd8c2c5ce8ea2f59d01a0ac4c14e9f99772ee4d1eb6cf9a3357"},
 ]
 cachetools = [
     {file = "cachetools-4.1.0-py3-none-any.whl", hash = "sha256:de5d88f87781602201cde465d3afe837546663b168e8b39df67411b0bf10cefc"},
@@ -2824,8 +2763,8 @@ mistune = [
     {file = "mistune-0.8.4.tar.gz", hash = "sha256:59a3429db53c50b5c6bcc8a07f8848cb00d7dc8bdb431a4ab41920d201d4756e"},
 ]
 more-itertools = [
-    {file = "more-itertools-8.3.0.tar.gz", hash = "sha256:558bb897a2232f5e4f8e2399089e35aecb746e1f9191b6584a151647e89267be"},
-    {file = "more_itertools-8.3.0-py3-none-any.whl", hash = "sha256:7818f596b1e87be009031c7653d01acc46ed422e6656b394b0f765ce66ed4982"},
+    {file = "more-itertools-8.4.0.tar.gz", hash = "sha256:68c70cc7167bdf5c7c9d8f6954a7837089c6a36bf565383919bb595efb8a17e5"},
+    {file = "more_itertools-8.4.0-py3-none-any.whl", hash = "sha256:b78134b2063dd214000685165d81c154522c3ee0a1c0d4d113c80361c234c5a2"},
 ]
 mypy = [
     {file = "mypy-0.780-cp35-cp35m-macosx_10_6_x86_64.whl", hash = "sha256:d3b4941de44341227ece1caaf5b08b23e42ad4eeb8b603219afb11e9d4cfb437"},
@@ -3038,8 +2977,8 @@ ptyprocess = [
     {file = "ptyprocess-0.6.0.tar.gz", hash = "sha256:923f299cc5ad920c68f2bc0bc98b75b9f838b93b599941a6b63ddbc2476394c0"},
 ]
 py = [
-    {file = "py-1.8.1-py2.py3-none-any.whl", hash = "sha256:c20fdd83a5dbc0af9efd622bee9a5564e278f6380fffcacc43ba6f43db2813b0"},
-    {file = "py-1.8.1.tar.gz", hash = "sha256:5e27081401262157467ad6e7f851b7aa402c5852dbcb3dae06768434de5752aa"},
+    {file = "py-1.8.2-py2.py3-none-any.whl", hash = "sha256:a673fa23d7000440cc885c17dbd34fafcb7d7a6e230b29f6766400de36a33c44"},
+    {file = "py-1.8.2.tar.gz", hash = "sha256:f3b3a4c36512a4c4f024041ab51866f11761cc169670204b235f6b20523d4e6b"},
 ]
 pyasn1 = [
     {file = "pyasn1-0.4.8-py2.4.egg", hash = "sha256:fec3e9d8e36808a28efb59b489e4528c10ad0f480e57dcc32b4de5c9d8c9fdf3"},
@@ -3419,9 +3358,6 @@ stevedore = [
 streamlit = [
     {file = "streamlit-0.61.0-py2.py3-none-any.whl", hash = "sha256:81cd72bed91501b36a0f5f4ac60f6f78c43912eef84128c985e9cc17e1dfd343"},
 ]
-tb-nightly = [
-    {file = "tb_nightly-2.3.0a20200613-py3-none-any.whl", hash = "sha256:9f57e0a25120641b467495945c623b64e242333e2ba391087ae37a4c311286ff"},
-]
 tensorboard = [
     {file = "tensorboard-2.2.2-py3-none-any.whl", hash = "sha256:a3feb73e1221c0a512398ad2cd08570fb082d8a2ba364aa0562543ecbd3659ef"},
 ]
@@ -3446,19 +3382,19 @@ tensorflow = [
 tensorflow-estimator = [
     {file = "tensorflow_estimator-2.2.0-py2.py3-none-any.whl", hash = "sha256:d09dacdd127f2579cea8d5af21f4a918036b8ae246adc82f26b61f91cc247dc2"},
 ]
-tensorflow-io-nightly = [
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp35-cp35m-macosx_10_13_x86_64.whl", hash = "sha256:7d160b1b79c5eac5be5a5c72ed9e34c903ce8d71c9626adc9ef7e381fa3f9dda"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:15242e76a521e3994e785fdaeab7d28325b0469f220b49f59453e4e0c3fbd2fc"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp35-cp35m-win_amd64.whl", hash = "sha256:5013388eb074498bddfd1d2e8b5e200441d4c40caebec0d9d3e48cbc7be96665"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:c13f3c85d2c9e7209750c8cdb75748e4c96e002f827c4f841909fc63923a4cec"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:1871e0310780326b01d6d26cdb55eaaa9bc7263794a63496a10f94634956eb2c"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp36-cp36m-win_amd64.whl", hash = "sha256:7a7f7f88690ec8d9bba6c9d2c9eb2d623b200e76196fa6cb9e7ccefe98a4af93"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:f6a62b89fabdb77e128a7c2e5dc89d113dbac4595aeb78ffbb6c59763e5299bd"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:de67d01d61db94309b068b1d0631ff4f554cbe1466de4dd108d6f99ecf5da844"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp37-cp37m-win_amd64.whl", hash = "sha256:8b2a9423ee16c9bc44ea77e72e5e7dfb16c2523e669b3014abbb921e7dbea0a5"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:83cab395d91f83632f333e96d4f6bf0e059a73dd3dd9c968724625dbc1ae6882"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:988c7e9d3423579309539aa9fe2b2abe0e2b14dd70965f3ee671fb652acd70f9"},
-    {file = "tensorflow_io_nightly-0.13.0.dev20200510223343-cp38-cp38-win_amd64.whl", hash = "sha256:f6f6cec8257e9ad52c44d31c3c5ed4757bfc72e98dac77fd3103771d3fce1963"},
+tensorflow-io = [
+    {file = "tensorflow_io-0.13.0-cp35-cp35m-macosx_10_13_x86_64.whl", hash = "sha256:85d2cb52c2b6f17d2f9dabbe2f6885d74f497b598602af678bffdc100a15505a"},
+    {file = "tensorflow_io-0.13.0-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:31caba4b78bbaca8816a3972bbdf1987d060e574f05144fa9076958749faed26"},
+    {file = "tensorflow_io-0.13.0-cp35-cp35m-win_amd64.whl", hash = "sha256:493e4d1f50e5511e1ceea00dcde74b2a31de91e56356182e11bfa2c84df9ecd7"},
+    {file = "tensorflow_io-0.13.0-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:8531b75a3bc82f4e8c0b91423c357e1ac3a74cb12b21cc692a7b470907dad557"},
+    {file = "tensorflow_io-0.13.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:8a21aeafc23ce08e0e44c216050d63c3661c037bf0b122c83d4bc69c85ef07db"},
+    {file = "tensorflow_io-0.13.0-cp36-cp36m-win_amd64.whl", hash = "sha256:01fe49a98e1d1df88ef3c3372f5854b46688e48448a6492a0ba1809f4d805d94"},
+    {file = "tensorflow_io-0.13.0-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:3aaf060738693e6da7ebd675b5b3551dbbd8db578d2393cb52f09171f7fddfe2"},
+    {file = "tensorflow_io-0.13.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:a8c461a3de8cf295f582432a41d5e36f4cec59725b3150624367a761e2d3ae16"},
+    {file = "tensorflow_io-0.13.0-cp37-cp37m-win_amd64.whl", hash = "sha256:c0c312cfa84fba0ad91be3d05f84cf799c04450eacc9f6d33be3243f989a0b2a"},
+    {file = "tensorflow_io-0.13.0-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:924c55bdb5580896676a18d9fee1a7d5cf830e87e59643e8c7c247afcd12b196"},
+    {file = "tensorflow_io-0.13.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:6edf434db1c5b0f3f0b9dfe324921c3c3b14fc57eed396eda689185a999c2786"},
+    {file = "tensorflow_io-0.13.0-cp38-cp38-win_amd64.whl", hash = "sha256:fdcbcfa0d7c0bde429a6964c7020bb776bc01aa31769abeb51c34a66bafe89b4"},
 ]
 termcolor = [
     {file = "termcolor-1.1.0.tar.gz", hash = "sha256:1d6d69ce66211143803fbc56652b41d73b4a400a2891d7bf7a1cdf4c02de613b"},
@@ -3470,18 +3406,6 @@ terminado = [
 testpath = [
     {file = "testpath-0.4.4-py2.py3-none-any.whl", hash = "sha256:bfcf9411ef4bf3db7579063e0546938b1edda3d69f4e1fb8756991f5951f85d4"},
     {file = "testpath-0.4.4.tar.gz", hash = "sha256:60e0a3261c149755f4399a1fff7d37523179a70fdc3abdf78de9fc2604aeec7e"},
-]
-tf-estimator-nightly = [
-    {file = "tf_estimator_nightly-2.3.0.dev2020061401-py2.py3-none-any.whl", hash = "sha256:49b7ae5a8aa386844c511d5087c5539e3959f8b85f1fcfa5574a2cebda92e4e8"},
-]
-tf-nightly = [
-    {file = "tf_nightly-2.3.0.dev20200613-cp35-cp35m-macosx_10_6_intel.whl", hash = "sha256:a508a7d8e3cd7e56366fbc15676310e62dcc8fe3bc0e4bb6d01435841baffefa"},
-    {file = "tf_nightly-2.3.0.dev20200613-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:574f5e8743be7ce20e3064455b6b918f057ce160922266bf71fdf42d168e90bf"},
-    {file = "tf_nightly-2.3.0.dev20200613-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:712b85cfffed97b66c0f5e4d16c9fca5f7bca9477550c582e43b1a57b89cd73f"},
-    {file = "tf_nightly-2.3.0.dev20200613-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:075a37b28f1d5c9b7472dac46545d6e5ad40c1df649c95963e955a2833eeacb5"},
-    {file = "tf_nightly-2.3.0.dev20200613-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:14ab96fc314ee120ae24350e7d32e5c75740085c94c81b779cd53f641cf05ef1"},
-    {file = "tf_nightly-2.3.0.dev20200613-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:eddbfae1d75222eb52719125fe28a20b0d719906bdb2b9ce54c37db0dd418ba7"},
-    {file = "tf_nightly-2.3.0.dev20200613-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:bc9fcf094db79167cfb7ed3d22f207813889ef32e040649737f2c033a2c12495"},
 ]
 tifffile = [
     {file = "tifffile-2020.6.3-py3-none-any.whl", hash = "sha256:66d90f05eec5e62336d87d0d09e6a218012afdf834c22d66abc62ba88b355e39"},
