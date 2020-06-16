@@ -108,7 +108,7 @@ jobs:
     - name: Upgrade pip, upgrade setuptools and install poetry
       run: |
         pip install --upgrade pip
-        pip install setuptools >= 42.0.0
+        pip install setuptools>=42.0.0
         pip install poetry
 
 # No import and run CLI with no dependencies
