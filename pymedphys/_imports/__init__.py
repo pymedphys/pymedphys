@@ -41,7 +41,7 @@ EXTERNAL_EXPORTS = (
     "PIL",
     "imageio",
     "skimage.measure",
-    "skimage",
+    "skimage.draw" "skimage",
     "requests",
     "attr",
     "watchdog.events",
@@ -102,6 +102,7 @@ if "numpy" not in IMPORTABLES:
     import PIL
     import imageio
     import skimage.measure
+    import skimage.draw
     import skimage
     import requests
     import attr
