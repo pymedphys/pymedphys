@@ -247,6 +247,11 @@ class PinnacleExport:
 
         for im in self.images:
             im_info = im.image_info[0]
+
+            if not im_info:
+                # If no ImageInfo is available then we can ignore this
+                continue
+
             im_suid = im_info["SeriesUID"]
             if len(series_uid) > 0 and im_suid == series_uid:
                 convert_image(im, export_path)
@@ -261,6 +266,11 @@ class PinnacleExport:
 
         for i in self.images:
             image_header = i.image_header
+
+            if not image_header:
+                # If no ImageHeader is available then we can ignore this
+                continue
+
             self.logger.info(
                 "%s: %s %s",
                 image_header["modality"],
