@@ -185,8 +185,17 @@ def data_file_hash_check(filename):
     return cached_filehash == calculated_filehash
 
 
-def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=True):
+def zenodo_data_paths(
+    record_name, check_hash=True, redownload_on_hash_mismatch=True, filenames=None
+):
     file_urls = zenodo.get_zenodo_file_urls(record_name)
+
+    if filenames is not None:
+        file_urls = {
+            filename: url
+            for filename, url in file_urls.items()
+            if filename in filenames
+        }
 
     logging.debug("File URLS are %s", file_urls)
 
