@@ -81,6 +81,7 @@ def get_url_map():
 
 
 def get_url(filename):
+    filename = str(filename).replace(os.sep, "/")
     url_map = get_url_map()
 
     try:
@@ -100,7 +101,7 @@ def download_all():
 
 
 def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True, url=None):
-    filename = str(filename)
+    filename = str(filename).replace(os.sep, "/")
     filepath = get_data_dir().joinpath(filename)
 
     logging.debug("Filepath saving to is %s", filepath)
@@ -140,6 +141,8 @@ class NoHashFound(KeyError):
 
 
 def get_cached_filehash(filename):
+    filename = str(filename).replace(os.sep, "/")
+
     with open(HERE.joinpath("hashes.json"), "r") as hash_file:
         hashes = json.load(hash_file)
 
