@@ -179,7 +179,10 @@ class PinnacleExport:
             self._images = []
             for image in self.patient_info["ImageSetList"]:
                 pi = PinnacleImage(self, self._path, image)
-                self._images.append(pi)
+
+                # Check that image info exists to ensure the image is really available
+                if pi.image_info:
+                    self._images.append(pi)
 
         return self._images
 
@@ -245,13 +248,11 @@ class PinnacleExport:
                 exported to.
         """
 
+        if not image and not series_uid:
+            self.logger.error("No image to export")
+
         for im in self.images:
             im_info = im.image_info[0]
-
-            if not im_info:
-                # If no ImageInfo is available then we can ignore this
-                continue
-
             im_suid = im_info["SeriesUID"]
             if len(series_uid) > 0 and im_suid == series_uid:
                 convert_image(im, export_path)
