@@ -1,3 +1,4 @@
+import functools
 import getpass
 import json
 import pathlib
@@ -9,6 +10,7 @@ BASE_URL = f"https://{ZENODO_HOSTNAME}/api/records/"
 HERE = pathlib.Path(__file__).resolve().parent
 
 
+@functools.lru_cache()
 def get_zenodo_file_urls(record_name):
     files = get_all_zenodo_file_data(record_name)
     urls = {record["key"]: record["links"]["self"] for record in files}
@@ -16,6 +18,7 @@ def get_zenodo_file_urls(record_name):
     return urls
 
 
+@functools.lru_cache()
 def get_all_zenodo_file_data(record_name):
     record_id = get_zenodo_record_id(record_name)
     files = get_all_zenodo_file_data_by_id(record_id)
@@ -23,6 +26,7 @@ def get_all_zenodo_file_data(record_name):
     return files
 
 
+@functools.lru_cache()
 def get_all_zenodo_file_data_by_id(record_id):
     response = requests.get(f"{BASE_URL}{record_id}")
     data = json.loads(response.text)
@@ -31,6 +35,7 @@ def get_all_zenodo_file_data_by_id(record_id):
     return files
 
 
+@functools.lru_cache()
 def get_zenodo_file_md5s(record_name):
     files = get_all_zenodo_file_data(record_name)
     checksums = {
@@ -40,6 +45,7 @@ def get_zenodo_file_md5s(record_name):
     return checksums
 
 
+@functools.lru_cache()
 def get_zenodo_record_id(record_name):
     with open(HERE.joinpath("zenodo.json"), "r") as zenodo_file:
         zenodo = json.load(zenodo_file)
