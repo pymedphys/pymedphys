@@ -62,7 +62,7 @@ class Metrics:
 
         #        self.demographics = getDemographics()
 
-        if self.mlcData != None:
+        if self.mlcData is not None:
             self.beamNames = list(self.mlcData.keys())
 
 
@@ -116,7 +116,7 @@ class ModulationComplexity(Metrics):
         lsvSegment = lsvLeft * lsvRight
         return lsvSegment
 
-    def calcAAV(self, left, right, beamName, y1, y2, indices, c):
+    def calcAAV(self, left, right, beamName, y1, y2, indices):
         leafSepSum = 0
         assert len(left) == len(right)
         for l in range(0, 60):  # looping round all the leaves
@@ -143,7 +143,7 @@ class ModulationComplexity(Metrics):
             y1 = self.jawData.get(b)[c][3, 1]
             y2 = self.jawData.get(b)[c][2, 1]
             lsvSeg = self.calcLSV(A, B, y1, y2, indices)
-            aavSeg = self.calcAAV(A, B, b, y1, y2, indices, c)
+            aavSeg = self.calcAAV(A, B, b, y1, y2, indices)
 
             w = self.segWeightData.get(b)[c]
 
@@ -163,13 +163,13 @@ class ModulationComplexity(Metrics):
             y1 = self.jawData.get(b)[c][3, 1]
             y2 = self.jawData.get(b)[c][2, 1]
             lsvSeg = self.calcLSV(A, B, y1, y2, indices)
-            aavSeg = self.calcAAV(A, B, b, y1, y2, indices, c)
+            aavSeg = self.calcAAV(A, B, b, y1, y2, indices)
 
             indices = self.mlcData.get(b)[c + 1][:, 0]
             A = self.mlcData.get(b)[c + 1][:, 1]
             B = self.mlcData.get(b)[c + 1][:, 2]
             lsvSeg_ = self.calcLSV(A, B, y1, y2, indices)
-            aavSeg_ = self.calcAAV(A, B, b, y1, y2, indices, c)
+            aavSeg_ = self.calcAAV(A, B, b, y1, y2, indices)
 
             l = (lsvSeg + lsvSeg_) / 2
             a = (aavSeg + aavSeg_) / 2

@@ -53,9 +53,6 @@ def getMLCdata(ds):
     leafIndices = MLCdata.TrueBeam  # import leaf index values from MLC data file
     beamSequence = ds.BeamSequence
     beamNames = []  # getting the beam names
-    for b in range(len(beamSequence)):
-        beamNames.append(beamSequence[b].BeamName)
-
     mlcData = {}
     jawData = {}
     segWeightData = {}
@@ -63,10 +60,11 @@ def getMLCdata(ds):
     maxJawPos = {}
     maxSep = {}
     maxSepSum = {}
-    for b in range(0, len(beamNames)):  # looping through the beams
-        cps = beamSequence[b].ControlPointSequence
+    for b in beamSequence:  # looping through the beams
+        name = b.BeamName
+        beamNames.append(name)
+        cps = b.ControlPointSequence
         cp = len(cps)
-        name = beamNames[b]
 
         leafPositions = {}  # empty dictionary to place leaf positions into
         jawPositions = {}
