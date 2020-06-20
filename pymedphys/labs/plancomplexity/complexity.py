@@ -63,4 +63,3 @@ Printing beam complexity report:
     Beam irregularity: {bi}
     Beam modulation: {bm}"""
     )
-    
