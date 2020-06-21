@@ -70,14 +70,14 @@ def update_zenodo_record_id(record_name, record_id):
         json.dump(zenodo, zenodo_file, indent=2)
 
 
-def get_zenodo_access_token(hostname):
+def get_zenodo_access_token(hostname=ZENODO_HOSTNAME):
     access_token = keyring.get_password("Zenodo", hostname)
 
     if access_token is None or access_token == "":
         print(
             "To upload files to Zenodo you need to provide a Zenodo "
             "access token. Please go to "
-            f"<https://{hostname}/account/settings/applications/tokens/new/>, "
+            f"https://{hostname}/account/settings/applications/tokens/new "
             "login to Zenodo and create a new access token.\n"
             "When creating the access token use the scopes `deposit:actions`, `deposit:write`, "
             "and `user:email`. Once you have your token copy it into the prompt below "
