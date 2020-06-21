@@ -230,7 +230,11 @@ class BeamComplexity(Metrics):
             AASeg = AASeg + AA_leafPair
         return AASeg
 
-    def calcApperturePerim(self, indices, A, B, y1, y2):
+    # Disabled pylint's recommendation for turning this into a function so as not
+    # to change the API. Pylint does have a good recommendation, if something
+    # doesn't use self it is probably better being refactored into its own standalone
+    # function outside of the class.
+    def calcAperturePerim(self, indices, A, B, y1, y2):  # pylint: disable = no-self-use
         edgesSeg = 0
         endsSeg = 0
         for i in range(0, 60):
@@ -245,7 +249,7 @@ class BeamComplexity(Metrics):
                 endsSeg = endsSeg + 2 * MLCdata.TrueBeamThick[i]
 
             # work out the contribution of the leaf edges to the perimeter
-            # Calculated by looking at the leaves above and below and checcking
+            # Calculated by looking at the leaves above and below and checking
             # whether any part of either edge is contributing to the shape of the
             # segment. For the first and last leaf pairs there is no leaf above/below
             # so these need to be ignored.
@@ -275,9 +279,9 @@ class BeamComplexity(Metrics):
         APSeg = (edgesSeg + endsSeg) / 10  # divide by 10 to convert to cm
         return APSeg
 
-    def calcAppertureIrregularity(self, indices, A, B, y1, y2):
-        AASeg = self.calcAppertureArea(indices, A, B, y1, y2)
-        APSeg = self.calcApperturePerim(indices, A, B, y1, y2)
+    def calcApertureIrregularity(self, indices, A, B, y1, y2):
+        AASeg = self.calcApertureArea(indices, A, B, y1, y2)
+        APSeg = self.calcAperturePerim(indices, A, B, y1, y2)
         AISeg = (APSeg * APSeg) / (4 * pi * AASeg)
         return AASeg, APSeg, AISeg
 
@@ -293,7 +297,7 @@ class BeamComplexity(Metrics):
             bMax = self.maxPositions.get(b)[:, 1]
 
             indices = self.mlcData.get(b)[0][:, 0]
-            unionArea = self.calcAppertureArea(indices, aMax, bMax, 200, -200)
+            unionArea = self.calcApertureArea(indices, aMax, bMax, 200, -200)
             controlPoints = len(self.mlcData.get(b))
             for c in range(0, controlPoints):
                 indices = self.mlcData.get(b)[c][:, 0]
@@ -303,10 +307,10 @@ class BeamComplexity(Metrics):
                 y2 = self.jawData.get(b)[c][2, 1]
                 w = self.segWeightData.get(b)[c]
 
-                AASeg = self.calcAppertureArea(indices, A, B, y1, y2)
+                AASeg = self.calcApertureArea(indices, A, B, y1, y2)
                 AABeam = AABeam + (AASeg * w)
 
-                AISeg = self.calcAppertureIrregularity(indices, A, B, y1, y2)[2]
+                AISeg = self.calcApertureIrregularity(indices, A, B, y1, y2)[2]
                 AIBeam = AIBeam + (AISeg * w)
 
                 beamMod = 1 - (AABeam / unionArea)
