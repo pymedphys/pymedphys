@@ -41,6 +41,7 @@ EXTERNAL_EXPORTS = (
     "PIL",
     "imageio",
     "skimage.measure",
+    "skimage.draw",
     "skimage",
     "requests",
     "attr",
@@ -54,6 +55,7 @@ EXTERNAL_EXPORTS = (
     "libjpeg",
     "tkinter",
     "tkinter.filedialog",
+    "tensorflow",
 )
 
 pymedphys._vendor.apipkg.initpkg(  # pylint: disable = protected-access
@@ -103,6 +105,7 @@ if "numpy" not in IMPORTABLES:
     import PIL
     import imageio
     import skimage.measure
+    import skimage.draw
     import skimage
     import requests
     import attr
@@ -116,5 +119,6 @@ if "numpy" not in IMPORTABLES:
     import libjpeg
     import tkinter
     import tkinter.filedialog
+    import tensorflow
 
     raise ValueError("This section of code should never run")
