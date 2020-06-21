@@ -70,55 +70,53 @@ class Metrics:
 #            self.leafIndices = self.mlcData.get(self.beamNames[0])[0]
 
 
+def _calcLSV(left, right, y1, y2, indices):
+    leftMax = abs(np.nanmax(left) - np.nanmin(left))
+    rightMax = abs(np.nanmax(right) - np.nanmin(right))
+    lsvLeft = 0
+    lsvRight = 0
+    leafDiffSum = 0
+    leaves = 0
+    assert len(left) == len(right)
+    for l in range(len(left) - 1):  # looping through each leaf
+        if indices[l] > float(y1) or indices[l] < float(y2):
+            continue
+        leafDiff = abs(left[l] - left[l + 1])
+        leafDiffSum_ = leftMax - leafDiff
+        leafDiffSum = leafDiffSum + leafDiffSum_
+        leaves = leaves + 1
+    try:  # handling for divide by 0 errors i.e. this factor needs to = 1 if no modulation
+        lsvLeft = leafDiffSum / (leaves * leftMax)
+    except ZeroDivisionError:
+        lsvLeft = 1
+
+    leafDiffSum = 0
+    leaves = 0
+    for l in range(len(right) - 1):
+        leafDiff = abs(right[l] - right[l + 1])
+        if math.isnan(leafDiff):
+            continue
+        leafDiffSum_ = rightMax - leafDiff
+        leafDiffSum = leafDiffSum + leafDiffSum_
+        leaves = leaves + 1
+
+    try:
+        lsvRight = leafDiffSum / (leaves * rightMax)
+    except ZeroDivisionError:
+        lsvRight = 1
+
+    lsvSegment = lsvLeft * lsvRight
+    return lsvSegment
+
+
 class ModulationComplexity(Metrics):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.calcLSV = _calcLSV
         print("Beginning Modulation Complexity Score calculation....")
 
     def __str__(self):
         return str("str function to be coded later")
-
-    # Disabled pylint's recommendation for turning this into a function so as not
-    # to change the API. Pylint does have a good recommendation, if something
-    # doesn't use self it is probably better being refactored into its own standalone
-    # function outside of the class.
-    def calcLSV(self, left, right, y1, y2, indices):  # pylint: disable = no-self-use
-        leftMax = abs(np.nanmax(left) - np.nanmin(left))
-        rightMax = abs(np.nanmax(right) - np.nanmin(right))
-        lsvLeft = 0
-        lsvRight = 0
-        leafDiffSum = 0
-        leaves = 0
-        assert len(left) == len(right)
-        for l in range(len(left) - 1):  # looping through each leaf
-            if indices[l] > float(y1) or indices[l] < float(y2):
-                continue
-            leafDiff = abs(left[l] - left[l + 1])
-            leafDiffSum_ = leftMax - leafDiff
-            leafDiffSum = leafDiffSum + leafDiffSum_
-            leaves = leaves + 1
-        try:  # handling for divide by 0 errors i.e. this factor needs to = 1 if no modulation
-            lsvLeft = leafDiffSum / (leaves * leftMax)
-        except ZeroDivisionError:
-            lsvLeft = 1
-
-        leafDiffSum = 0
-        leaves = 0
-        for l in range(len(right) - 1):
-            leafDiff = abs(right[l] - right[l + 1])
-            if math.isnan(leafDiff):
-                continue
-            leafDiffSum_ = rightMax - leafDiff
-            leafDiffSum = leafDiffSum + leafDiffSum_
-            leaves = leaves + 1
-
-        try:
-            lsvRight = leafDiffSum / (leaves * rightMax)
-        except ZeroDivisionError:
-            lsvRight = 1
-
-        lsvSegment = lsvLeft * lsvRight
-        return lsvSegment
 
     def calcAAV(self, left, right, beamName, y1, y2, indices):
         leafSepSum = 0
@@ -206,9 +204,71 @@ class ModulationComplexity(Metrics):
 #            print(f"MCS for beam {b}: ",round(mcsBeam,3))
 
 
+def _calcApertureArea(indices, A, B, y1, y2):
+    AASeg = 0
+    for i in range(0, 60):
+        if indices[i] > float(y1) or indices[i] < float(y2):
+            continue
+        if abs(A[i] - B[i]) < 1:
+            continue
+        AA_leafPair = abs(A[i] - B[i]) * MLCdata.TrueBeamThick[i]
+        AA_leafPair = AA_leafPair / 100  # converting to cm
+        AASeg = AASeg + AA_leafPair
+    return AASeg
+
+
+def _calcAperturePerim(indices, A, B, y1, y2):
+    edgesSeg = 0
+    endsSeg = 0
+    for i in range(0, 60):
+        # ignore leaf paris which are behind the jaws
+        if indices[i] > float(y1) or indices[i] < float(y2):
+            continue
+
+        # check if leaf pair is open to get the contribution of the leaf
+        # ends to the perimeter as twice the leaf thickness which is looked
+        # up from the MLCData.py file
+        if abs(A[i] - B[i]) > 5:
+            endsSeg = endsSeg + 2 * MLCdata.TrueBeamThick[i]
+
+        # work out the contribution of the leaf edges to the perimeter
+        # Calculated by looking at the leaves above and below and checking
+        # whether any part of either edge is contributing to the shape of the
+        # segment. For the first and last leaf pairs there is no leaf above/below
+        # so these need to be ignored.
+        if i == 0:  # no leaf above so only checking one side
+            if A[i + 1] < A[i]:
+                edgesSeg = edgesSeg + abs(A[i + 1] - A[i])
+            if B[i + 1] > B[i]:
+                edgesSeg = edgesSeg + abs(B[i + 1] - B[i])
+            continue
+        if i == 60:  # no leaf below so only checking one side
+            if A[i - 1] < A[i]:
+                edgesSeg = edgesSeg + abs(A[i - 1] - A[i])
+            if B[i - 1] > B[i]:
+                edgesSeg = edgesSeg + abs(B[i - 1] - B[i])
+            continue
+
+        # checking both sides of each lead
+        if A[i + 1] < A[i]:
+            edgesSeg = edgesSeg + abs(A[i + 1] - A[i])
+        if A[i - 1] > A[i]:
+            edgesSeg = edgesSeg + abs(A[i - 1] - A[i])
+        if B[i + 1] < B[i]:
+            edgesSeg = edgesSeg + abs(B[i + 1] - B[i])
+        if B[i + 1] > B[i]:
+            edgesSeg = edgesSeg + abs(B[i + 1] - B[i])
+
+    APSeg = (edgesSeg + endsSeg) / 10  # divide by 10 to convert to cm
+    return APSeg
+
+
 class BeamComplexity(Metrics):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.calcApertureArea = _calcApertureArea
+        self.calcAperturePerim = _calcAperturePerim
+
         print("Beginning Beam Complexity calculation....")
 
     #        if self.jawData == None:
@@ -217,67 +277,6 @@ class BeamComplexity(Metrics):
 
     def __str__(self):
         return str("str function to be coded later")
-
-    def calcApertureArea(self, indices, A, B, y1, y2):
-        AASeg = 0
-        for i in range(0, 60):
-            if indices[i] > float(y1) or indices[i] < float(y2):
-                continue
-            if abs(A[i] - B[i]) < 1:
-                continue
-            AA_leafPair = abs(A[i] - B[i]) * MLCdata.TrueBeamThick[i]
-            AA_leafPair = AA_leafPair / 100  # converting to cm
-            AASeg = AASeg + AA_leafPair
-        return AASeg
-
-    # Disabled pylint's recommendation for turning this into a function so as not
-    # to change the API. Pylint does have a good recommendation, if something
-    # doesn't use self it is probably better being refactored into its own standalone
-    # function outside of the class.
-    def calcAperturePerim(self, indices, A, B, y1, y2):  # pylint: disable = no-self-use
-        edgesSeg = 0
-        endsSeg = 0
-        for i in range(0, 60):
-            # ignore leaf paris which are behind the jaws
-            if indices[i] > float(y1) or indices[i] < float(y2):
-                continue
-
-            # check if leaf pair is open to get the contribution of the leaf
-            # ends to the perimeter as twice the leaf thickness which is looked
-            # up from the MLCData.py file
-            if abs(A[i] - B[i]) > 5:
-                endsSeg = endsSeg + 2 * MLCdata.TrueBeamThick[i]
-
-            # work out the contribution of the leaf edges to the perimeter
-            # Calculated by looking at the leaves above and below and checking
-            # whether any part of either edge is contributing to the shape of the
-            # segment. For the first and last leaf pairs there is no leaf above/below
-            # so these need to be ignored.
-            if i == 0:  # no leaf above so only checking one side
-                if A[i + 1] < A[i]:
-                    edgesSeg = edgesSeg + abs(A[i + 1] - A[i])
-                if B[i + 1] > B[i]:
-                    edgesSeg = edgesSeg + abs(B[i + 1] - B[i])
-                continue
-            if i == 60:  # no leaf below so only checking one side
-                if A[i - 1] < A[i]:
-                    edgesSeg = edgesSeg + abs(A[i - 1] - A[i])
-                if B[i - 1] > B[i]:
-                    edgesSeg = edgesSeg + abs(B[i - 1] - B[i])
-                continue
-
-            # checking both sides of each lead
-            if A[i + 1] < A[i]:
-                edgesSeg = edgesSeg + abs(A[i + 1] - A[i])
-            if A[i - 1] > A[i]:
-                edgesSeg = edgesSeg + abs(A[i - 1] - A[i])
-            if B[i + 1] < B[i]:
-                edgesSeg = edgesSeg + abs(B[i + 1] - B[i])
-            if B[i + 1] > B[i]:
-                edgesSeg = edgesSeg + abs(B[i + 1] - B[i])
-
-        APSeg = (edgesSeg + endsSeg) / 10  # divide by 10 to convert to cm
-        return APSeg
 
     def calcApertureIrregularity(self, indices, A, B, y1, y2):
         AASeg = self.calcApertureArea(indices, A, B, y1, y2)
