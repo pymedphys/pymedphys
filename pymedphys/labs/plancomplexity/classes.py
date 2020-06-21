@@ -10,11 +10,11 @@ an input of mlcDataEval as produced by 'PlanOperations.py'
 
 Metrics
     Base class for all the other metric classes to be derived from. The same
-    operations will probably be neede for all metrics and this will save on
+    operations will probably be needed for all metrics and this will save on
     repeating code.
 
 ModulationComplexity
-    Has methods to calculate the Leaf Sequence Variability and Apperture Area
+    Has methods to calculate the Leaf Sequence Variability and Aperture Area
     Variability as defined in the publication ??????? This calculation assumes
     the VMAT definition i.e. the average of two control points to take into
     account the moving jaws/leaves in between CP. This should still work for
@@ -23,9 +23,9 @@ ModulationComplexity
 
 
 BeamComplexity - Has methods which calculate:
-    - apperture area (AA)
-    - apperture perimeter (AP)
-    - apperture irregularity (AI)
+    - aperture area (AA)
+    - aperture perimeter (AP)
+    - aperture irregularity (AI)
     - beam area (BA)
     - beam irregularity (BI)
     - beam modulation (BM)
@@ -46,8 +46,8 @@ class jawPositionError(ValueError):
 
 class Metrics:
     def __init__(self, **kwargs):
-        # initialiser function to define the default values of 0 for all parametrs
-        # and to pre-calculate the relevent parameters for the calculation
+        # initialiser function to define the default values of 0 for all parameters
+        # and to pre-calculate the relevant parameters for the calculation
         self.ds = kwargs.get("ds")
         result = getMLCdata(self.ds)
         self.mlcData = result[0]
@@ -78,7 +78,11 @@ class ModulationComplexity(Metrics):
     def __str__(self):
         return str("str function to be coded later")
 
-    def calcLSV(self, left, right, y1, y2, indices):
+    # Disabled pylint's recommendation for turning this into a function so as not
+    # to change the API. Pylint does have a good recommendation, if something
+    # doesn't use self it is probably better being refactored into its own standalone
+    # function outside of the class.
+    def calcLSV(self, left, right, y1, y2, indices):  # pylint: disable = no-self-use
         leftMax = abs(np.nanmax(left) - np.nanmin(left))
         rightMax = abs(np.nanmax(right) - np.nanmin(right))
         lsvLeft = 0
@@ -214,7 +218,7 @@ class BeamComplexity(Metrics):
     def __str__(self):
         return str("str function to be coded later")
 
-    def calcAppertureArea(self, indices, A, B, y1, y2):
+    def calcApertureArea(self, indices, A, B, y1, y2):
         AASeg = 0
         for i in range(0, 60):
             if indices[i] > float(y1) or indices[i] < float(y2):
