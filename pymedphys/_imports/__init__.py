@@ -52,6 +52,8 @@ EXTERNAL_EXPORTS = (
     "streamlit",
     "timeago",
     "libjpeg",
+    "tkinter",
+    "tkinter.filedialog",
 )
 
 pymedphys._vendor.apipkg.initpkg(  # pylint: disable = protected-access
@@ -112,5 +114,7 @@ if "numpy" not in IMPORTABLES:
     import streamlit
     import timeago
     import libjpeg
+    import tkinter
+    import tkinter.filedialog
 
     raise ValueError("This section of code should never run")

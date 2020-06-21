@@ -20,46 +20,50 @@ on plans from any other TPS
 """
 from pathlib import Path
 
-import tkinter as tk
-from tkinter import filedialog
-
-import pydicom
+from pymedphys._imports import pydicom
+from pymedphys._imports import tkinter as tk
 
 from .classes import BeamComplexity, ModulationComplexity
 
-root = tk.Tk()
-root.withdraw()
 
-path = filedialog.askopenfilename()
-path = Path(path)
-path = str(path)
-ds = pydicom.dcmread(path)
+def main():
+    root = tk.Tk()
+    root.withdraw()
 
-mcs = ModulationComplexity(ds=ds)
-mcs_all = mcs.calcMCS()
+    path = tk.filedialog.askopenfilename()
+    path = Path(path)
+    path = str(path)
+    ds = pydicom.dcmread(path)
 
-bc = BeamComplexity(ds=ds)
-bc_all = bc.calcBeamComplexity()
+    mcs = ModulationComplexity(ds=ds)
+    mcs_all = mcs.calcMCS()
 
-beamNames = mcs_all[0].keys()
+    bc = BeamComplexity(ds=ds)
+    bc_all = bc.calcBeamComplexity()
 
-n = 0
-for b in beamNames:
-    beamType = mcs_all[1].get(b)
-    mcs = round(mcs_all[0].get(b), 3)
-    ba = round(bc_all[0].get(b), 1)
-    bi = round(bc_all[1].get(b), 2)
-    bm = round(bc_all[2].get(b), 3)
-    n = n + 1
+    beamNames = mcs_all[0].keys()
 
-    print(
-        f"""
-Printing beam complexity report:
-    Beam name: {b}
-    Beam type: {beamType}
+    n = 0
+    for b in beamNames:
+        beamType = mcs_all[1].get(b)
+        mcs = round(mcs_all[0].get(b), 3)
+        ba = round(bc_all[0].get(b), 1)
+        bi = round(bc_all[1].get(b), 2)
+        bm = round(bc_all[2].get(b), 3)
+        n = n + 1
 
-    Modulation Complexity Score: {mcs}
-    Beam Area: {ba}
-    Beam irregularity: {bi}
-    Beam modulation: {bm}"""
-    )
+        print(
+            f"""
+    Printing beam complexity report:
+        Beam name: {b}
+        Beam type: {beamType}
+
+        Modulation Complexity Score: {mcs}
+        Beam Area: {ba}
+        Beam irregularity: {bi}
+        Beam modulation: {bm}"""
+        )
+
+
+if __name__ == "__main__":
+    main()
