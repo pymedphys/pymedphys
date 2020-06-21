@@ -24,10 +24,8 @@ getmlcdata - Reads in the DICOM data from openPlan and extracts the MLC and
 
 """
 
-
-import numpy as np
-
-import pydicom
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from . import data as MLCdata
 

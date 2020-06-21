@@ -126,6 +126,7 @@
     "erfinv",
     "escan",
     "filebrowser",
+    "filedialog",
     "fileeditor",
     "findbb",
     "finditer",

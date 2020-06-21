@@ -34,7 +34,7 @@ BeamComplexity - Has methods which calculate:
 import math
 from math import pi
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from . import data as MLCdata
 from .operations import getBeamType, getMLCdata
