@@ -2,20 +2,21 @@
 formats
 
 .. WARNING::
-   Although this is a useful tool in the toolbox for patient specific IMRT QA,
-   in and of itself it is not a sufficient stand in replacement for direct dosimetric
-   measurement. This tool does not verify that the reported dose within the treatment
-   planning system is delivered by the Linac.
+   Although this is a useful tool in the toolbox for patient specific
+   IMRT QA, in and of itself it is not a sufficient stand in replacement
+   for direct dosimetric measurement. This tool does not verify that the
+   reported dose within the treatment planning system matches that
+   delivered by the Linac.
 
-   Deficiencies or limitations in the agreement between the treatment planning
-   system's beam model and the Linac delivery will not be able to be
-   highlighted by this tool. Specifically effects due to small field output factors
-   or the MLC model which can have disproportionately large effects on dose
-   will not have any baring on an MU Density result.
+   Deficiencies in a plan's agreement between the treatment planning
+   system and the Linac due to deviations such as small field
+   output factors or the MLC model will not be able to be picked up by
+   this tool.
 
-   Furthermore, when the MU Density is calculated off of log files alone this
-   uses leaf and jaw positions as reported by the linac which may not agree
-   with their position in reality due to issues such as a hardware or calibration fault.
+   Furthermore, when the MU Density is calculated off of log files alone
+   this uses leaf and jaw positions as reported by the linac which may
+   not agree with their position in reality due to issues such as a
+   hardware or calibration fault.
 """
 
 # pylint: disable = unused-import
