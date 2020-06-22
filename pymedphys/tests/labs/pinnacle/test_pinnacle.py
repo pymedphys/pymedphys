@@ -152,6 +152,7 @@ def test_ct(pinn):
 
 
 @pytest.mark.slow
+@pytest.mark.pydicom
 def test_struct(pinn):
 
     for p in pinn:
@@ -259,3 +260,23 @@ def test_plan(pinn):
 
         # TODO The RTPLAN export isn't fully functional yet, so we need
         # to test more as we add that functionality
+
+
+@pytest.mark.slow
+def test_missing_image():
+
+    zip_ref = ZipFile(
+        download.get_file_within_data_zip(
+            "pinnacle_test_data_no_image.zip", "pinnacle_test_no_image.zip"
+        ),
+        "r",
+    )
+    zip_ref.extractall(data_path)
+    zip_ref.close()
+
+    pinn_path = os.path.join(data_path, "Pt3", "Pinnacle", "Patient_7430")
+    pinn = PinnacleExport(pinn_path, None)
+
+    # There is no image to export, so this line should fail gracefully and simply output
+    # a warning to the logger
+    pinn.export_image(pinn.plans[0].primary_image, export_path=".")
