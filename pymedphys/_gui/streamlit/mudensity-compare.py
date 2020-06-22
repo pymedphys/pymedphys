@@ -1461,6 +1461,16 @@ def main():
     """
 
     if st.button("Run Calculation"):
+
+        """
+        ### MU Density usage warning
+        """
+        st.warning(pymedphys.mudensity.WARNING_MESSAGE)
+
+        """
+        ### Calculation status
+        """
+
         run_calculation(
             reference_results,
             evaluation_results,
