@@ -14,7 +14,7 @@ formats
    this tool.
 
    Furthermore, when the MU Density is calculated off of log files alone
-   this uses leaf and jaw positions as reported by the linac which may
+   this uses leaf and jaw positions as reported by the Linac which may
    not agree with their position in reality due to issues such as a
    hardware or calibration fault.
 """
