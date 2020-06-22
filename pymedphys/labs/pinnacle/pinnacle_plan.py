@@ -94,7 +94,7 @@ class PinnaclePlan:
                 self._primary_image = image
 
         if not self._primary_image:
-            self.logger.warn("Primary Image Not Available")
+            self.logger.warning("Primary Image Not Available")
 
     @property
     def logger(self):
