@@ -3,8 +3,8 @@ formats
 
 .. WARNING::
    Although this is a useful tool in the toolbox for patient specific
-   IMRT QA, in and of itself it is not a sufficient stand in replacement
-   for direct dosimetric measurement. This tool does not verify that the
+   IMRT QA, in and of itself it is not a sufficient replacement for
+   direct dosimetric measurement. This tool does not verify that the
    reported dose within the treatment planning system matches that
    delivered by the Linac.
 
