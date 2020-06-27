@@ -13,116 +13,16 @@
 # limitations under the License.
 
 
-import json
-import logging
+import functools
 import pathlib
-import random
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 from pymedphys._imports import tensorflow as tf
 
-from . import filtering, indexing, mask
+from pymedphys._data import download
 
-
-def create_datasets(data_path_root, names_map, structures_to_learn, filters):
-    data_path_root = pathlib.Path(data_path_root)
-    dicom_directory = data_path_root.joinpath("dicom")
-
-    structure_value_error = ValueError(
-        "Expected DICOM files to be organised into directories "
-        "testing, training and validation under data_path_root/dicom."
-    )
-
-    if not dicom_directory.exists():
-        raise structure_value_error
-
-    (
-        ct_image_paths,
-        structure_set_paths,
-        ct_uid_to_structure_uid,
-        structure_uid_to_ct_uids,
-    ) = indexing.get_uid_cache(data_path_root)
-
-    uid_to_dataset_type = {}
-    for structure_uid, ct_uids in structure_uid_to_ct_uids.items():
-        structure_set_path = pathlib.Path(structure_set_paths[structure_uid])
-        structure_set_type = structure_set_path.relative_to(dicom_directory).parts[0]
-
-        uid_to_dataset_type[structure_uid] = structure_set_type
-
-        if not structure_set_type in ["testing", "training", "validation"]:
-            raise structure_value_error
-
-        for ct_uid in ct_uids:
-            ct_path = pathlib.Path(ct_image_paths[ct_uid])
-            ct_type = structure_set_path.relative_to(dicom_directory).parts[0]
-
-            if ct_type != structure_set_type:
-                raise ValueError(
-                    f"{str(ct_path)} uses the structure set at "
-                    f"{str(structure_set_path)}, yet their top level directory "
-                    "within data_path_root/dicom does not have the same "
-                    "value of 'testing', 'training', or 'validation'."
-                )
-
-            uid_to_dataset_type[ct_uid] = ct_type
-
-    verification = filtering.verify_all_names_have_mapping(
-        data_path_root, structure_set_paths, names_map
-    )
-    false_mapping = verification["Names mapped that don't exist in DICOM files"]
-    to_be_mapped = verification[
-        "Names within DICOM files that have not been mapped yet"
-    ]
-
-    if false_mapping != set([]):
-        raise ValueError(
-            "Name mapping has structures within it that don't exist within "
-            f"your dataset. {false_mapping}"
-        )
-
-    if to_be_mapped != set([]):
-        raise ValueError(
-            "Name mapping is not complete. The following structures have not yet "
-            f"been mapped: {to_be_mapped}"
-        )
-
-    (
-        structure_names_by_ct_uid,
-        structure_names_by_structure_set_uid,
-    ) = indexing.get_cached_structure_names_by_uids(
-        data_path_root, structure_set_paths, names_map
-    )
-
-    filtered_ct_uids = filtering.filter_ct_uids(
-        structure_uid_to_ct_uids,
-        structure_names_by_structure_set_uid,
-        structure_names_by_ct_uid,
-        **filters,
-    )
-
-    filtered_uids_by_type = {"training": [], "validation": [], "testing": []}
-    for uid in filtered_ct_uids:
-        uid_dataset_type = uid_to_dataset_type[uid]
-        filtered_uids_by_type[uid_dataset_type].append(uid)
-
-    datasets = {}
-    for dataset_type in ["training", "validation", "testing"]:
-        uids = filtered_uids_by_type[dataset_type]
-        random.shuffle(uids)
-
-        datasets[dataset_type] = create_numpy_generator_dataset(
-            data_path_root,
-            structure_set_paths,
-            ct_image_paths,
-            ct_uid_to_structure_uid,
-            names_map,
-            uids,
-            structures_to_learn,
-        )
-
-    return datasets
+from . import mask
 
 
 def create_numpy_generator_dataset(
@@ -133,9 +33,26 @@ def create_numpy_generator_dataset(
     names_map,
     ct_uids,
     structures_to_learn,
+    uid_to_url,
+    hash_path,
 ):
-    def generator():
+    def predownload_generator():
         for ct_uid in ct_uids:
+            download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
+
+            structure_uid = ct_uid_to_structure_uid[ct_uid]
+            download_uid(data_path_root, structure_uid, uid_to_url, hash_path)
+
+            yield ct_uid
+
+    pre_download_parameters = ((tf.string), (tf.TensorShape(())))
+    pre_download_dataset = tf.data.Dataset.from_generator(
+        predownload_generator, *pre_download_parameters
+    )
+
+    def generator():
+        for ct_uid in pre_download_dataset.prefetch(30):
+            ct_uid = ct_uid.numpy().decode()
             x_grid, y_grid, input_array, output_array = numpy_input_output_from_cache(
                 data_path_root,
                 structure_set_paths,
@@ -144,6 +61,8 @@ def create_numpy_generator_dataset(
                 names_map,
                 ct_uid,
                 structures_to_learn,
+                uid_to_url,
+                hash_path,
             )
             input_array = input_array[:, :, None]
 
@@ -198,50 +117,48 @@ def get_contours_by_ct_uid(structure_set, number_to_name_map):
     return contours_by_ct_uid
 
 
-def create_numpy_input_output(
-    structure_set_paths,
-    ct_image_paths,
-    ct_uid_to_structure_uid,
-    names_map,
-    structures_to_learn,
-    ct_uid,
-):
-    ct_path = ct_image_paths[ct_uid]
-    dcm_ct = pydicom.read_file(ct_path, force=True)
-    dcm_ct.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+def get_filename_from_url(url):
+    filename = url.split("/")[-1]
 
-    structure_uid = ct_uid_to_structure_uid[ct_uid]
-    structure_set_path = structure_set_paths[structure_uid]
-    structure_set = pydicom.read_file(
-        structure_set_path,
-        force=True,
-        specific_tags=["ROIContourSequence", "StructureSetROISequence"],
+    return filename
+
+
+def download_uid(data_path_root, uid, uid_to_url, hash_path):
+    download_directory_name = data_path_root.name
+
+    url = uid_to_url[uid]
+    filename = get_filename_from_url(url)
+    save_filepath = pathlib.Path(download_directory_name).joinpath("dicom", filename)
+
+    download.zip_data_paths(
+        save_filepath,
+        check_hash=True,
+        redownload_on_hash_mismatch=True,
+        delete_when_no_hash_found=True,
+        url=url,
+        hash_filepath=hash_path,
     )
 
-    number_to_name_map = {
-        roi_sequence_item.ROINumber: names_map[roi_sequence_item.ROIName]
-        for roi_sequence_item in structure_set.StructureSetROISequence
-        if names_map[roi_sequence_item.ROIName] is not None
-    }
 
-    contours_by_ct_uid = get_contours_by_ct_uid(structure_set, number_to_name_map)
+def create_input_ct_image(dcm_ct):
+    x_grid, y_grid, _ = mask.get_grid(dcm_ct)
+
+    return x_grid, y_grid, dcm_ct.pixel_array
+
+
+def create_output_mask(dcm_ct, contours_by_ct_uid, structure, ct_uid):
+    _, _, ct_size = mask.get_grid(dcm_ct)
+
     contours_on_this_slice = contours_by_ct_uid[ct_uid].keys()
+    if structure in contours_on_this_slice:
+        original_contours = contours_by_ct_uid[ct_uid][structure]
+        _, _, calculated_mask = mask.calculate_anti_aliased_mask(
+            original_contours, dcm_ct
+        )
+    else:
+        calculated_mask = np.zeros(ct_size) - 1
 
-    x_grid, y_grid, ct_size = mask.get_grid(dcm_ct)
-    masks = np.nan * np.ones((*ct_size, len(structures_to_learn)))
-
-    for i, structure in enumerate(structures_to_learn):
-        if structure in contours_on_this_slice:
-            original_contours = contours_by_ct_uid[ct_uid][structure]
-            _, _, masks[:, :, i] = mask.calculate_anti_aliased_mask(
-                original_contours, dcm_ct
-            )
-        else:
-            masks[:, :, i] = np.zeros(ct_size) - 1
-
-    assert np.sum(np.isnan(masks)) == 0
-
-    return x_grid, y_grid, dcm_ct.pixel_array, masks
+    return calculated_mask
 
 
 def numpy_input_output_from_cache(
@@ -252,48 +169,99 @@ def numpy_input_output_from_cache(
     names_map,
     ct_uid,
     structures_to_learn,
+    uid_to_url,
+    hash_path,
 ):
     data_path_root = pathlib.Path(data_path_root)
+
+    @functools.lru_cache()
+    def get_dcm_ct_from_uid(ct_uid):
+        ct_path = ct_image_paths[ct_uid]
+        try:
+            dcm_ct = pydicom.read_file(ct_path, force=True)
+        except FileNotFoundError:
+            download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
+            dcm_ct = pydicom.read_file(ct_path, force=True)
+
+        dcm_ct.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
+
+        return dcm_ct
+
+    @functools.lru_cache()
+    def get_dcm_structure_from_uid(structure_set_uid):
+        structure_set_path = structure_set_paths[structure_set_uid]
+
+        def load_structure():
+            return pydicom.read_file(
+                structure_set_path,
+                force=True,
+                specific_tags=["ROIContourSequence", "StructureSetROISequence"],
+            )
+
+        try:
+            dcm_structure = load_structure()
+        except FileNotFoundError:
+            download_uid(data_path_root, structure_set_uid, uid_to_url, hash_path)
+            dcm_structure = load_structure()
+
+        return dcm_structure
+
+    @functools.lru_cache()
+    def get_contours_by_ct_uid_from_structure_uid(structure_set_uid):
+        dcm_structure = get_dcm_structure_from_uid(structure_set_uid)
+
+        number_to_name_map = {
+            roi_sequence_item.ROINumber: names_map[roi_sequence_item.ROIName]
+            for roi_sequence_item in dcm_structure.StructureSetROISequence
+            if names_map[roi_sequence_item.ROIName] is not None
+        }
+
+        contours_by_ct_uid = get_contours_by_ct_uid(dcm_structure, number_to_name_map)
+
+        return contours_by_ct_uid
+
     npz_directory = data_path_root.joinpath("npz_cache")
     npz_directory.mkdir(parents=True, exist_ok=True)
 
-    npz_path = npz_directory.joinpath(f"{ct_uid}.npz")
-    structures_to_learn_cache_path = npz_directory.joinpath("structures_to_learn.json")
+    npz_input_path = npz_directory.joinpath(f"{ct_uid}_input.npz")
+    npz_output_paths = {
+        structure: npz_directory.joinpath(f"{ct_uid}_output_{structure}.npz")
+        for structure in structures_to_learn
+    }
 
     try:
-        with open(structures_to_learn_cache_path) as f:
-            structures_to_learn_cache = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        structures_to_learn_cache = []
-
-    if structures_to_learn_cache != structures_to_learn:
-        logging.warning("Structures to learn has changed. Dumping npz cache.")
-        for path in npz_directory.glob("*.npz"):
-            path.unlink()
-        with open(structures_to_learn_cache_path, "w") as f:
-            json.dump(structures_to_learn, f)
-
-    try:
-        data = np.load(npz_path)
-        x_grid = data["x_grid"]
-        y_grid = data["y_grid"]
-        input_array = data["input_array"]
-        output_array = data["output_array"]
+        input_data = np.load(npz_input_path)
     except FileNotFoundError:
-        x_grid, y_grid, input_array, output_array = create_numpy_input_output(
-            structure_set_paths,
-            ct_image_paths,
-            ct_uid_to_structure_uid,
-            names_map,
-            structures_to_learn,
-            ct_uid,
-        )
-        np.savez(
-            npz_path,
-            x_grid=x_grid,
-            y_grid=y_grid,
-            input_array=input_array,
-            output_array=output_array,
-        )
+        dcm_ct = get_dcm_ct_from_uid(ct_uid)
+        x_grid, y_grid, input_array = create_input_ct_image(dcm_ct)
+
+        np.savez(npz_input_path, x_grid=x_grid, y_grid=y_grid, input_array=input_array)
+    else:
+        x_grid = input_data["x_grid"]
+        y_grid = input_data["y_grid"]
+        input_array = input_data["input_array"]
+
+    output_array = np.ones((*np.shape(input_array), len(structures_to_learn)))
+    for i, structure in enumerate(structures_to_learn):
+        npz_path = npz_output_paths[structure]
+
+        try:
+            output_data = np.load(npz_path)
+        except FileNotFoundError:
+            structure_set_uid = ct_uid_to_structure_uid[ct_uid]
+            contours_by_ct_uid = get_contours_by_ct_uid_from_structure_uid(
+                structure_set_uid
+            )
+
+            dcm_ct = get_dcm_ct_from_uid(ct_uid)
+            calculated_mask = create_output_mask(
+                dcm_ct, contours_by_ct_uid, structure, ct_uid
+            )
+
+            np.savez(npz_path, mask=calculated_mask)
+        else:
+            calculated_mask = output_data["mask"]
+
+        output_array[:, :, i] = calculated_mask
 
     return x_grid, y_grid, input_array, output_array
