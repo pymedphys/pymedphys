@@ -44,7 +44,7 @@ def create_download_progress_bar():
     return DownloadProgressBar
 
 
-@retry.retry(urllib.error.HTTPError)
+@retry.retry((urllib.error.HTTPError, ConnectionResetError))
 def download_with_progress(url, filepath):
     DownloadProgressBar = create_download_progress_bar()
 
