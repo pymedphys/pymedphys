@@ -186,8 +186,8 @@ def get_cached_structure_names_by_uids(data_path_root, structure_set_paths, name
         }
 
     cache_valid = (
-        structure_names_cache["structure_set_paths_when_run"]
-        == relative_structure_set_paths
+        structure_names_cache["structure_set_paths_when_run"].keys()
+        == relative_structure_set_paths.keys()
         and structure_names_cache["names_map_when_run"] == names_map
     )
 

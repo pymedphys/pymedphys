@@ -48,6 +48,7 @@
   "auto-segmentation/44.zip": "a07f1a2b968c80c2055cb2358e07d575fb87682a",
   "auto-segmentation/name_mappings.zip": "ed00fb75efe7ce16d26f6e6f3acbdad3ac6a13ab",
   "baseline_dicom_dictionary.zip": "5e80d030e0185ff31ef0356cbd47884f2a40bf65",
+  "ct_uids_by_training_type.zip": "b7e39f7db52fa4fee740b676b2ed7d5e29a70129",
   "delivery_test_data.zip": "295ef091be192524e04e1ccc08b1beb7214aad38",
   "denis_wlutz_images.zip": "bb2e559fc7325e54622748257bd72424401e631b",
   "dicom_dose_test_data.zip": "e09f71ebf4d98a58bc3c00e7dd9f59e91e9f8bb6",
