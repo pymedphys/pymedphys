@@ -22,6 +22,8 @@ from pymedphys._imports import keyring, requests
 
 from .zenodo import get_zenodo_access_token, get_zenodo_record_id
 
+HEADERS = {"Content-Type": "application/json"}
+
 
 def zenodo_api_with_helpful_fallback(url, method, **kwargs):
     hostname = urllib.parse.urlparse(url).hostname
@@ -64,73 +66,8 @@ def create_metadata(title, author=None):
     return json.dumps(metadata)
 
 
-def upload_zenodo_file(
-    filepath, title, author=None, use_sandbox=False, record_name=None
-):
-    filepath = pathlib.Path(filepath)
-
-    headers = {"Content-Type": "application/json"}
-    if use_sandbox:
-        zenodo_url = "https://sandbox.zenodo.org/"
-    else:
-        zenodo_url = "https://zenodo.org/"
-
-    depositions_url = f"{zenodo_url}api/deposit/depositions"
-
-    if record_name is not None:
-        if use_sandbox:
-            raise ValueError("Cannot use sandbox when `record_name` is provided")
-
-        old_deposition_id = get_zenodo_record_id(record_name)
-        old_deposition_url = f"{depositions_url}/{old_deposition_id}"
-        new_version_url = f"{old_deposition_url}/actions/newversion"
-        r = zenodo_api_with_helpful_fallback(new_version_url, "post")
-        deposition_id = int(r.json()["links"]["latest_draft"].split("/")[-1])
-    else:
-        r = zenodo_api_with_helpful_fallback(
-            depositions_url, "post", json={}, headers=headers
-        )
-
-        deposition_id = r.json()["id"]
-
-    deposition_url = f"{depositions_url}/{deposition_id}"
-    files_url = f"{deposition_url}/files"
-
-    r = zenodo_api_with_helpful_fallback(files_url, "get")
-    filenames = [record["filename"] for record in r.json()]
-    if filepath.name in filenames:
-        file_self_urls = [
-            record["links"]["self"]
-            for record in r.json()
-            if record["filename"] == filepath.name
-        ]
-
-        if len(file_self_urls) > 1:
-            raise ValueError("Unexpected number of file_ids found")
-
-        file_self_url = file_self_urls[0]
-
-        zenodo_api_with_helpful_fallback(file_self_url, "delete")
-
-    md5 = hashlib.md5()
-    with open(filepath, "rb") as upload_file:
-        md5.update(upload_file.read())
-
-        upload_file.seek(0)
-        r = zenodo_api_with_helpful_fallback(
-            files_url, "post", data={"name": filepath.name}, files={"file": upload_file}
-        )
-
-    if md5.hexdigest() != r.json()["checksum"]:
-        raise ValueError(
-            "The uploaded Zenodo's checksum does not match the local checksum.\n"
-            f"  Zenodo's Checksum: {r.json()['checksum']}\n"
-            f"  Local Checksum: {md5.hexdigest()}"
-        )
-
-    zenodo_api_with_helpful_fallback(
-        deposition_url, "put", data=create_metadata(title, author), headers=headers
-    )
+def publish_deposition(deposition_id, use_sandbox=False):
+    deposition_url = get_deposition_url(deposition_id, use_sandbox=use_sandbox)
 
     publish_url = f"{deposition_url}/actions/publish"
     r = zenodo_api_with_helpful_fallback(publish_url, "post")
@@ -139,5 +76,139 @@ def upload_zenodo_file(
         raise ValueError(
             f"Unexpected status code when publishing the file. Expected 202, got {r.status_code}."
         )
+
+
+def get_zenodo_url(use_sandbox):
+    if use_sandbox:
+        zenodo_url = "https://sandbox.zenodo.org/"
+    else:
+        zenodo_url = "https://zenodo.org/"
+
+    return zenodo_url
+
+
+def get_deposition_url(deposition_id, use_sandbox=False):
+    root_depositions_url = get_root_depositions_url(use_sandbox)
+    deposition_url = f"{root_depositions_url}/{deposition_id}"
+
+    return deposition_url
+
+
+def get_root_depositions_url(use_sandbox):
+    zenodo_url = get_zenodo_url(use_sandbox)
+    root_depositions_url = f"{zenodo_url}api/deposit/depositions"
+
+    return root_depositions_url
+
+
+def get_files_url(deposition_id, use_sandbox=False):
+    deposition_url = get_deposition_url(deposition_id, use_sandbox=use_sandbox)
+    files_url = f"{deposition_url}/files"
+
+    return files_url
+
+
+def delete_filenames_within_record(filenames, deposition_id, use_sandbox=False):
+    files_url = get_files_url(deposition_id, use_sandbox=use_sandbox)
+
+    r = zenodo_api_with_helpful_fallback(files_url, "get")
+    record_filenames = [record["filename"] for record in r.json()]
+
+    for filename in filenames:
+        if filename in record_filenames:
+            file_self_urls = [
+                record["links"]["self"]
+                for record in r.json()
+                if record["filename"] == filename
+            ]
+
+            if len(file_self_urls) > 1:
+                raise ValueError("Unexpected number of file_ids found")
+
+            file_self_url = file_self_urls[0]
+
+            zenodo_api_with_helpful_fallback(file_self_url, "delete")
+
+
+def upload_filepaths(filepaths, deposition_id, use_sandbox=False):
+    files_url = get_files_url(deposition_id, use_sandbox=use_sandbox)
+
+    for filepath in filepaths:
+        md5 = hashlib.md5()
+
+        with open(filepath, "rb") as upload_file:
+            md5.update(upload_file.read())
+
+            upload_file.seek(0)
+            r = zenodo_api_with_helpful_fallback(
+                files_url,
+                "post",
+                data={"name": filepath.name},
+                files={"file": upload_file},
+            )
+
+        response = r.json()
+
+        try:
+            record_checksum = response["checksum"]
+        except KeyError:
+            raise ValueError(
+                f"The response when uploading was not as expected:\n {response}"
+            )
+
+        if md5.hexdigest() != record_checksum:
+            raise ValueError(
+                "The uploaded Zenodo's checksum does not match the local checksum.\n"
+                f"  Zenodo's Checksum: {record_checksum}\n"
+                f"  Local Checksum: {md5.hexdigest()}"
+            )
+
+
+def set_metadata(metadata, deposition_id, use_sandbox=False):
+    deposition_url = get_deposition_url(deposition_id, use_sandbox=use_sandbox)
+    zenodo_api_with_helpful_fallback(
+        deposition_url, "put", data=metadata, headers=HEADERS
+    )
+
+
+def upload_files_to_zenodo(
+    filepaths, title, author=None, use_sandbox=False, record_name=None
+):
+    filepaths = [pathlib.Path(filepath) for filepath in filepaths]
+
+    root_depositions_url = get_root_depositions_url(use_sandbox)
+
+    if record_name is not None:
+        if use_sandbox:
+            raise ValueError("Cannot use sandbox when `record_name` is provided")
+
+        old_deposition_id = get_zenodo_record_id(record_name)
+        old_deposition_url = f"{root_depositions_url}/{old_deposition_id}"
+        new_version_url = f"{old_deposition_url}/actions/newversion"
+        r = zenodo_api_with_helpful_fallback(new_version_url, "post")
+        deposition_id = int(r.json()["links"]["latest_draft"].split("/")[-1])
+    else:
+        r = zenodo_api_with_helpful_fallback(
+            root_depositions_url, "post", json={}, headers=HEADERS
+        )
+
+        try:
+            response = r.json()
+        except json.JSONDecodeError:
+            raise ValueError(f"Unexpected response: {r.text}")
+
+        try:
+            deposition_id = response["id"]
+        except KeyError:
+            raise ValueError(f"Unexpected response: {response}")
+
+    metadata = create_metadata(title, author)
+    set_metadata(metadata, deposition_id, use_sandbox=use_sandbox)
+
+    filenames = [path.name for path in filepaths]
+    delete_filenames_within_record(filenames, deposition_id, use_sandbox=use_sandbox)
+
+    upload_filepaths(filepaths, deposition_id, use_sandbox=use_sandbox)
+    publish_deposition(deposition_id, use_sandbox=use_sandbox)
 
     return deposition_id

@@ -48,13 +48,13 @@ def tf_serialise(ct_uid, x_grid, y_grid, input_array, output_array):
     return tf.reshape(tf_string, ())
 
 
-def write(path, dataset):
+def dump(dataset, path):
     serialised_dataset = dataset.map(tf_serialise)
     writer = tf.data.experimental.TFRecordWriter(path)
     writer.write(serialised_dataset)
 
 
-def read(path):
+def load(path):
     parse_features = {
         "ct_uid": tf.io.FixedLenFeature([], tf.string),
         "x_grid": tf.io.FixedLenFeature([], tf.string),
