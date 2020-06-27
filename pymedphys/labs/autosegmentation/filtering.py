@@ -19,6 +19,7 @@ from pymedphys._imports import pydicom
 
 
 def filter_ct_uids(
+    structure_uids,
     structure_uid_to_ct_uids,
     structure_names_by_structure_set_uid,
     structure_names_by_ct_uid,
@@ -27,9 +28,15 @@ def filter_ct_uids(
     slice_must_have,
     slice_cannot_have,
 ):
+
+    if structure_uids is None:
+        structure_uids = structure_uid_to_ct_uids.keys()
+
     filtered_ct_uids = []
 
-    for structure_uid, ct_uids in structure_uid_to_ct_uids.items():
+    for structure_uid in structure_uids:
+        ct_uids = structure_uid_to_ct_uids[structure_uid]
+
         structure_names_in_study_set = set(
             structure_names_by_structure_set_uid[structure_uid]
         )

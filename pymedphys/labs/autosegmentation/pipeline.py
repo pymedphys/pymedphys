@@ -14,7 +14,9 @@
 
 
 import functools
+import json
 import pathlib
+import random
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -22,22 +24,124 @@ from pymedphys._imports import tensorflow as tf
 
 from pymedphys._data import download
 
-from . import mask
+from . import filtering, indexing, mask
 
 
-def create_numpy_generator_dataset(
-    data_path_root,
-    structure_set_paths,
-    ct_image_paths,
-    ct_uid_to_structure_uid,
-    names_map,
-    ct_uids,
-    structures_to_learn,
-    uid_to_url,
-    hash_path,
-):
-    def predownload_generator():
+@functools.lru_cache()
+def get_dataset_metadata():
+    release_url = "https://github.com/pymedphys/data/releases/download/structure-dicom"
+    dicom_zip_url_pattern = f"{release_url}/" + "{dicom_type}.{uid}_Anonymised.zip"
+    mappings_url = f"{release_url}/mappings.zip"
+
+    data_download_root = pathlib.Path("auto-segmentation-dicom")
+
+    save_filename = data_download_root.joinpath(get_filename_from_url(mappings_url))
+
+    mappings_paths = download.zip_data_paths(
+        save_filename,
+        check_hash=True,
+        redownload_on_hash_mismatch=True,
+        url=mappings_url,
+    )
+
+    mapping_filenames = {
+        "hashes": "hashes.json",
+        "name_aliases": "name_mappings.json",
+        "paths_and_uids": "uid-cache.json",
+        "structure_names_by_uid": "structure-names-mapping-cache.json",
+    }
+
+    mapping_paths = {}
+    for label, filename in mapping_filenames.items():
+        mapping_path = [path for path in mappings_paths if path.name == filename]
+        if len(mapping_path) != 1:
+            raise ValueError(f"Expected exactly one file named {filename}.")
+
+        mapping_paths[label] = mapping_path[0]
+
+    hash_path = mapping_paths["hashes"]
+
+    data_path_root = hash_path.parent.parent
+
+    with open(mapping_paths["paths_and_uids"]) as f:
+        uid_cache = json.load(f)
+
+    (
+        ct_image_paths,
+        structure_set_paths,
+        ct_uid_to_structure_uid,
+        structure_uid_to_ct_uids,
+    ) = indexing.read_uid_cache(data_path_root, uid_cache)
+
+    with open(mapping_paths["structure_names_by_uid"]) as f:
+        structure_names_cache = json.load(f)
+
+    structure_names_by_ct_uid = structure_names_cache["structure_names_by_ct_uid"]
+    structure_names_by_structure_set_uid = structure_names_cache[
+        "structure_names_by_structure_set_uid"
+    ]
+
+    uid_to_url = {}
+
+    for structure_uid, ct_uids in structure_uid_to_ct_uids.items():
+        uid_to_url[structure_uid] = dicom_zip_url_pattern.format(
+            dicom_type="RS", uid=structure_uid
+        )
+
         for ct_uid in ct_uids:
+            uid_to_url[ct_uid] = dicom_zip_url_pattern.format(
+                dicom_type="CT", uid=ct_uid
+            )
+
+    names_map = filtering.load_names_mapping(mapping_paths["name_aliases"])
+
+    return (
+        data_path_root,
+        structure_set_paths,
+        ct_image_paths,
+        ct_uid_to_structure_uid,
+        structure_uid_to_ct_uids,
+        names_map,
+        structure_names_by_ct_uid,
+        structure_names_by_structure_set_uid,
+        uid_to_url,
+        hash_path,
+    )
+
+
+def create_dataset(structures_to_learn, filters, structure_uids=None):
+    (
+        data_path_root,
+        structure_set_paths,
+        ct_image_paths,
+        ct_uid_to_structure_uid,
+        structure_uid_to_ct_uids,
+        names_map,
+        structure_names_by_ct_uid,
+        structure_names_by_structure_set_uid,
+        uid_to_url,
+        hash_path,
+    ) = get_dataset_metadata()
+
+    if structure_uids is None:
+        structure_uids = structure_uid_to_ct_uids.keys()
+
+    filtered_ct_uids = filtering.filter_ct_uids(
+        structure_uids,
+        structure_uid_to_ct_uids,
+        structure_names_by_structure_set_uid,
+        structure_names_by_ct_uid,
+        **filters,
+    )
+
+    random.shuffle(filtered_ct_uids)
+
+    used_structure_uids = set()
+    for ct_uid in filtered_ct_uids:
+        used_structure_uids.add(ct_uid_to_structure_uid[ct_uid])
+
+    def predownload_generator():
+        for ct_uid in filtered_ct_uids:
             download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
 
             structure_uid = ct_uid_to_structure_uid[ct_uid]
@@ -61,8 +165,6 @@ def create_numpy_generator_dataset(
                 names_map,
                 ct_uid,
                 structures_to_learn,
-                uid_to_url,
-                hash_path,
             )
             input_array = input_array[:, :, None]
 
@@ -81,7 +183,7 @@ def create_numpy_generator_dataset(
 
     dataset = tf.data.Dataset.from_generator(generator, *parameters)
 
-    return dataset
+    return dataset, used_structure_uids
 
 
 def get_contours_by_ct_uid(structure_set, number_to_name_map):
@@ -169,19 +271,13 @@ def numpy_input_output_from_cache(
     names_map,
     ct_uid,
     structures_to_learn,
-    uid_to_url,
-    hash_path,
 ):
     data_path_root = pathlib.Path(data_path_root)
 
     @functools.lru_cache()
     def get_dcm_ct_from_uid(ct_uid):
         ct_path = ct_image_paths[ct_uid]
-        try:
-            dcm_ct = pydicom.read_file(ct_path, force=True)
-        except FileNotFoundError:
-            download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
-            dcm_ct = pydicom.read_file(ct_path, force=True)
+        dcm_ct = pydicom.read_file(ct_path, force=True)
 
         dcm_ct.file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian
 
@@ -191,18 +287,11 @@ def numpy_input_output_from_cache(
     def get_dcm_structure_from_uid(structure_set_uid):
         structure_set_path = structure_set_paths[structure_set_uid]
 
-        def load_structure():
-            return pydicom.read_file(
-                structure_set_path,
-                force=True,
-                specific_tags=["ROIContourSequence", "StructureSetROISequence"],
-            )
-
-        try:
-            dcm_structure = load_structure()
-        except FileNotFoundError:
-            download_uid(data_path_root, structure_set_uid, uid_to_url, hash_path)
-            dcm_structure = load_structure()
+        dcm_structure = pydicom.read_file(
+            structure_set_path,
+            force=True,
+            specific_tags=["ROIContourSequence", "StructureSetROISequence"],
+        )
 
         return dcm_structure
 
