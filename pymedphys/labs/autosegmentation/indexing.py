@@ -26,18 +26,36 @@ def resolve_paths(root, paths_dict):
     return resolved_paths_dict
 
 
+def read_uid_cache(data_path_root, uid_cache):
+    ct_uid_to_structure_uid = uid_cache["ct_uid_to_structure_uid"]
+
+    structure_uid_to_ct_uids = {}
+    for ct_uid, structure_uid in ct_uid_to_structure_uid.items():
+        try:
+            structure_uid_to_ct_uids[structure_uid].append(ct_uid)
+        except KeyError:
+            structure_uid_to_ct_uids[structure_uid] = [ct_uid]
+
+    return (
+        resolve_paths(data_path_root, uid_cache["ct_image_paths"]),
+        resolve_paths(data_path_root, uid_cache["structure_set_paths"]),
+        ct_uid_to_structure_uid,
+        structure_uid_to_ct_uids,
+    )
+
+
 def get_uid_cache(data_path_root, validate_cache=True):
     """Get inter-relationship maps between dicom files.
 
     Dicom files are to be placed within ``data_path_root/dicom``.
-    A cache will be created at ``data_path_root/uid-cache.json``.
+    A cache will be created at ``data_path_root/mappings/uid-cache.json``.
 
     Any change of the file structure within data_path_root/dicom will
     cause the cache to be flushed.
     """
 
     data_path_root = pathlib.Path(data_path_root)
-    uid_cache_path = data_path_root.joinpath("uid-cache.json")
+    uid_cache_path = data_path_root.joinpath("mappings", "uid-cache.json")
     dcm_paths = list(data_path_root.rglob("dicom/**/*.dcm"))
 
     relative_paths = [str(path.relative_to(data_path_root)) for path in dcm_paths]
@@ -101,21 +119,7 @@ def get_uid_cache(data_path_root, validate_cache=True):
         with open(uid_cache_path, "w") as f:
             json.dump(uid_cache, f)
 
-    ct_uid_to_structure_uid = uid_cache["ct_uid_to_structure_uid"]
-
-    structure_uid_to_ct_uids = {}
-    for ct_uid, structure_uid in ct_uid_to_structure_uid.items():
-        try:
-            structure_uid_to_ct_uids[structure_uid].append(ct_uid)
-        except KeyError:
-            structure_uid_to_ct_uids[structure_uid] = [ct_uid]
-
-    return (
-        resolve_paths(data_path_root, uid_cache["ct_image_paths"]),
-        resolve_paths(data_path_root, uid_cache["structure_set_paths"]),
-        ct_uid_to_structure_uid,
-        structure_uid_to_ct_uids,
-    )
+    return read_uid_cache(data_path_root, uid_cache)
 
 
 def get_structure_names_by_uids(structure_set_paths, names_map):
@@ -166,7 +170,7 @@ def get_structure_names_by_uids(structure_set_paths, names_map):
 def get_cached_structure_names_by_uids(data_path_root, structure_set_paths, names_map):
     data_path_root = pathlib.Path(data_path_root)
     structure_names_mapping_cache_path = data_path_root.joinpath(
-        "structure-names-mapping-cache.json"
+        "mappings", "structure-names-mapping-cache.json"
     )
 
     relative_structure_set_paths = {
