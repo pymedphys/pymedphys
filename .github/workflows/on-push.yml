@@ -215,9 +215,8 @@ jobs:
     - name: Update all packages then install with tests environment
       if: matrix.task == 'updates'
       run: |
-        poetry update
         poetry install --no-dev -E tests
-
+        poetry update
 
 # Download all data for consistent cache
 
