@@ -105,6 +105,7 @@ def data_path(
     filename,
     check_hash=True,
     redownload_on_hash_mismatch=True,
+    delete_when_no_hash_found=True,
     url=None,
     hash_filepath=None,
 ):
@@ -121,8 +122,9 @@ def data_path(
         try:
             get_cached_filehash(filename, hash_filepath=hash_filepath)
         except NoHashFound:
-            logging.warning("No hash found, deleting current file")
-            filepath.unlink()  # Force a redownload
+            if delete_when_no_hash_found:
+                logging.warning("No hash found, deleting current file")
+                filepath.unlink()  # Force a redownload
 
     if not filepath.exists():
         if url is None:
@@ -254,6 +256,7 @@ def zip_data_paths(
     filename,
     check_hash=True,
     redownload_on_hash_mismatch=True,
+    delete_when_no_hash_found=True,
     url=None,
     extract_directory=None,
     hash_filepath=None,
@@ -262,6 +265,7 @@ def zip_data_paths(
         filename,
         check_hash=check_hash,
         redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+        delete_when_no_hash_found=delete_when_no_hash_found,
         url=url,
         hash_filepath=hash_filepath,
     )
