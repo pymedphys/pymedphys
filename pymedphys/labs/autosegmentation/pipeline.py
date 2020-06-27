@@ -36,8 +36,23 @@ def create_numpy_generator_dataset(
     uid_to_url,
     hash_path,
 ):
-    def generator():
+    def predownload_generator():
         for ct_uid in ct_uids:
+            download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
+
+            structure_uid = ct_uid_to_structure_uid[ct_uid]
+            download_uid(data_path_root, structure_uid, uid_to_url, hash_path)
+
+            yield ct_uid
+
+    pre_download_parameters = ((tf.string), (tf.TensorShape(())))
+    pre_download_dataset = tf.data.Dataset.from_generator(
+        predownload_generator, *pre_download_parameters
+    )
+
+    def generator():
+        for ct_uid in pre_download_dataset.prefetch(30):
+            ct_uid = ct_uid.numpy().decode()
             x_grid, y_grid, input_array, output_array = numpy_input_output_from_cache(
                 data_path_root,
                 structure_set_paths,
@@ -109,9 +124,11 @@ def get_filename_from_url(url):
 
 
 def download_uid(data_path_root, uid, uid_to_url, hash_path):
+    download_directory_name = data_path_root.name
+
     url = uid_to_url[uid]
     filename = get_filename_from_url(url)
-    save_filepath = data_path_root.joinpath("dicom", filename)
+    save_filepath = pathlib.Path(download_directory_name).joinpath("dicom", filename)
 
     download.zip_data_paths(
         save_filepath,
