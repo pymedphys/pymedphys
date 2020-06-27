@@ -26,7 +26,7 @@ def resolve_paths(root, paths_dict):
     return resolved_paths_dict
 
 
-def get_uid_cache(data_path_root):
+def get_uid_cache(data_path_root, validate_cache=True):
     """Get inter-relationship maps between dicom files.
 
     Dicom files are to be placed within ``data_path_root/dicom``.
@@ -53,7 +53,7 @@ def get_uid_cache(data_path_root):
             "paths_when_run": [],
         }
 
-    if set(uid_cache["paths_when_run"]) != set(relative_paths):
+    if validate_cache and set(uid_cache["paths_when_run"]) != set(relative_paths):
         dcm_headers = []
         for dcm_path in dcm_paths:
             dcm_headers.append(
