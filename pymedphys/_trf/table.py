@@ -197,7 +197,7 @@ def create_dataframe(data, column_names, time_increment):
 
 def convert_numbers_to_string(name, lookup, column):
     dtype = np.array([item for _, item in lookup.items()]).dtype
-    result = np.empty_like(column).astype(dtype)
+    result = np.empty_like(column).astype(dtype)  # pylint: disable = no-member
     result[:] = ""
 
     for i, item in lookup.items():
