@@ -126,6 +126,12 @@ class PinnacleImage:
             path_image_info = os.path.join(
                 self._path, f"ImageSet_{self._image['ImageSetID']}.ImageInfo"
             )
+
+            # Make sure the ImageInfo file really exists
+            if not os.path.exists(path_image_info):
+                self.logger.warning("ImageInfo path doesn't exist: %s", path_image_info)
+                return None
+
             self.logger.debug("Reading image data from: %s", path_image_info)
             self._image_info = pinn_to_dict(path_image_info)
 
@@ -145,6 +151,14 @@ class PinnacleImage:
             path_image_header = os.path.join(
                 self._path, f"ImageSet_{self._image['ImageSetID']}.header"
             )
+
+            # Make sure the ImageInfo file really exists
+            if not os.path.exists(path_image_header):
+                self.logger.warning(
+                    "ImageHeader path doesn't exist: %s", path_image_header
+                )
+                return None
+
             self.logger.debug("Reading image data from: %s", path_image_header)
             self._image_header = {}
             with open(path_image_header, "rt") as f:
@@ -175,6 +189,12 @@ class PinnacleImage:
             path_image_set = os.path.join(
                 self._path, f"ImageSet_{self._image['ImageSetID']}.ImageSet"
             )
+
+            # Make sure the ImageInfo file really exists
+            if not os.path.exists(path_image_set):
+                self.logger.warning("ImageSet path doesn't exist: %s", path_image_set)
+                return None
+
             self.logger.debug("Reading image data from: %s", path_image_set)
             self._image_set = pinn_to_dict(path_image_set)
 

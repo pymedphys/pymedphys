@@ -93,6 +93,9 @@ class PinnaclePlan:
             if image.image["ImageSetID"] == self.plan_info["PrimaryCTImageSetID"]:
                 self._primary_image = image
 
+        if not self._primary_image:
+            self.logger.warning("Primary Image Not Available")
+
     @property
     def logger(self):
         """Gets the configured logger.

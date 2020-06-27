@@ -53,6 +53,8 @@ EXTERNAL_EXPORTS = (
     "streamlit",
     "timeago",
     "libjpeg",
+    "tkinter",
+    "tkinter.filedialog",
     "tensorflow",
 )
 
@@ -115,6 +117,8 @@ if "numpy" not in IMPORTABLES:
     import streamlit
     import timeago
     import libjpeg
+    import tkinter
+    import tkinter.filedialog
     import tensorflow
 
     raise ValueError("This section of code should never run")

@@ -33,6 +33,34 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * nil -->
 
+## [Unreleased]
+
+### Breaking Changes
+
+* nil
+
+### New Features
+
+* nil
+
+### Bug Fixes
+
+* Fixed issue with Pinnacle Export Tool crashing when an image is missing from
+  the archive.
+
+### Code Refactoring
+
+* nil
+
+### Package Changes
+
+* nil
+
+### Performance Improvements
+
+* nil
+
+
 ## [0.30.0]
 
 ### Breaking changes
