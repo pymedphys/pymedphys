@@ -41,7 +41,7 @@ def mlc_dd2dcm(mlc):
 
 def angle_dd2dcm(angle):
     diff = np.append(np.diff(angle), 0)
-    movement = (np.empty_like(angle)).astype(str)
+    movement = (np.empty_like(angle)).astype(str)  # pylint: disable = no-member
 
     movement[diff > 0] = "CW"
     movement[diff < 0] = "CC"
