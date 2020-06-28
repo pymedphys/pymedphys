@@ -72,7 +72,12 @@ def pymedphys_cli():
     parser = define_parser()
 
     args, remaining = parser.parse_known_args()
-    logging.basicConfig(level=args.loglevel)
+
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)-8s %(message)s",
+        level=args.loglevel,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
     if hasattr(args, "func"):
         try:
