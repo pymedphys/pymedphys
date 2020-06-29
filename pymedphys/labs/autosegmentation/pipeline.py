@@ -109,7 +109,7 @@ def get_dataset_metadata():
     )
 
 
-def create_dataset(structures_to_learn, filters, structure_uids=None):
+def create_dataset(structures_to_learn, filters, structure_uids=None, expansion=5):
     (
         data_path_root,
         structure_set_paths,
@@ -165,6 +165,7 @@ def create_dataset(structures_to_learn, filters, structure_uids=None):
                 names_map,
                 ct_uid,
                 structures_to_learn,
+                expansion=expansion,
             )
             input_array = input_array[:, :, None]
 
@@ -248,14 +249,14 @@ def create_input_ct_image(dcm_ct):
     return x_grid, y_grid, dcm_ct.pixel_array
 
 
-def create_output_mask(dcm_ct, contours_by_ct_uid, structure, ct_uid):
+def create_output_mask(dcm_ct, contours_by_ct_uid, structure, ct_uid, expansion=5):
     _, _, ct_size = mask.get_grid(dcm_ct)
 
     contours_on_this_slice = contours_by_ct_uid[ct_uid].keys()
     if structure in contours_on_this_slice:
         original_contours = contours_by_ct_uid[ct_uid][structure]
         _, _, calculated_mask = mask.calculate_anti_aliased_mask(
-            original_contours, dcm_ct
+            original_contours, dcm_ct, expansion=expansion
         )
     else:
         calculated_mask = np.zeros(ct_size) - 1
@@ -271,6 +272,7 @@ def numpy_input_output_from_cache(
     names_map,
     ct_uid,
     structures_to_learn,
+    expansion=5,
 ):
     data_path_root = pathlib.Path(data_path_root)
 
@@ -314,7 +316,9 @@ def numpy_input_output_from_cache(
 
     npz_input_path = npz_directory.joinpath(f"{ct_uid}_input.npz")
     npz_output_paths = {
-        structure: npz_directory.joinpath(f"{ct_uid}_output_{structure}.npz")
+        structure: npz_directory.joinpath(
+            f"{ct_uid}_output_{structure}_expansion_{expansion}.npz"
+        )
         for structure in structures_to_learn
     }
 
@@ -344,7 +348,7 @@ def numpy_input_output_from_cache(
 
             dcm_ct = get_dcm_ct_from_uid(ct_uid)
             calculated_mask = create_output_mask(
-                dcm_ct, contours_by_ct_uid, structure, ct_uid
+                dcm_ct, contours_by_ct_uid, structure, ct_uid, expansion=expansion
             )
 
             np.savez(npz_path, mask=calculated_mask)
