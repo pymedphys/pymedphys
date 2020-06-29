@@ -109,18 +109,18 @@ def get_dataset_metadata():
     )
 
 
-def create_dataset(structures_to_learn, filters, structure_uids=None, expansion=5):
+def get_filtered_uids(filters, structure_uids=None):
     (
-        data_path_root,
-        structure_set_paths,
-        ct_image_paths,
+        _,
+        _,
+        _,
         ct_uid_to_structure_uid,
         structure_uid_to_ct_uids,
-        names_map,
+        _,
         structure_names_by_ct_uid,
         structure_names_by_structure_set_uid,
-        uid_to_url,
-        hash_path,
+        _,
+        _,
     ) = get_dataset_metadata()
 
     if structure_uids is None:
@@ -134,14 +134,32 @@ def create_dataset(structures_to_learn, filters, structure_uids=None, expansion=
         **filters,
     )
 
-    random.shuffle(filtered_ct_uids)
-
     used_structure_uids = set()
     for ct_uid in filtered_ct_uids:
         used_structure_uids.add(ct_uid_to_structure_uid[ct_uid])
 
+    used_structure_uids = list(used_structure_uids)
+    sorted(used_structure_uids)
+
+    return used_structure_uids, filtered_ct_uids
+
+
+def create_dataset(ct_uids, structures_to_learn, expansion=5):
+    (
+        data_path_root,
+        structure_set_paths,
+        ct_image_paths,
+        ct_uid_to_structure_uid,
+        _,
+        names_map,
+        _,
+        _,
+        uid_to_url,
+        hash_path,
+    ) = get_dataset_metadata()
+
     def predownload_generator():
-        for ct_uid in filtered_ct_uids:
+        for ct_uid in ct_uids:
             download_uid(data_path_root, ct_uid, uid_to_url, hash_path)
 
             structure_uid = ct_uid_to_structure_uid[ct_uid]
@@ -184,7 +202,7 @@ def create_dataset(structures_to_learn, filters, structure_uids=None, expansion=
 
     dataset = tf.data.Dataset.from_generator(generator, *parameters)
 
-    return dataset, used_structure_uids
+    return dataset
 
 
 def get_contours_by_ct_uid(structure_set, number_to_name_map):
