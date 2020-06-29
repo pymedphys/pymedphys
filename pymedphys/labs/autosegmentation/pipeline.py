@@ -16,7 +16,6 @@
 import functools
 import json
 import pathlib
-import random
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
