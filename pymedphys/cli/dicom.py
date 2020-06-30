@@ -16,6 +16,7 @@
 """
 
 from pymedphys._dicom.anonymise import anonymise_cli
+from pymedphys._dicom.pseudonymise import pseudonymise_cli
 from pymedphys._dicom.header import (
     adjust_machine_name_cli,
     adjust_RED_by_structure_name_cli,
@@ -31,7 +32,8 @@ def dicom_cli(subparsers):
     dicom_subparsers = dicom_parser.add_subparsers(dest="dicom")
 
     anonymise(dicom_subparsers)
-    merge_contours(dicom_subparsers)
+	pseudonymise(dicom_subparsers)
+    merge_contours(dicom_subparsers)    
     adjust_machine_name(dicom_subparsers)
     adjust_rel_elec_density(dicom_subparsers)
     adjust_RED_by_structure_name(dicom_subparsers)
@@ -221,3 +223,107 @@ def anonymise(dicom_subparsers):
     )
 
     parser.set_defaults(func=anonymise_cli)
+
+
+def pseudonymise(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        "pseudonymise", help=("Pseudonymise DICOM files.")
+    )
+
+    parser.add_argument(
+        "input_path",
+        type=str,
+        help=(
+            "Input file or directory path. If a directory is "
+            "supplied, all DICOM files within the directory and its "
+            "subdirectories will be pseudonymised"
+        ),
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output_path",
+        type=str,
+        default=None,
+        help=("Output file or directory path."),
+    )
+
+    parser.add_argument(
+        "-d",
+        "--delete_original_files",
+        action="store_true",
+        help=(
+            "Use this flag to delete the original, non-pseudonymised "
+            "files in the processed directory. Each original file "
+            "will only be deleted if pseudonymisation completed "
+            "successfully for that file."
+        ),
+    )
+
+    parser.add_argument(
+        "-f",
+        "--preserve_filenames",
+        action="store_true",
+        help=(
+            "Use this flag to preserve the original filenames in the "
+            "pseudonymised DICOM filenames. Note that '_Pseudonymised.dcm' "
+            "will still be appended. Use with caution, since DICOM "
+            "filenames may contain identifying information"
+        ),
+    )
+
+    parser.add_argument(
+        "-c",
+        "--clear_values",
+        action="store_true",
+        help=(
+            "Use this flag to simply clear the values of all of the "
+            "identifying elements in the pseudonymised DICOM files, "
+            "as opposed to replacing them with pseudonyms."
+        ),
+    )
+
+    parser.add_argument(
+        "-k",
+        "--keywords_to_leave_unchanged",
+        metavar="KEYWORD",
+        type=str,
+        nargs="*",
+        help=(
+            "A space-separated list of DICOM keywords (e.g. "
+            "'PatientName') to exclude from pseudonymisation and "
+            "error checking."
+        ),
+    )
+
+    parser.add_argument(
+        "-p",
+        "--keep_private_tags",
+        action="store_true",
+        help=(
+            "Use this flag to preserve private tags in the "
+            "pseudonymised DICOM files."
+        ),
+    )
+
+    unknown_tags_group = parser.add_mutually_exclusive_group()
+    unknown_tags_group.add_argument(
+        "-u",
+        "--delete_unknown_tags",
+        action="store_true",
+        help=(
+            "Use this flag to delete any unrecognised tags from the "
+            "pseudonymised DICOM files."
+        ),
+    )
+    unknown_tags_group.add_argument(
+        "-i",
+        "--ignore_unknown_tags",
+        action="store_true",
+        help=(
+            "Use this flag to ignore any unrecognised tags in the "
+            "pseudonymised DICOM files."
+        ),
+    )
+
+    parser.set_defaults(func=pseudonymise_cli)
