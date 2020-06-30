@@ -32,8 +32,8 @@ def dicom_cli(subparsers):
     dicom_subparsers = dicom_parser.add_subparsers(dest="dicom")
 
     anonymise(dicom_subparsers)
-	pseudonymise(dicom_subparsers)
-    merge_contours(dicom_subparsers)    
+    pseudonymise(dicom_subparsers)
+    merge_contours(dicom_subparsers)
     adjust_machine_name(dicom_subparsers)
     adjust_rel_elec_density(dicom_subparsers)
     adjust_RED_by_structure_name(dicom_subparsers)
