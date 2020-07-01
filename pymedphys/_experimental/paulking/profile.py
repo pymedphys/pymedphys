@@ -14,7 +14,7 @@
 
 """ For importing, analyzing, and comparing dose or intensity profiles
     from different sources."""
-# The following needs to be removed before leaving labs
+# The following needs to be removed before leaving the experimental module
 # pylint: skip-file
 
 import copy

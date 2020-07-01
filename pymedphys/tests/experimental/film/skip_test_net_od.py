@@ -18,7 +18,7 @@ not interpolated during the netOD calc and is left in the same coords as
 the laser marked image.
 
 """
-# The following needs to be removed before leaving labs
+# The following needs to be removed before leaving the experimental module
 # pylint: skip-file
 
 import pytest

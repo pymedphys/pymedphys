@@ -18,7 +18,7 @@ Sinogram Toolbox
 
 @author: king.r.paul@gmail.com
 """
-# The following needs to be removed before leaving labs
+# The following needs to be removed before leaving the experimental module
 # pylint: skip-file
 
 import csv
