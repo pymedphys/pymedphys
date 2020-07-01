@@ -58,12 +58,12 @@ from scipy import signal
 
 from matplotlib.backends.backend_pdf import PdfPages
 
-from pymedphys.experimental.pedromartinez.utils import minimize_field_rot as minFR
-from pymedphys.experimental.pedromartinez.utils import minimize_junction_X as minX
-from pymedphys.experimental.pedromartinez.utils import minimize_junction_Y as minY
-from pymedphys.experimental.pedromartinez.utils import peak_find as pf
-from pymedphys.experimental.pedromartinez.utils import peak_find_fieldrot as pffr
-from pymedphys.experimental.pedromartinez.utils import utils as u
+from .utils import minimize_field_rot as minFR
+from .utils import minimize_junction_X as minX
+from .utils import minimize_junction_Y as minY
+from .utils import peak_find as pf
+from .utils import peak_find_fieldrot as pffr
+from .utils import utils as u
 
 
 # axial visualization and scrolling

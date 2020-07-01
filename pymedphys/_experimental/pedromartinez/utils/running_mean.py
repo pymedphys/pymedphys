@@ -1,4 +1,4 @@
-import numpy as np
+from pymedphys._imports import numpy as np
 
 
 def running_mean(x, N):
