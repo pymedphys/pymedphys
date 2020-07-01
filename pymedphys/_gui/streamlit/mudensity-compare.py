@@ -1481,3 +1481,7 @@ def main():
 
     if advanced_mode:
         advanced_debugging()
+
+
+if __name__ == "__main__":
+    main()
