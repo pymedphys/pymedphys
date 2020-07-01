@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The following needs to be removed before leaving labs
+# The following needs to be removed before leaving the experimental module
 # pylint: skip-file
 
 from pymedphys._utilities.constants import AGILITY

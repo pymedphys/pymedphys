@@ -64,7 +64,7 @@ pylibjpeg-libjpeg = "*"
 cython = "*"
 pymssql = { version = "< 3.0.0", python = "< 3.8" }
 
-# labs
+# used within experimental modules
 python_dateutil = "*"
 scikit-image = "*"
 

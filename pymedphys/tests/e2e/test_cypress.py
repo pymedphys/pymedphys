@@ -43,7 +43,3 @@ def test_streamlit_gui():
     with process("poetry run pymedphys gui", cwd=HERE, shell=True) as _:
         subprocess.check_call("yarn", cwd=HERE, shell=True)
         subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
-
-
-if __name__ == "__main__":
-    test_streamlit_gui()

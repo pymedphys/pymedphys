@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-# The following needs to be removed before leaving labs
+# The following needs to be removed before leaving the experimental module
 # pylint: skip-file
 
 import json
