@@ -26,8 +26,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from fixtures import BASELINES_DIR, postscans, prescans
-from pymedphys.experimental.film import get_aligned_image, shift_and_rotate
-from pymedphys.experimental.film.optical_density import create_axes
+from pymedphys.experimental.film import create_axes, get_aligned_image, shift_and_rotate
 
 CREATE_BASELINE = False
 
