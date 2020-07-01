@@ -15,7 +15,7 @@
 import numpy as np
 
 from pymedphys._utilities.constants import A_LEAF_TYPE, AGILITY
-from pymedphys.experimental.paulking.collequivalent import mlc_equivalent_square_fs
+from pymedphys.experimental.collimation import equivalent_square
 
 # import pytest
 
@@ -57,7 +57,7 @@ def test_equivalent_mlc():
 
     mlc_segments = np.array(mlc_segments) * 10  # convert to mm
 
-    assert abs(mlc_equivalent_square_fs(mlc_segments, A_LEAF_TYPE) - 107.25) < 0.05
+    assert abs(equivalent_square(mlc_segments, A_LEAF_TYPE) - 107.25) < 0.05
 
 
 def an_equivalent_square(square_size):
@@ -76,7 +76,7 @@ def an_equivalent_square(square_size):
         + [(0, 0)] * leaves_on_bottom
     )
 
-    assert mlc_equivalent_square_fs(mlc_segments, AGILITY) == square_size
+    assert equivalent_square(mlc_segments, AGILITY) == square_size
 
 
 # @pytest.mark.xfail

@@ -17,9 +17,7 @@ import os
 import numpy as np
 
 from pymedphys._data import download
-from pymedphys.experimental.fileformats.profiler import read_prs
-
-DATA_DIRECTORY = os.path.join(os.path.dirname(__file__), "data")
+from pymedphys.experimental.fileformats import read_prs
 
 
 def test_read_prs():
