@@ -9,6 +9,7 @@ from ._gamma.implementation.shell import gamma_shell as gamma
 from ._trf.decode import read_trf as _read_trf
 from ._version import __version__, version_info
 
+_read_trf.__name__ = "pymedphys.read_trf"
 read_trf = _deprecated(
-    version="0.31.0", reason="This has been replaced with `pymedphys.trf.read`"
+    version="0.31.0", reason="This has been replaced with pymedphys.trf.read"
 )(_read_trf)
