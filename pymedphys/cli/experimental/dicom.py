@@ -1,4 +1,4 @@
-# Copyright (C) 2019 Simon Biggs
+# Copyright (C) 2020 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from .dicom import dicom_cli
-from .pinnacle import pinnacle_cli
-from .quickcheck import quickcheck_cli
+from pymedphys._experimental.pseudonymisation import anonymise_with_pseudo_cli
+from pymedphys.cli import dicom
 
 
-def experimental_cli(subparsers):
-    experimental_parser = subparsers.add_parser(
-        "experimental", help="Experimental tools."
-    )
-    experimental_subparsers = experimental_parser.add_subparsers(dest="experimental")
+def dicom_cli(subparsers):
+    dicom_parser, dicom_subparsers = dicom.set_up_dicom_cli(subparsers)
+    anonymise(dicom_subparsers)
 
-    dicom_cli(experimental_subparsers)
-    pinnacle_cli(experimental_subparsers)
-    quickcheck_cli(experimental_subparsers)
+    return dicom_parser
 
-    return experimental_parser
+
+def anonymise(dicom_subparsers):
+    parser = dicom.anonymise(dicom_subparsers)
+
+    parser.add_argument("--pseudo", action="store_true")
+
+    parser.set_defaults(func=anonymise_with_pseudo_cli)

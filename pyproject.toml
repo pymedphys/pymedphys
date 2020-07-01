@@ -127,7 +127,7 @@ tests = [
 ]
 
 [tool.poetry.scripts]
-pymedphys = "pymedphys.cli.main:pymedphys_cli"
+pymedphys = "pymedphys.cli:pymedphys_cli"
 
 [tool.isort]
 multi_line_output = 3
