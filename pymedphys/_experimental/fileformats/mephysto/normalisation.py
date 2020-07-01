@@ -14,9 +14,7 @@
 
 
 from pymedphys._imports import numpy as np
-
-from scipy.interpolate import interp1d
-from scipy.signal import savgol_filter
+from pymedphys._imports import scipy
 
 
 def normalise(
@@ -89,7 +87,7 @@ def normalise_pdd(
     """
 
     if smoothed_normalisation:
-        filtered = savgol_filter(relative_dose, 21, 2)
+        filtered = scipy.signal.savgol_filter(relative_dose, 21, 2)
     else:
         filtered = relative_dose
 
@@ -106,7 +104,7 @@ def normalise_pdd(
             raise Exception(
                 "distance variable needs to be defined to normalise to a " "depth"
             )
-        interpolation = interp1d(depth, filtered)
+        interpolation = scipy.interpolate.interp1d(depth, filtered)
         normalisation = 100 / interpolation(normalisation_depth)
 
     return relative_dose * normalisation
@@ -136,17 +134,17 @@ def normalise_profile(
                 "and scan_depth to be defined."
             )
 
-        pdd_interpolation = interp1d(pdd_distance, pdd_relative_dose)
+        pdd_interpolation = scipy.interpolate.interp1d(pdd_distance, pdd_relative_dose)
         scaling = pdd_interpolation(scan_depth)
     else:
         scaling = 100
 
     # Linear interpolation function
     if smoothed_normalisation:
-        filtered = savgol_filter(relative_dose, 21, 2)
-        interpolation = interp1d(distance, filtered)
+        filtered = scipy.signal.savgol_filter(relative_dose, 21, 2)
+        interpolation = scipy.interpolate.interp1d(distance, filtered)
     else:
-        interpolation = interp1d(distance, relative_dose)
+        interpolation = scipy.interpolate.interp1d(distance, relative_dose)
 
     try:
         # Check if user wrote a number for normalisation position

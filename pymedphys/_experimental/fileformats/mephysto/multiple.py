@@ -14,12 +14,9 @@
 
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import scipy
 
-import scipy.interpolate
-
-from pymedphys._experimental.fileformats.mephysto import load_mephysto
-
-from . import normalisation
+from . import api, normalisation
 
 
 def mephysto_absolute_depth_dose(
@@ -73,7 +70,9 @@ def mephysto_absolute_profiles(
 def absolute_scans_from_mephysto(
     mephysto_file, absolute_dose, depth_of_absolute_dose_mm
 ):
-    distance, relative_dose, scan_curvetype, scan_depth = load_mephysto(mephysto_file)
+    distance, relative_dose, scan_curvetype, scan_depth = api.load_mephysto(
+        mephysto_file
+    )
 
     depth_testing = scan_depth[~np.isnan(scan_depth)]
     depth_testing = np.unique(depth_testing)
