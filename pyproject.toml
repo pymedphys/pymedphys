@@ -37,6 +37,7 @@ dataclasses = { version = "*", python = "~3.6.0" }
 tqdm = "*"
 attrs = "*"
 watchdog = "*"
+deprecated = "*"
 
 keyring = "*"
 packaging = "*"
@@ -63,7 +64,7 @@ pylibjpeg-libjpeg = "*"
 cython = "*"
 pymssql = { version = "< 3.0.0", python = "< 3.8" }
 
-# labs
+# used within experimental modules
 python_dateutil = "*"
 scikit-image = "*"
 
@@ -126,12 +127,16 @@ tests = [
 ]
 
 [tool.poetry.scripts]
-pymedphys = "pymedphys.cli.main:pymedphys_cli"
+pymedphys = "pymedphys.cli:pymedphys_cli"
 
 [tool.isort]
 multi_line_output = 3
 line_length = 88
 include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
 known_third_party = [
     "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
     "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
