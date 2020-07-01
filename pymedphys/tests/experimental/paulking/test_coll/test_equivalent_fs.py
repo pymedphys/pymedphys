@@ -15,7 +15,7 @@
 import numpy as np
 
 from pymedphys._utilities.constants import A_LEAF_TYPE, AGILITY
-from pymedphys.labs.paulking.collequivalent import mlc_equivalent_square_fs
+from pymedphys.experimental.paulking.collequivalent import mlc_equivalent_square_fs
 
 # import pytest
 

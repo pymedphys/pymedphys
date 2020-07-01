@@ -17,7 +17,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pymedphys._mocks.profiles import create_rectangular_field_function
-from pymedphys.labs.film import (
+from pymedphys.experimental.film import (
     align_images,
     create_image_interpolation,
     interpolated_rotation,

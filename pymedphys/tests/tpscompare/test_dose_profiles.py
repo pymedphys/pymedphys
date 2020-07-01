@@ -28,7 +28,7 @@ import pydicom
 
 from pymedphys._data import download
 from pymedphys.dicom import depth_dose, profile
-from pymedphys.labs.tpscompare import load_and_normalise_mephysto
+from pymedphys.experimental.tpscompare import load_and_normalise_mephysto
 
 HERE = Path(__file__).parent.resolve()
 DATA_DIR = HERE.joinpath("data")

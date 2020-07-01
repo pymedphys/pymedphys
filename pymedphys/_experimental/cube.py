@@ -46,7 +46,7 @@ def cubify_cube_definition(cube_definition):
     Examples
     --------
     >>> from pymedphys._imports import numpy as np
-    >>> from pymedphys.labs.cube import cubify_cube_definition
+    >>> from pymedphys.experimental.cube import cubify_cube_definition
     >>>
     >>> cube_definition = [(0, 0, 0), (0, 1, 0), (0, 0, 1)]
     >>> np.array(cubify_cube_definition(cube_definition))
@@ -359,7 +359,7 @@ def get_structure_aligned_cube(
     >>> import numpy as np
     >>> import pydicom
     >>> import pymedphys
-    >>> from pymedphys.labs.cube import get_structure_aligned_cube
+    >>> from pymedphys.experimental.cube import get_structure_aligned_cube
     >>>
     >>> struct_path = str(pymedphys.data_path('example_structures.dcm'))
     >>> dcm_struct = pydicom.dcmread(struct_path, force=True)

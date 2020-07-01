@@ -50,7 +50,7 @@ from skimage.feature import blob_log
 
 import pydicom
 
-from pymedphys.labs.pedromartinez.utils import utils as u
+from pymedphys.experimental.pedromartinez.utils import utils as u
 
 
 def point_detect(imcirclist):

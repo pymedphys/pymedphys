@@ -23,7 +23,7 @@ import os
 import numpy as np
 
 from pymedphys._data import download
-from pymedphys.labs.paulking.profile import Profile
+from pymedphys.experimental.paulking.profile import Profile
 
 PROFILER = [
     (-16.4, 0.22),

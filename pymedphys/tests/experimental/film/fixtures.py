@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from pymedphys.labs.film import load_cal_scans, load_image
+from pymedphys._experimental.film import load_cal_scans, load_image
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 DATA_DIR = os.path.join(HERE, "data/spine_case")
