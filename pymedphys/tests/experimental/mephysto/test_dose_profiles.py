@@ -28,7 +28,7 @@ import pydicom
 
 from pymedphys._data import download
 from pymedphys.dicom import depth_dose, profile
-from pymedphys.experimental.tpscompare import load_and_normalise_mephysto
+from pymedphys.experimental.fileformats import load_mephysto_directory
 
 HERE = Path(__file__).parent.resolve()
 DATA_DIR = HERE.joinpath("data")
@@ -92,7 +92,7 @@ def test_bulk_compare(loaded_doses, loaded_plan):
         for key in output_factors.columns
     }
 
-    absolute_scans_per_field = load_and_normalise_mephysto(
+    absolute_scans_per_field = load_mephysto_directory(
         MEASUREMENTS_DIR, r"06MV_(\d\dx\d\d)\.mcc", absolute_doses, 100
     )
 

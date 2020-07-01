@@ -17,3 +17,4 @@
 """
 
 from .api import load_mephysto, load_single_item
+from .directory import load_mephysto_directory
