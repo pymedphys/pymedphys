@@ -292,24 +292,24 @@ jobs:
       run: |
         poetry run pymedphys dev tests -v -s --run-only-yarn
 
-    - name: Delete GUI demo data and run the PyMedPhys GUI
-      if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
-      run: |
-        rm -rf pymedphys-gui-demo
-        poetry run pymedphys gui &
+    # - name: Delete GUI demo data and run the PyMedPhys GUI
+    #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
+    #   run: |
+    #     rm -rf pymedphys-gui-demo
+    #     poetry run pymedphys gui &
 
-    - name: Run Cypress through the dashboard tool so as to see the failures
-      if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
-      uses: cypress-io/github-action@v1
-      with:
-        install: true
-        record: true
-        start: yarn start
-        working-directory: tests/e2e
-        wait-on: 'http://localhost:8501'
-      env:
-        # pass the Dashboard record key as an environment variable
-        CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        host: localhost
-        port: 8501
+    # - name: Run Cypress through the dashboard tool so as to see the failures
+    #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
+    #   uses: cypress-io/github-action@v1
+    #   with:
+    #     install: true
+    #     record: true
+    #     start: yarn start
+    #     working-directory: tests/e2e
+    #     wait-on: 'http://localhost:8501'
+    #   env:
+    #     # pass the Dashboard record key as an environment variable
+    #     CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #     host: localhost
+    #     port: 8501
