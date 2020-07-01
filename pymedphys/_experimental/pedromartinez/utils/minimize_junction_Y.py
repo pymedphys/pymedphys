@@ -1,4 +1,5 @@
-import numpy as np
+from pymedphys._imports import numpy as np
+
 from scipy import signal
 from scipy.signal import find_peaks
 

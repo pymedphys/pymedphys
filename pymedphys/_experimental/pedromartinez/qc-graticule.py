@@ -55,7 +55,7 @@ from skimage.feature import blob_log
 
 import pydicom
 
-from pymedphys.experimental.pedromartinez.utils import utils as u
+from .utils import utils as u
 
 
 def running_mean(x, N):
