@@ -17,12 +17,12 @@ from .pinnacle import pinnacle_cli
 from .quickcheck import quickcheck_cli
 
 
-def labs_cli(subparsers):
-    labs_parser = subparsers.add_parser(
-        "labs", help="Highly experimental tools, not recommended for use."
+def experimental_cli(subparsers):
+    experimental_parser = subparsers.add_parser(
+        "experimental", help="Experimental tools."
     )
-    labs_subparsers = labs_parser.add_subparsers(dest="labs")
+    experimental_subparsers = experimental_parser.add_subparsers(dest="experimental")
 
-    pinnacle_cli(labs_subparsers)
-    quickcheck_cli(labs_subparsers)
-    return labs_parser
+    pinnacle_cli(experimental_subparsers)
+    quickcheck_cli(experimental_subparsers)
+    return experimental_parser
