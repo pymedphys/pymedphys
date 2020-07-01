@@ -16,7 +16,7 @@
 import numpy as np
 
 from pymedphys._data import download
-from pymedphys.labs.paulking.sinogram import (
+from pymedphys.experimental.paulking.sinogram import (
     crop,
     find_modulation_factor,
     make_histogram,

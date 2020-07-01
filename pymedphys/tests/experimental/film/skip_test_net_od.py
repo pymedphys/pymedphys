@@ -24,7 +24,7 @@ the laser marked image.
 import pytest
 
 from fixtures import postscans, prescans
-from pymedphys.labs.film import calc_net_od
+from pymedphys.experimental.film import calc_net_od
 
 # import numpy as np
 # import matplotlib.pyplot as plt

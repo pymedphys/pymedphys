@@ -17,7 +17,7 @@ import os
 import numpy as np
 
 import pymedphys
-from pymedphys.labs.fileformats.mapcheck import read_mapcheck_txt
+from pymedphys.experimental.fileformats.mapcheck import read_mapcheck_txt
 
 DATA_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
 

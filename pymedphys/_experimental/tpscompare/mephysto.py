@@ -17,9 +17,9 @@ from pymedphys._imports import numpy as np
 
 import scipy.interpolate
 
-from pymedphys.labs.fileformats.mephysto import load_mephysto
+from pymedphys._experimental.fileformats.mephysto import load_mephysto
 
-from .normalisation import normalise_profile
+from . import normalisation
 
 
 def mephysto_absolute_depth_dose(
@@ -58,7 +58,7 @@ def mephysto_absolute_profiles(
         raise ValueError("Can only handle exactly one scan type per mephysto file")
 
     mephysto_distance = distance[choose_mephysto][0]
-    mephysto_normalised_dose = normalise_profile(
+    mephysto_normalised_dose = normalisation.normalise_profile(
         mephysto_distance,
         relative_dose[choose_mephysto][0],
         scale_to_pdd=True,

@@ -6,6 +6,6 @@ Profile Class
     :local:
     :backlinks: entry
 
-.. autoclass:: pymedphys.labs.paulking.profile.Profile
+.. autoclass:: pymedphys.experimental.paulking.profile.Profile
   :members:
   :special-members:
