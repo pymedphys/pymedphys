@@ -23,7 +23,7 @@ from scipy.optimize import basinhopping
 from pymedphys._dicom.structure import pull_structure
 
 
-def cubify_cube_definition(cube_definition):
+def cubify(cube_definition):
     """Converts a set of 3-D points into the vertices that define a cube.
 
     Each point is defined as a length 3 tuple.
@@ -45,11 +45,11 @@ def cubify_cube_definition(cube_definition):
 
     Examples
     --------
-    >>> from pymedphys._imports import numpy as np
-    >>> from pymedphys.experimental.cube import cubify_cube_definition
+    >>> import numpy as np
+    >>> from pymedphys.experimental import cubify
     >>>
     >>> cube_definition = [(0, 0, 0), (0, 1, 0), (0, 0, 1)]
-    >>> np.array(cubify_cube_definition(cube_definition))
+    >>> np.array(cubify(cube_definition))
     array([[0., 0., 0.],
            [0., 1., 0.],
            [0., 0., 1.],
@@ -59,7 +59,7 @@ def cubify_cube_definition(cube_definition):
     The second point has primary control over the resulting edge lengths.
 
     >>> cube_definition = [(0, 0, 0), (0, 3, 0), (0, 0, 1)]
-    >>> np.array(cubify_cube_definition(cube_definition))
+    >>> np.array(cubify(cube_definition))
     array([[0., 0., 0.],
            [0., 3., 0.],
            [0., 0., 3.],
@@ -69,7 +69,7 @@ def cubify_cube_definition(cube_definition):
     The third point has control over the final cube rotation.
 
     >>> cube_definition = [(0, 0, 0), (0, 1, 0), (1, 0, 0)]
-    >>> np.array(cubify_cube_definition(cube_definition))
+    >>> np.array(cubify(cube_definition))
     array([[ 0.,  0.,  0.],
            [ 0.,  1.,  0.],
            [ 1.,  0.,  0.],
@@ -226,7 +226,7 @@ def test_if_in_cube(point_test, cube_definition):
 def dose_inside_cube(x_dose, y_dose, z_dose, dose, cube):
     """Find the dose just within the given cube.
     """
-    cube_definition = cubify_cube_definition(cube)
+    cube_definition = cubify(cube)
     print(cube_definition)
     vertices = cube_vertices(cube_definition)
     bounding_box = get_bounding_box(vertices)
@@ -315,7 +315,7 @@ def contour_to_points(contours):
     return contour_points
 
 
-def get_structure_aligned_cube(
+def align_cube_to_structure(
     structure_name: str,
     dcm_struct: pydicom.dataset.FileDataset,
     quiet=False,
@@ -341,7 +341,7 @@ def get_structure_aligned_cube(
         a cube that fits the contours. Choosing initial values close to
         the structure set, and in the desired orientation will allow
         consistent results. See examples within
-        `pymedphys.geometry.cubify_cube_definition`_ on what the
+        `pymedphys.experimental.cubify`_ on what the
         effects of each of the three points are on the resulting cube.
         By default, this parameter is defined using the min/max values
         of the contour structure.
@@ -359,12 +359,12 @@ def get_structure_aligned_cube(
     >>> import numpy as np
     >>> import pydicom
     >>> import pymedphys
-    >>> from pymedphys.experimental.cube import get_structure_aligned_cube
+    >>> from pymedphys.experimental import align_cube_to_structure
     >>>
     >>> struct_path = str(pymedphys.data_path('example_structures.dcm'))
     >>> dcm_struct = pydicom.dcmread(struct_path, force=True)
     >>> structure_name = 'ANT Box'
-    >>> cube_definition_array, vectors = get_structure_aligned_cube(
+    >>> cube_definition_array, vectors = align_cube_to_structure(
     ...     structure_name, dcm_struct, quiet=True, niter=1)
     >>> np.round(cube_definition_array)
     array([[-266.,  -31.,   43.],
@@ -382,9 +382,7 @@ def get_structure_aligned_cube(
     contour_points = contour_to_points(contours)
 
     def to_minimise(cube):
-        cube_definition = cubify_cube_definition(
-            [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
-        )
+        cube_definition = cubify([tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])])
         min_dist_squared = calc_min_distance(cube_definition, contour_points)
         return np.sum(min_dist_squared)
 
@@ -420,9 +418,7 @@ def get_structure_aligned_cube(
 
     cube = result.x
 
-    cube_definition = cubify_cube_definition(
-        [tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])]
-    )
+    cube_definition = cubify([tuple(cube[0:3]), tuple(cube[3:6]), tuple(cube[6::])])
 
     cube_definition_array = np.array([np.array(list(item)) for item in cube_definition])
 
