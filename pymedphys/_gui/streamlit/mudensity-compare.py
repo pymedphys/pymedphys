@@ -36,8 +36,8 @@ from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
+from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
-from pymedphys.labs.managelogfiles import index as pmp_index
 
 """
 # MU Density comparison tool
@@ -1481,7 +1481,3 @@ def main():
 
     if advanced_mode:
         advanced_debugging()
-
-
-if __name__ == "__main__":
-    main()

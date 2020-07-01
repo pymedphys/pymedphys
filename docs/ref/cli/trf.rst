@@ -9,6 +9,6 @@ Elekta Binary Logfiles
     :no-members:
 
 .. argparse::
-   :ref: pymedphys.cli.main.define_parser
+   :ref: pymedphys.cli.define_parser
    :prog: pymedphys
    :path: trf
