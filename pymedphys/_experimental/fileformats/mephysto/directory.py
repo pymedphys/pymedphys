@@ -16,10 +16,10 @@
 import pathlib
 import re
 
-from .mephysto import absolute_scans_from_mephysto
+from .multiple import absolute_scans_from_mephysto
 
 
-def load_and_normalise_mephysto(directory, regex, absolute_doses, normalisation_depth):
+def load_mephysto_directory(directory, regex, absolute_doses, normalisation_depth):
     """Read and normalise a directory of Mephysto files.
 
     Mephysto files are renormalised at the ``normalistation_depth`` to be
