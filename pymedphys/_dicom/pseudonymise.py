@@ -13,19 +13,20 @@
 # limitations under the License.
 
 
+import base64
+import datetime
 import functools
+import hashlib
 import json
 import os.path
 import pprint
+import random
 from copy import deepcopy
+from decimal import Decimal, DecimalTuple
 from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
-import hashlib
-import base64
-import datetime
-from decimal import Decimal, DecimalTuple
-import random
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 

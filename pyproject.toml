@@ -11,7 +11,8 @@ authors = [
     "Matthew Cooper <mcooper@pymedphys.com>",
     "Phillip Chlap",
     "Jacob McAloney",
-    "Pedro Martinez"
+    "Pedro Martinez",
+    "Stuart Swerdloff <sjswerdloff@gmail.com>"
 ]
 license = "Apache-2.0"
 homepage = "https://pymedphys.com"

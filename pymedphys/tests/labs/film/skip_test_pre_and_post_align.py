@@ -35,7 +35,7 @@ ALIGNMENT_BASELINES_FILEPATH = os.path.join(BASELINES_DIR, "pre_post_alignment.j
 
 
 def test_multi_channel_shift_and_rotate(
-    prescans
+    prescans,
 ):  # pylint: disable=redefined-outer-name
     prescan = prescans[0]
     axes = create_axes(prescan)

@@ -16,22 +16,21 @@ import pydicom.filereader
 import pydicom.tag
 
 from pymedphys._dicom import create
+from pymedphys._dicom.constants import (
+    BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
+    get_baseline_dicom_dict,
+    get_baseline_dicom_repeaters_dict,
+)
 from pymedphys._dicom.pseudonymise import (
     IDENTIFYING_KEYWORDS_FILEPATH,
     KEYWORDS_FOR_PSEUDONYMS,
-    pseudonymise_directory,
-    pseudonymise_file,
     get_baseline_keyword_vr_dict,
     is_anonymised_dataset,
     is_anonymised_directory,
     is_anonymised_file,
     label_dicom_filepath_as_pseudonymised,
-)
-from pymedphys._dicom.constants import (
-    BASELINE_DICOM_DICT_FILEPATH,
-    BASELINE_DICOM_REPEATERS_DICT_FILEPATH,
-    get_baseline_dicom_dict,
-    get_baseline_dicom_repeaters_dict,
+    pseudonymise_directory,
+    pseudonymise_file,
 )
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.dicom import pseudonymise as pseudonymise_dataset
@@ -401,8 +400,8 @@ def test_tags_to_anonymise_in_dicom_dict_baseline(
             json.dump(KEYWORDS_FOR_PSEUDONYMS, outfile, indent=2, sort_keys=True)
 
     if save_new_baselines:
-        with open(BASELINE_DICOM_DICT_FILEPATH, "w") as outfile:
-            json.dump(get_baseline_dicom_dict(), outfile, indent=2, sort_keys=True)
+        # with open(BASELINE_DICOM_DICT_FILEPATH, "w") as outfile:
+        #     json.dump(get_baseline_dicom_dict(), outfile, indent=2, sort_keys=True)
 
         with open(BASELINE_DICOM_REPEATERS_DICT_FILEPATH, "w") as outfile:
             json.dump(

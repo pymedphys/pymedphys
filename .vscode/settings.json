@@ -1,6 +1,5 @@
 {
   "editor.detectIndentation": true,
-  "editor.formatOnSave": true,
   "editor.insertSpaces": true,
   "editor.rulers": [
     79,
@@ -334,5 +333,6 @@
     "zlim"
   ],
   "python.linting.pylintEnabled": true,
-  "git.ignoreLimitWarning": true
+  "git.ignoreLimitWarning": true,
+  "editor.formatOnSave": true
 }

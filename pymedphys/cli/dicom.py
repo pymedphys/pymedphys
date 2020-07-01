@@ -16,12 +16,12 @@
 """
 
 from pymedphys._dicom.anonymise import anonymise_cli
-from pymedphys._dicom.pseudonymise import pseudonymise_cli
 from pymedphys._dicom.header import (
     adjust_machine_name_cli,
     adjust_RED_by_structure_name_cli,
     adjust_RED_cli,
 )
+from pymedphys._dicom.pseudonymise import pseudonymise_cli
 from pymedphys._dicom.structure.merge import merge_contours_cli
 
 
