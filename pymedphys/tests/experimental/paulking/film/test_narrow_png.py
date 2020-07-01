@@ -16,7 +16,7 @@ import os
 
 import numpy as np
 
-from pymedphys.experimental.paulking.narrow_png import read_narrow_png
+from pymedphys.experimental.film import from_image
 
 DATA_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
 
@@ -24,10 +24,4 @@ DATA_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), "data")
 def test_read_narrow_png():
     vert_strip = os.path.join(DATA_DIRECTORY, "FilmCalib_EBT_vert_strip.png")
     horz_strip = os.path.join(DATA_DIRECTORY, "FilmCalib_EBT_horz_strip.png")
-    assert np.allclose(
-        read_narrow_png(vert_strip)[0][0], read_narrow_png(horz_strip)[0][0]
-    )
-
-
-if __name__ == "__main__":
-    test_read_narrow_png()
+    assert np.allclose(from_image(vert_strip)[0][0], from_image(horz_strip)[0][0])

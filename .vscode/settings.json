@@ -8,6 +8,7 @@
   ],
   "files.trimTrailingWhitespace": true,
   "python.formatting.provider": "black",
+  "python.sortImports.path": "isort",
   "python.linting.mypyEnabled": true,
   "python.linting.pylintUseMinimalCheckers": false,
   "[python]": {
@@ -310,6 +311,7 @@
     "unshuffle",
     "unsubscriptable",
     "uploader",
+    "vals",
     "varian",
     "vectorised",
     "vendored",
