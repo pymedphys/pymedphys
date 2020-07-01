@@ -18,7 +18,7 @@ from datetime import datetime
 from pymedphys._imports import dateutil
 
 from pymedphys._mosaiq.delivery import get_mosaiq_delivery_details
-from pymedphys._trf.header import decode_header_from_file
+from pymedphys._trf.decode.header import decode_header_from_file
 
 # TODO Make the field identification run one whole day at a time, searching
 # for all logfiles on that day and then attempting to align the logfiles

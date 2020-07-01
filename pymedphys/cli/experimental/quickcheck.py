@@ -15,13 +15,13 @@
 """Export csv data from QuickCheck measurements.
 """
 
-from pymedphys.labs.quickcheck import export_cli
+from pymedphys._experimental.quickcheck import export_cli
 
 
 def quickcheck_cli(subparsers):
     quickcheck_parser = subparsers.add_parser(
         "quickcheck",
-        help="A toolbox to retreive measurement data from PTW Quickcheck and write it to a csv file.",
+        help="A toolbox to retrieve measurement data from PTW Quickcheck and write it to a csv file.",
     )
     quickcheck_subparsers = quickcheck_parser.add_subparsers(dest="quickcheck")
 

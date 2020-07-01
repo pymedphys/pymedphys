@@ -15,10 +15,11 @@
 
 """A tool to export DICOM objects from raw Pinnacle data:
 
->>> from pymedphys.labs.pinnacle import (
-...     PinnacleExport,
-...     PinnaclePlan,
-...     PinnacleImage)
+>>> from pymedphys.experimental import pinnacle
+
+>>> pinnacle.PinnacleExport
+>>> pinnacle.PinnaclePlan
+>>> pinnacle.PinnacleImage
 
 .. WARNING::
    The DICOM objects exported by this tool are not the same as the DICOM

@@ -26,7 +26,7 @@ from pymedphys._imports import attr
 
 from pymedphys._mosaiq.connect import multi_mosaiq_connect
 from pymedphys._mosaiq.delivery import NoMosaiqEntries, get_mosaiq_delivery_details
-from pymedphys._trf.header import Header, decode_header_from_file
+from pymedphys._trf.decode.header import Header, decode_header_from_file
 from pymedphys._utilities.filehash import hash_file
 from pymedphys._utilities.filesystem import make_a_valid_directory_name
 

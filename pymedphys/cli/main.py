@@ -18,10 +18,9 @@ import sys
 
 from .dev import dev_cli
 from .dicom import dicom_cli
+from .experimental import experimental_cli
 from .gui import gui_cli
 from .icom import icom_cli
-from .labs import labs_cli
-from .logfile import logfile_cli
 from .trf import trf_cli
 from .zenodo import zenodo_cli
 
@@ -38,8 +37,7 @@ def define_parser():
     subparsers = parser.add_subparsers()
 
     dicom_cli(subparsers)
-    labs_cli(subparsers)
-    logfile_cli(subparsers)
+    experimental_cli(subparsers)
     trf_cli(subparsers)
     dev_cli(subparsers)
     zenodo_cli(subparsers)
