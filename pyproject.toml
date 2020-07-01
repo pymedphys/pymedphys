@@ -72,13 +72,18 @@ tensorflow = { version = ">=2.2.0", optional = true}
 tensorflow-estimator = { version = "*", optional = true}
 tensorboard = { version = "*", optional = true }
 tensorflow-io = { version = "*", optional = true }
+tensorflow-datasets = { version = "*", optional = true }
 
 torch = { version = "*", python = "^3.7" }
 torchvision = { version = "*", python = "^3.7" }
 
 jax = { version = "*", optional = true }
 jaxlib = { version = "*", optional = true }
+flax = { version = "*", optional = true, python = "^3.7" }
 dm-haiku = { git = "https://github.com/deepmind/dm-haiku", optional = true }
+
+# not in library yet
+seaborn = { version = "*", optional = true }
 
 # gui
 streamlit = "*"
@@ -126,8 +131,13 @@ docs = [
 
 ml = [
     "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io",
+    "tensorflow-datasets",
     "torch", "torchvision",
-    "jax", "jaxlib", "dm-haiku"
+    "jax", "jaxlib", "flax", "dm-haiku"
+]
+
+nily = [
+    "seaborn"
 ]
 
 tests = [
