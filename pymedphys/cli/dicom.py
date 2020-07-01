@@ -24,7 +24,7 @@ from pymedphys._dicom.header import (
 from pymedphys._dicom.structure.merge import merge_contours_cli
 
 
-def dicom_cli(subparsers):
+def set_up_dicom_cli(subparsers):
     dicom_parser = subparsers.add_parser(
         "dicom", help="A toolbox for the manipulation of DICOM files."
     )
@@ -35,6 +35,12 @@ def dicom_cli(subparsers):
     adjust_machine_name(dicom_subparsers)
     adjust_rel_elec_density(dicom_subparsers)
     adjust_RED_by_structure_name(dicom_subparsers)
+
+    return dicom_parser, dicom_subparsers
+
+
+def dicom_cli(subparsers):
+    dicom_parser, _ = set_up_dicom_cli(subparsers)
 
     return dicom_parser
 
@@ -221,3 +227,5 @@ def anonymise(dicom_subparsers):
     )
 
     parser.set_defaults(func=anonymise_cli)
+
+    return parser
