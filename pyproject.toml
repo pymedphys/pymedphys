@@ -37,7 +37,6 @@ dataclasses = { version = "*", python = "~3.6.0" }
 tqdm = "*"
 attrs = "*"
 watchdog = "*"
-deprecated = "*"
 
 keyring = "*"
 packaging = "*"
