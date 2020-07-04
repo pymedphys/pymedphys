@@ -602,6 +602,13 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
                     replacement_value = ""
             setattr(ds_anon, keyword, replacement_value)
 
+    remaining_seq_only_list = [
+        x for x in ds_anon if (x.VR == "SQ" and x.name not in keywords_to_anonymise)
+    ]
+    for seq in remaining_seq_only_list:
+        for seq_item in seq.value:
+            _anonymise_tags(seq_item, keywords_to_anonymise, replace_values)
+
     return ds_anon
 
 
