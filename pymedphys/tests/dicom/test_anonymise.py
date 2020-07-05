@@ -1,10 +1,8 @@
 import json
 import os
-import pathlib
 import subprocess
-import tempfile
 from copy import deepcopy
-from os.path import abspath, basename, dirname, exists
+from os.path import basename, dirname, exists
 from os.path import join as pjoin
 from shutil import copyfile
 from uuid import uuid4
@@ -34,9 +32,6 @@ from pymedphys._dicom.constants import get_baseline_dicom_dict
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.dicom import anonymise as anonymise_dataset
 
-# HERE = dirname(abspath(__file__))
-# DATA_DIR = pjoin(HERE, "data", "anonymise")
-# TEST_FILEPATH = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
 DATA_PATHS = download.zip_data_paths("rtplan-anonymisation.zip")
 TEST_POSIX_PATH = next(x for x in DATA_PATHS if x.name == "RP.almost_anonymised.dcm")
 TEST_FILEPATH = TEST_POSIX_PATH.absolute().as_posix()
