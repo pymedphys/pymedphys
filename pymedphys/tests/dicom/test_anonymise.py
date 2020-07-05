@@ -1,8 +1,9 @@
+import functools
 import json
 import os
 import subprocess
 from copy import deepcopy
-from os.path import abspath, basename, dirname, exists
+from os.path import basename, dirname, exists
 from os.path import join as pjoin
 from shutil import copyfile
 from uuid import uuid4
@@ -15,6 +16,7 @@ import pydicom.dataset
 import pydicom.filereader
 import pydicom.tag
 
+from pymedphys._data import download
 from pymedphys._dicom import create
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS,
@@ -31,17 +33,12 @@ from pymedphys._dicom.constants import get_baseline_dicom_dict
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.dicom import anonymise as anonymise_dataset
 
-HERE = dirname(abspath(__file__))
-DATA_DIR = pjoin(HERE, "data", "anonymise")
-TEST_FILEPATH = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
-
 # TODO: TEST_ANON_BASENAME will probably instead need to contain the
 # PYMEDPHYS_ROOT_UID (or similar) when anonymisation of UIDS is
 # implemented
 TEST_ANON_BASENAME = (
     "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm"
 )
-TEST_FILE_META = pydicom.filereader.read_file_meta_info(TEST_FILEPATH)
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "AE": "AnAETitle",
@@ -65,6 +62,22 @@ VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
 }
 
 
+@functools.lru_cache()
+def get_rtplan_test_file_path():
+    data_paths = _download_rtplan_test_file()
+    test_rtplan_path = next(
+        x for x in data_paths if x.name == "RP.almost_anonymised.dcm"
+    )
+    test_rtplan_file_path = str(test_rtplan_path.absolute())
+    return test_rtplan_file_path
+
+
+@functools.lru_cache()
+def _download_rtplan_test_file():
+    data_paths = download.zip_data_paths("rtplan-anonymisation.zip")
+    return data_paths
+
+
 def _check_is_anonymised_dataset_file_and_dir(
     ds, tmp_path, anon_is_expected=True, ignore_private_tags=False
 ):
@@ -73,7 +86,10 @@ def _check_is_anonymised_dataset_file_and_dir(
     try:
         create.set_default_transfer_syntax(ds)
 
-        ds.file_meta = TEST_FILE_META
+        ds.file_meta = pydicom.filereader.read_file_meta_info(
+            get_rtplan_test_file_path()
+        )
+
         ds.save_as(temp_filepath, write_like_original=False)
 
         if anon_is_expected:
@@ -204,28 +220,34 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
 @pytest.mark.pydicom
 def test_anonymise_file():
-    assert not is_anonymised_file(TEST_FILEPATH)
-    temp_basename = "{}_{}.dcm".format(".".join(TEST_FILEPATH.split(".")[:-1]), uuid4())
+    assert not is_anonymised_file(get_rtplan_test_file_path())
+    temp_basename = "{}_{}.dcm".format(
+        ".".join(get_rtplan_test_file_path().split(".")[:-1]), uuid4()
+    )
 
-    temp_filepath = pjoin(dirname(TEST_FILEPATH), temp_basename)
+    temp_filepath = pjoin(dirname(get_rtplan_test_file_path()), temp_basename)
     anon_private_filepath = ""
     anon_filepath_orig = ""
     anon_filepath_pres = ""
 
     try:
         # Private tag handling
-        anon_private_filepath = anonymise_file(TEST_FILEPATH, delete_private_tags=False)
+        anon_private_filepath = anonymise_file(
+            get_rtplan_test_file_path(), delete_private_tags=False
+        )
         assert not is_anonymised_file(anon_private_filepath, ignore_private_tags=False)
         assert is_anonymised_file(anon_private_filepath, ignore_private_tags=True)
 
-        anon_private_filepath = anonymise_file(TEST_FILEPATH, delete_private_tags=True)
+        anon_private_filepath = anonymise_file(
+            get_rtplan_test_file_path(), delete_private_tags=True
+        )
         assert is_anonymised_file(anon_private_filepath, ignore_private_tags=False)
 
         # Filename is anonymised?
         assert basename(anon_private_filepath) == TEST_ANON_BASENAME
 
         # Deletion of original file
-        copyfile(TEST_FILEPATH, temp_filepath)
+        copyfile(get_rtplan_test_file_path(), temp_filepath)
 
         anon_filepath_orig = anonymise_file(temp_filepath, delete_original_file=True)
         assert is_anonymised_file(anon_filepath_orig)
@@ -233,9 +255,11 @@ def test_anonymise_file():
 
         # Preservation of filename if desired
         expected_filepath = "{}_Anonymised.dcm".format(
-            ".".join(TEST_FILEPATH.split(".")[:-1])
+            ".".join(get_rtplan_test_file_path().split(".")[:-1])
         )
-        anon_filepath_pres = anonymise_file(TEST_FILEPATH, anonymise_filename=False)
+        anon_filepath_pres = anonymise_file(
+            get_rtplan_test_file_path(), anonymise_filename=False
+        )
         assert anon_filepath_pres == expected_filepath
 
     finally:
@@ -250,7 +274,7 @@ def test_anonymise_directory(tmp_path):
     temp_filepath = tmp_path / "test.dcm"
     temp_anon_filepath = label_dicom_filepath_as_anonymised(temp_filepath)
     try:
-        copyfile(TEST_FILEPATH, temp_filepath)
+        copyfile(get_rtplan_test_file_path(), temp_filepath)
         assert not is_anonymised_directory(tmp_path)
 
         # Test file deletion
@@ -286,7 +310,7 @@ def test_anonymise_cli(tmp_path):
 
     temp_filepath = str(tmp_path / "test.dcm")
     try:
-        copyfile(TEST_FILEPATH, temp_filepath)
+        copyfile(get_rtplan_test_file_path(), temp_filepath)
         temp_anon_filepath = str(tmp_path / TEST_ANON_BASENAME)
         # Basic file anonymisation
         assert not is_anonymised_file(temp_filepath)
