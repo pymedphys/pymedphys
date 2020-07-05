@@ -39,7 +39,6 @@ from pymedphys.dicom import anonymise as anonymise_dataset
 TEST_ANON_BASENAME = (
     "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm"
 )
-TEST_FILE_META = pydicom.filereader.read_file_meta_info(get_rtplan_test_file_path())
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
     "AE": "AnAETitle",
@@ -87,7 +86,10 @@ def _check_is_anonymised_dataset_file_and_dir(
     try:
         create.set_default_transfer_syntax(ds)
 
-        ds.file_meta = TEST_FILE_META
+        ds.file_meta = pydicom.filereader.read_file_meta_info(
+            get_rtplan_test_file_path()
+        )
+
         ds.save_as(temp_filepath, write_like_original=False)
 
         if anon_is_expected:
