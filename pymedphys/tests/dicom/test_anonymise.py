@@ -38,7 +38,8 @@ from pymedphys.dicom import anonymise as anonymise_dataset
 # DATA_DIR = pjoin(HERE, "data", "anonymise")
 # TEST_FILEPATH = pjoin(DATA_DIR, "RP.almost_anonymised.dcm")
 DATA_PATHS = download.zip_data_paths("rtplan-anonymisation.zip")
-TEST_FILEPATH = next(x for x in DATA_PATHS if x.name == "RP.almost_anonymised.dcm")
+TEST_POSIX_PATH = next(x for x in DATA_PATHS if x.name == "RP.almost_anonymised.dcm")
+TEST_FILEPATH = TEST_POSIX_PATH.absolute().as_posix()
 # TODO: TEST_ANON_BASENAME will probably instead need to contain the
 # PYMEDPHYS_ROOT_UID (or similar) when anonymisation of UIDS is
 # implemented
