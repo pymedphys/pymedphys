@@ -102,6 +102,7 @@ DICOM_SOP_CLASS_NAMES_MODE_PREFIXES = {
     "RT Image Storage": "RI",
     "RT Dose Storage": "RD",
     "RT Plan Storage": "RP",
+    "RT Ion Plan Storage": "RN",
     "RT Structure Set Storage": "RS",
     "Computed Radiography Image Storage": "CR",
     "Ultrasound Image Storage": "US",
@@ -110,6 +111,8 @@ DICOM_SOP_CLASS_NAMES_MODE_PREFIXES = {
     "Enhanced XA Image Storage": "XAE",
     "Nuclear Medicine Image Storage": "NM",
     "Secondary Capture Image Storage": "SC",
+    "RT Beams Treatment Record Storage": "RBT",
+    "RT Ion Beams Treatment Record Storage": "RIBT",
 }
 
 
