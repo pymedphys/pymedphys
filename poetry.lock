@@ -322,7 +322,7 @@ version = "0.29.20"
 [[package]]
 category = "main"
 description = "A backport of the dataclasses module for Python 3.6"
-marker = "python_version >= \"3.6.0\" and python_version < \"3.7.0\" or python_version >= \"3.7\" and python_version < \"4.0\""
+marker = "python_version >= \"3.6.0\" and python_version < \"3.7.0\" or python_version < \"3.7\""
 name = "dataclasses"
 optional = false
 python-versions = ">=3.6, <3.7"
@@ -371,26 +371,6 @@ optional = false
 python-versions = "*"
 version = "0.3.1"
 
-[[package]]
-category = "main"
-description = "Haiku is a library for building neural networks in JAX."
-name = "dm-haiku"
-optional = true
-python-versions = "*"
-version = "0.0.1"
-
-[package.dependencies]
-absl-py = ">=0.7.1"
-numpy = ">=1.18.0"
-
-[package.extras]
-jax = ["jax (>=0.1.71)"]
-jaxlib = ["jaxlib (>=0.1.49)"]
-
-[package.source]
-reference = "0f29341361059c745630d710b698e13e50769d3a"
-type = "git"
-url = "https://github.com/deepmind/dm-haiku"
 [[package]]
 category = "dev"
 description = "Style checker for Sphinx (or other) RST documentation"
@@ -442,27 +422,33 @@ version = "3.0.12"
 [[package]]
 category = "main"
 description = "Flax: A neural network library for JAX designed for flexibility"
-marker = "python_version >= \"3.7\" and python_version < \"4.0\""
 name = "flax"
 optional = true
 python-versions = "*"
 version = "0.1.0"
 
 [package.dependencies]
-dataclasses = "*"
 jax = ">=0.1.59"
 matplotlib = "*"
 msgpack = "*"
 numpy = ">=1.12"
 
-[package.extras]
-testing = ["pytest", "pytest-xdist", "tensorflow-datasets"]
+[package.dependencies.dataclasses]
+python = "<3.7"
+version = "*"
 
+[package.extras]
+testing = ["jaxlib", "pytest", "pytest-cov", "pytest-xdist", "tensorflow", "tensorflow-datasets"]
+
+[package.source]
+reference = "5bbf0ac881703753bbeaf00a8b7e0a6191116260"
+type = "git"
+url = "https://github.com/google/flax"
 [[package]]
 category = "main"
 description = "Clean single-source support for Python 3 and 2"
 name = "future"
-optional = false
+optional = true
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 version = "0.18.2"
 
@@ -1012,7 +998,6 @@ version = "8.4.0"
 [[package]]
 category = "main"
 description = "MessagePack (de)serializer."
-marker = "python_version >= \"3.7\" and python_version < \"4.0\""
 name = "msgpack"
 optional = true
 python-versions = "*"
@@ -2244,36 +2229,6 @@ version = "0.10.0"
 
 [[package]]
 category = "main"
-description = "Tensors and Dynamic neural networks in Python with strong GPU acceleration"
-marker = "python_version >= \"3.7\" and python_version < \"4.0\""
-name = "torch"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.6.0"
-version = "1.5.1"
-
-[package.dependencies]
-future = "*"
-numpy = "*"
-
-[[package]]
-category = "main"
-description = "image and video datasets and models for torch deep learning"
-marker = "python_version >= \"3.7\" and python_version < \"4.0\""
-name = "torchvision"
-optional = false
-python-versions = "*"
-version = "0.6.1"
-
-[package.dependencies]
-numpy = "*"
-pillow = ">=4.1.1"
-torch = "1.5.1"
-
-[package.extras]
-scipy = ["scipy"]
-
-[[package]]
-category = "main"
 description = "Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed."
 name = "tornado"
 optional = false
@@ -2475,12 +2430,12 @@ testing = ["jaraco.itertools", "func-timeout"]
 
 [extras]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
-ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "tensorflow-datasets", "torch", "torchvision", "jax", "jaxlib", "flax", "dm-haiku"]
+ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "tensorflow-datasets", "jax", "jaxlib", "flax"]
 nily = ["seaborn"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "ac30ec8649ef1d2aaaeb1cb3a7d3d955305b72a4d0dd2595e16c7fa709dbd84c"
+content-hash = "aa5a865f071e60af4f2568a88b9278d67e7305ddc48e20a91fce38bb516e9065"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2695,7 +2650,6 @@ distlib = [
     {file = "distlib-0.3.1-py2.py3-none-any.whl", hash = "sha256:8c09de2c67b3e7deef7184574fc060ab8a793e7adbb183d942c389c8b13c52fb"},
     {file = "distlib-0.3.1.zip", hash = "sha256:edf6116872c863e1aa9d5bb7cb5e05a022c519a4594dc703843343a9ddd9bff1"},
 ]
-dm-haiku = []
 doc8 = [
     {file = "doc8-0.8.1-py2.py3-none-any.whl", hash = "sha256:4d58a5c8c56cedd2b2c9d6e3153be5d956cf72f6051128f0f2255c66227df721"},
     {file = "doc8-0.8.1.tar.gz", hash = "sha256:4d1df12598807cf08ffa9a1d5ef42d229ee0de42519da01b768ff27211082c12"},
@@ -2717,10 +2671,7 @@ filelock = [
     {file = "filelock-3.0.12-py3-none-any.whl", hash = "sha256:929b7d63ec5b7d6b71b0fa5ac14e030b3f70b75747cef1b10da9b879fef15836"},
     {file = "filelock-3.0.12.tar.gz", hash = "sha256:18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59"},
 ]
-flax = [
-    {file = "flax-0.1.0-py3-none-any.whl", hash = "sha256:2f5c21e8006e938fdf37b2748a802403fe13e90d4691e59531c5c2fa2cf5f0d0"},
-    {file = "flax-0.1.0.tar.gz", hash = "sha256:94e6a05531009c44b000b9778603c6cceff43b8450e4059c22fd0dea93ea7b3b"},
-]
+flax = []
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
 ]
@@ -3711,26 +3662,6 @@ toml = [
 ]
 toolz = [
     {file = "toolz-0.10.0.tar.gz", hash = "sha256:08fdd5ef7c96480ad11c12d472de21acd32359996f69a5259299b540feba4560"},
-]
-torch = [
-    {file = "torch-1.5.1-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:b84fd18fd8216b74a19828433c3beeb1f0d1d29f45dead3be9ed784ae6855966"},
-    {file = "torch-1.5.1-cp35-none-macosx_10_6_x86_64.whl", hash = "sha256:5d909a55cd979fec2c9a7aa35012024b9cc106acbc496faf5de798b148406450"},
-    {file = "torch-1.5.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:a358cee1d35b86757bf915e320ba776d39c20e60db50779060842efc86f02edd"},
-    {file = "torch-1.5.1-cp36-none-macosx_10_9_x86_64.whl", hash = "sha256:0a83f41140222c7cc947aa29ed253f3e6fa490606d3d4acd02bfd9f338e3c707"},
-    {file = "torch-1.5.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:70046cf66eb40ead89df25b8dcc571c3007fc9849d4e1d254cc09b4b355374d4"},
-    {file = "torch-1.5.1-cp37-none-macosx_10_9_x86_64.whl", hash = "sha256:bb2a3e6c9c9dbfda856bd1b1a55d88789a9488b569ffba9cd6d9aa536ef866ba"},
-    {file = "torch-1.5.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:c42658f2982591dc4d0459645c9ab26e0ce18aa7ab0993c27c8bcb1c98931d11"},
-    {file = "torch-1.5.1-cp38-none-macosx_10_9_x86_64.whl", hash = "sha256:ff1dbeaa017bae66036e8e7a698a5475ac5a0d7b0a690f0a04ac3b1133b1feb3"},
-]
-torchvision = [
-    {file = "torchvision-0.6.1-cp35-cp35m-macosx_10_6_x86_64.whl", hash = "sha256:eb6d7ef73ab8ed756d18c1c11ead3ba1be7b3e2fe5bf475e16a4426d7f3d6eec"},
-    {file = "torchvision-0.6.1-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:c122386a4604a6b611626d817981777bb06e747161a4954e4037c2e297fe1d86"},
-    {file = "torchvision-0.6.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:9a544f241e1df7485c1fda64f06af4962ad4af1da6caeda352757ea800dd794d"},
-    {file = "torchvision-0.6.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:c44819c3c903f2d6d269713a9aa81a9dcb0ab7716b4fc4dbdccf596e6fe894c9"},
-    {file = "torchvision-0.6.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:b07e7c5a7274082a8bbe88975c817da10bffaf4020017347d185b5d4eacb891d"},
-    {file = "torchvision-0.6.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:52be3710bf495fee9eb8f1cb4d310edd2da94b127b2ca0aa77075c1001bcbb91"},
-    {file = "torchvision-0.6.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:80a8beaa3416035c9640d153b1f0a7c9b09aac8037a032bbc33fd4bc8657b091"},
-    {file = "torchvision-0.6.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:3af59c61d20bb0bb63dbd50f324fcd975fc5b89fb78e6b5714ae613cd7b734cc"},
 ]
 tornado = [
     {file = "tornado-6.0.4-cp35-cp35m-win32.whl", hash = "sha256:5217e601700f24e966ddab689f90b7ea4bd91ff3357c3600fa1045e26d68e55d"},
