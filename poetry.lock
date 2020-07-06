@@ -195,10 +195,10 @@ description = "The AWS SDK for Python"
 name = "boto3"
 optional = false
 python-versions = "*"
-version = "1.14.15"
+version = "1.14.16"
 
 [package.dependencies]
-botocore = ">=1.17.15,<1.18.0"
+botocore = ">=1.17.16,<1.18.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.3.0,<0.4.0"
 
@@ -208,7 +208,7 @@ description = "Low-level, data-driven core of boto 3."
 name = "botocore"
 optional = false
 python-versions = "*"
-version = "1.17.15"
+version = "1.17.16"
 
 [package.dependencies]
 docutils = ">=0.10,<0.16"
@@ -371,8 +371,24 @@ optional = false
 python-versions = "*"
 version = "0.3.1"
 
+[[package]]
+category = "main"
+description = "Haiku is a library for building neural networks in JAX."
+name = "dm-haiku"
+optional = true
+python-versions = "*"
+version = "0.0.1"
+
+[package.dependencies]
+absl-py = ">=0.7.1"
+numpy = ">=1.18.0"
+
+[package.extras]
+jax = ["jax (>=0.1.71)"]
+jaxlib = ["jaxlib (>=0.1.49)"]
+
 [package.source]
-reference = "a24c5d9ff7d20515a90637d55401154d2d10d2b4"
+reference = "0f29341361059c745630d710b698e13e50769d3a"
 type = "git"
 url = "https://github.com/deepmind/dm-haiku"
 [[package]]
@@ -647,7 +663,7 @@ description = "IPython Kernel for Jupyter"
 name = "ipykernel"
 optional = false
 python-versions = ">=3.5"
-version = "5.3.0"
+version = "5.3.1"
 
 [package.dependencies]
 appnope = "*"
@@ -753,7 +769,7 @@ description = "XLA library for JAX"
 name = "jaxlib"
 optional = true
 python-versions = ">=3.6"
-version = "0.1.50"
+version = "0.1.51"
 
 [package.dependencies]
 absl-py = "*"
@@ -1532,7 +1548,7 @@ description = "A Python implementation of the DICOM networking protocol"
 name = "pynetdicom"
 optional = false
 python-versions = "*"
-version = "1.5.1"
+version = "1.5.2"
 
 [package.dependencies]
 pydicom = ">=1.4.2"
@@ -2194,7 +2210,7 @@ description = "Read and write TIFF(r) files"
 name = "tifffile"
 optional = false
 python-versions = ">=3.6"
-version = "2020.6.3"
+version = "2020.7.4"
 
 [package.dependencies]
 numpy = ">=1.15.1"
@@ -2459,12 +2475,12 @@ testing = ["jaraco.itertools", "func-timeout"]
 
 [extras]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
-ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "tensorflow-datasets", "torch", "torchvision", "jax", "jaxlib", "dm-haiku"]
+ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "tensorflow-datasets", "torch", "torchvision", "jax", "jaxlib", "flax", "dm-haiku"]
 nily = ["seaborn"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "788899ed87cfe2440e939c546716625de15b3b37efa77b0799b18c27024d70c2"
+content-hash = "ac30ec8649ef1d2aaaeb1cb3a7d3d955305b72a4d0dd2595e16c7fa709dbd84c"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2535,12 +2551,12 @@ blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
 ]
 boto3 = [
-    {file = "boto3-1.14.15-py2.py3-none-any.whl", hash = "sha256:974a4a495fa876f4e8180e2690c840152f06cc3badbe865f05ed731efadcbf44"},
-    {file = "boto3-1.14.15.tar.gz", hash = "sha256:3c654c1b8f9708e0b457ea1d312ee53451368d09b571ce737dc1f46484112bc1"},
+    {file = "boto3-1.14.16-py2.py3-none-any.whl", hash = "sha256:c2a223f4b48782e8b160b2130265e2a66081df111f630a5a384d6909e29a5aa9"},
+    {file = "boto3-1.14.16.tar.gz", hash = "sha256:ce5a4ab6af9e993d1864209cbbb6f4812f65fbc57ad6b95e5967d8bf38b1dcfb"},
 ]
 botocore = [
-    {file = "botocore-1.17.15-py2.py3-none-any.whl", hash = "sha256:bb3d3e6aa1fb0caac5909421404218fa7fdcdfc5a1b597ec93cb3affb8326d26"},
-    {file = "botocore-1.17.15.tar.gz", hash = "sha256:34ebc56471a75ea28bfd39f1665d58ee13229c75e8cd6c62b2e2abf1f3e75f0f"},
+    {file = "botocore-1.17.16-py2.py3-none-any.whl", hash = "sha256:99d995ef99cf77458a661f3fc64e0c3a4ce77ca30facfdf0472f44b2953dd856"},
+    {file = "botocore-1.17.16.tar.gz", hash = "sha256:fe0c4f7cd6b67eff3b7cb8dff6709a65d6fca10b7b7449a493b2036915e98b4c"},
 ]
 cachetools = [
     {file = "cachetools-4.1.1-py3-none-any.whl", hash = "sha256:513d4ff98dd27f85743a8dc0e92f55ddb1b49e060c2d5961512855cda2c01a98"},
@@ -2822,8 +2838,8 @@ importlib-resources = [
     {file = "importlib_resources-3.0.0.tar.gz", hash = "sha256:19f745a6eca188b490b1428c8d1d4a0d2368759f32370ea8fb89cad2ab1106c3"},
 ]
 ipykernel = [
-    {file = "ipykernel-5.3.0-py3-none-any.whl", hash = "sha256:a8362e3ae365023ca458effe93b026b8cdadc0b73ff3031472128dd8a2cf0289"},
-    {file = "ipykernel-5.3.0.tar.gz", hash = "sha256:731adb3f2c4ebcaff52e10a855ddc87670359a89c9c784d711e62d66fccdafae"},
+    {file = "ipykernel-5.3.1-py3-none-any.whl", hash = "sha256:ca45d173ae9cd4ed8a57980529e1d8d39ea56df5358b8608dbe45733023d8df4"},
+    {file = "ipykernel-5.3.1.tar.gz", hash = "sha256:120d1e7057824a8a73d8b721725393ca7c6562655cdc1d12652316695c8b04c0"},
 ]
 ipython = [
     {file = "ipython-7.16.1-py3-none-any.whl", hash = "sha256:2dbcc8c27ca7d3cfe4fcdff7f45b27f9a8d3edfa70ff8024a71c7a8eb5f09d64"},
@@ -2845,12 +2861,12 @@ jax = [
     {file = "jax-0.1.72.tar.gz", hash = "sha256:b551a7b9fee31e744449191f83e0121d9a6a5a04755494df5b3cd468477f2119"},
 ]
 jaxlib = [
-    {file = "jaxlib-0.1.50-cp36-none-macosx_10_9_x86_64.whl", hash = "sha256:d87f7c283e7f4bd3a776a804cc3cbaf01653ce6bb2caebbe0cbceeb6f3d2023f"},
-    {file = "jaxlib-0.1.50-cp36-none-manylinux2010_x86_64.whl", hash = "sha256:2496e6da4c67c6696d63e8c2ce54b617cadb6b476c74a6378f0ba59c202c3fc6"},
-    {file = "jaxlib-0.1.50-cp37-none-macosx_10_9_x86_64.whl", hash = "sha256:9422b75dae234b31241ed460cd593b62dc66d03f0da8fee3d89c8c68907b5bc4"},
-    {file = "jaxlib-0.1.50-cp37-none-manylinux2010_x86_64.whl", hash = "sha256:f1a843eeb6952bcb24f49a0823578c1e73d18d9886d53ac325fc96adffae3959"},
-    {file = "jaxlib-0.1.50-cp38-none-macosx_10_9_x86_64.whl", hash = "sha256:b730070eba93e19c375018b21a562c2841fdc0b3041417ec0979ee0af9bea0b4"},
-    {file = "jaxlib-0.1.50-cp38-none-manylinux2010_x86_64.whl", hash = "sha256:e75894d9aa8bf3e1aa138a6ee759c47a11afe8c66c617bb80500bc3d708476a8"},
+    {file = "jaxlib-0.1.51-cp36-none-macosx_10_9_x86_64.whl", hash = "sha256:9384f871d6cfced2abff1872038710c684489bb4021a3111b829a8fb32fa0ba2"},
+    {file = "jaxlib-0.1.51-cp36-none-manylinux2010_x86_64.whl", hash = "sha256:40e6680c8787aa2c8bb26f2b64d5392eed5437146cb6afec8533aadad4420851"},
+    {file = "jaxlib-0.1.51-cp37-none-macosx_10_9_x86_64.whl", hash = "sha256:fbbc7bb4fe8b36dae76663cb9e1a1b1c55efe121ae95b7766ea9da11d43e3ae7"},
+    {file = "jaxlib-0.1.51-cp37-none-manylinux2010_x86_64.whl", hash = "sha256:e3e9f3cefb65d08fa183b66f024a91fda3d02932642a6c6cdfc67e990be12342"},
+    {file = "jaxlib-0.1.51-cp38-none-macosx_10_9_x86_64.whl", hash = "sha256:29f7d0092c3334690b72be3c359611221b900bbf805470114f12458840c10551"},
+    {file = "jaxlib-0.1.51-cp38-none-manylinux2010_x86_64.whl", hash = "sha256:c08553a2ac3ad59470188d4aef23d7f6ca546b111b582a4ff99e575a89d861ea"},
 ]
 jedi = [
     {file = "jedi-0.17.1-py2.py3-none-any.whl", hash = "sha256:1ddb0ec78059e8e27ec9eb5098360b4ea0a3dd840bedf21415ea820c21b40a22"},
@@ -2964,6 +2980,11 @@ markupsafe = [
     {file = "MarkupSafe-1.1.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:ba59edeaa2fc6114428f1637ffff42da1e311e29382d81b339c1817d37ec93c6"},
     {file = "MarkupSafe-1.1.1-cp37-cp37m-win32.whl", hash = "sha256:b00c1de48212e4cc9603895652c5c410df699856a2853135b3967591e4beebc2"},
     {file = "MarkupSafe-1.1.1-cp37-cp37m-win_amd64.whl", hash = "sha256:9bf40443012702a1d2070043cb6291650a0841ece432556f784f004937f0f32c"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:6788b695d50a51edb699cb55e35487e430fa21f1ed838122d722e0ff0ac5ba15"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-manylinux1_i686.whl", hash = "sha256:cdb132fc825c38e1aeec2c8aa9338310d29d337bebbd7baa06889d09a60a1fa2"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:13d3144e1e340870b25e7b10b98d779608c02016d5184cfb9927a9f10c689f42"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-win32.whl", hash = "sha256:596510de112c685489095da617b5bcbbac7dd6384aeebeda4df6025d0256a81b"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-win_amd64.whl", hash = "sha256:e8313f01ba26fbbe36c7be1966a7b7424942f670f38e666995b88d012765b9be"},
     {file = "MarkupSafe-1.1.1.tar.gz", hash = "sha256:29872e92839765e546828bb7754a68c418d927cd064fd4708fab9fe9c8bb116b"},
 ]
 matplotlib = [
@@ -3338,8 +3359,8 @@ pymssql = [
     {file = "pymssql-2.1.4.tar.gz", hash = "sha256:3201eb1b1263ad55b555d727ed8bed0b12b7b9de3ce5e529206e36d4be1a7afb"},
 ]
 pynetdicom = [
-    {file = "pynetdicom-1.5.1-py2.py3-none-any.whl", hash = "sha256:8cdf962744e8acec1afde439da04912c86542b08b5385ddb7b6b29cef1db4372"},
-    {file = "pynetdicom-1.5.1.tar.gz", hash = "sha256:991c7d09a4021ac7ee6664aa0f31f7783513b948fcb76fc5a881abb755600629"},
+    {file = "pynetdicom-1.5.2-py2.py3-none-any.whl", hash = "sha256:558a2a8f6b2e79c5f21b431c1ba60a03ae339801958957a76d35652d4fa445a1"},
+    {file = "pynetdicom-1.5.2.tar.gz", hash = "sha256:00c49e030a93c38aaaf3a9efeae7e94309707cab7a8af735cbf62115c6455172"},
 ]
 pyparsing = [
     {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},
@@ -3678,8 +3699,8 @@ testpath = [
     {file = "testpath-0.4.4.tar.gz", hash = "sha256:60e0a3261c149755f4399a1fff7d37523179a70fdc3abdf78de9fc2604aeec7e"},
 ]
 tifffile = [
-    {file = "tifffile-2020.6.3-py3-none-any.whl", hash = "sha256:66d90f05eec5e62336d87d0d09e6a218012afdf834c22d66abc62ba88b355e39"},
-    {file = "tifffile-2020.6.3.tar.gz", hash = "sha256:e79403a8b98b0df7ade8d43469151b959fd56239001471fac62beabca6f56377"},
+    {file = "tifffile-2020.7.4-py3-none-any.whl", hash = "sha256:04b38f5a60b0d2727dca5682f9a09f569a9424ce4b18481b07bfc5d800bac6ec"},
+    {file = "tifffile-2020.7.4.tar.gz", hash = "sha256:d7e56b9983e2e14716feaee560022baa8f92e97f36df7eee8b10e672383f694c"},
 ]
 timeago = [
     {file = "timeago-1.0.14.tar.gz", hash = "sha256:4308d0123a21c778e0ac66fb68e09c15ab6a006e152f8840902575b48aac373d"},
