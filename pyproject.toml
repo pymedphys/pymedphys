@@ -74,13 +74,9 @@ tensorboard = { version = "*", optional = true }
 tensorflow-io = { version = "*", optional = true }
 tensorflow-datasets = { version = "*", optional = true }
 
-torch = { version = "*", python = "^3.7" }
-torchvision = { version = "*", python = "^3.7" }
-
 jax = { version = "*", optional = true }
 jaxlib = { version = "*", optional = true }
 flax = { git = "https://github.com/google/flax", optional = true }
-dm-haiku = { git = "https://github.com/deepmind/dm-haiku", optional = true }
 
 # not in library yet
 seaborn = { version = "*", optional = true }
