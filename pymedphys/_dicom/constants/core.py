@@ -111,6 +111,8 @@ DICOM_SOP_CLASS_NAMES_MODE_PREFIXES = {
     "Enhanced XA Image Storage": "XAE",
     "Nuclear Medicine Image Storage": "NM",
     "Secondary Capture Image Storage": "SC",
+    "RT Beams Treatment Record Storage": "RBT",
+    "RT Ion Beams Treatment Record Storage": "RIBT",
 }
 
 
