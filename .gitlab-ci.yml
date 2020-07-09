@@ -1,0 +1,12 @@
+language: python
+python:
+  - 3.7
+cache:
+  paths:
+    - .venv
+  key: "${CI_COMMIT_REF_SLUG}"
+before_install:
+  - pip install poetry
+install:
+  - poetry config settings.virtualenvs.in-project true
+  - poetry install
