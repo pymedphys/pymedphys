@@ -23,3 +23,7 @@ before_script:
   - pip install poetry
   - poetry config settings.virtualenvs.in-project true
   - poetry install
+
+test:
+  script:
+    - poetry run pymedphys dev tests
