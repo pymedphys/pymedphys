@@ -15,7 +15,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 #### Critical bug fixes
 
 * Fixed bug where `pymedphys dicom anonymise` and `pymedphys.dicom.anonymise`
-  would not anonymise nested tags.
+  would not anonymise nested tags. Thanks
+  [@sjswerdloff](https://github.com/sjswerdloff) for finding and fixing
+  [#920](https://github.com/pymedphys/pymedphys/pull/920)
 
 #### Breaking changes
 
