@@ -17,7 +17,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Fixed bug where `pymedphys dicom anonymise` and `pymedphys.dicom.anonymise`
   would not anonymise nested tags. Thanks
   [@sjswerdloff](https://github.com/sjswerdloff) for finding and fixing
-  [#920](https://github.com/pymedphys/pymedphys/pull/920)
+  [#920](https://github.com/pymedphys/pymedphys/pull/920).
 
 #### Breaking changes
 
@@ -107,7 +107,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `m2r` is no longer used to build the docs.
 * No longer using `tox` for tests.
 
-
 ### Bug fixes
 
 * Fixed an issue where the iCOM listener could not handle Machine IDs that
@@ -123,7 +122,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   to create an `index.json`, or a range of the needed directories on its first
   run.
   * See the [PyMedPhys forum discussion](https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/5mFZig1cAgAJ) for more details.
-
 
 ### Documentation updates
 
@@ -481,7 +479,6 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
   dependency be required during usage an error is raised informing the user to
   install the package. To install all pymedphys dependencies as before now run
   `pip install pymedphys[library,labs]==0.14.0`.
-
 
 ## [0.13.2]
 
