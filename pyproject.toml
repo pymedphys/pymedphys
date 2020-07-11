@@ -74,9 +74,9 @@ tensorboard = { version = "*", optional = true }
 tensorflow-io = { version = "*", optional = true }
 tensorflow-datasets = { version = "*", optional = true }
 
-jax = { version = "*", optional = true }
-jaxlib = { version = "*", optional = true }
-flax = { git = "https://github.com/google/flax", optional = true }
+# jax = { version = "*", optional = true }
+# jaxlib = { version = "*", optional = true }
+# flax = { git = "https://github.com/google/flax", optional = true }
 
 # gui
 streamlit = "*"
@@ -124,8 +124,7 @@ docs = [
 ml = [
     "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io",
     "tensorflow-datasets",
-    "torch", "torchvision",
-    "jax", "jaxlib", "flax", "dm-haiku"
+    # "jax", "jaxlib", "flax"
 ]
 
 tests = [
