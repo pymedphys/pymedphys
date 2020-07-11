@@ -70,8 +70,16 @@ scikit-image = "*"
 # ml
 tensorflow = { version = ">=2.2.0", optional = true}
 tensorflow-estimator = { version = "*", optional = true}
-tensorboard  = { version = "*", optional = true }
+tensorboard = { version = "*", optional = true }
 tensorflow-io = { version = "*", optional = true }
+tensorflow-datasets = { version = "*", optional = true }
+
+jax = { version = "*", optional = true }
+jaxlib = { version = "*", optional = true }
+flax = { git = "https://github.com/google/flax", optional = true }
+
+# not in library yet
+seaborn = { version = "*", optional = true }
 
 # gui
 streamlit = "*"
@@ -118,7 +126,14 @@ docs = [
 ]
 
 ml = [
-    "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io"
+    "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io",
+    "tensorflow-datasets",
+    "torch", "torchvision",
+    "jax", "jaxlib", "flax", "dm-haiku"
+]
+
+nily = [
+    "seaborn"
 ]
 
 tests = [
