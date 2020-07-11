@@ -4,62 +4,65 @@
 
 All notable changes to this project will be documented in this file.
 
-This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+This project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<!--  Template
-## [Unreleased]
+## [0.31.0]
 
-### Breaking Changes
+### "Stable" API changes
 
-* nil
+(Won't truly be stable until after a 1.0.0 release)
 
-### New Features
+#### Critical bug fixes
 
-* nil
+* Fixed bug where `pymedphys dicom anonymise` and `pymedphys.dicom.anonymise`
+  would not anonymise nested tags. Thanks
+  [@sjswerdloff](https://github.com/sjswerdloff) for finding and fixing
+  [#920](https://github.com/pymedphys/pymedphys/pull/920).
 
-### Bug Fixes
+#### Breaking changes
 
-* nil
+* Removed the `--publish` option from CLI `pymedphys dev docs`.
+* Moved `pymedphys logfile orchestration` to `pymedphys trf orchestrate`
 
-### Code Refactoring
+#### New features
 
-* nil
+* `pymedphys.zenodo_data_paths` has a new optional parameter `filenames` that
+  can be used to only download some files.
+* `pymedphys.data_path` has a new optional parameter `hash_filepath` which can
+  be used to provide a custom hash record.
+* Added usage warning to the MU Density GUI.
 
-### Package Changes
+#### Deprecations
 
-* nil
+* `pymedphys.read_trf` has been replaced with `pymedphys.trf.read`. The old
+  API is still available, but will be removed in a future version.
 
-### Performance Improvements
+#### Bug fixes
 
-* nil -->
+* Cache data downloads now also retry when a `ConnectionResetError` occurs.
 
-## [Unreleased]
+### Beta API changes
 
-### Breaking Changes
+#### New features
 
-* nil
+* A new `pymedphys.beta` module created. This is intended to allow a section
+  of the API to be exposed and iterated on but having breaking changes not
+  induce a major version bump (when PyMedPhys goes to v1.*.* +)
+* Added `pymedphys.beta.trf.identify` to allow the usage of Mosaiq to identify
+  a trf logfile.
 
-### New Features
+### Experimental API changes
 
-* nil
+#### Breaking changes
 
-### Bug Fixes
+* Instances of `labs` has been changed to `experimental`. This affects all
+  imports from the labs and the CLI usage.
+
+#### Bug fixes
 
 * Fixed issue with Pinnacle Export Tool crashing when an image is missing from
   the archive.
-
-### Code Refactoring
-
-* nil
-
-### Package Changes
-
-* nil
-
-### Performance Improvements
-
-* nil
-
 
 ## [0.30.0]
 
@@ -105,7 +108,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `m2r` is no longer used to build the docs.
 * No longer using `tox` for tests.
 
-
 ### Bug fixes
 
 * Fixed an issue where the iCOM listener could not handle Machine IDs that
@@ -121,7 +123,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   to create an `index.json`, or a range of the needed directories on its first
   run.
   * See the [PyMedPhys forum discussion](https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/5mFZig1cAgAJ) for more details.
-
 
 ### Documentation updates
 
@@ -248,6 +249,7 @@ PyMedPhys GUI that utilises these iCOM records.
 
 ```python
 import pathlib
+
 import pymedphys
 
 CWD = pathlib.Path.cwd()
@@ -478,7 +480,6 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
   dependency be required during usage an error is raised informing the user to
   install the package. To install all pymedphys dependencies as before now run
   `pip install pymedphys[library,labs]==0.14.0`.
-
 
 ## [0.13.2]
 
@@ -739,7 +740,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...master
+[0.31.0]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...v0.30.0
 [0.29.1]: https://github.com/pymedphys/pymedphys/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/pymedphys/pymedphys/compare/v0.28.0...v0.29.0
