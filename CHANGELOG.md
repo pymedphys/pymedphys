@@ -17,7 +17,7 @@ This project adheres to
 
 * Fixed bug where `pymedphys dicom anonymise` and `pymedphys.dicom.anonymise`
   would not anonymise nested tags. Thanks
-  [@sjswerdloff](https://github.com/sjswerdloff) for finding and fixing
+  [sjswerdloff](https://github.com/sjswerdloff) for finding and fixing
   [#920](https://github.com/pymedphys/pymedphys/pull/920).
 
 #### Breaking changes
@@ -48,7 +48,7 @@ This project adheres to
 
 * A new `pymedphys.beta` module created. This is intended to allow a section
   of the API to be exposed and iterated on but having breaking changes not
-  induce a major version bump (when PyMedPhys goes to v1.*.* +)
+  induce a major version bump (when PyMedPhys goes to `v1.0.0+`)
 * Added `pymedphys.beta.trf.identify` to allow the usage of Mosaiq to identify
   a trf logfile.
 
