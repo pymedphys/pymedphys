@@ -201,10 +201,14 @@ def convert_dose(plan, export_path):
         ]
 
     # Read this from CT DCM if available?
-    if "HFS" in patient_position or "FFS" in patient_position:
-        ds.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, -0.0]
-    elif "HFP" in patient_position or "FFP" in patient_position:
-        ds.ImageOrientationPatient = [-1.0, 0.0, 0.0, 0.0, -1.0, -0.0]
+    if "HFS" in patient_position:
+        ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]
+    elif "HFP" in patient_position:
+        ds.ImageOrientationPatient = [-1, 0, 0, 0, -1, 0]
+    elif "FFS" in patient_position:
+        ds.ImageOrientationPatient = [-1, 0, 0, 0, 1, 0]
+    elif "FFP" in patient_position:
+        ds.ImageOrientationPatient = [1, 0, 0, 0, -1, 0]
 
     # Read this from CT DCM if available
     ds.PositionReferenceIndicator = ""
@@ -338,6 +342,14 @@ def convert_dose(plan, export_path):
         idx = [0.0, 0.0, 0.0]
         for i in range(3):
             idx[i] = -(origin[i] - prescription_point[i]) / spacing[i]
+
+        if patient_position in ("HFP", "FFS"):
+            idx[0] = -idx[0]
+        if patient_position in ("HFP", "FFP"):
+            idx[1] = -idx[1]
+        if patient_position in ("FFS", "FFP"):
+            idx[2] = -idx[2]
+
         plan.logger.debug("Index of prescription point within grid: %s", idx)
 
         # Trilinear interpolation of that point within the dose grid
@@ -414,6 +426,11 @@ def convert_dose(plan, export_path):
     # Set the PixelData
     pixel_binary_block = struct.pack("%sh" % len(pixelvaluelist), *pixelvaluelist)
     ds.PixelData = pixel_binary_block
+
+    # If Feet first, flip the dose grid
+    if patient_position in ("FFS", "FFP"):
+        arr = ds.pixel_array
+        ds.PixelData = np.flip(arr, axis=0).tostring()
 
     # Save the RTDose Dicom File
     output_file = os.path.join(export_path, RDfilename)
