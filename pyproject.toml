@@ -78,9 +78,6 @@ jax = { version = "*", optional = true }
 jaxlib = { version = "*", optional = true }
 flax = { git = "https://github.com/google/flax", optional = true }
 
-# not in library yet
-seaborn = { version = "*", optional = true }
-
 # gui
 streamlit = "*"
 timeago = "*"
@@ -103,7 +100,6 @@ hypothesis  = { version = "*", optional = true }
 psutil  = { version = "*", optional = true }
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
-
 
 [tool.poetry.dev-dependencies]
 # Git Management
@@ -130,10 +126,6 @@ ml = [
     "tensorflow-datasets",
     "torch", "torchvision",
     "jax", "jaxlib", "flax", "dm-haiku"
-]
-
-nily = [
-    "seaborn"
 ]
 
 tests = [
