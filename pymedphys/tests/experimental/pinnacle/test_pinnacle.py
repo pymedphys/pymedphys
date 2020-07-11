@@ -187,6 +187,26 @@ def test_struct(pinn):
         # TODO: Generate a mask for each contour and do a comparison of these
 
 
+def assert_same_dose(dose_a, dose_b):
+
+    # Get the dose volumes
+    exported_vol = dose_a.pixel_array.astype(np.int16)
+    pinn_vol = dose_b.pixel_array.astype(np.int16)
+
+    # Ensure dose volumes are the same size
+    assert exported_vol.shape == pinn_vol.shape
+
+    # Apply dose grid scaling
+    exported_vol = exported_vol * dose_a.DoseGridScaling
+    pinn_vol = pinn_vol * dose_b.DoseGridScaling
+
+    # Make sure the maximum values are in the same locations
+    assert exported_vol.argmax() == pinn_vol.argmax()
+
+    # Make sure the absolute difference is (close to) zero
+    assert np.allclose(exported_vol, pinn_vol, atol=0.01)
+
+
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_dose(pinn):
@@ -212,22 +232,7 @@ def test_dose(pinn):
         pinn_dose = find_corresponding_dicom(exported_dose)
         assert pinn_dose is not None
 
-        # Get the dose volumes
-        exported_vol = exported_dose.pixel_array.astype(np.int16)
-        pinn_vol = pinn_dose.pixel_array.astype(np.int16)
-
-        # Ensure dose volumes are the same size
-        assert exported_vol.shape == pinn_vol.shape
-
-        # Apply dose grid scaling
-        exported_vol = exported_vol * exported_dose.DoseGridScaling
-        pinn_vol = pinn_vol * pinn_dose.DoseGridScaling
-
-        # Make sure the maximum values are in the same locations
-        assert exported_vol.argmax() == pinn_vol.argmax()
-
-        # Make sure the absolute difference is (close to) zero
-        assert np.allclose(exported_vol, pinn_vol, atol=0.01)
+        assert_same_dose(pinn_dose, exported_dose)
 
 
 @pytest.mark.slow
@@ -265,12 +270,7 @@ def test_plan(pinn):
 @pytest.mark.slow
 def test_missing_image():
 
-    zip_ref = ZipFile(
-        download.get_file_within_data_zip(
-            "pinnacle_test_data_no_image.zip", "pinnacle_test_no_image.zip"
-        ),
-        "r",
-    )
+    zip_ref = ZipFile(get_online_data("pinnacle_test_data_no_image.zip"), "r")
     zip_ref.extractall(data_path)
     zip_ref.close()
 
@@ -280,3 +280,144 @@ def test_missing_image():
     # There is no image to export, so this line should fail gracefully and simply output
     # a warning to the logger
     pinn.export_image(pinn.plans[0].primary_image, export_path=".")
+
+
+@pytest.fixture(scope="session")
+def orientation_data():
+
+    zip_ref = ZipFile(get_online_data("pinnacle_orientations_test_data.zip"), "r")
+
+    zip_ref.extractall(data_path)
+    zip_ref.close()
+
+    return data_path
+
+
+@pytest.fixture
+def orientation_pinn(orientation_data):
+
+    pinn_path = os.path.join(orientation_data, "pinnacle", "Patient_22902")
+
+    pinn_obj = PinnacleExport(pinn_path, None)
+
+    return pinn_obj
+
+
+@pytest.mark.slow
+@pytest.mark.pydicom
+def test_dose_hfs(orientation_pinn):
+    # Test exporting dose for patients in HFS position
+
+    export_path = os.path.join(
+        working_path, "output", "pinn_orientations", "RTDOSE", "HFS"
+    )
+    os.makedirs(export_path)
+
+    export_plan = orientation_pinn.plans[0]
+
+    orientation_pinn.export_dose(export_plan, export_path)
+
+    # Get the exported RTDOSE file
+    for f in os.listdir(export_path):
+        if f.startswith("RD"):
+            exported_dose = pydicom.read_file(os.path.join(export_path, f))
+            assert exported_dose.Modality == "RTDOSE"
+            break
+
+    # Get the ground truth RTDOSE file
+    gt_dose_file = "1.3.46.670589.13.997910418.20200707132626.548267.dcm"
+    gt_dose_path = os.path.join(data_path, "dicom", "HFS", gt_dose_file)
+    pinn_dose = pydicom.read_file(gt_dose_path)
+    assert pinn_dose is not None
+
+    assert_same_dose(exported_dose, pinn_dose)
+
+
+@pytest.mark.slow
+@pytest.mark.pydicom
+def test_dose_hfp(orientation_pinn):
+    # Test exporting dose for patients in HFP position
+
+    export_path = os.path.join(
+        working_path, "output", "pinn_orientations", "RTDOSE", "HFP"
+    )
+    os.makedirs(export_path)
+
+    export_plan = orientation_pinn.plans[1]
+
+    orientation_pinn.export_dose(export_plan, export_path)
+
+    # Get the exported RTDOSE file
+    for f in os.listdir(export_path):
+        if f.startswith("RD"):
+            exported_dose = pydicom.read_file(os.path.join(export_path, f))
+            assert exported_dose.Modality == "RTDOSE"
+            break
+
+    # Get the ground truth RTDOSE file
+    gt_dose_file = "1.3.46.670589.13.997910418.20200707132247.647011.dcm"
+    gt_dose_path = os.path.join(data_path, "dicom", "HFP", gt_dose_file)
+    pinn_dose = pydicom.read_file(gt_dose_path)
+    assert pinn_dose is not None
+
+    assert_same_dose(exported_dose, pinn_dose)
+
+
+@pytest.mark.slow
+@pytest.mark.pydicom
+def test_dose_ffs(orientation_pinn):
+    # Test exporting dose for patients in FFS position
+
+    export_path = os.path.join(
+        working_path, "output", "pinn_orientations", "RTDOSE", "FFS"
+    )
+    os.makedirs(export_path)
+
+    export_plan = orientation_pinn.plans[2]
+
+    orientation_pinn.export_dose(export_plan, export_path)
+
+    # Get the exported RTDOSE file
+    for f in os.listdir(export_path):
+        if f.startswith("RD"):
+            exported_dose = pydicom.read_file(os.path.join(export_path, f))
+            assert exported_dose.Modality == "RTDOSE"
+            break
+
+    # Get the ground truth RTDOSE file
+    gt_dose_file = "1.3.46.670589.13.997910418.20200707132449.572508.dcm"
+    gt_dose_path = os.path.join(data_path, "dicom", "FFS", gt_dose_file)
+    pinn_dose = pydicom.read_file(gt_dose_path)
+    assert pinn_dose is not None
+
+    assert_same_dose(exported_dose, pinn_dose)
+
+
+@pytest.mark.slow
+@pytest.mark.pydicom
+def test_dose_ffp(orientation_pinn):
+    # Test exporting dose for patients in FFP position
+
+    export_path = os.path.join(
+        working_path, "output", "pinn_orientations", "RTDOSE", "FFP"
+    )
+    os.makedirs(export_path)
+
+    export_plan = orientation_pinn.plans[3]
+
+    orientation_pinn.export_dose(export_plan, export_path)
+
+    # Get the exported RTDOSE file
+    for f in os.listdir(export_path):
+        if f.startswith("RD"):
+            exported_dose = pydicom.read_file(os.path.join(export_path, f))
+            assert exported_dose.Modality == "RTDOSE"
+            break
+
+    # Get the ground truth RTDOSE file
+    gt_dose_file = "1.3.46.670589.13.997910418.20200707132737.923688.dcm"
+    gt_dose_path = os.path.join(data_path, "dicom", "FFP", gt_dose_file)
+    pinn_dose = pydicom.read_file(gt_dose_path)
+    assert pinn_dose is not None
+
+    assert_same_dose(exported_dose, pinn_dose)
