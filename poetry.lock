@@ -322,7 +322,7 @@ version = "0.29.21"
 [[package]]
 category = "main"
 description = "A backport of the dataclasses module for Python 3.6"
-marker = "python_version >= \"3.6.0\" and python_version < \"3.7.0\" or python_version < \"3.7\""
+marker = "python_version >= \"3.6.0\" and python_version < \"3.7.0\""
 name = "dataclasses"
 optional = false
 python-versions = ">=3.6, <3.7"
@@ -419,31 +419,6 @@ optional = false
 python-versions = "*"
 version = "3.0.12"
 
-[[package]]
-category = "main"
-description = "Flax: A neural network library for JAX designed for flexibility"
-name = "flax"
-optional = true
-python-versions = "*"
-version = "0.1.0"
-
-[package.dependencies]
-jax = ">=0.1.59"
-matplotlib = "*"
-msgpack = "*"
-numpy = ">=1.12"
-
-[package.dependencies.dataclasses]
-python = "<3.7"
-version = "*"
-
-[package.extras]
-testing = ["jaxlib", "pytest", "pytest-cov", "pytest-xdist", "tensorflow", "tensorflow-datasets"]
-
-[package.source]
-reference = "060737d406bbe0bc353fa034cf76efea4e6fceac"
-type = "git"
-url = "https://github.com/google/flax"
 [[package]]
 category = "main"
 description = "Clean single-source support for Python 3 and 2"
@@ -738,32 +713,6 @@ xdg_home = ["appdirs (>=1.4.0)"]
 
 [[package]]
 category = "main"
-description = "Differentiate, compile, and transform Numpy code."
-name = "jax"
-optional = true
-python-versions = ">=3.6"
-version = "0.1.72"
-
-[package.dependencies]
-absl-py = "*"
-numpy = ">=1.12"
-opt_einsum = "*"
-
-[[package]]
-category = "main"
-description = "XLA library for JAX"
-name = "jaxlib"
-optional = true
-python-versions = ">=3.6"
-version = "0.1.51"
-
-[package.dependencies]
-absl-py = "*"
-numpy = ">=1.12"
-scipy = "*"
-
-[[package]]
-category = "main"
 description = "An autocompletion tool for Python that can be used for text editors."
 name = "jedi"
 optional = false
@@ -994,14 +943,6 @@ name = "more-itertools"
 optional = true
 python-versions = ">=3.5"
 version = "8.4.0"
-
-[[package]]
-category = "main"
-description = "MessagePack (de)serializer."
-name = "msgpack"
-optional = true
-python-versions = "*"
-version = "1.0.0"
 
 [[package]]
 category = "dev"
@@ -2420,11 +2361,11 @@ testing = ["jaraco.itertools", "func-timeout"]
 
 [extras]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
-ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "tensorflow-datasets", "jax", "jaxlib", "flax"]
+ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "tensorflow-datasets"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "7d9a74a46327ec5642c8e0a0452f9d65a853b6718a1631cf3d652463d3df55f5"
+content-hash = "1bb128c9d37ab8a1df1c36b4d9898019795f82041866a829fc75dc764e452bc2"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2660,7 +2601,6 @@ filelock = [
     {file = "filelock-3.0.12-py3-none-any.whl", hash = "sha256:929b7d63ec5b7d6b71b0fa5ac14e030b3f70b75747cef1b10da9b879fef15836"},
     {file = "filelock-3.0.12.tar.gz", hash = "sha256:18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59"},
 ]
-flax = []
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
 ]
@@ -2796,17 +2736,6 @@ ipywidgets = [
 isort = [
     {file = "isort-4.3.21-py2.py3-none-any.whl", hash = "sha256:6e811fcb295968434526407adb8796944f1988c5b65e8139058f2014cbe100fd"},
     {file = "isort-4.3.21.tar.gz", hash = "sha256:54da7e92468955c4fceacd0c86bd0ec997b0e1ee80d97f67c35a78b719dccab1"},
-]
-jax = [
-    {file = "jax-0.1.72.tar.gz", hash = "sha256:b551a7b9fee31e744449191f83e0121d9a6a5a04755494df5b3cd468477f2119"},
-]
-jaxlib = [
-    {file = "jaxlib-0.1.51-cp36-none-macosx_10_9_x86_64.whl", hash = "sha256:9384f871d6cfced2abff1872038710c684489bb4021a3111b829a8fb32fa0ba2"},
-    {file = "jaxlib-0.1.51-cp36-none-manylinux2010_x86_64.whl", hash = "sha256:40e6680c8787aa2c8bb26f2b64d5392eed5437146cb6afec8533aadad4420851"},
-    {file = "jaxlib-0.1.51-cp37-none-macosx_10_9_x86_64.whl", hash = "sha256:fbbc7bb4fe8b36dae76663cb9e1a1b1c55efe121ae95b7766ea9da11d43e3ae7"},
-    {file = "jaxlib-0.1.51-cp37-none-manylinux2010_x86_64.whl", hash = "sha256:e3e9f3cefb65d08fa183b66f024a91fda3d02932642a6c6cdfc67e990be12342"},
-    {file = "jaxlib-0.1.51-cp38-none-macosx_10_9_x86_64.whl", hash = "sha256:29f7d0092c3334690b72be3c359611221b900bbf805470114f12458840c10551"},
-    {file = "jaxlib-0.1.51-cp38-none-manylinux2010_x86_64.whl", hash = "sha256:c08553a2ac3ad59470188d4aef23d7f6ca546b111b582a4ff99e575a89d861ea"},
 ]
 jedi = [
     {file = "jedi-0.17.1-py2.py3-none-any.whl", hash = "sha256:1ddb0ec78059e8e27ec9eb5098360b4ea0a3dd840bedf21415ea820c21b40a22"},
@@ -2956,26 +2885,6 @@ mistune = [
 more-itertools = [
     {file = "more-itertools-8.4.0.tar.gz", hash = "sha256:68c70cc7167bdf5c7c9d8f6954a7837089c6a36bf565383919bb595efb8a17e5"},
     {file = "more_itertools-8.4.0-py3-none-any.whl", hash = "sha256:b78134b2063dd214000685165d81c154522c3ee0a1c0d4d113c80361c234c5a2"},
-]
-msgpack = [
-    {file = "msgpack-1.0.0-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:cec8bf10981ed70998d98431cd814db0ecf3384e6b113366e7f36af71a0fca08"},
-    {file = "msgpack-1.0.0-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:aa5c057eab4f40ec47ea6f5a9825846be2ff6bf34102c560bad5cad5a677c5be"},
-    {file = "msgpack-1.0.0-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:4233b7f86c1208190c78a525cd3828ca1623359ef48f78a6fea4b91bb995775a"},
-    {file = "msgpack-1.0.0-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:b3758dfd3423e358bbb18a7cccd1c74228dffa7a697e5be6cb9535de625c0dbf"},
-    {file = "msgpack-1.0.0-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:25b3bc3190f3d9d965b818123b7752c5dfb953f0d774b454fd206c18fe384fb8"},
-    {file = "msgpack-1.0.0-cp36-cp36m-win32.whl", hash = "sha256:e7bbdd8e2b277b77782f3ce34734b0dfde6cbe94ddb74de8d733d603c7f9e2b1"},
-    {file = "msgpack-1.0.0-cp36-cp36m-win_amd64.whl", hash = "sha256:5dba6d074fac9b24f29aaf1d2d032306c27f04187651511257e7831733293ec2"},
-    {file = "msgpack-1.0.0-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:908944e3f038bca67fcfedb7845c4a257c7749bf9818632586b53bcf06ba4b97"},
-    {file = "msgpack-1.0.0-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:db685187a415f51d6b937257474ca72199f393dad89534ebbdd7d7a3b000080e"},
-    {file = "msgpack-1.0.0-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:ea41c9219c597f1d2bf6b374d951d310d58684b5de9dc4bd2976db9e1e22c140"},
-    {file = "msgpack-1.0.0-cp37-cp37m-win32.whl", hash = "sha256:e35b051077fc2f3ce12e7c6a34cf309680c63a842db3a0616ea6ed25ad20d272"},
-    {file = "msgpack-1.0.0-cp37-cp37m-win_amd64.whl", hash = "sha256:5bea44181fc8e18eed1d0cd76e355073f00ce232ff9653a0ae88cb7d9e643322"},
-    {file = "msgpack-1.0.0-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c901e8058dd6653307906c5f157f26ed09eb94a850dddd989621098d347926ab"},
-    {file = "msgpack-1.0.0-cp38-cp38-manylinux1_i686.whl", hash = "sha256:271b489499a43af001a2e42f42d876bb98ccaa7e20512ff37ca78c8e12e68f84"},
-    {file = "msgpack-1.0.0-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:7a22c965588baeb07242cb561b63f309db27a07382825fc98aecaf0827c1538e"},
-    {file = "msgpack-1.0.0-cp38-cp38-win32.whl", hash = "sha256:002a0d813e1f7b60da599bdf969e632074f9eec1b96cbed8fb0973a63160a408"},
-    {file = "msgpack-1.0.0-cp38-cp38-win_amd64.whl", hash = "sha256:39c54fdebf5fa4dda733369012c59e7d085ebdfe35b6cf648f09d16708f1be5d"},
-    {file = "msgpack-1.0.0.tar.gz", hash = "sha256:9534d5cc480d4aff720233411a1f765be90885750b07df772380b34c10ecb5c0"},
 ]
 mypy = [
     {file = "mypy-0.782-cp35-cp35m-macosx_10_6_x86_64.whl", hash = "sha256:2c6cde8aa3426c1682d35190b59b71f661237d74b053822ea3d748e2c9578a7c"},
