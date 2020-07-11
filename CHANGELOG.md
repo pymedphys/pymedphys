@@ -7,6 +7,15 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Experimental API changes
+
+#### Bug Fixes
+
+* Pinnacle Export Tool now exports correct dose for patient orientations other
+  than HFS.
+
 ## [0.31.0]
 
 ### "Stable" API changes
