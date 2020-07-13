@@ -88,16 +88,9 @@ def test_require_patient_orientation():
                 require_patient_orientation(ds, test_orient)
 
             elif orient == "no orient":
-                with pytest.raises(AttributeError) as ea:
+                with pytest.raises(AttributeError):
                     require_patient_orientation(ds, test_orient)
-                assert "object has no attribute 'ImageOrientationPatient'" in str(
-                    ea.value
-                )
 
             else:
-                with pytest.raises(ValueError) as ev:
+                with pytest.raises(ValueError):
                     require_patient_orientation(ds, test_orient)
-                assert (
-                    "The supplied dataset has a patient orientation "
-                    f"other than {test_orient}" in str(ev.value)
-                )
