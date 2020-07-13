@@ -328,6 +328,7 @@ def convert_dose(plan, export_path):
             ds.ImagePositionPatient[1],
             ds.ImagePositionPatient[2],
         ]
+
         if os.path.isfile(binary_file):
             with open(binary_file, "rb") as b:
                 for z in range(trial_info["DoseGrid .Dimension .Z"] - 1, -1, -1):
@@ -343,15 +344,16 @@ def convert_dose(plan, export_path):
 
         # Get the index within that grid of the dose reference point
         idx = [0.0, 0.0, 0.0]
+        orientation_matrix = np.zeros((3, 3))
+        orientation_matrix[0, :] = IMAGE_ORIENTATION_MAP[patient_position][:3]
+        orientation_matrix[1, :] = IMAGE_ORIENTATION_MAP[patient_position][3:]
+        orientation_matrix[2, :] = np.cross(
+            orientation_matrix[0, :], orientation_matrix[1, :]
+        )
+
         for i in range(3):
             idx[i] = -(origin[i] - prescription_point[i]) / spacing[i]
-
-        if patient_position in ("HFP", "FFS"):
-            idx[0] = -idx[0]
-        if patient_position in ("HFP", "FFP"):
-            idx[1] = -idx[1]
-        if patient_position in ("FFS", "FFP"):
-            idx[2] = -idx[2]
+            idx[i] *= orientation_matrix[i, i]
 
         plan.logger.debug("Index of prescription point within grid: %s", idx)
 
@@ -413,8 +415,6 @@ def convert_dose(plan, export_path):
     scale = max(summed_pixel_values) / 16384
     ds.DoseGridScaling = scale
     plan.logger.debug("Dose Grid Scaling: %s", ds.DoseGridScaling)
-
-    pixel_binary_block = bytes()
 
     # Scale by the scaling factor
     pixelvaluelist = []
