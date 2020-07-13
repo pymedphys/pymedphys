@@ -7,4 +7,5 @@ from .core import (
     get_baseline_dict_entry,
     get_baseline_keyword_vr_dict,
 )
+from .orientation import IMAGE_ORIENTATION_MAP
 from .uuid import PYMEDPHYS_ROOT_UID

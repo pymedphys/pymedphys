@@ -189,6 +189,9 @@ def test_struct(pinn):
 
 def assert_same_dose(dose_a, dose_b):
 
+    # Check the same patient orientation
+    assert dose_a.ImageOrientationPatient == dose_b.ImageOrientationPatient
+
     # Get the dose volumes
     exported_vol = dose_a.pixel_array.astype(np.int16)
     pinn_vol = dose_b.pixel_array.astype(np.int16)
