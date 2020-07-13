@@ -28,7 +28,7 @@ import pydicom
 import pymedphys
 from pymedphys._data import download
 from pymedphys._dicom.collection import DicomDose
-from pymedphys._dicom.dose import require_patient_orientation_be_HFS
+from pymedphys._dicom.dose import require_patient_orientation
 
 from . import test_coords
 
@@ -67,7 +67,7 @@ def test_dicom_dose_constancy():
 
 
 @pytest.mark.pydicom
-def test_require_patient_orientation_be_HFS():
+def test_require_patient_orientation():
     test_ds_dict = {
         key: pydicom.dcmread(test_coords.get_data_file(key))
         for key in ORIENTATIONS_SUPPORTED
@@ -79,19 +79,25 @@ def test_require_patient_orientation_be_HFS():
 
     test_ds_dict["no orient"] = ds_no_orient
 
+    test_orientations = ("HFS", "HFP", "FFS", "FFP")
+
     for orient, ds in test_ds_dict.items():
-        if orient == "HFS":
-            require_patient_orientation_be_HFS(ds)
 
-        elif orient == "no orient":
-            with pytest.raises(AttributeError) as ea:
-                require_patient_orientation_be_HFS(ds)
-            assert "object has no attribute 'ImageOrientationPatient'" in str(ea.value)
+        for test_orient in test_orientations:
+            if orient == test_orient:
+                require_patient_orientation(ds, test_orient)
 
-        else:
-            with pytest.raises(ValueError) as ev:
-                require_patient_orientation_be_HFS(ds)
-            assert (
-                "The supplied dataset has a patient orientation "
-                "other than head-first supine" in str(ev.value)
-            )
+            elif orient == "no orient":
+                with pytest.raises(AttributeError) as ea:
+                    require_patient_orientation(ds, test_orient)
+                assert "object has no attribute 'ImageOrientationPatient'" in str(
+                    ea.value
+                )
+
+            else:
+                with pytest.raises(ValueError) as ev:
+                    require_patient_orientation(ds, test_orient)
+                assert (
+                    "The supplied dataset has a patient orientation "
+                    f"other than {test_orient}" in str(ev.value)
+                )
