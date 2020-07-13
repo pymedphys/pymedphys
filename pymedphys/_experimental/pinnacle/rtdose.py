@@ -47,6 +47,8 @@ import time
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+from pymedphys._dicom.constants import IMAGE_ORIENTATION_MAP
+
 from .constants import (
     GImplementationClassUID,
     GTransferSyntaxUID,
@@ -90,12 +92,20 @@ def convert_dose(plan, export_path):
         plan.logger.error("No primary image found for plan. Unable to generate RTDOSE.")
         return
 
+    supported_orientations = ("HFS", "HFP", "FFS", "FFP")
+
     patient_info = plan.pinnacle.patient_info
     plan_info = plan.plan_info
     trial_info = plan.trial_info
     image_info = plan.primary_image.image_info[0]
 
     patient_position = plan.patient_position
+
+    if not patient_position in supported_orientations:
+        raise NotImplementedError(
+            f"{patient_position} orientation not supported. Only: "
+            f"{supported_orientations}"
+        )
 
     # Get the UID for the Dose and the Plan
     doseInstanceUID = plan.dose_inst_uid
@@ -201,14 +211,7 @@ def convert_dose(plan, export_path):
         ]
 
     # Read this from CT DCM if available?
-    if "HFS" in patient_position:
-        ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]
-    elif "HFP" in patient_position:
-        ds.ImageOrientationPatient = [-1, 0, 0, 0, -1, 0]
-    elif "FFS" in patient_position:
-        ds.ImageOrientationPatient = [-1, 0, 0, 0, 1, 0]
-    elif "FFP" in patient_position:
-        ds.ImageOrientationPatient = [1, 0, 0, 0, -1, 0]
+    ds.ImageOrientationPatient = IMAGE_ORIENTATION_MAP[patient_position]
 
     # Read this from CT DCM if available
     ds.PositionReferenceIndicator = ""
