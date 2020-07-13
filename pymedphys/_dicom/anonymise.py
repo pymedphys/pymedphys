@@ -15,6 +15,7 @@
 
 import functools
 import json
+import logging
 import os.path
 import pprint
 from copy import deepcopy
@@ -35,6 +36,18 @@ from pymedphys._dicom.constants import (
 from pymedphys._dicom.utilities import remove_file
 
 HERE = dirname(abspath(__file__))
+
+logger = logging.getLogger(__name__)
+# basicConfig will only have effect if it was not called previously
+# initial testing indicated that it has not been invoked previously
+# however, future work to add logging to pymedphys and the CLI
+# in particular should precede and hence supercede this invocation
+logging.basicConfig(
+    filename="pymedphys_anonymise.log",
+    format="%(asctime)s|%(name)s|%(message)s",
+    datefmt="%Y/%m/%d %H:%M:%S",
+    level=logging.INFO,
+)
 
 IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 
@@ -470,6 +483,9 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
                 return False
 
         elif elem.tag.is_private and not ignore_private_tags:
+            logger.warning(
+                str(elem.tag) + " is private and private tags are not being ignored"
+            )
             return False
 
     return True
