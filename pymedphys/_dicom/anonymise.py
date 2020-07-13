@@ -484,7 +484,7 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
 
         elif elem.tag.is_private and not ignore_private_tags:
             logger.warning(
-                str(elem.tag) + " is private and private tags are not being ignored"
+                "%s is private and private tags are not being ignored", elem.tag
             )
             return False
 
