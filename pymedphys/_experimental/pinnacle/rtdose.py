@@ -47,6 +47,8 @@ import time
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+from pymedphys._dicom.constants import IMAGE_ORIENTATION_MAP
+
 from .constants import (
     GImplementationClassUID,
     GTransferSyntaxUID,
@@ -90,12 +92,20 @@ def convert_dose(plan, export_path):
         plan.logger.error("No primary image found for plan. Unable to generate RTDOSE.")
         return
 
+    supported_orientations = ("HFS", "HFP", "FFS", "FFP")
+
     patient_info = plan.pinnacle.patient_info
     plan_info = plan.plan_info
     trial_info = plan.trial_info
     image_info = plan.primary_image.image_info[0]
 
     patient_position = plan.patient_position
+
+    if not patient_position in supported_orientations:
+        raise NotImplementedError(
+            f"{patient_position} orientation not supported. Only: "
+            f"{supported_orientations}"
+        )
 
     # Get the UID for the Dose and the Plan
     doseInstanceUID = plan.dose_inst_uid
@@ -201,10 +211,7 @@ def convert_dose(plan, export_path):
         ]
 
     # Read this from CT DCM if available?
-    if "HFS" in patient_position or "FFS" in patient_position:
-        ds.ImageOrientationPatient = [1.0, 0.0, 0.0, 0.0, 1.0, -0.0]
-    elif "HFP" in patient_position or "FFP" in patient_position:
-        ds.ImageOrientationPatient = [-1.0, 0.0, 0.0, 0.0, -1.0, -0.0]
+    ds.ImageOrientationPatient = IMAGE_ORIENTATION_MAP[patient_position]
 
     # Read this from CT DCM if available
     ds.PositionReferenceIndicator = ""
@@ -321,6 +328,7 @@ def convert_dose(plan, export_path):
             ds.ImagePositionPatient[1],
             ds.ImagePositionPatient[2],
         ]
+
         if os.path.isfile(binary_file):
             with open(binary_file, "rb") as b:
                 for z in range(trial_info["DoseGrid .Dimension .Z"] - 1, -1, -1):
@@ -336,8 +344,17 @@ def convert_dose(plan, export_path):
 
         # Get the index within that grid of the dose reference point
         idx = [0.0, 0.0, 0.0]
+        orientation_matrix = np.zeros((3, 3))
+        orientation_matrix[0, :] = IMAGE_ORIENTATION_MAP[patient_position][:3]
+        orientation_matrix[1, :] = IMAGE_ORIENTATION_MAP[patient_position][3:]
+        orientation_matrix[2, :] = np.cross(
+            orientation_matrix[0, :], orientation_matrix[1, :]
+        )
+
         for i in range(3):
             idx[i] = -(origin[i] - prescription_point[i]) / spacing[i]
+            idx[i] *= orientation_matrix[i, i]
+
         plan.logger.debug("Index of prescription point within grid: %s", idx)
 
         # Trilinear interpolation of that point within the dose grid
@@ -399,8 +416,6 @@ def convert_dose(plan, export_path):
     ds.DoseGridScaling = scale
     plan.logger.debug("Dose Grid Scaling: %s", ds.DoseGridScaling)
 
-    pixel_binary_block = bytes()
-
     # Scale by the scaling factor
     pixelvaluelist = []
     for _, element in enumerate(summed_pixel_values, 0):
@@ -414,6 +429,11 @@ def convert_dose(plan, export_path):
     # Set the PixelData
     pixel_binary_block = struct.pack("%sh" % len(pixelvaluelist), *pixelvaluelist)
     ds.PixelData = pixel_binary_block
+
+    # If Feet first, flip the dose grid
+    if patient_position in ("FFS", "FFP"):
+        arr = ds.pixel_array
+        ds.PixelData = np.flip(arr, axis=0).tostring()
 
     # Save the RTDose Dicom File
     output_file = os.path.join(export_path, RDfilename)
