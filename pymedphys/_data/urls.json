@@ -24,7 +24,8 @@
   "paulking_test_data.zip": "https://zenodo.org/record/3870436/files/paulking_test_data.zip?download=1",
   "tps_compare_dicom_files.zip": "https://zenodo.org/record/3870436/files/tps_compare_dicom_files.zip?download=1",
   "delivery_test_data.zip": "https://zenodo.org/record/3870436/files/delivery_test_data.zip?download=1",
-  "pinnacle_test_data.zip": "https://zenodo.org/record/3870436/files/pinnacle_test_data.zip?download=1",
+  "pinnacle_test_data.zip": "https://zenodo.org/record/3940117/files/pinnacle_test_data.zip?download=1",
   "dummy-ct-and-struct.zip": "https://zenodo.org/record/3887286/files/dummy-ct-and-struct.zip?download=1",
-  "alphanumeric-machine-id-icom.zip": "https://zenodo.org/record/3889005/files/alphanumeric-machine-id-icom.zip?download=1"
+  "alphanumeric-machine-id-icom.zip": "https://zenodo.org/record/3889005/files/alphanumeric-machine-id-icom.zip?download=1",
+  "rtplan-anonymisation.zip": "https://zenodo.org/record/3930533/files/rtplan-anonymisation.zip?download=1"
 }

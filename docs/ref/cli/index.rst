@@ -21,7 +21,7 @@ At the beginning of each of the CLI docs something like the following will
 display:
 
 .. argparse::
-   :ref: pymedphys.cli.main.define_parser
+   :ref: pymedphys.cli.define_parser
    :prog: pymedphys
    :nosubcommands:
 
@@ -33,5 +33,4 @@ This presents what to write into the command prompt to use that CLI command.
 
     dicom
     trf
-    logfile
     pinnacle

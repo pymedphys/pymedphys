@@ -1,6 +1,12 @@
-name: OnPush
+name: PullRequest
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
 
@@ -67,7 +73,7 @@ jobs:
 
         include:
           - os: 'ubuntu'
-            python-version: 3.6
+            python-version: 3.7
           - os: 'windows'
             python-version: 3.7
           - os: 'macos'
@@ -105,9 +111,9 @@ jobs:
 
 # Install poetry
 
-    - name: Install poetry
+    - name: Upgrade pip, upgrade setuptools and install poetry
       run: |
-        pip install --upgrade pip
+        pip install --upgrade pip setuptools
         pip install poetry
 
 # No import and run CLI with no dependencies
@@ -116,7 +122,7 @@ jobs:
       if: matrix.task == 'tests'
       run: |
         poetry build --format wheel
-        pip install -r requirements-core.txt
+        pip install -r requirements.txt
 
     - name: Install wheel
       if: matrix.task == 'tests' && matrix.os == 'windows'
@@ -177,7 +183,7 @@ jobs:
 
 ## Plain install
 
-    - name: Run a plain installation
+    - name: Install a plain environment
       if: matrix.task == 'stackoverflow'
       run: |
         poetry install --no-dev
@@ -185,26 +191,32 @@ jobs:
 
 ## Install with Documentation Environment
 
-    - name: Run a docs installation
+    - name: Install a docs environment
       if: matrix.task == 'docs'
       run: |
         poetry install --no-dev -E docs
 
 ## Install with Tests Environment
 
-    - name: Run a tests installation
+    - name: Install a tests environment
       if: matrix.task == 'tests'
       run: |
         poetry install --no-dev -E tests
+
+## Install Machine Learning Dependencies
+
+    - name: Install a machine learning environment
+      if: matrix.task == 'tests' && matrix.os == 'ubuntu'
+      run: |
+        poetry install --no-dev -E ml
 
 ## Update all packages and then install with tests environment and
 
     - name: Update all packages then install with tests environment
       if: matrix.task == 'updates'
       run: |
-        poetry update
         poetry install --no-dev -E tests
-
+        poetry update
 
 # Download all data for consistent cache
 
@@ -280,24 +292,24 @@ jobs:
       run: |
         poetry run pymedphys dev tests -v -s --run-only-yarn
 
-    - name: Delete GUI demo data and run the PyMedPhys GUI
-      if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
-      run: |
-        rm -rf pymedphys-gui-demo
-        poetry run pymedphys gui &
+    # - name: Delete GUI demo data and run the PyMedPhys GUI
+    #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
+    #   run: |
+    #     rm -rf pymedphys-gui-demo
+    #     poetry run pymedphys gui &
 
-    - name: Run Cypress through the dashboard tool so as to see the failures
-      if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
-      uses: cypress-io/github-action@v1
-      with:
-        install: true
-        record: true
-        start: yarn start
-        working-directory: tests/e2e
-        wait-on: 'http://localhost:8501'
-      env:
-        # pass the Dashboard record key as an environment variable
-        CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        host: localhost
-        port: 8501
+    # - name: Run Cypress through the dashboard tool so as to see the failures
+    #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
+    #   uses: cypress-io/github-action@v1
+    #   with:
+    #     install: true
+    #     record: true
+    #     start: yarn start
+    #     working-directory: tests/e2e
+    #     wait-on: 'http://localhost:8501'
+    #   env:
+    #     # pass the Dashboard record key as an environment variable
+    #     CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #     host: localhost
+    #     port: 8501
