@@ -69,17 +69,16 @@ def pymedphys_cli():
     args, remaining = parser.parse_known_args()
 
     loglevel = logging.WARNING
+    logformat = "%(asctime)s %(levelname)-8s %(message)s"
+
     if args.logging_verbose:
         loglevel = logging.INFO
 
     if args.logging_debug:
         loglevel = logging.DEBUG
+        logformat += "\n    %(pathname)s#%(lineno)d"
 
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)-8s %(message)s",
-        level=loglevel,
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    logging.basicConfig(format=logformat, level=loglevel, datefmt="%Y-%m-%d %H:%M:%S")
 
     if hasattr(args, "func"):
         try:
