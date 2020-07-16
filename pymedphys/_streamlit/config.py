@@ -45,7 +45,10 @@ def get_site_directories():
             "monaco": pathlib.Path(site["monaco"]["focaldata"]).joinpath(
                 site["monaco"]["clinic"]
             ),
-            "escan": pathlib.Path(site["escan_directory"]),
+            "escan": pathlib.Path(site["export-directories"]["escan"]),
+            "anonymised_monaco": pathlib.Path(
+                site["export-directories"]["anonymised_monaco"]
+            ),
         }
         for site in config["site"]
     }
