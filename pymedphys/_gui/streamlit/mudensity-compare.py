@@ -31,11 +31,11 @@ from pymedphys._imports import streamlit as st
 from pymedphys._imports import timeago
 
 import pymedphys
-from pymedphys import _config as pmp_config
 from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
+from pymedphys._streamlit import config as st_config
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
@@ -64,41 +64,9 @@ GRID = pymedphys.mudensity.grid(
 COORDS = (GRID["jaw"], GRID["mlc"])
 
 
-def download_and_extract_demo_data(cwd):
-    pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=cwd)
-
-
-@st.cache
-def get_config():
-    try:
-        result = pmp_config.get_config()
-    except FileNotFoundError:
-        cwd = pathlib.Path.cwd()
-        download_and_extract_demo_data(cwd)
-        result = pmp_config.get_config(cwd.joinpath("pymedphys-gui-demo"))
-
-    return result
-
-
-@st.cache
-def get_site_directories():
-    config = get_config()
-    site_directories = {
-        site["name"]: {
-            "monaco": pathlib.Path(site["monaco"]["focaldata"]).joinpath(
-                site["monaco"]["clinic"]
-            ),
-            "escan": pathlib.Path(site["escan_directory"]),
-        }
-        for site in config["site"]
-    }
-
-    return site_directories
-
-
 @st.cache
 def get_dicom_export_locations():
-    site_directories = get_site_directories()
+    site_directories = st_config.get_site_directories()
     dicom_export_locations = {
         site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
         for site, directories in site_directories.items()
@@ -109,7 +77,7 @@ def get_dicom_export_locations():
 
 @st.cache
 def get_icom_live_stream_directories():
-    config = get_config()
+    config = st_config.get_config()
     icom_live_stream_directories = {}
     for site in config["site"]:
         for linac in site["linac"]:
@@ -120,7 +88,7 @@ def get_icom_live_stream_directories():
 
 @st.cache
 def get_machine_centre_map():
-    config = get_config()
+    config = st_config.get_config()
     machine_centre_map = {}
     for site in config["site"]:
         for linac in site["linac"]:
@@ -131,7 +99,7 @@ def get_machine_centre_map():
 
 @st.cache
 def get_logfile_root_dir():
-    config = get_config()
+    config = st_config.get_config()
     logfile_root_dir = pathlib.Path(config["trf_logfiles"]["root_directory"])
 
     return logfile_root_dir
@@ -155,7 +123,7 @@ def get_indexed_trf_directory():
 
 @st.cache
 def get_mosaiq_details():
-    config = get_config()
+    config = st_config.get_config()
     mosaiq_details = {
         site["name"]: {
             "timezone": site["mosaiq"]["timezone"],
@@ -169,7 +137,7 @@ def get_mosaiq_details():
 
 @st.cache
 def get_default_icom_directories():
-    config = get_config()
+    config = st_config.get_config()
     default_icom_directory = config["icom"]["patient_directories"]
 
     return default_icom_directory
@@ -177,7 +145,7 @@ def get_default_icom_directories():
 
 @st.cache
 def get_default_gamma_options():
-    config = get_config()
+    config = st_config.get_config()
     default_gamma_options = config["gamma"]
 
     return default_gamma_options
@@ -386,7 +354,7 @@ def monaco_input_method(
     patient_id="", key_namespace="", advanced_mode_local=False, **_
 ):
 
-    site_directories = get_site_directories()
+    site_directories = st_config.get_site_directories()
 
     site_options = list(site_directories.keys())
     monaco_site = st.radio(
@@ -1185,7 +1153,7 @@ def calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options):
 
 
 def advanced_debugging():
-    config = get_config()
+    config = st_config.get_config()
 
     st.sidebar.markdown("# Advanced Debugging")
     if st.sidebar.button("Compare Baseline to Output Directory"):
@@ -1328,7 +1296,7 @@ def run_calculation(
 
 
 def main():
-    config = get_config()
+    config = st_config.get_config()
 
     st.sidebar.markdown(
         """
@@ -1430,7 +1398,7 @@ def main():
     The location to save the produced pdf report.
     """
 
-    site_directories = get_site_directories()
+    site_directories = st_config.get_site_directories()
 
     site_options = list(site_directories.keys())
     escan_site = st.radio("eScan Site", site_options)
