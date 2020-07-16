@@ -19,10 +19,11 @@
 
 import streamlit as st
 
-from pymedphys._streamlit.constants import BASENAME, NAMES, PORTS
+from pymedphys._streamlit.constants import BASE_URL_PATHS, HOSTNAME, NAMES
 
 list_of_links = [
-    f"* [{name}](http://{BASENAME}:{port})" for name, port in zip(NAMES, PORTS)
+    f"* [{name}](http://{HOSTNAME}{base_url_path})"
+    for name, base_url_path in zip(NAMES, BASE_URL_PATHS)
 ]
 markdown = "\n".join(list_of_links)
 
