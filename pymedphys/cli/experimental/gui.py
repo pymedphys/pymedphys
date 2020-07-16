@@ -12,18 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pymedphys._gui import experimental_main
+from pymedphys.cli import gui as stable_gui
 
-# pylint: disable = pointless-statement, pointless-string-statement
-# pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines, redefined-outer-name
 
-import streamlit as st
-
-from pymedphys._streamlit.constants import BASENAME, NAMES, PORTS, SCRIPTS
-
-list_of_links = [
-    f"* [{name}](http://{BASENAME}:{port})" for name, port in zip(NAMES, PORTS)
-]
-markdown = "\n".join(list_of_links)
-
-markdown
+def gui_cli(subparsers):
+    parser = stable_gui.gui_cli(subparsers)
+    parser.set_defaults(func=experimental_main)

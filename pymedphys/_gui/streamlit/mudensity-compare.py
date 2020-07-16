@@ -36,6 +36,8 @@ from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
+from pymedphys._streamlit import exceptions as st_exceptions
+from pymedphys._streamlit import monaco as st_monaco
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
@@ -156,10 +158,6 @@ class InputRequired(ValueError):
 
 
 class WrongFileType(ValueError):
-    pass
-
-
-class NoRecordsFound(ValueError):
     pass
 
 
@@ -353,54 +351,18 @@ def filter_patient_names(patient_names):
 def monaco_input_method(
     patient_id="", key_namespace="", advanced_mode_local=False, **_
 ):
-
-    site_directories = st_config.get_site_directories()
-
-    site_options = list(site_directories.keys())
-    monaco_site = st.radio(
-        "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
+    (
+        monaco_directory,
+        patient_id,
+        plan_directory,
+        patient_directory,
+    ) = st_monaco.monaco_patient_directory_picker(
+        patient_id, key_namespace, advanced_mode_local
     )
-    monaco_directory = site_directories[monaco_site]["monaco"]
 
-    if advanced_mode_local:
-        st.write(monaco_directory.resolve())
-
-    patient_id = st.text_input(
-        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-    )
-    if advanced_mode_local:
-        patient_id
-    elif patient_id == "":
-        raise st.ScriptRunner.StopException()
-
-    patient_directories = monaco_directory.glob(f"*~{patient_id}")
-
-    patient_names = set()
-    for patient_directory in patient_directories:
-        patient_names.add(read_monaco_patient_name(str(patient_directory)))
-
-    patient_name = filter_patient_names(patient_names)
+    patient_name = read_monaco_patient_name(str(patient_directory))
 
     f"Patient Name: `{patient_name}`"
-
-    plan_directories = list(monaco_directory.glob(f"*~{patient_id}/plan"))
-    if len(plan_directories) == 0:
-        if patient_id != "":
-            st.write(
-                NoRecordsFound(
-                    f"No Monaco plan directories found for patient ID {patient_id}"
-                )
-            )
-        return {"patient_id": patient_id}
-    elif len(plan_directories) > 1:
-        raise ValueError(
-            "More than one patient plan directory found for this ID, "
-            "please only have one directory per patient. "
-            "Directories found were "
-            f"{', '.join([str(path.resolve()) for path in plan_directories])}"
-        )
-
-    plan_directory = plan_directories[0]
 
     all_tel_paths = list(plan_directory.glob("**/*tel.1"))
     all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
@@ -412,7 +374,9 @@ def monaco_input_method(
     if len(plan_names_to_choose_from) == 0:
         if patient_id != "":
             st.write(
-                NoRecordsFound(f"No Monaco plans found for patient ID {patient_id}")
+                st_exceptions.NoRecordsFound(
+                    f"No Monaco plans found for patient ID {patient_id}"
+                )
             )
         return {"patient_id": patient_id}
 
@@ -546,7 +510,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         if len(dicom_plan_options) == 0 and patient_id != "":
             st.write(
-                NoRecordsFound(
+                st_exceptions.NoRecordsFound(
                     f"No exported DICOM RT plans found for Patient ID {patient_id} "
                     f"within the directory {monaco_export_directory}"
                 )
@@ -661,7 +625,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
     if len(timestamps) == 0:
         if patient_id != "":
             st.write(
-                NoRecordsFound(
+                st_exceptions.NoRecordsFound(
                     f"No iCOM delivery record found for patient ID {patient_id}"
                 )
             )
@@ -792,7 +756,9 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     if len(timestamps) == 0:
         if patient_id != "":
             st.write(
-                NoRecordsFound(f"No TRF log file found for patient ID {patient_id}")
+                st_exceptions.NoRecordsFound(
+                    f"No TRF log file found for patient ID {patient_id}"
+                )
             )
         return {"patient_id": patient_id}
 

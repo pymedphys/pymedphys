@@ -19,3 +19,5 @@ def gui_cli(subparsers):
     parser = subparsers.add_parser("gui", help=("Run the PyMedPhys GUI."))
 
     parser.set_defaults(func=main)
+
+    return parser
