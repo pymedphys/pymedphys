@@ -28,7 +28,8 @@ def monaco_patient_directory_picker(
     )
     if advanced_mode_local:
         patient_id
-    elif patient_id == "":
+
+    if patient_id == "":
         raise st.ScriptRunner.StopException()
 
     plan_directories = list(monaco_directory.glob(f"*~{patient_id}/plan"))
@@ -39,6 +40,8 @@ def monaco_patient_directory_picker(
                     f"No Monaco plan directories found for patient ID {patient_id}"
                 )
             )
+            raise st.ScriptRunner.StopException()
+
         return {"patient_id": patient_id}
     elif len(plan_directories) > 1:
         raise ValueError(
