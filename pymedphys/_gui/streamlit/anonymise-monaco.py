@@ -75,9 +75,6 @@ with tempfile.TemporaryDirectory() as temp_dir:
     with open(new_temp_zip_file, "rb") as fh:
         buf = io.BytesIO(fh.read())
 
-    # new_files = [str(path) for path in pl_temp_dir.rglob("*")]
-    # new_files
-
 
 b64 = base64.b64encode(buf.getvalue())
 
