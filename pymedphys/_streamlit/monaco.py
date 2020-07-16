@@ -6,19 +6,18 @@ import pathlib
 
 import streamlit as st
 
-from . import config, exceptions
+from . import exceptions, misc
 
 
 def monaco_patient_directory_picker(
-    patient_id="", key_namespace="", advanced_mode_local=False
+    patient_id="", key_namespace="", advanced_mode_local=False, site=None,
 ):
-    site_directories = config.get_site_directories()
-
-    site_options = list(site_directories.keys())
-    monaco_site = st.radio(
-        "Monaco Plan Location", site_options, key=f"{key_namespace}_monaco_site"
+    monaco_site, monaco_directory = misc.get_site_and_directory(
+        "Monaco Plan Location",
+        "monaco",
+        default=site,
+        key=f"{key_namespace}_monaco_site",
     )
-    monaco_directory = site_directories[monaco_site]["monaco"]
 
     if advanced_mode_local:
         st.write(monaco_directory.resolve())
@@ -54,4 +53,4 @@ def monaco_patient_directory_picker(
     plan_directory = plan_directories[0]
     patient_directory = pathlib.Path(plan_directory).parent
 
-    return monaco_directory, patient_id, plan_directory, patient_directory
+    return monaco_site, monaco_directory, patient_id, plan_directory, patient_directory

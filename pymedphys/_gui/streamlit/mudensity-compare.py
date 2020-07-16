@@ -38,6 +38,7 @@ from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
 from pymedphys._streamlit import exceptions as st_exceptions
 from pymedphys._streamlit import monaco as st_monaco
+from pymedphys._streamlit import misc as st_misc
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
@@ -82,8 +83,11 @@ def get_icom_live_stream_directories():
     config = st_config.get_config()
     icom_live_stream_directories = {}
     for site in config["site"]:
+        icom_live_base_directory = pathlib.Path(site["export-directories"]["icom_live"])
         for linac in site["linac"]:
-            icom_live_stream_directories[linac["name"]] = linac["icom_live_directory"]
+            icom_live_stream_directories[linac["name"]] = str(
+                icom_live_base_directory.joinpath(linac["ip"])
+            )
 
     return icom_live_stream_directories
 
@@ -349,15 +353,16 @@ def filter_patient_names(patient_names):
 
 
 def monaco_input_method(
-    patient_id="", key_namespace="", advanced_mode_local=False, **_
+    patient_id="", key_namespace="", advanced_mode_local=False, site=None, **_
 ):
     (
+        monaco_site,
         monaco_directory,
         patient_id,
         plan_directory,
         patient_directory,
     ) = st_monaco.monaco_patient_directory_picker(
-        patient_id, key_namespace, advanced_mode_local
+        patient_id, key_namespace, advanced_mode_local, site
     )
 
     patient_name = read_monaco_patient_name(str(patient_directory))
@@ -427,6 +432,7 @@ def monaco_input_method(
         )
 
     results = {
+        "site": monaco_site,
         "patient_id": patient_id,
         "patient_name": patient_name,
         "selected_monaco_plan": selected_monaco_plan,
@@ -438,11 +444,11 @@ def monaco_input_method(
     return results
 
 
-def pydicom_hash_funcion(dicom):
+def pydicom_hash_function(dicom):
     return hash(dicom.SOPInstanceUID)
 
 
-@st.cache(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_funcion})
+@st.cache(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_function})
 def load_dicom_file_if_plan(filepath):
     dcm = pydicom.read_file(str(filepath), force=True, stop_before_pixels=True)
     if dcm.SOPClassUID == DICOM_PLAN_UID:
@@ -452,8 +458,10 @@ def load_dicom_file_if_plan(filepath):
 
 
 def dicom_input_method(  # pylint: disable = too-many-return-statements
-    key_namespace="", patient_id="", **_
+    key_namespace="", patient_id="", site=None, **_
 ):
+    monaco_site = site
+
     FILE_UPLOAD = "File upload"
     MONACO_SEARCH = "Search Monaco file export location"
 
@@ -486,10 +494,12 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         data_paths = ["Uploaded DICOM file"]
 
     if import_method == MONACO_SEARCH:
-        site_options = list(dicom_export_locations.keys())
-        monaco_site = st.radio(
-            "Monaco Export Location", site_options, key=f"{key_namespace}_monaco_site"
+        monaco_site = st_misc.site_picker(
+            "Monaco Export Location",
+            default=monaco_site,
+            key=f"{key_namespace}_monaco_site",
         )
+
         monaco_export_directory = dicom_export_locations[monaco_site]
         st.write(monaco_export_directory.resolve())
 
@@ -575,6 +585,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     identifier = f"DICOM ({rt_plan_name})"
 
     return {
+        "site": monaco_site,
         "patient_id": patient_id,
         "patient_name": patient_name,
         "data_paths": data_paths,
@@ -683,6 +694,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
         st.write(InputRequired("Please select at least one iCOM delivery"))
 
     results = {
+        "site": None,
         "patient_id": patient_id,
         "patient_name": patient_name,
         "selected_icom_deliveries": selected_icom_deliveries,
@@ -832,6 +844,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     identifier = f"TRF ({individual_identifiers[0]})"
 
     return {
+        "site": None,
         "patient_id": patient_id,
         "patient_name": patient_name,
         "data_paths": selected_filepaths,
@@ -850,13 +863,13 @@ def get_patient_name(cursor, patient_id):
     return msq_helpers.get_patient_name(cursor, patient_id)
 
 
-def mosaiq_input_method(patient_id="", key_namespace="", **_):
+def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
     mosaiq_details = get_mosaiq_details()
-    site_options = list(mosaiq_details.keys())
 
-    mosaiq_site = st.radio(
-        "Mosaiq Site", site_options, key=f"{key_namespace}_mosaiq_site"
+    mosaiq_site = st_misc.site_picker(
+        "Mosaiq Site", default=site, key=f"{key_namespace}_mosaiq_site"
     )
+
     server = mosaiq_details[mosaiq_site]["server"]
     f"Mosaiq Hostname: `{server}`"
 
@@ -898,6 +911,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", **_):
     identifier = f"{mosaiq_site} Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
 
     return {
+        "site": mosaiq_site,
         "patient_id": patient_id,
         "patient_name": patient_name,
         "data_paths": [],
@@ -1364,11 +1378,13 @@ def main():
     The location to save the produced pdf report.
     """
 
-    site_directories = st_config.get_site_directories()
+    default_site = evaluation_results.get("site", None)
+    if default_site is None:
+        default_site = reference_results.get("site", None)
 
-    site_options = list(site_directories.keys())
-    escan_site = st.radio("eScan Site", site_options)
-    escan_directory = site_directories[escan_site]["escan"]
+    escan_site, escan_directory = st_misc.get_site_and_directory(
+        "eScan Site", "escan", default=default_site, key="escan_export_site_picker"
+    )
 
     if advanced_mode:
         st.write(escan_directory.resolve())
