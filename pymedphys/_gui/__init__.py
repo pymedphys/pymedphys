@@ -17,6 +17,8 @@ import pathlib
 import shutil
 import subprocess
 
+from .._streamlit.constants import PORTS, SCRIPTS
+
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("streamlit")
 
@@ -43,3 +45,25 @@ def main(_):
     subprocess.check_call(
         " ".join(["streamlit", "run", streamlit_script_path]), shell=True
     )
+
+
+def experimental_main(_):
+    for script, port in zip(SCRIPTS, PORTS):
+        streamlit_script_path = str(STREAMLIT_CONTENT_DIR.joinpath(script))
+        subprocess.Popen(
+            " ".join(
+                [
+                    "streamlit",
+                    "run",
+                    streamlit_script_path,
+                    "--server.port",
+                    str(port),
+                    "--server.headless",
+                    "true",
+                ]
+            ),
+            shell=True,
+        )
+
+    index_script_path = str(STREAMLIT_CONTENT_DIR.joinpath("index.py"))
+    subprocess.check_call(" ".join(["streamlit", "run", index_script_path]), shell=True)
