@@ -19,7 +19,7 @@
 
 import streamlit as st
 
-from pymedphys._streamlit.constants import BASENAME, NAMES, PORTS, SCRIPTS
+from pymedphys._streamlit.constants import BASENAME, NAMES, PORTS
 
 list_of_links = [
     f"* [{name}](http://{BASENAME}:{port})" for name, port in zip(NAMES, PORTS)
