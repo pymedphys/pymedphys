@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import functools
 import pathlib
 
 import streamlit as st
@@ -37,20 +38,39 @@ def get_config():
     return result
 
 
+def get_monaco_from_site_config(site_config):
+    return pathlib.Path(site_config["monaco"]["focaldata"]).joinpath(
+        site_config["monaco"]["clinic"]
+    )
+
+
+def get_export_directory_from_site_config(site_config, export_directory):
+    return pathlib.Path(site_config["export-directories"][export_directory])
+
+
 @st.cache
 def get_site_directories():
     config = get_config()
-    site_directories = {
-        site["name"]: {
-            "monaco": pathlib.Path(site["monaco"]["focaldata"]).joinpath(
-                site["monaco"]["clinic"]
-            ),
-            "escan": pathlib.Path(site["export-directories"]["escan"]),
-            "anonymised_monaco": pathlib.Path(
-                site["export-directories"]["anonymised_monaco"]
-            ),
-        }
-        for site in config["site"]
+
+    site_directory_functions = {
+        "monaco": get_monaco_from_site_config,
+        "escan": functools.partial(
+            get_export_directory_from_site_config, export_directory="escan"
+        ),
+        "anonymised_monaco": functools.partial(
+            get_export_directory_from_site_config, export_directory="anonymised_monaco"
+        ),
     }
+
+    site_directories = {}
+    for site in config["site"]:
+        site_name = site["name"]
+        site_directories[site_name] = {}
+
+        for key, func in site_directory_functions.items():
+            try:
+                site_directories[site_name][key] = func(site)
+            except KeyError:
+                pass
 
     return site_directories
