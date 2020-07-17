@@ -1,4 +1,5 @@
 # Copyright (C) 2020 Cancer Care Associates
+
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from pymedphys._gui import main
+from pymedphys._gui import experimental_main
+from pymedphys.cli import gui as stable_gui
 
 
 def gui_cli(subparsers):
-    parser = subparsers.add_parser("gui", help=("Run the PyMedPhys GUI."))
-
-    parser.set_defaults(func=main)
-
-    return parser
+    parser = stable_gui.gui_cli(subparsers)
+    parser.set_defaults(func=experimental_main)

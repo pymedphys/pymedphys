@@ -5,7 +5,11 @@ default_evaluation = "icom"
 
 [[site]]
 name = "rccc"
-escan_directory = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+
+    [site.export-directories]
+    escan = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+    anonymised_monaco = 'S:\DataExchange\anonymised-monaco'
+    icom_live = '\\rccc-physicssvr\iComLogFiles\live'
 
     [site.monaco]
     focaldata = '\\rccc-monacoda\FocalData'
@@ -18,16 +22,20 @@ escan_directory = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
 
     [[site.linac]]
     name = "2619"
-    icom_live_directory = '\\rccc-physicssvr\iComLogFiles\live\192.168.100.200'
+    ip = '192.168.100.200'
 
     [[site.linac]]
     name = "2694"
-    icom_live_directory = '\\rccc-physicssvr\iComLogFiles\live\192.168.100.201'
+    ip = '192.168.100.201'
 
 
 [[site]]
 name = "nbcc"
-escan_directory = '\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
+
+    [site.export-directories]
+    escan = '\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
+    anonymised_monaco = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\anonymised-monaco'
+    icom_live = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live'
 
     [site.monaco]
     focaldata = '\\tunnel-nbcc-monaco\FOCALDATA'
@@ -40,12 +48,16 @@ escan_directory = '\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
 
     [[site.linac]]
     name = "4299"
-    icom_live_directory = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live\192.168.17.40'
+    ip = '192.168.17.40'
 
 
 [[site]]
 name = "sash"
-escan_directory = '\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs'
+
+    [site.export-directories]
+    escan = '\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs'
+    anonymised_monaco = '\\tunnel-sash-physics-server\SASH-DataExchange\anonymised-monaco'
+    icom_live = '\\tunnel-sash-physics-server\SASH-DataExchange\icom\live'
 
     [site.monaco]
     focaldata = '\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData'
@@ -58,7 +70,7 @@ escan_directory = '\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs'
 
     [[site.linac]]
     name = "9002"
-    icom_live_directory = '\\tunnel-sash-physics-server\SASH-DataExchange\icom\live\192.168.40.10'
+    ip = '192.168.40.10'
 
 
 [trf_logfiles]
