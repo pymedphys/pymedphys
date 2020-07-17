@@ -10,7 +10,7 @@ from . import exceptions, misc
 
 
 def monaco_patient_directory_picker(
-    patient_id="", key_namespace="", advanced_mode_local=False, site=None,
+    patient_id="", key_namespace="", advanced_mode_local=False, site=None
 ):
     monaco_site, monaco_directory = misc.get_site_and_directory(
         "Monaco Plan Location",

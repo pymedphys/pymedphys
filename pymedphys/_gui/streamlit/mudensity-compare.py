@@ -37,8 +37,8 @@ from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
 from pymedphys._streamlit import exceptions as st_exceptions
-from pymedphys._streamlit import monaco as st_monaco
 from pymedphys._streamlit import misc as st_misc
+from pymedphys._streamlit import monaco as st_monaco
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
