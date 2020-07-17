@@ -49,18 +49,15 @@ def define_parser():
         "-v",
         "--verbose",
         help="Be verbose",
-        action="store_const",
-        dest="loglevel",
-        const=logging.INFO,
+        action="store_true",
+        dest="logging_verbose",
     )
     parser.add_argument(
         "-d",
         "--debug",
         help="Print debugging statements",
-        action="store_const",
-        dest="loglevel",
-        const=logging.DEBUG,
-        default=logging.WARNING,
+        action="store_true",
+        dest="logging_debug",
     )
 
     return parser
@@ -70,7 +67,18 @@ def pymedphys_cli():
     parser = define_parser()
 
     args, remaining = parser.parse_known_args()
-    logging.basicConfig(level=args.loglevel)
+
+    loglevel = logging.WARNING
+    logformat = "%(asctime)s %(levelname)-8s %(message)s"
+
+    if args.logging_verbose:
+        loglevel = logging.INFO
+
+    if args.logging_debug:
+        loglevel = logging.DEBUG
+        logformat += "\n    %(pathname)s#%(lineno)d"
+
+    logging.basicConfig(format=logformat, level=loglevel, datefmt="%Y-%m-%d %H:%M:%S")
 
     if hasattr(args, "func"):
         try:
@@ -85,7 +93,9 @@ def pymedphys_cli():
         return
 
     subparser_names = [
-        attribute for attribute in dir(args) if not attribute.startswith("_")
+        attribute
+        for attribute in dir(args)
+        if not (attribute.startswith("_") or attribute.startswith("logging"))
     ]
 
     if not subparser_names:
