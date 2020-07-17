@@ -14,6 +14,7 @@
 
 
 from .dicom import dicom_cli
+from .gui import gui_cli
 from .pinnacle import pinnacle_cli
 from .quickcheck import quickcheck_cli
 
@@ -27,5 +28,6 @@ def experimental_cli(subparsers):
     dicom_cli(experimental_subparsers)
     pinnacle_cli(experimental_subparsers)
     quickcheck_cli(experimental_subparsers)
+    gui_cli(experimental_subparsers)
 
     return experimental_parser
