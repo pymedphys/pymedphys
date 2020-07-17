@@ -1382,7 +1382,7 @@ def main():
     if default_site is None:
         default_site = reference_results.get("site", None)
 
-    escan_site, escan_directory = st_misc.get_site_and_directory(
+    _, escan_directory = st_misc.get_site_and_directory(
         "eScan Site", "escan", default=default_site, key="escan_export_site_picker"
     )
 

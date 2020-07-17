@@ -17,7 +17,7 @@
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
-import streamlit as st
+# import streamlit as st
 
 from pymedphys._streamlit.constants import BASE_URL_PATHS, HOSTNAME, NAMES
 
