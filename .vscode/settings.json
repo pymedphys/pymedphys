@@ -107,6 +107,7 @@
     "cython",
     "dataset",
     "datasets",
+    "datefmt",
     "dateutil",
     "dbfread",
     "dcmread",
