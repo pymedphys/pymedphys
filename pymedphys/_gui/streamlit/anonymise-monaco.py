@@ -24,8 +24,8 @@ import tempfile
 
 import streamlit as st
 
-from pymedphys._streamlit import monaco as st_monaco
 from pymedphys._streamlit import misc as st_misc
+from pymedphys._streamlit import monaco as st_monaco
 
 HERE = pathlib.Path(__file__).parent.resolve()
 ANON_DEMOGRAPHIC_FILE = HERE.joinpath("demographic.000000")
