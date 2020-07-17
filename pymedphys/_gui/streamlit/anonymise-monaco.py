@@ -25,22 +25,53 @@ import tempfile
 import streamlit as st
 
 from pymedphys._streamlit import monaco as st_monaco
+from pymedphys._streamlit import misc as st_misc
 
 HERE = pathlib.Path(__file__).parent.resolve()
 ANON_DEMOGRAPHIC_FILE = HERE.joinpath("demographic.000000")
 
+
+def rerun():
+    raise st.ScriptRunner.RerunException(st.ScriptRequestQueue.RerunData(None))
+
+
 "# Anonymise Monaco Files"
 
+"## Select Patient"
+
 (
+    monaco_site,
     monaco_directory,
     patient_id,
     plan_directory,
     patient_directory,
 ) = st_monaco.monaco_patient_directory_picker(advanced_mode_local=True)
 
-patient_directory
+f"Directory to anonymise: `{patient_directory}`"
 
-# TODO: Determine output directory
+
+"## Select Export Location"
+
+_, export_directory = st_misc.get_site_and_directory(
+    "Site to save anonymised zip file",
+    "anonymised_monaco",
+    default=monaco_site,
+    key="export_site",
+)
+
+f"Export directory: `{export_directory}`"
+
+zip_path = pathlib.Path(export_directory).joinpath(f"{patient_id}.zip")
+
+f"Zip file to be created: `{zip_path}`"
+
+if zip_path.exists():
+    st.write(FileExistsError("This zip file already exists."))
+    if st.button("Delete zip file"):
+        zip_path.unlink()
+        rerun()
+
+    raise st.ScriptRunner.StopException()
 
 
 if st.button("Copy and Anonymise"):
@@ -71,11 +102,11 @@ if st.button("Copy and Anonymise"):
 
         "Creating zip file..."
 
-        new_temp_zip_file = pl_temp_dir.joinpath(f"{patient_id}.zip")
-
         shutil.make_archive(
-            str(new_temp_zip_file.with_suffix("")),
+            str(zip_path.with_suffix("")),
             "zip",
             root_dir=str(pl_temp_dir.resolve()),
             base_dir=f"{patient_directory.name}",
         )
+
+        "Complete!"
