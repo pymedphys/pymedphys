@@ -16,6 +16,8 @@ import argparse
 import logging
 import sys
 
+from pymedphys._config import get_config
+
 from .dev import dev_cli
 from .dicom import dicom_cli
 from .experimental import experimental_cli
@@ -63,22 +65,60 @@ def define_parser():
     return parser
 
 
+def get_logging_config():
+    config = get_config()
+
+    try:
+        cli_config = config["cli"]
+        logging_config = cli_config["logging"]
+    except KeyError:
+        return {}
+
+    return logging_config
+
+
+def run_logging_basic_config(args):
+    logging_config = get_logging_config()
+
+    if "level" not in logging_config:
+        logging_config["level"] = logging.WARNING
+    else:
+        try:
+            logging_config["level"] = getattr(logging, logging_config["level"].upper())
+        except AttributeError:
+            pass
+
+    # Allow command line options to override the config.toml options
+    if args.logging_verbose:
+        logging_config["level"] = logging.INFO
+
+    # Have debug after info so that if both --verbose and --debug are
+    # debug will be used.
+    if args.logging_debug:
+        logging_config["level"] = logging.DEBUG
+
+    if "format" not in logging_config:
+        logging_config["format"] = "%(asctime)s %(levelname)-8s %(message)s"
+
+        if logging_config["level"] <= logging.DEBUG:
+            logging_config["format"] += "\n    %(pathname)s#%(lineno)d"
+
+    if "datefmt" not in logging_config:
+        logging_config["datefmt"] = "%Y-%m-%d %H:%M:%S"
+
+    logging.basicConfig(**logging_config)
+
+    logging.info(
+        "Set `logging.basicConfig` with:\n%(logging_config)s",
+        {"logging_config": logging_config},
+    )
+
+
 def pymedphys_cli():
     parser = define_parser()
 
     args, remaining = parser.parse_known_args()
-
-    loglevel = logging.WARNING
-    logformat = "%(asctime)s %(levelname)-8s %(message)s"
-
-    if args.logging_verbose:
-        loglevel = logging.INFO
-
-    if args.logging_debug:
-        loglevel = logging.DEBUG
-        logformat += "\n    %(pathname)s#%(lineno)d"
-
-    logging.basicConfig(format=logformat, level=loglevel, datefmt="%Y-%m-%d %H:%M:%S")
+    run_logging_basic_config(args)
 
     if hasattr(args, "func"):
         try:
