@@ -643,18 +643,23 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
         return {"patient_id": patient_id}
 
     if len(timestamps) == 1:
-        default_timestamp = timestamps[0]
+        default_timestamp = [timestamps[0]]
     else:
         default_timestamp = []
 
     timestamps = sorted(timestamps, reverse=True)
 
-    selected_icom_deliveries = st.multiselect(
-        "Select iCOM delivery timestamp(s)",
-        timestamps,
-        default=default_timestamp,
-        key=f"{key_namespace}_icom_deliveries",
-    )
+    try:
+        selected_icom_deliveries = st.multiselect(
+            "Select iCOM delivery timestamp(s)",
+            timestamps,
+            default=default_timestamp,
+            key=f"{key_namespace}_icom_deliveries",
+        )
+    except st.errors.StreamlitAPIException:
+        f"Default timestamp = `{default_timestamp}`"
+        f"All timestamps = `{timestamps}`"
+        raise
 
     icom_filenames = [
         path.replace(" ", "_").replace("-", "").replace(":", "")
