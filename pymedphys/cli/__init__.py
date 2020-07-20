@@ -96,7 +96,7 @@ def run_logging_basic_config(args):
         logging_config["level"] = logging.INFO
 
     # Have debug after info so that if both --verbose and --debug are
-    # debug will be used.
+    # passed to the CLI debug will be used.
     if args.logging_debug:
         logging_config["level"] = logging.DEBUG
 
