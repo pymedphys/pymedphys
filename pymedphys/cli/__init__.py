@@ -66,7 +66,10 @@ def define_parser():
 
 
 def get_logging_config():
-    config = get_config()
+    try:
+        config = get_config()
+    except FileNotFoundError:
+        return {}
 
     try:
         cli_config = config["cli"]
