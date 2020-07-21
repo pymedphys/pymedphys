@@ -15,6 +15,7 @@
 
 import functools
 import json
+import logging
 import os.path
 import pprint
 from copy import deepcopy
@@ -466,10 +467,13 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
                     float(elem.value), float(dummy_value)
                 ):
                     continue
-
+                logging.info("%s is not considered to be anonymised", elem.name)
                 return False
 
         elif elem.tag.is_private and not ignore_private_tags:
+            logging.info(
+                "%s is private and private tags are not being ignored", elem.tag
+            )
             return False
 
     return True
