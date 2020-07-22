@@ -475,6 +475,16 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
                 "%s is private and private tags are not being ignored", elem.tag
             )
             return False
+        elif elem.VR == "SQ":
+            contents_are_anonymous = True
+            for seq in elem.value:
+                contents_are_anonymous = is_anonymised_dataset(seq, ignore_private_tags)
+                if not contents_are_anonymous:
+                    logging.info(
+                        "%s contained an element not considered to be anonymised",
+                        elem.name,
+                    )
+                    return False
 
     return True
 
