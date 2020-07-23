@@ -30,6 +30,7 @@ from pymedphys._dicom.anonymise import (
     label_dicom_filepath_as_anonymised,
 )
 from pymedphys._dicom.constants import get_baseline_dicom_dict
+from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.dicom import anonymise as anonymise_dataset
 
@@ -109,6 +110,15 @@ def _get_non_anonymous_replacement_value(keyword):
     on its value representation (VR)"""
     vr = get_baseline_keyword_vr_dict()[keyword]
     return VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT[vr]
+
+
+@pytest.mark.pydicom
+def test_anonymised_dataset_with_nested_name():
+    nested_name = dicom_dataset_from_dict(
+        {"OverrideSequence": [{"OperatorsName": "George"}]}
+    )
+
+    assert not is_anonymised_dataset(nested_name)
 
 
 @pytest.mark.slow
