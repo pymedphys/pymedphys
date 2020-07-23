@@ -1,5 +1,6 @@
 import functools
 import json
+import logging
 import os
 import subprocess
 from copy import deepcopy
@@ -350,7 +351,7 @@ def test_anonymise_cli(tmp_path):
 def _test_anonymise_cli_for_file(tmp_path, test_file_path):
     temp_filepath = str(tmp_path / "test.dcm")
     try:
-        print("CLI test on " + test_file_path)
+        logging.info("CLI test on %s", test_file_path)
 
         copyfile(test_file_path, temp_filepath)
         test_anon_basename = TEST_ANON_BASENAME_DICT[basename(test_file_path)]
