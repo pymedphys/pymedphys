@@ -117,6 +117,10 @@ def get_treatmentrecord_test_file_path():
     return test_treatmentrecord_file_path
 
 
+def get_test_filepaths():
+    return [get_rtplan_test_file_path(), get_treatmentrecord_test_file_path()]
+
+
 def _check_is_anonymised_dataset_file_and_dir(
     ds, tmp_path, test_file_path, anon_is_expected=True, ignore_private_tags=False
 ):
@@ -285,10 +289,8 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
 @pytest.mark.pydicom
 def test_anonymise_file():
-    test_file_path = get_rtplan_test_file_path()
-    _test_anonymise_file_at_path(test_file_path)
-    test_file_path = get_treatmentrecord_test_file_path()
-    _test_anonymise_file_at_path(test_file_path)
+    for test_file_path in get_test_filepaths():
+        _test_anonymise_cli_for_file(tmp_path, test_file_path)
 
 
 def _test_anonymise_file_at_path(test_file_path):
@@ -378,10 +380,8 @@ def test_anonymise_directory(tmp_path):
     "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
 )
 def test_anonymise_cli(tmp_path):
-    test_file_path = get_rtplan_test_file_path()
-    _test_anonymise_cli_for_file(tmp_path, test_file_path)
-    test_file_path = get_treatmentrecord_test_file_path()
-    _test_anonymise_cli_for_file(tmp_path, test_file_path)
+    for test_file_path in get_test_filepaths():
+        _test_anonymise_cli_for_file(tmp_path, test_file_path)
 
 
 def _test_anonymise_cli_for_file(tmp_path, test_file_path):
