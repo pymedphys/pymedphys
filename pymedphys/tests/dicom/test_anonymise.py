@@ -290,7 +290,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 @pytest.mark.pydicom
 def test_anonymise_file():
     for test_file_path in get_test_filepaths():
-        _test_anonymise_cli_for_file(tmp_path, test_file_path)
+        _test_anonymise_file_at_path(test_file_path)
 
 
 def _test_anonymise_file_at_path(test_file_path):
