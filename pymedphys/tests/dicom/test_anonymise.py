@@ -44,7 +44,7 @@ TEST_ANON_BASENAME = (
 
 TEST_ANON_BASENAME_DICT = {
     "RP.almost_anonymised.dcm": "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm",
-    #    "RIBT.not_quite_anonymised.dcm": "RIBT.1.2.392.200036.9123.100.30.310.200.12.1.20191125110540243000_Anonymised.dcm",
+    "RIBT.not_quite_anonymised.dcm": "RIBT.1.2.392.200036.9123.100.30.310.200.12.1.20191125110540243000_Anonymised.dcm",
 }
 
 VR_NON_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
@@ -83,6 +83,42 @@ def get_rtplan_test_file_path():
 def _download_rtplan_test_file():
     data_paths = download.zip_data_paths("rtplan-anonymisation.zip")
     return data_paths
+
+
+@functools.lru_cache()
+def _download_treatmentrecord_test_file():
+    data_paths = download.zip_data_paths("treatmentrecord-anonymisation.zip")
+    return data_paths
+
+
+@functools.lru_cache()
+def get_treatmentrecord_test_file_path():
+    """
+    Downloads the required test data from zenodo and returns a string representing
+    the absolute path including the test filename, appropriate to the platform/file system.
+    Because this function is wrapped with lru_cache, concurrently revised contents on zenodo will not
+    get pulled down while the python instance is running (the tests).
+    If you update the content on zenodo, re-run the tests.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    string:representing the absolute path including the test filename, appropriate to the platform/file system.
+
+    """
+    data_paths = _download_treatmentrecord_test_file()
+    test_treatmentrecord_path = next(
+        x for x in data_paths if x.name == "RIBT.not_quite_anonymised.dcm"
+    )
+    test_treatmentrecord_file_path = str(test_treatmentrecord_path.absolute())
+    return test_treatmentrecord_file_path
+
+
+def get_test_filepaths():
+    return [get_rtplan_test_file_path(), get_treatmentrecord_test_file_path()]
 
 
 def _check_is_anonymised_dataset_file_and_dir(
@@ -253,8 +289,8 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
 @pytest.mark.pydicom
 def test_anonymise_file():
-    test_file_path = get_rtplan_test_file_path()
-    _test_anonymise_file_at_path(test_file_path)
+    for test_file_path in get_test_filepaths():
+        _test_anonymise_file_at_path(test_file_path)
 
 
 def _test_anonymise_file_at_path(test_file_path):
@@ -344,8 +380,8 @@ def test_anonymise_directory(tmp_path):
     "SUBPACKAGE" in os.environ, reason="Need to extract CLI out of subpackages"
 )
 def test_anonymise_cli(tmp_path):
-    test_file_path = get_rtplan_test_file_path()
-    _test_anonymise_cli_for_file(tmp_path, test_file_path)
+    for test_file_path in get_test_filepaths():
+        _test_anonymise_cli_for_file(tmp_path, test_file_path)
 
 
 def _test_anonymise_cli_for_file(tmp_path, test_file_path):
