@@ -4,7 +4,6 @@
 import os
 
 import pytest
-
 import pytest_pylint.plugin
 
 SKIPPING_CONFIG = {

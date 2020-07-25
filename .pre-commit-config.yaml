@@ -21,7 +21,7 @@ repos:
     hooks:
     -   id: isort
         additional_dependencies: ['toml']
-        files: ^.*\.py$
+        files: ^pymedphys.*\.py$
 -   repo: https://github.com/ambv/black
     rev: 19.3b0
     hooks:
