@@ -22,8 +22,8 @@ the laser marked image.
 # pylint: skip-file
 
 import pytest
-
 from fixtures import postscans, prescans
+
 from pymedphys.experimental.film import calc_net_od
 
 # import numpy as np

@@ -16,9 +16,9 @@ import pathlib
 import subprocess
 from contextlib import contextmanager
 
+import psutil
 import pytest
 
-import psutil
 import pymedphys
 
 
