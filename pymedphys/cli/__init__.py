@@ -80,15 +80,18 @@ def get_logging_config():
     return logging_config
 
 
-def run_logging_basic_config(args):
-    logging_config = get_logging_config()
-
+def run_logging_basic_config(args, logging_config):
     if "level" not in logging_config:
         logging_config["level"] = logging.WARNING
 
     # Allow command line options to override the config.toml options
     if args.logging_verbose:
         logging_config["level"] = logging.INFO
+    else:
+        try:
+            logging_config["level"] = getattr(logging, logging_config["level"].upper())
+        except AttributeError:
+            pass
 
     # Have debug after info so that if both --verbose and --debug are
     # passed to the CLI debug will be used. Should both be passed it is
@@ -123,7 +126,8 @@ def pymedphys_cli():
     parser = define_parser()
 
     args, remaining = parser.parse_known_args()
-    run_logging_basic_config(args)
+    logging_config = get_logging_config()
+    run_logging_basic_config(args, logging_config)
 
     if hasattr(args, "func"):
         try:
