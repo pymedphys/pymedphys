@@ -113,7 +113,7 @@ def run_logging_basic_config(args):
     if args.logging_debug and args.logging_verbose:
         logging.warning(
             "Both --verbose and --debug were defined. Verbose mode was "
-            "ignored and instead --debug was used."
+            "ignored. Debug mode has been used."
         )
 
     logging.info(
