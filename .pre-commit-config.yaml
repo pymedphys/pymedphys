@@ -17,10 +17,10 @@ repos:
     -   id: check-added-large-files
         args: ['--maxkb', '300']
 -   repo: https://github.com/timothycrosley/isort
-    rev: 4.3.20
+    rev: 5.1.4
     hooks:
     -   id: isort
-        additional_dependencies: ['isort[pyproject]==4.3.20']
+        additional_dependencies: ['toml']
         files: ^.*\.py$
 -   repo: https://github.com/ambv/black
     rev: 19.3b0

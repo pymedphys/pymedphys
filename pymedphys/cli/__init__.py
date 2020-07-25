@@ -16,6 +16,9 @@ import argparse
 import sys
 
 from pymedphys._config import get_config
+
+# Once support is dropped for Python 3.6 and 3.7, can instead import
+# logging from the standard library
 from pymedphys._vendor.patchedlogging import logging
 
 from .dev import dev_cli
