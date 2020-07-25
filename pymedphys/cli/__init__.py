@@ -85,11 +85,6 @@ def run_logging_basic_config(args):
 
     if "level" not in logging_config:
         logging_config["level"] = logging.WARNING
-    else:
-        try:
-            logging_config["level"] = getattr(logging, logging_config["level"].upper())
-        except AttributeError:
-            pass
 
     # Allow command line options to override the config.toml options
     if args.logging_verbose:
@@ -109,7 +104,7 @@ def run_logging_basic_config(args):
     if "datefmt" not in logging_config:
         logging_config["datefmt"] = "%Y-%m-%d %H:%M:%S"
 
-    logging.basicConfig(**logging_config)
+    logging.basicConfig(**logging_config, force=True)
 
     logging.info(
         "Set `logging.basicConfig` with:\n%(logging_config)s",
