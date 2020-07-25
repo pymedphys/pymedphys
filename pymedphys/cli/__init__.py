@@ -91,7 +91,8 @@ def run_logging_basic_config(args):
         logging_config["level"] = logging.INFO
 
     # Have debug after info so that if both --verbose and --debug are
-    # passed to the CLI debug will be used.
+    # passed to the CLI debug will be used. This is logged as a warning
+    # below.
     if args.logging_debug:
         logging_config["level"] = logging.DEBUG
 
@@ -105,6 +106,12 @@ def run_logging_basic_config(args):
         logging_config["datefmt"] = "%Y-%m-%d %H:%M:%S"
 
     logging.basicConfig(**logging_config)
+
+    if args.logging_debug and args.logging_verbose:
+        logging.warning(
+            "Both --verbose and --debug were defined. Verbose mode was "
+            "ignored and instead --debug was used."
+        )
 
     logging.info(
         "Set `logging.basicConfig` with:\n%(logging_config)s",
