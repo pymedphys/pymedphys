@@ -1,12 +1,31 @@
 import collections
 import logging
 
+from pymedphys import _config
+from pymedphys._vendor.patchlogging import apply_logging_patch
 from pymedphys.cli import run_logging_basic_config
 
 Args = collections.namedtuple("Args", ["logging_verbose", "logging_debug"])
 
 
 def test_setting_logging():
+    try:
+        apply_logging_patch()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Logging patch should raise an error if not within CLI")
+
+    _config.is_cli = True
+    apply_logging_patch()
+
+    try:
+        apply_logging_patch()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Logging patch should not be able to be run twice")
+
     args = Args(logging_verbose=False, logging_debug=False)
     run_logging_basic_config(args, {"level": logging.DEBUG})
 
