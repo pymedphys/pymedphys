@@ -105,6 +105,9 @@ def run_logging_basic_config(args):
     if "datefmt" not in logging_config:
         logging_config["datefmt"] = "%Y-%m-%d %H:%M:%S"
 
+    # TODO: Replace this with a call to dictConfig so that it can be
+    # re-run should the config.toml file change and this function be
+    # triggered by a watchdog event.
     logging.basicConfig(**logging_config)
 
     if args.logging_debug and args.logging_verbose:
