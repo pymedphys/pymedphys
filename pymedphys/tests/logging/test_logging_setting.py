@@ -20,17 +20,21 @@ def test_setting_logging():
 
     assert logging.root.getEffectiveLevel() == 30
 
-    args = Args(logging_verbose=True, logging_debug=False)
-    run_logging_basic_config(args, {})
+    args_verbose = Args(logging_verbose=True, logging_debug=False)
+    run_logging_basic_config(args_verbose, {})
 
     assert logging.root.getEffectiveLevel() == 20
 
-    args = Args(logging_verbose=False, logging_debug=True)
-    run_logging_basic_config(args, {})
+    args_debug = Args(logging_verbose=False, logging_debug=True)
+    run_logging_basic_config(args_debug, {})
 
     assert logging.root.getEffectiveLevel() == 10
 
-    args = Args(logging_verbose=True, logging_debug=True)
-    run_logging_basic_config(args, {})
+    run_logging_basic_config(args, {"level": 5})
+
+    assert logging.root.getEffectiveLevel() == 5
+
+    args_both = Args(logging_verbose=True, logging_debug=True)
+    run_logging_basic_config(args_both, {})
 
     assert logging.root.getEffectiveLevel() == 10
