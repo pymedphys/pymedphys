@@ -31,7 +31,9 @@ def apply_logging_patch():
     if not _config.is_cli:
         raise ValueError(
             "This patch globally adjusts the logging module. This patch is "
-            "not to be used within pymedphys while it is in library mode. "
+            "not to be used within pymedphys while it is in library mode "
+            "as standard library monkey patches can be exceptionally confusing "
+            "to a library user. "
             "This is only to be used when pymedphys is being called via "
             "CLI."
         )
