@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import argparse
+import logging
 import sys
 
-from pymedphys._config import get_config
-
-# Once support is dropped for Python 3.6 and 3.7, can instead import
-# logging from the standard library
-from pymedphys._vendor.patchedlogging import logging
+from pymedphys import _config
+from pymedphys._vendor.patchlogging import apply_logging_patch
 
 from .dev import dev_cli
 from .dicom import dicom_cli
@@ -70,7 +68,7 @@ def define_parser():
 
 def get_logging_config():
     try:
-        config = get_config()
+        config = _config.get_config()
     except FileNotFoundError:
         return {}
 
@@ -126,6 +124,11 @@ def run_logging_basic_config(args, logging_config):
 
 
 def pymedphys_cli():
+    _config.is_cli = True
+
+    # This is to allow the usage of force=True within logging.basicConfig
+    apply_logging_patch()
+
     parser = define_parser()
 
     args, remaining = parser.parse_known_args()

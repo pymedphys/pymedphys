@@ -19,17 +19,34 @@
 
 import logging
 
+from pymedphys import _config
+
+_patch_applied = False
 _basicConfig = logging.basicConfig
 
 
-def basicConfig(**kwargs):
-    force = kwargs.pop("force", False)
-    if force:
-        for h in logging.root.handlers[:]:  # pylint: disable = no-member
-            logging.root.removeHandler(h)  # pylint: disable = no-member
-            h.close()
+def apply_logging_patch():
+    global _patch_applied  # pylint: disable = global-statement
 
-    _basicConfig(**kwargs)
+    if not _config.is_cli:
+        raise ValueError(
+            "This patch globally adjusts the logging module. This patch is "
+            "not to be used within pymedphys while it is in library mode. "
+            "This is only to be used when pymedphys is being called via "
+            "CLI."
+        )
 
+    if _patch_applied:
+        raise ValueError("This patch has already been applied.")
 
-logging.basicConfig = basicConfig
+    def basicConfig(**kwargs):
+        force = kwargs.pop("force", False)
+        if force:
+            for h in logging.root.handlers[:]:  # pylint: disable = no-member
+                logging.root.removeHandler(h)  # pylint: disable = no-member
+                h.close()
+
+        _basicConfig(**kwargs)
+
+    logging.basicConfig = basicConfig
+    _patch_applied = True
