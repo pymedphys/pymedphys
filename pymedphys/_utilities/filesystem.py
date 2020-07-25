@@ -25,8 +25,8 @@ def get_detached_file_descriptor(filepath):
         has_win32file = False
 
     if has_win32file:
-        import os
         import msvcrt  # pylint: disable = import-error
+        import os
 
         handle = win32file.CreateFile(
             str(filepath),
