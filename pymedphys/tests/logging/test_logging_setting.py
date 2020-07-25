@@ -26,6 +26,8 @@ def test_setting_logging():
     else:
         raise AssertionError("Logging patch should not be able to be run twice")
 
+    _config.is_cli = False
+
     args = Args(logging_verbose=False, logging_debug=False)
     run_logging_basic_config(args, {"level": logging.DEBUG})
 
