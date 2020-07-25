@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import argparse
-import logging
 import sys
 
 from pymedphys._config import get_config
+from pymedphys._vendor.patchedlogging import logging
 
 from .dev import dev_cli
 from .dicom import dicom_cli
@@ -105,10 +105,7 @@ def run_logging_basic_config(args):
     if "datefmt" not in logging_config:
         logging_config["datefmt"] = "%Y-%m-%d %H:%M:%S"
 
-    # TODO: Replace this with a call to dictConfig so that it can be
-    # re-run should the config.toml file change and this function be
-    # triggered by a watchdog event.
-    logging.basicConfig(**logging_config)
+    logging.basicConfig(force=True, **logging_config)
 
     if args.logging_debug and args.logging_verbose:
         logging.warning(
