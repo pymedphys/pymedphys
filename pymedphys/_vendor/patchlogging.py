@@ -1,3 +1,4 @@
+# Copyright (C) 2020 Simon Biggs
 # Copyright 2001-2017 by Vinay Sajip. All Rights Reserved.
 #
 # Permission to use, copy, modify, and distribute this software and its
