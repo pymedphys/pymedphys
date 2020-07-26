@@ -16,6 +16,9 @@ import argparse
 import logging
 import sys
 
+from pymedphys import _config
+from pymedphys._vendor.patchlogging import apply_logging_patch
+
 from .dev import dev_cli
 from .dicom import dicom_cli
 from .experimental import experimental_cli
@@ -63,22 +66,74 @@ def define_parser():
     return parser
 
 
+def get_logging_config():
+    try:
+        config = _config.get_config()
+    except FileNotFoundError:
+        return {}
+
+    try:
+        cli_config = config["cli"]
+        logging_config = cli_config["logging"]
+    except KeyError:
+        return {}
+
+    return logging_config
+
+
+def run_logging_basic_config(args, logging_config):
+    if "level" not in logging_config:
+        logging_config["level"] = logging.WARNING
+
+    # Allow command line options to override the config.toml options
+    if args.logging_verbose:
+        logging_config["level"] = logging.INFO
+    else:
+        try:
+            logging_config["level"] = getattr(logging, logging_config["level"].upper())
+        except AttributeError:
+            pass
+
+    # Have debug after info so that if both --verbose and --debug are
+    # passed to the CLI debug will be used. Should both be passed it is
+    # logged as a warning below.
+    if args.logging_debug:
+        logging_config["level"] = logging.DEBUG
+
+    if "format" not in logging_config:
+        logging_config["format"] = "%(asctime)s %(levelname)-8s %(message)s"
+
+        if logging_config["level"] <= logging.DEBUG:
+            logging_config["format"] += "\n    %(pathname)s#%(lineno)d"
+
+    if "datefmt" not in logging_config:
+        logging_config["datefmt"] = "%Y-%m-%d %H:%M:%S"
+
+    logging.basicConfig(force=True, **logging_config)
+
+    if args.logging_debug and args.logging_verbose:
+        logging.warning(
+            "Both --verbose and --debug were defined. Verbose mode was "
+            "ignored. Debug mode has been used."
+        )
+
+    logging.info(
+        "Set `logging.basicConfig` with:\n%(logging_config)s",
+        {"logging_config": logging_config},
+    )
+
+
 def pymedphys_cli():
+    _config.is_cli = True
+
+    # This is to allow the usage of force=True within logging.basicConfig
+    apply_logging_patch()
+
     parser = define_parser()
 
     args, remaining = parser.parse_known_args()
-
-    loglevel = logging.WARNING
-    logformat = "%(asctime)s %(levelname)-8s %(message)s"
-
-    if args.logging_verbose:
-        loglevel = logging.INFO
-
-    if args.logging_debug:
-        loglevel = logging.DEBUG
-        logformat += "\n    %(pathname)s#%(lineno)d"
-
-    logging.basicConfig(format=logformat, level=loglevel, datefmt="%Y-%m-%d %H:%M:%S")
+    logging_config = get_logging_config()
+    run_logging_basic_config(args, logging_config)
 
     if hasattr(args, "func"):
         try:
