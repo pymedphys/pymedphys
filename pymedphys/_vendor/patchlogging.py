@@ -36,7 +36,7 @@ def apply_logging_patch():
             "as monkey patches on libraries/modules external to pymedphys "
             "can be exceptionally confusing to a library user. "
             "This is only to be used when pymedphys is being called via "
-            "CLI."
+            "the pymedphys CLI."
         )
 
     if _patch_applied:
