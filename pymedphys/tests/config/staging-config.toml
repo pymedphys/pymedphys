@@ -1,0 +1,3 @@
+imports = ["base-config.toml", "deploy-config.toml"]
+
+environment = "staging"
