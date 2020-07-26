@@ -19,6 +19,7 @@
 # https://github.com/python/cpython/blob/a667e1c66a/Lib/logging/__init__.py#L1957-L1961
 
 import logging
+import sys
 
 from pymedphys import _config
 
@@ -27,6 +28,9 @@ _basicConfig = logging.basicConfig
 
 
 def apply_logging_patch():
+    if sys.version_info.major > 3 or sys.version_info.minor >= 8:
+        return
+
     global _patch_applied  # pylint: disable = global-statement
 
     if not _config.is_cli:
