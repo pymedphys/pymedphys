@@ -28,7 +28,9 @@ _basicConfig = logging.basicConfig
 
 
 def apply_logging_patch():
-    if sys.version_info.major > 3 or sys.version_info.minor >= 8:
+    if sys.version_info.major > 3 or (
+        sys.version_info.major == 3 and sys.version_info.minor >= 8
+    ):
         return
 
     global _patch_applied  # pylint: disable = global-statement
