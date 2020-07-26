@@ -20,12 +20,12 @@ import json
 import os
 
 import pytest
+from fixtures import BASELINES_DIR, postscans, prescans
 
 import numpy as np
 
 import matplotlib.pyplot as plt
 
-from fixtures import BASELINES_DIR, postscans, prescans
 from pymedphys.experimental.film import create_axes, get_aligned_image, shift_and_rotate
 
 CREATE_BASELINE = False

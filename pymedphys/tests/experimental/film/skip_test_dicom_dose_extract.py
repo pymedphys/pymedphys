@@ -21,11 +21,12 @@ import lzma
 import os
 from pathlib import Path
 
+from fixtures import BASELINES_DIR, DATA_DIR
+
 import numpy as np
 
 import pydicom
 
-from fixtures import BASELINES_DIR, DATA_DIR
 from pymedphys._dicom.dose import dicom_dose_interpolate
 
 CREATE_BASELINE = False
