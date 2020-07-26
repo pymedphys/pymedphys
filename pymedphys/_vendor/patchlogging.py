@@ -15,8 +15,8 @@
 # IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-# Code vendored from:
-# https://github.com/python/cpython/blob/a667e1c66a62d509c39d30abf11778213a1e1ca0/Lib/logging/__init__.py#L1896-L1999
+# Code vendored and modified from:
+# https://github.com/python/cpython/blob/a667e1c66a/Lib/logging/__init__.py#L1957-L1961
 
 import logging
 
