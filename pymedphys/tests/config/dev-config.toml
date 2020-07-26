@@ -1,3 +1,0 @@
-imports = ["base-config.toml"]
-
-environment = "development"
