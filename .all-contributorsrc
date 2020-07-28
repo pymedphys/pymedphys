@@ -23,7 +23,18 @@
         "test",
         "tool"
       ]
+    },
+    {
+      "login": "Matthew-Jennings",
+      "name": "Matt Jennings",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/19767103?v=4",
+      "profile": "https://github.com/Matthew-Jennings",
+      "contributions": [
+        "code",
+        "review",
+        "doc"
+      ]
     }
   ],
-  "contributorsPerLine": 7
+  "contributorsPerLine": 4
 }
