@@ -21,7 +21,14 @@
         "doc",
         "review",
         "test",
-        "tool"
+        "tool",
+        "bug",
+        "talk",
+        "data",
+        "design",
+        "example",
+        "infra",
+        "question"
       ]
     },
     {
@@ -33,7 +40,10 @@
         "code",
         "review",
         "doc",
-        "test"
+        "bug",
+        "test",
+        "data",
+        "design"
       ]
     },
     {
@@ -44,7 +54,8 @@
       "contributions": [
         "code",
         "review",
-        "doc"
+        "doc",
+        "data"
       ]
     },
     {
@@ -56,7 +67,8 @@
         "code",
         "review",
         "bug",
-        "ideas"
+        "ideas",
+        "data"
       ]
     },
     {
@@ -111,7 +123,9 @@
       "avatar_url": "https://avatars1.githubusercontent.com/u/4761748?v=4",
       "profile": "https://kingrpaul.github.io/",
       "contributions": [
-        "code"
+        "code",
+        "design",
+        "ideas"
       ]
     },
     {
@@ -139,6 +153,15 @@
       "profile": "https://github.com/mwillam",
       "contributions": [
         "doc"
+      ]
+    },
+    {
+      "login": "fishdda",
+      "name": "Henry Ng",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/23411165?v=4",
+      "profile": "https://github.com/fishdda",
+      "contributions": [
+        "userTesting"
       ]
     }
   ],
