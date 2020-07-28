@@ -93,6 +93,15 @@
       ]
     },
     {
+      "login": "db72-git",
+      "name": "David Buckle",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/66728405?v=4",
+      "profile": "https://github.com/db72-git",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
       "login": "matthewdeancooper",
       "name": "Matthew Cooper",
       "avatar_url": "https://avatars1.githubusercontent.com/u/55194730?v=4",
@@ -120,42 +129,6 @@
         "code",
         "design",
         "ideas"
-      ]
-    },
-    {
-      "login": "JacobMcAloney",
-      "name": "JacobMcAloney",
-      "avatar_url": "https://avatars3.githubusercontent.com/u/47580406?v=4",
-      "profile": "https://github.com/JacobMcAloney",
-      "contributions": [
-        "ideas"
-      ]
-    },
-    {
-      "login": "db72-git",
-      "name": "David Buckle",
-      "avatar_url": "https://avatars2.githubusercontent.com/u/66728405?v=4",
-      "profile": "https://github.com/db72-git",
-      "contributions": [
-        "code"
-      ]
-    },
-    {
-      "login": "mwillam",
-      "name": "mwillam",
-      "avatar_url": "https://avatars3.githubusercontent.com/u/32633593?v=4",
-      "profile": "https://github.com/mwillam",
-      "contributions": [
-        "doc"
-      ]
-    },
-    {
-      "login": "fishdda",
-      "name": "Henry Ng",
-      "avatar_url": "https://avatars0.githubusercontent.com/u/23411165?v=4",
-      "profile": "https://github.com/fishdda",
-      "contributions": [
-        "userTesting"
       ]
     },
     {
@@ -192,6 +165,33 @@
       "profile": "https://github.com/mchamberland",
       "contributions": [
         "ideas"
+      ]
+    },
+    {
+      "login": "JacobMcAloney",
+      "name": "JacobMcAloney",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/47580406?v=4",
+      "profile": "https://github.com/JacobMcAloney",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "mwillam",
+      "name": "mwillam",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/32633593?v=4",
+      "profile": "https://github.com/mwillam",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "fishdda",
+      "name": "Henry Ng",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/23411165?v=4",
+      "profile": "https://github.com/fishdda",
+      "contributions": [
+        "userTesting"
       ]
     }
   ],

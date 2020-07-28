@@ -70,23 +70,23 @@ Thanks goes to these wonderful people:
     <td align="center"><a href="https://github.com/rembishj"><img src="https://avatars3.githubusercontent.com/u/40006991?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Jake Rembish</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=rembishj" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/peterg1t"><img src="https://avatars2.githubusercontent.com/u/8771255?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Pedro Martinez</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=peterg1t" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/ayalalazaro"><img src="https://avatars0.githubusercontent.com/u/8739720?v=4?s=200" width="200px;" alt=""/><br /><sub><b>ayalalazaro</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=ayalalazaro" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/matthewdeancooper"><img src="https://avatars1.githubusercontent.com/u/55194730?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Matthew Cooper</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=matthewdeancooper" title="Code">💻</a> <a href="#ideas-matthewdeancooper" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/db72-git"><img src="https://avatars2.githubusercontent.com/u/66728405?v=4?s=200" width="200px;" alt=""/><br /><sub><b>David Buckle</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=db72-git" title="Code">💻</a></td>
   </tr>
   <tr>
+    <td align="center"><a href="https://github.com/matthewdeancooper"><img src="https://avatars1.githubusercontent.com/u/55194730?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Matthew Cooper</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=matthewdeancooper" title="Code">💻</a> <a href="#ideas-matthewdeancooper" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/msobolewski"><img src="https://avatars1.githubusercontent.com/u/8422812?v=4?s=200" width="200px;" alt=""/><br /><sub><b>msobolewski</b></sub></a><br /><a href="#ideas-msobolewski" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://kingrpaul.github.io/"><img src="https://avatars1.githubusercontent.com/u/4761748?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Paul King</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=kingrpaul" title="Code">💻</a> <a href="#design-kingrpaul" title="Design">🎨</a> <a href="#ideas-kingrpaul" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/lipteck"><img src="https://avatars1.githubusercontent.com/u/53696995?v=4?s=200" width="200px;" alt=""/><br /><sub><b>lipteck</b></sub></a><br /><a href="#userTesting-lipteck" title="User Testing">📓</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="http://www.halclark.ca/"><img src="https://avatars3.githubusercontent.com/u/934858?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Hal Clark</b></sub></a><br /><a href="#ideas-hdclark" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/darcymason"><img src="https://avatars3.githubusercontent.com/u/61110?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Darcy Mason</b></sub></a><br /><a href="#ideas-darcymason" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/mchamberland"><img src="https://avatars2.githubusercontent.com/u/1675666?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Marc Chamberland</b></sub></a><br /><a href="#ideas-mchamberland" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/JacobMcAloney"><img src="https://avatars3.githubusercontent.com/u/47580406?v=4?s=200" width="200px;" alt=""/><br /><sub><b>JacobMcAloney</b></sub></a><br /><a href="#ideas-JacobMcAloney" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/db72-git"><img src="https://avatars2.githubusercontent.com/u/66728405?v=4?s=200" width="200px;" alt=""/><br /><sub><b>David Buckle</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=db72-git" title="Code">💻</a></td>
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/mwillam"><img src="https://avatars3.githubusercontent.com/u/32633593?v=4?s=200" width="200px;" alt=""/><br /><sub><b>mwillam</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=mwillam" title="Documentation">📖</a></td>
     <td align="center"><a href="https://github.com/fishdda"><img src="https://avatars0.githubusercontent.com/u/23411165?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Henry Ng</b></sub></a><br /><a href="#userTesting-fishdda" title="User Testing">📓</a></td>
-    <td align="center"><a href="https://github.com/lipteck"><img src="https://avatars1.githubusercontent.com/u/53696995?v=4?s=200" width="200px;" alt=""/><br /><sub><b>lipteck</b></sub></a><br /><a href="#userTesting-lipteck" title="User Testing">📓</a></td>
-    <td align="center"><a href="http://www.halclark.ca/"><img src="https://avatars3.githubusercontent.com/u/934858?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Hal Clark</b></sub></a><br /><a href="#ideas-hdclark" title="Ideas, Planning, & Feedback">🤔</a></td>
-  </tr>
-  <tr>
-    <td align="center"><a href="https://github.com/darcymason"><img src="https://avatars3.githubusercontent.com/u/61110?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Darcy Mason</b></sub></a><br /><a href="#ideas-darcymason" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/mchamberland"><img src="https://avatars2.githubusercontent.com/u/1675666?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Marc Chamberland</b></sub></a><br /><a href="#ideas-mchamberland" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
 </table>
 
