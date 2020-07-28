@@ -72,6 +72,9 @@ Thanks goes to these wonderful people:
     <td align="center"><a href="https://github.com/ayalalazaro"><img src="https://avatars0.githubusercontent.com/u/8739720?v=4?s=200" width="200px;" alt=""/><br /><sub><b>ayalalazaro</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=ayalalazaro" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/matthewdeancooper"><img src="https://avatars1.githubusercontent.com/u/55194730?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Matthew Cooper</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=matthewdeancooper" title="Code">💻</a></td>
   </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/msobolewski"><img src="https://avatars1.githubusercontent.com/u/8422812?v=4?s=200" width="200px;" alt=""/><br /><sub><b>msobolewski</b></sub></a><br /><a href="#ideas-msobolewski" title="Ideas, Planning, & Feedback">🤔</a></td>
+  </tr>
 </table>
 
 <!-- markdownlint-enable -->
