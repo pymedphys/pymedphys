@@ -69,6 +69,8 @@ Thanks goes to these wonderful people:
 <!-- prettier-ignore-end -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
+Thanks goes to these wonderful workplaces:
+
 [![rccc](https://github.com/pymedphys/pymedphys/raw/master/docs/logos/rccc_200x200.png)](%60Riverina%20Cancer%20Care%20Centre%60_)
 [![rah](https://github.com/pymedphys/pymedphys/raw/master/docs/logos/gosa_200x200.png)](%60Royal%20Adelaide%20Hospital%60_)
 [![uth](https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UTHSA_logo.png)](%60UT%20Health%20San%20Antonio%60_)
