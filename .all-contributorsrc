@@ -6,7 +6,7 @@
   "files": [
     "README.md"
   ],
-  "imageSize": 180,
+  "imageSize": 200,
   "commit": true,
   "commitConvention": "angular",
   "contributors": [
@@ -18,8 +18,11 @@
       "contributions": [
         "maintenance",
         "code",
+        "doc",
         "review",
-        "ideas"
+        "talk",
+        "design",
+        "question"
       ]
     },
     {
@@ -31,7 +34,10 @@
         "code",
         "review",
         "doc",
-        "data"
+        "bug",
+        "test",
+        "data",
+        "design"
       ]
     },
     {
@@ -55,7 +61,8 @@
         "code",
         "review",
         "bug",
-        "ideas"
+        "ideas",
+        "data"
       ]
     },
     {
