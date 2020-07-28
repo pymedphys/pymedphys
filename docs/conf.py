@@ -20,6 +20,7 @@ import os
 import pymedphys
 
 os.system("pandoc ../CHANGELOG.md --from markdown --to rst -s -o ../CHANGELOG.rst")
+os.system("pandoc ../README.md --from markdown --to rst -s -o ../README.rst")
 
 
 def setup(app):

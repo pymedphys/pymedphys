@@ -280,3 +280,4 @@ v*.tar.gz
 
 *-demo
 CHANGELOG.rst
+README.rst
