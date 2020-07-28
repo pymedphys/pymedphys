@@ -78,6 +78,9 @@ Thanks goes to these wonderful people:
     <td align="center"><a href="https://github.com/JacobMcAloney"><img src="https://avatars3.githubusercontent.com/u/47580406?v=4?s=200" width="200px;" alt=""/><br /><sub><b>JacobMcAloney</b></sub></a><br /><a href="#ideas-JacobMcAloney" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/db72-git"><img src="https://avatars2.githubusercontent.com/u/66728405?v=4?s=200" width="200px;" alt=""/><br /><sub><b>David Buckle</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=db72-git" title="Code">💻</a></td>
   </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/mwillam"><img src="https://avatars3.githubusercontent.com/u/32633593?v=4?s=200" width="200px;" alt=""/><br /><sub><b>mwillam</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=mwillam" title="Documentation">📖</a></td>
+  </tr>
 </table>
 
 <!-- markdownlint-enable -->

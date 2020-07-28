@@ -131,6 +131,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "mwillam",
+      "name": "mwillam",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/32633593?v=4",
+      "profile": "https://github.com/mwillam",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 4
