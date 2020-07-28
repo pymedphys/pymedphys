@@ -86,6 +86,7 @@ Thanks goes to these wonderful people:
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/darcymason"><img src="https://avatars3.githubusercontent.com/u/61110?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Darcy Mason</b></sub></a><br /><a href="#ideas-darcymason" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/mchamberland"><img src="https://avatars2.githubusercontent.com/u/1675666?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Marc Chamberland</b></sub></a><br /><a href="#ideas-mchamberland" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
 </table>
 
