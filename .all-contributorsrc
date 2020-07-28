@@ -35,6 +35,15 @@
         "doc",
         "test"
       ]
+    },
+    {
+      "login": "rembishj",
+      "name": "Jake Rembish",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/40006991?v=4",
+      "profile": "https://github.com/rembishj",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 4
