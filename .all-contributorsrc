@@ -6,7 +6,7 @@
   "files": [
     "README.md"
   ],
-  "imageSize": 200,
+  "imageSize": 180,
   "commit": true,
   "commitConvention": "angular",
   "contributors": [
@@ -16,19 +16,10 @@
       "avatar_url": "https://avatars1.githubusercontent.com/u/6559099?v=4",
       "profile": "http://simonbiggs.net/",
       "contributions": [
-        "code",
         "maintenance",
-        "doc",
+        "code",
         "review",
-        "test",
-        "tool",
-        "bug",
-        "talk",
-        "data",
-        "design",
-        "example",
-        "infra",
-        "question"
+        "ideas"
       ]
     },
     {
@@ -40,10 +31,7 @@
         "code",
         "review",
         "doc",
-        "bug",
-        "test",
-        "data",
-        "design"
+        "data"
       ]
     },
     {
@@ -67,8 +55,7 @@
         "code",
         "review",
         "bug",
-        "ideas",
-        "data"
+        "ideas"
       ]
     },
     {
