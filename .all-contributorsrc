@@ -82,6 +82,17 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "sjswerdloff",
+      "name": "sjswerdloff",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/16871837?v=4",
+      "profile": "https://github.com/sjswerdloff",
+      "contributions": [
+        "code",
+        "review",
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 4
