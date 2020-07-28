@@ -61,7 +61,7 @@ Thanks goes to these wonderful people:
 <!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="http://simonbiggs.net/"><img src="https://avatars1.githubusercontent.com/u/6559099?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Simon Biggs</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=SimonBiggs" title="Code">💻</a> <a href="#maintenance-SimonBiggs" title="Maintenance">🚧</a></td>
+    <td align="center"><a href="http://simonbiggs.net/"><img src="https://avatars1.githubusercontent.com/u/6559099?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Simon Biggs</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=SimonBiggs" title="Code">💻</a> <a href="#maintenance-SimonBiggs" title="Maintenance">🚧</a> <a href="https://github.com/pymedphys/pymedphys/commits?author=SimonBiggs" title="Documentation">📖</a> <a href="https://github.com/pymedphys/pymedphys/pulls?q=is%3Apr+reviewed-by%3ASimonBiggs" title="Reviewed Pull Requests">👀</a> <a href="https://github.com/pymedphys/pymedphys/commits?author=SimonBiggs" title="Tests">⚠️</a> <a href="#tool-SimonBiggs" title="Tools">🔧</a></td>
   </tr>
 </table>
 

@@ -17,7 +17,11 @@
       "profile": "http://simonbiggs.net/",
       "contributions": [
         "code",
-        "maintenance"
+        "maintenance",
+        "doc",
+        "review",
+        "test",
+        "tool"
       ]
     }
   ],
