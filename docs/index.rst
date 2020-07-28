@@ -1,10 +1,3 @@
-Overview
-========
-
-.. contents::
-    :local:
-    :backlinks: entry
-
 .. include:: ../README.rst
 
 .. _`Tutorials`: /tutes
