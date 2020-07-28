@@ -84,6 +84,9 @@ Thanks goes to these wonderful people:
     <td align="center"><a href="https://github.com/lipteck"><img src="https://avatars1.githubusercontent.com/u/53696995?v=4?s=200" width="200px;" alt=""/><br /><sub><b>lipteck</b></sub></a><br /><a href="#userTesting-lipteck" title="User Testing">📓</a></td>
     <td align="center"><a href="http://www.halclark.ca/"><img src="https://avatars3.githubusercontent.com/u/934858?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Hal Clark</b></sub></a><br /><a href="#ideas-hdclark" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/darcymason"><img src="https://avatars3.githubusercontent.com/u/61110?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Darcy Mason</b></sub></a><br /><a href="#ideas-darcymason" title="Ideas, Planning, & Feedback">🤔</a></td>
+  </tr>
 </table>
 
 <!-- markdownlint-enable -->
