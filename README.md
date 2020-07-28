@@ -75,6 +75,7 @@ Thanks goes to these wonderful people:
   <tr>
     <td align="center"><a href="https://github.com/msobolewski"><img src="https://avatars1.githubusercontent.com/u/8422812?v=4?s=200" width="200px;" alt=""/><br /><sub><b>msobolewski</b></sub></a><br /><a href="#ideas-msobolewski" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://kingrpaul.github.io/"><img src="https://avatars1.githubusercontent.com/u/4761748?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Paul King</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=kingrpaul" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/JacobMcAloney"><img src="https://avatars3.githubusercontent.com/u/47580406?v=4?s=200" width="200px;" alt=""/><br /><sub><b>JacobMcAloney</b></sub></a><br /><a href="#ideas-JacobMcAloney" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
 </table>
 
