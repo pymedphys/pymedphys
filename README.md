@@ -59,6 +59,12 @@ Thanks goes to these wonderful people:
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
+<table>
+  <tr>
+    <td align="center"><a href="http://simonbiggs.net/"><img src="https://avatars1.githubusercontent.com/u/6559099?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Simon Biggs</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=SimonBiggs" title="Code">💻</a> <a href="#maintenance-SimonBiggs" title="Maintenance">🚧</a></td>
+  </tr>
+</table>
+
 <!-- markdownlint-enable -->
 <!-- prettier-ignore-end -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
