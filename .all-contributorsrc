@@ -1,3 +1,27 @@
 {
-  "files": ["README.rst"]
+  "files": [
+    "README.rst"
+  ],
+  "projectName": "pymedphys",
+  "projectOwner": "pymedphys",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true,
+  "contributors": [
+    {
+      "login": "SimonBiggs",
+      "name": "Simon Biggs",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/6559099?v=4",
+      "profile": "http://simonbiggs.net",
+      "contributions": [
+        "code",
+        "maintenance",
+        "doc",
+        "review",
+        "test",
+        "tool"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7
 }
