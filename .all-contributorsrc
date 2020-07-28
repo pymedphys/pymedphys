@@ -122,6 +122,15 @@
       "contributions": [
         "ideas"
       ]
+    },
+    {
+      "login": "db72-git",
+      "name": "David Buckle",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/66728405?v=4",
+      "profile": "https://github.com/db72-git",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 4
