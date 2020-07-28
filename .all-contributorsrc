@@ -6,7 +6,7 @@
   "files": [
     "README.md"
   ],
-  "imageSize": 100,
+  "imageSize": 200,
   "commit": true,
   "commitConvention": "angular",
   "contributors": [
