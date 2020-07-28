@@ -68,6 +68,7 @@ Thanks goes to these wonderful people:
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/peterg1t"><img src="https://avatars2.githubusercontent.com/u/8771255?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Pedro Martinez</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=peterg1t" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/ayalalazaro"><img src="https://avatars0.githubusercontent.com/u/8739720?v=4?s=200" width="200px;" alt=""/><br /><sub><b>ayalalazaro</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=ayalalazaro" title="Code">💻</a></td>
   </tr>
 </table>
 
