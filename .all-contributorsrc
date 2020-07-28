@@ -44,6 +44,17 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "pchlap",
+      "name": "Phillip Chlap",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/11072129?v=4",
+      "profile": "https://github.com/pchlap",
+      "contributions": [
+        "code",
+        "review",
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 4
