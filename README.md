@@ -82,6 +82,7 @@ Thanks goes to these wonderful people:
     <td align="center"><a href="https://github.com/mwillam"><img src="https://avatars3.githubusercontent.com/u/32633593?v=4?s=200" width="200px;" alt=""/><br /><sub><b>mwillam</b></sub></a><br /><a href="https://github.com/pymedphys/pymedphys/commits?author=mwillam" title="Documentation">📖</a></td>
     <td align="center"><a href="https://github.com/fishdda"><img src="https://avatars0.githubusercontent.com/u/23411165?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Henry Ng</b></sub></a><br /><a href="#userTesting-fishdda" title="User Testing">📓</a></td>
     <td align="center"><a href="https://github.com/lipteck"><img src="https://avatars1.githubusercontent.com/u/53696995?v=4?s=200" width="200px;" alt=""/><br /><sub><b>lipteck</b></sub></a><br /><a href="#userTesting-lipteck" title="User Testing">📓</a></td>
+    <td align="center"><a href="http://www.halclark.ca/"><img src="https://avatars3.githubusercontent.com/u/934858?v=4?s=200" width="200px;" alt=""/><br /><sub><b>Hal Clark</b></sub></a><br /><a href="#ideas-hdclark" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
 </table>
 

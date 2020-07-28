@@ -172,6 +172,15 @@
       "contributions": [
         "userTesting"
       ]
+    },
+    {
+      "login": "hdclark",
+      "name": "Hal Clark",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/934858?v=4",
+      "profile": "http://www.halclark.ca/",
+      "contributions": [
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 4
