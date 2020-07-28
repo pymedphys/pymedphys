@@ -37,6 +37,17 @@
       ]
     },
     {
+      "login": "pchlap",
+      "name": "Phillip Chlap",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/11072129?v=4",
+      "profile": "https://github.com/pchlap",
+      "contributions": [
+        "code",
+        "review",
+        "doc"
+      ]
+    },
+    {
       "login": "rembishj",
       "name": "Jake Rembish",
       "avatar_url": "https://avatars3.githubusercontent.com/u/40006991?v=4",
@@ -46,14 +57,12 @@
       ]
     },
     {
-      "login": "pchlap",
-      "name": "Phillip Chlap",
-      "avatar_url": "https://avatars1.githubusercontent.com/u/11072129?v=4",
-      "profile": "https://github.com/pchlap",
+      "login": "peterg1t",
+      "name": "Pedro Martinez",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/8771255?v=4",
+      "profile": "https://github.com/peterg1t",
       "contributions": [
-        "code",
-        "review",
-        "doc"
+        "code"
       ]
     }
   ],
