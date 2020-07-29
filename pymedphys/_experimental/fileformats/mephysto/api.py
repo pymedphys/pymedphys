@@ -48,8 +48,8 @@ def load_mephysto(filepath, output_to_file=False, output_directory=None, sort=Tr
     scan_depth = pull_mephysto_number("SCAN_DEPTH", file_contents)
 
     # Convert python lists into numpy arrays for easier use
-    distance = np.array(distance)
-    relative_dose = np.array(relative_dose)
+    distance = np.array(distance, dtype=object)
+    relative_dose = np.array(relative_dose, dtype=object)
     scan_curvetype = np.array(scan_curvetype)
     scan_depth = np.array(scan_depth)
 
