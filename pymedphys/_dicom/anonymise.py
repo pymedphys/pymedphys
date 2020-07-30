@@ -642,9 +642,26 @@ def _filter_identifying_keywords(keywords_to_leave_unchanged):
     return keywords_filtered
 
 
-def get_anonymous_replacement_value(keyword):
-    """Get an appropriate dummy anonymisation value for a DICOM element
+def get_anonymous_replacement_value(
+    keyword, current_value=None, replacement_strategy=None
+):
+    """Get an appropriate anonymisation value for a DICOM element
     based on its value representation (VR)
+    Parameters
+    ----------
+    keyword: text string that is the pydicom name for the DICOM attribute/element
+
+    current_value: optional, the value that is currently assigned to the element
+
+    replacement_strategy: optional, a dispatch dictionary whose keys are the text representation
+    of the VR of the element, and whose values are function references that take the current value
+    of the element.
+
+    Returns
+    -------
+    A value that is a suitable replacement for the element whose attributes are identified by the keyword
+
     """
     vr = get_baseline_keyword_vr_dict()[keyword]
-    return get_vr_anonymous_replacement_value_dict()[vr]
+    replacement_value = get_vr_anonymous_replacement_value_dict()[vr]
+    return replacement_value
