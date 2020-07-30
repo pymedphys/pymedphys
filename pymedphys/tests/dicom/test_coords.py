@@ -63,7 +63,7 @@ def run_xyz_function_tests(coord_system):
     for orient, dicom in test_ds_dict.items():
         test_xyz = coords.xyz_axes_from_dataset(dicom, coord_system)
 
-        expected_xyz[orient] = np.array(expected_xyz[orient])
+        expected_xyz[orient] = np.array(expected_xyz[orient], dtype=object)
 
         # These tests were being skipped in the previous code
         assert np.array_equal(test_xyz[0], expected_xyz[orient][0])
