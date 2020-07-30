@@ -69,6 +69,10 @@ def get_vr_anonymous_replacement_value_dict():
     return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT
 
 
+def get_vr_anonymous_hardcode_replacement_value(value_representation):
+    return get_vr_anonymous_replacement_value_dict()[value_representation]
+
+
 def label_dicom_filepath_as_anonymised(filepath):
     basename_anon = "{}_Anonymised.dcm".format(
         ".".join(basename(filepath).split(".")[:-1])
