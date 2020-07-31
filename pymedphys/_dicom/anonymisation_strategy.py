@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Stuart Swerdloff
+# Copyright (C) 2020 Stuart Swerdloff, Simon Biggs
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ def get_vr_anonymous_replacement_value_dict():
     return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT
 
 
-def _get_vr_anonymous_hardcode_replacement_value(value_representation, current_value):
+def _get_vr_anonymous_hardcode_replacement_value(current_value, value_representation):
     """A single dispatch function that is used for any VR with the current_value of the element ignored
     This is the default for the replacement strategy
     """
@@ -56,97 +56,30 @@ def _get_vr_anonymous_hardcode_replacement_value(value_representation, current_v
     return get_vr_anonymous_replacement_value_dict()[value_representation]
 
 
-def _get_AE_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("AE", current_value)
+DISPATCH_KEYS_TO_OVERRIDE = [
+    "AE",
+    "AS",
+    "CS",
+    "DA",
+    "DS",
+    "DT",
+    "LO",
+    "LT",
+    "OB",
+    "OB or OW",
+    "OW",
+    "PN",
+    "SH",
+    "SQ",
+    "ST",
+    "TM",
+    "UI",
+    "US",
+]
 
-
-def _get_AS_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("AS", current_value)
-
-
-def _get_CS_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("CS", current_value)
-
-
-def _get_DA_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("DA", current_value)
-
-
-def _get_DS_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("DS", current_value)
-
-
-def _get_DT_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("DT", current_value)
-
-
-def _get_LO_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("LO", current_value)
-
-
-def _get_LT_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("LT", current_value)
-
-
-def _get_OB_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("OB", current_value)
-
-
-def _get_OB_or_OW_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("OB or OW", current_value)
-
-
-def _get_OW_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("OW", current_value)
-
-
-def _get_PN_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("PN", current_value)
-
-
-def _get_SH_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("SH", current_value)
-
-
-def _get_SQ_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("SQ", current_value)
-
-
-def _get_ST_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("ST", current_value)
-
-
-def _get_TM_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("TM", current_value)
-
-
-def _get_UI_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("UI", current_value)
-
-
-def _get_US_anonymous_hardcode_replacement_value(current_value):
-    return _get_vr_anonymous_hardcode_replacement_value("US", current_value)
-
-
-ANONYMISATION_HARDCODE_DISPATCH = dict(
-    {
-        "AE": _get_AE_anonymous_hardcode_replacement_value,
-        "AS": _get_AS_anonymous_hardcode_replacement_value,
-        "CS": _get_CS_anonymous_hardcode_replacement_value,
-        "DA": _get_DA_anonymous_hardcode_replacement_value,
-        "DS": _get_DS_anonymous_hardcode_replacement_value,
-        "DT": _get_DT_anonymous_hardcode_replacement_value,
-        "LO": _get_LO_anonymous_hardcode_replacement_value,
-        "LT": _get_LT_anonymous_hardcode_replacement_value,
-        "OB": _get_OB_anonymous_hardcode_replacement_value,
-        "OB or OW": _get_OB_or_OW_anonymous_hardcode_replacement_value,
-        "OW": _get_OW_anonymous_hardcode_replacement_value,
-        "PN": _get_PN_anonymous_hardcode_replacement_value,
-        "SH": _get_SH_anonymous_hardcode_replacement_value,
-        "SQ": _get_SQ_anonymous_hardcode_replacement_value,
-        "ST": _get_ST_anonymous_hardcode_replacement_value,
-        "TM": _get_TM_anonymous_hardcode_replacement_value,
-        "UI": _get_UI_anonymous_hardcode_replacement_value,
-        "US": _get_US_anonymous_hardcode_replacement_value,
-    }
-)
+ANONYMISATION_HARDCODE_DISPATCH = {
+    key: functools.partial(
+        _get_vr_anonymous_hardcode_replacement_value, value_representation=key
+    )
+    for key in DISPATCH_KEYS_TO_OVERRIDE
+}
