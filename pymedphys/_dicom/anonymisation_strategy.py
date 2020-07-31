@@ -1,5 +1,5 @@
-# Copyright (C) 2020 Stuart Swerdloff, Matthew Jennings, Simon Biggs
-
+# Copyright (C) 2020 Stuart Swerdloff
+# Copyright (C) 2018 Matthew Jennings, Simon Biggs
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
