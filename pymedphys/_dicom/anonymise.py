@@ -658,8 +658,8 @@ def get_anonymous_replacement_value(
         )
         #   elif ...
 
-    if replacement_strategy is not None:
-        replacement_value = replacement_strategy[vr](current_value)
-    else:
-        replacement_value = anon.ANONYMISATION_HARDCODE_DISPATCH[vr](current_value)
+    if replacement_strategy is None:
+        replacement_strategy = anon.ANONYMISATION_HARDCODE_DISPATCH
+    replacement_value = replacement_strategy[vr](current_value)
+
     return replacement_value
