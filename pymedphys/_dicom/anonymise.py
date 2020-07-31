@@ -62,6 +62,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     delete_private_tags=True,
     delete_unknown_tags=None,
     copy_dataset=True,
+    replacement_strategy=None,
 ):
     r"""A simple tool to anonymise a DICOM dataset.
 
@@ -163,7 +164,12 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
 
     keywords_to_anonymise = _filter_identifying_keywords(keywords_to_leave_unchanged)
 
-    ds_anon = _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values)
+    ds_anon = _anonymise_tags(
+        ds_anon,
+        keywords_to_anonymise,
+        replace_values,
+        replacement_strategy=replacement_strategy,
+    )
 
     if copy_dataset:
         return ds_anon
@@ -178,6 +184,7 @@ def anonymise_file(
     keywords_to_leave_unchanged=(),
     delete_private_tags=True,
     delete_unknown_tags=None,
+    replacement_strategy=None,
 ):
     r"""A simple tool to anonymise a DICOM file.
 
@@ -242,6 +249,7 @@ def anonymise_file(
         delete_private_tags=delete_private_tags,
         delete_unknown_tags=delete_unknown_tags,
         copy_dataset=False,
+        replacement_strategy=replacement_strategy,
     )
 
     if output_filepath is None:
@@ -277,6 +285,7 @@ def anonymise_directory(
     keywords_to_leave_unchanged=(),
     delete_private_tags=True,
     delete_unknown_tags=None,
+    replacement_strategy=None,
 ):
     r"""A simple tool to anonymise all DICOM files in a directory and
     its subdirectories.
@@ -354,6 +363,7 @@ def anonymise_directory(
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=delete_private_tags,
             delete_unknown_tags=delete_unknown_tags,
+            replacement_strategy=replacement_strategy,
         )
 
     # Separate loop provides the ability to raise Exceptions from the
@@ -378,6 +388,10 @@ def anonymise_cli(args):
     else:
         keywords_to_leave_unchanged = args.keywords_to_leave_unchanged
 
+    replacement_strategy = (
+        None  # at some point use args.pseudo to drive this, or something similar
+    )
+
     if isfile(args.input_path):
         anonymise_file(
             dicom_filepath=args.input_path,
@@ -388,6 +402,7 @@ def anonymise_cli(args):
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=not args.keep_private_tags,
             delete_unknown_tags=handle_unknown_tags,
+            replacement_strategy=replacement_strategy,
         )
 
     elif isdir(args.input_path):
@@ -400,6 +415,7 @@ def anonymise_cli(args):
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=not args.keep_private_tags,
             delete_unknown_tags=handle_unknown_tags,
+            replacement_strategy=replacement_strategy,
         )
 
     else:
@@ -576,14 +592,24 @@ def unknown_tags_in_dicom_dataset(ds):
     return unknown_tags
 
 
-def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
+def _anonymise_tags(
+    ds_anon, keywords_to_anonymise, replace_values, replacement_strategy=None
+):
     """Anonymise all desired DICOM elements.
     """
+    if not replace_values and replacement_strategy is not None:
+        logging.warning(
+            "Conflicting approach to anonymisation specified, a replacement strategy was specified in addition to a directive"
+            "to eliminate values rather than replace them.  Adhering to directive to eliminate values"
+        )
+
     for keyword in keywords_to_anonymise:
         if hasattr(ds_anon, keyword):
             if replace_values:
                 replacement_value = get_anonymous_replacement_value(
-                    keyword, current_value=ds_anon[keyword]
+                    keyword,
+                    current_value=ds_anon[keyword],
+                    replacement_strategy=replacement_strategy,
                 )
             else:
                 if get_baseline_keyword_vr_dict()[keyword] in ("OB", "OW"):
@@ -597,7 +623,12 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
     ]
     for seq in remaining_seq_only_list:
         for seq_item in seq.value:
-            _anonymise_tags(seq_item, keywords_to_anonymise, replace_values)
+            _anonymise_tags(
+                seq_item,
+                keywords_to_anonymise,
+                replace_values,
+                replacement_strategy=replacement_strategy,
+            )
 
     return ds_anon
 
