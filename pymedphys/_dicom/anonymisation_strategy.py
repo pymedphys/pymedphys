@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import functools
-import logging
 
 import pydicom
 

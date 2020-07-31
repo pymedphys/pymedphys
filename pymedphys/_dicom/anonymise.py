@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import functools
 import json
 import logging
 import os.path
@@ -29,7 +28,6 @@ from pymedphys._imports import pydicom
 from pymedphys._dicom import anonymisation_strategy as anon
 from pymedphys._dicom.constants import (
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
-    PYMEDPHYS_ROOT_UID,
     NotInBaselineError,
     get_baseline_dict_entry,
     get_baseline_keyword_vr_dict,
