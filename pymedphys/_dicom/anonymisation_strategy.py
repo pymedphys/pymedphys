@@ -56,30 +56,9 @@ def _get_vr_anonymous_hardcode_replacement_value(current_value, value_representa
     return get_vr_anonymous_replacement_value_dict()[value_representation]
 
 
-DISPATCH_KEYS_TO_OVERRIDE = [
-    "AE",
-    "AS",
-    "CS",
-    "DA",
-    "DS",
-    "DT",
-    "LO",
-    "LT",
-    "OB",
-    "OB or OW",
-    "OW",
-    "PN",
-    "SH",
-    "SQ",
-    "ST",
-    "TM",
-    "UI",
-    "US",
-]
-
 ANONYMISATION_HARDCODE_DISPATCH = {
     key: functools.partial(
         _get_vr_anonymous_hardcode_replacement_value, value_representation=key
     )
-    for key in DISPATCH_KEYS_TO_OVERRIDE
+    for key in get_vr_anonymous_replacement_value_dict().keys()
 }
