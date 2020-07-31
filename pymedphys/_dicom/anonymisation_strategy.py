@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import logging
 
 from pymedphys._imports import pydicom
 
@@ -45,12 +46,13 @@ def get_vr_anonymous_replacement_value_dict():
     return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT
 
 
-def _get_vr_anonymous_hardcode_replacement_value(
-    value_representation, current_value=None
-):
+def _get_vr_anonymous_hardcode_replacement_value(value_representation, current_value):
     """A single dispatch function that is used for any VR with the current_value of the element ignored
     This is the default for the replacement strategy
     """
+    if current_value is None:
+        logging.debug("Replacing empty value with hardcoded anonymisation value")
+
     return get_vr_anonymous_replacement_value_dict()[value_representation]
 
 

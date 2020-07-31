@@ -618,9 +618,7 @@ def _filter_identifying_keywords(keywords_to_leave_unchanged):
 
 
 def get_anonymous_replacement_value(
-    keyword,
-    current_value=None,
-    replacement_strategy=anon.ANONYMISATION_HARDCODE_DISPATCH,
+    keyword, current_value=None, replacement_strategy=None
 ):
     """Get an appropriate anonymisation value for a DICOM element
     based on its value representation (VR)
@@ -662,5 +660,5 @@ def get_anonymous_replacement_value(
     if replacement_strategy is not None:
         replacement_value = replacement_strategy[vr](current_value)
     else:
-        replacement_value = anon.get_vr_anonymous_replacement_value_dict()[vr]
+        replacement_value = anon.ANONYMISATION_HARDCODE_DISPATCH[vr](current_value)
     return replacement_value
