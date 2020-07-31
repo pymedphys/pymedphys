@@ -56,9 +56,12 @@ def _get_vr_anonymous_hardcode_replacement_value(current_value, value_representa
     return get_vr_anonymous_replacement_value_dict()[value_representation]
 
 
-ANONYMISATION_HARDCODE_DISPATCH = {
-    key: functools.partial(
-        _get_vr_anonymous_hardcode_replacement_value, value_representation=key
-    )
-    for key in get_vr_anonymous_replacement_value_dict().keys()
-}
+@functools.lru_cache(maxsize=1)
+def get_default_hardcode_dispatch():
+    ANONYMISATION_HARDCODE_DISPATCH = {
+        key: functools.partial(
+            _get_vr_anonymous_hardcode_replacement_value, value_representation=key
+        )
+        for key in get_vr_anonymous_replacement_value_dict().keys()
+    }
+    return ANONYMISATION_HARDCODE_DISPATCH
