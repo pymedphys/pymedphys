@@ -14,7 +14,7 @@
 
 import functools
 
-import pydicom
+from pymedphys._imports import pydicom
 
 from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
 
