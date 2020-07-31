@@ -26,6 +26,7 @@ from os.path import join as pjoin
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+from pymedphys._dicom import anonymisation_strategy as anon
 from pymedphys._dicom.constants import (
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
     PYMEDPHYS_ROOT_UID,
@@ -41,36 +42,6 @@ IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 
 with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
     IDENTIFYING_KEYWORDS = json.load(infile)
-
-
-@functools.lru_cache(maxsize=1)
-def get_vr_anonymous_replacement_value_dict():
-    VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
-        "AE": "Anonymous",
-        "AS": "100Y",
-        "CS": "ANON",
-        "DA": "20190303",
-        "DS": "12345678.9",
-        "DT": "20190303000900.000000",
-        "LO": "Anonymous",
-        "LT": "Anonymous",
-        "OB": (0).to_bytes(2, "little"),
-        "OB or OW": (0).to_bytes(2, "little"),
-        "OW": (0).to_bytes(2, "little"),
-        "PN": "Anonymous",
-        "SH": "Anonymous",
-        "SQ": [pydicom.Dataset()],
-        "ST": "Anonymous",
-        "TM": "000900.000000",
-        "UI": PYMEDPHYS_ROOT_UID,
-        "US": 12345,
-    }
-
-    return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT
-
-
-def get_vr_anonymous_hardcode_replacement_value(value_representation):
-    return get_vr_anonymous_replacement_value_dict()[value_representation]
 
 
 def label_dicom_filepath_as_anonymised(filepath):
@@ -612,7 +583,9 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
     for keyword in keywords_to_anonymise:
         if hasattr(ds_anon, keyword):
             if replace_values:
-                replacement_value = get_anonymous_replacement_value(keyword)
+                replacement_value = get_anonymous_replacement_value(
+                    keyword, current_value=ds_anon[keyword]
+                )
             else:
                 if get_baseline_keyword_vr_dict()[keyword] in ("OB", "OW"):
                     replacement_value = (0).to_bytes(2, "little")
@@ -647,7 +620,9 @@ def _filter_identifying_keywords(keywords_to_leave_unchanged):
 
 
 def get_anonymous_replacement_value(
-    keyword, current_value=None, replacement_strategy=None
+    keyword,
+    current_value=None,
+    replacement_strategy=anon.ANONYMISATION_HARDCODE_DISPATCH,
 ):
     """Get an appropriate anonymisation value for a DICOM element
     based on its value representation (VR)
@@ -665,7 +640,29 @@ def get_anonymous_replacement_value(
     -------
     A value that is a suitable replacement for the element whose attributes are identified by the keyword
 
+    TODO
+    ----
+    Address VR of CS to ensure DICOM conformance and if possible, interoperability
+    CS typically implies a defined set of values, or in some cases, a strict enumeration of values
+    and replacement with a value that is not in a defined set will often break interoperability.
+    Replacement with a value that is not in an enumerated set breaks DICOM conformance.
+
     """
     vr = get_baseline_keyword_vr_dict()[keyword]
-    replacement_value = get_vr_anonymous_replacement_value_dict()[vr]
+    if vr == "CS":
+        #       An example, although this exact code breaks unit tests because
+        #       the unit tests are expecting the CS hardcoded replacement string "ANON"
+        #       if keyword == "PatientSex":
+        #           replacement_value = "O"  # or one can replace with an empty string because PatientSex is typically type 2
+        #       else:
+        logging.warning(
+            "Keyword %s has Value Representation CS and may require special processing to avoid breaking DICOM conformance or interoperability",
+            keyword,
+        )
+        #   elif ...
+
+    if replacement_strategy is not None:
+        replacement_value = replacement_strategy[vr](current_value)
+    else:
+        replacement_value = anon.get_vr_anonymous_replacement_value_dict()[vr]
     return replacement_value
