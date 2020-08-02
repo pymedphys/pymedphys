@@ -21,7 +21,8 @@ disable =
     ungrouped-imports,
     import-outside-toplevel,
     no-else-return,
-    unbalanced-tuple-unpacking
+    unbalanced-tuple-unpacking,
+    consider-iterating-dictionary
 
 
 [FORMAT]
