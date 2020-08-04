@@ -60,13 +60,9 @@ def _get_vr_anonymous_hardcode_replacement_value(current_value, value_representa
 _keys = list(VR_TO_REPLACEMENT_MAP.keys())
 _keys.append("SQ")
 
-
-@functools.lru_cache(maxsize=1)
-def get_default_hardcode_dispatch():
-    ANONYMISATION_HARDCODE_DISPATCH = {
-        key: functools.partial(
-            _get_vr_anonymous_hardcode_replacement_value, value_representation=key
-        )
-        for key in _keys
-    }
-    return ANONYMISATION_HARDCODE_DISPATCH
+ANONYMISATION_HARDCODE_DISPATCH = {
+    key: functools.partial(
+        _get_vr_anonymous_hardcode_replacement_value, value_representation=key
+    )
+    for key in _keys
+}
