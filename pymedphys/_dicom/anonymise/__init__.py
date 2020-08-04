@@ -691,7 +691,7 @@ def get_anonymous_replacement_value(
         #   elif ...
 
     if replacement_strategy is None:
-        replacement_strategy = strategy.get_default_hardcode_dispatch()
+        replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH
     replacement_value = replacement_strategy[vr](current_value)
 
     return replacement_value
