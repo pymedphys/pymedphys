@@ -26,7 +26,6 @@ from os.path import join as pjoin
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from pymedphys._dicom import anonymisation_strategy as anon
 from pymedphys._dicom.constants import (
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
     NotInBaselineError,
@@ -34,6 +33,8 @@ from pymedphys._dicom.constants import (
     get_baseline_keyword_vr_dict,
 )
 from pymedphys._dicom.utilities import remove_file
+
+from . import strategy
 
 HERE = dirname(abspath(__file__))
 
@@ -690,7 +691,7 @@ def get_anonymous_replacement_value(
         #   elif ...
 
     if replacement_strategy is None:
-        replacement_strategy = anon.get_default_hardcode_dispatch()
+        replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH
     replacement_value = replacement_strategy[vr](current_value)
 
     return replacement_value
