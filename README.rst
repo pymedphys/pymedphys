@@ -27,14 +27,25 @@ and open source distribution. Open code is better science.**
 What is PyMedPhys?
 ------------------
 
-A place to share, review, improve, and transparently learn off of each
-other’s code. It is an open-source library of tools that we all have access
-to. It is inspired by the collaborative work of our physics peers in astronomy
-and their `Astropy Project`_. PyMedPhys is available on `PyPI`_ and `GitHub`_.
+An open-source Medical Physics python library with a focus on being
+a place to share, review, improve, and transparently learn off of each
+other's code. It is inspired by the collaborative work of our physics peers
+in astronomy and their `Astropy Project`_. PyMedPhys is available on `PyPI`_
+and `GitHub`_.
 
 .. _`Astropy Project`: http://www.astropy.org/
 .. _`PyPI`: https://pypi.org/project/pymedphys/
 .. _`GitHub`: https://github.com/pymedphys/pymedphys
+
+
+Mailing list
+------------
+
+If you would like to dive into the community a great place to get started is
+to sign up to `the mailing list`_ and say hi by introducing yourself with
+where you're from, and what you hope to achieve with PyMedPhys.
+
+.. _`the mailing list`: https://groups.google.com/g/pymedphys
 
 
 Table of contents
