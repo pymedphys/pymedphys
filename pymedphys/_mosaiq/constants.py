@@ -35,3 +35,16 @@ FIELD_TYPES = {
     20: "User Defined",
     21: "PDR",
 }
+
+ORIENTATION = {
+    0: "Unknown",
+    1: "HFS",
+    2: "HFP",
+    3: "HFRL",
+    4: "HFRR",
+    5: "FFS",
+    6: "FFP",
+    7: "FFRL",
+    8: "FFRR",
+    9: "Sitting",
+}
