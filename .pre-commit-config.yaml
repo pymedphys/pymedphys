@@ -16,10 +16,11 @@ repos:
     -   id: check-added-large-files
         args: ['--maxkb', '300']
 -   repo: https://github.com/timothycrosley/isort
-    rev: 4.3.21
+    rev: 5.1.4
     hooks:
     -   id: isort
-        additional_dependencies: ['isort[pyproject]']
+        additional_dependencies: ['toml']
+        files: ^pymedphys.*\.py$
 -   repo: https://github.com/ambv/black
     rev: 19.3b0
     hooks:

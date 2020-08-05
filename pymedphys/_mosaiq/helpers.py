@@ -22,7 +22,7 @@ from pymedphys._imports import pandas as pd
 import pymedphys._utilities.patient
 
 from .connect import execute_sql
-from .constants import FIELD_TYPES
+from .constants import FIELD_TYPES, ORIENTATION
 
 
 def get_treatment_times(cursor, field_id):
@@ -372,6 +372,7 @@ def get_all_treatment_data(cursor, mrn):
             Site.Dose_Tx,
             Site.Dose_Ttl,
             Site.Fractions,
+            Site.Frac_Pattern,
             Site.Notes,
             TxField.Version,
             TxField.Meterset,
@@ -392,6 +393,7 @@ def get_all_treatment_data(cursor, mrn):
             SiteSetup.Isocenter_Position_X,
             SiteSetup.Isocenter_Position_Y,
             SiteSetup.Isocenter_Position_Z,
+            SiteSetup.Patient_Orient,
             TxFieldPoint.Field_X,
             TxFieldPoint.Coll_X1,
             TxFieldPoint.Coll_X2,
@@ -403,7 +405,13 @@ def get_all_treatment_data(cursor, mrn):
             TxFieldPoint.Couch_Lng,
             TxFieldPoint.Couch_Ang,
             TxField.Tol_Tbl_ID,
-            TxField.BackupTimer
+            TxField.BackupTimer,
+            SiteSetup.Status_Enum,
+            Site.Status_Enum,
+            TxField.IsHidden,
+            Site.Version,
+            Site.Create_ID,
+            TxField.Sanct_ID
 
         FROM Ident, TxField, Site, Patient, SiteSetup, TxFieldPoint, Staff
         WHERE
@@ -414,6 +422,8 @@ def get_all_treatment_data(cursor, mrn):
             Patient.Pat_ID1 = Ident.Pat_ID1 AND
             SiteSetup.SIT_Set_ID = TxField.SIT_Set_ID AND
             TxField.SIT_Set_ID = Site.SIT_Set_ID AND
+            Site.Version = 0 AND
+            SiteSetup.Version = 0 AND
             Ident.IDA = %(patient_id)s
         """,
         {"patient_id": mrn},
@@ -435,10 +445,11 @@ def get_all_treatment_data(cursor, mrn):
             "target_units",
             "technique",
             "modality",
-            "energy",
-            "fraction_dose",
-            "total_dose",
+            "energy [MV]",
+            "fraction_dose [cGy]",
+            "total_dose [cGy]",
             "fractions",
+            "fraction_pattern",
             "notes",
             "field_version",
             "monitor_units",
@@ -446,8 +457,8 @@ def get_all_treatment_data(cursor, mrn):
             "field_type",
             "gantry_angle",
             "collimator_angle",
-            "ssd",
-            "sad",
+            "ssd [cm]",
+            "sad [cm]",
             "site",
             "dyn_wedge",
             "wdg_appl",
@@ -456,21 +467,28 @@ def get_all_treatment_data(cursor, mrn):
             "comp_fda",
             "fda_desc",
             "bolus",
-            "iso_x",
-            "iso_y",
-            "iso_z",
-            "field_x",
-            "coll_x1",
-            "coll_x2",
-            "field_y",
-            "coll_y1",
-            "coll_y2",
-            "couch_vrt",
-            "couch_lat",
-            "couch_lng",
+            "iso_x [cm]",
+            "iso_y [cm]",
+            "iso_z [cm]",
+            "position",
+            "field_x [cm]",
+            "coll_x1 [cm]",
+            "coll_x2 [cm]",
+            "field_y [cm]",
+            "coll_y1 [cm]",
+            "coll_y2 [cm]",
+            "couch_vrt [cm]",
+            "couch_lat [cm]",
+            "couch_lng [cm]",
             "couch_ang",
             "tolerance",
             "time",
+            "site_setup_status",
+            "site_status",
+            "hidden",
+            "site version",
+            "create_id",
+            "field_approval",
         ],
     )
 
@@ -479,4 +497,179 @@ def get_all_treatment_data(cursor, mrn):
         FIELD_TYPES[item] for item in mosaiq_fields["field_type"]
     ]
 
+    mosaiq_fields["position"] = [
+        ORIENTATION[item] for item in mosaiq_fields["position"]
+    ]
+
+    # reformat some fields to create the 'rx' field
+    rx = []
+    for i in mosaiq_fields.index:
+        rx.append(
+            str(
+                mosaiq_fields["target"][i]
+                + " "
+                + str(mosaiq_fields["rx_depth"][i])
+                + str(mosaiq_fields["target_units"][i])
+            )
+            + str(mosaiq_fields["modality"][i])
+        )
+    mosaiq_fields["rx"] = rx
+
     return mosaiq_fields
+
+
+def get_staff_initials(cursor, staff_id):
+    initials = execute_sql(
+        cursor,
+        """
+        SELECT
+        Staff.Initials
+        FROM Staff
+        WHERE
+        Staff.Staff_ID = %(staff_id)s
+        """,
+        {"staff_id": staff_id},
+    )
+
+    return initials
+
+
+def get_treatment_history(cursor, mrn):
+    table = execute_sql(
+        cursor,
+        """
+        SELECT
+            Ident.IDA,
+            Patient.First_Name,
+            Patient.Last_Name,
+            Patient.Birth_DtTm,
+            Staff.Last_Name,
+            TxField.FLD_ID,
+            TxField.Field_Label,
+            TxField.Field_Name,
+            Site.Target,
+            Site.Rx_Depth,
+            Site.Target_Units,
+            Site.Technique,
+            Site.Modality,
+            TxFieldPoint.Energy,
+            Site.Dose_Tx,
+            Site.Dose_Ttl,
+            Site.Fractions,
+            Site.Frac_Pattern,
+            Site.Notes,
+            TxField.Version,
+            TxField.Meterset,
+            TxFieldPoint.Meterset_Rate,
+            TxField.Type_Enum,
+            TxFieldPoint.Gantry_Ang,
+            TxFieldPoint.Coll_Ang,
+            TxField.Ssd,
+            TxField.SAD,
+            Site.Site_Name,
+            TxField.Dyn_Wedge,
+            TxField.Wdg_Appl,
+            TxField.Block,
+            TxField.Blk_Desc,
+            TxField.Comp_Fda,
+            TxField.FDA_Desc,
+            TxField.Bolus,
+            SiteSetup.Isocenter_Position_X,
+            SiteSetup.Isocenter_Position_Y,
+            SiteSetup.Isocenter_Position_Z,
+            SiteSetup.Patient_Orient,
+            TxFieldPoint.Field_X,
+            TxFieldPoint.Coll_X1,
+            TxFieldPoint.Coll_X2,
+            TxFieldPoint.Field_Y,
+            TxFieldPoint.Coll_Y1,
+            TxFieldPoint.Coll_Y2,
+            TxFieldPoint.Couch_Vrt,
+            TxFieldPoint.Couch_Lat,
+            TxFieldPoint.Couch_Lng,
+            TxFieldPoint.Couch_Ang,
+            TxField.Tol_Tbl_ID,
+            TxField.BackupTimer,
+            SiteSetup.Status_Enum,
+            Site.Status_Enum,
+            TxField.IsHidden,
+            Site.Version,
+            Site.Create_ID
+
+        FROM Ident, TxField, Site, Patient, SiteSetup, TxFieldPoint, Staff
+        WHERE
+            TxField.Pat_ID1 = Ident.Pat_ID1 AND
+            TxField.Machine_ID_Staff_ID = Staff.Staff_ID AND
+            TxFieldPoint.FLD_ID = TxField.FLD_ID AND
+            TxFieldPoint.Point = 0 AND
+            Patient.Pat_ID1 = Ident.Pat_ID1 AND
+            SiteSetup.SIT_Set_ID = TxField.SIT_Set_ID AND
+            TxField.SIT_Set_ID = Site.SIT_Set_ID AND
+            Site.Version = 0 AND
+            SiteSetup.Version = 0 AND
+            Ident.IDA = %(patient_id)s
+        """,
+        {"patient_id": mrn},
+    )
+
+    mosaiq_fields = pd.DataFrame(
+        data=table,
+        columns=[
+            "mrn",
+            "first_name",
+            "last_name",
+            "dob",
+            "machine",
+            "field_id",
+            "field_label",
+            "field_name",
+            "target",
+            "rx_depth",
+            "target_units",
+            "technique",
+            "modality",
+            "energy [MV]",
+            "fraction_dose [cGy]",
+            "total_dose [cGy]",
+            "fractions",
+            "fraction_pattern",
+            "notes",
+            "field_version",
+            "monitor_units",
+            "meterset_rate",
+            "field_type",
+            "gantry_angle",
+            "collimator_angle",
+            "ssd [cm]",
+            "sad [cm]",
+            "site",
+            "dyn_wedge",
+            "wdg_appl",
+            "block",
+            "blk_desc",
+            "comp_fda",
+            "fda_desc",
+            "bolus",
+            "iso_x [cm]",
+            "iso_y [cm]",
+            "iso_z [cm]",
+            "position",
+            "field_x [cm]",
+            "coll_x1 [cm]",
+            "coll_x2 [cm]",
+            "field_y [cm]",
+            "coll_y1 [cm]",
+            "coll_y2 [cm]",
+            "couch_vrt [cm]",
+            "couch_lat [cm]",
+            "couch_lng [cm]",
+            "couch_ang",
+            "tolerance",
+            "time",
+            "site_setup_status",
+            "site_status",
+            "hidden",
+            "site version",
+            "create_id",
+        ],
+    )
