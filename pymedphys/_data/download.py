@@ -15,11 +15,11 @@
 
 import functools
 import json
+import logging
 import os
 import pathlib
 import urllib.error
 import urllib.request
-import warnings
 import zipfile
 
 from pymedphys._imports import tqdm
@@ -30,6 +30,7 @@ from pymedphys import _config as pmp_config
 from . import retry, zenodo
 
 HERE = pathlib.Path(__file__).resolve().parent
+DEFAULT_HASHES_PATH = HERE.joinpath("hashes.json")
 
 
 @functools.lru_cache()
@@ -43,7 +44,7 @@ def create_download_progress_bar():
     return DownloadProgressBar
 
 
-@retry.retry(urllib.error.HTTPError)
+@retry.retry((urllib.error.HTTPError, ConnectionResetError))
 def download_with_progress(url, filepath):
     DownloadProgressBar = create_download_progress_bar()
 
@@ -81,6 +82,7 @@ def get_url_map():
 
 
 def get_url(filename):
+    filename = str(filename).replace(os.sep, "/")
     url_map = get_url_map()
 
     try:
@@ -99,14 +101,30 @@ def download_all():
     return paths
 
 
-def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True, url=None):
+def data_path(
+    filename,
+    check_hash=True,
+    redownload_on_hash_mismatch=True,
+    delete_when_no_hash_found=True,
+    url=None,
+    hash_filepath=None,
+):
+    filename = str(filename).replace(os.sep, "/")
     filepath = get_data_dir().joinpath(filename)
+
+    containing_directory = pathlib.Path(filepath).parent
+    containing_directory.mkdir(exist_ok=True, parents=True)
+
+    logging.debug("Filepath saving to is %s", filepath)
+    logging.debug("Does filepath exist? %s", filepath.exists())
 
     if check_hash and filepath.exists():
         try:
-            get_cached_filehash(filename)
+            get_cached_filehash(filename, hash_filepath=hash_filepath)
         except NoHashFound:
-            filepath.unlink()  # Force a redownload
+            if delete_when_no_hash_found:
+                logging.warning("No hash found, deleting current file")
+                filepath.unlink()  # Force a redownload
 
     if not filepath.exists():
         if url is None:
@@ -116,14 +134,19 @@ def data_path(filename, check_hash=True, redownload_on_hash_mismatch=True, url=N
 
     if check_hash:
         try:
-            hash_agrees = data_file_hash_check(filename)
+            hash_agrees = data_file_hash_check(filename, hash_filepath=hash_filepath)
         except NoHashFound:
             return filepath.resolve()
 
         if not hash_agrees:
             if redownload_on_hash_mismatch:
                 filepath.unlink()
-                return data_path(filename, redownload_on_hash_mismatch=False)
+                return data_path(
+                    filename,
+                    redownload_on_hash_mismatch=False,
+                    url=url,
+                    hash_filepath=hash_filepath,
+                )
 
             raise ValueError("The file on disk does not match the recorded hash.")
 
@@ -134,19 +157,29 @@ class NoHashFound(KeyError):
     pass
 
 
-def get_cached_filehash(filename):
-    with open(HERE.joinpath("hashes.json"), "r") as hash_file:
+def get_cached_filehash(filename, hash_filepath=None):
+    if hash_filepath is None:
+        hash_filepath = DEFAULT_HASHES_PATH
+
+    filename = str(filename).replace(os.sep, "/")
+
+    with open(hash_filepath, "r") as hash_file:
         hashes = json.load(hash_file)
 
     try:
         cached_filehash = hashes[filename]
     except KeyError:
+        logging.warning("No hash found for file '%s'", filename)
+        logging.debug("Hashes found were %s", hashes.keys())
         raise NoHashFound
 
     return cached_filehash
 
 
-def data_file_hash_check(filename):
+def data_file_hash_check(filename, hash_filepath=None):
+    if hash_filepath is None:
+        hash_filepath = DEFAULT_HASHES_PATH
+
     filename = str(filename).replace(os.sep, "/")
 
     filepath = get_data_dir().joinpath(filename)
@@ -154,16 +187,20 @@ def data_file_hash_check(filename):
         filepath
     )
 
+    logging.debug("Calculated filehash is %s", calculated_filehash)
+
     try:
-        cached_filehash = get_cached_filehash(filename)
+        cached_filehash = get_cached_filehash(filename, hash_filepath=hash_filepath)
+
+        logging.debug("Cached filehash is %s", cached_filehash)
     except NoHashFound:
-        warnings.warn("Hash not found in hashes.json. File will be updated.")
-        with open(HERE.joinpath("hashes.json"), "r") as hash_file:
+        logging.warning("Hash not found in %s. File will be updated.", hash_filepath)
+        with open(hash_filepath, "r") as hash_file:
             hashes = json.load(hash_file)
 
         hashes[filename] = calculated_filehash
 
-        with open(HERE.joinpath("hashes.json"), "w") as hash_file:
+        with open(hash_filepath, "w") as hash_file:
             json.dump(hashes, hash_file, indent=2, sort_keys=True)
 
         raise
@@ -171,8 +208,19 @@ def data_file_hash_check(filename):
     return cached_filehash == calculated_filehash
 
 
-def zenodo_data_paths(record_name, check_hash=True, redownload_on_hash_mismatch=True):
+def zenodo_data_paths(
+    record_name, check_hash=True, redownload_on_hash_mismatch=True, filenames=None
+):
     file_urls = zenodo.get_zenodo_file_urls(record_name)
+
+    if filenames is not None:
+        file_urls = {
+            filename: url
+            for filename, url in file_urls.items()
+            if filename in filenames
+        }
+
+    logging.debug("File URLS are %s", file_urls)
 
     record_directory = get_data_dir().joinpath(record_name)
     record_directory.mkdir(exist_ok=True)
@@ -208,14 +256,18 @@ def zip_data_paths(
     filename,
     check_hash=True,
     redownload_on_hash_mismatch=True,
+    delete_when_no_hash_found=True,
     url=None,
     extract_directory=None,
+    hash_filepath=None,
 ):
     zip_filepath = data_path(
         filename,
         check_hash=check_hash,
         redownload_on_hash_mismatch=redownload_on_hash_mismatch,
+        delete_when_no_hash_found=delete_when_no_hash_found,
         url=url,
+        hash_filepath=hash_filepath,
     )
 
     if extract_directory is None:

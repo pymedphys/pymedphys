@@ -4,57 +4,167 @@
 
 All notable changes to this project will be documented in this file.
 
-This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-<!--  Template
-## [Unreleased]
-
-### Breaking Changes
-
-* nil
-
-### New Features
-
-* nil
-
-### Bug Fixes
-
-* nil
-
-### Code Refactoring
-
-* nil
-
-### Package Changes
-
-* nil
-
-### Performance Improvements
-
-* nil -->
+This project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Experimental API changes
+
+#### Bug Fixes
+
+* Pinnacle Export Tool now exports correct dose for patient orientations other
+  than HFS.
+
+## [0.31.0]
+
+### "Stable" API changes
+
+(Won't truly be stable until after a 1.0.0 release)
+
+#### Critical bug fixes
+
+* Fixed bug where `pymedphys dicom anonymise` and `pymedphys.dicom.anonymise`
+  would not anonymise nested tags. Thanks
+  [sjswerdloff](https://github.com/sjswerdloff) for finding and fixing
+  [#920](https://github.com/pymedphys/pymedphys/pull/920).
+
+#### Breaking changes
+
+* Removed the `--publish` option from CLI `pymedphys dev docs`.
+* Moved `pymedphys logfile orchestration` to `pymedphys trf orchestrate`
+
+#### New features
+
+* `pymedphys.zenodo_data_paths` has a new optional parameter `filenames` that
+  can be used to only download some files.
+* `pymedphys.data_path` has a new optional parameter `hash_filepath` which can
+  be used to provide a custom hash record.
+* Added usage warning to the MU Density GUI.
+
+#### Deprecations
+
+* `pymedphys.read_trf` has been replaced with `pymedphys.trf.read`. The old
+  API is still available, but will be removed in a future version.
+
+#### Bug fixes
+
+* Cache data downloads now also retry when a `ConnectionResetError` occurs.
+
+### Beta API changes
+
+#### New features
+
+* A new `pymedphys.beta` module created. This is intended to allow a section
+  of the API to be exposed and iterated on but having breaking changes not
+  induce a major version bump (when PyMedPhys goes to `v1.0.0+`)
+* Added `pymedphys.beta.trf.identify` to allow the usage of Mosaiq to identify
+  a trf logfile.
+
+### Experimental API changes
+
+#### Breaking changes
+
+* Instances of `labs` has been changed to `experimental`. This affects all
+  imports from the labs and the CLI usage.
+
+#### Bug fixes
+
+* Fixed issue with Pinnacle Export Tool crashing when an image is missing from
+  the archive.
+
+## [0.30.0]
+
+### Breaking changes
+
+* Removed the proof of concept `pymedphys bundle` CLI as well all of its
+  associated code.
+* Removed a range of unused files from the `pymedphys.data_path` API.
+* The previous install options `pip install pymedphys[pytest]` and
+  `pip install pymedphys[pylint]` have been removed and replaced with
+  `pip install pymedphys[tests]`.
+
 ### New Features
 
-- Added DICOM helpers functionality and updated the Mosaiq helpers as a part of
-  the TPS/OIS comparison project. Not yet exposed as part of the API.
+* Added a new toolbox for retrieving PTW Quickcheck measurement data and write
+  it to a csv file.
+  `pymedphys labs quickcheck to-csv your.quickcheck.ip path/to/output.csv`
+  * See [labs/quickcheck/qcheck.py](https://github.com/pymedphys/pymedphys/blob/2d5148e2eabce3a6a4fd54e43e7dc8d4e050f5ed/pymedphys/labs/quickcheck/qcheck.py)
+* Added `pymedphys dev tests` to the CLI.
+  * Moved all of tests into the pymedphys repo itself. Now the automated
+    testing suite is able to be run from a pypi install.
+  * This CLI has options such as `--run-only-pydicom`, `--run-only-slow`, and
+    `--run-only-pylinac` so that upstream tools can run tests on this
+    downstream project.
+  * These extra options are directly passed through to `pytest`. To achieve
+    this, made the `pymedphys` CLI be able to optionally handle arbitrary
+    commands.
+* Made the Zenodo download tool retry up to four times should the download
+  fail.
+* Added DICOM helpers functionality and updated the Mosaiq helpers as a part of
+  the UTHSCSA TPS/OIS comparison project. Not yet exposed as part of the API.
+  See [_mosaiq/helpers.py#L353-L482](https://github.com/pymedphys/pymedphys/blob/2d5148e2eabce3a6a4fd54e43e7dc8d4e050f5ed/pymedphys/_mosaiq/helpers.py#L353-L482)
+* Added more debugging strings to the iCOM CLI. See these outputs by running
+  `pymedphys --debug icom listen external.nss.ip.address your/output/directory`
+  * These were added to support remotely debugging the iCOM listen software.
+    To see the conversation around debugging that tool see the
+    [PyMedPhys forum discussion](https://groups.google.com/forum/#!topic/pymedphys/2LczVpmc_Ak)
+* Format of MU in logging display now rounded to one decimal.
+
+### Dependency changes
+
+* Now depending on `pylibjpeg-libjpeg` in order to decode lossless-jpeg files.
+* `m2r` is no longer used to build the docs.
+* No longer using `tox` for tests.
+
+### Bug fixes
+
+* Fixed an issue where the iCOM listener could not handle Machine IDs that
+  were not entirely an integer.
+  * See [_icom/mappings.py#L6](https://github.com/pymedphys/pymedphys/blob/2d5148e2eabce3a6a4fd54e43e7dc8d4e050f5ed/pymedphys/_icom/mappings.py#L6)
+    for changes.
+  * See the [PyMedPhys forum discussion](https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/c5nUeUfQAQAJ) for details.
+* Fixed a case where on some Windows environments `pymedphys dev docs` would
+  not run.
+* Fixed a case where on some Windows environments `pymedphys gui` would not
+  run.
+* Fixed issue where the `pymedphys logfile orchestration` CLI would not be able
+  to create an `index.json`, or a range of the needed directories on its first
+  run.
+  * See the [PyMedPhys forum discussion](https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/5mFZig1cAgAJ) for more details.
+
+### Documentation updates
+
+* Fixed an issue where the displayed CSV files for configuring
+  `pymedphys logfile orchestration` would actually cause an error due to excess
+  spaces used for display purposes.
+  * See the [PyMedPhys forum discussion](https://groups.google.com/d/msg/pymedphys/2LczVpmc_Ak/m41v_LVRAgAJ) for more details.
+
+### Development changes
+
+* Removed any file that was larger than 300 kB from the git history bring down
+  clone times to a manageable state.
+  * The `pre-commit` tool now does not allow commits greater than 300 kB.
+  * All testing files that were larger than 300 kB have been moved to Zenodo.
+* All tests have been moved from `/tests` into `/pymedphys/tests`, running
+  these tests can now be undergone by calling `pymedphys dev tests`
+  * No longer using `tox`.
 
 ## [0.29.1]
 
 ### Bug fixes
 
 * Fix issue in some Windows environments where running `pymedphys gui` would
-  not find the streamlit installation. [[`_gui/__init__.py`]](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
+  not find the streamlit installation. [_gui/__init__.py](https://github.com/pymedphys/pymedphys/blob/03ba546b603edcbaf7b2b33c6367146a95142d0d/pymedphys/_gui/__init__.py#L43)
 
 ## [0.29.0]
 
 ### Breaking changes
 
 * Changed the `patient_directories` icom parameter to accept a list of paths
-  instead of a single path within the pymedphys `config.toml`. [[`config.toml#L67-L72`]](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/examples/site-specific/cancer-care-associates/config.toml#L67-L72)
+  instead of a single path within the pymedphys `config.toml`. [config.toml#L67-L72](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/examples/site-specific/cancer-care-associates/config.toml#L67-L72)
 * Changed `pymedphys gui` iCOM path resolution logic to instead search over
-  a list of paths instead of just one path as before. [[`mudensity-compare.py#L668-L670`]](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/pymedphys/_gui/streamlit/mudensity-compare.py#L668-L670)
+  a list of paths instead of just one path as before. [mudensity-compare.py#L668-L670](https://github.com/pymedphys/pymedphys/blob/7a08a94185f94b1f7df304de8bd0274f0f1fcbc9/pymedphys/_gui/streamlit/mudensity-compare.py#L668-L670)
 
 ## [0.28.0]
 
@@ -73,23 +183,23 @@ PyMedPhys GUI that utilises these iCOM records.
 * The `pymedphys icom listener` CLI command now will collect the icom stream
   into beam delivery batches and index them by patient name. This functionality
   used to be undergone within the `pymedphys icom archive` CLI, but this
-  functionality has now been merged into the listener. [[`listener.py#L79`]](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L79)
+  functionality has now been merged into the listener. [listener.py#L79](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L79)
 * Should an error occur within `pymedphys icom listener` CLI it will now pause
   for 15 minutes and then reattempt a connection.
 * Add in extra sanity checks within the iCOM patient indexing tooling.
 * Added a `--debug` and `--verbose` flag to the PyMedPhys CLI which allows
   users to set the logging level. These logging levels are currently only
-  utilised within the `pymedphys icom listen` CLI. [[`cli/main.py#L51-L70`]](https://github.com/pymedphys/pymedphys/blob/9c7c7e3c2d7fb49d30b418dca2fa28e6982ff97e/pymedphys/cli/main.py#L51-L70)
+  utilised within the `pymedphys icom listen` CLI. [cli/main.py#L51-L70](https://github.com/pymedphys/pymedphys/blob/9c7c7e3c2d7fb49d30b418dca2fa28e6982ff97e/pymedphys/cli/main.py#L51-L70)
 
 ### Bug fixes
 
-* Reduced the buffer size of the iCOM listener. [[`listener.py#L9`]](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L9)
+* Reduced the buffer size of the iCOM listener. [listener.py#L9](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L9)
 * If either the listener is turned off and then on again, or it is interrupted
   the next time an iCOM stream socket is opened the Linac appears to send a
   larger batch containing prior irradiations. The listener code was adjusted
-  to handle these extra bursts. [[`listener.py#L57-L83`]](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L57-L83)
+  to handle these extra bursts. [listener.py#L57-L83](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_icom/listener.py#L57-L83)
 * Made PyMedPhys GUI skip name formatting attempt if the original patient name
-  format was not as expected. [[`mudensity-compare.py#L733-L738`]](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_gui/streamlit/mudensity-compare.py#L733-L738)
+  format was not as expected. [mudensity-compare.py#L733-L738](https://github.com/pymedphys/pymedphys/blob/d40a5ed238b2035bac00da1cb623c7f496ed0950/pymedphys/_gui/streamlit/mudensity-compare.py#L733-L738)
 
 ## [0.27.0]
 
@@ -148,6 +258,7 @@ PyMedPhys GUI that utilises these iCOM records.
 
 ```python
 import pathlib
+
 import pymedphys
 
 CWD = pathlib.Path.cwd()
@@ -378,7 +489,6 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
   dependency be required during usage an error is raised informing the user to
   install the package. To install all pymedphys dependencies as before now run
   `pip install pymedphys[library,labs]==0.14.0`.
-
 
 ## [0.13.2]
 
@@ -639,7 +749,9 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...master
+[0.31.0]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...v0.31.0
+[0.30.0]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...v0.30.0
 [0.29.1]: https://github.com/pymedphys/pymedphys/compare/v0.29.0...v0.29.1
 [0.29.0]: https://github.com/pymedphys/pymedphys/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/pymedphys/pymedphys/compare/v0.27.0...v0.28.0

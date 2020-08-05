@@ -5,10 +5,10 @@ Pinnacle Export Tool
     :local:
     :backlinks: entry
 
-.. automodule:: pymedphys.cli.labs.pinnacle
+.. automodule:: pymedphys.cli.experimental.pinnacle
     :no-members:
 
 .. argparse::
-   :ref: pymedphys.cli.main.define_parser
+   :ref: pymedphys.cli.define_parser
    :prog: pymedphys
-   :path: labs pinnacle
+   :path: experimental pinnacle
