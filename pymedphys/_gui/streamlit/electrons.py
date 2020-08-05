@@ -15,19 +15,11 @@ import pymedphys.electronfactors as electronfactors
 # Electron Insert Factors
 """
 
-"""
-## Inputs
-"""
-
 patient_id = st.text_input("Patient ID")
 
 if patient_id == "":
     raise st.ScriptRunner.StopException()
 
-
-"""
-## Getting filepaths
-"""
 
 rccc_string_search_pattern = r"\\monacoda\FocalData\RCCC\1~Clinical\*~{}\plan\*\*tel.1".format(
     patient_id
@@ -49,12 +41,7 @@ filepath_list = np.concatenate(
     [rccc_filepath_list, nbccc_filepath_list, sash_filepath_list]
 )
 
-filepath_list
-
-
-"""
-## Getting Insert Data
-"""
+# filepath_list
 
 
 electronmodel_regex = "RiverinaAgility - (\d+)MeV"
@@ -83,7 +70,7 @@ for telfilepath in filepath_list:
         for i in insert_data[telfilepath]["reference_index"]
     ]
 
-insert_data
+# insert_data
 
 
 for telfilepath in filepath_list:
@@ -106,7 +93,7 @@ for telfilepath in filepath_list:
         insert_data[telfilepath]["x"].append(insert_coords[0::2] / 10)
         insert_data[telfilepath]["y"].append(insert_coords[1::2] / 10)
 
-insert_data
+# insert_data
 
 
 for telfilepath in filepath_list:
@@ -129,12 +116,8 @@ for telfilepath in filepath_list:
             electronfactors.convert2_ratio_perim_area(width, length)
         )
 
-insert_data
+# insert_data
 
-
-"""
-## Loading factor data
-"""
 
 data_filename = r"S:\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv"
 data = pd.read_csv(data_filename)
@@ -175,7 +158,7 @@ for telfilepath in filepath_list:
                 )[0]
             )
 
-insert_data
+# insert_data
 
 
 def visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre):
@@ -265,23 +248,18 @@ def plot_model(width_data, length_data, factor_data):
 
 
 for telfilepath in filepath_list:
-    print("=======================================================================")
-    print(telfilepath)
+    "======================================================================="
+    telfilepath
 
     for i in range(len(insert_data[telfilepath]["reference_index"])):
         applicator = float(insert_data[telfilepath]["applicators"][i])
         energy = float(insert_data[telfilepath]["energies"][i])
         ssd = 100
 
+        st.write("Applicator: `{} cm` | Energy: `{} MeV`".format(applicator, energy))
+
         width = insert_data[telfilepath]["width"][i]
         length = insert_data[telfilepath]["length"][i]
-
-        print("Applicator = {} cm".format(applicator))
-        print("Energy = {} MeV\n".format(energy))
-
-        print("Width = {0:0.2f} cm".format(width))
-        print("Length = {0:0.2f} cm".format(length))
-        print("Factor = {0:0.3f}".format(insert_data[telfilepath]["model_factor"][i]))
 
         plt.figure()
         plot_insert(
@@ -316,8 +294,6 @@ for telfilepath in filepath_list:
                 width_data[reference], length_data[reference], factor_data[reference]
             )
 
-        plt.show()
-
         reference_data_table = pd.concat(
             [width_data[reference], length_data[reference], factor_data[reference]],
             axis=1,
@@ -329,3 +305,13 @@ for telfilepath in filepath_list:
         )
 
         reference_data_table
+
+        st.pyplot()
+
+        factor = insert_data[telfilepath]["model_factor"][i]
+
+        st.write(
+            "Width: `{0:0.2f} cm` | Length: `{1:0.2f} cm` | Factor: `{2:0.3f}`".format(
+                width, length, factor
+            )
+        )
