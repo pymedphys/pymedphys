@@ -249,7 +249,7 @@ def plot_model(width_data, length_data, factor_data):
 
 for telfilepath in filepath_list:
     "======================================================================="
-    telfilepath
+    st.write("Filepath: `{}`".format(telfilepath))
 
     for i in range(len(insert_data[telfilepath]["reference_index"])):
         applicator = float(insert_data[telfilepath]["applicators"][i])
