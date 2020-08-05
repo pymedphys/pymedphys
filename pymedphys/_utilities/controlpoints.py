@@ -24,7 +24,7 @@ def find_relevant_control_points(mu):
         start = no_change[0]
         end = no_change[-1]
     except IndexError:
-        all_true = np.empty_like(mu).astype(bool)
+        all_true = np.empty_like(mu).astype(bool)  # pylint: disable = no-member
         all_true.fill(True)
         return all_true
 

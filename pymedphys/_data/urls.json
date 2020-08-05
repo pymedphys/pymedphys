@@ -12,7 +12,7 @@
   "denis_wlutz_images.zip": "https://github.com/brjdenis/qaserver/raw/a358206eb35601224e147054a59e160e99a640ea/files/non-central-wl.zip",
   "difficult_wlutz_image.ppm": "https://zenodo.org/record/3620937/files/frame_01.ppm?download=1",
   "tel-dicom-pairs.zip": "https://zenodo.org/record/3767548/files/tel-dicom-pairs.zip?download=1",
-  "mu-density-gui-e2e-data.zip": "https://zenodo.org/record/3871521/files/mu-density-gui-e2e-data.zip?download=1",
+  "mu-density-gui-e2e-data.zip": "https://zenodo.org/record/3949434/files/mu-density-gui-e2e-data.zip?download=1",
   "structure-deduplication.zip": "https://zenodo.org/record/3828058/files/structure-deduplication.zip?download=1",
   "mu_density_example_arrays.npz": "https://zenodo.org/record/3870436/files/mu_density_example_arrays.npz?download=1",
   "dicom_dose_test_data.zip": "https://zenodo.org/record/3870436/files/dicom_dose_test_data.zip?download=1",
@@ -24,5 +24,9 @@
   "paulking_test_data.zip": "https://zenodo.org/record/3870436/files/paulking_test_data.zip?download=1",
   "tps_compare_dicom_files.zip": "https://zenodo.org/record/3870436/files/tps_compare_dicom_files.zip?download=1",
   "delivery_test_data.zip": "https://zenodo.org/record/3870436/files/delivery_test_data.zip?download=1",
-  "pinnacle_test_data.zip": "https://zenodo.org/record/3870436/files/pinnacle_test_data.zip?download=1"
+  "pinnacle_test_data.zip": "https://zenodo.org/record/3940117/files/pinnacle_test_data.zip?download=1",
+  "dummy-ct-and-struct.zip": "https://zenodo.org/record/3887286/files/dummy-ct-and-struct.zip?download=1",
+  "alphanumeric-machine-id-icom.zip": "https://zenodo.org/record/3889005/files/alphanumeric-machine-id-icom.zip?download=1",
+  "rtplan-anonymisation.zip": "https://zenodo.org/record/3930533/files/rtplan-anonymisation.zip?download=1",
+  "treatmentrecord-anonymisation.zip": "https://zenodo.org/record/3931186/files/treatmentrecord-anonymisation.zip?download=1"
 }

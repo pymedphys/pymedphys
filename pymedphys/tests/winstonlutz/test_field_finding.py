@@ -45,7 +45,15 @@ def test_find_field_in_image():
     assert (expected_centre, expected_rotation) == (centre, rotation)
 
 
-@pytest.mark.slow
+# @pytest.mark.slow
+@pytest.mark.skip(
+    reason=(
+        "Wlutz field finding algorithm is being shelved for now. "
+        "Will use pylinac only for the time being. When more resources "
+        "are available, will implement independent algorithm to run "
+        "alongside pylinac."
+    )
+)
 @settings(
     deadline=datetime.timedelta(milliseconds=4000),
     max_examples=10,

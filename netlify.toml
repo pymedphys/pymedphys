@@ -80,42 +80,48 @@ poetry run pymedphys dev docs
 
 [[redirects]]
   from = "/getting-started/installation.html"
-  to = "/tutes/install.html"
+  to = "/howto/get-started.html"
   status = 301
   force = true
 
 [[redirects]]
   from = "/getting-started/licensing.html"
-  to = "/explain/license.html"
+  to = "/background/open-source-benefits.html"
   status = 301
   force = true
 
 [[redirects]]
   from = "/developer/agpl-benefits.html"
-  to = "/explain/agpl-benefits.html"
+  to = "/background/open-source-benefits.html"
   status = 301
   force = true
 
 [[redirects]]
   from = "/explain/agpl-benefits.html"
-  to = "/explain/open-source-benefits.html"
+  to = "/background/open-source-benefits.html"
   status = 301
   force = true
 
 [[redirects]]
   from = "/explain/license.html"
-  to = "/explain/open-source-benefits.html"
+  to = "/background/open-source-benefits.html"
   status = 301
   force = true
 
 [[redirects]]
   from = "/developer/file-structure.html"
-  to = "/contrib/explain/file-structure.html"
+  to = "/background/file-structure.html"
   status = 301
   force = true
 
 [[redirects]]
   from = "/projects/elekta-logfiles.html"
-  to = "/explain/elekta-logfiles.html"
+  to = "/background/elekta-logfiles.html"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/user/gamma.html"
+  to = "/howto/gamma/from-dicom.html"
   status = 301
   force = true

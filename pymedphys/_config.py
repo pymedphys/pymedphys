@@ -17,6 +17,8 @@ import pathlib
 
 from pymedphys._imports import toml
 
+is_cli = False
+
 
 def get_config_dir():
     config_dir = pathlib.Path.home().joinpath(".pymedphys")
