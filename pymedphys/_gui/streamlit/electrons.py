@@ -1,16 +1,15 @@
 import re
 from glob import glob
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
 import shapely
-
 import streamlit as st
 
-import pymedphys.electronfactors as electronfactors
+import numpy as np
+import pandas as pd
 
+import matplotlib.pyplot as plt
+
+import pymedphys.electronfactors as electronfactors
 
 """
 # Electron Insert Factors
