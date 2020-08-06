@@ -292,8 +292,8 @@ def convert_remaining(dataframe):
             pass
 
     # Previously a bug crept in due to this choice of logic. When the
-    # decoding was adjusted to support Integrity 4, and four extra
-    # columns were added that resulted in this logic being applied to
+    # decoding was adjusted to support Integrity 4 four extra
+    # columns were added. This resulted in this logic being applied to
     # the wrong columns (offset by four).
     for key in base_column_names[30:110]:
         if "Leaf" not in key or "Y2" not in key or "Scaled Actual" not in key:
