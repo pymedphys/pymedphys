@@ -116,8 +116,12 @@ def decode_rows_from_file(filepath):
     return decoded_rows
 
 
+def get_base_column_names():
+    return CONFIG["column_names"]
+
+
 def get_column_names(column_adjustment_key):
-    column_names = CONFIG["column_names"]
+    column_names = get_base_column_names()
 
     if column_adjustment_key == "integrityv3":
         return column_names
@@ -276,17 +280,28 @@ def convert_negative_and_divide_by_10(dataframe):
 
 
 def convert_remaining(dataframe):
-    column_names = dataframe.columns
+    base_column_names = get_base_column_names()
 
-    for key in column_names[14:30]:
-        dataframe[key] = negative_and_divide_by_10(dataframe[key])
+    for key in base_column_names[14:30]:
+        try:
+            dataframe[key] = negative_and_divide_by_10(dataframe[key])
+        except KeyError:
+            pass
 
     # Y2 leaves need to be multiplied by -1
-    for key in column_names[30:110]:
-        dataframe[key] = -negative_and_divide_by_10(dataframe[key])
+    for key in base_column_names[30:110]:
+        if "Leaf" not in key or "Y2" not in key or "Scaled Actual" not in key:
+            raise ValueError("Y2 Leaf Keys were not in their expected positions")
+        try:
+            dataframe[key] = -negative_and_divide_by_10(dataframe[key])
+        except KeyError:
+            pass
 
-    for key in column_names[110::]:
-        dataframe[key] = negative_and_divide_by_10(dataframe[key])
+    for key in base_column_names[110::]:
+        try:
+            dataframe[key] = negative_and_divide_by_10(dataframe[key])
+        except KeyError:
+            pass
 
 
 def convert_data_table(dataframe, linac_state_codes, wedge_codes):
