@@ -15,6 +15,7 @@
 """Some helper utility functions for accessing Mosaiq SQL.
 """
 
+import collections
 import datetime
 
 from pymedphys._imports import pandas as pd
@@ -351,146 +352,97 @@ def get_recently_completed_qcls_across_sites(
 
 
 def get_all_treatment_data(cursor, mrn):
+
+    dataframe_column_to_sql_reference = collections.OrderedDict(
+        [
+            ("mrn", "Ident.IDA"),
+            ("first_name", "Patient.First_Name"),
+            ("last_name", "Patient.Last_Name"),
+            ("dob", "Patient.Birth_DtTm"),
+            ("machine", "Staff.Last_Name"),
+            ("field_id", "TxField.FLD_ID"),
+            ("field_label", "TxField.Field_Label"),
+            ("field_name", "TxField.Field_Name"),
+            ("target", "Site.Target"),
+            ("rx_depth", "Site.Rx_Depth"),
+            ("target_units", "Site.Target_Units"),
+            ("technique", "Site.Technique"),
+            ("modality", "Site.Modality"),
+            ("energy [MV]", "TxFieldPoint.Energy"),
+            ("fraction_dose [cGy]", "Site.Dose_Tx"),
+            ("total_dose [cGy]", "Site.Dose_Ttl"),
+            ("fractions", "Site.Fractions"),
+            ("fraction_pattern", "Site.Frac_Pattern"),
+            ("notes", "Site.Notes"),
+            ("field_version", "TxField.Version"),
+            ("monitor_units", "TxField.Meterset"),
+            ("meterset_rate", "TxFieldPoint.Meterset_Rate"),
+            ("field_type", "TxField.Type_Enum"),
+            ("gantry_angle", "TxFieldPoint.Gantry_Ang"),
+            ("collimator_angle", "TxFieldPoint.Coll_Ang"),
+            ("ssd [cm]", "TxField.Ssd"),
+            ("sad [cm]", "TxField.SAD"),
+            ("site", "Site.Site_Name"),
+            ("dyn_wedge", "TxField.Dyn_Wedge"),
+            ("wdg_appl", "TxField.Wdg_Appl"),
+            ("block", "TxField.Block"),
+            ("blk_desc", "TxField.Blk_Desc"),
+            ("comp_fda", "TxField.Comp_Fda"),
+            ("fda_desc", "TxField.FDA_Desc"),
+            ("bolus", "TxField.Bolus"),
+            ("iso_x [cm]", "SiteSetup.Isocenter_Position_X"),
+            ("iso_y [cm]", "SiteSetup.Isocenter_Position_Y"),
+            ("iso_z [cm]", "SiteSetup.Isocenter_Position_Z"),
+            ("position", "SiteSetup.Patient_Orient"),
+            ("field_x [cm]", "TxFieldPoint.Field_X"),
+            ("coll_x1 [cm]", "TxFieldPoint.Coll_X1"),
+            ("coll_x2 [cm]", "TxFieldPoint.Coll_X2"),
+            ("field_y [cm]", "TxFieldPoint.Field_Y"),
+            ("coll_y1 [cm]", "TxFieldPoint.Coll_Y1"),
+            ("coll_y2 [cm]", "TxFieldPoint.Coll_Y2"),
+            ("couch_vrt [cm]", "TxFieldPoint.Couch_Vrt"),
+            ("couch_lat [cm]", "TxFieldPoint.Couch_Lat"),
+            ("couch_lng [cm]", "TxFieldPoint.Couch_Lng"),
+            ("couch_ang", "TxFieldPoint.Couch_Ang"),
+            ("tolerance", "TxField.Tol_Tbl_ID"),
+            ("time", "TxField.BackupTimer"),
+            ("site_setup_status", "SiteSetup.Status_Enum"),
+            ("site_status", "Site.Status_Enum"),
+            ("hidden", "TxField.IsHidden"),
+            ("site version", "Site.Version"),
+            ("create_id", "Site.Create_ID"),
+            ("field_approval", "TxField.Sanct_ID"),
+        ]
+    )
+
+    columns = list(dataframe_column_to_sql_reference.keys())
+    select_string = "SELECT " + ",\n\t\t    ".join(
+        dataframe_column_to_sql_reference.values()
+    )
+
+    sql_string = (
+        select_string
+        + """
+                FROM Ident, TxField, Site, Patient, SiteSetup, TxFieldPoint, Staff
+                WHERE
+                    TxField.Pat_ID1 = Ident.Pat_ID1 AND
+                    TxField.Machine_ID_Staff_ID = Staff.Staff_ID AND
+                    TxFieldPoint.FLD_ID = TxField.FLD_ID AND
+                    TxFieldPoint.Point = 0 AND
+                    Patient.Pat_ID1 = Ident.Pat_ID1 AND
+                    SiteSetup.SIT_Set_ID = TxField.SIT_Set_ID AND
+                    TxField.SIT_Set_ID = Site.SIT_Set_ID AND
+                    Site.Version = 0 AND
+                    SiteSetup.Version = 0 AND
+                    Ident.IDA = %(patient_id)s
+                """
+    )
+
     table = execute_sql(
-        cursor,
-        """
-        SELECT
-            Ident.IDA,
-            Patient.First_Name,
-            Patient.Last_Name,
-            Patient.Birth_DtTm,
-            Staff.Last_Name,
-            TxField.FLD_ID,
-            TxField.Field_Label,
-            TxField.Field_Name,
-            Site.Target,
-            Site.Rx_Depth,
-            Site.Target_Units,
-            Site.Technique,
-            Site.Modality,
-            TxFieldPoint.Energy,
-            Site.Dose_Tx,
-            Site.Dose_Ttl,
-            Site.Fractions,
-            Site.Frac_Pattern,
-            Site.Notes,
-            TxField.Version,
-            TxField.Meterset,
-            TxFieldPoint.Meterset_Rate,
-            TxField.Type_Enum,
-            TxFieldPoint.Gantry_Ang,
-            TxFieldPoint.Coll_Ang,
-            TxField.Ssd,
-            TxField.SAD,
-            Site.Site_Name,
-            TxField.Dyn_Wedge,
-            TxField.Wdg_Appl,
-            TxField.Block,
-            TxField.Blk_Desc,
-            TxField.Comp_Fda,
-            TxField.FDA_Desc,
-            TxField.Bolus,
-            SiteSetup.Isocenter_Position_X,
-            SiteSetup.Isocenter_Position_Y,
-            SiteSetup.Isocenter_Position_Z,
-            SiteSetup.Patient_Orient,
-            TxFieldPoint.Field_X,
-            TxFieldPoint.Coll_X1,
-            TxFieldPoint.Coll_X2,
-            TxFieldPoint.Field_Y,
-            TxFieldPoint.Coll_Y1,
-            TxFieldPoint.Coll_Y2,
-            TxFieldPoint.Couch_Vrt,
-            TxFieldPoint.Couch_Lat,
-            TxFieldPoint.Couch_Lng,
-            TxFieldPoint.Couch_Ang,
-            TxField.Tol_Tbl_ID,
-            TxField.BackupTimer,
-            SiteSetup.Status_Enum,
-            Site.Status_Enum,
-            TxField.IsHidden,
-            Site.Version,
-            Site.Create_ID,
-            TxField.Sanct_ID
-
-        FROM Ident, TxField, Site, Patient, SiteSetup, TxFieldPoint, Staff
-        WHERE
-            TxField.Pat_ID1 = Ident.Pat_ID1 AND
-            TxField.Machine_ID_Staff_ID = Staff.Staff_ID AND
-            TxFieldPoint.FLD_ID = TxField.FLD_ID AND
-            TxFieldPoint.Point = 0 AND
-            Patient.Pat_ID1 = Ident.Pat_ID1 AND
-            SiteSetup.SIT_Set_ID = TxField.SIT_Set_ID AND
-            TxField.SIT_Set_ID = Site.SIT_Set_ID AND
-            Site.Version = 0 AND
-            SiteSetup.Version = 0 AND
-            Ident.IDA = %(patient_id)s
-        """,
-        {"patient_id": mrn},
+        cursor=cursor, sql_string=sql_string, parameters={"patient_id": mrn}
     )
 
-    mosaiq_fields = pd.DataFrame(
-        data=table,
-        columns=[
-            "mrn",
-            "first_name",
-            "last_name",
-            "dob",
-            "machine",
-            "field_id",
-            "field_label",
-            "field_name",
-            "target",
-            "rx_depth",
-            "target_units",
-            "technique",
-            "modality",
-            "energy [MV]",
-            "fraction_dose [cGy]",
-            "total_dose [cGy]",
-            "fractions",
-            "fraction_pattern",
-            "notes",
-            "field_version",
-            "monitor_units",
-            "meterset_rate",
-            "field_type",
-            "gantry_angle",
-            "collimator_angle",
-            "ssd [cm]",
-            "sad [cm]",
-            "site",
-            "dyn_wedge",
-            "wdg_appl",
-            "block",
-            "blk_desc",
-            "comp_fda",
-            "fda_desc",
-            "bolus",
-            "iso_x [cm]",
-            "iso_y [cm]",
-            "iso_z [cm]",
-            "position",
-            "field_x [cm]",
-            "coll_x1 [cm]",
-            "coll_x2 [cm]",
-            "field_y [cm]",
-            "coll_y1 [cm]",
-            "coll_y2 [cm]",
-            "couch_vrt [cm]",
-            "couch_lat [cm]",
-            "couch_lng [cm]",
-            "couch_ang",
-            "tolerance",
-            "time",
-            "site_setup_status",
-            "site_status",
-            "hidden",
-            "site version",
-            "create_id",
-            "field_approval",
-        ],
-    )
+    mosaiq_fields = pd.DataFrame(data=table, columns=columns)
 
     mosaiq_fields.drop_duplicates(inplace=True)
     mosaiq_fields["field_type"] = [
@@ -532,144 +484,3 @@ def get_staff_initials(cursor, staff_id):
     )
 
     return initials
-
-
-def get_treatment_history(cursor, mrn):
-    table = execute_sql(
-        cursor,
-        """
-        SELECT
-            Ident.IDA,
-            Patient.First_Name,
-            Patient.Last_Name,
-            Patient.Birth_DtTm,
-            Staff.Last_Name,
-            TxField.FLD_ID,
-            TxField.Field_Label,
-            TxField.Field_Name,
-            Site.Target,
-            Site.Rx_Depth,
-            Site.Target_Units,
-            Site.Technique,
-            Site.Modality,
-            TxFieldPoint.Energy,
-            Site.Dose_Tx,
-            Site.Dose_Ttl,
-            Site.Fractions,
-            Site.Frac_Pattern,
-            Site.Notes,
-            TxField.Version,
-            TxField.Meterset,
-            TxFieldPoint.Meterset_Rate,
-            TxField.Type_Enum,
-            TxFieldPoint.Gantry_Ang,
-            TxFieldPoint.Coll_Ang,
-            TxField.Ssd,
-            TxField.SAD,
-            Site.Site_Name,
-            TxField.Dyn_Wedge,
-            TxField.Wdg_Appl,
-            TxField.Block,
-            TxField.Blk_Desc,
-            TxField.Comp_Fda,
-            TxField.FDA_Desc,
-            TxField.Bolus,
-            SiteSetup.Isocenter_Position_X,
-            SiteSetup.Isocenter_Position_Y,
-            SiteSetup.Isocenter_Position_Z,
-            SiteSetup.Patient_Orient,
-            TxFieldPoint.Field_X,
-            TxFieldPoint.Coll_X1,
-            TxFieldPoint.Coll_X2,
-            TxFieldPoint.Field_Y,
-            TxFieldPoint.Coll_Y1,
-            TxFieldPoint.Coll_Y2,
-            TxFieldPoint.Couch_Vrt,
-            TxFieldPoint.Couch_Lat,
-            TxFieldPoint.Couch_Lng,
-            TxFieldPoint.Couch_Ang,
-            TxField.Tol_Tbl_ID,
-            TxField.BackupTimer,
-            SiteSetup.Status_Enum,
-            Site.Status_Enum,
-            TxField.IsHidden,
-            Site.Version,
-            Site.Create_ID
-
-        FROM Ident, TxField, Site, Patient, SiteSetup, TxFieldPoint, Staff
-        WHERE
-            TxField.Pat_ID1 = Ident.Pat_ID1 AND
-            TxField.Machine_ID_Staff_ID = Staff.Staff_ID AND
-            TxFieldPoint.FLD_ID = TxField.FLD_ID AND
-            TxFieldPoint.Point = 0 AND
-            Patient.Pat_ID1 = Ident.Pat_ID1 AND
-            SiteSetup.SIT_Set_ID = TxField.SIT_Set_ID AND
-            TxField.SIT_Set_ID = Site.SIT_Set_ID AND
-            Site.Version = 0 AND
-            SiteSetup.Version = 0 AND
-            Ident.IDA = %(patient_id)s
-        """,
-        {"patient_id": mrn},
-    )
-
-    mosaiq_fields = pd.DataFrame(
-        data=table,
-        columns=[
-            "mrn",
-            "first_name",
-            "last_name",
-            "dob",
-            "machine",
-            "field_id",
-            "field_label",
-            "field_name",
-            "target",
-            "rx_depth",
-            "target_units",
-            "technique",
-            "modality",
-            "energy [MV]",
-            "fraction_dose [cGy]",
-            "total_dose [cGy]",
-            "fractions",
-            "fraction_pattern",
-            "notes",
-            "field_version",
-            "monitor_units",
-            "meterset_rate",
-            "field_type",
-            "gantry_angle",
-            "collimator_angle",
-            "ssd [cm]",
-            "sad [cm]",
-            "site",
-            "dyn_wedge",
-            "wdg_appl",
-            "block",
-            "blk_desc",
-            "comp_fda",
-            "fda_desc",
-            "bolus",
-            "iso_x [cm]",
-            "iso_y [cm]",
-            "iso_z [cm]",
-            "position",
-            "field_x [cm]",
-            "coll_x1 [cm]",
-            "coll_x2 [cm]",
-            "field_y [cm]",
-            "coll_y1 [cm]",
-            "coll_y2 [cm]",
-            "couch_vrt [cm]",
-            "couch_lat [cm]",
-            "couch_lng [cm]",
-            "couch_ang",
-            "tolerance",
-            "time",
-            "site_setup_status",
-            "site_status",
-            "hidden",
-            "site version",
-            "create_id",
-        ],
-    )
