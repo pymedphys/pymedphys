@@ -280,6 +280,9 @@ def convert_negative_and_divide_by_10(dataframe):
 
 
 def convert_remaining(dataframe):
+    # The base column names are used here as they are presumed to be unchanging.
+    # Should ever the order or contents of the base configured 'column_names'
+    # change, this logic here will need to be changed.
     base_column_names = get_base_column_names()
 
     for key in base_column_names[14:30]:
@@ -288,11 +291,15 @@ def convert_remaining(dataframe):
         except KeyError:
             pass
 
-    # Y2 leaves need to be multiplied by -1
+    # Previously a bug crept in due to this choice of logic. When the
+    # decoding was adjusted to support Integrity 4, and four extra
+    # columns were added that resulted in this logic being applied to
+    # the wrong columns (offset by four).
     for key in base_column_names[30:110]:
         if "Leaf" not in key or "Y2" not in key or "Scaled Actual" not in key:
             raise ValueError("Y2 Leaf Keys were not in their expected positions")
         try:
+            # Y2 leaves need to be multiplied by -1
             dataframe[key] = -negative_and_divide_by_10(dataframe[key])
         except KeyError:
             pass
