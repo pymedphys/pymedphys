@@ -1,3 +1,5 @@
+import datetime
+
 import numpy as np
 import pandas as pd
 
@@ -8,40 +10,57 @@ Summary: Define a function which assigns color values depending on whether or no
 Input: Table of values which you wish to compare.
 Results:    match = green
             mismatch = red
+            uncomparable = yellow
 """
 
 
 def color_results(val):
-    is_true = []
-    for i in range(0, len(val), 2):
-        if type(val[i]) == str and type(val[i + 1]) == str:
-            if val[i] == val[i + 1]:
-                is_true.append(1)
-                is_true.append(1)
-            else:
-                is_true.append(0)
-                is_true.append(0)
-        elif val[i] == "" or val[i + 1] == "":
-            if val[i] == val[i + 1]:
-                is_true.append(1)
-                is_true.append(1)
-            else:
-                is_true.append(0)
-                is_true.append(0)
+    not_in = ["field_type", "machine", "rx", "technique", "tolerance"]
+
+    # set any values which cannot accurately be compared as yellow (#FDFF8A)
+    if val.name in not_in:
+        return ["background-color: #FDFF8A", "background-color: #FDFF8A"]
+
+    # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
+    elif type(val[0]) == str and type(val[1]) == str:
+        if val[0] == val[1]:
+            return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
         else:
-            if round(float(val[i]), 2) == round(float(val[i + 1]), 2):
-                is_true.append(1)
-                is_true.append(1)
-            else:
-                is_true.append(0)
-                is_true.append(0)
-    return [
-        "background-color: #78FB7E" if v == 1 else "background-color: #F76655"
-        for v in is_true
-    ]
+            return ["background-color: #EE6363", "background-color: #EE6363"]
 
+    elif val[0] == "":
+        val[0] = 0
+        if val[0] == val[1]:
+            return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
+        else:
+            return ["background-color: #EE6363", "background-color: #EE6363"]
+    elif val[1] == "":
+        val[1] = 0
+        if val[0] == val[1]:
+            return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
+        else:
+            return ["background-color: #EE6363", "background-color: #EE6363"]
 
-# 'background-color: #FDFF8A' good yellow color to add later
+    elif isinstance(val[0], datetime.date) or isinstance(val[1], datetime.date):
+        if val[0] == val[1]:
+            return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
+        else:
+            return ["background-color: #EE6363", "background-color: #EE6363"]
+
+    elif type(val[0]) == float and type(val[1]) == str:
+        if val[0] == val[1]:
+            return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
+        else:
+            return ["background-color: #EE6363", "background-color: #EE6363"]
+
+    else:
+        if round(float(val[0]), 2) == round(float(val[1]), 2):
+            val[0] = round(float(val[0]), 2)
+            val[1] = round(float(val[1]), 2)
+            return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
+        else:
+            return ["background-color: #EE6363", "background-color: #EE6363"]
+
 
 #######################################################################################################################
 
@@ -108,120 +127,46 @@ def get_general_info(dicom_table, mos_table):
 """
 Summary: Define a function which compares two dataframes and produces an excel spreadsheet of the results.
 Input: One dataframe from DICOM, one dataframe from Mosaiq.
-Results: Produces an excel spreadsheet showing the
+Results: Produces a dataframe giving a side by side comparison of the two systems
 """
 
 
 def compare_to_mosaiq(dicom_table, mos_table):
-    results = []
-    dic_table = []
-    mosaiq_table = []
-    field_results = []
-    table_results = []
-    to_be_compared = [
-        "mrn",
-        "first_name",
-        "last_name",
-        "site",
-        "field_label",
-        "field_name",
-        "machine",
-        "energy",
-        "monitor_units",
-        "fraction_dose",
-        "total_dose",
-        "fractions",
-        "gantry_angle",
-        "collimator_angle",
-        "ssd",
-        "sad",
-        "iso_x",
-        "iso_y",
-        "iso_z",
-        "field_x",
-        "coll_x1",
-        "coll_x2",
-        "field_y",
-        "coll_y1",
-        "coll_y2",
-        "couch_vrt",
-        "couch_lat",
-        "couch_lng",
-        "couch_ang",
-        "tolerance",
-        "meterset_rate",
-    ]
+    values_table = pd.DataFrame()
+    to_be_compared = dicom_table.columns
+    mos_index = mos_table.columns
+    dicom_list = pd.DataFrame()
+    mosaiq_list = pd.DataFrame()
 
     for field in range(len(dicom_table)):
         for label in to_be_compared:
-            mosaiq_table.append(mos_table.iloc[field][label])
-            dic_table.append(dicom_table.iloc[field][label])
-            if (
-                type(dicom_table.iloc[field][label]) == str
-                and type(mos_table.iloc[field][label]) == str
-            ):
-                field_results.append(
-                    dicom_table.iloc[field][label] == mos_table.iloc[field][label]
+
+            # check that the corresponding value exists in Mosaiq
+            if label in mos_index:
+                add_dicom = pd.DataFrame(
+                    [dicom_table.iloc[field][label]], columns=[label]
                 )
-            elif (
-                dicom_table.iloc[field][label] == ""
-                or mos_table.iloc[field][label] == ""
-            ):
-                field_results.append(
-                    dicom_table.iloc[field][label] == mos_table.iloc[field][label]
+                add_mosaiq = pd.DataFrame(
+                    [mos_table.iloc[field][label]], columns=[label]
                 )
+
+                dicom_list[label] = add_dicom
+                mosaiq_list[label] = add_mosaiq
+            # continue if the value is not in Mosaiq
             else:
-                field_results.append(
-                    float(dicom_table.iloc[field][label])
-                    == float(mos_table.iloc[field][label])
-                )
-        results.append(field_results)
-        table_results.append(dic_table)
-        table_results.append(mosaiq_table)
-        field_results = []
-        dic_table = []
-        mosaiq_table = []
+                continue
+
+        values_table = values_table.append(dicom_list, ignore_index=True)
+        values_table = values_table.append(mosaiq_list, ignore_index=True)
 
     values_index = []
     for value in dicom_table[:]["field_name"]:
         values_index.append(value + "_DICOM")
         values_index.append(value + "_MOSAIQ")
 
-    values_table = pd.DataFrame(data=table_results, columns=to_be_compared)
-
     values_table["beam_index"] = pd.Series(values_index).values
     values_table = values_table.set_index("beam_index", drop=True)
-    # values_table = values_table.transpose()
-    general_info = get_general_info(dicom_table, mos_table)
 
-    dose_ref = dicom_table["dose_reference"]
-    prescription_index = []
-    prescription_num = 1
-    for i in range(min(dose_ref), max(dose_ref) + 1):
-        prescription_index.append(np.where(dose_ref == i))
-
-    idx = []
-    for rx in prescription_index:
-        count = rx[0].shape[0]
-        idx.append(count)
-    prescription_index = []
-    i = 0
-    for j in idx:
-        prescription_index.append(list(range(i, i + 2 * j)))
-        i += 2 * j
-
-    with pd.ExcelWriter(
-        "C:/Users/rembishj/Documents/Python Scripts/autoCheck/%s.xlsx"
-        % (dicom_table.iloc[0]["last_name"] + "_pretreatment_check")
-    ) as writer:
-        general_info.to_excel(writer, sheet_name="Patient Info")
-        for prescription in prescription_index:
-            prescription_fields = values_table.iloc[prescription]
-            prescription_fields = prescription_fields.transpose()
-            prescription_fields.style.apply(color_results, axis=1).to_excel(
-                writer, sheet_name="Field Info RX%s" % prescription_num
-            )
-            prescription_num += 1
     return values_table
 
 

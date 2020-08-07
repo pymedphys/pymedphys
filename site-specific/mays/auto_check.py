@@ -1,6 +1,5 @@
 import os
-
-import tkinter
+from tkinter import Tk, filedialog
 
 import pandas as pd
 
@@ -9,12 +8,12 @@ from helpers import get_all_dicom_treatment_info
 from pymedphys._mosaiq import connect
 from pymedphys._mosaiq.helpers import get_all_treatment_data
 
-root = tkinter.Tk()
+root = Tk()
 root.withdraw()  # use to hide tkinter window
 
 currdir = os.getcwd()
 
-dicomFile = tkinter.filedialog.askopenfilename(
+dicomFile = filedialog.askopenfilename(
     parent=root, initialdir=currdir, title="Please select a Pinnacle RP file"
 )
 if len(dicomFile) > 0:
@@ -25,7 +24,7 @@ dicom_table = get_all_dicom_treatment_info(dicomFile)
 mrn = dicom_table.iloc[0]["mrn"]
 
 # host_name = 'prwinvds006.utmsa.local'
-with connect.connect("prwinvds006.utmsa.local") as cursor:
+with connect.connect("PRDMOSAIQIWVV01.utmsa.local") as cursor:
     mosaiq_table = get_all_treatment_data(cursor, mrn)
 
 field_version = max(mosaiq_table["field_version"])
