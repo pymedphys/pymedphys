@@ -1,5 +1,3 @@
-import io
-
 # Insert progress bar
 import time
 
@@ -7,9 +5,9 @@ import streamlit as st
 
 import pandas as pd
 
-from PIL import Image
+# from PIL import Image
 
-import pydicom
+# import pydicom
 
 from helpers import get_all_dicom_treatment_info
 

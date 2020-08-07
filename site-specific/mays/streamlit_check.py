@@ -2,8 +2,6 @@ import os
 
 import streamlit as st
 
-import pandas as pd
-
 from compare import color_results, compare_to_mosaiq
 from helpers import get_all_dicom_treatment_info
 from pymedphys._mosaiq import connect
