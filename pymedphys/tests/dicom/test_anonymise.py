@@ -165,6 +165,8 @@ def test_anonymised_dataset_with_nested_name():
 def test_anonymised_dataset_with_empty_patient_sex():
     blank_sex_ds = dicom_dataset_from_dict({"PatientSex": None})
     assert is_anonymised_dataset(blank_sex_ds)
+    hardcode_replace_ds = anonymise_dataset(blank_sex_ds)
+    assert hardcode_replace_ds["PatientSex"].value is None
 
 
 @pytest.mark.slow
