@@ -452,11 +452,6 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     """
     for elem in ds:
         if elem.keyword in IDENTIFYING_KEYWORDS:
-            if elem.value in ("", None):
-                logging.debug(
-                    "found null/None or empty string value in %s", elem.keyword
-                )
-                continue
             dummy_value = get_anonymous_replacement_value(elem.keyword)
             if not elem.value in ("", [], dummy_value, None):
                 if elem.VR == "DS" and np.isclose(
