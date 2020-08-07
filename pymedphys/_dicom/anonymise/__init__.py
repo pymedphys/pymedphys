@@ -452,6 +452,11 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     """
     for elem in ds:
         if elem.keyword in IDENTIFYING_KEYWORDS:
+            if elem.value in ("", None):
+                logging.debug(
+                    "found null/None or empty string value in %s", elem.keyword
+                )
+                continue
             dummy_value = get_anonymous_replacement_value(elem.keyword)
             if not elem.value in ("", [], dummy_value, None):
                 if elem.VR == "DS" and np.isclose(
@@ -607,9 +612,14 @@ def _anonymise_tags(
     for keyword in keywords_to_anonymise:
         if hasattr(ds_anon, keyword):
             if replace_values:
+                if ds_anon[keyword].value in ("", None, []):
+                    logging.debug(
+                        f"{keyword} has value of empty list, None or empty string, no need to modify to anonymise"
+                    )
+                    continue
                 replacement_value = get_anonymous_replacement_value(
                     keyword,
-                    current_value=ds_anon[keyword],
+                    current_value=ds_anon[keyword].value,
                     replacement_strategy=replacement_strategy,
                 )
             else:
@@ -689,6 +699,19 @@ def get_anonymous_replacement_value(
             keyword,
         )
         #   elif ...
+
+    if current_value in (None, ""):
+        logging.warning(f"current_value, for keyword {keyword} is None or empty string")
+        # return None
+    else:
+        try:
+            if current_value.value in (None, ""):
+                logging.warning(
+                    f"current_value as a DataElement for keyword {keyword} has value of None or empty string"
+                )
+                # return current_value.value
+        except AttributeError:
+            pass
 
     if replacement_strategy is None:
         replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH

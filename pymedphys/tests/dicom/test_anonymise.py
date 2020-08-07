@@ -161,6 +161,12 @@ def test_anonymised_dataset_with_nested_name():
     assert not is_anonymised_dataset(nested_name)
 
 
+@pytest.mark.pydicom
+def test_anonymised_dataset_with_empty_patient_sex():
+    blank_sex_ds = dicom_dataset_from_dict({"PatientSex": None})
+    assert is_anonymised_dataset(blank_sex_ds)
+
+
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):

@@ -100,13 +100,13 @@ def _strip_plus_slash_from_base64(value):
     return value.replace("+", "").replace("/", "")
 
 
-def _pseudonymise_AE(elem):
-    my_pseudonym = _pseudonymise_plaintext(elem.value)
+def _pseudonymise_AE(value):
+    my_pseudonym = _pseudonymise_plaintext(value)
     my_sliced_pseudonym = my_pseudonym[0:16]
     return my_sliced_pseudonym
 
 
-def _pseudonymise_AS(elem):
+def _pseudonymise_AS(value):
     """
     Attempt to provide an Age that is similar but not a match
     Round down to 80 if over 80
@@ -128,8 +128,8 @@ def _pseudonymise_AS(elem):
     """
     random.seed()
     increment = random.randrange(-2, 2)
-    numeric = int(elem.value[0:3])
-    unit = elem.value[3]
+    numeric = int(value[0:3])
+    unit = value[3]
     pseudo_unit = unit
     if numeric > 20:
         pseudo_numeric = numeric - (numeric % 10)
@@ -152,8 +152,8 @@ def _pseudonymise_AS(elem):
     return pseudo_age
 
 
-def _pseudonymise_CS(elem):
-    my_pseudonym = _pseudonymise_plaintext(elem.value)
+def _pseudonymise_CS(value):
+    my_pseudonym = _pseudonymise_plaintext(value)
     # In addition to changing to upper case, remove or replace base64 characters that
     # are not in: alphanumeric, the space character, or the underscore character
     my_upper_pseudonym = str(my_pseudonym.upper().replace("+", "").replace("/", "_"))
@@ -162,15 +162,15 @@ def _pseudonymise_CS(elem):
 
 
 def _pseudonymise_DA(
-    elem, format_str=DICOM_DATE_FORMAT_STR, earliest_study=DEFAULT_EARLIEST_STUDY_DATE
+    value, format_str=DICOM_DATE_FORMAT_STR, earliest_study=DEFAULT_EARLIEST_STUDY_DATE
 ):
     epoch_start = EPOCH_START
     # earliest_study = DEFAULT_EARLIEST_STUDY_DATE
     # format_str = DICOM_DATE_FORMAT_STR
     try:
-        my_datetime_obj = datetime.datetime.strptime(elem.value, format_str)
+        my_datetime_obj = datetime.datetime.strptime(value, format_str)
     except ValueError:
-        my_datetime_obj = datetime.datetime.strptime(elem.value, DICOM_DATE_FORMAT_STR)
+        my_datetime_obj = datetime.datetime.strptime(value, DICOM_DATE_FORMAT_STR)
     try:
         earliest_study_datetime_obj = datetime.datetime.strptime(
             earliest_study, format_str
@@ -192,7 +192,7 @@ def _pseudonymise_DA(
     return my_pseudonym_date
 
 
-def _pseudonymise_DS(elem):
+def _pseudonymise_DS(value):
     """
     Keep sign and exponent, but hash the digits and then convert the
     same number of digits from the hash back in to the decimal digits
@@ -208,7 +208,7 @@ def _pseudonymise_DS(elem):
         a decimal string of the same sign and exponent.
 
     """
-    my_decimal = Decimal(elem.value)
+    my_decimal = Decimal(value)
     as_tuple = my_decimal.as_tuple()
     digits = as_tuple.digits
     count_digits = len(digits)
@@ -232,40 +232,40 @@ def _pseudonymise_DS(elem):
     return str(new_decimal)
 
 
-def _pseudonymize_DT(elem):
-    return _pseudonymise_DA(elem, format_str=DICOM_DATETIME_FORMAT_STR)
+def _pseudonymize_DT(value):
+    return _pseudonymise_DA(value, format_str=DICOM_DATETIME_FORMAT_STR)
 
 
-def _pseudonymise_LO(elem):
-    my_pseudonym = _pseudonymise_plaintext(elem.value)
+def _pseudonymise_LO(value):
+    my_pseudonym = _pseudonymise_plaintext(value)
     my_sliced_pseudonym = my_pseudonym[0:64]
     return my_sliced_pseudonym
 
 
-def _pseudonymise_LT(elem):
-    my_pseudonym = _pseudonymise_plaintext(elem.value)
+def _pseudonymise_LT(value):
+    my_pseudonym = _pseudonymise_plaintext(value)
     my_sliced_pseudonym = my_pseudonym[0:10240]
     return my_sliced_pseudonym
 
 
-def _pseudonymise_unchanged(elem):
-    return elem.value
+def _pseudonymise_unchanged(value):
+    return value
 
 
-def _pseudonymise_OB(elem):
-    return _pseudonymise_unchanged(elem)
+def _pseudonymise_OB(value):
+    return _pseudonymise_unchanged(value)
 
 
-def _pseudonymise_OW(elem):
-    return _pseudonymise_unchanged(elem)
+def _pseudonymise_OW(value):
+    return _pseudonymise_unchanged(value)
 
 
-def _pseudonymise_OB_or_OW(elem):
-    return _pseudonymise_unchanged(elem)
+def _pseudonymise_OB_or_OW(value):
+    return _pseudonymise_unchanged(value)
 
 
 def _pseudonymise_PN(
-    elem, max_component_length=64, strip_name_prefix=True, strip_name_suffix=True
+    value, max_component_length=64, strip_name_prefix=True, strip_name_suffix=True
 ):
     """
     create a pseudonym from a person's name.
@@ -289,7 +289,7 @@ def _pseudonymise_PN(
         A pseudonym, but doesn't deal with Unicode (yet)
 
     """
-    persons_name_three = pydicom.valuerep.PersonName(elem.value)
+    persons_name_three = pydicom.valuerep.PersonName(value)
     family_name = persons_name_three.family_name
     given_name = persons_name_three.given_name
     middle_name = persons_name_three.middle_name
@@ -325,24 +325,24 @@ def _pseudonymise_PN(
     return pseudonym
 
 
-def _pseudonymise_SH(elem):
-    return _pseudonymise_plaintext(elem.value)[0:16]
+def _pseudonymise_SH(value):
+    return _pseudonymise_plaintext(value)[0:16]
 
 
-def _pseudonymise_SQ(elem):
-    return _pseudonymise_unchanged(elem)
+def _pseudonymise_SQ(value):
+    return _pseudonymise_unchanged(value)
 
 
-def _pseudonymise_ST(elem):
-    return _pseudonymise_plaintext(elem.value)[0:1024]
+def _pseudonymise_ST(value):
+    return _pseudonymise_plaintext(value)[0:1024]
 
 
-def _pseudonymise_TM(elem):
-    return _pseudonymise_unchanged(elem)
+def _pseudonymise_TM(value):
+    return _pseudonymise_unchanged(value)
 
 
-def _pseudonymise_UI(elem):
-    encoded_value = elem.value.encode("ASCII")
+def _pseudonymise_UI(value):
+    encoded_value = value.encode("ASCII")
     my_hash_func = hashlib.new("sha3_256")
     my_hash_func.update(encoded_value)
     # my_digest = HASH3_256.digest()
@@ -353,8 +353,8 @@ def _pseudonymise_UI(elem):
     return pseudonymous_ui
 
 
-def _pseudonymise_US(elem):
-    return _pseudonymise_unchanged(elem)
+def _pseudonymise_US(value):
+    return _pseudonymise_unchanged(value)
 
 
 pseudonymisation_dispatch = dict(
