@@ -1,5 +1,5 @@
 # Insert progress bar
-import time
+# import time
 
 import streamlit as st
 
