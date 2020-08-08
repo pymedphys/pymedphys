@@ -26,7 +26,7 @@ from pymedphys._data import download
 from . import filtering, indexing, mask
 
 
-@functools.lru_cache()
+# @functools.lru_cache()
 def get_dataset_metadata():
     release_url = "https://github.com/pymedphys/data/releases/download/structure-dicom"
     dicom_zip_url_pattern = f"{release_url}/" + "{dicom_type}.{uid}_Anonymised.zip"
