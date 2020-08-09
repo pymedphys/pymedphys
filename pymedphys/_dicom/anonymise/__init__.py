@@ -607,9 +607,15 @@ def _anonymise_tags(
     for keyword in keywords_to_anonymise:
         if hasattr(ds_anon, keyword):
             if replace_values:
+                if ds_anon[keyword].value in ("", None, []):
+                    logging.debug(
+                        "%s has value of empty list, None or empty string, no need to modify to anonymise",
+                        keyword,
+                    )
+                    continue
                 replacement_value = get_anonymous_replacement_value(
                     keyword,
-                    current_value=ds_anon[keyword],
+                    current_value=ds_anon[keyword].value,
                     replacement_strategy=replacement_strategy,
                 )
             else:
