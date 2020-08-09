@@ -20,13 +20,9 @@ import pandas as pd
 
 import pydicom
 
-import tolerance_constants
-
 
 def get_all_dicom_treatment_info(dicomFile):
     dicom = pydicom.dcmread(dicomFile)
-    dicomBeam = []
-    dicomData = []
     table = pd.DataFrame()
 
     try:
