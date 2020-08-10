@@ -683,7 +683,7 @@ def _filter_identifying_keywords(
     if identifying_keywords is None:
         keywords_filtered = get_default_identifying_keywords()
     else:
-        keywords_filtered = identifying_keywords
+        keywords_filtered = copy(identifying_keywords)
 
     for keyword in keywords_to_leave_unchanged:
         try:
