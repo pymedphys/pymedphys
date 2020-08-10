@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import functools
 import json
 import logging
 import os.path
 import pprint
-from copy import deepcopy
+from copy import copy, deepcopy
 from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
@@ -40,8 +40,16 @@ HERE = dirname(abspath(__file__))
 
 IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 
-with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
-    IDENTIFYING_KEYWORDS = json.load(infile)
+
+@functools.lru_cache()
+def _get_default_identifying_keywords():
+    with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
+        IDENTIFYING_KEYWORDS = json.load(infile)
+    return tuple(IDENTIFYING_KEYWORDS)
+
+
+def get_default_identifying_keywords():
+    return list(_get_default_identifying_keywords())
 
 
 def label_dicom_filepath_as_anonymised(filepath):
@@ -64,6 +72,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     delete_unknown_tags=None,
     copy_dataset=True,
     replacement_strategy=None,
+    identifying_keywords=None,
 ):
     r"""A simple tool to anonymise a DICOM dataset.
 
@@ -111,6 +120,12 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
 
     copy_dataset : ``bool``, optional
         If ``True``, then a copy of ``ds`` is returned.
+
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
 
     Returns
     -------
@@ -163,7 +178,9 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     if delete_private_tags:
         ds_anon.remove_private_tags()
 
-    keywords_to_anonymise = _filter_identifying_keywords(keywords_to_leave_unchanged)
+    keywords_to_anonymise = _filter_identifying_keywords(
+        keywords_to_leave_unchanged, identifying_keywords=identifying_keywords
+    )
 
     ds_anon = _anonymise_tags(
         ds_anon,
@@ -186,6 +203,7 @@ def anonymise_file(
     delete_private_tags=True,
     delete_unknown_tags=None,
     replacement_strategy=None,
+    identifying_keywords=None,
 ):
     r"""A simple tool to anonymise a DICOM file.
 
@@ -238,6 +256,12 @@ def anonymise_file(
         set to ``False``, these tags are simply ignored. Pass ``False``
         with caution, since unrecognised tags may contain identifying
         information.
+
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
     """
     dicom_filepath = str(dicom_filepath)
 
@@ -251,6 +275,7 @@ def anonymise_file(
         delete_unknown_tags=delete_unknown_tags,
         copy_dataset=False,
         replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords,
     )
 
     if output_filepath is None:
@@ -287,6 +312,7 @@ def anonymise_directory(
     delete_private_tags=True,
     delete_unknown_tags=None,
     replacement_strategy=None,
+    identifying_keywords=None,
 ):
     r"""A simple tool to anonymise all DICOM files in a directory and
     its subdirectories.
@@ -341,6 +367,12 @@ def anonymise_directory(
         set to ``False``, these tags are simply ignored. Pass ``False``
         with caution, since unrecognised tags may contain identifying
         information.
+
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
     """
     dicom_dirpath = str(dicom_dirpath)
 
@@ -365,6 +397,7 @@ def anonymise_directory(
             delete_private_tags=delete_private_tags,
             delete_unknown_tags=delete_unknown_tags,
             replacement_strategy=replacement_strategy,
+            identifying_keywords=identifying_keywords,
         )
 
     # Separate loop provides the ability to raise Exceptions from the
@@ -451,7 +484,7 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
         `True` if `ds` has been anonymised, `False` otherwise.
     """
     for elem in ds:
-        if elem.keyword in IDENTIFYING_KEYWORDS:
+        if elem.keyword in get_default_identifying_keywords():
             dummy_value = get_anonymous_replacement_value(elem.keyword)
             if not elem.value in ("", [], dummy_value, None):
                 if elem.VR == "DS" and np.isclose(
@@ -640,12 +673,18 @@ def _anonymise_tags(
     return ds_anon
 
 
-def _filter_identifying_keywords(keywords_to_leave_unchanged):
+def _filter_identifying_keywords(
+    keywords_to_leave_unchanged, identifying_keywords=None
+):
     r"""Removes DICOM keywords that the user desires to leave unchanged
     from the list of known DICOM identifying keywords and returns the
     resulting keyword list.
     """
-    keywords_filtered = list(IDENTIFYING_KEYWORDS)
+    if identifying_keywords is None:
+        keywords_filtered = get_default_identifying_keywords()
+    else:
+        keywords_filtered = copy(identifying_keywords)
+
     for keyword in keywords_to_leave_unchanged:
         try:
             keywords_filtered.remove(keyword)
