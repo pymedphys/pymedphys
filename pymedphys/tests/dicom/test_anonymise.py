@@ -171,6 +171,27 @@ def test_anonymised_dataset_with_empty_patient_sex():
 
 @pytest.mark.slow
 @pytest.mark.pydicom
+def test_alternative_identifying_keywords():
+    default_keyword_list = list(IDENTIFYING_KEYWORDS)
+    alternative_keyword_list = list(default_keyword_list)
+    alternative_keyword_list.append("SOPInstanceUID")
+    test_file_path = get_treatmentrecord_test_file_path()
+    ds_test = pydicom.dcmread(test_file_path, force=True)
+    anon_private_filepath = anonymise_file(
+        test_file_path,
+        delete_private_tags=True,
+        alternative_identifying_keywords=alternative_keyword_list,
+    )
+    ds_anon = pydicom.dcmread(anon_private_filepath, force=True)
+    try:
+        assert is_anonymised_file(anon_private_filepath, ignore_private_tags=False)
+        assert ds_test["SOPInstanceUID"].value != ds_anon["SOPInstanceUID"].value
+    finally:
+        remove_file(anon_private_filepath)
+
+
+@pytest.mark.slow
+@pytest.mark.pydicom
 def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
 
     # Create dataset with one instance of every identifying keyword and
