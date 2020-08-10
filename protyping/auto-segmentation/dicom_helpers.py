@@ -46,9 +46,9 @@ def add_transfer_syntax(dicom_files):
     return dicom_files
 
 
-def add_transfer_syntax_to_path(data_path):
+def write_transfer_syntax_to_path(data_path, test=False):
     save_parent = data_path + "/with_transfer_syntax"
-    os_helpers.make_path(save_parent)
+    os_helpers.make_directory(save_parent)
 
     dicom_paths = glob.glob(data_path + "/*.dcm")
     dicom_files = read_dicom_paths(dicom_paths, force=True)
@@ -56,7 +56,8 @@ def add_transfer_syntax_to_path(data_path):
     for dicom in dicom_files:
         save_path = save_parent + "/" + dicom.SOPInstanceUID + ".dcm"
         print(save_path)
-        dicom.save_as(save_path, write_like_original=False)
+        if not test:
+            dicom.save_as(save_path, write_like_original=False)
 
 
 def print_dicom_file(dicom_file):

@@ -30,7 +30,7 @@ def handle_store(event):
     # Parent folder to all storage requests
     export_path = config.EXPORT_PATH
     # For the entire study
-    study_path = export_path + ds.StudyInstanceUID
+    study_path = export_path + "/" + ds.StudyInstanceUID
 
     os_helpers.make_directory(export_path)
     os_helpers.make_directory(study_path)
@@ -48,13 +48,14 @@ def handle_release(event):
     dicom_structure_file = vacunet.vacunet(study_path, ROOT_UID)
 
     # For RT structure file instance
-    save_path = study_path + dicom_structure_file.SOPInstanceUID + ".dcm"
+    save_path = study_path + "/" + dicom_structure_file.SOPInstanceUID + ".dcm"
     dicom_structure_file.save_as(save_path, write_like_original=False)
 
     # Print file contents
     dicom_helpers.print_dicom_file(dicom_structure_file)
     print("\nEXPORTED:", save_path)
     print("RELEASED")
+    print("\nListening for association request...")
 
     return 0x0000
 

@@ -5,7 +5,7 @@ import tensorflow as tf
 import config
 import dicom_helpers
 
-from pymedphys.__experimental.autosegmentation import mask
+from pymedphys._experimental.autosegmentation import mask
 import unet
 
 # Assign GPU or CPU
