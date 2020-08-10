@@ -40,11 +40,8 @@ def reduce_expanded_mask(expanded_mask, img_size, expansion):
     )
 
 
-def get_grid(dcm_ct, transformation_params=None):
-    if transformation_params is None:
-        dx, dy, Cx, Cy, Ox, Oy = get_image_transformation_parameters(dcm_ct)
-    else:
-        dx, dy, Cx, Cy, Ox, Oy = transformation_params
+def get_grid(dcm_ct):
+    dx, dy, Cx, Cy, Ox, Oy = get_image_transformation_parameters(dcm_ct)
 
     ct_size = np.shape(dcm_ct.pixel_array)
     x_grid = np.arange(Cx, Cx + ct_size[0] * dx * Ox, dx * Ox)
@@ -53,13 +50,10 @@ def get_grid(dcm_ct, transformation_params=None):
     return x_grid, y_grid, ct_size
 
 
-def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
-    transformation_params = get_image_transformation_parameters(dcm_ct)
-    dx, dy, Cx, Cy, Ox, Oy = transformation_params
+def calculate_expanded_mask(contours, dcm_ct, expansion):
+    dx, dy, Cx, Cy, Ox, Oy = get_image_transformation_parameters(dcm_ct)
 
-    x_grid, y_grid, ct_size = get_grid(
-        dcm_ct, transformation_params=transformation_params
-    )
+    ct_size = np.shape(dcm_ct.pixel_array)
 
     new_ct_size = np.array(ct_size) * expansion
 
@@ -70,7 +64,8 @@ def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
         y = np.array(xyz[1::3])
         z = xyz[2::3]
 
-        assert len(set(z)) == 1
+        if len(set(z)) != 1:
+            raise ValueError("Expected only one z value for a given contour")
 
         r = (((y - Cy) / dy * Oy)) * expansion + (expansion - 1) * 0.5
         c = (((x - Cx) / dx * Ox)) * expansion + (expansion - 1) * 0.5
@@ -79,6 +74,14 @@ def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
             expanded_mask,
             skimage.draw.polygon2mask(new_ct_size, np.array(list(zip(r, c)))),
         )
+
+    return expanded_mask
+
+
+def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
+    expanded_mask = calculate_expanded_mask(contours, dcm_ct, expansion)
+
+    x_grid, y_grid, ct_size = get_grid(dcm_ct)
 
     mask = reduce_expanded_mask(expanded_mask, ct_size[0], expansion)
     mask = 2 * mask - 1
