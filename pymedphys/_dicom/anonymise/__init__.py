@@ -113,6 +113,12 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     copy_dataset : ``bool``, optional
         If ``True``, then a copy of ``ds`` is returned.
 
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    alternative_identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
+
     Returns
     -------
     ds_anon : ``pydicom.dataset.Dataset``
@@ -243,6 +249,12 @@ def anonymise_file(
         set to ``False``, these tags are simply ignored. Pass ``False``
         with caution, since unrecognised tags may contain identifying
         information.
+
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    alternative_identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
     """
     dicom_filepath = str(dicom_filepath)
 
@@ -348,6 +360,12 @@ def anonymise_directory(
         set to ``False``, these tags are simply ignored. Pass ``False``
         with caution, since unrecognised tags may contain identifying
         information.
+
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    alternative_identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
     """
     dicom_dirpath = str(dicom_dirpath)
 
