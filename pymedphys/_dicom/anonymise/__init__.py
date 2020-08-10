@@ -45,11 +45,11 @@ IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 def _get_default_identifying_keywords():
     with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
         IDENTIFYING_KEYWORDS = json.load(infile)
-    return list(IDENTIFYING_KEYWORDS)
+    return tuple(IDENTIFYING_KEYWORDS)
 
 
 def get_default_identifying_keywords():
-    return copy(_get_default_identifying_keywords())
+    return list(_get_default_identifying_keywords())
 
 
 def label_dicom_filepath_as_anonymised(filepath):
