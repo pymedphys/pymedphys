@@ -11,10 +11,9 @@ from pynetdicom import (
 
 import os_helpers
 import vacunet
+import config
 
 debug_logger()
-
-PORT = 11112
 
 # TODO Get clinic specific prefix
 ROOT_UID = "1.2.826.0.1.3680043.8.498."  # Pydicom root uid
@@ -62,4 +61,4 @@ storage_sop_classes = [cx.abstract_syntax for cx in AllStoragePresentationContex
 for uid in storage_sop_classes:
     ae.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
 
-ae.start_server(("", PORT), block=True, evt_handlers=handlers)
+ae.start_server((config.HOST, config.PORT), block=True, evt_handlers=handlers)
