@@ -64,6 +64,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     delete_unknown_tags=None,
     copy_dataset=True,
     replacement_strategy=None,
+    alternative_identifying_keywords=None,
 ):
     r"""A simple tool to anonymise a DICOM dataset.
 
@@ -163,7 +164,10 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     if delete_private_tags:
         ds_anon.remove_private_tags()
 
-    keywords_to_anonymise = _filter_identifying_keywords(keywords_to_leave_unchanged)
+    keywords_to_anonymise = _filter_identifying_keywords(
+        keywords_to_leave_unchanged,
+        alternative_identifying_keywords=alternative_identifying_keywords,
+    )
 
     ds_anon = _anonymise_tags(
         ds_anon,
@@ -186,6 +190,7 @@ def anonymise_file(
     delete_private_tags=True,
     delete_unknown_tags=None,
     replacement_strategy=None,
+    alternative_identifying_keywords=None,
 ):
     r"""A simple tool to anonymise a DICOM file.
 
@@ -251,6 +256,7 @@ def anonymise_file(
         delete_unknown_tags=delete_unknown_tags,
         copy_dataset=False,
         replacement_strategy=replacement_strategy,
+        alternative_identifying_keywords=alternative_identifying_keywords,
     )
 
     if output_filepath is None:
@@ -287,6 +293,7 @@ def anonymise_directory(
     delete_private_tags=True,
     delete_unknown_tags=None,
     replacement_strategy=None,
+    alternative_identifying_keywords=None,
 ):
     r"""A simple tool to anonymise all DICOM files in a directory and
     its subdirectories.
@@ -365,6 +372,7 @@ def anonymise_directory(
             delete_private_tags=delete_private_tags,
             delete_unknown_tags=delete_unknown_tags,
             replacement_strategy=replacement_strategy,
+            alternative_identifying_keywords=alternative_identifying_keywords,
         )
 
     # Separate loop provides the ability to raise Exceptions from the
@@ -640,12 +648,18 @@ def _anonymise_tags(
     return ds_anon
 
 
-def _filter_identifying_keywords(keywords_to_leave_unchanged):
+def _filter_identifying_keywords(
+    keywords_to_leave_unchanged, alternative_identifying_keywords=None
+):
     r"""Removes DICOM keywords that the user desires to leave unchanged
     from the list of known DICOM identifying keywords and returns the
     resulting keyword list.
     """
-    keywords_filtered = list(IDENTIFYING_KEYWORDS)
+    if alternative_identifying_keywords is None:
+        keywords_filtered = list(IDENTIFYING_KEYWORDS)
+    else:
+        keywords_filtered = alternative_identifying_keywords
+
     for keyword in keywords_to_leave_unchanged:
         try:
             keywords_filtered.remove(keyword)
