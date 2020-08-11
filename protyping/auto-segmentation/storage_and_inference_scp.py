@@ -67,6 +67,8 @@ ae.network_timeout = None
 ae.acse_timeout = None
 ae.dimse_timeout = None
 ae.maximum_pdu_size = 0
+ae.maximum_associations = 1
+
 storage_sop_classes = [cx.abstract_syntax for cx in AllStoragePresentationContexts]
 
 for uid in storage_sop_classes:
