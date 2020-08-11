@@ -5,17 +5,21 @@ import glob
 
 debug_logger()
 
-PORT=11112
+PORT=34567
 DATASET='C:/Users/Public/Documents/vacunet/test_data/160563_images/with_transfer_syntax'
 #DATASET='C:/Users/Public/Documents/vacunet/test_data/160563_images/with_transfer_syntax/1.2.840.113704.1.111.2564.1556080845.11529.dcm'
 
 
 dicom_paths = glob.glob(DATASET + "/*.dcm")
+print("dicom_paths", len(dicom_paths))
 
 dicom_files = [dcmread(file) for file in dicom_paths]
+print("dicom_files", len(dicom_files))
 
 # Initialise the Application Entity
+#ae = AE(network_timeout=None, dimse_timout=None, acse_timeout=None, maximum_pdu_size=0)
 ae = AE()
+#ae.network_timeout=None
 
 # Add a requested presentation context
 ae.add_requested_context(CTImageStorage)
