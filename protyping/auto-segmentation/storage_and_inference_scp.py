@@ -63,6 +63,10 @@ def handle_release(event):
 handlers = [(evt.EVT_C_STORE, handle_store), (evt.EVT_RELEASED, handle_release)]
 
 ae = AE()
+ae.network_timeout = None
+ae.acse_timeout = None
+ae.dimse_timeout = None
+ae.maximum_pdu_size = 0
 storage_sop_classes = [cx.abstract_syntax for cx in AllStoragePresentationContexts]
 
 for uid in storage_sop_classes:
