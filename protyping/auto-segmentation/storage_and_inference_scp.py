@@ -55,7 +55,7 @@ def handle_release(event):
     dicom_helpers.print_dicom_file(dicom_structure_file)
     print("\nEXPORTED:", save_path)
     print("RELEASED")
-    print("\nListening for association request...")
+    print("\nListening for association request on port:", config.PORT)
 
     return 0x0000
 
@@ -67,6 +67,8 @@ storage_sop_classes = [cx.abstract_syntax for cx in AllStoragePresentationContex
 
 for uid in storage_sop_classes:
     ae.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
+
+print("\nListening for association request on port:", config.PORT)
 
 # ae.start_server(('config.HOST', config.PORT), block=True, evt_handlers=handlers)
 ae.start_server(("", config.PORT), block=True, evt_handlers=handlers)
