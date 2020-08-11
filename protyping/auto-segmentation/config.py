@@ -1,5 +1,6 @@
 # ------------------------------------------------------------
-PORT = 11112
+# PORT = 11112
+PORT = 34567
 HOST = "locahost"
 EXPORT_PATH = "C:/Users/Public/Documents/vacunet/scp_output"
 
