@@ -21,3 +21,14 @@ TOLERANCE_TYPES = {
     20: "Vault 4HD Table",
     21: "Vault 4HD Maximum",
 }
+
+SITE_CONSTANTS = {
+    0: "Unknown",
+    1: "VOID",
+    2: "CLOSE",
+    3: "COMPLETE",
+    4: "HOLD",
+    5: "APPROVE",
+    6: "PROCESS_LOCK",
+    7: "PENDING",
+}

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.32.0dev2"
+version = "0.32.0dev4"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -73,6 +73,7 @@ tensorflow-estimator = { version = "*", optional = true}
 tensorboard = { version = "*", optional = true }
 tensorflow-io = { version = "*", optional = true }
 tensorflow-datasets = { version = "*", optional = true }
+segments-ai = { version = "^0.12", optional = true }
 
 # jax = { version = "*", optional = true }
 # jaxlib = { version = "*", optional = true }
@@ -124,6 +125,7 @@ docs = [
 ml = [
     "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io",
     "tensorflow-datasets",
+    "segments-ai"
     # "jax", "jaxlib", "flax"
 ]
 
