@@ -87,9 +87,9 @@ def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
 
 
 def get_contours_from_mask(x_grid, y_grid, mask):
-    fig, ax = plt.subplots()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
+        fig, ax = plt.subplots()
         cs = ax.contour(x_grid, y_grid, mask, [0])
 
     contours = [path.vertices for path in cs.collections[0].get_paths()]
