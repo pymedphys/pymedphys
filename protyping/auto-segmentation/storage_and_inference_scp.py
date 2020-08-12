@@ -1,8 +1,7 @@
-import os
-
 import config
 import dicom_helpers
 import os_helpers
+import structure_storage_scu
 import vacunet
 from pynetdicom import (
     AE,
@@ -12,12 +11,7 @@ from pynetdicom import (
     evt,
 )
 
-from pydicom.uid import UID, generate_uid
-
 debug_logger()
-
-# TODO Get clinic specific prefix
-ROOT_UID = "1.2.826.0.1.3680043.8.498."  # Pydicom root uid
 
 
 def handle_store(event):
@@ -28,7 +22,7 @@ def handle_store(event):
     ds.file_meta = event.file_meta
 
     # Parent folder to all storage requests
-    export_path = config.EXPORT_PATH
+    export_path = config.SCP_STORAGE_PATH
     # For the entire study
     study_path = export_path + "/" + ds.StudyInstanceUID
 
@@ -45,7 +39,7 @@ def handle_store(event):
 def handle_release(event):
     """Handle EVT_C_STORE events."""
     # Return RT structure file
-    dicom_structure_file = vacunet.vacunet(study_path, ROOT_UID)
+    dicom_structure_file = vacunet.vacunet(study_path, config.ROOT_UID)
 
     # For RT structure file instance
     save_path = study_path + "/" + dicom_structure_file.SOPInstanceUID + ".dcm"
@@ -53,9 +47,18 @@ def handle_release(event):
 
     # Print file contents
     dicom_helpers.print_dicom_file(dicom_structure_file)
-    print("\nEXPORTED:", save_path)
+    print("\nSTORED:", save_path)
+
+    try:
+        # SEND TO STORAGE_STRUCTURES_SCU
+        structure_storage_scu.export_files([save_path], directory=False)
+        # structure_storage_scu.export_files(study_path, directory=True)
+        print("Storage association request failed")
+    except:
+        print("Storage association request failed")
+
     print("RELEASED")
-    print("\nListening for association request on port:", config.PORT)
+    print("\nListening for association request on port:", config.SCP_PORT)
 
     return 0x0000
 
@@ -67,14 +70,17 @@ ae.network_timeout = None
 ae.acse_timeout = None
 ae.dimse_timeout = None
 ae.maximum_pdu_size = 0
-ae.maximum_associations = 1
+ae.maximum_associations = 1  # TODO Handle more than one
 
 storage_sop_classes = [cx.abstract_syntax for cx in AllStoragePresentationContexts]
 
 for uid in storage_sop_classes:
     ae.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
 
-print("\nListening for association request on port:", config.PORT)
+print("\nListening for association request on port:", config.SCP_PORT)
 
-# ae.start_server(('config.HOST', config.PORT), block=True, evt_handlers=handlers)
-ae.start_server(("", config.PORT), block=True, evt_handlers=handlers)
+ae.start_server((config.SCP_IP, config.SCP_PORT), block=True, evt_handlers=handlers)
+
+# ae.start_server(("", config.SCP_PORT),
+#                 block=True,
+#                 evt_handlers=handlers)
