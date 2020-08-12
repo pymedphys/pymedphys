@@ -14,7 +14,6 @@
 
 import base64
 import datetime
-import functools
 import hashlib
 import logging
 import random

@@ -1,9 +1,8 @@
-import copy
 import logging
 import os
 import subprocess
 import tempfile
-from os.path import basename, dirname, exists
+from os.path import basename, exists
 from os.path import join as pjoin
 from shutil import copyfile
 
@@ -15,7 +14,6 @@ from pymedphys._dicom.anonymise import (
     anonymise_file,
     is_anonymised_directory,
     is_anonymised_file,
-    label_dicom_filepath_as_anonymised,
 )
 from pymedphys._dicom.utilities import remove_file
 from pymedphys._experimental.pseudonymisation import (
@@ -29,7 +27,7 @@ from pymedphys.tests.dicom.test_anonymise import (
 
 
 @pytest.mark.pydicom
-def test_pseudonymise_file(tmp_path):
+def test_pseudonymise_file():
     for test_file_path in get_test_filepaths():
         _test_pseudonymise_file_at_path(test_file_path)
 
