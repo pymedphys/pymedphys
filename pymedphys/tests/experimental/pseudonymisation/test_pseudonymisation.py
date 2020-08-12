@@ -49,7 +49,7 @@ def test_identifier_with_unknown_vr():
     # in the dataset, the error will only surface in that circumstance
     replacement_strategy = strategy.pseudonymisation_dispatch
     logging.info("Using pseudonymisation strategy")
-    identifying_keywords_for_pseudo = ["CodingSchemeURL", "PatientID"]
+    identifying_keywords_with_vr_unknown_to_strategy = ["CodingSchemeURL", "PatientID"]
     logging.info("Using keyword with VR = UR")
 
     ds_input = pydicom.Dataset()
@@ -59,7 +59,7 @@ def test_identifier_with_unknown_vr():
         anonymise_dataset(
             ds_input,
             replacement_strategy=replacement_strategy,
-            identifying_keywords=identifying_keywords_for_pseudo,
+            identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
         )
         is not None
     )
@@ -70,7 +70,7 @@ def test_identifier_with_unknown_vr():
         anonymise_dataset(
             ds_input,
             replacement_strategy=replacement_strategy,
-            identifying_keywords=identifying_keywords_for_pseudo,
+            identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
         )
 
 
