@@ -49,13 +49,7 @@ def handle_release(event):
     dicom_helpers.print_dicom_file(dicom_structure_file)
     print("\nSTORED:", save_path)
 
-    try:
-        # SEND TO STORAGE_STRUCTURES_SCU
-        structure_storage_scu.export_files([save_path], directory=False)
-        # structure_storage_scu.export_files(study_path, directory=True)
-        print("Storage association request failed")
-    except:
-        print("Storage association request failed")
+    structure_storage_scu.export_files([save_path], directory=False)
 
     print("RELEASED")
     print("\nListening for association request on port:", config.SCP_PORT)
