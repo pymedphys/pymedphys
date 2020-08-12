@@ -2,7 +2,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from os.path import basename, exists
+from os.path import exists
 from os.path import join as pjoin
 from shutil import copyfile
 
@@ -21,15 +21,7 @@ from pymedphys._experimental.pseudonymisation import (
     get_default_pseudonymisation_keywords,
     strategy,
 )
-from pymedphys.tests.dicom.test_anonymise import (
-    TEST_ANON_BASENAME_DICT,
-    get_test_filepaths,
-)
-
-TEST_PSEUDO_BASENAME_DICT = {
-    "RP.almost_anonymised.dcm": "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm",
-    "RIBT.not_quite_anonymised.dcm": "RIBT.1.2.826.0.1.3680043.10.188.1688483800755472649950556194856251453_Anonymised",
-}
+from pymedphys.tests.dicom.test_anonymise import get_test_filepaths
 
 
 @pytest.mark.pydicom
@@ -58,7 +50,9 @@ def _test_pseudonymise_file_at_path(test_file_path):
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_for_pseudo,
         )
-
+        # debug print + Assert to force the print
+        # print("Pseudonymised file at: ", pseudonymised_file_path)
+        # assert False
         assert exists(pseudonymised_file_path)
         ds_input = pydicom.dcmread(test_file_path, force=True)
         ds_pseudo = pydicom.dcmread(pseudonymised_file_path, force=True)
@@ -99,7 +93,8 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         )
         mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds_input.SOPClassUID.name]
         temp_anon_filepath = pjoin(
-            tmp_path, "{}.{}.dcm".format(mode_prefix, pseudo_sop_instance_uid)
+            tmp_path,
+            "{}.{}_Anonymised.dcm".format(mode_prefix, pseudo_sop_instance_uid),
         )
         assert not exists(temp_anon_filepath)
 
@@ -109,6 +104,7 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         logging.info("Command line: %s", anon_file_command)
         try:
             subprocess.check_call(anon_file_command)
+            assert exists(temp_anon_filepath)
             # assert is_anonymised_file(temp_anon_filepath)
             assert exists(temp_filepath)
 
