@@ -63,24 +63,25 @@ def handle_release(event):
     return 0x0000
 
 
-handlers = [(evt.EVT_C_STORE, handle_store), (evt.EVT_RELEASED, handle_release)]
+def main():
+    handlers = [(evt.EVT_C_STORE, handle_store), (evt.EVT_RELEASED, handle_release)]
 
-ae = AE()
-ae.network_timeout = None
-ae.acse_timeout = None
-ae.dimse_timeout = None
-ae.maximum_pdu_size = 0
-ae.maximum_associations = 1  # TODO Handle more than one
+    ae = AE()
+    ae.network_timeout = None
+    ae.acse_timeout = None
+    ae.dimse_timeout = None
+    ae.maximum_pdu_size = 0
+    ae.maximum_associations = 1  # TODO Handle more than one
 
-storage_sop_classes = [cx.abstract_syntax for cx in AllStoragePresentationContexts]
+    storage_sop_classes = [cx.abstract_syntax for cx in AllStoragePresentationContexts]
 
-for uid in storage_sop_classes:
-    ae.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
+    for uid in storage_sop_classes:
+        ae.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
 
-print("\nListening for association request on port:", config.SCP_PORT)
+    print("\nListening for association request on port:", config.SCP_PORT)
 
-ae.start_server((config.SCP_IP, config.SCP_PORT), block=True, evt_handlers=handlers)
+    ae.start_server((config.SCP_IP, config.SCP_PORT), block=True, evt_handlers=handlers)
 
-# ae.start_server(("", config.SCP_PORT),
-#                 block=True,
-#                 evt_handlers=handlers)
+
+if __name__ == "__main__":
+    main()
