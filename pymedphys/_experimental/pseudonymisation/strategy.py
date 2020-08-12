@@ -51,7 +51,6 @@ def get_pseudonymous_replacement_value(keyword, value):
 
     """
     vr = get_baseline_keyword_vr_dict()[keyword]
-    replacement_value = value
     if vr in pseudonymisation_dispatch:
         replacement_value = pseudonymisation_dispatch[vr](value)
     else:
