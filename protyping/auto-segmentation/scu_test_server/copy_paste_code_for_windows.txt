@@ -1,0 +1,6 @@
+import dicom_helpers
+path = 'C:/Users/Public/Documents/vacunet/test_data/160563_images'
+dicom_helpers.write_transfer_syntax_to_path(path)
+
+
+python -m pynetdicom storescu 127.0.0.1 11112 C:/Users/Public/Documents/vacunet/test_data/160563_images/with_transfer_syntax/ -v -cx
