@@ -15,6 +15,7 @@ from pymedphys._dicom.anonymise import (
     is_anonymised_directory,
     is_anonymised_file,
 )
+from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys._experimental.pseudonymisation import (
     get_default_pseudonymisation_keywords,
@@ -24,6 +25,11 @@ from pymedphys.tests.dicom.test_anonymise import (
     TEST_ANON_BASENAME_DICT,
     get_test_filepaths,
 )
+
+TEST_PSEUDO_BASENAME_DICT = {
+    "RP.almost_anonymised.dcm": "RP.1.2.246.352.71.5.53598612033.430805.20190416135558_Anonymised.dcm",
+    "RIBT.not_quite_anonymised.dcm": "RIBT.1.2.826.0.1.3680043.10.188.1688483800755472649950556194856251453_Anonymised",
+}
 
 
 @pytest.mark.pydicom
@@ -79,11 +85,22 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         logging.info("CLI test on %s", test_file_path)
 
         copyfile(test_file_path, temp_filepath)
-        test_anon_basename = TEST_ANON_BASENAME_DICT[basename(test_file_path)]
-        temp_anon_filepath = pjoin(tmp_path, test_anon_basename)
+
         # Basic file pseudonymisation
         # Initially, just make sure it exits with zero and doesn't fail to generate output
         assert not is_anonymised_file(temp_filepath)
+
+        # need the SOP Instance UID and SOP Class name to figure out the destination file name
+        # but will also be using the dataset to do some comparisons.
+        ds_input = pydicom.dcmread(temp_filepath, force=True)
+
+        pseudo_sop_instance_uid = strategy.pseudonymisation_dispatch["UI"](
+            ds_input.SOPInstanceUID
+        )
+        mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds_input.SOPClassUID.name]
+        temp_anon_filepath = pjoin(
+            tmp_path, "{}.{}.dcm".format(mode_prefix, pseudo_sop_instance_uid)
+        )
         assert not exists(temp_anon_filepath)
 
         anon_file_command = "pymedphys --verbose experimental dicom anonymise --pseudo".split() + [
@@ -94,7 +111,7 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
             subprocess.check_call(anon_file_command)
             # assert is_anonymised_file(temp_anon_filepath)
             assert exists(temp_filepath)
-            ds_input = pydicom.dcmread(temp_filepath, force=True)
+
             ds_pseudo = pydicom.dcmread(temp_anon_filepath, force=True)
             assert ds_input["PatientID"].value != ds_pseudo["PatientID"].value
         finally:
