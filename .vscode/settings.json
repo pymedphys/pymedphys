@@ -93,8 +93,10 @@
     "chdir",
     "choco",
     "chown",
+    "clabel",
     "cmap",
     "codemirror",
+    "colorbar",
     "conda",
     "contourf",
     "coord",
@@ -224,6 +226,7 @@
     "mybinder",
     "mypy",
     "namedtuples",
+    "nanmax",
     "nargs",
     "nbcc",
     "ndarray",
@@ -327,6 +330,7 @@
     "varian",
     "vectorised",
     "vendored",
+    "viridis",
     "virtualenvs",
     "visualisation",
     "vmat",
@@ -351,7 +355,8 @@
     "zenodo",
     "zfill",
     "zlabel",
-    "zlim"
+    "zlim",
+    "zorder"
   ],
   "python.linting.pylintEnabled": true,
   "git.ignoreLimitWarning": true
