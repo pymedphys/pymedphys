@@ -34,8 +34,8 @@ def test_pseudonymise_file():
     for test_file_path in get_test_filepaths():
         _test_pseudonymise_file_at_path(
             test_file_path,
-            keywords=identifying_keywords_for_pseudo,
-            strategy=replacement_strategy,
+            test_identifying_keywords=identifying_keywords_for_pseudo,
+            test_replacement_strategy=replacement_strategy,
         )
 
 
@@ -74,18 +74,20 @@ def test_identifier_with_unknown_vr():
         )
 
 
-def _test_pseudonymise_file_at_path(test_file_path, keywords=None, strategy=None):
+def _test_pseudonymise_file_at_path(
+    test_file_path, test_identifying_keywords=None, test_replacement_strategy=None
+):
     assert not is_anonymised_file(test_file_path)
-    if keywords is None:
+    if test_identifying_keywords is None:
         identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
         logging.info("Using pseudonymisation keywords")
     else:
-        identifying_keywords_for_pseudo = keywords
+        identifying_keywords_for_pseudo = test_identifying_keywords
     if strategy is None:
         replacement_strategy = strategy.pseudonymisation_dispatch
         logging.info("Using pseudonymisation strategy")
     else:
-        replacement_strategy = strategy
+        replacement_strategy = test_replacement_strategy
 
     with tempfile.TemporaryDirectory() as output_directory:
         pseudonymised_file_path = anonymise_file(
