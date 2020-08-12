@@ -1,7 +1,10 @@
+# pylint: disable = pointless-statement, pointless-string-statement
+# pylint: disable = no-value-for-parameter, expression-not-assigned
+# pylint: disable = too-many-lines, redefined-outer-name
+
 import re
 from glob import glob
 
-import shapely
 import streamlit as st
 
 import numpy as np
@@ -41,13 +44,11 @@ filepath_list = np.concatenate(
     [rccc_filepath_list, nbccc_filepath_list, sash_filepath_list]
 )
 
-# filepath_list
 
+electronmodel_regex = r"RiverinaAgility - (\d+)MeV"
+applicator_regex = r"(\d+)X\d+"
 
-electronmodel_regex = "RiverinaAgility - (\d+)MeV"
-applicator_regex = "(\d+)X\d+"
-
-insert_data = dict()
+insert_data = dict()  # type: ignore
 
 for telfilepath in filepath_list:
     insert_data[telfilepath] = dict()
@@ -61,16 +62,14 @@ for telfilepath in filepath_list:
             insert_data[telfilepath]["reference_index"] += [i]
 
     insert_data[telfilepath]["applicators"] = [
-        re.search(applicator_regex, telfilecontents[i + 12]).group(1)
+        re.search(applicator_regex, telfilecontents[i + 12]).group(1)  # type: ignore
         for i in insert_data[telfilepath]["reference_index"]
     ]
 
     insert_data[telfilepath]["energies"] = [
-        re.search(electronmodel_regex, telfilecontents[i]).group(1)
+        re.search(electronmodel_regex, telfilecontents[i]).group(1)  # type: ignore
         for i in insert_data[telfilepath]["reference_index"]
     ]
-
-# insert_data
 
 
 for telfilepath in filepath_list:
@@ -81,19 +80,17 @@ for telfilepath in filepath_list:
     insert_data[telfilepath]["y"] = []
 
     for i, index in enumerate(insert_data[telfilepath]["reference_index"]):
-        insert_inital_range = telfilecontents[
+        insert_initial_range = telfilecontents[
             index + 51 : :
         ]  # coords start 51 lines after electron model name
-        insert_stop = np.where(insert_inital_range == "0")[0][
+        insert_stop = np.where(insert_initial_range == "0")[0][
             0
         ]  # coords stop right before a line containing 0
 
-        insert_coords_string = insert_inital_range[:insert_stop]
+        insert_coords_string = insert_initial_range[:insert_stop]
         insert_coords = np.fromstring(",".join(insert_coords_string), sep=",")
         insert_data[telfilepath]["x"].append(insert_coords[0::2] / 10)
         insert_data[telfilepath]["y"].append(insert_coords[1::2] / 10)
-
-# insert_data
 
 
 for telfilepath in filepath_list:
@@ -115,8 +112,6 @@ for telfilepath in filepath_list:
         insert_data[telfilepath]["P/A"].append(
             electronfactors.convert2_ratio_perim_area(width, length)
         )
-
-# insert_data
 
 
 data_filename = r"S:\Physics\RCCC Specific Files\Dosimetry\Elekta_EFacs\electron_factor_measured_data.csv"
@@ -157,8 +152,6 @@ for telfilepath in filepath_list:
                     factor_data[reference],
                 )[0]
             )
-
-# insert_data
 
 
 def visual_circle_and_ellipse(insert_x, insert_y, width, length, circle_centre):
@@ -219,11 +212,8 @@ def plot_model(width_data, length_data, factor_data):
     )
     model_width, model_length, model_factor = i, j, k
 
-    model_width_mesh, model_length_mesh = np.meshgrid(model_width, model_length)
-
     vmin = np.nanmin(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
     vmax = np.nanmax(np.concatenate([model_factor.ravel(), factor_data.ravel()]))
-    vrange = vmax - vmin
 
     plt.scatter(
         width_data,
