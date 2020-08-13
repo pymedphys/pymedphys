@@ -11,6 +11,14 @@ This project adheres to
 
 ### Experimental API changes
 
+* Added pseudonymisation as an experimental extension of anonymise.
+The pseudonymisation strategy uses SHA3_256 hashing for text and UIDs, date shifting for dates, and jittering for Age.
+The intent is to enable sets of data that are correlated to remain correlated, and to prevent
+uncorrelated patient/study/series from clashing.
+CLI:  pymedphys experimental dicom anonymise --pseudo [input]
+Programmatic access using pymedphys._experimental.pseudonymisation.get_default_pseudonymisation_keywords and
+pymedphys._experimental.pseudonymisation.strategy.pseudonymisation_dispatch in optional arguments for identifying_keywords and replacement_strategy to anonymise functions.
+
 #### Bug Fixes
 
 * Pinnacle Export Tool now exports correct dose for patient orientations other
