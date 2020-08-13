@@ -15,7 +15,6 @@
 import base64
 import datetime
 import hashlib
-import logging
 import random
 from decimal import Decimal, DecimalTuple
 
