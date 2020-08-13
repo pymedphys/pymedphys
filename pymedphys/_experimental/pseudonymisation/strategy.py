@@ -51,13 +51,7 @@ def get_pseudonymous_replacement_value(keyword, value):
 
     """
     vr = get_baseline_keyword_vr_dict()[keyword]
-    if vr in pseudonymisation_dispatch:
-        replacement_value = pseudonymisation_dispatch[vr](value)
-    else:
-        logging.error(
-            "VR of %s for %s not found in pseudonymisation dispatch table", vr, keyword
-        )
-        raise KeyError
+    replacement_value = pseudonymisation_dispatch[vr](value)
 
     return replacement_value
 
