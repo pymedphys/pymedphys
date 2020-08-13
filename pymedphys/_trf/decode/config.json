@@ -1,6 +1,14 @@
 {
     "time_increment": 0.04,
     "linac_state_codes": {
+        "0": "Not initialised",
+		"1": "Reset",
+		"4": "Initialising",
+	    "8": "System on",
+		"16": "Closed",
+		"33": "Standby",
+		"34": "Preparatory",
+        "35": "Ready to start",
         "39": "Move Only",
         "40": "Pause",
         "41": "Intersegment",
