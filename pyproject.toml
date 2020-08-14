@@ -95,7 +95,6 @@ hypothesis  = { version = "*", optional = true }
 psutil  = { version = "*", optional = true }
 pylint  = { version = "*", optional = true }
 pytest-pylint  = { version = "*", optional = true }
-cffi = "^1.14.1"
 
 [tool.poetry.dev-dependencies]
 # Git Management

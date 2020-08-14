@@ -2380,7 +2380,7 @@ ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "ten
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "2c291355bcabdc9bd240a005f34df389933fe5fdfd2287da85a8d50742ac8361"
+content-hash = "a152b67309338dcff28a9c24c09e4db73f49b837cc198d440e5bb0fcd9958388"
 python-versions = "^3.6"
 
 [metadata.files]
