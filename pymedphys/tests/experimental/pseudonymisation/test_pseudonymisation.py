@@ -11,6 +11,7 @@ import pytest
 import pydicom
 
 from pymedphys._dicom.anonymise import (
+    anonymise_dataset,
     anonymise_file,
     is_anonymised_directory,
     is_anonymised_file,
@@ -26,16 +27,67 @@ from pymedphys.tests.dicom.test_anonymise import get_test_filepaths
 
 @pytest.mark.pydicom
 def test_pseudonymise_file():
-    for test_file_path in get_test_filepaths():
-        _test_pseudonymise_file_at_path(test_file_path)
-
-
-def _test_pseudonymise_file_at_path(test_file_path):
-    assert not is_anonymised_file(test_file_path)
     identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
     logging.info("Using pseudonymisation keywords")
     replacement_strategy = strategy.pseudonymisation_dispatch
     logging.info("Using pseudonymisation strategy")
+    for test_file_path in get_test_filepaths():
+        _test_pseudonymise_file_at_path(
+            test_file_path,
+            test_identifying_keywords=identifying_keywords_for_pseudo,
+            test_replacement_strategy=replacement_strategy,
+        )
+
+
+@pytest.mark.pydicom
+def test_identifier_with_unknown_vr():
+    # The fundamental feature being tested is behaviour in
+    # response to a programmer error.
+    # The programmer error is specification of an identifier that has a VR
+    # that has not been addressed in the strategy.
+    # However, because the strategy is only applied when the identifier is found
+    # in the dataset, the error will only surface in that circumstance
+    replacement_strategy = strategy.pseudonymisation_dispatch
+    logging.info("Using pseudonymisation strategy")
+    identifying_keywords_with_vr_unknown_to_strategy = ["CodingSchemeURL", "PatientID"]
+    logging.info("Using keyword with VR = UR")
+
+    ds_input = pydicom.Dataset()
+    ds_input.PatientID = "ABC123"
+    # not expected to cause problems if the identifier with unknown VR is not in the data
+    assert (
+        anonymise_dataset(
+            ds_input,
+            replacement_strategy=replacement_strategy,
+            identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
+        )
+        is not None
+    )
+
+    # should raise the error if the identifier with unknown VR is in the data
+    with pytest.raises(KeyError):
+        ds_input.CodingSchemeURL = "https://scheming.coders.co.nz"
+        anonymise_dataset(
+            ds_input,
+            replacement_strategy=replacement_strategy,
+            identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
+        )
+
+
+def _test_pseudonymise_file_at_path(
+    test_file_path, test_identifying_keywords=None, test_replacement_strategy=None
+):
+    assert not is_anonymised_file(test_file_path)
+    if test_identifying_keywords is None:
+        identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
+        logging.info("Using pseudonymisation keywords")
+    else:
+        identifying_keywords_for_pseudo = test_identifying_keywords
+    if strategy is None:
+        replacement_strategy = strategy.pseudonymisation_dispatch
+        logging.info("Using pseudonymisation strategy")
+    else:
+        replacement_strategy = test_replacement_strategy
 
     with tempfile.TemporaryDirectory() as output_directory:
         pseudonymised_file_path = anonymise_file(
