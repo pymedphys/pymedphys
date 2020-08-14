@@ -59,6 +59,9 @@ pydicom = ">=2.0.0"
 pynetdicom = "*"
 pylibjpeg-libjpeg = "*"
 
+# pins for flow on deps
+cffi = "1.14.0"
+
 # difficult
 cython = "*"
 pymssql = { version = "< 3.0.0", python = "< 3.8" }
