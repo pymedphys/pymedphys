@@ -139,7 +139,7 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
 
         # need the SOP Instance UID and SOP Class name to figure out the destination file name
         # but will also be using the dataset to do some comparisons.
-        ds_input = pydicom.dcmread(temp_filepath, force=True)
+        ds_input: pydicom.FileDataset = pydicom.dcmread(temp_filepath, force=True)
 
         pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch["UI"](
             ds_input.SOPInstanceUID
