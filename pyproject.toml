@@ -77,7 +77,6 @@ tensorflow-estimator = { version = "*", optional = true}
 tensorboard = { version = "*", optional = true }
 tensorflow-io = { version = "*", optional = true }
 tensorflow-datasets = { version = "*", optional = true }
-segments-ai = { version = "^0.12", optional = true }
 
 # jax = { version = "*", optional = true }
 # jaxlib = { version = "*", optional = true }
