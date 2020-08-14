@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: 3.7
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v2.1.0
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-cache
@@ -104,7 +104,7 @@ jobs:
         echo "::set-output name=dir::$(pip cache dir)"
 
     - name: Pip Cache
-      uses: actions/cache@v2
+      uses: actions/cache@v2.1.0
       with:
         path: ${{ steps.pip-cache.outputs.dir }}
         key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
@@ -150,7 +150,7 @@ jobs:
         poetry config virtualenvs.in-project true
 
     - name: Poetry Cache
-      uses: actions/cache@v2
+      uses: actions/cache@v2.1.0
       id: poetry-cache
       with:
         path: .venv
@@ -230,7 +230,7 @@ jobs:
 
     - name: PyMedPhys Cache
       id: pymedphys-cache
-      uses: actions/cache@v2
+      uses: actions/cache@v2.1.0
       with:
         path: ${{ steps.pymedphys-cache-location.outputs.dir }}
         key: pymedphys-${{ hashFiles('**/hashes.json') }}
