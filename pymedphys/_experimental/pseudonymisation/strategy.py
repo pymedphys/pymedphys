@@ -15,7 +15,6 @@
 import base64
 import datetime
 import hashlib
-import logging
 import random
 from decimal import Decimal, DecimalTuple
 
@@ -32,27 +31,26 @@ DICOM_DATETIME_FORMAT_STR = "%Y%m%d%H%M%S.%f"
 
 def get_pseudonymous_replacement_value(keyword, value):
     """
-    Get an appropriate value for a DICOM element based on its VR and
-    take in to account if it is an SOP Class UID.
-    Cache values of keywords that have already come in and re-use
-    the pseudonym for the *value* if it has already been used/replaced.
+    Get an appropriate value for a DICOM element based on its VR
+    that ensures consistent one way mapping to a replacement value
+    which will not reveal Private Health Information
 
     Parameters
     ----------
-    keyword : TYPE
-        DESCRIPTION.
+    keyword : A text string representing which DICOM attribute is to have it's value replaced
+
+    value:  The current value of the DICOM element
+
 
     Returns
     -------
-    None.
+    An appropriate value for a DICOM element based on its VR.
+    Strings are hashed.  Dates are shifted. Ages are jittered.
+    A KeyError will be raised if the VR of the attribute is not addressed by the dispatch table
 
     """
     vr = get_baseline_keyword_vr_dict()[keyword]
-    replacement_value = value
-    if vr in pseudonymisation_dispatch:
-        replacement_value = pseudonymisation_dispatch[vr](value)
-    else:
-        logging.warning("VR of %s not found in pseudonymisation dispatch table", vr)
+    replacement_value = pseudonymisation_dispatch[vr](value)
 
     return replacement_value
 
