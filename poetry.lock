@@ -1393,7 +1393,7 @@ pyasn1 = ">=0.4.6,<0.5.0"
 category = "main"
 description = "Official APIs for the MS-COCO dataset"
 name = "pycocotools"
-optional = false
+optional = true
 python-versions = "*"
 version = "2.0.1"
 
@@ -1786,7 +1786,7 @@ jeepney = ">=0.4.2"
 category = "main"
 description = ""
 name = "segments-ai"
-optional = false
+optional = true
 python-versions = "*"
 version = "0.12"
 
@@ -2403,11 +2403,11 @@ testing = ["jaraco.itertools", "func-timeout"]
 
 [extras]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
-ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "tensorflow-datasets"]
+ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "tensorflow-datasets", "segments-ai"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "f3878c599bb213a678a5e8d3af077ec32dffdc5814fa37c967ed91d632f1758e"
+content-hash = "407910f415e7590ac30ff4fa0b244073ef022da6294b670d45d9cf0b1c7a6220"
 python-versions = "^3.6"
 
 [metadata.files]
