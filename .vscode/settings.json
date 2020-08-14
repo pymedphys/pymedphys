@@ -9,6 +9,9 @@
   "files.trimTrailingWhitespace": true,
   "python.formatting.provider": "black",
   "python.sortImports.path": "isort",
+  "python.linting.enabled": true,
+  "python.linting.lintOnSave": true,
+  "python.linting.pylintEnabled": true,
   "python.linting.mypyEnabled": true,
   "python.linting.pylintUseMinimalCheckers": false,
   "[python]": {
@@ -360,6 +363,4 @@
     "zlim",
     "zorder"
   ],
-  "python.linting.pylintEnabled": true,
-  "git.ignoreLimitWarning": true
 }
