@@ -253,6 +253,8 @@
     "prependpath",
     "proto",
     "pseudonymisation",
+    "pseudonymise",
+    "pseudonymised",
     "psutil",
     "pval",
     "pyargs",
