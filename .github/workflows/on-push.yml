@@ -118,7 +118,7 @@ jobs:
     - name: Install Poetry
       uses: dschep/install-poetry-action@v1.3
       with:
-        version: 1.0.9
+        version: 1.1.0b2
         create_virtualenvs: true
 
 # No import and run CLI with no dependencies
