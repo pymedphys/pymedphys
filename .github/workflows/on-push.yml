@@ -117,8 +117,6 @@ jobs:
 
     - name: Install Poetry
       uses: dschep/install-poetry-action@v1.3
-      with:
-        create_virtualenvs: true
 
 # No import and run CLI with no dependencies
 
@@ -148,6 +146,7 @@ jobs:
 
     - name: Configure poetry
       run: |
+        poetry config virtualenvs.create true
         poetry config virtualenvs.in-project true
 
     - name: Poetry Cache
