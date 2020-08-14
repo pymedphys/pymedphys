@@ -1,8 +1,10 @@
+import copy
 import functools
 import json
 import logging
 import os
 import subprocess
+import tempfile
 from copy import deepcopy
 from os.path import basename, dirname, exists
 from os.path import join as pjoin
@@ -20,11 +22,11 @@ import pydicom.tag
 from pymedphys._data import download
 from pymedphys._dicom import create
 from pymedphys._dicom.anonymise import (
-    IDENTIFYING_KEYWORDS,
     IDENTIFYING_KEYWORDS_FILEPATH,
     anonymise_directory,
     anonymise_file,
     get_baseline_keyword_vr_dict,
+    get_default_identifying_keywords,
     is_anonymised_dataset,
     is_anonymised_directory,
     is_anonymised_file,
@@ -161,6 +163,34 @@ def test_anonymised_dataset_with_nested_name():
     assert not is_anonymised_dataset(nested_name)
 
 
+@pytest.mark.pydicom
+def test_anonymised_dataset_with_empty_patient_sex():
+    blank_sex_ds = dicom_dataset_from_dict({"PatientSex": None})
+    assert is_anonymised_dataset(blank_sex_ds)
+    hardcode_replace_ds = anonymise_dataset(blank_sex_ds)
+    assert hardcode_replace_ds["PatientSex"].value is None
+
+
+@pytest.mark.slow
+@pytest.mark.pydicom
+def test_alternative_identifying_keywords():
+    alternative_keyword_list = copy.copy(get_default_identifying_keywords())
+    alternative_keyword_list.append("SOPInstanceUID")
+    test_file_path = get_treatmentrecord_test_file_path()
+    ds_test = pydicom.dcmread(test_file_path, force=True)
+    with tempfile.TemporaryDirectory() as output_directory:
+        anon_private_filepath = anonymise_file(
+            test_file_path,
+            output_filepath=output_directory,
+            delete_private_tags=True,
+            identifying_keywords=alternative_keyword_list,
+        )
+        ds_anon = pydicom.dcmread(anon_private_filepath, force=True)
+
+        assert is_anonymised_file(anon_private_filepath, ignore_private_tags=False)
+        assert ds_test["SOPInstanceUID"].value != ds_anon["SOPInstanceUID"].value
+
+
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
@@ -169,7 +199,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
     # run basic anonymisation tests
     test_file_path = get_rtplan_test_file_path()
     ds = pydicom.dataset.Dataset()
-    for keyword in IDENTIFYING_KEYWORDS:
+    for keyword in get_default_identifying_keywords():
         # Ignore file meta elements for now
         tag = hex(pydicom.datadict.tag_for_keyword(keyword))
         if pydicom.tag.Tag(tag).group == 0x0002:
@@ -492,11 +522,13 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
 @pytest.mark.pydicom
 def test_tags_to_anonymise_in_dicom_dict_baseline(save_new_identifying_keywords=False):
     baseline_keywords = [val[4] for val in get_baseline_dicom_dict().values()]
-    assert set(IDENTIFYING_KEYWORDS).issubset(baseline_keywords)
+    assert set(get_default_identifying_keywords()).issubset(baseline_keywords)
 
     if save_new_identifying_keywords:
         with open(IDENTIFYING_KEYWORDS_FILEPATH, "w") as outfile:
-            json.dump(IDENTIFYING_KEYWORDS, outfile, indent=2, sort_keys=True)
+            json.dump(
+                get_default_identifying_keywords(), outfile, indent=2, sort_keys=True
+            )
 
         # TODO: Keywords to add if/when anonymisation of UIDs is implemented:
         # "AffectedSOPInstanceUID",

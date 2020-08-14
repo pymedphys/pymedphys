@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def model(grid_size=512, output_channels=1):
+def Network(grid_size=512, output_channels=1):
     def encode(x, convs, filters, kernel, drop=False, pool=True, norm=True):
         # Convolution
         for _ in range(convs):

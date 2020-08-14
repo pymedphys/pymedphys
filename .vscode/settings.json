@@ -9,6 +9,9 @@
   "files.trimTrailingWhitespace": true,
   "python.formatting.provider": "black",
   "python.sortImports.path": "isort",
+  "python.linting.enabled": true,
+  "python.linting.lintOnSave": true,
+  "python.linting.pylintEnabled": true,
   "python.linting.mypyEnabled": true,
   "python.linting.pylintUseMinimalCheckers": false,
   "[python]": {
@@ -93,8 +96,10 @@
     "chdir",
     "choco",
     "chown",
+    "clabel",
     "cmap",
     "codemirror",
+    "colorbar",
     "conda",
     "contourf",
     "coord",
@@ -224,6 +229,7 @@
     "mybinder",
     "mypy",
     "namedtuples",
+    "nanmax",
     "nargs",
     "nbcc",
     "ndarray",
@@ -250,6 +256,8 @@
     "prependpath",
     "proto",
     "pseudonymisation",
+    "pseudonymise",
+    "pseudonymised",
     "psutil",
     "pval",
     "pyargs",
@@ -327,6 +335,7 @@
     "varian",
     "vectorised",
     "vendored",
+    "viridis",
     "virtualenvs",
     "visualisation",
     "vmat",
@@ -351,8 +360,7 @@
     "zenodo",
     "zfill",
     "zlabel",
-    "zlim"
+    "zlim",
+    "zorder"
   ],
-  "python.linting.pylintEnabled": true,
-  "git.ignoreLimitWarning": true
 }

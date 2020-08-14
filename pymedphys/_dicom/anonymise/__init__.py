@@ -1,3 +1,4 @@
+# Copyright (C) 2020 Stuart Swerdloff
 # Copyright (C) 2018 Matthew Jennings, Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import functools
 import json
 import logging
 import os.path
 import pprint
-from copy import deepcopy
+from copy import copy, deepcopy
 from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
@@ -28,45 +28,28 @@ from pymedphys._imports import pydicom
 
 from pymedphys._dicom.constants import (
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
-    PYMEDPHYS_ROOT_UID,
     NotInBaselineError,
     get_baseline_dict_entry,
     get_baseline_keyword_vr_dict,
 )
 from pymedphys._dicom.utilities import remove_file
 
+from . import strategy
+
 HERE = dirname(abspath(__file__))
 
 IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 
-with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
-    IDENTIFYING_KEYWORDS = json.load(infile)
+
+@functools.lru_cache()
+def _get_default_identifying_keywords():
+    with open(IDENTIFYING_KEYWORDS_FILEPATH) as infile:
+        IDENTIFYING_KEYWORDS = json.load(infile)
+    return tuple(IDENTIFYING_KEYWORDS)
 
 
-@functools.lru_cache(maxsize=1)
-def get_vr_anonymous_replacement_value_dict():
-    VR_ANONYMOUS_REPLACEMENT_VALUE_DICT = {
-        "AE": "Anonymous",
-        "AS": "100Y",
-        "CS": "ANON",
-        "DA": "20190303",
-        "DS": "12345678.9",
-        "DT": "20190303000900.000000",
-        "LO": "Anonymous",
-        "LT": "Anonymous",
-        "OB": (0).to_bytes(2, "little"),
-        "OB or OW": (0).to_bytes(2, "little"),
-        "OW": (0).to_bytes(2, "little"),
-        "PN": "Anonymous",
-        "SH": "Anonymous",
-        "SQ": [pydicom.Dataset()],
-        "ST": "Anonymous",
-        "TM": "000900.000000",
-        "UI": PYMEDPHYS_ROOT_UID,
-        "US": 12345,
-    }
-
-    return VR_ANONYMOUS_REPLACEMENT_VALUE_DICT
+def get_default_identifying_keywords():
+    return list(_get_default_identifying_keywords())
 
 
 def label_dicom_filepath_as_anonymised(filepath):
@@ -88,6 +71,8 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     delete_private_tags=True,
     delete_unknown_tags=None,
     copy_dataset=True,
+    replacement_strategy=None,
+    identifying_keywords=None,
 ):
     r"""A simple tool to anonymise a DICOM dataset.
 
@@ -135,6 +120,12 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
 
     copy_dataset : ``bool``, optional
         If ``True``, then a copy of ``ds`` is returned.
+
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
 
     Returns
     -------
@@ -187,9 +178,16 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     if delete_private_tags:
         ds_anon.remove_private_tags()
 
-    keywords_to_anonymise = _filter_identifying_keywords(keywords_to_leave_unchanged)
+    keywords_to_anonymise = _filter_identifying_keywords(
+        keywords_to_leave_unchanged, identifying_keywords=identifying_keywords
+    )
 
-    ds_anon = _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values)
+    ds_anon = _anonymise_tags(
+        ds_anon,
+        keywords_to_anonymise,
+        replace_values,
+        replacement_strategy=replacement_strategy,
+    )
 
     if copy_dataset:
         return ds_anon
@@ -204,6 +202,8 @@ def anonymise_file(
     keywords_to_leave_unchanged=(),
     delete_private_tags=True,
     delete_unknown_tags=None,
+    replacement_strategy=None,
+    identifying_keywords=None,
 ):
     r"""A simple tool to anonymise a DICOM file.
 
@@ -256,6 +256,12 @@ def anonymise_file(
         set to ``False``, these tags are simply ignored. Pass ``False``
         with caution, since unrecognised tags may contain identifying
         information.
+
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
     """
     dicom_filepath = str(dicom_filepath)
 
@@ -268,6 +274,8 @@ def anonymise_file(
         delete_private_tags=delete_private_tags,
         delete_unknown_tags=delete_unknown_tags,
         copy_dataset=False,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords,
     )
 
     if output_filepath is None:
@@ -303,6 +311,8 @@ def anonymise_directory(
     keywords_to_leave_unchanged=(),
     delete_private_tags=True,
     delete_unknown_tags=None,
+    replacement_strategy=None,
+    identifying_keywords=None,
 ):
     r"""A simple tool to anonymise all DICOM files in a directory and
     its subdirectories.
@@ -357,6 +367,12 @@ def anonymise_directory(
         set to ``False``, these tags are simply ignored. Pass ``False``
         with caution, since unrecognised tags may contain identifying
         information.
+
+    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+
+    identifying_keywords: ``list``, optional
+        If left as None, the default values for/list of identifying keywords are used
     """
     dicom_dirpath = str(dicom_dirpath)
 
@@ -380,6 +396,8 @@ def anonymise_directory(
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=delete_private_tags,
             delete_unknown_tags=delete_unknown_tags,
+            replacement_strategy=replacement_strategy,
+            identifying_keywords=identifying_keywords,
         )
 
     # Separate loop provides the ability to raise Exceptions from the
@@ -404,6 +422,10 @@ def anonymise_cli(args):
     else:
         keywords_to_leave_unchanged = args.keywords_to_leave_unchanged
 
+    replacement_strategy = (
+        None  # at some point use args.pseudo to drive this, or something similar
+    )
+
     if isfile(args.input_path):
         anonymise_file(
             dicom_filepath=args.input_path,
@@ -414,6 +436,7 @@ def anonymise_cli(args):
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=not args.keep_private_tags,
             delete_unknown_tags=handle_unknown_tags,
+            replacement_strategy=replacement_strategy,
         )
 
     elif isdir(args.input_path):
@@ -426,6 +449,7 @@ def anonymise_cli(args):
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
             delete_private_tags=not args.keep_private_tags,
             delete_unknown_tags=handle_unknown_tags,
+            replacement_strategy=replacement_strategy,
         )
 
     else:
@@ -460,7 +484,7 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
         `True` if `ds` has been anonymised, `False` otherwise.
     """
     for elem in ds:
-        if elem.keyword in IDENTIFYING_KEYWORDS:
+        if elem.keyword in get_default_identifying_keywords():
             dummy_value = get_anonymous_replacement_value(elem.keyword)
             if not elem.value in ("", [], dummy_value, None):
                 if elem.VR == "DS" and np.isclose(
@@ -602,13 +626,31 @@ def unknown_tags_in_dicom_dataset(ds):
     return unknown_tags
 
 
-def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
+def _anonymise_tags(
+    ds_anon, keywords_to_anonymise, replace_values, replacement_strategy=None
+):
     """Anonymise all desired DICOM elements.
     """
+    if not replace_values and replacement_strategy is not None:
+        logging.warning(
+            "Conflicting approach to anonymisation specified, a replacement strategy was specified in addition to a directive"
+            "to eliminate values rather than replace them.  Adhering to directive to eliminate values"
+        )
+
     for keyword in keywords_to_anonymise:
         if hasattr(ds_anon, keyword):
             if replace_values:
-                replacement_value = get_anonymous_replacement_value(keyword)
+                if ds_anon[keyword].value in ("", None, []):
+                    logging.debug(
+                        "%s has value of empty list, None or empty string, no need to modify to anonymise",
+                        keyword,
+                    )
+                    continue
+                replacement_value = get_anonymous_replacement_value(
+                    keyword,
+                    current_value=ds_anon[keyword].value,
+                    replacement_strategy=replacement_strategy,
+                )
             else:
                 if get_baseline_keyword_vr_dict()[keyword] in ("OB", "OW"):
                     replacement_value = (0).to_bytes(2, "little")
@@ -621,17 +663,28 @@ def _anonymise_tags(ds_anon, keywords_to_anonymise, replace_values):
     ]
     for seq in remaining_seq_only_list:
         for seq_item in seq.value:
-            _anonymise_tags(seq_item, keywords_to_anonymise, replace_values)
+            _anonymise_tags(
+                seq_item,
+                keywords_to_anonymise,
+                replace_values,
+                replacement_strategy=replacement_strategy,
+            )
 
     return ds_anon
 
 
-def _filter_identifying_keywords(keywords_to_leave_unchanged):
+def _filter_identifying_keywords(
+    keywords_to_leave_unchanged, identifying_keywords=None
+):
     r"""Removes DICOM keywords that the user desires to leave unchanged
     from the list of known DICOM identifying keywords and returns the
     resulting keyword list.
     """
-    keywords_filtered = list(IDENTIFYING_KEYWORDS)
+    if identifying_keywords is None:
+        keywords_filtered = get_default_identifying_keywords()
+    else:
+        keywords_filtered = copy(identifying_keywords)
+
     for keyword in keywords_to_leave_unchanged:
         try:
             keywords_filtered.remove(keyword)
@@ -642,9 +695,48 @@ def _filter_identifying_keywords(keywords_to_leave_unchanged):
     return keywords_filtered
 
 
-def get_anonymous_replacement_value(keyword):
-    """Get an appropriate dummy anonymisation value for a DICOM element
+def get_anonymous_replacement_value(
+    keyword, current_value=None, replacement_strategy=None
+):
+    """Get an appropriate anonymisation value for a DICOM element
     based on its value representation (VR)
+    Parameters
+    ----------
+    keyword: text string that is the pydicom name for the DICOM attribute/element
+
+    current_value: optional, the value that is currently assigned to the element
+
+    replacement_strategy: optional, a dispatch dictionary whose keys are the text representation
+    of the VR of the element, and whose values are function references that take the current value
+    of the element.
+
+    Returns
+    -------
+    A value that is a suitable replacement for the element whose attributes are identified by the keyword
+
+    TODO
+    ----
+    Address VR of CS to ensure DICOM conformance and if possible, interoperability
+    CS typically implies a defined set of values, or in some cases, a strict enumeration of values
+    and replacement with a value that is not in a defined set will often break interoperability.
+    Replacement with a value that is not in an enumerated set breaks DICOM conformance.
+
     """
     vr = get_baseline_keyword_vr_dict()[keyword]
-    return get_vr_anonymous_replacement_value_dict()[vr]
+    if vr == "CS":
+        #       An example, although this exact code breaks unit tests because
+        #       the unit tests are expecting the CS hardcoded replacement string "ANON"
+        #       if keyword == "PatientSex":
+        #           replacement_value = "O"  # or one can replace with an empty string because PatientSex is typically type 2
+        #       else:
+        logging.warning(
+            "Keyword %s has Value Representation CS and may require special processing to avoid breaking DICOM conformance or interoperability",
+            keyword,
+        )
+        #   elif ...
+
+    if replacement_strategy is None:
+        replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH
+    replacement_value = replacement_strategy[vr](current_value)
+
+    return replacement_value

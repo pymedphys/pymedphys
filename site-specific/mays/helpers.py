@@ -20,17 +20,18 @@ import pandas as pd
 
 import pydicom
 
-import tolerance_constants
-
 
 def get_all_dicom_treatment_info(dicomFile):
     dicom = pydicom.dcmread(dicomFile)
-    dicomBeam = []
-    dicomData = []
-    prescriptionDescription = dicom.PrescriptionDescription.split("\\")
+    table = pd.DataFrame()
+
+    try:
+        prescriptionDescription = dicom.PrescriptionDescription.split("\\")
+    except AttributeError:
+        prescriptionDescription = ""
+
     for fraction in dicom.FractionGroupSequence:
         for beam in fraction.ReferencedBeamSequence:
-            dicomBeam = []
             bn = (
                 beam.ReferencedBeamNumber
             )  # pull beam reference number for simplification
@@ -38,93 +39,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 0
             ].ReferencedDoseReferenceNumber  # pull dose reference number for simplification
             fn = fraction.FractionGroupNumber
-            dicomBeam.append(dicom.RTPlanName)  # add prescription plan name
-            dicomBeam.append(dicom.PatientID)  # add patient ID
-            dicomBeam.append(dicom.PatientName.given_name)  # add patient name
-            dicomBeam.append(dicom.PatientName.family_name)
-            dicomBeam.append(dicom.PatientBirthDate)
-            dicomBeam.append(doseRef)
-            dicomBeam.append(dicom.BeamSequence[bn - 1].BeamName)  # add beam name
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].BeamDescription
-            )  # add beam description
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].TreatmentMachineName
-            )  # add machine being used
-            dicomBeam.append(
-                prescriptionDescription[fn - 1]
-            )  # add specific prescription description
-            dicomBeam.append(dicom.BeamSequence[bn - 1].RadiationType)
-            dicomBeam.append(dicom.PatientSetupSequence[0].PatientPosition)
-            dicomBeam.append(
-                dicom.DoseReferenceSequence[doseRef - 1].TargetPrescriptionDose
-                * 100
-                / fraction.NumberOfFractionsPlanned
-            )  # add dose per fraction for prescription
-            dicomBeam.append(
-                dicom.DoseReferenceSequence[doseRef - 1].TargetPrescriptionDose * 100
-            )  # add prescription dose
-            dicomBeam.append(fraction.NumberOfFractionsPlanned)
-            dicomBeam.append(bn)
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].ControlPointSequence[0].NominalBeamEnergy
-            )  # add beam energy
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].ReferencedToleranceTableNumber
-            )  # add tolerance
-            dicomBeam.append(
-                beam.BeamMeterset
-            )  # add planned MU to be delivered by beam
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].ControlPointSequence[0].DoseRateSet
-            )  # add dose rate for the beam
-            dicomBeam.append("Back-Up Time")  # add back-up time for beam
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].NumberOfWedges
-            )  # add number of wedges on beam
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].NumberOfBlocks
-            )  # add number of blocks on beam
-            dicomBeam.append("Cones")  # add number of cones on beam
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].NumberOfBoli
-            )  # add number of boli on beam
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].ControlPointSequence[0].GantryAngle
-            )  # add starting gantry angle
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .BeamLimitingDeviceAngle
-            )  # add starting collimator angle
-            dicomBeam.append("Field Size")  # add field size
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].ControlPointSequence[0].PatientSupportAngle
-            )
-            dicomBeam.append(
-                round(
-                    dicom.BeamSequence[bn - 1]
-                    .ControlPointSequence[0]
-                    .SourceToSurfaceDistance
-                    / 10,
-                    1,
-                )
-            )
-            dicomBeam.append(
-                round(dicom.BeamSequence[bn - 1].SourceAxisDistance / 10, 1)
-            )
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].ControlPointSequence[0].IsocenterPosition[0]
-                / 10
-            )
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].ControlPointSequence[0].IsocenterPosition[1]
-                / 10
-            )
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1].ControlPointSequence[0].IsocenterPosition[2]
-                / 10
-            )
+
             coll_x1 = (
                 dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
@@ -139,10 +54,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 .LeafJawPositions[1]
                 / 10
             )
-            field_x = coll_x2 - coll_x1
-            dicomBeam.append(field_x)
-            dicomBeam.append(coll_x1)
-            dicomBeam.append(coll_x2)
+
             coll_y1 = (
                 dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
@@ -157,86 +69,101 @@ def get_all_dicom_treatment_info(dicomFile):
                 .LeafJawPositions[1]
                 / 10
             )
-            field_y = coll_y2 - coll_y1
-            dicomBeam.append(field_y)
-            dicomBeam.append(coll_y1)
-            dicomBeam.append(coll_y2)
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .TableTopVerticalPosition
-            )
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .TableTopLateralPosition
-            )
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .TableTopLongitudinalPosition
-            )
-            dicomBeam.append(
-                dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .TableTopEccentricAngle
-            )
-            dicomData.append(
-                dicomBeam
-            )  # add each prescription associated with a patient to the overall dicomBeam
 
-    table = pd.DataFrame(
-        data=dicomData,
-        columns=[
-            "site",
-            "mrn",
-            "first_name",
-            "last_name",
-            "dob",
-            "dose_reference",
-            "field_label",
-            "field_name",
-            "machine",
-            "target",
-            "technique",
-            "postion",
-            "fraction_dose",
-            "total_dose",
-            "fractions",
-            "BEAM NUMBER",
-            "energy",
-            "tolerance",
-            "monitor_units",
-            "meterset_rate",
-            "BACKUP TIME",
-            "WEDGES",
-            "block",
-            "CONES",
-            "BOLI",
-            "gantry_angle",
-            "collimator_angle",
-            "FIELD SIZE",
-            "COUCH ANGLE",
-            "ssd",
-            "sad",
-            "iso_x",
-            "iso_y",
-            "iso_z",
-            "field_x",
-            "coll_x1",
-            "coll_x2",
-            "field_y",
-            "coll_y1",
-            "coll_y2",
-            "couch_vrt",
-            "couch_lat",
-            "couch_lng",
-            "couch_ang",
-        ],
-    )
+            dicomBeam = {
+                "site": dicom.RTPlanName,
+                "mrn": dicom.PatientID,
+                "first_name": dicom.PatientName.given_name,
+                "last_name": dicom.PatientName.family_name,
+                "dob": dicom.PatientBirthDate,
+                "dose_reference": doseRef,
+                "field_label": dicom.BeamSequence[bn - 1].BeamName,
+                "field_name": dicom.BeamSequence[bn - 1].BeamDescription,
+                "field_type": "",
+                "machine": dicom.BeamSequence[bn - 1].TreatmentMachineName,
+                "rx": prescriptionDescription[fn - 1],
+                "technique": dicom.BeamSequence[bn - 1].RadiationType,
+                "position": dicom.PatientSetupSequence[0].PatientPosition,
+                "fraction_dose [cGy]": dicom.DoseReferenceSequence[
+                    doseRef - 1
+                ].TargetPrescriptionDose
+                * 100
+                / fraction.NumberOfFractionsPlanned,
+                "total_dose [cGy]": dicom.DoseReferenceSequence[
+                    doseRef - 1
+                ].TargetPrescriptionDose
+                * 100,
+                "fractions": fraction.NumberOfFractionsPlanned,
+                "BEAM NUMBER": bn,
+                "energy [MV]": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .NominalBeamEnergy,
+                "tolerance": dicom.BeamSequence[bn - 1].ReferencedToleranceTableNumber,
+                "monitor_units": beam.BeamMeterset,
+                "meterset_rate": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .DoseRateSet,
+                "BACKUP TIME": "Back-Up Time",
+                "WEDGES": dicom.BeamSequence[bn - 1].NumberOfWedges,
+                "block": dicom.BeamSequence[bn - 1].NumberOfBlocks,
+                "CONES": "cones",
+                "bolus": dicom.BeamSequence[bn - 1].NumberOfBoli,
+                "gantry_angle": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .GantryAngle,
+                "collimator_angle": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .BeamLimitingDeviceAngle,
+                "FIELD SIZE": "field size",
+                "COUCH ANGLE": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .PatientSupportAngle,
+                "ssd [cm]": round(
+                    dicom.BeamSequence[bn - 1]
+                    .ControlPointSequence[0]
+                    .SourceToSurfaceDistance
+                    / 10,
+                    1,
+                ),
+                "sad [cm]": round(
+                    dicom.BeamSequence[bn - 1].SourceAxisDistance / 10, 1
+                ),
+                "iso_x [cm]": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .IsocenterPosition[0]
+                / 10,
+                "iso_y [cm]": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .IsocenterPosition[1]
+                / 10,
+                "iso_z [cm]": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .IsocenterPosition[2]
+                / 10,
+                "field_x [cm]": coll_x2 - coll_x1,
+                "coll_x1 [cm]": coll_x1,
+                "coll_x2 [cm]": coll_x2,
+                "field_y [cm]": coll_y2 - coll_y1,
+                "coll_y1 [cm]": coll_y1,
+                "coll_y2 [cm]": coll_y2,
+                "couch_vrt [cm]": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .TableTopVerticalPosition,
+                "couch_lat [cm]": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .TableTopLateralPosition,
+                "couch_lng [cm]": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .TableTopLongitudinalPosition,
+                "couch_ang": dicom.BeamSequence[bn - 1]
+                .ControlPointSequence[0]
+                .TableTopEccentricAngle,
+            }
 
-    table["tolerance"] = [
-        tolerance_constants.TOLERANCE_TYPES[item] for item in table["tolerance"]
-    ]
+            table = table.append(dicomBeam, ignore_index=True, sort=False)
+
+    # table["tolerance"] = [
+    #     tolerance_constants.TOLERANCE_TYPES[item] for item in table["tolerance"]
+    # ]
 
     return table

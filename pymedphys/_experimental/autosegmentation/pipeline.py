@@ -26,7 +26,7 @@ from pymedphys._data import download
 from . import filtering, indexing, mask
 
 
-@functools.lru_cache()
+# @functools.lru_cache()
 def get_dataset_metadata():
     release_url = "https://github.com/pymedphys/data/releases/download/structure-dicom"
     dicom_zip_url_pattern = f"{release_url}/" + "{dicom_type}.{uid}_Anonymised.zip"
@@ -250,7 +250,7 @@ def download_uid(data_path_root, uid, uid_to_url, hash_path):
     filename = get_filename_from_url(url)
     save_filepath = pathlib.Path(download_directory_name).joinpath("dicom", filename)
 
-    download.zip_data_paths(
+    paths = download.zip_data_paths(
         save_filepath,
         check_hash=True,
         redownload_on_hash_mismatch=True,
@@ -258,6 +258,11 @@ def download_uid(data_path_root, uid, uid_to_url, hash_path):
         url=url,
         hash_filepath=hash_path,
     )
+
+    if len(paths) != 1:
+        raise ValueError("Expected only 1 path to be downloaded.")
+
+    return paths[0]
 
 
 def create_input_ct_image(dcm_ct):
