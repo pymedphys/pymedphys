@@ -78,14 +78,9 @@ tensorboard = { version = "*", optional = true }
 tensorflow-io = { version = "*", optional = true }
 tensorflow-datasets = { version = "*", optional = true }
 
-# jax = { version = "*", optional = true }
-# jaxlib = { version = "*", optional = true }
-# flax = { git = "https://github.com/google/flax", optional = true }
-
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
 sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
-sphinx-autobuild = { version = "*", optional = true }
 sphinxcontrib-napoleon = { version = "*", optional = true }
 sphinx-argparse  = { version = "*", optional = true }
 nbsphinx  = { version = "*", optional = true }
@@ -117,15 +112,13 @@ pydot = "^1.4.1"
 [tool.poetry.extras]
 docs = [
     "sphinx", "sphinx-rtd-theme",
-    "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse",
+    "sphinxcontrib-napoleon", "sphinx-argparse",
     "nbsphinx", "jupyter_client", "ipython", "ipykernel"
 ]
 
 ml = [
     "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io",
-    "tensorflow-datasets",
-    "segments-ai"
-    # "jax", "jaxlib", "flax"
+    "tensorflow-datasets"
 ]
 
 tests = [
