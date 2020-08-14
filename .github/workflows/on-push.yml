@@ -109,12 +109,16 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
 
-# Install poetry
+# Upgrade pip and setuptools, and install poetry
 
-    - name: Upgrade pip, upgrade setuptools and install poetry
+    - name: Upgrade pip and setuptools
       run: |
         pip install --upgrade pip setuptools
-        pip install poetry
+
+    - name: Install Poetry
+      uses: dschep/install-poetry-action@v1.3
+      with:
+        create_virtualenvs: true
 
 # No import and run CLI with no dependencies
 
