@@ -163,7 +163,9 @@ def export_cli(args):
     # Set the Trial if it was given
     if trial:
 
-        if not plan.set_active_trial(trial):
+        try:
+            plan.active_trial = trial
+        except KeyError:
             logger.error(
                 "No Trial: %s found in Plan: %s", trial, plan.plan_info["PlanName"]
             )
