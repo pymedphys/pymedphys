@@ -67,26 +67,20 @@ pymssql = { version = "< 3.0.0", python = "< 3.8" }
 python_dateutil = "*"
 scikit-image = "*"
 
+# gui
+streamlit = "0.64.0"
+timeago = "*"
+
 # ml
 tensorflow = { version = ">=2.2.0", optional = true}
 tensorflow-estimator = { version = "*", optional = true}
 tensorboard = { version = "*", optional = true }
 tensorflow-io = { version = "*", optional = true }
 tensorflow-datasets = { version = "*", optional = true }
-segments-ai = { version = "^0.12", optional = true }
-
-# jax = { version = "*", optional = true }
-# jaxlib = { version = "*", optional = true }
-# flax = { git = "https://github.com/google/flax", optional = true }
-
-# gui
-streamlit = "*"
-timeago = "*"
 
 # docs
 sphinx = { version = ">= 1.4, < 1.8", optional = true }
 sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
-sphinx-autobuild = { version = "*", optional = true }
 sphinxcontrib-napoleon = { version = "*", optional = true }
 sphinx-argparse  = { version = "*", optional = true }
 nbsphinx  = { version = "*", optional = true }
@@ -118,15 +112,13 @@ pydot = "^1.4.1"
 [tool.poetry.extras]
 docs = [
     "sphinx", "sphinx-rtd-theme",
-    "sphinx-autobuild", "sphinxcontrib-napoleon", "sphinx-argparse",
+    "sphinxcontrib-napoleon", "sphinx-argparse",
     "nbsphinx", "jupyter_client", "ipython", "ipykernel"
 ]
 
 ml = [
     "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io",
-    "tensorflow-datasets",
-    "segments-ai"
-    # "jax", "jaxlib", "flax"
+    "tensorflow-datasets"
 ]
 
 tests = [
