@@ -80,7 +80,7 @@ segments-ai = { version = "^0.12", optional = true }
 # flax = { git = "https://github.com/google/flax", optional = true }
 
 # gui
-streamlit = "*"
+streamlit = "^0.65.1"
 timeago = "*"
 
 # docs
