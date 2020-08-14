@@ -2382,7 +2382,6 @@ tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pyl
 
 [metadata]
 content-hash = "a152b67309338dcff28a9c24c09e4db73f49b837cc198d440e5bb0fcd9958388"
-lock-version = "1.0"
 python-versions = "^3.6"
 
 [metadata.files]
