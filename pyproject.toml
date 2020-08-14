@@ -60,7 +60,7 @@ pynetdicom = "*"
 pylibjpeg-libjpeg = "*"
 
 # pins for flow on deps
-cffi = "1.14.0"
+cffi = "1.14.1"
 
 # difficult
 cython = "*"
