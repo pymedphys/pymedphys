@@ -144,7 +144,10 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch["UI"](
             ds_input.SOPInstanceUID
         )
-        mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds_input.SOPClassUID.name]
+
+        sop_class_uid: pydicom.dataelem.DataElement = ds_input.SOPClassUID
+
+        mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[sop_class_uid.name]
         temp_anon_filepath = pjoin(
             tmp_path,
             "{}.{}_Anonymised.dcm".format(mode_prefix, pseudo_sop_instance_uid),
