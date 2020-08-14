@@ -18,18 +18,17 @@ from pymedphys._dicom.anonymise import (
 )
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
-from pymedphys._experimental.pseudonymisation import (
-    get_default_pseudonymisation_keywords,
-    strategy,
-)
+from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 from pymedphys.tests.dicom.test_anonymise import get_test_filepaths
 
 
 @pytest.mark.pydicom
 def test_pseudonymise_file():
-    identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
+    identifying_keywords_for_pseudo = (
+        pseudonymisation_api.get_default_pseudonymisation_keywords()
+    )
     logging.info("Using pseudonymisation keywords")
-    replacement_strategy = strategy.pseudonymisation_dispatch
+    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
     logging.info("Using pseudonymisation strategy")
     for test_file_path in get_test_filepaths():
         _test_pseudonymise_file_at_path(
@@ -47,7 +46,7 @@ def test_identifier_with_unknown_vr():
     # that has not been addressed in the strategy.
     # However, because the strategy is only applied when the identifier is found
     # in the dataset, the error will only surface in that circumstance
-    replacement_strategy = strategy.pseudonymisation_dispatch
+    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
     logging.info("Using pseudonymisation strategy")
     identifying_keywords_with_vr_unknown_to_strategy = ["CodingSchemeURL", "PatientID"]
     logging.info("Using keyword with VR = UR")
@@ -79,12 +78,14 @@ def _test_pseudonymise_file_at_path(
 ):
     assert not is_anonymised_file(test_file_path)
     if test_identifying_keywords is None:
-        identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
+        identifying_keywords_for_pseudo = (
+            pseudonymisation_api.get_default_pseudonymisation_keywords()
+        )
         logging.info("Using pseudonymisation keywords")
     else:
         identifying_keywords_for_pseudo = test_identifying_keywords
-    if strategy is None:
-        replacement_strategy = strategy.pseudonymisation_dispatch
+    if test_replacement_strategy is None:
+        replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
         logging.info("Using pseudonymisation strategy")
     else:
         replacement_strategy = test_replacement_strategy
@@ -140,7 +141,7 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         # but will also be using the dataset to do some comparisons.
         ds_input = pydicom.dcmread(temp_filepath, force=True)
 
-        pseudo_sop_instance_uid = strategy.pseudonymisation_dispatch["UI"](
+        pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch["UI"](
             ds_input.SOPInstanceUID
         )
         mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[ds_input.SOPClassUID.name]
