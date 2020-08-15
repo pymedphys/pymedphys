@@ -28,7 +28,7 @@ classifiers = [
 [tool.poetry.dependencies]
 # Will not work without these
 python = "^3.6"
-dataclasses = { version = "*", python = "~3.6.0" }
+dataclasses = {version = "*", python = "~3.6.0"}
 
 #### Below here is actually optional
 # One day might create a pymedphys-core which installs the above only.
@@ -43,7 +43,7 @@ packaging = "*"
 PyYAML = "*"
 requests = "*"
 
-numpy = ">= 1.12"
+numpy = ">=1.12"
 matplotlib = "*"
 scipy = "*"
 pandas = "*"
@@ -51,7 +51,7 @@ pandas = "*"
 Pillow = "*"
 imageio = "*"
 
-shapely = ">= 1.7.0"
+shapely = ">=1.7.0"
 
 dbfread = "*"
 
@@ -61,7 +61,7 @@ pylibjpeg-libjpeg = "*"
 
 # difficult
 cython = "*"
-pymssql = { version = "< 3.0.0", python = "< 3.8" }
+pymssql = {version = "<3.0.0", python = "<3.8"}
 
 # used within experimental modules
 python_dateutil = "*"
@@ -72,29 +72,20 @@ streamlit = "0.64.0"
 timeago = "*"
 
 # ml
-tensorflow = { version = ">=2.2.0", optional = true}
-tensorflow-estimator = { version = "*", optional = true}
-tensorboard = { version = "*", optional = true }
-tensorflow-io = { version = "*", optional = true }
-tensorflow-datasets = { version = "*", optional = true }
+tensorflow = {version = ">=2.2.0", extras = ["ml"]}
 
 # docs
-sphinx = { version = ">= 1.4, < 1.8", optional = true }
-sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
-sphinxcontrib-napoleon = { version = "*", optional = true }
-sphinx-argparse  = { version = "*", optional = true }
-nbsphinx  = { version = "*", optional = true }
-jupyter_client = { version = "*", optional = true }
-ipython = { version = "*", optional = true }
-ipykernel = { version = "*", optional = true }
+sphinx = {version = "*", extras = ["docs"]}
+sphinxcontrib-napoleon = {version = "*", extras = ["docs"]}
+sphinx-argparse = {version = "*", extras = ["docs"]}
 
 # tests
-pytest = { version = "*", optional = true }
-pytest-sugar  = { version = "*", optional = true }
-hypothesis  = { version = "*", optional = true }
-psutil  = { version = "*", optional = true }
-pylint  = { version = "*", optional = true }
-pytest-pylint  = { version = "*", optional = true }
+pytest = {version = "*", extras = ["tests"]}
+pytest-sugar = {version = "*", extras = ["tests"]}
+hypothesis = {version = "*", extras = ["tests"]}
+psutil = {version = "*", extras = ["tests"]}
+pylint = {version = "*", extras = ["tests"]}
+pytest-pylint = {version = "*", extras = ["tests"]}
 
 [tool.poetry.dev-dependencies]
 # Git Management
@@ -108,22 +99,6 @@ rope = "*"
 # VSCode extension dependencies
 doc8 = "*"
 pydot = "^1.4.1"
-
-[tool.poetry.extras]
-docs = [
-    "sphinx", "sphinx-rtd-theme",
-    "sphinxcontrib-napoleon", "sphinx-argparse",
-    "nbsphinx", "jupyter_client", "ipython", "ipykernel"
-]
-
-ml = [
-    "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io",
-    "tensorflow-datasets"
-]
-
-tests = [
-    "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"
-]
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.cli:pymedphys_cli"
