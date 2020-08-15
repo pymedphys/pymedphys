@@ -78,6 +78,7 @@ tensorflow = {version = ">=2.2.0", extras = ["ml"]}
 sphinx = {version = "*", extras = ["docs"]}
 sphinxcontrib-napoleon = {version = "*", extras = ["docs"]}
 sphinx-argparse = {version = "*", extras = ["docs"]}
+jupyter-book = {version = "*", extras = ["docs"]}
 
 # tests
 pytest = {version = "*", extras = ["tests"]}
