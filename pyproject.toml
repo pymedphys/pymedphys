@@ -79,6 +79,13 @@ sphinx = {version = "*", extras = ["docs"]}
 sphinxcontrib-napoleon = {version = "*", extras = ["docs"]}
 sphinx-argparse = {version = "*", extras = ["docs"]}
 jupyter-book = {version = "*", extras = ["docs"]}
+myst-nb = {version = "*", extras = ["docs"]}
+myst-parser = {version = "*", extras = ["docs"]}
+jupyter-sphinx = {version = "*", extras = ["docs"]}
+jupyter-cache = {version = "*", extras = ["docs"]}
+sqlalchemy = {version = "*", extras = ["docs"]}
+markdown-it-py = {version = "*", extras = ["docs"]}
+pydata-sphinx-theme = {version = "*", extras = ["docs"]}
 
 # tests
 pytest = {version = "*", extras = ["tests"]}
