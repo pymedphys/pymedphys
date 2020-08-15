@@ -40,7 +40,6 @@ watchdog = "*"
 
 keyring = "*"
 packaging = "*"
-PyYAML = "*"
 requests = "*"
 
 numpy = ">=1.12"
@@ -66,6 +65,7 @@ pymssql = {version = "<3.0.0", python = "<3.8"}
 # used within experimental modules
 python_dateutil = "*"
 scikit-image = "*"
+PyYAML = "*"
 
 # gui
 streamlit = "0.64.0"
