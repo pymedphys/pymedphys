@@ -16,6 +16,7 @@ attrs_to_check = [
     "TEST_DATASET",
     "TRAINING_DATA_MEAN",
     "TRAINING_DATA_STD",
+    "FORWARD_IMAGES",
 ]
 
 has_attrs = dir(config)

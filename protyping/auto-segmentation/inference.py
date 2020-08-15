@@ -1,21 +1,22 @@
-import numpy as np
-import pydicom
-import tensorflow as tf
-
 import config
 import dicom_helpers
-
-from pymedphys._experimental.autosegmentation import mask
+import tensorflow as tf
 import unet
 
-# Assign GPU or CPU
+import numpy as np
+
+import pydicom
+
+from pymedphys._experimental.autosegmentation import mask
+
+# Assign GPU or CPU based on config.DEVICE
 if config.DEVICE == "GPU":
     try:
         physical_devices = tf.config.experimental.list_physical_devices("GPU")
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
         assert len(physical_devices) > 0
     except AssertionError:
-        print("Defaulting to CPU")
+        # Default to CPU
         tf.config.set_visible_devices([], "GPU")
 else:
     tf.config.set_visible_devices([], "GPU")
@@ -26,6 +27,7 @@ def standardise_array(data_array, mean, standard_deviation):
 
 
 def predict_to_contour(dicom, prediction):
+    # TODO This can be written better
     x_grid, y_grid, ct_size = mask.get_grid(dicom)
     z_position = float(dicom.SliceLocation)
     slice_contours = mask.get_contours_from_mask(x_grid, y_grid, prediction[..., 0])
@@ -58,7 +60,7 @@ def get_predictions(dicom_series):
         pixel_arrays, config.TRAINING_DATA_MEAN, config.TRAINING_DATA_STD
     )
 
-    predictions = model.predict(pixel_arrays, batch_size=config.BATCH_SIZE, verbose=1)
+    predictions = model.predict(pixel_arrays, batch_size=config.BATCH_SIZE, verbose=0)
 
     predictions = np.round(predictions)
 
