@@ -1,8 +1,10 @@
 import glob
 
-import numpy as np
-import pydicom
 import os_helpers
+
+import numpy as np
+
+import pydicom
 
 
 def read_dicom_paths(dicom_paths, force=False):

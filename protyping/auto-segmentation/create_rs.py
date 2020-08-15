@@ -2,7 +2,7 @@ import datetime
 
 import pydicom
 import pydicom._storage_sopclass_uids
-from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
+from pydicom.dataset import Dataset, FileMetaDataset
 from pydicom.sequence import Sequence
 
 
