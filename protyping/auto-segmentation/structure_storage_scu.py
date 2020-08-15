@@ -5,12 +5,15 @@ import dicom_helpers
 from pynetdicom import AE, debug_logger
 from pynetdicom.sop_class import CTImageStorage, RTStructureSetStorage
 
-debug_logger()
+# debug_logger()
 
 
 def export_files(dicom_paths, directory=False):
+    print("\n--------------------------")
+    print("Structure storage SCU:")
     if directory:
         dicom_paths = glob.glob(dicom_paths + "/*.dcm")
+        print("dicom_paths", len(dicom_paths))
 
     dicom_files = dicom_helpers.read_dicom_paths(dicom_paths)
     print("dicom_files", len(dicom_files))
@@ -40,4 +43,4 @@ def export_files(dicom_paths, directory=False):
         # Release the association
         assoc.release()
     else:
-        print("Association rejected, aborted or never connected")
+        print("Structure storage SCU association rejected, aborted or never connected")

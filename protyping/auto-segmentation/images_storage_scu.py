@@ -8,8 +8,8 @@ from pynetdicom.sop_class import CTImageStorage
 debug_logger()
 
 
-def main():
-    dicom_paths = glob.glob(config.TEST_DATASET + "/*.dcm")
+def main(data_path):
+    dicom_paths = glob.glob(data_path + "/*.dcm")
     print("dicom_paths", len(dicom_paths))
 
     dicom_files = dicom_helpers.read_dicom_paths(dicom_paths)
@@ -43,4 +43,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(config.TEST_DATASET)
