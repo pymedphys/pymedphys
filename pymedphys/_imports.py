@@ -55,7 +55,6 @@ EXTERNAL_EXPORTS = (
     "libjpeg",
     "tkinter",
     "tkinter.filedialog",
-    "tensorflow",
 )
 
 pymedphys._vendor.apipkg.initpkg(  # pylint: disable = protected-access
@@ -82,7 +81,6 @@ if "numpy" not in IMPORTABLES:
     import shapely.geometry
     import shapely.ops
     import streamlit
-    import tensorflow
     import timeago
     import tkinter
     import tkinter.filedialog

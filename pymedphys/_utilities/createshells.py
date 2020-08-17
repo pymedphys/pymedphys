@@ -30,7 +30,7 @@ def calculate_coordinates_shell(distance, num_dimensions, distance_step_size):
     if num_dimensions == 3:
         return calculate_coordinates_shell_3d(distance, distance_step_size)
 
-    raise Exception("No valid dimension")
+    raise ValueError("No valid dimension")
 
 
 def calculate_coordinates_shell_1d(distance):
