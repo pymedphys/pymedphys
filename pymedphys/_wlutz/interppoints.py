@@ -13,9 +13,10 @@
 # limitations under the License.
 
 
-import pymedphys._utilities.createshells
 from pymedphys._imports import matplotlib
 from pymedphys._imports import numpy as np
+
+import pymedphys._utilities.createshells
 
 
 def transform_penumbra_points(points_at_origin, centre, rotation):

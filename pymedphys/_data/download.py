@@ -22,9 +22,10 @@ import urllib.error
 import urllib.request
 import zipfile
 
+from pymedphys._imports import tqdm
+
 import pymedphys._utilities.filehash
 from pymedphys import _config as pmp_config
-from pymedphys._imports import tqdm
 
 from . import retry, zenodo
 

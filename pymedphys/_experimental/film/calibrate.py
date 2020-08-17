@@ -15,11 +15,11 @@
 import warnings
 from pathlib import Path
 
-import imageio
-from scipy.optimize import basinhopping
-
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt
+
+import imageio
+from scipy.optimize import basinhopping
 
 from .optical_density import calc_net_od
 

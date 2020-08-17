@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pymedphys._imports import numpy as np
+
 from numpy import cos, radians, sin
 from numpy.linalg import norm
-
-from pymedphys._imports import numpy as np
 
 
 def rotate_about_vector(coords_to_rotate, vector, theta, active=False):

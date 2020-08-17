@@ -23,6 +23,7 @@ import traceback
 from glob import glob
 
 from pymedphys._imports import attr
+
 from pymedphys._mosaiq.connect import multi_mosaiq_connect
 from pymedphys._mosaiq.delivery import NoMosaiqEntries, get_mosaiq_delivery_details
 from pymedphys._trf.decode.header import Header, decode_header_from_file

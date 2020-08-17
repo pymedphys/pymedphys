@@ -13,13 +13,13 @@
 # limitations under the License.
 
 
+from pymedphys._imports import numpy as np
+
 import skimage
 import skimage.color.adapt_rgb
 import skimage.filters
 from scipy.interpolate import RegularGridInterpolator
 from scipy.optimize import basinhopping
-
-from pymedphys._imports import numpy as np
 
 
 def align_images(

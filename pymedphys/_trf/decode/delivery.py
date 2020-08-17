@@ -14,8 +14,9 @@
 
 from typing import Type
 
-from pymedphys._base.delivery import DeliveryBase, DeliveryGeneric
 from pymedphys._imports import numpy as np
+
+from pymedphys._base.delivery import DeliveryBase, DeliveryGeneric
 
 from .constants import (
     COLLIMATOR_NAME,

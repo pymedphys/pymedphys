@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
-import pymedphys._vendor.pylinac.winstonlutz
 from pymedphys._imports import numpy as np
+
+import pymedphys._vendor.pylinac.winstonlutz
 
 from .utilities import create_centralised_field, transform_point
 

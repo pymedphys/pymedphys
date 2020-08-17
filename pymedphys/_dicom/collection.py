@@ -16,7 +16,6 @@
 from copy import deepcopy
 
 from packaging import version
-
 from pymedphys._imports import pydicom
 
 from . import anonymise, coords, create

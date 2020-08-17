@@ -19,8 +19,9 @@ from collections import deque
 from copy import deepcopy
 from glob import glob
 
-from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 from pymedphys._imports import pydicom
+
+from pymedphys._dicom.constants.uuid import PYMEDPHYS_ROOT_UID
 
 
 def extend_in_both_directions(input_dir, output_dir, number_of_slices=20):

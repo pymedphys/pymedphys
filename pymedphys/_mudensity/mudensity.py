@@ -16,6 +16,7 @@
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt
+
 from pymedphys._utilities.constants import AGILITY
 from pymedphys._utilities.controlpoints import remove_irrelevant_control_points
 

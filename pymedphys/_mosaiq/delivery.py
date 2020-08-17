@@ -19,9 +19,10 @@
 import functools
 import struct
 
-from pymedphys._base.delivery import DeliveryBase
 from pymedphys._imports import attr
 from pymedphys._imports import numpy as np
+
+from pymedphys._base.delivery import DeliveryBase
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
 from .connect import execute_sql
