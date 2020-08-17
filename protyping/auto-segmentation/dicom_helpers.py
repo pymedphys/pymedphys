@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import difflib
 import glob
 
 import os_helpers
@@ -83,3 +84,17 @@ def print_dicom_file(dicom_file):
     print("\nFile main")
     for data in dicom_file:
         print(data)
+
+
+def diff_dicom_files(file1, file2):
+    rep = []
+    datasets = (file1, file2)
+    for dataset in datasets:
+        lines = str(dataset).split("\n")
+        lines = [line + "\n" for line in lines]  # add the newline to end
+        rep.append(lines)
+
+    diff = difflib.Differ()
+    for line in diff.compare(rep[0], rep[1]):
+        if line[0] != "?":
+            print(line)
