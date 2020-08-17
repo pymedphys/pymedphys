@@ -57,11 +57,11 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
                 axes_reference = (axes_reference,)
 
             else:
-                raise Exception(
+                raise ValueError(
                     "Can only use numpy arrays as input " "for one dimensional gamma."
                 )
         else:
-            raise Exception(
+            raise ValueError(
                 "Input coordinates must be inputted as a tuple, for "
                 "one dimension input is (x,), for two dimensions, "
                 "(x, y), for three dimensions input is (x, y, z)."
@@ -69,7 +69,7 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
 
     reference_coords_shape = tuple([len(item) for item in axes_reference])
     if reference_coords_shape != np.shape(dose_reference):
-        raise Exception(
+        raise ValueError(
             "Length of items in axes_reference ({}) does not match the "
             "shape of dose_reference ({})".format(
                 reference_coords_shape, np.shape(dose_reference)
@@ -78,7 +78,7 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
 
     evaluation_coords_shape = tuple([len(item) for item in axes_evaluation])
     if evaluation_coords_shape != np.shape(dose_evaluation):
-        raise Exception(
+        raise ValueError(
             "Length of items in axes_evaluation does not match the "
             "shape of dose_evaluation"
         )
@@ -89,6 +89,6 @@ def run_input_checks(axes_reference, dose_reference, axes_evaluation, dose_evalu
         == len(axes_evaluation)
         == len(axes_reference)
     ):
-        raise Exception("The dimensions of the input data do not match")
+        raise ValueError("The dimensions of the input data do not match")
 
     return axes_reference, axes_evaluation

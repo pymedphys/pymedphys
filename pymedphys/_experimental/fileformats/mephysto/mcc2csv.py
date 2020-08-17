@@ -73,6 +73,6 @@ def determine_output_filepaths(output_directory, scan_curvetype, scan_depth):
 
         else:
             # Raise an error if the curve type was not as expected
-            raise Exception("Unexpected scan_curvetype")
+            raise ValueError("Unexpected scan_curvetype")
 
     return filepaths
