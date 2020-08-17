@@ -197,13 +197,13 @@ class PinnaclePlan:
     def active_trial(self, trial_name):
 
         if isinstance(trial_name, str):
-            for trial in self._trials:
+            for trial in self.trials:
                 if trial["Name"] == trial_name:
                     self._trial_info = trial
                     self.logger.info("Active Trial set: %s", trial_name)
-                    return True
+                    return
 
-        return False
+        raise KeyError
 
     @property
     def plan_info(self):

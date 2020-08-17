@@ -272,12 +272,19 @@ class PinnacleExport:
                 # If no ImageHeader is available then we can ignore this
                 continue
 
-            self.logger.info(
-                "%s: %s %s",
-                image_header["modality"],
-                image_header["series_UID"],
-                image_header["SeriesDateTime"],
-            )
+            modality = "?"
+            if "modality" in image_header.keys():
+                modality = image_header["modality"]
+
+            series_uid = "?"
+            if "series_UID" in image_header.keys():
+                series_uid = image_header["series_UID"]
+
+            series_date_time = "?"
+            if "SeriesDateTime" in image_header.keys():
+                series_date_time = image_header["SeriesDateTime"]
+
+            self.logger.info("%s: %s %s", modality, series_uid, series_date_time)
 
     def log_plan_names(self):
         """Outputs all plans found in the Pinnacle data to the log.
