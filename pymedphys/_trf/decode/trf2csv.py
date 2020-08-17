@@ -17,7 +17,9 @@
 """
 
 
+import logging
 import os
+import pathlib
 from glob import glob
 
 from .trf2pandas import trf2pandas
@@ -40,29 +42,34 @@ def trf2csv_by_directory(input_directory, output_directory):
         table.to_csv(table_csv_filepath)
 
 
-def trf2csv(trf_filepath, skip_if_exists=False):
-    if not os.path.exists(trf_filepath):
+def trf2csv(trf_filepath, output_directory=None):
+    trf_filepath = pathlib.Path(trf_filepath)
+
+    if not trf_filepath.exists():
         raise ValueError("The provided trf filepath cannot be found.")
 
-    extension_removed = os.path.splitext(trf_filepath)[0]
-    header_csv_filepath = "{}_header.csv".format(extension_removed)
-    table_csv_filepath = "{}_table.csv".format(extension_removed)
+    if output_directory is None:
+        output_directory = trf_filepath.parent
+    else:
+        output_directory = pathlib.Path(output_directory)
 
-    # Skip if conversion has already occured
-    if not skip_if_exists or not os.path.exists(table_csv_filepath):
-        print("Converting {}".format(trf_filepath))
-        header, table = trf2pandas(trf_filepath)
+    filepaths = {
+        contents: output_directory.joinpath(f"{trf_filepath.stem}_{contents}.csv")
+        for contents in ["header", "table"]
+    }
 
-        header.to_csv(header_csv_filepath)
-        table.to_csv(table_csv_filepath)
-    # else:
-    #     print("Skipping {}".format(trf_filepath))
+    logging.info("Converting %(trf_filepath)s", {"trf_filepath": trf_filepath})
 
-    return header_csv_filepath, table_csv_filepath
+    dataframes = dict()
+    dataframes["header"], dataframes["table"] = trf2pandas(trf_filepath)
+
+    for key, df in dataframes.items():
+        df.to_csv(filepaths[key])
+
+    return filepaths["header"], filepaths["table"]
 
 
 def trf2csv_cli(args):
-
     for glob_string in args.filepaths:
         glob_string = glob_string.replace("[", "<[>")
         glob_string = glob_string.replace("]", "<]>")
