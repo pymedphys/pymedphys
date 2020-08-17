@@ -7,17 +7,36 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.32.0]
+
+### "Stable" API changes
+
+(Won't truly be stable until after a 1.0.0 release)
+
+#### Breaking changes
+
+#### Data changes
+
+* The data file `pinnacle_test_data_no_image.zip` accessible through
+  `pymedphys.data_path()` was removed and moved into `pinnacle_test_data.zip`
+* Data files `treatment-record-anonymisation.zip`, `negative-mu-density.trf`,
+  and
+
+### Beta API changes
+
+Nil
 
 ### Experimental API changes
 
+#### New Features
+
 * Added pseudonymisation as an experimental extension of anonymise.
-The pseudonymisation strategy uses SHA3_256 hashing for text and UIDs, date shifting for dates, and jittering for Age.
-The intent is to enable sets of data that are correlated to remain correlated, and to prevent
-uncorrelated patient/study/series from clashing.
-CLI:  pymedphys experimental dicom anonymise --pseudo [input]
-Programmatic access using pymedphys._experimental.pseudonymisation.get_default_pseudonymisation_keywords and
-pymedphys._experimental.pseudonymisation.strategy.pseudonymisation_dispatch in optional arguments for identifying_keywords and replacement_strategy to anonymise functions.
+  The pseudonymisation strategy uses SHA3_256 hashing for text and UIDs, date shifting for dates, and jittering for Age.
+  The intent is to enable sets of data that are correlated to remain correlated, and to prevent
+  uncorrelated patient/study/series from clashing.
+  CLI:  pymedphys experimental dicom anonymise --pseudo [input]
+  Programmatic access using pymedphys._experimental.pseudonymisation.get_default_pseudonymisation_keywords and
+  pymedphys._experimental.pseudonymisation.strategy.pseudonymisation_dispatch in optional arguments for identifying_keywords and replacement_strategy to anonymise functions.
 
 #### Bug Fixes
 
@@ -27,8 +46,6 @@ pymedphys._experimental.pseudonymisation.strategy.pseudonymisation_dispatch in o
 ## [0.31.0]
 
 ### "Stable" API changes
-
-(Won't truly be stable until after a 1.0.0 release)
 
 #### Critical bug fixes
 
@@ -757,7 +774,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...master
+[0.32.0]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...v0.30.0
 [0.29.1]: https://github.com/pymedphys/pymedphys/compare/v0.29.0...v0.29.1
