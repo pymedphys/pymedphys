@@ -19,10 +19,9 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
+import pymedphys._utilities.createshells
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
-
-import pymedphys._utilities.createshells
 
 from ..utilities import run_input_checks
 

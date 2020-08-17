@@ -22,9 +22,8 @@ import os
 import pytest
 from fixtures import BASELINES_DIR, postscans, prescans
 
-import numpy as np
-
 import matplotlib.pyplot as plt
+import numpy as np
 
 from pymedphys.experimental.film import create_axes, get_aligned_image, shift_and_rotate
 

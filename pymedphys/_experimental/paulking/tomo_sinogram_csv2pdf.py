@@ -21,10 +21,10 @@ from os.path import dirname, join
 from string import ascii_letters as LETTERS
 from string import digits as DIGITS
 
-from pymedphys._imports import numpy as np
-
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
+
+from pymedphys._imports import numpy as np
 
 from .sinogram import crop, unshuffle
 

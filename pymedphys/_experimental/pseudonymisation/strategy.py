@@ -18,10 +18,9 @@ import hashlib
 import random
 from decimal import Decimal, DecimalTuple
 
-from pymedphys._imports import pydicom
-
 from pymedphys._dicom.anonymise import get_baseline_keyword_vr_dict
 from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
+from pymedphys._imports import pydicom
 
 EPOCH_START = "20000101"
 DEFAULT_EARLIEST_STUDY_DATE = "20040415"

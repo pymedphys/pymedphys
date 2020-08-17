@@ -23,9 +23,6 @@ from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
-from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom
-
 from pymedphys._dicom.constants import (
     DICOM_SOP_CLASS_NAMES_MODE_PREFIXES,
     NotInBaselineError,
@@ -33,6 +30,8 @@ from pymedphys._dicom.constants import (
     get_baseline_keyword_vr_dict,
 )
 from pymedphys._dicom.utilities import remove_file
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pydicom
 
 from . import strategy
 

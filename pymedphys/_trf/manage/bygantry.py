@@ -13,9 +13,8 @@
 # limitations under the License.
 
 
-from pymedphys._imports import numpy as np
-
 import pymedphys
+from pymedphys._imports import numpy as np
 from pymedphys._utilities.config import get_filepath, get_gantry_tolerance
 
 from .analyse import calc_comparison, plot_results

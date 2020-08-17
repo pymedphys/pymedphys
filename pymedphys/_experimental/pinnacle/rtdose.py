@@ -44,10 +44,9 @@ import re
 import struct
 import time
 
+from pymedphys._dicom.constants import IMAGE_ORIENTATION_MAP
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
-
-from pymedphys._dicom.constants import IMAGE_ORIENTATION_MAP
 
 from .constants import (
     GImplementationClassUID,

@@ -1,9 +1,8 @@
 import importlib
 import pathlib
 
-from pymedphys._imports import imageio, libjpeg
-
 import pymedphys
+from pymedphys._imports import imageio, libjpeg
 
 
 def imread(input_filepath):

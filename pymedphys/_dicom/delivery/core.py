@@ -15,10 +15,9 @@
 
 from copy import deepcopy
 
+from pymedphys._base.delivery import DeliveryBase
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
-
-from pymedphys._base.delivery import DeliveryBase
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
 from ..rtplan import (
