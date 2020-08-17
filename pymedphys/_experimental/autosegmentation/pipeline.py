@@ -17,9 +17,9 @@ import functools
 import json
 import pathlib
 
-import tensorflow as tf
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
+from pymedphys._imports import tensorflow as tf
 
 from pymedphys._data import download
 

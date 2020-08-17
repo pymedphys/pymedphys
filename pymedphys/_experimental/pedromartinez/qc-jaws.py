@@ -54,9 +54,8 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import plt, pydicom
 from tqdm import tqdm
 
-from scipy import signal
-
 from matplotlib.backends.backend_pdf import PdfPages
+from scipy import signal
 
 from .utils import minimize_field_rot as minFR
 from .utils import minimize_junction_X as minX
