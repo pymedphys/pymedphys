@@ -137,26 +137,21 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 known_third_party = [
-    "attr", "tqdm", "pytest", "hypothesis", "cefpython3", "notebook",
-    "jupyterlab", "traitlets", "jupyterlab_server", "packaging", "dateutil",
-    "pymedphys._imports", "watchdog", "streamlit", "timeago", "pymssql",
-    "keyring", "tkinter"
+    "pymedphys._imports"
 ]
-known_scicore = [
-    "numpy", "scipy", "pandas"
+known_general_scientific = [
+    "numpy", "scipy", "pandas", "imageio", "PIL", "skimage", "matplotlib",
+    "mpl_toolkits", "shapely"
 ]
-known_matplotlib = [
-    "matplotlib", "mpl_toolkits"
-]
-known_sci_other = [
-    "imageio", "PIL", "skimage"
+known_machine_learning = [
+    "tensorflow", "streamlit"
 ]
 known_medphys = [
-    "pydicom", "pylinac"
+    "pydicom", "pylinac", "pynetdicom", "libjpeg"
 ]
 known_first_party = ["pymedphys"]
 sections = [
-    "FUTURE", "STDLIB", "THIRDPARTY", "SCICORE", "MATPLOTLIB", "SCI_OTHER",
+    "FUTURE", "STDLIB", "THIRDPARTY", "GENERAL_SCIENTIFIC", "MACHINE_LEARNING",
     "MEDPHYS", "FIRSTPARTY", "LOCALFOLDER"
 ]
 

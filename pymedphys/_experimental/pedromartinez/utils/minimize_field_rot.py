@@ -1,8 +1,7 @@
 from pymedphys._imports import numpy as np
 
-from scipy import signal
-
 import matplotlib.pyplot as plt
+from scipy import signal
 
 from . import running_mean as rm
 

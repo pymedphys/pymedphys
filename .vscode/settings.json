@@ -82,6 +82,7 @@
     "arange",
     "asar",
     "asdict",
+    "asname",
     "astype",
     "atol",
     "autofunction",

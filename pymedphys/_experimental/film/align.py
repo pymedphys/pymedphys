@@ -15,12 +15,11 @@
 
 from pymedphys._imports import numpy as np
 
-from scipy.interpolate import RegularGridInterpolator
-from scipy.optimize import basinhopping
-
 import skimage
 import skimage.color.adapt_rgb
 import skimage.filters
+from scipy.interpolate import RegularGridInterpolator
+from scipy.optimize import basinhopping
 
 
 def align_images(
