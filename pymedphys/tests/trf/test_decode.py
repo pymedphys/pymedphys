@@ -18,6 +18,8 @@
 import pathlib
 import tempfile
 
+import pytest
+
 import numpy as np
 import pandas as pd
 
@@ -42,33 +44,41 @@ def compare_reference_to_converted(reference_dataframe, converted_dataframe):
         for column in reference_dataframe.columns:
             np.testing.assert_array_equal(
                 reference_dataframe[column].values,
-                reference_dataframe[column].values,
+                converted_dataframe[column].values,
                 "The {} column should be equal".format(column),
             )
 
 
-def convert_and_check(filepath: pathlib.Path, output_directory):
+def convert_and_check_against_baseline(filepath: pathlib.Path, output_directory):
+    baseline_csv_file = filepath.parent.joinpath(filepath.stem + "_table.csv")
+    baseline_dataframe = pd.read_csv(baseline_csv_file, index_col=0)
+
+    convert_and_check(filepath, output_directory, baseline_dataframe)
+
+
+def convert_and_check_against_reference(filepath: pathlib.Path, output_directory):
     reference_csv_file = filepath.with_suffix(".csv")
-
-    assert reference_csv_file.exists(), "Reference file should exist"
-
-    _, table_filepath = trf2csv(filepath, output_directory=output_directory)
-
     reference_dataframe = pd.read_csv(reference_csv_file, skiprows=9, index_col=0)
     del reference_dataframe[reference_dataframe.columns[-1]]
 
+    convert_and_check(filepath, output_directory, reference_dataframe)
+
+
+def convert_and_check(filepath: pathlib.Path, output_directory, reference_dataframe):
+    _, table_filepath = trf2csv(filepath, output_directory=output_directory)
     converted_dataframe = pd.read_csv(table_filepath, index_col=0)
 
     compare_reference_to_converted(reference_dataframe, converted_dataframe)
 
 
+@pytest.mark.slow
 def test_conversions():
-    data_paths = pymedphys.zip_data_paths("trf-logfile-reference.zip")
+    data_paths = pymedphys.zip_data_paths("trf-references-and-baselines.zip")
 
     files_with_references = [
         path
         for path in data_paths
-        if path.parent.name == "elekta_reference" and path.suffix == ".trf"
+        if path.parent.name == "with_reference" and path.suffix == ".trf"
     ]
 
     assert len(files_with_references) >= 5
@@ -76,14 +86,14 @@ def test_conversions():
     files_without_references = [
         path
         for path in data_paths
-        if path.parent.name == "integrity4" and path.suffix == ".trf"
+        if path.parent.name == "with_baseline" and path.suffix == ".trf"
     ]
 
     assert len(files_without_references) >= 4
 
     with tempfile.TemporaryDirectory() as output_directory:
         for filepath in files_with_references:
-            convert_and_check(filepath, output_directory)
+            convert_and_check_against_reference(filepath, output_directory)
 
         for filepath in files_without_references:
-            trf2csv(filepath, output_directory=output_directory)
+            convert_and_check_against_baseline(filepath, output_directory)
