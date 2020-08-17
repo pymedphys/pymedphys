@@ -42,7 +42,7 @@ def trf2csv_by_directory(input_directory, output_directory):
 
 def trf2csv(trf_filepath, skip_if_exists=False):
     if not os.path.exists(trf_filepath):
-        raise Exception("The provided trf filepath cannot be found.")
+        raise ValueError("The provided trf filepath cannot be found.")
 
     extension_removed = os.path.splitext(trf_filepath)[0]
     header_csv_filepath = "{}_header.csv".format(extension_removed)
