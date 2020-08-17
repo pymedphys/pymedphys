@@ -1,5 +1,3 @@
-# pylint: disable = import-error, unused-import
-
 import ast
 import importlib
 import pathlib
