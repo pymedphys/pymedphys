@@ -289,7 +289,11 @@ def convert_remaining(dataframe):
         try:
             dataframe[key] = negative_and_divide_by_10(dataframe[key])
         except KeyError:
-            pass
+            if "Dlg" in key:
+                # Unity logfile do not have a "Dlg" record
+                pass
+            else:
+                raise
 
     # Previously a bug crept in due to this choice of logic. When the
     # decoding was adjusted to support Integrity 4 four extra
@@ -297,18 +301,18 @@ def convert_remaining(dataframe):
     # the wrong columns (offset by four).
     for key in base_column_names[30:110]:
         if "Leaf" not in key or "Y2" not in key or "Scaled Actual" not in key:
-            raise ValueError("Y2 Leaf Keys were not in their expected positions")
-        try:
-            # Y2 leaves need to be multiplied by -1
-            dataframe[key] = -negative_and_divide_by_10(dataframe[key])
-        except KeyError:
-            pass
+            raise ValueError("Y2 Leaf Keys were not in their expected positions.")
+
+        # Y2 leaves need to be multiplied by -1
+        dataframe[key] = -negative_and_divide_by_10(dataframe[key])
 
     for key in base_column_names[110::]:
-        try:
-            dataframe[key] = negative_and_divide_by_10(dataframe[key])
-        except KeyError:
-            pass
+        if "Leaf" not in key:
+            raise ValueError(
+                "The remaining leaf columns were not in their "
+                f"expected positions. Key found was `{key}`."
+            )
+        dataframe[key] = negative_and_divide_by_10(dataframe[key])
 
 
 def convert_data_table(dataframe, linac_state_codes, wedge_codes):
