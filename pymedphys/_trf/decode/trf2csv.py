@@ -49,7 +49,7 @@ def trf2csv(trf_filepath, output_directory=None):
         raise ValueError("The provided trf filepath cannot be found.")
 
     if output_directory is None:
-        output_directory = pathlib.Path(trf_filepath).parent
+        output_directory = trf_filepath.parent
     else:
         output_directory = pathlib.Path(output_directory)
 
