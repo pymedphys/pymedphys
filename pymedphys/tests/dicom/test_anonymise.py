@@ -88,13 +88,13 @@ def _download_rtplan_test_file():
 
 
 @functools.lru_cache()
-def _download_treatmentrecord_test_file():
-    data_paths = download.zip_data_paths("treatmentrecord-anonymisation.zip")
+def _download_treatment_record_test_file():
+    data_paths = download.zip_data_paths("treatment-record-anonymisation.zip")
     return data_paths
 
 
 @functools.lru_cache()
-def get_treatmentrecord_test_file_path():
+def get_treatment_record_test_file_path():
     """
     Downloads the required test data from zenodo and returns a string representing
     the absolute path including the test filename, appropriate to the platform/file system.
@@ -111,16 +111,16 @@ def get_treatmentrecord_test_file_path():
     string:representing the absolute path including the test filename, appropriate to the platform/file system.
 
     """
-    data_paths = _download_treatmentrecord_test_file()
-    test_treatmentrecord_path = next(
+    data_paths = _download_treatment_record_test_file()
+    test_treatment_record_path = next(
         x for x in data_paths if x.name == "RIBT.not_quite_anonymised.dcm"
     )
-    test_treatmentrecord_file_path = str(test_treatmentrecord_path.absolute())
-    return test_treatmentrecord_file_path
+    test_treatment_record_file_path = str(test_treatment_record_path.absolute())
+    return test_treatment_record_file_path
 
 
 def get_test_filepaths():
-    return [get_rtplan_test_file_path(), get_treatmentrecord_test_file_path()]
+    return [get_rtplan_test_file_path(), get_treatment_record_test_file_path()]
 
 
 def _check_is_anonymised_dataset_file_and_dir(
@@ -176,7 +176,7 @@ def test_anonymised_dataset_with_empty_patient_sex():
 def test_alternative_identifying_keywords():
     alternative_keyword_list = copy.copy(get_default_identifying_keywords())
     alternative_keyword_list.append("SOPInstanceUID")
-    test_file_path = get_treatmentrecord_test_file_path()
+    test_file_path = get_treatment_record_test_file_path()
     ds_test = pydicom.dcmread(test_file_path, force=True)
     with tempfile.TemporaryDirectory() as output_directory:
         anon_private_filepath = anonymise_file(
