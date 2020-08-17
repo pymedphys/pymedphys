@@ -211,7 +211,7 @@ jobs:
 ## Install Machine Learning Dependencies
 
     - name: Install a machine learning environment
-      if: matrix.task == 'tests' && matrix.os == 'ubuntu'
+      if: matrix.os == 'ubuntu' && ( matrix.task == 'tests' || matrix.task == 'updates' )
       run: |
         poetry install --no-dev -E ml
 
