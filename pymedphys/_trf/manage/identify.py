@@ -48,7 +48,7 @@ def identify_logfile(cursor, filepath, timezone):
     header = decode_header_from_file(filepath)
 
     if header.field_label == "":
-        raise Exception("No field label in logfile")
+        raise ValueError("No field label in logfile")
 
     mosaiq_string_time, _ = date_convert(header.date, timezone)
 

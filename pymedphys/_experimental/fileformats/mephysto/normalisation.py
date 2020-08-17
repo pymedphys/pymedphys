@@ -101,7 +101,7 @@ def normalise_pdd(
     # value to normalise to
     else:
         if depth is None:
-            raise Exception(
+            raise ValueError(
                 "distance variable needs to be defined to normalise to a " "depth"
             )
         interpolation = scipy.interpolate.interp1d(depth, filtered)
@@ -129,7 +129,7 @@ def normalise_profile(
         # If insufficient information has been supplies raise a meaningful
         # error
         if pdd_distance is None or pdd_relative_dose is None or scan_depth is None:
-            raise Exception(
+            raise ValueError(
                 "Scaling to PDD requires pdd_distance, pdd_relative_dose, "
                 "and scan_depth to be defined."
             )

@@ -125,7 +125,7 @@ def pull_mephysto_item(string, file_contents):
 
         # If there is more than one match raise an error
         else:
-            raise Exception("More than one item has this label")
+            raise ValueError("More than one item has this label")
 
     return np.array(result)
 
