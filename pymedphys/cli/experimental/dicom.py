@@ -26,6 +26,17 @@ def dicom_cli(subparsers):
 def anonymise(dicom_subparsers):
     parser = dicom.anonymise(dicom_subparsers)
 
-    parser.add_argument("--pseudo", action="store_true")
+    parser.add_argument(
+        "--pseudo",
+        action="store_true",
+        help=(
+            "Use this flag to activate the use of pseudonymisation of the "
+            "identifying elements in the DICOM files, "
+            "as opposed to replacing them with 'dummy' values. "
+            "The pseudonymised values are SHA3_256 hashed if text or UIDs, shifted if dates, and jittered if an age. "
+            "UIDs retain consistency so that entire sets of data will retain their referential integrity. "
+            "Patient Identifiers stay consistent but are not reversible, and are unlikely to collide with other patient identifiers"
+        ),
+    )
 
     parser.set_defaults(func=anonymise_with_pseudo_cli)
