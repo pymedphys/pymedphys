@@ -21,8 +21,8 @@ from .constants import CONFIG
 from .header import determine_header_length
 
 GROUPING_OPTIONS = {
-    "integrityv3": {"line_grouping": 700, "linac_state_codes_column": 2},
-    "integrityv4": {"line_grouping": 708, "linac_state_codes_column": 6},
+    "integrity_v3": {"line_grouping": 700, "linac_state_codes_column": 2},
+    "integrity_v4": {"line_grouping": 708, "linac_state_codes_column": 6},
     "unity_experimental": {"line_grouping": 700, "linac_state_codes_column": 6},
 }
 
@@ -123,14 +123,14 @@ def get_base_column_names():
 def get_column_names(column_adjustment_key):
     column_names = get_base_column_names()
 
-    if column_adjustment_key == "integrityv3":
+    if column_adjustment_key == "integrity_v3":
         return column_names
 
     filler_columns = [f"unknown{item}" for item in range(1, 5)]
 
     column_names = filler_columns + column_names
 
-    if column_adjustment_key == "integrityv4":
+    if column_adjustment_key == "integrity_v4":
         return column_names
 
     if column_adjustment_key != "unity_experimental":
