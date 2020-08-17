@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from pymedphys._imports import tensorflow as tf
+import tensorflow as tf
 
 
 def _bytes_feature(value):
