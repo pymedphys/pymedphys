@@ -45,11 +45,9 @@ from sys import platform
 
 from tqdm import tqdm
 
-import numpy as np
-
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
-
 from PIL import Image
 from skimage.feature import blob_log
 
