@@ -1,6 +1,22 @@
+# Copyright (C) 2020 Matthew Cooper
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+import random
 import threading
 import time
-import random
+
 import images_storage_scu
 
 
@@ -8,73 +24,27 @@ def fuzz():
     time.sleep(random.random())
 
 
-DATA_PATH_1 = (
-    "/media/matthew/secondary/prostate_dataset_raw/000638/with_transfer_syntax"
-)
-DATA_PATH_2 = (
-    "/media/matthew/secondary/prostate_dataset_raw/002487/with_transfer_syntax"
-)
-DATA_PATH_3 = (
-    "/media/matthew/secondary/prostate_dataset_raw/003887/with_transfer_syntax"
-)
-DATA_PATH_4 = (
-    "/media/matthew/secondary/prostate_dataset_raw/011821/with_transfer_syntax"
-)
-DATA_PATH_5 = (
-    "/media/matthew/secondary/prostate_dataset_raw/012125/with_transfer_syntax"
-)
-DATA_PATH_6 = (
-    "/media/matthew/secondary/prostate_dataset_raw/012600/with_transfer_syntax"
-)
-DATA_PATH_7 = (
-    "/media/matthew/secondary/prostate_dataset_raw/013030/with_transfer_syntax"
-)
-DATA_PATH_8 = (
-    "/media/matthew/secondary/prostate_dataset_raw/013604/with_transfer_syntax"
-)
-DATA_PATH_9 = (
-    "/media/matthew/secondary/prostate_dataset_raw/013780/with_transfer_syntax"
-)
-DATA_PATH_10 = (
-    "/media/matthew/secondary/prostate_dataset_raw/013872/with_transfer_syntax"
-)
-DATA_PATH_11 = (
-    "/media/matthew/secondary/prostate_dataset_raw/013875/with_transfer_syntax"
-)
-DATA_PATH_12 = (
-    "/media/matthew/secondary/prostate_dataset_raw/014072/with_transfer_syntax"
-)
-DATA_PATH_13 = (
-    "/media/matthew/secondary/prostate_dataset_raw/014199/with_transfer_syntax"
-)
-DATA_PATH_14 = (
-    "/media/matthew/secondary/prostate_dataset_raw/014362/with_transfer_syntax"
-)
+root_path = "/media/matthew/secondary/prostate_dataset_raw/"
 
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_1,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_2,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_3,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_4,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_5,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_6,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_7,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_8,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_9,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_10,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_11,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_12,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_13,)).start()
-fuzz()
-threading.Thread(target=images_storage_scu.main, args=(DATA_PATH_14,)).start()
+series_paths = [
+    "000638/with_transfer_syntax",
+    "002487/with_transfer_syntax",
+    "003887/with_transfer_syntax",
+    "011821/with_transfer_syntax",
+    "012125/with_transfer_syntax",
+    "012600/with_transfer_syntax",
+    "013030/with_transfer_syntax",
+    "013604/with_transfer_syntax",
+    "013780/with_transfer_syntax",
+    "013872/with_transfer_syntax",
+    "013875/with_transfer_syntax",
+    "014072/with_transfer_syntax",
+    "014199/with_transfer_syntax",
+    "014362/with_transfer_syntax",
+]
+
+for series_path in series_paths:
+    threading.Thread(
+        target=images_storage_scu.main, args=(root_path + series_path,)
+    ).start()
+    fuzz()
