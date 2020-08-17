@@ -16,11 +16,11 @@ for node in ast.parse(imports_string).body:
     if not isinstance(node, ast.Import):
         raise ValueError("Only direct import statements are supported")
 
-    aliased = list(node.names)
-    if len(aliased) != 1:
+    aliases = list(node.names)
+    if len(aliases) != 1:
         raise ValueError("Only one alias per import supported")
 
-    alias = aliased[0]
+    alias = aliases[0]
     asname = alias.asname
 
     if asname is None:
