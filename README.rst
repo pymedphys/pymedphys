@@ -142,6 +142,10 @@ Active contributors
 
 .. _`Rafael Ayala`: https://github.com/ayalalazaro
 
+* `Stuart Swerdloff`_
+    * New Zealand
+
+.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 |rccc| |rah| |uth| |uoc| |hgugm|
 

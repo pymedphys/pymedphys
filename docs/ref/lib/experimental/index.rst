@@ -17,3 +17,4 @@ Experimental Modules
     pinnacle
     profile
     sinogram
+    pseudonymisation
