@@ -86,7 +86,8 @@ def print_dicom_file(dicom_file):
         print(data)
 
 
-def diff_dicom_files(file1, file2):
+def diff_dicom_files(file1, file2, show_same=True):
+
     rep = []
     datasets = (file1, file2)
     for dataset in datasets:
@@ -96,5 +97,9 @@ def diff_dicom_files(file1, file2):
 
     diff = difflib.Differ()
     for line in diff.compare(rep[0], rep[1]):
-        if line[0] != "?":
-            print(line)
+        if show_same:
+            if line[0] != "?":
+                print(line)
+        else:
+            if line[0] != "?" and any(x in line for x in ["+", "-"]):
+                print(line)
