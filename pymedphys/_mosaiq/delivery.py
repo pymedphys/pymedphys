@@ -214,7 +214,9 @@ def decode_msq_mlc(raw_bytes):
     length = check_all_items_equal_length(raw_bytes, "mlc bytes")
 
     if length % 2 == 1:
-        raise Exception("There should be an even number of bytes within an MLC record.")
+        raise ValueError(
+            "There should be an even number of bytes within an MLC record."
+        )
 
     mlc_pos = (
         np.array(

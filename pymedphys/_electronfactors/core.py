@@ -359,7 +359,7 @@ def calculate_width(x, y, circle_centre):
     if insert.contains(point):
         distance = point.distance(insert.boundary)
     else:
-        raise Exception("Circle centre not within insert")
+        raise ValueError("Circle centre not within insert")
 
     return distance * 2
 
