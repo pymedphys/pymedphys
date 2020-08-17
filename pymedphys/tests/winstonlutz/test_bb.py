@@ -14,11 +14,11 @@
 
 
 import pytest
+from pymedphys._imports import numpy as np
 
 import pymedphys
 import pymedphys._mocks.wlutz as wlutz_mocks
 import pymedphys._wlutz.reporting as reporting
-from pymedphys._imports import numpy as np
 
 
 def test_normal_bb():

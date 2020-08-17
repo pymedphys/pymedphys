@@ -1,8 +1,8 @@
+from pymedphys._imports import numpy as np
+
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.signal import find_peaks
-
-from pymedphys._imports import numpy as np
 
 from . import running_mean as rm
 

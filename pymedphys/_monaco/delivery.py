@@ -15,9 +15,10 @@
 import functools
 import re
 
+from pymedphys._imports import numpy as np
+
 import pymedphys._base.delivery
 import pymedphys._utilities.transforms
-from pymedphys._imports import numpy as np
 
 from . import utility
 

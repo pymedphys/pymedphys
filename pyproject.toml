@@ -136,6 +136,9 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 
+known_third_party = [
+    "pymedphys._imports"
+]
 known_general_scientific = [
     "numpy", "scipy", "pandas", "imageio", "PIL", "skimage", "matplotlib",
     "mpl_toolkits", "shapely"

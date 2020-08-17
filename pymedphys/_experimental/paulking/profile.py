@@ -21,12 +21,12 @@ import copy
 import os
 from typing import Callable
 
+from pymedphys._imports import numpy as np
+
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import PIL
 from scipy import interpolate
-
-from pymedphys._imports import numpy as np
 
 # from .._level1.coreobjects import _PyMedPhysBase
 

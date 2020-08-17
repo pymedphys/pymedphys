@@ -13,13 +13,14 @@
 # limitations under the License.
 
 
+from pymedphys._imports import mpl_toolkits
+from pymedphys._imports import numpy as np
+from pymedphys._imports import plt, pydicom
+
 from scipy.interpolate import splev, splprep
 from scipy.optimize import basinhopping
 
 from pymedphys._dicom.structure import pull_structure
-from pymedphys._imports import mpl_toolkits
-from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pydicom
 
 
 def cubify(cube_definition):

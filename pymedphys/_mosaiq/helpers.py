@@ -18,8 +18,9 @@
 import collections
 import datetime
 
-import pymedphys._utilities.patient
 from pymedphys._imports import pandas as pd
+
+import pymedphys._utilities.patient
 
 from .connect import execute_sql
 from .constants import FIELD_TYPES, ORIENTATION
