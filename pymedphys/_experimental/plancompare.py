@@ -18,11 +18,10 @@
 
 import itertools
 
-from pymedphys._imports import numpy as np
-
 import matplotlib.pyplot as plt
 
 import pymedphys
+from pymedphys._imports import numpy as np
 
 
 def plot_mu_densities(labels, mu_density_results):

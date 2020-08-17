@@ -1,9 +1,8 @@
 import pathlib
 import time
 
-from pymedphys._imports import watchdog
-
 import pymedphys._utilities.filesystem
+from pymedphys._imports import watchdog
 
 
 def read_and_trigger_callback(event, callback):

@@ -17,9 +17,9 @@
 
 from collections import namedtuple
 
-from pymedphys._imports import numpy as np
-
 from scipy.interpolate import interp1d
+
+from pymedphys._imports import numpy as np
 
 
 def read_prs(file_name):

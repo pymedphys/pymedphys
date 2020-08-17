@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pymedphys._vendor.pylinac.winstonlutz
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
-
-import pymedphys._vendor.pylinac.winstonlutz
 
 from .interppoints import (
     define_penumbra_points_at_origin,

@@ -1,9 +1,8 @@
 import pathlib
 import tempfile
 
-import numpy as np
-
 import imageio
+import numpy as np
 
 import pymedphys
 import pymedphys._losslessjpeg

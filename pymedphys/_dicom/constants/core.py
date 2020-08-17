@@ -35,9 +35,8 @@ import functools
 import json
 from os import path
 
-from pymedphys._imports import pydicom
-
 from pymedphys._data import download
+from pymedphys._imports import pydicom
 
 # Many thanks to the Medical Connections for offering free
 # valid UIDs (http://www.medicalconnections.co.uk/FreeUID.html)

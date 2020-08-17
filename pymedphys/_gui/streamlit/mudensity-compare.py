@@ -23,15 +23,14 @@ import pathlib
 import subprocess
 from datetime import datetime
 
+import pymedphys
+from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._imports import imageio, keyring
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt, pydicom, pymssql
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import timeago
-
-import pymedphys
-from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers

@@ -1,9 +1,8 @@
-from pymedphys._imports import numpy as np
-
+import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.signal import find_peaks
 
-import matplotlib.pyplot as plt
+from pymedphys._imports import numpy as np
 
 
 # this subroutine aims to find the peaks
