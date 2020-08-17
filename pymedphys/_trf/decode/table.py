@@ -212,7 +212,7 @@ def convert_numbers_to_string(name, lookup, column):
         print(np.where(result == ""))
         print(column[result == ""].values)
         unconverted_entries = np.unique(column[result == ""])
-        raise Exception(
+        raise ValueError(
             "The conversion lookup list for converting {} is incomplete. "
             "The following data numbers were not converted:\n"
             "{}\n"
@@ -243,7 +243,7 @@ def apply_negative(column):
     result[np.invert(negative_values)] = column[np.invert(negative_values)]
 
     if np.any(np.isnan(result)):
-        raise Exception("Not all column values were converted")
+        raise ValueError("Not all column values were converted")
 
     return result
 
