@@ -102,8 +102,9 @@ Nil
 
 #### Bug Fixes
 
-* Pinnacle Export Tool now exports correct dose for patient orientations other
-  than HFS. See [#973](https://github.com/pymedphys/pymedphys/issues/973) for
+* Pinnacle Export Tool now allows for the trial to be set using the CLI.
+  See issue [#973](https://github.com/pymedphys/pymedphys/issues/973)
+  and pull request [#995](https://github.com/pymedphys/pymedphys/pull/995) for
   more details.
 * Fixed bug where the dose grid in the Pinnacle Export Tool was only correct
   when patients were in HFS. See
