@@ -13,6 +13,14 @@ This project adheres to
 
 (Won't truly be stable until after a 1.0.0 release)
 
+#### Bug fixes
+
+* Fixed bug in the PyMedPhys trf decoding logic where leaf pairs 77, 78, 79,
+  and 80 on the Y2 bank were decoded into having the wrong sign.
+  * See issue [#968](https://github.com/pymedphys/pymedphys/issues/968) and
+    pull request [#970](https://github.com/pymedphys/pymedphys/pull/970) for
+    more details.
+
 #### Breaking changes
 
 * `config.toml` has undergone a few breaking changes.
@@ -52,6 +60,7 @@ name = "rccc"
   support alternative anonymisation methods. The API to the anonymise function
   is being flagged for a rework and simplification for which a breaking change
   is likely to occur in the near future.
+* Added ability to configure logging via `config.toml`.
 
 #### Data file changes
 
