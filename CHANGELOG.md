@@ -15,6 +15,36 @@ This project adheres to
 
 #### Breaking changes
 
+* `config.toml` has undergone a few breaking changes.
+  * See [the example](https://github.com/pymedphys/pymedphys/blob/1241924d027163fccdc95750db0c984805bb83d4/site-specific/cancer-care-associates/config.toml)
+    for a working config file.
+  * See below for a comparison highlighting the key differences.
+
+```toml
+# Previous version
+[[site]]
+name = "rccc"
+escan_directory = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+
+    [[site.linac]]
+    name = "2619"
+    icom_live_directory = '\\rccc-physicssvr\iComLogFiles\live\192.168.100.200'
+
+
+# New version
+[[site]]
+name = "rccc"
+
+    [site.export-directories]
+    escan = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+    anonymised_monaco = 'S:\DataExchange\anonymised-monaco'
+    icom_live = '\\rccc-physicssvr\iComLogFiles\live'
+
+    [[site.linac]]
+    name = "2619"
+    ip = '192.168.100.200'
+```
+
 #### New Features
 
 * Two new optional keywords were added to `pymedphys.dicom.anonymise`. These
