@@ -195,6 +195,7 @@
     "itertools",
     "iview",
     "jarmc",
+    "jittering",
     "junit",
     "jupyterlab",
     "keras",

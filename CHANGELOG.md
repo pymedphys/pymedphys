@@ -15,12 +15,23 @@ This project adheres to
 
 #### Breaking changes
 
-#### Data changes
+#### New Features
 
-* The data file `pinnacle_test_data_no_image.zip` accessible through
-  `pymedphys.data_path()` was removed and moved into `pinnacle_test_data.zip`
+* Two new optional keywords were added to `pymedphys.dicom.anonymise`. These
+  are `replacement_strategy` and `identifying_keywords`. This was designed to
+  support alternative anonymisation methods. The API to the anonymise function
+  is being flagged for a rework and simplification for which a breaking change
+  is likely to occur in the near future.
+
+#### Data file changes
+
+Refers to the data files accessible via `pymedphys.data_path`,
+`pymedphys.zip_data_paths`, and `pymedphys.zenodo_data_paths`.
+
+* The data file `pinnacle_test_data_no_image.zip` was removed and its contents
+  were moved into `pinnacle_test_data.zip`.
 * Data files `treatment-record-anonymisation.zip`, `negative-mu-density.trf`,
-  and
+  and `trf-references-and-baselines.zip` were added.
 
 ### Beta API changes
 
@@ -31,17 +42,27 @@ Nil
 #### New Features
 
 * Added pseudonymisation as an experimental extension of anonymise.
-  The pseudonymisation strategy uses SHA3_256 hashing for text and UIDs, date shifting for dates, and jittering for Age.
-  The intent is to enable sets of data that are correlated to remain correlated, and to prevent
-  uncorrelated patient/study/series from clashing.
-  CLI:  pymedphys experimental dicom anonymise --pseudo [input]
-  Programmatic access using pymedphys._experimental.pseudonymisation.get_default_pseudonymisation_keywords and
-  pymedphys._experimental.pseudonymisation.strategy.pseudonymisation_dispatch in optional arguments for identifying_keywords and replacement_strategy to anonymise functions.
+  * This API is undergoing refinement, however in its current form it is
+    accessible via
+    `pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch`
+    and `pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords`.
+    These are designed to be passed to the new keywords `replacement_strategy`
+    and `identifying_keywords` within `pymedphys.dicom.anonymise`.
+  * The pseudonymisation strategy uses SHA3_256 hashing for text and UIDs, date
+    shifting for dates, and jittering for Age. The intent is to enable sets of
+    data that are correlated to remain correlated, and to prevent uncorrelated
+    patient/study/series from clashing.
+* Added experimental pseudonymisation CLI. Callable via
+  `pymedphys experimental dicom anonymise --pseudo path/to/dicom.dcm`
 
 #### Bug Fixes
 
 * Pinnacle Export Tool now exports correct dose for patient orientations other
-  than HFS.
+  than HFS. See [#973](https://github.com/pymedphys/pymedphys/issues/973) for
+  more details.
+* Fixed bug where the dose grid in the Pinnacle Export Tool was only correct
+  when patients were in HFS. See
+  [#929](https://github.com/pymedphys/pymedphys/pull/929) for more details.
 
 ## [0.31.0]
 
