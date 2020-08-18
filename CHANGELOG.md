@@ -7,28 +7,112 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Experimental API changes
-
-* Added pseudonymisation as an experimental extension of anonymise.
-The pseudonymisation strategy uses SHA3_256 hashing for text and UIDs, date shifting for dates, and jittering for Age.
-The intent is to enable sets of data that are correlated to remain correlated, and to prevent
-uncorrelated patient/study/series from clashing.
-CLI:  pymedphys experimental dicom anonymise --pseudo [input]
-Programmatic access using pymedphys._experimental.pseudonymisation.get_default_pseudonymisation_keywords and
-pymedphys._experimental.pseudonymisation.strategy.pseudonymisation_dispatch in optional arguments for identifying_keywords and replacement_strategy to anonymise functions.
-
-#### Bug Fixes
-
-* Pinnacle Export Tool now exports correct dose for patient orientations other
-  than HFS.
-
-## [0.31.0]
+## [0.32.0]
 
 ### "Stable" API changes
 
 (Won't truly be stable until after a 1.0.0 release)
+
+#### Bug fixes
+
+* Fixed bug in the PyMedPhys trf decoding logic where leaf pairs 77, 78, 79,
+  and 80 on the Y2 bank were decoded into having the wrong sign.
+  * See issue [#968](https://github.com/pymedphys/pymedphys/issues/968) and
+    pull request [#970](https://github.com/pymedphys/pymedphys/pull/970) for
+    more details.
+
+#### Breaking changes
+
+* `config.toml` has undergone a few breaking changes.
+  * See [the example](https://github.com/pymedphys/pymedphys/blob/1241924d027163fccdc95750db0c984805bb83d4/site-specific/cancer-care-associates/config.toml)
+    for a working config file.
+  * See below for a comparison highlighting the key differences.
+
+```toml
+# Previous version
+[[site]]
+name = "rccc"
+escan_directory = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+
+    [[site.linac]]
+    name = "2619"
+    icom_live_directory = '\\rccc-physicssvr\iComLogFiles\live\192.168.100.200'
+
+
+# New version
+[[site]]
+name = "rccc"
+
+    [site.export-directories]
+    escan = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
+    anonymised_monaco = 'S:\DataExchange\anonymised-monaco'
+    icom_live = '\\rccc-physicssvr\iComLogFiles\live'
+
+    [[site.linac]]
+    name = "2619"
+    ip = '192.168.100.200'
+```
+
+#### New Features
+
+* Two new optional keywords were added to `pymedphys.dicom.anonymise`. These
+  are `replacement_strategy` and `identifying_keywords`. This was designed to
+  support alternative anonymisation methods. The API to the anonymise function
+  is being flagged for a rework and simplification for which a breaking change
+  is likely to occur in the near future.
+* Added ability to configure logging via `config.toml`.
+
+#### Data file changes
+
+Refers to the data files accessible via `pymedphys.data_path`,
+`pymedphys.zip_data_paths`, and `pymedphys.zenodo_data_paths`.
+
+* The data file `pinnacle_test_data_no_image.zip` was removed and its contents
+  were moved into `pinnacle_test_data.zip`.
+* Data files `treatment-record-anonymisation.zip`, `negative-mu-density.trf`,
+  and `trf-references-and-baselines.zip` were added.
+
+### Beta API changes
+
+Nil
+
+### Experimental API changes
+
+#### New Features
+
+* Added pseudonymisation as an experimental extension of anonymise.
+  * This API is undergoing refinement, however in its current form it is
+    accessible via
+    `pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch`
+    and `pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords`.
+    These are designed to be passed to the new keywords `replacement_strategy`
+    and `identifying_keywords` within `pymedphys.dicom.anonymise`.
+  * The pseudonymisation strategy uses SHA3_256 hashing for text and UIDs, date
+    shifting for dates, and jittering for Age. The intent is to enable sets of
+    data that are correlated to remain correlated, and to prevent uncorrelated
+    patient/study/series from clashing.
+* Added experimental pseudonymisation CLI. Callable via
+  `pymedphys experimental dicom anonymise --pseudo path/to/dicom.dcm`
+
+* Added `pymedphys experimental gui`. This is a testing ground for new GUIs
+  that are intended to appear within `pymedphys gui` in the future. The GUIs
+  exposed under this experimental scope are minimally tested.
+  * At this point in time, the new GUIs include a GUI index, an electron
+    insert factor prediction tool, and a Monaco anonymisation tool.
+
+#### Bug Fixes
+
+* Pinnacle Export Tool now allows for the trial to be set using the CLI.
+  See issue [#973](https://github.com/pymedphys/pymedphys/issues/973)
+  and pull request [#995](https://github.com/pymedphys/pymedphys/pull/995) for
+  more details.
+* Fixed bug where the dose grid in the Pinnacle Export Tool was only correct
+  when patients were in HFS. See
+  [#929](https://github.com/pymedphys/pymedphys/pull/929) for more details.
+
+## [0.31.0]
+
+### "Stable" API changes
 
 #### Critical bug fixes
 
@@ -757,7 +841,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...master
+[0.32.0]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...v0.30.0
 [0.29.1]: https://github.com/pymedphys/pymedphys/compare/v0.29.0...v0.29.1
