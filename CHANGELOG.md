@@ -55,6 +55,12 @@ Nil
 * Added experimental pseudonymisation CLI. Callable via
   `pymedphys experimental dicom anonymise --pseudo path/to/dicom.dcm`
 
+* Added `pymedphys experimental gui`. This is a testing ground for new GUIs
+  that are intended to appear within `pymedphys gui` in the future. The GUIs
+  exposed under this experimental scope are minimally tested.
+  * At this point in time, the new GUIs include a GUI index, an electron
+    insert factor prediction tool, and a Monaco anonymisation tool.
+
 #### Bug Fixes
 
 * Pinnacle Export Tool now exports correct dose for patient orientations other
