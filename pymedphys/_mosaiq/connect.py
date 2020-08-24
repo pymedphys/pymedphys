@@ -44,26 +44,26 @@ def execute_sql(cursor, sql_string, parameters=None):
 
 
 def get_username_password(
-    storage_name, user_input=input, password_input=getpass, stdout=print
+    storage_name, user_input=input, password_input=getpass, output=print
 ):
 
     user = keyring.get_password("MosaiqSQL_username", storage_name)
     password = keyring.get_password("MosaiqSQL_password", storage_name)
 
     if user is None or user == "":
-        stdout(
+        output(
             "Provide a user that only has `db_datareader` access to the "
             "Mosaiq database at `{}`".format(storage_name)
         )
         user = user_input()
         if user == "":
             error_message = "Username should not be blank."
-            stdout(error_message)
+            output(error_message)
             raise ValueError(error_message)
         keyring.set_password("MosaiqSQL_username", storage_name, user)
 
     if password is None:
-        stdout(
+        output(
             "Provide password for '{}' server and '{}' user".format(storage_name, user)
         )
         password = password_input()
@@ -89,14 +89,14 @@ def separate_server_port_string(sql_server_and_port):
 
 
 def try_connect_delete_user_if_fail(
-    sql_server_and_port, user_input=input, password_input=getpass, stdout=print
+    sql_server_and_port, user_input=input, password_input=getpass, output=print
 ):
     server, port = separate_server_port_string(sql_server_and_port)
     user, password = get_username_password(
         sql_server_and_port,
         user_input=user_input,
         password_input=password_input,
-        stdout=stdout,
+        output=output,
     )
 
     try:
@@ -104,16 +104,16 @@ def try_connect_delete_user_if_fail(
     except pymssql.OperationalError as error:
         error_message = error.args[0][1]
         if error_message.startswith(b"Login failed for user"):
-            stdout("Login failed, wiping the saved username and password.")
+            output("Login failed, wiping the saved username and password.")
             try:
                 keyring.delete_password("MosaiqSQL_username", sql_server_and_port)
                 keyring.delete_password("MosaiqSQL_password", sql_server_and_port)
             except keyring.errors.PasswordDeleteError as error:
                 pass
-            stdout("Please try login again:")
+            output("Please try login again:")
             conn = try_connect_delete_user_if_fail(sql_server_and_port)
         else:
-            stdout(
+            output(
                 "Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
                     sql_server_and_port, user, server, port
                 )
@@ -121,7 +121,7 @@ def try_connect_delete_user_if_fail(
             raise
 
     except Exception as error:
-        stdout(
+        output(
             "Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
                 sql_server_and_port, user, server, port
             )
@@ -131,11 +131,18 @@ def try_connect_delete_user_if_fail(
     return conn
 
 
-def single_connect(sql_server_and_port):
+def single_connect(
+    sql_server_and_port, user_input=input, password_input=getpass, output=print
+):
     """Connect to the Mosaiq server.
     Ask the user for a password if they haven't logged in before.
     """
-    conn = try_connect_delete_user_if_fail(sql_server_and_port)
+    conn = try_connect_delete_user_if_fail(
+        sql_server_and_port,
+        user_input=user_input,
+        password_input=password_input,
+        output=output,
+    )
 
     return conn, conn.cursor()
 

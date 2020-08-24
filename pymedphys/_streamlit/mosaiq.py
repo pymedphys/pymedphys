@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+
 import streamlit as st
 
 from pymedphys._mosaiq import connect as msq_connect
 
+password = functools.partial(st.text_input, type="password")
+
 
 @st.cache(allow_output_mutation=True)
 def get_mosaiq_cursor(server):
-    _, cursor = msq_connect.single_connect(server)
+    _, cursor = msq_connect.single_connect(
+        server, user_input=st.text_input, password_input=password, output=st.write
+    )
     return cursor
