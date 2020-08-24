@@ -42,9 +42,9 @@ class WatchdogEventHandler(events.FileModifiedEvent):
 @st.cache()
 def rerun_on_module_reload(module: types.ModuleType, session_id):
     server = st.server.server.Server.get_current()
-    session = server._session_info_by_id[  # pylint: disable = protected-access
+    session = server._get_session_info(  # pylint: disable = protected-access
         session_id
-    ].session
+    ).session
 
     observer = polling.PollingObserver()
 
