@@ -71,7 +71,7 @@ if zip_path.exists():
         zip_path.unlink()
         rerun()
 
-    raise st.ScriptRunner.StopException()
+    st.stop()
 
 
 if st.button("Copy and Anonymise"):
