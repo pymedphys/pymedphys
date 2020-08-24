@@ -1712,6 +1712,14 @@ pyasn1 = ">=0.1.3"
 
 [[package]]
 category = "main"
+description = "Reactive Extensions (Rx) for Python"
+name = "rx"
+optional = false
+python-versions = ">=3.6.0"
+version = "3.1.1"
+
+[[package]]
+category = "main"
 description = "An Amazon S3 Transfer Manager"
 name = "s3transfer"
 optional = false
@@ -2380,7 +2388,7 @@ ml = ["tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io", "ten
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [metadata]
-content-hash = "095e9dc2c266ce7ed18fb3d79252fcfc762f54e7acb37173911c6e6a66b9e3d3"
+content-hash = "997d8978c6594799edd2c8f2441d06a15a3d7a72ba88a5c4b40da2a7955bdd0a"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -3429,6 +3437,10 @@ rope = [
 rsa = [
     {file = "rsa-4.6-py3-none-any.whl", hash = "sha256:6166864e23d6b5195a5cfed6cd9fed0fe774e226d8f854fcb23b7bbef0350233"},
     {file = "rsa-4.6.tar.gz", hash = "sha256:109ea5a66744dd859bf16fe904b8d8b627adafb9408753161e766a92e7d681fa"},
+]
+rx = [
+    {file = "Rx-3.1.1-py3-none-any.whl", hash = "sha256:0e0f2715a3452e95dcb5d6ea28ffe5742e832592bbcc67a48f394ef8ba871e6f"},
+    {file = "Rx-3.1.1.tar.gz", hash = "sha256:562851cfdb27fd5a218443cdbd682029684144dbafeb5dce34f6a709511282de"},
 ]
 s3transfer = [
     {file = "s3transfer-0.3.3-py2.py3-none-any.whl", hash = "sha256:2482b4259524933a022d59da830f51bd746db62f047d6eb213f2f8855dcb8a13"},
