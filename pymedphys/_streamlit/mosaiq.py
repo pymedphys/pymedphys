@@ -18,12 +18,20 @@ import streamlit as st
 
 from pymedphys._mosaiq import connect as msq_connect
 
-password = functools.partial(st.text_input, type="password")
+generic_password_input = functools.partial(st.text_input, type="password")
 
 
-@st.cache(allow_output_mutation=True)
+def add_label(function, label):
+    return functools.partial(function, label=label)
+
+
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def get_mosaiq_cursor(server):
+
+    password_input = add_label(generic_password_input, server)
+    user_input = add_label(st.text_input, server)
+
     _, cursor = msq_connect.single_connect(
-        server, user_input=st.text_input, password_input=password, output=st.write
+        server, user_input=user_input, password_input=password_input, output=st.write
     )
     return cursor

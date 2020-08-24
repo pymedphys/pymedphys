@@ -20,7 +20,7 @@ import pymedphys.electronfactors as electronfactors
 patient_id = st.text_input("Patient ID")
 
 if patient_id == "":
-    raise st.ScriptRunner.StopException()
+    st.stop()
 
 
 rccc_string_search_pattern = r"\\monacoda\FocalData\RCCC\1~Clinical\*~{}\plan\*\*tel.1".format(

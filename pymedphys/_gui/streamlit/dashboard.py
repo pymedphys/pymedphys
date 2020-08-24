@@ -18,3 +18,7 @@
 # pylint: disable = too-many-lines, redefined-outer-name
 
 import streamlit as st
+
+from pymedphys._streamlit import mosaiq as st_mosaiq
+
+cursor = st_mosaiq.get_mosaiq_cursor("msqsql")
