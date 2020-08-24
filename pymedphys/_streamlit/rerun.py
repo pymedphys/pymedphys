@@ -13,21 +13,29 @@ from watchdog.observers import polling
 import streamlit as st
 
 
-def rerun(session=None):
-    if session is None:
-        ctx = st.report_thread.get_report_ctx()
-        server = st.server.server.Server.get_current()
-        session = server._session_info_by_id[  # pylint: disable = protected-access
-            ctx.session_id
-        ].session
+def get_session_id():
+    ctx = st.report_thread.get_report_ctx()
+    session_id = ctx.session_id
+
+    return session_id
+
+
+def rerun(session_id=None):
+    if session_id is None:
+        session_id = get_session_id()
+
+    server = st.server.server.Server.get_current()
+    session = server._get_session_info(  # pylint: disable = protected-access
+        session_id
+    ).session
 
     session.request_rerun()
 
 
 class WatchdogEventHandler(events.FileModifiedEvent):
-    def __init__(self, module, session):
+    def __init__(self, module, session_id):
         self.module = module
-        self.session = session
+        self.session_id = session_id
 
         super().__init__(self.module.__file__)
 
@@ -36,29 +44,23 @@ class WatchdogEventHandler(events.FileModifiedEvent):
             print(f"Reloading {self.module.__file__}")
             importlib.reload(self.module)
             print("Rerunning streamlit session")
-            rerun(self.session)
+            rerun(self.session_id)
 
 
 @st.cache()
 def rerun_on_module_reload(module: types.ModuleType, session_id):
-    server = st.server.server.Server.get_current()
-    session = server._get_session_info(  # pylint: disable = protected-access
-        session_id
-    ).session
-
     observer = polling.PollingObserver()
 
     module_directory = pathlib.Path(module.__file__).parent
 
-    event_handler = WatchdogEventHandler(module, session)
+    event_handler = WatchdogEventHandler(module, session_id)
     observer.schedule(event_handler, module_directory, recursive=False)
 
     observer.start()
 
 
 def auto_reload_on_module_changes(modules):
-    ctx = st.report_thread.get_report_ctx()
-    session_id = ctx.session_id
+    session_id = get_session_id()
 
     if isinstance(modules, types.ModuleType):
         modules = [modules]
