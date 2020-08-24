@@ -17,20 +17,19 @@
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
-import importlib
 
 import streamlit as st
 
-from pymedphys._streamlit import misc as st_misc
 from pymedphys._streamlit import mosaiq as st_mosaiq
+from pymedphys._streamlit import rerun as st_rerun
 
-THIS = importlib.import_module(__name__)
+wait_for_rerun = st_rerun.auto_reload_on_module_changes(__name__, [st_mosaiq, st_rerun])
 
-wait_for_rerun = st_misc.auto_reload_on_module_changes(THIS, [st_mosaiq, st_misc])
-
-st.write("hoo foo moo")
+st_rerun.foo()
 
 # goo gg aa
+
+st.write("hoo")
 
 wait_for_rerun()
 
