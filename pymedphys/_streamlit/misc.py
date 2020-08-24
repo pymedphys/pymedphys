@@ -8,6 +8,10 @@ import streamlit as st
 from . import config
 
 
+def rerun():
+    raise st.script_runner.RerunException(st.script_request_queue.RerunData(None))
+
+
 def site_picker(radio_label, default=None, key=None):
     site_directories = config.get_site_directories()
     site_options = list(site_directories.keys())

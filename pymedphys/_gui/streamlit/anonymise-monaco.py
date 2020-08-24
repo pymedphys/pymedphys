@@ -31,10 +31,6 @@ HERE = pathlib.Path(__file__).parent.resolve()
 ANON_DEMOGRAPHIC_FILE = HERE.joinpath("demographic.000000")
 
 
-def rerun():
-    raise st.ScriptRunner.RerunException(st.ScriptRequestQueue.RerunData(None))
-
-
 "# Anonymise Monaco Files"
 
 "## Select Patient"
@@ -69,7 +65,7 @@ if zip_path.exists():
     st.write(FileExistsError("This zip file already exists."))
     if st.button("Delete zip file"):
         zip_path.unlink()
-        rerun()
+        st_misc.rerun()
 
     st.stop()
 
