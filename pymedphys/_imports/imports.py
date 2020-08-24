@@ -47,7 +47,6 @@ import skimage.draw
 import skimage.measure
 
 import streamlit
-import tensorflow
 
 import libjpeg
 import pydicom
