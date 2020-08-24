@@ -68,7 +68,7 @@ python_dateutil = "*"
 scikit-image = "*"
 
 # gui
-streamlit = "0.64.0"
+streamlit = "0.65.2"
 timeago = "*"
 
 # ml
