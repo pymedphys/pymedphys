@@ -26,6 +26,7 @@ import streamlit as st
 
 from pymedphys._streamlit import misc as st_misc
 from pymedphys._streamlit import monaco as st_monaco
+from pymedphys._streamlit import rerun as st_rerun
 
 HERE = pathlib.Path(__file__).parent.resolve()
 ANON_DEMOGRAPHIC_FILE = HERE.joinpath("demographic.000000")
@@ -65,7 +66,7 @@ if zip_path.exists():
     st.write(FileExistsError("This zip file already exists."))
     if st.button("Delete zip file"):
         zip_path.unlink()
-        st_misc.rerun()
+        st_rerun.rerun()
 
     st.stop()
 

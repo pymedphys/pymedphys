@@ -33,7 +33,6 @@ from pymedphys._imports import timeago
 import pymedphys
 from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._monaco import patient as mnc_patient
-from pymedphys._mosaiq import connect as msq_connect
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
 from pymedphys._streamlit import exceptions as st_exceptions
