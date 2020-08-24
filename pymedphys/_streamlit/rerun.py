@@ -39,7 +39,13 @@ class WatchdogEventHandler(events.FileModifiedEvent):
             rerun(self.session)
 
 
-def rerun_on_module_reload(module: types.ModuleType, session):
+@st.cache()
+def rerun_on_module_reload(module: types.ModuleType, session_id):
+    server = st.server.server.Server.get_current()
+    session = server._session_info_by_id[  # pylint: disable = protected-access
+        session_id
+    ].session
+
     observer = polling.PollingObserver()
 
     module_directory = pathlib.Path(module.__file__).parent
@@ -50,16 +56,12 @@ def rerun_on_module_reload(module: types.ModuleType, session):
     observer.start()
 
 
-@st.cache(suppress_st_warning=True)
 def auto_reload_on_module_changes(modules):
     ctx = st.report_thread.get_report_ctx()
-    server = st.server.server.Server.get_current()
-    session = server._session_info_by_id[  # pylint: disable = protected-access
-        ctx.session_id
-    ].session
+    session_id = ctx.session_id
 
     if isinstance(modules, types.ModuleType):
         modules = [modules]
 
     for module in modules:
-        rerun_on_module_reload(module, session)
+        rerun_on_module_reload(module, session_id)
