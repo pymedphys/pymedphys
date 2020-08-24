@@ -2,7 +2,6 @@
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
-
 import streamlit as st
 
 from . import config

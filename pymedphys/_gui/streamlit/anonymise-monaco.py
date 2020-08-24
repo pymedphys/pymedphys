@@ -26,13 +26,10 @@ import streamlit as st
 
 from pymedphys._streamlit import misc as st_misc
 from pymedphys._streamlit import monaco as st_monaco
+from pymedphys._streamlit import rerun as st_rerun
 
 HERE = pathlib.Path(__file__).parent.resolve()
 ANON_DEMOGRAPHIC_FILE = HERE.joinpath("demographic.000000")
-
-
-def rerun():
-    raise st.ScriptRunner.RerunException(st.ScriptRequestQueue.RerunData(None))
 
 
 "# Anonymise Monaco Files"
@@ -69,9 +66,9 @@ if zip_path.exists():
     st.write(FileExistsError("This zip file already exists."))
     if st.button("Delete zip file"):
         zip_path.unlink()
-        rerun()
+        st_rerun.rerun()
 
-    raise st.ScriptRunner.StopException()
+    st.stop()
 
 
 if st.button("Copy and Anonymise"):
