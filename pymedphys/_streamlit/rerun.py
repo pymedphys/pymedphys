@@ -48,7 +48,7 @@ class WatchdogEventHandler(events.FileModifiedEvent):
 
 
 @st.cache()
-def reload_and_rerun_on_module_change(module: types.ModuleType, session_id):
+def reload_and_rerun_on_module_changes(module: types.ModuleType, session_id):
     observer = polling.PollingObserver()
 
     module_directory = pathlib.Path(module.__file__).parent
@@ -66,4 +66,4 @@ def autoreload(modules):
         modules = [modules]
 
     for module in modules:
-        reload_and_rerun_on_module_change(module, session_id)
+        reload_and_rerun_on_module_changes(module, session_id)
