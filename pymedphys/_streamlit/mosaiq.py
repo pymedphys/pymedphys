@@ -25,6 +25,11 @@ def add_label(function, label):
     return functools.partial(function, label=label)
 
 
+def create_user_input():
+    # TODO: Wrap st.text_input and call st.stop() if it is empty
+    pass
+
+
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def get_mosaiq_cursor(server):
 
