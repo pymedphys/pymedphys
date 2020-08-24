@@ -23,14 +23,10 @@ import streamlit as st
 from pymedphys._streamlit import mosaiq as st_mosaiq
 from pymedphys._streamlit import rerun as st_rerun
 
-wait_for_rerun = st_rerun.auto_reload_on_module_changes(__name__, [st_mosaiq, st_rerun])
+st_rerun.auto_reload_on_module_changes([st_mosaiq, st_rerun])
 
-st_rerun.foo()
 
-# goo gg aa
+st.write("hoo moo boo")
 
-st.write("hoo")
 
-wait_for_rerun()
-
-cursor = st_mosaiq.get_mosaiq_cursor("msqsql")
+# cursor = st_mosaiq.get_mosaiq_cursor("msqsql")
