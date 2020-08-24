@@ -302,7 +302,7 @@ def get_incomplete_qcls(cursor, location):
         ],
     )
 
-    results = results.sort_values(by=["due"], ascending=False)
+    results = results.sort_values(by=["due"], ascending=True)
 
     return results
 

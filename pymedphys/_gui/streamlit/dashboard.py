@@ -20,13 +20,43 @@
 
 import streamlit as st
 
+from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import mosaiq as st_mosaiq
 from pymedphys._streamlit import rerun as st_rerun
 
-st_rerun.autoreload([st_mosaiq, st_rerun])
+st_rerun.autoreload([st_mosaiq, st_rerun, msq_helpers])
 
+centres = ["rccc", "nbcc", "sash"]
+servers = {"rccc": "msqsql", "nbcc": "physics-server:31433", "sash": "physics-server"}
+physics_locations = {
+    "rccc": "Physics_Check",
+    "nbcc": "Physics",
+    "sash": "Physics_Check",
+}
 
-st.write("hoo moo boo")
+cursors = {centre: st_mosaiq.get_mosaiq_cursor(servers[centre]) for centre in centres}
 
+"# Mosaiq QCLs"
 
-# cursor = st_mosaiq.get_mosaiq_cursor("msqsql")
+if st.button("Refresh"):
+    st_rerun.rerun()
+
+for centre in centres:
+    f"## {centre.upper()}"
+
+    cursor = cursors[centre]
+    physics_location = physics_locations[centre]
+
+    table = msq_helpers.get_incomplete_qcls(cursor, physics_location)
+
+    for index, row in table.iterrows():
+        f"### `{row.patient_id}` {str(row.last_name).upper()}, {str(row.first_name).lower().capitalize()}"
+
+        f"Due: `{row.due}`"
+        if row.instructions:
+            f"Instructions: `{row.instructions}`"
+
+        if row.comment:
+            f"Comment: `{row.comment}`"
+
+        f"Task: `{row.task}`"
