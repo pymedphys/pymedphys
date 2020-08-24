@@ -39,6 +39,7 @@ from pymedphys._streamlit import config as st_config
 from pymedphys._streamlit import exceptions as st_exceptions
 from pymedphys._streamlit import misc as st_misc
 from pymedphys._streamlit import monaco as st_monaco
+from pymedphys._streamlit import mosaiq as st_mosaiq
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
@@ -171,12 +172,6 @@ class UnableToCreatePDF(ValueError):
 
 class NoControlPointsFound(ValueError):
     pass
-
-
-@st.cache(allow_output_mutation=True)
-def get_mosaiq_cursor(server):
-    _, cursor = msq_connect.single_connect(server)
-    return cursor
 
 
 def sidebar_overview():
@@ -726,7 +721,7 @@ def get_logfile_mosaiq_info(headers):
 
     details = []
 
-    cursors = {server: get_mosaiq_cursor(server) for server in mosaiq_servers}
+    cursors = {server: st_mosaiq.get_mosaiq_cursor(server) for server in mosaiq_servers}
 
     for _, header in headers.iterrows():
         machine_id = header["machine"]
@@ -886,7 +881,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
     )
     patient_id
 
-    cursor = get_mosaiq_cursor(server)
+    cursor = st_mosaiq.get_mosaiq_cursor(server)
 
     if patient_id == "":
         return {}
