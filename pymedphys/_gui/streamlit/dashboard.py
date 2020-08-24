@@ -23,7 +23,7 @@ import streamlit as st
 from pymedphys._streamlit import mosaiq as st_mosaiq
 from pymedphys._streamlit import rerun as st_rerun
 
-st_rerun.auto_reload_on_module_changes([st_mosaiq, st_rerun])
+st_rerun.autoreload([st_mosaiq, st_rerun])
 
 
 st.write("hoo moo boo")
