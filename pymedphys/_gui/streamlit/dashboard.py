@@ -56,13 +56,17 @@ for centre in centres:
         )
     except pymssql.InterfaceError as e:
         st.write(e)
-        cursor_bucket["cursor"] = st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre])
+        cursor_bucket["cursor"] = st_mosaiq.uncached_get_mosaiq_cursor(servers[centre])
         table = msq_helpers.get_incomplete_qcls(
             cursor_bucket["cursor"], physics_location
         )
 
     for index, row in table.iterrows():
-        f"### `{row.patient_id}` {str(row.last_name).upper()}, {str(row.first_name).lower().capitalize()}"
+        patient_header = (
+            f"### `{row.patient_id}` {str(row.last_name).upper()}, "
+            f"{str(row.first_name).lower().capitalize()}"
+        )
+        st.write(patient_header)
 
         f"Due: `{row.due}`"
         if row.instructions:
