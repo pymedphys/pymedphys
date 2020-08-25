@@ -54,7 +54,7 @@ for centre in centres:
         table = msq_helpers.get_incomplete_qcls(
             cursor_bucket["cursor"], physics_location
         )
-    except pymssql.InterfaceError as e:
+    except (pymssql.InterfaceError, pymssql.OperationalError) as e:
         st.write(e)
         cursor_bucket["cursor"] = st_mosaiq.uncached_get_mosaiq_cursor(servers[centre])
         table = msq_helpers.get_incomplete_qcls(
