@@ -24,7 +24,6 @@ import streamlit as st
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import mosaiq as st_mosaiq
 from pymedphys._streamlit import rerun as st_rerun
-from pymedphys._mosaiq import connect as msq_connect
 
 st_rerun.autoreload([st_mosaiq, st_rerun, msq_helpers])
 
@@ -36,7 +35,9 @@ physics_locations = {
     "sash": "Physics_Check",
 }
 
-cursors = {centre: st_mosaiq.get_mosaiq_cursor(servers[centre]) for centre in centres}
+cursors = {
+    centre: st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre]) for centre in centres
+}
 
 "# Mosaiq QCLs"
 
@@ -46,15 +47,19 @@ if st.button("Refresh"):
 for centre in centres:
     f"## {centre.upper()}"
 
-    cursor = cursors[centre]
+    cursor_bucket = cursors[centre]
     physics_location = physics_locations[centre]
 
     try:
-        table = msq_helpers.get_incomplete_qcls(cursor, physics_location)
-    except pymssql.InterfaceError:
-        cursor = st_mosaiq.uncached_get_mosaiq_cursor(servers[centre])
-        cursors[centre] = cursor
-        table = msq_helpers.get_incomplete_qcls(cursor, physics_location)
+        table = msq_helpers.get_incomplete_qcls(
+            cursor_bucket["cursor"], physics_location
+        )
+    except pymssql.InterfaceError as e:
+        st.write(e)
+        cursor_bucket["cursor"] = st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre])
+        table = msq_helpers.get_incomplete_qcls(
+            cursor_bucket["cursor"], physics_location
+        )
 
     for index, row in table.iterrows():
         f"### `{row.patient_id}` {str(row.last_name).upper()}, {str(row.first_name).lower().capitalize()}"
