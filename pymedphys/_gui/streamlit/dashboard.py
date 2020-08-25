@@ -17,12 +17,14 @@
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
+import pymssql
 
 import streamlit as st
 
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import mosaiq as st_mosaiq
 from pymedphys._streamlit import rerun as st_rerun
+from pymedphys._mosaiq import connect as msq_connect
 
 st_rerun.autoreload([st_mosaiq, st_rerun, msq_helpers])
 
@@ -47,7 +49,12 @@ for centre in centres:
     cursor = cursors[centre]
     physics_location = physics_locations[centre]
 
-    table = msq_helpers.get_incomplete_qcls(cursor, physics_location)
+    try:
+        table = msq_helpers.get_incomplete_qcls(cursor, physics_location)
+    except pymssql.InterfaceError:
+        cursor = st_mosaiq.uncached_get_mosaiq_cursor(servers[centre])
+        cursors[centre] = cursor
+        table = msq_helpers.get_incomplete_qcls(cursor, physics_location)
 
     for index, row in table.iterrows():
         f"### `{row.patient_id}` {str(row.last_name).upper()}, {str(row.first_name).lower().capitalize()}"
