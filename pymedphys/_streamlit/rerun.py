@@ -47,30 +47,25 @@ def rerun(session_id=None):
     session.request_rerun()
 
 
-class WatchdogEventHandler(events.FileModifiedEvent):
-    def __init__(self, module, session_id):
-        self.module = module
-        self.session_id = session_id
-
-        super().__init__(self.module.__file__)
-
-    def dispatch(self, event):
-        if event.src_path == self.module.__file__:
-            print(f"Reloading {self.module.__file__}")
-            importlib.reload(self.module)
-            print("Rerunning streamlit session")
-            rerun(self.session_id)
-
-
 @st.cache()
 def reload_and_rerun_on_module_changes(module: types.ModuleType, session_id):
-    observer = polling.PollingObserver()
+    event_handler = events.FileModifiedEvent(module.__file__)
+
+    def dispatch(event):
+        if event.src_path == module.__file__:
+            importlib.reload(module)
+            rerun(session_id)
+
+    event_handler.dispatch = dispatch
 
     module_directory = pathlib.Path(module.__file__).parent
 
-    event_handler = WatchdogEventHandler(module, session_id)
+    # If a normal observer is used here sometimes there can be a burst
+    # of observations triggered (for example when using VS Code). By
+    # using polling here this effectively debounces the observation
+    # signal.
+    observer = polling.PollingObserver()
     observer.schedule(event_handler, module_directory, recursive=False)
-
     observer.start()
 
 
