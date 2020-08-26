@@ -30,7 +30,17 @@ def create_user_input(server, input_type="default"):
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def get_mosaiq_cursor(server):
+    return uncached_get_mosaiq_cursor(server)
 
+
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def get_mosaiq_cursor_in_bucket(server):
+    """This allows the output cursor cache to be mutated by the user code
+    """
+    return {"cursor": uncached_get_mosaiq_cursor(server)}
+
+
+def uncached_get_mosaiq_cursor(server):
     password_input = create_user_input(server, input_type="password")
     user_input = create_user_input(server)
 

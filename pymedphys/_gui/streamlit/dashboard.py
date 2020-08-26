@@ -17,6 +17,7 @@
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
+import pymssql
 
 import streamlit as st
 
@@ -34,7 +35,9 @@ physics_locations = {
     "sash": "Physics_Check",
 }
 
-cursors = {centre: st_mosaiq.get_mosaiq_cursor(servers[centre]) for centre in centres}
+cursors = {
+    centre: st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre]) for centre in centres
+}
 
 "# Mosaiq QCLs"
 
@@ -44,10 +47,19 @@ if st.button("Refresh"):
 for centre in centres:
     f"## {centre.upper()}"
 
-    cursor = cursors[centre]
+    cursor_bucket = cursors[centre]
     physics_location = physics_locations[centre]
 
-    table = msq_helpers.get_incomplete_qcls(cursor, physics_location)
+    try:
+        table = msq_helpers.get_incomplete_qcls(
+            cursor_bucket["cursor"], physics_location
+        )
+    except pymssql.InterfaceError as e:
+        st.write(e)
+        cursor_bucket["cursor"] = st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre])
+        table = msq_helpers.get_incomplete_qcls(
+            cursor_bucket["cursor"], physics_location
+        )
 
     for index, row in table.iterrows():
         f"### `{row.patient_id}` {str(row.last_name).upper()}, {str(row.first_name).lower().capitalize()}"
