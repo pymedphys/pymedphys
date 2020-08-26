@@ -7,6 +7,10 @@ import pathlib
 
 import streamlit as st
 
+from pymedphys._streamlit import rerun as st_rerun
+
+st_rerun.autoreload(st_rerun)
+
 HERE = pathlib.Path(__file__).parent
 
 base = st.config.get_option("server.baseUrlPath")

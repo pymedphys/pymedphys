@@ -69,6 +69,19 @@ def reload_and_rerun_on_module_changes(module: types.ModuleType, session_id):
     observer.start()
 
 
+# An issue with this implementation of autoreload is that should
+# this function be removed from a streamlit app the listener doesn't
+# actually go away. Once a listener is added it is persistent until
+# the cache is cleared.
+
+# TODO: Provide a parameter deregister_all_other_listeners, or something
+# similar, that defaults to True. When autoreload is called, the first
+# thing that is done is it is determined whether or not observers
+# are currently running on this session_id that have not been provided
+# to the current function. If that's the case, those observers are
+# stopped.
+
+
 def autoreload(modules):
     session_id = get_session_id()
 
