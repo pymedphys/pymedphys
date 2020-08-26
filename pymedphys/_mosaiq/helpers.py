@@ -484,3 +484,50 @@ def get_staff_initials(cursor, staff_id):
     )
 
     return initials
+
+
+def get_all_treatment_history_data(cursor, mrn):
+
+    dataframe_column_to_sql_reference = collections.OrderedDict(
+        [
+            ("dose_ID", "TrackTreatment.DHS_ID"),
+            ("date", "TrackTreatment.Create_DtTm"),
+            ("field_name", "TxField.Field_Name"),
+            ("fraction", "Dose_Hst.Fractions_Tx"),
+            ("actual fx dose", "Dose_Hst.Dose_Tx_Act"),
+            ("actual rx", "Dose_Hst.Dose_Ttl_Act"),
+            ("actual cumRx", "Dose_Hst.Dose_Ttl_Cum_Act"),
+            ("couch_vrt", "TxFieldPoint_Hst.Couch_Vrt"),
+            ("couch_lat", "TxFieldPoint_Hst.Couch_Lat"),
+            ("couch_lng", "TxFieldPoint_Hst.Couch_Lng"),
+            ("couch_ang", "TxFieldPoint_Hst.Couch_Ang"),
+        ]
+    )
+
+    columns = list(dataframe_column_to_sql_reference.keys())
+    select_string = "SELECT " + ",\n\t\t    ".join(
+        dataframe_column_to_sql_reference.values()
+    )
+
+    sql_string = (
+        select_string
+        + """
+        From Ident, Dose_Hst, Fld_Hst, TrackTreatment, Patient, TxField, TxFieldPoint_Hst
+        WHERE
+        TxFieldPoint_Hst.FHS_ID = Fld_Hst.FHS_ID AND
+        TxFieldPoint_Hst.Point=0 AND
+        TrackTreatment.DHS_ID = Dose_Hst.DHS_ID AND
+        FLD_HST.DHS_ID = Dose_Hst.DHS_ID AND
+        Dose_Hst.Pat_ID1 = Patient.Pat_ID1 AND
+        Patient.Pat_ID1 = Ident.Pat_ID1 AND
+        TrackTreatment.WasQAMode = 0 AND
+        TrackTreatment.FLD_ID = TxField.FLD_ID AND
+        Ident.IDA = %(mrn)s
+        """
+    )
+
+    table = execute_sql(cursor=cursor, sql_string=sql_string, parameters={"mrn": mrn})
+
+    treatment_history = pd.DataFrame(data=table, columns=columns)
+
+    return treatment_history
