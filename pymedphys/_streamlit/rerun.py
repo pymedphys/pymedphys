@@ -94,3 +94,7 @@ def autoreload(modules):
 
     for module in modules:
         reload_and_rerun_on_module_changes(module, session_id)
+
+
+def file_contents(path):
+    path = pathlib.Path(path)
