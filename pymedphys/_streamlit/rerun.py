@@ -96,5 +96,13 @@ def autoreload(modules):
         reload_and_rerun_on_module_changes(module, session_id)
 
 
+@st.cache(allow_output_mutation=True)
+def mutable_file_contents_cache(path):
+    with open(path) as f:
+        data = f.read()
+
+    return {"file_contents": data}
+
+
 def file_contents(path):
     path = pathlib.Path(path)
