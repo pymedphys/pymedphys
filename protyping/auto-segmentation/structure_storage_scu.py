@@ -1,3 +1,18 @@
+# Copyright (C) 2020 Matthew Cooper
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import glob
 
 import config
@@ -5,12 +20,13 @@ import dicom_helpers
 from pynetdicom import AE, debug_logger
 from pynetdicom.sop_class import CTImageStorage, RTStructureSetStorage
 
-debug_logger()
-
 
 def export_files(dicom_paths, directory=False):
+    print("\n--------------------------")
+    print("Structure storage SCU:")
     if directory:
         dicom_paths = glob.glob(dicom_paths + "/*.dcm")
+        print("dicom_paths", len(dicom_paths))
 
     dicom_files = dicom_helpers.read_dicom_paths(dicom_paths)
     print("dicom_files", len(dicom_files))
@@ -40,4 +56,4 @@ def export_files(dicom_paths, directory=False):
         # Release the association
         assoc.release()
     else:
-        print("Association rejected, aborted or never connected")
+        print("Structure storage SCU association rejected, aborted or never connected")
