@@ -69,6 +69,23 @@ def reload_and_rerun_on_module_changes(module: types.ModuleType, session_id):
     observer.start()
 
 
+# An issue with this implementation of autoreload is that should
+# this function be removed from a streamlit app the listener doesn't
+# actually go away. Once a listener is added it is persistent until
+# the cache is cleared.
+
+# TODO: Make it so that instead of creating an observer for every
+# session_id, instead, if a file is already being observed, just append
+# the new session_id to the rerun trigger.
+
+# TODO: Provide a way to automatically deregister the listeners in the
+# case where the autoreload function is no longer being called, or
+# some modules are no longer being provided to autoreload function
+
+# TODO: Also need to deregister the reload observer when a session is
+# closed.
+
+
 def autoreload(modules):
     session_id = get_session_id()
 
@@ -77,3 +94,15 @@ def autoreload(modules):
 
     for module in modules:
         reload_and_rerun_on_module_changes(module, session_id)
+
+
+@st.cache(allow_output_mutation=True)
+def mutable_file_contents_cache(path):
+    with open(path) as f:
+        data = f.read()
+
+    return {"file_contents": data}
+
+
+def file_contents(path):
+    path = pathlib.Path(path)
