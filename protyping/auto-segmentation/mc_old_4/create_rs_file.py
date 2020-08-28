@@ -39,8 +39,8 @@ def add_referenced_frame_of_reference_sequence(ds, dcms):
     rt_refd_study1 = Dataset()
     rt_refd_study1.ReferencedSOPClassUID = ds.file_meta.MediaStorageSOPClassUID
     rt_refd_study1.ReferencedSOPInstanceUID = (
-        "2.25.152307708682568459392858274513677418485"
-    )  # TODO
+        "2.25.152307708682568459392858274513677418485"  # TODO
+    )
 
     # RT Referenced Series Sequence
     rt_refd_series_sequence = Sequence()
@@ -110,8 +110,8 @@ def add_roi_contour_sequence(ds, dcms):
         contour_image1 = Dataset()
         contour_image1.ReferencedSOPClassUID = "CT Image Storage"
         contour_image1.ReferencedSOPInstanceUID = (
-            "2.25.152306916480171479263212437161921183733.1"
-        )  # TODO
+            "2.25.152306916480171479263212437161921183733.1"  # TODO
+        )
         contour_image_sequence.append(contour_image1)
 
         contour1.ContourGeometricType = "CLOSED_PLANAR"
