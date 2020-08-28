@@ -20,7 +20,7 @@ Video goes here
 
 Details
 -------
-George!
+George! [1]_
 
 
 
