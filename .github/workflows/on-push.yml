@@ -235,12 +235,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ${{ steps.pymedphys-cache-location.outputs.dir }}
-        key: pymedphys-${{ hashFiles('**/hashes.json') }}
-
-    - name: Download all PyMedPhys data for a consistent cache
-      if: steps.pymedphys-cache.outputs.cache-hit != 'true'
-      run: |
-        poetry run python -c "from pymedphys._data import download; download.download_all()"
+        key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
 
 
 # TESTS
