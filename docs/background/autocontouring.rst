@@ -34,7 +34,7 @@ Best viewed at 720p+ resolution.
 .. raw:: html
 
     <embed>
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/fMCv5i6GJWI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <iframe width="560" height="315" max-width="100%" src="https://www.youtube.com/embed/fMCv5i6GJWI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </embed>
 
 
