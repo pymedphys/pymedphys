@@ -55,5 +55,6 @@ Overview
 
     background/index
     background/open-source-benefits
+    background/autocontouring
     background/elekta-logfiles
     background/file-structure
