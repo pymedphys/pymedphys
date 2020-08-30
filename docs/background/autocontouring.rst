@@ -1,6 +1,6 @@
-======================
-Autocontouring Project
-======================
+============================
+Automatic Contouring Project
+============================
 
 .. contents::
     :local:
@@ -9,12 +9,21 @@ Autocontouring Project
 
 Project aim
 -----------
-Foo bar
+
+The aim of this project is to have an automated machine record based delivery check between the treatment planning system, the information system, and the Linac for every patient and fraction.
+intent to act as a template for future work extending to other organs.
 
 
 Video Demonstrating Usage
 -------------------------
-Video goes here
+
+Best viewed at 720p resolution.
+
+.. raw:: html
+
+    <embed>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/fMCv5i6GJWI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </embed>
 
 
 
@@ -26,12 +35,14 @@ George! [1]_
 
 Basic Implementation
 --------------------
-Hi
+
+Details on how to implement the project into your own workflow will be provided once the code migrates from the experimental division of PyMedPhys into the main code base. Watch this space.
 
 
 Advanced Implementation
 -----------------------
-Latis
+
+Further details that expand the above implementation are to be detailed here. Watch this space.
 
 
 
