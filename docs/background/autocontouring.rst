@@ -44,7 +44,6 @@ Best viewed at 720p+ resolution.
     allowfullscreen></iframe></div></embed>
 
 
-
 Details
 -------
 
