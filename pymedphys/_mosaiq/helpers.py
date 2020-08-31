@@ -288,7 +288,7 @@ def get_incomplete_qcls(cursor, location):
         """,
         {"location": location},
     )
-
+    datetime.date
     results = pd.DataFrame(
         data=data,
         columns=[
@@ -409,9 +409,12 @@ def get_all_treatment_data(cursor, mrn):
             ("site_setup_status", "SiteSetup.Status_Enum"),
             ("site_status", "Site.Status_Enum"),
             ("hidden", "TxField.IsHidden"),
-            ("site version", "Site.Version"),
+            ("site_version", "Site.Version"),
+            ("site_setup_version", "SiteSetup.Version"),
             ("create_id", "Site.Create_ID"),
             ("field_approval", "TxField.Sanct_ID"),
+            ("site_ID", "Site.SIT_ID"),
+            ("site_setup_ID", "SiteSetup.SIS_ID"),
         ]
     )
 
@@ -432,8 +435,6 @@ def get_all_treatment_data(cursor, mrn):
                     Patient.Pat_ID1 = Ident.Pat_ID1 AND
                     SiteSetup.SIT_Set_ID = TxField.SIT_Set_ID AND
                     TxField.SIT_Set_ID = Site.SIT_Set_ID AND
-                    Site.Version = 0 AND
-                    SiteSetup.Version = 0 AND
                     Ident.IDA = %(patient_id)s
                 """
     )
@@ -501,6 +502,16 @@ def get_all_treatment_history_data(cursor, mrn):
             ("couch_lat", "TxFieldPoint_Hst.Couch_Lat"),
             ("couch_lng", "TxFieldPoint_Hst.Couch_Lng"),
             ("couch_ang", "TxFieldPoint_Hst.Couch_Ang"),
+            ("coll_x1", "TxFieldPoint_Hst.Coll_X1"),
+            ("coll_x2", "TxFieldPoint_Hst.Coll_X2"),
+            ("field_x", "TxFieldPoint_Hst.Field_X"),
+            ("coll_y1", "TxFieldPoint_Hst.Coll_Y1"),
+            ("coll_y2", "TxFieldPoint_Hst.Coll_Y2"),
+            ("field_y", "TxFieldPoint_Hst.Field_Y"),
+            ("status", "Patient.Clin_Status"),
+            ("site_ID", "Dose_Hst.SIT_ID"),
+            ("field_ID", "Dose_Hst.FLD_ID"),
+            ("site_setup_ID", "SiteSetup.SIS_ID"),
         ]
     )
 
@@ -512,11 +523,12 @@ def get_all_treatment_history_data(cursor, mrn):
     sql_string = (
         select_string
         + """
-        From Ident, Dose_Hst, Fld_Hst, TrackTreatment, Patient, TxField, TxFieldPoint_Hst
+        From Ident, Dose_Hst, Fld_Hst, TrackTreatment, Patient, TxField, TxFieldPoint_Hst, SiteSetup
         WHERE
         TxFieldPoint_Hst.FHS_ID = Fld_Hst.FHS_ID AND
         TxFieldPoint_Hst.Point=0 AND
         TrackTreatment.DHS_ID = Dose_Hst.DHS_ID AND
+        Dose_Hst.SIS_ID = SiteSetup.SIS_ID AND
         FLD_HST.DHS_ID = Dose_Hst.DHS_ID AND
         Dose_Hst.Pat_ID1 = Patient.Pat_ID1 AND
         Patient.Pat_ID1 = Ident.Pat_ID1 AND
@@ -529,5 +541,7 @@ def get_all_treatment_history_data(cursor, mrn):
     table = execute_sql(cursor=cursor, sql_string=sql_string, parameters={"mrn": mrn})
 
     treatment_history = pd.DataFrame(data=table, columns=columns)
+    treatment_history = treatment_history.sort_values(by=["date"])
+    treatment_history = treatment_history.reset_index(drop=True)
 
     return treatment_history

@@ -31,7 +31,12 @@ if dicomFile is not None:
             cursor, str(mosaiq_table.iloc[0]["create_id"])
         )
 
-    mosaiq_table = mosaiq_table[mosaiq_table["field_version"] == 0]
+    # mosaiq_table = mosaiq_table[mosaiq_table["field_version"] == 0]
+    mosaiq_table = mosaiq_table[
+        (mosaiq_table["site_version"] == 0)
+        & (mosaiq_table["site_setup_version"] == 0)
+        & (mosaiq_table["field_version"] == 0)
+    ]
     mosaiq_table = mosaiq_table.reset_index(drop=True)
     mosaiq_table["tolerance"] = [
         TOLERANCE_TYPES[item] for item in mosaiq_table["tolerance"]
