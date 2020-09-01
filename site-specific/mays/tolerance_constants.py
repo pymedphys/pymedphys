@@ -32,3 +32,28 @@ SITE_CONSTANTS = {
     6: "PROCESS_LOCK",
     7: "PENDING",
 }
+
+ENERGY_ENUM = {0: "Unspecified", 1: "KV", 2: "MV", 3: "MEV"}
+
+MODALITY_ENUM = {
+    0: "Unspecified",
+    1: "X-rays",
+    2: "Electrons",
+    3: "Co-60",
+    4: "Ortho",
+    5: "E H/D",
+    6: "Protons",
+    7: "kV (orthovoltage)",
+    8: "Ir-192",
+    9: "Ion",
+    20: "UserDefined",
+}
+
+METERSET_UNITS = {
+    0: "Unspecified",
+    1: "MU (Monitor Unit)",
+    2: "MAMPSEC (MilliAmp Seconds)",
+    3: "MP (Mega-Particles)",
+    4: "Minutes",
+    5: "Seconds",
+}
