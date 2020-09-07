@@ -143,6 +143,8 @@ jobs:
       run: |
         pymedphys --help
         python -c "import pymedphys"
+        python -c "import pymedphys.beta"
+        python -c "import pymedphys.experimental"
 
 # Set up Poetry
 
