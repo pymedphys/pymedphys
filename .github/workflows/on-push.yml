@@ -123,21 +123,20 @@ jobs:
 
 # No import and run CLI with no dependencies
 
-    - name: Build wheel and install core dependencies
+    - name: Build wheel
       if: matrix.task == 'tests'
       run: |
         poetry build --format wheel
-        pip install -r requirements.txt
 
     - name: Install wheel
       if: matrix.task == 'tests' && matrix.os == 'windows'
       run: |
-        python -m pip install (Get-Item .\dist\*.whl) --no-dependencies
+        python -m pip install (Get-Item .\dist\*.whl)
 
     - name: Install wheel
       if: matrix.task == 'tests' && matrix.os != 'windows'
       run: |
-        python -m pip install ./dist/*.whl --no-dependencies
+        python -m pip install ./dist/*.whl
 
     - name: Run clean tests
       if: matrix.task == 'tests'
@@ -191,7 +190,7 @@ jobs:
     - name: Install a plain environment
       if: matrix.task == 'stackoverflow'
       run: |
-        poetry install --no-dev
+        poetry install -E user
 
 
 ## Install with Documentation Environment
@@ -199,28 +198,28 @@ jobs:
     - name: Install a docs environment
       if: matrix.task == 'docs'
       run: |
-        poetry install --no-dev -E docs
+        poetry install -E user -E docs
 
 ## Install with Tests Environment
 
     - name: Install a tests environment
       if: matrix.task == 'tests'
       run: |
-        poetry install --no-dev -E tests
+        poetry install -E user -E tests
 
 ## Install Machine Learning Dependencies
 
     - name: Install a machine learning environment
       if: matrix.os == 'ubuntu' && ( matrix.task == 'tests' || matrix.task == 'updates' )
       run: |
-        poetry install --no-dev -E ml
+        poetry install -E user -E ml
 
-## Update all packages and then install with tests environment and
+## Update all packages and then install with tests environment
 
     - name: Update all packages then install with tests environment
       if: matrix.task == 'updates'
       run: |
-        poetry install --no-dev -E tests
+        poetry install -E user -E tests
         poetry update
 
 # Download all data for consistent cache
