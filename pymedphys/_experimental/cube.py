@@ -15,10 +15,7 @@
 
 from pymedphys._imports import mpl_toolkits
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pydicom
-
-from scipy.interpolate import splev, splprep
-from scipy.optimize import basinhopping
+from pymedphys._imports import plt, pydicom, scipy
 
 from pymedphys._dicom.structure import pull_structure
 
@@ -296,8 +293,8 @@ def get_interpolated_dose(coords_grid, dose_interpolation):
 
 
 def resample_contour(contour, n=51):
-    tck, _ = splprep([contour[0], contour[1], contour[2]], s=0, k=1)
-    new_points = splev(np.linspace(0, 1, n), tck)
+    tck, _ = scipy.interpolate.splprep([contour[0], contour[1], contour[2]], s=0, k=1)
+    new_points = scipy.interpolate.splev(np.linspace(0, 1, n), tck)
 
     return new_points
 
@@ -316,11 +313,7 @@ def contour_to_points(contours):
 
 
 def align_cube_to_structure(
-    structure_name: str,
-    dcm_struct: pydicom.dataset.FileDataset,
-    quiet=False,
-    niter=10,
-    x0=None,
+    structure_name: str, dcm_struct, quiet=False, niter=10, x0=None
 ):
     """Align a cube to a dicom structure set.
 
@@ -414,7 +407,9 @@ def align_cube_to_structure(
         def print_fun(x, f, accepted):  # pylint: disable = unused-argument
             print("at minimum %.4f accepted %d" % (f, int(accepted)))
 
-    result = basinhopping(to_minimise, x0, callback=print_fun, niter=niter, stepsize=5)
+    result = scipy.optimize.basinhopping(
+        to_minimise, x0, callback=print_fun, niter=niter, stepsize=5
+    )
 
     cube = result.x
 
