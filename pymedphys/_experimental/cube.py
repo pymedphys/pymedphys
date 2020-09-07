@@ -15,7 +15,7 @@
 
 from pymedphys._imports import mpl_toolkits
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, pydicom, scipy
+from pymedphys._imports import plt, scipy
 
 from pymedphys._dicom.structure import pull_structure
 
