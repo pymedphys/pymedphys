@@ -14,8 +14,10 @@
 
 import numpy as np
 
+from pymedphys._experimental.paulking.collequivalent import (
+    mlc_equivalent_square_fs as equivalent_square,
+)
 from pymedphys._utilities.constants import A_LEAF_TYPE, AGILITY
-from pymedphys.experimental.collimation import equivalent_square
 
 # import pytest
 

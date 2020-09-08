@@ -25,7 +25,11 @@ from fixtures import BASELINES_DIR, postscans, prescans
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pymedphys.experimental.film import create_axes, get_aligned_image, shift_and_rotate
+from pymedphys._experimental.film import (
+    create_axes,
+    get_aligned_image,
+    shift_and_rotate,
+)
 
 CREATE_BASELINE = False
 

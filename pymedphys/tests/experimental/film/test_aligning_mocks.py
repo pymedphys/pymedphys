@@ -15,13 +15,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pymedphys._mocks.profiles import create_rectangular_field_function
-from pymedphys.experimental.film import (
+from pymedphys._experimental.film import (
     align_images,
     create_image_interpolation,
     interpolated_rotation,
     shift_and_rotate,
 )
+from pymedphys._mocks.profiles import create_rectangular_field_function
 
 
 def test_shift_alignment():
