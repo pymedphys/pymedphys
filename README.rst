@@ -89,8 +89,8 @@ within the `Release Notes`_.
 Our Team
 --------
 
-PyMedPhys is what it is today due to its maintainers and contributors both Past
-and present. They are given below.
+PyMedPhys is what it is today due to its maintainers and contributors both past
+and present. Here is our team.
 
 Maintainer
 ..........
