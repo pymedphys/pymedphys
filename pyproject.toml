@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.33.0dev0"
+version = "0.33.0dev1"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -26,104 +26,84 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-# Will not work without these
 python = "^3.6"
-dataclasses = { version = "*", python = "~3.6.0" }
-
-#### Below here is actually optional
-# One day might create a pymedphys-core which installs the above only.
+dataclasses = {version = "*", python = "~3.6.0"}
 
 # library
-tqdm = "*"
-attrs = "*"
-watchdog = "*"
+tqdm = {version = "*", optional = true}  # groups = ["user", "dev"]
+attrs = {version = "*", optional = true}  # groups = ["user", "dev"]
+watchdog = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-keyring = "*"
-packaging = "*"
-PyYAML = "*"
-requests = "*"
+keyring = {version = "*", optional = true}  # groups = ["user", "dev"]
+packaging = {version = "*", optional = true}  # groups = ["user", "dev"]
+PyYAML = {version = "*", optional = true}  # groups = ["user", "dev"]
+requests = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-numpy = ">= 1.12"
-matplotlib = "*"
-scipy = "*"
-pandas = "*"
+numpy = {version = ">= 1.12", optional = true}  # groups = ["user", "dev"]
+matplotlib = {version = "*", optional = true}  # groups = ["user", "dev"]
+scipy = {version = "*", optional = true}  # groups = ["user", "dev"]
+pandas = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-Pillow = "*"
-imageio = "*"
+Pillow = {version = "*", optional = true}  # groups = ["user", "dev"]
+imageio = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-shapely = ">= 1.7.0"
+shapely = {version = ">= 1.7.0", optional = true}  # groups = ["user", "dev"]
 
-dbfread = "*"
+dbfread = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-pydicom = ">=2.0.0"
-pynetdicom = "*"
-pylibjpeg-libjpeg = "*"
+pydicom = {version = ">=2.0.0", optional = true}  # groups = ["user", "dev", "dicom"]
+pynetdicom = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
+pylibjpeg-libjpeg = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
 
-# difficult
-cython = "*"
-pymssql = { version = "< 3.0.0", python = "< 3.8" }
+cython = {version = "*", optional = true}  # groups = ["user", "dev"]
+pymssql = {version = "< 3.0.0", python = "< 3.8", optional = true}  # groups = ["user", "dev"]
 
 # used within experimental modules
-python_dateutil = "*"
-scikit-image = "*"
+python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev", "experimental"]
+scikit-image = {version = "*", optional = true}  # groups = ["user", "dev", "experimental"]
 
 # gui
-streamlit = "0.65.2"
-timeago = "*"
+streamlit = {version = "0.65.2", optional = true}  # groups = ["user", "dev", "gui"]
+timeago = {version = "*", optional = true}  # groups = ["user", "dev", "gui"]
 
 # ml
-tensorflow = { version = ">=2.2.0", optional = true}
-tensorflow-estimator = { version = "*", optional = true}
-tensorboard = { version = "*", optional = true }
-tensorflow-io = { version = "*", optional = true }
-tensorflow-datasets = { version = "*", optional = true }
+tensorflow = {version = ">=2.2.0", optional = true}  # groups = ["ml"]
 
 # docs
-sphinx = { version = ">= 1.4, < 1.8", optional = true }
-sphinx-rtd-theme  = { version = "^0.4.3", optional = true }
-sphinxcontrib-napoleon = { version = "*", optional = true }
-sphinx-argparse  = { version = "*", optional = true }
-nbsphinx  = { version = "*", optional = true }
-jupyter_client = { version = "*", optional = true }
-ipython = { version = "*", optional = true }
-ipykernel = { version = "*", optional = true }
+sphinx = {version = ">= 1.4, < 1.8", optional = true}  # groups = ["dev", "docs"]
+sphinx-rtd-theme  = {version = "^0.4.3", optional = true}  # groups = ["dev", "docs"]
+sphinxcontrib-napoleon = {version = "*", optional = true}  # groups = ["dev", "docs"]
+sphinx-argparse  = {version = "*", optional = true}  # groups = ["dev", "docs"]
+nbsphinx  = {version = "*", optional = true}  # groups = ["dev", "docs"]
+jupyter_client = {version = "*", optional = true}  # groups = ["dev", "docs"]
+ipython = {version = "*", optional = true}  # groups = ["dev", "docs"]
+ipykernel = {version = "*", optional = true}  # groups = ["dev", "docs"]
 
 # tests
-pytest = { version = "*", optional = true }
-pytest-sugar  = { version = "*", optional = true }
-hypothesis  = { version = "*", optional = true }
-psutil  = { version = "*", optional = true }
-pylint  = { version = "*", optional = true }
-pytest-pylint  = { version = "*", optional = true }
+pytest = {version = "*", optional = true}  # groups = ["dev", "tests"]
+pytest-sugar  = {version = "*", optional = true}  # groups = ["dev", "tests"]
+hypothesis  = {version = "*", optional = true}  # groups = ["dev", "tests"]
+psutil  = {version = "*", optional = true}  # groups = ["dev", "tests"]
+pylint  = {version = "*", optional = true}  # groups = ["dev", "tests"]
+pytest-pylint  = {version = "*", optional = true}  # groups = ["dev", "tests"]
 
-[tool.poetry.dev-dependencies]
-# Git Management
-pre-commit = "*"
-
-# VSCode linting and formatting
-black = "^19.3b0"
-mypy = "*"
-rope = "*"
-
-# VSCode extension dependencies
-doc8 = "*"
-pydot = "^1.4.1"
+# dev
+pre-commit = {version = "*", optional = true}  # groups = ["dev"]
+black = {version = "^19.3b0", optional = true}  # groups = ["dev"]
+mypy = {version = "*", optional = true}  # groups = ["dev"]
+rope = {version = "*", optional = true}  # groups = ["dev"]
+doc8 = {version = "*", optional = true}  # groups = ["dev"]
+tomlkit = {version = "*", optional = true}  # groups = ["dev"]
 
 [tool.poetry.extras]
-docs = [
-    "sphinx", "sphinx-rtd-theme",
-    "sphinxcontrib-napoleon", "sphinx-argparse",
-    "nbsphinx", "jupyter_client", "ipython", "ipykernel"
-]
-
-ml = [
-    "tensorflow", "tensorflow-estimator", "tensorboard", "tensorflow-io",
-    "tensorflow-datasets"
-]
-
-tests = [
-    "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"
-]
+user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
+dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
+experimental = ["python_dateutil", "scikit-image"]
+gui = ["streamlit", "timeago"]
+ml = ["tensorflow"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
+tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.cli:pymedphys_cli"
