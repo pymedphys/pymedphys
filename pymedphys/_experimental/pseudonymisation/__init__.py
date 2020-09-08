@@ -43,9 +43,18 @@ def get_default_identifying_uids():
 
 @functools.lru_cache()
 def _get_default_pseudonymisation_keywords():
-    anon_keyword_set = set(get_default_identifying_keywords())
-    psuedo_uid_set = set(get_default_identifying_uids())
-    return tuple(anon_keyword_set.union(psuedo_uid_set))
+    anon_keyword_list = get_default_identifying_keywords()
+    # The preferred approach is to pseudonymise the contents
+    # of sequences, rather than operate on the sequence itself
+    #
+    # Eliminating the keywords that are sequences fixes issue #1034
+    # for default usage
+    identifying_keywords_less_sequences = [
+        x for x in anon_keyword_list if not x.endswith("Sequence")
+    ]
+    anon_keyword_set = set(identifying_keywords_less_sequences)
+    pseudo_uid_set = set(get_default_identifying_uids())
+    return tuple(anon_keyword_set.union(pseudo_uid_set))
 
 
 def get_default_pseudonymisation_keywords():
