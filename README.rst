@@ -156,7 +156,7 @@ Past contributors
 
 * `Matthew Sobolewski <https://github.com/msobolewski>`_
 * `Paul King <https://github.com/kingrpaul>`_
-* `Jacob McAloney` <https://github.com/JacobMcAloney>`_
+* `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
 
 .. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/rccc_200x200.png
