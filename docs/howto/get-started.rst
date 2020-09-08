@@ -36,22 +36,23 @@ following in a terminal or command prompt:
 
 .. code:: bash
 
-    pip install pymedphys
+    pip install pymedphys[user]
 
 You may need to open and close your terminal if you have only just installed
-Python.
+Python. The ``[user]`` option is needed to install pymedphys with its
+"batteries included" so-to-speak. It will go and install a range of
+dependencies which you may need during your use of pymedphys.
 
 
 A minimal installation
 ----------------------
 
-The greater majority of PyMedPhys' dependencies are actually optional. They are
-only installed for simplicity for new users. You may however choose to install
-PyMedPhys without these dependencies by running:
+If you're not interested in installing PyMedPhys' dependencies you can choose
+to skip the ``[user]`` option as so:
 
 .. code:: bash
 
-    pip install pymedphys --no-deps
+    pip install pymedphys
 
 
 Installation on MacOS
@@ -83,7 +84,7 @@ Then you will be able to successfully run:
 
 .. code:: bash
 
-    pip install pymedphys
+    pip install pymedphys[user]
 
 
 Installing the Bleeding Edge version of PyMedPhys

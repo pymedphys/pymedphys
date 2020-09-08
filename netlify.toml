@@ -12,7 +12,7 @@
   command = """
 pip install poetry &&
 poetry config virtualenvs.in-project true &&
-poetry install -vvv --no-dev -E docs &&
+poetry install -vvv -E user -E docs &&
 poetry run pymedphys dev docs
 """
 
