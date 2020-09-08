@@ -121,7 +121,7 @@ Then install PyMedPhys and set up pre-commit by running:
 
 .. code:: bash
 
-    poetry install
+    poetry install -E dev
     poetry run pre-commit install
 
 
