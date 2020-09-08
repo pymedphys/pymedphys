@@ -7,11 +7,74 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.32.0]
+
+## [0.33.0]
 
 ### "Stable" API changes
 
 (Won't truly be stable until after a 1.0.0 release)
+
+#### Installation changes
+
+* To install pymedphys with all of its user dependencies now the following
+  needs to be run:
+
+```bash
+pip install pymedphys[user]
+```
+
+* When `pip install pymedphys` is called, PyMedPhys will now be installed with
+  minimal/no dependencies.
+  * Pull request [#1036](https://github.com/pymedphys/pymedphys/pull/1036)
+
+### Beta API changes
+
+Nil
+
+### Experimental API changes
+
+#### Breaking changes
+
+* Removed a range of unmaintained experimental package APIs; film, collimation,
+  sinogram, and Profile. The underlying code has not been removed, but they
+  are no longer exposed through the APIs.
+
+#### Bug fixes
+
+* Made it so that `import pymedphys.experimental` does not raise an
+ `ImportError` when an optional dependency has not been installed.
+  * Issue [#1035](https://github.com/pymedphys/pymedphys/issues/1035)
+  * Pull request [#1036](https://github.com/pymedphys/pymedphys/pull/1036)
+* Fixed a bug where pseudonymisation wouldn't work when in cases of identifying
+  sequences.
+  * Issue [#1034](https://github.com/pymedphys/pymedphys/issues/1034)
+  * Pull request [#1038](https://github.com/pymedphys/pymedphys/pull/1038)
+
+#### New Features
+
+* Created a Mosaiq QCL dashboard that reads the QCLs from multiple Mosaiq
+  installs across multiple sites. [_gui/streamlit/dashboard.py#L20-L78](https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/pymedphys/_gui/streamlit/dashboard.py#L20-L78)
+
+### Internal Changes
+
+* Made it so that when developing streamlit apps an autoreload function can
+  be used to have the streamlit app update on dependency changes.
+  [_streamlit/rerun.py#L89-L96](https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/pymedphys/_streamlit/rerun.py#L89-L96)
+  * See discussion over on [streamlit's issue tracker](https://github.com/streamlit/streamlit/issues/653#issuecomment-678954708)
+* Internal Mosaiq connection function now accepts custom functions for
+  prompting the user for their database username, password, and prompting the
+  user with responses. [_mosaiq/connect.py#L134-L147](https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/pymedphys/_mosaiq/connect.py#L134-L147)
+  * This was utilised for connecting to a fresh database within streamlit.
+    [_streamlit/mosaiq.py#L20-L50](https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/pymedphys/_streamlit/mosaiq.py#L20-L50)
+* Created tool to manage `pyproject.toml` extras. [scripts/propagate-extras.py#L26-L51](https://github.com/pymedphys/pymedphys/blob/d0dbaf3d8ac15690602e3c92ab19704d450dad5a/scripts/propagate-extras.py#L26-L51)
+  * See discussion on the poetry
+  [issue tracker](https://github.com/python-poetry/poetry/issues/1644#issuecomment-688256688)
+  for more details.
+
+
+## [0.32.0]
+
+### "Stable" API changes
 
 #### Bug fixes
 
@@ -841,7 +904,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...master
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...master
+[0.33.0]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/pymedphys/pymedphys/compare/v0.29.1...v0.30.0
