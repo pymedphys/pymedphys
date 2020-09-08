@@ -15,6 +15,7 @@
 import base64
 import datetime
 import hashlib
+import logging
 import random
 from decimal import Decimal, DecimalTuple
 
@@ -334,6 +335,10 @@ def _pseudonymise_SQ(value):
     # pseudonymisation has had sequences removed
     # so that the contents will be pseudonymised rather
     # than the sequences themselves
+    logging.warning(
+        "Recommend against using identifying keywords that are Sequences in pseudonymisation: %s",
+        value,
+    )
     return [pydicom.Dataset()]
 
 

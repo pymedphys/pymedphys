@@ -127,7 +127,6 @@ def _test_identifier_is_sequence_vr():
         ds_anon.RequestAttributesSequence.ScheduledProcedureStepID
         == "Tumour ID with Dual Energy"
     )
-    return
 
 
 def _test_pseudonymise_file_at_path(
