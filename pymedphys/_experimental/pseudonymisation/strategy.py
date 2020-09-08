@@ -15,6 +15,7 @@
 import base64
 import datetime
 import hashlib
+import logging
 import random
 from decimal import Decimal, DecimalTuple
 
@@ -327,7 +328,18 @@ def _pseudonymise_SH(value):
 
 
 def _pseudonymise_SQ(value):
-    return _pseudonymise_unchanged(value)
+    # returning an empty sequence addresses issue #1034,
+    # should the programmer choose to include a sequence
+    # in the list of identifying keywords.
+    # But the default list of identifying keywords from
+    # pseudonymisation has had sequences removed
+    # so that the contents will be pseudonymised rather
+    # than the sequences themselves
+    logging.warning(
+        "Recommend against using identifying keywords that are Sequences in pseudonymisation: %s",
+        value,
+    )
+    return [pydicom.Dataset()]
 
 
 def _pseudonymise_ST(value):
@@ -370,6 +382,7 @@ pseudonymisation_dispatch = dict(
         "PN": _pseudonymise_PN,
         "SH": _pseudonymise_SH,
         "ST": _pseudonymise_ST,
+        "SQ": _pseudonymise_SQ,
         "TM": _pseudonymise_TM,
         "UI": _pseudonymise_UI,
         "US": _pseudonymise_US,

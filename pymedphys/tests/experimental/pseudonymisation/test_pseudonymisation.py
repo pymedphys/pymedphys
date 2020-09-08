@@ -19,7 +19,10 @@ from pymedphys._dicom.anonymise import (
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
-from pymedphys.tests.dicom.test_anonymise import get_test_filepaths
+from pymedphys.tests.dicom.test_anonymise import (
+    dicom_dataset_from_dict,
+    get_test_filepaths,
+)
 
 
 @pytest.mark.pydicom
@@ -71,6 +74,59 @@ def test_identifier_with_unknown_vr():
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
         )
+
+
+@pytest.mark.pydicom
+def _test_identifier_is_sequence_vr():
+    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+    logging.info("Using pseudonymisation strategy")
+    identifying_keywords_no_SQ = ["PatientID", "RequestedProcedureID"]
+    identifying_keywords_with_SQ_vr = identifying_keywords_no_SQ.append(
+        "RequestAttributesSequence"
+    )
+    logging.info("Using keyword with VR = UR")
+
+    ds_input = pydicom.Dataset()
+    ds_input.PatientID = "ABC123"
+    request_attributes_seq = dicom_dataset_from_dict(
+        {
+            "RequestAttributesSequence": [
+                {
+                    "RequestedProcedureID": "Tumour Identification",
+                    "ScheduledProcedureStepID": "Tumour ID with Dual Energy",
+                }
+            ]
+        }
+    )
+
+    ds_input.RequestAttributesSequence = request_attributes_seq
+    ds_anon = anonymise_dataset(
+        ds_input,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords_with_SQ_vr,
+    )
+    # demonstrate that the entire sequence is emptied out
+    # even though that might make the data fail compliance (if the sequence has type 1
+    # or type 2)
+    assert "RequestedProcedureID" not in ds_anon.RequestAttributesSequence
+
+    ds_anon = anonymise_dataset(
+        ds_input,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords_no_SQ,
+    )
+    # The sequence is not emptied out
+    assert "RequestedProcedureID" in ds_anon.RequestAttributesSequence
+    # but an element in the sequence that is an identifier has been pseudonymised
+    assert (
+        ds_anon.RequestAttributesSequence.RequestedProcedureID
+        != "Tumour Identification"
+    )
+    # and an element in the sequence that is not an identifier has been left as is
+    assert (
+        ds_anon.RequestAttributesSequence.ScheduledProcedureStepID
+        == "Tumour ID with Dual Energy"
+    )
 
 
 def _test_pseudonymise_file_at_path(
