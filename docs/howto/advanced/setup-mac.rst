@@ -19,7 +19,7 @@ Overview
 
   * eg. ``pip install cython``
 * Clone the PyMedPhys git repo
-* Run ``poetry install`` within the root of the repo
+* Run ``poetry install -E dev`` within the root of the repo
 * Run ``poetry run pre-commit install``
 * Install pandoc
 
