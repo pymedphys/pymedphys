@@ -93,8 +93,8 @@ PyMedPhys is what it is today due to its contributors.
 Core contributors and contributors who have been active in the last six months
 as well as their respective employers are presented below.
 
-Core contributor(s)
-...................
+Maintainer(s)
+.............
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
@@ -105,21 +105,26 @@ Core contributor(s)
 Active contributors
 ...................
 
-* `Matthew Jennings`_
-    * `Royal Adelaide Hospital`_, Australia
-
-.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
-
-* `Jake Rembish`_
-    * `UT Health San Antonio`_, USA
-
-.. _`Jake Rembish`: https://github.com/rembishj
-
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
     * `South Western Sydney Local Health District`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
+
+* `Stuart Swerdloff`_
+    * New Zealand
+
+.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
+
+* `Matthew Cooper`_
+    * University of Sydney, Australia
+
+.. _`Matthew Cooper`: https://github.com/matthewdeancooper
+
+* `Jake Rembish`_
+    * `UT Health San Antonio`_, USA
+
+.. _`Jake Rembish`: https://github.com/rembishj
 
 * `Pedro Martinez`_
     * `University of Calgary`_, Canada
@@ -127,33 +132,31 @@ Active contributors
 
 .. _`Pedro Martinez`: https://github.com/peterg1t
 
-* `Jacob McAloney`_
-    * `Riverina Cancer Care Centre`_, Australia
-
-.. _`Jacob McAloney`: https://github.com/JacobMcAloney
-
-* `Matthew Cooper`_
-    * University of Sydney, Australia
-
-.. _`Matthew Cooper`: https://github.com/matthewdeancooper
-
 * `Rafael Ayala`_
     * `Hospital General Universitario Gregorio Marañón`_, Spain
 
 .. _`Rafael Ayala`: https://github.com/ayalalazaro
 
-* `Stuart Swerdloff`_
-    * New Zealand
 
-.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
+|rccc| |uth| |uoc| |hgugm|
 
-|rccc| |rah| |uth| |uoc| |hgugm|
+
+Maintainer emeritus
+...................
+
+* `Matthew Jennings`_
+    * `Royal Adelaide Hospital`_, Australia
+
+.. _`Matthew Jennings`: https://github.com/Matthew-Jennings
+
+|rah|
 
 Past contributors
 .................
 
 * `Matthew Sobolewski <https://github.com/msobolewski>`_
 * `Paul King <https://github.com/kingrpaul>`_
+* `Jacob McAloney` <https://github.com/JacobMcAloney>`_
 
 
 .. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/rccc_200x200.png
