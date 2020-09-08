@@ -89,12 +89,11 @@ within the `Release Notes`_.
 Our Team
 --------
 
-PyMedPhys is what it is today due to its contributors.
-Core contributors and contributors who have been active in the last six months
-as well as their respective employers are presented below.
+PyMedPhys is what it is today due to its maintainers and contributors both Past
+and present. They are given below.
 
-Maintainer(s)
-.............
+Maintainer
+..........
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
