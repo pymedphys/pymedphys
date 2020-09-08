@@ -737,6 +737,15 @@ def get_anonymous_replacement_value(
 
     if replacement_strategy is None:
         replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH
-    replacement_value = replacement_strategy[vr](current_value)
+    try:
+        replacement_value = replacement_strategy[vr](current_value)
+    except KeyError:
+        logging.error(
+            "Unable to anonymise %s with VR %s, current value is %s",
+            keyword,
+            vr,
+            current_value,
+        )
+        raise
 
     return replacement_value
