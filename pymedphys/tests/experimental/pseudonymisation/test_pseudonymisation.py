@@ -87,7 +87,7 @@ def _test_identifier_is_sequence_vr():
     logging.info("Using keyword with VR = UR")
 
     ds_input = pydicom.Dataset()
-
+    ds_input.PatientID = "ABC123"
     request_attributes_seq = dicom_dataset_from_dict(
         {
             "RequestAttributesSequence": [
@@ -122,7 +122,7 @@ def _test_identifier_is_sequence_vr():
         ds_anon.RequestAttributesSequence.RequestedProcedureID
         != "Tumour Identification"
     )
-    # and an element in the sequence that is not and identifier has been left as is
+    # and an element in the sequence that is not an identifier has been left as is
     assert (
         ds_anon.RequestAttributesSequence.ScheduledProcedureStepID
         == "Tumour ID with Dual Energy"
