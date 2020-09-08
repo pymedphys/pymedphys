@@ -77,7 +77,7 @@ def test_identifier_with_unknown_vr():
 
 
 @pytest.mark.pydicom
-def _test_identifier_is_sequence_vr():
+def test_identifier_is_sequence_vr():
     replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
     logging.info("Using pseudonymisation strategy")
     identifying_keywords_no_SQ = ["PatientID", "RequestedProcedureID"]
@@ -129,7 +129,7 @@ def _test_identifier_is_sequence_vr():
     )
 
 
-def _test_pseudonymise_file_at_path(
+def test_pseudonymise_file_at_path(
     test_file_path, test_identifying_keywords=None, test_replacement_strategy=None
 ):
     assert not is_anonymised_file(test_file_path)
@@ -181,7 +181,7 @@ def test_pseudonymise_cli(tmp_path):
         _test_pseudonymise_cli_for_file(tmp_path, test_file_path)
 
 
-def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
+def test_pseudonymise_cli_for_file(tmp_path, test_file_path):
 
     temp_filepath = pjoin(tmp_path, "test.dcm")
     try:
