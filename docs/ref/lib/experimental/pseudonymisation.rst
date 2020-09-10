@@ -27,6 +27,7 @@ API
 ***
 
 .. autofunction:: pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords
+.. autofunction:: pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords
 .. autoattribute:: pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch
     :annotation: strategy, i.e. dictionary of VR and function references for anonymisation to achieve pseudonymisation
 
