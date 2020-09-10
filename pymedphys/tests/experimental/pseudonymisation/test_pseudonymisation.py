@@ -54,6 +54,12 @@ def test_identifier_with_unknown_vr():
     identifying_keywords_with_vr_unknown_to_strategy = ["CodingSchemeURL", "PatientID"]
     logging.info("Using keyword with VR = UR")
 
+    # test the new "is_valid_strategy_for_keywords", which should indicate
+    # that for the keywords supplied, the strategy will fail should it find
+    # the keyword in the data (there is a VR it doesn't support)
+    assert not pseudonymisation_api.is_valid_strategy_for_keywords(
+        identifying_keywords_with_vr_unknown_to_strategy
+    )
     ds_input = pydicom.Dataset()
     ds_input.PatientID = "ABC123"
     # not expected to cause problems if the identifier with unknown VR is not in the data
@@ -77,29 +83,31 @@ def test_identifier_with_unknown_vr():
 
 
 @pytest.mark.pydicom
-def _test_identifier_is_sequence_vr():
+def test_identifier_is_sequence_vr():
     replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
     logging.info("Using pseudonymisation strategy")
     identifying_keywords_no_SQ = ["PatientID", "RequestedProcedureID"]
-    identifying_keywords_with_SQ_vr = identifying_keywords_no_SQ.append(
-        "RequestAttributesSequence"
-    )
-    logging.info("Using keyword with VR = UR")
+    identifying_keywords_with_SQ_vr = [
+        "PatientID",
+        "RequestedProcedureID",
+        "RequestAttributesSequence",
+    ]
 
-    ds_input = pydicom.Dataset()
-    ds_input.PatientID = "ABC123"
-    request_attributes_seq = dicom_dataset_from_dict(
+    ds_input = dicom_dataset_from_dict(
         {
+            "PatientID": "ABC123",
             "RequestAttributesSequence": [
                 {
                     "RequestedProcedureID": "Tumour Identification",
                     "ScheduledProcedureStepID": "Tumour ID with Dual Energy",
                 }
-            ]
+            ],
         }
     )
+    # reality check.  earlier attempt at the input
+    # was flawed based on a misunderstanding of dicom_dataset_from_dict
+    assert ds_input.RequestAttributesSequence[0].RequestedProcedureID is not None
 
-    ds_input.RequestAttributesSequence = request_attributes_seq
     ds_anon = anonymise_dataset(
         ds_input,
         replacement_strategy=replacement_strategy,
@@ -108,7 +116,7 @@ def _test_identifier_is_sequence_vr():
     # demonstrate that the entire sequence is emptied out
     # even though that might make the data fail compliance (if the sequence has type 1
     # or type 2)
-    assert "RequestedProcedureID" not in ds_anon.RequestAttributesSequence
+    assert "RequestedProcedureID" not in ds_anon.RequestAttributesSequence[0]
 
     ds_anon = anonymise_dataset(
         ds_input,
@@ -116,15 +124,19 @@ def _test_identifier_is_sequence_vr():
         identifying_keywords=identifying_keywords_no_SQ,
     )
     # The sequence is not emptied out
-    assert "RequestedProcedureID" in ds_anon.RequestAttributesSequence
+    assert ds_anon.RequestAttributesSequence is not None
+    assert ds_anon.RequestAttributesSequence[0] is not None
+
+    assert ds_anon.RequestAttributesSequence[0].RequestedProcedureID is not None
+    assert ds_anon.RequestAttributesSequence[0].ScheduledProcedureStepID is not None
     # but an element in the sequence that is an identifier has been pseudonymised
     assert (
-        ds_anon.RequestAttributesSequence.RequestedProcedureID
+        ds_anon.RequestAttributesSequence[0].RequestedProcedureID
         != "Tumour Identification"
     )
     # and an element in the sequence that is not an identifier has been left as is
     assert (
-        ds_anon.RequestAttributesSequence.ScheduledProcedureStepID
+        ds_anon.RequestAttributesSequence[0].ScheduledProcedureStepID
         == "Tumour ID with Dual Energy"
     )
 
