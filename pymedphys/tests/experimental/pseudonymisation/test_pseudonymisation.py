@@ -93,13 +93,15 @@ def test_identifier_is_sequence_vr():
         "RequestAttributesSequence",
     ]
 
+    identifying_requested_procedure_id = "Tumour Identification"
+    non_identifying_scheduled_procedure_step_id = "Tumour ID with Dual Energy"
     ds_input = dicom_dataset_from_dict(
         {
             "PatientID": "ABC123",
             "RequestAttributesSequence": [
                 {
-                    "RequestedProcedureID": "Tumour Identification",
-                    "ScheduledProcedureStepID": "Tumour ID with Dual Energy",
+                    "RequestedProcedureID": identifying_requested_procedure_id,
+                    "ScheduledProcedureStepID": non_identifying_scheduled_procedure_step_id,
                 }
             ],
         }
@@ -132,12 +134,12 @@ def test_identifier_is_sequence_vr():
     # but an element in the sequence that is an identifier has been pseudonymised
     assert (
         ds_anon.RequestAttributesSequence[0].RequestedProcedureID
-        != "Tumour Identification"
+        != identifying_requested_procedure_id
     )
     # and an element in the sequence that is not an identifier has been left as is
     assert (
         ds_anon.RequestAttributesSequence[0].ScheduledProcedureStepID
-        == "Tumour ID with Dual Energy"
+        == non_identifying_scheduled_procedure_step_id
     )
 
 
