@@ -20,6 +20,7 @@ from os.path import join as pjoin
 from pymedphys._dicom.anonymise import (
     anonymise_directory,
     anonymise_file,
+    get_baseline_keyword_vr_dict,
     get_default_identifying_keywords,
 )
 
@@ -115,3 +116,21 @@ def anonymise_with_pseudo_cli(args):
         raise FileNotFoundError(
             "No file or directory was found at the supplied input path."
         )
+
+
+def is_valid_strategy_for_keywords(
+    identifying_keywords=None, replacement_strategy=None
+):
+    if identifying_keywords is None:
+        identifying_keywords = get_default_pseudonymisation_keywords()
+
+    if replacement_strategy is None:
+        replacement_strategy = strategy.pseudonymisation_dispatch
+
+    baseline_keyword_vr_dict = get_baseline_keyword_vr_dict()
+    for keyword in identifying_keywords:
+        vr = baseline_keyword_vr_dict[keyword]
+        # pydicom.datadict.dictionary_VR(pydicom.datadict.tag_for_keyword(keyword))
+        if vr not in replacement_strategy:
+            return False
+    return True
