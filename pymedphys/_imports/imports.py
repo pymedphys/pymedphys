@@ -44,6 +44,7 @@ import shapely.geometry
 import shapely.ops
 import skimage
 import skimage.draw
+import skimage.filters
 import skimage.measure
 
 import streamlit
