@@ -135,17 +135,11 @@ class DeliveryDicom(DeliveryBase):
         mlc_sequence = [
             item
             for item in beam_limiting_device_sequence
-            if item.RTBeamLimitingDeviceType.startswith("MLC")
+            if item.RTBeamLimitingDeviceType == "MLCX"
         ]
 
-        for mlc_item in mlc_sequence:
-            if mlc_item.RTBeamLimitingDeviceType == "MLCY":
-                raise ValueError("Only MLCX is currently supported")
-
         if len(mlc_sequence) != 1:
-            raise ValueError(
-                "Only DICOM files with 1 MLC beam limiting device are supported"
-            )
+            raise ValueError("Expected there to be only one device labelled as MLCX")
 
         mlc_limiting_device = mlc_sequence[0]
 
