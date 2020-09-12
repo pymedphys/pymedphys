@@ -166,8 +166,6 @@ class DeliveryDicom(DeliveryBase):
             control_points, "BeamLimitingDevicePositionSequence"
         )
 
-        print(beam_limiting_device_position_sequence[0])
-
         dicom_mlcs = rtplan.get_leaf_jaw_position_of_type(
             beam_limiting_device_position_sequence, "MLCX"
         )
