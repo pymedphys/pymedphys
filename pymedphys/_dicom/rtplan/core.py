@@ -203,6 +203,29 @@ def get_gantry_angles_from_dicom(dicom_dataset):
     return result
 
 
+def get_leaf_jaw_position_of_type(
+    beam_limiting_device_position_sequence, rt_beam_limiting_device_type
+):
+    leaf_jaw_positions = []
+
+    for sequence in beam_limiting_device_position_sequence:
+
+        matching_type = [
+            item
+            for item in sequence
+            if item.RTBeamLimitingDeviceType == rt_beam_limiting_device_type
+        ]
+
+        if len(matching_type) != 1:
+            raise ValueError(
+                "Expected exactly one item per control point for a given collimator"
+            )
+
+        leaf_jaw_positions.append(matching_type[0].LeafJawPositions)
+
+    return leaf_jaw_positions
+
+
 def get_fraction_group_index(dicom_dataset, fraction_group_number):
     fraction_group_numbers = [
         fraction_group.FractionGroupNumber

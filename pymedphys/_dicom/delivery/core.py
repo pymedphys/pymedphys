@@ -120,6 +120,17 @@ class DeliveryDicom(DeliveryBase):
             raise ValueError("Meterset should not ever be None")
 
         beam_limiting_device_sequence = beam.BeamLimitingDeviceSequence
+
+        rt_beam_limiting_device_types = {
+            item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
+        }
+
+        if rt_beam_limiting_device_types != set(["MLCX", "ASYMY"]):
+            raise ValueError(
+                "Currently only DICOM files that contain "
+                "exactly MLCX and ASYMY are supported"
+            )
+
         mlc_sequence = [
             item
             for item in beam_limiting_device_sequence
@@ -147,18 +158,18 @@ class DeliveryDicom(DeliveryBase):
             )
 
         num_leaves = len(leaf_widths)
+
         control_points = beam.ControlPointSequence
 
-        beam_limiting_device_position_sequences = rtplan.get_cp_attribute_leaning_on_prior(
+        beam_limiting_device_position_sequence = rtplan.get_cp_attribute_leaning_on_prior(
             control_points, "BeamLimitingDevicePositionSequence"
         )
 
-        print(beam_limiting_device_position_sequences[0])
+        print(beam_limiting_device_position_sequence[0])
 
-        mlcs = [
-            sequence[-1].LeafJawPositions
-            for sequence in beam_limiting_device_position_sequences
-        ]
+        dicom_mlcs = rtplan.get_leaf_jaw_position_of_type(
+            beam_limiting_device_position_sequence, "MLCX"
+        )
 
         mlcs = [
             np.array(
@@ -166,13 +177,12 @@ class DeliveryDicom(DeliveryBase):
                     ::-1
                 ]
             ).T
-            for mlc in mlcs
+            for mlc in dicom_mlcs
         ]
 
-        dicom_jaw = [
-            sequence[0].LeafJawPositions
-            for sequence in beam_limiting_device_position_sequences
-        ]
+        dicom_jaw = rtplan.get_leaf_jaw_position_of_type(
+            beam_limiting_device_position_sequence, "ASYMY"
+        )
 
         jaw = np.array(dicom_jaw)
 
