@@ -204,12 +204,11 @@ def get_gantry_angles_from_dicom(dicom_dataset):
 
 
 def get_leaf_jaw_position_of_type(
-    beam_limiting_device_position_sequence, rt_beam_limiting_device_type
+    beam_limiting_device_position_sequences, rt_beam_limiting_device_type
 ):
     leaf_jaw_positions = []
 
-    for sequence in beam_limiting_device_position_sequence:
-
+    for sequence in beam_limiting_device_position_sequences:
         matching_type = [
             item
             for item in sequence

@@ -156,12 +156,12 @@ class DeliveryDicom(DeliveryBase):
 
         control_points = beam.ControlPointSequence
 
-        beam_limiting_device_position_sequence = rtplan.get_cp_attribute_leaning_on_prior(
+        beam_limiting_device_position_sequences = rtplan.get_cp_attribute_leaning_on_prior(
             control_points, "BeamLimitingDevicePositionSequence"
         )
 
         dicom_mlcs = rtplan.get_leaf_jaw_position_of_type(
-            beam_limiting_device_position_sequence, "MLCX"
+            beam_limiting_device_position_sequences, "MLCX"
         )
 
         mlcs = [
@@ -174,7 +174,7 @@ class DeliveryDicom(DeliveryBase):
         ]
 
         dicom_jaw = rtplan.get_leaf_jaw_position_of_type(
-            beam_limiting_device_position_sequence, "ASYMY"
+            beam_limiting_device_position_sequences, "ASYMY"
         )
 
         jaw = np.array(dicom_jaw)
