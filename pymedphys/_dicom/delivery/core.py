@@ -128,7 +128,8 @@ class DeliveryDicom(DeliveryBase):
         if rt_beam_limiting_device_types != set(["MLCX", "ASYMY"]):
             raise ValueError(
                 "Currently only DICOM files that contain "
-                "exactly MLCX and ASYMY are supported"
+                "exactly MLCX and ASYMY are supported. "
+                f"{rt_beam_limiting_device_types} is not supported."
             )
 
         mlc_sequence = [
