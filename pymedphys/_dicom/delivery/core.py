@@ -148,7 +148,7 @@ class DeliveryDicom(DeliveryBase):
 
         if mlc_limiting_device.NumberOfLeafJawPairs != len(leaf_widths):
             raise ValueError(
-                "Expected number of leaf jaw pairs to be the same as "
+                "Expected number of leaf pairs to be the same as "
                 "the length of leaf widths"
             )
 
