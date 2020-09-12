@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+# pylint: disable = redefined-outer-name
+
 import pytest
 
 import pydicom
@@ -28,4 +30,4 @@ def dataset():
 
 
 def test_converting_dicom_to_delivery(dataset):
-    delivery = pymedphys.Delivery.from_dicom(dataset)
+    pymedphys.Delivery.from_dicom(dataset)
