@@ -1,4 +1,4 @@
-# Copyright (C) 2019-2020 Simon Biggs
+# Copyright (C) 2020 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,25 +13,22 @@
 # limitations under the License.
 
 
-from pymedphys import Delivery
+# pylint: disable = redefined-outer-name
 
-# pylint: disable = protected-access
+import pytest
 
+import pydicom
 
-def test_object_consistency():
-    empty = Delivery._empty()
-    filtered = empty._filter_cps()
-
-    assert isinstance(filtered.monitor_units, tuple)
-
-    filtered._metersets(0, 0)
+import pymedphys
 
 
-def test_base_object():
-    empty = Delivery._empty()
+@pytest.fixture
+def dataset():
+    path = pymedphys.zip_data_paths("dicom-to-delivery-issue-#1047.zip")[0]
 
-    assert empty.monitor_units == tuple()
+    return pydicom.dcmread(path)
 
-    collection = {field: getattr(empty, field) for field in empty._fields}
 
-    dummy = Delivery(**collection)
+def test_converting_dicom_to_delivery(dataset):
+    with pytest.raises(ValueError, match=r".*not supported.*"):
+        pymedphys.Delivery.from_dicom(dataset)
