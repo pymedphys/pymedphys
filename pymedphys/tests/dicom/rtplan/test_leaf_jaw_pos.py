@@ -33,7 +33,7 @@ def test_get_leaf_jaw_positions_for_type():
                             "LeafJawPositions": leaf_jaw_positions,
                         },
                         {
-                            "RTBeamLimitingDeviceType": "Something Else!",
+                            "RTBeamLimitingDeviceType": "ASYMX",
                             "LeafJawPositions": [1, 1],
                         },
                     ]
