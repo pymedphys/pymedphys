@@ -16,7 +16,7 @@
 from pymedphys._dicom import create, rtplan
 
 
-def test_get_leaf_jaw_position_of_type():
+def test_get_leaf_jaw_positions_for_type():
 
     rt_beam_limiting_device_type = "ASYMY"
     leaf_jaw_positions = [0, 0]
@@ -49,7 +49,7 @@ def test_get_leaf_jaw_position_of_type():
         control_point_sequence, "BeamLimitingDevicePositionSequence"
     )
 
-    positions = rtplan.get_leaf_jaw_position_of_type(
+    positions = rtplan.get_leaf_jaw_positions_for_type(
         beam_limiting_device_position_sequences, rt_beam_limiting_device_type
     )
 
