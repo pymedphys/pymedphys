@@ -172,13 +172,13 @@ def test_anonymised_dataset_with_empty_patient_sex():
     assert hardcode_replace_ds["PatientSex"].value is None
 
 
-@pytest.mark.dicom
+@pytest.mark.pydicom
 def test_anonymised_dataset_with_strategy():
     replacement_strategy = get_copy_of_strategy()
     ds = dicom_dataset_from_dict(
         {"PatientName": "Smith^John", "PatientID": "ABC123", "PatientSex": "M"}
     )
-    assert is_anonymised_dataset(ds)
+    assert not is_anonymised_dataset(ds)
     hardcode_replace_ds = anonymise_dataset(
         ds, replacement_strategy=replacement_strategy
     )
