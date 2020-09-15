@@ -26,6 +26,7 @@ from pymedphys._dicom.anonymise import (
     anonymise_directory,
     anonymise_file,
     get_baseline_keyword_vr_dict,
+    get_copy_of_strategy,
     get_default_identifying_keywords,
     is_anonymised_dataset,
     is_anonymised_directory,
@@ -169,6 +170,19 @@ def test_anonymised_dataset_with_empty_patient_sex():
     assert is_anonymised_dataset(blank_sex_ds)
     hardcode_replace_ds = anonymise_dataset(blank_sex_ds)
     assert hardcode_replace_ds["PatientSex"].value is None
+
+
+@pytest.mark.dicom
+def test_anonymised_dataset_with_strategy():
+    replacement_strategy = get_copy_of_strategy()
+    ds = dicom_dataset_from_dict(
+        {"PatientName": "Smith^John", "PatientID": "ABC123", "PatientSex": "M"}
+    )
+    assert is_anonymised_dataset(ds)
+    hardcode_replace_ds = anonymise_dataset(
+        ds, replacement_strategy=replacement_strategy
+    )
+    assert ds["PatientID"].value != hardcode_replace_ds["PatientID"].value
 
 
 @pytest.mark.slow

@@ -30,8 +30,9 @@ def test_pseudonymise_file():
     identifying_keywords_for_pseudo = (
         pseudonymisation_api.get_default_pseudonymisation_keywords()
     )
+    assert "PatientID" in identifying_keywords_for_pseudo
     logging.info("Using pseudonymisation keywords")
-    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+    replacement_strategy = pseudonymisation_api.get_copy_of_strategy()
     logging.info("Using pseudonymisation strategy")
     for test_file_path in get_test_filepaths():
         _test_pseudonymise_file_at_path(
@@ -155,7 +156,7 @@ def _test_pseudonymise_file_at_path(
     else:
         identifying_keywords_for_pseudo = test_identifying_keywords
     if test_replacement_strategy is None:
-        replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+        replacement_strategy = pseudonymisation_api.get_copy_of_strategy()
         logging.info("Using pseudonymisation strategy")
     else:
         replacement_strategy = test_replacement_strategy

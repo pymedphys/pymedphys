@@ -11,11 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import functools
 import json
 import logging
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
+
+from immutables import Map as frozenmap
 
 from pymedphys._dicom.anonymise import (
     anonymise_directory,
@@ -137,14 +140,29 @@ def is_valid_strategy_for_keywords(
 
 
 def get_copy_of_strategy():
-    strategy_copy = copy.deepcopy(pseudonymisation_dispatch)
-    strategy_copy["replace_values"] = True
-    strategy_copy["keywords_to_leave_unchanged"] = ()
-    strategy_copy["delete_private_tags"] = True
-    strategy_copy["delete_unknown_tags"] = None
-    strategy_copy["copy_dataset"] = True
-    strategy_copy["identifying_keywords"] = get_default_pseudonymisation_keywords()
+    """replacement strategy, i.e. dictionary of VR and function references for anonymisation to achieve pseudonymisation,
+    as well as behaviour control parameters, including:
+    delete_private_tags
+    delete_unknown_tags
+    To modify the copy of the strategy received involves creating a mutated version of the copy provided.
+    See PEP 603, or the PyPi immutables package
+
+    Returns
+    -------
+    ``frozenmap``
+        keys are either VR or behaviour control parameters, values with VR as keys are function references,
+        values with behaviour control parameters are variant (appropriate to the parameter)
+    """
+    strategy_map = frozenmap(strategy.pseudonymisation_dispatch)
+    with strategy_map.mutate() as strategy_copy:
+        strategy_copy["replace_values"] = True
+        strategy_copy["keywords_to_leave_unchanged"] = ()
+        strategy_copy["delete_private_tags"] = True
+        strategy_copy["delete_unknown_tags"] = None
+        strategy_copy["copy_dataset"] = True
+        strategy_copy["identifying_keywords"] = get_default_pseudonymisation_keywords()
+        strategy_map = strategy_copy.finish()
     is_valid_strategy_for_keywords(
-        strategy_copy["identifying_keywords"], replacement_strategy=strategy_copy
+        strategy_map["identifying_keywords"], replacement_strategy=strategy_map
     )
-    return strategy_copy
+    return strategy_map

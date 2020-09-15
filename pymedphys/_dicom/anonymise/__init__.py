@@ -23,6 +23,7 @@ from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
+from immutables import Map as frozenmap
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
@@ -133,6 +134,26 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
         An anonymised version of the input DICOM dataset.
     """
 
+    if replacement_strategy is not None:
+        if "replace_values" in replacement_strategy:
+            replace_values = replacement_strategy["replace_values"]
+        if "keywords_to_leave_unchanged" in replacement_strategy:
+            keywords_to_leave_unchanged = replacement_strategy[
+                "keywords_to_leave_unchanged"
+            ]
+        if "delete_private_tags" in replacement_strategy:
+            delete_private_tags = replacement_strategy["delete_private_tags"]
+        if "delete_unknown_tags" in replacement_strategy:
+            delete_unknown_tags = replacement_strategy["delete_unknown_tags"]
+        if "copy_dataset" in replacement_strategy:
+            copy_dataset = replacement_strategy["copy_dataset"]
+        # unlike the modifiers, if identifying keywords were passed in as parameters, use those
+        if (
+            identifying_keywords is not None
+            and "identifying_keywords" in replacement_strategy
+        ):
+            identifying_keywords = replacement_strategy["identifying_keywords"]
+
     if copy_dataset:
         ds_anon = deepcopy(ds)
     else:
@@ -189,8 +210,8 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
         replacement_strategy=replacement_strategy,
     )
 
-    if copy_dataset:
-        return ds_anon
+    # if copy_dataset:
+    return ds_anon
 
 
 def anonymise_file(
@@ -267,7 +288,7 @@ def anonymise_file(
 
     ds = pydicom.dcmread(dicom_filepath, force=True)
 
-    anonymise_dataset(
+    ds_anon = anonymise_dataset(
         ds=ds,
         replace_values=replace_values,
         keywords_to_leave_unchanged=keywords_to_leave_unchanged,
@@ -285,7 +306,7 @@ def anonymise_file(
 
     if anonymise_filename:
         filepath_used = create_filename_from_dataset(
-            ds, dirpath=dirname(output_filepath)
+            ds_anon, dirpath=dirname(output_filepath)
         )
     else:
         filepath_used = output_filepath
@@ -294,7 +315,7 @@ def anonymise_file(
 
     print(f"{dicom_filepath} --> {dicom_anon_filepath}")
 
-    ds.save_as(dicom_anon_filepath)
+    ds_anon.save_as(dicom_anon_filepath)
 
     if delete_original_file:
         remove_file(dicom_filepath)
@@ -749,3 +770,37 @@ def get_anonymous_replacement_value(
         raise
 
     return replacement_value
+
+
+def is_valid_strategy_for_keywords(
+    identifying_keywords=None, replacement_strategy=None
+):
+    if identifying_keywords is None:
+        identifying_keywords = get_default_identifying_keywords()
+
+    if replacement_strategy is None:
+        replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH
+
+    baseline_keyword_vr_dict = get_baseline_keyword_vr_dict()
+    for keyword in identifying_keywords:
+        vr = baseline_keyword_vr_dict[keyword]
+        # pydicom.datadict.dictionary_VR(pydicom.datadict.tag_for_keyword(keyword))
+        if vr not in replacement_strategy:
+            return False
+    return True
+
+
+def get_copy_of_strategy():
+    strategy_map = frozenmap(strategy.ANONYMISATION_HARDCODE_DISPATCH)
+    with strategy_map.mutate() as strategy_copy:
+        strategy_copy["replace_values"] = True
+        strategy_copy["keywords_to_leave_unchanged"] = ()
+        strategy_copy["delete_private_tags"] = True
+        strategy_copy["delete_unknown_tags"] = None
+        strategy_copy["copy_dataset"] = True
+        strategy_copy["identifying_keywords"] = get_default_identifying_keywords()
+        strategy_map = strategy_copy.finish()
+    is_valid_strategy_for_keywords(
+        strategy_map["identifying_keywords"], replacement_strategy=strategy_map
+    )
+    return strategy_map

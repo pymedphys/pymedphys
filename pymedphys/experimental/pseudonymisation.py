@@ -2,6 +2,7 @@
 
 
 from pymedphys._experimental.pseudonymisation import (
+    get_copy_of_strategy,
     get_default_pseudonymisation_keywords,
     is_valid_strategy_for_keywords,
 )
