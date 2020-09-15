@@ -577,7 +577,7 @@ version = "1.2.0"
 category = "main"
 description = "Immutable Collections"
 name = "immutables"
-optional = true
+optional = false
 python-versions = ">=3.5"
 version = "0.14"
 
@@ -2309,7 +2309,7 @@ tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pyl
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
 
 [metadata]
-content-hash = "9f352643ab07713fea0db39a79e6b968430d70764b523efe23acfb668c153081"
+content-hash = "0374b8071748045b5e44c80a7ed579e7bb8539d5b45c095094ad3a313aae85d7"
 python-versions = "^3.6"
 
 [metadata.files]
