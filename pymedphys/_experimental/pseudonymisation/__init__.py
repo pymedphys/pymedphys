@@ -134,3 +134,17 @@ def is_valid_strategy_for_keywords(
         if vr not in replacement_strategy:
             return False
     return True
+
+
+def get_copy_of_strategy():
+    strategy_copy = copy.deepcopy(pseudonymisation_dispatch)
+    strategy_copy["replace_values"] = True
+    strategy_copy["keywords_to_leave_unchanged"] = ()
+    strategy_copy["delete_private_tags"] = True
+    strategy_copy["delete_unknown_tags"] = None
+    strategy_copy["copy_dataset"] = True
+    strategy_copy["identifying_keywords"] = get_default_pseudonymisation_keywords()
+    is_valid_strategy_for_keywords(
+        strategy_copy["identifying_keywords"], replacement_strategy=strategy_copy
+    )
+    return strategy_copy
