@@ -20,7 +20,6 @@ from os.path import join as pjoin
 
 from pymedphys._imports import immutables
 
-frozenmap = immutables.Map
 from pymedphys._dicom.anonymise import (
     anonymise_directory,
     anonymise_file,
@@ -150,11 +149,11 @@ def get_copy_of_strategy():
 
     Returns
     -------
-    ``frozenmap``
+    ``immutables.Map``
         keys are either VR or behaviour control parameters, values with VR as keys are function references,
         values with behaviour control parameters are variant (appropriate to the parameter)
     """
-    strategy_map = frozenmap(strategy.pseudonymisation_dispatch)
+    strategy_map = immutables.Map(strategy.pseudonymisation_dispatch)
     with strategy_map.mutate() as strategy_copy:
         strategy_copy["replace_values"] = True
         strategy_copy["keywords_to_leave_unchanged"] = ()

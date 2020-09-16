@@ -24,8 +24,6 @@ from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
 from pymedphys._imports import immutables
-
-frozenmap = immutables.Map
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
@@ -793,7 +791,8 @@ def is_valid_strategy_for_keywords(
 
 
 def get_copy_of_strategy():
-    strategy_map = frozenmap(strategy.ANONYMISATION_HARDCODE_DISPATCH)
+
+    strategy_map = immutables.Map(strategy.ANONYMISATION_HARDCODE_DISPATCH)
     with strategy_map.mutate() as strategy_copy:
         strategy_copy["replace_values"] = True
         strategy_copy["keywords_to_leave_unchanged"] = ()
