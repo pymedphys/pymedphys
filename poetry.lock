@@ -2299,17 +2299,17 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [extras]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
-dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
+dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
 experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
 ml = ["tensorflow"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
-user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
+user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
 
 [metadata]
-content-hash = "fccff36410a5c25dde6c8bc89fb302b942e3219fc33aa0ffc3c5727c3669cff7"
+content-hash = "0e41c0a85fbb645996c1edd4fe4b519369adf87e34485640c70853a225763f47"
 python-versions = "^3.6"
 
 [metadata.files]
