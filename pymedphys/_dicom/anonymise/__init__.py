@@ -23,7 +23,9 @@ from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
-from immutables import Map as frozenmap
+from pymedphys._imports import immutables
+
+frozenmap = immutables.Map
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 

@@ -212,10 +212,10 @@ description = "The AWS SDK for Python"
 name = "boto3"
 optional = true
 python-versions = "*"
-version = "1.14.61"
+version = "1.14.62"
 
 [package.dependencies]
-botocore = ">=1.17.61,<1.18.0"
+botocore = ">=1.17.62,<1.18.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.3.0,<0.4.0"
 
@@ -225,7 +225,7 @@ description = "Low-level, data-driven core of boto 3."
 name = "botocore"
 optional = true
 python-versions = "*"
-version = "1.17.61"
+version = "1.17.62"
 
 [package.dependencies]
 docutils = ">=0.10,<0.16"
@@ -508,7 +508,7 @@ description = "A library for property-based testing"
 name = "hypothesis"
 optional = true
 python-versions = ">=3.6"
-version = "5.35.2"
+version = "5.35.3"
 
 [package.dependencies]
 attrs = ">=19.2.0"
@@ -577,7 +577,7 @@ version = "1.2.0"
 category = "main"
 description = "Immutable Collections"
 name = "immutables"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "0.14"
 
@@ -2309,7 +2309,7 @@ tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pyl
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
 
 [metadata]
-content-hash = "0374b8071748045b5e44c80a7ed579e7bb8539d5b45c095094ad3a313aae85d7"
+content-hash = "fccff36410a5c25dde6c8bc89fb302b942e3219fc33aa0ffc3c5727c3669cff7"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -2399,11 +2399,12 @@ blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
 ]
 boto3 = [
-    {file = "boto3-1.14.61.tar.gz", hash = "sha256:a1c738ff178fc6ed8951559053c1142c71d166d17642361bbe63584be2f50a00"},
+    {file = "boto3-1.14.62-py2.py3-none-any.whl", hash = "sha256:74e0058e373d64e23dea639fc7bcd3d83d08e091a044f32513d13cc4a03d7fe5"},
+    {file = "boto3-1.14.62.tar.gz", hash = "sha256:2bead722a2b91d11faad0479eadf57283c864a40687100d0f5829e6a4242ccb1"},
 ]
 botocore = [
-    {file = "botocore-1.17.61-py2.py3-none-any.whl", hash = "sha256:4a2931b6cdbb1caf797eaf81f1f42f9cf243f94f06b3144d36a2f016a58ad125"},
-    {file = "botocore-1.17.61.tar.gz", hash = "sha256:71160b06c52f21cc477bc4b5eb35fc78f1f89e363b86d93fcbebfe366cc4d8f0"},
+    {file = "botocore-1.17.62-py2.py3-none-any.whl", hash = "sha256:a47ec927517403c6711f0cf7c51207f45b5aa4875791527a395a6402bd146514"},
+    {file = "botocore-1.17.62.tar.gz", hash = "sha256:8712b69f6e4abd9a5ef52b20fb5b9ca545cda335ee1b106fc68dd7786c7c78ae"},
 ]
 cachetools = [
     {file = "cachetools-4.1.1-py3-none-any.whl", hash = "sha256:513d4ff98dd27f85743a8dc0e92f55ddb1b49e060c2d5961512855cda2c01a98"},
@@ -2661,8 +2662,8 @@ h5py = [
     {file = "h5py-2.10.0.tar.gz", hash = "sha256:84412798925dc870ffd7107f045d7659e60f5d46d1c70c700375248bf6bf512d"},
 ]
 hypothesis = [
-    {file = "hypothesis-5.35.2-py3-none-any.whl", hash = "sha256:e6efd20bbc0feb5c30c790287575bd8e991799fa906e8884e29a612e4e0922db"},
-    {file = "hypothesis-5.35.2.tar.gz", hash = "sha256:b392075490f33141789e3fac6526394d9bf0e313c7e543d4d7c9e2ccd3774896"},
+    {file = "hypothesis-5.35.3-py3-none-any.whl", hash = "sha256:ee7bad5a617beed17090375f6e8e0f4f06677e9db92eaf598a186e69479843fa"},
+    {file = "hypothesis-5.35.3.tar.gz", hash = "sha256:a480386934cdfb2e69adb3333e7156ad9149b1935a910e44041a87c5bd8374dd"},
 ]
 identify = [
     {file = "identify-1.5.2-py2.py3-none-any.whl", hash = "sha256:e5cc8ba10ca658c278f841813c5f1556804141c93f82a7e620a938528a0c3f32"},
