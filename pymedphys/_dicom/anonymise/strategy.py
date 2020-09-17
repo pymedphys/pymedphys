@@ -38,6 +38,19 @@ for value, keys in REPLACEMENT_TO_VR_MAP.items():
         VR_TO_REPLACEMENT_MAP[key] = value
 
 
+def _get_vr_empty_replacement_value(current_value, value_representation):
+    if current_value is None:
+        replacement_value = None
+    else:
+        if value_representation == "SQ":
+            replacement_value = [pydicom.Dataset()]
+        elif value_representation in ["OB", "OW", "OB or OW"]:
+            replacement_value = (0).to_bytes(2, "little")
+        else:
+            replacement_value = ""
+    return replacement_value
+
+
 def _get_vr_anonymous_hardcode_replacement_value(current_value, value_representation):
     """A single dispatch function that is used for any VR with the current_value of the element ignored
     This is the default for the replacement strategy
@@ -64,5 +77,10 @@ ANONYMISATION_HARDCODE_DISPATCH = {
     key: functools.partial(
         _get_vr_anonymous_hardcode_replacement_value, value_representation=key
     )
+    for key in _keys
+}
+
+ANONYMISATION_CLEARVALUES_DISPATCH = {
+    key: functools.partial(_get_vr_empty_replacement_value, value_representation=key)
     for key in _keys
 }

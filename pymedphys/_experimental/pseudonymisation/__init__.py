@@ -20,10 +20,12 @@ from os.path import join as pjoin
 
 from pymedphys._imports import immutables
 
+import pymedphys._dicom.anonymise as private_anonymise
 from pymedphys._dicom.anonymise import (
     anonymise_directory,
     anonymise_file,
     get_baseline_keyword_vr_dict,
+    get_clearing_strategy,
     get_default_identifying_keywords,
 )
 
@@ -82,37 +84,47 @@ def anonymise_with_pseudo_cli(args):
     replacement_strategy = None
     if args.pseudo:
         logging.info("Was run with pseudo!")
-        identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
-        logging.info("Using pseudonymisation keywords")
-        replacement_strategy = strategy.pseudonymisation_dispatch
+        # identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
+        # logging.info("Using pseudonymisation keywords")
+        replacement_strategy = get_copy_of_strategy()
         logging.info("Using pseudonymisation strategy")
 
+    else:
+        if args.clear_values:
+            replacement_strategy = get_clearing_strategy()
+            logging.info("Using clearing strategy")
+        else:
+            replacement_strategy = private_anonymise.get_copy_of_strategy()
+            logging.info("Using hardcode value replacement strategy")
+
+    with replacement_strategy.mutate() as strategy_copy:
+        strategy_copy["keywords_to_leave_unchanged"] = keywords_to_leave_unchanged
+        strategy_copy["delete_private_tags"] = not args.keep_private_tags
+        strategy_copy["delete_unknown_tags"] = handle_unknown_tags
+    replacement_strategy = strategy_copy.finish()
+
     if isfile(args.input_path):
+        logging.info(
+            f"Input path = {args.input_path} Output Path = {args.output_path} Delete originals = {args.delete_original_files} Anonymise filenames = {not args.preserve_filenames}"
+        )
         anonymise_file(
             dicom_filepath=args.input_path,
             output_filepath=args.output_path,
             delete_original_file=args.delete_original_files,
             anonymise_filename=not args.preserve_filenames,
-            replace_values=not args.clear_values,
-            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-            delete_private_tags=not args.keep_private_tags,
-            delete_unknown_tags=handle_unknown_tags,
             replacement_strategy=replacement_strategy,
-            identifying_keywords=identifying_keywords_for_pseudo,
         )
 
     elif isdir(args.input_path):
+        logging.info(
+            f"Input path = {args.input_path} Output Path = {args.output_path} Delete originals = {args.delete_original_files} Anonymise filenames = {not args.preserve_filenames}"
+        )
         anonymise_directory(
             dicom_dirpath=args.input_path,
             output_dirpath=args.output_path,
             delete_original_files=args.delete_original_files,
             anonymise_filenames=not args.preserve_filenames,
-            replace_values=not args.clear_values,
-            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-            delete_private_tags=not args.keep_private_tags,
-            delete_unknown_tags=handle_unknown_tags,
             replacement_strategy=replacement_strategy,
-            identifying_keywords=identifying_keywords_for_pseudo,
         )
 
     else:
@@ -128,7 +140,7 @@ def is_valid_strategy_for_keywords(
         identifying_keywords = get_default_pseudonymisation_keywords()
 
     if replacement_strategy is None:
-        replacement_strategy = strategy.pseudonymisation_dispatch
+        replacement_strategy = get_copy_of_strategy()
 
     baseline_keyword_vr_dict = get_baseline_keyword_vr_dict()
     for keyword in identifying_keywords:
@@ -140,7 +152,7 @@ def is_valid_strategy_for_keywords(
 
 
 def get_copy_of_strategy():
-    """replacement strategy, i.e. dictionary of VR and function references for anonymisation to achieve pseudonymisation,
+    """pseudonymisation replacement strategy, i.e. dictionary of VR and function references for anonymisation to achieve pseudonymisation,
     as well as behaviour control parameters, including:
     delete_private_tags
     delete_unknown_tags
@@ -155,6 +167,7 @@ def get_copy_of_strategy():
     """
     strategy_map = immutables.Map(strategy.pseudonymisation_dispatch)
     with strategy_map.mutate() as strategy_copy:
+        strategy_copy["strategy_name"] = "pseudonymisation"
         strategy_copy["replace_values"] = True
         strategy_copy["keywords_to_leave_unchanged"] = ()
         strategy_copy["delete_private_tags"] = True

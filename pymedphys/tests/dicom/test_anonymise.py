@@ -23,6 +23,9 @@ from pymedphys._data import download
 from pymedphys._dicom import create
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS_FILEPATH,
+    _anonymise_dataset,
+    _anonymise_directory,
+    _anonymise_file,
     anonymise_directory,
     anonymise_file,
     get_baseline_keyword_vr_dict,
@@ -193,7 +196,7 @@ def test_alternative_identifying_keywords():
     test_file_path = get_treatment_record_test_file_path()
     ds_test = pydicom.dcmread(test_file_path, force=True)
     with tempfile.TemporaryDirectory() as output_directory:
-        anon_private_filepath = anonymise_file(
+        anon_private_filepath = _anonymise_file(
             test_file_path,
             output_filepath=output_directory,
             delete_private_tags=True,
@@ -287,7 +290,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
         ds, tmp_path, test_file_path, anon_is_expected=False
     )
 
-    ds_anon_blank = anonymise_dataset(ds, replace_values=False)
+    ds_anon_blank = _anonymise_dataset(ds, replace_values=False)
     _check_is_anonymised_dataset_file_and_dir(
         ds_anon_blank, tmp_path, test_file_path, anon_is_expected=True
     )
@@ -307,7 +310,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
             "PyMedPhys's copy of the DICOM dictionary."
         )
 
-        ds_anon_delete_unknown = anonymise_dataset(ds, delete_unknown_tags=True)
+        ds_anon_delete_unknown = _anonymise_dataset(ds, delete_unknown_tags=True)
         _check_is_anonymised_dataset_file_and_dir(
             ds_anon_delete_unknown, tmp_path, test_file_path, anon_is_expected=True
         )
@@ -317,7 +320,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
             "'Dataset' object has no attribute " "'PatientName'"
         )
 
-        ds_anon_ignore_unknown = anonymise_dataset(ds, delete_unknown_tags=False)
+        ds_anon_ignore_unknown = _anonymise_dataset(ds, delete_unknown_tags=False)
         _check_is_anonymised_dataset_file_and_dir(
             ds_anon_ignore_unknown, tmp_path, test_file_path, anon_is_expected=True
         )
@@ -327,7 +330,7 @@ def test_anonymise_dataset_and_all_is_anonymised_functions(tmp_path):
         get_baseline_dicom_dict().setdefault(patient_name_tag, patient_name)
 
     # Test copy_dataset=False:
-    anonymise_dataset(ds, copy_dataset=False)
+    _anonymise_dataset(ds, copy_dataset=False)
     assert is_anonymised_dataset(ds)
 
 
@@ -350,16 +353,34 @@ def _test_anonymise_file_at_path(test_file_path):
 
     try:
         # Private tag handling
-        anon_private_filepath = anonymise_file(
+        anon_private_filepath = _anonymise_file(
             test_file_path, delete_private_tags=False
         )
         assert not is_anonymised_file(anon_private_filepath, ignore_private_tags=False)
         assert is_anonymised_file(anon_private_filepath, ignore_private_tags=True)
 
-        anon_private_filepath = anonymise_file(test_file_path, delete_private_tags=True)
+        anon_private_filepath = _anonymise_file(
+            test_file_path, delete_private_tags=True
+        )
         assert is_anonymised_file(anon_private_filepath, ignore_private_tags=False)
 
         # Filename is anonymised?
+        assert (
+            basename(anon_private_filepath)
+            == TEST_ANON_BASENAME_DICT[basename(test_file_path)]
+        )
+
+        # test public API
+        replacement_strategy = get_copy_of_strategy()
+        with replacement_strategy.mutate() as strategy_copy:
+            strategy_copy["delete_private_tags"] = True
+        replacement_strategy = strategy_copy.finish()
+        anon_private_filepath = anonymise_file(
+            test_file_path, replacement_strategy=replacement_strategy
+        )
+        assert is_anonymised_file(anon_private_filepath, ignore_private_tags=False)
+
+        # Filename using public API is anonymised?
         assert (
             basename(anon_private_filepath)
             == TEST_ANON_BASENAME_DICT[basename(test_file_path)]

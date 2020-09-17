@@ -65,7 +65,49 @@ def create_filename_from_dataset(ds, dirpath=""):
     return pjoin(dirpath, "{}.{}.dcm".format(mode_prefix, ds.SOPInstanceUID))
 
 
-def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
+def anonymise_dataset(
+    ds: pydicom.dataset.Dataset, copy=True, replacement_strategy=None
+):
+    r"""A simple tool to anonymise a DICOM dataset.
+
+    You can find the list of DICOM keywords that are included in default
+    anonymisation `here <./identifying_keywords.json>`__.
+    These were drawn from `DICOM Supp 142
+    <https://www.dicomstandard.org/supplements/>`__
+
+    **We do not yet claim conformance to any DICOM Application Level
+    Confidentiality Profile**, but plan to be in a position to do so in the
+    not-to-distant future.
+
+    Parameters
+    ----------
+    ds : ``pydicom.dataset.Dataset``
+        The DICOM dataset to be anonymised.
+
+    copy : ``bool``, optional
+        If ``True``, then a copy of ``ds`` is returned.
+
+    replacement_strategy: ``immutables.Map`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+        Also contains delete_private_tags, delete_unknown_tags, and identifying_keywords as keys
+
+    Returns
+    -------
+    ds_anon : ``pydicom.dataset.Dataset``
+        An anonymised version of the input DICOM dataset.
+    """
+
+    if replacement_strategy is None:
+        replacement_strategy = get_copy_of_strategy()
+
+    with replacement_strategy.mutate() as strategy_copy:
+        strategy_copy["copy_dataset"] = copy
+    replacement_strategy = strategy_copy.finish()
+
+    return _anonymise_dataset(ds, replacement_strategy=replacement_strategy)
+
+
+def _anonymise_dataset(
     ds,
     replace_values=True,
     keywords_to_leave_unchanged=(),
@@ -122,8 +164,9 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     copy_dataset : ``bool``, optional
         If ``True``, then a copy of ``ds`` is returned.
 
-    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+    replacement_strategy: ``immutables.Map`` (keys are VR, value is dispatch function), optional
         If left as the default value of ``None``, the hardcode replacement strategy is used.
+        Also contains delete_private_tags, delete_unknown_tags, and identifying_keywords as keys
 
     identifying_keywords: ``list``, optional
         If left as None, the default values for/list of identifying keywords are used
@@ -149,9 +192,10 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
             copy_dataset = replacement_strategy["copy_dataset"]
         # unlike the modifiers, if identifying keywords were passed in as parameters, use those
         if (
-            identifying_keywords is not None
+            identifying_keywords is None
             and "identifying_keywords" in replacement_strategy
         ):
+
             identifying_keywords = replacement_strategy["identifying_keywords"]
 
     if copy_dataset:
@@ -219,6 +263,52 @@ def anonymise_file(
     output_filepath=None,
     delete_original_file=False,
     anonymise_filename=True,
+    replacement_strategy=None,
+):
+    r"""A simple tool to anonymise a DICOM file.
+
+    Parameters
+    ----------
+    dicom_filepath : ``str`` or ``pathlib.Path``
+        The path to the DICOM file to be anonymised.
+
+    delete_original_file : ``bool``, optional
+        If `True` and anonymisation completes successfully, then the
+        original DICOM is deleted. Defaults to ``False``.
+
+    anonymise_filename : ``bool``, optional
+        If ``True``, the DICOM filename is replaced by a filename of the
+        form:
+
+        "<2 char DICOM modality>.<SOP Instance UID>_Anonymised.dcm".
+
+        E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
+
+        This ensures that the filename contains no identifying
+        information. If set to ``False``, ``anonymise_file()`` simply
+        appends "_Anonymised" to the original DICOM filename. Defaults
+        to ``True``.
+
+
+    replacement_strategy: ``immutables.Map`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+        Also contains delete_private_tags, delete_unknown_tags, and identifying_keywords as keys
+
+    """
+    return _anonymise_file(
+        dicom_filepath,
+        output_filepath=output_filepath,
+        delete_original_file=delete_original_file,
+        anonymise_filename=anonymise_filename,
+        replacement_strategy=replacement_strategy,
+    )
+
+
+def _anonymise_file(
+    dicom_filepath,
+    output_filepath=None,
+    delete_original_file=False,
+    anonymise_filename=True,
     replace_values=True,
     keywords_to_leave_unchanged=(),
     delete_private_tags=True,
@@ -278,8 +368,9 @@ def anonymise_file(
         with caution, since unrecognised tags may contain identifying
         information.
 
-    replacement_strategy: ``dict`` (keys are VR, value is dispatch function), optional
+    replacement_strategy: ``immutables.Map`` (keys are VR, value is dispatch function), optional
         If left as the default value of ``None``, the hardcode replacement strategy is used.
+        Also contains delete_private_tags, delete_unknown_tags, and identifying_keywords as keys
 
     identifying_keywords: ``list``, optional
         If left as None, the default values for/list of identifying keywords are used
@@ -288,7 +379,7 @@ def anonymise_file(
 
     ds = pydicom.dcmread(dicom_filepath, force=True)
 
-    ds_anon = anonymise_dataset(
+    ds_anon = _anonymise_dataset(
         ds=ds,
         replace_values=replace_values,
         keywords_to_leave_unchanged=keywords_to_leave_unchanged,
@@ -324,6 +415,65 @@ def anonymise_file(
 
 
 def anonymise_directory(
+    dicom_dirpath,
+    output_dirpath=None,
+    delete_original_files=False,
+    anonymise_filenames=True,
+    replacement_strategy=None,
+):
+    r"""A simple tool to anonymise all DICOM files in a directory and
+    its subdirectories.
+
+    Parameters
+    ----------
+    dicom_dirpath : ``str`` or ``pathlib.Path``
+        The path to the directory containing DICOM files to be
+        anonymised.
+
+    delete_original_files : ``bool``, optional
+        If set to `True` and anonymisation completes successfully, then
+        the original DICOM files are deleted. Defaults to `False`.
+
+    anonymise_filenames : ``bool``, optional
+        If ``True``, the DICOM filenames are replaced by filenames of
+        the form:
+
+        "<2 char DICOM modality>.<SOP Instance UID>_Anonymised.dcm".
+
+        E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
+
+        This ensures that the filenames contain no identifying
+        information. If ``False``, ``anonymise_directory()`` simply
+        appends "_Anonymised" to the original DICOM filenames. Defaults
+        to ``True``.
+
+    replacement_strategy: ``immutables.Map`` (keys are VR, value is dispatch function), optional
+        If left as the default value of ``None``, the hardcode replacement strategy is used.
+        Also contains delete_private_tags, delete_unknown_tags, and identifying_keywords as keys
+    """
+    if replacement_strategy is None:
+        replacement_strategy = get_copy_of_strategy()
+
+    keywords_to_leave_unchanged = replacement_strategy["keywords_to_leave_unchanged"]
+    delete_private_tags = replacement_strategy["delete_private_tags"]
+    delete_unknown_tags = replacement_strategy["delete_unknown_tags"]
+    identifying_keywords = replacement_strategy["identifying_keywords"]
+
+    return _anonymise_directory(
+        dicom_dirpath,
+        output_dirpath=output_dirpath,
+        delete_original_files=delete_original_files,
+        anonymise_filenames=anonymise_filenames,
+        replace_values=True,
+        keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+        delete_private_tags=delete_private_tags,
+        delete_unknown_tags=delete_unknown_tags,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords,
+    )
+
+
+def _anonymise_directory(
     dicom_dirpath,
     output_dirpath=None,
     delete_original_files=False,
@@ -408,7 +558,7 @@ def anonymise_directory(
         else:
             output_filepath = None
 
-        anonymise_file(
+        _anonymise_file(
             dicom_filepath,
             output_filepath=output_filepath,
             delete_original_file=delete_original_files,
@@ -443,9 +593,16 @@ def anonymise_cli(args):
     else:
         keywords_to_leave_unchanged = args.keywords_to_leave_unchanged
 
-    replacement_strategy = (
-        None  # at some point use args.pseudo to drive this, or something similar
-    )
+    if args.clear_values:
+        replacement_strategy = get_clearing_strategy()
+    else:
+        replacement_strategy = get_copy_of_strategy()
+
+    with replacement_strategy.mutate() as strategy_copy:
+        strategy_copy["keywords_to_leave_unchanged"] = keywords_to_leave_unchanged
+        strategy_copy["delete_unknown_tags"] = handle_unknown_tags
+        strategy_copy["delete_private_tags"] = not args.keep_private_tags
+    replacement_strategy = strategy_copy.finish()
 
     if isfile(args.input_path):
         anonymise_file(
@@ -453,10 +610,6 @@ def anonymise_cli(args):
             output_filepath=args.output_path,
             delete_original_file=args.delete_original_files,
             anonymise_filename=not args.preserve_filenames,
-            replace_values=not args.clear_values,
-            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-            delete_private_tags=not args.keep_private_tags,
-            delete_unknown_tags=handle_unknown_tags,
             replacement_strategy=replacement_strategy,
         )
 
@@ -466,10 +619,6 @@ def anonymise_cli(args):
             output_dirpath=args.output_path,
             delete_original_files=args.delete_original_files,
             anonymise_filenames=not args.preserve_filenames,
-            replace_values=not args.clear_values,
-            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-            delete_private_tags=not args.keep_private_tags,
-            delete_unknown_tags=handle_unknown_tags,
             replacement_strategy=replacement_strategy,
         )
 
@@ -506,7 +655,9 @@ def is_anonymised_dataset(ds, ignore_private_tags=False):
     """
     for elem in ds:
         if elem.keyword in get_default_identifying_keywords():
-            dummy_value = get_anonymous_replacement_value(elem.keyword)
+            dummy_value = get_anonymous_replacement_value(
+                elem.keyword, replacement_strategy=get_copy_of_strategy()
+            )
             if not elem.value in ("", [], dummy_value, None):
                 if elem.VR == "DS" and np.isclose(
                     float(elem.value), float(dummy_value)
@@ -650,8 +801,14 @@ def unknown_tags_in_dicom_dataset(ds):
 def _anonymise_tags(
     ds_anon, keywords_to_anonymise, replace_values, replacement_strategy=None
 ):
-    """Anonymise all desired DICOM elements.
+    """Anonymise all desired DICOM elements in place
     """
+    if replacement_strategy is not None:
+        logging.debug(
+            "replacement strategy name is: %s", replacement_strategy["strategy_name"]
+        )
+    else:
+        logging.warning("no replacement strategy, defaulting to hardcode")
     if not replace_values and replacement_strategy is not None:
         logging.warning(
             "Conflicting approach to anonymisation specified, a replacement strategy was specified in addition to a directive"
@@ -743,6 +900,8 @@ def get_anonymous_replacement_value(
     Replacement with a value that is not in an enumerated set breaks DICOM conformance.
 
     """
+    if keyword == "SOPInstanceUID":
+        logging.debug(f"Operating on SOP Instance UID: {current_value}")
     vr = get_baseline_keyword_vr_dict()[keyword]
     if vr == "CS":
         #       An example, although this exact code breaks unit tests because
@@ -756,19 +915,25 @@ def get_anonymous_replacement_value(
         )
         #   elif ...
 
+    # asserting that replacement_strategy is not None is for debugging specific areas of code
+    # assert replacement_strategy is not None
     if replacement_strategy is None:
-        replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH
+        logging.warning("no replacement strategy defaulting to hardcode")
+        replacement_strategy = get_copy_of_strategy()
     try:
         replacement_value = replacement_strategy[vr](current_value)
-    except KeyError:
+    except BaseException as error_info:
         logging.error(
-            "Unable to anonymise %s with VR %s, current value is %s",
+            "Unable to anonymise %s with VR %s, current value is %s, error info %s",
             keyword,
             vr,
             current_value,
+            error_info,
         )
-        raise
+        raise KeyError
 
+    if keyword == "SOPInstanceUID":
+        logging.debug(f"Returning SOP Instance UID: {replacement_value}")
     return replacement_value
 
 
@@ -779,7 +944,18 @@ def is_valid_strategy_for_keywords(
         identifying_keywords = get_default_identifying_keywords()
 
     if replacement_strategy is None:
-        replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH
+        replacement_strategy = get_copy_of_strategy()
+    else:
+        if (
+            "replace_values" in replacement_strategy
+            and not replacement_strategy["replace_values"]
+        ):
+            return False
+    # replace_values should always be true within a strategy.
+    # if the user wants to clear values, the underlying dispatch/strategy for that is
+    # strategy.ANONYMISATION_CLEARVALUES_DISPATCH
+    # which should be obtained using
+    # get_clearing_strategy()
 
     baseline_keyword_vr_dict = get_baseline_keyword_vr_dict()
     for keyword in identifying_keywords:
@@ -790,10 +966,31 @@ def is_valid_strategy_for_keywords(
     return True
 
 
+@functools.lru_cache()
 def get_copy_of_strategy():
 
     strategy_map = immutables.Map(strategy.ANONYMISATION_HARDCODE_DISPATCH)
     with strategy_map.mutate() as strategy_copy:
+        strategy_copy["strategy_name"] = "hardcode"
+        strategy_copy["replace_values"] = True
+        strategy_copy["keywords_to_leave_unchanged"] = ()
+        strategy_copy["delete_private_tags"] = True
+        strategy_copy["delete_unknown_tags"] = None
+        strategy_copy["copy_dataset"] = True
+        strategy_copy["identifying_keywords"] = get_default_identifying_keywords()
+        strategy_map = strategy_copy.finish()
+    is_valid_strategy_for_keywords(
+        strategy_map["identifying_keywords"], replacement_strategy=strategy_map
+    )
+    return strategy_map
+
+
+@functools.lru_cache()
+def get_clearing_strategy():
+
+    strategy_map = immutables.Map(strategy.ANONYMISATION_CLEARVALUES_DISPATCH)
+    with strategy_map.mutate() as strategy_copy:
+        strategy_copy["strategy_name"] = "clearing"
         strategy_copy["replace_values"] = True
         strategy_copy["keywords_to_leave_unchanged"] = ()
         strategy_copy["delete_private_tags"] = True

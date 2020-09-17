@@ -2,7 +2,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from os.path import exists
+from os.path import basename, exists
 from os.path import join as pjoin
 from shutil import copyfile
 
@@ -11,6 +11,8 @@ import pytest
 import pydicom
 
 from pymedphys._dicom.anonymise import (
+    _anonymise_dataset,
+    _anonymise_file,
     anonymise_dataset,
     anonymise_file,
     is_anonymised_directory,
@@ -31,9 +33,14 @@ def test_pseudonymise_file():
         pseudonymisation_api.get_default_pseudonymisation_keywords()
     )
     assert "PatientID" in identifying_keywords_for_pseudo
+    assert "SOPInstanceUID" in identifying_keywords_for_pseudo
     logging.info("Using pseudonymisation keywords")
     replacement_strategy = pseudonymisation_api.get_copy_of_strategy()
     logging.info("Using pseudonymisation strategy")
+    logging.info(
+        "replacement strategy self-identifies as %s",
+        replacement_strategy["strategy_name"],
+    )
     for test_file_path in get_test_filepaths():
         _test_pseudonymise_file_at_path(
             test_file_path,
@@ -50,7 +57,7 @@ def test_identifier_with_unknown_vr():
     # that has not been addressed in the strategy.
     # However, because the strategy is only applied when the identifier is found
     # in the dataset, the error will only surface in that circumstance
-    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+    replacement_strategy = pseudonymisation_api.get_copy_of_strategy()
     logging.info("Using pseudonymisation strategy")
     identifying_keywords_with_vr_unknown_to_strategy = ["CodingSchemeURL", "PatientID"]
     logging.info("Using keyword with VR = UR")
@@ -59,13 +66,13 @@ def test_identifier_with_unknown_vr():
     # that for the keywords supplied, the strategy will fail should it find
     # the keyword in the data (there is a VR it doesn't support)
     assert not pseudonymisation_api.is_valid_strategy_for_keywords(
-        identifying_keywords_with_vr_unknown_to_strategy
+        identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy
     )
     ds_input = pydicom.Dataset()
     ds_input.PatientID = "ABC123"
     # not expected to cause problems if the identifier with unknown VR is not in the data
     assert (
-        anonymise_dataset(
+        _anonymise_dataset(
             ds_input,
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
@@ -76,16 +83,18 @@ def test_identifier_with_unknown_vr():
     # should raise the error if the identifier with unknown VR is in the data
     with pytest.raises(KeyError):
         ds_input.CodingSchemeURL = "https://scheming.coders.co.nz"
-        anonymise_dataset(
+        ds_pseudo = _anonymise_dataset(
             ds_input,
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
         )
+        logging.warning(ds_pseudo)
+        logging.warning(ds_input)
 
 
 @pytest.mark.pydicom
 def test_identifier_is_sequence_vr():
-    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+    replacement_strategy = pseudonymisation_api.get_copy_of_strategy()
     logging.info("Using pseudonymisation strategy")
     identifying_keywords_no_SQ = ["PatientID", "RequestedProcedureID"]
     identifying_keywords_with_SQ_vr = [
@@ -111,7 +120,7 @@ def test_identifier_is_sequence_vr():
     # was flawed based on a misunderstanding of dicom_dataset_from_dict
     assert ds_input.RequestAttributesSequence[0].RequestedProcedureID is not None
 
-    ds_anon = anonymise_dataset(
+    ds_anon = _anonymise_dataset(
         ds_input,
         replacement_strategy=replacement_strategy,
         identifying_keywords=identifying_keywords_with_SQ_vr,
@@ -121,7 +130,7 @@ def test_identifier_is_sequence_vr():
     # or type 2)
     assert "RequestedProcedureID" not in ds_anon.RequestAttributesSequence[0]
 
-    ds_anon = anonymise_dataset(
+    ds_anon = _anonymise_dataset(
         ds_input,
         replacement_strategy=replacement_strategy,
         identifying_keywords=identifying_keywords_no_SQ,
@@ -161,8 +170,12 @@ def _test_pseudonymise_file_at_path(
     else:
         replacement_strategy = test_replacement_strategy
 
+    ds_input = pydicom.dcmread(test_file_path, force=True)
+    ds_pseudo = anonymise_dataset(ds_input, replacement_strategy=replacement_strategy)
+    assert ds_pseudo[0x0008, 0x0018].value != ds_input[0x0008, 0x0018].value
+
     with tempfile.TemporaryDirectory() as output_directory:
-        pseudonymised_file_path = anonymise_file(
+        pseudonymised_file_path = _anonymise_file(
             dicom_filepath=test_file_path,
             output_filepath=output_directory,
             delete_original_file=False,
@@ -184,6 +197,35 @@ def _test_pseudonymise_file_at_path(
         assert ds_input["PatientID"].value != ds_pseudo["PatientID"].value
         # make sure that we are not accidentally using the hardcode replacement approach
         assert ds_pseudo["PatientID"].value not in ["", "Anonymous"]
+        new_sop_instance_uid = ds_pseudo.SOPInstanceUID
+        # Filename is anonymised?
+        assert new_sop_instance_uid in basename(pseudonymised_file_path)
+
+    # test with public API
+    with tempfile.TemporaryDirectory() as output_directory:
+        pseudonymised_file_path = anonymise_file(
+            dicom_filepath=test_file_path,
+            output_filepath=output_directory,
+            delete_original_file=False,
+            anonymise_filename=True,
+            replacement_strategy=replacement_strategy,
+        )
+        # debug print + Assert to force the print
+        # print("Pseudonymised file at: ", pseudonymised_file_path)
+        # assert False
+        assert exists(pseudonymised_file_path)
+        ds_input = pydicom.dcmread(test_file_path, force=True)
+        ds_pseudo = pydicom.dcmread(pseudonymised_file_path, force=True)
+        # simplistic stand-in to make sure *something* is happening
+        assert ds_input["PatientID"].value != ds_pseudo["PatientID"].value
+        # make sure that we are not accidentally using the hardcode replacement approach
+        assert ds_pseudo["PatientID"].value not in ["", "Anonymous"]
+        new_sop_instance_uid = ds_pseudo.SOPInstanceUID
+        old_sop_instance_uid = ds_input.SOPInstanceUID
+        # UID got anonymised, in some fashion
+        assert new_sop_instance_uid != old_sop_instance_uid
+        # Filename is anonymised?
+        assert new_sop_instance_uid in basename(pseudonymised_file_path)
 
 
 @pytest.mark.slow
@@ -212,7 +254,7 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         # but will also be using the dataset to do some comparisons.
         ds_input: pydicom.FileDataset = pydicom.dcmread(temp_filepath, force=True)
 
-        pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch["UI"](
+        pseudo_sop_instance_uid = pseudonymisation_api.get_copy_of_strategy()["UI"](
             ds_input.SOPInstanceUID
         )
 
@@ -230,7 +272,7 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         anon_file_command = "pymedphys --verbose experimental dicom anonymise --pseudo".split() + [
             temp_filepath
         ]
-        logging.info("Command line: %s", anon_file_command)
+        logging.warning("Command line: %s", anon_file_command)
         try:
             subprocess.check_call(anon_file_command)
             assert exists(temp_anon_filepath)
