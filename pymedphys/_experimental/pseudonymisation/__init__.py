@@ -20,14 +20,14 @@ from os.path import join as pjoin
 
 from pymedphys._imports import immutables
 
-import pymedphys._dicom.anonymise as private_anonymise
 from pymedphys._dicom.anonymise import (
     anonymise_directory,
     anonymise_file,
     get_baseline_keyword_vr_dict,
     get_clearing_strategy,
-    get_default_identifying_keywords,
 )
+from pymedphys._dicom.anonymise import get_copy_of_strategy as get_hardcode_strategy
+from pymedphys._dicom.anonymise import get_default_identifying_keywords
 
 from . import strategy
 
@@ -94,7 +94,7 @@ def anonymise_with_pseudo_cli(args):
             replacement_strategy = get_clearing_strategy()
             logging.info("Using clearing strategy")
         else:
-            replacement_strategy = private_anonymise.get_copy_of_strategy()
+            replacement_strategy = get_hardcode_strategy()
             logging.info("Using hardcode value replacement strategy")
 
     with replacement_strategy.mutate() as strategy_copy:
@@ -105,7 +105,11 @@ def anonymise_with_pseudo_cli(args):
 
     if isfile(args.input_path):
         logging.info(
-            f"Input path = {args.input_path} Output Path = {args.output_path} Delete originals = {args.delete_original_files} Anonymise filenames = {not args.preserve_filenames}"
+            "Input path = %s Output Path = %s Delete originals = %s Anonymise filenames = %s",
+            args.input_path,
+            args.output_path,
+            args.delete_original_files,
+            not args.preserve_filenames,
         )
         anonymise_file(
             dicom_filepath=args.input_path,
@@ -117,7 +121,11 @@ def anonymise_with_pseudo_cli(args):
 
     elif isdir(args.input_path):
         logging.info(
-            f"Input path = {args.input_path} Output Path = {args.output_path} Delete originals = {args.delete_original_files} Anonymise filenames = {not args.preserve_filenames}"
+            "Input path = %s Output Path = %s Delete originals = %s Anonymise filenames = %s",
+            args.input_path,
+            args.output_path,
+            args.delete_original_files,
+            not args.preserve_filenames,
         )
         anonymise_directory(
             dicom_dirpath=args.input_path,
