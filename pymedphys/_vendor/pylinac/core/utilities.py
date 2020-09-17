@@ -22,7 +22,7 @@
 
 """Utility functions for pylinac."""
 
-import collections
+import collections.abc
 import decimal
 import os
 import os.path as osp
@@ -132,7 +132,7 @@ def is_int_like(number):
 
 def is_iterable(obj):
     """Determine if an object is iterable."""
-    return isinstance(obj, collections.Iterable)
+    return isinstance(obj, collections.abc.Iterable)
 
 
 class Structure:
