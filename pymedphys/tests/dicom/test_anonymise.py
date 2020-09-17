@@ -24,7 +24,6 @@ from pymedphys._dicom import create
 from pymedphys._dicom.anonymise import (
     IDENTIFYING_KEYWORDS_FILEPATH,
     _anonymise_dataset,
-    _anonymise_directory,
     _anonymise_file,
     anonymise_directory,
     anonymise_file,
