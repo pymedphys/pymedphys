@@ -12,7 +12,7 @@ Project aim
 
 Accurate contouring is a critical aspect of safe and effective treatment
 delivery in radiotherapy (RT). Current limitations in clinical practice include
-large intra and inter-observer variances (IOV), as well time delays in both
+large intra and inter-observer variances (IOV), as well as time delays in both
 contour generation and correction. This study designed and evaluated a 2D U-Net
 architecture with two primary aims:
 
@@ -46,15 +46,17 @@ Best viewed at 720p+ resolution.
 
 Details
 -------
-
-The research thesis developed during this software project is set to be released
-pending a final review. The work provides details of the model architecture, and
-evaluates performance under multiple loss functions. In addition, this
-work discusses the development of a second model designed to fulfil the need for
+The `Masters thesis
+<https://github.com/matthewdeancooper/masters_thesis/blob/master/main.pdf>`_
+developed during this software project has been publicly released to provide a
+detailed description of the work. It provides details of the model architecture,
+and examines performance under multiple loss functions. In addition, this work
+discusses the development of a second model designed to fulfil the need for
 contouring to become part of regular quality assurance testing.
 
 Consider joining the PyMedPhys `mailing list
-<https://groups.google.com/g/pymedphys?pli=1>`_ to be notified of release.
+<https://groups.google.com/g/pymedphys?pli=1>`_ to be notified of future
+progress on this topic.
 
 
 Basic Implementation
