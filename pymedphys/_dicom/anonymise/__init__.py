@@ -65,9 +65,7 @@ def create_filename_from_dataset(ds, dirpath=""):
     return pjoin(dirpath, "{}.{}.dcm".format(mode_prefix, ds.SOPInstanceUID))
 
 
-def anonymise_dataset(
-    ds: pydicom.dataset.Dataset, copy=True, replacement_strategy=None
-):
+def anonymise_dataset(ds, copy=True, replacement_strategy=None):
     r"""A simple tool to anonymise a DICOM dataset.
 
     You can find the list of DICOM keywords that are included in default
