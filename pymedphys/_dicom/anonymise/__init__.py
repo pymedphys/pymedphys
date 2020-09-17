@@ -328,17 +328,7 @@ def _anonymise_file(
         original DICOM is deleted. Defaults to ``False``.
 
     anonymise_filename : ``bool``, optional
-        If ``True``, the DICOM filename is replaced by a filename of the
-        form:
-
-        "<2 char DICOM modality>.<SOP Instance UID>_Anonymised.dcm".
-
-        E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
-
-        This ensures that the filename contains no identifying
-        information. If set to ``False``, ``anonymise_file()`` simply
-        appends "_Anonymised" to the original DICOM filename. Defaults
-        to ``True``.
+        Defaults to ``True``.  See public wrapper for more detail
 
     replace_values : ``bool``, optional
         If set to ``True``, DICOM tags will be anonymised using dummy
@@ -901,7 +891,7 @@ def get_anonymous_replacement_value(
 
     """
     if keyword == "SOPInstanceUID":
-        logging.debug(f"Operating on SOP Instance UID: {current_value}")
+        logging.debug("Operating on SOP Instance UID: %s", current_value)
     vr = get_baseline_keyword_vr_dict()[keyword]
     if vr == "CS":
         #       An example, although this exact code breaks unit tests because
@@ -933,7 +923,7 @@ def get_anonymous_replacement_value(
         raise KeyError
 
     if keyword == "SOPInstanceUID":
-        logging.debug(f"Returning SOP Instance UID: {replacement_value}")
+        logging.debug("Returning SOP Instance UID: %s", replacement_value)
     return replacement_value
 
 
