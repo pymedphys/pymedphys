@@ -87,7 +87,7 @@ def calc_mu_density(
 
     Examples
     --------
-    >>> from pymedphys._imports import numpy as np
+    >>> import numpy as np
     >>> import pymedphys
     >>>
     >>> leaf_pair_widths = (5, 5, 5)
