@@ -28,7 +28,7 @@ Summary
     To modify the behaviour regarding private tags and unknown tags, it is necessary to construct a new dictionary like container,
     potentially another immutable map with the new values for delete_private_tags and/or delete_unknown_tags
 
-    See PEP 603, or the PyPi immutables package for more information
+    See PEP 603, or the PyPI immutables package for more information
 
 ***
 API
