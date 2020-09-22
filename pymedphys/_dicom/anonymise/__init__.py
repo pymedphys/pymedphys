@@ -82,7 +82,7 @@ def anonymise_dataset(ds, copy_dataset=True, replacement_strategy=None):
     ds : ``pydicom.dataset.Dataset``
         The DICOM dataset to be anonymised.
 
-    copy : ``bool``, optional
+    copy : ``bool``, default ``True``
         If ``True``, then a copy of ``ds`` is returned.
 
     replacement_strategy: ``immutables.Map`` (keys are VR, value is dispatch function), optional
