@@ -7,9 +7,10 @@ authors = [
     "PyMedPhys Contributors <developers@pymedphys.com>",
     "Simon Biggs <sbiggs@pymedphys.com>",
     "Matthew Jennings <mjennings@pymedphys.com>",
+    "Stuart Swerdloff",
+    "Phillip Chlap",
     "Jake Rembish",
     "Matthew Cooper <mcooper@pymedphys.com>",
-    "Phillip Chlap",
     "Jacob McAloney",
     "Pedro Martinez"
 ]
