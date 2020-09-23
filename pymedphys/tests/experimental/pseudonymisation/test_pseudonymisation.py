@@ -11,8 +11,8 @@ import pytest
 import pydicom
 
 from pymedphys._dicom.anonymise import (
-    anonymise_dataset,
-    anonymise_file,
+    _anonymise_dataset,
+    _anonymise_file,
     is_anonymised_directory,
     is_anonymised_file,
 )
@@ -64,7 +64,7 @@ def test_identifier_with_unknown_vr():
     ds_input.PatientID = "ABC123"
     # not expected to cause problems if the identifier with unknown VR is not in the data
     assert (
-        anonymise_dataset(
+        _anonymise_dataset(
             ds_input,
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
@@ -75,7 +75,7 @@ def test_identifier_with_unknown_vr():
     # should raise the error if the identifier with unknown VR is in the data
     with pytest.raises(KeyError):
         ds_input.CodingSchemeURL = "https://scheming.coders.co.nz"
-        anonymise_dataset(
+        _anonymise_dataset(
             ds_input,
             replacement_strategy=replacement_strategy,
             identifying_keywords=identifying_keywords_with_vr_unknown_to_strategy,
@@ -110,7 +110,7 @@ def test_identifier_is_sequence_vr():
     # was flawed based on a misunderstanding of dicom_dataset_from_dict
     assert ds_input.RequestAttributesSequence[0].RequestedProcedureID is not None
 
-    ds_anon = anonymise_dataset(
+    ds_anon = _anonymise_dataset(
         ds_input,
         replacement_strategy=replacement_strategy,
         identifying_keywords=identifying_keywords_with_SQ_vr,
@@ -120,7 +120,7 @@ def test_identifier_is_sequence_vr():
     # or type 2)
     assert "RequestedProcedureID" not in ds_anon.RequestAttributesSequence[0]
 
-    ds_anon = anonymise_dataset(
+    ds_anon = _anonymise_dataset(
         ds_input,
         replacement_strategy=replacement_strategy,
         identifying_keywords=identifying_keywords_no_SQ,
@@ -161,7 +161,7 @@ def _test_pseudonymise_file_at_path(
         replacement_strategy = test_replacement_strategy
 
     with tempfile.TemporaryDirectory() as output_directory:
-        pseudonymised_file_path = anonymise_file(
+        pseudonymised_file_path = _anonymise_file(
             dicom_filepath=test_file_path,
             output_filepath=output_directory,
             delete_original_file=False,

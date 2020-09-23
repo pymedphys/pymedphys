@@ -18,8 +18,8 @@ from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
 from pymedphys._dicom.anonymise import (
-    anonymise_directory,
-    anonymise_file,
+    _anonymise_directory,
+    _anonymise_file,
     get_baseline_keyword_vr_dict,
     get_default_identifying_keywords,
 )
@@ -85,7 +85,7 @@ def anonymise_with_pseudo_cli(args):
         logging.info("Using pseudonymisation strategy")
 
     if isfile(args.input_path):
-        anonymise_file(
+        _anonymise_file(
             dicom_filepath=args.input_path,
             output_filepath=args.output_path,
             delete_original_file=args.delete_original_files,
@@ -99,7 +99,7 @@ def anonymise_with_pseudo_cli(args):
         )
 
     elif isdir(args.input_path):
-        anonymise_directory(
+        _anonymise_directory(
             dicom_dirpath=args.input_path,
             output_dirpath=args.output_path,
             delete_original_files=args.delete_original_files,

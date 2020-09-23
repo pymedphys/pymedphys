@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy as copy_module
 import functools
 import json
 import logging
 import os.path
 import pprint
-from copy import copy, deepcopy
 from glob import glob
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
@@ -34,11 +34,17 @@ from pymedphys._dicom.constants import (
 )
 from pymedphys._dicom.utilities import remove_file
 
-from . import strategy
+from . import strategies
 
 HERE = dirname(abspath(__file__))
 
 IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
+
+
+def anonymise(ds, copy=True, strategy=None):
+    return _anonymise_dataset(
+        ds, copy_dataset=copy, replacement_strategy=strategy, **strategy
+    )
 
 
 @functools.lru_cache()
@@ -64,7 +70,7 @@ def create_filename_from_dataset(ds, dirpath=""):
     return pjoin(dirpath, "{}.{}.dcm".format(mode_prefix, ds.SOPInstanceUID))
 
 
-def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
+def _anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     ds,
     replace_values=True,
     keywords_to_leave_unchanged=(),
@@ -73,6 +79,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     copy_dataset=True,
     replacement_strategy=None,
     identifying_keywords=None,
+    **_,
 ):
     r"""A simple tool to anonymise a DICOM dataset.
 
@@ -110,7 +117,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     delete_unknown_tags : ``bool``, pseudo-optional
         If left as the default value of ``None`` and ``ds`` contains tags
         that are not present in PyMedPhys' copy of ``pydicom``'s DICOM
-        dictionary, ``anonymise_dataset()`` will raise an error. The
+        dictionary, will raise a ValueError. The
         user must then either pass ``True`` or ``False`` to proceed. If set
         to ``True``, all unrecognised tags that haven't been listed in
         ``keywords_to_leave_unchanged`` will be deleted. If set to
@@ -134,7 +141,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
     """
 
     if copy_dataset:
-        ds_anon = deepcopy(ds)
+        ds_anon = copy_module.deepcopy(ds)
     else:
         ds_anon = ds
 
@@ -193,7 +200,7 @@ def anonymise_dataset(  # pylint: disable = inconsistent-return-statements
         return ds_anon
 
 
-def anonymise_file(
+def _anonymise_file(
     dicom_filepath,
     output_filepath=None,
     delete_original_file=False,
@@ -225,7 +232,7 @@ def anonymise_file(
         E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
 
         This ensures that the filename contains no identifying
-        information. If set to ``False``, ``anonymise_file()`` simply
+        information. If set to ``False``, simply
         appends "_Anonymised" to the original DICOM filename. Defaults
         to ``True``.
 
@@ -249,7 +256,7 @@ def anonymise_file(
     delete_unknown_tags : ``bool``, pseudo-optional
         If left as the default value of ``None`` and ``ds`` contains
         tags that are not present in PyMedPhys' copy of ``pydicom``'s
-        DICOM dictionary, ``anonymise_dataset()`` will raise an error.
+        DICOM dictionary, will raise a ValueError.
         The user must then either pass ``True`` or ``False`` to proceed.
         If set to ``True``, all unrecognised tags that haven't been
         listed in ``keywords_to_leave_unchanged`` will be deleted. If
@@ -267,7 +274,7 @@ def anonymise_file(
 
     ds = pydicom.dcmread(dicom_filepath, force=True)
 
-    anonymise_dataset(
+    _anonymise_dataset(
         ds=ds,
         replace_values=replace_values,
         keywords_to_leave_unchanged=keywords_to_leave_unchanged,
@@ -302,7 +309,7 @@ def anonymise_file(
     return dicom_anon_filepath
 
 
-def anonymise_directory(
+def _anonymise_directory(
     dicom_dirpath,
     output_dirpath=None,
     delete_original_files=False,
@@ -336,7 +343,7 @@ def anonymise_directory(
         E.g.: "RP.2.16.840.1.113669.[...]_Anonymised.dcm"
 
         This ensures that the filenames contain no identifying
-        information. If ``False``, ``anonymise_directory()`` simply
+        information. If ``False``, simply
         appends "_Anonymised" to the original DICOM filenames. Defaults
         to ``True``.
 
@@ -360,7 +367,7 @@ def anonymise_directory(
     delete_unknown_tags : ``bool``, pseudo-optional
         If left as the default value of ``None`` and ``ds`` contains
         tags that are not present in PyMedPhys` copy of `pydicom`'s
-        DICOM dictionary, ``anonymise_dataset()`` will raise an error.
+        DICOM dictionary, will raise a ValueError.
         The user must then either pass ``True`` or ``False`` to proceed.
         If set to ``True``, all unrecognised tags that haven't been
         listed in ``keywords_to_leave_unchanged`` will be deleted. If
@@ -387,7 +394,7 @@ def anonymise_directory(
         else:
             output_filepath = None
 
-        anonymise_file(
+        _anonymise_file(
             dicom_filepath,
             output_filepath=output_filepath,
             delete_original_file=delete_original_files,
@@ -427,7 +434,7 @@ def anonymise_cli(args):
     )
 
     if isfile(args.input_path):
-        anonymise_file(
+        _anonymise_file(
             dicom_filepath=args.input_path,
             output_filepath=args.output_path,
             delete_original_file=args.delete_original_files,
@@ -440,7 +447,7 @@ def anonymise_cli(args):
         )
 
     elif isdir(args.input_path):
-        anonymise_directory(
+        _anonymise_directory(
             dicom_dirpath=args.input_path,
             output_dirpath=args.output_path,
             delete_original_files=args.delete_original_files,
@@ -683,7 +690,7 @@ def _filter_identifying_keywords(
     if identifying_keywords is None:
         keywords_filtered = get_default_identifying_keywords()
     else:
-        keywords_filtered = copy(identifying_keywords)
+        keywords_filtered = copy_module.copy(identifying_keywords)
 
     for keyword in keywords_to_leave_unchanged:
         try:
@@ -736,7 +743,7 @@ def get_anonymous_replacement_value(
         #   elif ...
 
     if replacement_strategy is None:
-        replacement_strategy = strategy.ANONYMISATION_HARDCODE_DISPATCH
+        replacement_strategy = strategies.ANONYMISATION_HARDCODE_DISPATCH
     try:
         replacement_value = replacement_strategy[vr](current_value)
     except KeyError:
