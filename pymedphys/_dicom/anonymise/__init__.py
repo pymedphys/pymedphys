@@ -42,6 +42,9 @@ IDENTIFYING_KEYWORDS_FILEPATH = pjoin(HERE, "identifying_keywords.json")
 
 
 def anonymise(ds, copy=True, strategy=None):
+    if strategy is None:
+        return _anonymise_dataset(ds, copy_dataset=copy)
+
     return _anonymise_dataset(
         ds, copy_dataset=copy, replacement_strategy=strategy, **strategy
     )
