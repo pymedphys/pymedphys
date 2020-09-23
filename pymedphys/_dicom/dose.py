@@ -219,8 +219,8 @@ def get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset
                 structure_polygon.contains_points(points).reshape(len(y), len(x))
             )
 
-    mask_xyz = np.swapaxis(mask_yxz, 0, 1)
-    mask_zyx = np.swapaxis(mask_xyz, 0, 2)
+    mask_xyz = np.swapaxes(mask_yxz, 0, 1)
+    mask_zyx = np.swapaxes(mask_xyz, 0, 2)
 
     return mask_zyx
 
