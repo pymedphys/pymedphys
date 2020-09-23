@@ -6,6 +6,7 @@ import tkinter.filedialog
 import attr
 import dateutil
 import dbfread
+import immutables
 import keyring
 import packaging
 import pymssql
