@@ -188,24 +188,26 @@ def _get_indices(z_list, z_val):
     return desired_indices
 
 
-def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
-    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dcm_dose)
+def get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset):
+    x, y, z = xyz_axes_from_dataset(dose_dataset)
 
-    xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
-    points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
+    xx, yy = np.meshgrid(x, y)
+    points = np.swapaxes(np.vstack([xx.ravel(), yy.ravel()]), 0, 1)
 
-    x_structure, y_structure, z_structure = pull_structure(structure_name, dcm_struct)
+    x_structure, y_structure, z_structure = pull_structure(
+        structure_name, structure_dataset
+    )
     structure_z_values = np.array([item[0] for item in z_structure])
 
-    mask = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
+    mask_yxz = np.zeros((len(y), len(x), len(z)), dtype=bool)
 
     for z_val in structure_z_values:
         structure_indices = _get_indices(z_structure, z_val)
 
         for structure_index in structure_indices:
-            dose_index = int(np.where(z_dose == z_val)[0])
+            dose_index = int(np.where(z == z_val)[0])
 
-            assert z_structure[structure_index][0] == z_dose[dose_index]
+            assert z_structure[structure_index][0] == z[dose_index]
 
             structure_polygon = matplotlib.path.Path(
                 [
@@ -213,24 +215,27 @@ def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
                     for i in range(len(x_structure[structure_index]))
                 ]
             )
-            mask[:, :, dose_index] = mask[:, :, dose_index] | (
-                structure_polygon.contains_points(points).reshape(
-                    len(y_dose), len(x_dose)
-                )
+            mask_yxz[:, :, dose_index] = mask_yxz[:, :, dose_index] | (
+                structure_polygon.contains_points(points).reshape(len(y), len(x))
             )
 
-    return mask
+    mask_xyz = np.swapaxis(mask_yxz, 0, 1)
+    mask_zyx = np.swapaxis(mask_xyz, 0, 2)
+
+    return mask_zyx
 
 
-def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
-    dose = dose_from_dataset(dcm_dose)
-    mask = get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose)
+def find_dose_within_structure(structure_name, structure_dataset, dose_dataset):
+    dose = dose_from_dataset(dose_dataset)
+    mask = get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset)
 
     return dose[mask]
 
 
-def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = find_dose_within_structure(structure, dcm_struct, dcm_dose)
+def create_dvh(structure, structure_dataset, dose_dataset):
+    structure_dose_values = find_dose_within_structure(
+        structure, structure_dataset, dose_dataset
+    )
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]
     bin_edge = hist[1]
