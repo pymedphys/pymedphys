@@ -80,7 +80,7 @@ class DicomBase:
         self, inplace=False
     ):
         to_copy = not inplace
-        anonymised = anonymise.anonymise(self.dataset, copy_dataset=to_copy)
+        anonymised = anonymise.anonymise(self.dataset, copy=to_copy)
 
         if not inplace:
             return self.__class__(anonymised)
