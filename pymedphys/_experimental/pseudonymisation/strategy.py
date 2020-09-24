@@ -19,7 +19,7 @@ import logging
 import random
 from decimal import Decimal, DecimalTuple
 
-from pymedphys._imports import pydicom
+from pymedphys._imports import immutables, pydicom
 
 from pymedphys._dicom.anonymise import get_baseline_keyword_vr_dict
 from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
@@ -366,7 +366,7 @@ def _pseudonymise_US(value):
     return _pseudonymise_unchanged(value)
 
 
-pseudonymisation_dispatch = dict(
+_pseudonymisation_dispatch = dict(
     {
         "AE": _pseudonymise_AE,
         "AS": _pseudonymise_AS,
@@ -388,3 +388,10 @@ pseudonymisation_dispatch = dict(
         "US": _pseudonymise_US,
     }
 )
+
+
+def _wrap_pseudonymisation_dispatch():
+    return immutables.Map(_pseudonymisation_dispatch)
+
+
+pseudonymisation_dispatch = _wrap_pseudonymisation_dispatch()

@@ -15,7 +15,7 @@
 import functools
 import logging
 
-from pymedphys._imports import pydicom
+from pymedphys._imports import immutables, pydicom
 
 from pymedphys._dicom.constants import PYMEDPHYS_ROOT_UID
 
@@ -60,9 +60,16 @@ def _get_vr_anonymous_hardcode_replacement_value(current_value, value_representa
 _keys = list(VR_TO_REPLACEMENT_MAP.keys())
 _keys.append("SQ")
 
-ANONYMISATION_HARDCODE_DISPATCH = {
+_ANONYMISATION_HARDCODE_DISPATCH = {
     key: functools.partial(
         _get_vr_anonymous_hardcode_replacement_value, value_representation=key
     )
     for key in _keys
 }
+
+
+def _wrap_hardcode_dispatch():
+    return immutables.Map(_ANONYMISATION_HARDCODE_DISPATCH)
+
+
+ANONYMISATION_HARDCODE_DISPATCH = _wrap_hardcode_dispatch()
