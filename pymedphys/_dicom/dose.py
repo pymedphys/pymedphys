@@ -179,45 +179,58 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
     return extracted_dose
 
 
-def _get_indices(z_list, z_val):
-    indices = np.array([item[0] for item in z_list])
-    # This will error if more than one contour exists on a given slice
-    desired_indices = np.where(indices == z_val)[0]
-    # Multiple contour sets per slice not yet implemented
-
-    return desired_indices
-
-
 def get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset):
-    x, y, z = xyz_axes_from_dataset(dose_dataset)
+    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dose_dataset)
 
-    xx, yy = np.meshgrid(x, y)
+    xx, yy = np.meshgrid(x_dose, y_dose)
     points = np.swapaxes(np.vstack([xx.ravel(), yy.ravel()]), 0, 1)
 
     x_structure, y_structure, z_structure = pull_structure(
         structure_name, structure_dataset
     )
-    structure_z_values = np.array([item[0] for item in z_structure])
 
-    mask_yxz = np.zeros((len(y), len(x), len(z)), dtype=bool)
+    structure_z_values = []
+    for item in z_structure:
+        item = np.unique(item)
+        if len(item) != 1:
+            raise ValueError("Only one z value per contour supported")
+        structure_z_values.append(item[0])
 
-    for z_val in structure_z_values:
-        structure_indices = _get_indices(z_structure, z_val)
+    structure_z_values = np.sort(structure_z_values)
+    unique_structure_z_values = np.unique(structure_z_values)
 
-        for structure_index in structure_indices:
-            dose_index = int(np.where(z == z_val)[0])
+    if np.any(structure_z_values != unique_structure_z_values):
+        raise ValueError("Only one contour per slice is currently supported")
 
-            assert z_structure[structure_index][0] == z[dose_index]
+    sorted_dose_z = np.sort(z_dose)
 
-            structure_polygon = matplotlib.path.Path(
-                [
-                    (x_structure[structure_index][i], y_structure[structure_index][i])
-                    for i in range(len(x_structure[structure_index]))
-                ]
+    first_dose_index = np.where(sorted_dose_z == structure_z_values[0])[0][0]
+    for i, z_val in enumerate(structure_z_values):
+        dose_index = first_dose_index + i
+        if structure_z_values[i] != sorted_dose_z[dose_index]:
+            raise ValueError(
+                "Only contours where both, there are no gaps in the "
+                "z-axis of the contours, and the contour axis and dose "
+                "axis, are aligned are supported."
             )
-            mask_yxz[:, :, dose_index] = mask_yxz[:, :, dose_index] | (
-                structure_polygon.contains_points(points).reshape(len(y), len(x))
-            )
+
+    mask_yxz = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
+
+    for structure_index, z_val in enumerate(structure_z_values):
+        dose_index = int(np.where(z_dose == z_val)[0])
+
+        if z_structure[structure_index][0] != z_dose[dose_index]:
+            raise ValueError("Expected structure and dose indices to align")
+
+        structure_polygon = matplotlib.path.Path(
+            [
+                (x_structure[structure_index][i], y_structure[structure_index][i])
+                for i in range(len(x_structure[structure_index]))
+            ]
+        )
+        mask_yxz[:, :, dose_index] = mask_yxz[:, :, dose_index] | (
+            structure_polygon.contains_points(points).reshape(len(y_dose), len(x_dose))
+        )
 
     mask_xyz = np.swapaxes(mask_yxz, 0, 1)
     mask_zyx = np.swapaxes(mask_xyz, 0, 2)
