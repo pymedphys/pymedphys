@@ -228,6 +228,11 @@ def get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset
                 for i in range(len(x_structure[structure_index]))
             ]
         )
+
+        # This logical or here is actually in place for the case where
+        # there may be multiple contours on the one slice. That's not
+        # going to be used at the moment however, as that case is not
+        # yet supported in the logic above.
         mask_yxz[:, :, dose_index] = mask_yxz[:, :, dose_index] | (
             structure_polygon.contains_points(points).reshape(len(y_dose), len(x_dose))
         )
