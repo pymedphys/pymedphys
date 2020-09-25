@@ -37,8 +37,8 @@ IDENTIFYING_UIDS_FILEPATH = pjoin(HERE, "identifying_uids.json")
 
 @functools.lru_cache()
 def _get_default_identifying_uids():
-    with open(IDENTIFYING_UIDS_FILEPATH) as infile:
-        IDENTIFYING_UIDS = json.load(infile)
+    with open(IDENTIFYING_UIDS_FILEPATH) as uid_file:
+        IDENTIFYING_UIDS = json.load(uid_file)
     return tuple(IDENTIFYING_UIDS)
 
 
@@ -159,9 +159,8 @@ def pseudonymise(dicom_input, output_path=None):
     ``pydicom.dataset.Dataset``
         if the dicom_input was a dataset, return the pseudonymised dataset
         if the dicom input was a file, return the path to the pseudonymised file.
-        if the dicom input was a directory, return None
-            TODO: change return of anonymise_directory to return the list
-            of successfully anonymised files, and return that instead of None
+        if the dicom input was a directory, return the list of successfully
+            anonymised files, and return that instead of None
     """
     replacement_strategy = strategy.pseudonymisation_dispatch
     identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
@@ -183,7 +182,7 @@ def pseudonymise(dicom_input, output_path=None):
         return pseudo_ds
     else:
         if pathlib.Path().joinpath(dicom_input).is_dir():
-            anonymise_directory(
+            pseudonymised_file_list = anonymise_directory(
                 dicom_input,
                 output_dirpath=output_path,
                 keywords_to_leave_unchanged=keywords_to_leave_unchanged,
@@ -191,6 +190,7 @@ def pseudonymise(dicom_input, output_path=None):
                 replacement_strategy=replacement_strategy,
                 identifying_keywords=identifying_keywords_for_pseudo,
             )
+            return pseudonymised_file_list
         else:
             pseudonymised_filepath = anonymise_file(
                 dicom_input,
