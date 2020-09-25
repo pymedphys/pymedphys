@@ -381,7 +381,7 @@ def test_anonymise_directory(tmp_path):
         assert not is_anonymised_directory(tmp_path)
 
         # Test file deletion
-        anonymise_directory(
+        anon_path_list = anonymise_directory(
             tmp_path, delete_original_files=False, anonymise_filenames=False
         )
         # # File should be anonymised but not dir, since original file
@@ -389,9 +389,11 @@ def test_anonymise_directory(tmp_path):
         assert is_anonymised_file(temp_anon_filepath)
         assert exists(temp_filepath)
         assert not is_anonymised_directory(tmp_path)
+        assert anon_path_list is not None
+        assert anon_path_list[0] == temp_anon_filepath
 
         remove_file(temp_anon_filepath)
-        anonymise_directory(
+        anon_path_list = anonymise_directory(
             tmp_path, delete_original_files=True, anonymise_filenames=False
         )
         # # File and dir should be anonymised since original file should
@@ -399,6 +401,7 @@ def test_anonymise_directory(tmp_path):
         assert is_anonymised_file(temp_anon_filepath)
         assert not exists(temp_filepath)
         assert is_anonymised_directory(tmp_path)
+        assert anon_path_list[0] == temp_anon_filepath
 
     finally:
         remove_file(temp_anon_filepath)
