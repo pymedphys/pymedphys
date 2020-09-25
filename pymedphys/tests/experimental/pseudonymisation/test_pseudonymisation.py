@@ -42,6 +42,14 @@ def test_pseudonymise_file():
 
 
 @pytest.mark.pydicom
+def test_pseudonymise_convenience_api():
+    for test_file_path in get_test_filepaths():
+        output_file = pseudonymisation_api.pseudonymise(test_file_path)  # using facade
+        assert exists(output_file)
+        os.remove(output_file)
+
+
+@pytest.mark.pydicom
 def test_identifier_with_unknown_vr():
     # The fundamental feature being tested is behaviour in
     # response to a programmer error.

@@ -14,10 +14,14 @@
 import functools
 import json
 import logging
+import pathlib
 from os.path import abspath, basename, dirname, isdir, isfile
 from os.path import join as pjoin
 
+from pymedphys._imports import pydicom
+
 from pymedphys._dicom.anonymise import (
+    anonymise_dataset,
     anonymise_directory,
     anonymise_file,
     get_baseline_keyword_vr_dict,
@@ -134,3 +138,67 @@ def is_valid_strategy_for_keywords(
         if vr not in replacement_strategy:
             return False
     return True
+
+
+def pseudonymise(dicom_input, output_path=None):
+    """Convenient API to pseudonymisation.
+    Elements whose tags are not in the pydicom dictionary will be deleted
+    PatientSex will not be modified/pseudonymised
+    For fine tune control, use anonymise_dataset() instead
+
+    Parameters
+    ----------
+    dicom_input : ``pydicom.dataset.Dataset | str | pathlib.Path``
+        Either a dataset, a path to a file or a path to a directory
+    output_path : ``str | pathlib.Path``, optional
+        If the input is a file or a path, the directory to place the
+        pseudonymised files, by default None
+
+    Returns
+    -------
+    ``pydicom.dataset.Dataset``
+        if the dicom_input was a dataset, return the pseudonymised dataset
+        if the dicom input was a file, return the path to the pseudonymised file.
+        if the dicom input was a directory, return None
+            TODO: change return of anonymise_directory to return the list
+            of successfully anonymised files, and return that instead of None
+    """
+    replacement_strategy = strategy.pseudonymisation_dispatch
+    identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
+    if not is_valid_strategy_for_keywords():
+        logging.error("Pseudonymisation strategy is not valid for keywords")
+        logging.error("Please submit issue to PyMedPhys")
+        # but continue on, the data might not contain the offending keywords
+        # and if it does... there will be some kind of error raised
+    keywords_to_leave_unchanged = list("PatientSex")
+
+    if dicom_input is pydicom.dataset.Dataset:
+        pseudo_ds = anonymise_dataset(
+            dicom_input,
+            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+            delete_unknown_tags=True,
+            replacement_strategy=replacement_strategy,
+            identifying_keywords=identifying_keywords_for_pseudo,
+        )
+        return pseudo_ds
+    else:
+        if pathlib.Path().joinpath(dicom_input).is_dir():
+            anonymise_directory(
+                dicom_input,
+                output_dirpath=output_path,
+                keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+                delete_unknown_tags=True,
+                replacement_strategy=replacement_strategy,
+                identifying_keywords=identifying_keywords_for_pseudo,
+            )
+        else:
+            pseudonymised_filepath = anonymise_file(
+                dicom_input,
+                output_filepath=output_path,
+                keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+                delete_unknown_tags=True,
+                replacement_strategy=replacement_strategy,
+                identifying_keywords=identifying_keywords_for_pseudo,
+            )
+            return pseudonymised_filepath
+    return None
