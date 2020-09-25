@@ -374,7 +374,7 @@ def anonymise_directory(
             )
             successful_filepaths.append(dicom_filepath)
             anon_filepaths.append(dicom_anon_filepath)
-        except BaseException as error:
+        except (AttributeError, LookupError, TypeError, OSError, ValueError) as error:
             errors.append(error)
             failing_filepaths.append(dicom_filepath)
             logging.warning("Unable to anonymise %s", dicom_filepath)
