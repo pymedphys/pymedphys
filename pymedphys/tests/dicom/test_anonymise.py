@@ -376,12 +376,16 @@ def _test_anonymise_file_at_path(test_file_path):
 def test_anonymise_directory(tmp_path):
     temp_filepath = tmp_path / "test.dcm"
     temp_anon_filepath = label_dicom_filepath_as_anonymised(temp_filepath)
+
+    temp_record_filepath = tmp_path / "test_record.dcm"
+    temp_anon_record_filepath = label_dicom_filepath_as_anonymised(temp_record_filepath)
+
     try:
         copyfile(get_rtplan_test_file_path(), temp_filepath)
         assert not is_anonymised_directory(tmp_path)
 
         # Test file deletion
-        anonymise_directory(
+        anon_path_list = anonymise_directory(
             tmp_path, delete_original_files=False, anonymise_filenames=False
         )
         # # File should be anonymised but not dir, since original file
@@ -389,9 +393,11 @@ def test_anonymise_directory(tmp_path):
         assert is_anonymised_file(temp_anon_filepath)
         assert exists(temp_filepath)
         assert not is_anonymised_directory(tmp_path)
+        assert anon_path_list is not None
+        assert anon_path_list[0] == temp_anon_filepath
 
         remove_file(temp_anon_filepath)
-        anonymise_directory(
+        anon_path_list = anonymise_directory(
             tmp_path, delete_original_files=True, anonymise_filenames=False
         )
         # # File and dir should be anonymised since original file should
@@ -399,9 +405,45 @@ def test_anonymise_directory(tmp_path):
         assert is_anonymised_file(temp_anon_filepath)
         assert not exists(temp_filepath)
         assert is_anonymised_directory(tmp_path)
+        assert anon_path_list[0] == temp_anon_filepath
+
+        # Test fail fast vs. fail at last
+        # if the function fails fast, the specified removal
+        # will not take place
+        # if the function does not fail fail, the specified
+        # removal will take place
+        logging.warning("Testing fail fast")
+        remove_file(temp_anon_filepath)
+        copyfile(get_rtplan_test_file_path(), temp_filepath)
+        copyfile(get_treatment_record_test_file_path(), temp_record_filepath)
+        ds_record = pydicom.dcmread(temp_record_filepath, force=True)
+        # deliberately add a DICOM element that is not in the current
+        # dictionary
+        ds_record.add_new([0x300A, 0x9999], "FL", [1.0, 1.0])
+        pydicom.dcmwrite(temp_record_filepath, ds_record)
+        with pytest.raises((KeyError, ValueError)):
+            anon_path_list = anonymise_directory(
+                tmp_path,
+                delete_original_files=True,
+                anonymise_filenames=False,
+                fail_fast=True,
+            )
+            logging.warning(anon_path_list)
+            assert exists(temp_filepath)
+
+        with pytest.raises((KeyError, ValueError)):
+            anon_path_list = anonymise_directory(
+                tmp_path,
+                delete_original_files=True,
+                anonymise_filenames=False,
+                fail_fast=False,
+            )
+            logging.warning(anon_path_list)
+            assert not exists(temp_filepath)
 
     finally:
         remove_file(temp_anon_filepath)
+        remove_file(temp_anon_record_filepath)
 
 
 @pytest.mark.slow
