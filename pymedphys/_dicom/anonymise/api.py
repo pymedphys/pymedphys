@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import logging
 import os
 import pprint
 from copy import deepcopy
@@ -223,6 +224,11 @@ def anonymise_file(
 
     identifying_keywords: ``list``, optional
         If left as None, the default values for/list of identifying keywords are used
+
+    Returns
+    -------
+    ``str``
+    The file path of the anonymised file
     """
     dicom_filepath = str(dicom_filepath)
 
@@ -274,6 +280,7 @@ def anonymise_directory(
     delete_unknown_tags=None,
     replacement_strategy=None,
     identifying_keywords=None,
+    fail_fast=True,
 ):
     r"""A simple tool to anonymise all DICOM files in a directory and
     its subdirectories.
@@ -334,12 +341,23 @@ def anonymise_directory(
 
     identifying_keywords: ``list``, optional
         If left as None, the default values for/list of identifying keywords are used
+
+    fail_fast: ``bool``, optional, default to True
+        If set to false, will continue attempts to convert files and only
+        after completing translation and deleting original files (if specified)
+        will raise an error to indicate not all files could be translated.
+
+    Returns
+    -------
+    ``list`` of anonymised file paths
     """
     dicom_dirpath = str(dicom_dirpath)
 
     dicom_filepaths = glob(dicom_dirpath + "/**/*.dcm", recursive=True)
     failing_filepaths = []
-    # errors = []
+    successful_filepaths = []
+    anon_filepaths = []
+    errors = []
 
     for dicom_filepath in dicom_filepaths:
         if output_dirpath is not None:
@@ -347,19 +365,28 @@ def anonymise_directory(
             output_filepath = os.path.join(output_dirpath, relative_path)
         else:
             output_filepath = None
-
-        anonymise_file(
-            dicom_filepath,
-            output_filepath=output_filepath,
-            delete_original_file=delete_original_files,
-            anonymise_filename=anonymise_filenames,
-            replace_values=replace_values,
-            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-            delete_private_tags=delete_private_tags,
-            delete_unknown_tags=delete_unknown_tags,
-            replacement_strategy=replacement_strategy,
-            identifying_keywords=identifying_keywords,
-        )
+        try:
+            dicom_anon_filepath = anonymise_file(
+                dicom_filepath,
+                output_filepath=output_filepath,
+                delete_original_file=delete_original_files,
+                anonymise_filename=anonymise_filenames,
+                replace_values=replace_values,
+                keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+                delete_private_tags=delete_private_tags,
+                delete_unknown_tags=delete_unknown_tags,
+                replacement_strategy=replacement_strategy,
+                identifying_keywords=identifying_keywords,
+            )
+            successful_filepaths.append(dicom_filepath)
+            anon_filepaths.append(dicom_anon_filepath)
+        except (AttributeError, LookupError, TypeError, OSError, ValueError) as error:
+            errors.append(error)
+            failing_filepaths.append(dicom_filepath)
+            logging.warning("Unable to anonymise %s", dicom_filepath)
+            logging.warning(str(error))
+            if fail_fast:
+                raise error
 
     # Separate loop provides the ability to raise Exceptions from the
     # unsuccessful deletion of the original DICOM files while preventing
@@ -368,6 +395,11 @@ def anonymise_directory(
         for dicom_filepath in dicom_filepaths:
             if not dicom_filepath in failing_filepaths:
                 remove_file(dicom_filepath)
+
+    if len(errors) > 0:
+        logging.info("Succeeded in anonymising: \n%s", "\n".join(successful_filepaths))
+        raise errors[0]
+    return anon_filepaths
 
 
 def anonymise_cli(args):
