@@ -171,7 +171,7 @@ def pseudonymise(dicom_input, output_path=None):
         # and if it does... there will be some kind of error raised
     keywords_to_leave_unchanged = list("PatientSex")
 
-    if dicom_input is pydicom.dataset.Dataset:
+    if isinstance(dicom_input, pydicom.dataset.Dataset):
         pseudo_ds = anonymise_dataset(
             dicom_input,
             keywords_to_leave_unchanged=keywords_to_leave_unchanged,
