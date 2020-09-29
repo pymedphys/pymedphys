@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
 
 import numpy as np
 import shapely.geometry
@@ -21,6 +22,7 @@ from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.dose import get_dose_grid_structure_mask
 
 
+@pytest.mark.pydicom
 def test_structure_dose_mask():
     dx = 0.1
     dy = 0.2
