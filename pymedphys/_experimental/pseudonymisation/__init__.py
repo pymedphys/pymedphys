@@ -191,7 +191,7 @@ def pseudonymise(dicom_input, output_path=None):
                 identifying_keywords=identifying_keywords_for_pseudo,
             )
             return pseudonymised_file_list
-        else:
+        elif pathlib.Path().joinpath(dicom_input).is_file():
             pseudonymised_filepath = anonymise_file(
                 dicom_input,
                 output_filepath=output_path,
