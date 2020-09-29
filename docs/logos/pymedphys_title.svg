@@ -15,9 +15,9 @@
    viewBox="0 0 960 480"
    width="1280"
    id="svg22"
-   sodipodi:docname="pymedphys-social.svg"
-   inkscape:version="0.92.4 5da689c313, 2019-01-14"
-   inkscape:export-filename="/home/simon/git/pymedphys/docs/logos/pymedphys-social.png"
+   sodipodi:docname="pymedphys_title.svg"
+   inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)"
+   inkscape:export-filename="/home/simon/git/pymedphys/docs/logos/pymedphys_title.png"
    inkscape:export-xdpi="82"
    inkscape:export-ydpi="82">
   <metadata
@@ -41,14 +41,14 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1871"
-     inkscape:window-height="1024"
+     inkscape:window-width="1848"
+     inkscape:window-height="1015"
      id="namedview24"
      showgrid="true"
      inkscape:zoom="0.93857145"
-     inkscape:cx="678.5214"
-     inkscape:cy="412.10203"
-     inkscape:window-x="1969"
+     inkscape:cx="661.55145"
+     inkscape:cy="251.19072"
+     inkscape:window-x="72"
      inkscape:window-y="28"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg22"
@@ -143,9 +143,9 @@
        x2="519.39233"
        y2="142.22523"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(1.6408756,0,0,1.6408756,-36.075082,110.34781)" />
+       gradientTransform="matrix(1.828997,0,0,1.828997,-87.052919,119.08093)" />
     <linearGradient
-       gradientTransform="matrix(1.6408756,0,0,1.6408756,90.822983,110.38449)"
+       gradientTransform="matrix(1.828997,0,0,1.828997,62.594535,119.12182)"
        inkscape:collect="always"
        xlink:href="#PythonBlue"
        id="linearGradient858-3"
@@ -171,7 +171,7 @@
   </defs>
   <g
      id="g837"
-     transform="matrix(1.8498639,0,0,1.8498639,69.837844,-523.73852)"
+     transform="matrix(1.8498639,0,0,1.8498639,48.837844,-528.23852)"
      style="stroke-linecap:butt;stroke-linejoin:round">
     <path
        inkscape:connector-curvature="0"
@@ -189,31 +189,31 @@
        transform="matrix(0.28803609,0,0,0.28777207,-9.1924274,297.65205)" />
   </g>
   <g
-     id="g896"
-     transform="matrix(1.114648,0,0,1.114648,-45.613727,-2.2223387)"
+     id="g41"
+     transform="translate(-18)"
      style="stroke-linecap:butt;stroke-linejoin:round">
     <text
        id="text850"
-       y="348.13959"
-       x="263.80991"
-       style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:49.22626877px;line-height:1.25;font-family:'Roboto Slab';-inkscape-font-specification:'Roboto Slab Heavy';letter-spacing:0px;word-spacing:0px;fill:url(#linearGradient858);fill-opacity:1;stroke:#000000;stroke-width:1.23065674;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
+       y="384.13483"
+       x="247.21297"
+       style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:115px;line-height:1.25;font-family:'Roboto Slab';-inkscape-font-specification:'Roboto Slab Heavy';letter-spacing:0px;word-spacing:0px;fill:url(#linearGradient858);fill-opacity:1;stroke:#000000;stroke-width:1.37174773;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
        xml:space="preserve"><tspan
          rotate="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"
-         y="348.13959"
-         x="263.80991"
-         style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:96.8116684px;line-height:1.25;font-family:'Roboto Slab';-inkscape-font-specification:'Roboto Slab Heavy';letter-spacing:0px;fill:url(#linearGradient858);fill-opacity:1;stroke:#000000;stroke-width:1.23065674;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
+         y="384.13483"
+         x="247.21297"
+         style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:115px;line-height:1.25;font-family:'Roboto Slab';-inkscape-font-specification:'Roboto Slab Heavy';letter-spacing:0px;fill:url(#linearGradient858);fill-opacity:1;stroke:#000000;stroke-width:1.37174773;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
          id="tspan848"
          sodipodi:role="line">Py         Phys</tspan></text>
     <text
        id="text850-5"
-       y="348.1763"
-       x="390.70792"
-       style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:49.22626877px;line-height:1.25;font-family:'Roboto Slab';-inkscape-font-specification:'Roboto Slab Heavy';letter-spacing:0px;word-spacing:0px;fill:url(#linearGradient858-3);fill-opacity:1;stroke:#000000;stroke-width:1.23065674;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
+       y="384.17572"
+       x="396.86038"
+       style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:54.86991119px;line-height:1.25;font-family:'Roboto Slab';-inkscape-font-specification:'Roboto Slab Heavy';letter-spacing:0px;word-spacing:0px;fill:url(#linearGradient858-3);fill-opacity:1;stroke:#000000;stroke-width:1.37174773;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
        xml:space="preserve"><tspan
          rotate="0 0 0 0"
-         y="348.1763"
-         x="390.70792"
-         style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:96.8116684px;font-family:'Roboto Slab';-inkscape-font-specification:'Roboto Slab Heavy';letter-spacing:0px;fill:url(#linearGradient858-3);fill-opacity:1;stroke:#000000;stroke-width:1.23065674;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
+         y="384.17572"
+         x="396.86038"
+         style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:115px;font-family:'Roboto Slab';-inkscape-font-specification:'Roboto Slab Heavy';letter-spacing:0px;fill:url(#linearGradient858-3);fill-opacity:1;stroke:#000000;stroke-width:1.37174773;stroke-linecap:butt;stroke-linejoin:round;stroke-opacity:1"
          id="tspan848-3"
          sodipodi:role="line">Med</tspan></text>
   </g>

@@ -280,6 +280,7 @@ def anonymise_directory(
     delete_unknown_tags=None,
     replacement_strategy=None,
     identifying_keywords=None,
+    fail_fast=True,
 ):
     r"""A simple tool to anonymise all DICOM files in a directory and
     its subdirectories.
@@ -341,6 +342,11 @@ def anonymise_directory(
     identifying_keywords: ``list``, optional
         If left as None, the default values for/list of identifying keywords are used
 
+    fail_fast: ``bool``, optional, default to True
+        If set to false, will continue attempts to convert files and only
+        after completing translation and deleting original files (if specified)
+        will raise an error to indicate not all files could be translated.
+
     Returns
     -------
     ``list`` of anonymised file paths
@@ -379,6 +385,8 @@ def anonymise_directory(
             failing_filepaths.append(dicom_filepath)
             logging.warning("Unable to anonymise %s", dicom_filepath)
             logging.warning(str(error))
+            if fail_fast:
+                raise error
 
     # Separate loop provides the ability to raise Exceptions from the
     # unsuccessful deletion of the original DICOM files while preventing
