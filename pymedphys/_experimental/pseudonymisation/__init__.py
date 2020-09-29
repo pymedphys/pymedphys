@@ -156,11 +156,11 @@ def pseudonymise(dicom_input, output_path=None):
 
     Returns
     -------
-    ``pydicom.dataset.Dataset``
+    ``pydicom.dataset.Dataset`` | ``str`` | ``list`` of ``str``
         if the dicom_input was a dataset, return the pseudonymised dataset
         if the dicom input was a file, return the path to the pseudonymised file.
         if the dicom input was a directory, return the list of successfully
-            anonymised files, and return that instead of None
+        anonymised files, and return that instead of None
     """
     replacement_strategy = strategy.pseudonymisation_dispatch
     identifying_keywords_for_pseudo = get_default_pseudonymisation_keywords()
