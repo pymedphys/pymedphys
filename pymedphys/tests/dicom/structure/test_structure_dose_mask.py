@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import matplotlib.pyplot as plt
 import numpy as np
 import shapely.geometry
 
@@ -26,14 +25,14 @@ def test_structure_dose_mask():
     dx = 0.1
     dy = 0.2
 
-    x0 = -1
+    x0 = -3
     y0 = -1
 
     epsilon = 0.001
     contour_name = "rectangle"
 
     x_grid = np.arange(x0, 2, dx)
-    y_grid = np.arange(y0, 3, dy)
+    y_grid = np.arange(y0, 4, dy)
 
     xx, yy = np.meshgrid(x_grid, y_grid)
 
@@ -74,7 +73,7 @@ def test_structure_dose_mask():
 
 
 def get_grid_spacing(array):
-    dx = np.unique(np.diff(array))
+    dx = np.unique(np.round(np.diff(array), 4))
     assert len(dx) == 1
 
     return dx
