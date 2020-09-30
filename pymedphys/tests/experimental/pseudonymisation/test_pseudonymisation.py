@@ -59,7 +59,7 @@ def test_pseudonymise_convenience_api():
         assert exists(output_file)
         os.remove(output_file)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(FileNotFoundError):
         output_file = pseudonymisation_api.pseudonymise("/tmp/bogus_non_existent_file")
 
     with tempfile.TemporaryDirectory() as input_directory:
