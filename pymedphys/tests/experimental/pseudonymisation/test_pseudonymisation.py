@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 import subprocess
 import tempfile
 from os.path import exists
@@ -39,6 +40,44 @@ def test_pseudonymise_file():
             test_identifying_keywords=identifying_keywords_for_pseudo,
             test_replacement_strategy=replacement_strategy,
         )
+
+
+def _assert_values_changed_and_not_hardcoded(test_file_path, pseudonymised_file_path):
+    ds_input = pydicom.dcmread(test_file_path, force=True)
+    ds_pseudo = pydicom.dcmread(pseudonymised_file_path, force=True)
+    # simplistic stand-in to make sure *something* is happening
+    assert ds_input["PatientID"].value != ds_pseudo["PatientID"].value
+    # make sure that we are not accidentally using the hardcode replacement approach
+    assert ds_pseudo["PatientID"].value not in ["", "Anonymous"]
+
+
+@pytest.mark.pydicom
+def test_pseudonymise_convenience_api():
+
+    for test_file_path in get_test_filepaths():
+        output_file = pseudonymisation_api.pseudonymise(test_file_path)  # using facade
+        assert exists(output_file)
+        os.remove(output_file)
+
+    with pytest.raises(FileNotFoundError):
+        output_file = pseudonymisation_api.pseudonymise("/tmp/bogus_non_existent_file")
+
+    with tempfile.TemporaryDirectory() as input_directory:
+        for test_file_path in get_test_filepaths():
+            test_base_name = os.path.basename(test_file_path)
+            input_path = pathlib.Path(input_directory).joinpath(test_base_name)
+            copyfile(test_file_path, input_path)
+
+        with tempfile.TemporaryDirectory() as output_directory:
+            pseudo_file_list = pseudonymisation_api.pseudonymise(
+                input_directory, output_path=output_directory
+            )
+            assert pseudo_file_list is not None
+
+            # just making sure that the values have changed and aren't
+            # the hardcode values.
+            for input_file, pseudo_file in zip(get_test_filepaths(), pseudo_file_list):
+                _assert_values_changed_and_not_hardcoded(input_file, pseudo_file)
 
 
 @pytest.mark.pydicom
