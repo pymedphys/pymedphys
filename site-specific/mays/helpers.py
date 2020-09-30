@@ -82,7 +82,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 "field_type": "",
                 "machine": dicom.BeamSequence[bn - 1].TreatmentMachineName,
                 "rx": prescriptionDescription[fn - 1],
-                "technique": dicom.BeamSequence[bn - 1].RadiationType,
+                "modality": dicom.BeamSequence[bn - 1].RadiationType,
                 "position": dicom.PatientSetupSequence[0].PatientPosition,
                 "fraction_dose [cGy]": dicom.DoseReferenceSequence[
                     doseRef - 1
@@ -103,10 +103,10 @@ def get_all_dicom_treatment_info(dicomFile):
                 "meterset_rate": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .DoseRateSet,
-                "BACKUP TIME": "Back-Up Time",
-                "WEDGES": dicom.BeamSequence[bn - 1].NumberOfWedges,
+                "backup_time": "",
+                "wedge": dicom.BeamSequence[bn - 1].NumberOfWedges,
                 "block": dicom.BeamSequence[bn - 1].NumberOfBlocks,
-                "CONES": "cones",
+                "compensator": dicom.BeamSequence[bn - 1].NumberOfCompensators,
                 "bolus": dicom.BeamSequence[bn - 1].NumberOfBoli,
                 "gantry_angle": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
@@ -114,10 +114,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 "collimator_angle": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .BeamLimitingDeviceAngle,
-                "FIELD SIZE": "field size",
-                "COUCH ANGLE": dicom.BeamSequence[bn - 1]
-                .ControlPointSequence[0]
-                .PatientSupportAngle,
+                "field_type": dicom.BeamSequence[bn - 1].BeamType,
                 "ssd [cm]": round(
                     dicom.BeamSequence[bn - 1]
                     .ControlPointSequence[0]
@@ -140,12 +137,12 @@ def get_all_dicom_treatment_info(dicomFile):
                 .ControlPointSequence[0]
                 .IsocenterPosition[2]
                 / 10,
-                "field_x [cm]": coll_x2 - coll_x1,
-                "coll_x1 [cm]": coll_x1,
-                "coll_x2 [cm]": coll_x2,
-                "field_y [cm]": coll_y2 - coll_y1,
-                "coll_y1 [cm]": coll_y1,
-                "coll_y2 [cm]": coll_y2,
+                "field_x [cm]": round(coll_x2 - coll_x1, 1),
+                "coll_x1 [cm]": round(coll_x1, 1),
+                "coll_x2 [cm]": round(coll_x2, 1),
+                "field_y [cm]": round(coll_y2 - coll_y1, 1),
+                "coll_y1 [cm]": round(coll_y1, 1),
+                "coll_y2 [cm]": round(coll_y2, 1),
                 "couch_vrt [cm]": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .TableTopVerticalPosition,
@@ -158,6 +155,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 "couch_ang": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .TableTopEccentricAngle,
+                "technique": "",
             }
 
             table = table.append(dicomBeam, ignore_index=True, sort=False)

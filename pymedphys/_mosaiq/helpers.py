@@ -384,10 +384,10 @@ def get_all_treatment_data(cursor, mrn):
             ("sad [cm]", "TxField.SAD"),
             ("site", "Site.Site_Name"),
             ("dyn_wedge", "TxField.Dyn_Wedge"),
-            ("wdg_appl", "TxField.Wdg_Appl"),
+            ("wedge", "TxField.Wdg_Appl"),
             ("block", "TxField.Block"),
             ("blk_desc", "TxField.Blk_Desc"),
-            ("comp_fda", "TxField.Comp_Fda"),
+            ("compensator", "TxField.Comp_Fda"),
             ("fda_desc", "TxField.FDA_Desc"),
             ("bolus", "TxField.Bolus"),
             ("iso_x [cm]", "SiteSetup.Isocenter_Position_X"),
@@ -405,13 +405,13 @@ def get_all_treatment_data(cursor, mrn):
             ("couch_lng [cm]", "TxFieldPoint.Couch_Lng"),
             ("couch_ang", "TxFieldPoint.Couch_Ang"),
             ("tolerance", "TxField.Tol_Tbl_ID"),
-            ("time", "TxField.BackupTimer"),
+            ("backup_time", "TxField.BackupTimer"),
             ("site_setup_status", "SiteSetup.Status_Enum"),
             ("site_status", "Site.Status_Enum"),
             ("hidden", "TxField.IsHidden"),
             ("site_version", "Site.Version"),
             ("site_setup_version", "SiteSetup.Version"),
-            ("create_id", "Site.Create_ID"),
+            ("create_id", "Site.Sanct_Id"),
             ("field_approval", "TxField.Sanct_ID"),
             ("site_ID", "Site.SIT_ID"),
             ("site_setup_ID", "SiteSetup.SIS_ID"),
@@ -481,7 +481,7 @@ def get_staff_initials(cursor, staff_id):
         WHERE
         Staff.Staff_ID = %(staff_id)s
         """,
-        {"staff_id": staff_id},
+        parameters={"staff_id": staff_id},
     )
 
     return initials
@@ -494,10 +494,16 @@ def get_all_treatment_history_data(cursor, mrn):
             ("dose_ID", "TrackTreatment.DHS_ID"),
             ("date", "TrackTreatment.Create_DtTm"),
             ("field_name", "TxField.Field_Name"),
+            ("field_label", "TxField.Field_Label"),
             ("fraction", "Dose_Hst.Fractions_Tx"),
             ("actual fx dose", "Dose_Hst.Dose_Tx_Act"),
             ("actual rx", "Dose_Hst.Dose_Ttl_Act"),
             ("actual cumRx", "Dose_Hst.Dose_Ttl_Cum_Act"),
+            ("dose projected", "Dose_Hst.Dose_Addtl_Projected"),
+            ("cumm projected", "Dose_Hst.Cum_Addtl_Projected"),
+            ("machine", "Dose_Hst.Machine_ID_Staff_ID"),
+            ("energy", "Dose_Hst.Energy"),
+            ("energy_unit", "Dose_Hst.Energy_Unit_Enum"),
             ("couch_vrt", "TxFieldPoint_Hst.Couch_Vrt"),
             ("couch_lat", "TxFieldPoint_Hst.Couch_Lat"),
             ("couch_lng", "TxFieldPoint_Hst.Couch_Lng"),
@@ -512,6 +518,21 @@ def get_all_treatment_history_data(cursor, mrn):
             ("site_ID", "Dose_Hst.SIT_ID"),
             ("field_ID", "Dose_Hst.FLD_ID"),
             ("site_setup_ID", "SiteSetup.SIS_ID"),
+            ("was_verified", "Dose_Hst.WasVerified"),
+            ("was_overridden", "Dose_Hst.WasOverridden"),
+            ("partial_treatment", "Dose_Hst.PartiallyTreated"),
+            ("vmi_error", "Dose_Hst.VMIError"),
+            ("new_field", "Dose_Hst.NewFieldDef"),
+            ("been_charted", "Dose_Hst.HasBeenCharted"),
+            ("termination_status", "Dose_Hst.Termination_Status_Enum"),
+            ("modality", "Dose_Hst.Modality_Enum"),
+            ("field_type", "Dose_Hst.Type_Enum"),
+            ("meterset", "Dose_Hst.Meterset"),
+            ("meterset_units", "Dose_Hst.MetersetUnit_Enum"),
+            ("secondary_meterset", "Dose_Hst.SecondaryMeterset"),
+            ("secondary_meterset_units", "Dose_Hst.SecondaryMetersetUnit_Enum"),
+            ("MU_conversion", "Dose_Hst.cGrayPerMeterset"),
+            ("TP_correction", "Dose_Hst.TP_Correction_Factor"),
         ]
     )
 
@@ -542,6 +563,9 @@ def get_all_treatment_history_data(cursor, mrn):
 
     treatment_history = pd.DataFrame(data=table, columns=columns)
     treatment_history = treatment_history.sort_values(by=["date"])
+    treatment_history["field_type"] = [
+        FIELD_TYPES[item] for item in treatment_history["field_type"]
+    ]
     treatment_history = treatment_history.reset_index(drop=True)
 
     return treatment_history

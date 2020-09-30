@@ -12,7 +12,16 @@ currdir = os.getcwd()
 server = "PRDMOSAIQIWVV01.utmsa.local"
 
 st.title("Data Transfer Check")
+st.sidebar.header("Instructions:")
+st.sidebar.markdown(
+    """
+To use this application, you must have the RP file of the plan you want to check. This can be exported in Pinnacle.
+You will get an error if you select a QA RP file.
 
+When exporting the DICOM, only the RP is needed. Once you have that, you can select it where prompted and the application
+will run.
+"""
+)
 dicomFile = st.file_uploader("Please select a RP file.")
 
 if dicomFile is not None:
@@ -27,9 +36,13 @@ if dicomFile is not None:
 
     with connect.connect(server) as cursor:
         mosaiq_table = get_all_treatment_data(cursor, mrn)
-        site_initials = get_staff_initials(
-            cursor, str(mosaiq_table.iloc[0]["create_id"])
-        )
+        if mosaiq_table.iloc[0]["create_id"] is not None:
+            try:
+                site_initials = get_staff_initials(
+                    cursor, str(mosaiq_table.iloc[0]["create_id"])
+                )
+            except:
+                site_initials = ""
 
     # mosaiq_table = mosaiq_table[mosaiq_table["field_version"] == 0]
     mosaiq_table = mosaiq_table[
@@ -117,6 +130,7 @@ if dicomFile is not None:
         dicom_field = str(field_selection) + "_DICOM"
         mosaiq_field = str(field_selection) + "_MOSAIQ"
         st.write("**RX**: ", results[field_selection + "_DICOM"]["rx"])
+
         field_approval_id = mosaiq_table[mosaiq_table["field_name"] == field_selection][
             "field_approval"
         ]
@@ -131,6 +145,14 @@ if dicomFile is not None:
         )
         display_results = display_results.style.apply(color_results, axis=1)
         st.dataframe(display_results, height=1000)
+
+    fx_pattern = mosaiq_table[mosaiq_table["field_name"] == field_selection][
+        "fraction_pattern"
+    ]
+    st.write("**FX Pattern**: ", fx_pattern.iloc[0])
+
+    comments = mosaiq_table[mosaiq_table["field_name"] == field_selection]["notes"]
+    st.write("**Comments**: ", comments.iloc[0])
 
     show_dicom = st.checkbox("View complete DICOM table.")
     if show_dicom:

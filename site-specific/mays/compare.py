@@ -14,7 +14,16 @@ Results:    match = green
 
 
 def color_results(val):
-    not_in = ["field_type", "machine", "rx", "technique", "tolerance"]
+    not_in = [
+        "field_type",
+        "machine",
+        "rx",
+        "technique",
+        "tolerance",
+        "modality",
+        "technique",
+        "backup_time",
+    ]
 
     # set any values which cannot accurately be compared as yellow (#FDFF8A)
     if val.name in not_in:
@@ -22,18 +31,18 @@ def color_results(val):
 
     # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
     elif type(val[0]) == str and type(val[1]) == str:
-        if val[0] == val[1]:
+        if val[0].lower() == val[1].lower():
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
         else:
             return ["background-color: #EE6363", "background-color: #EE6363"]
 
-    elif val[0] == "":
+    elif str(val[0]).strip() == "":
         val[0] = 0
         if val[0] == val[1]:
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
         else:
             return ["background-color: #EE6363", "background-color: #EE6363"]
-    elif val[1] == "":
+    elif str(val[1]).strip() == "":
         val[1] = 0
         if val[0] == val[1]:
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
