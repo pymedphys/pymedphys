@@ -180,25 +180,25 @@ def pseudonymise(dicom_input, output_path=None):
             identifying_keywords=identifying_keywords_for_pseudo,
         )
         return pseudo_ds
-    else:
-        if pathlib.Path().joinpath(dicom_input).is_dir():
-            pseudonymised_file_list = anonymise_directory(
-                dicom_input,
-                output_dirpath=output_path,
-                keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-                delete_unknown_tags=True,
-                replacement_strategy=replacement_strategy,
-                identifying_keywords=identifying_keywords_for_pseudo,
-            )
-            return pseudonymised_file_list
-        else:
-            assert pathlib.Path().joinpath(dicom_input).is_file()
-            pseudonymised_filepath = anonymise_file(
-                dicom_input,
-                output_filepath=output_path,
-                keywords_to_leave_unchanged=keywords_to_leave_unchanged,
-                delete_unknown_tags=True,
-                replacement_strategy=replacement_strategy,
-                identifying_keywords=identifying_keywords_for_pseudo,
-            )
-            return pseudonymised_filepath
+
+    if pathlib.Path().joinpath(dicom_input).is_dir():
+        pseudonymised_file_list = anonymise_directory(
+            dicom_input,
+            output_dirpath=output_path,
+            keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+            delete_unknown_tags=True,
+            replacement_strategy=replacement_strategy,
+            identifying_keywords=identifying_keywords_for_pseudo,
+        )
+        return pseudonymised_file_list
+
+    assert pathlib.Path().joinpath(dicom_input).is_file()
+    pseudonymised_filepath = anonymise_file(
+        dicom_input,
+        output_filepath=output_path,
+        keywords_to_leave_unchanged=keywords_to_leave_unchanged,
+        delete_unknown_tags=True,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords_for_pseudo,
+    )
+    return pseudonymised_filepath

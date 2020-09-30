@@ -74,13 +74,10 @@ def test_pseudonymise_convenience_api():
             )
             assert pseudo_file_list is not None
 
-            # without knowing which input resulted in which output
-            # cross compare them all.
-            # it's just making sure that the values have changed and aren't
+            # just making sure that the values have changed and aren't
             # the hardcode values.
-            for input_file in get_test_filepaths():
-                for pseudo_file in pseudo_file_list:
-                    _assert_values_changed_and_not_hardcoded(input_file, pseudo_file)
+            for input_file, pseudo_file in zip(get_test_filepaths(), pseudo_file_list):
+                _assert_values_changed_and_not_hardcoded(input_file, pseudo_file)
 
 
 @pytest.mark.pydicom
