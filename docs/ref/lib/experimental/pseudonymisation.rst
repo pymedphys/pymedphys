@@ -26,6 +26,7 @@ Summary
 API
 ***
 
+.. autofunction:: pymedphys.experimental.pseudonymisation.pseudonymise
 .. autofunction:: pymedphys.experimental.pseudonymisation.get_default_pseudonymisation_keywords
 .. autofunction:: pymedphys.experimental.pseudonymisation.is_valid_strategy_for_keywords
 .. autoattribute:: pymedphys.experimental.pseudonymisation.pseudonymisation_dispatch
@@ -38,7 +39,9 @@ Example
 
     import pymedphys.experimental.pseudonymisation as pseudonymisation_api
 
-    anonymise_dataset(ds_input,
+    pseudonymisation_api.pseudonymise(ds_input, output_path="/home/myname/pseudo_out/")
+    # or
+    ds_pseudo = anonymise_dataset(ds_input,
         replacement_strategy=pseudonymisation_api.pseudonymisation_dispatch,
         identifying_keywords=pseudonymisation_api.get_default_pseudonymisation_keywords(),
     )
