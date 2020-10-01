@@ -50,8 +50,12 @@ def filter_ct_uids(
             except KeyError:
                 structure_names_on_slice = set([])
 
-            if len(structure_names_on_slice.intersection(slice_at_least_one_of)) == 0:
-                continue
+            if slice_at_least_one_of is not None:
+                if (
+                    len(structure_names_on_slice.intersection(slice_at_least_one_of))
+                    == 0
+                ):
+                    continue
 
             if not structure_names_on_slice.issuperset(slice_must_have):
                 continue
