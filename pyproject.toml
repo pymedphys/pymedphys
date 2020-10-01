@@ -28,7 +28,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.6"
-dataclasses = {version = "*", python = "~3.6.0"}
+dataclasses = {version = "*", python = "~3.6"}
 
 # library
 tqdm = {version = "*", optional = true}  # groups = ["user", "dev"]
@@ -65,11 +65,12 @@ python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev", "
 scikit-image = {version = "*", optional = true}  # groups = ["user", "dev", "experimental"]
 
 # gui
-streamlit = {version = "0.65.2", optional = true}  # groups = ["user", "dev", "gui"]
+streamlit = {version = "0.67.1", optional = true}  # groups = ["user", "dev", "gui"]
 timeago = {version = "*", optional = true}  # groups = ["user", "dev", "gui"]
 
 # ml
 tensorflow = {version = ">=2.2.0", optional = true}  # groups = ["ml"]
+torch = {version = ">=1.0.0", optional = true}  # groups = ["ml"]
 
 # docs
 sphinx = {version = ">= 1.4, < 1.8", optional = true}  # groups = ["dev", "docs"]
@@ -97,13 +98,14 @@ rope = {version = "*", optional = true}  # groups = ["dev"]
 doc8 = {version = "*", optional = true}  # groups = ["dev"]
 tomlkit = {version = "*", optional = true}  # groups = ["dev"]
 
+
 [tool.poetry.extras]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
 dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
 experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
-ml = ["tensorflow"]
+ml = ["tensorflow", "torch"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
