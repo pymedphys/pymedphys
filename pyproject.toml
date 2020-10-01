@@ -58,7 +58,7 @@ pylibjpeg-libjpeg = {version = "*", optional = true}  # groups = ["user", "dev",
 immutables = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
 
 cython = {version = "*", optional = true}  # groups = ["user", "dev"]
-pymssql = {version = "< 3.0.0", python = "< 3.8", optional = true}  # groups = ["user", "dev"]
+pymssql = {version = "*", optional = true}  # groups = ["user", "dev"]
 
 # used within experimental modules
 python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev", "experimental"]
