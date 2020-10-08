@@ -42,7 +42,7 @@ requests = {version = "*", optional = true}  # groups = ["user", "dev"]
 
 numpy = {version = ">= 1.12", optional = true}  # groups = ["user", "dev"]
 matplotlib = {version = "*", optional = true}  # groups = ["user", "dev"]
-scipy = {version = "*", optional = true}  # groups = ["user", "dev"]
+scipy = "1.4.1"  # groups = ["user", "dev"]
 pandas = {version = "*", optional = true}  # groups = ["user", "dev"]
 
 Pillow = {version = "*", optional = true}  # groups = ["user", "dev"]
