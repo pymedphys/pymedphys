@@ -173,7 +173,7 @@ jobs:
         brew install freetds
 
     - name: Install Pandoc on Ubuntu
-      if: matrix.task == 'docs' && matrix.os == 'ubuntu'
+      if: ( matrix.task == 'docs' || matrix.task == 'updates' ) && matrix.os == 'ubuntu'
       run: |
         sudo apt-get install -y pandoc
 
