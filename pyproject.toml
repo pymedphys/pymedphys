@@ -42,7 +42,7 @@ requests = {version = "*", optional = true}  # groups = ["user", "dev"]
 
 numpy = {version = ">= 1.12", optional = true}  # groups = ["user", "dev"]
 matplotlib = {version = "*", optional = true}  # groups = ["user", "dev"]
-scipy = {version = "*", optional = true}  # groups = ["user", "dev"]
+scipy = {version = "1.4.1", optional = true}  # groups = ["user", "dev"]
 pandas = {version = "*", optional = true}  # groups = ["user", "dev"]
 
 Pillow = {version = "*", optional = true}  # groups = ["user", "dev"]
@@ -80,6 +80,7 @@ nbsphinx  = {version = "*", optional = true}  # groups = ["dev", "docs"]
 jupyter_client = {version = "*", optional = true}  # groups = ["dev", "docs"]
 ipython = {version = "*", optional = true}  # groups = ["dev", "docs"]
 ipykernel = {version = "*", optional = true}  # groups = ["dev", "docs"]
+nbconvert = {version = "6.0.6", optional = true}  # groups = ["dev", "docs"]
 
 # tests
 pytest = {version = "*", optional = true}  # groups = ["dev", "tests"]
@@ -99,12 +100,12 @@ tomlkit = {version = "*", optional = true}  # groups = ["dev"]
 
 [tool.poetry.extras]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
 experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
 ml = ["tensorflow"]
-docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [tool.poetry.scripts]
