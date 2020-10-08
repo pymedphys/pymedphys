@@ -710,7 +710,7 @@ description = "A Python utility / library to sort Python imports."
 name = "isort"
 optional = true
 python-versions = ">=3.6,<4.0"
-version = "5.5.5"
+version = "5.6.0"
 
 [package.extras]
 colors = ["colorama (>=0.4.3,<0.5.0)"]
@@ -1119,7 +1119,7 @@ test = ["nose", "coverage", "requests", "nose-warnings-filters", "nbval", "nose-
 category = "main"
 description = "NumPy is the fundamental package for array computing with Python."
 name = "numpy"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "1.18.5"
 
@@ -1349,7 +1349,7 @@ test = ["ipaddress", "mock", "unittest2", "enum34", "pywin32", "wmi"]
 [[package]]
 category = "main"
 description = "Run a subprocess in a pseudo terminal"
-marker = "python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\") or python_version >= \"3.4\" and sys_platform != \"win32\" and (python_version >= \"3.3\" and sys_platform != \"win32\" or sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\")"
+marker = "sys_platform != \"win32\" or os_name != \"nt\" or python_version >= \"3.3\" and sys_platform != \"win32\" or python_version >= \"3.4\" and sys_platform != \"win32\""
 name = "ptyprocess"
 optional = true
 python-versions = "*"
@@ -1396,6 +1396,7 @@ pyasn1 = ">=0.4.6,<0.5.0"
 [[package]]
 category = "main"
 description = "C parser in Python"
+marker = "sys_platform == \"linux\""
 name = "pycparser"
 optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
@@ -1738,7 +1739,7 @@ test = ["pytest (!=3.7.3)", "pytest-cov", "pytest-localserver", "flake8", "codec
 category = "main"
 description = "SciPy: Scientific Library for Python"
 name = "scipy"
-optional = false
+optional = true
 python-versions = ">=3.5"
 version = "1.4.1"
 
@@ -2301,7 +2302,7 @@ tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pyl
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
 
 [metadata]
-content-hash = "2c9c3931e54a33841e65c59455a943c495aa56e7df4d63a3970306bc480c7ab9"
+content-hash = "ed6b55f69e522584f5636402ed6051ac49069d0b1a067830faea2c0d146c5711"
 lock-version = "1.0"
 python-versions = "^3.6"
 
@@ -2716,8 +2717,8 @@ ipywidgets = [
     {file = "ipywidgets-7.5.1.tar.gz", hash = "sha256:e945f6e02854a74994c596d9db83444a1850c01648f1574adf144fbbabe05c97"},
 ]
 isort = [
-    {file = "isort-5.5.5-py3-none-any.whl", hash = "sha256:87355bbc3465bf096a8bf09c4dd949b6b9294958c478740442fd9fbd01b817f2"},
-    {file = "isort-5.5.5.tar.gz", hash = "sha256:47e0fdc03aed3a9ba507284f90e4b3b6f2a4725d919816a7b547675befc38ffb"},
+    {file = "isort-5.6.0-py3-none-any.whl", hash = "sha256:ef200cc0ebd896c5bb0d7da9fd390392648c56c2099c2d2ff940ac94739f62aa"},
+    {file = "isort-5.6.0.tar.gz", hash = "sha256:20544581447ccb6a80940c5cace8cbc32c0f58d82d67d34a182950fe7b93321b"},
 ]
 jedi = [
     {file = "jedi-0.17.2-py2.py3-none-any.whl", hash = "sha256:98cc583fa0f2f8304968199b01b6b4b94f469a1f4a74c1560506ca2a211378b5"},
