@@ -492,7 +492,7 @@ def get_all_treatment_history_data(cursor, mrn):
     dataframe_column_to_sql_reference = collections.OrderedDict(
         [
             ("dose_ID", "TrackTreatment.DHS_ID"),
-            ("date", "TrackTreatment.Create_DtTm"),
+            ("date", "Fld_Hst.Tx_DtTm"),
             ("field_name", "TxField.Field_Name"),
             ("field_label", "TxField.Field_Label"),
             ("fraction", "Dose_Hst.Fractions_Tx"),
