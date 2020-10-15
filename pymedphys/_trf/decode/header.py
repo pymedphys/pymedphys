@@ -21,7 +21,22 @@ Header = namedtuple(
 )
 
 
-def determine_header_length(trf_contents):
+def determine_header_length(trf_contents: bytes):
+    """Returns the header length of a TRF file
+
+    Determined through brute force reverse engineering only. Not based
+    upon official documentation.
+
+    Parameters
+    ----------
+    trf_contents : bytes
+
+    Returns
+    -------
+    header_length : int
+        The length of the TRF header, prior to the table portion of the
+        TRF file.
+    """
     test = trf_contents.split(b"\t")
     row_skips = 6
     i = next(i for i, item in enumerate(test[row_skips::]) if len(item) > 3) + row_skips
@@ -30,23 +45,47 @@ def determine_header_length(trf_contents):
     return header_length
 
 
-def decode_header(trf_header_contents):
+def decode_header(trf_header_contents: bytes) -> Header:
+    """Decodes the header of a TRF file
+
+    Parameters
+    ----------
+    trf_header_contents : bytes
+        The header portion only of a TRF file. Use
+        `determine_header_length` to extract the header portion only.
+
+    Returns
+    -------
+    machine : str
+        Machine ID. If it is set up to be serial number based something
+        like '2619' could be expected.
+    date : str
+        UTC date. Eg '20/09/24 06:29:58 Z'.
+    timezone : str
+        Eg '+02:00'.
+    field_label : str
+        The first item that identifies the delivered field. Eg '1-1'.
+        This item will be blank for service mode created beams.
+    field_name : str
+        The second item that identifies the delivered field. Eg 'AP G0'.
+    """
+
     match = re.match(
         br"[\x00-\x19]"  # start bit
         br"(\d\d/\d\d/\d\d \d\d:\d\d:\d\d Z)"  # date
         br"[\x00-\x19]"  # divider bit
         br"((\+|\-)\d\d:\d\d)"  # time zone
         br"[\x00-\x25]"  # divider bit
-        br"([\x20-\xFF]*)"  # field label and name
+        br"([\x20-\x7F]*)"  # field label and name
         br"[\x00-\x19]"  # divider bit
-        br"([\x20-\xFF]+)"  # machine name
+        br"([\x20-\x7F]+)"  # machine name
         br"[\x00-\x19]",  # divider bit
         trf_header_contents,
     )
 
     if match is None:
         print(trf_header_contents)
-        raise ValueError("Logfile header not of an expected form.")
+        raise ValueError("TRF header not in an expected form.")
 
     groups = match.groups()
     date = groups[0].decode("ascii")
@@ -65,11 +104,7 @@ def decode_header(trf_header_contents):
     return header
 
 
-def convert_header_section_to_string(section):
-    return "".join([chr(item) for item in section[1::]])
-
-
-def raw_header_from_file(filepath):
+def _raw_header_from_file(filepath):
     with open(filepath, "rb") as file:
         trf_contents = file.read()
 
@@ -80,6 +115,6 @@ def raw_header_from_file(filepath):
 
 
 def decode_header_from_file(filepath):
-    trf_header_contents = raw_header_from_file(filepath)
+    trf_header_contents = _raw_header_from_file(filepath)
 
     return decode_header(trf_header_contents)
