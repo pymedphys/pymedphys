@@ -21,7 +21,7 @@ Header = namedtuple(
 )
 
 
-def determine_header_length(trf_contents: bytes):
+def determine_header_length(trf_contents: bytes) -> int:
     """Returns the header length of a TRF file
 
     Determined through brute force reverse engineering only. Not based
