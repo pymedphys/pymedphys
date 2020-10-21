@@ -1,15 +1,12 @@
 """Streamlit Gui for Pseudonymise
 """
-# import io
+
 import base64
 import datetime
 import io
 import os
 import pathlib
-import pprint
-import time
 import zipfile
-from io import StringIO
 from os.path import join as pjoin
 from typing import List
 from zipfile import ZipFile
@@ -270,15 +267,15 @@ def _gen_index_list_to_fifty_mbyte_increment(file_buffer_list):
 
 st.set_option("deprecation.showfileUploaderEncoding", False)
 
-file_buffer_list = st.file_uploader(
+uploaded_file_buffer_list = st.file_uploader(
     "Files to pseudonymise, refresh page after downloading zip(s)",
     ["dcm"],
     accept_multiple_files=True,
 )
-zip_path_list = list()
+
 if st.button("Pseudonymise", key="PseudonymiseButton"):
-    zip_path_list = pseudonymise_buffer_list(file_buffer_list)
-    file_buffer_list.clear()
+    pseudonymise_buffer_list(uploaded_file_buffer_list)
+    uploaded_file_buffer_list.clear()
 
 # this deletion never worked.  which motivated switch to using IOBytes for ZipFile
 # if st.button(f"Delete Zip(s)", key="DeleteZip"):
