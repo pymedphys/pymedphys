@@ -72,7 +72,7 @@ def decode_header(trf_header_contents: bytes) -> Header:
 
     match = re.match(
         br"[\x00-\x19]"  # start bit
-        br"(\d\d/\d\d/\d\d \d\d:\d\d:\d\d Z)"  # date
+        br"(\d\d[/-]\d\d[/-]\d\d \d\d:\d\d:\d\d Z)"  # date
         br"[\x00-\x19]"  # divider bit
         br"((\+|\-)\d\d:\d\d)"  # time zone
         br"[\x00-\x25]"  # divider bit
