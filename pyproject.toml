@@ -1,15 +1,16 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.33.0"
+version = "0.34.0dev2"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
     "PyMedPhys Contributors <developers@pymedphys.com>",
     "Simon Biggs <sbiggs@pymedphys.com>",
     "Matthew Jennings <mjennings@pymedphys.com>",
+    "Stuart Swerdloff",
+    "Phillip Chlap",
     "Jake Rembish",
     "Matthew Cooper <mcooper@pymedphys.com>",
-    "Phillip Chlap",
     "Jacob McAloney",
     "Pedro Martinez"
 ]
@@ -54,6 +55,7 @@ dbfread = {version = "*", optional = true}  # groups = ["user", "dev"]
 pydicom = {version = ">=2.0.0", optional = true}  # groups = ["user", "dev", "dicom"]
 pynetdicom = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
 pylibjpeg-libjpeg = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
+immutables = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
 
 cython = {version = "*", optional = true}  # groups = ["user", "dev"]
 pymssql = {version = "< 3.0.0", python = "< 3.8", optional = true}  # groups = ["user", "dev"]
@@ -78,6 +80,7 @@ nbsphinx  = {version = "*", optional = true}  # groups = ["dev", "docs"]
 jupyter_client = {version = "*", optional = true}  # groups = ["dev", "docs"]
 ipython = {version = "*", optional = true}  # groups = ["dev", "docs"]
 ipykernel = {version = "*", optional = true}  # groups = ["dev", "docs"]
+nbconvert = {version = "6.0.6", optional = true}  # groups = ["dev", "docs"]
 
 # tests
 pytest = {version = "*", optional = true}  # groups = ["dev", "tests"]
@@ -96,13 +99,13 @@ doc8 = {version = "*", optional = true}  # groups = ["dev"]
 tomlkit = {version = "*", optional = true}  # groups = ["dev"]
 
 [tool.poetry.extras]
-user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
-dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
+user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
+dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
 experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
 ml = ["tensorflow"]
-docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [tool.poetry.scripts]
