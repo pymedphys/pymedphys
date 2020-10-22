@@ -1,15 +1,28 @@
 """Streamlit Gui for Pseudonymise
 """
+# Copyright (C) 2020 Stuart Swerdloff
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 
 import base64
 import datetime
 import io
 import os
 import pathlib
-import zipfile
 from os.path import join as pjoin
 from typing import List
-from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import streamlit as st
 
@@ -20,6 +33,7 @@ from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
 
+# hack below copied from content in streamlit forum
 # HACK This only works when we've installed streamlit with pipenv, so the
 # permissions during install are the same as the running process
 STREAMLIT_STATIC_PATH = pathlib.Path(st.__path__[0]) / "static"
@@ -125,7 +139,7 @@ def _zip_pseudo_fifty_mbytes(
     if zip_bytes_io is not None:
         zip_stream = zip_bytes_io
 
-    with ZipFile(zip_stream, mode="w", compression=zipfile.ZIP_DEFLATED) as myzip:
+    with ZipFile(zip_stream, mode="w", compression=ZIP_DEFLATED) as myzip:
         for uploaded_file_buffer in file_buffer_list:
             file_count += 1
 
