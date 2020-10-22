@@ -18,8 +18,8 @@
 import base64
 import datetime
 import io
-import os
 import pathlib
+from os.path import basename
 from os.path import join as pjoin
 from typing import List
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -76,7 +76,7 @@ def link_to_zip_download(zip_to_download: pathlib.Path):
         path to zip
 
     """
-    filename = os.path.basename(zip_to_download)
+    filename = basename(zip_to_download)
     with open(zip_to_download, "rb") as f:
         zip_bytes = f.read()
     link_to_zipbuffer_download(filename, zip_bytes)
@@ -163,7 +163,7 @@ def _zip_pseudo_fifty_mbytes(
                     replacement_strategy=strategy,
                 )
                 temp_anon_filepath = build_pseudonymised_file_name(ds_input)
-                anon_filename = os.path.basename(temp_anon_filepath)
+                anon_filename = basename(temp_anon_filepath)
                 pydicom.dcmwrite(temp_anon_filepath, ds_input)
             except (KeyError, IOError, ValueError) as e_info:
                 print(e_info)
