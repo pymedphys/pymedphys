@@ -120,7 +120,6 @@ def _zip_pseudo_fifty_mbytes(
     ----------
     file_buffer_list : list
         List of DICOM file buffers from streamlit file_uploader to pseudonymise
-        DICOM files to pseudonymise
     zipfile_path : str
         Location to write the zip file so that it can be downloaded.
         Basename provides default name to use for downloading
