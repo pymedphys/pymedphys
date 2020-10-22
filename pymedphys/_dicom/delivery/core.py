@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from copy import deepcopy
 
 from pymedphys._imports import numpy as np
@@ -21,24 +20,8 @@ from pymedphys._imports import pydicom
 from pymedphys._base.delivery import DeliveryBase
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
-from ..rtplan import (
-    build_control_points,
-    convert_to_one_fraction_group,
-    get_cp_attribute_leaning_on_prior,
-    get_fraction_group_beam_sequence_and_meterset,
-    get_fraction_group_index,
-    get_gantry_angles_from_dicom,
-    merge_beam_sequences,
-    replace_beam_sequence,
-    replace_fraction_group,
-    restore_trailing_zeros,
-)
-from .utilities import (
-    angle_dd2dcm,
-    gantry_tol_from_gantry_angles,
-    jaw_dd2dcm,
-    mlc_dd2dcm,
-)
+from .. import rtplan
+from . import utilities
 
 
 def load_dicom_file(filepath):
@@ -66,7 +49,7 @@ class DeliveryDicom(DeliveryBase):
                     f"   Fraction numbers to choose from are: {fraction_numbers}"
                 )
 
-        beam_sequence, metersets = get_fraction_group_beam_sequence_and_meterset(
+        beam_sequence, metersets = rtplan.get_fraction_group_beam_sequence_and_meterset(
             dicom_dataset, fraction_number
         )
 
@@ -81,19 +64,21 @@ class DeliveryDicom(DeliveryBase):
         if fraction_number is None:
             fraction_number = self._fraction_number(dicom_template)
 
-        single_fraction_template = convert_to_one_fraction_group(
+        single_fraction_template = rtplan.convert_to_one_fraction_group(
             dicom_template, fraction_number
         )
 
-        template_gantry_angles = get_gantry_angles_from_dicom(single_fraction_template)
+        template_gantry_angles = rtplan.get_gantry_angles_from_dicom(
+            single_fraction_template
+        )
 
-        gantry_tol = gantry_tol_from_gantry_angles(template_gantry_angles)
+        gantry_tol = utilities.gantry_tol_from_gantry_angles(template_gantry_angles)
 
         all_masked_delivery_data = filtered._mask_by_gantry(  # pylint: disable = protected-access
             template_gantry_angles, gantry_tol
         )
 
-        fraction_index = get_fraction_group_index(
+        fraction_index = rtplan.get_fraction_group_index(
             single_fraction_template, fraction_number
         )
 
@@ -105,7 +90,7 @@ class DeliveryDicom(DeliveryBase):
                 )
             )
 
-        return merge_beam_sequences(single_beam_dicoms)
+        return rtplan.merge_beam_sequences(single_beam_dicoms)
 
     @classmethod
     def _load_all_fractions_from_file(cls, filepath):
@@ -134,24 +119,50 @@ class DeliveryDicom(DeliveryBase):
         if meterset is None:
             raise ValueError("Meterset should not ever be None")
 
-        leaf_boundaries = beam.BeamLimitingDeviceSequence[-1].LeafPositionBoundaries
+        beam_limiting_device_sequence = beam.BeamLimitingDeviceSequence
+
+        rt_beam_limiting_device_types = {
+            item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
+        }
+
+        if rt_beam_limiting_device_types != set(["MLCX", "ASYMY"]):
+            raise ValueError(
+                "Currently only DICOM files that contain "
+                "exactly MLCX and ASYMY are supported. "
+                f"{rt_beam_limiting_device_types} is not supported."
+            )
+
+        mlc_sequence = [
+            item
+            for item in beam_limiting_device_sequence
+            if item.RTBeamLimitingDeviceType == "MLCX"
+        ]
+
+        if len(mlc_sequence) != 1:
+            raise ValueError("Expected there to be only one device labelled as MLCX")
+
+        mlc_limiting_device = mlc_sequence[0]
+
+        leaf_boundaries = mlc_limiting_device.LeafPositionBoundaries
         leaf_widths = np.diff(leaf_boundaries)
 
-        assert beam.BeamLimitingDeviceSequence[-1].NumberOfLeafJawPairs == len(
-            leaf_widths
-        )
+        if mlc_limiting_device.NumberOfLeafJawPairs != len(leaf_widths):
+            raise ValueError(
+                "Expected number of leaf pairs to be the same as "
+                "the length of leaf widths"
+            )
+
         num_leaves = len(leaf_widths)
 
         control_points = beam.ControlPointSequence
 
-        beam_limiting_device_position_sequences = get_cp_attribute_leaning_on_prior(
+        beam_limiting_device_position_sequences = rtplan.get_cp_attribute_leaning_on_prior(
             control_points, "BeamLimitingDevicePositionSequence"
         )
 
-        mlcs = [
-            sequence[-1].LeafJawPositions
-            for sequence in beam_limiting_device_position_sequences
-        ]
+        dicom_mlcs = rtplan.get_leaf_jaw_positions_for_type(
+            beam_limiting_device_position_sequences, "MLCX"
+        )
 
         mlcs = [
             np.array(
@@ -159,17 +170,17 @@ class DeliveryDicom(DeliveryBase):
                     ::-1
                 ]
             ).T
-            for mlc in mlcs
+            for mlc in dicom_mlcs
         ]
 
-        dicom_jaw = [
-            sequence[0].LeafJawPositions
-            for sequence in beam_limiting_device_position_sequences
-        ]
+        dicom_jaw = rtplan.get_leaf_jaw_positions_for_type(
+            beam_limiting_device_position_sequences, "ASYMY"
+        )
 
         jaw = np.array(dicom_jaw)
 
         second_col = deepcopy(jaw[:, 1])
+
         jaw[:, 1] = jaw[:, 0]
         jaw[:, 0] = second_col
 
@@ -201,11 +212,13 @@ class DeliveryDicom(DeliveryBase):
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
-            get_cp_attribute_leaning_on_prior(control_points, "GantryAngle")
+            rtplan.get_cp_attribute_leaning_on_prior(control_points, "GantryAngle")
         )
 
         collimator_angles = convert_IEC_angle_to_bipolar(
-            get_cp_attribute_leaning_on_prior(control_points, "BeamLimitingDeviceAngle")
+            rtplan.get_cp_attribute_leaning_on_prior(
+                control_points, "BeamLimitingDeviceAngle"
+            )
         )
 
         return cls(mu, gantry_angles, collimator_angles, mlcs, jaw)
@@ -220,15 +233,17 @@ class DeliveryDicom(DeliveryBase):
         initial_cp = cp_sequence[0]
         subsequent_cp = cp_sequence[-1]
 
-        all_control_points = build_control_points(
+        all_control_points = rtplan.build_control_points(
             initial_cp, subsequent_cp, data_converted
         )
 
         beam_meterset = "{0:.6f}".format(data_converted["monitor_units"][-1])
-        replace_fraction_group(created_dicom, beam_meterset, beam_index, fraction_index)
-        replace_beam_sequence(created_dicom, all_control_points, beam_index)
+        rtplan.replace_fraction_group(
+            created_dicom, beam_meterset, beam_index, fraction_index
+        )
+        rtplan.replace_beam_sequence(created_dicom, all_control_points, beam_index)
 
-        restore_trailing_zeros(created_dicom)
+        rtplan.restore_trailing_zeros(created_dicom)
 
         return created_dicom
 
@@ -236,13 +251,15 @@ class DeliveryDicom(DeliveryBase):
         self, dicom_dataset, fraction_number, gantry_tol=3, meterset_tol=0.5
     ):
         filtered = self._filter_cps()
-        dicom_metersets = get_fraction_group_beam_sequence_and_meterset(
+        dicom_metersets = rtplan.get_fraction_group_beam_sequence_and_meterset(
             dicom_dataset, fraction_number
         )[1]
 
-        dicom_fraction = convert_to_one_fraction_group(dicom_dataset, fraction_number)
+        dicom_fraction = rtplan.convert_to_one_fraction_group(
+            dicom_dataset, fraction_number
+        )
 
-        gantry_angles = get_gantry_angles_from_dicom(dicom_fraction)
+        gantry_angles = rtplan.get_gantry_angles_from_dicom(dicom_fraction)
 
         delivery_metersets = filtered._metersets(  # pylint: disable = protected-access
             gantry_angles, gantry_tol
@@ -297,10 +314,10 @@ class DeliveryDicom(DeliveryBase):
 
     def _coordinate_convert(self):
         monitor_units = self.monitor_units
-        mlc = mlc_dd2dcm(self.mlc)
-        jaw = jaw_dd2dcm(self.jaw)
-        gantry_angle, gantry_movement = angle_dd2dcm(self.gantry)
-        collimator_angle, collimator_movement = angle_dd2dcm(self.collimator)
+        mlc = utilities.mlc_dd2dcm(self.mlc)
+        jaw = utilities.jaw_dd2dcm(self.jaw)
+        gantry_angle, gantry_movement = utilities.angle_dd2dcm(self.gantry)
+        collimator_angle, collimator_movement = utilities.angle_dd2dcm(self.collimator)
 
         return {
             "monitor_units": monitor_units,

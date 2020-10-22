@@ -116,7 +116,6 @@ Active contributors
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 * `Matthew Cooper`_
-    * University of Sydney, Australia
 
 .. _`Matthew Cooper`: https://github.com/matthewdeancooper
 
