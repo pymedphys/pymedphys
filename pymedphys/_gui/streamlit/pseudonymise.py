@@ -83,17 +83,17 @@ def link_to_zip_download(zip_to_download: pathlib.Path):
 
 
 def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
-    """[summary] Provide full path to the intended destination of the pseudonymised file
+    """Provide full path to the intended destination of the pseudonymised file
 
     Parameters
     ----------
     ds_input : pydicom.dataset.Dataset
-        the non-pseudonymised DICOM data
+        The non-pseudonymised DICOM data
 
     Returns
     -------
-    str
-        full path to the individual pseudonymised file, which can be read later
+    temp_anon_filepath : str
+        Full path to the individual pseudonymised file, which can be read later
         for addition to a zip
     """
     pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch["UI"](
@@ -118,12 +118,13 @@ def _zip_pseudo_fifty_mbytes(
 
     Parameters
     ----------
-    file_buffer_list: ``list`` of file buffers from streamlit file_uploader
+    file_buffer_list : list
+        List of DICOM file buffers from streamlit file_uploader to pseudonymise
         DICOM files to pseudonymise
-    zipfile_path: ``str``
+    zipfile_path : str
         Location to write the zip file so that it can be downloaded.
         Basename provides default name to use for downloading
-    zip_bytes_io: io.BytesIO (optional)
+    zip_bytes_io : io.BytesIO, optional
         An in memory file like object to be used for storing the Zip instead of the
         zipfile_path.  Highly desirable because the zip written to zipfile_path can't
         be deleted from this module.
@@ -190,12 +191,12 @@ def pseudonymise_buffer_list(file_buffer_list: list):
 
     Parameters
     ----------
-    file_buffer_list : ``list``
+    file_buffer_list : list
         DICOM files that were uploaded using streamlit.file_uploader
 
     Returns
     -------
-    ``list``
+    zip_path_list : list
         a list of full paths to the Zipped, pseudonymised files.
         If the io.BytesIO() approach is used (current default), the list will be empty
     """
