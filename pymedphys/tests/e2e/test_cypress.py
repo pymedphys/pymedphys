@@ -35,24 +35,30 @@ def process(*args, **kwargs):
 
 HERE = pathlib.Path(__file__).parent.resolve()
 PYMEDPHYS_LIB_DIR = HERE.joinpath("..", "..").resolve()
-STREAMLIT_GUI_DIR = HERE.joinpath("_gui", "streamlit")
+STREAMLIT_GUI_DIR = PYMEDPHYS_LIB_DIR.joinpath("_gui", "streamlit")
 
 
 @pytest.mark.yarn
-def test_streamlit_gui():
+def test_mudensity_compare_gui():
     pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=HERE)
-    subprocess.check_call("yarn", cwd=HERE, shell=True)
 
     with process("poetry run pymedphys gui", cwd=HERE, shell=True) as _:
+        subprocess.check_call("yarn", cwd=HERE, shell=True)
+
         subprocess.check_call(
             "yarn cypress run --spec cypress/integration/streamlit/mudensity-compare.spec.js",
             cwd=HERE,
             shell=True,
         )
 
+
+@pytest.mark.yarn
+def test_pseudonymise():
     with process(
         "poetry run streamlit run pseudonymise.py", cwd=STREAMLIT_GUI_DIR, shell=True
     ) as _:
+        subprocess.check_call("yarn", cwd=HERE, shell=True)
+
         subprocess.check_call(
             "yarn cypress run --spec cypress/integration/streamlit/pseudonymisation.spec.js",
             cwd=HERE,
