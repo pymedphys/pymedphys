@@ -299,7 +299,7 @@ jobs:
         poetry run pymedphys dev tests -v -s --run-only-yarn
 
     - uses: actions/upload-artifact@v2
-      if: matrix.task == 'cypress'
+      if: failure() && matrix.task == 'cypress'
       with:
         name: cypress-videos
         path: pymedphys/tests/e2e/cypress/videos
