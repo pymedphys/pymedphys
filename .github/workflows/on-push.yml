@@ -294,6 +294,11 @@ jobs:
       run: |
         poetry run pymedphys dev tests -v -s --run-only-yarn
 
+    - uses: actions/upload-artifact@v2
+      with:
+        name: cypress-videos
+        path: pymedphys/tests/e2e/cypress/videos
+
     # - name: Delete GUI demo data and run the PyMedPhys GUI
     #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
     #   run: |
