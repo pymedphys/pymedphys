@@ -72,7 +72,7 @@ def link_to_zip_download(zip_to_download: pathlib.Path):
 
 
 def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
-    """Provide full path to the intended destination of the pseudonymised file
+    """Create the base filename for the pseudonymised file
 
     Parameters
     ----------
@@ -81,8 +81,8 @@ def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
 
     Returns
     -------
-    temp_anon_filepath : pathlib.Path
-        Full path to the individual pseudonymised file, which can be read later
+    anon_filename : str
+        name for the pseudonymised file, which can be used
         for addition to a zip
     """
     pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch["UI"](
@@ -92,9 +92,9 @@ def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
     sop_class_uid: pydicom.dataelem.DataElement = ds_input.SOPClassUID
 
     mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[sop_class_uid.name]
-    anon_filename = "{}.{}_Anonymised.dcm".format(mode_prefix, pseudo_sop_instance_uid)
-    temp_anon_filepath = DOWNLOADS_PATH.joinpath(anon_filename)
-    return temp_anon_filepath
+    anon_filename = f"{mode_prefix}.{pseudo_sop_instance_uid}_Anonymised.dcm"
+
+    return anon_filename
 
 
 def _zip_pseudo_fifty_mbytes(
@@ -150,15 +150,20 @@ def _zip_pseudo_fifty_mbytes(
                     replacement_strategy=strategy,
                 )
                 temp_anon_filepath = build_pseudonymised_file_name(ds_input)
+                in_memory_temp_file = io.BytesIO()
                 anon_filename = pathlib.Path(temp_anon_filepath).name
-                pydicom.dcmwrite(temp_anon_filepath, ds_input)
+                pydicom.dcmwrite(in_memory_temp_file, ds_input)
             except (KeyError, IOError, ValueError) as e_info:
                 print(e_info)
                 print(f"While processing {original_file_name}")
                 bad_data = True
                 break
-            myzip.write(temp_anon_filepath, anon_filename)
-            remove_file(temp_anon_filepath)
+            myzip.writestr(
+                anon_filename,
+                in_memory_temp_file.getvalue(),
+                compress_type=ZIP_DEFLATED,
+            )
+            in_memory_temp_file.close()
     return bad_data
 
 
