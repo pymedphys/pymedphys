@@ -92,9 +92,9 @@ describe("st.file_uploader", () => {
     //   .first()
     //   .matchImageSnapshot("single_file_uploader");
 
-    cy.get(".stFileUploader")
-      .last()
-      .matchImageSnapshot("multi_file_uploader");
+    // cy.get(".stFileUploader")
+    //   .last()
+    //   .matchImageSnapshot("multi_file_uploader");
   });
 
   // it("shows deprecation warning", () => {
