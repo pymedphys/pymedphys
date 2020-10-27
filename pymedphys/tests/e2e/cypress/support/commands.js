@@ -24,7 +24,11 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
 
+import { addMatchImageSnapshotCommand } from 'cypress-image-snapshot/command';
 
+addMatchImageSnapshotCommand();
+
+import 'cypress-file-upload';
 Cypress.Commands.add('compute', () => {
   let start = new Date().getTime();
   cy.get("#ReportStatus", { timeout: 4000 }).should($el => {

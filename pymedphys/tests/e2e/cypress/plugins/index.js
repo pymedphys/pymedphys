@@ -8,13 +8,18 @@ const downloadDirectory = path.join(__dirname, '..', 'downloads')
 
 const isFirefox = (browser) => browser.family === 'firefox'
 
+const {
+  addMatchImageSnapshotPlugin,
+} = require('cypress-image-snapshot/plugin');
+
+
 /**
  * @type {Cypress.PluginConfig}
  */
 module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
-
+  addMatchImageSnapshotPlugin(on, config);
   // register utility tasks to clear the downloads folder,
   // read and parse Excel files
   on('task', {
