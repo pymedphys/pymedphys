@@ -8,9 +8,9 @@ const downloadDirectory = path.join(__dirname, '..', 'downloads')
 
 const isFirefox = (browser) => browser.family === 'firefox'
 
-const {
-  addMatchImageSnapshotPlugin,
-} = require('cypress-image-snapshot/plugin');
+// const {
+//   addMatchImageSnapshotPlugin,
+// } = require('cypress-image-snapshot/plugin');
 
 
 /**
