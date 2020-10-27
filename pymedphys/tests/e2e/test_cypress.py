@@ -54,7 +54,10 @@ def test_mudensity_compare_gui():
 
 @pytest.mark.yarn
 def test_pseudonymise():
-    pymedphys.zip_data_paths("dummy-ct-and-struct.zip", extract_directory=HERE)
+    pymedphys.zip_data_paths(
+        "dummy-ct-and-struct.zip",
+        extract_directory=HERE.joinpath("cypress", "fixtures"),
+    )
     with process(
         "poetry run streamlit run pseudonymise.py", cwd=STREAMLIT_GUI_DIR, shell=True
     ) as _:
