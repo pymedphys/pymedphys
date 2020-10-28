@@ -151,43 +151,43 @@ describe("st.file_uploader", () => {
     // in Cypress (!!) using Cypress.Promise.all is buggy. See:
     // https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/fundamentals__fixtures/cypress/integration/multiple-fixtures-spec.js
     cy.fixture(fileName1).then(file1 => {
-    //  cy.fixture(fileName2).then(file2 => {
-        const files = [
-          { fileContent: file1, fileName: fileName1, mimeType: "application/octet-stream" },
-       //   { fileContent: file2, fileName: fileName2, mimeType: "application/octet-stream" }
-        ];
+      //  cy.fixture(fileName2).then(file2 => {
+      const files = [
+        { fileContent: file1, fileName: fileName1, mimeType: "application/octet-stream" },
+        //   { fileContent: file2, fileName: fileName2, mimeType: "application/octet-stream" }
+      ];
 
-        cy.get(".fileUploadDropzone")
-          .eq(0)
-          .attachFile(files[0], {
-            force: true,
-            subjectType: "drag-n-drop",
-            events: ["dragenter", "drop"]
-          });
+      cy.get(".fileUploadDropzone")
+        .eq(0)
+        .attachFile(files[0], {
+          force: true,
+          subjectType: "drag-n-drop",
+          events: ["dragenter", "drop"]
+        });
 
-        //       // The script should have printed the contents of the two files
-        //       // into an st.text. (This tests that the upload actually went
-        //       // through.)
-        //       // cy.get(".uploadedFileName").should("have.text", fileName1);
-        //       // cy.get(".fixed-width.stText")
-        //       //   .first()
-        //       //   .should("contain.text", file1);
+      //       // The script should have printed the contents of the two files
+      //       // into an st.text. (This tests that the upload actually went
+      //       // through.)
+      //       // cy.get(".uploadedFileName").should("have.text", fileName1);
+      //       // cy.get(".fixed-width.stText")
+      //       //   .first()
+      //       //   .should("contain.text", file1);
 
-        // cy.get(".stFileUploader")
-        //   .first()
-        //   .matchImageSnapshot("single_file_uploader-uploaded");
+      // cy.get(".stFileUploader")
+      //   .first()
+      //   .matchImageSnapshot("single_file_uploader-uploaded");
 
-        // cy.get(".fileUploadDropzone")
-        //   .eq(0)
-        //   .attachFile(files[1], {
-        //     force: true,
-        //     subjectType: "drag-n-drop",
-        //     events: ["dragenter", "drop"]
-        //   });
+      // cy.get(".fileUploadDropzone")
+      //   .eq(0)
+      //   .attachFile(files[1], {
+      //     force: true,
+      //     subjectType: "drag-n-drop",
+      //     events: ["dragenter", "drop"]
+      //   });
 
-        cy.get(".uploadedFileName")
-          .should("have.text", fileName1);
-          //.should("not.have.text", fileName1);
+      cy.get(".uploadedFileName")
+        .should("have.text", fileName1);
+      //.should("not.have.text", fileName1);
       // cy.get(".fixed-width.stText")
       //   .first()
       //   .should("contain.text", file2)
@@ -243,4 +243,14 @@ describe("st.file_uploader", () => {
       });
     });
   });
+
+  it("Pseudonymises data", () => {
+    cy.get(".stButton button").contains("Pseudonymise").click({ force: true });
+    cy.compute();
+    // having difficulty getting the sidebar.
+    // ".sidebar" doesn't work.
+    // div.reportview-container.section.sidebar
+    // cy.get(".sidebar").contains(/^.+\.zip$/gm)
+  });
+
 });
