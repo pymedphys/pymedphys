@@ -14,6 +14,7 @@
 
 import json
 import pathlib
+import re
 import subprocess
 import textwrap
 
@@ -43,7 +44,7 @@ def propagate_version():
     pyproject_contents = read_pyproject()
 
     version_string = pyproject_contents["tool"]["poetry"]["version"]
-    version_list = version_string.split(".")
+    version_list = re.split(r"[-\.]", version_string)
 
     for i, item in enumerate(version_list):
         try:
