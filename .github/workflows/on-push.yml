@@ -150,7 +150,7 @@ jobs:
     - name: Remove base install of pymedphys
       if: matrix.task == 'tests'
       run: |
-        pip uninstall pymedphys
+        pip uninstall -y pymedphys
 
 # Set up Poetry
 
