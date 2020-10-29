@@ -75,7 +75,7 @@ jobs:
           - os: 'ubuntu'
             python-version: 3.8
           - os: 'windows'
-            python-version: 3.8
+            python-version: 3.7
           - os: 'macos'
             python-version: 3.8
 
