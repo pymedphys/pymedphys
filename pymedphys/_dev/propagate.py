@@ -42,13 +42,13 @@ def read_pyproject():
 def propagate_version():
     pyproject_contents = read_pyproject()
 
-    version_string = deps = pyproject_contents["tool"]["poetry"]["version"]
+    version_string = pyproject_contents["tool"]["poetry"]["version"]
     version_list = version_string.split(".")
 
     for i, item in enumerate(version_list):
         try:
             version_list[i] = int(item)
-        except:
+        except ValueError:
             pass
 
     version_contents = textwrap.dedent(
