@@ -37,8 +37,6 @@ from os import path
 
 from pymedphys._imports import pydicom
 
-from pymedphys._data import download
-
 # Many thanks to the Medical Connections for offering free
 # valid UIDs (http://www.medicalconnections.co.uk/FreeUID.html)
 # Their service was used to obtain the following root UID for PyMedPhys:
@@ -51,45 +49,42 @@ BASELINE_DICOM_REPEATERS_DICT_FILEPATH = path.join(
     HERE, "baseline_repeaters_dictionary.json"
 )
 
+BASELINE_DICOM_DICT_FILEPATH = path.join(HERE, "baseline_dicom_dictionary.json")
+
 
 @functools.lru_cache(maxsize=1)
 def get_baseline_dicom_dict():
+    with open(BASELINE_DICOM_DICT_FILEPATH) as in_file:
+        contents = json.load(in_file)
 
-    baseline_dicom_dict_filepath = download.zip_data_paths(
-        "baseline_dicom_dictionary.zip"
-    )[0]
+    baseline_dicom_dict = {
+        pydicom.tag.Tag(int(key)): item for key, item in contents.items()
+    }
 
-    with open(baseline_dicom_dict_filepath) as in_file:
-        BASELINE_DICOM_DICT = json.load(in_file)
-        BASELINE_DICOM_DICT = {
-            pydicom.tag.Tag(int(key)): BASELINE_DICOM_DICT[key]
-            for key in BASELINE_DICOM_DICT
-        }
-
-    return BASELINE_DICOM_DICT
+    return baseline_dicom_dict
 
 
 @functools.lru_cache(maxsize=1)
 def get_baseline_dicom_repeaters_dict():
     with open(BASELINE_DICOM_REPEATERS_DICT_FILEPATH) as in_file:
-        BASELINE_DICOM_REPEATERS_DICT = json.load(in_file)
+        baseline_dicom_repeaters_dict = json.load(in_file)
 
-    return BASELINE_DICOM_REPEATERS_DICT
+    return baseline_dicom_repeaters_dict
 
 
 @functools.lru_cache(maxsize=1)
 def get_baseline_keyword_vr_dict():
-    BASELINE_DICOM_DICT = get_baseline_dicom_dict()
-    BASELINE_DICOM_REPEATERS_DICT = get_baseline_dicom_repeaters_dict()
+    baseline_dicom_dict = get_baseline_dicom_dict()
+    baseline_dicom_repeaters_dict = get_baseline_dicom_repeaters_dict()
 
-    COMBINED_DICOM_DICT = {**BASELINE_DICOM_DICT, **BASELINE_DICOM_REPEATERS_DICT}
+    combined_dicom_dict = {**baseline_dicom_dict, **baseline_dicom_repeaters_dict}
 
-    BASELINE_KEYWORD_VR_DICT = {
-        COMBINED_DICOM_DICT[tag][4]: COMBINED_DICOM_DICT[tag][0]
-        for tag in COMBINED_DICOM_DICT
+    baseline_keyword_vr_dict = {
+        combined_dicom_dict[tag][4]: combined_dicom_dict[tag][0]
+        for tag in combined_dicom_dict
     }
 
-    return BASELINE_KEYWORD_VR_DICT
+    return baseline_keyword_vr_dict
 
 
 DICOM_SOP_CLASS_NAMES_MODE_PREFIXES = {

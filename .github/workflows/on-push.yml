@@ -173,7 +173,7 @@ jobs:
         brew install freetds
 
     - name: Install Pandoc on Ubuntu
-      if: matrix.task == 'docs' && matrix.os == 'ubuntu'
+      if: ( matrix.task == 'docs' || matrix.task == 'updates' ) && matrix.os == 'ubuntu'
       run: |
         sudo apt-get install -y pandoc
 
@@ -221,9 +221,9 @@ jobs:
     - name: Update all packages then install with tests, user and ml environment
       if: matrix.task == 'updates'
       run: |
-        poetry install -E user -E tests -E ml
+        poetry install -E user -E tests -E docs -E ml
         poetry update
-        poetry install -E user -E tests -E ml
+        poetry install -E user -E tests -E docs -E ml
 
 # Download all data for consistent cache
 
@@ -273,7 +273,7 @@ jobs:
 ## Docs
 
     - name: Build docs
-      if: matrix.task == 'docs'
+      if: matrix.task == 'docs' || matrix.task == 'updates'
       run: |
         poetry run pymedphys dev docs
 
