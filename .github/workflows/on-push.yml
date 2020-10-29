@@ -122,6 +122,8 @@ jobs:
         version: 1.1.4
         create_virtualenvs: true
 
+    # Currently python subprocesses in Windows don't appear to appropriately
+    # fork under the poetry virtual environment for version 1.1.4
     - name: Install Poetry on Windows
       if: matrix.os == 'windows'
       uses: dschep/install-poetry-action@v1.3
