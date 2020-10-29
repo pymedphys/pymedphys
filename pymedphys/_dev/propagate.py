@@ -14,6 +14,7 @@
 
 import json
 import pathlib
+import subprocess
 import textwrap
 
 import black
@@ -28,8 +29,8 @@ VERSION_PATH = LIBRARY_PATH.joinpath("_version.py")
 
 def propagate_all(_):
     propagate_version()
-    propagate_requirements()
     propagate_extras()
+    propagate_requirements()
 
 
 def read_pyproject():
@@ -68,7 +69,9 @@ def propagate_version():
 
 
 def propagate_requirements():
-    pass
+    subprocess.check_call(
+        "poetry export -E dev -f requirements.txt --output requirements.txt", shell=True
+    )
 
 
 def propagate_extras():
@@ -93,7 +96,10 @@ def propagate_extras():
                 except KeyError:
                     extras[group] = [key]
 
-    pyproject_contents["tool"]["poetry"]["extras"] = extras
+    if pyproject_contents["tool"]["poetry"]["extras"] != extras:
+        pyproject_contents["tool"]["poetry"]["extras"] = extras
 
-    with open(PYPROJECT_TOML_PATH, "w") as f:
-        f.write(tomlkit.dumps(pyproject_contents))
+        with open(PYPROJECT_TOML_PATH, "w") as f:
+            f.write(tomlkit.dumps(pyproject_contents))
+
+        subprocess.check_call("poetry update pymedphys")
