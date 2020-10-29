@@ -146,6 +146,12 @@ jobs:
         python -c "import pymedphys.beta"
         python -c "import pymedphys.experimental"
 
+    # Remove confusion for tests down the line
+    - name: Remove base install of pymedphys
+      if: matrix.task == 'tests'
+      run: |
+        pip uninstall pymedphys
+
 # Set up Poetry
 
     - name: Configure poetry
