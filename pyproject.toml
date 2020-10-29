@@ -98,10 +98,11 @@ mypy = {version = "*", optional = true}  # groups = ["dev"]
 rope = {version = "*", optional = true}  # groups = ["dev"]
 doc8 = {version = "*", optional = true}  # groups = ["dev"]
 tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests"]
+dephell = {version = "*", optional = true}  # groups = ["dev"]
 
 [tool.poetry.extras]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "dephell"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
 experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
@@ -139,6 +140,10 @@ sections = [
     "FUTURE", "STDLIB", "THIRDPARTY", "GENERAL_SCIENTIFIC", "MACHINE_LEARNING",
     "MEDPHYS", "FIRSTPARTY", "LOCALFOLDER"
 ]
+
+[tool.dephell.main]
+from = {format = "poetry", path = "pyproject.toml"}
+to = {format = "setuppy", path = "setup.py"}
 
 [build-system]
 requires = ["poetry >= 1.0.9", "setuptools >= 42.0.0", "wheel >= 0.29.0"]
