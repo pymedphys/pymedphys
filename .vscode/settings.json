@@ -246,6 +246,7 @@
     "nanmax",
     "nargs",
     "nbcc",
+    "nbstripout",
     "ndarray",
     "ndimage",
     "niter",
