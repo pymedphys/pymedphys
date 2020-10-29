@@ -308,6 +308,7 @@
     "savez",
     "savgol",
     "scipy",
+    "sdist",
     "semver",
     "settingeditor",
     "setup",
