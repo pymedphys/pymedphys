@@ -45,10 +45,10 @@ def compare_dicom_cli(command, original, expected):
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
 
     try:
-        subprocess.check_call(" ".join(command), shell=True)
+        subprocess.check_call(command)
         cli_adjusted_ds = pydicom.read_file(ADJUSTED_DICOM_FILENAME, force=True)
 
-        assert cli_adjusted_ds == expected
+        assert str(cli_adjusted_ds) == str(expected)
     finally:
         remove_file(ORIGINAL_DICOM_FILENAME)
         remove_file(ADJUSTED_DICOM_FILENAME)
@@ -182,14 +182,14 @@ def test_electron_density_append():
     adjusted_ds = adjust_rel_elec_density(original_ds, adjustment_map)
 
     assert adjusted_ds != original_ds
-    assert expected_ds == adjusted_ds
+    assert str(expected_ds) == str(adjusted_ds)
 
     adjusted_with_excess_ds = adjust_rel_elec_density(
         original_ds, excess_adjustment_map, ignore_missing_structure=True
     )
 
     assert adjusted_with_excess_ds != original_ds
-    assert expected_ds == adjusted_with_excess_ds
+    assert str(expected_ds) == str(adjusted_with_excess_ds)
 
     excess_adjustment_map_as_list = [
         ["{}".format(key), item] for key, item in excess_adjustment_map.items()
@@ -271,7 +271,7 @@ def test_structure_name_based_RED_append():
     adjusted_ds = adjust_RED_by_structure_name(original_ds)
 
     assert adjusted_ds != original_ds
-    assert expected_ds == adjusted_ds
+    assert str(expected_ds) == str(adjusted_ds)
 
     command = "pymedphys dicom adjust-RED-by-structure-name".split() + [
         ORIGINAL_DICOM_FILENAME,
