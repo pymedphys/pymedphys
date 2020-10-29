@@ -17,8 +17,7 @@ import pathlib
 import subprocess
 import textwrap
 
-import black
-import tomlkit
+from pymedphys._imports import black, tomlkit
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
