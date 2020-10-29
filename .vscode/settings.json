@@ -326,6 +326,8 @@
     "strptime",
     "struct",
     "subpackage",
+    "subprocess",
+    "subprocesses",
     "superoinferior",
     "tabmanager",
     "tensorflow",
