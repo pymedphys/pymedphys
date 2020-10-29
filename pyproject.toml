@@ -65,7 +65,7 @@ python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev", "
 scikit-image = {version = "*", optional = true}  # groups = ["user", "dev", "experimental"]
 
 # gui
-streamlit = {version = "0.65.2", optional = true}  # groups = ["user", "dev", "gui"]
+streamlit = {version = "0.70.0", optional = true}  # groups = ["user", "dev", "gui"]
 timeago = {version = "*", optional = true}  # groups = ["user", "dev", "gui"]
 
 # ml
@@ -80,7 +80,7 @@ nbsphinx  = {version = "*", optional = true}  # groups = ["dev", "docs"]
 jupyter_client = {version = "*", optional = true}  # groups = ["dev", "docs"]
 ipython = {version = "*", optional = true}  # groups = ["dev", "docs"]
 ipykernel = {version = "*", optional = true}  # groups = ["dev", "docs"]
-nbconvert = {version = "6.0.6", optional = true}  # groups = ["dev", "docs"]
+nbconvert = {version = "*", optional = true}  # groups = ["dev", "docs"]
 
 # tests
 pytest = {version = "*", optional = true}  # groups = ["dev", "tests"]
