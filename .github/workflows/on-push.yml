@@ -225,21 +225,21 @@ jobs:
       run: |
         poetry install -E user -E tests
 
-## Install Machine Learning Dependencies
+## Install Extra Packages for Doctests
 
-    - name: Install a machine learning environment
+    - name: Install extra packages for doctests
       if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
-        poetry install -E user -E ml
+        poetry install -E user -E doctests
 
 ## Update all packages and then install with tests environment
 
-    - name: Update all packages then install with tests, user and ml environment
+    - name: Update all packages then install with tests, user and doctests environment
       if: matrix.task == 'updates'
       run: |
-        poetry install -E user -E tests -E docs -E ml
+        poetry install -E user -E tests -E docs -E doctests
         poetry update
-        poetry install -E user -E tests -E docs -E ml
+        poetry install -E user -E tests -E docs -E doctests
 
 # Download all data for consistent cache
 

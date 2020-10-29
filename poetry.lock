@@ -2268,6 +2268,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
+doctests = ["tensorflow", "black", "tomlkit"]
 experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
 ml = ["tensorflow"]
@@ -2277,7 +2278,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "d16e71cc3a3d4c6d33b1d90ca2f55fe9e1a6669c5609cc0c01a79fa8e2c520a7"
+content-hash = "19669f4a518bbb69f5f8dd76b8207071c3d0dbcae66073a776bd629b35298422"
 
 [metadata.files]
 absl-py = [

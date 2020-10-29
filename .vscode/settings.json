@@ -140,6 +140,7 @@
     "docstring",
     "docstrings",
     "doctest",
+    "doctests",
     "dont",
     "dosimetric",
     "dpcm",

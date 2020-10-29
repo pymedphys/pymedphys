@@ -69,7 +69,7 @@ streamlit = {version = "0.70.0", optional = true}  # groups = ["user", "dev", "g
 timeago = {version = "*", optional = true}  # groups = ["user", "dev", "gui"]
 
 # ml
-tensorflow = {version = ">=2.2.0", optional = true}  # groups = ["ml"]
+tensorflow = {version = ">=2.2.0", optional = true}  # groups = ["ml", "doctests"]
 
 # docs
 sphinx = {version = ">= 1.4, < 1.8", optional = true}  # groups = ["dev", "docs"]
@@ -93,11 +93,11 @@ pytest-pylint  = {version = "*", optional = true}  # groups = ["dev", "tests"]
 
 # dev
 pre-commit = {version = "*", optional = true}  # groups = ["dev"]
-black = {version = "^19.3b0", optional = true}  # groups = ["dev"]
+black = {version = "^19.3b0", optional = true}  # groups = ["dev", "doctests"]
 mypy = {version = "*", optional = true}  # groups = ["dev"]
 rope = {version = "*", optional = true}  # groups = ["dev"]
 doc8 = {version = "*", optional = true}  # groups = ["dev"]
-tomlkit = {version = "*", optional = true}  # groups = ["dev"]
+tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests"]
 
 [tool.poetry.extras]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago"]
@@ -106,6 +106,7 @@ dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
 experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
 ml = ["tensorflow"]
+doctests = ["tensorflow", "black", "tomlkit"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 

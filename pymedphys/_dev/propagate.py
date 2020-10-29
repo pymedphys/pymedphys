@@ -69,6 +69,7 @@ def propagate_version():
 
 
 def propagate_requirements():
+    subprocess.check_call("poetry update pymedphys", shell=True)
     subprocess.check_call(
         "poetry export -E dev -f requirements.txt --output requirements.txt", shell=True
     )
@@ -101,5 +102,3 @@ def propagate_extras():
 
         with open(PYPROJECT_TOML_PATH, "w") as f:
             f.write(tomlkit.dumps(pyproject_contents))
-
-        subprocess.check_call("poetry update pymedphys")

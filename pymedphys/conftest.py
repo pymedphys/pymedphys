@@ -91,10 +91,6 @@ def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
         or ("_bundle" in relative_path_list and "python" in relative_path_list)
         or (
             config.getoption("--doctest-modules")
-            and (
-                "streamlit" in relative_path_list
-                or "tests" in relative_path_list
-                or "_imports" in relative_path_list
-            )
+            and ("streamlit" in relative_path_list or "tests" in relative_path_list)
         )
     )
