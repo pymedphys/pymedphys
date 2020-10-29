@@ -1,4 +1,4 @@
-from pymedphys._dev import docs, tests
+from pymedphys._dev import docs, propagate, tests
 
 
 def dev_cli(subparsers):
@@ -19,3 +19,8 @@ def add_docs_parser(dev_subparsers):
 def add_test_parser(test_subparsers):
     parser = test_subparsers.add_parser("tests")
     parser.set_defaults(func=tests.run_tests)
+
+
+def add_test_parser(test_subparsers):
+    parser = test_subparsers.add_parser("propagate")
+    parser.set_defaults(func=propagate.propagate_all)
