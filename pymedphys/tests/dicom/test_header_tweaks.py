@@ -45,7 +45,7 @@ def compare_dicom_cli(command, original, expected):
     pydicom.write_file(ORIGINAL_DICOM_FILENAME, original)
 
     try:
-        subprocess.check_call(command)
+        subprocess.check_call(" ".join(command), shell=True)
         cli_adjusted_ds = pydicom.read_file(ADJUSTED_DICOM_FILENAME, force=True)
 
         assert str(cli_adjusted_ds) == str(expected)
