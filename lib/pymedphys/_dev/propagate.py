@@ -21,10 +21,10 @@ import textwrap
 
 from pymedphys._imports import black, tomlkit
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
 
-LIBRARY_PATH = REPO_ROOT.joinpath("pymedphys")
+LIBRARY_PATH = REPO_ROOT.joinpath("lib", "pymedphys")
 VERSION_PATH = LIBRARY_PATH.joinpath("_version.py")
 
 DIST_DIR = REPO_ROOT.joinpath("dist")
