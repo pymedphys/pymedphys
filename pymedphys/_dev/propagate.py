@@ -117,7 +117,7 @@ def propagate_requirements():
     )
 
     with open(REQUIREMENTS_TXT, "a") as f:
-        f.write("-e .[user]")
+        f.write(".[user]\n")
 
 
 def propagate_extras():
