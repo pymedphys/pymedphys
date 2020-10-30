@@ -18,7 +18,7 @@
 # pylint: disable = too-many-lines, redefined-outer-name
 
 import pathlib
-from typing import Callable, cast
+import time
 
 import streamlit as st
 
@@ -27,45 +27,39 @@ from pymedphys._gui.streamlit import mudensity
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
 
-st.set_page_config(
-    page_title="PyMedPhys", page_icon=FAVICON, initial_sidebar_state="expanded"
-)
 
-parameters = st.experimental_get_query_params()
+APPLICATION_OPTIONS = {
+    "mudensity": {"label": "MU Density Comparison", "callable": mudensity.main}
+}
 
-try:
-    current_application = parameters["app"][0]
-except KeyError:
-    current_application = "index"
+
+def get_application():
+    parameters = st.experimental_get_query_params()
+
+    try:
+        application = parameters["app"][0]
+    except KeyError:
+        application = "index"
+
+    return application
 
 
 def index_main():
-    """
-    Please select an application above.
-    """
+    app_keys = list(APPLICATION_OPTIONS.keys())
+
+    for app_key in app_keys:
+        st.markdown(f"[{APPLICATION_OPTIONS[app_key]['label']}](?app={app_key})")
 
 
-application_options = {
-    "index": {"label": "Index", "callable": index_main},
-    "mudensity": {"label": "MU Density Comparison", "callable": mudensity.main},
-}
+def run():
+    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
+    application = get_application()
 
-app_keys = list(application_options.keys())
-option_app_key_map = {
-    application_options[app_key]["label"]: app_key for app_key in app_keys
-}
-options = list(option_app_key_map.keys())
-default = options.index(application_options[current_application]["label"])
+    if application == "index":
+        index_main()
+    else:
+        APPLICATION_OPTIONS[application]["callable"]()  # type: ignore
 
-st.sidebar.write("# Application Selection")
 
-selected_application_label = st.sidebar.selectbox(
-    "Select application", options=options, index=default, key="application_index"
-)
-selected_application = option_app_key_map[selected_application_label]
-
-st.experimental_set_query_params(app=selected_application)
-
-app_main = cast(Callable, application_options[selected_application]["callable"])
-
-app_main()
+if __name__ == "__main__":
+    run()
