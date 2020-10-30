@@ -173,6 +173,10 @@ class NoControlPointsFound(ValueError):
     pass
 
 
+class NoMosaiqAccess(ValueError):
+    pass
+
+
 def sidebar_overview():
 
     overview_placeholder = st.sidebar.empty()
@@ -814,25 +818,6 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     headers
 
-    """
-    #### Corresponding Mosaiq SQL Details
-    """
-
-    mosaiq_details = get_logfile_mosaiq_info(headers)
-    mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
-
-    mosaiq_details
-
-    patient_names = set()
-    for _, row in mosaiq_details.iterrows():
-        row
-        patient_name = utl_patient.convert_patient_name_from_split(
-            row["last_name"], row["first_name"]
-        )
-        patient_names.add(patient_name)
-
-    patient_name = filter_patient_names(patient_names)
-
     deliveries = cached_deliveries_loading(tables, delivery_from_trf)
 
     individual_identifiers = [
@@ -841,6 +826,38 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     ]
 
     identifier = f"TRF ({individual_identifiers[0]})"
+
+    """
+    #### Corresponding Mosaiq SQL Details
+    """
+
+    try:
+        mosaiq_details = get_logfile_mosaiq_info(headers)
+        use_mosaiq = True
+    except KeyError:
+        use_mosaiq = False
+        st.write(
+            NoMosaiqAccess(
+                "Need Mosaiq access to determine patient name. "
+                "Patient name set to 'Unknown'."
+            )
+        )
+        patient_name = "Unknown"
+
+    if use_mosaiq:
+        mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
+
+        mosaiq_details
+
+        patient_names = set()
+        for _, row in mosaiq_details.iterrows():
+            row
+            patient_name = utl_patient.convert_patient_name_from_split(
+                row["last_name"], row["first_name"]
+            )
+            patient_names.add(patient_name)
+
+        patient_name = filter_patient_names(patient_names)
 
     return {
         "site": None,
@@ -1271,7 +1288,7 @@ def run_calculation(
         )
 
     st.write("## Results")
-    st.pyplot()
+    st.pyplot(fig)
 
 
 def main():
