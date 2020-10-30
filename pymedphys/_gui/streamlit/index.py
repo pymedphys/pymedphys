@@ -17,14 +17,56 @@
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
-# import streamlit as st
+import pathlib
+from typing import Callable, cast
 
-from pymedphys._streamlit.constants import BASE_URL_PATHS, HOSTNAME, NAMES
+import imageio
+import numpy as np
 
-list_of_links = [
-    f"* [{name}](http://{HOSTNAME}{base_url_path})"
-    for name, base_url_path in zip(NAMES, BASE_URL_PATHS)
-]
-markdown = "\n".join(list_of_links)
+import streamlit as st
 
-markdown
+from pymedphys._gui.streamlit import mudensity
+
+HERE = pathlib.Path(__file__).parent.resolve()
+FAVICON = str(HERE.joinpath("pymedphys.png"))
+
+st.set_page_config(
+    page_title="PyMedPhys", page_icon=FAVICON, initial_sidebar_state="expanded"
+)
+
+parameters = st.experimental_get_query_params()
+
+try:
+    current_application = parameters["app"][0]
+except KeyError:
+    current_application = "index"
+
+
+def index_main():
+    """
+    Please select an application above.
+    """
+
+
+application_options = {
+    "index": {"label": "Index", "callable": index_main},
+    "mudensity": {"label": "MU Density Comparison", "callable": mudensity.main},
+}
+
+app_keys = list(application_options.keys())
+option_app_key_map = {
+    application_options[app_key]["label"]: app_key for app_key in app_keys
+}
+options = list(option_app_key_map.keys())
+default = options.index(application_options[current_application]["label"])
+
+selected_application_label = st.sidebar.radio(
+    "Select application", options=options, index=default, key="application_index"
+)
+selected_application = option_app_key_map[selected_application_label]
+
+st.experimental_set_query_params(app=selected_application)
+
+app_main = cast(Callable, application_options[selected_application]["callable"])
+
+app_main()
