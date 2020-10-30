@@ -874,6 +874,18 @@ optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
+name = "livereload"
+version = "2.6.3"
+description = "Python LiveReload is an awesome tool for web developers"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.dependencies]
+six = "*"
+tornado = {version = "*", markers = "python_version > \"2.7\""}
+
+[[package]]
 name = "markdown"
 version = "3.3.3"
 description = "Python implementation of Markdown."
@@ -1819,6 +1831,21 @@ dev = ["pytest", "sphinx-rtd-theme"]
 markdown = ["CommonMark (>=0.5.6)"]
 
 [[package]]
+name = "sphinx-autobuild"
+version = "2020.9.1"
+description = "Rebuild Sphinx documentation on changes, with live-reload in the browser."
+category = "main"
+optional = true
+python-versions = ">=3.6"
+
+[package.dependencies]
+livereload = "*"
+sphinx = "*"
+
+[package.extras]
+test = ["pytest", "pytest-cov"]
+
+[[package]]
 name = "sphinx-rtd-theme"
 version = "0.4.3"
 description = "Read the Docs theme for Sphinx"
@@ -2238,9 +2265,10 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pytest-cov", "jaraco.test (>=3.2.0)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [extras]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
-docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
+doctests = ["tensorflow", "black", "tomlkit"]
 experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
 ml = ["tensorflow"]
@@ -2250,7 +2278,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "2827ce78a46ed28a0eaa586023a24c4e44723cd7d6655f81dd0da5a84066193b"
+content-hash = "19669f4a518bbb69f5f8dd76b8207071c3d0dbcae66073a776bd629b35298422"
 
 [metadata.files]
 absl-py = [
@@ -2772,6 +2800,9 @@ lazy-object-proxy = [
     {file = "lazy_object_proxy-1.4.3-cp38-cp38-win32.whl", hash = "sha256:5541cada25cd173702dbd99f8e22434105456314462326f06dba3e180f203dfd"},
     {file = "lazy_object_proxy-1.4.3-cp38-cp38-win_amd64.whl", hash = "sha256:59f79fef100b09564bc2df42ea2d8d21a64fdcda64979c0fa3db7bdaabaf6239"},
 ]
+livereload = [
+    {file = "livereload-2.6.3.tar.gz", hash = "sha256:776f2f865e59fde56490a56bcc6773b6917366bce0c267c60ee8aaf1a0959869"},
+]
 markdown = [
     {file = "Markdown-3.3.3-py3-none-any.whl", hash = "sha256:c109c15b7dc20a9ac454c9e6025927d44460b85bd039da028d85e2b6d0bcc328"},
     {file = "Markdown-3.3.3.tar.gz", hash = "sha256:5d9f2b5ca24bc4c7a390d22323ca4bad200368612b5aaa7796babf971d2b2f18"},
@@ -2804,6 +2835,11 @@ markupsafe = [
     {file = "MarkupSafe-1.1.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:ba59edeaa2fc6114428f1637ffff42da1e311e29382d81b339c1817d37ec93c6"},
     {file = "MarkupSafe-1.1.1-cp37-cp37m-win32.whl", hash = "sha256:b00c1de48212e4cc9603895652c5c410df699856a2853135b3967591e4beebc2"},
     {file = "MarkupSafe-1.1.1-cp37-cp37m-win_amd64.whl", hash = "sha256:9bf40443012702a1d2070043cb6291650a0841ece432556f784f004937f0f32c"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:6788b695d50a51edb699cb55e35487e430fa21f1ed838122d722e0ff0ac5ba15"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-manylinux1_i686.whl", hash = "sha256:cdb132fc825c38e1aeec2c8aa9338310d29d337bebbd7baa06889d09a60a1fa2"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:13d3144e1e340870b25e7b10b98d779608c02016d5184cfb9927a9f10c689f42"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-win32.whl", hash = "sha256:596510de112c685489095da617b5bcbbac7dd6384aeebeda4df6025d0256a81b"},
+    {file = "MarkupSafe-1.1.1-cp38-cp38-win_amd64.whl", hash = "sha256:e8313f01ba26fbbe36c7be1966a7b7424942f670f38e666995b88d012765b9be"},
     {file = "MarkupSafe-1.1.1.tar.gz", hash = "sha256:29872e92839765e546828bb7754a68c418d927cd064fd4708fab9fe9c8bb116b"},
 ]
 matplotlib = [
@@ -3447,6 +3483,10 @@ sphinx = [
 ]
 sphinx-argparse = [
     {file = "sphinx-argparse-0.2.5.tar.gz", hash = "sha256:60ab98f80ffd38731d62e267171388a421abbc96c74901b7785a8e058b438c17"},
+]
+sphinx-autobuild = [
+    {file = "sphinx-autobuild-2020.9.1.tar.gz", hash = "sha256:4b184a7db893f2100bbd831991ae54ca89167a2b9ce68faea71eaa9e37716aed"},
+    {file = "sphinx_autobuild-2020.9.1-py3-none-any.whl", hash = "sha256:df5c72cb8b8fc9b31279c4619780c4e95029be6de569ff60a8bb2e99d20f63dd"},
 ]
 sphinx-rtd-theme = [
     {file = "sphinx_rtd_theme-0.4.3-py2.py3-none-any.whl", hash = "sha256:00cf895504a7895ee433807c62094cf1e95f065843bf3acd17037c3e9a2becd4"},

@@ -11,7 +11,6 @@ repos:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
         exclude: ^.*demographic\.000000$
-    -   id: requirements-txt-fixer
     -   id: check-yaml
     -   id: check-toml
     -   id: check-added-large-files
