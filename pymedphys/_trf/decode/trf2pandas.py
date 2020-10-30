@@ -17,7 +17,7 @@
 """
 
 import os
-from typing import IO, Any, Union, cast
+from typing import Any, BinaryIO, Tuple, Union, cast
 
 from pymedphys._imports import pandas as pd
 
@@ -25,15 +25,15 @@ from .header import Header, decode_header
 from .partition import split_into_header_table
 from .table import decode_trf_table
 
-path_or_file_like = Union[IO, "os.PathLike[Any]"]
+path_or_binary_file = Union[BinaryIO, "os.PathLike[Any]"]
 
 
-def trf2pandas(trf: path_or_file_like):
-    file_like_trf = cast(IO, trf)
+def trf2pandas(trf: path_or_binary_file) -> Tuple["pd.DataFrame", "pd.DataFrame"]:
+    binary_file_trf = cast(BinaryIO, trf)
     path_like_trf = cast("os.PathLike[Any]", trf)
 
     try:
-        trf_contents = file_like_trf.read()
+        trf_contents = binary_file_trf.read()
     except AttributeError:
         with open(path_like_trf, "rb") as f:
             trf_contents = f.read()
