@@ -101,6 +101,7 @@ def propagate_setup():
     setup_contents_list = setup_contents.split("\n")
     setup_contents_list.insert(1, AUTOGEN_MESSAGE[0])
     setup_contents_list.insert(2, AUTOGEN_MESSAGE[1])
+    setup_contents_list.insert(3, "")
     setup_contents = "\n".join(setup_contents_list)
 
     setup_contents = black.format_str(setup_contents, mode=black.FileMode())
