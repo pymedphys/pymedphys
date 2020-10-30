@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-# pylint: disable = pointless-statement, pointless-string-statement
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
@@ -41,12 +40,6 @@ from pymedphys._streamlit import monaco as st_monaco
 from pymedphys._streamlit import mosaiq as st_mosaiq
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
-
-"""
-# MU Density comparison tool
-
-Tool to compare the MU Density between planned and delivery.
-"""
 
 DATA_OPTION_LABELS = {
     "monaco": "Monaco tel.1 filepath",
@@ -258,9 +251,11 @@ def show_status_indicators():
         for linac_id in linac_ids:
             trf_status(linac_id, linac_indexed_backups_directory)
 
-    """
-    ## Selection of data to compare
-    """
+    st.write(
+        """
+        ## Selection of data to compare
+        """
+    )
 
 
 def get_gamma_options(advanced_mode_local):
@@ -379,7 +374,7 @@ def monaco_input_method(
 
     patient_name = read_monaco_patient_name(str(patient_directory))
 
-    f"Patient Name: `{patient_name}`"
+    st.write(f"Patient Name: `{patient_name}`")
 
     all_tel_paths = list(plan_directory.glob("**/*tel.1"))
     all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
@@ -397,11 +392,13 @@ def monaco_input_method(
             )
         return {"patient_id": patient_id}
 
-    """
-    Select the Monaco plan that correspond to a patient's single fraction.
-    If a patient has multiple fraction types (such as a plan with a boost)
-    then these fraction types need to be analysed separately.
-    """
+    st.write(
+        """
+        Select the Monaco plan that correspond to a patient's single fraction.
+        If a patient has multiple fraction types (such as a plan with a boost)
+        then these fraction types need to be analysed separately.
+        """
+    )
 
     selected_monaco_plan = st.radio(
         "Select a Monaco plan",
@@ -557,21 +554,21 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
                 key=f"{key_namespace}_select_monaco_export_plan",
             )
 
-        f"DICOM file being used: `{selected_plan}`"
+        st.write(f"DICOM file being used: `{selected_plan}`")
 
         dicom_plan = dicom_plans[selected_plan]
         data_paths = [monaco_export_directory.joinpath(selected_plan)]
 
     patient_id = str(dicom_plan.PatientID)
-    f"Patient ID: `{patient_id}`"
+    st.write(f"Patient ID: `{patient_id}`")
 
     patient_name = str(dicom_plan.PatientName)
     patient_name = utl_patient.convert_patient_name(patient_name)
 
-    f"Patient Name: `{patient_name}`"
+    st.write(f"Patient Name: `{patient_name}`")
 
     rt_plan_name = str(dicom_plan.RTPlanName)
-    f"Plan Name: `{rt_plan_name}`"
+    st.write(f"Plan Name: `{rt_plan_name}`")
 
     try:
         deliveries_all_fractions = pymedphys.Delivery.from_dicom(
@@ -619,7 +616,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
     icom_directories = get_default_icom_directories()
 
     if advanced_mode_local:
-        "iCOM patient directories", icom_directories
+        st.write("iCOM patient directories", icom_directories)
 
     icom_directories = [pathlib.Path(path) for path in icom_directories]
 
@@ -627,7 +624,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
         patient_id = st.text_input(
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
         )
-        patient_id
+        st.write(patient_id)
 
     icom_deliveries = []
     for path in icom_directories:
@@ -1349,6 +1346,15 @@ def run_calculation(
 
 
 def main():
+
+    st.write(
+        """
+        # MU Density comparison tool
+
+        Tool to compare the MU Density between planned and delivery.
+        """
+    )
+
     config = st_config.get_config()
 
     st.sidebar.markdown(
@@ -1416,10 +1422,11 @@ def main():
     for method in available_data_methods:
         data_method_map[DATA_OPTION_LABELS[method]] = data_option_functions[method]
 
-    """
-    ### Reference
-    """
-
+    st.write(
+        """
+        ### Reference
+        """
+    )
     reference_results = get_input_data_ui(
         overview_updater_map,
         data_method_map,
@@ -1428,9 +1435,11 @@ def main():
         advanced_mode,
     )
 
-    """
-    ### Evaluation
-    """
+    st.write(
+        """
+        ### Evaluation
+        """
+    )
 
     evaluation_results = get_input_data_ui(
         overview_updater_map,
@@ -1441,15 +1450,19 @@ def main():
         **reference_results,
     )
 
-    """
-    ## Output Locations
-    """
+    st.write(
+        """
+        ## Output Locations
+        """
+    )
 
-    """
-    ### eSCAN Directory
+    st.write(
+        """
+        ### eSCAN Directory
 
-    The location to save the produced pdf report.
-    """
+        The location to save the produced pdf report.
+        """
+    )
 
     default_site = evaluation_results.get("site", None)
     if default_site is None:
@@ -1465,11 +1478,13 @@ def main():
     default_png_output_directory = config["output"]["png_directory"]
 
     if advanced_mode:
-        """
-        ### Image record
+        st.write(
+            """
+            ### Image record
 
-        Path to save the image of the results for posterity
-        """
+            Path to save the image of the results for posterity
+            """
+        )
 
         png_output_directory = pathlib.Path(
             st.text_input("png output directory", default_png_output_directory)
@@ -1479,20 +1494,25 @@ def main():
     else:
         png_output_directory = pathlib.Path(default_png_output_directory)
 
-    """
-    ## Calculation
-    """
+    st.write(
+        """
+        ## Calculation
+        """
+    )
 
     if st.button("Run Calculation"):
-
-        """
-        ### MU Density usage warning
-        """
+        st.write(
+            """
+            ### MU Density usage warning
+            """
+        )
         st.warning(pymedphys.mudensity.WARNING_MESSAGE)
 
-        """
-        ### Calculation status
-        """
+        st.write(
+            """
+            ### Calculation status
+            """
+        )
 
         run_calculation(
             reference_results,

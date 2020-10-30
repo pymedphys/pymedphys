@@ -20,9 +20,6 @@
 import pathlib
 from typing import Callable, cast
 
-import imageio
-import numpy as np
-
 import streamlit as st
 
 from pymedphys._gui.streamlit import mudensity
@@ -60,7 +57,9 @@ option_app_key_map = {
 options = list(option_app_key_map.keys())
 default = options.index(application_options[current_application]["label"])
 
-selected_application_label = st.sidebar.radio(
+st.sidebar.write("# Application Selection")
+
+selected_application_label = st.sidebar.selectbox(
     "Select application", options=options, index=default, key="application_index"
 )
 selected_application = option_app_key_map[selected_application_label]
