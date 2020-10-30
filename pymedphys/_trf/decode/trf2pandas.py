@@ -33,6 +33,7 @@ def trf2pandas(trf: path_or_binary_file) -> Tuple["pd.DataFrame", "pd.DataFrame"
     path_like_trf = cast("os.PathLike[Any]", trf)
 
     try:
+        binary_file_trf.seek(0)
         trf_contents = binary_file_trf.read()
     except AttributeError:
         with open(path_like_trf, "rb") as f:

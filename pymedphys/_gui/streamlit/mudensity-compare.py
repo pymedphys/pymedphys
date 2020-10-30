@@ -710,8 +710,8 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
 
 
 @st.cache
-def read_trf(filepath):
-    return pymedphys.read_trf(filepath)
+def read_trf(trf):
+    return pymedphys.trf.read(trf)
 
 
 @st.cache
@@ -759,56 +759,79 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         key=f"{key_namespace}_trf_file_import_method",
     )
 
-    indexed_trf_directory = get_indexed_trf_directory()
+    if import_method == FILE_UPLOAD:
+        selected_files = st.file_uploader(
+            "Upload TRF files",
+            key=f"{key_namespace}_trf_file_uploader",
+            accept_multiple_files=True,
+        )
 
-    patient_id = st.text_input(
-        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-    )
-    patient_id
+        if not selected_files:
+            return {}
 
-    filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
+        data_paths = "Uploaded TRF file(s)"
+        individual_identifiers = [data_paths]
 
-    raw_timestamps = ["_".join(path.parent.name.split("_")[0:2]) for path in filepaths]
-    timestamps = list(
-        pd.to_datetime(raw_timestamps, format="%Y-%m-%d_%H%M%S").astype(str)
-    )
+    if import_method == INDEXED_TRF_SEARCH:
+        indexed_trf_directory = get_indexed_trf_directory()
 
-    timestamp_filepath_map = dict(zip(timestamps, filepaths))
+        patient_id = st.text_input(
+            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+        )
+        patient_id
 
-    timestamps = sorted(timestamps, reverse=True)
+        filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
 
-    if len(timestamps) == 0:
-        if patient_id != "":
-            st.write(
-                st_exceptions.NoRecordsFound(
-                    f"No TRF log file found for patient ID {patient_id}"
+        raw_timestamps = [
+            "_".join(path.parent.name.split("_")[0:2]) for path in filepaths
+        ]
+        timestamps = list(
+            pd.to_datetime(raw_timestamps, format="%Y-%m-%d_%H%M%S").astype(str)
+        )
+
+        timestamp_filepath_map = dict(zip(timestamps, filepaths))
+
+        timestamps = sorted(timestamps, reverse=True)
+
+        if len(timestamps) == 0:
+            if patient_id != "":
+                st.write(
+                    st_exceptions.NoRecordsFound(
+                        f"No TRF log file found for patient ID {patient_id}"
+                    )
                 )
-            )
-        return {"patient_id": patient_id}
+            return {"patient_id": patient_id}
 
-    if len(timestamps) == 1:
-        default_timestamp = timestamps[0]
-    else:
-        default_timestamp = []
+        if len(timestamps) == 1:
+            default_timestamp = timestamps[0]
+        else:
+            default_timestamp = []
 
-    selected_trf_deliveries = st.multiselect(
-        "Select TRF delivery timestamp(s)",
-        timestamps,
-        default=default_timestamp,
-        key=f"{key_namespace}_trf_deliveries",
-    )
+        selected_trf_deliveries = st.multiselect(
+            "Select TRF delivery timestamp(s)",
+            timestamps,
+            default=default_timestamp,
+            key=f"{key_namespace}_trf_deliveries",
+        )
 
-    if not selected_trf_deliveries:
-        return {}
+        if not selected_trf_deliveries:
+            return {}
 
-    """
-    #### TRF filepath(s)
-    """
+        """
+        #### TRF filepath(s)
+        """
 
-    selected_filepaths = [
-        timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
-    ]
-    [str(path.resolve()) for path in selected_filepaths]
+        selected_files = [
+            timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
+        ]
+        [str(path.resolve()) for path in selected_files]
+
+        individual_identifiers = [
+            f"{path.parent.parent.parent.parent.name} {path.parent.name}"
+            for path in selected_files
+        ]
+
+        data_paths = selected_files
 
     """
     #### Log file header(s)
@@ -816,8 +839,8 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     headers = []
     tables = []
-    for path in selected_filepaths:
-        header, table = read_trf(path)
+    for path_or_binary in selected_files:
+        header, table = read_trf(path_or_binary)
         headers.append(header)
         tables.append(table)
 
@@ -828,11 +851,6 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     headers
 
     deliveries = cached_deliveries_loading(tables, delivery_from_trf)
-
-    individual_identifiers = [
-        f"{path.parent.parent.parent.parent.name} {path.parent.name}"
-        for path in selected_filepaths
-    ]
 
     identifier = f"TRF ({individual_identifiers[0]})"
 
@@ -872,7 +890,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         "site": None,
         "patient_id": patient_id,
         "patient_name": patient_name,
-        "data_paths": selected_filepaths,
+        "data_paths": data_paths,
         "identifier": identifier,
         "deliveries": deliveries,
     }
