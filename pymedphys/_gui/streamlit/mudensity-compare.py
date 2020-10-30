@@ -463,8 +463,6 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     FILE_UPLOAD = "File upload"
     MONACO_SEARCH = "Search Monaco file export location"
 
-    dicom_export_locations = get_dicom_export_locations()
-
     import_method = st.radio(
         "DICOM import method",
         [FILE_UPLOAD, MONACO_SEARCH],
@@ -492,6 +490,8 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         data_paths = ["Uploaded DICOM file"]
 
     if import_method == MONACO_SEARCH:
+        dicom_export_locations = get_dicom_export_locations()
+
         monaco_site = st_misc.site_picker(
             "Monaco Export Location",
             default=monaco_site,
@@ -750,6 +750,15 @@ def get_logfile_mosaiq_info(headers):
 
 
 def trf_input_method(patient_id="", key_namespace="", **_):
+    FILE_UPLOAD = "File upload"
+    INDEXED_TRF_SEARCH = "Search indexed TRF directory"
+
+    import_method = st.radio(
+        "TRF import method",
+        [FILE_UPLOAD, INDEXED_TRF_SEARCH],
+        key=f"{key_namespace}_trf_file_import_method",
+    )
+
     indexed_trf_directory = get_indexed_trf_directory()
 
     patient_id = st.text_input(

@@ -16,16 +16,27 @@
 """Decodes trf file.
 """
 
+import os
+from typing import IO, Any, Union, cast
+
 from pymedphys._imports import pandas as pd
 
 from .header import Header, decode_header
 from .partition import split_into_header_table
 from .table import decode_trf_table
 
+path_or_file_like = Union[IO, "os.PathLike[Any]"]
 
-def trf2pandas(filepath):
-    with open(filepath, "rb") as file:
-        trf_contents = file.read()
+
+def trf2pandas(trf: path_or_file_like):
+    file_like_trf = cast(IO, trf)
+    path_like_trf = cast("os.PathLike[Any]", trf)
+
+    try:
+        trf_contents = file_like_trf.read()
+    except AttributeError:
+        with open(path_like_trf, "rb") as f:
+            trf_contents = f.read()
 
     trf_header_contents, trf_table_contents = split_into_header_table(trf_contents)
 
