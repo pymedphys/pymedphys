@@ -177,6 +177,10 @@ class NoMosaiqAccess(ValueError):
     pass
 
 
+class ConfigMissing(ValueError):
+    pass
+
+
 def sidebar_overview():
 
     overview_placeholder = st.sidebar.empty()
@@ -220,12 +224,12 @@ def trf_status(linac_id, backup_directory):
 
 
 def show_status_indicators():
-    linac_icom_live_stream_directories = get_icom_live_stream_directories()
-    linac_indexed_backups_directory = get_indexed_backups_directory()
-
-    linac_ids = list(linac_icom_live_stream_directories.keys())
-
     if st.sidebar.button("Check status of iCOM and backups"):
+        linac_icom_live_stream_directories = get_icom_live_stream_directories()
+        linac_indexed_backups_directory = get_indexed_backups_directory()
+
+        linac_ids = list(linac_icom_live_stream_directories.keys())
+
         st.sidebar.markdown(
             """
             ## Last recorded iCOM stream
@@ -487,10 +491,19 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
             st.write(WrongFileType("The DICOM type needs to be an RT DICOM Plan file"))
             return {}
 
-        data_paths = ["Uploaded DICOM file"]
+        data_paths = []
 
     if import_method == MONACO_SEARCH:
-        dicom_export_locations = get_dicom_export_locations()
+        try:
+            dicom_export_locations = get_dicom_export_locations()
+        except KeyError:
+            st.write(
+                ConfigMissing(
+                    "No Monaco directory is configured. Please use "
+                    f"'{FILE_UPLOAD}' instead."
+                )
+            )
+            return {}
 
         monaco_site = st_misc.site_picker(
             "Monaco Export Location",
@@ -769,11 +782,20 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         if not selected_files:
             return {}
 
-        data_paths = "Uploaded TRF file(s)"
-        individual_identifiers = [data_paths]
+        data_paths = []
+        individual_identifiers = ["Uploaded TRF file(s)"]
 
     if import_method == INDEXED_TRF_SEARCH:
-        indexed_trf_directory = get_indexed_trf_directory()
+        try:
+            indexed_trf_directory = get_indexed_trf_directory()
+        except KeyError:
+            st.write(
+                ConfigMissing(
+                    "No indexed TRF directory is configured. Please use "
+                    f"'{FILE_UPLOAD}' instead."
+                )
+            )
+            return {}
 
         patient_id = st.text_input(
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
@@ -863,11 +885,9 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         use_mosaiq = True
     except KeyError:
         use_mosaiq = False
-        st.write(
-            NoMosaiqAccess(
-                "Need Mosaiq access to determine patient name. "
-                "Patient name set to 'Unknown'."
-            )
+        st.warning(
+            "Need Mosaiq access to determine patient name. "
+            "Patient name set to 'Unknown'."
         )
         patient_name = "Unknown"
 
