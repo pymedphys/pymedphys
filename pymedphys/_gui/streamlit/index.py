@@ -13,12 +13,7 @@
 # limitations under the License.
 
 
-# pylint: disable = pointless-statement, pointless-string-statement
-# pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines, redefined-outer-name
-
 import pathlib
-import time
 
 import streamlit as st
 

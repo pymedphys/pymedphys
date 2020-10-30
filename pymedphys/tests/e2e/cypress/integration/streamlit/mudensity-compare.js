@@ -2,7 +2,7 @@
 
 describe("When running all calculations", () => {
   before(() => {
-    cy.start()
+    cy.start("mudensity")
 
     cy.get(".stCheckbox").contains("Run in Advanced Mode").click();
     cy.compute()
@@ -64,7 +64,7 @@ describe("When running all calculations", () => {
 
 describe("When pressing the status button", () => {
   before(() => {
-    cy.start()
+    cy.start("mudensity")
     cy.get(".stButton button").contains("Check status").click()
 
     cy.compute()
@@ -82,7 +82,7 @@ describe("When pressing the status button", () => {
 
 describe("When using a Patient ID of 979797 in BLUE clinic and selecting the last iCOM record", () => {
   before(() => {
-    cy.start()
+    cy.start("mudensity")
 
     cy.get(".stRadio").first().find("input").last().click({ force: true });
 
@@ -114,7 +114,7 @@ describe("When using a Patient ID of 979797 in BLUE clinic and selecting the las
 
 describe("When using a Patient ID of 989898 in RED clinic and selecting the last iCOM record", () => {
   before(() => {
-    cy.start()
+    cy.start("mudensity")
 
     cy.get(".stTextInput input")
       .first()
@@ -140,7 +140,7 @@ describe("When using a Patient ID of 989898 in RED clinic and selecting the last
 
 describe("When using a Patient ID of 989898 in RED clinic and selecting the second two iCOM records", () => {
   before(() => {
-    cy.start()
+    cy.start("mudensity")
 
     cy.get(".stTextInput input")
       .first()
