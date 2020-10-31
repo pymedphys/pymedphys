@@ -16,8 +16,8 @@
 """Decodes trf file.
 """
 
-import os
-from typing import Any, BinaryIO, Tuple, Union, cast
+import os  # pylint: disable = unused-import
+from typing import Any, BinaryIO, Tuple, Union, cast  # pylint: disable = unused-import
 
 from pymedphys._imports import pandas as pd
 
