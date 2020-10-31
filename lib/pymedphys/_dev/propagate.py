@@ -45,8 +45,8 @@ def propagate_all(_):
     propagate_version()
     propagate_extras()
     propagate_requirements()
-    propagate_setup()
     propagate_pylintrc()
+    propagate_setup()
 
 
 def read_pyproject():
