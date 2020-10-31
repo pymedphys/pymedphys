@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+# pylint: disable = pointless-string-statement, pointless-statement
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
