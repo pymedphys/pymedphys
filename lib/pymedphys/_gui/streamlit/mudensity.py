@@ -856,7 +856,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         selected_files = [
             timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
         ]
-        [str(path.resolve()) for path in selected_files]
+        st.write([str(path.resolve()) for path in selected_files])
 
         individual_identifiers = [
             f"{path.parent.parent.parent.parent.name} {path.parent.name}"
@@ -912,7 +912,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
         patient_names = set()
         for _, row in mosaiq_details.iterrows():
-            row
+            st.write(row)
             patient_name = utl_patient.convert_patient_name_from_split(
                 row["last_name"], row["first_name"]
             )
