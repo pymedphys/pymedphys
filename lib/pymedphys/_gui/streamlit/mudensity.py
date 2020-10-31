@@ -13,9 +13,7 @@
 # limitations under the License.
 
 
-# pylint: disable = pointless-string-statement, pointless-statement
-# pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines, redefined-outer-name
+# pylint: disable = too-many-lines
 
 import lzma
 import os
@@ -420,7 +418,7 @@ def monaco_input_method(
         tel_paths += current_plans
 
     if advanced_mode_local:
-        [str(path.resolve()) for path in tel_paths]
+        st.write([str(path.resolve()) for path in tel_paths])
 
     deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
 
@@ -676,8 +674,8 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
             key=f"{key_namespace}_icom_deliveries",
         )
     except st.errors.StreamlitAPIException:
-        f"Default timestamp = `{default_timestamp}`"
-        f"All timestamps = `{timestamps}`"
+        st.write(f"Default timestamp = `{default_timestamp}`")
+        st.write(f"All timestamps = `{timestamps}`")
         raise
 
     icom_filenames = [
@@ -942,10 +940,10 @@ def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
     )
 
     server = mosaiq_details[mosaiq_site]["server"]
-    f"Mosaiq Hostname: `{server}`"
+    st.write(f"Mosaiq Hostname: `{server}`")
 
     sql_user = keyring.get_password("MosaiqSQL_username", server)
-    f"Mosaiq SQL login being used: `{sql_user}`"
+    st.write(f"Mosaiq SQL login being used: `{sql_user}`")
 
     patient_id = st.text_input(
         "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
@@ -959,7 +957,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
 
     patient_name = get_patient_name(cursor, patient_id)
 
-    f"Patient Name: `{patient_name}`"
+    st.write(f"Patient Name: `{patient_name}`")
 
     patient_fields = get_patient_fields(cursor, patient_id)
 
@@ -1012,11 +1010,11 @@ def display_deliveries(deliveries):
 
     columns = ["MU", "Number of Data Points"]
     df = pd.DataFrame(data=data, columns=columns)
-    df
+    st.write(df)
 
     total_mu = round(df["MU"].sum(), 1)
 
-    f"Total MU: `{total_mu}`"
+    st.write(f"Total MU: `{total_mu}`")
 
     return total_mu
 
@@ -1234,31 +1232,37 @@ def advanced_debugging():
 
         for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
 
-            f"### {baseline.parent.name}/{baseline.name}"
+            st.write(f"### {baseline.parent.name}/{baseline.name}")
 
-            f"`{baseline}`\n\n**vs**\n\n`{evaluation}`"
+            st.write(f"`{baseline}`\n\n**vs**\n\n`{evaluation}`")
 
             baseline_image = imageio.imread(baseline)
 
             try:
                 evaluation_image = imageio.imread(evaluation)
             except FileNotFoundError as e:
-                """
-                #### File was not found
-                """
+                st.write(
+                    """
+                    #### File was not found
+                    """
+                )
                 st.write(e)
 
-                f"""
-                For debugging purposes, here are all the files that
-                were found within {str(output_dir)}
-                """
+                st.write(
+                    f"""
+                    For debugging purposes, here are all the files that
+                    were found within {str(output_dir)}
+                    """
+                )
 
-                [str(path) for path in output_dir.rglob("*") if path.is_file()]
+                st.write(
+                    [str(path) for path in output_dir.rglob("*") if path.is_file()]
+                )
 
                 return
 
             agree = np.allclose(baseline_image, evaluation_image)
-            f"Images Agree: `{agree}`"
+            st.write(f"Images Agree: `{agree}`")
 
 
 def run_calculation(
