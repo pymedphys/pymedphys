@@ -2,12 +2,12 @@ import os
 import pathlib
 import subprocess
 
-REPO_ROOT = pathlib.Path(__file__).parent.parent.parent.parent.resolve()
+LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 
 
 def run_tests(_, remaining):
     original_cwd = os.getcwd()
-    os.chdir(REPO_ROOT)
+    os.chdir(LIBRARY_ROOT)
     print(f"Running tests with cwd set to {os.getcwd()}")
 
     try:
