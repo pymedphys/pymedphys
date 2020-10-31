@@ -639,16 +639,18 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
 
     choice_path_map = dict(zip(timestamps, icom_deliveries))
 
-    """
-    Here you need to select the timestamps that correspond to a single
-    fraction of the plan selected above. Most of the time
-    you will only need to select one timestamp here, however in some
-    cases you may need to select multiple timestamps.
+    st.write(
+        """
+        Here you need to select the timestamps that correspond to a single
+        fraction of the plan selected above. Most of the time
+        you will only need to select one timestamp here, however in some
+        cases you may need to select multiple timestamps.
 
-    This can occur if for example a single fraction was delivered in separate
-    beams due to either a beam interrupt, or the fraction being spread
-    over multiple energies
-    """
+        This can occur if for example a single fraction was delivered in separate
+        beams due to either a beam interrupt, or the fraction being spread
+        over multiple energies
+        """
+    )
 
     if len(timestamps) == 0:
         if patient_id != "":
@@ -688,7 +690,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
         icom_paths.append(choice_path_map[selected])
 
     if advanced_mode_local:
-        [str(path.resolve()) for path in icom_paths]
+        st.write([str(path.resolve()) for path in icom_paths])
 
     patient_names = set()
     for icom_path in icom_paths:
@@ -806,7 +808,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         patient_id = st.text_input(
             "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
         )
-        patient_id
+        st.write(patient_id)
 
         filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
 
@@ -845,9 +847,11 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         if not selected_trf_deliveries:
             return {}
 
-        """
-        #### TRF filepath(s)
-        """
+        st.write(
+            """
+            #### TRF filepath(s)
+            """
+        )
 
         selected_files = [
             timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
@@ -861,9 +865,11 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
         data_paths = selected_files
 
-    """
-    #### Log file header(s)
-    """
+    st.write(
+        """
+        #### Log file header(s)
+        """
+    )
 
     headers = []
     tables = []
@@ -876,15 +882,17 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     headers.reset_index(inplace=True)
     headers.drop("index", axis=1, inplace=True)
 
-    headers
+    st.write(headers)
 
     deliveries = cached_deliveries_loading(tables, delivery_from_trf)
 
     identifier = f"TRF ({individual_identifiers[0]})"
 
-    """
-    #### Corresponding Mosaiq SQL Details
-    """
+    st.write(
+        """
+        #### Corresponding Mosaiq SQL Details
+        """
+    )
 
     try:
         mosaiq_details = get_logfile_mosaiq_info(headers)
@@ -900,7 +908,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     if use_mosaiq:
         mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
 
-        mosaiq_details
+        st.write(mosaiq_details)
 
         patient_names = set()
         for _, row in mosaiq_details.iterrows():
@@ -948,7 +956,7 @@ def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
     patient_id = st.text_input(
         "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
     )
-    patient_id
+    st.write(patient_id)
 
     cursor = st_mosaiq.get_mosaiq_cursor(server)
 
@@ -961,12 +969,14 @@ def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
 
     patient_fields = get_patient_fields(cursor, patient_id)
 
-    """
-    #### Mosaiq patient fields
-    """
+    st.write(
+        """
+        #### Mosaiq patient fields
+        """
+    )
 
     patient_fields = patient_fields[patient_fields["monitor_units"] != 0]
-    patient_fields
+    st.write(patient_fields)
 
     field_ids = patient_fields["field_id"]
     field_ids = field_ids.values.tolist()
@@ -993,9 +1003,11 @@ def display_deliveries(deliveries):
     if not deliveries:
         return 0
 
-    """
-    #### Overview of selected deliveries
-    """
+    st.write(
+        """
+        #### Overview of selected deliveries
+        """
+    )
 
     data = []
     for delivery in deliveries:
@@ -1206,9 +1218,11 @@ def advanced_debugging():
 
     st.sidebar.markdown("# Advanced Debugging")
     if st.sidebar.button("Compare Baseline to Output Directory"):
-        """
-        ## Comparing Results to Baseline
-        """
+        st.write(
+            """
+            ## Comparing Results to Baseline
+            """
+        )
 
         baseline_directory = pathlib.Path(
             config["debug"]["baseline_directory"]
