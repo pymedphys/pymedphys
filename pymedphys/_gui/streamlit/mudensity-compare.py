@@ -750,6 +750,22 @@ def get_logfile_mosaiq_info(headers):
 
 
 def trf_input_method(patient_id="", key_namespace="", **_):
+    """Streamlit GUI method to facilitate TRF data provision.
+
+    Notes
+    -----
+    TRF files themselves have no innate patient alignment. An option
+    for TRF collection is to use the CLI tool
+    ``pymedphys trf orchestrate``. This connects to the SAMBA server
+    hosted on the Elekta NSS and downloads the diagnostic backup zips.
+    It then takes these TRF files and queries the Mosaiq database using
+    time of delivery to identify these with a patient id (Ident.Pat_ID1)
+    and name.
+
+    As such, all references to patient ID and name within this
+    ``trf_input_method`` are actually a reference to their Mosaiq
+    database counterparts.
+    """
     indexed_trf_directory = get_indexed_trf_directory()
 
     patient_id = st.text_input(
