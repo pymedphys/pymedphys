@@ -92,13 +92,18 @@ Our Team
 PyMedPhys is what it is today due to its maintainers and contributors both past
 and present. Here is our team.
 
-Maintainer
-..........
+Maintainers
+...........
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
+
+* `Stuart Swerdloff`_
+    * New Zealand
+
+.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 
 Active contributors
@@ -109,11 +114,6 @@ Active contributors
     * `South Western Sydney Local Health District`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
-
-* `Stuart Swerdloff`_
-    * New Zealand
-
-.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 * `Matthew Cooper`_
 
