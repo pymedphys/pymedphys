@@ -101,7 +101,7 @@ Maintainers
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
 * `Stuart Swerdloff`_
-    * New Zealand
+    * `ELEKTA Pty Ltd`: New Zealand
 
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
