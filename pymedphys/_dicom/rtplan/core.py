@@ -212,7 +212,7 @@ def get_leaf_jaw_positions_for_type(
         matching_type = [
             item
             for item in sequence
-            if item.RTBeamLimitingDeviceType == rt_beam_limiting_device_type
+            if item.RTBeamLimitingDeviceType.startswith(rt_beam_limiting_device_type)
         ]
 
         if len(matching_type) != 1:
