@@ -32,14 +32,19 @@ from pymedphys._imports import timeago
 
 import pymedphys
 from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
+from pymedphys._gui.streamlit.mudensity import (
+    _config,
+    _deliveries,
+    _exceptions,
+    _trf,
+    _utilities,
+)
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
-from pymedphys._streamlit import exceptions as st_exceptions
 from pymedphys._streamlit import misc as st_misc
 from pymedphys._streamlit import monaco as st_monaco
 from pymedphys._streamlit import mosaiq as st_mosaiq
-from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
 """
@@ -110,8 +115,8 @@ def trf_status(linac_id, backup_directory):
 
 
 def show_status_indicators():
-    linac_icom_live_stream_directories = get_icom_live_stream_directories()
-    linac_indexed_backups_directory = get_indexed_backups_directory()
+    linac_icom_live_stream_directories = _config.get_icom_live_stream_directories()
+    linac_indexed_backups_directory = _config.get_indexed_backups_directory()
 
     linac_ids = list(linac_icom_live_stream_directories.keys())
 
@@ -188,7 +193,7 @@ def monaco_input_method(
     if len(plan_names_to_choose_from) == 0:
         if patient_id != "":
             st.write(
-                st_exceptions.NoRecordsFound(
+                _exceptions.NoRecordsFound(
                     f"No Monaco plans found for patient ID {patient_id}"
                 )
             )
@@ -221,7 +226,9 @@ def monaco_input_method(
     if advanced_mode_local:
         [str(path.resolve()) for path in tel_paths]
 
-    deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
+    deliveries = _deliveries.cached_deliveries_loading(
+        tel_paths, _deliveries.delivery_from_tel
+    )
 
     if tel_paths:
         plan_names = ", ".join([path.parent.name for path in tel_paths])
@@ -231,7 +238,7 @@ def monaco_input_method(
 
     if len(deliveries) == 1 and len(deliveries[0].mu) == 0:
         st.write(
-            NoControlPointsFound(
+            _exceptions.NoControlPointsFound(
                 "This is likely due to an as of yet unsupported "
                 "Monaco file format. At this point in time 3DCRT "
                 "is not yet supported for reading directly from "
@@ -274,7 +281,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     FILE_UPLOAD = "File upload"
     MONACO_SEARCH = "Search Monaco file export location"
 
-    dicom_export_locations = get_dicom_export_locations()
+    dicom_export_locations = _config.get_dicom_export_locations()
 
     import_method = st.radio(
         "DICOM import method",
@@ -293,11 +300,15 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         try:
             dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
         except:  # pylint: disable = bare-except
-            st.write(WrongFileType("Does not appear to be a DICOM file"))
+            st.write(_exceptions.WrongFileType("Does not appear to be a DICOM file"))
             return {}
 
         if dicom_plan.SOPClassUID != DICOM_PLAN_UID:
-            st.write(WrongFileType("The DICOM type needs to be an RT DICOM Plan file"))
+            st.write(
+                _exceptions.WrongFileType(
+                    "The DICOM type needs to be an RT DICOM Plan file"
+                )
+            )
             return {}
 
         data_paths = ["Uploaded DICOM file"]
@@ -329,7 +340,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         if len(dicom_plan_options) == 0 and patient_id != "":
             st.write(
-                st_exceptions.NoRecordsFound(
+                _exceptions.NoRecordsFound(
                     f"No exported DICOM RT plans found for Patient ID {patient_id} "
                     f"within the directory {monaco_export_directory}"
                 )
@@ -366,7 +377,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
             dicom_plan, fraction_number="all"
         )
     except AttributeError:
-        st.write(WrongFileType("Does not appear to be a photon DICOM plan"))
+        st.write(_exceptions.WrongFileType("Does not appear to be a photon DICOM plan"))
         return {}
 
     fractions = list(deliveries_all_fractions.keys())
@@ -404,7 +415,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
 
 def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
-    icom_directories = get_default_icom_directories()
+    icom_directories = _config.get_default_icom_directories()
 
     if advanced_mode_local:
         "iCOM patient directories", icom_directories
@@ -445,7 +456,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
     if len(timestamps) == 0:
         if patient_id != "":
             st.write(
-                st_exceptions.NoRecordsFound(
+                _exceptions.NoRecordsFound(
                     f"No iCOM delivery record found for patient ID {patient_id}"
                 )
             )
@@ -494,10 +505,12 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
 
         patient_names.add(patient_name)
 
-    patient_name = filter_patient_names(patient_names)
+    patient_name = _utilities.filter_patient_names(patient_names)
 
     icom_streams = load_icom_streams(icom_paths)
-    deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
+    deliveries = _deliveries.cached_deliveries_loading(
+        icom_streams, _deliveries.delivery_from_icom
+    )
 
     if selected_icom_deliveries:
         identifier = f"iCOM ({icom_filenames[0]})"
@@ -505,7 +518,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
         identifier = None
 
     if len(deliveries) == 0:
-        st.write(InputRequired("Please select at least one iCOM delivery"))
+        st.write(_exceptions.InputRequired("Please select at least one iCOM delivery"))
 
     results = {
         "site": None,
@@ -531,7 +544,7 @@ def get_patient_name(cursor, patient_id):
 
 
 def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
-    mosaiq_details = get_mosaiq_details()
+    mosaiq_details = _config.get_mosaiq_details()
 
     mosaiq_site = st_misc.site_picker(
         "Mosaiq Site", default=site, key=f"{key_namespace}_mosaiq_site"
@@ -574,7 +587,9 @@ def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
     )
 
     cursor_and_field_ids = [(cursor, field_id) for field_id in selected_field_ids]
-    deliveries = cached_deliveries_loading(cursor_and_field_ids, delivery_from_mosaiq)
+    deliveries = _deliveries.cached_deliveries_loading(
+        cursor_and_field_ids, _deliveries.delivery_from_mosaiq
+    )
     identifier = f"{mosaiq_site} Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
 
     return {
@@ -932,7 +947,7 @@ def run_calculation(
         )
     except subprocess.CalledProcessError:
         st.write(
-            UnableToCreatePDF(
+            _exceptions.UnableToCreatePDF(
                 "Please install Image Magick to create PDF reports "
                 "<https://imagemagick.org/script/download.php#windows>."
             )
@@ -989,13 +1004,13 @@ def main():
     )
     advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-    gamma_options = get_gamma_options(advanced_mode)
+    gamma_options = _config.get_gamma_options(advanced_mode)
 
     data_option_functions = {
         "monaco": monaco_input_method,
         "dicom": dicom_input_method,
         "icom": icom_input_method,
-        "trf": trf_input_method,
+        "trf": _trf.trf_input_method,
         "mosaiq": mosaiq_input_method,
     }
 

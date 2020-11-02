@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = pointless-statement, pointless-string-statement
+# pylint: disable = no-value-for-parameter, expression-not-assigned
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
@@ -32,7 +34,7 @@ def read_trf(filepath):
 
 
 def trf_input_method(patient_id="", key_namespace="", **_):
-    indexed_trf_directory = get_indexed_trf_directory()
+    indexed_trf_directory = _config.get_indexed_trf_directory()
 
     patient_id = st.text_input(
         "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
@@ -53,7 +55,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     if len(timestamps) == 0:
         if patient_id != "":
             st.write(
-                st_exceptions.NoRecordsFound(
+                _exceptions.NoRecordsFound(
                     f"No TRF log file found for patient ID {patient_id}"
                 )
             )
@@ -104,7 +106,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     #### Corresponding Mosaiq SQL Details
     """
 
-    mosaiq_details = get_logfile_mosaiq_info(headers)
+    mosaiq_details = _config.get_logfile_mosaiq_info(headers)
     mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
 
     mosaiq_details
@@ -117,9 +119,11 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         )
         patient_names.add(patient_name)
 
-    patient_name = filter_patient_names(patient_names)
+    patient_name = _utilities.filter_patient_names(patient_names)
 
-    deliveries = cached_deliveries_loading(tables, delivery_from_trf)
+    deliveries = _deliveries.cached_deliveries_loading(
+        tables, _deliveries.delivery_from_trf
+    )
 
     individual_identifiers = [
         f"{path.parent.parent.parent.parent.name} {path.parent.name}"
