@@ -46,11 +46,11 @@ def create_ois_delivery_details_class():
     return OISDeliveryDetails
 
 
-class MultipleMosaiqEntries(Exception):
+class MultipleMosaiqEntries(ValueError):
     """Raise an exception when more than one disagreeing entry is found"""
 
 
-class NoMosaiqEntries(Exception):
+class NoMosaiqEntries(ValueError):
     """Raise an exception when no entry is found"""
 
 

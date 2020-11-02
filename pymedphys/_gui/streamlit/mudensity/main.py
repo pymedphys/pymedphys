@@ -1139,8 +1139,10 @@ def main():
         "eScan Site", "escan", default=default_site, key="escan_export_site_picker"
     )
 
+    escan_directory = pathlib.Path(os.path.expanduser(escan_directory)).resolve()
+
     if advanced_mode:
-        st.write(escan_directory.resolve())
+        st.write(escan_directory)
 
     default_png_output_directory = config["output"]["png_directory"]
 
@@ -1158,6 +1160,10 @@ def main():
 
     else:
         png_output_directory = pathlib.Path(default_png_output_directory)
+
+    png_output_directory = pathlib.Path(
+        os.path.expanduser(png_output_directory)
+    ).resolve()
 
     """
     ## Calculation
