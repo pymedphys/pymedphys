@@ -67,22 +67,6 @@ GRID = pymedphys.mudensity.grid(
 COORDS = (GRID["jaw"], GRID["mlc"])
 
 
-class InputRequired(ValueError):
-    pass
-
-
-class WrongFileType(ValueError):
-    pass
-
-
-class UnableToCreatePDF(ValueError):
-    pass
-
-
-class NoControlPointsFound(ValueError):
-    pass
-
-
 def sidebar_overview():
 
     overview_placeholder = st.sidebar.empty()
