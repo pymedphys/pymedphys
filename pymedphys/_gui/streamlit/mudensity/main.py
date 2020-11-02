@@ -306,6 +306,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
             return {}
 
         try:
+            dicom_plan_bytes.seek(0)
             dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
         except:  # pylint: disable = bare-except
             st.write(_exceptions.WrongFileType("Does not appear to be a DICOM file"))

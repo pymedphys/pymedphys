@@ -166,14 +166,22 @@ class DeliveryDicom(DeliveryBase):
             beam_limiting_device_position_sequences, "MLC"
         )
 
-        mlcs = [
-            np.array(
-                [-np.array(mlc[0:num_leaves][::-1]), np.array(mlc[num_leaves::][::-1])][
-                    ::-1
-                ]
-            ).T
-            for mlc in dicom_mlcs
-        ]
+        mlcs = np.array(
+            [
+                np.array(
+                    [
+                        -np.array(mlc[0:num_leaves][::-1]),
+                        np.array(mlc[num_leaves::][::-1]),
+                    ][::-1]
+                ).T
+                for mlc in dicom_mlcs
+            ]
+        )
+
+        # Nasty hack, patching the fact that the leaf banks are swapped
+        # around for MLCY vs MLCX
+        if "MLCY" in rt_beam_limiting_device_types:
+            mlcs[:, :, [0, 1]] = mlcs[:, :, [1, 0]]
 
         dicom_jaw = rtplan.get_leaf_jaw_positions_for_type(
             beam_limiting_device_position_sequences, "ASYM"
