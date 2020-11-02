@@ -41,11 +41,9 @@ def _attempt_patient_name_from_mosaiq(headers):
     try:
         mosaiq_details = _config.get_logfile_mosaiq_info(headers)
     except KeyError:
-        st.write(
-            _exceptions.NoMosaiqAccess(
-                "Need Mosaiq access to determine patient name. "
-                "Patient name set to 'Unknown'."
-            )
+        st.warning(
+            "Need Mosaiq access to determine patient name. "
+            "Patient name set to 'Unknown'."
         )
         patient_name = "Unknown"
 
