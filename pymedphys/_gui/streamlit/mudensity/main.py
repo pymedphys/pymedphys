@@ -141,10 +141,6 @@ def show_status_indicators():
         for linac_id in linac_ids:
             trf_status(linac_id, linac_indexed_backups_directory)
 
-    """
-    ## Selection of data to compare
-    """
-
 
 @st.cache
 def load_icom_stream(icom_path):
@@ -1072,6 +1068,12 @@ def main():
     data_method_map = {}
     for method in available_data_methods:
         data_method_map[DATA_OPTION_LABELS[method]] = data_option_functions[method]
+
+    st.write(
+        """
+        ## Selection of data to compare
+        """
+    )
 
     """
     ### Reference
