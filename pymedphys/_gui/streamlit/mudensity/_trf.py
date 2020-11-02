@@ -84,58 +84,99 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     ``trf_input_method`` are actually a reference to their Mosaiq
     database counterparts.
     """
-    indexed_trf_directory = _config.get_indexed_trf_directory()
+    FILE_UPLOAD = "File upload"
+    INDEXED_TRF_SEARCH = "Search indexed TRF directory"
 
-    patient_id = st.text_input(
-        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-    )
-    st.write(patient_id)
-
-    filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
-
-    raw_timestamps = ["_".join(path.parent.name.split("_")[0:2]) for path in filepaths]
-    timestamps = list(
-        pd.to_datetime(raw_timestamps, format="%Y-%m-%d_%H%M%S").astype(str)
+    import_method = st.radio(
+        "TRF import method",
+        [FILE_UPLOAD, INDEXED_TRF_SEARCH],
+        key=f"{key_namespace}_trf_file_import_method",
     )
 
-    timestamp_filepath_map = dict(zip(timestamps, filepaths))
+    if import_method == FILE_UPLOAD:
+        selected_files = st.file_uploader(
+            "Upload TRF files",
+            key=f"{key_namespace}_trf_file_uploader",
+            accept_multiple_files=True,
+        )
 
-    timestamps = sorted(timestamps, reverse=True)
+        if not selected_files:
+            return {}
 
-    if len(timestamps) == 0:
-        if patient_id != "":
+        data_paths = []
+        individual_identifiers = ["Uploaded TRF file(s)"]
+
+    if import_method == INDEXED_TRF_SEARCH:
+        try:
+            indexed_trf_directory = _config.get_indexed_trf_directory()
+        except KeyError:
             st.write(
-                _exceptions.NoRecordsFound(
-                    f"No TRF log file found for patient ID {patient_id}"
+                _exceptions.ConfigMissing(
+                    "No indexed TRF directory is configured. Please use "
+                    f"'{FILE_UPLOAD}' instead."
                 )
             )
-        return {"patient_id": patient_id}
+            return {}
 
-    if len(timestamps) == 1:
-        default_timestamp = timestamps[0]
-    else:
-        default_timestamp = []
+        patient_id = st.text_input(
+            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
+        )
+        st.write(patient_id)
 
-    selected_trf_deliveries = st.multiselect(
-        "Select TRF delivery timestamp(s)",
-        timestamps,
-        default=default_timestamp,
-        key=f"{key_namespace}_trf_deliveries",
-    )
+        filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
 
-    if not selected_trf_deliveries:
-        return {}
+        raw_timestamps = [
+            "_".join(path.parent.name.split("_")[0:2]) for path in filepaths
+        ]
+        timestamps = list(
+            pd.to_datetime(raw_timestamps, format="%Y-%m-%d_%H%M%S").astype(str)
+        )
 
-    st.write(
-        """
-        #### TRF filepath(s)
-        """
-    )
+        timestamp_filepath_map = dict(zip(timestamps, filepaths))
 
-    selected_filepaths = [
-        timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
-    ]
-    st.write([str(path.resolve()) for path in selected_filepaths])
+        timestamps = sorted(timestamps, reverse=True)
+
+        if len(timestamps) == 0:
+            if patient_id != "":
+                st.write(
+                    st_exceptions.NoRecordsFound(
+                        f"No TRF log file found for patient ID {patient_id}"
+                    )
+                )
+            return {"patient_id": patient_id}
+
+        if len(timestamps) == 1:
+            default_timestamp = timestamps[0]
+        else:
+            default_timestamp = []
+
+        selected_trf_deliveries = st.multiselect(
+            "Select TRF delivery timestamp(s)",
+            timestamps,
+            default=default_timestamp,
+            key=f"{key_namespace}_trf_deliveries",
+        )
+
+        if not selected_trf_deliveries:
+            return {}
+
+        st.write(
+            """
+            #### TRF filepath(s)
+            """
+        )
+
+        selected_files = [
+            timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
+        ]
+        st.write([str(path.resolve()) for path in selected_files])
+
+        individual_identifiers = [
+            f"{path.parent.parent.parent.parent.name} {path.parent.name}"
+            for path in selected_files
+        ]
+
+        data_paths = selected_files
 
     st.write(
         """
@@ -145,8 +186,8 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     headers = []
     tables = []
-    for path in selected_filepaths:
-        header, table = read_trf(path)
+    for path_or_binary in selected_files:
+        header, table = read_trf(path_or_binary)
         headers.append(header)
         tables.append(table)
 
@@ -160,11 +201,6 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         tables, _deliveries.delivery_from_trf
     )
 
-    individual_identifiers = [
-        f"{path.parent.parent.parent.parent.name} {path.parent.name}"
-        for path in selected_filepaths
-    ]
-
     identifier = f"TRF ({individual_identifiers[0]})"
 
     patient_name = _attempt_patient_name_from_mosaiq(headers)
@@ -173,7 +209,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
         "site": None,
         "patient_id": patient_id,
         "patient_name": patient_name,
-        "data_paths": selected_filepaths,
+        "data_paths": data_paths,
         "identifier": identifier,
         "deliveries": deliveries,
     }
