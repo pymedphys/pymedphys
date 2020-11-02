@@ -36,3 +36,7 @@ class NoControlPointsFound(ValueError):
 
 class NoMosaiqAccess(ValueError):
     pass
+
+
+class ConfigMissing(ValueError):
+    pass
