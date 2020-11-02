@@ -177,6 +177,7 @@
     "hypot",
     "iloc",
     "imageio",
+    "imagemagick",
     "imageviewer",
     "imginterp",
     "imread",
