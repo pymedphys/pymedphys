@@ -32,7 +32,7 @@ from pymedphys._imports import timeago
 
 import pymedphys
 from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
-from pymedphys._gui.streamlit.mudensity import _config, _exceptions, _trf
+from pymedphys._gui.streamlit.mudensity import _config, _deliveries, _exceptions, _trf
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
@@ -139,65 +139,6 @@ def show_status_indicators():
     """
 
 
-def get_gamma_options(advanced_mode_local):
-    default_gamma_options = _config.get_default_gamma_options()
-
-    if advanced_mode_local:
-        st.sidebar.markdown(
-            """
-            # Gamma parameters
-            """
-        )
-        result = {
-            **default_gamma_options,
-            **{
-                "dose_percent_threshold": st.sidebar.number_input(
-                    "MU Percent Threshold",
-                    value=default_gamma_options["dose_percent_threshold"],
-                ),
-                "distance_mm_threshold": st.sidebar.number_input(
-                    "Distance (mm) Threshold",
-                    value=default_gamma_options["distance_mm_threshold"],
-                ),
-                "local_gamma": st.sidebar.checkbox(
-                    "Local Gamma", default_gamma_options["local_gamma"]
-                ),
-                "max_gamma": st.sidebar.number_input(
-                    "Max Gamma", value=default_gamma_options["max_gamma"]
-                ),
-            },
-        }
-    else:
-        result = default_gamma_options
-
-    return result
-
-
-@st.cache(allow_output_mutation=True)
-def delivery_from_icom(icom_stream):
-    return pymedphys.Delivery.from_icom(icom_stream)
-
-
-@st.cache(allow_output_mutation=True)
-def delivery_from_tel(tel_path):
-    return pymedphys.Delivery.from_monaco(tel_path)
-
-
-@st.cache(hash_funcs={pymssql.Cursor: id}, allow_output_mutation=True)
-def delivery_from_mosaiq(cursor_and_field_id):
-    cursor, field_id = cursor_and_field_id
-    return pymedphys.Delivery.from_mosaiq(cursor, field_id)
-
-
-def cached_deliveries_loading(inputs, method_function):
-    deliveries = []
-
-    for an_input in inputs:
-        deliveries += [method_function(an_input)]
-
-    return deliveries
-
-
 @st.cache
 def load_icom_stream(icom_path):
     with lzma.open(icom_path, "r") as f:
@@ -293,7 +234,9 @@ def monaco_input_method(
     if advanced_mode_local:
         [str(path.resolve()) for path in tel_paths]
 
-    deliveries = cached_deliveries_loading(tel_paths, delivery_from_tel)
+    deliveries = _deliveries.cached_deliveries_loading(
+        tel_paths, _deliveries.delivery_from_tel
+    )
 
     if tel_paths:
         plan_names = ", ".join([path.parent.name for path in tel_paths])
@@ -573,7 +516,9 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
     patient_name = filter_patient_names(patient_names)
 
     icom_streams = load_icom_streams(icom_paths)
-    deliveries = cached_deliveries_loading(icom_streams, delivery_from_icom)
+    deliveries = _deliveries.cached_deliveries_loading(
+        icom_streams, _deliveries.delivery_from_icom
+    )
 
     if selected_icom_deliveries:
         identifier = f"iCOM ({icom_filenames[0]})"
@@ -581,7 +526,8 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
         identifier = None
 
     if len(deliveries) == 0:
-        st.write(InputRequired("Please select at least one iCOM delivery"))
+        st.write(_exceptions.InputRequired("Please select at least one iCOM delivery"))
+        st.stop()
 
     results = {
         "site": None,
@@ -594,41 +540,6 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
     }
 
     return results
-
-
-@st.cache
-def get_logfile_mosaiq_info(headers):
-    machine_centre_map = get_machine_centre_map()
-    mosaiq_details = get_mosaiq_details()
-
-    centres = {machine_centre_map[machine_id] for machine_id in headers["machine"]}
-    mosaiq_servers = [mosaiq_details[centre]["server"] for centre in centres]
-
-    details = []
-
-    cursors = {server: st_mosaiq.get_mosaiq_cursor(server) for server in mosaiq_servers}
-
-    for _, header in headers.iterrows():
-        machine_id = header["machine"]
-        centre = machine_centre_map[machine_id]
-        mosaiq_timezone = mosaiq_details[centre]["timezone"]
-        server = mosaiq_details[centre]["server"]
-        cursor = cursors[server]
-
-        field_label = header["field_label"]
-        field_name = header["field_name"]
-        utc_date = header["date"]
-
-        current_details = pmp_index.get_logfile_mosaiq_info(
-            cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
-        )
-        current_details = pd.Series(data=current_details)
-
-        details.append(current_details)
-
-    details = pd.concat(details, axis=1).T
-
-    return details
 
 
 @st.cache(hash_funcs={pymssql.Cursor: id})
@@ -685,7 +596,9 @@ def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
     )
 
     cursor_and_field_ids = [(cursor, field_id) for field_id in selected_field_ids]
-    deliveries = cached_deliveries_loading(cursor_and_field_ids, delivery_from_mosaiq)
+    deliveries = _deliveries.cached_deliveries_loading(
+        cursor_and_field_ids, _deliveries.delivery_from_mosaiq
+    )
     identifier = f"{mosaiq_site} Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
 
     return {
@@ -1100,7 +1013,7 @@ def main():
     )
     advanced_mode = st.sidebar.checkbox("Run in Advanced Mode")
 
-    gamma_options = get_gamma_options(advanced_mode)
+    gamma_options = _config.get_gamma_options(advanced_mode)
 
     data_option_functions = {
         "monaco": monaco_input_method,
