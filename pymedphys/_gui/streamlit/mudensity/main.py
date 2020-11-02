@@ -982,7 +982,7 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
         pdf_b64 = base64.b64encode(pdf_contents).decode()
         href = f"""
             <a href="data:file/zip;base64,{pdf_b64}" download='{pdf_filename}'>
-            Click to download {pdf_filename}
+                Click to download {pdf_filename}
             </a>
         """
         st.markdown(href, unsafe_allow_html=True)
