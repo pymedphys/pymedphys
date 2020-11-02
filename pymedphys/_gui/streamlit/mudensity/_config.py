@@ -1,3 +1,18 @@
+# Copyright (C) 2020 Cancer Care Associates
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import pathlib
 
 from pymedphys._imports import streamlit as st
@@ -93,3 +108,72 @@ def get_indexed_trf_directory():
     indexed_trf_directory = logfile_root_dir.joinpath("indexed")
 
     return indexed_trf_directory
+
+
+def get_gamma_options(advanced_mode_local):
+    default_gamma_options = get_default_gamma_options()
+
+    if advanced_mode_local:
+        st.sidebar.markdown(
+            """
+            # Gamma parameters
+            """
+        )
+        result = {
+            **default_gamma_options,
+            **{
+                "dose_percent_threshold": st.sidebar.number_input(
+                    "MU Percent Threshold",
+                    value=default_gamma_options["dose_percent_threshold"],
+                ),
+                "distance_mm_threshold": st.sidebar.number_input(
+                    "Distance (mm) Threshold",
+                    value=default_gamma_options["distance_mm_threshold"],
+                ),
+                "local_gamma": st.sidebar.checkbox(
+                    "Local Gamma", default_gamma_options["local_gamma"]
+                ),
+                "max_gamma": st.sidebar.number_input(
+                    "Max Gamma", value=default_gamma_options["max_gamma"]
+                ),
+            },
+        }
+    else:
+        result = default_gamma_options
+
+    return result
+
+
+@st.cache
+def get_logfile_mosaiq_info(headers):
+    machine_centre_map = get_machine_centre_map()
+    mosaiq_details = get_mosaiq_details()
+
+    centres = {machine_centre_map[machine_id] for machine_id in headers["machine"]}
+    mosaiq_servers = [mosaiq_details[centre]["server"] for centre in centres]
+
+    details = []
+
+    cursors = {server: st_mosaiq.get_mosaiq_cursor(server) for server in mosaiq_servers}
+
+    for _, header in headers.iterrows():
+        machine_id = header["machine"]
+        centre = machine_centre_map[machine_id]
+        mosaiq_timezone = mosaiq_details[centre]["timezone"]
+        server = mosaiq_details[centre]["server"]
+        cursor = cursors[server]
+
+        field_label = header["field_label"]
+        field_name = header["field_name"]
+        utc_date = header["date"]
+
+        current_details = pmp_index.get_logfile_mosaiq_info(
+            cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
+        )
+        current_details = pd.Series(data=current_details)
+
+        details.append(current_details)
+
+    details = pd.concat(details, axis=1).T
+
+    return details

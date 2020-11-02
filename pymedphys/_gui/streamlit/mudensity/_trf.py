@@ -1,20 +1,28 @@
+# Copyright (C) 2020 Cancer Care Associates
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 import pymedphys
-from pymedphys._gui.streamlit.mudensity import _config, _exceptions
+from pymedphys._gui.streamlit.mudensity import _config, _deliveries, _exceptions
 
 
 @st.cache
 def read_trf(filepath):
     return pymedphys.read_trf(filepath)
-
-
-@st.cache(allow_output_mutation=True)
-def delivery_from_trf(pandas_table):
-    return pymedphys.Delivery._from_pandas(  # pylint: disable = protected-access
-        pandas_table
-    )
 
 
 def trf_input_method(patient_id="", key_namespace="", **_):
@@ -100,9 +108,11 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     headers.reset_index(inplace=True)
     headers.drop("index", axis=1, inplace=True)
 
-    headers
+    st.write(headers)
 
-    deliveries = cached_deliveries_loading(tables, delivery_from_trf)
+    deliveries = _deliveries.cached_deliveries_loading(
+        tables, _deliveries.delivery_from_trf
+    )
 
     individual_identifiers = [
         f"{path.parent.parent.parent.parent.name} {path.parent.name}"
@@ -116,12 +126,12 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     """
 
     try:
-        mosaiq_details = get_logfile_mosaiq_info(headers)
+        mosaiq_details = _config.get_logfile_mosaiq_info(headers)
         use_mosaiq = True
     except KeyError:
         use_mosaiq = False
         st.write(
-            NoMosaiqAccess(
+            _exceptions.NoMosaiqAccess(
                 "Need Mosaiq access to determine patient name. "
                 "Patient name set to 'Unknown'."
             )
