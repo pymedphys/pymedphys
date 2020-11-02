@@ -117,12 +117,24 @@ def trf_status(linac_id, backup_directory):
 
 
 def show_status_indicators():
-    linac_icom_live_stream_directories = _config.get_icom_live_stream_directories()
-    linac_indexed_backups_directory = _config.get_indexed_backups_directory()
-
-    linac_ids = list(linac_icom_live_stream_directories.keys())
-
     if st.sidebar.button("Check status of iCOM and backups"):
+        try:
+            linac_icom_live_stream_directories = (
+                _config.get_icom_live_stream_directories()
+            )
+            linac_indexed_backups_directory = _config.get_indexed_backups_directory()
+        except KeyError:
+            st.sidebar.write(
+                _exceptions.ConfigMissing(
+                    "iCOM and/or TRF backup configuration is missing. "
+                    "Unable to show status."
+                )
+            )
+
+            return
+
+        linac_ids = list(linac_icom_live_stream_directories.keys())
+
         st.sidebar.markdown(
             """
             ## Last recorded iCOM stream
