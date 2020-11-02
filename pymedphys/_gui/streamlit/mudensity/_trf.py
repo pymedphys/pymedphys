@@ -126,18 +126,22 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     if not selected_trf_deliveries:
         return {}
 
-    """
-    #### TRF filepath(s)
-    """
+    st.write(
+        """
+        #### TRF filepath(s)
+        """
+    )
 
     selected_filepaths = [
         timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
     ]
-    [str(path.resolve()) for path in selected_filepaths]
+    st.write([str(path.resolve()) for path in selected_filepaths])
 
-    """
-    #### Log file header(s)
-    """
+    st.write(
+        """
+        #### Log file header(s)
+        """
+    )
 
     headers = []
     tables = []

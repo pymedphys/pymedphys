@@ -45,7 +45,6 @@ from pymedphys._streamlit import config as st_config
 from pymedphys._streamlit import misc as st_misc
 from pymedphys._streamlit import monaco as st_monaco
 from pymedphys._streamlit import mosaiq as st_mosaiq
-from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
 """
@@ -457,7 +456,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
     if len(timestamps) == 0:
         if patient_id != "":
             st.write(
-                st_exceptions.NoRecordsFound(
+                _exceptions.NoRecordsFound(
                     f"No iCOM delivery record found for patient ID {patient_id}"
                 )
             )
@@ -546,7 +545,7 @@ def get_patient_name(cursor, patient_id):
 
 
 def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
-    mosaiq_details = get_mosaiq_details()
+    mosaiq_details = _config.get_mosaiq_details()
 
     mosaiq_site = st_misc.site_picker(
         "Mosaiq Site", default=site, key=f"{key_namespace}_mosaiq_site"
@@ -949,7 +948,7 @@ def run_calculation(
         )
     except subprocess.CalledProcessError:
         st.write(
-            UnableToCreatePDF(
+            _exceptions.UnableToCreatePDF(
                 "Please install Image Magick to create PDF reports "
                 "<https://imagemagick.org/script/download.php#windows>."
             )
