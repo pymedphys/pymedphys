@@ -15,12 +15,9 @@
 
 import pathlib
 
-from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import config as st_config
-from pymedphys._streamlit import mosaiq as st_mosaiq
-from pymedphys._trf.manage import index as pmp_index
 
 
 @st.cache
@@ -145,38 +142,3 @@ def get_gamma_options(advanced_mode_local):
         result = default_gamma_options
 
     return result
-
-
-@st.cache
-def get_logfile_mosaiq_info(headers):
-    machine_centre_map = get_machine_centre_map()
-    mosaiq_details = get_mosaiq_details()
-
-    centres = {machine_centre_map[machine_id] for machine_id in headers["machine"]}
-    mosaiq_servers = [mosaiq_details[centre]["server"] for centre in centres]
-
-    details = []
-
-    cursors = {server: st_mosaiq.get_mosaiq_cursor(server) for server in mosaiq_servers}
-
-    for _, header in headers.iterrows():
-        machine_id = header["machine"]
-        centre = machine_centre_map[machine_id]
-        mosaiq_timezone = mosaiq_details[centre]["timezone"]
-        server = mosaiq_details[centre]["server"]
-        cursor = cursors[server]
-
-        field_label = header["field_label"]
-        field_name = header["field_name"]
-        utc_date = header["date"]
-
-        current_details = pmp_index.get_logfile_mosaiq_info(
-            cursor, machine_id, utc_date, mosaiq_timezone, field_label, field_name
-        )
-        current_details = pd.Series(data=current_details)
-
-        details.append(current_details)
-
-    details = pd.concat(details, axis=1).T
-
-    return details
