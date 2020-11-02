@@ -32,10 +32,10 @@ from pymedphys._imports import timeago
 
 import pymedphys
 from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
+from pymedphys._gui.streamlit.mudensity import _config, _exceptions, _trf
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
-from pymedphys._streamlit import exceptions as st_exceptions
 from pymedphys._streamlit import misc as st_misc
 from pymedphys._streamlit import monaco as st_monaco
 from pymedphys._streamlit import mosaiq as st_mosaiq
@@ -65,116 +65,6 @@ GRID = pymedphys.mudensity.grid(
     leaf_pair_widths=LEAF_PAIR_WIDTHS,
 )
 COORDS = (GRID["jaw"], GRID["mlc"])
-
-
-@st.cache
-def get_dicom_export_locations():
-    site_directories = st_config.get_site_directories()
-    dicom_export_locations = {
-        site: directories["monaco"].parent.parent.joinpath("DCMXprtFile")
-        for site, directories in site_directories.items()
-    }
-
-    return dicom_export_locations
-
-
-@st.cache
-def get_icom_live_stream_directories():
-    config = st_config.get_config()
-    icom_live_stream_directories = {}
-    for site in config["site"]:
-        icom_live_base_directory = pathlib.Path(site["export-directories"]["icom_live"])
-        for linac in site["linac"]:
-            icom_live_stream_directories[linac["name"]] = str(
-                icom_live_base_directory.joinpath(linac["ip"])
-            )
-
-    return icom_live_stream_directories
-
-
-@st.cache
-def get_machine_centre_map():
-    config = st_config.get_config()
-    machine_centre_map = {}
-    for site in config["site"]:
-        for linac in site["linac"]:
-            machine_centre_map[linac["name"]] = site["name"]
-
-    return machine_centre_map
-
-
-@st.cache
-def get_logfile_root_dir():
-    config = st_config.get_config()
-    logfile_root_dir = pathlib.Path(config["trf_logfiles"]["root_directory"])
-
-    return logfile_root_dir
-
-
-@st.cache
-def get_indexed_backups_directory():
-    logfile_root_dir = get_logfile_root_dir()
-    indexed_backups_directory = logfile_root_dir.joinpath("diagnostics/already_indexed")
-
-    return indexed_backups_directory
-
-
-@st.cache
-def get_indexed_trf_directory():
-    logfile_root_dir = get_logfile_root_dir()
-    indexed_trf_directory = logfile_root_dir.joinpath("indexed")
-
-    return indexed_trf_directory
-
-
-@st.cache
-def get_mosaiq_details():
-    config = st_config.get_config()
-    mosaiq_details = {
-        site["name"]: {
-            "timezone": site["mosaiq"]["timezone"],
-            "server": f'{site["mosaiq"]["hostname"]}:{site["mosaiq"]["port"]}',
-        }
-        for site in config["site"]
-    }
-
-    return mosaiq_details
-
-
-@st.cache
-def get_default_icom_directories():
-    config = st_config.get_config()
-    default_icom_directory = config["icom"]["patient_directories"]
-
-    return default_icom_directory
-
-
-@st.cache
-def get_default_gamma_options():
-    config = st_config.get_config()
-    default_gamma_options = config["gamma"]
-
-    return default_gamma_options
-
-
-class InputRequired(ValueError):
-    pass
-
-
-class WrongFileType(ValueError):
-    pass
-
-
-class UnableToCreatePDF(ValueError):
-    pass
-
-
-class NoControlPointsFound(ValueError):
-    pass
-
-
-class NoMosaiqAccess(ValueError):
-    pass
 
 
 def sidebar_overview():
@@ -220,8 +110,8 @@ def trf_status(linac_id, backup_directory):
 
 
 def show_status_indicators():
-    linac_icom_live_stream_directories = get_icom_live_stream_directories()
-    linac_indexed_backups_directory = get_indexed_backups_directory()
+    linac_icom_live_stream_directories = _config.get_icom_live_stream_directories()
+    linac_indexed_backups_directory = _config.get_indexed_backups_directory()
 
     linac_ids = list(linac_icom_live_stream_directories.keys())
 
@@ -250,7 +140,7 @@ def show_status_indicators():
 
 
 def get_gamma_options(advanced_mode_local):
-    default_gamma_options = get_default_gamma_options()
+    default_gamma_options = _config.get_default_gamma_options()
 
     if advanced_mode_local:
         st.sidebar.markdown(
@@ -291,13 +181,6 @@ def delivery_from_icom(icom_stream):
 @st.cache(allow_output_mutation=True)
 def delivery_from_tel(tel_path):
     return pymedphys.Delivery.from_monaco(tel_path)
-
-
-@st.cache(allow_output_mutation=True)
-def delivery_from_trf(pandas_table):
-    return pymedphys.Delivery._from_pandas(  # pylint: disable = protected-access
-        pandas_table
-    )
 
 
 @st.cache(hash_funcs={pymssql.Cursor: id}, allow_output_mutation=True)
@@ -377,7 +260,7 @@ def monaco_input_method(
     if len(plan_names_to_choose_from) == 0:
         if patient_id != "":
             st.write(
-                st_exceptions.NoRecordsFound(
+                _exceptions.NoRecordsFound(
                     f"No Monaco plans found for patient ID {patient_id}"
                 )
             )
@@ -420,7 +303,7 @@ def monaco_input_method(
 
     if len(deliveries) == 1 and len(deliveries[0].mu) == 0:
         st.write(
-            NoControlPointsFound(
+            _exceptions.NoControlPointsFound(
                 "This is likely due to an as of yet unsupported "
                 "Monaco file format. At this point in time 3DCRT "
                 "is not yet supported for reading directly from "
@@ -463,7 +346,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     FILE_UPLOAD = "File upload"
     MONACO_SEARCH = "Search Monaco file export location"
 
-    dicom_export_locations = get_dicom_export_locations()
+    dicom_export_locations = _config.get_dicom_export_locations()
 
     import_method = st.radio(
         "DICOM import method",
@@ -482,11 +365,15 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         try:
             dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
         except:  # pylint: disable = bare-except
-            st.write(WrongFileType("Does not appear to be a DICOM file"))
+            st.write(_exceptions.WrongFileType("Does not appear to be a DICOM file"))
             return {}
 
         if dicom_plan.SOPClassUID != DICOM_PLAN_UID:
-            st.write(WrongFileType("The DICOM type needs to be an RT DICOM Plan file"))
+            st.write(
+                _exceptions.WrongFileType(
+                    "The DICOM type needs to be an RT DICOM Plan file"
+                )
+            )
             return {}
 
         data_paths = ["Uploaded DICOM file"]
@@ -518,7 +405,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         if len(dicom_plan_options) == 0 and patient_id != "":
             st.write(
-                st_exceptions.NoRecordsFound(
+                _exceptions.NoRecordsFound(
                     f"No exported DICOM RT plans found for Patient ID {patient_id} "
                     f"within the directory {monaco_export_directory}"
                 )
@@ -555,7 +442,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
             dicom_plan, fraction_number="all"
         )
     except AttributeError:
-        st.write(WrongFileType("Does not appear to be a photon DICOM plan"))
+        st.write(_exceptions.WrongFileType("Does not appear to be a photon DICOM plan"))
         return {}
 
     fractions = list(deliveries_all_fractions.keys())
@@ -593,7 +480,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
 
 def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
-    icom_directories = get_default_icom_directories()
+    icom_directories = _config.get_default_icom_directories()
 
     if advanced_mode_local:
         "iCOM patient directories", icom_directories
@@ -710,11 +597,6 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
 
 
 @st.cache
-def read_trf(filepath):
-    return pymedphys.read_trf(filepath)
-
-
-@st.cache
 def get_logfile_mosaiq_info(headers):
     machine_centre_map = get_machine_centre_map()
     mosaiq_details = get_mosaiq_details()
@@ -747,142 +629,6 @@ def get_logfile_mosaiq_info(headers):
     details = pd.concat(details, axis=1).T
 
     return details
-
-
-def trf_input_method(patient_id="", key_namespace="", **_):
-    """Streamlit GUI method to facilitate TRF data provision.
-
-    Notes
-    -----
-    TRF files themselves have no innate patient alignment. An option
-    for TRF collection is to use the CLI tool
-    ``pymedphys trf orchestrate``. This connects to the SAMBA server
-    hosted on the Elekta NSS and downloads the diagnostic backup zips.
-    It then takes these TRF files and queries the Mosaiq database using
-    time of delivery to identify these with a patient id (Ident.Pat_ID1)
-    and name.
-
-    As such, all references to patient ID and name within this
-    ``trf_input_method`` are actually a reference to their Mosaiq
-    database counterparts.
-    """
-    indexed_trf_directory = get_indexed_trf_directory()
-
-    patient_id = st.text_input(
-        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-    )
-    patient_id
-
-    filepaths = list(indexed_trf_directory.glob(f"*/{patient_id}_*/*/*/*/*.trf"))
-
-    raw_timestamps = ["_".join(path.parent.name.split("_")[0:2]) for path in filepaths]
-    timestamps = list(
-        pd.to_datetime(raw_timestamps, format="%Y-%m-%d_%H%M%S").astype(str)
-    )
-
-    timestamp_filepath_map = dict(zip(timestamps, filepaths))
-
-    timestamps = sorted(timestamps, reverse=True)
-
-    if len(timestamps) == 0:
-        if patient_id != "":
-            st.write(
-                st_exceptions.NoRecordsFound(
-                    f"No TRF log file found for patient ID {patient_id}"
-                )
-            )
-        return {"patient_id": patient_id}
-
-    if len(timestamps) == 1:
-        default_timestamp = timestamps[0]
-    else:
-        default_timestamp = []
-
-    selected_trf_deliveries = st.multiselect(
-        "Select TRF delivery timestamp(s)",
-        timestamps,
-        default=default_timestamp,
-        key=f"{key_namespace}_trf_deliveries",
-    )
-
-    if not selected_trf_deliveries:
-        return {}
-
-    """
-    #### TRF filepath(s)
-    """
-
-    selected_filepaths = [
-        timestamp_filepath_map[timestamp] for timestamp in selected_trf_deliveries
-    ]
-    [str(path.resolve()) for path in selected_filepaths]
-
-    """
-    #### Log file header(s)
-    """
-
-    headers = []
-    tables = []
-    for path in selected_filepaths:
-        header, table = read_trf(path)
-        headers.append(header)
-        tables.append(table)
-
-    headers = pd.concat(headers)
-    headers.reset_index(inplace=True)
-    headers.drop("index", axis=1, inplace=True)
-
-    headers
-
-    deliveries = cached_deliveries_loading(tables, delivery_from_trf)
-
-    individual_identifiers = [
-        f"{path.parent.parent.parent.parent.name} {path.parent.name}"
-        for path in selected_filepaths
-    ]
-
-    identifier = f"TRF ({individual_identifiers[0]})"
-
-    """
-    #### Corresponding Mosaiq SQL Details
-    """
-
-    try:
-        mosaiq_details = get_logfile_mosaiq_info(headers)
-        use_mosaiq = True
-    except KeyError:
-        use_mosaiq = False
-        st.write(
-            NoMosaiqAccess(
-                "Need Mosaiq access to determine patient name. "
-                "Patient name set to 'Unknown'."
-            )
-        )
-        patient_name = "Unknown"
-
-    if use_mosaiq:
-        mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
-
-        mosaiq_details
-
-        patient_names = set()
-        for _, row in mosaiq_details.iterrows():
-            row
-            patient_name = utl_patient.convert_patient_name_from_split(
-                row["last_name"], row["first_name"]
-            )
-            patient_names.add(patient_name)
-
-        patient_name = filter_patient_names(patient_names)
-
-    return {
-        "site": None,
-        "patient_id": patient_id,
-        "patient_name": patient_name,
-        "data_paths": selected_filepaths,
-        "identifier": identifier,
-        "deliveries": deliveries,
-    }
 
 
 @st.cache(hash_funcs={pymssql.Cursor: id})
@@ -1360,7 +1106,7 @@ def main():
         "monaco": monaco_input_method,
         "dicom": dicom_input_method,
         "icom": icom_input_method,
-        "trf": trf_input_method,
+        "trf": _trf.trf_input_method,
         "mosaiq": mosaiq_input_method,
     }
 
