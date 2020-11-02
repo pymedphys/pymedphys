@@ -291,8 +291,6 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     FILE_UPLOAD = "File upload"
     MONACO_SEARCH = "Search Monaco file export location"
 
-    dicom_export_locations = _config.get_dicom_export_locations()
-
     import_method = st.radio(
         "DICOM import method",
         [FILE_UPLOAD, MONACO_SEARCH],
@@ -321,9 +319,20 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
             )
             return {}
 
-        data_paths = ["Uploaded DICOM file"]
+        data_paths = []
 
     if import_method == MONACO_SEARCH:
+        try:
+            dicom_export_locations = _config.get_dicom_export_locations()
+        except KeyError:
+            st.write(
+                _exceptions.ConfigMissing(
+                    "No Monaco directory is configured. Please use "
+                    f"'{FILE_UPLOAD}' instead."
+                )
+            )
+            return {}
+
         monaco_site = st_misc.site_picker(
             "Monaco Export Location",
             default=monaco_site,
