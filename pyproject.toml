@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.34.0-dev7"
+version = "0.34.0-dev8"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
