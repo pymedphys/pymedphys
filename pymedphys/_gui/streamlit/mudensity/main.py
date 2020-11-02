@@ -32,7 +32,13 @@ from pymedphys._imports import timeago
 
 import pymedphys
 from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
-from pymedphys._gui.streamlit.mudensity import _config, _deliveries, _exceptions, _trf
+from pymedphys._gui.streamlit.mudensity import (
+    _config,
+    _deliveries,
+    _exceptions,
+    _trf,
+    _utilities,
+)
 from pymedphys._monaco import patient as mnc_patient
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
@@ -159,19 +165,6 @@ def load_icom_streams(icom_paths):
 @st.cache
 def read_monaco_patient_name(monaco_patient_directory):
     return mnc_patient.read_patient_name(monaco_patient_directory)
-
-
-def filter_patient_names(patient_names):
-    patient_names = list(set(patient_names))
-
-    if len(patient_names) == 1:
-        patient_name = patient_names[0]
-    elif len(patient_names) == 0:
-        patient_name = ""
-    else:
-        patient_name = f"Multiple Names Found: f{', '.join(patient_names)}"
-
-    return patient_name
 
 
 def monaco_input_method(
@@ -513,7 +506,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
 
         patient_names.add(patient_name)
 
-    patient_name = filter_patient_names(patient_names)
+    patient_name = _utilities.filter_patient_names(patient_names)
 
     icom_streams = load_icom_streams(icom_paths)
     deliveries = _deliveries.cached_deliveries_loading(

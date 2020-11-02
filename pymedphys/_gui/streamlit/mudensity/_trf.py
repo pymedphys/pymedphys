@@ -17,12 +17,54 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 import pymedphys
-from pymedphys._gui.streamlit.mudensity import _config, _deliveries, _exceptions
+from pymedphys._gui.streamlit.mudensity import (
+    _config,
+    _deliveries,
+    _exceptions,
+    _utilities,
+)
+from pymedphys._utilities import patient as utl_patient
 
 
 @st.cache
 def read_trf(filepath):
     return pymedphys.read_trf(filepath)
+
+
+def _attempt_patient_name_from_mosaiq(headers):
+    st.write(
+        """
+        #### Corresponding Mosaiq SQL Details
+        """
+    )
+
+    try:
+        mosaiq_details = _config.get_logfile_mosaiq_info(headers)
+    except KeyError:
+        st.write(
+            _exceptions.NoMosaiqAccess(
+                "Need Mosaiq access to determine patient name. "
+                "Patient name set to 'Unknown'."
+            )
+        )
+        patient_name = "Unknown"
+
+        return patient_name
+
+    mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
+    st.write(mosaiq_details)
+
+    patient_names = set()
+    for _, row in mosaiq_details.iterrows():
+        st.write(row)
+        patient_name = utl_patient.convert_patient_name_from_split(
+            row["last_name"], row["first_name"]
+        )
+        patient_names.add(patient_name)
+
+    patient_name = _utilities.filter_patient_names(patient_names)
+
+    return patient_name
 
 
 def trf_input_method(patient_id="", key_namespace="", **_):
@@ -121,37 +163,7 @@ def trf_input_method(patient_id="", key_namespace="", **_):
 
     identifier = f"TRF ({individual_identifiers[0]})"
 
-    """
-    #### Corresponding Mosaiq SQL Details
-    """
-
-    try:
-        mosaiq_details = _config.get_logfile_mosaiq_info(headers)
-        use_mosaiq = True
-    except KeyError:
-        use_mosaiq = False
-        st.write(
-            _exceptions.NoMosaiqAccess(
-                "Need Mosaiq access to determine patient name. "
-                "Patient name set to 'Unknown'."
-            )
-        )
-        patient_name = "Unknown"
-
-    if use_mosaiq:
-        mosaiq_details = mosaiq_details.drop("beam_completed", axis=1)
-
-        mosaiq_details
-
-        patient_names = set()
-        for _, row in mosaiq_details.iterrows():
-            row
-            patient_name = utl_patient.convert_patient_name_from_split(
-                row["last_name"], row["first_name"]
-            )
-            patient_names.add(patient_name)
-
-        patient_name = filter_patient_names(patient_names)
+    patient_name = _attempt_patient_name_from_mosaiq(headers)
 
     return {
         "site": None,
