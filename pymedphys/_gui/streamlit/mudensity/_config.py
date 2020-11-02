@@ -15,9 +15,12 @@
 
 import pathlib
 
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit import config as st_config
+from pymedphys._streamlit import mosaiq as st_mosaiq
+from pymedphys._trf.manage import index as pmp_index
 
 
 @st.cache
