@@ -27,8 +27,8 @@ from pymedphys._utilities import patient as utl_patient
 
 
 @st.cache
-def read_trf(filepath):
-    return pymedphys.read_trf(filepath)
+def read_trf(trf):
+    return pymedphys.read_trf(trf)
 
 
 def _attempt_patient_name_from_mosaiq(headers):
