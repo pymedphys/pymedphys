@@ -21,6 +21,7 @@ import lzma
 import os
 import pathlib
 import subprocess
+import sys
 from datetime import datetime
 
 from pymedphys._imports import imageio, keyring
@@ -940,22 +941,53 @@ def run_calculation(
 
     fig.tight_layout()
 
-    st.write("Saving figure...")
+    st.write("## Results")
+    st.pyplot(fig)
+
+    st.write("## Saving reports")
+    st.write("### PNG")
+    st.write("Saving figure as PNG...")
     plt.savefig(png_filepath, dpi=100)
+    st.write(f"Saved:\n\n`{png_filepath}`")
+    convert_png_to_pdf(png_filepath, pdf_filepath)
+
+
+def convert_png_to_pdf(png_filepath, pdf_filepath):
+    st.write("### PDF")
+    st.write("Converting PNG to PDF...")
+
     try:
         subprocess.check_call(
             f'magick convert "{png_filepath}" "{pdf_filepath}"', shell=True
         )
+        success = True
     except subprocess.CalledProcessError:
+        try:
+            subprocess.check_call(
+                f'convert "{png_filepath}" "{pdf_filepath}"', shell=True
+            )
+            success = True
+        except subprocess.CalledProcessError:
+            success = False
+
+    if success:
+        st.write(f"Created:\n\n`{pdf_filepath}`")
+    else:
+        if sys.platform == "win32":
+            url_hash_parameter = "#windows"
+        else:
+            url_hash_parameter = ""
+
+        download_url = (
+            f"https://imagemagick.org/script/download.php{url_hash_parameter}"
+        )
+
         st.write(
             _exceptions.UnableToCreatePDF(
                 "Please install Image Magick to create PDF reports "
-                "<https://imagemagick.org/script/download.php#windows>."
+                f"<{download_url}>."
             )
         )
-
-    st.write("## Results")
-    st.pyplot(fig)
 
 
 def main():
