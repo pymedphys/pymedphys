@@ -161,19 +161,6 @@ def read_monaco_patient_name(monaco_patient_directory):
     return mnc_patient.read_patient_name(monaco_patient_directory)
 
 
-def filter_patient_names(patient_names):
-    patient_names = list(set(patient_names))
-
-    if len(patient_names) == 1:
-        patient_name = patient_names[0]
-    elif len(patient_names) == 0:
-        patient_name = ""
-    else:
-        patient_name = f"Multiple Names Found: f{', '.join(patient_names)}"
-
-    return patient_name
-
-
 def monaco_input_method(
     patient_id="", key_namespace="", advanced_mode_local=False, site=None, **_
 ):
