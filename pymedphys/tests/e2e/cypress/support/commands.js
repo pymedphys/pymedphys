@@ -55,9 +55,12 @@ Cypress.Commands.add('textMatch', (label, length, result) => {
 })
 
 Cypress.Commands.add('start', (app) => {
+  cy.visit('http://localhost:8501')
+
   Cypress.Cookies.defaults({
     preserve: ["_xsrf"]
   });
+
   cy.visit(`http://localhost:8501/?app=${app}`);
   cy.compute()
   cy.get(".decoration").invoke("css", "display", "none");
