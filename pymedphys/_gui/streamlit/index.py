@@ -83,7 +83,7 @@ APPLICATION_OPTIONS = {
 
 st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
 
-session_state = state.get(app="index", selection="index", button=None)
+session_state = state.get(app="index")
 
 
 def index():
@@ -120,21 +120,12 @@ def selectbox_format(key):
 
 
 def main():
-    st.sidebar.write("# GUI Select")
+    if session_state.app != "index":
+        if st.sidebar.button("Return to Index"):
+            session_state.app = "index"
+            st.experimental_rerun()
 
-    gui_select_placeholder = st.sidebar.empty()
-
-    application_options_list = list(APPLICATION_OPTIONS.keys())
-
-    selected_gui = gui_select_placeholder.selectbox(
-        "", application_options_list, format_func=selectbox_format, key="GUI_select_box"
-    )
-
-    if selected_gui != session_state.selection:
-        session_state.selection = selected_gui
-        session_state.app = selected_gui
-
-    st.sidebar.write("---")
+        st.sidebar.write("---")
 
     application_function = APPLICATION_OPTIONS[session_state.app]["callable"]
     application_function()
