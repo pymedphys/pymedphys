@@ -13,10 +13,6 @@
 # limitations under the License.
 
 
-# pylint: disable = pointless-statement, pointless-string-statement
-# pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines, redefined-outer-name
-
 import base64
 import lzma
 import os
@@ -45,11 +41,14 @@ from pymedphys._gui.streamlit.mudensity import (
 from pymedphys._streamlit import config as st_config
 from pymedphys._streamlit import misc as st_misc
 
-"""
-# MU Density comparison tool
+st.write(
+    """
+    # MU Density comparison tool
 
-Tool to compare the MU Density between planned and delivery.
-"""
+    Tool to compare the MU Density between planned and delivery.
+    """
+)
+
 
 DATA_OPTION_LABELS = {
     "monaco": "Monaco tel.1 filepath",
@@ -71,7 +70,6 @@ COORDS = (GRID["jaw"], GRID["mlc"])
 
 
 def sidebar_overview():
-
     overview_placeholder = st.sidebar.empty()
 
     def set_overview_data(patient_id, patient_name, total_mu):
@@ -171,9 +169,11 @@ def display_deliveries(deliveries):
     if not deliveries:
         return 0
 
-    """
-    #### Overview of selected deliveries
-    """
+    st.write(
+        """
+        #### Overview of selected deliveries
+        """
+    )
 
     data = []
     for delivery in deliveries:
@@ -188,11 +188,11 @@ def display_deliveries(deliveries):
 
     columns = ["MU", "Number of Data Points"]
     df = pd.DataFrame(data=data, columns=columns)
-    df
+    st.write(df)
 
     total_mu = round(df["MU"].sum(), 1)
 
-    f"Total MU: `{total_mu}`"
+    st.write(f"Total MU: `{total_mu}`")
 
     return total_mu
 
@@ -384,9 +384,11 @@ def advanced_debugging():
 
     st.sidebar.markdown("# Advanced Debugging")
     if st.sidebar.button("Compare Baseline to Output Directory"):
-        """
-        ## Comparing Results to Baseline
-        """
+        st.write(
+            """
+            ## Comparing Results to Baseline
+            """
+        )
 
         baseline_directory = pathlib.Path(
             config["debug"]["baseline_directory"]
@@ -410,31 +412,38 @@ def advanced_debugging():
 
         for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
 
-            f"### {baseline.parent.name}/{baseline.name}"
+            st.write(f"### {baseline.parent.name}/{baseline.name}")
 
-            f"`{baseline}`\n\n**vs**\n\n`{evaluation}`"
+            st.write(f"`{baseline}`\n\n**vs**\n\n`{evaluation}`")
 
             baseline_image = imageio.imread(baseline)
 
             try:
                 evaluation_image = imageio.imread(evaluation)
             except FileNotFoundError as e:
-                """
-                #### File was not found
-                """
+                st.write(
+                    """
+                    #### File was not found
+                    """
+                )
+
                 st.write(e)
 
-                f"""
-                For debugging purposes, here are all the files that
-                were found within {str(output_dir)}
-                """
+                st.write(
+                    f"""
+                    For debugging purposes, here are all the files that
+                    were found within {str(output_dir)}
+                    """
+                )
 
-                [str(path) for path in output_dir.rglob("*") if path.is_file()]
+                st.write(
+                    [str(path) for path in output_dir.rglob("*") if path.is_file()]
+                )
 
                 return
 
             agree = np.allclose(baseline_image, evaluation_image)
-            f"Images Agree: `{agree}`"
+            st.write(f"Images Agree: `{agree}`")
 
 
 def run_calculation(
@@ -641,9 +650,11 @@ def main():
         """
     )
 
-    """
-    ### Reference
-    """
+    st.write(
+        """
+        ### Reference
+        """
+    )
 
     reference_results = get_input_data_ui(
         overview_updater_map,
@@ -653,9 +664,11 @@ def main():
         advanced_mode,
     )
 
-    """
-    ### Evaluation
-    """
+    st.write(
+        """
+        ### Evaluation
+        """
+    )
 
     evaluation_results = get_input_data_ui(
         overview_updater_map,
@@ -666,15 +679,19 @@ def main():
         **reference_results,
     )
 
-    """
-    ## Output Locations
-    """
+    st.write(
+        """
+        ## Output Locations
+        """
+    )
 
-    """
-    ### eSCAN Directory
+    st.write(
+        """
+        ### eSCAN Directory
 
-    The location to save the produced pdf report.
-    """
+        The location to save the produced pdf report.
+        """
+    )
 
     default_site = evaluation_results.get("site", None)
     if default_site is None:
@@ -692,11 +709,13 @@ def main():
     default_png_output_directory = config["output"]["png_directory"]
 
     if advanced_mode:
-        """
-        ### Image record
+        st.write(
+            """
+            ### Image record
 
-        Path to save the image of the results for posterity
-        """
+            Path to save the image of the results for posterity
+            """
+        )
 
         png_output_directory = pathlib.Path(
             st.text_input("png output directory", default_png_output_directory)
@@ -710,20 +729,27 @@ def main():
         os.path.expanduser(png_output_directory)
     ).resolve()
 
-    """
-    ## Calculation
-    """
+    st.write(
+        """
+        ## Calculation
+        """
+    )
 
     if st.button("Run Calculation"):
 
-        """
-        ### MU Density usage warning
-        """
+        st.write(
+            """
+            ### MU Density usage warning
+            """
+        )
+
         st.warning(pymedphys.mudensity.WARNING_MESSAGE)
 
-        """
-        ### Calculation status
-        """
+        st.write(
+            """
+            ### Calculation status
+            """
+        )
 
         run_calculation(
             reference_results,
