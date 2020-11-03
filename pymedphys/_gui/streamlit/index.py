@@ -95,7 +95,7 @@ def index():
         """
     )
 
-    for key, category in APPLICATION_CATEGORIES.items():
+    for category_key, category in APPLICATION_CATEGORIES.items():
         st.write(
             f"""
                 ## {category["title"]}
@@ -103,10 +103,10 @@ def index():
             """
         )
 
-        for application in APPLICATION_OPTIONS.values():
-            if application["category"] == key:
+        for app_key, application in APPLICATION_OPTIONS.items():
+            if application["category"] == category_key:
                 if st.button(application["label"]):
-                    pass
+                    return app_key
 
 
 APPLICATION_OPTIONS["index"]["callable"] = index
@@ -119,17 +119,30 @@ def selectbox_format(key):
 def main():
     st.sidebar.write("# GUI Select")
 
-    selected_gui = st.sidebar.selectbox(
-        "",
-        list(APPLICATION_OPTIONS.keys()),
-        format_func=selectbox_format,
-        key="GUI_select_box",
+    gui_select_placeholder = st.sidebar.empty()
+
+    application_options_list = list(APPLICATION_OPTIONS.keys())
+
+    selected_gui = gui_select_placeholder.selectbox(
+        "", application_options_list, format_func=selectbox_format, key="GUI_select_box"
     )
 
     st.sidebar.write("---")
 
     application_function = APPLICATION_OPTIONS[selected_gui]["callable"]
-    application_function()
+    app_key = application_function()
+
+    if app_key:
+        st.write(app_key)
+        gui_select_placeholder.selectbox(
+            "",
+            application_options_list,
+            format_func=selectbox_format,
+            index=application_options_list.index(app_key),
+            key="GUI_select_box",
+        )
+
+        st.experimental_rerun()
 
 
 if __name__ == "__main__":
