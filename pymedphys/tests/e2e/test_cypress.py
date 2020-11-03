@@ -36,7 +36,7 @@ def process(*args, **kwargs):
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
-@pytest.mark.yarn
+@pytest.mark.cypress
 def test_cypress():
     pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=HERE)
 
