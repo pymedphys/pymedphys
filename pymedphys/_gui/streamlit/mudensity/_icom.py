@@ -13,12 +13,31 @@
 # limitations under the License.
 
 
+import lzma
 import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
-from pymedphys._gui.streamlit.mudensity import _config
+from pymedphys._gui.streamlit.mudensity import _config, _exceptions, _utilities
+from pymedphys._utilities import patient as utl_patient
+
+
+@st.cache
+def load_icom_stream(icom_path):
+    with lzma.open(icom_path, "r") as f:
+        contents = f.read()
+
+    return contents
+
+
+def load_icom_streams(icom_paths):
+    icom_streams = []
+
+    for icom_path in icom_paths:
+        icom_streams += [load_icom_stream(icom_path)]
+
+    return icom_streams
 
 
 def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
