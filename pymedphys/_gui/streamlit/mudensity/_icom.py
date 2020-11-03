@@ -49,16 +49,18 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
 
     choice_path_map = dict(zip(timestamps, icom_deliveries))
 
-    """
-    Here you need to select the timestamps that correspond to a single
-    fraction of the plan selected above. Most of the time
-    you will only need to select one timestamp here, however in some
-    cases you may need to select multiple timestamps.
+    st.write(
+        """
+        Here you need to select the timestamps that correspond to a single
+        fraction of the plan selected above. Most of the time
+        you will only need to select one timestamp here, however in some
+        cases you may need to select multiple timestamps.
 
-    This can occur if for example a single fraction was delivered in separate
-    beams due to either a beam interrupt, or the fraction being spread
-    over multiple energies
-    """
+        This can occur if for example a single fraction was delivered in separate
+        beams due to either a beam interrupt, or the fraction being spread
+        over multiple energies
+        """
+    )
 
     if len(timestamps) == 0:
         if patient_id != "":
@@ -84,8 +86,8 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
             key=f"{key_namespace}_icom_deliveries",
         )
     except st.errors.StreamlitAPIException:
-        f"Default timestamp = `{default_timestamp}`"
-        f"All timestamps = `{timestamps}`"
+        st.write(f"Default timestamp = `{default_timestamp}`")
+        st.write(f"All timestamps = `{timestamps}`")
         raise
 
     icom_filenames = [
@@ -98,7 +100,7 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
         icom_paths.append(choice_path_map[selected])
 
     if advanced_mode_local:
-        [str(path.resolve()) for path in icom_paths]
+        st.write([str(path.resolve()) for path in icom_paths])
 
     patient_names = set()
     for icom_path in icom_paths:
