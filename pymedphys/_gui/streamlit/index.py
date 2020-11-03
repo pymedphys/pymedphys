@@ -101,7 +101,7 @@ def swap_app(app):
 
     # Not sure why this is needed. The `set_query_params` doesn't
     # appear to work if a rerun is undergone immediately afterwards.
-    time.sleep(0.1)
+    time.sleep(0.01)
     st.experimental_rerun()
 
 
