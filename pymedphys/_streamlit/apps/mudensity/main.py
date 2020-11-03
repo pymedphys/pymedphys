@@ -31,13 +31,13 @@ import pymedphys
 from pymedphys._streamlit.apps.mudensity import (
     _config,
     _dicom,
-    _exceptions,
     _icom,
     _monaco,
     _mosaiq,
     _trf,
 )
 from pymedphys._streamlit.utilities import config as st_config
+from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import misc as st_misc
 
 DATA_OPTION_LABELS = {

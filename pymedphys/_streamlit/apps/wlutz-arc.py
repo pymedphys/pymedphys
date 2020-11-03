@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
-from pymedphys._streamlit import rerun as st_rerun
+from pymedphys._streamlit.utilities import rerun as st_rerun
 from pymedphys._wlutz import findbb, findfield, imginterp, iview, reporting
 
 st_rerun.autoreload([st_rerun])

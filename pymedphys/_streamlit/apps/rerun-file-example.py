@@ -7,7 +7,7 @@ import pathlib
 
 import streamlit as st
 
-from pymedphys._streamlit import rerun as st_rerun
+from pymedphys._streamlit.utilities import rerun as st_rerun
 
 st_rerun.autoreload(st_rerun)
 
