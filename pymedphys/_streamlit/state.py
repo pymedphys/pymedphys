@@ -3,18 +3,18 @@
 """Hack to add per-session state to Streamlit.
 Usage
 -----
->>> import SessionState
+>>> import SessionState  # doctest: +SKIP
 >>>
->>> session_state = SessionState.get(user_name='', favourite_color='black')
->>> session_state.user_name
+>>> session_state = SessionState.get(user_name='', favourite_color='black')  # doctest: +SKIP
+>>> session_state.user_name  # doctest: +SKIP
 ''
->>> session_state.user_name = 'Mary'
->>> session_state.favourite_color
+>>> session_state.user_name = 'Mary'  # doctest: +SKIP
+>>> session_state.favourite_color  # doctest: +SKIP
 'black'
 Since you set user_name above, next time your script runs this will be the
 result:
->>> session_state = get(user_name='', favourite_color='black')
->>> session_state.user_name
+>>> session_state = get(user_name='', favourite_color='black')  # doctest: +SKIP
+>>> session_state.user_name  # doctest: +SKIP
 'Mary'
 """
 try:
@@ -35,7 +35,7 @@ class SessionState:
             Default values for the session state.
         Example
         -------
-        >>> session_state = SessionState(user_name='', favourite_color='black')
+        >>> session_state = SessionState(user_name='', favourite_color='black')  # doctest: +SKIP
         >>> session_state.user_name = 'Mary'  # doctest: +SKIP
         ''
         >>> session_state.favourite_color  # doctest: +SKIP
