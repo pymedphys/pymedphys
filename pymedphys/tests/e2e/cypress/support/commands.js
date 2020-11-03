@@ -29,6 +29,8 @@
 // addMatchImageSnapshotCommand();
 
 import 'cypress-file-upload';
+
+
 Cypress.Commands.add('compute', () => {
   let start = new Date().getTime();
   cy.get("#ReportStatus", { timeout: 4000 }).should($el => {
@@ -53,6 +55,9 @@ Cypress.Commands.add('textMatch', (label, length, result) => {
 })
 
 Cypress.Commands.add('start', (app) => {
+  Cypress.Cookies.defaults({
+    preserve: ["_xsrf"]
+  });
   cy.visit(`http://localhost:8501/?app=${app}`);
   cy.compute()
   cy.get(".decoration").invoke("css", "display", "none");
