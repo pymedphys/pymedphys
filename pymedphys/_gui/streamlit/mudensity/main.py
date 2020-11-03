@@ -18,7 +18,6 @@
 # pylint: disable = too-many-lines, redefined-outer-name
 
 import base64
-import lzma
 import os
 import pathlib
 import subprocess
@@ -148,23 +147,6 @@ def show_status_indicators():
 
         for linac_id in linac_ids:
             trf_status(linac_id, linac_indexed_backups_directory)
-
-
-@st.cache
-def load_icom_stream(icom_path):
-    with lzma.open(icom_path, "r") as f:
-        contents = f.read()
-
-    return contents
-
-
-def load_icom_streams(icom_paths):
-    icom_streams = []
-
-    for icom_path in icom_paths:
-        icom_streams += [load_icom_stream(icom_path)]
-
-    return icom_streams
 
 
 def display_deliveries(deliveries):
