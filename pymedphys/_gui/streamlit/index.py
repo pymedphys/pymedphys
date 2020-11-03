@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pathlib
+import time
 
 import streamlit as st
 
@@ -39,14 +40,14 @@ APPLICATION_CATEGORIES = {
             test coverage that can be expected for a mature application.
         """,
     },
-    "fresh": {
-        "title": "Fresh",
+    "immature": {
+        "title": "Immature",
         "description": """
             These are relatively new applications. They possibly only
-            have minimal use, and they have at least some automated test
-            coverage. It is likely that these applications and their
-            respective configurations will still be changing as time
-            goes on.
+            have minimal use within the community, and they have at
+            least some automated test coverage. It is likely that these
+            applications and their respective configurations will still
+            be changing as time goes on.
         """,
     },
     "beta": {
@@ -75,7 +76,7 @@ APPLICATION_OPTIONS = {
         "callable": lambda: None,
     },
     "mudensity": {
-        "category": "fresh",
+        "category": "immature",
         "label": "MU Density Comparison",
         "callable": _mudensity.main,
     },
@@ -83,7 +84,25 @@ APPLICATION_OPTIONS = {
 
 st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
 
-session_state = state.get(app="index")
+
+def get_url_app():
+    try:
+        return st.experimental_get_query_params()["app"][0]
+    except KeyError:
+        return "index"
+
+
+session_state = state.get(app=get_url_app())
+
+
+def swap_app(app):
+    st.experimental_set_query_params(app=app)
+    session_state.app = app
+
+    # Not sure why this is needed. The `set_query_params` doesn't
+    # appear to work if a rerun is undergone immediately afterwards.
+    time.sleep(0.1)
+    st.experimental_rerun()
 
 
 def index():
@@ -107,9 +126,7 @@ def index():
         for app_key, application in APPLICATION_OPTIONS.items():
             if application["category"] == category_key:
                 if st.button(application["label"]):
-                    session_state.app = app_key
-
-                    st.experimental_rerun()
+                    swap_app(app_key)
 
 
 APPLICATION_OPTIONS["index"]["callable"] = index
@@ -120,10 +137,12 @@ def selectbox_format(key):
 
 
 def main():
+    if not session_state.app in APPLICATION_OPTIONS.keys():
+        swap_app("index")
+
     if session_state.app != "index":
         if st.sidebar.button("Return to Index"):
-            session_state.app = "index"
-            st.experimental_rerun()
+            swap_app("index")
 
         st.sidebar.write("---")
 
