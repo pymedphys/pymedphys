@@ -17,6 +17,7 @@ import pathlib
 import streamlit as st
 
 from pymedphys._gui.streamlit.mudensity import main as _mudensity
+from pymedphys._streamlit import state
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
@@ -80,9 +81,9 @@ APPLICATION_OPTIONS = {
     },
 }
 
-st.set_page_config(
-    page_title="PyMedPhys", page_icon=FAVICON, initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
+
+session_state = state.get(app="index", selection="index", button=None)
 
 
 def index():
@@ -106,7 +107,9 @@ def index():
         for app_key, application in APPLICATION_OPTIONS.items():
             if application["category"] == category_key:
                 if st.button(application["label"]):
-                    return app_key
+                    session_state.app = app_key
+
+                    st.experimental_rerun()
 
 
 APPLICATION_OPTIONS["index"]["callable"] = index
@@ -127,22 +130,14 @@ def main():
         "", application_options_list, format_func=selectbox_format, key="GUI_select_box"
     )
 
+    if selected_gui != session_state.selection:
+        session_state.selection = selected_gui
+        session_state.app = selected_gui
+
     st.sidebar.write("---")
 
-    application_function = APPLICATION_OPTIONS[selected_gui]["callable"]
-    app_key = application_function()
-
-    if app_key:
-        st.write(app_key)
-        gui_select_placeholder.selectbox(
-            "",
-            application_options_list,
-            format_func=selectbox_format,
-            index=application_options_list.index(app_key),
-            key="GUI_select_box",
-        )
-
-        st.experimental_rerun()
+    application_function = APPLICATION_OPTIONS[session_state.app]["callable"]
+    application_function()
 
 
 if __name__ == "__main__":
