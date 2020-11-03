@@ -55,15 +55,15 @@ def get(**kwargs):
         new one.
     Example
     -------
-    >>> session_state = get(user_name='', favourite_color='black')
+    >>> session_state = get(user_name='', favourite_color='black')  # doctest: +SKIP
     >>> session_state.user_name  # doctest: +SKIP
     ''
-    >>> session_state.user_name = 'Mary'
+    >>> session_state.user_name = 'Mary'  # doctest: +SKIP
     >>> session_state.favourite_color  # doctest: +SKIP
     'black'
     Since you set user_name above, next time your script runs this will be the
     result:
-    >>> session_state = get(user_name='', favourite_color='black')
+    >>> session_state = get(user_name='', favourite_color='black')  # doctest: +SKIP
     >>> session_state.user_name  # doctest: +SKIP
     'Mary'
     """
