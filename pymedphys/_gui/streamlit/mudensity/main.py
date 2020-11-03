@@ -25,10 +25,10 @@ import subprocess
 import sys
 from datetime import datetime
 
-from pymedphys._imports import imageio, keyring
+from pymedphys._imports import imageio
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plt, pydicom, pymssql
+from pymedphys._imports import plt, pydicom
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import timeago
 
@@ -37,17 +37,16 @@ from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._gui.streamlit.mudensity import (
     _config,
     _deliveries,
+    _dicom,
     _exceptions,
+    _icom,
+    _mosaiq,
     _trf,
-    _utilities,
 )
 from pymedphys._monaco import patient as mnc_patient
-from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit import config as st_config
 from pymedphys._streamlit import misc as st_misc
 from pymedphys._streamlit import monaco as st_monaco
-from pymedphys._streamlit import mosaiq as st_mosaiq
-from pymedphys._utilities import patient as utl_patient
 
 """
 # MU Density comparison tool
@@ -268,359 +267,6 @@ def monaco_input_method(
     }
 
     return results
-
-
-def pydicom_hash_function(dicom):
-    return hash(dicom.SOPInstanceUID)
-
-
-@st.cache(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_function})
-def load_dicom_file_if_plan(filepath):
-    dcm = pydicom.read_file(str(filepath), force=True, stop_before_pixels=True)
-    if dcm.SOPClassUID == DICOM_PLAN_UID:
-        return dcm
-
-    return None
-
-
-def dicom_input_method(  # pylint: disable = too-many-return-statements
-    key_namespace="", patient_id="", site=None, **_
-):
-    monaco_site = site
-
-    FILE_UPLOAD = "File upload"
-    MONACO_SEARCH = "Search Monaco file export location"
-
-    import_method = st.radio(
-        "DICOM import method",
-        [FILE_UPLOAD, MONACO_SEARCH],
-        key=f"{key_namespace}_dicom_file_import_method",
-    )
-
-    if import_method == FILE_UPLOAD:
-        dicom_plan_bytes = st.file_uploader(
-            "Upload DICOM RT Plan File", key=f"{key_namespace}_dicom_plan_uploader"
-        )
-
-        if dicom_plan_bytes is None:
-            return {}
-
-        try:
-            dicom_plan_bytes.seek(0)
-            dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
-        except:  # pylint: disable = bare-except
-            st.write(_exceptions.WrongFileType("Does not appear to be a DICOM file"))
-            return {}
-
-        if dicom_plan.SOPClassUID != DICOM_PLAN_UID:
-            st.write(
-                _exceptions.WrongFileType(
-                    "The DICOM type needs to be an RT DICOM Plan file"
-                )
-            )
-            return {}
-
-        data_paths = []
-
-    if import_method == MONACO_SEARCH:
-        try:
-            dicom_export_locations = _config.get_dicom_export_locations()
-        except KeyError:
-            st.write(
-                _exceptions.ConfigMissing(
-                    "No Monaco directory is configured. Please use "
-                    f"'{FILE_UPLOAD}' instead."
-                )
-            )
-            return {}
-
-        monaco_site = st_misc.site_picker(
-            "Monaco Export Location",
-            default=monaco_site,
-            key=f"{key_namespace}_monaco_site",
-        )
-
-        monaco_export_directory = dicom_export_locations[monaco_site]
-        st.write(monaco_export_directory.resolve())
-
-        patient_id = st.text_input(
-            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-        )
-
-        found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}_*.dcm"))
-
-        dicom_plans = {}
-
-        for path in found_dicom_files:
-            dcm = load_dicom_file_if_plan(path)
-            if dcm is not None:
-                dicom_plans[path.name] = dcm
-
-        dicom_plan_options = list(dicom_plans.keys())
-
-        if len(dicom_plan_options) == 0 and patient_id != "":
-            st.write(
-                _exceptions.NoRecordsFound(
-                    f"No exported DICOM RT plans found for Patient ID {patient_id} "
-                    f"within the directory {monaco_export_directory}"
-                )
-            )
-            return {"patient_id": patient_id}
-
-        if len(dicom_plan_options) == 1:
-            selected_plan = dicom_plan_options[0]
-        else:
-            selected_plan = st.radio(
-                "Select DICOM Plan",
-                dicom_plan_options,
-                key=f"{key_namespace}_select_monaco_export_plan",
-            )
-
-        f"DICOM file being used: `{selected_plan}`"
-
-        dicom_plan = dicom_plans[selected_plan]
-        data_paths = [monaco_export_directory.joinpath(selected_plan)]
-
-    patient_id = str(dicom_plan.PatientID)
-    f"Patient ID: `{patient_id}`"
-
-    patient_name = str(dicom_plan.PatientName)
-    patient_name = utl_patient.convert_patient_name(patient_name)
-
-    f"Patient Name: `{patient_name}`"
-
-    rt_plan_name = str(dicom_plan.RTPlanName)
-    f"Plan Name: `{rt_plan_name}`"
-
-    try:
-        deliveries_all_fractions = pymedphys.Delivery.from_dicom(
-            dicom_plan, fraction_number="all"
-        )
-    except AttributeError:
-        st.write(_exceptions.WrongFileType("Does not appear to be a photon DICOM plan"))
-        return {}
-
-    fractions = list(deliveries_all_fractions.keys())
-    if len(fractions) == 1:
-        delivery = deliveries_all_fractions[fractions[0]]
-    else:
-        fraction_choices = {}
-
-        for fraction, delivery in deliveries_all_fractions.items():
-            rounded_mu = round(delivery.mu[-1], 1)
-
-            fraction_choices[f"Perscription {fraction} with {rounded_mu} MU"] = fraction
-
-        fraction_selection = st.radio(
-            "Select relevant perscription",
-            list(fraction_choices.keys()),
-            key=f"{key_namespace}_dicom_perscription_chooser",
-        )
-
-        fraction_number = fraction_choices[fraction_selection]
-        delivery = deliveries_all_fractions[fraction_number]
-
-    deliveries = [delivery]
-
-    identifier = f"DICOM ({rt_plan_name})"
-
-    return {
-        "site": monaco_site,
-        "patient_id": patient_id,
-        "patient_name": patient_name,
-        "data_paths": data_paths,
-        "identifier": identifier,
-        "deliveries": deliveries,
-    }
-
-
-def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
-    icom_directories = _config.get_default_icom_directories()
-
-    if advanced_mode_local:
-        "iCOM patient directories", icom_directories
-
-    icom_directories = [pathlib.Path(path) for path in icom_directories]
-
-    if advanced_mode_local:
-        patient_id = st.text_input(
-            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-        )
-        patient_id
-
-    icom_deliveries = []
-    for path in icom_directories:
-        icom_deliveries += list(path.glob(f"{patient_id}_*/*.xz"))
-
-    icom_deliveries = sorted(icom_deliveries)
-
-    icom_files_to_choose_from = [path.stem for path in icom_deliveries]
-
-    timestamps = list(
-        pd.to_datetime(icom_files_to_choose_from, format="%Y%m%d_%H%M%S").astype(str)
-    )
-
-    choice_path_map = dict(zip(timestamps, icom_deliveries))
-
-    """
-    Here you need to select the timestamps that correspond to a single
-    fraction of the plan selected above. Most of the time
-    you will only need to select one timestamp here, however in some
-    cases you may need to select multiple timestamps.
-
-    This can occur if for example a single fraction was delivered in separate
-    beams due to either a beam interrupt, or the fraction being spread
-    over multiple energies
-    """
-
-    if len(timestamps) == 0:
-        if patient_id != "":
-            st.write(
-                _exceptions.NoRecordsFound(
-                    f"No iCOM delivery record found for patient ID {patient_id}"
-                )
-            )
-        return {"patient_id": patient_id}
-
-    if len(timestamps) == 1:
-        default_timestamp = [timestamps[0]]
-    else:
-        default_timestamp = []
-
-    timestamps = sorted(timestamps, reverse=True)
-
-    try:
-        selected_icom_deliveries = st.multiselect(
-            "Select iCOM delivery timestamp(s)",
-            timestamps,
-            default=default_timestamp,
-            key=f"{key_namespace}_icom_deliveries",
-        )
-    except st.errors.StreamlitAPIException:
-        f"Default timestamp = `{default_timestamp}`"
-        f"All timestamps = `{timestamps}`"
-        raise
-
-    icom_filenames = [
-        path.replace(" ", "_").replace("-", "").replace(":", "")
-        for path in selected_icom_deliveries
-    ]
-
-    icom_paths = []
-    for selected in selected_icom_deliveries:
-        icom_paths.append(choice_path_map[selected])
-
-    if advanced_mode_local:
-        [str(path.resolve()) for path in icom_paths]
-
-    patient_names = set()
-    for icom_path in icom_paths:
-        patient_name = str(icom_path.parent.name).split("_")[-1]
-        try:
-            patient_name = utl_patient.convert_patient_name_from_split(
-                *patient_name.split(", ")
-            )
-        except:  # pylint: disable = bare-except
-            pass
-
-        patient_names.add(patient_name)
-
-    patient_name = _utilities.filter_patient_names(patient_names)
-
-    icom_streams = load_icom_streams(icom_paths)
-    deliveries = _deliveries.cached_deliveries_loading(
-        icom_streams, _deliveries.delivery_from_icom
-    )
-
-    if selected_icom_deliveries:
-        identifier = f"iCOM ({icom_filenames[0]})"
-    else:
-        identifier = None
-
-    if len(deliveries) == 0:
-        st.write(_exceptions.InputRequired("Please select at least one iCOM delivery"))
-        st.stop()
-
-    results = {
-        "site": None,
-        "patient_id": patient_id,
-        "patient_name": patient_name,
-        "selected_icom_deliveries": selected_icom_deliveries,
-        "data_paths": icom_paths,
-        "identifier": identifier,
-        "deliveries": deliveries,
-    }
-
-    return results
-
-
-@st.cache(hash_funcs={pymssql.Cursor: id})
-def get_patient_fields(cursor, patient_id):
-    return msq_helpers.get_patient_fields(cursor, patient_id)
-
-
-@st.cache(hash_funcs={pymssql.Cursor: id})
-def get_patient_name(cursor, patient_id):
-    return msq_helpers.get_patient_name(cursor, patient_id)
-
-
-def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
-    mosaiq_details = _config.get_mosaiq_details()
-
-    mosaiq_site = st_misc.site_picker(
-        "Mosaiq Site", default=site, key=f"{key_namespace}_mosaiq_site"
-    )
-
-    server = mosaiq_details[mosaiq_site]["server"]
-    f"Mosaiq Hostname: `{server}`"
-
-    sql_user = keyring.get_password("MosaiqSQL_username", server)
-    f"Mosaiq SQL login being used: `{sql_user}`"
-
-    patient_id = st.text_input(
-        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-    )
-    patient_id
-
-    cursor = st_mosaiq.get_mosaiq_cursor(server)
-
-    if patient_id == "":
-        return {}
-
-    patient_name = get_patient_name(cursor, patient_id)
-
-    f"Patient Name: `{patient_name}`"
-
-    patient_fields = get_patient_fields(cursor, patient_id)
-
-    """
-    #### Mosaiq patient fields
-    """
-
-    patient_fields = patient_fields[patient_fields["monitor_units"] != 0]
-    patient_fields
-
-    field_ids = patient_fields["field_id"]
-    field_ids = field_ids.values.tolist()
-
-    selected_field_ids = st.multiselect(
-        "Select Mosaiq field id(s)", field_ids, key=f"{key_namespace}_mosaiq_field_id"
-    )
-
-    cursor_and_field_ids = [(cursor, field_id) for field_id in selected_field_ids]
-    deliveries = _deliveries.cached_deliveries_loading(
-        cursor_and_field_ids, _deliveries.delivery_from_mosaiq
-    )
-    identifier = f"{mosaiq_site} Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
-
-    return {
-        "site": mosaiq_site,
-        "patient_id": patient_id,
-        "patient_name": patient_name,
-        "data_paths": [],
-        "identifier": identifier,
-        "deliveries": deliveries,
-    }
 
 
 def display_deliveries(deliveries):
@@ -1073,11 +719,11 @@ def main():
     gamma_options = _config.get_gamma_options(advanced_mode)
 
     data_option_functions = {
-        "monaco": monaco_input_method,
-        "dicom": dicom_input_method,
-        "icom": icom_input_method,
+        "monaco": _monaco.monaco_input_method,
+        "dicom": _dicom.dicom_input_method,
+        "icom": _icom.icom_input_method,
         "trf": _trf.trf_input_method,
-        "mosaiq": mosaiq_input_method,
+        "mosaiq": _mosaiq.mosaiq_input_method,
     }
 
     default_reference_id = config["data_methods"]["default_reference"]
