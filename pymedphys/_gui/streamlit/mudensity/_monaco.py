@@ -86,7 +86,7 @@ def monaco_input_method(
         tel_paths += current_plans
 
     if advanced_mode_local:
-        [str(path.resolve()) for path in tel_paths]
+        st.write([str(path.resolve()) for path in tel_paths])
 
     deliveries = _deliveries.cached_deliveries_loading(
         tel_paths, _deliveries.delivery_from_tel

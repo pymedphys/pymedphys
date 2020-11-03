@@ -128,13 +128,13 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
                 key=f"{key_namespace}_select_monaco_export_plan",
             )
 
-        f"DICOM file being used: `{selected_plan}`"
+        st.write(f"DICOM file being used: `{selected_plan}`")
 
         dicom_plan = dicom_plans[selected_plan]
         data_paths = [monaco_export_directory.joinpath(selected_plan)]
 
     patient_id = str(dicom_plan.PatientID)
-    f"Patient ID: `{patient_id}`"
+    st.write(f"Patient ID: `{patient_id}`")
 
     patient_name = str(dicom_plan.PatientName)
     patient_name = utl_patient.convert_patient_name(patient_name)
