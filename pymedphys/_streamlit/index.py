@@ -17,9 +17,9 @@ import time
 
 import streamlit as st
 
-from pymedphys._gui.streamlit import pseudonymise as _pseudonymise
-from pymedphys._gui.streamlit.mudensity import main as _mudensity
-from pymedphys._streamlit import state
+from pymedphys._streamlit.apps import mudensity as _mudensity
+from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
+from pymedphys._streamlit.utilities import state
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
