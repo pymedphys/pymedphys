@@ -250,6 +250,11 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     headers = []
     tables = []
     for path_or_binary in selected_files:
+        try:
+            path_or_binary.seek(0)
+        except AttributeError:
+            pass
+
         header, table = read_trf(path_or_binary)
         headers.append(header)
         tables.append(table)
