@@ -16,9 +16,10 @@ import os
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._gui.streamlit.mudensity import _deliveries, _exceptions
 from pymedphys._monaco import patient as mnc_patient
-from pymedphys._streamlit import monaco as st_monaco
+from pymedphys._streamlit.apps.mudensity import _deliveries
+from pymedphys._streamlit.utilities import exceptions as _exceptions
+from pymedphys._streamlit.utilities import monaco as st_monaco
 
 
 @st.cache
