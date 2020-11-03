@@ -562,7 +562,7 @@ def main():
 
     st.sidebar.markdown(
         """
-        # Overview
+        # MU Density Overview
         """
     )
 

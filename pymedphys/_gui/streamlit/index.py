@@ -24,52 +24,112 @@ FAVICON = str(HERE.joinpath("pymedphys.png"))
 APPLICATION_CATEGORIES = {
     "mature": {
         "title": "Mature",
-        "description": (
-            "Mature application, in wide use, with high automated test coverage"
-        ),
+        "description": """
+            These are mature applications. They are in wide use, and
+            they have a high level of automated test coverage.
+        """,
     },
     "maturing": {
         "title": "Maturing",
-        "description": (
-            "New application, potentially only limited use, with high "
-            "automated test coverage"
-        ),
+        "description": """
+            These are relatively new applications. They potentially
+            only have limited use within the community, but the still
+            adhere to high quality standards with a level of automated
+            test coverage that can be expected for a mature application.
+        """,
     },
     "fresh": {
         "title": "Fresh",
-        "description": (
-            "New application, possibly only has minimal use, with some "
-            "automated test coverage"
-        ),
+        "description": """
+            These are relatively new applications. They possibly only
+            have minimal use, and they have at least some automated test
+            coverage. It is likely that these applications and their
+            respective configurations will still be changing as time
+            goes on.
+        """,
     },
     "beta": {
         "title": "Beta",
-        "description": (
-            "May not be in use at all, potentially only has minimal "
-            "automated test coverage"
-        ),
+        "description": """
+            These applications may not be in use at all within the
+            community. They potentially may only have minimal automated
+            test coverage.
+        """,
     },
     "experimental": {
         "title": "Experimental",
-        "description": (
-            "May not be in use at all, may not have any automated test coverage"
-        ),
+        "description": """
+            These applications may not be in use at all within the
+            community and they may not have any automated test coverage.
+        """,
     },
 }
 
 
 APPLICATION_OPTIONS = {
+    "index": {
+        "category": "experimental",
+        "label": "Index",
+        # A placeholder to be overridden by the index function below
+        "callable": lambda: None,
+    },
     "mudensity": {
         "category": "fresh",
         "label": "MU Density Comparison",
         "callable": _mudensity.main,
-    }
+    },
 }
+
+st.set_page_config(
+    page_title="PyMedPhys", page_icon=FAVICON, initial_sidebar_state="expanded"
+)
+
+
+def index():
+    st.write(
+        """
+        # Index of applications available
+
+        The following applications are organised by category where each
+        category is representative of the maturity of the tool.
+        """
+    )
+
+    for key, category in APPLICATION_CATEGORIES.items():
+        st.write(
+            f"""
+                ## {category["title"]}
+                {category["description"]}
+            """
+        )
+
+        for application in APPLICATION_OPTIONS.values():
+            if application["category"] == key:
+                if st.button(application["label"]):
+                    pass
+
+
+APPLICATION_OPTIONS["index"]["callable"] = index
+
+
+def selectbox_format(key):
+    return APPLICATION_OPTIONS[key]["label"]
 
 
 def main():
-    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
-    _mudensity.main()
+    st.sidebar.write("# GUI Select")
+
+    selected_gui = st.sidebar.selectbox(
+        "",
+        list(APPLICATION_OPTIONS.keys()),
+        format_func=selectbox_format,
+        key="GUI_select_box",
+    )
+
+    st.sidebar.write("---")
+
+    application_function = APPLICATION_OPTIONS[selected_gui]["callable"]
+    application_function()
 
 
 if __name__ == "__main__":
