@@ -9,15 +9,27 @@ This documentation site uses a toolbox called Sphinx. This particular
 document aims to help contributors to improve the PyMedPhys
 documentation.
 
+Documentation structure and philosophy
+--------------------------------------
+
+The PyMedPhys documentation adheres to the `"Grand Unified Theory of
+Documentation"
+<https://documentation.divio.com/>`__ by Daniele Procida.
+
+
 Starting a live update documentation server
 -------------------------------------------
-Within the root pymedphys directory run the following command:
+
+Assuming you have set up your machine according to the appropriate development
+guide (:doc:`setup-linux`, :doc:`setup-mac`, :doc:`setup-win`) you can then run
+the following within a terminal:
 
 .. code:: bash
 
-    poetry run sphinx-autobuild -W -p 7070 docs docs/_build/html
+    poetry run pymedphys dev docs --live
 
-Then within a web browser go to http://127.0.0.1:7070
+This will then open a browser which, once the docs have built, will display
+the current documentation.
 
 You may now edit the documentation within the docs directory and see the
 changes live update within your browser.
@@ -47,7 +59,7 @@ examples of how to conform to that style:
 
 - `Napoleon Docs - Example NumPy Style Python Docstrings
   <https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html#example-numpy>`__
-- `numpydoc docstring guide
+- `NumPyDoc docstring guide
   <https://numpydoc.readthedocs.io/en/latest/format.html>`__
 
 See existing examples within PyMedPhys for how to include new function

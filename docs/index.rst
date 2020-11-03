@@ -44,6 +44,7 @@ Overview
     ref/index
     ref/lib/index
     ref/cli/index
+    ref/gui/index
     release-notes
     genindex
 
