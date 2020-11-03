@@ -16,7 +16,7 @@ SKIPPING_CONFIG = {
     "cypress": {
         "options": ["--run-only-yarn", "--cypress"],
         "help": "run the cypress tests",
-        "description": "mark test as needing yarn",
+        "description": "mark test as using cypress",
         "skip_otherwise": True,
     },
     "pydicom": {
