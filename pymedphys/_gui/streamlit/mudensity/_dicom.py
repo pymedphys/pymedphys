@@ -104,6 +104,11 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         dicom_plans = {}
 
         for path in found_dicom_files:
+            try:
+                path.seek(0)
+            except AttributeError:
+                pass
+
             dcm = load_dicom_file_if_plan(path)
             if dcm is not None:
                 dicom_plans[path.name] = dcm
