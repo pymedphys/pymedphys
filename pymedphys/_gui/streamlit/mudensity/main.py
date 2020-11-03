@@ -28,12 +28,11 @@ from datetime import datetime
 from pymedphys._imports import imageio
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plt, pydicom
+from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import timeago
 
 import pymedphys
-from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
 from pymedphys._gui.streamlit.mudensity import (
     _config,
     _deliveries,
