@@ -5,7 +5,7 @@
 
 import pathlib
 
-import streamlit as st
+from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities import rerun as st_rerun
 
