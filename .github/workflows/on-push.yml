@@ -24,10 +24,10 @@ jobs:
         run: |
           echo ${{ steps.extract_branch.outputs.branch }}
       - uses: actions/checkout@v2
-      - name: Set up Python 3.7
+      - name: Set up Python 3.8
         uses: actions/setup-python@v1
         with:
-          python-version: 3.7
+          python-version: 3.8
 
       - uses: actions/cache@v2
         with:
@@ -77,11 +77,11 @@ jobs:
 
         include:
           - os: 'ubuntu'
-            python-version: 3.7
+            python-version: 3.8
           - os: 'windows'
             python-version: 3.7
           - os: 'macos'
-            python-version: 3.7
+            python-version: 3.8
 
     runs-on: ${{ matrix.os }}-latest
 
@@ -119,7 +119,17 @@ jobs:
       run: |
         pip install --upgrade pip setuptools
 
-    - name: Install Poetry
+    - name: Install Poetry on *Nix
+      if: matrix.os != 'windows'
+      uses: dschep/install-poetry-action@v1.3
+      with:
+        version: 1.1.4
+        create_virtualenvs: true
+
+    # Currently python subprocesses in Windows don't appear to appropriately
+    # fork under the poetry virtual environment for version 1.1.4
+    - name: Install Poetry on Windows
+      if: matrix.os == 'windows'
       uses: dschep/install-poetry-action@v1.3
       with:
         version: 1.0.9
@@ -149,6 +159,12 @@ jobs:
         python -c "import pymedphys"
         python -c "import pymedphys.beta"
         python -c "import pymedphys.experimental"
+
+    # Remove confusion for tests down the line
+    - name: Remove base install of pymedphys
+      if: matrix.task == 'tests'
+      run: |
+        pip uninstall -y pymedphys
 
 # Set up Poetry
 
@@ -213,21 +229,21 @@ jobs:
       run: |
         poetry install -E user -E tests
 
-## Install Machine Learning Dependencies
+## Install Extra Packages for Doctests
 
-    - name: Install a machine learning environment
+    - name: Install extra packages for doctests
       if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
-        poetry install -E user -E ml
+        poetry install -E user -E doctests
 
 ## Update all packages and then install with tests environment
 
-    - name: Update all packages then install with tests, user and ml environment
+    - name: Update all packages then install with tests, user and doctests environment
       if: matrix.task == 'updates'
       run: |
-        poetry install -E user -E tests -E docs -E ml
+        poetry install -E user -E tests -E docs -E doctests
         poetry update
-        poetry install -E user -E tests -E docs -E ml
+        poetry install -E user -E tests -E docs -E doctests
 
 # Download all data for consistent cache
 
