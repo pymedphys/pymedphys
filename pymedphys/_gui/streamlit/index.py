@@ -12,19 +12,65 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
 
-# pylint: disable = pointless-statement, pointless-string-statement
-# pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines, redefined-outer-name
+import streamlit as st
 
-# import streamlit as st
+from pymedphys._gui.streamlit.mudensity import main as _mudensity
 
-from pymedphys._streamlit.constants import BASE_URL_PATHS, HOSTNAME, NAMES
+HERE = pathlib.Path(__file__).parent.resolve()
+FAVICON = str(HERE.joinpath("pymedphys.png"))
 
-list_of_links = [
-    f"* [{name}](http://{HOSTNAME}{base_url_path})"
-    for name, base_url_path in zip(NAMES, BASE_URL_PATHS)
-]
-markdown = "\n".join(list_of_links)
+APPLICATION_CATEGORIES = {
+    "mature": {
+        "title": "Mature",
+        "description": (
+            "Mature application, in wide use, with high automated test coverage"
+        ),
+    },
+    "maturing": {
+        "title": "Maturing",
+        "description": (
+            "New application, potentially only limited use, with high "
+            "automated test coverage"
+        ),
+    },
+    "fresh": {
+        "title": "Fresh",
+        "description": (
+            "New application, possibly only has minimal use, with some "
+            "automated test coverage"
+        ),
+    },
+    "beta": {
+        "title": "Beta",
+        "description": (
+            "May not be in use at all, potentially only has minimal "
+            "automated test coverage"
+        ),
+    },
+    "experimental": {
+        "title": "Experimental",
+        "description": (
+            "May not be in use at all, may not have any automated test coverage"
+        ),
+    },
+}
 
-markdown
+
+APPLICATION_OPTIONS = {
+    "mudensity": {
+        "category": "fresh",
+        "label": "MU Density Comparison",
+        "callable": _mudensity.main,
+    }
+}
+
+
+def main():
+    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
+    _mudensity.main()
+
+
+if __name__ == "__main__":
+    main()

@@ -40,15 +40,6 @@ from pymedphys._gui.streamlit.mudensity import (
 from pymedphys._streamlit import config as st_config
 from pymedphys._streamlit import misc as st_misc
 
-st.write(
-    """
-    # MU Density comparison tool
-
-    Tool to compare the MU Density between planned and delivery.
-    """
-)
-
-
 DATA_OPTION_LABELS = {
     "monaco": "Monaco tel.1 filepath",
     "dicom": "DICOM RTPlan file upload",
@@ -559,6 +550,14 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
 
 
 def main():
+    st.write(
+        """
+        # MU Density comparison tool
+
+        Tool to compare the MU Density between planned and delivery.
+        """
+    )
+
     config = st_config.get_config()
 
     st.sidebar.markdown(

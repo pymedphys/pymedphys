@@ -41,7 +41,7 @@ def fill_streamlit_credentials():
 def main(_):
     fill_streamlit_credentials()
 
-    streamlit_script_path = str(STREAMLIT_CONTENT_DIR.joinpath("mudensity", "main.py"))
+    streamlit_script_path = str(STREAMLIT_CONTENT_DIR.joinpath("index.py"))
     subprocess.check_call(
         " ".join(["streamlit", "run", streamlit_script_path]), shell=True
     )
