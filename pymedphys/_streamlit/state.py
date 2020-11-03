@@ -36,9 +36,9 @@ class SessionState:
         Example
         -------
         >>> session_state = SessionState(user_name='', favourite_color='black')
-        >>> session_state.user_name = 'Mary'
+        >>> session_state.user_name = 'Mary'  # doctest: +SKIP
         ''
-        >>> session_state.favourite_color
+        >>> session_state.favourite_color  # doctest: +SKIP
         'black'
         """
         for key, val in kwargs.items():
@@ -56,15 +56,15 @@ def get(**kwargs):
     Example
     -------
     >>> session_state = get(user_name='', favourite_color='black')
-    >>> session_state.user_name
+    >>> session_state.user_name  # doctest: +SKIP
     ''
     >>> session_state.user_name = 'Mary'
-    >>> session_state.favourite_color
+    >>> session_state.favourite_color  # doctest: +SKIP
     'black'
     Since you set user_name above, next time your script runs this will be the
     result:
     >>> session_state = get(user_name='', favourite_color='black')
-    >>> session_state.user_name
+    >>> session_state.user_name  # doctest: +SKIP
     'Mary'
     """
     # Hack to get the session object from Streamlit.
