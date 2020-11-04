@@ -17,13 +17,12 @@
 # pylint: disable = no-value-for-parameter, expression-not-assigned
 # pylint: disable = too-many-lines, redefined-outer-name
 
-import pymssql
-
-import streamlit as st
+from pymedphys._imports import pymssql
+from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import helpers as msq_helpers
-from pymedphys._streamlit import mosaiq as st_mosaiq
-from pymedphys._streamlit import rerun as st_rerun
+from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
+from pymedphys._streamlit.utilities import rerun as st_rerun
 
 st_rerun.autoreload([st_mosaiq, st_rerun, msq_helpers])
 

@@ -5,11 +5,10 @@
 import re
 from glob import glob
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-
-import streamlit as st
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt
+from pymedphys._imports import streamlit as st
 
 import pymedphys.electronfactors as electronfactors
 

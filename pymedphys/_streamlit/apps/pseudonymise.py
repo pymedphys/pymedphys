@@ -22,9 +22,8 @@ import pathlib
 from typing import List
 from zipfile import ZIP_DEFLATED, ZipFile
 
-import streamlit as st
-
-import pydicom
+from pymedphys._imports import pydicom
+from pymedphys._imports import streamlit as st
 
 from pymedphys._dicom.anonymise import anonymise_dataset
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES

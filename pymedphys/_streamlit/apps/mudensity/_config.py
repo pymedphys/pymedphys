@@ -17,7 +17,7 @@ import pathlib
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._streamlit import config as st_config
+from pymedphys._streamlit.utilities import config as st_config
 
 
 @st.cache
