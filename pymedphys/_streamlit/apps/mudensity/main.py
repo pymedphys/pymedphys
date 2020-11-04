@@ -28,17 +28,17 @@ from pymedphys._imports import streamlit as st
 from pymedphys._imports import timeago
 
 import pymedphys
-from pymedphys._gui.streamlit.mudensity import (
+from pymedphys._streamlit.apps.mudensity import (
     _config,
     _dicom,
-    _exceptions,
     _icom,
     _monaco,
     _mosaiq,
     _trf,
 )
-from pymedphys._streamlit import config as st_config
-from pymedphys._streamlit import misc as st_misc
+from pymedphys._streamlit.utilities import config as st_config
+from pymedphys._streamlit.utilities import exceptions as _exceptions
+from pymedphys._streamlit.utilities import misc as st_misc
 
 DATA_OPTION_LABELS = {
     "monaco": "Monaco tel.1 filepath",
@@ -742,7 +742,3 @@ def main():
 
     if advanced_mode:
         advanced_debugging()
-
-
-if __name__ == "__main__":
-    main()

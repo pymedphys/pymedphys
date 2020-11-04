@@ -22,10 +22,8 @@ import importlib
 import pathlib
 import types
 
-from watchdog import events
-from watchdog.observers import polling
-
-import streamlit as st
+from pymedphys._imports import streamlit as st
+from pymedphys._imports import watchdog
 
 
 def get_session_id():
@@ -49,7 +47,7 @@ def rerun(session_id=None):
 
 @st.cache()
 def reload_and_rerun_on_module_changes(module: types.ModuleType, session_id):
-    event_handler = events.FileModifiedEvent(module.__file__)
+    event_handler = watchdog.events.FileModifiedEvent(module.__file__)
 
     def dispatch(event):
         if event.src_path == module.__file__:
@@ -64,7 +62,7 @@ def reload_and_rerun_on_module_changes(module: types.ModuleType, session_id):
     # of observations triggered (for example when using VS Code). By
     # using polling here this effectively debounces the observation
     # signal.
-    observer = polling.PollingObserver()
+    observer = watchdog.observers.polling.PollingObserver()
     observer.schedule(event_handler, module_directory, recursive=False)
     observer.start()
 

@@ -15,10 +15,10 @@
 from pymedphys._imports import keyring, pymssql
 from pymedphys._imports import streamlit as st
 
-from pymedphys._gui.streamlit.mudensity import _config, _deliveries
 from pymedphys._mosaiq import helpers as msq_helpers
-from pymedphys._streamlit import misc as st_misc
-from pymedphys._streamlit import mosaiq as st_mosaiq
+from pymedphys._streamlit.apps.mudensity import _config, _deliveries
+from pymedphys._streamlit.utilities import misc as st_misc
+from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
 
 @st.cache(hash_funcs={pymssql.Cursor: id})

@@ -39,9 +39,6 @@ packages = [
     "pymedphys._gamma.api",
     "pymedphys._gamma.implementation",
     "pymedphys._gamma.utilities",
-    "pymedphys._gui",
-    "pymedphys._gui.streamlit",
-    "pymedphys._gui.streamlit.mudensity",
     "pymedphys._icom",
     "pymedphys._imports",
     "pymedphys._losslessjpeg",
@@ -52,6 +49,9 @@ packages = [
     "pymedphys._mudensity.delivery",
     "pymedphys._mudensity.plt",
     "pymedphys._streamlit",
+    "pymedphys._streamlit.apps",
+    "pymedphys._streamlit.apps.mudensity",
+    "pymedphys._streamlit.utilities",
     "pymedphys._trf",
     "pymedphys._trf.decode",
     "pymedphys._trf.manage",
@@ -98,20 +98,20 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental.serviceplans": ["templates/*"],
-    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
-    "pymedphys.tests.e2e": [
-        "cypress/*",
-        "cypress/fixtures/*",
-        "cypress/integration/streamlit/*",
-        "cypress/plugins/*",
-        "cypress/support/*",
+    "pymedphys._experimental": ["serviceplans/templates/*"],
+    "pymedphys._streamlit": ["apps/data/*"],
+    "pymedphys.tests": [
+        "dicom/data/rtplan/*",
+        "dicom/scratch/*",
+        "e2e/cypress/*",
+        "e2e/cypress/fixtures/*",
+        "e2e/cypress/integration/streamlit/*",
+        "e2e/cypress/plugins/*",
+        "e2e/cypress/support/*",
+        "experimental/mephysto/data/baselines/*",
+        "experimental/mephysto/data/measurements/*",
+        "experimental/paulking/film/data/*",
     ],
-    "pymedphys.tests.experimental.mephysto": [
-        "data/baselines/*",
-        "data/measurements/*",
-    ],
-    "pymedphys.tests.experimental.paulking.film": ["data/*"],
 }
 
 extras_require = {

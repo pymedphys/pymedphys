@@ -17,14 +17,10 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 import pymedphys
-from pymedphys._gui.streamlit.mudensity import (
-    _config,
-    _deliveries,
-    _exceptions,
-    _utilities,
-)
 from pymedphys._mosaiq.delivery import NoMosaiqEntries as _NoMosaiqEntries
-from pymedphys._streamlit import mosaiq as st_mosaiq
+from pymedphys._streamlit.apps.mudensity import _config, _deliveries, _utilities
+from pymedphys._streamlit.utilities import exceptions as _exceptions
+from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
