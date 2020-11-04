@@ -19,6 +19,7 @@ import streamlit as st
 
 from pymedphys._streamlit.apps import anonymise_monaco as _anonymise_monaco
 from pymedphys._streamlit.apps import dashboard as _dashboard
+from pymedphys._streamlit.apps import electrons as _electrons
 from pymedphys._streamlit.apps import mudensity as _mudensity
 from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
 from pymedphys._streamlit.utilities import state
@@ -73,12 +74,6 @@ APPLICATION_CATEGORIES = {
 
 
 APPLICATION_OPTIONS = {
-    "index": {
-        "category": "experimental",
-        "label": "Index",
-        # A placeholder to be overridden by the index function below
-        "callable": lambda: None,
-    },
     "mudensity": {
         "category": "raw",
         "label": "MU Density Comparison",
@@ -91,8 +86,13 @@ APPLICATION_OPTIONS = {
     },
     "dashboard": {
         "category": "experimental",
-        "label": "Clinic Dashboard",
+        "label": "Clinical Dashboard",
         "callable": _dashboard.main,
+    },
+    "electrons": {
+        "category": "experimental",
+        "label": "Electron Insert Factor Modelling",
+        "callable": _electrons.main,
     },
     "anonymise-monaco": {
         "category": "experimental",
@@ -142,21 +142,29 @@ def index():
             """
         )
 
-        for app_key, application in APPLICATION_OPTIONS.items():
-            if application["category"] == category_key:
-                if st.button(application["label"]):
-                    swap_app(app_key)
+        st.write("---")
 
+        applications_in_this_category = [
+            item
+            for item in APPLICATION_OPTIONS.items()
+            if item[1]["category"] == category_key
+        ]
 
-APPLICATION_OPTIONS["index"]["callable"] = index
+        if not applications_in_this_category:
+            st.write("> *No applications are currently in this category.*")
 
+        for app_key, application in applications_in_this_category:
+            if st.button(application["label"]):
+                swap_app(app_key)
 
-def selectbox_format(key):
-    return APPLICATION_OPTIONS[key]["label"]
+        st.write("---")
 
 
 def main():
-    if not session_state.app in APPLICATION_OPTIONS.keys():
+    if (
+        session_state.app != "index"
+        and not session_state.app in APPLICATION_OPTIONS.keys()
+    ):
         swap_app("index")
 
     if session_state.app != "index":
@@ -165,7 +173,11 @@ def main():
 
         st.sidebar.write("---")
 
-    application_function = APPLICATION_OPTIONS[session_state.app]["callable"]
+    if session_state.app == "index":
+        application_function = index
+    else:
+        application_function = APPLICATION_OPTIONS[session_state.app]["callable"]
+
     application_function()
 
 
