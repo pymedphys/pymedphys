@@ -125,7 +125,7 @@ class DeliveryDicom(DeliveryBase):
             item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
         }
 
-        supported_configurations = {"MLCX", "ASYMY"}
+        supported_configurations = [{"MLCX", "ASYMY"}]
 
         if not rt_beam_limiting_device_types in supported_configurations:
             raise ValueError(
