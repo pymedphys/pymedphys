@@ -59,7 +59,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow']
         exclude:
           - os: 'windows'
             task: 'stackoverflow'
@@ -67,6 +67,8 @@ jobs:
             task: 'updates'
           - os: 'windows'
             task: 'cypress'
+          - os: 'windows'
+            task: 'slow'
 
           - os: 'macos'
             task: 'stackoverflow'
@@ -74,6 +76,8 @@ jobs:
             task: 'updates'
           - os: 'macos'
             task: 'cypress'
+          - os: 'macos'
+            task: 'slow'
 
         include:
           - os: 'ubuntu'
@@ -225,7 +229,7 @@ jobs:
 ## Install with Tests Environment
 
     - name: Install a tests environment
-      if: matrix.task == 'tests' || matrix.task == 'cypress'
+      if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow'
       run: |
         poetry install -E user -E tests
 
@@ -286,7 +290,7 @@ jobs:
 ## Slow
 
     - name: Run slow tests
-      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      if: matrix.task == 'slow'
       run: |
         poetry run pymedphys dev tests -v --run-only-slow
 
