@@ -77,6 +77,8 @@ def get_logfile_mosaiq_info(
 
 
 def _attempt_patient_name_from_mosaiq(headers):
+    UNKNOWN_PATIENT_NAME = "Unknown"
+
     st.write(
         """
         #### Corresponding Mosaiq SQL Details
@@ -92,9 +94,9 @@ def _attempt_patient_name_from_mosaiq(headers):
     except KeyError:
         st.warning(
             "Need Mosaiq access to determine patient name. "
-            "Patient name set to 'Unknown'."
+            f"Patient name set to '{UNKNOWN_PATIENT_NAME}'."
         )
-        patient_name = "Unknown"
+        patient_name = UNKNOWN_PATIENT_NAME
 
         return patient_name
 
@@ -106,9 +108,9 @@ def _attempt_patient_name_from_mosaiq(headers):
         st.warning(
             "Searched Mosaiq for an entry corresponding to this logfile. "
             "No entry was found. As such, for now, patient name has been "
-            "set to 'Unknown'."
+            f"set to '{UNKNOWN_PATIENT_NAME}'."
         )
-        patient_name = "Unknown"
+        patient_name = UNKNOWN_PATIENT_NAME
 
         return patient_name
 
@@ -248,6 +250,11 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     headers = []
     tables = []
     for path_or_binary in selected_files:
+        try:
+            path_or_binary.seek(0)
+        except AttributeError:
+            pass
+
         header, table = read_trf(path_or_binary)
         headers.append(header)
         tables.append(table)
