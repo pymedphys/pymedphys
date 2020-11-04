@@ -32,3 +32,7 @@ class UnableToCreatePDF(ValueError):
 
 class NoControlPointsFound(ValueError):
     pass
+
+
+class NoMosaiqAccess(ValueError):
+    pass
