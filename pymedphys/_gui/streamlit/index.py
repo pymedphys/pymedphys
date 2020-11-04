@@ -17,6 +17,7 @@ import time
 
 import streamlit as st
 
+from pymedphys._gui.streamlit import pseudonymise as _pseudonymise
 from pymedphys._gui.streamlit.mudensity import main as _mudensity
 from pymedphys._streamlit import state
 
@@ -40,8 +41,8 @@ APPLICATION_CATEGORIES = {
             test coverage that can be expected for a mature application.
         """,
     },
-    "immature": {
-        "title": "Immature",
+    "raw": {
+        "title": "Raw",
         "description": """
             These are relatively new applications. They possibly only
             have minimal use within the community, and they have at
@@ -76,9 +77,14 @@ APPLICATION_OPTIONS = {
         "callable": lambda: None,
     },
     "mudensity": {
-        "category": "immature",
+        "category": "raw",
         "label": "MU Density Comparison",
         "callable": _mudensity.main,
+    },
+    "pseudonymise": {
+        "category": "raw",
+        "label": "DICOM Pseudonymisation",
+        "callable": _pseudonymise.main,
     },
 }
 
