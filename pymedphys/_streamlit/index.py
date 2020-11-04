@@ -17,6 +17,8 @@ import time
 
 import streamlit as st
 
+from pymedphys._streamlit.apps import anonymise_monaco as _anonymise_monaco
+from pymedphys._streamlit.apps import dashboard as _dashboard
 from pymedphys._streamlit.apps import mudensity as _mudensity
 from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
 from pymedphys._streamlit.utilities import state
@@ -64,6 +66,7 @@ APPLICATION_CATEGORIES = {
         "description": """
             These applications may not be in use at all within the
             community and they may not have any automated test coverage.
+            They may not even work.
         """,
     },
 }
@@ -85,6 +88,16 @@ APPLICATION_OPTIONS = {
         "category": "raw",
         "label": "DICOM Pseudonymisation",
         "callable": _pseudonymise.main,
+    },
+    "dashboard": {
+        "category": "experimental",
+        "label": "Clinic Dashboard",
+        "callable": _dashboard.main,
+    },
+    "electrons": {
+        "category": "experimental",
+        "label": "Electron Insert Factor Modelling",
+        "callable": anonymise_monaco.main,
     },
 }
 
