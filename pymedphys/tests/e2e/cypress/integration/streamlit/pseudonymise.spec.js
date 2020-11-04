@@ -16,24 +16,15 @@
  */
 const path = require('path')
 
+const fileName1 = "RS.1.2.840.10008.5.1.4.1.1.481.3.1591744445_Anonymised.dcm";
+const fileName2 = "CT.1.3.12.2.1107.5.1.4.115496.30000017121402274359200000404_Anonymised.dcm";
+
 describe("st.file_uploader", () => {
   // with respect to the current working folder
   const downloadsFolder = 'cypress/downloads'
 
-  before(() => {
-    cy.start()
-  })
-
   beforeEach(() => {
-    Cypress.Cookies.defaults({
-      preserve: ["_xsrf"]
-    });
-
-    cy.visit("http://localhost:8501/");
-
-    // Make the ribbon decoration line disappear
-    cy.get(".decoration").invoke("css", "display", "none");
-
+    cy.start("pseudonymise")
 
     // The next command allow downloads in Electron, Chrome, and Edge
     // without any users popups or file save dialogs.
@@ -144,9 +135,6 @@ describe("st.file_uploader", () => {
   // });
 
   it("uploads single file only", () => {
-    const fileName1 = "RS.1.2.840.10008.5.1.4.1.1.481.3.1591744445_Anonymised.dcm";
-    const fileName2 = "CT.1.3.12.2.1107.5.1.4.115496.30000017121402274359200000404_Anonymised.dcm";
-
     // Yes, this actually is the recommended way to load multiple fixtures
     // in Cypress (!!) using Cypress.Promise.all is buggy. See:
     // https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/fundamentals__fixtures/cypress/integration/multiple-fixtures-spec.js
@@ -197,8 +185,6 @@ describe("st.file_uploader", () => {
   });
 
   it("uploads multiple files", () => {
-    const fileName1 = "RS.1.2.840.10008.5.1.4.1.1.481.3.1591744445_Anonymised.dcm";
-    const fileName2 = "CT.1.3.12.2.1107.5.1.4.115496.30000017121402274359200000404_Anonymised.dcm";
 
     // Yes, this actually is the recommended way to load multiple fixtures
     // in Cypress (!!) using Cypress.Promise.all is buggy. See:
