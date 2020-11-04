@@ -125,23 +125,32 @@ class DeliveryDicom(DeliveryBase):
             item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
         }
 
-        supported_configurations = ({"MLCX", "ASYMY"}, {"MLCY", "ASYMX"})
+        supported_configurations = [{"MLCX", "ASYMY"}]
 
         if not rt_beam_limiting_device_types in supported_configurations:
             raise ValueError(
                 "Currently only DICOM files that contain "
-                "either MLCX and ASYMY, or MLCY and ASYMX are supported. "
-                f"{rt_beam_limiting_device_types} is not supported."
+                "exactly MLCX and ASYMY are supported. "
+                f"{rt_beam_limiting_device_types} is not supported.\n\n"
+                "This is due to a range of assumptions being made "
+                "internally that assume a single Jaw system. "
+                "There are some cases where this restriction is too "
+                "tight. Currently however there is not enough testing "
+                "data to appropriately implement these cases. "
+                "If you would like to have your device supported "
+                "please consider uploading anonymised DICOM files "
+                "and their TRF counterparts to the following issue "
+                "<https://github.com/pymedphys/pymedphys/issues/1142>."
             )
 
         mlc_sequence = [
             item
             for item in beam_limiting_device_sequence
-            if item.RTBeamLimitingDeviceType.startswith("MLC")
+            if item.RTBeamLimitingDeviceType == "MLCX"
         ]
 
         if len(mlc_sequence) != 1:
-            raise ValueError("Expected there to be only one MLC device")
+            raise ValueError("Expected there to be only one device labelled as MLCX")
 
         mlc_limiting_device = mlc_sequence[0]
 
@@ -163,28 +172,20 @@ class DeliveryDicom(DeliveryBase):
         )
 
         dicom_mlcs = rtplan.get_leaf_jaw_positions_for_type(
-            beam_limiting_device_position_sequences, "MLC"
+            beam_limiting_device_position_sequences, "MLCX"
         )
 
-        mlcs = np.array(
-            [
-                np.array(
-                    [
-                        -np.array(mlc[0:num_leaves][::-1]),
-                        np.array(mlc[num_leaves::][::-1]),
-                    ][::-1]
-                ).T
-                for mlc in dicom_mlcs
-            ]
-        )
-
-        # Nasty hack, patching the fact that the leaf banks are swapped
-        # around for MLCY vs MLCX
-        if "MLCY" in rt_beam_limiting_device_types:
-            mlcs[:, :, [0, 1]] = mlcs[:, :, [1, 0]]
+        mlcs = [
+            np.array(
+                [-np.array(mlc[0:num_leaves][::-1]), np.array(mlc[num_leaves::][::-1])][
+                    ::-1
+                ]
+            ).T
+            for mlc in dicom_mlcs
+        ]
 
         dicom_jaw = rtplan.get_leaf_jaw_positions_for_type(
-            beam_limiting_device_position_sequences, "ASYM"
+            beam_limiting_device_position_sequences, "ASYMY"
         )
 
         jaw = np.array(dicom_jaw)
