@@ -28,78 +28,79 @@ HERE = pathlib.Path(__file__).parent.resolve()
 ANON_DEMOGRAPHIC_FILE = HERE.joinpath("data", "demographic.000000")
 
 
-"# Anonymise Monaco Files"
+def main():
+    st.write("# Anonymise Monaco Files")
 
-"## Select Patient"
+    st.write("## Select Patient")
 
-(
-    monaco_site,
-    monaco_directory,
-    patient_id,
-    plan_directory,
-    patient_directory,
-) = st_monaco.monaco_patient_directory_picker(advanced_mode_local=True)
+    (
+        monaco_site,
+        _,
+        patient_id,
+        _,
+        patient_directory,
+    ) = st_monaco.monaco_patient_directory_picker(advanced_mode_local=True)
 
-f"Directory to anonymise: `{patient_directory}`"
+    st.write(f"Directory to anonymise: `{patient_directory}`")
 
+    st.write("## Select Export Location")
 
-"## Select Export Location"
+    _, export_directory = st_misc.get_site_and_directory(
+        "Site to save anonymised zip file",
+        "anonymised_monaco",
+        default=monaco_site,
+        key="export_site",
+    )
 
-_, export_directory = st_misc.get_site_and_directory(
-    "Site to save anonymised zip file",
-    "anonymised_monaco",
-    default=monaco_site,
-    key="export_site",
-)
+    st.write(f"Export directory: `{export_directory}`")
 
-f"Export directory: `{export_directory}`"
+    zip_path = pathlib.Path(export_directory).joinpath(f"{patient_id}.zip")
 
-zip_path = pathlib.Path(export_directory).joinpath(f"{patient_id}.zip")
+    st.write(f"Zip file to be created: `{zip_path}`")
 
-f"Zip file to be created: `{zip_path}`"
+    if zip_path.exists():
+        st.write(FileExistsError("This zip file already exists."))
+        if st.button("Delete zip file"):
+            zip_path.unlink()
+            st_rerun.rerun()
 
-if zip_path.exists():
-    st.write(FileExistsError("This zip file already exists."))
-    if st.button("Delete zip file"):
-        zip_path.unlink()
-        st_rerun.rerun()
+        st.stop()
 
-    st.stop()
+    if st.button("Copy and Anonymise"):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pl_temp_dir = pathlib.Path(temp_dir)
+            new_temp_location = pl_temp_dir.joinpath(patient_directory.name)
 
+            st.write("Copying to temp directory, skipping DICOM files...")
 
-if st.button("Copy and Anonymise"):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        pl_temp_dir = pathlib.Path(temp_dir)
-        new_temp_location = pl_temp_dir.joinpath(patient_directory.name)
+            shutil.copytree(
+                patient_directory,
+                new_temp_location,
+                ignore=shutil.ignore_patterns("*.DCM", "demographic.*"),
+            )
 
-        "Copying to temp directory, skipping DICOM files..."
+            st.write("Creating anonymised demographic file...")
 
-        shutil.copytree(
-            patient_directory,
-            new_temp_location,
-            ignore=shutil.ignore_patterns("*.DCM", "demographic.*"),
-        )
+            new_demographic_file = new_temp_location.joinpath(
+                f"demographic.{patient_id}"
+            )
 
-        "Creating anonymised demographic file..."
+            shutil.copy2(ANON_DEMOGRAPHIC_FILE, new_demographic_file)
+            with open(new_demographic_file, "r") as f:
+                demographic_data = f.readlines()
 
-        new_demographic_file = new_temp_location.joinpath(f"demographic.{patient_id}")
+            demographic_data[3] = demographic_data[3].replace("000000", patient_id)
 
-        shutil.copy2(ANON_DEMOGRAPHIC_FILE, new_demographic_file)
-        with open(new_demographic_file, "r") as f:
-            demographic_data = f.readlines()
+            with open(new_demographic_file, "w") as f:
+                f.writelines(demographic_data)
 
-        demographic_data[3] = demographic_data[3].replace("000000", patient_id)
+            st.write("Creating zip file...")
 
-        with open(new_demographic_file, "w") as f:
-            f.writelines(demographic_data)
+            shutil.make_archive(
+                str(zip_path.with_suffix("")),
+                "zip",
+                root_dir=str(pl_temp_dir.resolve()),
+                base_dir=f"{patient_directory.name}",
+            )
 
-        "Creating zip file..."
-
-        shutil.make_archive(
-            str(zip_path.with_suffix("")),
-            "zip",
-            root_dir=str(pl_temp_dir.resolve()),
-            base_dir=f"{patient_directory.name}",
-        )
-
-        "Complete!"
+            st.write("Complete!")

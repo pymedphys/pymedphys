@@ -315,6 +315,7 @@
     "reextract",
     "ref",
     "refs",
+    "reindex",
     "rendermime",
     "resample",
     "rglob",

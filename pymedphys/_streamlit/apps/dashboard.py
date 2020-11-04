@@ -12,61 +12,76 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import pymssql
 from pymedphys._imports import streamlit as st
 
 from pymedphys._mosaiq import helpers as msq_helpers
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
-from pymedphys._streamlit.utilities import rerun as st_rerun
 
-st_rerun.autoreload([st_mosaiq, st_rerun, msq_helpers])
 
-centres = ["rccc", "nbcc", "sash"]
-servers = {"rccc": "msqsql", "nbcc": "physics-server:31433", "sash": "physics-server"}
-physics_locations = {
-    "rccc": "Physics_Check",
-    "nbcc": "Physics",
-    "sash": "Physics_Check",
-}
+def main():
+    centres = ["rccc", "nbcc", "sash"]
+    servers = {
+        "rccc": "msqsql",
+        "nbcc": "physics-server:31433",
+        "sash": "physics-server",
+    }
+    physics_locations = {
+        "rccc": "Physics_Check",
+        "nbcc": "Physics",
+        "sash": "Physics_Check",
+    }
 
-cursors = {
-    centre: st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre]) for centre in centres
-}
+    cursors = {
+        centre: st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre])
+        for centre in centres
+    }
 
-"# Mosaiq QCLs"
+    st.write("# Mosaiq QCLs")
 
-if st.button("Refresh"):
-    st_rerun.rerun()
+    if st.button("Refresh"):
+        st.experimental_rerun()
 
-for centre in centres:
-    f"## {centre.upper()}"
+    for centre in centres:
+        st.write(f"## {centre.upper()}")
 
-    cursor_bucket = cursors[centre]
-    physics_location = physics_locations[centre]
+        cursor_bucket = cursors[centre]
+        physics_location = physics_locations[centre]
 
-    try:
-        table = msq_helpers.get_incomplete_qcls(
-            cursor_bucket["cursor"], physics_location
+        try:
+            table = msq_helpers.get_incomplete_qcls(
+                cursor_bucket["cursor"], physics_location
+            )
+        except (pymssql.InterfaceError, pymssql.OperationalError) as e:
+            st.write(e)
+            cursor_bucket["cursor"] = st_mosaiq.uncached_get_mosaiq_cursor(
+                servers[centre]
+            )
+            table = msq_helpers.get_incomplete_qcls(
+                cursor_bucket["cursor"], physics_location
+            )
+
+        table_dict = collections.OrderedDict()
+
+        for index, row in table.iterrows():
+            patient_name = f"{str(row.last_name).upper()}, {str(row.first_name).lower().capitalize()}"
+
+            table_dict[index] = collections.OrderedDict(
+                {
+                    "Due": row.due.strftime("%Y-%m-%d"),
+                    "Patient": f"{row.patient_id} {patient_name}",
+                    "Instructions": row.instructions,
+                    "Comment": row.comment,
+                    "Task": row.task,
+                }
+            )
+
+        formated_table = pd.DataFrame.from_dict(table_dict).T
+        formated_table = formated_table.reindex(
+            ["Due", "Patient", "Instructions", "Comment", "Task"], axis=1
         )
-    except (pymssql.InterfaceError, pymssql.OperationalError) as e:
-        st.write(e)
-        cursor_bucket["cursor"] = st_mosaiq.uncached_get_mosaiq_cursor(servers[centre])
-        table = msq_helpers.get_incomplete_qcls(
-            cursor_bucket["cursor"], physics_location
-        )
 
-    for index, row in table.iterrows():
-        patient_header = (
-            f"### `{row.patient_id}` {str(row.last_name).upper()}, "
-            f"{str(row.first_name).lower().capitalize()}"
-        )
-        st.write(patient_header)
-
-        f"Due: `{row.due}`"
-        if row.instructions:
-            f"Instructions: `{row.instructions}`"
-
-        if row.comment:
-            f"Comment: `{row.comment}`"
-
-        f"Task: `{row.task}`"
+        st.write(formated_table)
