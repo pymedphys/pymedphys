@@ -170,12 +170,14 @@
     "genindex",
     "geos",
     "gmail",
+    "gridspec",
     "holger",
     "howto",
     "hstack",
     "hypot",
     "iloc",
     "imageio",
+    "imagemagick",
     "imageviewer",
     "imginterp",
     "imread",
@@ -384,5 +386,5 @@
     "zlabel",
     "zlim",
     "zorder"
-  ],
+  ]
 }
