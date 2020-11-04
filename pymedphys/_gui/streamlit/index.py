@@ -12,19 +12,143 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
+import time
 
-# pylint: disable = pointless-statement, pointless-string-statement
-# pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines, redefined-outer-name
+import streamlit as st
 
-# import streamlit as st
+from pymedphys._gui.streamlit.mudensity import main as _mudensity
+from pymedphys._streamlit import state
 
-from pymedphys._streamlit.constants import BASE_URL_PATHS, HOSTNAME, NAMES
+HERE = pathlib.Path(__file__).parent.resolve()
+FAVICON = str(HERE.joinpath("pymedphys.png"))
 
-list_of_links = [
-    f"* [{name}](http://{HOSTNAME}{base_url_path})"
-    for name, base_url_path in zip(NAMES, BASE_URL_PATHS)
-]
-markdown = "\n".join(list_of_links)
+APPLICATION_CATEGORIES = {
+    "mature": {
+        "title": "Mature",
+        "description": """
+            These are mature applications. They are in wide use, and
+            they have a high level of automated test coverage.
+        """,
+    },
+    "maturing": {
+        "title": "Maturing",
+        "description": """
+            These are relatively new applications. They potentially
+            only have limited use within the community, but the still
+            adhere to high quality standards with a level of automated
+            test coverage that can be expected for a mature application.
+        """,
+    },
+    "immature": {
+        "title": "Immature",
+        "description": """
+            These are relatively new applications. They possibly only
+            have minimal use within the community, and they have at
+            least some automated test coverage. It is likely that these
+            applications and their respective configurations will still
+            be changing as time goes on.
+        """,
+    },
+    "beta": {
+        "title": "Beta",
+        "description": """
+            These applications may not be in use at all within the
+            community. They potentially may only have minimal automated
+            test coverage.
+        """,
+    },
+    "experimental": {
+        "title": "Experimental",
+        "description": """
+            These applications may not be in use at all within the
+            community and they may not have any automated test coverage.
+        """,
+    },
+}
 
-markdown
+
+APPLICATION_OPTIONS = {
+    "index": {
+        "category": "experimental",
+        "label": "Index",
+        # A placeholder to be overridden by the index function below
+        "callable": lambda: None,
+    },
+    "mudensity": {
+        "category": "immature",
+        "label": "MU Density Comparison",
+        "callable": _mudensity.main,
+    },
+}
+
+st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
+
+
+def get_url_app():
+    try:
+        return st.experimental_get_query_params()["app"][0]
+    except KeyError:
+        return "index"
+
+
+session_state = state.get(app=get_url_app())
+
+
+def swap_app(app):
+    st.experimental_set_query_params(app=app)
+    session_state.app = app
+
+    # Not sure why this is needed. The `set_query_params` doesn't
+    # appear to work if a rerun is undergone immediately afterwards.
+    time.sleep(0.01)
+    st.experimental_rerun()
+
+
+def index():
+    st.write(
+        """
+        # Index of applications available
+
+        The following applications are organised by category where each
+        category is representative of the maturity of the tool.
+        """
+    )
+
+    for category_key, category in APPLICATION_CATEGORIES.items():
+        st.write(
+            f"""
+                ## {category["title"]}
+                {category["description"]}
+            """
+        )
+
+        for app_key, application in APPLICATION_OPTIONS.items():
+            if application["category"] == category_key:
+                if st.button(application["label"]):
+                    swap_app(app_key)
+
+
+APPLICATION_OPTIONS["index"]["callable"] = index
+
+
+def selectbox_format(key):
+    return APPLICATION_OPTIONS[key]["label"]
+
+
+def main():
+    if not session_state.app in APPLICATION_OPTIONS.keys():
+        swap_app("index")
+
+    if session_state.app != "index":
+        if st.sidebar.button("Return to Index"):
+            swap_app("index")
+
+        st.sidebar.write("---")
+
+    application_function = APPLICATION_OPTIONS[session_state.app]["callable"]
+    application_function()
+
+
+if __name__ == "__main__":
+    main()
