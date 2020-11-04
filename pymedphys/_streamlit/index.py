@@ -94,10 +94,10 @@ APPLICATION_OPTIONS = {
         "label": "Clinic Dashboard",
         "callable": _dashboard.main,
     },
-    "electrons": {
+    "anonymise-monaco": {
         "category": "experimental",
-        "label": "Electron Insert Factor Modelling",
-        "callable": anonymise_monaco.main,
+        "label": "Anonymising Monaco Backend Files",
+        "callable": _anonymise_monaco.main,
     },
 }
 
