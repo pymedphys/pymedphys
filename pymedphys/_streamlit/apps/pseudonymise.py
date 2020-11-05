@@ -22,9 +22,8 @@ import pathlib
 from typing import List
 from zipfile import ZIP_DEFLATED, ZipFile
 
-import streamlit as st
-
-import pydicom
+from pymedphys._imports import pydicom
+from pymedphys._imports import streamlit as st
 
 from pymedphys._dicom.anonymise import anonymise_dataset
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
@@ -85,7 +84,9 @@ def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
         name for the pseudonymised file, which can be used
         for addition to a zip
     """
-    pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch["UI"](
+    pseudo_sop_instance_uid = pseudonymisation_api.pseudonymisation_dispatch[
+        "UI"
+    ](  # type: ignore
         ds_input.SOPInstanceUID
     )
 
@@ -271,19 +272,24 @@ def _gen_index_list_to_fifty_mbyte_increment(file_buffer_list):
     return index_to_fifty_mbyte_increment
 
 
-st.set_option("deprecation.showfileUploaderEncoding", False)
+def main():
+    st.set_option("deprecation.showfileUploaderEncoding", False)
 
-uploaded_file_buffer_list = st.file_uploader(
-    "Files to pseudonymise, refresh page after downloading zip(s)",
-    ["dcm"],
-    accept_multiple_files=True,
-)
+    uploaded_file_buffer_list = st.file_uploader(
+        "Files to pseudonymise, refresh page after downloading zip(s)",
+        ["dcm"],
+        accept_multiple_files=True,
+    )
 
-if st.button("Pseudonymise", key="PseudonymiseButton"):
-    pseudonymise_buffer_list(uploaded_file_buffer_list)
-    uploaded_file_buffer_list.clear()
+    if st.button("Pseudonymise", key="PseudonymiseButton"):
+        pseudonymise_buffer_list(uploaded_file_buffer_list)
+        uploaded_file_buffer_list.clear()
 
-# this deletion never worked.  which motivated switch to using IOBytes for ZipFile
-# if st.button(f"Delete Zip(s)", key="DeleteZip"):
-#     for zip_path_str in zip_path_list:
-#         remove_file(zip_path_str)
+    # this deletion never worked.  which motivated switch to using IOBytes for ZipFile
+    # if st.button(f"Delete Zip(s)", key="DeleteZip"):
+    #     for zip_path_str in zip_path_list:
+    #         remove_file(zip_path_str)
+
+
+if __name__ == "__main__":
+    main()

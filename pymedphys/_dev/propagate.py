@@ -99,13 +99,15 @@ def propagate_setup():
         setup_contents = f.read().decode()
 
     setup_contents_list = setup_contents.split("\n")
-    setup_contents_list.insert(1, AUTOGEN_MESSAGE[0])
-    setup_contents_list.insert(2, AUTOGEN_MESSAGE[1])
+    setup_contents_list.insert(1, f"\n{AUTOGEN_MESSAGE[0]}")
+    setup_contents_list.insert(2, f"{AUTOGEN_MESSAGE[1]}\n")
     setup_contents = "\n".join(setup_contents_list)
 
     setup_contents = black.format_str(setup_contents, mode=black.FileMode())
 
-    with open(SETUP_PY, "w") as f:
+    setup_contents = setup_contents.encode("utf-8")
+
+    with open(SETUP_PY, "bw") as f:
         f.write(setup_contents)
 
 
