@@ -36,10 +36,16 @@ def process(*args, **kwargs):
 HERE = pathlib.Path(__file__).parent.resolve()
 
 
-@pytest.mark.yarn
-def test_streamlit_gui():
+@pytest.mark.cypress
+def test_cypress():
     pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=HERE)
+
+    pymedphys.zip_data_paths(
+        "dummy-ct-and-struct.zip",
+        extract_directory=HERE.joinpath("cypress", "fixtures"),
+    )
 
     with process("poetry run pymedphys gui", cwd=HERE, shell=True) as _:
         subprocess.check_call("yarn", cwd=HERE, shell=True)
+
         subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)

@@ -57,17 +57,25 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow']
         exclude:
           - os: 'windows'
             task: 'stackoverflow'
           - os: 'windows'
             task: 'updates'
+          - os: 'windows'
+            task: 'cypress'
+          - os: 'windows'
+            task: 'slow'
 
           - os: 'macos'
             task: 'stackoverflow'
           - os: 'macos'
             task: 'updates'
+          - os: 'macos'
+            task: 'cypress'
+          - os: 'macos'
+            task: 'slow'
 
         include:
           - os: 'ubuntu'
@@ -219,7 +227,7 @@ jobs:
 ## Install with Tests Environment
 
     - name: Install a tests environment
-      if: matrix.task == 'tests'
+      if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow'
       run: |
         poetry install -E user -E tests
 
@@ -280,7 +288,7 @@ jobs:
 ## Slow
 
     - name: Run slow tests
-      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      if: matrix.task == 'slow'
       run: |
         poetry run pymedphys dev tests -v --run-only-slow
 
@@ -301,12 +309,18 @@ jobs:
 ## Cypress
 
     - uses: actions/setup-node@v1
-      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      if: matrix.task == 'cypress'
 
     - name: Initially run Cypress tests only locally, without dashboard integration
-      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      if: matrix.task == 'cypress'
       run: |
         poetry run pymedphys dev tests -v -s --run-only-yarn
+
+    - uses: actions/upload-artifact@v2
+      if: failure() && matrix.task == 'cypress'
+      with:
+        name: cypress-videos
+        path: pymedphys/tests/e2e/cypress/videos
 
     # - name: Delete GUI demo data and run the PyMedPhys GUI
     #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'

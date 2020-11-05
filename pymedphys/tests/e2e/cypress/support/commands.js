@@ -24,6 +24,12 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
 
+// import { addMatchImageSnapshotCommand } from 'cypress-image-snapshot/command';
+
+// addMatchImageSnapshotCommand();
+
+import 'cypress-file-upload';
+
 
 Cypress.Commands.add('compute', () => {
   let start = new Date().getTime();
@@ -48,8 +54,14 @@ Cypress.Commands.add('textMatch', (label, length, result) => {
   }
 })
 
-Cypress.Commands.add('start', () => {
-  cy.visit("http://localhost:8501/");
+Cypress.Commands.add('start', (app) => {
+  cy.visit('http://localhost:8501')
+
+  Cypress.Cookies.defaults({
+    preserve: ["_xsrf"]
+  });
+
+  cy.visit(`http://localhost:8501/?app=${app}`);
   cy.compute()
   cy.get(".decoration").invoke("css", "display", "none");
 })

@@ -13,47 +13,32 @@
 # limitations under the License.
 
 
-# pylint: disable = pointless-statement, pointless-string-statement
-# pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines, redefined-outer-name
-
 import base64
-import lzma
 import os
 import pathlib
 import subprocess
 import sys
 from datetime import datetime
 
-from pymedphys._imports import imageio, keyring
+from pymedphys._imports import imageio
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plt, pydicom, pymssql
+from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import timeago
 
 import pymedphys
-from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
-from pymedphys._gui.streamlit.mudensity import (
+from pymedphys._streamlit.apps.mudensity import (
     _config,
-    _deliveries,
-    _exceptions,
+    _dicom,
+    _icom,
+    _monaco,
+    _mosaiq,
     _trf,
-    _utilities,
 )
-from pymedphys._monaco import patient as mnc_patient
-from pymedphys._mosaiq import helpers as msq_helpers
-from pymedphys._streamlit import config as st_config
-from pymedphys._streamlit import misc as st_misc
-from pymedphys._streamlit import monaco as st_monaco
-from pymedphys._streamlit import mosaiq as st_mosaiq
-from pymedphys._utilities import patient as utl_patient
-
-"""
-# MU Density comparison tool
-
-Tool to compare the MU Density between planned and delivery.
-"""
+from pymedphys._streamlit.utilities import config as st_config
+from pymedphys._streamlit.utilities import exceptions as _exceptions
+from pymedphys._streamlit.utilities import misc as st_misc
 
 DATA_OPTION_LABELS = {
     "monaco": "Monaco tel.1 filepath",
@@ -75,7 +60,6 @@ COORDS = (GRID["jaw"], GRID["mlc"])
 
 
 def sidebar_overview():
-
     overview_placeholder = st.sidebar.empty()
 
     def set_overview_data(patient_id, patient_name, total_mu):
@@ -154,482 +138,15 @@ def show_status_indicators():
             trf_status(linac_id, linac_indexed_backups_directory)
 
 
-@st.cache
-def load_icom_stream(icom_path):
-    with lzma.open(icom_path, "r") as f:
-        contents = f.read()
-
-    return contents
-
-
-def load_icom_streams(icom_paths):
-    icom_streams = []
-
-    for icom_path in icom_paths:
-        icom_streams += [load_icom_stream(icom_path)]
-
-    return icom_streams
-
-
-@st.cache
-def read_monaco_patient_name(monaco_patient_directory):
-    return mnc_patient.read_patient_name(monaco_patient_directory)
-
-
-def monaco_input_method(
-    patient_id="", key_namespace="", advanced_mode_local=False, site=None, **_
-):
-    (
-        monaco_site,
-        monaco_directory,
-        patient_id,
-        plan_directory,
-        patient_directory,
-    ) = st_monaco.monaco_patient_directory_picker(
-        patient_id, key_namespace, advanced_mode_local, site
-    )
-
-    patient_name = read_monaco_patient_name(str(patient_directory))
-
-    f"Patient Name: `{patient_name}`"
-
-    all_tel_paths = list(plan_directory.glob("**/*tel.1"))
-    all_tel_paths = sorted(all_tel_paths, key=os.path.getmtime)
-
-    plan_names_to_choose_from = [
-        str(path.relative_to(plan_directory)) for path in all_tel_paths
-    ]
-
-    if len(plan_names_to_choose_from) == 0:
-        if patient_id != "":
-            st.write(
-                _exceptions.NoRecordsFound(
-                    f"No Monaco plans found for patient ID {patient_id}"
-                )
-            )
-        return {"patient_id": patient_id}
-
-    """
-    Select the Monaco plan that correspond to a patient's single fraction.
-    If a patient has multiple fraction types (such as a plan with a boost)
-    then these fraction types need to be analysed separately.
-    """
-
-    selected_monaco_plan = st.radio(
-        "Select a Monaco plan",
-        plan_names_to_choose_from,
-        key=f"{key_namespace}_monaco_plans",
-    )
-
-    tel_paths = []
-
-    if selected_monaco_plan is not None:
-        current_plans = list(
-            monaco_directory.glob(f"*~{patient_id}/plan/{selected_monaco_plan}")
-        )
-        current_plans = [path.resolve() for path in current_plans]
-        if len(current_plans) != 1:
-            st.write("Plans found:", current_plans)
-            raise ValueError("Exactly one plan should have been found")
-        tel_paths += current_plans
-
-    if advanced_mode_local:
-        [str(path.resolve()) for path in tel_paths]
-
-    deliveries = _deliveries.cached_deliveries_loading(
-        tel_paths, _deliveries.delivery_from_tel
-    )
-
-    if tel_paths:
-        plan_names = ", ".join([path.parent.name for path in tel_paths])
-        identifier = f"Monaco ({plan_names})"
-    else:
-        identifier = None
-
-    if len(deliveries) == 1 and len(deliveries[0].mu) == 0:
-        st.write(
-            _exceptions.NoControlPointsFound(
-                "This is likely due to an as of yet unsupported "
-                "Monaco file format. At this point in time 3DCRT "
-                "is not yet supported for reading directly from "
-                "Monaco. DICOM is though, please export the plan "
-                "to RT DICOM and import the data that way."
-            )
-        )
-
-    results = {
-        "site": monaco_site,
-        "patient_id": patient_id,
-        "patient_name": patient_name,
-        "selected_monaco_plan": selected_monaco_plan,
-        "data_paths": tel_paths,
-        "identifier": identifier,
-        "deliveries": deliveries,
-    }
-
-    return results
-
-
-def pydicom_hash_function(dicom):
-    return hash(dicom.SOPInstanceUID)
-
-
-@st.cache(hash_funcs={pydicom.dataset.FileDataset: pydicom_hash_function})
-def load_dicom_file_if_plan(filepath):
-    dcm = pydicom.read_file(str(filepath), force=True, stop_before_pixels=True)
-    if dcm.SOPClassUID == DICOM_PLAN_UID:
-        return dcm
-
-    return None
-
-
-def dicom_input_method(  # pylint: disable = too-many-return-statements
-    key_namespace="", patient_id="", site=None, **_
-):
-    monaco_site = site
-
-    FILE_UPLOAD = "File upload"
-    MONACO_SEARCH = "Search Monaco file export location"
-
-    import_method = st.radio(
-        "DICOM import method",
-        [FILE_UPLOAD, MONACO_SEARCH],
-        key=f"{key_namespace}_dicom_file_import_method",
-    )
-
-    if import_method == FILE_UPLOAD:
-        dicom_plan_bytes = st.file_uploader(
-            "Upload DICOM RT Plan File", key=f"{key_namespace}_dicom_plan_uploader"
-        )
-
-        if dicom_plan_bytes is None:
-            return {}
-
-        try:
-            dicom_plan_bytes.seek(0)
-            dicom_plan = pydicom.read_file(dicom_plan_bytes, force=True)
-        except:  # pylint: disable = bare-except
-            st.write(_exceptions.WrongFileType("Does not appear to be a DICOM file"))
-            return {}
-
-        if dicom_plan.SOPClassUID != DICOM_PLAN_UID:
-            st.write(
-                _exceptions.WrongFileType(
-                    "The DICOM type needs to be an RT DICOM Plan file"
-                )
-            )
-            return {}
-
-        data_paths = []
-
-    if import_method == MONACO_SEARCH:
-        try:
-            dicom_export_locations = _config.get_dicom_export_locations()
-        except KeyError:
-            st.write(
-                _exceptions.ConfigMissing(
-                    "No Monaco directory is configured. Please use "
-                    f"'{FILE_UPLOAD}' instead."
-                )
-            )
-            return {}
-
-        monaco_site = st_misc.site_picker(
-            "Monaco Export Location",
-            default=monaco_site,
-            key=f"{key_namespace}_monaco_site",
-        )
-
-        monaco_export_directory = dicom_export_locations[monaco_site]
-        st.write(monaco_export_directory.resolve())
-
-        patient_id = st.text_input(
-            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-        )
-
-        found_dicom_files = list(monaco_export_directory.glob(f"{patient_id}_*.dcm"))
-
-        dicom_plans = {}
-
-        for path in found_dicom_files:
-            dcm = load_dicom_file_if_plan(path)
-            if dcm is not None:
-                dicom_plans[path.name] = dcm
-
-        dicom_plan_options = list(dicom_plans.keys())
-
-        if len(dicom_plan_options) == 0 and patient_id != "":
-            st.write(
-                _exceptions.NoRecordsFound(
-                    f"No exported DICOM RT plans found for Patient ID {patient_id} "
-                    f"within the directory {monaco_export_directory}"
-                )
-            )
-            return {"patient_id": patient_id}
-
-        if len(dicom_plan_options) == 1:
-            selected_plan = dicom_plan_options[0]
-        else:
-            selected_plan = st.radio(
-                "Select DICOM Plan",
-                dicom_plan_options,
-                key=f"{key_namespace}_select_monaco_export_plan",
-            )
-
-        f"DICOM file being used: `{selected_plan}`"
-
-        dicom_plan = dicom_plans[selected_plan]
-        data_paths = [monaco_export_directory.joinpath(selected_plan)]
-
-    patient_id = str(dicom_plan.PatientID)
-    f"Patient ID: `{patient_id}`"
-
-    patient_name = str(dicom_plan.PatientName)
-    patient_name = utl_patient.convert_patient_name(patient_name)
-
-    f"Patient Name: `{patient_name}`"
-
-    rt_plan_name = str(dicom_plan.RTPlanName)
-    f"Plan Name: `{rt_plan_name}`"
-
-    try:
-        deliveries_all_fractions = pymedphys.Delivery.from_dicom(
-            dicom_plan, fraction_number="all"
-        )
-    except AttributeError:
-        st.write(_exceptions.WrongFileType("Does not appear to be a photon DICOM plan"))
-        return {}
-
-    fractions = list(deliveries_all_fractions.keys())
-    if len(fractions) == 1:
-        delivery = deliveries_all_fractions[fractions[0]]
-    else:
-        fraction_choices = {}
-
-        for fraction, delivery in deliveries_all_fractions.items():
-            rounded_mu = round(delivery.mu[-1], 1)
-
-            fraction_choices[f"Perscription {fraction} with {rounded_mu} MU"] = fraction
-
-        fraction_selection = st.radio(
-            "Select relevant perscription",
-            list(fraction_choices.keys()),
-            key=f"{key_namespace}_dicom_perscription_chooser",
-        )
-
-        fraction_number = fraction_choices[fraction_selection]
-        delivery = deliveries_all_fractions[fraction_number]
-
-    deliveries = [delivery]
-
-    identifier = f"DICOM ({rt_plan_name})"
-
-    return {
-        "site": monaco_site,
-        "patient_id": patient_id,
-        "patient_name": patient_name,
-        "data_paths": data_paths,
-        "identifier": identifier,
-        "deliveries": deliveries,
-    }
-
-
-def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
-    icom_directories = _config.get_default_icom_directories()
-
-    if advanced_mode_local:
-        "iCOM patient directories", icom_directories
-
-    icom_directories = [pathlib.Path(path) for path in icom_directories]
-
-    if advanced_mode_local:
-        patient_id = st.text_input(
-            "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-        )
-        patient_id
-
-    icom_deliveries = []
-    for path in icom_directories:
-        icom_deliveries += list(path.glob(f"{patient_id}_*/*.xz"))
-
-    icom_deliveries = sorted(icom_deliveries)
-
-    icom_files_to_choose_from = [path.stem for path in icom_deliveries]
-
-    timestamps = list(
-        pd.to_datetime(icom_files_to_choose_from, format="%Y%m%d_%H%M%S").astype(str)
-    )
-
-    choice_path_map = dict(zip(timestamps, icom_deliveries))
-
-    """
-    Here you need to select the timestamps that correspond to a single
-    fraction of the plan selected above. Most of the time
-    you will only need to select one timestamp here, however in some
-    cases you may need to select multiple timestamps.
-
-    This can occur if for example a single fraction was delivered in separate
-    beams due to either a beam interrupt, or the fraction being spread
-    over multiple energies
-    """
-
-    if len(timestamps) == 0:
-        if patient_id != "":
-            st.write(
-                _exceptions.NoRecordsFound(
-                    f"No iCOM delivery record found for patient ID {patient_id}"
-                )
-            )
-        return {"patient_id": patient_id}
-
-    if len(timestamps) == 1:
-        default_timestamp = [timestamps[0]]
-    else:
-        default_timestamp = []
-
-    timestamps = sorted(timestamps, reverse=True)
-
-    try:
-        selected_icom_deliveries = st.multiselect(
-            "Select iCOM delivery timestamp(s)",
-            timestamps,
-            default=default_timestamp,
-            key=f"{key_namespace}_icom_deliveries",
-        )
-    except st.errors.StreamlitAPIException:
-        f"Default timestamp = `{default_timestamp}`"
-        f"All timestamps = `{timestamps}`"
-        raise
-
-    icom_filenames = [
-        path.replace(" ", "_").replace("-", "").replace(":", "")
-        for path in selected_icom_deliveries
-    ]
-
-    icom_paths = []
-    for selected in selected_icom_deliveries:
-        icom_paths.append(choice_path_map[selected])
-
-    if advanced_mode_local:
-        [str(path.resolve()) for path in icom_paths]
-
-    patient_names = set()
-    for icom_path in icom_paths:
-        patient_name = str(icom_path.parent.name).split("_")[-1]
-        try:
-            patient_name = utl_patient.convert_patient_name_from_split(
-                *patient_name.split(", ")
-            )
-        except:  # pylint: disable = bare-except
-            pass
-
-        patient_names.add(patient_name)
-
-    patient_name = _utilities.filter_patient_names(patient_names)
-
-    icom_streams = load_icom_streams(icom_paths)
-    deliveries = _deliveries.cached_deliveries_loading(
-        icom_streams, _deliveries.delivery_from_icom
-    )
-
-    if selected_icom_deliveries:
-        identifier = f"iCOM ({icom_filenames[0]})"
-    else:
-        identifier = None
-
-    if len(deliveries) == 0:
-        st.write(_exceptions.InputRequired("Please select at least one iCOM delivery"))
-        st.stop()
-
-    results = {
-        "site": None,
-        "patient_id": patient_id,
-        "patient_name": patient_name,
-        "selected_icom_deliveries": selected_icom_deliveries,
-        "data_paths": icom_paths,
-        "identifier": identifier,
-        "deliveries": deliveries,
-    }
-
-    return results
-
-
-@st.cache(hash_funcs={pymssql.Cursor: id})
-def get_patient_fields(cursor, patient_id):
-    return msq_helpers.get_patient_fields(cursor, patient_id)
-
-
-@st.cache(hash_funcs={pymssql.Cursor: id})
-def get_patient_name(cursor, patient_id):
-    return msq_helpers.get_patient_name(cursor, patient_id)
-
-
-def mosaiq_input_method(patient_id="", key_namespace="", site=None, **_):
-    mosaiq_details = _config.get_mosaiq_details()
-
-    mosaiq_site = st_misc.site_picker(
-        "Mosaiq Site", default=site, key=f"{key_namespace}_mosaiq_site"
-    )
-
-    server = mosaiq_details[mosaiq_site]["server"]
-    f"Mosaiq Hostname: `{server}`"
-
-    sql_user = keyring.get_password("MosaiqSQL_username", server)
-    f"Mosaiq SQL login being used: `{sql_user}`"
-
-    patient_id = st.text_input(
-        "Patient ID", patient_id, key=f"{key_namespace}_patient_id"
-    )
-    patient_id
-
-    cursor = st_mosaiq.get_mosaiq_cursor(server)
-
-    if patient_id == "":
-        return {}
-
-    patient_name = get_patient_name(cursor, patient_id)
-
-    f"Patient Name: `{patient_name}`"
-
-    patient_fields = get_patient_fields(cursor, patient_id)
-
-    """
-    #### Mosaiq patient fields
-    """
-
-    patient_fields = patient_fields[patient_fields["monitor_units"] != 0]
-    patient_fields
-
-    field_ids = patient_fields["field_id"]
-    field_ids = field_ids.values.tolist()
-
-    selected_field_ids = st.multiselect(
-        "Select Mosaiq field id(s)", field_ids, key=f"{key_namespace}_mosaiq_field_id"
-    )
-
-    cursor_and_field_ids = [(cursor, field_id) for field_id in selected_field_ids]
-    deliveries = _deliveries.cached_deliveries_loading(
-        cursor_and_field_ids, _deliveries.delivery_from_mosaiq
-    )
-    identifier = f"{mosaiq_site} Mosaiq ({', '.join([str(field_id) for field_id in selected_field_ids])})"
-
-    return {
-        "site": mosaiq_site,
-        "patient_id": patient_id,
-        "patient_name": patient_name,
-        "data_paths": [],
-        "identifier": identifier,
-        "deliveries": deliveries,
-    }
-
-
 def display_deliveries(deliveries):
     if not deliveries:
         return 0
 
-    """
-    #### Overview of selected deliveries
-    """
+    st.write(
+        """
+        #### Overview of selected deliveries
+        """
+    )
 
     data = []
     for delivery in deliveries:
@@ -644,11 +161,11 @@ def display_deliveries(deliveries):
 
     columns = ["MU", "Number of Data Points"]
     df = pd.DataFrame(data=data, columns=columns)
-    df
+    st.write(df)
 
     total_mu = round(df["MU"].sum(), 1)
 
-    f"Total MU: `{total_mu}`"
+    st.write(f"Total MU: `{total_mu}`")
 
     return total_mu
 
@@ -840,9 +357,11 @@ def advanced_debugging():
 
     st.sidebar.markdown("# Advanced Debugging")
     if st.sidebar.button("Compare Baseline to Output Directory"):
-        """
-        ## Comparing Results to Baseline
-        """
+        st.write(
+            """
+            ## Comparing Results to Baseline
+            """
+        )
 
         baseline_directory = pathlib.Path(
             config["debug"]["baseline_directory"]
@@ -866,31 +385,38 @@ def advanced_debugging():
 
         for baseline, evaluation in zip(baseline_png_paths, evaluation_png_paths):
 
-            f"### {baseline.parent.name}/{baseline.name}"
+            st.write(f"### {baseline.parent.name}/{baseline.name}")
 
-            f"`{baseline}`\n\n**vs**\n\n`{evaluation}`"
+            st.write(f"`{baseline}`\n\n**vs**\n\n`{evaluation}`")
 
             baseline_image = imageio.imread(baseline)
 
             try:
                 evaluation_image = imageio.imread(evaluation)
             except FileNotFoundError as e:
-                """
-                #### File was not found
-                """
+                st.write(
+                    """
+                    #### File was not found
+                    """
+                )
+
                 st.write(e)
 
-                f"""
-                For debugging purposes, here are all the files that
-                were found within {str(output_dir)}
-                """
+                st.write(
+                    f"""
+                    For debugging purposes, here are all the files that
+                    were found within {str(output_dir)}
+                    """
+                )
 
-                [str(path) for path in output_dir.rglob("*") if path.is_file()]
+                st.write(
+                    [str(path) for path in output_dir.rglob("*") if path.is_file()]
+                )
 
                 return
 
             agree = np.allclose(baseline_image, evaluation_image)
-            f"Images Agree: `{agree}`"
+            st.write(f"Images Agree: `{agree}`")
 
 
 def run_calculation(
@@ -1024,11 +550,19 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
 
 
 def main():
+    st.write(
+        """
+        # MU Density comparison tool
+
+        Tool to compare the MU Density between planned and delivery.
+        """
+    )
+
     config = st_config.get_config()
 
     st.sidebar.markdown(
         """
-        # Overview
+        # MU Density Overview
         """
     )
 
@@ -1073,11 +607,11 @@ def main():
     gamma_options = _config.get_gamma_options(advanced_mode)
 
     data_option_functions = {
-        "monaco": monaco_input_method,
-        "dicom": dicom_input_method,
-        "icom": icom_input_method,
+        "monaco": _monaco.monaco_input_method,
+        "dicom": _dicom.dicom_input_method,
+        "icom": _icom.icom_input_method,
         "trf": _trf.trf_input_method,
-        "mosaiq": mosaiq_input_method,
+        "mosaiq": _mosaiq.mosaiq_input_method,
     }
 
     default_reference_id = config["data_methods"]["default_reference"]
@@ -1097,9 +631,11 @@ def main():
         """
     )
 
-    """
-    ### Reference
-    """
+    st.write(
+        """
+        ### Reference
+        """
+    )
 
     reference_results = get_input_data_ui(
         overview_updater_map,
@@ -1109,9 +645,11 @@ def main():
         advanced_mode,
     )
 
-    """
-    ### Evaluation
-    """
+    st.write(
+        """
+        ### Evaluation
+        """
+    )
 
     evaluation_results = get_input_data_ui(
         overview_updater_map,
@@ -1122,15 +660,19 @@ def main():
         **reference_results,
     )
 
-    """
-    ## Output Locations
-    """
+    st.write(
+        """
+        ## Output Locations
+        """
+    )
 
-    """
-    ### eSCAN Directory
+    st.write(
+        """
+        ### eSCAN Directory
 
-    The location to save the produced pdf report.
-    """
+        The location to save the produced pdf report.
+        """
+    )
 
     default_site = evaluation_results.get("site", None)
     if default_site is None:
@@ -1148,11 +690,13 @@ def main():
     default_png_output_directory = config["output"]["png_directory"]
 
     if advanced_mode:
-        """
-        ### Image record
+        st.write(
+            """
+            ### Image record
 
-        Path to save the image of the results for posterity
-        """
+            Path to save the image of the results for posterity
+            """
+        )
 
         png_output_directory = pathlib.Path(
             st.text_input("png output directory", default_png_output_directory)
@@ -1166,20 +710,27 @@ def main():
         os.path.expanduser(png_output_directory)
     ).resolve()
 
-    """
-    ## Calculation
-    """
+    st.write(
+        """
+        ## Calculation
+        """
+    )
 
     if st.button("Run Calculation"):
 
-        """
-        ### MU Density usage warning
-        """
+        st.write(
+            """
+            ### MU Density usage warning
+            """
+        )
+
         st.warning(pymedphys.mudensity.WARNING_MESSAGE)
 
-        """
-        ### Calculation status
-        """
+        st.write(
+            """
+            ### Calculation status
+            """
+        )
 
         run_calculation(
             reference_results,
@@ -1191,7 +742,3 @@ def main():
 
     if advanced_mode:
         advanced_debugging()
-
-
-if __name__ == "__main__":
-    main()

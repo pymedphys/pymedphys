@@ -92,13 +92,18 @@ Our Team
 PyMedPhys is what it is today due to its maintainers and contributors both past
 and present. Here is our team.
 
-Maintainer
-..........
+Maintainers
+...........
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
+
+* `Stuart Swerdloff`_
+    * `ELEKTA Pty Ltd`_: New Zealand
+
+.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 
 Active contributors
@@ -109,11 +114,6 @@ Active contributors
     * `South Western Sydney Local Health District`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
-
-* `Stuart Swerdloff`_
-    * New Zealand
-
-.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 * `Matthew Cooper`_
 
@@ -178,19 +178,21 @@ Past contributors
 .. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/HGUGM_200x200.png
     :target: `Hospital General Universitario Gregorio Marañón`_
 
-.. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
+.. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
 
-.. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
+.. _`ELEKTA Pty Ltd`: https://www.elekta.com/
+
+.. _`Royal Adelaide Hospital`: https://www.rah.sa.gov.au/
 
 .. _`University of New South Wales`: https://www.unsw.edu.au/
 
 .. _`South Western Sydney Local Health District`: https://www.swslhd.health.nsw.gov.au/
 
-.. _`Anderson Regional Cancer Center`: http://www.andersonregional.org/CancerCenter.aspx
+.. _`Anderson Regional Cancer Center`: https://www.andersonregional.org/services/cancer-care/
 
-.. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
+.. _`Northern Beaches Cancer Care`: https://www.northernbeachescancercare.com.au/
 
-.. _`University of Calgary`: http://www.ucalgary.ca/
+.. _`University of Calgary`: https://www.ucalgary.ca/
 
 .. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
 
