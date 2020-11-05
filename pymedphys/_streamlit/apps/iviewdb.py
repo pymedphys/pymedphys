@@ -13,16 +13,17 @@
 # limitations under the License.
 
 
-from pymedphys._imports import dbfread
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
-from pymedphys._streamlit.utilities import misc
+from pymedphys._streamlit.utilities import dbf, misc
 
-
-@st.cache()
-def get_dbf_table(path):
-    return dbfread.DBF(path)
+DB_RELATIONSHIPS = {
+    "frame": {"PIMG_DBID": ["patimg", "DBID"]},
+    "patimg": {"PORT_DBID": ["port", "DBID"]},
+    "port": {"TRT_DBID": ["trtmnt", "DBID"]},
+    "trtmnt": {"PAT_DBID": ["patient", "DBID"]},
+}
 
 
 def main():
@@ -36,7 +37,9 @@ def main():
         if not path.stem.endswith("_N")
     }
 
-    table_records = {key: get_dbf_table(path) for key, path in database_paths.items()}
+    table_records = {
+        key: dbf.get_dbf_table(path) for key, path in database_paths.items()
+    }
 
     table_to_view = st.radio("Table to view", list(table_records.keys()))
 
@@ -53,3 +56,11 @@ def main():
     if selected_fields:
         full_pandas_table = pd.DataFrame(iter(dbf_record))
         st.write(full_pandas_table[selected_fields])
+
+    st.write("## File lists")
+
+    if st.button("Show *.jpg files"):
+        st.write([str(item) for item in database_directory.glob("**/*.jpg")])
+
+    if st.button("Show *.xml files"):
+        st.write([str(item) for item in database_directory.glob("**/*.xml")])
