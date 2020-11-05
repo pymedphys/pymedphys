@@ -33,7 +33,7 @@ def get_dbf_table(path):
 def main():
     st.title("iView Database Explorer")
 
-    site = st.selectbox("Site", list(SITE_DATABASE_DIRECTORIES.keys()))
+    site = st.radio("Site", list(SITE_DATABASE_DIRECTORIES.keys()))
 
     database_directory = SITE_DATABASE_DIRECTORIES[site]
 
