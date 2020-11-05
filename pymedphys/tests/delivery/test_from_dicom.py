@@ -30,5 +30,5 @@ def dataset():
 
 
 def test_converting_dicom_to_delivery(dataset):
-    with pytest.raises(ValueError, match=r".*not supported.*"):
+    with pytest.raises(ValueError, match=r".*not yet supported.*"):
         pymedphys.Delivery.from_dicom(dataset)
