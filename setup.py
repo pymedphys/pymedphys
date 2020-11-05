@@ -93,16 +93,19 @@ packages = [
     "pymedphys.tests.monaco",
     "pymedphys.tests.mudensity",
     "pymedphys.tests.trf",
+    "pymedphys.tests.utilities",
     "pymedphys.tests.winstonlutz",
 ]
 
 package_data = {
     "": ["*"],
     "pymedphys._experimental": ["serviceplans/templates/*"],
+    "pymedphys._streamlit": ["apps/data/*"],
     "pymedphys.tests": [
         "dicom/data/rtplan/*",
         "dicom/scratch/*",
         "e2e/cypress/*",
+        "e2e/cypress/fixtures/*",
         "e2e/cypress/integration/streamlit/*",
         "e2e/cypress/plugins/*",
         "e2e/cypress/support/*",
