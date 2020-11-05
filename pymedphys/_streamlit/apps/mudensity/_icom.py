@@ -41,6 +41,8 @@ def load_icom_streams(icom_paths):
     return icom_streams
 
 
+# TODO: Split this up to search by site
+# See <https://github.com/pymedphys/pymedphys/issues/1141>
 def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
     icom_directories = _config.get_default_icom_directories()
 
