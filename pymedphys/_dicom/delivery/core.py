@@ -164,7 +164,7 @@ class DeliveryDicom(DeliveryBase):
                         <https://github.com/pymedphys/pymedphys/issues/1142>.
                     """
                 ).format(
-                    supported_configurations="\n * ".join(
+                    supported_configurations="\n* ".join(
                         [str(item) for item in supported_configurations]
                     ),
                     rt_beam_limiting_device_types=rt_beam_limiting_device_types,
