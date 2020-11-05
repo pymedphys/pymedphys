@@ -33,6 +33,6 @@ def convert_patient_name(original_patient_name):
             f"Instead got {original_patient_name}"
         )
 
-    patient_name = convert_patient_name_from_split(*patient_split)
+    patient_name = convert_patient_name_from_split(*patient_split[0:2])
 
     return patient_name
