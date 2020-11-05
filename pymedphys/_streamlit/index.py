@@ -22,7 +22,7 @@ from pymedphys._streamlit.apps import dashboard as _dashboard
 from pymedphys._streamlit.apps import electrons as _electrons
 from pymedphys._streamlit.apps import mudensity as _mudensity
 from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
-from pymedphys._streamlit.utilities import state
+from pymedphys._streamlit.utilities import session
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
@@ -111,7 +111,7 @@ def get_url_app():
         return "index"
 
 
-session_state = state.get(app=get_url_app())
+session_state = session.initialise_session_state(app=get_url_app())
 
 
 def swap_app(app):
