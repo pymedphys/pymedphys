@@ -60,6 +60,9 @@ def get_site_directories():
         "anonymised_monaco": functools.partial(
             get_export_directory_from_site_config, export_directory="anonymised_monaco"
         ),
+        "iviewdb": functools.partial(
+            get_export_directory_from_site_config, export_directory="iviewdb"
+        ),
     }
 
     site_directories = {}

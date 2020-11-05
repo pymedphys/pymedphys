@@ -18,11 +18,7 @@ import pathlib
 from pymedphys._imports import dbfread
 from pymedphys._imports import streamlit as st
 
-SITE_DATABASE_DIRECTORIES = {
-    "rccc": pathlib.Path(r"\\pdc\PExIT\DataExchange\iViewDB"),
-    "nbcc": pathlib.Path(r"\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iViewDB"),
-    "sash": pathlib.Path(r"\\tunnel-sash-physics-server\iViewDB"),
-}
+from pymedphys._streamlit.utilities import misc
 
 
 @st.cache()
@@ -33,9 +29,9 @@ def get_dbf_table(path):
 def main():
     st.title("iView Database Explorer")
 
-    site = st.radio("Site", list(SITE_DATABASE_DIRECTORIES.keys()))
+    _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
 
-    database_directory = SITE_DATABASE_DIRECTORIES[site]
+    # database_directory = SITE_DATABASE_DIRECTORIES[site]
 
     database_paths = {
         path.stem.lower(): path for path in database_directory.glob("*.dbf")
@@ -43,6 +39,6 @@ def main():
 
     table_records = {key: get_dbf_table(path) for key, path in database_paths.items()}
 
-    table_to_view = st.selectbox("Table to view", list(table_records.keys()))
+    table_to_view = st.radio("Table to view", list(table_records.keys()))
 
     st.write(list(table_records[table_to_view]))
