@@ -8,25 +8,25 @@ import pytest_pylint.plugin
 
 SKIPPING_CONFIG = {
     "slow": {
-        "option": "--run-only-slow",
-        "help": "run only the slow tests",
+        "options": ["--run-only-slow", "--slow"],
+        "help": "run the slow tests",
         "description": "mark test as slow to run",
         "skip_otherwise": True,
     },
-    "yarn": {
-        "option": "--run-only-yarn",
-        "help": "run only the tests that need yarn",
-        "description": "mark test as needing yarn",
+    "cypress": {
+        "options": ["--run-only-yarn", "--cypress"],
+        "help": "run the cypress tests",
+        "description": "mark test as using cypress",
         "skip_otherwise": True,
     },
     "pydicom": {
-        "option": "--run-only-pydicom",
+        "options": ["--run-only-pydicom", "--pydicom"],
         "help": "run only the tests that use pydicom",
         "description": "mark test as using pydicom",
         "skip_otherwise": False,
     },
     "pylinac": {
-        "option": "--run-only-pylinac",
+        "options": ["--run-only-pylinac", "--pylinac"],
         "help": "run only the tests that use pylinac",
         "description": "mark test as using pylinac",
         "skip_otherwise": False,
@@ -37,12 +37,10 @@ SKIPPING_CONFIG = {
 # https://docs.pytest.org/en/latest/example/simple.html#control-skipping-of-tests-according-to-command-line-option
 def pytest_addoption(parser):
     for _, skip_item in SKIPPING_CONFIG.items():
-        parser.addoption(
-            skip_item["option"],
-            action="store_true",
-            default=False,
-            help=skip_item["help"],
-        )
+        for option in skip_item["options"]:
+            parser.addoption(
+                option, action="store_true", default=False, help=skip_item["help"]
+            )
 
 
 def pytest_configure(config):
@@ -52,17 +50,26 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     for key, skip_item in SKIPPING_CONFIG.items():
-        if not config.getoption(skip_item["option"]):
+        this_option_set = False
+        provided_option = ""
+
+        for option in skip_item["options"]:
+            if config.getoption(option):
+                this_option_set = True
+                provided_option = option
+                break
+
+        if not this_option_set:
             if skip_item["skip_otherwise"]:
                 skip = pytest.mark.skip(
-                    reason=f"need {skip_item['option']} option to run"
+                    reason=f"need {skip_item['options'][-1]} option to run"
                 )
 
                 for item in items:
                     if key in item.keywords:
                         item.add_marker(skip)
         else:
-            skip = pytest.mark.skip(reason=f"since {skip_item['option']} was passed")
+            skip = pytest.mark.skip(reason=f"since {provided_option} was passed")
             for item in items:
                 if key not in item.keywords:
                     item.add_marker(skip)
@@ -91,6 +98,6 @@ def pytest_ignore_collect(path, config):  # pylint: disable = unused-argument
         or ("_bundle" in relative_path_list and "python" in relative_path_list)
         or (
             config.getoption("--doctest-modules")
-            and ("streamlit" in relative_path_list or "tests" in relative_path_list)
+            and ("_streamlit" in relative_path_list or "tests" in relative_path_list)
         )
     )

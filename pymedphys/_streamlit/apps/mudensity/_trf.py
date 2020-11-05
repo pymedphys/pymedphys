@@ -17,14 +17,10 @@ from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 import pymedphys
-from pymedphys._gui.streamlit.mudensity import (
-    _config,
-    _deliveries,
-    _exceptions,
-    _utilities,
-)
 from pymedphys._mosaiq.delivery import NoMosaiqEntries as _NoMosaiqEntries
-from pymedphys._streamlit import mosaiq as st_mosaiq
+from pymedphys._streamlit.apps.mudensity import _config, _deliveries, _utilities
+from pymedphys._streamlit.utilities import exceptions as _exceptions
+from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 from pymedphys._trf.manage import index as pmp_index
 from pymedphys._utilities import patient as utl_patient
 
@@ -77,6 +73,8 @@ def get_logfile_mosaiq_info(
 
 
 def _attempt_patient_name_from_mosaiq(headers):
+    UNKNOWN_PATIENT_NAME = "Unknown"
+
     st.write(
         """
         #### Corresponding Mosaiq SQL Details
@@ -92,9 +90,9 @@ def _attempt_patient_name_from_mosaiq(headers):
     except KeyError:
         st.warning(
             "Need Mosaiq access to determine patient name. "
-            "Patient name set to 'Unknown'."
+            f"Patient name set to '{UNKNOWN_PATIENT_NAME}'."
         )
-        patient_name = "Unknown"
+        patient_name = UNKNOWN_PATIENT_NAME
 
         return patient_name
 
@@ -106,9 +104,9 @@ def _attempt_patient_name_from_mosaiq(headers):
         st.warning(
             "Searched Mosaiq for an entry corresponding to this logfile. "
             "No entry was found. As such, for now, patient name has been "
-            "set to 'Unknown'."
+            f"set to '{UNKNOWN_PATIENT_NAME}'."
         )
-        patient_name = "Unknown"
+        patient_name = UNKNOWN_PATIENT_NAME
 
         return patient_name
 
@@ -248,6 +246,11 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     headers = []
     tables = []
     for path_or_binary in selected_files:
+        try:
+            path_or_binary.seek(0)
+        except AttributeError:
+            pass
+
         header, table = read_trf(path_or_binary)
         headers.append(header)
         tables.append(table)

@@ -16,7 +16,7 @@
 import functools
 import pathlib
 
-import streamlit as st
+from pymedphys._imports import streamlit as st
 
 import pymedphys
 from pymedphys import _config as pmp_config
