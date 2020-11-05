@@ -14,6 +14,7 @@
 
 
 from pymedphys._imports import dbfread
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities import misc
@@ -30,7 +31,9 @@ def main():
     _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
 
     database_paths = {
-        path.stem.lower(): path for path in database_directory.glob("*.dbf")
+        path.stem.lower(): path
+        for path in database_directory.glob("*.dbf")
+        if not path.stem.endswith("_N")
     }
 
     table_records = {key: get_dbf_table(path) for key, path in database_paths.items()}
@@ -41,8 +44,12 @@ def main():
 
     st.write("## Field Names")
 
-    selected_fields = st.multiselect("Field names to view", dbf_record.field_names)
+    field_names = dbf_record.field_names
 
-    st.write(selected_fields)
+    selected_fields = st.multiselect(
+        "Field names to view", field_names, default=field_names
+    )
 
-    # st.write(list())
+    if selected_fields:
+        full_pandas_table = pd.DataFrame(iter(dbf_record))
+        st.write(full_pandas_table[selected_fields])
