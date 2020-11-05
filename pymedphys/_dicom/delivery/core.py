@@ -143,12 +143,12 @@ class DeliveryDicom(DeliveryBase):
                         limiting devices consist of one of the following
                         combinations are supported:
 
-                        {supported_configurations}
+                        * {supported_configurations}
 
                         The provided RT Plan DICOM file has the
                         following:
 
-                        {rt_beam_limiting_device_types}
+                            {rt_beam_limiting_device_types}
 
                         This is not yet supported.
                         This is due to a range of assumptions being made
