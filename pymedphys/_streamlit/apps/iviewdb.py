@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-import pathlib
-
 from pymedphys._imports import dbfread
 from pymedphys._imports import streamlit as st
 
@@ -31,8 +29,6 @@ def main():
 
     _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
 
-    # database_directory = SITE_DATABASE_DIRECTORIES[site]
-
     database_paths = {
         path.stem.lower(): path for path in database_directory.glob("*.dbf")
     }
@@ -41,4 +37,12 @@ def main():
 
     table_to_view = st.radio("Table to view", list(table_records.keys()))
 
-    st.write(list(table_records[table_to_view]))
+    dbf_record = table_records[table_to_view]
+
+    st.write("## Field Names")
+
+    selected_fields = st.multiselect("Field names to view", dbf_record.field_names)
+
+    st.write(selected_fields)
+
+    # st.write(list())
