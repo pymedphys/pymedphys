@@ -13,11 +13,6 @@
 # limitations under the License.
 
 
-# pylint: disable = pointless-statement, pointless-string-statement
-# pylint: disable = no-value-for-parameter, expression-not-assigned
-# pylint: disable = too-many-lines, redefined-outer-name
-
-
 import importlib
 import pathlib
 import types
@@ -25,17 +20,12 @@ import types
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import watchdog
 
-
-def get_session_id():
-    ctx = st.report_thread.get_report_ctx()
-    session_id = ctx.session_id
-
-    return session_id
+from . import session as _session
 
 
 def rerun(session_id=None):
     if session_id is None:
-        session_id = get_session_id()
+        session_id = _session.get_session_id()
 
     server = st.server.server.Server.get_current()
     session = server._get_session_info(  # pylint: disable = protected-access
@@ -85,7 +75,7 @@ def reload_and_rerun_on_module_changes(module: types.ModuleType, session_id):
 
 
 def autoreload(modules):
-    session_id = get_session_id()
+    session_id = _session.get_session_id()
 
     if isinstance(modules, types.ModuleType):
         modules = [modules]
