@@ -4,7 +4,7 @@
 
 import pathlib
 
-import streamlit as st
+from pymedphys._imports import streamlit as st
 
 from . import exceptions, misc
 

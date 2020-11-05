@@ -1,3 +1,5 @@
+version = 1
+
 [data_methods]
 available = ["monaco", "dicom", "icom", "trf", "mosaiq"]
 default_reference = "monaco"

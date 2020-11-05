@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import textwrap
 from copy import deepcopy
 
 from pymedphys._imports import numpy as np
@@ -27,6 +28,13 @@ from . import utilities
 def load_dicom_file(filepath):
     dicom_dataset = pydicom.dcmread(filepath, force=True, stop_before_pixels=True)
     return dicom_dataset
+
+
+def _pretty_print(string):
+    sections = textwrap.dedent(string).split("\n\n")
+    wrapped = ["\n".join(textwrap.wrap(section)) for section in sections]
+
+    return "\n\n".join(wrapped)
 
 
 class DeliveryDicom(DeliveryBase):
@@ -125,11 +133,42 @@ class DeliveryDicom(DeliveryBase):
             item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
         }
 
-        if rt_beam_limiting_device_types != set(["MLCX", "ASYMY"]):
+        supported_configurations = [{"MLCX", "ASYMY"}]
+
+        if not rt_beam_limiting_device_types in supported_configurations:
             raise ValueError(
-                "Currently only DICOM files that contain "
-                "exactly MLCX and ASYMY are supported. "
-                f"{rt_beam_limiting_device_types} is not supported."
+                _pretty_print(
+                    """\
+                        Currently only DICOM files where the beam
+                        limiting devices consist of one of the following
+                        combinations are supported:
+
+                        * {supported_configurations}
+
+                        The provided RT Plan DICOM file has the
+                        following:
+
+                            {rt_beam_limiting_device_types}
+
+                        This is not yet supported.
+                        This is due to a range of assumptions being made
+                        internally that assume a single jaw system.
+                        There are some cases where this restriction is
+                        too tight. Currently however there is not enough
+                        testing data to appropriately implement these
+                        cases.
+                        If you would like to have your device supported
+                        please consider uploading anonymised DICOM files
+                        and their TRF counterparts to the following
+                        issue
+                        <https://github.com/pymedphys/pymedphys/issues/1142>.
+                    """
+                ).format(
+                    supported_configurations="\n* ".join(
+                        [str(item) for item in supported_configurations]
+                    ),
+                    rt_beam_limiting_device_types=rt_beam_limiting_device_types,
+                )
             )
 
         mlc_sequence = [
