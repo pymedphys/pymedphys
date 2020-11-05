@@ -123,56 +123,53 @@ def get_url_app():
         return "index"
 
 
-session_state = state.get(app=get_url_app())
+def main():
+    session_state = state.get(app=get_url_app())
 
+    def swap_app(app):
+        st.experimental_set_query_params(app=app)
+        session_state.app = app
 
-def swap_app(app):
-    st.experimental_set_query_params(app=app)
-    session_state.app = app
+        # Not sure why this is needed. The `set_query_params` doesn't
+        # appear to work if a rerun is undergone immediately afterwards.
+        time.sleep(0.01)
+        st.experimental_rerun()
 
-    # Not sure why this is needed. The `set_query_params` doesn't
-    # appear to work if a rerun is undergone immediately afterwards.
-    time.sleep(0.01)
-    st.experimental_rerun()
-
-
-def index():
-    st.write(
-        """
-        # Index of applications available
-
-        The following applications are organised by category where each
-        category is representative of the maturity of the tool.
-        """
-    )
-
-    for category_key, category in APPLICATION_CATEGORIES.items():
+    def index():
         st.write(
-            f"""
-                ## {category["title"]}
-                {category["description"]}
+            """
+            # Index of applications available
+
+            The following applications are organised by category where each
+            category is representative of the maturity of the tool.
             """
         )
 
-        st.write("---")
+        for category_key, category in APPLICATION_CATEGORIES.items():
+            st.write(
+                f"""
+                    ## {category["title"]}
+                    {category["description"]}
+                """
+            )
 
-        applications_in_this_category = [
-            item
-            for item in APPLICATION_OPTIONS.items()
-            if item[1]["category"] == category_key
-        ]
+            st.write("---")
 
-        if not applications_in_this_category:
-            st.write("> *No applications are currently in this category.*")
+            applications_in_this_category = [
+                item
+                for item in APPLICATION_OPTIONS.items()
+                if item[1]["category"] == category_key
+            ]
 
-        for app_key, application in applications_in_this_category:
-            if st.button(application["label"]):
-                swap_app(app_key)
+            if not applications_in_this_category:
+                st.write("> *No applications are currently in this category.*")
 
-        st.write("---")
+            for app_key, application in applications_in_this_category:
+                if st.button(application["label"]):
+                    swap_app(app_key)
 
+            st.write("---")
 
-def main():
     if (
         session_state.app != "index"
         and not session_state.app in APPLICATION_OPTIONS.keys()
