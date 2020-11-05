@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+# It is understood that we are stepping into 'private' API usage here
 # pylint: disable = protected-access
 
 
