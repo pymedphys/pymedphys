@@ -15,9 +15,10 @@
 
 # import os
 
-# import pathlib
+import datetime
 
 # from pymedphys._imports import plt
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
@@ -25,6 +26,9 @@ from pymedphys import _losslessjpeg as lljpeg
 
 # from pymedphys._wlutz import findbb, findfield, imginterp, iview, reporting
 from pymedphys._streamlit.utilities import dbf, misc
+
+# import pathlib
+
 
 # def get_jpg_list(root):
 #     return tuple([str(path) for path in root.glob("**/*.jpg")])
@@ -105,11 +109,7 @@ def main():
     _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
 
     frame_dbf_path = database_directory.joinpath("FRAME.dbf")
-
-    if st.button("Re-query database"):
-        refresh_cache = True
-    else:
-        refresh_cache = False
+    refresh_cache = st.button("Re-query database")
 
     try:
         frames = dbf_to_pandas(frame_dbf_path, refresh_cache)
@@ -126,7 +126,9 @@ def main():
 
     timestamps = calc_timestamps(frames, patimg)
 
-    selected_date = st.date_input("Date", value=timestamps["date"].iloc[0])
+    date_options = timestamps["date"].unique()
+
+    selected_date = st.selectbox("Date", options=date_options)
     table_matching_selected_date = timestamps.loc[timestamps["date"] == selected_date]
 
     port_dbf_path = database_directory.joinpath("PORT.dbf")
@@ -134,7 +136,7 @@ def main():
 
     with_port_id = table_matching_selected_date.merge(
         port, left_on="PORT_DBID", right_on="DBID"
-    )[["machine_id", "filename", "time", "ID", "TRT_DBID"]]
+    )[["machine_id", "filename", "time", "ID", "TRT_DBID", "datetime"]]
 
     with_port_id.rename({"ID": "port"}, axis="columns", inplace=True)
 
@@ -142,7 +144,7 @@ def main():
     trtmnt = dbf_to_pandas(trtmnt_dbf_path, refresh_cache)[["DBID", "ID", "PAT_DBID"]]
 
     with_trtmnt = with_port_id.merge(trtmnt, left_on="TRT_DBID", right_on="DBID")[
-        ["machine_id", "filename", "time", "ID", "port", "PAT_DBID"]
+        ["machine_id", "filename", "time", "ID", "port", "PAT_DBID", "datetime"]
     ]
     with_trtmnt.rename({"ID": "treatment"}, axis="columns", inplace=True)
 
@@ -161,6 +163,7 @@ def main():
             "filename",
             "LAST_NAME",
             "FIRST_NAME",
+            "datetime",
         ]
     ]
 
@@ -176,18 +179,40 @@ def main():
 
     filtering_df = with_patient
 
+    # Machine ID
     machine_id = st.radio("Machine", filtering_df["machine_id"].unique())
     filtering_df = filtering_df.loc[filtering_df["machine_id"] == machine_id]
 
+    # Patient ID
     patient_id = st.radio("Patient", filtering_df["patient_id"].unique())
     filtering_df = filtering_df.loc[filtering_df["patient_id"] == patient_id]
 
+    # Time
+    time_step = datetime.timedelta(minutes=1)
+    min_time = (np.min(filtering_df["datetime"])).floor("min").time()
+    max_time = (np.max(filtering_df["datetime"])).ceil("min").time()
+
+    time_range = st.slider(
+        "Time",
+        min_value=min_time,
+        max_value=max_time,
+        step=time_step,
+        value=[min_time, max_time],
+    )
+
+    filtering_df = filtering_df.loc[
+        (filtering_df["time"] >= time_range[0])
+        & (filtering_df["time"] <= time_range[1])
+    ]
+
+    # Treatments
     unique_treatments = filtering_df["treatment"].unique().tolist()
     selected_treatments = st.multiselect(
         "Treatment", unique_treatments, default=unique_treatments
     )
     filtering_df = filtering_df.loc[filtering_df["treatment"].isin(selected_treatments)]
 
+    # Ports
     unique_ports = filtering_df["port"].unique().tolist()
     selected_ports = st.multiselect("Ports", unique_ports, default=unique_ports)
     filtering_df = filtering_df.loc[filtering_df["port"].isin(selected_ports)]
