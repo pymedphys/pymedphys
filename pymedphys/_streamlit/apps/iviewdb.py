@@ -82,7 +82,10 @@ def main():
 
     chosen_file = st.selectbox("Select XML file", options=xml_files)
 
-    xml_path = database_directory.joinpath(chosen_file)
+    try:
+        xml_path = database_directory.joinpath(chosen_file)
+    except TypeError:
+        st.stop()
 
     with open(xml_path) as fd:
         doc = xmltodict.parse(fd.read())
