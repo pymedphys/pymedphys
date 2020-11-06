@@ -3,5 +3,6 @@
         "ms-python.python",
         "streetsidesoftware.code-spell-checker",
         "bungcip.better-toml",
+        "GitHub.vscode-codeql"
     ]
 }
