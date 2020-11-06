@@ -15,8 +15,11 @@
 
 """This is a streamlit app. To run this on your machine first install
 the requirements:
+
     pip install -r requirements.txt
+
 Then you can start this app by running:
+
     streamlit run app.py
 """
 
