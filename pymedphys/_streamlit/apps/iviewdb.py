@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # import pathlib
-import xml
 
 import xmltodict
 from pymedphys._imports import pandas as pd
