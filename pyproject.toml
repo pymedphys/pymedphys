@@ -26,6 +26,8 @@ classifiers = [
     "Intended Audience :: Healthcare Industry",
 ]
 
+packages = [{include = "pymedphys", from = "lib" }]
+
 [tool.poetry.dependencies]
 python = "^3.6"
 dataclasses = {version = "*", python = "~3.6.0"}

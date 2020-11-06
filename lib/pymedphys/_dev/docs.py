@@ -2,7 +2,7 @@ import pathlib
 import subprocess
 import webbrowser
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
+ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
 DOCS_DIR = ROOT.joinpath("docs")
 DOCS_BUILD_DIR = DOCS_DIR.joinpath("_build")
 DOCS_HTML_BUILD_DIR = DOCS_BUILD_DIR.joinpath("html")
