@@ -16,7 +16,6 @@ import json
 import pathlib
 import re
 import subprocess
-import tarfile
 import textwrap
 
 from pymedphys._imports import black, tomlkit
@@ -45,11 +44,7 @@ def propagate_all(_):
     propagate_version()
     propagate_extras()
     propagate_requirements()
-
-    # Undergo pylintrc before setup.py in-case someone decides to use
-    # the sdist built while creating the setup.py file.
     propagate_pylintrc()
-    propagate_setup()
 
 
 def read_pyproject():
@@ -90,32 +85,6 @@ def propagate_version():
 
     with open(VERSION_PATH, "w") as f:
         f.write(version_contents)
-
-
-def propagate_setup():
-    subprocess.check_call("poetry build -f sdist", cwd=REPO_ROOT, shell=True)
-
-    version_string = get_version_string()
-    version_dots_only = version_string.replace("-", ".")
-
-    filename = f"pymedphys-{version_dots_only}.tar.gz"
-    filepath = DIST_DIR.joinpath(filename)
-
-    with tarfile.open(filepath, "r:gz") as tar:
-        f = tar.extractfile(f"pymedphys-{version_dots_only}/setup.py")
-        setup_contents = f.read().decode()
-
-    setup_contents_list = setup_contents.split("\n")
-    setup_contents_list.insert(1, f"\n{AUTOGEN_MESSAGE[0]}")
-    setup_contents_list.insert(2, f"{AUTOGEN_MESSAGE[1]}\n")
-    setup_contents = "\n".join(setup_contents_list)
-
-    setup_contents = black.format_str(setup_contents, mode=black.FileMode())
-
-    setup_contents = setup_contents.encode("utf-8")
-
-    with open(SETUP_PY, "bw") as f:
-        f.write(setup_contents)
 
 
 def propagate_pylintrc():
