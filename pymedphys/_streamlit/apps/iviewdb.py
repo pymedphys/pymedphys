@@ -26,6 +26,13 @@ DB_RELATIONSHIPS = {
 }
 
 
+@st.cache()
+def get_files(directory, extension):
+    return [
+        str(item.relative_to(directory)) for item in directory.glob(f"**/*{extension}")
+    ]
+
+
 def main():
     st.title("iView Database Explorer")
 
@@ -60,7 +67,7 @@ def main():
     st.write("## File lists")
 
     if st.button("Show *.jpg files"):
-        st.write([str(item) for item in database_directory.glob("**/*.jpg")])
+        st.write(get_files(database_directory, ".jpg"))
 
     if st.button("Show *.xml files"):
-        st.write([str(item) for item in database_directory.glob("**/*.xml")])
+        st.write(get_files(database_directory, ".xml"))
