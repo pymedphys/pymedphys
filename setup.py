@@ -5,6 +5,8 @@
 
 from setuptools import setup
 
+package_dir = {"": "lib"}
+
 packages = [
     "pymedphys",
     "pymedphys._base",
@@ -99,20 +101,21 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental": ["serviceplans/templates/*"],
-    "pymedphys._streamlit": ["apps/data/*"],
-    "pymedphys.tests": [
-        "dicom/data/rtplan/*",
-        "dicom/scratch/*",
-        "e2e/cypress/*",
-        "e2e/cypress/fixtures/*",
-        "e2e/cypress/integration/streamlit/*",
-        "e2e/cypress/plugins/*",
-        "e2e/cypress/support/*",
-        "experimental/mephysto/data/baselines/*",
-        "experimental/mephysto/data/measurements/*",
-        "experimental/paulking/film/data/*",
+    "pymedphys._experimental.serviceplans": ["templates/*"],
+    "pymedphys._streamlit.apps": ["data/*"],
+    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
+    "pymedphys.tests.e2e": [
+        "cypress/*",
+        "cypress/fixtures/.gitignore",
+        "cypress/integration/streamlit/*",
+        "cypress/plugins/*",
+        "cypress/support/*",
     ],
+    "pymedphys.tests.experimental.mephysto": [
+        "data/baselines/*",
+        "data/measurements/*",
+    ],
+    "pymedphys.tests.experimental.paulking.film": ["data/*"],
 }
 
 extras_require = {
@@ -234,6 +237,7 @@ setup_kwargs = {
     "maintainer": None,
     "maintainer_email": None,
     "url": "https://pymedphys.com",
+    "package_dir": package_dir,
     "packages": packages,
     "package_data": package_data,
     "extras_require": extras_require,
