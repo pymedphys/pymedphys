@@ -24,7 +24,7 @@ from pymedphys._streamlit.apps import iviewdb as _iviewdb
 from pymedphys._streamlit.apps import mudensity as _mudensity
 from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
 from pymedphys._streamlit.apps import wlutz as _wlutz
-from pymedphys._streamlit.utilities import state
+from pymedphys._streamlit.utilities import session
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
@@ -123,53 +123,56 @@ def get_url_app():
         return "index"
 
 
-def main():
-    session_state = state.get(app=get_url_app())
+session_state = session.initialise_session_state(app=get_url_app())
 
-    def swap_app(app):
-        st.experimental_set_query_params(app=app)
-        session_state.app = app
 
-        # Not sure why this is needed. The `set_query_params` doesn't
-        # appear to work if a rerun is undergone immediately afterwards.
-        time.sleep(0.01)
-        st.experimental_rerun()
+def swap_app(app):
+    st.experimental_set_query_params(app=app)
+    session_state.app = app
 
-    def index():
+    # Not sure why this is needed. The `set_query_params` doesn't
+    # appear to work if a rerun is undergone immediately afterwards.
+    time.sleep(0.01)
+    st.experimental_rerun()
+
+
+def index():
+    st.write(
+        """
+        # Index of applications available
+
+        The following applications are organised by category where each
+        category is representative of the maturity of the tool.
+        """
+    )
+
+    for category_key, category in APPLICATION_CATEGORIES.items():
         st.write(
-            """
-            # Index of applications available
-
-            The following applications are organised by category where each
-            category is representative of the maturity of the tool.
+            f"""
+                ## {category["title"]}
+                {category["description"]}
             """
         )
 
-        for category_key, category in APPLICATION_CATEGORIES.items():
-            st.write(
-                f"""
-                    ## {category["title"]}
-                    {category["description"]}
-                """
-            )
+        st.write("---")
 
-            st.write("---")
+        applications_in_this_category = [
+            item
+            for item in APPLICATION_OPTIONS.items()
+            if item[1]["category"] == category_key
+        ]
 
-            applications_in_this_category = [
-                item
-                for item in APPLICATION_OPTIONS.items()
-                if item[1]["category"] == category_key
-            ]
+        if not applications_in_this_category:
+            st.write("> *No applications are currently in this category.*")
 
-            if not applications_in_this_category:
-                st.write("> *No applications are currently in this category.*")
+        for app_key, application in applications_in_this_category:
+            if st.button(application["label"]):
+                swap_app(app_key)
 
-            for app_key, application in applications_in_this_category:
-                if st.button(application["label"]):
-                    swap_app(app_key)
+        st.write("---")
 
-            st.write("---")
 
+def main():
     if (
         session_state.app != "index"
         and not session_state.app in APPLICATION_OPTIONS.keys()
