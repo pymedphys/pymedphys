@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# import pathlib
+import xml
 
+import xmltodict
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities import dbf, misc
 
-DB_RELATIONSHIPS = {
-    "frame": {"PIMG_DBID": ["patimg", "DBID"]},
-    "patimg": {"PORT_DBID": ["port", "DBID"]},
-    "port": {"TRT_DBID": ["trtmnt", "DBID"]},
-    "trtmnt": {"PAT_DBID": ["patient", "DBID"]},
-}
+# DB_RELATIONSHIPS = {
+#     "frame": {"PIMG_DBID": ["patimg", "DBID"]},
+#     "patimg": {"PORT_DBID": ["port", "DBID"]},
+#     "port": {"TRT_DBID": ["trtmnt", "DBID"]},
+#     "trtmnt": {"PAT_DBID": ["patient", "DBID"]},
+# }
 
 
 @st.cache()
@@ -69,5 +72,20 @@ def main():
     if st.button("Show *.jpg files"):
         st.write(get_files(database_directory, ".jpg"))
 
+    xml_files = get_files(database_directory, ".xml")
+
     if st.button("Show *.xml files"):
-        st.write(get_files(database_directory, ".xml"))
+        st.write(xml_files)
+
+    # xml_paths = [pathlib.Path(item) for item in xml_files]
+
+    st.write("## Display XML")
+
+    chosen_file = st.selectbox("Select XML file", options=xml_files)
+
+    xml_path = database_directory.joinpath(chosen_file)
+
+    with open(xml_path) as fd:
+        doc = xmltodict.parse(fd.read())
+
+    st.write(doc)
