@@ -27,12 +27,6 @@ from pymedphys import _losslessjpeg as lljpeg
 # from pymedphys._wlutz import findbb, findfield, imginterp, iview, reporting
 from pymedphys._streamlit.utilities import dbf, misc
 
-# import pathlib
-
-
-# def get_jpg_list(root):
-#     return tuple([str(path) for path in root.glob("**/*.jpg")])
-
 
 @st.cache()
 def read_image(path):
