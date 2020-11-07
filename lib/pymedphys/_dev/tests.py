@@ -10,20 +10,24 @@ def run_tests(_, remaining):
     original_cwd = os.getcwd()
 
     if "--pylint" in remaining:
-        remaining.append(["--pylint-rcfile", str(PYLINT_RC_FILE)])
-        working_directory_to_use = LIBRARY_ROOT.parent
+        remaining.append(f"--pylint-rcfile={str(PYLINT_RC_FILE)}")
+
+        if LIBRARY_ROOT.parent.name == "lib":
+            working_directory_to_use = LIBRARY_ROOT.parent.parent
+        else:
+            working_directory_to_use = LIBRARY_ROOT.parent
     else:
         working_directory_to_use = LIBRARY_ROOT
 
     os.chdir(working_directory_to_use)
-    print(f"Running tests with cwd set to {os.getcwd()}")
+    print(f"Running tests with cwd set to:\n    {os.getcwd()}\n")
 
     try:
         command = " ".join(
             ["pytest"] + remaining + ["--pyargs", "pymedphys", "--failed-first"]
         )
 
-        print(command)
+        print(f"Running the following command:\n    {command}\n")
 
         subprocess.check_call(command, shell=True)
     finally:
