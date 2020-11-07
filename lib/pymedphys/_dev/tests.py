@@ -8,8 +8,11 @@ LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 def run_tests(_, remaining):
     original_cwd = os.getcwd()
 
-    if "--pylint" in remaining and LIBRARY_ROOT.parent.name == "lib":
-        working_directory_to_use = LIBRARY_ROOT.parent.parent
+    if "--pylint" in remaining:
+        if LIBRARY_ROOT.parent.name == "lib":
+            working_directory_to_use = LIBRARY_ROOT.parent.parent
+        else:
+            working_directory_to_use = LIBRARY_ROOT.parent
     else:
         working_directory_to_use = LIBRARY_ROOT
 
