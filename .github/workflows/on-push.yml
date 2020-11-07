@@ -78,7 +78,7 @@ jobs:
             task: 'cypress'
           - os: 'macos'
             task: 'slow'
-          - os: 'windows'
+          - os: 'macos'
             task: 'codeql'
 
         include:
