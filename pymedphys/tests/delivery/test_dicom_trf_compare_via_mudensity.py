@@ -22,3 +22,9 @@ def test_dicom_trf_comparison():
     See <https://github.com/pymedphys/pymedphys/issues/1142> for more
     details regarding the use case.
     """
+
+    dicom_paths = [
+        path
+        for path in pymedphys.zip_data_paths("dicom-trf-pairs.zip")
+        if path.suffix == ".dcm"
+    ]
