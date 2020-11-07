@@ -13,21 +13,34 @@
 # limitations under the License.
 
 
+# pylint: disable = redefined-outer-name
+
+
+import pytest
+
 import pymedphys
 
 
-def test_dicom_trf_comparison():
+@pytest.fixture()
+def data_paths():
+    testing_paths = pymedphys.zip_data_paths("dicom-trf-pairs.zip")
+    dicom_paths = [path for path in testing_paths if path.suffix == ".dcm"]
+    trf_paths = [path.with_suffix(".trf") for path in dicom_paths]
+
+    for path in trf_paths:
+        assert path.exists()
+
+    return dicom_paths, trf_paths
+
+
+def test_dicom_trf_comparison(data_paths):
     """Focusing on unique DICOM header cases.
 
     See <https://github.com/pymedphys/pymedphys/issues/1142> for more
     details regarding the use case.
     """
 
-    testing_paths = pymedphys.zip_data_paths("dicom-trf-pairs.zip")
+    dicom_paths, trf_paths = data_paths
 
-    dicom_paths = [path for path in testing_paths if path.suffix == ".dcm"]
-
-    trf_paths = [path.with_suffix(".trf") for path in dicom_paths]
-
-    for path in trf_paths:
-        assert path.exists()
+    dicom_deliveries = [pymedphys.Delivery.from_dicom(path) for path in dicom_paths]
+    trf_deliveries = [pymedphys.Delivery.from_trf(path) for path in trf_paths]
