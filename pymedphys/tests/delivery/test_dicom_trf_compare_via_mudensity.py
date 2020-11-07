@@ -23,8 +23,11 @@ def test_dicom_trf_comparison():
     details regarding the use case.
     """
 
-    dicom_paths = [
-        path
-        for path in pymedphys.zip_data_paths("dicom-trf-pairs.zip")
-        if path.suffix == ".dcm"
-    ]
+    testing_paths = pymedphys.zip_data_paths("dicom-trf-pairs.zip")
+
+    dicom_paths = [path for path in testing_paths if path.suffix == ".dcm"]
+
+    trf_paths = [path.with_suffix(".trf") for path in dicom_paths]
+
+    for path in trf_paths:
+        assert path.exists()
