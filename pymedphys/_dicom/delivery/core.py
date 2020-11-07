@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import textwrap
 from copy import deepcopy
@@ -26,6 +27,10 @@ from pymedphys._dicom.delivery import utilities
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
 dicom_path_or_dataset = Union[os.PathLike, "pydicom.Dataset"]
+
+
+class NotSupportedError(ValueError):
+    pass
 
 
 def load_dicom_file(filepath: os.PathLike) -> "pydicom.Dataset":
@@ -43,7 +48,9 @@ def _pretty_print(string):
 
 class DeliveryDicom(DeliveryBase):
     @classmethod
-    def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_number=None):
+    def from_dicom(
+        cls, rtplan: dicom_path_or_dataset, fraction_number=None, device_strict=True
+    ):
         if isinstance(rtplan, pydicom.Dataset):
             rtplan_dataset = cast(pydicom.Dataset, rtplan)
         else:
@@ -75,7 +82,9 @@ class DeliveryDicom(DeliveryBase):
 
         delivery_data_by_beam_sequence = []
         for beam, meterset in zip(beam_sequence, metersets):
-            delivery_data_by_beam_sequence.append(cls._from_dicom_beam(beam, meterset))
+            delivery_data_by_beam_sequence.append(
+                cls._from_dicom_beam(beam, meterset, device_strict=device_strict)
+            )
 
         return cls.combine(*delivery_data_by_beam_sequence)
 
@@ -135,7 +144,7 @@ class DeliveryDicom(DeliveryBase):
         return cls.from_dicom(load_dicom_file(filepath), fraction_number)
 
     @classmethod
-    def _from_dicom_beam(cls, beam, meterset):
+    def _from_dicom_beam(cls, beam, meterset, device_strict=True):
         if meterset is None:
             raise ValueError("Meterset should not ever be None")
 
@@ -147,8 +156,21 @@ class DeliveryDicom(DeliveryBase):
 
         supported_configurations = [{"MLCX", "ASYMY"}]
 
-        if not rt_beam_limiting_device_types in supported_configurations:
-            raise ValueError(
+        configuration_directly_supported = (
+            rt_beam_limiting_device_types in supported_configurations
+        )
+        if configuration_directly_supported:
+            configuration_is_subset = True
+        else:
+            configuration_is_subset = False
+            for supported in supported_configurations:
+                if supported_configurations.issubset(rt_beam_limiting_device_types):
+                    configuration_is_subset = True
+                    break
+
+        if not configuration_directly_supported:
+
+            raise NotSupportedError(
                 _pretty_print(
                     """\
                         Currently only DICOM files where the beam
@@ -183,14 +205,52 @@ class DeliveryDicom(DeliveryBase):
                 )
             )
 
+        expected_types = {mlc_device, jaw_device}
+        if device_strict and expected_types != rt_beam_limiting_device_types:
+            if expected_types.issubset(rt_beam_limiting_device_types):
+                raise ValueError(
+                    _pretty_print(
+                        f"""\
+                            More collimation devices were found than
+                            just the defined MLC and Jaw devices
+                            ({(mlc_device, jaw_device)}). The
+                            parameter `device_strict` has been set
+                            to true and as such this error has been
+                            raised. If you would like to create a
+                            single Jaw and single MLC Delivery
+                            object which even though more
+                            collimation devices exist you may pass
+                            `device_strict=False` to
+                            `pymedphys.Delivery.from_dicom`.
+                        """
+                    )
+                )
+
+            raise ValueError(
+                _pretty_print(
+                    f"""\
+                        The current MLC device being searched for is
+                        {mlc_device}, the current Jaw device being
+                        searched for is {jaw_device}. However the
+                        devices currently within the DICOM file provided
+                        are {rt_beam_limiting_device_types}. Please
+                        appropriately adjust the `mlc_device` and
+                        `jaw_device` parameters passed to
+                        `pymedphys.Delivery.from_dicom`.
+                    """
+                )
+            )
+
         mlc_sequence = [
             item
             for item in beam_limiting_device_sequence
-            if item.RTBeamLimitingDeviceType == "MLCX"
+            if item.RTBeamLimitingDeviceType == mlc_device
         ]
 
         if len(mlc_sequence) != 1:
-            raise ValueError("Expected there to be only one device labelled as MLCX")
+            raise ValueError(
+                f"Expected there to be only one device labelled as {mlc_device}"
+            )
 
         mlc_limiting_device = mlc_sequence[0]
 
