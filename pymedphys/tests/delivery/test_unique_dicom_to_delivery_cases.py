@@ -42,5 +42,7 @@ def test_dicom_trf_comparison(data_paths):
 
     dicom_paths, trf_paths = data_paths
 
-    dicom_deliveries = [pymedphys.Delivery.from_dicom(path) for path in dicom_paths]
+    dicom_deliveries = [
+        pymedphys.Delivery.from_dicom(path, device_strict=False) for path in dicom_paths
+    ]
     trf_deliveries = [pymedphys.Delivery.from_trf(path) for path in trf_paths]
