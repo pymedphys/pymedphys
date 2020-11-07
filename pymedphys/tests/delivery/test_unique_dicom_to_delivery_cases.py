@@ -18,7 +18,23 @@
 
 import pytest
 
+import numpy as np
+
 import pymedphys
+
+LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
+MAX_LEAF_GAP = 410
+GRID_RESOLUTION = 1
+
+
+GAMMA_OPTIONS = {
+    "dose_percent_threshold": 2,
+    "distance_mm_threshold": 0.5,
+    "local_gamma": True,
+    "quiet": True,
+    "max_gamma": 5,
+    "lower_percent_dose_cutoff": 20,
+}
 
 
 @pytest.fixture()
@@ -33,6 +49,10 @@ def data_paths():
     return dicom_paths, trf_paths
 
 
+def to_tuple(array):
+    return tuple(map(tuple, array))
+
+
 def test_dicom_trf_comparison(data_paths):
     """Focusing on unique DICOM header cases.
 
@@ -40,9 +60,41 @@ def test_dicom_trf_comparison(data_paths):
     details regarding the use case.
     """
 
+    GRID = pymedphys.mudensity.grid(
+        max_leaf_gap=MAX_LEAF_GAP,
+        grid_resolution=GRID_RESOLUTION,
+        leaf_pair_widths=LEAF_PAIR_WIDTHS,
+    )
+    COORDS = (GRID["jaw"], GRID["mlc"])
+
     dicom_paths, trf_paths = data_paths
 
     dicom_deliveries = [
         pymedphys.Delivery.from_dicom(path, device_strict=False) for path in dicom_paths
     ]
     trf_deliveries = [pymedphys.Delivery.from_trf(path) for path in trf_paths]
+
+    for dicom_delivery, trf_delivery in zip(dicom_deliveries, trf_deliveries):
+        dicom_mudensity = dicom_delivery.mudensity(
+            max_leaf_gap=MAX_LEAF_GAP,
+            grid_resolution=GRID_RESOLUTION,
+            leaf_pair_widths=LEAF_PAIR_WIDTHS,
+        )
+        trf_mudensity = trf_delivery.mudensity(
+            max_leaf_gap=MAX_LEAF_GAP,
+            grid_resolution=GRID_RESOLUTION,
+            leaf_pair_widths=LEAF_PAIR_WIDTHS,
+        )
+
+        gamma = pymedphys.gamma(
+            COORDS,
+            to_tuple(dicom_mudensity),
+            COORDS,
+            to_tuple(trf_mudensity),
+            **GAMMA_OPTIONS,
+        )
+
+        valid_gamma = gamma[~np.isnan(gamma)]
+        pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
+
+        assert pass_ratio >= 0.98
