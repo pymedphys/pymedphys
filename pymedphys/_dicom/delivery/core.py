@@ -46,6 +46,56 @@ def _pretty_print(string):
     return "\n\n".join(wrapped)
 
 
+def check_for_supported_collimation_device(beam_limiting_device_sequence):
+    rt_beam_limiting_device_types = {
+        item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
+    }
+
+    supported_configurations = [{"MLCX", "ASYMY"}]
+
+    if not rt_beam_limiting_device_types in supported_configurations:
+        raise NotSupportedError(
+            _pretty_print(
+                """\
+                        Currently only DICOM files where the beam
+                        limiting devices consist of one of the following
+                        combinations are supported:
+
+                        * {supported_configurations}
+
+                        The provided RT Plan DICOM file has the
+                        following:
+
+                            {rt_beam_limiting_device_types}
+
+                        This is not yet supported.
+                        This is due to a range of assumptions being made
+                        internally that assume a single jaw system.
+                        There are some cases where this restriction is
+                        too tight. Currently however there is not enough
+                        testing data to appropriately implement these
+                        cases.
+                        If you would like to have your device supported
+                        please consider uploading anonymised DICOM files
+                        and their TRF counterparts to the following
+                        issue
+                        <https://github.com/pymedphys/pymedphys/issues/1142>.
+
+                        If you know what you're doing, and are willing
+                        to accept potentially ignoring a collimation
+                        device you may pass `device_strict=False` to
+                        `pymedphys.Delivery.from_dicom`.
+
+                    """
+            ).format(
+                supported_configurations="\n* ".join(
+                    [str(item) for item in supported_configurations]
+                ),
+                rt_beam_limiting_device_types=rt_beam_limiting_device_types,
+            )
+        )
+
+
 class DeliveryDicom(DeliveryBase):
     @classmethod
     def from_dicom(
@@ -150,107 +200,17 @@ class DeliveryDicom(DeliveryBase):
 
         beam_limiting_device_sequence = beam.BeamLimitingDeviceSequence
 
-        rt_beam_limiting_device_types = {
-            item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
-        }
-
-        supported_configurations = [{"MLCX", "ASYMY"}]
-
-        configuration_directly_supported = (
-            rt_beam_limiting_device_types in supported_configurations
-        )
-        if configuration_directly_supported:
-            configuration_is_subset = True
-        else:
-            configuration_is_subset = False
-            for supported in supported_configurations:
-                if supported_configurations.issubset(rt_beam_limiting_device_types):
-                    configuration_is_subset = True
-                    break
-
-        if not configuration_directly_supported:
-
-            raise NotSupportedError(
-                _pretty_print(
-                    """\
-                        Currently only DICOM files where the beam
-                        limiting devices consist of one of the following
-                        combinations are supported:
-
-                        * {supported_configurations}
-
-                        The provided RT Plan DICOM file has the
-                        following:
-
-                            {rt_beam_limiting_device_types}
-
-                        This is not yet supported.
-                        This is due to a range of assumptions being made
-                        internally that assume a single jaw system.
-                        There are some cases where this restriction is
-                        too tight. Currently however there is not enough
-                        testing data to appropriately implement these
-                        cases.
-                        If you would like to have your device supported
-                        please consider uploading anonymised DICOM files
-                        and their TRF counterparts to the following
-                        issue
-                        <https://github.com/pymedphys/pymedphys/issues/1142>.
-                    """
-                ).format(
-                    supported_configurations="\n* ".join(
-                        [str(item) for item in supported_configurations]
-                    ),
-                    rt_beam_limiting_device_types=rt_beam_limiting_device_types,
-                )
-            )
-
-        expected_types = {mlc_device, jaw_device}
-        if device_strict and expected_types != rt_beam_limiting_device_types:
-            if expected_types.issubset(rt_beam_limiting_device_types):
-                raise ValueError(
-                    _pretty_print(
-                        f"""\
-                            More collimation devices were found than
-                            just the defined MLC and Jaw devices
-                            ({(mlc_device, jaw_device)}). The
-                            parameter `device_strict` has been set
-                            to true and as such this error has been
-                            raised. If you would like to create a
-                            single Jaw and single MLC Delivery
-                            object which even though more
-                            collimation devices exist you may pass
-                            `device_strict=False` to
-                            `pymedphys.Delivery.from_dicom`.
-                        """
-                    )
-                )
-
-            raise ValueError(
-                _pretty_print(
-                    f"""\
-                        The current MLC device being searched for is
-                        {mlc_device}, the current Jaw device being
-                        searched for is {jaw_device}. However the
-                        devices currently within the DICOM file provided
-                        are {rt_beam_limiting_device_types}. Please
-                        appropriately adjust the `mlc_device` and
-                        `jaw_device` parameters passed to
-                        `pymedphys.Delivery.from_dicom`.
-                    """
-                )
-            )
+        if device_strict:
+            check_for_supported_collimation_device(beam_limiting_device_sequence)
 
         mlc_sequence = [
             item
             for item in beam_limiting_device_sequence
-            if item.RTBeamLimitingDeviceType == mlc_device
+            if item.RTBeamLimitingDeviceType == "MLCX"
         ]
 
         if len(mlc_sequence) != 1:
-            raise ValueError(
-                f"Expected there to be only one device labelled as {mlc_device}"
-            )
+            raise ValueError("Expected there to be only one device labelled as MLCX")
 
         mlc_limiting_device = mlc_sequence[0]
 
