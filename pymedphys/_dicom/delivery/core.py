@@ -12,21 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import textwrap
 from copy import deepcopy
+from typing import Union, cast
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from pymedphys._base.delivery import DeliveryBase
+from pymedphys._dicom import rtplan as _pmp_rtplan
+from pymedphys._dicom.delivery import utilities
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
-from .. import rtplan
-from . import utilities
+dicom_path_or_dataset = Union[os.PathLike, "pydicom.Dataset"]
 
 
-def load_dicom_file(filepath):
+def load_dicom_file(filepath: os.PathLike) -> "pydicom.Dataset":
     dicom_dataset = pydicom.dcmread(filepath, force=True, stop_before_pixels=True)
+
     return dicom_dataset
 
 
@@ -39,13 +43,18 @@ def _pretty_print(string):
 
 class DeliveryDicom(DeliveryBase):
     @classmethod
-    def from_dicom(cls, dicom_dataset, fraction_number=None):
+    def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_number=None):
+        if isinstance(rtplan, pydicom.Dataset):
+            rtplan_dataset = cast(pydicom.Dataset, rtplan)
+        else:
+            rtplan_filepath = cast(os.PathLike, rtplan)
+            rtplan_dataset = load_dicom_file(rtplan_filepath)
 
         if str(fraction_number).lower() == "all":
-            return cls._load_all_fractions(dicom_dataset)
+            return cls._load_all_fractions(rtplan)
 
         if fraction_number is None:
-            fractions = dicom_dataset.FractionGroupSequence
+            fractions = rtplan_dataset.FractionGroupSequence
             fraction_numbers = [fraction.FractionGroupNumber for fraction in fractions]
 
             if len(fraction_numbers) == 1:
@@ -57,8 +66,11 @@ class DeliveryDicom(DeliveryBase):
                     f"   Fraction numbers to choose from are: {fraction_numbers}"
                 )
 
-        beam_sequence, metersets = rtplan.get_fraction_group_beam_sequence_and_meterset(
-            dicom_dataset, fraction_number
+        (
+            beam_sequence,
+            metersets,
+        ) = _pmp_rtplan.get_fraction_group_beam_sequence_and_meterset(
+            rtplan_dataset, fraction_number
         )
 
         delivery_data_by_beam_sequence = []
@@ -72,11 +84,11 @@ class DeliveryDicom(DeliveryBase):
         if fraction_number is None:
             fraction_number = self._fraction_number(dicom_template)
 
-        single_fraction_template = rtplan.convert_to_one_fraction_group(
+        single_fraction_template = _pmp_rtplan.convert_to_one_fraction_group(
             dicom_template, fraction_number
         )
 
-        template_gantry_angles = rtplan.get_gantry_angles_from_dicom(
+        template_gantry_angles = _pmp_rtplan.get_gantry_angles_from_dicom(
             single_fraction_template
         )
 
@@ -86,7 +98,7 @@ class DeliveryDicom(DeliveryBase):
             template_gantry_angles, gantry_tol
         )
 
-        fraction_index = rtplan.get_fraction_group_index(
+        fraction_index = _pmp_rtplan.get_fraction_group_index(
             single_fraction_template, fraction_number
         )
 
@@ -98,7 +110,7 @@ class DeliveryDicom(DeliveryBase):
                 )
             )
 
-        return rtplan.merge_beam_sequences(single_beam_dicoms)
+        return _pmp_rtplan.merge_beam_sequences(single_beam_dicoms)
 
     @classmethod
     def _load_all_fractions_from_file(cls, filepath):
@@ -195,11 +207,11 @@ class DeliveryDicom(DeliveryBase):
 
         control_points = beam.ControlPointSequence
 
-        beam_limiting_device_position_sequences = rtplan.get_cp_attribute_leaning_on_prior(
+        beam_limiting_device_position_sequences = _pmp_rtplan.get_cp_attribute_leaning_on_prior(
             control_points, "BeamLimitingDevicePositionSequence"
         )
 
-        dicom_mlcs = rtplan.get_leaf_jaw_positions_for_type(
+        dicom_mlcs = _pmp_rtplan.get_leaf_jaw_positions_for_type(
             beam_limiting_device_position_sequences, "MLCX"
         )
 
@@ -212,7 +224,7 @@ class DeliveryDicom(DeliveryBase):
             for mlc in dicom_mlcs
         ]
 
-        dicom_jaw = rtplan.get_leaf_jaw_positions_for_type(
+        dicom_jaw = _pmp_rtplan.get_leaf_jaw_positions_for_type(
             beam_limiting_device_position_sequences, "ASYMY"
         )
 
@@ -251,11 +263,11 @@ class DeliveryDicom(DeliveryBase):
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
-            rtplan.get_cp_attribute_leaning_on_prior(control_points, "GantryAngle")
+            _pmp_rtplan.get_cp_attribute_leaning_on_prior(control_points, "GantryAngle")
         )
 
         collimator_angles = convert_IEC_angle_to_bipolar(
-            rtplan.get_cp_attribute_leaning_on_prior(
+            _pmp_rtplan.get_cp_attribute_leaning_on_prior(
                 control_points, "BeamLimitingDeviceAngle"
             )
         )
@@ -272,17 +284,17 @@ class DeliveryDicom(DeliveryBase):
         initial_cp = cp_sequence[0]
         subsequent_cp = cp_sequence[-1]
 
-        all_control_points = rtplan.build_control_points(
+        all_control_points = _pmp_rtplan.build_control_points(
             initial_cp, subsequent_cp, data_converted
         )
 
         beam_meterset = "{0:.6f}".format(data_converted["monitor_units"][-1])
-        rtplan.replace_fraction_group(
+        _pmp_rtplan.replace_fraction_group(
             created_dicom, beam_meterset, beam_index, fraction_index
         )
-        rtplan.replace_beam_sequence(created_dicom, all_control_points, beam_index)
+        _pmp_rtplan.replace_beam_sequence(created_dicom, all_control_points, beam_index)
 
-        rtplan.restore_trailing_zeros(created_dicom)
+        _pmp_rtplan.restore_trailing_zeros(created_dicom)
 
         return created_dicom
 
@@ -290,15 +302,15 @@ class DeliveryDicom(DeliveryBase):
         self, dicom_dataset, fraction_number, gantry_tol=3, meterset_tol=0.5
     ):
         filtered = self._filter_cps()
-        dicom_metersets = rtplan.get_fraction_group_beam_sequence_and_meterset(
+        dicom_metersets = _pmp_rtplan.get_fraction_group_beam_sequence_and_meterset(
             dicom_dataset, fraction_number
         )[1]
 
-        dicom_fraction = rtplan.convert_to_one_fraction_group(
+        dicom_fraction = _pmp_rtplan.convert_to_one_fraction_group(
             dicom_dataset, fraction_number
         )
 
-        gantry_angles = rtplan.get_gantry_angles_from_dicom(dicom_fraction)
+        gantry_angles = _pmp_rtplan.get_gantry_angles_from_dicom(dicom_fraction)
 
         delivery_metersets = filtered._metersets(  # pylint: disable = protected-access
             gantry_angles, gantry_tol
