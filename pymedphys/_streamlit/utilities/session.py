@@ -21,9 +21,16 @@ from pymedphys._imports import streamlit as st
 
 
 class SessionState:
-    def __init__(self, **kwargs):
-        for key, val in kwargs.items():
+    def __init__(self, state):
+        for key, val in state.items():
             setattr(self, key, val)
+
+    def update(self, state):
+        for key, val in state.items():
+            try:
+                getattr(self, key)
+            except AttributeError:
+                setattr(self, key, val)
 
 
 def get_session_id():
@@ -38,9 +45,11 @@ def get_session():
     return st.server.server.Server.get_current()._get_session_info(session_id).session
 
 
-def initialise_session_state(**kwargs):
+def session_state(**state):
     session = get_session()
-    if not hasattr(session, "_custom_session_state"):
-        session._custom_session_state = SessionState(**kwargs)
+    if hasattr(session, "_custom_session_state"):
+        session._custom_session_state.update(state)
+    else:
+        session._custom_session_state = SessionState(state)
 
     return session._custom_session_state

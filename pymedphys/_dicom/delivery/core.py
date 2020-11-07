@@ -107,7 +107,7 @@ class DeliveryDicom(DeliveryBase):
             rtplan_dataset = load_dicom_file(rtplan_filepath)
 
         if str(fraction_number).lower() == "all":
-            return cls._load_all_fractions(rtplan)
+            return cls._load_all_fractions(rtplan_dataset, device_strict=device_strict)
 
         if fraction_number is None:
             fractions = rtplan_dataset.FractionGroupSequence
@@ -175,14 +175,16 @@ class DeliveryDicom(DeliveryBase):
         return cls._load_all_fractions(load_dicom_file(filepath))
 
     @classmethod
-    def _load_all_fractions(cls, dicom_dataset):
+    def _load_all_fractions(cls, dicom_dataset, device_strict=True):
         fraction_numbers = tuple(
             fraction.FractionGroupNumber
             for fraction in dicom_dataset.FractionGroupSequence
         )
 
         all_fractions = {
-            fraction_number: cls.from_dicom(dicom_dataset, fraction_number)
+            fraction_number: cls.from_dicom(
+                dicom_dataset, fraction_number, device_strict=device_strict
+            )
             for fraction_number in fraction_numbers
         }
 
