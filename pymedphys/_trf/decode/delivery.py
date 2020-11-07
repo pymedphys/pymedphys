@@ -17,6 +17,7 @@ from typing import Type
 from pymedphys._imports import numpy as np
 
 from pymedphys._base.delivery import DeliveryBase, DeliveryGeneric
+from pymedphys._vendor.deprecated import deprecated as _deprecated
 
 from .constants import (
     COLLIMATOR_NAME,
@@ -30,10 +31,20 @@ from .trf2pandas import read_trf
 
 class DeliveryLogfile(DeliveryBase):
     @classmethod
-    def from_logfile(cls, filepath):
+    def from_trf(cls, filepath):
         _, dataframe = read_trf(filepath)
 
         return cls._from_pandas(dataframe)
+
+    @classmethod
+    @_deprecated(
+        reason=(
+            "`pymedphys.Delivery.from_logfile` has been replaced with "
+            "`pymedphys.Delivery.from_trf`"
+        )
+    )
+    def from_logfile(cls, filepath):
+        return cls.from_trf(filepath)
 
     @classmethod
     def _from_pandas(cls: Type[DeliveryGeneric], table) -> DeliveryGeneric:
