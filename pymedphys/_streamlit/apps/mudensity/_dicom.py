@@ -179,6 +179,11 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
         st.stop()
 
+    if not session_state.device_strict:
+        if st.button("Set `device_strict` back to True"):
+            session_state.device_strict = True
+            st.experimental_rerun()
+
     fractions = list(deliveries_all_fractions.keys())
     if len(fractions) == 1:
         delivery = deliveries_all_fractions[fractions[0]]
