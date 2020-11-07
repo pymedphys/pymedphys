@@ -17,9 +17,11 @@ from pymedphys._imports import streamlit as st
 
 import pymedphys
 from pymedphys._dicom.constants.uuid import DICOM_PLAN_UID
+from pymedphys._dicom.delivery.core import NotSupportedError
 from pymedphys._streamlit.apps.mudensity import _config
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import misc as st_misc
+from pymedphys._streamlit.utilities import session
 from pymedphys._utilities import patient as utl_patient
 
 
@@ -145,13 +147,37 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
     rt_plan_name = str(dicom_plan.RTPlanName)
     st.write(f"Plan Name: `{rt_plan_name}`")
 
+    session_state = session.session_state(device_strict=True)
+
     try:
         deliveries_all_fractions = pymedphys.Delivery.from_dicom(
-            dicom_plan, fraction_number="all"
+            dicom_plan, fraction_number="all", device_strict=session_state.device_strict
         )
     except AttributeError:
         st.write(_exceptions.WrongFileType("Does not appear to be a photon DICOM plan"))
         return {}
+    except NotSupportedError as e:
+        st.warning(
+            """While extracting the delivery information out of the
+            DICOM file the following error occurred
+            """
+        )
+
+        st.write(e)
+
+        st.write(
+            """You have the option to set `device_strict=False` as long
+            as you are willing to accept that this is removing a safety
+            check from this software and may inadvertently ignoring one
+            or more collimation devices that are within the DICOM file.
+            """
+        )
+
+        if st.button("Set `device_strict=False` for this session"):
+            session_state.device_strict = False
+            st.experimental_rerun()
+
+        st.stop()
 
     fractions = list(deliveries_all_fractions.keys())
     if len(fractions) == 1:
