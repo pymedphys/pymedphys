@@ -168,8 +168,9 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         st.write(
             """You have the option to set `device_strict=False` as long
             as you are willing to accept that this is removing a safety
-            check from this software and may inadvertently ignoring one
-            or more collimation devices that are within the DICOM file.
+            check from this software and will likely result in ignoring
+            one or more of the collimation devices that are within the
+            provided DICOM file.
             """
         )
 
