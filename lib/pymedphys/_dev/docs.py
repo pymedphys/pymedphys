@@ -13,29 +13,12 @@ def build_docs(args):
         webbrowser.open("http://127.0.0.1:8000")
 
         subprocess.check_call(
-            " ".join(
-                [
-                    "poetry",
-                    "run",
-                    "sphinx-autobuild",
-                    str(DOCS_DIR),
-                    str(DOCS_HTML_BUILD_DIR),
-                ]
-            ),
+            " ".join(["sphinx-autobuild", str(DOCS_DIR), str(DOCS_HTML_BUILD_DIR)]),
             shell=True,
         )
 
     else:
         subprocess.check_call(
-            " ".join(
-                [
-                    "poetry",
-                    "run",
-                    "sphinx-build",
-                    "-W",
-                    str(DOCS_DIR),
-                    str(DOCS_HTML_BUILD_DIR),
-                ]
-            ),
+            " ".join(["sphinx-build", "-W", str(DOCS_DIR), str(DOCS_HTML_BUILD_DIR)]),
             shell=True,
         )
