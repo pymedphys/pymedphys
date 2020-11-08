@@ -15,6 +15,7 @@ def add_docs_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("docs")
 
     parser.add_argument("--live", help="Make the docs live reload", action="store_true")
+    parser.add_argument("--output", help="Custom output directory for the built docs.")
 
     parser.set_defaults(func=docs.build_docs)
 

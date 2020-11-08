@@ -19,7 +19,7 @@ import os
 
 import pymedphys
 
-os.system("pandoc ../CHANGELOG.md --from markdown --to rst -s -o ../CHANGELOG.rst")
+os.system("pandoc CHANGELOG.md --from markdown --to rst -s -o release-notes.rst")
 
 
 def setup(app):
@@ -117,11 +117,12 @@ nbsphinx_prolog = r"""
 
     .. nbinfo::
 
-        This page was generated from `{{ docname }}`__.
+        This page was generated from `/lib/pymedphys/{{ docname }}`__.
         Interactive online version:
-        :raw-html:`<a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/{{ env.config.version }}?urlpath=/lab/tree/{{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>`
+        :raw-html:`<a href="https://colab.research.google.com/github/pymedphys/pymedphys/blob/{{ env.config.version }}/lib/pymedphys/{{ docname }}"><img alt="Open in colab" src="https://colab.research.google.com/assets/colab-badge.svg" style="vertical-align:text-bottom"></a>`
+
     __ https://github.com/pymedphys/pymedphys/blob/
-        {{ env.config.version }}/{{ docname }}
+        {{ env.config.version }}/lib/pymedphys/{{ docname }}
 """
 
 # -- Options for HTML output -------------------------------------------------
@@ -137,7 +138,7 @@ html_theme = "sphinx_rtd_theme"
 #
 html_theme_options = {"analytics_id": "UA-26591325-7"}
 
-html_logo = "logos/pymedphys.svg"
+html_logo = "img/pymedphys.svg"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -158,7 +159,7 @@ html_context = {
     "display_github": True,
     "github_user": "pymedphys",
     "github_repo": "pymedphys",
-    "github_version": "main/docs/",
+    "github_version": "main/lib/pymedphys/docs/",
 }
 
 
