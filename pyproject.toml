@@ -26,6 +26,8 @@ classifiers = [
     "Intended Audience :: Healthcare Industry",
 ]
 
+packages = [{include = "pymedphys", from = "lib" }]
+
 [tool.poetry.dependencies]
 python = "^3.6"
 dataclasses = {version = "*", python = "~3.6.0"}
@@ -142,10 +144,6 @@ sections = [
     "FUTURE", "STDLIB", "THIRDPARTY", "GENERAL_SCIENTIFIC", "MACHINE_LEARNING",
     "MEDPHYS", "FIRSTPARTY", "LOCALFOLDER"
 ]
-
-[tool.dephell.main]
-from = {format = "poetry", path = "pyproject.toml"}
-to = {format = "setuppy", path = "setup.py"}
 
 [build-system]
 requires = ["poetry >= 1.0.9", "setuptools >= 42.0.0", "wheel >= 0.29.0"]
