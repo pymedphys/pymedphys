@@ -19,7 +19,7 @@ import os
 
 import pymedphys
 
-os.system("pandoc CHANGELOG.md --from markdown --to rst -s -o CHANGELOG.rst")
+os.system("pandoc CHANGELOG.md --from markdown --to rst -s -o release-notes.rst")
 
 
 def setup(app):
