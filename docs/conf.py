@@ -39,7 +39,7 @@ author = "PyMedPhys contributors"
 # The short X.Y version
 # Currently being used to create mybinder link -- potentially need to rethink
 # this logic.
-version = "master"
+version = "main"
 # The full version, including alpha/beta/rc tags
 release = pymedphys.__version__
 
@@ -158,7 +158,7 @@ html_context = {
     "display_github": True,
     "github_user": "pymedphys",
     "github_repo": "pymedphys",
-    "github_version": "master/docs/",
+    "github_version": "main/docs/",
 }
 
 
