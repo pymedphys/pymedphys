@@ -5,7 +5,7 @@ Overview
     :local:
     :backlinks: entry
 
-.. include:: ../README.rst
+.. include:: README.rst
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 

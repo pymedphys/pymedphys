@@ -9,9 +9,9 @@ DOCS_HTML_BUILD_DIR = DOCS_BUILD_DIR.joinpath("html")
 
 
 def build_docs(args):
-    webbrowser.open("http://127.0.0.1:8000")
-
     if args.live:
+        webbrowser.open("http://127.0.0.1:8000")
+
         subprocess.check_call(
             " ".join(
                 [
