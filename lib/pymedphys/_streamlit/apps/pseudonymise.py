@@ -19,7 +19,7 @@ import base64
 import datetime
 import io
 import pathlib
-from typing import List
+
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from pymedphys._imports import pydicom
@@ -29,11 +29,6 @@ from pymedphys._dicom.anonymise import anonymise_dataset
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 from pymedphys._dicom.utilities import remove_file
 from pymedphys.experimental import pseudonymisation as pseudonymisation_api
-
-# We create a downloads directory within the streamlit static asset directory
-# and we write output files to it, similar to approach in streamlit forum
-DOWNLOADS_PATH = pathlib.Path(st.__path__[0]).joinpath("static", "downloads")
-DOWNLOADS_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def link_to_zipbuffer_download(filename: str, zip_bytes: bytes):
@@ -53,21 +48,6 @@ def link_to_zipbuffer_download(filename: str, zip_bytes: bytes):
         Click to download {filename}\
     </a>"
     st.sidebar.markdown(href, unsafe_allow_html=True)
-
-
-def link_to_zip_download(zip_to_download: pathlib.Path):
-    """Generates a link allowing the data in a given zip to be downloaded
-
-    Parameters
-    ----------
-    zip_to_download:  pathlib.Path
-        path to zip
-
-    """
-    filename = zip_to_download.name
-    with open(zip_to_download, "rb") as f:
-        zip_bytes = f.read()
-    link_to_zipbuffer_download(filename, zip_bytes)
 
 
 def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
@@ -98,9 +78,7 @@ def build_pseudonymised_file_name(ds_input: pydicom.dataset.Dataset):
     return anon_filename
 
 
-def _zip_pseudo_fifty_mbytes(
-    file_buffer_list: list, zipfile_path: str, zip_bytes_io=None
-):
+def _zip_pseudo_fifty_mbytes(file_buffer_list: list, zip_bytes_io: io.BytesIO):
     """Pseudonymises the contents of the file_buffer_list (list of DICOM files)
     and places the pseudonymised files in to a zip.
 
@@ -108,13 +86,8 @@ def _zip_pseudo_fifty_mbytes(
     ----------
     file_buffer_list : list
         List of DICOM file buffers from streamlit file_uploader to pseudonymise
-    zipfile_path : str
-        Location to write the zip file so that it can be downloaded.
-        Basename provides default name to use for downloading
-    zip_bytes_io : io.BytesIO, optional
-        An in memory file like object to be used for storing the Zip instead of the
-        zipfile_path.  Highly desirable because the zip written to zipfile_path can't
-        be deleted from this module.
+    zip_bytes_io : io.BytesIO
+        An in memory file like object to be used for storing the Zip
 
     """
 
@@ -123,9 +96,7 @@ def _zip_pseudo_fifty_mbytes(
     keywords = pseudonymisation_api.get_default_pseudonymisation_keywords()
     keywords.remove("PatientSex")
     strategy = pseudonymisation_api.pseudonymisation_dispatch
-    zip_stream = zipfile_path
-    if zip_bytes_io is not None:
-        zip_stream = zip_bytes_io
+    zip_stream = zip_bytes_io
 
     with ZipFile(zip_stream, mode="w", compression=ZIP_DEFLATED) as myzip:
         for uploaded_file_buffer in file_buffer_list:
@@ -185,15 +156,8 @@ def pseudonymise_buffer_list(file_buffer_list: list):
     ----------
     file_buffer_list : list
         DICOM files that were uploaded using streamlit.file_uploader
-
-    Returns
-    -------
-    zip_path_list : list
-        a list of full paths to the Zipped, pseudonymised files.
-        If the io.BytesIO() approach is used (current default), the list will be empty
     """
 
-    zip_path_list: List = list()
     if file_buffer_list is not None and len(file_buffer_list) > 0:
         my_date_time = datetime.datetime.now()
         str_now_datetime = my_date_time.strftime("%Y%m%d_%H%M%S")
@@ -213,12 +177,9 @@ def pseudonymise_buffer_list(file_buffer_list: list):
                 break
             zip_count += 1
             zipfile_name = f"{zipfile_basename}.{zip_count}.zip"
-            zipfile_path = DOWNLOADS_PATH.joinpath(zipfile_name)
             zip_bytes_io = io.BytesIO()
             bad_data = _zip_pseudo_fifty_mbytes(
-                file_buffer_list[start_index:end_index],
-                str(zipfile_path),
-                zip_bytes_io=zip_bytes_io,
+                file_buffer_list[start_index:end_index], zip_bytes_io
             )
             start_index = end_index
             if bad_data:
@@ -228,17 +189,11 @@ def pseudonymise_buffer_list(file_buffer_list: list):
                 else:
                     remove_file(zipfile_name)
                 st.text("Problem processing DICOM data")
-                return list()
             else:
                 if zip_bytes_io is not None:
                     link_to_zipbuffer_download(zipfile_name, zip_bytes_io.getvalue())
                     zip_bytes_io.close()
                     del zip_bytes_io
-                else:
-                    link_to_zip_download(pathlib.Path(zipfile_path))
-                    zip_path_list.append(zipfile_path)
-
-    return zip_path_list
 
 
 def _gen_index_list_to_fifty_mbyte_increment(file_buffer_list):
