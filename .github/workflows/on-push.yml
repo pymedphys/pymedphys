@@ -57,7 +57,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'codeql']
         exclude:
           - os: 'windows'
             task: 'stackoverflow'
@@ -67,6 +67,8 @@ jobs:
             task: 'cypress'
           - os: 'windows'
             task: 'slow'
+          - os: 'windows'
+            task: 'codeql'
 
           - os: 'macos'
             task: 'stackoverflow'
@@ -76,6 +78,8 @@ jobs:
             task: 'cypress'
           - os: 'macos'
             task: 'slow'
+          - os: 'macos'
+            task: 'codeql'
 
         include:
           - os: 'ubuntu'
@@ -168,6 +172,15 @@ jobs:
       run: |
         pip uninstall -y pymedphys
 
+
+# Set up CodeQL
+    - name: Initialize CodeQL
+      if: matrix.task == 'codeql'
+      uses: github/codeql-action/init@v1
+      with:
+        languages: python, javascript
+
+
 # Set up Poetry
 
     - name: Configure poetry
@@ -212,7 +225,7 @@ jobs:
 ## Plain install
 
     - name: Install a plain environment
-      if: matrix.task == 'stackoverflow'
+      if: matrix.task == 'stackoverflow' || matrix.task == 'codeql'
       run: |
         poetry install -E user
 
@@ -305,6 +318,11 @@ jobs:
       if: matrix.task == 'stackoverflow'
       run: |
         poetry run python ./examples/stackoverflow/gamma.py
+
+## CodeQL
+    - name: Perform CodeQL Analysis
+      if: matrix.task == 'codeql'
+      uses: github/codeql-action/analyze@v1
 
 ## Cypress
 
