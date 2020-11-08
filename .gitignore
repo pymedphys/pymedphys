@@ -278,4 +278,4 @@ v*.tar.gz
 *.exe
 
 *-demo
-CHANGELOG.rst
+release-notes.rst
