@@ -19,7 +19,7 @@ import base64
 import datetime
 import io
 import pathlib
-from typing import List
+
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from pymedphys._imports import pydicom
@@ -158,7 +158,6 @@ def pseudonymise_buffer_list(file_buffer_list: list):
         DICOM files that were uploaded using streamlit.file_uploader
     """
 
-    zip_path_list: List = list()
     if file_buffer_list is not None and len(file_buffer_list) > 0:
         my_date_time = datetime.datetime.now()
         str_now_datetime = my_date_time.strftime("%Y%m%d_%H%M%S")
@@ -190,7 +189,6 @@ def pseudonymise_buffer_list(file_buffer_list: list):
                 else:
                     remove_file(zipfile_name)
                 st.text("Problem processing DICOM data")
-                return list()
             else:
                 if zip_bytes_io is not None:
                     link_to_zipbuffer_download(zipfile_name, zip_bytes_io.getvalue())
