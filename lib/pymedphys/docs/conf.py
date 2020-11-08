@@ -39,7 +39,7 @@ author = "PyMedPhys contributors"
 # The short X.Y version
 # Currently being used to create mybinder link -- potentially need to rethink
 # this logic.
-version = "main"
+version = "fix-netlify"
 # The full version, including alpha/beta/rc tags
 release = pymedphys.__version__
 
@@ -119,9 +119,10 @@ nbsphinx_prolog = r"""
 
         This page was generated from `{{ docname }}`__.
         Interactive online version:
-        :raw-html:`<a href="https://mybinder.org/v2/gh/pymedphys/pymedphys/{{ env.config.version }}?urlpath=/lab/tree/{{ docname }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>`
+        :raw-html:`<a href="https://colab.research.google.com/github/pymedphys/pymedphys/blob/{{ env.config.version }}/lib/pymedphys/{{ docname }}"><img alt="Open in colab" src="https://colab.research.google.com/assets/colab-badge.svg" style="vertical-align:text-bottom"></a>`
+
     __ https://github.com/pymedphys/pymedphys/blob/
-        {{ env.config.version }}/{{ docname }}
+        {{ env.config.version }}/lib/pymedphys/{{ docname }}
 """
 
 # -- Options for HTML output -------------------------------------------------
