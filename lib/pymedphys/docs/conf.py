@@ -137,7 +137,7 @@ html_theme = "sphinx_rtd_theme"
 #
 html_theme_options = {"analytics_id": "UA-26591325-7"}
 
-html_logo = "logos/pymedphys.svg"
+html_logo = "img/pymedphys.svg"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -158,7 +158,7 @@ html_context = {
     "display_github": True,
     "github_user": "pymedphys",
     "github_repo": "pymedphys",
-    "github_version": "main/docs/",
+    "github_version": "main/lib/pymedphys/docs/",
 }
 
 
