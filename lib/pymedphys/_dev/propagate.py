@@ -129,7 +129,7 @@ def propagate_changelog():
 def propagate_requirements():
     subprocess.check_call("poetry update pymedphys", shell=True)
     subprocess.check_call(
-        "poetry export --without-hashes -E user -f requirements.txt --output requirements.txt",
+        "poetry export --without-hashes -E docs -E user -f requirements.txt --output requirements.txt",
         shell=True,
     )
 
