@@ -130,4 +130,4 @@ Install a Jupyter Lab kernel for the development install
 
 .. code:: bash
 
-    poetry run python -m ipykernel install --user --name pymedphys-master
+    poetry run python -m ipykernel install --user --name pymedphys
