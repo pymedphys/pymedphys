@@ -52,25 +52,25 @@ def dbf_to_pandas(path, refresh_cache=False):
 
 
 @st.cache()
-def calc_filenames(dbid_series):
-    return [f"{f'{dbid:0>8x}'.upper()}.jpg" for dbid in dbid_series]
+def calc_filepath_from_frames_dbid(dbid_series):
+    return [f"img/{f'{dbid:0>8x}'.upper()}.jpg" for dbid in dbid_series]
 
 
 @st.cache()
 def calc_timestamps(frames, patimg):
-    filenames = calc_filenames(frames["DBID"])
+    filepaths = calc_filepath_from_frames_dbid(frames["DBID"])
 
-    frame_with_filename = frames[["DBID", "PIMG_DBID", "DELTA_MS"]]
-    frame_with_filename["filename"] = filenames
+    frame_with_filepath = frames[["DBID", "PIMG_DBID", "DELTA_MS"]]
+    frame_with_filepath["filepath"] = filepaths
 
     img_date_time = patimg[["DBID", "IMG_DATE", "IMG_TIME", "PORT_DBID", "ORG_DTL"]]
 
-    merged = frame_with_filename.merge(
+    merged = frame_with_filepath.merge(
         img_date_time, left_on="PIMG_DBID", right_on="DBID"
-    )[["filename", "IMG_DATE", "IMG_TIME", "DELTA_MS", "PORT_DBID", "ORG_DTL"]]
+    )[["filepath", "IMG_DATE", "IMG_TIME", "DELTA_MS", "PORT_DBID", "ORG_DTL"]]
 
     resolved = pd.DataFrame()
-    resolved["filename"] = merged["filename"]
+    resolved["filepath"] = merged["filepath"]
     timestamps_string = (
         merged["IMG_DATE"].astype("str")
         + "T"
@@ -130,7 +130,7 @@ def main():
 
     with_port_id = table_matching_selected_date.merge(
         port, left_on="PORT_DBID", right_on="DBID"
-    )[["machine_id", "filename", "time", "ID", "TRT_DBID", "datetime"]]
+    )[["machine_id", "filepath", "time", "ID", "TRT_DBID", "datetime"]]
 
     with_port_id.rename({"ID": "port"}, axis="columns", inplace=True)
 
@@ -138,7 +138,7 @@ def main():
     trtmnt = dbf_to_pandas(trtmnt_dbf_path, refresh_cache)[["DBID", "ID", "PAT_DBID"]]
 
     with_trtmnt = with_port_id.merge(trtmnt, left_on="TRT_DBID", right_on="DBID")[
-        ["machine_id", "filename", "time", "ID", "port", "PAT_DBID", "datetime"]
+        ["machine_id", "filepath", "time", "ID", "port", "PAT_DBID", "datetime"]
     ]
     with_trtmnt.rename({"ID": "treatment"}, axis="columns", inplace=True)
 
@@ -154,7 +154,7 @@ def main():
             "time",
             "treatment",
             "port",
-            "filename",
+            "filepath",
             "LAST_NAME",
             "FIRST_NAME",
             "datetime",
