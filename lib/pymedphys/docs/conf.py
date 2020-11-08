@@ -117,7 +117,7 @@ nbsphinx_prolog = r"""
 
     .. nbinfo::
 
-        This page was generated from `{{ docname }}`__.
+        This page was generated from `/lib/pymedphys/{{ docname }}`__.
         Interactive online version:
         :raw-html:`<a href="https://colab.research.google.com/github/pymedphys/pymedphys/blob/{{ env.config.version }}/lib/pymedphys/{{ docname }}"><img alt="Open in colab" src="https://colab.research.google.com/assets/colab-badge.svg" style="vertical-align:text-bottom"></a>`
 
