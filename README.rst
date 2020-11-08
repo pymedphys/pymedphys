@@ -157,25 +157,25 @@ Past contributors
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
 
-.. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/rccc_200x200.png
+.. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/main/docs/logos/rccc_200x200.png
     :target: `Riverina Cancer Care Centre`_
 
-.. |rah| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/gosa_200x200.png
+.. |rah| image:: https://github.com/pymedphys/pymedphys/raw/main/docs/logos/gosa_200x200.png
     :target: `Royal Adelaide Hospital`_
 
-.. |jarmc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/jarmc_200x200.png
+.. |jarmc| image:: https://github.com/pymedphys/pymedphys/raw/main/docs/logos/jarmc_200x200.png
     :target: `Anderson Regional Cancer Center`_
 
-.. |nbcc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/nbcc_200x200.png
+.. |nbcc| image:: https://github.com/pymedphys/pymedphys/raw/main/docs/logos/nbcc_200x200.png
     :target: `Northern Beaches Cancer Care`_
 
-.. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/uoc_200x200.png
+.. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/main/docs/logos/uoc_200x200.png
     :target: `University of Calgary`_
 
-.. |uth| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UTHSA_logo.png
+.. |uth| image:: https://github.com/pymedphys/pymedphys/raw/main/docs/logos/UTHSA_logo.png
     :target: `UT Health San Antonio`_
 
-.. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/HGUGM_200x200.png
+.. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/main/docs/logos/HGUGM_200x200.png
     :target: `Hospital General Universitario Gregorio Marañón`_
 
 .. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
