@@ -73,7 +73,7 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+lib/pymedphys/docs/_build/
 
 # PyBuilder
 target/
