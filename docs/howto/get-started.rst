@@ -91,7 +91,7 @@ Installing the Bleeding Edge version of PyMedPhys
 =================================================
 
 If you wish to be able to contribute to PyMedPhys itself you are going to want
-to instead install PyMedPhys from the master branch on GitHub
+to instead install PyMedPhys from the main branch on GitHub
 <https://github.com/pymedphys/pymedphys>. To achieve this follow the OS
 specific instructions within the contributor tutorials:
 

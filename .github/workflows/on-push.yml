@@ -3,7 +3,7 @@ name: PullRequest
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 jobs:
@@ -57,7 +57,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'codeql']
         exclude:
           - os: 'windows'
             task: 'stackoverflow'
@@ -67,6 +67,8 @@ jobs:
             task: 'cypress'
           - os: 'windows'
             task: 'slow'
+          - os: 'windows'
+            task: 'codeql'
 
           - os: 'macos'
             task: 'stackoverflow'
@@ -76,6 +78,8 @@ jobs:
             task: 'cypress'
           - os: 'macos'
             task: 'slow'
+          - os: 'macos'
+            task: 'codeql'
 
         include:
           - os: 'ubuntu'
@@ -168,6 +172,15 @@ jobs:
       run: |
         pip uninstall -y pymedphys
 
+
+# Set up CodeQL
+    - name: Initialize CodeQL
+      if: matrix.task == 'codeql'
+      uses: github/codeql-action/init@v1
+      with:
+        languages: python, javascript
+
+
 # Set up Poetry
 
     - name: Configure poetry
@@ -212,7 +225,7 @@ jobs:
 ## Plain install
 
     - name: Install a plain environment
-      if: matrix.task == 'stackoverflow'
+      if: matrix.task == 'stackoverflow' || matrix.task == 'codeql'
       run: |
         poetry install -E user
 
@@ -290,7 +303,7 @@ jobs:
     - name: Run slow tests
       if: matrix.task == 'slow'
       run: |
-        poetry run pymedphys dev tests -v --run-only-slow
+        poetry run pymedphys dev tests -v --slow
 
 ## Docs
 
@@ -306,40 +319,23 @@ jobs:
       run: |
         poetry run python ./examples/stackoverflow/gamma.py
 
+## CodeQL
+    - name: Perform CodeQL Analysis
+      if: matrix.task == 'codeql'
+      uses: github/codeql-action/analyze@v1
+
 ## Cypress
 
     - uses: actions/setup-node@v1
       if: matrix.task == 'cypress'
 
-    - name: Initially run Cypress tests only locally, without dashboard integration
+    - name: Run Cypress tests
       if: matrix.task == 'cypress'
       run: |
-        poetry run pymedphys dev tests -v -s --run-only-yarn
+        poetry run pymedphys dev tests -v -s --cypress
 
     - uses: actions/upload-artifact@v2
       if: failure() && matrix.task == 'cypress'
       with:
         name: cypress-videos
         path: pymedphys/tests/e2e/cypress/videos
-
-    # - name: Delete GUI demo data and run the PyMedPhys GUI
-    #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
-    #   run: |
-    #     rm -rf pymedphys-gui-demo
-    #     poetry run pymedphys gui &
-
-    # - name: Run Cypress through the dashboard tool so as to see the failures
-    #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
-    #   uses: cypress-io/github-action@v1
-    #   with:
-    #     install: true
-    #     record: true
-    #     start: yarn start
-    #     working-directory: tests/e2e
-    #     wait-on: 'http://localhost:8501'
-    #   env:
-    #     # pass the Dashboard record key as an environment variable
-    #     CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #     host: localhost
-    #     port: 8501
