@@ -197,7 +197,7 @@ class DeliveryDicom(DeliveryBase):
     @classmethod
     def _from_dicom_beam(cls, beam, meterset, device_strict=True):
         if meterset is None:
-            raise ValueError("Meterset should not ever be None")
+            raise ValueError("Meterset should never be None")
 
         beam_limiting_device_sequence = beam.BeamLimitingDeviceSequence
 
