@@ -148,6 +148,8 @@ def main():
     frame_dbf_path = database_directory.joinpath("FRAME.dbf")
     refresh_cache = st.button("Re-query database")
 
+    st.write("## Filtering")
+
     patimg = load_dbf(database_directory, refresh_cache, "patimg")
 
     dates = pd.to_datetime(patimg["IMG_DATE"], format="%Y%m%d").dt.date
@@ -156,9 +158,7 @@ def main():
     selected_date = st.selectbox("Date", options=date_options)
     patimg_filtered_by_date = patimg.loc[dates == selected_date]
 
-    st.write(patimg_filtered_by_date)
-
-    merged = patimg
+    merged = patimg_filtered_by_date
 
     for database_key, merge_key in [
         ("port", "PORT_DBID"),
@@ -168,22 +168,75 @@ def main():
         dbf_to_be_merged = load_dbf(database_directory, refresh_cache, database_key)
         merged = merged.merge(dbf_to_be_merged, left_on=merge_key, right_on=merge_key)
 
+    timestamps_string = (
+        merged["IMG_DATE"].astype("str")
+        + "T"
+        + merged["IMG_TIME"].astype("str")
+        + "000"
+    )
+
+    merged["datetime"] = pd.to_datetime(timestamps_string, format="%Y%m%dT%H%M%S%f")
+    merged["time"] = merged["datetime"].dt.time
+
     merged = merged[
         [
+            "time",
             "machine_id",
             "patient_id",
-            "IMG_DATE",
-            "IMG_TIME",
-            "DICOM_UID",
             "treatment",
             "port",
             "LAST_NAME",
             "FIRST_NAME",
             "PIMG_DBID",
+            "IMG_DATE",
+            "IMG_TIME",
+            "DICOM_UID",
+            "datetime",
         ]
     ]
 
-    st.write(merged)
+    filtered = merged
+
+    # Machine ID
+    machine_id = st.radio("Machine", filtered["machine_id"].unique())
+    filtered = filtered.loc[filtered["machine_id"] == machine_id]
+
+    # Patient ID
+    patient_id = st.radio("Patient", filtered["patient_id"].unique())
+    filtered = filtered.loc[filtered["patient_id"] == patient_id]
+
+    # Time
+    time_step = datetime.timedelta(minutes=1)
+    min_time = (np.min(filtered["datetime"])).floor("min").time()
+    max_time = (np.max(filtered["datetime"])).ceil("min").time()
+
+    time_range = st.slider(
+        "Time",
+        min_value=min_time,
+        max_value=max_time,
+        step=time_step,
+        value=[min_time, max_time],
+    )
+
+    filtered = filtered.loc[
+        (filtered["time"] >= time_range[0]) & (filtered["time"] <= time_range[1])
+    ]
+
+    # Treatments
+    unique_treatments = filtered["treatment"].unique().tolist()
+    selected_treatments = st.multiselect(
+        "Treatment", unique_treatments, default=unique_treatments
+    )
+    filtered = filtered.loc[filtered["treatment"].isin(selected_treatments)]
+
+    # Ports
+    unique_ports = filtered["port"].unique().tolist()
+    selected_ports = st.multiselect("Ports", unique_ports, default=unique_ports)
+    filtered = filtered.loc[filtered["port"].isin(selected_ports)]
+
+    st.write(filtered)
+
+    # st.write(merged)
 
     # port = load_dbf(database_directory, refresh_cache, "port")
 
@@ -259,48 +312,6 @@ def main():
     st.write(with_patient)
 
     st.write("## Filtering")
-
-    filtering_df = with_patient
-
-    # Machine ID
-    machine_id = st.radio("Machine", filtering_df["machine_id"].unique())
-    filtering_df = filtering_df.loc[filtering_df["machine_id"] == machine_id]
-
-    # Patient ID
-    patient_id = st.radio("Patient", filtering_df["patient_id"].unique())
-    filtering_df = filtering_df.loc[filtering_df["patient_id"] == patient_id]
-
-    # Time
-    time_step = datetime.timedelta(minutes=1)
-    min_time = (np.min(filtering_df["datetime"])).floor("min").time()
-    max_time = (np.max(filtering_df["datetime"])).ceil("min").time()
-
-    time_range = st.slider(
-        "Time",
-        min_value=min_time,
-        max_value=max_time,
-        step=time_step,
-        value=[min_time, max_time],
-    )
-
-    filtering_df = filtering_df.loc[
-        (filtering_df["time"] >= time_range[0])
-        & (filtering_df["time"] <= time_range[1])
-    ]
-
-    # Treatments
-    unique_treatments = filtering_df["treatment"].unique().tolist()
-    selected_treatments = st.multiselect(
-        "Treatment", unique_treatments, default=unique_treatments
-    )
-    filtering_df = filtering_df.loc[filtering_df["treatment"].isin(selected_treatments)]
-
-    # Ports
-    unique_ports = filtering_df["port"].unique().tolist()
-    selected_ports = st.multiselect("Ports", unique_ports, default=unique_ports)
-    filtering_df = filtering_df.loc[filtering_df["port"].isin(selected_ports)]
-
-    st.write(filtering_df)
 
     # table_matching_selected_date.merge()
 
