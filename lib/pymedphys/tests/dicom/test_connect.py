@@ -70,7 +70,7 @@ def test_dicom_listener_echo(listener):
 
 @pytest.mark.pydicom
 def test_dicom_listener_send(listener):
-    """Test to ensure that running dicom listener recieves a stores a Dicom file
+    """Test to ensure that running dicom listener receives a stores a Dicom file
     """
 
     METHOD_MOCK.reset_mock()
@@ -110,7 +110,7 @@ def test_dicom_listener_send(listener):
     assert status.Status == 0
     assoc.release()
 
-    # Check that it was recieved
+    # Check that it was received
     METHOD_MOCK.method.assert_called_once()
     args, _ = METHOD_MOCK.method.call_args_list[0]
     storage_path = args[0]

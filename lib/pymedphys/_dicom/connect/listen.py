@@ -18,18 +18,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from pydicom.dataset import Dataset, FileDataset
-from pynetdicom import (
-    AE,
-    PYNETDICOM_IMPLEMENTATION_UID,
-    PYNETDICOM_IMPLEMENTATION_VERSION,
-    StoragePresentationContexts,
-    evt,
-)
-from pynetdicom.sop_class import (  # pylint: disable=no-name-in-module
-    VerificationSOPClass,
-)
-
+from pymedphys._imports import pydicom, pynetdicom
 from pymedphys._dicom.connect.base import DicomConnectBase
 
 
@@ -37,7 +26,7 @@ class DicomListener(DicomConnectBase):
     def __init__(
         self, storage_directory=tempfile.mkdtemp(), on_released_callback=None, **kwargs
     ):
-        super(DicomListener, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         # The directory where incoming data will be stored
         self.storage_directory = storage_directory
@@ -57,19 +46,21 @@ class DicomListener(DicomConnectBase):
     def start(self):
 
         # Initialise the Application Entity
-        self.ae = AE(ae_title=self.ae_title)
+        self.ae = pynetdicom.AE(ae_title=self.ae_title)
 
         # Add the supported presentation context
-        self.ae.add_supported_context(VerificationSOPClass)
-        for context in StoragePresentationContexts:
+        self.ae.add_supported_context(
+            pynetdicom.sop_class.VerificationSOPClass  # pylint: disable = no-member
+        )
+        for context in pynetdicom.StoragePresentationContexts:
             self.ae.add_supported_context(context.abstract_syntax)
 
         handlers = [
-            (evt.EVT_C_MOVE, self.on_c_store),
-            (evt.EVT_C_STORE, self.on_c_store),
-            (evt.EVT_C_ECHO, self.on_c_echo),
-            (evt.EVT_ACCEPTED, self.on_association_accepted),
-            (evt.EVT_RELEASED, self.on_association_released),
+            (pynetdicom.evt.EVT_C_MOVE, self.on_c_store),
+            (pynetdicom.evt.EVT_C_STORE, self.on_c_store),
+            (pynetdicom.evt.EVT_C_ECHO, self.on_c_echo),
+            (pynetdicom.evt.EVT_ACCEPTED, self.on_association_accepted),
+            (pynetdicom.evt.EVT_RELEASED, self.on_association_released),
         ]
 
         # Start listening for incoming association requests
@@ -80,7 +71,7 @@ class DicomListener(DicomConnectBase):
         if self.ae:
             self.ae.shutdown()
 
-    def on_c_echo(self, _):
+    def on_c_echo(self, _):  # pylint: disable = no-self-use
         """Respond to a C-ECHO service request.
         """
         logging.debug("C-ECHO!")
@@ -133,26 +124,26 @@ class DicomListener(DicomConnectBase):
 
         if filepath.exists:
             # TODO Currently just logging this, since I'm unsure of the desired
-            # behaviour if the file has already been recieved.
+            # behaviour if the file has already been received.
             logging.debug("DICOM file already exists, overwriting")
 
         context = event.context
-        meta = Dataset()
+        meta = pydicom.Dataset()
         meta.MediaStorageSOPClassUID = dataset.SOPClassUID
         meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
-        meta.ImplementationClassUID = PYNETDICOM_IMPLEMENTATION_UID
+        meta.ImplementationClassUID = pynetdicom.PYNETDICOM_IMPLEMENTATION_UID
         meta.TransferSyntaxUID = context.transfer_syntax
 
         # The following is not mandatory, set for convenience
-        meta.ImplementationVersionName = PYNETDICOM_IMPLEMENTATION_VERSION
-        file_ds = FileDataset(
+        meta.ImplementationVersionName = pynetdicom.PYNETDICOM_IMPLEMENTATION_VERSION
+        file_ds = pydicom.FileDataset(
             filepath.as_posix(), {}, file_meta=meta, preamble=b"\0" * 128
         )
         file_ds.update(dataset)
         file_ds.is_little_endian = context.transfer_syntax.is_little_endian
         file_ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
-        status_ds = Dataset()
+        status_ds = pydicom.Dataset()
         status_ds.Status = 0x0000
 
         try:
@@ -168,8 +159,8 @@ class DicomListener(DicomConnectBase):
             )
             # Failed - Out of Resources - IOError
             status_ds.Status = 0xA700
-        except Exception as exception:
-            logging.warning("An error occured saving the Dicom file:")
+        except Exception as exception:  # pylint: disable = broad-except
+            logging.warning("An error occurred saving the Dicom file:")
             logging.warning("    %s", filepath)
             logging.warning(exception)
             # Failed - Out of Resources - Miscellaneous error
