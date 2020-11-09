@@ -50,13 +50,13 @@ def filtering_image_sets(to_be_filtered):
     # Treatments
     unique_treatments = filtered["treatment"].unique().tolist()
     selected_treatments = st.multiselect(
-        "Treatment", unique_treatments, default=unique_treatments
+        "Treatment", unique_treatments, default=sorted(unique_treatments)
     )
     filtered = filtered.loc[filtered["treatment"].isin(selected_treatments)]
 
     # Ports
     unique_ports = filtered["port"].unique().tolist()
-    selected_ports = st.multiselect("Ports", unique_ports, default=unique_ports)
+    selected_ports = st.multiselect("Ports", unique_ports, default=sorted(unique_ports))
     filtered = filtered.loc[filtered["port"].isin(selected_ports)]
 
     return filtered
