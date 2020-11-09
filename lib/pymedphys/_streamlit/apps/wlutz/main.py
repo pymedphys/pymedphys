@@ -92,22 +92,20 @@ def calc_timestamps(frame_with_filepath, patimg):
     return resolved
 
 
-def load_dbf_database(
-    database_directory, refresh_cache, dbf_filename, columns_to_keep, column_rename_map
+def _load_dbf_base(
+    database_directory, refresh_cache, filename, columns_to_keep, column_rename_map
 ):
-    dbf_path = database_directory.joinpath(dbf_filename)
+    dbf_path = database_directory.joinpath(filename)
     table = dbf_to_pandas(dbf_path, refresh_cache)[columns_to_keep]
     table.rename(column_rename_map, axis="columns", inplace=True)
 
     return table
 
 
-def load_patimg(database_directory, refresh_cache):
-    patimg = load_dbf_database(
-        database_directory,
-        refresh_cache,
-        dbf_filename="PATIMG.dbf",
-        columns_to_keep=[
+DBF_DATABASE_LOADING_CONFIG = {
+    "patimg": {
+        "filename": "PATIMG.dbf",
+        "columns_to_keep": [
             "DBID",
             "DICOM_UID",
             "IMG_DATE",
@@ -115,10 +113,31 @@ def load_patimg(database_directory, refresh_cache):
             "PORT_DBID",
             "ORG_DTL",
         ],
-        column_rename_map={"DBID": "PIMG_DBID"},
-    )
+        "column_rename_map": {"DBID": "PIMG_DBID", "ORG_DTL": "machine_id"},
+    },
+    "port": {
+        "filename": "PORT.dbf",
+        "columns_to_keep": ["DBID", "TRT_DBID", "ID"],
+        "column_rename_map": {"DBID": "PORT_DBID", "ID": "port"},
+    },
+    "trtmnt": {
+        "filename": "TRTMNT.dbf",
+        "columns_to_keep": ["DBID", "PAT_DBID", "ID"],
+        "column_rename_map": {"DBID": "TRT_DBID", "ID": "treatment"},
+    },
+    "patient": {
+        "filename": "PATIENT.dbf",
+        "columns_to_keep": ["DBID", "ID", "LAST_NAME", "FIRST_NAME"],
+        "column_rename_map": {"DBID": "PAT_DBID", "ID": "patient_id"},
+    },
+}
 
-    return patimg
+
+def load_dbf(database_directory, refresh_cache, config_key):
+    table = _load_dbf_base(
+        database_directory, refresh_cache, **DBF_DATABASE_LOADING_CONFIG[config_key]
+    )
+    return table
 
 
 def main():
@@ -129,7 +148,7 @@ def main():
     frame_dbf_path = database_directory.joinpath("FRAME.dbf")
     refresh_cache = st.button("Re-query database")
 
-    patimg = load_patimg(database_directory, refresh_cache)
+    patimg = load_dbf(database_directory, refresh_cache, "patimg")
 
     dates = pd.to_datetime(patimg["IMG_DATE"], format="%Y%m%d").dt.date
     date_options = dates.sort_values(ascending=False).unique()
@@ -138,6 +157,40 @@ def main():
     patimg_filtered_by_date = patimg.loc[dates == selected_date]
 
     st.write(patimg_filtered_by_date)
+
+    merged = patimg
+
+    for database_key, merge_key in [
+        ("port", "PORT_DBID"),
+        ("trtmnt", "TRT_DBID"),
+        ("patient", "PAT_DBID"),
+    ]:
+        dbf_to_be_merged = load_dbf(database_directory, refresh_cache, database_key)
+        merged = merged.merge(dbf_to_be_merged, left_on=merge_key, right_on=merge_key)
+
+    merged = merged[
+        [
+            "machine_id",
+            "patient_id",
+            "IMG_DATE",
+            "IMG_TIME",
+            "DICOM_UID",
+            "treatment",
+            "port",
+            "LAST_NAME",
+            "FIRST_NAME",
+            "PIMG_DBID",
+        ]
+    ]
+
+    st.write(merged)
+
+    # port = load_dbf(database_directory, refresh_cache, "port")
+
+    # merged_with_port = patimg_filtered_by_date.merge(
+    #     port, left_on="PORT_DBID", right_on="PORT_DBID"
+    # )
+    # st.write(merged_with_port)
 
     try:
         frames = dbf_to_pandas(frame_dbf_path, refresh_cache)
