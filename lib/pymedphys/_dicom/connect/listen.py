@@ -16,22 +16,23 @@ import logging
 import signal
 import sys
 import tempfile
-from pathlib import Path
+import pathlib
 
 from pymedphys._imports import pydicom, pynetdicom
 from pymedphys._dicom.connect.base import DicomConnectBase
+from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 
 
 class DicomListener(DicomConnectBase):
-    def __init__(
-        self, storage_directory=tempfile.mkdtemp(), on_released_callback=None, **kwargs
-    ):
+    def __init__(self, storage_directory=None, on_released_callback=None, **kwargs):
         super().__init__(**kwargs)
 
+        # If no storage directory is set, create a temporary directory
+        if not storage_directory:
+            storage_directory = tempfile.mkdtemp()
+
         # The directory where incoming data will be stored
-        self.storage_directory = storage_directory
-        if not isinstance(self.storage_directory, Path):
-            self.storage_directory = Path(self.storage_directory)
+        self.storage_directory = pathlib.Path(storage_directory)
 
         # Callback when association is released called with path to the directory where
         # data from that association was stored
@@ -42,6 +43,8 @@ class DicomListener(DicomConnectBase):
 
         # The application entity
         self.ae = None
+
+        logging.error("Will store files received in: %s", self.storage_directory)
 
     def start(self):
 
@@ -56,7 +59,6 @@ class DicomListener(DicomConnectBase):
             self.ae.add_supported_context(context.abstract_syntax)
 
         handlers = [
-            (pynetdicom.evt.EVT_C_MOVE, self.on_c_store),
             (pynetdicom.evt.EVT_C_STORE, self.on_c_store),
             (pynetdicom.evt.EVT_C_ECHO, self.on_c_echo),
             (pynetdicom.evt.EVT_ACCEPTED, self.on_association_accepted),
@@ -89,43 +91,26 @@ class DicomListener(DicomConnectBase):
 
         dataset = event.dataset
 
-        # TODO: Should these be place in a config file?
-        mode_prefixes = {
-            "CT Image Storage": "CT",
-            "Enhanced CT Image Storage": "CTE",
-            "MR Image Storage": "MR",
-            "Enhanced MR Image Storage": "MRE",
-            "Positron Emission Tomography Image Storage": "PT",
-            "Enhanced PET Image Storage": "PTE",
-            "RT Image Storage": "RI",
-            "RT Dose Storage": "RD",
-            "RT Plan Storage": "RP",
-            "RT Structure Set Storage": "RS",
-            "Computed Radiography Image Storage": "CR",
-            "Ultrasound Image Storage": "US",
-            "Enhanced Ultrasound Image Storage": "USE",
-            "X-Ray Angiographic Image Storage": "XA",
-            "Enhanced XA Image Storage": "XAE",
-            "Nuclear Medicine Image Storage": "NM",
-            "Secondary Capture Image Storage": "SC",
-        }
-
         try:
-            mode_prefix = mode_prefixes[dataset.SOPClassUID.name]
+            mode_prefix = DICOM_SOP_CLASS_NAMES_MODE_PREFIXES[dataset.SOPClassUID.name]
         except KeyError:
             mode_prefix = "UN"
 
-        suid = dataset.SeriesInstanceUID
-        series_dir = self.storage_directory / suid
+        series_uid = dataset.SeriesInstanceUID
+        series_dir = self.storage_directory.joinpath(series_uid)
         series_dir.mkdir(exist_ok=True)
+        self.association_directory = series_dir
 
         filename = "{0!s}.{1!s}".format(mode_prefix, dataset.SOPInstanceUID)
-        filepath = series_dir / filename
+        filepath = series_dir.joinpath(filename)
 
-        if filepath.exists:
-            # TODO Currently just logging this, since I'm unsure of the desired
-            # behaviour if the file has already been received.
-            logging.debug("DICOM file already exists, overwriting")
+        status_ds = pydicom.Dataset()
+        status_ds.Status = 0x0000
+
+        if filepath.exists():
+            logging.warning("DICOM file exists, skipping: %s", filename)
+            status_ds.Status = 0xA701  # Failed - Out of Resources - Miscellaneous error
+            return status_ds
 
         context = event.context
         meta = pydicom.Dataset()
@@ -143,30 +128,19 @@ class DicomListener(DicomConnectBase):
         file_ds.is_little_endian = context.transfer_syntax.is_little_endian
         file_ds.is_implicit_VR = context.transfer_syntax.is_implicit_VR
 
-        status_ds = pydicom.Dataset()
-        status_ds.Status = 0x0000
-
         try:
             # We use `write_like_original=False` to ensure that a compliant
             #   File Meta Information Header is written
             file_ds.save_as(filepath.as_posix(), write_like_original=False)
             status_ds.Status = 0x0000  # Success
         except IOError:
-            logging.warning("Could not write file to specified directory:")
-            logging.warning("    %s", filepath)
-            logging.warning(
+            logging.error("Could not write file to specified directory:")
+            logging.error("    %s", filepath)
+            logging.error(
                 "Directory may not exist or you may not have write " "permission"
             )
             # Failed - Out of Resources - IOError
             status_ds.Status = 0xA700
-        except Exception as exception:  # pylint: disable = broad-except
-            logging.warning("An error occurred saving the Dicom file:")
-            logging.warning("    %s", filepath)
-            logging.warning(exception)
-            # Failed - Out of Resources - Miscellaneous error
-            status_ds.Status = 0xA701
-
-        self.association_directory = series_dir
 
         return status_ds
 
