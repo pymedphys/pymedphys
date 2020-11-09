@@ -101,6 +101,7 @@
     "asar",
     "asdict",
     "asname",
+    "assoc",
     "astype",
     "atol",
     "autofunction",
