@@ -75,6 +75,40 @@ def calc_timestamps(frame_with_filepath, patimg):
     return resolved
 
 
+def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
+    frame = _dbf.load_dbf(database_directory, refresh_cache, "frame")
+    with_frame = filtered_table.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
+
+    delta = pd.to_timedelta(with_frame["DELTA_MS"], unit="ms")
+    timestamps = with_frame["datetime"] + delta
+
+    with_frame["time"] = timestamps.dt.time
+    with_frame["datetime"] = timestamps
+
+    with_frame.sort_values("datetime", ascending=False, inplace=True)
+
+    filepaths = calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
+    with_frame["filepath"] = filepaths
+    with_frame = with_frame[
+        [
+            "filepath",
+            "time",
+            "machine_id",
+            "patient_id",
+            "treatment",
+            "port",
+            "datetime",
+            "PIMG_DBID",
+        ]
+    ]
+
+    return with_frame
+
+
+def xml_frame_based_database(database_directory, refresh_cache, filtered_table):
+    return filtered_table
+
+
 def main():
     st.title("Winston-Lutz Arc")
 
@@ -102,40 +136,11 @@ def main():
     st.write("## Loading database image frame data")
 
     try:
-        frame = _dbf.load_dbf(database_directory, refresh_cache, "frame")
+        table = dbf_frame_based_database(database_directory, refresh_cache, filtered)
     except FileNotFoundError:
-        st.write(
-            ValueError(
-                "Currently only iView DB formats that include FRAME.dbf are supported"
-            )
-        )
-        st.stop()
+        table = xml_frame_based_database(database_directory, refresh_cache, filtered)
 
-    with_frame = filtered.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
-
-    delta = pd.to_timedelta(with_frame["DELTA_MS"], unit="ms")
-    timestamps = with_frame["datetime"] + delta
-
-    with_frame["time"] = timestamps.dt.time
-    with_frame["datetime"] = timestamps
-
-    with_frame.sort_values("datetime", ascending=False, inplace=True)
-
-    filepaths = calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
-    with_frame["filepath"] = filepaths
-    with_frame = with_frame[
-        [
-            "filepath",
-            "time",
-            "machine_id",
-            "patient_id",
-            "treatment",
-            "port",
-            "datetime",
-        ]
-    ]
-
-    st.write(with_frame)
+    st.write(table)
 
     # table_matching_selected_date.merge()
 
