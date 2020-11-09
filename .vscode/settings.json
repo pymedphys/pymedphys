@@ -138,6 +138,7 @@
     "datefmt",
     "dateutil",
     "dbfread",
+    "dbfs",
     "dcmread",
     "decubitus",
     "dedupe",
