@@ -80,12 +80,13 @@ def main():
 
     _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
 
-    st.write("## Load databases for a given date")
-    refresh_cache = st.button("Re-query database")
+    st.write("## Load iView databases for a given date")
+    refresh_cache = st.button("Re-query databases")
     merged = _dbf.loading_and_merging_dbfs(database_directory, refresh_cache)
 
     st.write("## Filtering")
     filtered = _filtering.filtering_image_sets(merged)
+    filtered.sort_values("datetime", ascending=False, inplace=True)
 
     st.write(filtered)
 
@@ -99,7 +100,7 @@ def main():
     # st.write(merged_with_port)
 
     try:
-        frames = dbf_to_pandas(frame_dbf_path, refresh_cache)
+        frame = _dbf.load_dbf(database_directory, refresh_cache, "frame")
     except FileNotFoundError:
         st.write(
             ValueError(
@@ -107,6 +108,24 @@ def main():
             )
         )
         st.stop()
+
+    with_frame = filtered.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
+
+    delta = pd.to_timedelta(with_frame["DELTA_MS"], unit="ms")
+    timestamps = with_frame["datetime"] + delta
+
+    with_frame["time"] = timestamps.dt.time
+    with_frame["datetime"] = timestamps
+
+    with_frame.sort_values("datetime", ascending=False, inplace=True)
+
+    filepaths = calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
+    with_frame["filepath"] = filepaths
+    with_frame.drop(["FRAME_DBID", "DELTA_MS", "PIMG_DBID"], axis=1, inplace=True)
+
+    st.write(with_frame)
+
+    #
 
     filepaths = calc_filepath_from_frames_dbid(frames["DBID"])
 
