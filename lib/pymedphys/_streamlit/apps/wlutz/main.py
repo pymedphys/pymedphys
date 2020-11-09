@@ -99,6 +99,8 @@ def main():
     # )
     # st.write(merged_with_port)
 
+    st.write("## Loading database image frame data")
+
     try:
         frame = _dbf.load_dbf(database_directory, refresh_cache, "frame")
     except FileNotFoundError:
@@ -121,67 +123,19 @@ def main():
 
     filepaths = calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
     with_frame["filepath"] = filepaths
-    with_frame.drop(["FRAME_DBID", "DELTA_MS", "PIMG_DBID"], axis=1, inplace=True)
-
-    st.write(with_frame)
-
-    #
-
-    filepaths = calc_filepath_from_frames_dbid(frames["DBID"])
-
-    frame_with_filepath = frames[["DBID", "PIMG_DBID", "DELTA_MS"]]
-    frame_with_filepath["filepath"] = filepaths
-
-    timestamps = calc_timestamps(frame_with_filepath, patimg)
-
-    date_options = timestamps["date"].unique()
-
-    selected_date = st.selectbox("Date", options=date_options)
-    table_matching_selected_date = timestamps.loc[timestamps["date"] == selected_date]
-
-    port_dbf_path = database_directory.joinpath("PORT.dbf")
-    port = dbf_to_pandas(port_dbf_path, refresh_cache)[["DBID", "ID", "TRT_DBID"]]
-
-    with_port_id = table_matching_selected_date.merge(
-        port, left_on="PORT_DBID", right_on="DBID"
-    )[["machine_id", "filepath", "time", "ID", "TRT_DBID", "datetime"]]
-
-    with_port_id.rename({"ID": "port"}, axis="columns", inplace=True)
-
-    trtmnt_dbf_path = database_directory.joinpath("TRTMNT.dbf")
-    trtmnt = dbf_to_pandas(trtmnt_dbf_path, refresh_cache)[["DBID", "ID", "PAT_DBID"]]
-
-    with_trtmnt = with_port_id.merge(trtmnt, left_on="TRT_DBID", right_on="DBID")[
-        ["machine_id", "filepath", "time", "ID", "port", "PAT_DBID", "datetime"]
-    ]
-    with_trtmnt.rename({"ID": "treatment"}, axis="columns", inplace=True)
-
-    patient_dbf_path = database_directory.joinpath("PATIENT.dbf")
-    patient = dbf_to_pandas(patient_dbf_path, refresh_cache)[
-        ["DBID", "ID", "LAST_NAME", "FIRST_NAME"]
-    ]
-
-    with_patient = with_trtmnt.merge(patient, left_on="PAT_DBID", right_on="DBID")[
+    with_frame = with_frame[
         [
-            "machine_id",
-            "ID",
+            "filepath",
             "time",
+            "machine_id",
+            "patient_id",
             "treatment",
             "port",
-            "filepath",
-            "LAST_NAME",
-            "FIRST_NAME",
             "datetime",
         ]
     ]
 
-    with_patient.rename(
-        {"ID": "patient_id", "LAST_NAME": "last_name", "FIRST_NAME": "first_name"},
-        axis="columns",
-        inplace=True,
-    )
-
-    st.write(with_patient)
+    st.write(with_frame)
 
     # table_matching_selected_date.merge()
 
