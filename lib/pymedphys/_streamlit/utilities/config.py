@@ -15,6 +15,7 @@
 
 import functools
 import pathlib
+import os
 
 from pymedphys._imports import streamlit as st
 
@@ -45,7 +46,9 @@ def get_monaco_from_site_config(site_config):
 
 
 def get_export_directory_from_site_config(site_config, export_directory):
-    return pathlib.Path(site_config["export-directories"][export_directory])
+    return pathlib.Path(
+        os.path.expanduser(site_config["export-directories"][export_directory])
+    )
 
 
 @st.cache
