@@ -7,4 +7,4 @@ def get_dbf_table(path):
     try:
         return dbfread.DBF(path)
     except dbfread.DBFNotFound as e:
-        raise FileNotFoundError from e
+        raise FileNotFoundError(path) from e
