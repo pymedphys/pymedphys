@@ -33,7 +33,7 @@ def main():
 
     database_paths = {
         path.stem.lower(): path
-        for path in database_directory.glob("*.dbf")
+        for path in database_directory.glob("*.DBF")
         if not path.stem.endswith("_N")
     }
 
