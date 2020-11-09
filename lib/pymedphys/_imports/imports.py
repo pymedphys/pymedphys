@@ -21,6 +21,7 @@ import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
 import yaml
+import xmltodict
 
 import imageio
 import matplotlib

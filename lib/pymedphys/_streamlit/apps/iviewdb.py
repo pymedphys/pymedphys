@@ -12,20 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import pathlib
 
-import xmltodict
-from pymedphys._imports import pandas as pd
+from pymedphys._imports import pandas as pd, xmltodict
 from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities import dbf, misc
-
-# DB_RELATIONSHIPS = {
-#     "frame": {"PIMG_DBID": ["patimg", "DBID"]},
-#     "patimg": {"PORT_DBID": ["port", "DBID"]},
-#     "port": {"TRT_DBID": ["trtmnt", "DBID"]},
-#     "trtmnt": {"PAT_DBID": ["patient", "DBID"]},
-# }
 
 
 @st.cache()
@@ -75,8 +66,6 @@ def main():
 
     if st.button("Show *.xml files"):
         st.write(xml_files)
-
-    # xml_paths = [pathlib.Path(item) for item in xml_files]
 
     st.write("## Display XML")
 

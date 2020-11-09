@@ -26,87 +26,12 @@ from pymedphys import _losslessjpeg as lljpeg
 
 # from pymedphys._wlutz import findbb, findfield, imginterp, iview, reporting
 from pymedphys._streamlit.utilities import misc
-from pymedphys._streamlit.apps.wlutz import _dbf, _filtering
+from pymedphys._streamlit.apps.wlutz import _dbf, _filtering, _frames
 
 
 @st.cache()
 def read_image(path):
     return lljpeg.imread(path)
-
-
-@st.cache()
-def calc_filepath_from_frames_dbid(dbid_series):
-    return [f"img/{f'{dbid:0>8x}'.upper()}.jpg" for dbid in dbid_series]
-
-
-@st.cache()
-def calc_timestamps(frame_with_filepath, patimg):
-    img_date_time = patimg[["DBID", "IMG_DATE", "IMG_TIME", "PORT_DBID", "ORG_DTL"]]
-
-    merged = frame_with_filepath.merge(
-        img_date_time, left_on="PIMG_DBID", right_on="DBID"
-    )[["filepath", "IMG_DATE", "IMG_TIME", "DELTA_MS", "PORT_DBID", "ORG_DTL"]]
-
-    resolved = pd.DataFrame()
-    resolved["filepath"] = merged["filepath"]
-    timestamps_string = (
-        merged["IMG_DATE"].astype("str")
-        + "T"
-        + merged["IMG_TIME"].astype("str")
-        + "000"
-    )
-
-    timestamps = pd.to_datetime(timestamps_string, format="%Y%m%dT%H%M%S%f")
-    delta = pd.to_timedelta(merged["DELTA_MS"], unit="ms")
-
-    timestamps = timestamps + delta
-
-    resolved["timestamps_string"] = timestamps_string
-    resolved["delta"] = delta
-    resolved["delta_seconds"] = delta.dt.total_seconds()
-    resolved["date"] = timestamps.dt.date
-    resolved["time"] = timestamps.dt.time
-    resolved["datetime"] = timestamps
-    resolved["PORT_DBID"] = merged["PORT_DBID"]
-    resolved["machine_id"] = merged["ORG_DTL"]
-
-    resolved.sort_values("datetime", inplace=True, ascending=False)
-
-    return resolved
-
-
-def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
-    frame = _dbf.load_dbf(database_directory, refresh_cache, "frame")
-    with_frame = filtered_table.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
-
-    delta = pd.to_timedelta(with_frame["DELTA_MS"], unit="ms")
-    timestamps = with_frame["datetime"] + delta
-
-    with_frame["time"] = timestamps.dt.time
-    with_frame["datetime"] = timestamps
-
-    with_frame.sort_values("datetime", ascending=False, inplace=True)
-
-    filepaths = calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
-    with_frame["filepath"] = filepaths
-    with_frame = with_frame[
-        [
-            "filepath",
-            "time",
-            "machine_id",
-            "patient_id",
-            "treatment",
-            "port",
-            "datetime",
-            "PIMG_DBID",
-        ]
-    ]
-
-    return with_frame
-
-
-def xml_frame_based_database(database_directory, refresh_cache, filtered_table):
-    return filtered_table
 
 
 def main():
@@ -136,9 +61,11 @@ def main():
     st.write("## Loading database image frame data")
 
     try:
-        table = dbf_frame_based_database(database_directory, refresh_cache, filtered)
+        table = _frames.dbf_frame_based_database(
+            database_directory, refresh_cache, filtered
+        )
     except FileNotFoundError:
-        table = xml_frame_based_database(database_directory, refresh_cache, filtered)
+        table = _frames.xml_frame_based_database(database_directory, filtered)
 
     st.write(table)
 
