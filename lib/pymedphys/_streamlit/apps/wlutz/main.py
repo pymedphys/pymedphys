@@ -25,30 +25,13 @@ from pymedphys._imports import streamlit as st
 from pymedphys import _losslessjpeg as lljpeg
 
 # from pymedphys._wlutz import findbb, findfield, imginterp, iview, reporting
-from pymedphys._streamlit.utilities import dbf, misc
+from pymedphys._streamlit.utilities import misc
+from pymedphys._streamlit.apps.wlutz import _dbf, _filtering
 
 
 @st.cache()
 def read_image(path):
     return lljpeg.imread(path)
-
-
-def dbf_to_pandas_without_cache(path):
-    return pd.DataFrame(iter(dbf.get_dbf_table(path)))
-
-
-@st.cache()
-def dbf_to_pandas_with_cache(path):
-    return [dbf_to_pandas_without_cache(path)]
-
-
-def dbf_to_pandas(path, refresh_cache=False):
-    result = dbf_to_pandas_with_cache(path)
-
-    if refresh_cache:
-        result[0] = dbf_to_pandas_without_cache(path)
-
-    return result[0]
 
 
 @st.cache()
@@ -92,146 +75,6 @@ def calc_timestamps(frame_with_filepath, patimg):
     return resolved
 
 
-def _load_dbf_base(
-    database_directory, refresh_cache, filename, columns_to_keep, column_rename_map
-):
-    dbf_path = database_directory.joinpath(filename)
-    table = dbf_to_pandas(dbf_path, refresh_cache)[columns_to_keep]
-    table.rename(column_rename_map, axis="columns", inplace=True)
-
-    return table
-
-
-DBF_DATABASE_LOADING_CONFIG = {
-    "patimg": {
-        "filename": "PATIMG.dbf",
-        "columns_to_keep": [
-            "DBID",
-            "DICOM_UID",
-            "IMG_DATE",
-            "IMG_TIME",
-            "PORT_DBID",
-            "ORG_DTL",
-        ],
-        "column_rename_map": {"DBID": "PIMG_DBID", "ORG_DTL": "machine_id"},
-    },
-    "port": {
-        "filename": "PORT.dbf",
-        "columns_to_keep": ["DBID", "TRT_DBID", "ID"],
-        "column_rename_map": {"DBID": "PORT_DBID", "ID": "port"},
-    },
-    "trtmnt": {
-        "filename": "TRTMNT.dbf",
-        "columns_to_keep": ["DBID", "PAT_DBID", "ID"],
-        "column_rename_map": {"DBID": "TRT_DBID", "ID": "treatment"},
-    },
-    "patient": {
-        "filename": "PATIENT.dbf",
-        "columns_to_keep": ["DBID", "ID", "LAST_NAME", "FIRST_NAME"],
-        "column_rename_map": {"DBID": "PAT_DBID", "ID": "patient_id"},
-    },
-}
-
-
-def load_dbf(database_directory, refresh_cache, config_key):
-    table = _load_dbf_base(
-        database_directory, refresh_cache, **DBF_DATABASE_LOADING_CONFIG[config_key]
-    )
-    return table
-
-
-def loading_and_merging_dbfs(database_directory, refresh_cache):
-    patimg = load_dbf(database_directory, refresh_cache, "patimg")
-
-    dates = pd.to_datetime(patimg["IMG_DATE"], format="%Y%m%d").dt.date
-    date_options = dates.sort_values(ascending=False).unique()
-
-    selected_date = st.selectbox("Date", options=date_options)
-    patimg_filtered_by_date = patimg.loc[dates == selected_date]
-
-    merged = patimg_filtered_by_date
-
-    for database_key, merge_key in [
-        ("port", "PORT_DBID"),
-        ("trtmnt", "TRT_DBID"),
-        ("patient", "PAT_DBID"),
-    ]:
-        dbf_to_be_merged = load_dbf(database_directory, refresh_cache, database_key)
-        merged = merged.merge(dbf_to_be_merged, left_on=merge_key, right_on=merge_key)
-
-    timestamps_string = (
-        merged["IMG_DATE"].astype("str")
-        + "T"
-        + merged["IMG_TIME"].astype("str")
-        + "000"
-    )
-
-    merged["datetime"] = pd.to_datetime(timestamps_string, format="%Y%m%dT%H%M%S%f")
-    merged["time"] = merged["datetime"].dt.time
-
-    merged = merged[
-        [
-            "time",
-            "machine_id",
-            "patient_id",
-            "treatment",
-            "port",
-            "LAST_NAME",
-            "FIRST_NAME",
-            "PIMG_DBID",
-            "IMG_DATE",
-            "IMG_TIME",
-            "DICOM_UID",
-            "datetime",
-        ]
-    ]
-
-    return merged
-
-
-def filtering_image_sets(to_be_filtered):
-    filtered = to_be_filtered
-
-    # Machine ID
-    machine_id = st.radio("Machine", filtered["machine_id"].unique())
-    filtered = filtered.loc[filtered["machine_id"] == machine_id]
-
-    # Patient ID
-    patient_id = st.radio("Patient", filtered["patient_id"].unique())
-    filtered = filtered.loc[filtered["patient_id"] == patient_id]
-
-    # Time
-    time_step = datetime.timedelta(minutes=1)
-    min_time = (np.min(filtered["datetime"])).floor("min").time()
-    max_time = (np.max(filtered["datetime"])).ceil("min").time()
-
-    time_range = st.slider(
-        "Time",
-        min_value=min_time,
-        max_value=max_time,
-        step=time_step,
-        value=[min_time, max_time],
-    )
-
-    filtered = filtered.loc[
-        (filtered["time"] >= time_range[0]) & (filtered["time"] <= time_range[1])
-    ]
-
-    # Treatments
-    unique_treatments = filtered["treatment"].unique().tolist()
-    selected_treatments = st.multiselect(
-        "Treatment", unique_treatments, default=unique_treatments
-    )
-    filtered = filtered.loc[filtered["treatment"].isin(selected_treatments)]
-
-    # Ports
-    unique_ports = filtered["port"].unique().tolist()
-    selected_ports = st.multiselect("Ports", unique_ports, default=unique_ports)
-    filtered = filtered.loc[filtered["port"].isin(selected_ports)]
-
-    return filtered
-
-
 def main():
     st.title("Winston-Lutz Arc")
 
@@ -239,10 +82,10 @@ def main():
 
     st.write("## Load databases for a given date")
     refresh_cache = st.button("Re-query database")
-    merged = loading_and_merging_dbfs(database_directory, refresh_cache)
+    merged = _dbf.loading_and_merging_dbfs(database_directory, refresh_cache)
 
     st.write("## Filtering")
-    filtered = filtering_image_sets(merged)
+    filtered = _filtering.filtering_image_sets(merged)
 
     st.write(filtered)
 
@@ -320,8 +163,6 @@ def main():
     )
 
     st.write(with_patient)
-
-    st.write("## Filtering")
 
     # table_matching_selected_date.merge()
 
