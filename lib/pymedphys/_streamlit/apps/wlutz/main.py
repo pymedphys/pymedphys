@@ -13,13 +13,6 @@
 # limitations under the License.
 
 
-# import os
-
-import datetime
-
-# from pymedphys._imports import plt
-from pymedphys._imports import numpy as np
-from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
@@ -49,14 +42,8 @@ def main():
 
     st.write(filtered)
 
-    # st.write(merged)
-
-    # port = load_dbf(database_directory, refresh_cache, "port")
-
-    # merged_with_port = patimg_filtered_by_date.merge(
-    #     port, left_on="PORT_DBID", right_on="PORT_DBID"
-    # )
-    # st.write(merged_with_port)
+    if len(filtered) == 0:
+        st.stop()
 
     st.write("## Loading database image frame data")
 
@@ -68,10 +55,6 @@ def main():
         table = _frames.xml_frame_based_database(database_directory, filtered)
 
     st.write(table)
-
-    # table_matching_selected_date.merge()
-
-    # files = get_jpg_list(database_directory)
 
     # # st.write(files)
     # sorted_files = sorted(files, key=get_modified_time, reverse=True)
