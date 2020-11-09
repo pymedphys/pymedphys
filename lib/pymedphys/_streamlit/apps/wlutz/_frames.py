@@ -11,7 +11,7 @@ def calc_filepath_from_frames_dbid(dbid_series):
 
 
 def calculate_delta_offsets(table):
-    delta = pd.to_timedelta(table["DELTA_MS"], unit="ms")
+    delta = pd.to_timedelta(table["DELTA_MS"].astype(int), unit="ms")
     timestamps = table["datetime"] + delta
 
     table["time"] = timestamps.dt.time
