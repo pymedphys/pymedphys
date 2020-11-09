@@ -27,7 +27,6 @@ def final_frame_column_adjustment(table):
         [
             "filepath",
             "time",
-            "DELTA_MS",
             "machine_id",
             "patient_id",
             "treatment",
@@ -130,7 +129,6 @@ def xml_frame_based_database(database_directory, filtered_table):
         frame_table, left_on="DICOM_UID", right_on="DICOM_UID"
     )
 
-    # TODO: This seems to not be doing the right thing
     merged = calculate_delta_offsets(merged)
 
     filepaths = calc_xml_based_jpg_filepaths(merged)
