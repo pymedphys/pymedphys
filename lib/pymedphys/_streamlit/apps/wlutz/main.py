@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from pymedphys._imports import streamlit as st
+from pymedphys._imports import streamlit as st, plt
 
 from pymedphys import _losslessjpeg as lljpeg
 
@@ -55,6 +55,12 @@ def main():
         table = _frames.xml_frame_based_database(database_directory, filtered)
 
     st.write(table)
+
+    selected_filepath = st.selectbox("Select single filepath", table["filepath"])
+
+    fig, ax = plt.subplots()
+    ax.imshow(read_image(database_directory.joinpath(selected_filepath)))
+    st.pyplot(fig)
 
     # # st.write(files)
     # sorted_files = sorted(files, key=get_modified_time, reverse=True)
