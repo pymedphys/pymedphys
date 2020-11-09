@@ -59,16 +59,51 @@ def load_xml(filepath):
     return doc
 
 
+@st.cache()
+def data_from_doc(doc):
+    table_rows = []
+
+    projection_set = doc["ProjectionSet"]
+    dicom_uid = projection_set["Image"]["DicomUID"]
+
+    frames = projection_set["Frames"]["Frame"]
+
+    if isinstance(frames, dict):
+        sequence = frames["Seq"]
+        delta_ms = frames["DeltaMs"]
+
+        table_rows.append(
+            {"sequence": sequence, "delta_ms": delta_ms, "DICOM_UID": dicom_uid}
+        )
+    elif isinstance(frames, list):
+        for frame in frames:
+            sequence = frame["Seq"]
+            delta_ms = frame["DeltaMs"]
+
+            table_rows.append(
+                {"sequence": sequence, "delta_ms": delta_ms, "DICOM_UID": dicom_uid}
+            )
+    else:
+        raise ValueError("Unexpected type of frame")
+
+    return table_rows
+
+
 def xml_frame_based_database(database_directory, filtered_table):
     xml_filepaths = calc_xml_filepaths(filtered_table)
 
-    for filepath in xml_filepaths:
-        doc = load_xml(database_directory.joinpath(filepath))
-        st.write(doc)
+    xml_docs = [
+        load_xml(database_directory.joinpath(filepath)) for filepath in xml_filepaths
+    ]
+    frame_table_rows = []
+    for doc in xml_docs:
+        frame_table_rows += data_from_doc(doc)
 
-    with_frame = filtered_table
-    with_frame["filepath"] = filepaths
+    frame_table = pd.DataFrame.from_dict(frame_table_rows)
 
-    st.write(filtered_table["DICOM_UID"])
+    merged = filtered_table.merge(
+        frame_table, left_on="DICOM_UID", right_on="DICOM_UID"
+    )
+    st.write(merged)
 
-    return filtered_table
+    st.stop()
