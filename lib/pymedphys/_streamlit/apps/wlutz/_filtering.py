@@ -1,0 +1,62 @@
+# Copyright (C) 2020 Cancer Care Associates
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+import datetime
+
+from pymedphys._imports import numpy as np
+from pymedphys._imports import streamlit as st
+
+
+def filtering_image_sets(to_be_filtered):
+    filtered = to_be_filtered
+
+    # Machine ID
+    machine_id = st.radio("Machine", filtered["machine_id"].unique())
+    filtered = filtered.loc[filtered["machine_id"] == machine_id]
+
+    # Patient ID
+    patient_id = st.radio("Patient", filtered["patient_id"].unique())
+    filtered = filtered.loc[filtered["patient_id"] == patient_id]
+
+    # Time
+    time_step = datetime.timedelta(minutes=1)
+    min_time = (np.min(filtered["datetime"])).floor("min").time()
+    max_time = (np.max(filtered["datetime"])).ceil("min").time()
+
+    time_range = st.slider(
+        "Time",
+        min_value=min_time,
+        max_value=max_time,
+        step=time_step,
+        value=[min_time, max_time],
+    )
+
+    filtered = filtered.loc[
+        (filtered["time"] >= time_range[0]) & (filtered["time"] <= time_range[1])
+    ]
+
+    # Treatments
+    unique_treatments = filtered["treatment"].unique().tolist()
+    selected_treatments = st.multiselect(
+        "Treatment", unique_treatments, default=unique_treatments
+    )
+    filtered = filtered.loc[filtered["treatment"].isin(selected_treatments)]
+
+    # Ports
+    unique_ports = filtered["port"].unique().tolist()
+    selected_ports = st.multiselect("Ports", unique_ports, default=unique_ports)
+    filtered = filtered.loc[filtered["port"].isin(selected_ports)]
+
+    return filtered
