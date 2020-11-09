@@ -57,12 +57,7 @@ def calc_filepath_from_frames_dbid(dbid_series):
 
 
 @st.cache()
-def calc_timestamps(frames, patimg):
-    filepaths = calc_filepath_from_frames_dbid(frames["DBID"])
-
-    frame_with_filepath = frames[["DBID", "PIMG_DBID", "DELTA_MS"]]
-    frame_with_filepath["filepath"] = filepaths
-
+def calc_timestamps(frame_with_filepath, patimg):
     img_date_time = patimg[["DBID", "IMG_DATE", "IMG_TIME", "PORT_DBID", "ORG_DTL"]]
 
     merged = frame_with_filepath.merge(
@@ -97,6 +92,35 @@ def calc_timestamps(frames, patimg):
     return resolved
 
 
+def load_dbf_database(
+    database_directory, refresh_cache, dbf_filename, columns_to_keep, column_rename_map
+):
+    dbf_path = database_directory.joinpath(dbf_filename)
+    table = dbf_to_pandas(dbf_path, refresh_cache)[columns_to_keep]
+    table.rename(column_rename_map, axis="columns", inplace=True)
+
+    return table
+
+
+def load_patimg(database_directory, refresh_cache):
+    patimg = load_dbf_database(
+        database_directory,
+        refresh_cache,
+        dbf_filename="PATIMG.dbf",
+        columns_to_keep=[
+            "DBID",
+            "DICOM_UID",
+            "IMG_DATE",
+            "IMG_TIME",
+            "PORT_DBID",
+            "ORG_DTL",
+        ],
+        column_rename_map={"DBID": "PIMG_DBID"},
+    )
+
+    return patimg
+
+
 def main():
     st.title("Winston-Lutz Arc")
 
@@ -104,6 +128,16 @@ def main():
 
     frame_dbf_path = database_directory.joinpath("FRAME.dbf")
     refresh_cache = st.button("Re-query database")
+
+    patimg = load_patimg(database_directory, refresh_cache)
+
+    dates = pd.to_datetime(patimg["IMG_DATE"], format="%Y%m%d").dt.date
+    date_options = dates.sort_values(ascending=False).unique()
+
+    selected_date = st.selectbox("Date", options=date_options)
+    patimg_filtered_by_date = patimg.loc[dates == selected_date]
+
+    st.write(patimg_filtered_by_date)
 
     try:
         frames = dbf_to_pandas(frame_dbf_path, refresh_cache)
@@ -115,10 +149,12 @@ def main():
         )
         st.stop()
 
-    patimg_dbf_path = database_directory.joinpath("PATIMG.dbf")
-    patimg = dbf_to_pandas(patimg_dbf_path, refresh_cache)
+    filepaths = calc_filepath_from_frames_dbid(frames["DBID"])
 
-    timestamps = calc_timestamps(frames, patimg)
+    frame_with_filepath = frames[["DBID", "PIMG_DBID", "DELTA_MS"]]
+    frame_with_filepath["filepath"] = filepaths
+
+    timestamps = calc_timestamps(frame_with_filepath, patimg)
 
     date_options = timestamps["date"].unique()
 
