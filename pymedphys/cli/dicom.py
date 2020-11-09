@@ -16,6 +16,7 @@
 """
 
 from pymedphys._dicom.anonymise import anonymise_cli
+from pymedphys._dicom.connect.listen import listen_cli
 from pymedphys._dicom.header import (
     adjust_machine_name_cli,
     adjust_RED_by_structure_name_cli,
@@ -35,6 +36,7 @@ def set_up_dicom_cli(subparsers):
     adjust_machine_name(dicom_subparsers)
     adjust_rel_elec_density(dicom_subparsers)
     adjust_RED_by_structure_name(dicom_subparsers)
+    listen(dicom_subparsers)
 
     return dicom_parser, dicom_subparsers
 
@@ -229,3 +231,21 @@ def anonymise(dicom_subparsers):
     parser.set_defaults(func=anonymise_cli)
 
     return parser
+
+
+def listen(dicom_subparsers):
+    parser = dicom_subparsers.add_parser(
+        "listen", help="Start a Dicom listener on the specified port"
+    )
+
+    parser.add_argument("port", type=int, help="The port on which to listen")
+    parser.add_argument("-d", "--storage_directory", default=".", type=str, help="")
+    parser.add_argument(
+        "-a",
+        "--aetitle",
+        default="PYMEDPHYS",
+        type=str,
+        help="The AE Title of this listen service",
+    )
+
+    parser.set_defaults(func=listen_cli)

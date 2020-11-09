@@ -111,7 +111,7 @@ Active contributors
 
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
-    * `South Western Sydney Local Health District`_, Australia
+    * `Ingham Institute`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
