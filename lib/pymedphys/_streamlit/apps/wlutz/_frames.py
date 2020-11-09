@@ -10,24 +10,24 @@ def calc_filepath_from_frames_dbid(dbid_series):
     return [f"img/{f'{dbid:0>8x}'.upper()}.jpg" for dbid in dbid_series]
 
 
-def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
-    frame = _dbf.load_dbf(database_directory, refresh_cache, "frame")
-    with_frame = filtered_table.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
+def calculate_delta_offsets(table):
+    delta = pd.to_timedelta(table["DELTA_MS"], unit="ms")
+    timestamps = table["datetime"] + delta
 
-    delta = pd.to_timedelta(with_frame["DELTA_MS"], unit="ms")
-    timestamps = with_frame["datetime"] + delta
+    table["time"] = timestamps.dt.time
+    table["datetime"] = timestamps
 
-    with_frame["time"] = timestamps.dt.time
-    with_frame["datetime"] = timestamps
+    table.sort_values("datetime", ascending=False, inplace=True)
 
-    with_frame.sort_values("datetime", ascending=False, inplace=True)
+    return table
 
-    filepaths = calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
-    with_frame["filepath"] = filepaths
-    with_frame = with_frame[
+
+def final_frame_column_adjustment(table):
+    return table[
         [
             "filepath",
             "time",
+            "DELTA_MS",
             "machine_id",
             "patient_id",
             "treatment",
@@ -37,18 +37,17 @@ def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
         ]
     ]
 
-    return with_frame
 
+def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
+    frame = _dbf.load_dbf(database_directory, refresh_cache, "frame")
+    with_frame = filtered_table.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
 
-@st.cache()
-def calc_xml_filepaths(table):
-    return (
-        "patient_"
-        + table["patient_id"].astype("str")
-        + "/MV_IMAGES/img_"
-        + table["DICOM_UID"].astype("str")
-        + "/_Frame.xml"
-    )
+    with_frame = calculate_delta_offsets(with_frame)
+
+    filepaths = calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
+    with_frame["filepath"] = filepaths
+
+    return final_frame_column_adjustment(with_frame)
 
 
 @st.cache()
@@ -73,7 +72,7 @@ def data_from_doc(doc):
         delta_ms = frames["DeltaMs"]
 
         table_rows.append(
-            {"sequence": sequence, "delta_ms": delta_ms, "DICOM_UID": dicom_uid}
+            {"sequence": sequence, "DELTA_MS": delta_ms, "DICOM_UID": dicom_uid}
         )
     elif isinstance(frames, list):
         for frame in frames:
@@ -81,12 +80,38 @@ def data_from_doc(doc):
             delta_ms = frame["DeltaMs"]
 
             table_rows.append(
-                {"sequence": sequence, "delta_ms": delta_ms, "DICOM_UID": dicom_uid}
+                {"sequence": sequence, "DELTA_MS": delta_ms, "DICOM_UID": dicom_uid}
             )
     else:
         raise ValueError("Unexpected type of frame")
 
     return table_rows
+
+
+@st.cache()
+def calc_xml_filepaths(table):
+    return (
+        "patient_"
+        + table["patient_id"].astype("str")
+        + "/MV_IMAGES/img_"
+        + table["DICOM_UID"].astype("str")
+        + "/_Frame.xml"
+    )
+
+
+@st.cache()
+def calc_xml_based_jpg_filepaths(table):
+    return (
+        "patient_"
+        + table["patient_id"].astype("str")
+        + "/MV_IMAGES/img_"
+        + table["DICOM_UID"].astype("str")
+        + "/"
+        + table["sequence"].str.zfill(5)
+        + "."
+        + table["DICOM_UID"].astype("str")
+        + ".jpg"
+    )
 
 
 def xml_frame_based_database(database_directory, filtered_table):
@@ -104,6 +129,11 @@ def xml_frame_based_database(database_directory, filtered_table):
     merged = filtered_table.merge(
         frame_table, left_on="DICOM_UID", right_on="DICOM_UID"
     )
-    st.write(merged)
 
-    st.stop()
+    # TODO: This seems to not be doing the right thing
+    merged = calculate_delta_offsets(merged)
+
+    filepaths = calc_xml_based_jpg_filepaths(merged)
+    merged["filepath"] = filepaths
+
+    return final_frame_column_adjustment(merged)
