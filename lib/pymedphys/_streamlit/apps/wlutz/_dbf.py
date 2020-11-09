@@ -19,6 +19,11 @@ from pymedphys._streamlit.utilities import dbf
 
 
 DBF_DATABASE_LOADING_CONFIG = {
+    "frame": {
+        "filename": "FRAME.dbf",
+        "columns_to_keep": ["DBID", "PIMG_DBID", "DELTA_MS"],
+        "column_rename_map": {"DBID": "FRAME_DBID"},
+    },
     "patimg": {
         "filename": "PATIMG.dbf",
         "columns_to_keep": [
@@ -85,13 +90,11 @@ def loading_and_merging_dbfs(database_directory, refresh_cache):
             "patient_id",
             "treatment",
             "port",
+            "datetime",
             "LAST_NAME",
             "FIRST_NAME",
             "PIMG_DBID",
-            "IMG_DATE",
-            "IMG_TIME",
             "DICOM_UID",
-            "datetime",
         ]
     ]
 
