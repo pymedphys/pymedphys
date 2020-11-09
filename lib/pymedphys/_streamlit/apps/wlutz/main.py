@@ -140,16 +140,7 @@ def load_dbf(database_directory, refresh_cache, config_key):
     return table
 
 
-def main():
-    st.title("Winston-Lutz Arc")
-
-    _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
-
-    frame_dbf_path = database_directory.joinpath("FRAME.dbf")
-    refresh_cache = st.button("Re-query database")
-
-    st.write("## Filtering")
-
+def loading_and_merging_dbfs(database_directory, refresh_cache):
     patimg = load_dbf(database_directory, refresh_cache, "patimg")
 
     dates = pd.to_datetime(patimg["IMG_DATE"], format="%Y%m%d").dt.date
@@ -195,7 +186,11 @@ def main():
         ]
     ]
 
-    filtered = merged
+    return merged
+
+
+def filtering_image_sets(to_be_filtered):
+    filtered = to_be_filtered
 
     # Machine ID
     machine_id = st.radio("Machine", filtered["machine_id"].unique())
@@ -233,6 +228,21 @@ def main():
     unique_ports = filtered["port"].unique().tolist()
     selected_ports = st.multiselect("Ports", unique_ports, default=unique_ports)
     filtered = filtered.loc[filtered["port"].isin(selected_ports)]
+
+    return filtered
+
+
+def main():
+    st.title("Winston-Lutz Arc")
+
+    _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
+
+    st.write("## Load databases for a given date")
+    refresh_cache = st.button("Re-query database")
+    merged = loading_and_merging_dbfs(database_directory, refresh_cache)
+
+    st.write("## Filtering")
+    filtered = filtering_image_sets(merged)
 
     st.write(filtered)
 
