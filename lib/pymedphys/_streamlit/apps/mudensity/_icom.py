@@ -44,6 +44,59 @@ def load_icom_streams(icom_paths):
 # TODO: Split this up to search by site
 # See <https://github.com/pymedphys/pymedphys/issues/1141>
 def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False, **_):
+    """Streamlit GUI method to facilitate iCOM data provision to the
+    mudensity GUI.
+
+    Notes
+    -----
+    Parameters to this function are to facilitate the case where this
+    is the second data input method in the GUI. That way, if a Patient
+    ID was written in the first data input method that Patient ID can
+    be passed to this function and any GUI element requesting that
+    parameter can default to what the user has already typed/selected.
+
+    Parameters
+    ----------
+    patient_id : optional
+        The Patient ID, should correspond to the entry for that patient
+        within the Mosaiq DB (Ident.Pat_ID1).
+
+    key_namespace : str, optional
+        A string that is prepended to the key parameter within each
+        streamlit widget. See
+        <https://docs.streamlit.io/en/stable/api.html#display-interactive-widgets>
+        for information regarding this key parameter. Importantly this
+        allows for two data sources, both reference and evaluation, to
+        use the same input method with their widgets, without the widget
+        state clashing between them within the GUI.
+
+    Returns
+    -------
+    results : dict
+        A dictionary containing the keys, "site", "patient_id",
+        "patient_name", "selected_icom_deliveries", "data_paths",
+        "identifier, and "deliveries".
+
+        These are items that either have been selected by the user
+        within the GUI displayed by this method or are the result of
+        data collected/loaded/processed.
+
+        * "site" is not currently utilised and is set to None to
+          indicate that subsequent input methods need to collect this
+          from the user.
+        * "patient_id" is provided by the user as an ``st.text_input``.
+        * "selected_icom_deliveries" a list of timestamps of icom
+          deliveries selected by the user within an ``st.multiselect``.
+        * "data_paths" is a list of ``pathlib.Path``s that point to the
+          user selected icom deliveries.
+        * "identifier" is a human readable string that is to be printed
+          on the PDF report. Here it is a string that contains the words
+          iCOM and the first filepath name chosen.
+        * "deliveries" is a list of ``pymedphys.Delivery`` objects that
+          are parsed from the loaded iCOM data.
+
+    """
+
     icom_directories = _config.get_default_icom_directories()
 
     if advanced_mode_local:
