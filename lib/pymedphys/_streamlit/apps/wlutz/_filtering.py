@@ -16,10 +16,17 @@
 import datetime
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
 
-def filtering_image_sets(to_be_filtered):
+def filter_image_sets(to_be_filtered: "pd.DataFrame") -> "pd.DataFrame":
+    """Filter an iView image set via streamlit user input.
+
+    Filtering is undergone by machine_id, patient_id, datetime
+
+
+    """
     filtered = to_be_filtered
 
     # Machine ID
@@ -31,6 +38,8 @@ def filtering_image_sets(to_be_filtered):
     filtered = filtered.loc[filtered["patient_id"] == patient_id]
 
     # Time
+    time = filtered["datetime"].dt.time
+
     time_step = datetime.timedelta(minutes=1)
     min_time = (np.min(filtered["datetime"])).floor("min").time()
     max_time = (np.max(filtered["datetime"])).ceil("min").time()
@@ -43,9 +52,7 @@ def filtering_image_sets(to_be_filtered):
         value=[min_time, max_time],
     )
 
-    filtered = filtered.loc[
-        (filtered["time"] >= time_range[0]) & (filtered["time"] <= time_range[1])
-    ]
+    filtered = filtered.loc[(time >= time_range[0]) & (time <= time_range[1])]
 
     # Treatments
     unique_treatments = filtered["treatment"].unique().tolist()
