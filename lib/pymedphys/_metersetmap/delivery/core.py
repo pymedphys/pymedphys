@@ -15,11 +15,11 @@
 
 from pymedphys._base.delivery import DeliveryBase
 
-from ..mudensity import calc_mu_density
+from ..metersetmap import calc_metersetmap
 
 
-class DeliveryMuDensity(DeliveryBase):
-    def mudensity(
+class DeliveryMetersetMap(DeliveryBase):
+    def metersetmap(
         self,
         gantry_angles=None,
         gantry_tolerance=3,
@@ -41,10 +41,10 @@ class DeliveryMuDensity(DeliveryBase):
             gantry_angles, gantry_tolerance
         )
 
-        mudensities = []
+        metersetmaps = []
         for delivery_data in masked_by_gantry:
-            mudensities.append(
-                calc_mu_density(
+            metersetmaps.append(
+                calc_metersetmap(
                     delivery_data.monitor_units,
                     delivery_data.mlc,
                     delivery_data.jaw,
@@ -56,7 +56,7 @@ class DeliveryMuDensity(DeliveryBase):
             )
 
         if not output_always_list:
-            if len(mudensities) == 1:
-                return mudensities[0]
+            if len(metersetmaps) == 1:
+                return metersetmaps[0]
 
-        return mudensities
+        return metersetmaps
