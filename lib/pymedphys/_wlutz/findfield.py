@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import scipy
+from pymedphys._imports import pylinac, scipy
 
 from pymedphys._vendor.pylinac import winstonlutz as pylinac_wlutz
 
@@ -111,7 +111,7 @@ def field_centre_and_rotation_refining(
 
     if not pylinac_tol is None:
         try:
-            pylinac = run_wlutz(
+            pylinac_result = run_wlutz(
                 field,
                 edge_lengths,
                 penumbra,
@@ -126,16 +126,16 @@ def field_centre_and_rotation_refining(
             )
 
         pylinac_2_2_6_out_of_tol = np.any(
-            np.abs(np.array(pylinac["2.2.6"]["field_centre"]) - predicted_centre)
+            np.abs(np.array(pylinac_result["2.2.6"]["field_centre"]) - predicted_centre)
             > pylinac_tol
         )
         pylinac_2_2_7_out_of_tol = np.any(
-            np.abs(np.array(pylinac["2.2.7"]["field_centre"]) - predicted_centre)
+            np.abs(np.array(pylinac_result["2.2.7"]["field_centre"]) - predicted_centre)
             > pylinac_tol
         )
         pylinac_out_of_tol = np.any(
             np.abs(
-                np.array(pylinac[pylinac.__version__]["field_centre"])
+                np.array(pylinac_result[pylinac.__version__]["field_centre"])
                 - predicted_centre
             )
             > pylinac_tol
