@@ -56,8 +56,69 @@ DBF_DATABASE_LOADING_CONFIG = {
 }
 
 
-def load_and_merge_dbfs(database_directory, refresh_cache):
-    """
+def load_and_merge_dbfs(
+    database_directory: pathlib.Path, refresh_cache: bool
+) -> "pd.DataFrame":
+    """Load the image sequence data for a user provided date. Merge in
+    relevant information from the relevant DBF databases.
+
+    The PATIMG.DBF database is loaded up and the user is asked to select
+    a date from that database. Then for the image sequences taken on
+    that date the PORT.DBF, TRTMNT.DBF, and PATIENT.DBF are
+    loaded and merged into date filtered PATIMG based ``pd.DataFrame``
+    using their corresponding DBID keys.
+
+    The DBID keys used to merge the databases together are respectively
+    PORT_DBID, TRT_DBID, and PAT_DBID.
+
+    Parameters
+    ----------
+    database_directory
+        The path to the iViewDB directory. This directory contains the
+        DBF files discussed above.
+    refresh_cache
+        Whether or not to reload the database caches from disk.
+
+    Returns
+    -------
+    table
+        A ``pandas.DataFrame`` that contains the columns "time",
+        "machine_id", "patient_id", "treatment", "port", "datetime",
+        "LAST_NAME", "FIRST_NAME", "PIMG_DBID", and "DICOM_UID".
+
+        time : datetime.time
+            The time of the image sequence start. Converted from the
+            column IMG_TIME within the PATIMG database.
+        machine_id : str
+            A machine identifier as defined by ORG_DTL within the
+            PATIMG database.
+        patient_id : str
+            A patient identifier as defined by the ID column within the
+            PATIENT database.
+        treatment : str
+            The treatment identifier as defined by the ID column within
+            the TRTMNT database.
+        port : str
+            A port identifier as defined by the ID column within the
+            PORT database.
+        datetime : datetime.datetime
+            The datetime representation of the image sequence start.
+            Converted from the combination of both the IMG_DATE and
+            IMG_TIME columns within the PATIMG database.
+        LAST_NAME : str
+            The LAST_NAME column from the PATIENT database.
+        FIRST_NAME : str
+            The FIRST_NAME column from the PATIENT database.
+        PIMG_DBID : int
+            The DBID column from the PATIMG database.
+        DICOM_UID : str
+            The DICOM_UID column from the PATIMG database.
+
+    Notes
+    -----
+    If this has been run before for this given path the cached result
+    for each database will be provided. The cache can be reset from the
+    DBF files by passing ``refresh_cache=True``
 
     """
     patimg = load_dbf(database_directory, refresh_cache, "patimg")
@@ -88,7 +149,7 @@ def load_and_merge_dbfs(database_directory, refresh_cache):
     merged["datetime"] = pd.to_datetime(timestamps_string, format="%Y%m%dT%H%M%S%f")
     merged["time"] = merged["datetime"].dt.time
 
-    merged = merged[
+    table = merged[
         [
             "time",
             "machine_id",
@@ -103,7 +164,7 @@ def load_and_merge_dbfs(database_directory, refresh_cache):
         ]
     ]
 
-    return merged
+    return table
 
 
 def dbf_to_pandas_without_cache(path: pathlib.Path) -> "pd.DataFrame":
@@ -126,7 +187,7 @@ def dbf_to_pandas_with_cache(path: pathlib.Path) -> "List[pd.DataFrame]":
 # driven event model. See
 # <https://github.com/pymedphys/pymedphys/pull/1143#discussion_r520242368>
 # for details.
-def dbf_to_pandas(path: pathlib.Path, refresh_cache=False) -> "pd.DataFrame":
+def dbf_to_pandas(path: pathlib.Path, refresh_cache=True) -> "pd.DataFrame":
     """Retrieves the pandas.DataFrame representation of a DBF database.
 
     Parameters
