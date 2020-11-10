@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import pathlib
+
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xmltodict
@@ -21,7 +23,18 @@ from pymedphys._streamlit.utilities import dbf, misc
 
 
 @st.cache()
-def get_files(directory, extension):
+def get_files_for_extension(directory: pathlib.Path, extension: str):
+    """Cached file list.
+
+    Parameters
+    ----------
+    directory
+        The directory within which to search
+
+    extension
+        The extension to recursively search for
+
+    """
     return [
         str(item.relative_to(directory)) for item in directory.glob(f"**/*{extension}")
     ]
@@ -29,6 +42,18 @@ def get_files(directory, extension):
 
 def main():
     st.title("iView Database Explorer")
+
+    st.write(
+        """
+            This tool was created to for my (Simon) own exploration
+            while building the Winston Lutz GUI. It is not intended to
+            ever come out of an experimental state. Unless some amazing
+            use case is found.
+
+            For now, it is simply an exploratory tool, shared in the
+            small chance that someone might find it helpful.
+        """
+    )
 
     _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
 
@@ -61,9 +86,9 @@ def main():
     st.write("## File lists")
 
     if st.button("Show *.jpg files"):
-        st.write(get_files(database_directory, ".jpg"))
+        st.write(get_files_for_extension(database_directory, ".jpg"))
 
-    xml_files = get_files(database_directory, ".xml")
+    xml_files = get_files_for_extension(database_directory, ".xml")
 
     if st.button("Show *.xml files"):
         st.write(xml_files)
