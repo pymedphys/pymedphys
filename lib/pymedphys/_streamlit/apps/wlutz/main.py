@@ -38,7 +38,7 @@ def main():
     merged = _dbf.load_and_merge_dbfs(database_directory, refresh_cache)
 
     st.write("## Filtering")
-    filtered = _filtering.filtering_image_sets(merged)
+    filtered = _filtering.filter_image_sets(merged)
     filtered.sort_values("datetime", ascending=False, inplace=True)
 
     st.write(filtered)

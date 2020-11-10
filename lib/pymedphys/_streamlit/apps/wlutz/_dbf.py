@@ -51,9 +51,6 @@ def load_and_merge_dbfs(
         "machine_id", "patient_id", "treatment", "port", "datetime",
         "LAST_NAME", "FIRST_NAME", "PIMG_DBID", and "DICOM_UID".
 
-        time : datetime.time
-            The time of the image sequence start. Converted from the
-            column IMG_TIME within the PATIMG database.
         machine_id : str
             A machine identifier as defined by ORG_DTL within the
             PATIMG database.
@@ -86,7 +83,7 @@ def load_and_merge_dbfs(
     DBF files by passing ``refresh_cache=True``
 
     """
-    patimg = _load_dbf(database_directory, refresh_cache, "patimg")
+    patimg = load_dbf(database_directory, refresh_cache, "patimg")
 
     dates = pd.to_datetime(patimg["IMG_DATE"], format="%Y%m%d").dt.date
     date_options = dates.sort_values(ascending=False).unique()
@@ -101,7 +98,7 @@ def load_and_merge_dbfs(
         ("trtmnt", "TRT_DBID"),
         ("patient", "PAT_DBID"),
     ]:
-        dbf_to_be_merged = _load_dbf(database_directory, refresh_cache, database_key)
+        dbf_to_be_merged = load_dbf(database_directory, refresh_cache, database_key)
         merged = merged.merge(dbf_to_be_merged, left_on=merge_key, right_on=merge_key)
 
     timestamps_string = (
@@ -112,11 +109,9 @@ def load_and_merge_dbfs(
     )
 
     merged["datetime"] = pd.to_datetime(timestamps_string, format="%Y%m%dT%H%M%S%f")
-    merged["time"] = merged["datetime"].dt.time
 
     table = merged[
         [
-            "time",
             "machine_id",
             "patient_id",
             "treatment",
@@ -129,6 +124,21 @@ def load_and_merge_dbfs(
         ]
     ]
 
+    return table
+
+
+def load_dbf(
+    database_directory: pathlib.Path, refresh_cache: bool, config_key: str
+) -> "pd.DataFrame":
+
+    current_config = _DBF_DATABASE_LOADING_CONFIG[config_key]
+    filename = cast(str, current_config["filename"])
+    columns_to_keep = cast(List[str], current_config["columns_to_keep"])
+    column_rename_map = cast(Dict[str, str], current_config["column_rename_map"])
+
+    table = _load_dbf_base(
+        database_directory, refresh_cache, filename, columns_to_keep, column_rename_map
+    )
     return table
 
 
@@ -174,21 +184,6 @@ _DBF_DATABASE_LOADING_CONFIG = {
         "column_rename_map": {"DBID": "PAT_DBID", "ID": "patient_id"},
     },
 }
-
-
-def _load_dbf(
-    database_directory: pathlib.Path, refresh_cache: bool, config_key: str
-) -> "pd.DataFrame":
-
-    current_config = _DBF_DATABASE_LOADING_CONFIG[config_key]
-    filename = cast(str, current_config["filename"])
-    columns_to_keep = cast(List[str], current_config["columns_to_keep"])
-    column_rename_map = cast(Dict[str, str], current_config["column_rename_map"])
-
-    table = _load_dbf_base(
-        database_directory, refresh_cache, filename, columns_to_keep, column_rename_map
-    )
-    return table
 
 
 def _dbf_to_pandas_without_cache(path: pathlib.Path) -> "pd.DataFrame":
