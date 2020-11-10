@@ -118,7 +118,7 @@ def xml_frame_based_database(
     """Determine the filepaths and delivery times for each frame
     relevant to the user for an xml based frame database.
 
-    This is achieved for loading the ``_Frame.xml`` files for each
+    This is achieved by loading the ``_Frame.xml`` files for each
     image series relevant to the user. The filepath is determined from
     a combination of patient_id, DICOM_UID with the ``Seq`` key found
     within the ``_Frame.xml`` file. The delivery time is determined by
