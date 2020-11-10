@@ -15,6 +15,8 @@
 
 from pymedphys._base.delivery import DeliveryBase
 
+from pymedphys._vendor.deprecated import deprecated as _deprecated
+
 from ..metersetmap import calc_metersetmap
 
 
@@ -60,3 +62,29 @@ class DeliveryMetersetMap(DeliveryBase):
                 return metersetmaps[0]
 
         return metersetmaps
+
+    @_deprecated(
+        reason=(
+            "pymedphys.Delivery.mudensity() has been renamed as "
+            "pymedphys.Delivery.metersetmap()"
+        )
+    )
+    def mudensity(
+        self,
+        gantry_angles=None,
+        gantry_tolerance=3,
+        grid_resolution=None,
+        max_leaf_gap=None,
+        leaf_pair_widths=None,
+        min_step_per_pixel=None,
+        output_always_list=False,
+    ):
+        return self.metersetmap(
+            gantry_angles=gantry_angles,
+            gantry_tolerance=gantry_tolerance,
+            grid_resolution=grid_resolution,
+            max_leaf_gap=max_leaf_gap,
+            leaf_pair_widths=leaf_pair_widths,
+            min_step_per_pixel=min_step_per_pixel,
+            output_always_list=output_always_list,
+        )
