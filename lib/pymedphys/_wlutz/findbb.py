@@ -17,7 +17,9 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt, pylinac, scipy
 
-from . import imginterp, interppoints, pylinac, reporting, utilities
+from . import imginterp, interppoints
+from . import pylinac as _vendor_pylinac
+from . import reporting, utilities
 
 BB_MIN_SEARCH_DIST = 2
 BB_REPEAT_TOL = 0.1
@@ -92,7 +94,7 @@ def optimise_bb_centre(
 
     if not pylinac_tol is None:
         try:
-            pylinac_result = pylinac.run_wlutz(
+            pylinac_result = _vendor_pylinac.run_wlutz(
                 field,
                 edge_lengths,
                 penumbra,
@@ -120,7 +122,7 @@ def optimise_bb_centre(
                 > pylinac_tol
             )
             if pylinac_out_of_tol:
-                raise pylinac.PylinacComparisonDeviation(
+                raise _vendor_pylinac.PylinacComparisonDeviation(
                     "The determined bb centre deviates from pylinac more "
                     "than the defined tolerance"
                 )
