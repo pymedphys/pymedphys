@@ -1,6 +1,6 @@
-##########
-MU Density
-##########
+###########
+MetersetMap
+###########
 
 .. contents::
     :local:
@@ -10,7 +10,7 @@ MU Density
 Summary
 *******
 
-.. automodule:: pymedphys.mudensity
+.. automodule:: pymedphys.metersetmap
     :no-members:
 
 
@@ -18,8 +18,8 @@ Summary
 API
 ***
 
-.. autofunction:: pymedphys.mudensity.calculate
+.. autofunction:: pymedphys.metersetmap.calculate
 
-.. autofunction:: pymedphys.mudensity.grid
+.. autofunction:: pymedphys.metersetmap.grid
 
-.. autofunction:: pymedphys.mudensity.display
+.. autofunction:: pymedphys.metersetmap.display
