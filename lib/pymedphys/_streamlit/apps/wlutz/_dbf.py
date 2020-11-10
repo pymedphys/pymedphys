@@ -112,14 +112,36 @@ def dbf_to_pandas_without_cache(path: pathlib.Path) -> "pd.DataFrame":
 
 @st.cache()
 def dbf_to_pandas_with_cache(path: pathlib.Path) -> "List[pd.DataFrame]":
+    """Streamlit cached dbf read.
+
+    Notes
+    -----
+    Returns a mutable list so that the cache can be updated inplace.
+
+    """
     return [dbf_to_pandas_without_cache(path)]
 
 
-# TODO: Replace the `refresh_cache` logic with a watchdog driven event
-# model. See <https://github.com/pymedphys/pymedphys/pull/1143#discussion_r520242368>
+# TODO: Consider replacing the `refresh_cache` logic with a watchdog
+# driven event model. See
+# <https://github.com/pymedphys/pymedphys/pull/1143#discussion_r520242368>
 # for details.
 def dbf_to_pandas(path: pathlib.Path, refresh_cache=False) -> "pd.DataFrame":
-    """
+    """Retrieves the pandas.DataFrame representation of a DBF database.
+
+    Parameters
+    ----------
+    path
+        The full DBF database path to load.
+    refresh_cache
+        Whether or not to reload the cache from disk.
+
+    Notes
+    -----
+    If this has been run before for this given path the cached result
+    will be provided without loading from the DBF database. The cache
+    can be overridden by passing ``refresh_cache=True``
+
     """
     result = dbf_to_pandas_with_cache(path)
 
