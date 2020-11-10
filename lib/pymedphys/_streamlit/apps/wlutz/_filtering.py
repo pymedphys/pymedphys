@@ -16,15 +16,16 @@
 import datetime
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pandas as pd
+from pymedphys._imports import pandas as pd  # pylint: disable = unused-import
 from pymedphys._imports import streamlit as st
 
 
 def filter_image_sets(to_be_filtered: "pd.DataFrame") -> "pd.DataFrame":
-    """Filter an iView image set via streamlit user input.
+    """Filter an iView image set pandas DataFrame via streamlit user input.
 
-    Filtering is undergone by machine_id, patient_id, datetime
-
+    Filtering is undergone by machine_id, patient_id, datetime,
+    treatment, and ports. This filtering is undergone via streamlit
+    widgets.
 
     """
     filtered = to_be_filtered
