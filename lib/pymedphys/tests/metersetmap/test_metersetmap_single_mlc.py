@@ -28,7 +28,7 @@ def test_minimal_variance_with_resolution():
     mlc_left = (-2.3, 3.1)
     mlc_right = (0, 7.7)
 
-    x_coarse, mmetersetmap_coarse = single_mlc_pair(mlc_left, mlc_right, 1)
+    x_coarse, metersetmap_coarse = single_mlc_pair(mlc_left, mlc_right, 1)
     x_fine, metersetmap_fine = single_mlc_pair(mlc_left, mlc_right, 0.01)
 
     reference = np.argmin(np.abs(x_fine[None, :] - x_coarse[:, None]), axis=0)
