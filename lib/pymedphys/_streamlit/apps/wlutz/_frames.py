@@ -38,8 +38,12 @@ def dbf_frame_based_database(
     refresh_cache: bool,
     filtered_table: "pd.DataFrame",
 ):
-    """Load the FRAME.DBF database and determine the filepaths and
-    delivery times for each jpg frame that is relevant to the user.
+    """Determine the filepaths and delivery times for each frame
+    relevant to the user for a dbf based frame database.
+
+    This is achieved by loading up the FRAME.DBF database and
+    determining filename from the DBID column and delivery time by
+    adjusting the image series datetime data by the DELTA_MS column.
 
     Parameters
     ----------
@@ -93,9 +97,7 @@ def dbf_frame_based_database(
     -----
     If this has been run before for this given path the cached result
     for each database will be provided. The cache can be reset from the
-    DBF files by passing ``refresh_cache=True``
-
-
+    DBF files by passing ``refresh_cache=True``.
 
     """
     frame = _dbf.load_iview_dbf(database_directory, refresh_cache, "frame")
@@ -109,7 +111,69 @@ def dbf_frame_based_database(
     return _final_frame_column_adjustment(with_frame)
 
 
-def xml_frame_based_database(database_directory, filtered_table):
+def xml_frame_based_database(
+    database_directory: pathlib.Path, filtered_table: "pd.DataFrame"
+):
+    """Determine the filepaths and delivery times for each frame
+    relevant to the user for an xml based frame database.
+
+    This is achieved for loading the ``_Frame.xml`` files for each
+    image series relevant to the user. The filepath is determined from
+    a combination of patient_id, DICOM_UID with the ``Seq`` key found
+    within the ``_Frame.xml`` file. The delivery time is determined by
+    adjusting the image series datetime by the ``DeltaMs`` parameter
+    found within the ``_Frame.xml`` file.
+
+    Parameters
+    ----------
+    database_directory
+        The path to the iViewDB directory.
+    filtered_table
+        A filtered ``pd.DataFrame`` containing the image sequences
+        relevant to the user. The column ``DICOM_UID`` is used within
+        this table to merge with the data loaded from the ``_Frame.xml``
+        files.
+
+    Returns
+    -------
+    table
+        A ``pandas.DataFrame`` that contains the columns "filepath",
+        "time", "machine_id", "patient_id", "treatment", "port",
+        "datetime", and "PIMG_DBID"
+
+        filepath : str
+            The filepath of the jpg image. Defined relative to the
+            iView database directory.
+        time : datetime.time
+            The time of the image frame. Defined as the sum of the
+            IMG_TIME column within the PATIMG database and the DeltaMs
+            parameter within the corresponding ``_Frame.xml`` file.
+            Although this information
+            is available within the datetime column, this is provided
+            so that the table is more informative to the user within
+            the streamlit display.
+        machine_id : str
+            A machine identifier as defined by ORG_DTL within the
+            PATIMG database.
+        patient_id : str
+            A patient identifier as defined by the ID column within the
+            PATIENT database.
+        treatment : str
+            The treatment identifier as defined by the ID column within
+            the TRTMNT database.
+        port : str
+            A port identifier as defined by the ID column within the
+            PORT database.
+        datetime : datetime.datetime
+            The datetime representation of the image sequence start.
+            Converted from the combination of the DeltaMs
+            parameter within the corresponding ``_Frame.xml`` file and
+            the IMG_DATE and IMG_TIME columns within the PATIMG
+            database.
+        PIMG_DBID : int
+            The DBID column from the PATIMG database.
+
+    """
     xml_filepaths = _calc_xml_filepaths(filtered_table)
 
     xml_docs = [
