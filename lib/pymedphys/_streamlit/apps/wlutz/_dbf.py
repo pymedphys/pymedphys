@@ -36,11 +36,19 @@ DBF_DATABASE_LOADING_CONFIG = {
             "PORT_DBID",
             "ORG_DTL",
         ],
-        "column_rename_map": {"DBID": "PIMG_DBID", "ORG_DTL": "machine_id"},
+        "column_rename_map": {
+            # These are renamed so that when a pd.DataFrame.merge()
+            # function is undergone the PIMG_DBID columns in both
+            # database have the same name
+            "DBID": "PIMG_DBID",
+            "ORG_DTL": "machine_id",
+        },
     },
     "port": {
         "filename": "PORT.dbf",
         "columns_to_keep": ["DBID", "TRT_DBID", "ID"],
+        # ID is renamed here so that when pd.DataFrame.merge() is
+        # undergone the ID columns between the databases don't clash
         "column_rename_map": {"DBID": "PORT_DBID", "ID": "port"},
     },
     "trtmnt": {
