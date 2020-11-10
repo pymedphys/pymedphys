@@ -22,6 +22,7 @@ import watchdog.observers
 import watchdog.observers.polling
 import yaml
 import xmltodict
+import pylinac
 
 import imageio
 import matplotlib

@@ -41,13 +41,14 @@ Features:
 
 from typing import List, Tuple
 
-from pymedphys._imports import numpy as np
+from pymedphys._imports import numpy as np, pylinac
 from pymedphys._imports import scipy, skimage
 
-from .core import image
-from .core.geometry import Point, Vector
-from .core.mask import bounding_box, filled_area_ratio
-from .core.profile import SingleProfile
+from .core import image as _vendor_image
+from .core import geometry as _vendor_geometry
+from .core import mask as _vendor_mask
+from .core import profile as _vendor_profile
+
 
 GANTRY = "Gantry"
 COLLIMATOR = "Collimator"
@@ -58,7 +59,20 @@ REFERENCE = "Reference"
 ALL = "All"
 
 
-class WLImage(image.ArrayImage):
+def get_version_to_class_map():
+    class WLImageCurrent(pylinac.image.ArrayImage):
+        pass
+
+    VERSION_TO_CLASS_MAP = {
+        "2.2.6": WLImage_2_2_6,
+        "2.2.7": WLImage_2_2_7,
+        pylinac.__version__: WLImageCurrent,
+    }
+
+    return VERSION_TO_CLASS_MAP
+
+
+class WLImage_2_2_7(_vendor_image.ArrayImage):
     """Holds individual Winston-Lutz EPID images, image properties, and automatically finds the field CAX and BB."""
 
     def __init__(self, array, *, dpi=None, sid=None, dtype=None):
@@ -101,7 +115,7 @@ class WLImage(image.ArrayImage):
             self.remove_edges(window_size)
             safety_stop -= 1
 
-    def _find_field_centroid(self) -> Tuple[Point, List]:
+    def _find_field_centroid(self) -> Tuple[_vendor_geometry.Point, List]:
         """Find the centroid of the radiation field based on a 50% height threshold.
 
         Returns
@@ -115,16 +129,16 @@ class WLImage(image.ArrayImage):
         threshold_img = self.as_binary((max_val - min_val) / 2 + min_val)
         # clean single-pixel noise from outside field
         cleaned_img = scipy.ndimage.binary_erosion(threshold_img)
-        [*edges] = bounding_box(cleaned_img)
+        [*edges] = _vendor_mask.bounding_box(cleaned_img)
         edges[0] -= 10
         edges[1] += 10
         edges[2] -= 10
         edges[3] += 10
         coords = scipy.ndimage.measurements.center_of_mass(threshold_img)
-        p = Point(x=coords[-1], y=coords[0])
+        p = _vendor_geometry.Point(x=coords[-1], y=coords[0])
         return p, edges
 
-    def _find_bb(self) -> Point:
+    def _find_bb(self) -> _vendor_geometry.Point:
         """Find the BB within the radiation field. Iteratively searches for a circle-like object
         by lowering a low-pass threshold value until found.
 
@@ -168,22 +182,24 @@ class WLImage(image.ArrayImage):
                 found = True
 
         # determine the center of mass of the BB
-        inv_img = image.ArrayImage(self.array)
+        inv_img = _vendor_image.ArrayImage(self.array)
         # we invert so BB intensity increases w/ attenuation
         inv_img.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
         bb_rprops = skimage.measure.regionprops(bw_bb_img, intensity_image=inv_img)[0]
-        return Point(bb_rprops.weighted_centroid[1], bb_rprops.weighted_centroid[0])
+        return _vendor_geometry.Point(
+            bb_rprops.weighted_centroid[1], bb_rprops.weighted_centroid[0]
+        )
 
     @property
-    def epid(self) -> Point:
+    def epid(self) -> _vendor_geometry.Point:
         """Center of the EPID panel"""
         return self.center
 
     @property
-    def cax2epid_vector(self) -> Vector:
+    def cax2epid_vector(self) -> _vendor_geometry.Vector:
         """The vector in mm from the CAX to the EPID center pixel"""
         dist = (self.epid - self.field_cax) / self.dpmm
-        return Vector(dist.x, dist.y, dist.z)
+        return _vendor_geometry.Vector(dist.x, dist.y, dist.z)
 
     @property
     def cax2bb_distance(self):
@@ -199,7 +215,7 @@ class WLImage(image.ArrayImage):
 
 def is_symmetric(logical_array) -> bool:
     """Whether the binary object's dimensions are symmetric, i.e. a perfect circle. Used to find the BB."""
-    ymin, ymax, xmin, xmax = bounding_box(logical_array)
+    ymin, ymax, xmin, xmax = _vendor_mask.bounding_box(logical_array)
     y = abs(ymax - ymin)
     x = abs(xmax - xmin)
     if x > max(y * 1.05, y + 3) or x < min(y * 0.95, y - 3):
@@ -224,12 +240,12 @@ def is_round(rprops):
 def is_round_old(logical_array):
     """Decide if the ROI is circular in nature by testing the filled area vs bounding box. Used to find the BB."""
     expected_fill_ratio = np.pi / 4
-    actual_fill_ratio = filled_area_ratio(logical_array)
+    actual_fill_ratio = _vendor_mask.filled_area_ratio(logical_array)
     return expected_fill_ratio * 1.2 > actual_fill_ratio > expected_fill_ratio * 0.8
 
 
-class WLImageOld(WLImage):
-    def _find_bb(self) -> Point:
+class WLImage_2_2_6(WLImage_2_2_7):
+    def _find_bb(self) -> _vendor_geometry.Point:
         """Find the BB within the radiation field. Iteratively searches for a circle-like object
         by lowering a low-pass threshold value until found.
         Returns
@@ -269,10 +285,10 @@ class WLImageOld(WLImage):
                 found = True
 
         # determine the center of mass of the BB
-        inv_img = image.ArrayImage(self.array)
+        inv_img = _vendor_image.ArrayImage(self.array)
         inv_img.invert()
         x_arr = np.abs(np.average(bw_bb_img, weights=inv_img, axis=0))
-        x_com = SingleProfile(x_arr).fwxm_center(interpolate=True)
+        x_com = _vendor_profile.SingleProfile(x_arr).fwxm_center(interpolate=True)
         y_arr = np.abs(np.average(bw_bb_img, weights=inv_img, axis=1))
-        y_com = SingleProfile(y_arr).fwxm_center(interpolate=True)
-        return Point(x_com, y_com)
+        y_com = _vendor_profile.SingleProfile(y_arr).fwxm_center(interpolate=True)
+        return _vendor_geometry.Point(x_com, y_com)
