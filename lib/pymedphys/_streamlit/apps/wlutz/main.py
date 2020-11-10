@@ -35,7 +35,7 @@ def main():
 
     st.write("## Load iView databases for a given date")
     refresh_cache = st.button("Re-query databases")
-    merged = _dbf.loading_and_merging_dbfs(database_directory, refresh_cache)
+    merged = _dbf.load_and_merge_dbfs(database_directory, refresh_cache)
 
     st.write("## Filtering")
     filtered = _filtering.filtering_image_sets(merged)
