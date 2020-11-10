@@ -38,7 +38,7 @@ def final_frame_column_adjustment(table):
 
 
 def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
-    frame = _dbf.load_dbf(database_directory, refresh_cache, "frame")
+    frame = _dbf.load_iview_dbf(database_directory, refresh_cache, "frame")
     with_frame = filtered_table.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
 
     with_frame = calculate_delta_offsets(with_frame)
