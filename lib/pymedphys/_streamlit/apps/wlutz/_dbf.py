@@ -49,7 +49,7 @@ def load_and_merge_dbfs(
     table
         A ``pandas.DataFrame`` that contains the columns
         "machine_id", "patient_id", "treatment", "port", "datetime",
-        "LAST_NAME", "FIRST_NAME", "PIMG_DBID", and "DICOM_UID".
+        "PIMG_DBID", and "DICOM_UID".
 
         machine_id : str
             A machine identifier as defined by ORG_DTL within the
