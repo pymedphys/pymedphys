@@ -60,7 +60,57 @@ ALL = "All"
 
 def get_version_to_class_map():
     class WLImageCurrent(pylinac.image.ArrayImage):
-        pass
+        """This is a custom override version of pylinac's WLImage class.
+
+        It is designed to be able to support raw image in-memory arrays
+        instead of DICOM files on disk as the original WLImage class
+        required.
+
+        See the following issue for more details:
+
+            <https://github.com/jrkerns/pylinac/issues/277>
+        """
+
+        def __init__(self, array, *, dpi=None, sid=None, dtype=None):
+            super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
+            self.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
+            self._clean_edges()
+            self.ground()
+            self.normalize()
+            self._field_cax = None
+            self.rad_field_bounding_box = None
+            self._bb = None
+
+        def _run_field_finding(self):
+            self._field_cax, self.rad_field_bounding_box = self._find_field_centroid()
+
+        @property
+        def field_cax(self):
+            if self._field_cax is None:
+                self._run_field_finding()
+
+            return self._field_cax
+
+        @property
+        def bb(self):
+            if self._bb is None:
+                if self.rad_field_bounding_box is None:
+                    self._run_field_finding()
+
+                self._bb = self._find_bb()
+
+            return self._bb
+
+        __repr__ = pylinac.winston_lutz.WLImage.__repr__
+        _clean_edges = (
+            pylinac.winston_lutz.WLImage._clean_edges  # pylint: disable = protected-access
+        )
+        _find_field_centroid = (
+            pylinac.winston_lutz.WLImage._find_field_centroid  # pylint: disable = protected-access
+        )
+        _find_bb = (
+            pylinac.winston_lutz.WLImage._find_bb  # pylint: disable = protected-access
+        )
 
     VERSION_TO_CLASS_MAP = {
         "2.2.6": WLImage_2_2_6,
