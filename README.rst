@@ -136,7 +136,7 @@ Active contributors
 .. _`Rafael Ayala`: https://github.com/ayalalazaro
 
 
-|rccc| |uth| |uoc| |hgugm|
+|rccc| |uth| |uoc| |hgugm| |sjs|
 
 
 Maintainer emeritus
@@ -178,6 +178,9 @@ Past contributors
 .. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/HGUGM_200x200.png
     :target: `Hospital General Universitario Gregorio Marañón`_
 
+.. |sjs| image:: https://github.com/sjswerdloff/pymedphys/raw/c84e1608b86b09234bcefc19f78287a21c564b52/logos/SwerdloffCoatOfArms_200x200.png
+    :target: `Swerdloff Family`_
+
 .. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
 
 .. _`ELEKTA Pty Ltd`: https://www.elekta.com/
@@ -199,6 +202,8 @@ Past contributors
 .. _`UT Health San Antonio`: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
 
 .. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
+
+.. _`Swerdloff Family`: https://github.com/sjswerdloff
 
 .. END_OF_DOCS_IMPORT
 
