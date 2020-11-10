@@ -58,6 +58,11 @@ REFERENCE = "Reference"
 ALL = "All"
 
 
+def get_latest_wlimage():
+    VERSION_TO_CLASS_MAP = get_version_to_class_map()
+    return VERSION_TO_CLASS_MAP[pylinac.__version__]
+
+
 @functools.lru_cache()
 def get_version_to_class_map():
     class WLImageCurrent(pylinac.image.ArrayImage):
