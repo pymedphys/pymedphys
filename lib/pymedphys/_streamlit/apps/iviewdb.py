@@ -30,7 +30,6 @@ def get_files_for_extension(directory: pathlib.Path, extension: str):
     ----------
     directory
         The directory within which to search
-
     extension
         The extension to recursively search for
 
