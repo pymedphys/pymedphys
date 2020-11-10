@@ -105,6 +105,7 @@ Maintainers
 
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
+|rccc| |sjs|
 
 Active contributors
 ...................
@@ -136,7 +137,7 @@ Active contributors
 .. _`Rafael Ayala`: https://github.com/ayalalazaro
 
 
-|rccc| |uth| |uoc| |hgugm| |sjs|
+|uth| |uoc| |hgugm|
 
 
 Maintainer emeritus
