@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
-from pymedphys._imports import pandas as pd, xmltodict
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
+from pymedphys._imports import xmltodict
 
 from pymedphys._streamlit.utilities import dbf, misc
 

@@ -14,8 +14,8 @@
 
 
 import functools
-import pathlib
 import os
+import pathlib
 
 from pymedphys._imports import streamlit as st
 

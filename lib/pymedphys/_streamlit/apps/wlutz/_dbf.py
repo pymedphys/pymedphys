@@ -17,7 +17,6 @@ from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.utilities import dbf
 
-
 DBF_DATABASE_LOADING_CONFIG = {
     "frame": {
         "filename": "FRAME.dbf",

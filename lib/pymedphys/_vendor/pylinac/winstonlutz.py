@@ -41,14 +41,13 @@ Features:
 
 from typing import List, Tuple
 
-from pymedphys._imports import numpy as np, pylinac
-from pymedphys._imports import scipy, skimage
+from pymedphys._imports import numpy as np
+from pymedphys._imports import pylinac, scipy, skimage
 
-from .core import image as _vendor_image
 from .core import geometry as _vendor_geometry
+from .core import image as _vendor_image
 from .core import mask as _vendor_mask
 from .core import profile as _vendor_profile
-
 
 GANTRY = "Gantry"
 COLLIMATOR = "Collimator"
