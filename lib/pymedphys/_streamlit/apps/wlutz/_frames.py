@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Functions for loading up the iViewDB frame contents.
+"""Functions for loading up the iViewDB frame database contents.
 
 The frame database format has changed accross the iView versions. The
 older iView version has a FRAME.DBF file with all of the required
@@ -24,6 +24,7 @@ this module. ``dbf_frame_based_database`` and
 ``xml_frame_based_database``.
 """
 
+import pathlib
 
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
@@ -32,8 +33,69 @@ from pymedphys._imports import xmltodict
 from pymedphys._streamlit.apps.wlutz import _dbf
 
 
-def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
-    """
+def dbf_frame_based_database(
+    database_directory: pathlib.Path,
+    refresh_cache: bool,
+    filtered_table: "pd.DataFrame",
+):
+    """Load the FRAME.DBF database and determine the filepaths and
+    delivery times for each jpg frame that is relevant to the user.
+
+    Parameters
+    ----------
+    database_directory
+        The path to the iViewDB directory.
+    refresh_cache
+        Whether or not to reload the database caches from disk.
+    filtered_table
+        A filtered ``pd.DataFrame`` containing the image sequences
+        relevant to the user. The column ``PIMG_DBID`` is used within
+        this table to merge with the loaded FRAME database.
+
+    Returns
+    -------
+    table
+        A ``pandas.DataFrame`` that contains the columns "filepath",
+        "time", "machine_id", "patient_id", "treatment", "port",
+        "datetime", and "PIMG_DBID"
+
+        filepath : str
+            The filepath of the jpg image. Defined relative to the
+            iView database directory.
+        time : datetime.time
+            The time of the image frame. Defined as the sum of the
+            IMG_TIME column within the PATIMG database and the DELTA_MS
+            column within the FRAME database. Although this information
+            is available within the datetime column, this is provided
+            so that the table is more informative to the user within
+            the streamlit display.
+        machine_id : str
+            A machine identifier as defined by ORG_DTL within the
+            PATIMG database.
+        patient_id : str
+            A patient identifier as defined by the ID column within the
+            PATIENT database.
+        treatment : str
+            The treatment identifier as defined by the ID column within
+            the TRTMNT database.
+        port : str
+            A port identifier as defined by the ID column within the
+            PORT database.
+        datetime : datetime.datetime
+            The datetime representation of the image sequence start.
+            Converted from the combination of the DELTA_MS columns
+            within the FRAME database and the IMG_DATE and IMG_TIME
+            columns within the PATIMG database.
+        PIMG_DBID : int
+            The DBID column from the PATIMG database.
+
+    Notes
+    -----
+    If this has been run before for this given path the cached result
+    for each database will be provided. The cache can be reset from the
+    DBF files by passing ``refresh_cache=True``
+
+
 
     """
     frame = _dbf.load_iview_dbf(database_directory, refresh_cache, "frame")

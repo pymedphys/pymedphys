@@ -47,7 +47,7 @@ def load_and_merge_dbfs(
     Returns
     -------
     table
-        A ``pandas.DataFrame`` that contains the columns "time",
+        A ``pandas.DataFrame`` that contains the columns
         "machine_id", "patient_id", "treatment", "port", "datetime",
         "LAST_NAME", "FIRST_NAME", "PIMG_DBID", and "DICOM_UID".
 
@@ -67,10 +67,6 @@ def load_and_merge_dbfs(
             The datetime representation of the image sequence start.
             Converted from the combination of both the IMG_DATE and
             IMG_TIME columns within the PATIMG database.
-        LAST_NAME : str
-            The LAST_NAME column from the PATIENT database.
-        FIRST_NAME : str
-            The FIRST_NAME column from the PATIENT database.
         PIMG_DBID : int
             The DBID column from the PATIMG database.
         DICOM_UID : str
@@ -119,8 +115,6 @@ def load_and_merge_dbfs(
             "treatment",
             "port",
             "datetime",
-            "LAST_NAME",
-            "FIRST_NAME",
             "PIMG_DBID",
             "DICOM_UID",
         ]
@@ -216,7 +210,7 @@ _DBF_DATABASE_LOADING_CONFIG = {
     },
     "patient": {
         "filename": "PATIENT.dbf",
-        "columns_to_keep": ["DBID", "ID", "LAST_NAME", "FIRST_NAME"],
+        "columns_to_keep": ["DBID", "ID"],
         "column_rename_map": {"DBID": "PAT_DBID", "ID": "patient_id"},
     },
 }
