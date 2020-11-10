@@ -203,7 +203,7 @@ Past contributors
 
 .. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
 
-.. _`Swerdloff Family`_: https://github.com/sjswerdloff
+.. _`Swerdloff Family`: https://github.com/sjswerdloff
 
 .. END_OF_DOCS_IMPORT
 
