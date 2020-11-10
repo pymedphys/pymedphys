@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
+from typing import Dict, List, cast
+
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
@@ -53,7 +56,10 @@ DBF_DATABASE_LOADING_CONFIG = {
 }
 
 
-def loading_and_merging_dbfs(database_directory, refresh_cache):
+def load_and_merge_dbfs(database_directory, refresh_cache):
+    """
+
+    """
     patimg = load_dbf(database_directory, refresh_cache, "patimg")
 
     dates = pd.to_datetime(patimg["IMG_DATE"], format="%Y%m%d").dt.date
@@ -119,7 +125,11 @@ def dbf_to_pandas(path, refresh_cache=False):
 
 
 def _load_dbf_base(
-    database_directory, refresh_cache, filename, columns_to_keep, column_rename_map
+    database_directory: pathlib.Path,
+    refresh_cache: bool,
+    filename: str,
+    columns_to_keep: List[str],
+    column_rename_map: Dict[str, str],
 ):
     dbf_path = database_directory.joinpath(filename)
     table = dbf_to_pandas(dbf_path, refresh_cache)[columns_to_keep]
@@ -128,8 +138,16 @@ def _load_dbf_base(
     return table
 
 
-def load_dbf(database_directory, refresh_cache, config_key):
+def load_dbf(
+    database_directory: pathlib.Path, refresh_cache: bool, config_key: str
+) -> "pd.DataFrame":
+
+    current_config = DBF_DATABASE_LOADING_CONFIG[config_key]
+    filename = cast(str, current_config["filename"])
+    columns_to_keep = cast(List[str], current_config["columns_to_keep"])
+    column_rename_map = cast(Dict[str, str], current_config["column_rename_map"])
+
     table = _load_dbf_base(
-        database_directory, refresh_cache, **DBF_DATABASE_LOADING_CONFIG[config_key]
+        database_directory, refresh_cache, filename, columns_to_keep, column_rename_map
     )
     return table
