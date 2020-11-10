@@ -15,7 +15,7 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-import pymedphys._vendor.pylinac.winstonlutz
+from pymedphys._vendor.pylinac import winstonlutz as pylinac_wlutz
 
 from .interppoints import (
     define_penumbra_points_at_origin,
@@ -30,9 +30,8 @@ INITIAL_ROTATION = 0
 
 
 def get_initial_centre(x, y, img):
-    wl_image = pymedphys._vendor.pylinac.winstonlutz.WLImageOld(  # pylint: disable = protected-access
-        img
-    )
+    WLImage = pylinac_wlutz.get_latest_wlimage()
+    wl_image = WLImage(img)
     min_x = np.min(x)
     dx = x[1] - x[0]
     min_y = np.min(y)
