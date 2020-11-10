@@ -47,8 +47,8 @@ def main():
         """
             This tool was created to for my (Simon) own exploration
             while building the Winston Lutz GUI. It is not intended to
-            ever come out of an experimental state. Unless some amazing
-            use case is found.
+            ever come out of an experimental state (unless some amazing
+            use case is found).
 
             For now, it is simply an exploratory tool, shared in the
             small chance that someone might find it helpful.
