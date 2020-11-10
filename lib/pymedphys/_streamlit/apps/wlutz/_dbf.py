@@ -106,16 +106,21 @@ def load_and_merge_dbfs(database_directory, refresh_cache):
     return merged
 
 
-def dbf_to_pandas_without_cache(path):
+def dbf_to_pandas_without_cache(path: pathlib.Path) -> "pd.DataFrame":
     return pd.DataFrame(iter(dbf.get_dbf_table(path)))
 
 
 @st.cache()
-def dbf_to_pandas_with_cache(path):
+def dbf_to_pandas_with_cache(path: pathlib.Path) -> "List[pd.DataFrame]":
     return [dbf_to_pandas_without_cache(path)]
 
 
-def dbf_to_pandas(path, refresh_cache=False):
+# TODO: Replace the `refresh_cache` logic with a watchdog driven event
+# model. See <https://github.com/pymedphys/pymedphys/pull/1143#discussion_r520242368>
+# for details.
+def dbf_to_pandas(path: pathlib.Path, refresh_cache=False) -> "pd.DataFrame":
+    """
+    """
     result = dbf_to_pandas_with_cache(path)
 
     if refresh_cache:
@@ -130,7 +135,7 @@ def _load_dbf_base(
     filename: str,
     columns_to_keep: List[str],
     column_rename_map: Dict[str, str],
-):
+) -> "pd.DataFrame":
     dbf_path = database_directory.joinpath(filename)
     table = dbf_to_pandas(dbf_path, refresh_cache)[columns_to_keep]
     table.rename(column_rename_map, axis="columns", inplace=True)
