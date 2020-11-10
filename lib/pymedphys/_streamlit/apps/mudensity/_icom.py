@@ -81,19 +81,25 @@ def icom_input_method(patient_id="", key_namespace="", advanced_mode_local=False
         within the GUI displayed by this method or are the result of
         data collected/loaded/processed.
 
-        * "site" is not currently utilised and is set to None to
-          indicate that subsequent input methods need to collect this
-          from the user.
-        * "patient_id" is provided by the user as an ``st.text_input``.
-        * "selected_icom_deliveries" a list of timestamps of icom
-          deliveries selected by the user within an ``st.multiselect``.
-        * "data_paths" is a list of ``pathlib.Path``s that point to the
-          user selected icom deliveries.
-        * "identifier" is a human readable string that is to be printed
-          on the PDF report. Here it is a string that contains the words
-          iCOM and the first filepath name chosen.
-        * "deliveries" is a list of ``pymedphys.Delivery`` objects that
-          are parsed from the loaded iCOM data.
+        site
+            is not currently utilised in this input method and is set to
+            ``None`` to indicate that subsequent input methods need to
+            collect this from the user.
+        patient_id
+            is provided by the user as an ``st.text_input``.
+        selected_icom_deliveries
+            a list of timestamps of icom
+            deliveries selected by the user within an ``st.multiselect``.
+        data_paths
+            is a list of ``pathlib.Path``s that point to the
+            user selected icom deliveries.
+        identifier
+            is a short human readable string that is to be printed
+            on the PDF report. Here it is a string that contains the words
+            iCOM and the first filepath name chosen.
+        deliveries
+            is a list of ``pymedphys.Delivery`` objects that
+            are parsed from the loaded iCOM data.
 
     """
 
