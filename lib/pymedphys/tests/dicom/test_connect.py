@@ -68,12 +68,8 @@ def test_dicom_listener_echo(listener):
     assert result == 0
 
 
-@pytest.mark.pydicom
-def test_dicom_listener_send(listener):
-    """Test to ensure that running dicom listener receives a stores a Dicom file
-    """
-
-    METHOD_MOCK.reset_mock()
+@pytest.fixture()
+def test_dataset():
 
     # Create a test Dicom object
     test_uid = pydicom.uid.generate_uid()
@@ -101,6 +97,16 @@ def test_dicom_listener_send(listener):
     test_dataset.is_little_endian = True
     test_dataset.fix_meta_info(enforce_standard=True)
 
+    return test_dataset
+
+
+@pytest.mark.pydicom
+def test_dicom_listener_send(listener, test_dataset):
+    """Test to ensure that running dicom listener receives a stores a Dicom file
+    """
+
+    METHOD_MOCK.reset_mock()
+
     # Send the data to the listener
     ae = AE()
     ae.add_requested_context(RTPlanStorage)
@@ -114,11 +120,62 @@ def test_dicom_listener_send(listener):
     METHOD_MOCK.method.assert_called_once()
     args, _ = METHOD_MOCK.method.call_args_list[0]
     storage_path = args[0]
-    file_path = storage_path / f"RP.{test_uid}"
+    file_path = storage_path / f"RP.{test_dataset.SOPInstanceUID}"
     assert file_path.exists()
 
-    read_dataset = pydicom.read_file(file_path.as_posix())
+    read_dataset = pydicom.read_file(file_path)
     assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
 
     # Clean up after ourselves
-    shutil.rmtree(storage_path.as_posix())
+    shutil.rmtree(storage_path)
+
+
+@pytest.mark.pydicom
+def test_dicom_listener_send_conflicting_file(listener, test_dataset):
+    """Test to ensure that running dicom listener receives a stores a Dicom file
+    """
+
+    METHOD_MOCK.reset_mock()
+
+    # Send the data to the listener
+    ae = AE()
+    ae.add_requested_context(RTPlanStorage)
+    assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
+    assert assoc.is_established
+    status = assoc.send_c_store(test_dataset)
+    assert status.Status == 0
+    assoc.release()
+
+    # Send again, should succeed without complaining
+    ae = AE()
+    ae.add_requested_context(RTPlanStorage)
+    assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
+    assert assoc.is_established
+    status = assoc.send_c_store(test_dataset)
+    assert status.Status == 0
+    assoc.release()
+
+    # Modify the file to make it conflict
+    args, _ = METHOD_MOCK.method.call_args_list[0]
+    storage_path = args[0]
+    file_path = storage_path / f"RP.{test_dataset.SOPInstanceUID}"
+    ds = pydicom.read_file(file_path)
+    ds.Manufacturer = "PyMedPhysModified"
+    ds.save_as(file_path, write_like_original=False)
+
+    # Send again, should return a warning Status and ErrorComment
+    ae = AE()
+    ae.add_requested_context(RTPlanStorage)
+    assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
+    assert assoc.is_established
+    status = assoc.send_c_store(test_dataset)
+    assert status.Status == 0x0107
+    assert "SCP warning" in status.ErrorComment
+    assoc.release()
+
+    # Check it actually wasn't overwritten
+    read_dataset = pydicom.read_file(file_path)
+    assert read_dataset.Manufacturer == "PyMedPhysModified"
+
+    # Clean up after ourselves
+    shutil.rmtree(storage_path)
