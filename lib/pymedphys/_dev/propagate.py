@@ -32,6 +32,7 @@ DIST_DIR = REPO_ROOT.joinpath("dist")
 SETUP_PY = REPO_ROOT.joinpath("setup.py")
 
 REQUIREMENTS_TXT = REPO_ROOT.joinpath("requirements.txt")
+REQUIREMENTS_DEV_TXT = REPO_ROOT.joinpath("requirements-dev.txt")
 
 ROOT_PYLINT = REPO_ROOT.joinpath(".pylintrc")
 LIBRARY_PYLINT = LIBRARY_PATH.joinpath(".pylintrc")
@@ -132,9 +133,16 @@ def propagate_requirements():
         "poetry export --without-hashes -E docs -E user -f requirements.txt --output requirements.txt",
         shell=True,
     )
+    subprocess.check_call(
+        "poetry export --without-hashes -E dev -f requirements.txt --output requirements-dev.txt",
+        shell=True,
+    )
 
     with open(REQUIREMENTS_TXT, "a") as f:
         f.write(".[user]\n")
+
+    with open(REQUIREMENTS_DEV_TXT, "a") as f:
+        f.write(".[dev]\n")
 
 
 def propagate_extras():
