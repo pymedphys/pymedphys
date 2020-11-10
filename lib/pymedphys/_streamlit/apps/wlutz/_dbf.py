@@ -231,7 +231,7 @@ def _dbf_to_pandas(path: pathlib.Path, refresh_cache=True) -> "pd.DataFrame":
     result = _dbf_to_pandas_with_cache(path)
 
     if refresh_cache:
-        result[0] = dbf_to_pandas_without_cache(path)
+        result[0] = _dbf_to_pandas_without_cache(path)
 
     return result[0]
 
