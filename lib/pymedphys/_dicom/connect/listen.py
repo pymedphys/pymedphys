@@ -28,7 +28,7 @@ class DicomListener(DicomConnectBase):
         super().__init__(**kwargs)
 
         # If no storage directory is set, create a temporary directory
-        if not storage_directory:
+        if storage_directory is None:
             storage_directory = tempfile.mkdtemp()
 
         # The directory where incoming data will be stored
@@ -108,8 +108,23 @@ class DicomListener(DicomConnectBase):
         status_ds.Status = 0x0000
 
         if filepath.exists():
+
+            # If the file already exists, open it up and compare the hash of it's
+            # contents (converting to JSON string to perform hash)
+            existing_ds = pydicom.read_file(filepath)
+            existing_hash = hash(existing_ds.to_json())
+            incoming_hash = hash(dataset.to_json())
+
+            if existing_hash == incoming_hash:
+                # If the hashes match then we can be confident the contents are the same
+                # so no need to rewrite the file and we can return status OK
+                return status_ds
+
+            # Hashes don't match, don't overwrite, log a warning and return warning
+            # status
             logging.warning("DICOM file exists, skipping: %s", filename)
-            status_ds.Status = 0xA701  # Failed - Out of Resources - Miscellaneous error
+            status_ds.ErrorComment = "SCP warning - conflicting file already exists"
+            status_ds.Status = 0x0107  # Warning - Attribute List Error
             return status_ds
 
         context = event.context
@@ -122,7 +137,7 @@ class DicomListener(DicomConnectBase):
         # The following is not mandatory, set for convenience
         meta.ImplementationVersionName = pynetdicom.PYNETDICOM_IMPLEMENTATION_VERSION
         file_ds = pydicom.FileDataset(
-            filepath.as_posix(), {}, file_meta=meta, preamble=b"\0" * 128
+            filepath, {}, file_meta=meta, preamble=b"\0" * 128
         )
         file_ds.update(dataset)
         file_ds.is_little_endian = context.transfer_syntax.is_little_endian
@@ -130,17 +145,18 @@ class DicomListener(DicomConnectBase):
 
         try:
             # We use `write_like_original=False` to ensure that a compliant
-            #   File Meta Information Header is written
-            file_ds.save_as(filepath.as_posix(), write_like_original=False)
+            # File Meta Information Header is written
+            file_ds.save_as(filepath, write_like_original=False)
             status_ds.Status = 0x0000  # Success
         except IOError:
             logging.error("Could not write file to specified directory:")
             logging.error("    %s", filepath)
             logging.error(
-                "Directory may not exist or you may not have write " "permission"
+                "Directory may not exist or you may not have write permission"
             )
-            # Failed - Out of Resources - IOError
-            status_ds.Status = 0xA700
+
+            status_ds.ErrorComment = "SCP internal error - Unable to write file"
+            status_ds.Status = 0xA700  # Failed - Out of Resources - IOError
 
         return status_ds
 
