@@ -178,7 +178,7 @@ Past contributors
 .. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/HGUGM_200x200.png
     :target: `Hospital General Universitario Gregorio Marañón`_
 
-.. |sjs| image:: https://github.com/sjswerdloff/pymedphys/raw/c84e1608b86b09234bcefc19f78287a21c564b52/logos/SwerdloffCoatOfArms_200x200.png
+.. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
     :target: `Swerdloff Family`_
 
 .. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
