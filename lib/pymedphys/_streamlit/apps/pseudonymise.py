@@ -19,7 +19,6 @@ import base64
 import datetime
 import io
 import pathlib
-
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from pymedphys._imports import pydicom
