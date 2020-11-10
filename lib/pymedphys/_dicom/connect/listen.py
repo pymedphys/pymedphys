@@ -24,7 +24,21 @@ from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 
 
 class DicomListener(DicomConnectBase):
+    """Class which provides SCP functionality to listen for incoming DICOM objects
+    """
+
     def __init__(self, storage_directory=None, on_released_callback=None, **kwargs):
+        """Create and instance of a Dicom Listener
+
+        Parameters
+        ----------
+        storage_directory : [type], optional
+            The directory in which to store incoming DICOM objects, by default a
+            temporary directory will be created
+        on_released_callback : function, optional
+            Called when an association is released, the directory in which the incoming
+            data was stored is returned, by default None
+        """
         super().__init__(**kwargs)
 
         # If no storage directory is set, create a temporary directory
@@ -44,9 +58,11 @@ class DicomListener(DicomConnectBase):
         # The application entity
         self.ae = None
 
-        logging.error("Will store files received in: %s", self.storage_directory)
+        logging.debug("Will store files received in: %s", self.storage_directory)
 
     def start(self):
+        """Start the DICOM listener
+        """
 
         # Initialise the Application Entity
         self.ae = pynetdicom.AE(ae_title=self.ae_title)
@@ -69,6 +85,8 @@ class DicomListener(DicomConnectBase):
         self.ae.start_server((self.host, self.port), evt_handlers=handlers, block=False)
 
     def stop(self):
+        """Stop the DICOM listener
+        """
 
         if self.ae:
             self.ae.shutdown()
@@ -83,7 +101,6 @@ class DicomListener(DicomConnectBase):
         self.association_directory = None
 
     def on_association_released(self, _):
-
         if self.on_released_callback:
             self.on_released_callback(self.association_directory)
 
@@ -162,7 +179,7 @@ class DicomListener(DicomConnectBase):
 
 
 def listen_cli(args):
-    """Starts a Dicom listener from the command line interface
+    """Start a DICOM listener from the command line interface
     """
 
     # Set log level to debug

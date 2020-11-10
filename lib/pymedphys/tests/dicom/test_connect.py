@@ -70,6 +70,13 @@ def test_dicom_listener_echo(listener):
 
 @pytest.fixture()
 def test_dataset():
+    """pytest fixture to returna a dummy DICOM dataset for testing
+
+    Returns
+    -------
+    test_dataset : ``pydicom.dataset.Dataset``
+        A dummy DICOM dataset
+    """
 
     # Create a test Dicom object
     test_uid = pydicom.uid.generate_uid()
