@@ -1,4 +1,5 @@
-# Copyright (c) 2014-2019 James Kerns
+# Copyright (c) 2019-2020 Simon Biggs
+# Copyright (c) 2014-2020 James Kerns
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -14,29 +15,27 @@
 # CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+# Adaptions undergone by Simon Biggs of James Kerns original work
 # Adapted from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
 
 # Changes to revert to v2.2.6 code determined from https://github.com/jrkerns/pylinac/compare/v2.2.6...v2.2.7#diff-49572d03390f5858885f645e7034ff24
 # and https://github.com/jrkerns/pylinac/blob/v2.2.6/pylinac/winston_lutz.py
 
-"""The Winston-Lutz module loads and processes EPID images that have acquired Winston-Lutz type images.
+# Work to make WLImage work for v2.3.2 had its __init__ method monkey
+# patched from the following code:
+# <https://github.com/jrkerns/pylinac/blob/14a5296ae4ee0ecb01865d08f15070c82e19fc45/pylinac/winston_lutz.py#L594-L612>
 
-Features:
+"""The functions here have been either 'monkey patched' or vendored from
+pylinac. They are not a replacement for using pylinac directly.
 
-* **Couch shift instructions** - After running a WL test, get immediate feedback on how to shift the couch.
-  Couch values can also be passed in and the new couch values will be presented so you don't have to do that pesky conversion.
-  "Do I subtract that number or add it?"
-* **Automatic field & BB positioning** - When an image or directory is loaded, the field CAX and the BB
-  are automatically found, along with the vector and scalar distance between them.
-* **Isocenter size determination** - Using backprojections of the EPID images, the 3D gantry isocenter size
-  and position can be determined *independent of the BB position*. Additionally, the 2D planar isocenter size
-  of the collimator and couch can also be determined.
-* **Image plotting** - WL images can be plotted separately or together, each of which shows the field CAX, BB and
-  scalar distance from BB to CAX.
-* **Axis deviation plots** - Plot the variation of the gantry, collimator, couch, and EPID in each plane
-  as well as RMS variation.
-* **File name interpretation** - Rename DICOM filenames to include axis information for linacs that don't include
-  such information in the DICOM tags. E.g. "myWL_gantry45_coll0_couch315.dcm".
+These allow for simultaneous use of pylinac wlutz algorithms from
+version 2.2.6, 2.2.7, and 2.3.2. They also allow for use with image
+arrays instead of DICOM files on disk.
+
+These are designed to be used as an "independent" check of PyMedPhys'
+internal WLutz algorithm. They should not be used as a standalone tool
+instead, if that is what is desired, pylinac itself should be used
+directly.
 """
 
 import functools
@@ -68,12 +67,16 @@ def get_version_to_class_map():
         instead of DICOM files on disk as the original WLImage class
         required.
 
-        See the following issue for more details:
+        See the following issue where this API was proposed upstream
+        but for now has not been implemented:
 
             <https://github.com/jrkerns/pylinac/issues/277>
         """
 
         def __init__(self, array, *, dpi=None, sid=None, dtype=None):
+            """Adapted from
+            <https://github.com/jrkerns/pylinac/blob/14a5296ae4ee0ecb01865d08f15070c82e19fc45/pylinac/winston_lutz.py#L594-L612>
+            """
             super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
             self.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
             self._clean_edges()
@@ -123,7 +126,8 @@ def get_version_to_class_map():
 
 
 class WLImage_2_2_7(_vendor_image.ArrayImage):
-    """Holds individual Winston-Lutz EPID images, image properties, and automatically finds the field CAX and BB."""
+    """Holds individual Winston-Lutz EPID images, image properties, and
+    automatically finds the field CAX and BB."""
 
     def __init__(self, array, *, dpi=None, sid=None, dtype=None):
         super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
@@ -143,9 +147,11 @@ class WLImage_2_2_7(_vendor_image.ArrayImage):
         """Clean the edges of the image to be near the background level."""
 
         def has_noise(self, window_size):
-            """Helper method to determine if there is spurious signal at any of the image edges.
+            """Helper method to determine if there is spurious signal at
+            any of the image edges.
 
-            Determines if the min or max of an edge is within 10% of the baseline value and trims if not.
+            Determines if the min or max of an edge is within 10% of the
+            baseline value and trims if not.
             """
             near_min, near_max = np.percentile(self.array, [5, 99.5])
             img_range = near_max - near_min
@@ -166,7 +172,8 @@ class WLImage_2_2_7(_vendor_image.ArrayImage):
             safety_stop -= 1
 
     def _find_field_centroid(self) -> Tuple[_vendor_geometry.Point, List]:
-        """Find the centroid of the radiation field based on a 50% height threshold.
+        """Find the centroid of the radiation field based on a 50%
+        height threshold.
 
         Returns
         -------
@@ -189,8 +196,9 @@ class WLImage_2_2_7(_vendor_image.ArrayImage):
         return p, edges
 
     def _find_bb(self) -> _vendor_geometry.Point:
-        """Find the BB within the radiation field. Iteratively searches for a circle-like object
-        by lowering a low-pass threshold value until found.
+        """Find the BB within the radiation field. Iteratively searches
+        for a circle-like object by lowering a low-pass threshold value
+        until found.
 
         Returns
         -------
@@ -202,7 +210,8 @@ class WLImage_2_2_7(_vendor_image.ArrayImage):
         spread = hmax - hmin
         max_thresh = hmax
         lower_thresh = hmax - spread / 1.5
-        # search for the BB by iteratively lowering the low-pass threshold value until the BB is found.
+        # search for the BB by iteratively lowering the low-pass
+        # threshold value until the BB is found.
         found = False
         while not found:
             try:
