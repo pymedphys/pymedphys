@@ -20,13 +20,16 @@ class DicomConnectBase:
     """
 
     def __init__(self, host="127.0.0.1", port=8888, ae_title="PYMEDPHYSCONNECT"):
-        """Create instance of the DicomConnect class
+        """Create instance of a DicomConnect class
 
-        Args:
-            host (str, optional): The host to connect to. Defaults to "127.0.0.1".
-            port (int, optional): The port to connect to/listen on. Defaults to 0.
-            ae_title (str, optional): The AETitle of the calling/called application.
-                                      Defaults to "PYMEDPHYSCONNECT".
+        Parameters
+        ----------
+        host : str, optional
+            Host name or IP to connect to, by default "127.0.0.1"
+        port : int, optional
+            Port to connect to/listen on, by default 8888
+        ae_title : str, optional
+            AETitle of the calling/called application, by default "PYMEDPHYSCONNECT"
         """
 
         self.host = host
