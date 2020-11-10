@@ -95,7 +95,8 @@ def dbf_frame_based_database(
 
     Notes
     -----
-    If this has been run before for this given path the cached result
+    If this has been run before for this given path, and
+    ``refresh_cache=False``, the cached result
     for each database will be provided. The cache can be reset from the
     DBF files by passing ``refresh_cache=True``.
 
