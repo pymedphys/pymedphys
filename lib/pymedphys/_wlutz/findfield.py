@@ -126,14 +126,21 @@ def field_centre_and_rotation_refining(
             )
 
         pylinac_2_2_6_out_of_tol = np.any(
-            np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
+            np.abs(np.array(pylinac["2.2.6"]["field_centre"]) - predicted_centre)
             > pylinac_tol
         )
         pylinac_2_2_7_out_of_tol = np.any(
-            np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
+            np.abs(np.array(pylinac["2.2.7"]["field_centre"]) - predicted_centre)
             > pylinac_tol
         )
-        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+        pylinac_out_of_tol = np.any(
+            np.abs(
+                np.array(pylinac[pylinac.__version__]["field_centre"])
+                - predicted_centre
+            )
+            > pylinac_tol
+        )
+        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol or pylinac_out_of_tol:
             raise PylinacComparisonDeviation(
                 "The determined field centre deviates from pylinac more "
                 "than the defined tolerance"

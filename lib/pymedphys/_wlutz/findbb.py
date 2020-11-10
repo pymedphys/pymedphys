@@ -15,7 +15,7 @@
 # import warnings
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import plt, scipy
+from pymedphys._imports import plt, pylinac, scipy
 
 from . import imginterp, interppoints, pylinac, reporting, utilities
 
@@ -99,7 +99,7 @@ def optimise_bb_centre(
                 field_centre,
                 field_rotation,
                 find_bb=True,
-                pylinac_versions=("v2.2.6",),
+                pylinac_versions=(pylinac.__version__,),
             )
         except ValueError:
             raise ValueError("While comparing result to PyLinac an error was raised")
@@ -112,11 +112,14 @@ def optimise_bb_centre(
             # pylinac = {}
 
         try:
-            pylinac_2_2_6_out_of_tol = np.any(
-                np.abs(np.array(pylinac_result["v2.2.6"]["bb_centre"]) - bb_centre)
+            pylinac_out_of_tol = np.any(
+                np.abs(
+                    np.array(pylinac_result[pylinac.__version__]["bb_centre"])
+                    - bb_centre
+                )
                 > pylinac_tol
             )
-            if pylinac_2_2_6_out_of_tol:
+            if pylinac_out_of_tol:
                 raise pylinac.PylinacComparisonDeviation(
                     "The determined bb centre deviates from pylinac more "
                     "than the defined tolerance"
