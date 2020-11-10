@@ -5,12 +5,48 @@ from pymedphys._imports import xmltodict
 from pymedphys._streamlit.apps.wlutz import _dbf
 
 
+def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
+    frame = _dbf.load_iview_dbf(database_directory, refresh_cache, "frame")
+    with_frame = filtered_table.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
+
+    with_frame = _calculate_delta_offsets(with_frame)
+
+    filepaths = _calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
+    with_frame["filepath"] = filepaths
+
+    return _final_frame_column_adjustment(with_frame)
+
+
+def xml_frame_based_database(database_directory, filtered_table):
+    xml_filepaths = _calc_xml_filepaths(filtered_table)
+
+    xml_docs = [
+        _load_xml(database_directory.joinpath(filepath)) for filepath in xml_filepaths
+    ]
+    frame_table_rows = []
+    for doc in xml_docs:
+        frame_table_rows += _data_from_doc(doc)
+
+    frame_table = pd.DataFrame.from_dict(frame_table_rows)
+
+    merged = filtered_table.merge(
+        frame_table, left_on="DICOM_UID", right_on="DICOM_UID"
+    )
+
+    merged = _calculate_delta_offsets(merged)
+
+    filepaths = _calc_xml_based_jpg_filepaths(merged)
+    merged["filepath"] = filepaths
+
+    return _final_frame_column_adjustment(merged)
+
+
 @st.cache()
-def calc_filepath_from_frames_dbid(dbid_series):
+def _calc_filepath_from_frames_dbid(dbid_series):
     return [f"img/{f'{dbid:0>8x}'.upper()}.jpg" for dbid in dbid_series]
 
 
-def calculate_delta_offsets(table):
+def _calculate_delta_offsets(table):
     delta = pd.to_timedelta(table["DELTA_MS"].astype(int), unit="ms")
     timestamps = table["datetime"] + delta
 
@@ -22,7 +58,7 @@ def calculate_delta_offsets(table):
     return table
 
 
-def final_frame_column_adjustment(table):
+def _final_frame_column_adjustment(table):
     return table[
         [
             "filepath",
@@ -37,20 +73,8 @@ def final_frame_column_adjustment(table):
     ]
 
 
-def dbf_frame_based_database(database_directory, refresh_cache, filtered_table):
-    frame = _dbf.load_iview_dbf(database_directory, refresh_cache, "frame")
-    with_frame = filtered_table.merge(frame, left_on="PIMG_DBID", right_on="PIMG_DBID")
-
-    with_frame = calculate_delta_offsets(with_frame)
-
-    filepaths = calc_filepath_from_frames_dbid(with_frame["FRAME_DBID"])
-    with_frame["filepath"] = filepaths
-
-    return final_frame_column_adjustment(with_frame)
-
-
 @st.cache()
-def load_xml(filepath):
+def _load_xml(filepath):
     with open(filepath) as fd:
         doc = xmltodict.parse(fd.read())
 
@@ -58,7 +82,7 @@ def load_xml(filepath):
 
 
 @st.cache()
-def data_from_doc(doc):
+def _data_from_doc(doc):
     table_rows = []
 
     projection_set = doc["ProjectionSet"]
@@ -88,7 +112,7 @@ def data_from_doc(doc):
 
 
 @st.cache()
-def calc_xml_filepaths(table):
+def _calc_xml_filepaths(table):
     return (
         "patient_"
         + table["patient_id"].astype("str")
@@ -99,7 +123,7 @@ def calc_xml_filepaths(table):
 
 
 @st.cache()
-def calc_xml_based_jpg_filepaths(table):
+def _calc_xml_based_jpg_filepaths(table):
     return (
         "patient_"
         + table["patient_id"].astype("str")
@@ -111,27 +135,3 @@ def calc_xml_based_jpg_filepaths(table):
         + table["DICOM_UID"].astype("str")
         + ".jpg"
     )
-
-
-def xml_frame_based_database(database_directory, filtered_table):
-    xml_filepaths = calc_xml_filepaths(filtered_table)
-
-    xml_docs = [
-        load_xml(database_directory.joinpath(filepath)) for filepath in xml_filepaths
-    ]
-    frame_table_rows = []
-    for doc in xml_docs:
-        frame_table_rows += data_from_doc(doc)
-
-    frame_table = pd.DataFrame.from_dict(frame_table_rows)
-
-    merged = filtered_table.merge(
-        frame_table, left_on="DICOM_UID", right_on="DICOM_UID"
-    )
-
-    merged = calculate_delta_offsets(merged)
-
-    filepaths = calc_xml_based_jpg_filepaths(merged)
-    merged["filepath"] = filepaths
-
-    return final_frame_column_adjustment(merged)
