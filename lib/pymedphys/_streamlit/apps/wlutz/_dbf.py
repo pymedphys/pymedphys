@@ -74,7 +74,8 @@ def load_and_merge_dbfs(
 
     Notes
     -----
-    If this has been run before for this given path the cached result
+    If this has been run before for this given path, and
+    ``refresh_cache=False``, the cached result
     for each database will be provided. The cache can be reset from the
     DBF files by passing ``refresh_cache=True``
 
@@ -155,7 +156,8 @@ def load_iview_dbf(
 
     Notes
     -----
-    If this has been run before for this given path the cached result
+    If this has been run before for this given path, and
+    ``refresh_cache=False``, the cached result
     will be provided without loading from the DBF database. The cache
     can be overridden by passing ``refresh_cache=True``
 
@@ -248,7 +250,8 @@ def _dbf_to_pandas(path: pathlib.Path, refresh_cache=True) -> "pd.DataFrame":
 
     Notes
     -----
-    If this has been run before for this given path the cached result
+    If this has been run before for this given path, and
+    ``refresh_cache=False``, the cached result
     will be provided without loading from the DBF database. The cache
     can be overridden by passing ``refresh_cache=True``
 
