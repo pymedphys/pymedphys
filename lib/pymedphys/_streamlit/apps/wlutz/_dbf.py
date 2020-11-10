@@ -83,7 +83,7 @@ def load_and_merge_dbfs(
     DBF files by passing ``refresh_cache=True``
 
     """
-    patimg = load_dbf(database_directory, refresh_cache, "patimg")
+    patimg = load_iview_dbf(database_directory, refresh_cache, "patimg")
 
     dates = pd.to_datetime(patimg["IMG_DATE"], format="%Y%m%d").dt.date
     date_options = dates.sort_values(ascending=False).unique()
@@ -98,7 +98,9 @@ def load_and_merge_dbfs(
         ("trtmnt", "TRT_DBID"),
         ("patient", "PAT_DBID"),
     ]:
-        dbf_to_be_merged = load_dbf(database_directory, refresh_cache, database_key)
+        dbf_to_be_merged = load_iview_dbf(
+            database_directory, refresh_cache, database_key
+        )
         merged = merged.merge(dbf_to_be_merged, left_on=merge_key, right_on=merge_key)
 
     timestamps_string = (
@@ -127,9 +129,43 @@ def load_and_merge_dbfs(
     return table
 
 
-def load_dbf(
+def load_iview_dbf(
     database_directory: pathlib.Path, refresh_cache: bool, config_key: str
 ) -> "pd.DataFrame":
+    """Load iViewDB files with table specific column name mutation.
+
+    Loads and manipulates column names of iView DBF database files.
+    The column manipulation are designed so as to simplify the
+    subsequent merging of these tables with pd.DataFrame.merge()
+
+    The particular column manipulations undergone are defined within
+    ``_DBF_DATABASE_LOADING_CONFIG``.
+
+    Parameters
+    ----------
+    path
+        The path to the iViewDB directory. This directory contains the
+        iView DBF files.
+    refresh_cache
+        Whether or not to reload the cache from disk.
+    config_key
+        The particular database to load up. Options are "frame",
+        "patimg", "port", "trtmnt", and "patient".
+
+    Returns
+    -------
+    table
+        A pandas DataFrame with columns defined by the combination of
+        the "columns_to_keep" and "column_rename_map" parameters defined
+        within ``_DBF_DATABASE_LOADING_CONFIG``.
+
+    Notes
+    -----
+    If this has been run before for this given path the cached result
+    will be provided without loading from the DBF database. The cache
+    can be overridden by passing ``refresh_cache=True``
+
+    """
 
     current_config = _DBF_DATABASE_LOADING_CONFIG[config_key]
     filename = cast(str, current_config["filename"])
