@@ -65,7 +65,7 @@ class DeliveryMetersetMap(DeliveryBase):
 
     @_deprecated(
         reason=(
-            "pymedphys.Delivery.mudensity() has been renamed as "
+            "pymedphys.Delivery.mudensity() has been replaced by "
             "pymedphys.Delivery.metersetmap()"
         )
     )
