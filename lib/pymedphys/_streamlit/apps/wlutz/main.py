@@ -58,8 +58,11 @@ def main():
 
     selected_filepath = st.selectbox("Select single filepath", table["filepath"])
 
+    resolved_path = database_directory.joinpath(selected_filepath)
+    st.write(resolved_path)
+
     fig, ax = plt.subplots()
-    ax.imshow(read_image(database_directory.joinpath(selected_filepath)))
+    ax.imshow(read_image(resolved_path))
     st.pyplot(fig)
 
     # # st.write(files)
