@@ -39,6 +39,7 @@ Features:
   such information in the DICOM tags. E.g. "myWL_gantry45_coll0_couch315.dcm".
 """
 
+import functools
 from typing import List, Tuple
 
 from pymedphys._imports import numpy as np
@@ -58,6 +59,7 @@ REFERENCE = "Reference"
 ALL = "All"
 
 
+@functools.lru_cache()
 def get_version_to_class_map():
     class WLImageCurrent(pylinac.image.ArrayImage):
         """This is a custom override version of pylinac's WLImage class.
@@ -101,7 +103,6 @@ def get_version_to_class_map():
 
             return self._bb
 
-        __repr__ = pylinac.winston_lutz.WLImage.__repr__
         _clean_edges = (
             pylinac.winston_lutz.WLImage._clean_edges  # pylint: disable = protected-access
         )
