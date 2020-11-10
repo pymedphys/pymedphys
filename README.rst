@@ -178,7 +178,7 @@ Past contributors
 .. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/HGUGM_200x200.png
     :target: `Hospital General Universitario Gregorio Marañón`_
 
-.. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/24701eceefa0daa2ecbc065db42f9ecb901dcfb9/docs/logos/SwerdloffCoatOfArms_200x200.png
+.. |sjs| image:: https://github.com/sjswerdloff/pymedphys/raw/24701eceefa0daa2ecbc065db42f9ecb901dcfb9/logos/SwerdloffCoatOfArms_200x200.png
     :target: `Swerdloff Family`_
 
 .. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
@@ -202,6 +202,8 @@ Past contributors
 .. _`UT Health San Antonio`: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
 
 .. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
+
+.. _`Swerdloff Family`: https://github.com/sjswerdloff
 
 .. END_OF_DOCS_IMPORT
 
