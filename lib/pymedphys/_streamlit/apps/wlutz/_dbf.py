@@ -64,6 +64,21 @@ DBF_DATABASE_LOADING_CONFIG = {
 }
 
 
+def load_dbf(
+    database_directory: pathlib.Path, refresh_cache: bool, config_key: str
+) -> "pd.DataFrame":
+
+    current_config = DBF_DATABASE_LOADING_CONFIG[config_key]
+    filename = cast(str, current_config["filename"])
+    columns_to_keep = cast(List[str], current_config["columns_to_keep"])
+    column_rename_map = cast(Dict[str, str], current_config["column_rename_map"])
+
+    table = _load_dbf_base(
+        database_directory, refresh_cache, filename, columns_to_keep, column_rename_map
+    )
+    return table
+
+
 def load_and_merge_dbfs(
     database_directory: pathlib.Path, refresh_cache: bool
 ) -> "pd.DataFrame":
@@ -231,19 +246,4 @@ def _load_dbf_base(
     table = dbf_to_pandas(dbf_path, refresh_cache)[columns_to_keep]
     table.rename(column_rename_map, axis="columns", inplace=True)
 
-    return table
-
-
-def load_dbf(
-    database_directory: pathlib.Path, refresh_cache: bool, config_key: str
-) -> "pd.DataFrame":
-
-    current_config = DBF_DATABASE_LOADING_CONFIG[config_key]
-    filename = cast(str, current_config["filename"])
-    columns_to_keep = cast(List[str], current_config["columns_to_keep"])
-    column_rename_map = cast(Dict[str, str], current_config["column_rename_map"])
-
-    table = _load_dbf_base(
-        database_directory, refresh_cache, filename, columns_to_keep, column_rename_map
-    )
     return table
