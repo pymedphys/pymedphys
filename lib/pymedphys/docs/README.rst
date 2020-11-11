@@ -10,6 +10,7 @@
 
 .. START_OF_DOCS_IMPORT
 
+
 **A community effort to develop an open standard library for Medical Physics
 in Python. Building quality transparent software together via peer review
 and open source distribution. Open code is better science.**
