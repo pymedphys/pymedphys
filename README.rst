@@ -11,6 +11,9 @@ and open source distribution. Open code is better science.**
 
 |build| |pypi| |python| |license|
 
+.. |streamlit| image:: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
+    :target: https://share.streamlit.io/pymedphys/pymedphys/main/app.py
+
 .. |build| image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fpymedphys%2Fpymedphys%2Fbadge&label=build&logo=none
     :target: https://actions-badge.atrox.dev/pymedphys/pymedphys/goto
 
