@@ -16,7 +16,7 @@ import logging
 
 
 class DicomConnectBase:
-    """Base class for Dicom connect module
+    """Base class for DICOM connect module
     """
 
     def __init__(self, host="127.0.0.1", port=8888, ae_title="PYMEDPHYSCONNECT"):

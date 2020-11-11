@@ -14,24 +14,11 @@
 
 import pathlib
 import subprocess
-from contextlib import contextmanager
-
-import psutil
 import pytest
 
 import pymedphys
 
-
-@contextmanager
-def process(*args, **kwargs):
-    proc = subprocess.Popen(*args, **kwargs)
-    try:
-        yield proc
-    finally:
-        for child in psutil.Process(proc.pid).children(recursive=True):
-            child.kill()
-        proc.kill()
-
+from pymedphys._utilities.test import process
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
