@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-"""Compare Mosaiq fields using MU Density
+"""Compare Mosaiq fields using MetersetMap
 """
 
 import itertools
@@ -25,15 +25,15 @@ import matplotlib.pyplot as plt
 import pymedphys
 
 
-def plot_mu_densities(labels, mu_density_results):
-    for label, results in zip(labels, mu_density_results):
+def plot_metersetmaps(labels, metersetmap_results):
+    for label, results in zip(labels, metersetmap_results):
         xx = results[0]
         yy = results[1]
-        mu_density = results[2]
+        metersetmap = results[2]
         plt.figure()
-        plt.pcolormesh(xx, yy, mu_density)
+        plt.pcolormesh(xx, yy, metersetmap)
         plt.colorbar()
-        plt.title("MU density | {}".format(label))
+        plt.title("MetersetMap | {}".format(label))
         plt.xlabel("MLC direction (mm)")
         plt.ylabel("Jaw direction (mm)")
         plt.gca().invert_yaxis()
@@ -51,7 +51,7 @@ def plot_gantry_collimator(labels, deliveries):
     plt.legend()
 
     plt.figure()
-    plt.title("Colimator Angle")
+    plt.title("Collimator Angle")
     for label, delivery_data in zip(labels, deliveries):
         plt.plot(
             delivery_data.monitor_units,
@@ -73,9 +73,9 @@ def compare_mosaiq_fields(servers, field_ids):
             for server, field_id in zip(servers, field_ids)
         ]
 
-    mu_density_results = [delivery_data.mudensity() for delivery_data in deliveries]
+    metersetmap_results = [delivery_data.metersetmap() for delivery_data in deliveries]
 
-    mu_densities = [results[2] for results in mu_density_results]
+    metersetmaps = [results[2] for results in metersetmap_results]
 
     labels = [
         "Server: `{}` | Field ID: `{}`".format(server, field_id)
@@ -83,16 +83,16 @@ def compare_mosaiq_fields(servers, field_ids):
     ]
 
     plot_gantry_collimator(labels, deliveries)
-    plot_mu_densities(labels, mu_density_results)
+    plot_metersetmaps(labels, metersetmap_results)
 
-    mu_densities_match = np.all(
+    metersetmaps_match = np.all(
         [
-            np.all(np.abs(mu_density_a - mu_density_b) < 0.1)
-            for mu_density_a, mu_density_b in itertools.combinations(mu_densities, 2)
+            np.all(np.abs(metersetmap_a - metersetmap_b) < 0.1)
+            for metersetmap_a, metersetmap_b in itertools.combinations(metersetmaps, 2)
         ]
     )
 
     plt.show()
-    print("MU Densities match: {}".format(mu_densities_match))
+    print("MetersetMaps match: {}".format(metersetmaps_match))
 
-    return deliveries, mu_densities
+    return deliveries, metersetmaps

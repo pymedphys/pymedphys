@@ -20,7 +20,7 @@ import streamlit as st
 from pymedphys._streamlit.apps import anonymise_monaco as _anonymise_monaco
 from pymedphys._streamlit.apps import dashboard as _dashboard
 from pymedphys._streamlit.apps import electrons as _electrons
-from pymedphys._streamlit.apps import mudensity as _mudensity
+from pymedphys._streamlit.apps import metersetmap as _metersetmap
 from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
 from pymedphys._streamlit.utilities import session
 
@@ -74,10 +74,10 @@ APPLICATION_CATEGORIES = {
 
 
 APPLICATION_OPTIONS = {
-    "mudensity": {
+    "metersetmap": {
         "category": "raw",
-        "label": "MU Density Comparison",
-        "callable": _mudensity.main,
+        "label": "MetersetMap Comparison",
+        "callable": _metersetmap.main,
     },
     "pseudonymise": {
         "category": "raw",

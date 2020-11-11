@@ -144,10 +144,6 @@ sections = [
     "MEDPHYS", "FIRSTPARTY", "LOCALFOLDER"
 ]
 
-[tool.dephell.main]
-from = {format = "poetry", path = "pyproject.toml"}
-to = {format = "setuppy", path = "setup.py"}
-
 [build-system]
 requires = ["poetry >= 1.0.9", "setuptools >= 42.0.0", "wheel >= 0.29.0"]
 build-backend = "poetry.masonry.api"

@@ -29,7 +29,7 @@ from pymedphys._utilities.config import (
     get_centre,
     get_filepath,
     get_index,
-    get_mu_density_parameters,
+    get_metersetmap_parameters,
     get_sql_servers,
     get_sql_servers_list,
 )
@@ -120,12 +120,12 @@ def random_uncompared_logfiles(index, config, compared_hashes):
     return file_hashes_vmat[shuffle_index], vmat_filepaths[shuffle_index]
 
 
-def mudensity_comparisons(config, plot=True, new_logfiles=False):
+def metersetmap_comparisons(config, plot=True, new_logfiles=False):
     (comparison_storage_filepath, comparison_storage_scratch) = get_cache_filepaths(
         config
     )
 
-    grid_resolution, _ = get_mu_density_parameters(config)
+    grid_resolution, _ = get_metersetmap_parameters(config)
 
     index = get_index(config)
     field_id_key_map = get_field_id_key_map(index)
@@ -212,11 +212,13 @@ def mudensity_comparisons(config, plot=True, new_logfiles=False):
                 print(traceback.format_exc())
 
 
-def mu_density_from_delivery_data(delivery_data: pymedphys.Delivery, grid_resolution=1):
-    grid_xx, grid_yy = pymedphys.mudensity.grid(grid_resolution=grid_resolution)
-    mu_density = delivery_data.mudensity(grid_resolution=grid_resolution)
+def metersetmap_from_delivery_data(
+    delivery_data: pymedphys.Delivery, grid_resolution=1
+):
+    grid_xx, grid_yy = pymedphys.metersetmap.grid(grid_resolution=grid_resolution)
+    metersetmap = delivery_data.metersetmap(grid_resolution=grid_resolution)
 
-    return grid_xx, grid_yy, mu_density
+    return grid_xx, grid_yy, metersetmap
 
 
 def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index):
@@ -237,15 +239,15 @@ def find_consecutive_logfiles(field_id_key_map, field_id, filehash, index):
     return within_4_hours
 
 
-def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
+def calc_and_merge_logfile_metersetmap(filepaths, grid_resolution=1):
     logfile_results = []
     for filepath in filepaths:
         logfile_delivery_data = pymedphys.Delivery.from_logfile(filepath)
-        mu_density_results = mu_density_from_delivery_data(
+        metersetmap_results = metersetmap_from_delivery_data(
             logfile_delivery_data, grid_resolution=grid_resolution
         )
 
-        logfile_results.append(mu_density_results)
+        logfile_results.append(metersetmap_results)
 
     grid_xx_list = [result[0] for result in logfile_results]
     grid_yy_list = [result[1] for result in logfile_results]
@@ -256,11 +258,11 @@ def calc_and_merge_logfile_mudensity(filepaths, grid_resolution=1):
     grid_xx = grid_xx_list[0]
     grid_yy = grid_yy_list[0]
 
-    mu_densities = [result[2] for result in logfile_results]
+    metersetmaps = [result[2] for result in logfile_results]
 
-    logfile_mu_density = np.sum(mu_densities, axis=0)
+    logfile_metersetmap = np.sum(metersetmaps, axis=0)
 
-    return grid_xx, grid_yy, logfile_mu_density
+    return grid_xx, grid_yy, logfile_metersetmap
 
 
 def get_logfile_mosaiq_results(
@@ -275,7 +277,7 @@ def get_logfile_mosaiq_results(
 
     mosaiq_delivery_data = pymedphys.Delivery.from_mosaiq(cursors[server], field_id)
 
-    mosaiq_results = mu_density_from_delivery_data(
+    mosaiq_results = metersetmap_from_delivery_data(
         mosaiq_delivery_data, grid_resolution=grid_resolution
     )
 
@@ -285,7 +287,7 @@ def get_logfile_mosaiq_results(
 
     logfilepaths = [get_filepath(index, config, key) for key in consecutive_keys]
 
-    logfile_results = calc_and_merge_logfile_mudensity(
+    logfile_results = calc_and_merge_logfile_metersetmap(
         logfilepaths, grid_resolution=grid_resolution
     )
 
@@ -300,17 +302,19 @@ def get_logfile_mosaiq_results(
     grid_xx = logfile_results[0]
     grid_yy = logfile_results[1]
 
-    logfile_mu_density = logfile_results[2]
-    mosaiq_mu_density = mosaiq_results[2]
+    logfile_metersetmap = logfile_results[2]
+    mosaiq_metersetmap = mosaiq_results[2]
 
-    return grid_xx, grid_yy, logfile_mu_density, mosaiq_mu_density
+    return grid_xx, grid_yy, logfile_metersetmap, mosaiq_metersetmap
 
 
-def calc_comparison(logfile_mu_density, mosaiq_mu_density, normalisation=None):
+def calc_comparison(logfile_metersetmap, mosaiq_metersetmap, normalisation=None):
     if normalisation is None:
-        normalisation = np.sum(mosaiq_mu_density)
+        normalisation = np.sum(mosaiq_metersetmap)
 
-    comparison = np.sum(np.abs(logfile_mu_density - mosaiq_mu_density)) / normalisation
+    comparison = (
+        np.sum(np.abs(logfile_metersetmap - mosaiq_metersetmap)) / normalisation
+    )
 
     return comparison
 
@@ -322,28 +326,28 @@ def get_filepath_from_hash(config, index, file_hash):
 
 
 def plot_results(
-    grid_xx, grid_yy, logfile_mu_density, mosaiq_mu_density, diff_colour_scale=0.1
+    grid_xx, grid_yy, logfile_metersetmap, mosaiq_metersetmap, diff_colour_scale=0.1
 ):
-    min_val = np.min([logfile_mu_density, mosaiq_mu_density])
-    max_val = np.max([logfile_mu_density, mosaiq_mu_density])
+    min_val = np.min([logfile_metersetmap, mosaiq_metersetmap])
+    max_val = np.max([logfile_metersetmap, mosaiq_metersetmap])
 
     plt.figure()
-    plt.pcolormesh(grid_xx, grid_yy, logfile_mu_density, vmin=min_val, vmax=max_val)
+    plt.pcolormesh(grid_xx, grid_yy, logfile_metersetmap, vmin=min_val, vmax=max_val)
     plt.colorbar()
-    plt.title("Logfile MU density")
+    plt.title("Logfile MetersetMap")
     plt.xlabel("MLC direction (mm)")
     plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
 
     plt.figure()
-    plt.pcolormesh(grid_xx, grid_yy, mosaiq_mu_density, vmin=min_val, vmax=max_val)
+    plt.pcolormesh(grid_xx, grid_yy, mosaiq_metersetmap, vmin=min_val, vmax=max_val)
     plt.colorbar()
-    plt.title("Mosaiq MU density")
+    plt.title("Mosaiq MetersetMap")
     plt.xlabel("MLC direction (mm)")
     plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
 
-    scaled_diff = (logfile_mu_density - mosaiq_mu_density) / max_val
+    scaled_diff = (logfile_metersetmap - mosaiq_metersetmap) / max_val
 
     plt.figure()
     plt.pcolormesh(
@@ -354,7 +358,7 @@ def plot_results(
         vmax=diff_colour_scale / 2,
     )
     plt.colorbar(label="Limited colour range = {}".format(diff_colour_scale / 2))
-    plt.title("(Logfile - Mosaiq MU density) / Maximum MU Density")
+    plt.title("(Logfile - Mosaiq MetersetMap) / Maximum MetersetMap")
     plt.xlabel("MLC direction (mm)")
     plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
@@ -366,7 +370,7 @@ def plot_results(
         grid_xx, grid_yy, scaled_diff, vmin=-diff_colour_scale, vmax=diff_colour_scale
     )
     plt.colorbar(label="Limited colour range = {}".format(diff_colour_scale))
-    plt.title("(Logfile - Mosaiq MU density) / Maximum MU Density")
+    plt.title("(Logfile - Mosaiq MetersetMap) / Maximum MetersetMap")
     plt.xlabel("MLC direction (mm)")
     plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
@@ -380,7 +384,7 @@ def plot_results(
         grid_xx, grid_yy, scaled_diff, vmin=-absolute_range, vmax=absolute_range
     )
     plt.colorbar(label="No limited colour range")
-    plt.title("(Logfile - Mosaiq MU density) / Maximum MU Density")
+    plt.title("(Logfile - Mosaiq MetersetMap) / Maximum MetersetMap")
     plt.xlabel("MLC direction (mm)")
     plt.ylabel("Jaw direction (mm)")
     plt.gca().invert_yaxis()
