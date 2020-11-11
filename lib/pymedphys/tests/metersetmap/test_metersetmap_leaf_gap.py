@@ -16,7 +16,7 @@ import pytest
 
 import numpy as np
 
-from pymedphys._mudensity.mudensity import calc_mu_density
+from pymedphys._metersetmap.metersetmap import calc_metersetmap
 
 MU = [0, 30]
 
@@ -42,7 +42,7 @@ def test_max_leaf_gap():
         2 * grid_resolution,
     )
 
-    init_mu_density = calc_mu_density(
+    init_metersetmap = calc_metersetmap(
         MU,
         MLC,
         JAW,
@@ -52,7 +52,7 @@ def test_max_leaf_gap():
     )
 
     for i, max_leaf_gap in enumerate(multiple_max_leaf_gaps):
-        mu_density = calc_mu_density(
+        metersetmap = calc_metersetmap(
             MU,
             MLC,
             JAW,
@@ -61,12 +61,12 @@ def test_max_leaf_gap():
             grid_resolution=grid_resolution,
         )
 
-        assert not np.all(mu_density == 0)
+        assert not np.all(metersetmap == 0)
         if i != 0:
-            assert np.all(mu_density[:, i:-i] == init_mu_density)
+            assert np.all(metersetmap[:, i:-i] == init_metersetmap)
 
     with pytest.raises(ValueError):
-        calc_mu_density(
+        calc_metersetmap(
             MU,
             MLC,
             JAW,

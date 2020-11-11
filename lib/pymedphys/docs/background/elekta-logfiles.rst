@@ -76,7 +76,7 @@ This process of extracting and indexing can be set to run at a regular interval
 so that an up to date logfile index is available.
 
 Post indexing these log files can be decoded into csv format for human
-reading, an MU Density can be calculated, or they can be mapped to a DICOM
+reading, a MetersetMap can be calculated, or they can be mapped to a DICOM
 file for the recalculation of dose.
 
 

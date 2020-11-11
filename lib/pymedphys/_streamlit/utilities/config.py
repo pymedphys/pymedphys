@@ -23,7 +23,7 @@ from pymedphys import _config as pmp_config
 
 
 def download_and_extract_demo_data(cwd):
-    pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=cwd)
+    pymedphys.zip_data_paths("metersetmap-gui-e2e-data.zip", extract_directory=cwd)
 
 
 @st.cache

@@ -9,6 +9,6 @@ itself. Below is the documentation for a range of these libraries.
 
     dicom
     gamma
-    mudensity
+    metersetmap
     electronfactors
     experimental/index

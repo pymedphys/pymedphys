@@ -252,6 +252,7 @@
     "mdinclude",
     "mephysto",
     "meterset",
+    "metersetmap",
     "mkdir",
     "mkdtemp",
     "mlcs",
