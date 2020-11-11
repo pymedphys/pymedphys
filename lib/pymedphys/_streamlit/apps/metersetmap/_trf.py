@@ -142,7 +142,9 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     As such, all references to patient ID and name within this
     ``trf_input_method`` are actually a reference to their Mosaiq
     database counterparts.
+
     """
+
     FILE_UPLOAD = "File upload"
     INDEXED_TRF_SEARCH = "Search indexed TRF directory"
 
