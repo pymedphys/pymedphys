@@ -283,6 +283,8 @@ jobs:
       if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
         poetry run pymedphys dev propagate
+        git add poetry.lock
+        git commit -m "dummy commit"
         git status
         git diff-index --quiet HEAD --
 
