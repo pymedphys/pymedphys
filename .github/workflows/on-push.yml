@@ -277,6 +277,14 @@ jobs:
 
 # TESTS
 
+## Propagate
+
+    - name: See if propagate is needed
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      run: |
+        poetry run pymedphys dev propagate
+        git diff-index --quiet HEAD --
+
 ## Pytest
 
     - name: Run basic pytest tests
