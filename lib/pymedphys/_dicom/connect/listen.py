@@ -28,11 +28,11 @@ class DicomListener(DicomConnectBase):
     """
 
     def __init__(self, storage_directory=None, on_released_callback=None, **kwargs):
-        """Create and instance of a Dicom Listener
+        """Create and instance of a DICOM Listener
 
         Parameters
         ----------
-        storage_directory : [type], optional
+        storage_directory : pathlib.Path/str, optional
             The directory in which to store incoming DICOM objects, by default a
             temporary directory will be created
         on_released_callback : function, optional
