@@ -33,7 +33,7 @@ class DicomListener(DicomConnectBase):
 
         Parameters
         ----------
-        storage_directory : pathlib.Path/str, optional
+        storage_directory : pathlib.Path or str, optional
             The directory in which to store incoming DICOM objects, by default a
             temporary directory will be created
         on_released_callback : function, optional
