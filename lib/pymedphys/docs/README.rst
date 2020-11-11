@@ -14,7 +14,7 @@
 in Python. Building quality transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|build| |pypi| |python| |license|
+|streamlit| |build| |pypi| |python| |license|
 
 .. |streamlit| image:: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
     :target: https://share.streamlit.io/pymedphys/pymedphys/main/app.py
