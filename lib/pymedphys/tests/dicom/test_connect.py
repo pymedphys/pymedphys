@@ -80,6 +80,7 @@ def test_dataset():
 
     # Create a test Dicom object
     test_uid = pydicom.uid.generate_uid()
+    test_series_uid = pydicom.uid.generate_uid()
     test_dataset = dicom_dataset_from_dict(
         {
             "SOPClassUID": RTPlanStorage,
