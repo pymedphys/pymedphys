@@ -30,22 +30,22 @@ def get_data_directory(config):
 
 
 def get_cache_filepaths(config):
-    mu_density_config = config["mu_density"]
+    metersetmap_config = config["metersetmap"]
 
     comparison_storage_filepath = os.path.join(
-        get_data_directory(config), mu_density_config["comparisons_cache"]["primary"]
+        get_data_directory(config), metersetmap_config["comparisons_cache"]["primary"]
     )
     comparison_storage_scratch = os.path.join(
-        get_data_directory(config), mu_density_config["comparisons_cache"]["scratch"]
+        get_data_directory(config), metersetmap_config["comparisons_cache"]["scratch"]
     )
 
     return comparison_storage_filepath, comparison_storage_scratch
 
 
-def get_mu_density_parameters(config):
-    mu_density_config = config["mu_density"]
-    grid_resolution = mu_density_config["grid_resolution"]
-    ram_fraction = mu_density_config["ram_fraction"]
+def get_metersetmap_parameters(config):
+    metersetmap_config = config["metersetmap"]
+    grid_resolution = metersetmap_config["grid_resolution"]
+    ram_fraction = metersetmap_config["ram_fraction"]
 
     return grid_resolution, ram_fraction
 

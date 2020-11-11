@@ -28,7 +28,7 @@ __DEFAULT_MAX_LEAF_GAP = 400
 __DEFAULT_MIN_STEP_PER_PIXEL = 10
 
 
-def calc_mu_density(
+def calc_metersetmap(
     mu,
     mlc,
     jaw,
@@ -37,7 +37,7 @@ def calc_mu_density(
     leaf_pair_widths=None,
     min_step_per_pixel=None,
 ):
-    """Determine the MU Density.
+    """Determine the MetersetMap.
 
     Both jaw and mlc positions are defined in bipolar format for each control
     point. A negative value indicates travel over the isocentre. All positional
@@ -79,8 +79,8 @@ def calc_mu_density(
 
     Returns
     -------
-    mu_density : numpy.ndarray
-        2-D array containing the calculated mu density.
+    metersetmap : numpy.ndarray
+        2-D array containing the calculated metersetmap.
 
             | axis 0: jaw direction
             | axis 1: mlc direction
@@ -122,7 +122,7 @@ def calc_mu_density(
     ...     [0, 0]
     ... ])
     >>>
-    >>> grid = pymedphys.mudensity.grid(
+    >>> grid = pymedphys.metersetmap.grid(
     ...    max_leaf_gap=max_leaf_gap, leaf_pair_widths=leaf_pair_widths)
     >>> grid['mlc']
     array([-5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,  5.])
@@ -131,12 +131,12 @@ def calc_mu_density(
     array([-8., -7., -6., -5., -4., -3., -2., -1.,  0.,  1.,  2.,  3.,  4.,
             5.,  6.,  7.,  8.])
     >>>
-    >>> mu_density = pymedphys.mudensity.calculate(
+    >>> metersetmap = pymedphys.metersetmap.calculate(
     ...    mu, mlc, jaw, max_leaf_gap=max_leaf_gap,
     ...    leaf_pair_widths=leaf_pair_widths)
-    >>> pymedphys.mudensity.display(grid, mu_density)
+    >>> pymedphys.metersetmap.display(grid, metersetmap)
     >>>
-    >>> np.round(mu_density, 1)
+    >>> np.round(metersetmap, 1)
     array([[0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ],
            [0. , 0. , 0. , 0.3, 1.9, 2.2, 1.9, 0.4, 0. , 0. , 0. ],
            [0. , 0. , 0. , 0.4, 2.2, 2.5, 2.2, 0.6, 0. , 0. , 0. ],
@@ -156,33 +156,33 @@ def calc_mu_density(
            [0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. , 0. ]])
 
 
-    MU Density from a Mosaiq record
+    MetersetMap from a Mosaiq record
 
     >>> import pymedphys
     >>>
-    >>> def mu_density_from_mosaiq(msq_server_name, field_id):
+    >>> def metersetmap_from_mosaiq(msq_server_name, field_id):
     ...     with pymedphys.mosaiq.connect(msq_server_name) as cursor:
     ...         delivery = pymedphys.Delivery.from_mosaiq(cursor, field_id)
     ...
-    ...     grid = pymedphys.mudensity.grid()
-    ...     mu_density = delivery.mudensity()
-    ...     pymedphys.mudensity.display(grid, mu_density)
+    ...     grid = pymedphys.metersetmap.grid()
+    ...     metersetmap = delivery.metersetmap()
+    ...     pymedphys.metersetmap.display(grid, metersetmap)
     >>>
-    >>> mu_density_from_mosaiq('a_server_name', 11111) # doctest: +SKIP
+    >>> metersetmap_from_mosaiq('a_server_name', 11111) # doctest: +SKIP
 
 
-    MU Density from a logfile at a given filepath
+    MetersetMap from a logfile at a given filepath
 
     >>> import pymedphys
     >>>
-    >>> def mu_density_from_logfile(filepath):
+    >>> def metersetmap_from_logfile(filepath):
     ...     delivery_data = Delivery.from_logfile(filepath)
-    ...     mu_density = Delivery.mudensity()
+    ...     metersetmap = Delivery.metersetmap()
     ...
-    ...     grid = pymedphys.mudensity.grid()
-    ...     pymedphys.mudensity.display(grid, mu_density)
+    ...     grid = pymedphys.metersetmap.grid()
+    ...     pymedphys.metersetmap.display(grid, metersetmap)
     >>>
-    >>> mu_density_from_logfile(r"a/path/goes/here")  # doctest: +SKIP
+    >>> metersetmap_from_logfile(r"a/path/goes/here")  # doctest: +SKIP
 
     """
 
@@ -224,7 +224,7 @@ def calc_mu_density(
 
     full_grid = get_grid(max_leaf_gap, grid_resolution, leaf_pair_widths)
 
-    mu_density = np.zeros((len(full_grid["jaw"]), len(full_grid["mlc"])))
+    metersetmap = np.zeros((len(full_grid["jaw"]), len(full_grid["mlc"])))
 
     for i in range(len(mu) - 1):
         control_point_slice = slice(i, i + 2, 1)
@@ -232,7 +232,7 @@ def calc_mu_density(
         current_jaw = jaw[control_point_slice, :]
         delivered_mu = np.diff(mu[control_point_slice])
 
-        grid, mu_density_of_slice = calc_single_control_point(
+        grid, metersetmap_of_slice = calc_single_control_point(
             current_mlc,
             current_jaw,
             delivered_mu,
@@ -240,13 +240,13 @@ def calc_mu_density(
             grid_resolution=grid_resolution,
             min_step_per_pixel=min_step_per_pixel,
         )
-        full_grid_mu_density_of_slice = _convert_to_full_grid(
-            grid, full_grid, mu_density_of_slice
+        full_grid_metersetmap_of_slice = _convert_to_full_grid(
+            grid, full_grid, metersetmap_of_slice
         )
 
-        mu_density += full_grid_mu_density_of_slice
+        metersetmap += full_grid_metersetmap_of_slice
 
-    return mu_density
+    return metersetmap
 
 
 def calc_single_control_point(
@@ -257,13 +257,13 @@ def calc_single_control_point(
     grid_resolution=__DEFAULT_GRID_RESOLUTION,
     min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL,
 ):
-    """Calculate the MU Density for a single control point.
+    """Calculate the MetersetMap for a single control point.
 
     Examples
     --------
     >>> from pymedphys._imports import numpy as np
-    >>> from pymedphys._mudensity.mudensity import (
-    ...     calc_single_control_point, display_mu_density)
+    >>> from pymedphys._metersetmap.metersetmap import (
+    ...     calc_single_control_point, display_metersetmap)
     >>>
     >>> leaf_pair_widths = (2, 2)
     >>> mlc = np.array([
@@ -280,9 +280,9 @@ def calc_single_control_point(
     ...     [1.5, 1.2],
     ...     [1.5, 1.2]
     ... ])
-    >>> grid, mu_density = calc_single_control_point(
+    >>> grid, metersetmap = calc_single_control_point(
     ...     mlc, jaw, leaf_pair_widths=leaf_pair_widths)
-    >>> display_mu_density(grid, mu_density)
+    >>> display_metersetmap(grid, metersetmap)
     >>>
     >>> grid['mlc']
     array([-3., -2., -1.,  0.,  1.,  2.,  3.])
@@ -290,7 +290,7 @@ def calc_single_control_point(
     >>> grid['jaw']
     array([-1.5, -0.5,  0.5,  1.5])
     >>>
-    >>> np.round(mu_density, 2)
+    >>> np.round(metersetmap, 2)
     array([[0.  , 0.07, 0.43, 0.5 , 0.43, 0.07, 0.  ],
            [0.  , 0.14, 0.86, 1.  , 0.86, 0.14, 0.  ],
            [0.14, 0.86, 1.  , 1.  , 1.  , 0.86, 0.14],
@@ -337,9 +337,9 @@ def calc_single_control_point(
     mlc_open, jaw_open = _remap_mlc_and_jaw(device_open, grid_leaf_map)
     open_fraction = _calc_open_fraction(mlc_open, jaw_open)
 
-    mu_density = open_fraction * delivered_mu
+    metersetmap = open_fraction * delivered_mu
 
-    return grid, mu_density
+    return grid, metersetmap
 
 
 def single_mlc_pair(
@@ -348,25 +348,25 @@ def single_mlc_pair(
     grid_resolution=__DEFAULT_GRID_RESOLUTION,
     min_step_per_pixel=__DEFAULT_MIN_STEP_PER_PIXEL,
 ):
-    """Calculate the MU Density of a single leaf pair.
+    """Calculate the MetersetMap of a single leaf pair.
 
     Examples
     --------
     >>> from pymedphys._imports import numpy as np
     >>> import matplotlib.pyplot as plt
     >>>
-    >>> from pymedphys._mudensity.mudensity import single_mlc_pair
+    >>> from pymedphys._metersetmap.metersetmap import single_mlc_pair
     >>>
     >>> mlc_left = (-2.3, 3.1)  # (start position, end position)
     >>> mlc_right = (0, 7.7)
     >>>
-    >>> x, mu_density = single_mlc_pair(mlc_left, mlc_right)
-    >>> fig = plt.plot(x, mu_density, '-o')
+    >>> x, metersetmap = single_mlc_pair(mlc_left, mlc_right)
+    >>> fig = plt.plot(x, metersetmap, '-o')
     >>>
     >>> x
     array([-2., -1.,  0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.])
     >>>
-    >>> np.round(mu_density, 3)
+    >>> np.round(metersetmap, 3)
     array([0.064, 0.244, 0.408, 0.475, 0.53 , 0.572, 0.481, 0.352, 0.224,
            0.096, 0.004])
     """
@@ -379,7 +379,7 @@ def single_mlc_pair(
     )
     mlc = np.array([[[-left_mlc[0], right_mlc[0]]], [[-left_mlc[1], right_mlc[1]]]])
 
-    grid, mu_density = calc_single_control_point(
+    grid, metersetmap = calc_single_control_point(
         mlc,
         jaw,
         leaf_pair_widths=leaf_pair_widths,
@@ -387,10 +387,10 @@ def single_mlc_pair(
         min_step_per_pixel=min_step_per_pixel,
     )
 
-    return grid["mlc"], mu_density[0, :]
+    return grid["mlc"], metersetmap[0, :]
 
 
-def calc_mu_density_return_grid(
+def calc_metersetmap_return_grid(
     mu,
     mlc,
     jaw,
@@ -404,7 +404,7 @@ def calc_mu_density_return_grid(
     """
 
     leaf_pair_widths = np.array(leaf_pair_widths)
-    mu_density = calc_mu_density(
+    metersetmap = calc_metersetmap(
         mu,
         mlc,
         jaw,
@@ -418,7 +418,7 @@ def calc_mu_density_return_grid(
 
     grid_xx, grid_yy = np.meshgrid(full_grid["mlc"], full_grid["jaw"])
 
-    return grid_xx, grid_yy, mu_density
+    return grid_xx, grid_yy, metersetmap
 
 
 def get_grid(
@@ -426,11 +426,11 @@ def get_grid(
     grid_resolution=__DEFAULT_GRID_RESOLUTION,
     leaf_pair_widths=__DEFAULT_LEAF_PAIR_WIDTHS,
 ):
-    """Get the MU Density grid for plotting purposes.
+    """Get the MetersetMap grid for plotting purposes.
 
     Examples
     --------
-    See `pymedphys.mudensity.calculate`_.
+    See `pymedphys.metersetmap.calculate`_.
     """
 
     leaf_pair_widths = np.array(leaf_pair_widths)
@@ -467,16 +467,16 @@ def get_grid(
     return grid
 
 
-def display_mu_density_diff(
-    grid, mudensity_eval, mudensity_ref, grid_resolution=None, colour_range=None
+def display_metersetmap_diff(
+    grid, metersetmap_eval, metersetmap_ref, grid_resolution=None, colour_range=None
 ):
     cmap = "bwr"
-    diff = mudensity_eval - mudensity_ref
+    diff = metersetmap_eval - metersetmap_ref
     if colour_range is None:
         colour_range = np.max(np.abs(diff))
 
     # pylint: disable=invalid-unary-operand-type
-    display_mu_density(
+    display_metersetmap(
         grid,
         diff,
         grid_resolution=grid_resolution,
@@ -486,22 +486,22 @@ def display_mu_density_diff(
     )
 
 
-def display_mu_density(
-    grid, mu_density, grid_resolution=None, cmap=None, vmin=None, vmax=None
+def display_metersetmap(
+    grid, metersetmap, grid_resolution=None, cmap=None, vmin=None, vmax=None
 ):
-    """Prints a colour plot of the MU Density.
+    """Prints a colour plot of the MetersetMap.
 
     Examples
     --------
-    See `pymedphys.mudensity.calculate`_.
+    See `pymedphys.metersetmap.calculate`_.
     """
     if grid_resolution is None:
         grid_resolution = grid["mlc"][1] - grid["mlc"][0]
 
     x, y = pcolormesh_grid(grid["mlc"], grid["jaw"], grid_resolution)
-    plt.pcolormesh(x, y, mu_density, cmap=cmap, vmin=vmin, vmax=vmax)
+    plt.pcolormesh(x, y, metersetmap, cmap=cmap, vmin=vmin, vmax=vmax)
     plt.colorbar()
-    plt.title("MU density")
+    plt.title("MetersetMap")
     plt.xlabel("MLC direction (mm)")
     plt.ylabel("Jaw direction (mm)")
     plt.axis("equal")
@@ -658,7 +658,7 @@ def _determine_calc_grid_and_adjustments(mlc, jaw, leaf_pair_widths, grid_resolu
     return grid, adjusted_grid_leaf_map, adjusted_mlc
 
 
-def _convert_to_full_grid(grid, full_grid, mu_density):
+def _convert_to_full_grid(grid, full_grid, metersetmap):
     grid_xx, grid_yy = np.meshgrid(grid["mlc"], grid["jaw"])
     full_grid_xx, full_grid_yy = np.meshgrid(full_grid["mlc"], full_grid["jaw"])
 
@@ -669,9 +669,9 @@ def _convert_to_full_grid(grid, full_grid, mu_density):
         np.abs(full_grid_yy[None, :, 0] - grid_yy[:, 0, None]) < 0.0001
     )
 
-    full_grid_mu_density = np.zeros_like(full_grid_xx)
-    full_grid_mu_density[  # pylint: disable=unsupported-assignment-operation
+    full_grid_metersetmap = np.zeros_like(full_grid_xx)
+    full_grid_metersetmap[  # pylint: disable=unsupported-assignment-operation
         np.ix_(yy_to, xx_to)
-    ] = mu_density[np.ix_(yy_from, xx_from)]
+    ] = metersetmap[np.ix_(yy_from, xx_from)]
 
-    return full_grid_mu_density
+    return full_grid_metersetmap

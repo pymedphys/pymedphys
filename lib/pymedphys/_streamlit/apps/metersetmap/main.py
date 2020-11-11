@@ -28,7 +28,7 @@ from pymedphys._imports import streamlit as st
 from pymedphys._imports import timeago
 
 import pymedphys
-from pymedphys._streamlit.apps.mudensity import (
+from pymedphys._streamlit.apps.metersetmap import (
     _config,
     _dicom,
     _icom,
@@ -51,7 +51,7 @@ DATA_OPTION_LABELS = {
 LEAF_PAIR_WIDTHS = (10,) + (5,) * 78 + (10,)
 MAX_LEAF_GAP = 410
 GRID_RESOLUTION = 1
-GRID = pymedphys.mudensity.grid(
+GRID = pymedphys.metersetmap.grid(
     max_leaf_gap=MAX_LEAF_GAP,
     grid_resolution=GRID_RESOLUTION,
     leaf_pair_widths=LEAF_PAIR_WIDTHS,
@@ -234,8 +234,8 @@ def plot_gamma_hist(gamma, percent, dist):
 
 
 def plot_and_save_results(
-    reference_mudensity,
-    evaluation_mudensity,
+    reference_metersetmap,
+    evaluation_metersetmap,
     gamma,
     gamma_options,
     png_record_directory,
@@ -247,15 +247,15 @@ def plot_and_save_results(
     diff_filepath = png_record_directory.joinpath("diff.png")
     gamma_filepath = png_record_directory.joinpath("gamma.png")
 
-    diff = evaluation_mudensity - reference_mudensity
+    diff = evaluation_metersetmap - reference_metersetmap
 
-    imageio.imwrite(reference_filepath, reference_mudensity)
-    imageio.imwrite(evaluation_filepath, evaluation_mudensity)
+    imageio.imwrite(reference_filepath, reference_metersetmap)
+    imageio.imwrite(evaluation_filepath, evaluation_metersetmap)
     imageio.imwrite(diff_filepath, diff)
     imageio.imwrite(gamma_filepath, gamma)
 
-    largest_mu_density = np.max(
-        [np.max(evaluation_mudensity), np.max(reference_mudensity)]
+    largest_metersetmap = np.max(
+        [np.max(evaluation_metersetmap), np.max(reference_metersetmap)]
     )
     largest_diff = np.max(np.abs(diff))
 
@@ -286,25 +286,25 @@ def plot_and_save_results(
     ax_footer.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
 
     plt.sca(axs[2, 0])
-    pymedphys.mudensity.display(
-        GRID, reference_mudensity, vmin=0, vmax=largest_mu_density
+    pymedphys.metersetmap.display(
+        GRID, reference_metersetmap, vmin=0, vmax=largest_metersetmap
     )
-    axs[2, 0].set_title("Reference MU Density")
+    axs[2, 0].set_title("Reference MetersetMap")
 
     plt.sca(axs[2, 1])
-    pymedphys.mudensity.display(
-        GRID, evaluation_mudensity, vmin=0, vmax=largest_mu_density
+    pymedphys.metersetmap.display(
+        GRID, evaluation_metersetmap, vmin=0, vmax=largest_metersetmap
     )
-    axs[2, 1].set_title("Evaluation MU Density")
+    axs[2, 1].set_title("Evaluation MetersetMap")
 
     plt.sca(axs[3, 0])
-    pymedphys.mudensity.display(
+    pymedphys.metersetmap.display(
         GRID, diff, cmap="seismic", vmin=-largest_diff, vmax=largest_diff
     )
     plt.title("Evaluation - Reference")
 
     plt.sca(axs[3, 1])
-    pymedphys.mudensity.display(GRID, gamma, cmap="coolwarm", vmin=0, vmax=2)
+    pymedphys.metersetmap.display(GRID, gamma, cmap="coolwarm", vmin=0, vmax=2)
     plt.title(
         "Local Gamma | "
         f"{gamma_options['dose_percent_threshold']}%/"
@@ -322,30 +322,30 @@ def plot_and_save_results(
 
 
 @st.cache(hash_funcs={pymedphys.Delivery: hash})
-def calculate_mudensity(delivery):
-    return delivery.mudensity(
+def calculate_metersetmap(delivery):
+    return delivery.metersetmap(
         max_leaf_gap=MAX_LEAF_GAP,
         grid_resolution=GRID_RESOLUTION,
         leaf_pair_widths=LEAF_PAIR_WIDTHS,
     )
 
 
-def calculate_batch_mudensity(deliveries):
-    mudensity = calculate_mudensity(deliveries[0])
+def calculate_batch_metersetmap(deliveries):
+    metersetmap = calculate_metersetmap(deliveries[0])
 
     for delivery in deliveries[1::]:
-        mudensity = mudensity + calculate_mudensity(delivery)
+        metersetmap = metersetmap + calculate_metersetmap(delivery)
 
-    return mudensity
+    return metersetmap
 
 
 @st.cache
-def calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options):
+def calculate_gamma(reference_metersetmap, evaluation_metersetmap, gamma_options):
     gamma = pymedphys.gamma(
         COORDS,
-        to_tuple(reference_mudensity),
+        to_tuple(reference_metersetmap),
         COORDS,
-        to_tuple(evaluation_mudensity),
+        to_tuple(evaluation_metersetmap),
         **gamma_options,
     )
 
@@ -426,14 +426,18 @@ def run_calculation(
     escan_directory,
     png_output_directory,
 ):
-    st.write("Calculating Reference MU Density...")
-    reference_mudensity = calculate_batch_mudensity(reference_results["deliveries"])
+    st.write("Calculating Reference MetersetMap...")
+    reference_metersetmap = calculate_batch_metersetmap(reference_results["deliveries"])
 
-    st.write("Calculating Evaluation MU Density...")
-    evaluation_mudensity = calculate_batch_mudensity(evaluation_results["deliveries"])
+    st.write("Calculating Evaluation MetersetMap...")
+    evaluation_metersetmap = calculate_batch_metersetmap(
+        evaluation_results["deliveries"]
+    )
 
     st.write("Calculating Gamma...")
-    gamma = calculate_gamma(reference_mudensity, evaluation_mudensity, gamma_options)
+    gamma = calculate_gamma(
+        reference_metersetmap, evaluation_metersetmap, gamma_options
+    )
 
     patient_id = reference_results["patient_id"]
 
@@ -475,8 +479,8 @@ def run_calculation(
     )
 
     fig = plot_and_save_results(
-        reference_mudensity,
-        evaluation_mudensity,
+        reference_metersetmap,
+        evaluation_metersetmap,
         gamma,
         gamma_options,
         png_record_directory,
@@ -552,9 +556,9 @@ def convert_png_to_pdf(png_filepath, pdf_filepath):
 def main():
     st.write(
         """
-        # MU Density comparison tool
+        # MetersetMap comparison tool
 
-        Tool to compare the MU Density between planned and delivery.
+        Tool to compare the MetersetMap between planned and delivery.
         """
     )
 
@@ -562,7 +566,7 @@ def main():
 
     st.sidebar.markdown(
         """
-        # MU Density Overview
+        # MetersetMap Overview
         """
     )
 
@@ -720,11 +724,11 @@ def main():
 
         st.write(
             """
-            ### MU Density usage warning
+            ### MetersetMap usage warning
             """
         )
 
-        st.warning(pymedphys.mudensity.WARNING_MESSAGE)
+        st.warning(pymedphys.metersetmap.WARNING_MESSAGE)
 
         st.write(
             """
