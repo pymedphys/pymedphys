@@ -14,6 +14,7 @@
 # pylint: disable=redefined-outer-name
 
 import shutil
+import tempfile
 import pathlib
 import time
 from unittest.mock import Mock
@@ -33,8 +34,6 @@ from pymedphys._utilities.test import process
 TEST_PORT = 9988
 
 METHOD_MOCK = Mock()
-
-HERE = pathlib.Path(__file__).parent.resolve()
 
 
 @pytest.fixture()
@@ -208,10 +207,12 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
 @pytest.mark.pydicom
 def test_dicom_listener_cli(test_dataset):
 
+    test_directory = pathlib.Path(tempfile.mkdtemp())
+
     scp_ae_title = "PYMEDPHYSTEST"
 
     with process(
-        f"poetry run pymedphys dicom listen {TEST_PORT} -d {HERE} -a {scp_ae_title}",
+        f"pymedphys dicom listen {TEST_PORT} -d {test_directory} -a {scp_ae_title}",
         shell=True,
     ) as _:
 
@@ -234,10 +235,10 @@ def test_dicom_listener_cli(test_dataset):
         assert status.Status == 0
         assoc.release()
 
-    series_dir = HERE.joinpath(test_dataset.SeriesInstanceUID)
+    series_dir = test_directory.joinpath(test_dataset.SeriesInstanceUID)
     file_path = series_dir.joinpath(f"RP.{test_dataset.SOPInstanceUID}")
     read_dataset = pydicom.read_file(file_path)
     assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
 
     # Clean up after ourselves
-    shutil.rmtree(series_dir)
+    shutil.rmtree(test_directory)
