@@ -211,6 +211,8 @@ Past contributors
 
 .. _`Swerdloff Family`: https://github.com/sjswerdloff
 
+.. _`Ingham Institute`: https://inghaminstitute.org.au/
+
 .. END_OF_DOCS_IMPORT
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
