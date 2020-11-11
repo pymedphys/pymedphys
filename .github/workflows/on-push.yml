@@ -283,6 +283,7 @@ jobs:
       if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
         poetry run pymedphys dev propagate
+        git status
         git diff-index --quiet HEAD --
 
 ## Pytest
