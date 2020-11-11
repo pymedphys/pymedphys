@@ -1,5 +1,5 @@
-MU Density Comparison
-=====================
+MetersetMap Comparison
+======================
 
 For the time being this GUI utility is undocumented. For more information see
 the `discussions within the mailing list
