@@ -9,6 +9,12 @@ DOCS_HTML_BUILD_DIR = DOCS_BUILD_DIR.joinpath("html")
 
 
 def build_docs(args):
+    subprocess.check_call(
+        "pandoc CHANGELOG.md --from markdown --to rst -s -o release-notes.rst",
+        cwd=DOCS_DIR,
+        shell=True,
+    )
+
     if args.output:
         output_directory = args.output
     else:

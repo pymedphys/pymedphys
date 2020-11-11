@@ -15,11 +15,7 @@
 
 # pylint: disable = C0413, C0103
 
-import os
-
 import pymedphys
-
-os.system("pandoc CHANGELOG.md --from markdown --to rst -s -o release-notes.rst")
 
 
 def setup(app):
