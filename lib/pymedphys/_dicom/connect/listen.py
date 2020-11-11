@@ -17,6 +17,7 @@ import signal
 import sys
 import tempfile
 import pathlib
+import uuid
 
 from pymedphys._imports import pydicom, pynetdicom
 from pymedphys._dicom.connect.base import DicomConnectBase
@@ -132,17 +133,18 @@ class DicomListener(DicomConnectBase):
             existing_hash = hash(existing_ds.to_json())
             incoming_hash = hash(dataset.to_json())
 
-            if existing_hash == incoming_hash:
-                # If the hashes match then we can be confident the contents are the same
-                # so no need to rewrite the file and we can return status OK
-                return status_ds
+            if not existing_hash == incoming_hash:
+                # If the hashes don't match, save conflicting incoming file in an
+                # "orphan" sub-directory.
 
-            # Hashes don't match, don't overwrite, log a warning and return warning
-            # status
-            logging.warning("DICOM file exists, skipping: %s", filename)
-            status_ds.ErrorComment = "SCP warning - conflicting file already exists"
-            status_ds.Status = 0x0107  # Warning - Attribute List Error
-            return status_ds
+                # Just give the file a unique name in the orphan directory
+                filename = str(uuid.uuid4())
+                filepath = series_dir.joinpath("orphan", filename)
+                filepath.parent.mkdir(exist_ok=True)
+
+                logging.warning(
+                    "DICOM file exists, storing in orphan directory: %s", filename
+                )
 
         context = event.context
         meta = pydicom.Dataset()

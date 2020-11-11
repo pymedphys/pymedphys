@@ -165,7 +165,7 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     assert status.Status == 0
     assoc.release()
 
-    # Send again, should succeed without complaining
+    # Send again, should succeed without writing the same file again
     ae = AE()
     ae.add_requested_context(RTPlanStorage)
     assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
@@ -182,19 +182,24 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     ds.Manufacturer = "PyMedPhysModified"
     ds.save_as(file_path, write_like_original=False)
 
-    # Send again, should return a warning Status and ErrorComment
+    # Send again, should save the file in the orphan directory
     ae = AE()
     ae.add_requested_context(RTPlanStorage)
     assoc = ae.associate(listener.host, listener.port, ae_title="PYMEDPHYSTEST")
     assert assoc.is_established
     status = assoc.send_c_store(test_dataset)
-    assert status.Status == 0x0107
-    assert "SCP warning" in status.ErrorComment
+    assert status.Status == 0
     assoc.release()
 
-    # Check it actually wasn't overwritten
+    # Check the original file is the same
     read_dataset = pydicom.read_file(file_path)
     assert read_dataset.Manufacturer == "PyMedPhysModified"
+
+    # Check the other file was written to the orphan directory
+    orphan_files = list(storage_path.joinpath("orphan").glob("*"))
+    assert len(orphan_files) == 1
+    orphan_dataset = pydicom.read_file(orphan_files[0])
+    assert orphan_dataset.Manufacturer == "PyMedPhys"
 
     # Clean up after ourselves
     shutil.rmtree(storage_path)
