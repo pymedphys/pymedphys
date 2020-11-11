@@ -167,32 +167,32 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset):
 
 @pytest.mark.slow
 @pytest.mark.pydicom
-def test_mudensity_agreement(loaded_dicom_dataset, logfile_delivery_data):
+def test_metersetmap_agreement(loaded_dicom_dataset, logfile_delivery_data):
     dicom_delivery_data = Delivery.from_dicom(loaded_dicom_dataset, FRACTION_GROUP)
 
-    dicom_mu_density = dicom_delivery_data.mudensity(grid_resolution=5)
-    logfile_mu_density = logfile_delivery_data.mudensity(grid_resolution=5)
+    dicom_metersetmap = dicom_delivery_data.metersetmap(grid_resolution=5)
+    logfile_metersetmap = logfile_delivery_data.metersetmap(grid_resolution=5)
 
-    diff = logfile_mu_density - dicom_mu_density
+    diff = logfile_metersetmap - dicom_metersetmap
     max_diff = np.max(np.abs(diff))
     std_diff = np.std(diff)
     try:
         assert max_diff < 4.1
         assert std_diff < 0.4
     except AssertionError:
-        max_val = np.max([np.max(logfile_mu_density), np.max(dicom_mu_density)])
+        max_val = np.max([np.max(logfile_metersetmap), np.max(dicom_metersetmap)])
 
         plt.figure()
-        plt.pcolormesh(dicom_mu_density, vmin=0, vmax=max_val)
+        plt.pcolormesh(dicom_metersetmap, vmin=0, vmax=max_val)
         plt.colorbar()
 
         plt.figure()
-        plt.pcolormesh(logfile_mu_density, vmin=0, vmax=max_val)
+        plt.pcolormesh(logfile_metersetmap, vmin=0, vmax=max_val)
         plt.colorbar()
 
         plt.figure()
         plt.pcolormesh(
-            logfile_mu_density - dicom_mu_density,
+            logfile_metersetmap - dicom_metersetmap,
             vmin=-max_diff,
             vmax=max_diff,
             cmap="bwr",

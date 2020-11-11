@@ -21,5 +21,5 @@ stabilise.
 .. toctree::
     :maxdepth: 1
 
-    mudensity
+    metersetmap
     pseudonymisation
