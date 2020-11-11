@@ -18,7 +18,7 @@ from pymedphys._imports import streamlit as st
 
 import pymedphys
 from pymedphys._mosaiq.delivery import NoMosaiqEntries as _NoMosaiqEntries
-from pymedphys._streamlit.apps.mudensity import _config, _deliveries, _utilities
+from pymedphys._streamlit.apps.metersetmap import _config, _deliveries, _utilities
 from pymedphys._streamlit.utilities import exceptions as _exceptions
 from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 from pymedphys._trf.manage import index as pmp_index
