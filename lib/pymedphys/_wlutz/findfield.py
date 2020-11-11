@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import scipy
+from pymedphys._imports import pylinac, scipy
 
-import pymedphys._vendor.pylinac.winstonlutz
+from pymedphys._vendor.pylinac import winstonlutz as pylinac_wlutz
 
 from .interppoints import (
     define_penumbra_points_at_origin,
@@ -30,9 +30,8 @@ INITIAL_ROTATION = 0
 
 
 def get_initial_centre(x, y, img):
-    wl_image = pymedphys._vendor.pylinac.winstonlutz.WLImageOld(  # pylint: disable = protected-access
-        img
-    )
+    WLImage = pylinac_wlutz.get_latest_wlimage()
+    wl_image = WLImage(img)
     min_x = np.min(x)
     dx = x[1] - x[0]
     min_y = np.min(y)
@@ -112,7 +111,7 @@ def field_centre_and_rotation_refining(
 
     if not pylinac_tol is None:
         try:
-            pylinac = run_wlutz(
+            pylinac_result = run_wlutz(
                 field,
                 edge_lengths,
                 penumbra,
@@ -127,14 +126,21 @@ def field_centre_and_rotation_refining(
             )
 
         pylinac_2_2_6_out_of_tol = np.any(
-            np.abs(np.array(pylinac["v2.2.6"]["field_centre"]) - predicted_centre)
+            np.abs(np.array(pylinac_result["2.2.6"]["field_centre"]) - predicted_centre)
             > pylinac_tol
         )
         pylinac_2_2_7_out_of_tol = np.any(
-            np.abs(np.array(pylinac["v2.2.7"]["field_centre"]) - predicted_centre)
+            np.abs(np.array(pylinac_result["2.2.7"]["field_centre"]) - predicted_centre)
             > pylinac_tol
         )
-        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol:
+        pylinac_out_of_tol = np.any(
+            np.abs(
+                np.array(pylinac_result[pylinac.__version__]["field_centre"])
+                - predicted_centre
+            )
+            > pylinac_tol
+        )
+        if pylinac_2_2_6_out_of_tol or pylinac_2_2_7_out_of_tol or pylinac_out_of_tol:
             raise PylinacComparisonDeviation(
                 "The determined field centre deviates from pylinac more "
                 "than the defined tolerance"
