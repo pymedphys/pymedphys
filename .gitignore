@@ -73,7 +73,7 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+lib/pymedphys/docs/_build/
 
 # PyBuilder
 target/
@@ -278,4 +278,4 @@ v*.tar.gz
 *.exe
 
 *-demo
-CHANGELOG.rst
+release-notes.rst
