@@ -85,7 +85,7 @@ def test_dataset():
         {
             "SOPClassUID": RTPlanStorage,
             "SOPInstanceUID": test_uid,
-            "SeriesInstanceUID": test_uid,
+            "SeriesInstanceUID": test_series_uid,
             "Modality": "RTPlan",
             "Manufacturer": "PyMedPhys",
             "BeamSequence": [{"Manufacturer": "PyMedPhys"}],
