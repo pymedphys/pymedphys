@@ -24,7 +24,8 @@ from PIL import Image
 
 
 def read_narrow_png(file_name, step_size=0.1):
-    """  Extract a an relative-density profilee from a narrow png file.
+    """  Extract a relative-density profile from a narrow png file.
+
 
     Source file is a full color PNG that is sufficiently narrow that
     density uniform along its short dimension. The image density along

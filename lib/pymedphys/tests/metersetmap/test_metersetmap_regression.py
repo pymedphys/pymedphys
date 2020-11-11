@@ -28,16 +28,18 @@ import pymedphys
 
 @pytest.mark.slow
 def test_regression():
-    """The results of MU Density calculation should not change
+    """The results of MetersetMap calculation should not change
     """
 
-    data_filepath = pymedphys.data_path("mu_density_example_arrays.npz")
+    data_filepath = pymedphys.data_path("metersetmap_example_arrays.npz")
     regress_test_arrays = np.load(data_filepath)
 
     mu = regress_test_arrays["mu"]
     mlc = regress_test_arrays["mlc"]
     jaw = regress_test_arrays["jaw"]
 
-    cached_mu_density = regress_test_arrays["mu_density"]
-    mu_density = pymedphys.mudensity.calculate(mu, mlc, jaw)
-    assert np.allclose(mu_density, cached_mu_density, atol=0.1)
+    # MetersetMap used to be called mu_density. The regression test data
+    # still retains the old name.
+    cached_metersetmap = regress_test_arrays["mu_density"]
+    metersetmap = pymedphys.metersetmap.calculate(mu, mlc, jaw)
+    assert np.allclose(metersetmap, cached_metersetmap, atol=0.1)

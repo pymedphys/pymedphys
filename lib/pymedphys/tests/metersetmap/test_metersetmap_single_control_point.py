@@ -21,7 +21,7 @@
 
 import numpy as np
 
-from pymedphys._mudensity.mudensity import calc_single_control_point
+from pymedphys._metersetmap.metersetmap import calc_single_control_point
 
 MLC = np.array([[[1, 1], [2, 2]], [[2, 2], [3, 3]]])
 
@@ -29,7 +29,7 @@ JAW = np.array([[1.5, 1.2], [1.5, 1.2]])
 
 LEAF_PAIR_WIDTHS = [2, 2]
 
-REFERENCE_MU_DENSITY = [
+REFERENCE_METERSETMAP = [
     [0.0, 0.07, 0.43, 0.5, 0.43, 0.07, 0.0],
     [0.0, 0.14, 0.86, 1.0, 0.86, 0.14, 0.0],
     [0.14, 0.86, 1.0, 1.0, 1.0, 0.86, 0.14],
@@ -38,10 +38,10 @@ REFERENCE_MU_DENSITY = [
 
 
 def test_partial_jaws():
-    """Parital jaw location should give a fractional result.
+    """Partial jaw location should give a fractional result.
     """
-    _, mu_density = calc_single_control_point(
+    _, metersetmap = calc_single_control_point(
         MLC, JAW, leaf_pair_widths=LEAF_PAIR_WIDTHS
     )
 
-    assert np.allclose(np.round(mu_density, 2), REFERENCE_MU_DENSITY)
+    assert np.allclose(np.round(metersetmap, 2), REFERENCE_METERSETMAP)
