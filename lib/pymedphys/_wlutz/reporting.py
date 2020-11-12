@@ -158,7 +158,7 @@ def image_with_overlays(
     rect_dx = [-edge_lengths[0] / 2, 0, edge_lengths[0], 0, -edge_lengths[0]]
     rect_dy = [-edge_lengths[1] / 2, edge_lengths[1], 0, -edge_lengths[1], 0]
 
-    c = ax.contourf(x, y, img, 100)
+    c = ax.pcolormesh(x, y, img, shading="nearest")
     fig.colorbar(c, ax=ax, label=pixel_value_label)
 
     ax.plot(*draw_by_diff(rect_dx, rect_dy, field_transform), "k", lw=3)

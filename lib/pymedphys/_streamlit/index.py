@@ -20,8 +20,10 @@ import streamlit as st
 from pymedphys._streamlit.apps import anonymise_monaco as _anonymise_monaco
 from pymedphys._streamlit.apps import dashboard as _dashboard
 from pymedphys._streamlit.apps import electrons as _electrons
+from pymedphys._streamlit.apps import iviewdb as _iviewdb
 from pymedphys._streamlit.apps import metersetmap as _metersetmap
 from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
+from pymedphys._streamlit.apps import wlutz as _wlutz
 from pymedphys._streamlit.utilities import session
 
 HERE = pathlib.Path(__file__).parent.resolve()
@@ -98,6 +100,16 @@ APPLICATION_OPTIONS = {
         "category": "experimental",
         "label": "Anonymising Monaco Backend Files",
         "callable": _anonymise_monaco.main,
+    },
+    "wlutz": {
+        "category": "experimental",
+        "label": "Winston-Lutz",
+        "callable": _wlutz.main,
+    },
+    "iviewdb": {
+        "category": "experimental",
+        "label": "iView Database Explorer",
+        "callable": _iviewdb.main,
     },
 }
 
