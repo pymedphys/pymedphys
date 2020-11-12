@@ -12,6 +12,23 @@ This project adheres to
 
 ### "Stable" API changes
 
+(Won't truly be stable until after a 1.0.0 release)
+
+#### Breaking changes
+
+* The parameter `fraction_number` within `pymedphys.Delivery.from_dicom` and
+  `pymedphys.Delivery.to_dicom` has been changed to `fraction_group_number`.
+* The name of the first argument to `pymedphys.Delivery.from_dicom` has been
+  changed from `dicom_dataset` to `rtplan`. It now also accepts either a
+  `pydicom.Dataset` or a filepath.
+* A range of files utilised by `pymedphys.data_path` and related functions
+  that contained the words "mudensity", "mu-density", or "mu_density" have
+  been replaced with "metersetmap".
+* The exceptions that `pymedphys.Delivery.from_mosaiq` raises when either
+  no entry in Mosaiq is found (`NoMosaiqEntries`) or multiple entries are found
+  (`MultipleMosaiqEntries`) now both inherit from `ValueError` instead of the
+  base `Exception` class.
+
 #### Deprecations
 
 * All instances of `mudensity` have been replaced with `metersetmap`. The
@@ -23,6 +40,17 @@ This project adheres to
 * Created an online PyMedPhys GUI. It is accessible from
   https://app.pymedphys.com. This is in its early stages and most parts of the
   online GUI are not optimised for use in this fashion.
+* Added CLI `pymedphys dicom listen` [#1161](https://github.com/pymedphys/pymedphys/pull/1161).
+  This begins a DICOM listener which will store the DICOM files sent to it to
+  disk. It accepts the arguments `--port`, `aetitle`, and `storage_directory`.
+  Thanks [@pchlap](https://github.com/pchlap)!
+* `pymedphys gui` now boots up a multi application index.
+
+#### Bug fixes
+
+* Sometimes a range of DICOM API calls would require the downloading of a
+  baseline DICOM dictionary. This is now distributed with the library.
+
 
 ### Configuration changes
 
@@ -40,6 +68,10 @@ This project adheres to
 
 ### Experimental API changes
 
+#### Breaking changes
+
+* Removed `pymedphys experimental gui`.
+
 
 ### Developer facing changes
 
@@ -48,21 +80,21 @@ This project adheres to
   to [main](https://github.com/pymedphys/pymedphys/tree/main)
 * Documentation is now stored within the library, moving from `docs` to
   `lib/pymedphys/docs`
-  * Docs can now be built and viewed from the production installation of
-    pymedphys by running:
-
-```bash
-pip install pymedphys[docs]
-pymedphys dev docs --live
-```
+* Docs can now be built, viewed, and updated with hot-reloading by running
+  `poetry run pymedphys dev docs --live`.
+* A new CLI utility that propagates a range of files that depend upon each
+  other files within the repo are "propagated" by calling
+  `poetry run pymedphys dev propagate`. The files created/updated by this
+  command are `lib/pymedphys/_version.py`, the 'extras' field within
+  `pyproject.toml`, `requirements.txt` and `requirements-dev.txt`,
+  `lib/pymedphys/.pylintrc`, `lib/pymedphys/docs/README.rst`, and
+  `lib/pymedphys/docs/CHANGELOG.md`.
 
 
 
 ## [0.33.0]
 
 ### "Stable" API changes
-
-(Won't truly be stable until after a 1.0.0 release)
 
 #### Installation changes
 
