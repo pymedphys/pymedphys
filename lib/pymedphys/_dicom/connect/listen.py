@@ -143,7 +143,7 @@ class DicomListener(DicomConnectBase):
                 filepath.parent.mkdir(exist_ok=True)
 
                 logging.warning(
-                    "DICOM file exists, storing in orphan directory: %s", filename
+                    "DICOM file exists, storing in orphan directory: %s", filepath
                 )
 
         context = event.context
