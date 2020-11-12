@@ -28,10 +28,6 @@ from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 dicom_path_or_dataset = Union[os.PathLike, "pydicom.Dataset"]
 
 
-class NotSupportedError(ValueError):
-    pass
-
-
 def load_dicom_file(filepath: os.PathLike) -> "pydicom.Dataset":
     dicom_dataset = pydicom.dcmread(filepath, force=True, stop_before_pixels=True)
 
@@ -53,39 +49,34 @@ def check_for_supported_collimation_device(beam_limiting_device_sequence):
     supported_configurations = [{"MLCX", "ASYMY"}]
 
     if not rt_beam_limiting_device_types in supported_configurations:
-        raise NotSupportedError(
+        raise ValueError(
             _pretty_print(
                 """\
-                        Currently only DICOM files where the beam
-                        limiting devices consist of one of the following
-                        combinations are supported:
+                    Currently only DICOM files where the beam
+                    limiting devices consist of one of the following
+                    combinations are supported:
 
-                        * {supported_configurations}
+                    * {supported_configurations}
 
-                        The provided RT Plan DICOM file has the
-                        following:
+                    The provided RT Plan DICOM file has the
+                    following:
 
-                            {rt_beam_limiting_device_types}
+                        {rt_beam_limiting_device_types}
 
-                        This is not yet supported.
-                        This is due to a range of assumptions being made
-                        internally that assume a single jaw system.
-                        There are some cases where this restriction is
-                        too tight. Currently however there is not enough
-                        testing data to appropriately implement these
-                        cases.
-                        If you would like to have your device supported
-                        please consider uploading anonymised DICOM files
-                        and their TRF counterparts to the following
-                        issue
-                        <https://github.com/pymedphys/pymedphys/issues/1142>.
+                    This is not yet supported.
+                    This is due to a range of assumptions being made
+                    internally that assume a single jaw system.
+                    There are some cases where this restriction is
+                    too tight. Currently however there is not enough
+                    testing data to appropriately implement these
+                    cases.
+                    If you would like to have your device supported
+                    please consider uploading anonymised DICOM files
+                    and their TRF counterparts to the following
+                    issue
+                    <https://github.com/pymedphys/pymedphys/issues/1142>.
 
-                        If you know what you're doing, and are willing
-                        to accept potentially ignoring a collimation
-                        device you may pass `device_strict=False` to
-                        `pymedphys.Delivery.from_dicom`.
-
-                    """
+                """
             ).format(
                 supported_configurations="\n* ".join(
                     [str(item) for item in supported_configurations]
@@ -97,9 +88,7 @@ def check_for_supported_collimation_device(beam_limiting_device_sequence):
 
 class DeliveryDicom(DeliveryBase):
     @classmethod
-    def from_dicom(
-        cls, rtplan: dicom_path_or_dataset, fraction_number=None, device_strict=True
-    ):
+    def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_number=None):
         if isinstance(rtplan, pydicom.Dataset):
             rtplan_dataset = cast(pydicom.Dataset, rtplan)
         else:
@@ -107,7 +96,7 @@ class DeliveryDicom(DeliveryBase):
             rtplan_dataset = load_dicom_file(rtplan_filepath)
 
         if str(fraction_number).lower() == "all":
-            return cls._load_all_fractions(rtplan_dataset, device_strict=device_strict)
+            return cls._load_all_fractions(rtplan_dataset)
 
         if fraction_number is None:
             fractions = rtplan_dataset.FractionGroupSequence
@@ -131,9 +120,7 @@ class DeliveryDicom(DeliveryBase):
 
         delivery_data_by_beam_sequence = []
         for beam, meterset in zip(beam_sequence, metersets):
-            delivery_data_by_beam_sequence.append(
-                cls._from_dicom_beam(beam, meterset, device_strict=device_strict)
-            )
+            delivery_data_by_beam_sequence.append(cls._from_dicom_beam(beam, meterset))
 
         return cls.combine(*delivery_data_by_beam_sequence)
 
@@ -175,16 +162,14 @@ class DeliveryDicom(DeliveryBase):
         return cls._load_all_fractions(load_dicom_file(filepath))
 
     @classmethod
-    def _load_all_fractions(cls, dicom_dataset, device_strict=True):
+    def _load_all_fractions(cls, dicom_dataset):
         fraction_numbers = tuple(
             fraction.FractionGroupNumber
             for fraction in dicom_dataset.FractionGroupSequence
         )
 
         all_fractions = {
-            fraction_number: cls.from_dicom(
-                dicom_dataset, fraction_number, device_strict=device_strict
-            )
+            fraction_number: cls.from_dicom(dicom_dataset, fraction_number)
             for fraction_number in fraction_numbers
         }
 
@@ -195,14 +180,12 @@ class DeliveryDicom(DeliveryBase):
         return cls.from_dicom(load_dicom_file(filepath), fraction_number)
 
     @classmethod
-    def _from_dicom_beam(cls, beam, meterset, device_strict=True):
+    def _from_dicom_beam(cls, beam, meterset):
         if meterset is None:
             raise ValueError("Meterset should never be None")
 
         beam_limiting_device_sequence = beam.BeamLimitingDeviceSequence
-
-        if device_strict:
-            check_for_supported_collimation_device(beam_limiting_device_sequence)
+        check_for_supported_collimation_device(beam_limiting_device_sequence)
 
         mlc_sequence = [
             item
