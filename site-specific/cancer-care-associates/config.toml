@@ -1,3 +1,6 @@
+version = 1
+
+# TODO: For config v2 scope 'data_methods' under an 'mudensity' config
 [data_methods]
 available = ["monaco", "dicom", "icom", "trf", "mosaiq"]
 default_reference = "monaco"
@@ -6,17 +9,22 @@ default_evaluation = "icom"
 [[site]]
 name = "rccc"
 
+    # TODO: For config v2 change 'export-directories' to just 'directories'
     [site.export-directories]
     escan = '\\pdc\Shared\Scanned Documents\RT\PhysChecks\Logfile PDFs'
-    anonymised_monaco = 'S:\DataExchange\anonymised-monaco'
+    anonymised_monaco = '\\pdc\PExIT\DataExchange\anonymised-monaco'
     icom_live = '\\rccc-physicssvr\iComLogFiles\live'
+    iviewdb = '\\pdc\PExIT\DataExchange\iViewDB'
 
     [site.monaco]
     focaldata = '\\rccc-monacoda\FocalData'
-    clinic = 'RCCC\1~Clinical'  # May not need this, instead could just support all clinics
+    # TODO: One day support all clinics within the focal data directory
+    clinic = 'RCCC\1~Clinical'
 
     [site.mosaiq]
-    timezone = "Australia/Sydney"  # Future version may not need this
+    # TODO: One day make it so that timezone is extracted from the Mosaiq
+    # server
+    timezone = "Australia/Sydney"
     hostname = "msqsql"
     port = 1433
 
@@ -36,6 +44,7 @@ name = "nbcc"
     escan = '\\tunnel-nbcc-pdc\Shared\SCAN\ESCAN\Phys\Logfile PDFs'
     anonymised_monaco = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\anonymised-monaco'
     icom_live = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live'
+    iviewdb = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iViewDB'
 
     [site.monaco]
     focaldata = '\\tunnel-nbcc-monaco\FOCALDATA'
@@ -58,6 +67,7 @@ name = "sash"
     escan = '\\tunnel-sash-physics-server\SASH-Mosaiq-eScan\Logfile PDFs'
     anonymised_monaco = '\\tunnel-sash-physics-server\SASH-DataExchange\anonymised-monaco'
     icom_live = '\\tunnel-sash-physics-server\SASH-DataExchange\icom\live'
+    iviewdb = '\\tunnel-sash-physics-server\iViewDB'
 
     [site.monaco]
     focaldata = '\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData'
