@@ -12,21 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import textwrap
 from copy import deepcopy
+from typing import Union, cast
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from pymedphys._base.delivery import DeliveryBase
+from pymedphys._dicom import rtplan as _pmp_rtplan
+from pymedphys._dicom.delivery import utilities
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
-from .. import rtplan
-from . import utilities
+dicom_path_or_dataset = Union[os.PathLike, "pydicom.Dataset", str]
 
 
-def load_dicom_file(filepath):
+def _load_dicom_file(filepath: os.PathLike) -> "pydicom.Dataset":
     dicom_dataset = pydicom.dcmread(filepath, force=True, stop_before_pixels=True)
+
     return dicom_dataset
 
 
@@ -37,28 +41,124 @@ def _pretty_print(string):
     return "\n\n".join(wrapped)
 
 
+def _check_for_supported_collimation_device(
+    beam_limiting_device_sequence: "pydicom.Sequence",
+):
+    """Validate whether or not the beam limiting devices in use are
+    supported for use by ``pymedphys.Delivery.from_dicom``.
+
+    Parameters
+    ----------
+    beam_limiting_device_sequence
+        The ``BeamLimitingDeviceSequence`` from within a single item
+        within the ``BeamSequence`` of an RT Plan DICOM dataset.
+
+    Raises
+    ------
+    ValueError
+        If the device types are not contained within the supported
+        configrations.
+
+    """
+    rt_beam_limiting_device_types = {
+        item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
+    }
+
+    supported_configurations = [{"MLCX", "ASYMY"}]
+
+    if not rt_beam_limiting_device_types in supported_configurations:
+        raise ValueError(
+            _pretty_print(
+                """\
+                    Currently only DICOM files where the beam
+                    limiting devices consist of one of the following
+                    combinations are supported:
+
+                    * {supported_configurations}
+
+                    The provided RT Plan DICOM file has the
+                    following:
+
+                        {rt_beam_limiting_device_types}
+
+                    This is not yet supported.
+                    This is due to a range of assumptions being made
+                    internally that assume a single jaw system.
+                    There are some cases where this restriction is
+                    too tight. Currently however there is not enough
+                    testing data to appropriately implement these
+                    cases.
+                    If you would like to have your device supported
+                    please consider uploading anonymised DICOM files
+                    and their TRF counterparts to the following
+                    issue
+                    <https://github.com/pymedphys/pymedphys/issues/1142>.
+
+                """
+            ).format(
+                supported_configurations="\n* ".join(
+                    [str(item) for item in supported_configurations]
+                ),
+                rt_beam_limiting_device_types=rt_beam_limiting_device_types,
+            )
+        )
+
+
 class DeliveryDicom(DeliveryBase):
     @classmethod
-    def from_dicom(cls, dicom_dataset, fraction_number=None):
+    def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_group_number=None):
+        """Create a ``pymedphys.Delivery`` object from an RT Plan DICOM
+        dataset.
 
-        if str(fraction_number).lower() == "all":
-            return cls._load_all_fractions(dicom_dataset)
+        Parameters
+        ----------
+        rtplan : pydicom.Dataset or pathlib.Path
+            An RT Plan DICOM dataset, or the filepath to such a dataset.
+        fraction_group_number : 'all' or int, optional
+            This parameter is only required when there are more than one
+            perscriptions within the provided RT plan file. This
+            represents the particular perscription to be converted. The
+            number required here must match the corresponding
+            FractionGroupNumber within the RT plan file. You may also
+            provide 'all' here and all fraction groups will be exported
+            as a dictionary of pymedphys.Delivery indexed by the
+            FractionGroupNumber.
 
-        if fraction_number is None:
-            fractions = dicom_dataset.FractionGroupSequence
-            fraction_numbers = [fraction.FractionGroupNumber for fraction in fractions]
+        Returns
+        -------
+        delivery : pymedphys.Delivery or dict of pymedphys.Delivery
 
-            if len(fraction_numbers) == 1:
-                fraction_number = fraction_numbers[0]
+        """
+
+        if isinstance(rtplan, pydicom.Dataset):
+            rtplan_dataset = cast(pydicom.Dataset, rtplan)
+        else:
+            rtplan_filepath = cast(os.PathLike, rtplan)
+            rtplan_dataset = _load_dicom_file(rtplan_filepath)
+
+        if str(fraction_group_number).lower() == "all":
+            return cls._load_all_fraction_groups(rtplan_dataset)
+
+        if fraction_group_number is None:
+            fraction_groups = rtplan_dataset.FractionGroupSequence
+            fraction_group_numbers = [
+                fraction_group.FractionGroupNumber for fraction_group in fraction_groups
+            ]
+
+            if len(fraction_group_numbers) == 1:
+                fraction_group_number = fraction_group_numbers[0]
             else:
                 raise ValueError(
-                    "There is more than one fraction in this DICOM plan, please provide"
-                    " the `fraction_number` parameter to define which one to pull.\n"
-                    f"   Fraction numbers to choose from are: {fraction_numbers}"
+                    "There is more than one fraction group in this DICOM plan, please provide"
+                    " the `fraction_group_number` parameter to define which one to pull.\n"
+                    f"   Fraction numbers to choose from are: {fraction_group_numbers}"
                 )
 
-        beam_sequence, metersets = rtplan.get_fraction_group_beam_sequence_and_meterset(
-            dicom_dataset, fraction_number
+        (
+            beam_sequence,
+            metersets,
+        ) = _pmp_rtplan.get_fraction_group_beam_sequence_and_meterset(
+            rtplan_dataset, fraction_group_number
         )
 
         delivery_data_by_beam_sequence = []
@@ -67,17 +167,17 @@ class DeliveryDicom(DeliveryBase):
 
         return cls.combine(*delivery_data_by_beam_sequence)
 
-    def to_dicom(self, dicom_template, fraction_number=None):
+    def to_dicom(self, dicom_template, fraction_group_number=None):
         filtered = self._filter_cps()
-        if fraction_number is None:
-            fraction_number = self._fraction_number(dicom_template)
+        if fraction_group_number is None:
+            fraction_group_number = self._fraction_group_number(dicom_template)
 
-        single_fraction_template = rtplan.convert_to_one_fraction_group(
-            dicom_template, fraction_number
+        single_fraction_group_template = _pmp_rtplan.convert_to_one_fraction_group(
+            dicom_template, fraction_group_number
         )
 
-        template_gantry_angles = rtplan.get_gantry_angles_from_dicom(
-            single_fraction_template
+        template_gantry_angles = _pmp_rtplan.get_gantry_angles_from_dicom(
+            single_fraction_group_template
         )
 
         gantry_tol = utilities.gantry_tol_from_gantry_angles(template_gantry_angles)
@@ -86,90 +186,49 @@ class DeliveryDicom(DeliveryBase):
             template_gantry_angles, gantry_tol
         )
 
-        fraction_index = rtplan.get_fraction_group_index(
-            single_fraction_template, fraction_number
+        fraction_index = _pmp_rtplan.get_fraction_group_index(
+            single_fraction_group_template, fraction_group_number
         )
 
         single_beam_dicoms = []
         for beam_index, masked_delivery_data in enumerate(all_masked_delivery_data):
             single_beam_dicoms.append(
                 masked_delivery_data._to_dicom_beam(  # pylint: disable = protected-access
-                    single_fraction_template, beam_index, fraction_index
+                    single_fraction_group_template, beam_index, fraction_index
                 )
             )
 
-        return rtplan.merge_beam_sequences(single_beam_dicoms)
+        return _pmp_rtplan.merge_beam_sequences(single_beam_dicoms)
 
     @classmethod
-    def _load_all_fractions_from_file(cls, filepath):
-        return cls._load_all_fractions(load_dicom_file(filepath))
+    def _load_all_fraction_groups_from_file(cls, filepath):
+        return cls._load_all_fraction_groups(_load_dicom_file(filepath))
 
     @classmethod
-    def _load_all_fractions(cls, dicom_dataset):
-        fraction_numbers = tuple(
-            fraction.FractionGroupNumber
-            for fraction in dicom_dataset.FractionGroupSequence
+    def _load_all_fraction_groups(cls, dicom_dataset):
+        fraction_group_numbers = tuple(
+            fraction_group.FractionGroupNumber
+            for fraction_group in dicom_dataset.FractionGroupSequence
         )
 
-        all_fractions = {
-            fraction_number: cls.from_dicom(dicom_dataset, fraction_number)
-            for fraction_number in fraction_numbers
+        all_fraction_groups = {
+            fraction_group_number: cls.from_dicom(dicom_dataset, fraction_group_number)
+            for fraction_group_number in fraction_group_numbers
         }
 
-        return all_fractions
+        return all_fraction_groups
 
     @classmethod
-    def _from_dicom_file(cls, filepath, fraction_number):
-        return cls.from_dicom(load_dicom_file(filepath), fraction_number)
+    def _from_dicom_file(cls, filepath, fraction_group_number):
+        return cls.from_dicom(_load_dicom_file(filepath), fraction_group_number)
 
     @classmethod
     def _from_dicom_beam(cls, beam, meterset):
         if meterset is None:
-            raise ValueError("Meterset should not ever be None")
+            raise ValueError("Meterset should never be None")
 
         beam_limiting_device_sequence = beam.BeamLimitingDeviceSequence
-
-        rt_beam_limiting_device_types = {
-            item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
-        }
-
-        supported_configurations = [{"MLCX", "ASYMY"}]
-
-        if not rt_beam_limiting_device_types in supported_configurations:
-            raise ValueError(
-                _pretty_print(
-                    """\
-                        Currently only DICOM files where the beam
-                        limiting devices consist of one of the following
-                        combinations are supported:
-
-                        * {supported_configurations}
-
-                        The provided RT Plan DICOM file has the
-                        following:
-
-                            {rt_beam_limiting_device_types}
-
-                        This is not yet supported.
-                        This is due to a range of assumptions being made
-                        internally that assume a single jaw system.
-                        There are some cases where this restriction is
-                        too tight. Currently however there is not enough
-                        testing data to appropriately implement these
-                        cases.
-                        If you would like to have your device supported
-                        please consider uploading anonymised DICOM files
-                        and their TRF counterparts to the following
-                        issue
-                        <https://github.com/pymedphys/pymedphys/issues/1142>.
-                    """
-                ).format(
-                    supported_configurations="\n* ".join(
-                        [str(item) for item in supported_configurations]
-                    ),
-                    rt_beam_limiting_device_types=rt_beam_limiting_device_types,
-                )
-            )
+        _check_for_supported_collimation_device(beam_limiting_device_sequence)
 
         mlc_sequence = [
             item
@@ -195,11 +254,11 @@ class DeliveryDicom(DeliveryBase):
 
         control_points = beam.ControlPointSequence
 
-        beam_limiting_device_position_sequences = rtplan.get_cp_attribute_leaning_on_prior(
+        beam_limiting_device_position_sequences = _pmp_rtplan.get_cp_attribute_leaning_on_prior(
             control_points, "BeamLimitingDevicePositionSequence"
         )
 
-        dicom_mlcs = rtplan.get_leaf_jaw_positions_for_type(
+        dicom_mlcs = _pmp_rtplan.get_leaf_jaw_positions_for_type(
             beam_limiting_device_position_sequences, "MLCX"
         )
 
@@ -212,7 +271,7 @@ class DeliveryDicom(DeliveryBase):
             for mlc in dicom_mlcs
         ]
 
-        dicom_jaw = rtplan.get_leaf_jaw_positions_for_type(
+        dicom_jaw = _pmp_rtplan.get_leaf_jaw_positions_for_type(
             beam_limiting_device_position_sequences, "ASYMY"
         )
 
@@ -251,11 +310,11 @@ class DeliveryDicom(DeliveryBase):
         ]
 
         gantry_angles = convert_IEC_angle_to_bipolar(
-            rtplan.get_cp_attribute_leaning_on_prior(control_points, "GantryAngle")
+            _pmp_rtplan.get_cp_attribute_leaning_on_prior(control_points, "GantryAngle")
         )
 
         collimator_angles = convert_IEC_angle_to_bipolar(
-            rtplan.get_cp_attribute_leaning_on_prior(
+            _pmp_rtplan.get_cp_attribute_leaning_on_prior(
                 control_points, "BeamLimitingDeviceAngle"
             )
         )
@@ -272,33 +331,35 @@ class DeliveryDicom(DeliveryBase):
         initial_cp = cp_sequence[0]
         subsequent_cp = cp_sequence[-1]
 
-        all_control_points = rtplan.build_control_points(
+        all_control_points = _pmp_rtplan.build_control_points(
             initial_cp, subsequent_cp, data_converted
         )
 
         beam_meterset = "{0:.6f}".format(data_converted["monitor_units"][-1])
-        rtplan.replace_fraction_group(
+        _pmp_rtplan.replace_fraction_group(
             created_dicom, beam_meterset, beam_index, fraction_index
         )
-        rtplan.replace_beam_sequence(created_dicom, all_control_points, beam_index)
+        _pmp_rtplan.replace_beam_sequence(created_dicom, all_control_points, beam_index)
 
-        rtplan.restore_trailing_zeros(created_dicom)
+        _pmp_rtplan.restore_trailing_zeros(created_dicom)
 
         return created_dicom
 
-    def _matches_fraction(
-        self, dicom_dataset, fraction_number, gantry_tol=3, meterset_tol=0.5
+    def _matches_fraction_group(
+        self, dicom_dataset, fraction_group_number, gantry_tol=3, meterset_tol=0.5
     ):
         filtered = self._filter_cps()
-        dicom_metersets = rtplan.get_fraction_group_beam_sequence_and_meterset(
-            dicom_dataset, fraction_number
+        dicom_metersets = _pmp_rtplan.get_fraction_group_beam_sequence_and_meterset(
+            dicom_dataset, fraction_group_number
         )[1]
 
-        dicom_fraction = rtplan.convert_to_one_fraction_group(
-            dicom_dataset, fraction_number
+        rtplan_with_single_fraction_group = _pmp_rtplan.convert_to_one_fraction_group(
+            dicom_dataset, fraction_group_number
         )
 
-        gantry_angles = rtplan.get_gantry_angles_from_dicom(dicom_fraction)
+        gantry_angles = _pmp_rtplan.get_gantry_angles_from_dicom(
+            rtplan_with_single_fraction_group
+        )
 
         delivery_metersets = filtered._metersets(  # pylint: disable = protected-access
             gantry_angles, gantry_tol
@@ -313,43 +374,45 @@ class DeliveryDicom(DeliveryBase):
 
         return maximmum_diff <= meterset_tol
 
-    def _fraction_number(self, dicom_template, gantry_tol=3, meterset_tol=0.5):
-        fractions = dicom_template.FractionGroupSequence
+    def _fraction_group_number(self, dicom_template, gantry_tol=3, meterset_tol=0.5):
+        fraction_groups = dicom_template.FractionGroupSequence
 
-        if len(fractions) == 1:
-            return fractions[0].FractionGroupNumber
+        if len(fraction_groups) == 1:
+            return fraction_groups[0].FractionGroupNumber
 
-        fraction_numbers = [fraction.FractionGroupNumber for fraction in fractions]
+        fraction_group_numbers = [
+            fraction_group.FractionGroupNumber for fraction_group in fraction_groups
+        ]
 
-        fraction_matches = np.array(
+        fraction_group_matches = np.array(
             [
-                self._matches_fraction(
+                self._matches_fraction_group(
                     dicom_template,
-                    fraction_number,
+                    fraction_group_number,
                     gantry_tol=gantry_tol,
                     meterset_tol=meterset_tol,
                 )
-                for fraction_number in fraction_numbers
+                for fraction_group_number in fraction_group_numbers
             ]
         )
 
-        if np.sum(fraction_matches) < 1:
+        if np.sum(fraction_group_matches) < 1:
             raise ValueError(
                 "A fraction group was not able to be found with the metersets "
                 "and gantry angles defined by the tolerances provided. "
                 "Please manually define the fraction group number."
             )
 
-        if np.sum(fraction_matches) > 1:
+        if np.sum(fraction_group_matches) > 1:
             raise ValueError(
                 "More than one fraction group was found that had metersets "
                 "and gantry angles within the tolerances provided. "
                 "Please manually define the fraction group number."
             )
 
-        fraction_number = np.array(fraction_numbers)[fraction_matches]
+        fraction_group_number = np.array(fraction_group_numbers)[fraction_group_matches]
 
-        return fraction_number
+        return fraction_group_number
 
     def _coordinate_convert(self):
         monitor_units = self.monitor_units
