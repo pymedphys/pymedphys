@@ -13,9 +13,9 @@
 # limitations under the License.
 # pylint: disable=redefined-outer-name
 
+import pathlib
 import shutil
 import tempfile
-import pathlib
 import time
 from unittest.mock import Mock
 
@@ -27,7 +27,6 @@ from pynetdicom.sop_class import RTPlanStorage  # pylint: disable=no-name-in-mod
 
 from pymedphys._dicom.connect.listen import DicomListener
 from pymedphys._dicom.create import dicom_dataset_from_dict
-
 from pymedphys._utilities.test import process
 
 # TODO How to determine an appropriate port for testing?

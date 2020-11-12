@@ -14,10 +14,10 @@
 
 import pathlib
 import subprocess
+
 import pytest
 
 import pymedphys
-
 from pymedphys._utilities.test import process
 
 HERE = pathlib.Path(__file__).parent.resolve()

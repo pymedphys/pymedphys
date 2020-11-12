@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import logging
+import pathlib
 import signal
 import sys
 import tempfile
-import pathlib
 import uuid
 
 from pymedphys._imports import pydicom, pynetdicom
+
 from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 
