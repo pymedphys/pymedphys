@@ -39,6 +39,12 @@
   force = true
 
 [[redirects]]
+  from = "https://app.pymedphys.com/*"
+  to = "https://share.streamlit.io/pymedphys/pymedphys/main/app.py/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "https://pymedphys.netlify.com/*"
   to = "https://docs.pymedphys.com/:splat"
   status = 301
