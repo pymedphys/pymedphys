@@ -129,25 +129,21 @@ class DicomListener(DicomConnectBase):
 
         if filepath.exists():
 
-            # If the file already exists, open it up and compare the hash of it's
-            # contents (converting to JSON string to perform hash)
+            # If the file already exists, open it up and compare the contents
+            # (converting to JSON string to perform comparison)
             existing_ds = pydicom.read_file(filepath)
-            existing_hash = hash(existing_ds.to_json())
-            incoming_hash = hash(dataset.to_json())
 
-            if not existing_hash == incoming_hash:
-                # If the hashes don't match, save conflicting incoming file in an
+            if not existing_ds.to_json() == dataset.to_json():
+                # If the contents don't match, save conflicting incoming file in an
                 # "orphan" sub-directory.
 
                 # Just give the file a unique name in the orphan directory
-                filename = pathlib.Path(
-                    f"{filename.stem}-{uuid.uuid4()}"
-                )
+                filename = str(uuid.uuid4())
                 filepath = series_dir.joinpath("orphan", filename)
                 filepath.parent.mkdir(exist_ok=True)
 
                 logging.warning(
-                    "DICOM file exists, storing in orphan directory: %s", filepath
+                    "DICOM file exists, storing in orphan directory: %s", filename
                 )
 
         context = event.context
