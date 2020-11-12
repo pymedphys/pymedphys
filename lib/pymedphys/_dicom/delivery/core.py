@@ -25,7 +25,7 @@ from pymedphys._dicom import rtplan as _pmp_rtplan
 from pymedphys._dicom.delivery import utilities
 from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 
-dicom_path_or_dataset = Union[os.PathLike, "pydicom.Dataset"]
+dicom_path_or_dataset = Union[os.PathLike, "pydicom.Dataset", str]
 
 
 def _load_dicom_file(filepath: os.PathLike) -> "pydicom.Dataset":
@@ -107,6 +107,30 @@ def _check_for_supported_collimation_device(
 class DeliveryDicom(DeliveryBase):
     @classmethod
     def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_number=None):
+        """Create a ``pymedphys.Delivery`` object from an RT Plan DICOM
+        dataset.
+
+        Parameters
+        ----------
+        rtplan : pydicom.Dataset or pathlib.Path
+            An RT Plan DICOM dataset, or the filepath to such a dataset.
+        fraction_number : 'all' or int, optional
+            This parameter is only required when there are more than one
+            perscriptions within the provided RT plan file. This
+            represents the particular perscription to be converted. The
+            number required here must match the corresponding
+            FractionGroupNumber within the RT plan file. You may also
+            provide 'all' here and all fractions will be exported as a
+            dictionary of pymedphys.Delivery indexed by the
+            FractionNumber.
+
+
+        Returns
+        -------
+        delivery : pymedphys.Delivery or dict of pymedphys.Delivery
+
+        """
+
         if isinstance(rtplan, pydicom.Dataset):
             rtplan_dataset = cast(pydicom.Dataset, rtplan)
         else:
