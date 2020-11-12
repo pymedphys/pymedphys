@@ -77,7 +77,7 @@ def loaded_dicom_gantry_angles(loaded_dicom_dataset):
 def test_fraction_group_number(loaded_dicom_dataset, logfile_delivery_data: Delivery):
     expected = FRACTION_GROUP
 
-    result = logfile_delivery_data._fraction_number(loaded_dicom_dataset)
+    result = logfile_delivery_data._fraction_group_number(loaded_dicom_dataset)
 
     assert result == expected
 

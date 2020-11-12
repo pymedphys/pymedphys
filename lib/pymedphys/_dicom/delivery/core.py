@@ -106,7 +106,7 @@ def _check_for_supported_collimation_device(
 
 class DeliveryDicom(DeliveryBase):
     @classmethod
-    def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_number=None):
+    def from_dicom(cls, rtplan: dicom_path_or_dataset, fraction_group_number=None):
         """Create a ``pymedphys.Delivery`` object from an RT Plan DICOM
         dataset.
 
@@ -114,15 +114,15 @@ class DeliveryDicom(DeliveryBase):
         ----------
         rtplan : pydicom.Dataset or pathlib.Path
             An RT Plan DICOM dataset, or the filepath to such a dataset.
-        fraction_number : 'all' or int, optional
+        fraction_group_number : 'all' or int, optional
             This parameter is only required when there are more than one
             perscriptions within the provided RT plan file. This
             represents the particular perscription to be converted. The
             number required here must match the corresponding
             FractionGroupNumber within the RT plan file. You may also
-            provide 'all' here and all fractions will be exported as a
-            dictionary of pymedphys.Delivery indexed by the
-            FractionNumber.
+            provide 'all' here and all fraction groups will be exported
+            as a dictionary of pymedphys.Delivery indexed by the
+            FractionGroupNumber.
 
         Returns
         -------
@@ -136,27 +136,29 @@ class DeliveryDicom(DeliveryBase):
             rtplan_filepath = cast(os.PathLike, rtplan)
             rtplan_dataset = _load_dicom_file(rtplan_filepath)
 
-        if str(fraction_number).lower() == "all":
-            return cls._load_all_fractions(rtplan_dataset)
+        if str(fraction_group_number).lower() == "all":
+            return cls._load_all_fraction_groups(rtplan_dataset)
 
-        if fraction_number is None:
-            fractions = rtplan_dataset.FractionGroupSequence
-            fraction_numbers = [fraction.FractionGroupNumber for fraction in fractions]
+        if fraction_group_number is None:
+            fraction_groups = rtplan_dataset.FractionGroupSequence
+            fraction_group_numbers = [
+                fraction_group.FractionGroupNumber for fraction_group in fraction_groups
+            ]
 
-            if len(fraction_numbers) == 1:
-                fraction_number = fraction_numbers[0]
+            if len(fraction_group_numbers) == 1:
+                fraction_group_number = fraction_group_numbers[0]
             else:
                 raise ValueError(
-                    "There is more than one fraction in this DICOM plan, please provide"
-                    " the `fraction_number` parameter to define which one to pull.\n"
-                    f"   Fraction numbers to choose from are: {fraction_numbers}"
+                    "There is more than one fraction group in this DICOM plan, please provide"
+                    " the `fraction_group_number` parameter to define which one to pull.\n"
+                    f"   Fraction numbers to choose from are: {fraction_group_numbers}"
                 )
 
         (
             beam_sequence,
             metersets,
         ) = _pmp_rtplan.get_fraction_group_beam_sequence_and_meterset(
-            rtplan_dataset, fraction_number
+            rtplan_dataset, fraction_group_number
         )
 
         delivery_data_by_beam_sequence = []
@@ -165,17 +167,17 @@ class DeliveryDicom(DeliveryBase):
 
         return cls.combine(*delivery_data_by_beam_sequence)
 
-    def to_dicom(self, dicom_template, fraction_number=None):
+    def to_dicom(self, dicom_template, fraction_group_number=None):
         filtered = self._filter_cps()
-        if fraction_number is None:
-            fraction_number = self._fraction_number(dicom_template)
+        if fraction_group_number is None:
+            fraction_group_number = self._fraction_group_number(dicom_template)
 
-        single_fraction_template = _pmp_rtplan.convert_to_one_fraction_group(
-            dicom_template, fraction_number
+        single_fraction_group_template = _pmp_rtplan.convert_to_one_fraction_group(
+            dicom_template, fraction_group_number
         )
 
         template_gantry_angles = _pmp_rtplan.get_gantry_angles_from_dicom(
-            single_fraction_template
+            single_fraction_group_template
         )
 
         gantry_tol = utilities.gantry_tol_from_gantry_angles(template_gantry_angles)
@@ -185,40 +187,40 @@ class DeliveryDicom(DeliveryBase):
         )
 
         fraction_index = _pmp_rtplan.get_fraction_group_index(
-            single_fraction_template, fraction_number
+            single_fraction_group_template, fraction_group_number
         )
 
         single_beam_dicoms = []
         for beam_index, masked_delivery_data in enumerate(all_masked_delivery_data):
             single_beam_dicoms.append(
                 masked_delivery_data._to_dicom_beam(  # pylint: disable = protected-access
-                    single_fraction_template, beam_index, fraction_index
+                    single_fraction_group_template, beam_index, fraction_index
                 )
             )
 
         return _pmp_rtplan.merge_beam_sequences(single_beam_dicoms)
 
     @classmethod
-    def _load_all_fractions_from_file(cls, filepath):
-        return cls._load_all_fractions(_load_dicom_file(filepath))
+    def _load_all_fraction_groups_from_file(cls, filepath):
+        return cls._load_all_fraction_groups(_load_dicom_file(filepath))
 
     @classmethod
-    def _load_all_fractions(cls, dicom_dataset):
-        fraction_numbers = tuple(
-            fraction.FractionGroupNumber
-            for fraction in dicom_dataset.FractionGroupSequence
+    def _load_all_fraction_groups(cls, dicom_dataset):
+        fraction_group_numbers = tuple(
+            fraction_group.FractionGroupNumber
+            for fraction_group in dicom_dataset.FractionGroupSequence
         )
 
-        all_fractions = {
-            fraction_number: cls.from_dicom(dicom_dataset, fraction_number)
-            for fraction_number in fraction_numbers
+        all_fraction_groups = {
+            fraction_group_number: cls.from_dicom(dicom_dataset, fraction_group_number)
+            for fraction_group_number in fraction_group_numbers
         }
 
-        return all_fractions
+        return all_fraction_groups
 
     @classmethod
-    def _from_dicom_file(cls, filepath, fraction_number):
-        return cls.from_dicom(_load_dicom_file(filepath), fraction_number)
+    def _from_dicom_file(cls, filepath, fraction_group_number):
+        return cls.from_dicom(_load_dicom_file(filepath), fraction_group_number)
 
     @classmethod
     def _from_dicom_beam(cls, beam, meterset):
@@ -343,19 +345,21 @@ class DeliveryDicom(DeliveryBase):
 
         return created_dicom
 
-    def _matches_fraction(
-        self, dicom_dataset, fraction_number, gantry_tol=3, meterset_tol=0.5
+    def _matches_fraction_group(
+        self, dicom_dataset, fraction_group_number, gantry_tol=3, meterset_tol=0.5
     ):
         filtered = self._filter_cps()
         dicom_metersets = _pmp_rtplan.get_fraction_group_beam_sequence_and_meterset(
-            dicom_dataset, fraction_number
+            dicom_dataset, fraction_group_number
         )[1]
 
-        dicom_fraction = _pmp_rtplan.convert_to_one_fraction_group(
-            dicom_dataset, fraction_number
+        rtplan_with_single_fraction_group = _pmp_rtplan.convert_to_one_fraction_group(
+            dicom_dataset, fraction_group_number
         )
 
-        gantry_angles = _pmp_rtplan.get_gantry_angles_from_dicom(dicom_fraction)
+        gantry_angles = _pmp_rtplan.get_gantry_angles_from_dicom(
+            rtplan_with_single_fraction_group
+        )
 
         delivery_metersets = filtered._metersets(  # pylint: disable = protected-access
             gantry_angles, gantry_tol
@@ -370,43 +374,45 @@ class DeliveryDicom(DeliveryBase):
 
         return maximmum_diff <= meterset_tol
 
-    def _fraction_number(self, dicom_template, gantry_tol=3, meterset_tol=0.5):
-        fractions = dicom_template.FractionGroupSequence
+    def _fraction_group_number(self, dicom_template, gantry_tol=3, meterset_tol=0.5):
+        fraction_groups = dicom_template.FractionGroupSequence
 
-        if len(fractions) == 1:
-            return fractions[0].FractionGroupNumber
+        if len(fraction_groups) == 1:
+            return fraction_groups[0].FractionGroupNumber
 
-        fraction_numbers = [fraction.FractionGroupNumber for fraction in fractions]
+        fraction_group_numbers = [
+            fraction_group.FractionGroupNumber for fraction_group in fraction_groups
+        ]
 
-        fraction_matches = np.array(
+        fraction_group_matches = np.array(
             [
-                self._matches_fraction(
+                self._matches_fraction_group(
                     dicom_template,
-                    fraction_number,
+                    fraction_group_number,
                     gantry_tol=gantry_tol,
                     meterset_tol=meterset_tol,
                 )
-                for fraction_number in fraction_numbers
+                for fraction_group_number in fraction_group_numbers
             ]
         )
 
-        if np.sum(fraction_matches) < 1:
+        if np.sum(fraction_group_matches) < 1:
             raise ValueError(
                 "A fraction group was not able to be found with the metersets "
                 "and gantry angles defined by the tolerances provided. "
                 "Please manually define the fraction group number."
             )
 
-        if np.sum(fraction_matches) > 1:
+        if np.sum(fraction_group_matches) > 1:
             raise ValueError(
                 "More than one fraction group was found that had metersets "
                 "and gantry angles within the tolerances provided. "
                 "Please manually define the fraction group number."
             )
 
-        fraction_number = np.array(fraction_numbers)[fraction_matches]
+        fraction_group_number = np.array(fraction_group_numbers)[fraction_group_matches]
 
-        return fraction_number
+        return fraction_group_number
 
     def _coordinate_convert(self):
         monitor_units = self.monitor_units

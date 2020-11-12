@@ -147,7 +147,7 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
 
     try:
         deliveries_all_fractions = pymedphys.Delivery.from_dicom(
-            dicom_plan, fraction_number="all"
+            dicom_plan, fraction_group_number="all"
         )
     except AttributeError:
         st.write(_exceptions.WrongFileType("Does not appear to be a photon DICOM plan"))
@@ -162,25 +162,27 @@ def dicom_input_method(  # pylint: disable = too-many-return-statements
         st.write(e)
         st.stop()
 
-    fractions = list(deliveries_all_fractions.keys())
-    if len(fractions) == 1:
-        delivery = deliveries_all_fractions[fractions[0]]
+    fraction_groups = list(deliveries_all_fractions.keys())
+    if len(fraction_groups) == 1:
+        delivery = deliveries_all_fractions[fraction_groups[0]]
     else:
-        fraction_choices = {}
+        fraction_group_choices = {}
 
         for fraction, delivery in deliveries_all_fractions.items():
             rounded_mu = round(delivery.mu[-1], 1)
 
-            fraction_choices[f"Perscription {fraction} with {rounded_mu} MU"] = fraction
+            fraction_group_choices[
+                f"Perscription {fraction} with {rounded_mu} MU"
+            ] = fraction
 
-        fraction_selection = st.radio(
+        fraction_group_selection = st.radio(
             "Select relevant perscription",
-            list(fraction_choices.keys()),
+            list(fraction_group_choices.keys()),
             key=f"{key_namespace}_dicom_perscription_chooser",
         )
 
-        fraction_number = fraction_choices[fraction_selection]
-        delivery = deliveries_all_fractions[fraction_number]
+        fraction_group_number = fraction_group_choices[fraction_group_selection]
+        delivery = deliveries_all_fractions[fraction_group_number]
 
     deliveries = [delivery]
 
