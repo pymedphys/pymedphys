@@ -29,7 +29,7 @@ cssselect==1.1.0; python_version >= "2.7" and python_full_version < "3.0.0" or p
 cssutils==1.0.2
 cycler==0.10.0; python_version >= "3.6"
 cython==0.29.21; (python_version >= "2.6" and python_full_version < "3.0.0") or (python_full_version >= "3.3.0")
-dataclasses==0.7; python_version >= "3.6.0" and python_version < "3.7.0"
+dataclasses==0.7; python_version >= "3.6" and python_version < "3.7"
 dbfread==2.0.7
 decorator==4.4.2; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.2.0" and python_version >= "3.6"
 defusedxml==0.6.0; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
