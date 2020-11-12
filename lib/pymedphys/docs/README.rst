@@ -14,7 +14,10 @@
 in Python. Building quality transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|build| |pypi| |python| |license|
+|streamlit| |build| |pypi| |python| |license|
+
+.. |streamlit| image:: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
+    :target: https://share.streamlit.io/pymedphys/pymedphys/main/app.py
 
 .. |build| image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fpymedphys%2Fpymedphys%2Fbadge&label=build&logo=none
     :target: https://actions-badge.atrox.dev/pymedphys/pymedphys/goto
@@ -110,6 +113,7 @@ Maintainers
 
 .. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
+|rccc| |sjs|
 
 Active contributors
 ...................
@@ -141,7 +145,7 @@ Active contributors
 .. _`Rafael Ayala`: https://github.com/ayalalazaro
 
 
-|rccc| |uth| |uoc| |hgugm| |sjs|
+|uth| |uoc| |hgugm|
 
 
 Maintainer emeritus
@@ -183,7 +187,7 @@ Past contributors
 .. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/HGUGM_200x200.png
     :target: `Hospital General Universitario Gregorio Marañón`_
 
-.. |sjs| image:: https://github.com/sjswerdloff/pymedphys/raw/c84e1608b86b09234bcefc19f78287a21c564b52/logos/SwerdloffCoatOfArms_200x200.png
+.. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
     :target: `Swerdloff Family`_
 
 .. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/

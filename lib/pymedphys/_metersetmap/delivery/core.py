@@ -14,7 +14,6 @@
 
 
 from pymedphys._base.delivery import DeliveryBase
-
 from pymedphys._vendor.deprecated import deprecated as _deprecated
 
 from ..metersetmap import calc_metersetmap

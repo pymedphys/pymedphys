@@ -277,6 +277,21 @@ jobs:
 
 # TESTS
 
+## Propagate
+
+    - name: See if propagate is needed
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      run: |
+        poetry run pymedphys dev propagate
+
+        git config --local user.email "propagate-bot@pymedphys.com"
+        git config --local user.name "PyMedPhys Propagate Bot"
+        git add poetry.lock
+        git commit -m "dummy commit"
+
+        git status
+        git diff-index --quiet HEAD --
+
 ## Pytest
 
     - name: Run basic pytest tests
