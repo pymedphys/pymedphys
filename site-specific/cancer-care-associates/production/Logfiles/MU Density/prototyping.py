@@ -18,7 +18,7 @@ import IPython.display
 import pymedphys
 from pymedphys._mosaiq.helpers import FIELD_TYPES
 
-GRID = pymedphys.mudensity.grid()
+GRID = pymedphys.metersetmap.grid()
 COORDS = (GRID["jaw"], GRID["mlc"])
 
 
@@ -41,7 +41,7 @@ def get_delivery_trf_file(filepath):
 
 
 @functools.lru_cache()
-def get_mu_density_from_file(filepath):
+def get_metersetmap_from_file(filepath):
     if filepath.suffix == ".trf":
         delivery = get_delivery_trf_file(filepath)
     elif filepath.name == "tel.1":
@@ -49,18 +49,18 @@ def get_mu_density_from_file(filepath):
     else:
         raise ValueError("Not appropriate file type found")
 
-    mudensity = delivery.mudensity()
+    metersetmap = delivery.metersetmap()
 
-    return mudensity
+    return metersetmap
 
 
 @functools.lru_cache()
-def calc_gamma(mudensity_tel, mudensity_trf):
+def calc_gamma(metersetmap_tel, metersetmap_trf):
     gamma = pymedphys.gamma(
         COORDS,
-        mudensity_tel,
+        metersetmap_tel,
         COORDS,
-        mudensity_trf,
+        metersetmap_trf,
         PERCENT_DEVIATION,
         MM_DIST_THRESHOLD,
         local_gamma=True,
@@ -93,15 +93,15 @@ def markdown_print(string):
 
 
 def plot_and_save_results(
-    mudensity_tel,
-    mudensity_trf,
+    metersetmap_tel,
+    metersetmap_trf,
     gamma,
     png_filepath,
     pdf_filepath,
     header_text="",
     footer_text="",
 ):
-    diff = mudensity_trf - mudensity_tel
+    diff = metersetmap_trf - metersetmap_tel
     largest_item = np.max(np.abs(diff))
 
     widths = [1, 1]
@@ -131,21 +131,21 @@ def plot_and_save_results(
     axfooter.text(0, 1, footer_text, ha="left", va="top", wrap=True, fontsize=6)
 
     plt.sca(axs[2, 0])
-    pymedphys.mudensity.display(GRID, mudensity_tel)
+    pymedphys.metersetmap.display(GRID, metersetmap_tel)
     axs[2, 0].set_title("Monaco Plan")
 
     plt.sca(axs[2, 1])
-    pymedphys.mudensity.display(GRID, mudensity_trf)
+    pymedphys.metersetmap.display(GRID, metersetmap_trf)
     axs[2, 1].set_title("Logfile Result")
 
     plt.sca(axs[3, 0])
-    pymedphys.mudensity.display(
+    pymedphys.metersetmap.display(
         GRID, diff, cmap="seismic", vmin=-largest_item, vmax=largest_item
     )
     plt.title("Logfile - Monaco")
 
     plt.sca(axs[3, 1])
-    pymedphys.mudensity.display(GRID, gamma, cmap="coolwarm", vmin=0, vmax=2)
+    pymedphys.metersetmap.display(GRID, gamma, cmap="coolwarm", vmin=0, vmax=2)
     plt.title(f"Local Gamma | {PERCENT_DEVIATION}%/{MM_DIST_THRESHOLD}mm")
 
     plt.sca(axhist)
