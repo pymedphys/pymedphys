@@ -235,7 +235,7 @@ def anonymise(dicom_subparsers):
 
 def listen(dicom_subparsers):
     parser = dicom_subparsers.add_parser(
-        "listen", help="Start a Dicom listener on the specified port"
+        "listen", help="Start a DICOM listener on the specified port"
     )
 
     parser.add_argument("port", type=int, help="The port on which to listen")
