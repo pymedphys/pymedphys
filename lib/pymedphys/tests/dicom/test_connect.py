@@ -83,7 +83,7 @@ def test_dataset():
         A dummy DICOM dataset
     """
 
-    # Create a test Dicom object
+    # Create a test DICOM object
     test_uid = pydicom.uid.generate_uid()
     test_series_uid = pydicom.uid.generate_uid()
     test_dataset = dicom_dataset_from_dict(
@@ -120,7 +120,7 @@ def test_dataset():
 
 @pytest.mark.pydicom
 def test_dicom_listener_send(listener, test_dataset):
-    """Test to ensure that running dicom listener receives a stores a Dicom file
+    """Test to ensure that running DicomListener receives a stores a DICOM file
     """
 
     METHOD_MOCK.reset_mock()
@@ -150,7 +150,8 @@ def test_dicom_listener_send(listener, test_dataset):
 
 @pytest.mark.pydicom
 def test_dicom_listener_send_conflicting_file(listener, test_dataset):
-    """Test to ensure that running dicom listener receives a stores a Dicom file
+    """Test to ensure that running DicomListener handles conflicting DICOM files
+    properly.
     """
 
     METHOD_MOCK.reset_mock()
@@ -206,6 +207,8 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
 
 @pytest.mark.pydicom
 def test_dicom_listener_cli(test_dataset):
+    """Test the command line interface to the DicomListener
+    """
 
     scp_ae_title = "PYMEDPHYSTEST"
 
