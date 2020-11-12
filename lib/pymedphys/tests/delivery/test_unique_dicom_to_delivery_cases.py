@@ -53,6 +53,7 @@ def to_tuple(array):
     return tuple(map(tuple, array))
 
 
+@pytest.mark.xfail(reason="The unique cases being tested here are not yet supported")
 def test_dicom_trf_comparison(data_paths):
     """Focusing on unique DICOM header cases.
 
@@ -60,7 +61,7 @@ def test_dicom_trf_comparison(data_paths):
     details regarding the use case.
     """
 
-    GRID = pymedphys.mudensity.grid(
+    GRID = pymedphys.metersetmap.grid(
         max_leaf_gap=MAX_LEAF_GAP,
         grid_resolution=GRID_RESOLUTION,
         leaf_pair_widths=LEAF_PAIR_WIDTHS,
@@ -69,18 +70,16 @@ def test_dicom_trf_comparison(data_paths):
 
     dicom_paths, trf_paths = data_paths
 
-    dicom_deliveries = [
-        pymedphys.Delivery.from_dicom(path, device_strict=False) for path in dicom_paths
-    ]
+    dicom_deliveries = [pymedphys.Delivery.from_dicom(path) for path in dicom_paths]
     trf_deliveries = [pymedphys.Delivery.from_trf(path) for path in trf_paths]
 
     for dicom_delivery, trf_delivery in zip(dicom_deliveries, trf_deliveries):
-        dicom_mudensity = dicom_delivery.mudensity(
+        dicom_metersetmap = dicom_delivery.metersetmap(
             max_leaf_gap=MAX_LEAF_GAP,
             grid_resolution=GRID_RESOLUTION,
             leaf_pair_widths=LEAF_PAIR_WIDTHS,
         )
-        trf_mudensity = trf_delivery.mudensity(
+        trf_metersetmap = trf_delivery.metersetmap(
             max_leaf_gap=MAX_LEAF_GAP,
             grid_resolution=GRID_RESOLUTION,
             leaf_pair_widths=LEAF_PAIR_WIDTHS,
@@ -88,9 +87,9 @@ def test_dicom_trf_comparison(data_paths):
 
         gamma = pymedphys.gamma(
             COORDS,
-            to_tuple(dicom_mudensity),
+            to_tuple(dicom_metersetmap),
             COORDS,
-            to_tuple(trf_mudensity),
+            to_tuple(trf_metersetmap),
             **GAMMA_OPTIONS,
         )
 
