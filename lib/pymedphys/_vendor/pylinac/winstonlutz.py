@@ -1,4 +1,5 @@
-# Copyright (c) 2014-2019 James Kerns
+# Copyright (c) 2019-2020 Simon Biggs
+# Copyright (c) 2014-2020 James Kerns
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the "Software"), to deal in the Software without restriction, including without limitation
@@ -14,40 +15,39 @@
 # CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+# Adaptions undergone by Simon Biggs of James Kerns original work
 # Adapted from https://github.com/jrkerns/pylinac/tree/698254258ff4cb87812840c42b34c93ae32a4693
 
 # Changes to revert to v2.2.6 code determined from https://github.com/jrkerns/pylinac/compare/v2.2.6...v2.2.7#diff-49572d03390f5858885f645e7034ff24
 # and https://github.com/jrkerns/pylinac/blob/v2.2.6/pylinac/winston_lutz.py
 
-"""The Winston-Lutz module loads and processes EPID images that have acquired Winston-Lutz type images.
+# Work to make WLImage work for v2.3.2 had its __init__ method monkey
+# patched from the following code:
+# <https://github.com/jrkerns/pylinac/blob/14a5296ae4ee0ecb01865d08f15070c82e19fc45/pylinac/winston_lutz.py#L594-L612>
 
-Features:
+"""The functions here have been either 'monkey patched' or vendored from
+pylinac. They are not a replacement for using pylinac directly.
 
-* **Couch shift instructions** - After running a WL test, get immediate feedback on how to shift the couch.
-  Couch values can also be passed in and the new couch values will be presented so you don't have to do that pesky conversion.
-  "Do I subtract that number or add it?"
-* **Automatic field & BB positioning** - When an image or directory is loaded, the field CAX and the BB
-  are automatically found, along with the vector and scalar distance between them.
-* **Isocenter size determination** - Using backprojections of the EPID images, the 3D gantry isocenter size
-  and position can be determined *independent of the BB position*. Additionally, the 2D planar isocenter size
-  of the collimator and couch can also be determined.
-* **Image plotting** - WL images can be plotted separately or together, each of which shows the field CAX, BB and
-  scalar distance from BB to CAX.
-* **Axis deviation plots** - Plot the variation of the gantry, collimator, couch, and EPID in each plane
-  as well as RMS variation.
-* **File name interpretation** - Rename DICOM filenames to include axis information for linacs that don't include
-  such information in the DICOM tags. E.g. "myWL_gantry45_coll0_couch315.dcm".
+These allow for simultaneous use of pylinac wlutz algorithms from
+version 2.2.6, 2.2.7, and 2.3.2. They also allow for use with image
+arrays instead of DICOM files on disk.
+
+These are designed to be used as an "independent" check of PyMedPhys'
+internal WLutz algorithm. They should not be used as a standalone tool
+instead, if that is what is desired, pylinac itself should be used
+directly.
 """
 
+import functools
 from typing import List, Tuple
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import scipy, skimage
+from pymedphys._imports import pylinac, scipy, skimage
 
-from .core import image
-from .core.geometry import Point, Vector
-from .core.mask import bounding_box, filled_area_ratio
-from .core.profile import SingleProfile
+from .core import geometry as _vendor_geometry
+from .core import image as _vendor_image
+from .core import mask as _vendor_mask
+from .core import profile as _vendor_profile
 
 GANTRY = "Gantry"
 COLLIMATOR = "Collimator"
@@ -58,8 +58,81 @@ REFERENCE = "Reference"
 ALL = "All"
 
 
-class WLImage(image.ArrayImage):
-    """Holds individual Winston-Lutz EPID images, image properties, and automatically finds the field CAX and BB."""
+def get_latest_wlimage():
+    VERSION_TO_CLASS_MAP = get_version_to_class_map()
+    return VERSION_TO_CLASS_MAP[pylinac.__version__]
+
+
+@functools.lru_cache()
+def get_version_to_class_map():
+    class WLImageCurrent(pylinac.image.ArrayImage):
+        """This is a custom override version of pylinac's WLImage class.
+
+        It is designed to be able to support raw image in-memory arrays
+        instead of DICOM files on disk as the original WLImage class
+        required.
+
+        See the following issue where this API was proposed upstream
+        but for now has not been implemented:
+
+            <https://github.com/jrkerns/pylinac/issues/277>
+        """
+
+        def __init__(self, array, *, dpi=None, sid=None, dtype=None):
+            """Adapted from
+            <https://github.com/jrkerns/pylinac/blob/14a5296ae4ee0ecb01865d08f15070c82e19fc45/pylinac/winston_lutz.py#L594-L612>
+            """
+            super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
+            self.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
+            self._clean_edges()
+            self.ground()
+            self.normalize()
+            self._field_cax = None
+            self.rad_field_bounding_box = None
+            self._bb = None
+
+        def _run_field_finding(self):
+            self._field_cax, self.rad_field_bounding_box = self._find_field_centroid()
+
+        @property
+        def field_cax(self):
+            if self._field_cax is None:
+                self._run_field_finding()
+
+            return self._field_cax
+
+        @property
+        def bb(self):
+            if self._bb is None:
+                if self.rad_field_bounding_box is None:
+                    self._run_field_finding()
+
+                self._bb = self._find_bb()
+
+            return self._bb
+
+        _clean_edges = (
+            pylinac.winston_lutz.WLImage._clean_edges  # pylint: disable = protected-access
+        )
+        _find_field_centroid = (
+            pylinac.winston_lutz.WLImage._find_field_centroid  # pylint: disable = protected-access
+        )
+        _find_bb = (
+            pylinac.winston_lutz.WLImage._find_bb  # pylint: disable = protected-access
+        )
+
+    VERSION_TO_CLASS_MAP = {
+        "2.2.6": WLImage_2_2_6,
+        "2.2.7": WLImage_2_2_7,
+        pylinac.__version__: WLImageCurrent,
+    }
+
+    return VERSION_TO_CLASS_MAP
+
+
+class WLImage_2_2_7(_vendor_image.ArrayImage):
+    """Holds individual Winston-Lutz EPID images, image properties, and
+    automatically finds the field CAX and BB."""
 
     def __init__(self, array, *, dpi=None, sid=None, dtype=None):
         super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
@@ -79,9 +152,11 @@ class WLImage(image.ArrayImage):
         """Clean the edges of the image to be near the background level."""
 
         def has_noise(self, window_size):
-            """Helper method to determine if there is spurious signal at any of the image edges.
+            """Helper method to determine if there is spurious signal at
+            any of the image edges.
 
-            Determines if the min or max of an edge is within 10% of the baseline value and trims if not.
+            Determines if the min or max of an edge is within 10% of the
+            baseline value and trims if not.
             """
             near_min, near_max = np.percentile(self.array, [5, 99.5])
             img_range = near_max - near_min
@@ -101,8 +176,9 @@ class WLImage(image.ArrayImage):
             self.remove_edges(window_size)
             safety_stop -= 1
 
-    def _find_field_centroid(self) -> Tuple[Point, List]:
-        """Find the centroid of the radiation field based on a 50% height threshold.
+    def _find_field_centroid(self) -> Tuple[_vendor_geometry.Point, List]:
+        """Find the centroid of the radiation field based on a 50%
+        height threshold.
 
         Returns
         -------
@@ -115,18 +191,19 @@ class WLImage(image.ArrayImage):
         threshold_img = self.as_binary((max_val - min_val) / 2 + min_val)
         # clean single-pixel noise from outside field
         cleaned_img = scipy.ndimage.binary_erosion(threshold_img)
-        [*edges] = bounding_box(cleaned_img)
+        [*edges] = _vendor_mask.bounding_box(cleaned_img)
         edges[0] -= 10
         edges[1] += 10
         edges[2] -= 10
         edges[3] += 10
         coords = scipy.ndimage.measurements.center_of_mass(threshold_img)
-        p = Point(x=coords[-1], y=coords[0])
+        p = _vendor_geometry.Point(x=coords[-1], y=coords[0])
         return p, edges
 
-    def _find_bb(self) -> Point:
-        """Find the BB within the radiation field. Iteratively searches for a circle-like object
-        by lowering a low-pass threshold value until found.
+    def _find_bb(self) -> _vendor_geometry.Point:
+        """Find the BB within the radiation field. Iteratively searches
+        for a circle-like object by lowering a low-pass threshold value
+        until found.
 
         Returns
         -------
@@ -138,7 +215,8 @@ class WLImage(image.ArrayImage):
         spread = hmax - hmin
         max_thresh = hmax
         lower_thresh = hmax - spread / 1.5
-        # search for the BB by iteratively lowering the low-pass threshold value until the BB is found.
+        # search for the BB by iteratively lowering the low-pass
+        # threshold value until the BB is found.
         found = False
         while not found:
             try:
@@ -160,7 +238,7 @@ class WLImage(image.ArrayImage):
                 max_thresh -= 0.05 * spread
                 if max_thresh < hmin:
                     raise ValueError(
-                        "Pylinac v2.2.7: Unable to locate the BB. Make sure the field "
+                        "Pylinac 2.2.7: Unable to locate the BB. Make sure the field "
                         "edges do not obscure the BB and that there is no artifacts in "
                         "the images."
                     )
@@ -168,22 +246,24 @@ class WLImage(image.ArrayImage):
                 found = True
 
         # determine the center of mass of the BB
-        inv_img = image.ArrayImage(self.array)
+        inv_img = _vendor_image.ArrayImage(self.array)
         # we invert so BB intensity increases w/ attenuation
         inv_img.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
         bb_rprops = skimage.measure.regionprops(bw_bb_img, intensity_image=inv_img)[0]
-        return Point(bb_rprops.weighted_centroid[1], bb_rprops.weighted_centroid[0])
+        return _vendor_geometry.Point(
+            bb_rprops.weighted_centroid[1], bb_rprops.weighted_centroid[0]
+        )
 
     @property
-    def epid(self) -> Point:
+    def epid(self) -> _vendor_geometry.Point:
         """Center of the EPID panel"""
         return self.center
 
     @property
-    def cax2epid_vector(self) -> Vector:
+    def cax2epid_vector(self) -> _vendor_geometry.Vector:
         """The vector in mm from the CAX to the EPID center pixel"""
         dist = (self.epid - self.field_cax) / self.dpmm
-        return Vector(dist.x, dist.y, dist.z)
+        return _vendor_geometry.Vector(dist.x, dist.y, dist.z)
 
     @property
     def cax2bb_distance(self):
@@ -199,7 +279,7 @@ class WLImage(image.ArrayImage):
 
 def is_symmetric(logical_array) -> bool:
     """Whether the binary object's dimensions are symmetric, i.e. a perfect circle. Used to find the BB."""
-    ymin, ymax, xmin, xmax = bounding_box(logical_array)
+    ymin, ymax, xmin, xmax = _vendor_mask.bounding_box(logical_array)
     y = abs(ymax - ymin)
     x = abs(xmax - xmin)
     if x > max(y * 1.05, y + 3) or x < min(y * 0.95, y - 3):
@@ -224,12 +304,12 @@ def is_round(rprops):
 def is_round_old(logical_array):
     """Decide if the ROI is circular in nature by testing the filled area vs bounding box. Used to find the BB."""
     expected_fill_ratio = np.pi / 4
-    actual_fill_ratio = filled_area_ratio(logical_array)
+    actual_fill_ratio = _vendor_mask.filled_area_ratio(logical_array)
     return expected_fill_ratio * 1.2 > actual_fill_ratio > expected_fill_ratio * 0.8
 
 
-class WLImageOld(WLImage):
-    def _find_bb(self) -> Point:
+class WLImage_2_2_6(WLImage_2_2_7):
+    def _find_bb(self) -> _vendor_geometry.Point:
         """Find the BB within the radiation field. Iteratively searches for a circle-like object
         by lowering a low-pass threshold value until found.
         Returns
@@ -261,7 +341,7 @@ class WLImageOld(WLImage):
                 max_thresh -= 0.05 * spread
                 if max_thresh < hmin:
                     raise ValueError(
-                        "Pylinac v2.2.6: Unable to locate the BB. Make sure the field "
+                        "Pylinac 2.2.6: Unable to locate the BB. Make sure the field "
                         "edges do not obscure the BB and that there is no artifacts in "
                         "the images."
                     )
@@ -269,10 +349,10 @@ class WLImageOld(WLImage):
                 found = True
 
         # determine the center of mass of the BB
-        inv_img = image.ArrayImage(self.array)
+        inv_img = _vendor_image.ArrayImage(self.array)
         inv_img.invert()
         x_arr = np.abs(np.average(bw_bb_img, weights=inv_img, axis=0))
-        x_com = SingleProfile(x_arr).fwxm_center(interpolate=True)
+        x_com = _vendor_profile.SingleProfile(x_arr).fwxm_center(interpolate=True)
         y_arr = np.abs(np.average(bw_bb_img, weights=inv_img, axis=1))
-        y_com = SingleProfile(y_arr).fwxm_center(interpolate=True)
-        return Point(x_com, y_com)
+        y_com = _vendor_profile.SingleProfile(y_arr).fwxm_center(interpolate=True)
+        return _vendor_geometry.Point(x_com, y_com)
