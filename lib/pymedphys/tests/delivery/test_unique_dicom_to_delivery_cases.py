@@ -37,24 +37,8 @@ GAMMA_OPTIONS = {
 }
 
 
-@pytest.fixture()
-def data_paths():
-    testing_paths = pymedphys.zip_data_paths("dicom-trf-pairs.zip")
-    dicom_paths = [path for path in testing_paths if path.suffix == ".dcm"]
-    trf_paths = [path.with_suffix(".trf") for path in dicom_paths]
-
-    for path in trf_paths:
-        assert path.exists()
-
-    return dicom_paths, trf_paths
-
-
-def to_tuple(array):
-    return tuple(map(tuple, array))
-
-
 @pytest.mark.xfail(reason="The unique cases being tested here are not yet supported")
-def test_dicom_trf_comparison(data_paths):
+def test_dicom_trf_comparison(_data_paths):
     """Focusing on unique DICOM header cases.
 
     See <https://github.com/pymedphys/pymedphys/issues/1142> for more
@@ -68,7 +52,7 @@ def test_dicom_trf_comparison(data_paths):
     )
     COORDS = (GRID["jaw"], GRID["mlc"])
 
-    dicom_paths, trf_paths = data_paths
+    dicom_paths, trf_paths = _data_paths
 
     dicom_deliveries = [pymedphys.Delivery.from_dicom(path) for path in dicom_paths]
     trf_deliveries = [pymedphys.Delivery.from_trf(path) for path in trf_paths]
@@ -87,9 +71,9 @@ def test_dicom_trf_comparison(data_paths):
 
         gamma = pymedphys.gamma(
             COORDS,
-            to_tuple(dicom_metersetmap),
+            _to_tuple(dicom_metersetmap),
             COORDS,
-            to_tuple(trf_metersetmap),
+            _to_tuple(trf_metersetmap),
             **GAMMA_OPTIONS,
         )
 
@@ -97,3 +81,19 @@ def test_dicom_trf_comparison(data_paths):
         pass_ratio = np.sum(valid_gamma <= 1) / len(valid_gamma)
 
         assert pass_ratio >= 0.98
+
+
+@pytest.fixture()
+def _data_paths():
+    testing_paths = pymedphys.zip_data_paths("dicom-trf-pairs.zip")
+    dicom_paths = [path for path in testing_paths if path.suffix == ".dcm"]
+    trf_paths = [path.with_suffix(".trf") for path in dicom_paths]
+
+    for path in trf_paths:
+        assert path.exists()
+
+    return dicom_paths, trf_paths
+
+
+def _to_tuple(array):
+    return tuple(map(tuple, array))

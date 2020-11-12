@@ -124,7 +124,6 @@ class DeliveryDicom(DeliveryBase):
             dictionary of pymedphys.Delivery indexed by the
             FractionNumber.
 
-
         Returns
         -------
         delivery : pymedphys.Delivery or dict of pymedphys.Delivery
