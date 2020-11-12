@@ -4,7 +4,6 @@
 # pylint: disable = unused-import
 
 from ._dicom.anonymise import anonymise_dataset as anonymise
-from ._dicom.connect.listen import DicomListener
 from ._dicom.dose import (
     depth_dose,
     dicom_dose_interpolate,
