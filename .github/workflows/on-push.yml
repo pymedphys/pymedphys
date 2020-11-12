@@ -3,10 +3,8 @@ name: PullRequest
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
-    branches:
-      - master
 
 jobs:
 
@@ -24,10 +22,10 @@ jobs:
         run: |
           echo ${{ steps.extract_branch.outputs.branch }}
       - uses: actions/checkout@v2
-      - name: Set up Python 3.7
+      - name: Set up Python 3.8
         uses: actions/setup-python@v1
         with:
-          python-version: 3.7
+          python-version: 3.8
 
       - uses: actions/cache@v2
         with:
@@ -59,25 +57,37 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'codeql']
         exclude:
           - os: 'windows'
             task: 'stackoverflow'
           - os: 'windows'
             task: 'updates'
+          - os: 'windows'
+            task: 'cypress'
+          - os: 'windows'
+            task: 'slow'
+          - os: 'windows'
+            task: 'codeql'
 
           - os: 'macos'
             task: 'stackoverflow'
           - os: 'macos'
             task: 'updates'
+          - os: 'macos'
+            task: 'cypress'
+          - os: 'macos'
+            task: 'slow'
+          - os: 'macos'
+            task: 'codeql'
 
         include:
           - os: 'ubuntu'
-            python-version: 3.7
+            python-version: 3.8
           - os: 'windows'
             python-version: 3.7
           - os: 'macos'
-            python-version: 3.7
+            python-version: 3.8
 
     runs-on: ${{ matrix.os }}-latest
 
@@ -115,7 +125,17 @@ jobs:
       run: |
         pip install --upgrade pip setuptools
 
-    - name: Install Poetry
+    - name: Install Poetry on *Nix
+      if: matrix.os != 'windows'
+      uses: dschep/install-poetry-action@v1.3
+      with:
+        version: 1.1.4
+        create_virtualenvs: true
+
+    # Currently python subprocesses in Windows don't appear to appropriately
+    # fork under the poetry virtual environment for version 1.1.4
+    - name: Install Poetry on Windows
+      if: matrix.os == 'windows'
       uses: dschep/install-poetry-action@v1.3
       with:
         version: 1.0.9
@@ -146,6 +166,21 @@ jobs:
         python -c "import pymedphys.beta"
         python -c "import pymedphys.experimental"
 
+    # Remove confusion for tests down the line
+    - name: Remove base install of pymedphys
+      if: matrix.task == 'tests'
+      run: |
+        pip uninstall -y pymedphys
+
+
+# Set up CodeQL
+    - name: Initialize CodeQL
+      if: matrix.task == 'codeql'
+      uses: github/codeql-action/init@v1
+      with:
+        languages: python, javascript
+
+
 # Set up Poetry
 
     - name: Configure poetry
@@ -173,7 +208,7 @@ jobs:
         brew install freetds
 
     - name: Install Pandoc on Ubuntu
-      if: matrix.task == 'docs' && matrix.os == 'ubuntu'
+      if: ( matrix.task == 'docs' || matrix.task == 'updates' ) && matrix.os == 'ubuntu'
       run: |
         sudo apt-get install -y pandoc
 
@@ -190,7 +225,7 @@ jobs:
 ## Plain install
 
     - name: Install a plain environment
-      if: matrix.task == 'stackoverflow'
+      if: matrix.task == 'stackoverflow' || matrix.task == 'codeql'
       run: |
         poetry install -E user
 
@@ -205,24 +240,25 @@ jobs:
 ## Install with Tests Environment
 
     - name: Install a tests environment
-      if: matrix.task == 'tests'
+      if: matrix.task == 'tests' || matrix.task == 'cypress' || matrix.task == 'slow'
       run: |
         poetry install -E user -E tests
 
-## Install Machine Learning Dependencies
+## Install Extra Packages for Doctests
 
-    - name: Install a machine learning environment
-      if: matrix.os == 'ubuntu' && ( matrix.task == 'tests' || matrix.task == 'updates' )
+    - name: Install extra packages for doctests
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
       run: |
-        poetry install -E user -E ml
+        poetry install -E user -E doctests
 
 ## Update all packages and then install with tests environment
 
-    - name: Update all packages then install with tests environment
+    - name: Update all packages then install with tests, user and doctests environment
       if: matrix.task == 'updates'
       run: |
-        poetry install -E user -E tests
+        poetry install -E user -E tests -E docs -E doctests
         poetry update
+        poetry install -E user -E tests -E docs -E doctests
 
 # Download all data for consistent cache
 
@@ -240,6 +276,21 @@ jobs:
 
 
 # TESTS
+
+## Propagate
+
+    - name: See if propagate is needed
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      run: |
+        poetry run pymedphys dev propagate
+
+        git config --local user.email "propagate-bot@pymedphys.com"
+        git config --local user.name "PyMedPhys Propagate Bot"
+        git add poetry.lock
+        git commit -m "dummy commit"
+
+        git status
+        git diff-index --quiet HEAD --
 
 ## Pytest
 
@@ -265,14 +316,14 @@ jobs:
 ## Slow
 
     - name: Run slow tests
-      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      if: matrix.task == 'slow'
       run: |
-        poetry run pymedphys dev tests -v --run-only-slow
+        poetry run pymedphys dev tests -v --slow
 
 ## Docs
 
     - name: Build docs
-      if: matrix.task == 'docs'
+      if: matrix.task == 'docs' || matrix.task == 'updates'
       run: |
         poetry run pymedphys dev docs
 
@@ -283,34 +334,23 @@ jobs:
       run: |
         poetry run python ./examples/stackoverflow/gamma.py
 
+## CodeQL
+    - name: Perform CodeQL Analysis
+      if: matrix.task == 'codeql'
+      uses: github/codeql-action/analyze@v1
+
 ## Cypress
 
     - uses: actions/setup-node@v1
-      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      if: matrix.task == 'cypress'
 
-    - name: Initially run Cypress tests only locally, without dashboard integration
-      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+    - name: Run Cypress tests
+      if: matrix.task == 'cypress'
       run: |
-        poetry run pymedphys dev tests -v -s --run-only-yarn
+        poetry run pymedphys dev tests -v -s --cypress
 
-    # - name: Delete GUI demo data and run the PyMedPhys GUI
-    #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
-    #   run: |
-    #     rm -rf pymedphys-gui-demo
-    #     poetry run pymedphys gui &
-
-    # - name: Run Cypress through the dashboard tool so as to see the failures
-    #   if: failure() && matrix.os == 'ubuntu' && matrix.task == 'tests'
-    #   uses: cypress-io/github-action@v1
-    #   with:
-    #     install: true
-    #     record: true
-    #     start: yarn start
-    #     working-directory: tests/e2e
-    #     wait-on: 'http://localhost:8501'
-    #   env:
-    #     # pass the Dashboard record key as an environment variable
-    #     CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #     host: localhost
-    #     port: 8501
+    - uses: actions/upload-artifact@v2
+      if: failure() && matrix.task == 'cypress'
+      with:
+        name: cypress-videos
+        path: pymedphys/tests/e2e/cypress/videos

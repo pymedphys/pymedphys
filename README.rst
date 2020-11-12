@@ -1,6 +1,6 @@
 |logo|
 
-.. |logo| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/pymedphys_title.png
+.. |logo| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/pymedphys_title.png
     :target: https://docs.pymedphys.com/
 
 .. START_OF_DOCS_IMPORT
@@ -9,7 +9,10 @@
 in Python. Building quality transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|build| |pypi| |python| |license|
+|streamlit| |build| |pypi| |python| |license|
+
+.. |streamlit| image:: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
+    :target: https://share.streamlit.io/pymedphys/pymedphys/main/app.py
 
 .. |build| image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fpymedphys%2Fpymedphys%2Fbadge&label=build&logo=none
     :target: https://actions-badge.atrox.dev/pymedphys/pymedphys/goto
@@ -92,14 +95,20 @@ Our Team
 PyMedPhys is what it is today due to its maintainers and contributors both past
 and present. Here is our team.
 
-Maintainer
-..........
+Maintainers
+...........
 
 * `Simon Biggs`_
     * `Riverina Cancer Care Centre`_, Australia
 
 .. _`Simon Biggs`: https://github.com/SimonBiggs
 
+* `Stuart Swerdloff`_
+    * `ELEKTA Pty Ltd`_: New Zealand
+
+.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
+
+|rccc| |sjs|
 
 Active contributors
 ...................
@@ -109,11 +118,6 @@ Active contributors
     * `South Western Sydney Local Health District`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
-
-* `Stuart Swerdloff`_
-    * New Zealand
-
-.. _`Stuart Swerdloff`: https://github.com/sjswerdloff
 
 * `Matthew Cooper`_
 
@@ -136,7 +140,7 @@ Active contributors
 .. _`Rafael Ayala`: https://github.com/ayalalazaro
 
 
-|rccc| |uth| |uoc| |hgugm|
+|uth| |uoc| |hgugm|
 
 
 Maintainer emeritus
@@ -157,46 +161,53 @@ Past contributors
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
 
-.. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/rccc_200x200.png
+.. |rccc| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/rccc_200x200.png
     :target: `Riverina Cancer Care Centre`_
 
-.. |rah| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/gosa_200x200.png
+.. |rah| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/gosa_200x200.png
     :target: `Royal Adelaide Hospital`_
 
-.. |jarmc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/jarmc_200x200.png
+.. |jarmc| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/jarmc_200x200.png
     :target: `Anderson Regional Cancer Center`_
 
-.. |nbcc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/nbcc_200x200.png
+.. |nbcc| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/nbcc_200x200.png
     :target: `Northern Beaches Cancer Care`_
 
-.. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/uoc_200x200.png
+.. |uoc| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/uoc_200x200.png
     :target: `University of Calgary`_
 
-.. |uth| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/UTHSA_logo.png
+.. |uth| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/UTHSA_logo.png
     :target: `UT Health San Antonio`_
 
-.. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/master/docs/logos/HGUGM_200x200.png
+.. |hgugm| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/HGUGM_200x200.png
     :target: `Hospital General Universitario Gregorio Marañón`_
 
-.. _`Riverina Cancer Care Centre`: http://www.riverinacancercare.com.au/
+.. |sjs| image:: https://github.com/pymedphys/pymedphys/raw/7e9204656e0468b0843533472553a03a99387386/logos/swerdloff.png
+    :target: `Swerdloff Family`_
 
-.. _`Royal Adelaide Hospital`: http://www.rah.sa.gov.au/
+.. _`Riverina Cancer Care Centre`: https://www.riverinacancercare.com.au/
+
+.. _`ELEKTA Pty Ltd`: https://www.elekta.com/
+
+.. _`Royal Adelaide Hospital`: https://www.rah.sa.gov.au/
 
 .. _`University of New South Wales`: https://www.unsw.edu.au/
 
 .. _`South Western Sydney Local Health District`: https://www.swslhd.health.nsw.gov.au/
 
-.. _`Anderson Regional Cancer Center`: http://www.andersonregional.org/CancerCenter.aspx
+.. _`Anderson Regional Cancer Center`: https://www.andersonregional.org/services/cancer-care/
 
-.. _`Northern Beaches Cancer Care`: http://www.northernbeachescancercare.com.au/
+.. _`Northern Beaches Cancer Care`: https://www.northernbeachescancercare.com.au/
 
-.. _`University of Calgary`: http://www.ucalgary.ca/
+.. _`University of Calgary`: https://www.ucalgary.ca/
 
 .. _`Tom Baker Cancer Centre`: https://www.ahs.ca/tbcc
 
 .. _`UT Health San Antonio`: https://www.uthscsa.edu/academics/biomedical-sciences/programs/radiological-sciences-phd
 
 .. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
+
+.. _`Swerdloff Family`: https://github.com/sjswerdloff
 
 .. END_OF_DOCS_IMPORT
 
