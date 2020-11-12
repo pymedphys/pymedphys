@@ -14,13 +14,16 @@
 in Python. Building quality transparent software together via peer review
 and open source distribution. Open code is better science.**
 
-|streamlit| |build| |pypi| |python| |license|
+|streamlit| |build| |docs| |pypi| |python| |license|
 
 .. |streamlit| image:: https://static.streamlit.io/badges/streamlit_badge_black_white.svg
     :target: https://share.streamlit.io/pymedphys/pymedphys/main/app.py
 
-.. |build| image:: https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fpymedphys%2Fpymedphys%2Fbadge&label=build&logo=none
-    :target: https://actions-badge.atrox.dev/pymedphys/pymedphys/goto
+.. |build| image:: https://img.shields.io/github/workflow/status/pymedphys/pymedphys/PullRequest
+    :target: https://github.com/pymedphys/pymedphys/actions
+
+.. |docs| image:: https://img.shields.io/netlify/c702e3b2-f436-46a3-b461-00a8a55bcdba
+    :target: https://app.netlify.com/sites/pymedphys/deploys
 
 .. |pypi| image:: https://img.shields.io/pypi/v/pymedphys
     :target: https://pypi.org/project/pymedphys/
@@ -120,7 +123,7 @@ Active contributors
 
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
-    * `South Western Sydney Local Health District`_, Australia
+    * `Ingham Institute`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
@@ -213,6 +216,8 @@ Past contributors
 .. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
 
 .. _`Swerdloff Family`: https://github.com/sjswerdloff
+
+.. _`Ingham Institute`: https://inghaminstitute.org.au/
 
 .. END_OF_DOCS_IMPORT
 
