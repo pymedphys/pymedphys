@@ -138,7 +138,7 @@ def test_dicom_listener_send(listener, test_dataset):
     METHOD_MOCK.method.assert_called_once()
     args, _ = METHOD_MOCK.method.call_args_list[0]
     storage_path = args[0]
-    file_path = storage_path / f"RP.{test_dataset.SOPInstanceUID}"
+    file_path = storage_path / f"RP.{test_dataset.SOPInstanceUID}.dcm"
     assert file_path.exists()
 
     read_dataset = pydicom.read_file(file_path)
@@ -176,7 +176,7 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     # Modify the file to make it conflict
     args, _ = METHOD_MOCK.method.call_args_list[0]
     storage_path = args[0]
-    file_path = storage_path / f"RP.{test_dataset.SOPInstanceUID}"
+    file_path = storage_path.joinpath(f"RP.{test_dataset.SOPInstanceUID}.dcm")
     ds = pydicom.read_file(file_path)
     ds.Manufacturer = "PyMedPhysModified"
     ds.save_as(file_path, write_like_original=False)
@@ -236,7 +236,7 @@ def test_dicom_listener_cli(test_dataset):
         assoc.release()
 
     series_dir = test_directory.joinpath(test_dataset.SeriesInstanceUID)
-    file_path = series_dir.joinpath(f"RP.{test_dataset.SOPInstanceUID}")
+    file_path = series_dir.joinpath(f"RP.{test_dataset.SOPInstanceUID}.dcm")
     read_dataset = pydicom.read_file(file_path)
     assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
 
