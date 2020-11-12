@@ -53,6 +53,12 @@ def _check_for_supported_collimation_device(
         The ``BeamLimitingDeviceSequence`` from within a single item
         within the ``BeamSequence`` of an RT Plan DICOM dataset.
 
+    Raises
+    ------
+    ValueError
+        If the device types are not contained within the supported
+        configrations.
+
     """
     rt_beam_limiting_device_types = {
         item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence

@@ -32,9 +32,23 @@ from .trf2pandas import read_trf
 class DeliveryLogfile(DeliveryBase):
     @classmethod
     def from_trf(cls, filepath):
-        _, dataframe = read_trf(filepath)
+        """Create a ``pymedphys.Delivery`` object from a Elekta Agility
+        TRF logfile.
 
-        return cls._from_pandas(dataframe)
+        Parameters
+        ----------
+        filepath
+            The full path of the TRF logfile.
+
+        Returns
+        -------
+        delivery : pymedphys.Delivery
+
+        """
+        _, dataframe = read_trf(filepath)
+        delivery = cls._from_pandas(dataframe)
+
+        return delivery
 
     @classmethod
     @_deprecated(
