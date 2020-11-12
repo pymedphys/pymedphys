@@ -207,38 +207,37 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
 @pytest.mark.pydicom
 def test_dicom_listener_cli(test_dataset):
 
-    test_directory = pathlib.Path(tempfile.mkdtemp())
-
     scp_ae_title = "PYMEDPHYSTEST"
 
-    with process(
-        f"pymedphys dicom listen {TEST_PORT} -d {test_directory} -a {scp_ae_title}",
-        shell=True,
-    ) as _:
+    with tempfile.TemporaryDirectory() as tmp_directory:
 
-        # Send the data to the listener
-        ae = AE()
-        ae.add_requested_context(RTPlanStorage)
-        assoc = ae.associate("127.0.0.1", TEST_PORT, ae_title=scp_ae_title)
+        test_directory = pathlib.Path(tmp_directory)
 
-        # Give the process a few seconds to start up
-        elapsed = 0
-        while not assoc.is_established:
-            time.sleep(0.5)
-            elapsed += 0.5
-            if elapsed >= 3:  # Break if still not connecting after 3 seconds
-                break
+        with process(
+            f"pymedphys dicom listen {TEST_PORT} -d {test_directory} -a {scp_ae_title}",
+            shell=True,
+        ) as _:
 
+            # Send the data to the listener
+            ae = AE()
+            ae.add_requested_context(RTPlanStorage)
             assoc = ae.associate("127.0.0.1", TEST_PORT, ae_title=scp_ae_title)
-        assert assoc.is_established
-        status = assoc.send_c_store(test_dataset)
-        assert status.Status == 0
-        assoc.release()
 
-    series_dir = test_directory.joinpath(test_dataset.SeriesInstanceUID)
-    file_path = series_dir.joinpath(f"RP.{test_dataset.SOPInstanceUID}.dcm")
-    read_dataset = pydicom.read_file(file_path)
-    assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
+            # Give the process a few seconds to start up
+            elapsed = 0
+            while not assoc.is_established:
+                time.sleep(0.5)
+                elapsed += 0.5
+                if elapsed >= 3:  # Break if still not connecting after 3 seconds
+                    break
 
-    # Clean up after ourselves
-    shutil.rmtree(test_directory)
+                assoc = ae.associate("127.0.0.1", TEST_PORT, ae_title=scp_ae_title)
+            assert assoc.is_established
+            status = assoc.send_c_store(test_dataset)
+            assert status.Status == 0
+            assoc.release()
+
+        series_dir = test_directory.joinpath(test_dataset.SeriesInstanceUID)
+        file_path = series_dir.joinpath(f"RP.{test_dataset.SOPInstanceUID}.dcm")
+        read_dataset = pydicom.read_file(file_path)
+        assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
