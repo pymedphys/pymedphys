@@ -78,6 +78,7 @@ This project adheres to
   dragging and dropping TRF and DICOM files for comparison. See
   [#1117](https://github.com/pymedphys/pymedphys/pull/1117#issue-513765705)
   for details of the configuration file needed.
+* Path configuration now supports expansion of `~` to the users home directory.
 
 ##### Bug fixes
 
@@ -86,7 +87,6 @@ This project adheres to
   for reporting in [#1137](https://github.com/pymedphys/pymedphys/issues/1137)
   and thanks [@sjswerdloff](https://github.com/sjswerdloff) for the prompt fix
   in [#1144](https://github.com/pymedphys/pymedphys/pull/1144)!
-
 
 
 #### Experimental applications
@@ -101,6 +101,7 @@ This project adheres to
   insert output factor.
 * A new "iviewdb" application has been exposed. This allows for exploration of
   the iView database.
+* Work has begun on a new Winston Lutz Arc GUI.
 
 
 
@@ -136,6 +137,8 @@ This project adheres to
   `lib/pymedphys/docs`
 * Docs can now be built, viewed, and updated with hot-reloading by running
   `poetry run pymedphys dev docs --live`.
+* The output directory for the docs building can now be controlled by passing
+  an `--output` flag to `pymedphys dev docs`.
 * A new CLI utility that propagates a range of files that depend upon each
   other files within the repo are "propagated" by calling
   `poetry run pymedphys dev propagate`. The files created/updated by this
@@ -143,6 +146,10 @@ This project adheres to
   `pyproject.toml`, `requirements.txt` and `requirements-dev.txt`,
   `lib/pymedphys/.pylintrc`, `lib/pymedphys/docs/README.rst`, and
   `lib/pymedphys/docs/CHANGELOG.md`.
+* `pymedphys dev tests` now allow optional simpler flags. `--run-only-slow` can
+  be undergone with `--slow`, `--run-only-yarn` with `--cypress`,
+  `--run-only-pydicom` with `--pydicom`, and `--run-only-pylinac` with
+  `--pylinac`.
 
 
 
