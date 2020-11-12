@@ -255,7 +255,7 @@ def get_dose_grid_structure_mask(
         dose_index = int(np.where(z_dose == z_val)[0])
 
         if z_structure[structure_index][0] != z_dose[dose_index]:
-            raise ValueError("Expected structure and dose indices to align")
+            raise ValueError("Structure and dose indices do not align")
 
         structure_polygon = matplotlib.path.Path(
             [
