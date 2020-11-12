@@ -120,7 +120,7 @@ Active contributors
 
 * `Phillip Chlap`_
     * `University of New South Wales`_, Australia
-    * `South Western Sydney Local Health District`_, Australia
+    * `Ingham Institute`_, Australia
 
 .. _`Phillip Chlap`: https://github.com/pchlap
 
@@ -213,6 +213,8 @@ Past contributors
 .. _`Hospital General Universitario Gregorio Marañón`: https://www.comunidad.madrid/hospital/gregoriomaranon/
 
 .. _`Swerdloff Family`: https://github.com/sjswerdloff
+
+.. _`Ingham Institute`: https://inghaminstitute.org.au/
 
 .. END_OF_DOCS_IMPORT
 
