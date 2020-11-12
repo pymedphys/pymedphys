@@ -34,6 +34,9 @@ This project adheres to
 * All instances of `mudensity` have been replaced with `metersetmap`. The
   `mudensity` API is still currently available, but it will be removed in a
   future release.
+* `pymedphys.Delivery.from_logfile` has been renamed as
+  `pymedphys.Delivery.from_trf`. The previous name is still temporarily
+  available but it will be removed in a future release.
 
 #### New features
 
@@ -44,12 +47,63 @@ This project adheres to
   This begins a DICOM listener which will store the DICOM files sent to it to
   disk. It accepts the arguments `--port`, `aetitle`, and `storage_directory`.
   Thanks [@pchlap](https://github.com/pchlap)!
-* `pymedphys gui` now boots up a multi application index.
 
 #### Bug fixes
 
 * Sometimes a range of DICOM API calls would require the downloading of a
   baseline DICOM dictionary. This is now distributed with the library.
+
+
+### GUI changes
+
+#### Logistics changes
+
+* `pymedphys gui` now boots up a multi application index. This index breaks
+  applications up into five categories, mature, maturing, raw, beta, and
+  experimental.
+
+#### Pseudonymise
+
+* A new pseudonymise application has been created. This allows users to drag
+  and drop DICOM files into the GUI and then download the resulting DICOM file
+  in its pseudonymised form. Thanks
+  [@sjswerdloff](https://github.com/sjswerdloff)!
+
+#### MetersetMap
+
+##### New Features
+
+* The MetersetMap comparison application (which used to be MU density) is now
+  able to work with a bare bones configuration file which can be used by just
+  dragging and dropping TRF and DICOM files for comparison. See
+  [#1117](https://github.com/pymedphys/pymedphys/pull/1117#issue-513765705)
+  for details of the configuration file needed.
+
+##### Bug fixes
+
+* In some cases a patient having a middle name would cause the DICOM file
+  upload method to crash. Thanks [@mchamberland](https://github.com/mchamberland)
+  for reporting in [#1137](https://github.com/pymedphys/pymedphys/issues/1137)
+  and thanks [@sjswerdloff](https://github.com/sjswerdloff) for the prompt fix
+  in [#1144](https://github.com/pymedphys/pymedphys/pull/1144)!
+
+
+
+#### Experimental applications
+
+* A new "anonymise monaco" application has been exposed. This allows the
+  back-end Monaco filesystem to be anonymised in such a way that Monaco can
+  still open and work with the contents.
+* A new "dashboard" application has been exposed. This connects to multiple
+  Mosaiq sites and displays the QCLs across each site.
+* A new "electrons" application has been exposed. This reads Monaco back-end
+  files, extract the electron insert shape and then predicts the corresponding
+  insert output factor.
+* A new "iviewdb" application has been exposed. This allows for exploration of
+  the iView database.
+
+
+
 
 
 ### Configuration changes
