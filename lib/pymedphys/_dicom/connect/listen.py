@@ -119,7 +119,9 @@ class DicomListener(DicomConnectBase):
         series_dir.mkdir(exist_ok=True)
         self.association_directory = series_dir
 
-        filename = "{0!s}.{1!s}".format(mode_prefix, dataset.SOPInstanceUID)
+        filename = pathlib.Path(
+            "{0!s}.{1!s}.dcm".format(mode_prefix, dataset.SOPInstanceUID)
+        )
         filepath = series_dir.joinpath(filename)
 
         status_ds = pydicom.Dataset()
