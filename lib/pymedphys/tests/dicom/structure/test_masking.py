@@ -44,10 +44,10 @@ def test_structure_dose_mask():
 
     contour = np.vstack([contour_x, contour_y]).T
 
-    eroded_mask = shapely_based_masking_with_epsilon_buffer(xx, yy, contour, -epsilon)
-    buffered_mask = shapely_based_masking_with_epsilon_buffer(xx, yy, contour, epsilon)
+    eroded_mask = _shapely_based_masking_with_epsilon_buffer(xx, yy, contour, -epsilon)
+    buffered_mask = _shapely_based_masking_with_epsilon_buffer(xx, yy, contour, epsilon)
 
-    structure_dataset, dose_dataset = convert_contours_to_dummy_dicom_files(
+    structure_dataset, dose_dataset = _convert_contours_to_dummy_dicom_files(
         x_grid, y_grid, contour_x, contour_y, contour_z, contour_name
     )
 
@@ -74,21 +74,21 @@ def test_structure_dose_mask():
         )
 
 
-def get_grid_spacing(array):
+def _get_grid_spacing(array):
     dx = np.unique(np.round(np.diff(array), 4))
     assert len(dx) == 1
 
     return dx
 
 
-def convert_contours_to_dummy_dicom_files(
+def _convert_contours_to_dummy_dicom_files(
     x_grid, y_grid, contour_x, contour_y, contour_z, contour_name
 ):
     x0 = x_grid[0]
     y0 = y_grid[0]
 
-    dx = get_grid_spacing(x_grid)
-    dy = get_grid_spacing(y_grid)
+    dx = _get_grid_spacing(x_grid)
+    dy = _get_grid_spacing(y_grid)
 
     contour_data = []
 
@@ -136,15 +136,15 @@ def convert_contours_to_dummy_dicom_files(
     return structure_dataset, dose_dataset
 
 
-def create_shapely_points(xx, yy):
+def _create_shapely_points(xx, yy):
     xx_flat, yy_flat = xx.ravel(), yy.ravel()
     points = shapely.geometry.MultiPoint(list(zip(xx_flat, yy_flat)))
 
     return points
 
 
-def shapely_based_masking_with_epsilon_buffer(xx, yy, contour, epsilon):
-    shapely_points = create_shapely_points(xx, yy)
+def _shapely_based_masking_with_epsilon_buffer(xx, yy, contour, epsilon):
+    shapely_points = _create_shapely_points(xx, yy)
     shapely_contour = shapely.geometry.Polygon(contour)
     with_buffer = shapely_contour.buffer(epsilon)
 
@@ -152,12 +152,12 @@ def shapely_based_masking_with_epsilon_buffer(xx, yy, contour, epsilon):
 
     assert points_within_contour.within(with_buffer)
 
-    mask = slow_mask_with_loop(xx, yy, points_within_contour)
+    mask = _loop_based_mask_approach(xx, yy, points_within_contour)
 
     return mask
 
 
-def slow_mask_with_loop(xx, yy, points_within_contour):
+def _loop_based_mask_approach(xx, yy, points_within_contour):
     mask = np.zeros_like(xx).astype("bool")
 
     for point in points_within_contour:
