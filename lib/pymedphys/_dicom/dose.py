@@ -179,7 +179,42 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
     return extracted_dose
 
 
-def get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset):
+def get_dose_grid_structure_mask(
+    structure_name: str,
+    structure_dataset: "pydicom.Dataset",
+    dose_dataset: "pydicom.Dataset",
+):
+    """Determines the 3D boolean mask defining whether or not a grid
+    point is inside or outside of a defined structure.
+
+    In its current implementation the dose grid and the planes upon
+    which the structures are defined need to be aligned. This is due to
+    the implementation only stepping through each structure plane and
+    undergoing a 2D mask on the respective dose grid. In order to
+    undergo a mask when the contours and dose grids do not align
+    inter-slice contour interpolation would be required.
+
+    For now, having two contours for the same structure name on a single
+    slice is also not supported.
+
+    Parameters
+    ----------
+    structure_name
+        The name of the structure for which the mask is to be created
+    structure_dataset : pydicom.Dataset
+        An RT Structure DICOM object containing the respective
+        structures.
+    dose_dataset : pydicom.Dataset
+        An RT Dose DICOM object from which the grid mask coordinates are
+        determined.
+
+    Raises
+    ------
+    ValueError
+        If an unsupported contour is provided or the dose grid does not
+        align with the structure planes.
+
+    """
     x_dose, y_dose, z_dose = xyz_axes_from_dataset(dose_dataset)
 
     xx, yy = np.meshgrid(x_dose, y_dose)
@@ -229,7 +264,7 @@ def get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset
             ]
         )
 
-        # This logical or here is actually in place for the case where
+        # This logical "or" here is actually in place for the case where
         # there may be multiple contours on the one slice. That's not
         # going to be used at the moment however, as that case is not
         # yet supported in the logic above.
