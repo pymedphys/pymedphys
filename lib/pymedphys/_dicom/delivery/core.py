@@ -28,7 +28,7 @@ from pymedphys._utilities.transforms import convert_IEC_angle_to_bipolar
 dicom_path_or_dataset = Union[os.PathLike, "pydicom.Dataset"]
 
 
-def load_dicom_file(filepath: os.PathLike) -> "pydicom.Dataset":
+def _load_dicom_file(filepath: os.PathLike) -> "pydicom.Dataset":
     dicom_dataset = pydicom.dcmread(filepath, force=True, stop_before_pixels=True)
 
     return dicom_dataset
@@ -41,7 +41,19 @@ def _pretty_print(string):
     return "\n\n".join(wrapped)
 
 
-def check_for_supported_collimation_device(beam_limiting_device_sequence):
+def _check_for_supported_collimation_device(
+    beam_limiting_device_sequence: "pydicom.Sequence",
+):
+    """Validate whether or not the beam limiting devices in use are
+    supported for use by ``pymedphys.Delivery.from_dicom``.
+
+    Parameters
+    ----------
+    beam_limiting_device_sequence
+        The ``BeamLimitingDeviceSequence`` from within a single item
+        within the ``BeamSequence`` of an RT Plan DICOM dataset.
+
+    """
     rt_beam_limiting_device_types = {
         item.RTBeamLimitingDeviceType for item in beam_limiting_device_sequence
     }
@@ -93,7 +105,7 @@ class DeliveryDicom(DeliveryBase):
             rtplan_dataset = cast(pydicom.Dataset, rtplan)
         else:
             rtplan_filepath = cast(os.PathLike, rtplan)
-            rtplan_dataset = load_dicom_file(rtplan_filepath)
+            rtplan_dataset = _load_dicom_file(rtplan_filepath)
 
         if str(fraction_number).lower() == "all":
             return cls._load_all_fractions(rtplan_dataset)
@@ -159,7 +171,7 @@ class DeliveryDicom(DeliveryBase):
 
     @classmethod
     def _load_all_fractions_from_file(cls, filepath):
-        return cls._load_all_fractions(load_dicom_file(filepath))
+        return cls._load_all_fractions(_load_dicom_file(filepath))
 
     @classmethod
     def _load_all_fractions(cls, dicom_dataset):
@@ -177,7 +189,7 @@ class DeliveryDicom(DeliveryBase):
 
     @classmethod
     def _from_dicom_file(cls, filepath, fraction_number):
-        return cls.from_dicom(load_dicom_file(filepath), fraction_number)
+        return cls.from_dicom(_load_dicom_file(filepath), fraction_number)
 
     @classmethod
     def _from_dicom_beam(cls, beam, meterset):
@@ -185,7 +197,7 @@ class DeliveryDicom(DeliveryBase):
             raise ValueError("Meterset should never be None")
 
         beam_limiting_device_sequence = beam.BeamLimitingDeviceSequence
-        check_for_supported_collimation_device(beam_limiting_device_sequence)
+        _check_for_supported_collimation_device(beam_limiting_device_sequence)
 
         mlc_sequence = [
             item
