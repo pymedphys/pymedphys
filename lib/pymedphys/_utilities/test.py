@@ -1,4 +1,4 @@
-# Copyright (C) 2020 University of New South Wales & Ingham Institute
+# Copyright (C) 2020 Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
