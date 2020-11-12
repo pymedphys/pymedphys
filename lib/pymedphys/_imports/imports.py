@@ -20,6 +20,7 @@ import watchdog
 import watchdog.events
 import watchdog.observers
 import watchdog.observers.polling
+import xmltodict
 import yaml
 
 import imageio
@@ -59,4 +60,5 @@ import pydicom.dataset
 import pydicom.filebase
 import pydicom.sequence
 import pydicom.uid
+import pylinac
 import pynetdicom

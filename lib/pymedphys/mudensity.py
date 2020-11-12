@@ -1,11 +1,8 @@
 from ._vendor.deprecated import deprecated as _deprecated
-
-
+from .metersetmap import WARNING_MESSAGE  # pylint: disable = unused-import
 from .metersetmap import calculate as _calculate
 from .metersetmap import display as _display
 from .metersetmap import grid as _grid
-from .metersetmap import WARNING_MESSAGE  # pylint: disable = unused-import
-
 
 _calculate.__name__ = "pymedphys.mudensity.calculate"
 calculate = _deprecated(
