@@ -15,7 +15,7 @@
 import pathlib
 import time
 
-import streamlit as st
+from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.apps import anonymise_monaco as _anonymise_monaco
 from pymedphys._streamlit.apps import dashboard as _dashboard
@@ -28,6 +28,7 @@ from pymedphys._streamlit.utilities import session
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
+TITLE_LOGO = str(HERE.joinpath("pymedphys-title.png"))
 
 APPLICATION_CATEGORIES = {
     "mature": {
