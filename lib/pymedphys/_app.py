@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Simon Biggs
+# Copyright (C) 2020 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,18 +13,11 @@
 # limitations under the License.
 
 
-"""This is a streamlit app. To run this on your machine first install
-the requirements:
-
-    pip install -r requirements.txt
-
-Then you can start this app by running:
-
-    streamlit run app.py
-"""
+from pymedphys._streamlit import index
 
 
-from pymedphys._app import main
+def main():
+    index.main()
 
 
 if __name__ == "__main__":
