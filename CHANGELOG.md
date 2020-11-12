@@ -131,6 +131,7 @@ This project adheres to
 ### Developer facing changes
 
 * The pymedphys library directory has moved to `lib/pymedphys`.
+  After this move you will need to rerun `poetry install -E dev`
 * The development branch of pymedphys has moved from [master](https://github.com/pymedphys/pymedphys/tree/master)
   to [main](https://github.com/pymedphys/pymedphys/tree/main)
 * Documentation is now stored within the library, moving from `docs` to
