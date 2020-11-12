@@ -140,7 +140,9 @@ class DicomListener(DicomConnectBase):
                 # "orphan" sub-directory.
 
                 # Just give the file a unique name in the orphan directory
-                filename = str(uuid.uuid4())
+                filename = pathlib.Path(
+                    f"{filename.stem}-{uuid.uuid4()}"
+                )
                 filepath = series_dir.joinpath("orphan", filename)
                 filepath.parent.mkdir(exist_ok=True)
 
