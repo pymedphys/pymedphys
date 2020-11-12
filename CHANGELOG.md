@@ -8,6 +8,56 @@ This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.34.0]
+
+### "Stable" API changes
+
+#### Deprecations
+
+* All instances of `mudensity` have been replaced with `metersetmap`. The
+  `mudensity` API is still currently available, but it will be removed in a
+  future release.
+
+#### New features
+
+* Created an online PyMedPhys GUI. It is accessible from
+  https://app.pymedphys.com. This is in its early stages and most parts of the
+  online GUI are not optimised for use in this fashion.
+
+### Configuration changes
+
+#### New keys
+
+* `~/.pymedphys/config.toml` should now include a `version = 1` entry. This
+  is to support undergoing breaking changes within `config.toml` but allowing
+  PyMedPhys to still read in old configuration files without issue.
+* For use within the up-coming Winston-Lutz Arc GUI a new key
+  `site.export-directories.iviewdb` has been created.
+
+
+### Beta API changes
+
+
+### Experimental API changes
+
+
+### Developer facing changes
+
+* The pymedphys library directory has moved to `lib/pymedphys`.
+* The development branch of pymedphys has moved from [master](https://github.com/pymedphys/pymedphys/tree/master)
+  to [main](https://github.com/pymedphys/pymedphys/tree/main)
+* Documentation is now stored within the library, moving from `docs` to
+  `lib/pymedphys/docs`
+  * Docs can now be built and viewed from the production installation of
+    pymedphys by running:
+
+```bash
+pip install pymedphys[docs]
+pymedphys dev docs --live
+```
+
+
+
 ## [0.33.0]
 
 ### "Stable" API changes
