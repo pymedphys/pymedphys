@@ -41,7 +41,7 @@
 [[redirects]]
   from = "https://app.pymedphys.com/*"
   to = "https://share.streamlit.io/pymedphys/pymedphys/main/app.py/:splat"
-  status = 301
+  status = 302
   force = true
 
 [[redirects]]
