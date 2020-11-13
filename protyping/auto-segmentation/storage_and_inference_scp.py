@@ -39,20 +39,20 @@ def handle_accepted(event):
 def handle_store(event):
     """Handle EVT_C_STORE events."""
 
-    ds = event.dataset
-    ds.file_meta = event.file_meta
-
-    # Path for the study
-    study_path = config.SCP_STORAGE_PATH + "/" + ds.StudyInstanceUID
-    os_helpers.make_directory(study_path)
-
-    # Add study path to storage dictionary
     with lock:
+        ds = event.dataset
+        ds.file_meta = event.file_meta
+
+        # Path for the study
+        study_path = config.SCP_STORAGE_PATH + "/" + ds.StudyInstanceUID
+        os_helpers.make_directory(study_path)
+
+        # Add study path to storage dictionary
         dicom_store[event.assoc].append(study_path)
 
-    # Path for an imaging instance
-    save_path = study_path + "/" + ds.SOPInstanceUID + ".dcm"
-    ds.save_as(save_path, write_like_original=False)
+        # Path for an imaging instance
+        save_path = study_path + "/" + ds.SOPInstanceUID + ".dcm"
+        ds.save_as(save_path, write_like_original=False)
 
     return 0x0000
 

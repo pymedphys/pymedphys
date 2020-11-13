@@ -37,4 +37,5 @@ extension-pkg-whitelist =
     tensorflow.__version__,
     tensorflow.data.experimental,
     scipy.special,
-    win32api
+    win32api,
+    pynetdicom.sop_class

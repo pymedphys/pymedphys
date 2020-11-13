@@ -24,23 +24,23 @@ def fuzz():
     time.sleep(random.random())
 
 
-root_path = "/media/matthew/secondary/prostate_dataset_raw/"
+root_path = "/media/matthew/secondary/rccc_prostate_dataset/"
 
 series_paths = [
-    "000638/with_transfer_syntax",
-    "002487/with_transfer_syntax",
-    "003887/with_transfer_syntax",
-    "011821/with_transfer_syntax",
-    "012125/with_transfer_syntax",
-    "012600/with_transfer_syntax",
-    "013030/with_transfer_syntax",
-    "013604/with_transfer_syntax",
-    "013780/with_transfer_syntax",
-    "013872/with_transfer_syntax",
-    "013875/with_transfer_syntax",
-    "014072/with_transfer_syntax",
-    "014199/with_transfer_syntax",
-    "014362/with_transfer_syntax",
+    "000638/with_transfer_syntax/",
+    "002487/with_transfer_syntax/",
+    "003887/with_transfer_syntax/",
+    "011821/with_transfer_syntax/",
+    "012125/with_transfer_syntax/",
+    "012600/with_transfer_syntax/",
+    "013030/with_transfer_syntax/",
+    "013604/with_transfer_syntax/",
+    "013780/with_transfer_syntax/",
+    "013872/with_transfer_syntax/",
+    "013875/with_transfer_syntax/",
+    "014072/with_transfer_syntax/",
+    "014199/with_transfer_syntax/",
+    "014362/with_transfer_syntax/",
 ]
 
 for series_path in series_paths:
