@@ -25,7 +25,7 @@ This project adheres to
   * The online demo GUI should not have sensitive information submitted to it.
 * [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
   Masters thesis on deep learning auto-segmentation to
-  [the docs](https://docs.pymedphys.com/background/autocontouring.html).
+  [the docs](https://docs.pymedphys.com/background/autocontouring.html#details).
 * PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
   [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
   [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
