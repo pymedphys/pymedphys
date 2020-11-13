@@ -89,11 +89,16 @@ def calculate_anti_aliased_mask(contours, dcm_ct, expansion=5):
     return x_grid, y_grid, mask
 
 
-def get_contours_from_mask(x_grid, y_grid, mask):
+def get_contours_from_mask(x_grid, y_grid, mask, contour_level=0):
+    # Workaround for issue where matplotlib will overdraw contour when
+    # points are close but don't go above the contour_level
+    if np.max(mask) < contour_level:
+        return []
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         fig, ax = plt.subplots()
-        cs = ax.contour(x_grid, y_grid, mask, [0])
+        cs = ax.contour(x_grid, y_grid, mask, [contour_level])
 
     contours = [path.vertices for path in cs.collections[0].get_paths()]
     plt.close(fig)
