@@ -41,8 +41,13 @@ This project adheres to
 #### New features
 
 * Created an online PyMedPhys GUI. It is accessible from
-  https://app.pymedphys.com. This is in its early stages and most parts of the
-  online GUI are not optimised for use in this fashion.
+  <https://app.pymedphys.com>. This is in its early stages and most parts of
+  the online GUI are not optimised for use in this fashion.
+  * Of note, its main purpose is to demonstrate the GUI functionality. If you
+    wish to begin using this GUI in your centre install PyMedPhys on your local
+    machine and then start it by calling `pymedphys gui` within a
+    terminal/command prompt.
+  * The online demo GUI should not have sensitive information submitted to it.
 * Added CLI `pymedphys dicom listen` [#1161](https://github.com/pymedphys/pymedphys/pull/1161).
   This begins a DICOM listener which will store the DICOM files sent to it to
   disk. It accepts the arguments `--port`, `aetitle`, and `storage_directory`.
@@ -143,10 +148,10 @@ This project adheres to
 * A new CLI utility that propagates a range of files that depend upon each
   other files within the repo are "propagated" by calling
   `poetry run pymedphys dev propagate`. The files created/updated by this
-  command are `lib/pymedphys/_version.py`, the 'extras' field within
-  `pyproject.toml`, `requirements.txt` and `requirements-dev.txt`,
-  `lib/pymedphys/.pylintrc`, `lib/pymedphys/docs/README.rst`, and
-  `lib/pymedphys/docs/CHANGELOG.md`.
+  command are `lib/pymedphys/_version.py`, `requirements.txt` and
+  `requirements-dev.txt`, `lib/pymedphys/.pylintrc`,
+  `lib/pymedphys/docs/README.rst`, `lib/pymedphys/docs/CHANGELOG.md`, and the
+  'extras' field within `pyproject.toml`.
 * `pymedphys dev tests` includes simplified flags. `--run-only-slow` can
   be undergone with `--slow`, `--run-only-yarn` with `--cypress`,
   `--run-only-pydicom` with `--pydicom`, and `--run-only-pylinac` with
