@@ -185,10 +185,6 @@ def listen_cli(args):
     """Start a DICOM listener from the command line interface
     """
 
-    # Set log level to debug
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-
     # Start the listener
     dicom_listener = DicomListener(
         port=args.port, ae_title=args.aetitle, storage_directory=args.storage_directory
