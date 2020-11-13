@@ -58,7 +58,6 @@ This project adheres to
 * Sometimes a range of DICOM API calls would require the downloading of a
   baseline DICOM dictionary. This is now distributed with the library.
 
-
 ### GUI changes
 
 #### Logistics changes
@@ -119,6 +118,7 @@ This project adheres to
 
 ### Beta API changes
 
+* Nil
 
 ### Experimental API changes
 
@@ -157,6 +157,9 @@ This project adheres to
   be undergone with `--slow`, `--run-only-yarn` with `--cypress`,
   `--run-only-pydicom` with `--pydicom`, and `--run-only-pylinac` with
   `--pylinac`.
+* Within cypress end to end testing the custom `cy.start` command now has a
+  parameter `app` which refers to the URL app key of the application to be
+  tested `http://localhost:8501/?app=${app}`.
 
 ### Other news around this release
 
