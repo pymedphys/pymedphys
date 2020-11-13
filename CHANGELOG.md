@@ -128,7 +128,7 @@ This project adheres to
 * Removed `pymedphys experimental gui`.
 
 
-### Developer facing changes
+### Developer facing API changes
 
 * The pymedphys library directory has moved to `lib/pymedphys`.
   After this move you will need to rerun `poetry install -E dev`
