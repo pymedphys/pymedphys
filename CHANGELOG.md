@@ -10,6 +10,24 @@ This project adheres to
 
 ## [0.34.0]
 
+### News around this release
+
+* Created an online PyMedPhys GUI. It is accessible from
+  <https://app.pymedphys.com>. This is in its early stages and most parts of
+  the online GUI are not optimised for use in this fashion.
+  * Of note, its main purpose is to demonstrate the GUI functionality. If you
+    wish to begin using this GUI in your centre install PyMedPhys on your local
+    machine and then start it by calling `pymedphys gui` within a
+    terminal/command prompt.
+  * The online demo GUI should not have sensitive information submitted to it.
+* [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
+  Masters thesis on deep learning auto-segmentation to
+  [the docs](https://docs.pymedphys.com/background/autocontouring.html).
+* PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
+  [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
+  [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
+  available online.
+
 ### "Stable" API changes
 
 (Won't truly be stable until after a 1.0.0 release)
@@ -40,14 +58,6 @@ This project adheres to
 
 #### New features
 
-* Created an online PyMedPhys GUI. It is accessible from
-  <https://app.pymedphys.com>. This is in its early stages and most parts of
-  the online GUI are not optimised for use in this fashion.
-  * Of note, its main purpose is to demonstrate the GUI functionality. If you
-    wish to begin using this GUI in your centre install PyMedPhys on your local
-    machine and then start it by calling `pymedphys gui` within a
-    terminal/command prompt.
-  * The online demo GUI should not have sensitive information submitted to it.
 * Added CLI `pymedphys dicom listen` [#1161](https://github.com/pymedphys/pymedphys/pull/1161).
   This begins a DICOM listener which will store the DICOM files sent to it to
   disk. It accepts the arguments `--port`, `--aetitle`, and
@@ -160,16 +170,6 @@ This project adheres to
 * Within cypress end to end testing the custom `cy.start` command now has a
   parameter `app` which refers to the URL app key of the application to be
   tested `http://localhost:8501/?app=${app}`.
-
-### Other news around this release
-
-* [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
-  Masters thesis on deep learning autosegmentation to
-  [the docs](https://docs.pymedphys.com/background/autocontouring.html).
-* PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
-  [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
-  [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
-  available online.
 
 ## [0.33.0]
 
