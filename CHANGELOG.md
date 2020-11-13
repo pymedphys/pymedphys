@@ -147,7 +147,7 @@ This project adheres to
   `pyproject.toml`, `requirements.txt` and `requirements-dev.txt`,
   `lib/pymedphys/.pylintrc`, `lib/pymedphys/docs/README.rst`, and
   `lib/pymedphys/docs/CHANGELOG.md`.
-* `pymedphys dev tests` now allow optional simpler flags. `--run-only-slow` can
+* `pymedphys dev tests` includes simplified flags. `--run-only-slow` can
   be undergone with `--slow`, `--run-only-yarn` with `--cypress`,
   `--run-only-pydicom` with `--pydicom`, and `--run-only-pylinac` with
   `--pylinac`.
