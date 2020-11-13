@@ -50,8 +50,8 @@ This project adheres to
   * The online demo GUI should not have sensitive information submitted to it.
 * Added CLI `pymedphys dicom listen` [#1161](https://github.com/pymedphys/pymedphys/pull/1161).
   This begins a DICOM listener which will store the DICOM files sent to it to
-  disk. It accepts the arguments `--port`, `aetitle`, and `storage_directory`.
-  Thanks [@pchlap](https://github.com/pchlap)!
+  disk. It accepts the arguments `--port`, `--aetitle`, and
+  `--storage_directory`. Thanks [@pchlap](https://github.com/pchlap)!
 
 #### Bug fixes
 
@@ -93,7 +93,6 @@ This project adheres to
   and thanks [@sjswerdloff](https://github.com/sjswerdloff) for the prompt fix
   in [#1144](https://github.com/pymedphys/pymedphys/pull/1144)!
 
-
 #### Experimental applications
 
 * A new "anonymise monaco" application has been exposed. This allows the
@@ -108,10 +107,6 @@ This project adheres to
   the iView database.
 * Work has begun on a new Winston Lutz Arc GUI.
 
-
-
-
-
 ### Configuration changes
 
 #### New keys
@@ -122,7 +117,6 @@ This project adheres to
 * For use within the up-coming Winston-Lutz Arc GUI a new key
   `site.export-directories.iviewdb` has been created.
 
-
 ### Beta API changes
 
 
@@ -132,6 +126,13 @@ This project adheres to
 
 * Removed `pymedphys experimental gui`.
 
+#### New Features
+
+* Within `pymedphys.experimental.pseudonymisation` both `pseudonymise` and
+  `is_valid_strategy_for_keywords` were added. `pseudonymise` provides
+  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/ref/lib/experimental/pseudonymisation.html#api)
+  for more information. Credit to [@sjswerdloff](https://github.com/sjswerdloff)
+  for all his work here.
 
 ### Developer facing API changes
 
@@ -157,7 +158,15 @@ This project adheres to
   `--run-only-pydicom` with `--pydicom`, and `--run-only-pylinac` with
   `--pylinac`.
 
+### Other news around this release
 
+* [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
+  Masters thesis on deep learning autosegmentation to
+  [the docs](https://docs.pymedphys.com/background/autocontouring.html).
+* PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
+  [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
+  [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
+  available online.
 
 ## [0.33.0]
 
