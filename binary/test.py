@@ -94,9 +94,9 @@ def main():
     exe = built_executables[0]
 
     with process(f"{prepend}{exe}", cwd=BUILD_DIST, shell=True):
-        wait_for_port(8501, timeout=300)
-
         subprocess.check_call("yarn", cwd=CYPRESS, shell=True)
+
+        wait_for_port(8501, timeout=300)
         subprocess.check_call("yarn cypress run", cwd=CYPRESS, shell=True)
 
 
