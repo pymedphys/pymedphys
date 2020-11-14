@@ -67,29 +67,35 @@ def main():
     # with zipfile.ZipFile(PYTHON_EMBED_PATH, "r") as zip_ref:
     #     zip_ref.extractall(BUILD_PYTHON_EMBED)
 
-    path_file = list(BUILD_PYTHON_EMBED.glob("*._pth"))
-    if len(path_file) != 1:
-        raise ValueError("Only one _pth file should exist.")
+    # path_file = list(BUILD_PYTHON_EMBED.glob("*._pth"))
+    # if len(path_file) != 1:
+    #     raise ValueError("Only one _pth file should exist.")
 
-    path_file = path_file[0]
+    # path_file = path_file[0]
 
-    with open(path_file) as f:
-        path_file_contents = f.read()
+    # with open(path_file) as f:
+    #     path_file_contents = f.read()
 
-    path_file_contents = path_file_contents.replace("#import site", "import site")
+    # path_file_contents = path_file_contents.replace("#import site", "import site")
 
-    with open(path_file, "w") as f:
-        f.write(path_file_contents)
+    # with open(path_file, "w") as f:
+    #     f.write(path_file_contents)
 
-    subprocess.check_call(
-        f"{prepend}python.exe {GET_PIP_PATH}", shell=True, cwd=BUILD_PYTHON_EMBED
-    )
+    # subprocess.check_call(
+    #     f"{prepend}python.exe {GET_PIP_PATH}", shell=True, cwd=BUILD_PYTHON_EMBED
+    # )
 
-    subprocess.check_call(
-        f"{prepend}python.exe -m pip install pymedphys[user] --no-index --find-links file://{WHEELS}",
-        shell=True,
-        cwd=BUILD_PYTHON_EMBED,
-    )
+    # subprocess.check_call(
+    #     f"{prepend}python.exe -m pip install pymedphys[user] --no-index --find-links file://{WHEELS}",
+    #     shell=True,
+    #     cwd=BUILD_PYTHON_EMBED,
+    # )
+
+    shutil.make_archive(BUILD_PYTHON_EMBED, "xztar", BUILD_PYTHON_EMBED)
+
+    # subprocess.check_call(
+    #     f"{prepend}pip install pyinstaller", shell=True, cwd=REPO_ROOT,
+    # )
 
 
 if __name__ == "__main__":
