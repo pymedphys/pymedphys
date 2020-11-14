@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import pathlib
 import subprocess
 from contextlib import contextmanager
 
@@ -34,3 +36,7 @@ def process(*args, **kwargs):
         for child in psutil.Process(proc.pid).children(recursive=True):
             child.kill()
         proc.kill()
+
+
+def get_executable_even_when_embedded():
+    return pathlib.Path(os.__file__).parents[2].joinpath("bin", "python")
