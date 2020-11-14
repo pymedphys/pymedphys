@@ -253,15 +253,17 @@ jobs:
         poetry update
         poetry install -E user -E tests -E docs -E doctests
 
-# Download all data for consistent cache
+# PyMedPhys Data Cache
 
     - name: Get PyMedPhys cache directory
       id: pymedphys-cache-location
+      if: matrix.task != 'binary'
       run: |
         echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
 
     - name: PyMedPhys Cache
       id: pymedphys-cache
+      if: matrix.task != 'binary'
       uses: actions/cache@v2
       with:
         path: ${{ steps.pymedphys-cache-location.outputs.dir }}
