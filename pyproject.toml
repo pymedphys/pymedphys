@@ -86,7 +86,7 @@ sphinx-argparse = {version = "*", optional = true}  # groups = ["dev", "docs"]
 sphinx-autobuild = {version = "*", optional = true}  # groups = ["dev", "docs"]
 nbsphinx  = {version = "*", optional = true}  # groups = ["dev", "docs"]
 jupyter_client = {version = "*", optional = true}  # groups = ["dev", "docs"]
-ipython = {version = "*", optional = true}  # groups = ["dev", "docs", "deploy"]
+ipython = {version = "*", optional = true}  # groups = ["dev", "docs"]
 ipykernel = {version = "*", optional = true}  # groups = ["dev", "docs"]
 nbconvert = {version = "6.0.6", optional = true}  # groups = ["dev", "docs"]
 
@@ -107,12 +107,6 @@ doc8 = {version = "*", optional = true}  # groups = ["dev"]
 tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests"]
 readme-renderer = {version = "*", optional = true}  # groups = ["dev"]
 
-# deploy
-six  = {version = "*", optional = true}  # groups = ["deploy"]
-cffi  = {version = "*", optional = true}  # groups = ["deploy"]
-setuptools  = {version = "*", optional = true}  # groups = ["deploy"]
-pycparser  = {version = "*", optional = true}  # groups = ["deploy"]
-
 
 [tool.poetry.extras]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "kiwisolver", "xmltodict", "pylinac", "python_dateutil", "scikit-image", "streamlit", "timeago"]
@@ -123,7 +117,6 @@ gui = ["streamlit", "timeago"]
 ml = ["tensorflow", "torch"]
 doctests = ["tensorflow", "black", "tomlkit"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
-deploy = ["ipython", "six", "cffi", "setuptools", "pycparser"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [tool.poetry.scripts]

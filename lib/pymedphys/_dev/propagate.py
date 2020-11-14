@@ -139,8 +139,11 @@ def propagate_requirements():
         shell=True,
     )
 
+    # TODO: Once the hashes pinning issue in poetry is fixed, remove the
+    # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
+    # for more details.
     subprocess.check_call(
-        "poetry export -E user -E test -E deploy -f requirements.txt --output requirements-deploy.txt",
+        "poetry export --without-hashes -E user -E test -f requirements.txt --output requirements-deploy.txt",
         shell=True,
     )
 
