@@ -10,45 +10,45 @@ jobs:
 
 # =============================================================================
 
-  # PreCommit:
-  #   runs-on: ubuntu-latest
+  PreCommit:
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #     - name: Extract branch name
-  #       run: |
-  #         echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-  #       id: extract_branch
-  #     - name: Test branch name
-  #       run: |
-  #         echo ${{ steps.extract_branch.outputs.branch }}
-  #     - uses: actions/checkout@v2
-  #     - name: Set up Python 3.8
-  #       uses: actions/setup-python@v1
-  #       with:
-  #         python-version: 3.8
+    steps:
+      - name: Extract branch name
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Test branch name
+        run: |
+          echo ${{ steps.extract_branch.outputs.branch }}
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
 
-  #     - uses: actions/cache@v2
-  #       with:
-  #         path: ~/.cache/pre-commit
-  #         key: pre-commit-cache
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-cache
 
-  #     - name: Run Pre-Commit
-  #       run: |
-  #         pip install pre-commit
-  #         pre-commit run --all-files
-  #     - name: Fix any issues
-  #       if: failure()
-  #       run: |
-  #         git config --local user.email "pre-commit-bot@pymedphys.com"
-  #         git config --local user.name "PyMedPhys Pre-Commit Bot"
-  #         git commit -m "Fix pre-commit failures" -a
-  #         exit 1
-  #     - name: Push changes
-  #       if: failure()
-  #       uses: ad-m/github-push-action@02b0b75
-  #       with:
-  #         github_token: ${{ secrets.GITHUB_TOKEN }}
-  #         branch: ${{ steps.extract_branch.outputs.branch }}
+      - name: Run Pre-Commit
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files
+      - name: Fix any issues
+        if: failure()
+        run: |
+          git config --local user.email "pre-commit-bot@pymedphys.com"
+          git config --local user.name "PyMedPhys Pre-Commit Bot"
+          git commit -m "Fix pre-commit failures" -a
+          exit 1
+      - name: Push changes
+        if: failure()
+        uses: ad-m/github-push-action@02b0b75
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
 
 # =============================================================================
 
@@ -56,8 +56,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['windows']  # ['ubuntu', 'macos', 'windows']
-        task: ['binary']  # ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow']
+        os: ['ubuntu', 'macos', 'windows']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary']
         exclude:
           - os: 'ubuntu'
             task: 'binary'
@@ -299,12 +299,12 @@ jobs:
         path: build/dist/PyMedPhysGUI*.exe
 
 
-    - name: Test Binary
-      if: matrix.task == 'binary'
-      run: |
-        pip install psutil
-        cd binary
-        python test.py
+    # - name: Test Binary
+    #   if: matrix.task == 'binary'
+    #   run: |
+    #     pip install psutil
+    #     cd binary
+    #     python test.py
 
 # -----------------------------------------------------------------------------
 
