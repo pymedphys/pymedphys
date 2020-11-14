@@ -107,6 +107,11 @@ doc8 = {version = "*", optional = true}  # groups = ["dev"]
 tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests"]
 readme-renderer = {version = "*", optional = true}  # groups = ["dev"]
 
+# deploy
+six  = {version = "*", optional = true}  # groups = ["deploy"]
+cffi  = {version = "*", optional = true}  # groups = ["deploy"]
+setuptools  = {version = "*", optional = true}  # groups = ["deploy"]
+
 
 [tool.poetry.extras]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "kiwisolver", "xmltodict", "pylinac", "python_dateutil", "scikit-image", "streamlit", "timeago"]
@@ -118,6 +123,7 @@ ml = ["tensorflow", "torch"]
 doctests = ["tensorflow", "black", "tomlkit"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
+deploy = ["six", "cffi", "setuptools"]
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"

@@ -93,7 +93,7 @@ def main():
     )
 
     subprocess.check_call(
-        f"{prepend}python.exe -m pip install pymedphys[user,test] --no-index --find-links file://{WHEELS}",
+        f"{prepend}python.exe -m pip install pymedphys[user,test,deploy] --no-index --find-links file://{WHEELS}",
         shell=True,
         cwd=BUILD_PYTHON_EMBED,
     )
