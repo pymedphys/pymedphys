@@ -288,7 +288,8 @@ jobs:
       if: matrix.task == 'binary'
       run: |
         pip install tomlkit
-        python binary/build-binary.py
+        cd binary
+        python build-binary.py
 
 
     - uses: actions/upload-artifact@v2
