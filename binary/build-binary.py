@@ -46,8 +46,10 @@ BUILD_DIST = BUILD.joinpath("dist")
 def main():
     if sys.platform == "win32":
         prepend = ""
+        append = ""
     else:
         prepend = "wine "
+        append = " --runtime-tmpdir ."
 
     subprocess.check_call(
         f"{prepend}pip wheel -r requirements-deploy.txt -w wheels",
@@ -112,7 +114,7 @@ def main():
         (
             f"{prepend}pyinstaller {pyinstaller_script}"
             f' --add-data "{BUILD_PYTHON_EMBED_XZTAR.name};data"'
-            f' --add-data "{pymedphys_bat};data" --onefile'
+            f' --add-data "{pymedphys_bat};data" --onefile{append}'
         ),
         shell=True,
         cwd=BUILD,
