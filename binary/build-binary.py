@@ -98,6 +98,24 @@ def main():
     #     f"{prepend}pip install pyinstaller", shell=True, cwd=REPO_ROOT,
     # )
 
+    pyinstaller_script = "pyinstaller-bundle-script.py"
+    pymedphys_bat = "pymedphys.bat"
+    resolve_path = "resolve-path.cmd"
+
+    for f in [pyinstaller_script, pymedphys_bat, resolve_path]:
+        shutil.copy(HERE.joinpath(f), BUILD.joinpath(f))
+
+    subprocess.check_call(
+        (
+            f"{prepend}pyinstaller {pyinstaller_script}"
+            f' --add-data "{BUILD_PYTHON_EMBED_XZTAR.name};data"'
+            f' --add-data "{pymedphys_bat};data"'
+            f' --add-data "{resolve_path};data" --onefile'
+        ),
+        shell=True,
+        cwd=BUILD,
+    )
+
 
 if __name__ == "__main__":
     main()

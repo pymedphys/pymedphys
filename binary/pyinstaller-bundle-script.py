@@ -24,13 +24,15 @@ def main():
         )
         data_path = pyinstaller_temp_dir.joinpath("data")
 
-        for filename in ["resolve_path.cmd", "pymedphys.bat"]:
+        for filename in ["resolve-path.cmd", "pymedphys.bat"]:
             shutil.copy(data_path.joinpath(filename), cwd.joinpath(filename))
 
         python_xztar = data_path.joinpath("python-embed.tar.xz")
 
+        installation_path.mkdir()
+
         with tarfile.open(python_xztar) as f:
-            f.extractall(cwd)
+            f.extractall(installation_path)
 
         boot_streamlit_app(installation_path)
 
