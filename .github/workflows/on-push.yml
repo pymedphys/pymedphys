@@ -298,6 +298,13 @@ jobs:
         name: binary
         path: build/dist
 
+
+    - name: Test Binary
+      if: matrix.task == 'binary'
+      run: |
+        cd binary
+        python test.py
+
 # -----------------------------------------------------------------------------
 
 # TESTS
