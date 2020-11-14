@@ -143,7 +143,7 @@ def propagate_requirements():
     # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
     # for more details.
     subprocess.check_call(
-        "poetry export --without-hashes -E user -E test -f requirements.txt --output requirements-deploy.txt",
+        "poetry export --without-hashes -E user -E tests -f requirements.txt --output requirements-deploy.txt",
         shell=True,
     )
 
