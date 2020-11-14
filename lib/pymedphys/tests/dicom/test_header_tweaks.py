@@ -23,6 +23,7 @@ import numpy as np
 
 import pydicom
 
+import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.header import (
     RED_adjustment_map_from_structure_names,
@@ -39,6 +40,11 @@ ORIGINAL_DICOM_FILENAME = os.path.join(
 ADJUSTED_DICOM_FILENAME = os.path.join(
     HERE, "scratch", "adjusted-{}.dcm".format(str(uuid.uuid4()))
 )
+
+
+def get_pymedphys_dicom_cli():
+    python_executable = pmp_test_utils.get_executable_even_when_embedded()
+    return f'"{python_executable}" -m pymedphys dicom'
 
 
 def compare_dicom_cli(command, original, expected):
@@ -81,7 +87,7 @@ def test_adjust_machine_name():
     assert adjusted_ds != original_ds
     assert adjusted_ds == expected_ds
 
-    command = "pymedphys dicom adjust-machine-name".split() + [
+    command = f"{get_pymedphys_dicom_cli()} adjust-machine-name".split() + [
         ORIGINAL_DICOM_FILENAME,
         ADJUSTED_DICOM_FILENAME,
         new_name,
@@ -197,7 +203,7 @@ def test_electron_density_append():
     excess_adjustment_map_flat = np.concatenate(excess_adjustment_map_as_list).tolist()
 
     command = (
-        "pymedphys dicom adjust-RED -i ".split()
+        f"{get_pymedphys_dicom_cli()} adjust-RED -i ".split()
         + [ORIGINAL_DICOM_FILENAME, ADJUSTED_DICOM_FILENAME]
         + excess_adjustment_map_flat
     )
@@ -273,7 +279,7 @@ def test_structure_name_based_RED_append():
     assert adjusted_ds != original_ds
     assert str(expected_ds) == str(adjusted_ds)
 
-    command = "pymedphys dicom adjust-RED-by-structure-name".split() + [
+    command = f"{get_pymedphys_dicom_cli()} adjust-RED-by-structure-name".split() + [
         ORIGINAL_DICOM_FILENAME,
         ADJUSTED_DICOM_FILENAME,
     ]
