@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import pathlib
 import subprocess
 from contextlib import contextmanager
 
-import psutil
+from pymedphys._imports import numpy as np
+from pymedphys._imports import psutil
 
 
 @contextmanager
@@ -39,4 +39,4 @@ def process(*args, **kwargs):
 
 
 def get_executable_even_when_embedded():
-    return pathlib.Path(os.__file__).parents[2].joinpath("bin", "python")
+    return pathlib.Path(np.__file__).parents[4].joinpath("bin", "python")
