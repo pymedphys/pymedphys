@@ -36,7 +36,9 @@ def main():
     else:
         prepend = "wine "
 
-    built_executables = list(BUILD_DIST.glob("**/*.exe"))
+    built_executables = list(BUILD_DIST.glob("pyinstaller-bundle-script/*.exe")) + list(
+        BUILD_DIST.glob("*.exe")
+    )
     if len(built_executables) != 1:
         raise ValueError("There should be only one executable.")
 
@@ -46,7 +48,12 @@ def main():
         subprocess.check_call("yarn", cwd=CYPRESS, shell=True)
 
         _wait_for_port(8501, timeout=300)
-        subprocess.check_call("yarn cypress run", cwd=CYPRESS, shell=True)
+
+        subprocess.check_call(
+            f"{prepend}cmd.exe /C pymedphys dev tests --cypress", cwd=BUILD_DIST
+        )
+
+        # subprocess.check_call("yarn cypress run", cwd=CYPRESS, shell=True)
 
 
 @contextmanager

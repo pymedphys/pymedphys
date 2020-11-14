@@ -16,6 +16,8 @@ import os
 import pathlib
 import subprocess
 
+import pymedphys._utilities.test as pmp_test_utils
+
 LIBRARY_ROOT = pathlib.Path(__file__).parent.parent.resolve()
 PYLINT_RC_FILE = LIBRARY_ROOT.joinpath(".pylintrc")
 
@@ -36,9 +38,14 @@ def run_tests(_, remaining):
     os.chdir(working_directory_to_use)
     print(f"Running tests with cwd set to:\n    {os.getcwd()}\n")
 
+    python_executable = pmp_test_utils.get_executable_even_when_embedded()
+
     try:
         command = " ".join(
-            ["pytest"] + remaining + ["--pyargs", "pymedphys", "--failed-first"]
+            [f'"{python_executable}"', "-m"]
+            + ["pytest"]
+            + remaining
+            + ["--pyargs", "pymedphys", "--failed-first"]
         )
 
         print(f"Running the following command:\n    {command}\n")
