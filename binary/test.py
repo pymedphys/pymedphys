@@ -17,7 +17,6 @@ import subprocess
 import sys
 import time
 import socket
-
 from contextlib import contextmanager
 
 import psutil

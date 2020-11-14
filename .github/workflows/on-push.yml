@@ -302,6 +302,7 @@ jobs:
     - name: Test Binary
       if: matrix.task == 'binary'
       run: |
+        pip install psutil
         cd binary
         python test.py
 
