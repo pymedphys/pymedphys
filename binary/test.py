@@ -30,8 +30,27 @@ BUILD_DIST = BUILD.joinpath("dist")
 CYPRESS = REPO_ROOT.joinpath("lib", "pymedphys", "tests", "e2e")
 
 
+def main():
+    if sys.platform == "win32":
+        prepend = ""
+    else:
+        prepend = "wine "
+
+    built_executables = list(BUILD_DIST.glob("*.exe"))
+    if len(built_executables) != 1:
+        raise ValueError("There should be only one executable.")
+
+    exe = built_executables[0]
+
+    with _process(f"{prepend}{exe}", cwd=BUILD_DIST, shell=True):
+        subprocess.check_call("yarn", cwd=CYPRESS, shell=True)
+
+        _wait_for_port(8501, timeout=300)
+        subprocess.check_call("yarn cypress run", cwd=CYPRESS, shell=True)
+
+
 @contextmanager
-def process(*args, **kwargs):
+def _process(*args, **kwargs):
     """Provides a process running with the provided arguments, useful for CLI unit tests
 
     Yields
@@ -49,7 +68,7 @@ def process(*args, **kwargs):
         proc.kill()
 
 
-def wait_for_port(port, host="localhost", timeout=5.0):
+def _wait_for_port(port, host="localhost", timeout=5.0):
     """Wait until a port starts accepting TCP connections.
 
     Args
@@ -79,25 +98,6 @@ def wait_for_port(port, host="localhost", timeout=5.0):
                     "Waited too long for the port {} on host {} to start accepting "
                     "connections.".format(port, host)
                 ) from ex
-
-
-def main():
-    if sys.platform == "win32":
-        prepend = ""
-    else:
-        prepend = "wine "
-
-    built_executables = list(BUILD_DIST.glob("*.exe"))
-    if len(built_executables) != 1:
-        raise ValueError("There should be only one executable.")
-
-    exe = built_executables[0]
-
-    with process(f"{prepend}{exe}", cwd=BUILD_DIST, shell=True):
-        subprocess.check_call("yarn", cwd=CYPRESS, shell=True)
-
-        wait_for_port(8501, timeout=300)
-        subprocess.check_call("yarn cypress run", cwd=CYPRESS, shell=True)
 
 
 if __name__ == "__main__":
