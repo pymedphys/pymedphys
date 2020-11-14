@@ -30,7 +30,7 @@ WHEELS = REPO_ROOT.joinpath("wheels")
 
 DOWNLOADS = REPO_ROOT.joinpath("downloads")
 PYTHON_EMBED_URL = (
-    "https://www.python.org/ftp/python/3.8.6/python-3.8.6-embed-amd64.zip"
+    "https://www.python.org/ftp/python/3.7.9/python-3.7.9-embed-amd64.zip"
 )
 PYTHON_EMBED_PATH = DOWNLOADS.joinpath("python-embed.zip")
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
