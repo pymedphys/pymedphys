@@ -140,7 +140,7 @@ def propagate_requirements():
     )
 
     subprocess.check_call(
-        "poetry export -E user -E test -f requirements.txt --output requirements-deploy.txt",
+        "poetry export -E user -E test -E deploy -f requirements.txt --output requirements-deploy.txt",
         shell=True,
     )
 
