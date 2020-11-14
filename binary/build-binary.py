@@ -53,8 +53,7 @@ def main():
     )
     subprocess.check_call("poetry build -f wheel", shell=True, cwd=REPO_ROOT)
 
-    original_version_string = get_version_string()
-    version_string = original_version_string.replace("-", ".")
+    version_string = get_version_string().replace("-", ".")
     pymedphys_wheel = f"pymedphys-{version_string}-py3-none-any.whl"
 
     shutil.copy(DIST.joinpath(pymedphys_wheel), WHEELS.joinpath(pymedphys_wheel))
@@ -122,7 +121,7 @@ def main():
 
     shutil.move(
         BUILD_DIST.joinpath(pyinstaller_script.with_suffix(".exe")),
-        BUILD_DIST.joinpath(f"PyMedPhysGUI-v{original_version_string}.exe"),
+        BUILD_DIST.joinpath(f"PyMedPhysGUI-v{version_string}.exe"),
     )
 
 
