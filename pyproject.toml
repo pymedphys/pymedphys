@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.34.0"
+version = "0.35.0-dev0"
 readme = "README.rst"
 description = "Medical Physics library"
 authors = [
@@ -120,7 +120,7 @@ docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [tool.poetry.scripts]
-pymedphys = "pymedphys.cli:pymedphys_cli"
+pymedphys = "pymedphys.__main__:main"
 
 [tool.isort]
 multi_line_output = 3
