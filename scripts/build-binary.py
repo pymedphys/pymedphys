@@ -3,12 +3,21 @@ import subprocess
 import shutil
 import sys
 import tomlkit
+import urllib.request
 
 HERE = pathlib.Path("__file__").parent.resolve()
 REPO_ROOT = HERE.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
 DIST = REPO_ROOT.joinpath("dist")
 WHEELS = REPO_ROOT.joinpath("wheels")
+
+DOWNLOADS = REPO_ROOT.joinpath("downloads")
+PYTHON_EMBED_URL = (
+    "https://www.python.org/ftp/python/3.8.6/python-3.8.6-embed-amd64.zip"
+)
+PYTHON_EMBED_PATH = DOWNLOADS.joinpath("python-embed.zip")
+GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
+GET_PIP_PATH = DOWNLOADS.joinpath("get-pip.py")
 
 
 def read_pyproject():
@@ -42,6 +51,13 @@ def main():
     pymedphys_wheel = f"pymedphys-{version_string}-py3-none-any.whl"
 
     shutil.copy(DIST.joinpath(pymedphys_wheel), WHEELS.joinpath(pymedphys_wheel))
+
+    DOWNLOADS.mkdir(exist_ok=True)
+    if not PYTHON_EMBED_PATH.exists():
+        urllib.request.urlretrieve(PYTHON_EMBED_URL, PYTHON_EMBED_PATH)
+
+    if not GET_PIP_PATH.exists():
+        urllib.request.urlretrieve(GET_PIP_URL, GET_PIP_PATH)
 
 
 if __name__ == "__main__":
