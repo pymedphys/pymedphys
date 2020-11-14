@@ -284,7 +284,17 @@ jobs:
 
 # Binary building
 
+    - name: Build Binary
+      if: matrix.task == 'binary'
+      run: |
+        python binary/build-binary.py
 
+
+    - uses: actions/upload-artifact@v2
+      if: matrix.task == 'binary'
+      with:
+        name: binary
+        path: build/dist
 
 # -----------------------------------------------------------------------------
 
