@@ -22,6 +22,7 @@ GET_PIP_PATH = DOWNLOADS.joinpath("get-pip.py")
 
 BUILD = REPO_ROOT.joinpath("build")
 BUILD_PYTHON_EMBED = BUILD.joinpath("python-embed")
+BUILD_PYTHON_EMBED_XZTAR = BUILD_PYTHON_EMBED.with_suffix(".tar.xz")
 
 
 def read_pyproject():
@@ -91,7 +92,7 @@ def main():
     #     cwd=BUILD_PYTHON_EMBED,
     # )
 
-    shutil.make_archive(BUILD_PYTHON_EMBED, "xztar", BUILD_PYTHON_EMBED)
+    # shutil.make_archive(BUILD_PYTHON_EMBED, "xztar", BUILD_PYTHON_EMBED)
 
     # subprocess.check_call(
     #     f"{prepend}pip install pyinstaller", shell=True, cwd=REPO_ROOT,
