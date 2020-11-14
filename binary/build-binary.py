@@ -46,10 +46,15 @@ BUILD_DIST = BUILD.joinpath("dist")
 def main():
     if sys.platform == "win32":
         prepend = ""
-        append = ""
+        one_file_mode = True
     else:
         prepend = "wine "
-        append = " --runtime-tmpdir ."
+        one_file_mode = False
+
+    if one_file_mode:
+        append = " --onefile"
+    else:
+        append = ""
 
     subprocess.check_call(
         f"{prepend}pip wheel -r requirements-deploy.txt -w wheels",
@@ -114,16 +119,17 @@ def main():
         (
             f"{prepend}pyinstaller {pyinstaller_script}"
             f' --add-data "{BUILD_PYTHON_EMBED_XZTAR.name};data"'
-            f' --add-data "{pymedphys_bat};data" --onefile{append}'
+            f' --add-data "{pymedphys_bat};data"{append}'
         ),
         shell=True,
         cwd=BUILD,
     )
 
-    shutil.move(
-        BUILD_DIST.joinpath(pyinstaller_script.with_suffix(".exe")),
-        BUILD_DIST.joinpath(f"PyMedPhysGUI-v{version_string}.exe"),
-    )
+    if one_file_mode:
+        shutil.move(
+            BUILD_DIST.joinpath(pyinstaller_script.with_suffix(".exe")),
+            BUILD_DIST.joinpath(f"PyMedPhysGUI-v{version_string}.exe"),
+        )
 
 
 def _read_pyproject():
