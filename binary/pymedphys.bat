@@ -6,4 +6,4 @@ SET PATH="%PYTHON_DIR%";"%PYTHON_DIR%\Scripts";"%PATH%"
 
 popd
 
-%PYTHON_DIR%\python -m pymedphys %*
+"%PYTHON_DIR%\python" -m pymedphys %*
