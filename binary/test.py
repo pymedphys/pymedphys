@@ -36,7 +36,7 @@ def main():
     else:
         prepend = "wine "
 
-    built_executables = list(BUILD_DIST.glob("*.exe"))
+    built_executables = list(BUILD_DIST.glob("**/*.exe"))
     if len(built_executables) != 1:
         raise ValueError("There should be only one executable.")
 
