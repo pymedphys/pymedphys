@@ -21,7 +21,7 @@ import zipfile
 
 import tomlkit
 
-HERE = pathlib.Path("__file__").parent.resolve()
+HERE = pathlib.Path("__file__").parent.absolute()
 REPO_ROOT = HERE.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
 REQUIREMENTS = REPO_ROOT.joinpath("requirements-deploy.txt")
@@ -63,8 +63,6 @@ def main():
         prepend = ""
     else:
         prepend = "wine "
-
-    print(list(REPO_ROOT.glob("requirements*")))
 
     subprocess.check_call(
         f"{prepend}pip wheel -r {REQUIREMENTS} -w wheels", shell=True, cwd=REPO_ROOT
