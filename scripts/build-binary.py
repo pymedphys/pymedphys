@@ -1,6 +1,7 @@
 import pathlib
 import subprocess
 import shutil
+import sys
 import tomlkit
 
 HERE = pathlib.Path("__file__").parent.resolve()
@@ -25,8 +26,15 @@ def get_version_string():
 
 
 def main():
+    if sys.platform == "win32":
+        prepend = ""
+    else:
+        prepend = "wine "
+
     subprocess.check_call(
-        "pip wheel -r requirements-deploy.txt -w wheels", shell=True, cwd=REPO_ROOT
+        f"{prepend} pip wheel -r requirements-deploy.txt -w wheels",
+        shell=True,
+        cwd=REPO_ROOT,
     )
     subprocess.check_call("poetry build -f wheel", shell=True, cwd=REPO_ROOT)
 
