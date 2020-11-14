@@ -4,6 +4,7 @@ import shutil
 import sys
 import tomlkit
 import urllib.request
+import zipfile
 
 HERE = pathlib.Path("__file__").parent.resolve()
 REPO_ROOT = HERE.parent
@@ -18,6 +19,8 @@ PYTHON_EMBED_URL = (
 PYTHON_EMBED_PATH = DOWNLOADS.joinpath("python-embed.zip")
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
 GET_PIP_PATH = DOWNLOADS.joinpath("get-pip.py")
+
+BUILD = REPO_ROOT.joinpath("build")
 
 
 def read_pyproject():
@@ -58,6 +61,10 @@ def main():
 
     if not GET_PIP_PATH.exists():
         urllib.request.urlretrieve(GET_PIP_URL, GET_PIP_PATH)
+
+    BUILD.mkdir(exist_ok=True)
+    with zipfile.ZipFile(PYTHON_EMBED_PATH, "r") as zip_ref:
+        zip_ref.extractall(BUILD)
 
 
 if __name__ == "__main__":
