@@ -86,7 +86,7 @@ sphinx-argparse = {version = "*", optional = true}  # groups = ["dev", "docs"]
 sphinx-autobuild = {version = "*", optional = true}  # groups = ["dev", "docs"]
 nbsphinx  = {version = "*", optional = true}  # groups = ["dev", "docs"]
 jupyter_client = {version = "*", optional = true}  # groups = ["dev", "docs"]
-ipython = {version = "*", optional = true}  # groups = ["dev", "docs"]
+ipython = {version = "*", optional = true}  # groups = ["dev", "docs", "deploy"]
 ipykernel = {version = "*", optional = true}  # groups = ["dev", "docs"]
 nbconvert = {version = "6.0.6", optional = true}  # groups = ["dev", "docs"]
 
@@ -111,6 +111,7 @@ readme-renderer = {version = "*", optional = true}  # groups = ["dev"]
 six  = {version = "*", optional = true}  # groups = ["deploy"]
 cffi  = {version = "*", optional = true}  # groups = ["deploy"]
 setuptools  = {version = "*", optional = true}  # groups = ["deploy"]
+pycparser  = {version = "*", optional = true}  # groups = ["deploy"]
 
 
 [tool.poetry.extras]
@@ -122,8 +123,8 @@ gui = ["streamlit", "timeago"]
 ml = ["tensorflow", "torch"]
 doctests = ["tensorflow", "black", "tomlkit"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
+deploy = ["ipython", "six", "cffi", "setuptools", "pycparser"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
-deploy = ["six", "cffi", "setuptools"]
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"
