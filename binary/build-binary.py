@@ -24,7 +24,6 @@ import tomlkit
 HERE = pathlib.Path("__file__").parent.absolute()
 REPO_ROOT = HERE.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
-REQUIREMENTS = REPO_ROOT.joinpath("requirements-deploy.txt")
 
 DIST = REPO_ROOT.joinpath("dist")
 WHEELS = REPO_ROOT.joinpath("wheels")
@@ -65,7 +64,9 @@ def main():
         prepend = "wine "
 
     subprocess.check_call(
-        f"{prepend}pip wheel -r {REQUIREMENTS} -w wheels", shell=True, cwd=REPO_ROOT
+        f"{prepend}pip wheel -r requirements-deploy.txt -w wheels",
+        shell=True,
+        cwd=REPO_ROOT,
     )
     subprocess.check_call("poetry build -f wheel", shell=True, cwd=REPO_ROOT)
 
