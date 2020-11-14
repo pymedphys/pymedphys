@@ -19,7 +19,7 @@ boto3==1.16.18; python_version >= "3.6"
 botocore==1.19.18; python_version >= "3.6"
 cachetools==4.1.1; python_version >= "3.6" and python_version < "4.0"
 certifi==2020.11.8; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
-cffi==1.14.3
+cffi==1.14.3; implementation_name === "pypy" and python_version >= "3.6" and (python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "linux" or sys_platform == "linux" and python_version >= "3.6" and python_full_version >= "3.5.0")
 cfgv==3.0.0; python_version >= "3.6"
 chardet==3.0.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 click==7.1.2; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
@@ -105,7 +105,7 @@ psutil==5.7.3; (python_version >= "2.6" and python_full_version < "3.0.0") or (p
 ptyprocess==0.6.0; sys_platform != "win32" and python_version >= "3.6" and os_name != "nt"
 py==1.9.0; python_version >= "3.5" and python_full_version < "3.0.0" and implementation_name === "pypy" or python_full_version >= "3.4.0" and python_version >= "3.5" and implementation_name === "pypy"
 pyarrow==2.0.0; python_version >= "3.6"
-pycparser==2.20; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.4.0")
+pycparser==2.20; python_version >= "3.5" and python_full_version < "3.0.0" and implementation_name === "pypy" or implementation_name === "pypy" and python_version >= "3.5" and python_full_version >= "3.4.0"
 pydeck==0.5.0; python_version >= "3.6"
 pydicom==2.1.1; python_version >= "3.6"
 pygments==2.7.2; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
@@ -140,7 +140,7 @@ scipy==1.5.4; python_version >= "3.6"
 secretstorage==3.2.0; sys_platform == "linux" and python_version >= "3.6"
 send2trash==1.5.0; python_version >= "3.6"
 shapely==1.7.1
-six==1.15.0; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.3.0")
+six==1.15.0; python_version >= "3.6" and python_full_version < "3.0.0" and sys_platform == "linux" or python_full_version >= "3.5.0" and python_version >= "3.6" and sys_platform == "linux"
 smmap==3.0.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
 snowballstemmer==2.0.0; python_version >= "2.7" and python_full_version < "3.0.0" or python_full_version >= "3.4.0"
 sortedcontainers==2.3.0; python_version >= "3.6"
