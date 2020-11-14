@@ -64,6 +64,8 @@ def main():
     else:
         prepend = "wine "
 
+    print(list(REPO_ROOT.glob("requirements*")))
+
     subprocess.check_call(
         f"{prepend}pip wheel -r {REQUIREMENTS} -w wheels", shell=True, cwd=REPO_ROOT
     )
