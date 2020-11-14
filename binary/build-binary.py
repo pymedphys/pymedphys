@@ -45,60 +45,61 @@ def main():
     else:
         prepend = "wine "
 
-    # subprocess.check_call(
-    #     f"{prepend}pip wheel -r requirements-deploy.txt -w wheels",
-    #     shell=True,
-    #     cwd=REPO_ROOT,
-    # )
-    # subprocess.check_call("poetry build -f wheel", shell=True, cwd=REPO_ROOT)
+    subprocess.check_call(
+        f"{prepend}pip wheel -r requirements-deploy.txt -w wheels",
+        shell=True,
+        cwd=REPO_ROOT,
+    )
+    subprocess.check_call("poetry build -f wheel", shell=True, cwd=REPO_ROOT)
 
-    # version_string = get_version_string().replace("-", ".")
-    # pymedphys_wheel = f"pymedphys-{version_string}-py3-none-any.whl"
+    original_version_string = get_version_string()
+    version_string = original_version_string.replace("-", ".")
+    pymedphys_wheel = f"pymedphys-{version_string}-py3-none-any.whl"
 
-    # shutil.copy(DIST.joinpath(pymedphys_wheel), WHEELS.joinpath(pymedphys_wheel))
+    shutil.copy(DIST.joinpath(pymedphys_wheel), WHEELS.joinpath(pymedphys_wheel))
 
-    # DOWNLOADS.mkdir(exist_ok=True)
-    # if not PYTHON_EMBED_PATH.exists():
-    #     urllib.request.urlretrieve(PYTHON_EMBED_URL, PYTHON_EMBED_PATH)
+    DOWNLOADS.mkdir(exist_ok=True)
+    if not PYTHON_EMBED_PATH.exists():
+        urllib.request.urlretrieve(PYTHON_EMBED_URL, PYTHON_EMBED_PATH)
 
-    # if not GET_PIP_PATH.exists():
-    #     urllib.request.urlretrieve(GET_PIP_URL, GET_PIP_PATH)
+    if not GET_PIP_PATH.exists():
+        urllib.request.urlretrieve(GET_PIP_URL, GET_PIP_PATH)
 
-    # BUILD_PYTHON_EMBED.mkdir(exist_ok=True, parents=True)
-    # with zipfile.ZipFile(PYTHON_EMBED_PATH, "r") as zip_ref:
-    #     zip_ref.extractall(BUILD_PYTHON_EMBED)
+    BUILD_PYTHON_EMBED.mkdir(exist_ok=True, parents=True)
+    with zipfile.ZipFile(PYTHON_EMBED_PATH, "r") as zip_ref:
+        zip_ref.extractall(BUILD_PYTHON_EMBED)
 
-    # path_file = list(BUILD_PYTHON_EMBED.glob("*._pth"))
-    # if len(path_file) != 1:
-    #     raise ValueError("Only one _pth file should exist.")
+    path_file = list(BUILD_PYTHON_EMBED.glob("*._pth"))
+    if len(path_file) != 1:
+        raise ValueError("Only one _pth file should exist.")
 
-    # path_file = path_file[0]
+    path_file = path_file[0]
 
-    # with open(path_file) as f:
-    #     path_file_contents = f.read()
+    with open(path_file) as f:
+        path_file_contents = f.read()
 
-    # path_file_contents = path_file_contents.replace("#import site", "import site")
+    path_file_contents = path_file_contents.replace("#import site", "import site")
 
-    # with open(path_file, "w") as f:
-    #     f.write(path_file_contents)
+    with open(path_file, "w") as f:
+        f.write(path_file_contents)
 
-    # subprocess.check_call(
-    #     f"{prepend}python.exe {GET_PIP_PATH}", shell=True, cwd=BUILD_PYTHON_EMBED
-    # )
+    subprocess.check_call(
+        f"{prepend}python.exe {GET_PIP_PATH}", shell=True, cwd=BUILD_PYTHON_EMBED
+    )
 
-    # subprocess.check_call(
-    #     f"{prepend}python.exe -m pip install pymedphys[user] --no-index --find-links file://{WHEELS}",
-    #     shell=True,
-    #     cwd=BUILD_PYTHON_EMBED,
-    # )
+    subprocess.check_call(
+        f"{prepend}python.exe -m pip install pymedphys[user] --no-index --find-links file://{WHEELS}",
+        shell=True,
+        cwd=BUILD_PYTHON_EMBED,
+    )
 
-    # shutil.make_archive(BUILD_PYTHON_EMBED, "xztar", BUILD_PYTHON_EMBED)
+    shutil.make_archive(BUILD_PYTHON_EMBED, "xztar", BUILD_PYTHON_EMBED)
 
-    # subprocess.check_call(
-    #     f"{prepend}pip install pyinstaller", shell=True, cwd=REPO_ROOT,
-    # )
+    subprocess.check_call(
+        f"{prepend}pip install pyinstaller", shell=True, cwd=REPO_ROOT
+    )
 
-    pyinstaller_script = "pyinstaller-bundle-script.py"
+    pyinstaller_script = pathlib.Path("pyinstaller-bundle-script.py")
     pymedphys_bat = "pymedphys.bat"
     resolve_path = "resolve-path.cmd"
 
@@ -114,6 +115,13 @@ def main():
         ),
         shell=True,
         cwd=BUILD,
+    )
+
+    BUILD_DIST = BUILD.joinpath("dist")
+
+    shutil.move(
+        BUILD_DIST.joinpath(pyinstaller_script.with_suffix(".exe")),
+        BUILD_DIST.joinpath(f"PyMedPhysGUI-v{original_version_string}.exe"),
     )
 
 
