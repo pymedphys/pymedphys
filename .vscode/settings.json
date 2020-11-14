@@ -23,6 +23,12 @@
   "python.testing.unittestEnabled": false,
   "python.testing.nosetestsEnabled": false,
   "python.testing.pytestEnabled": true,
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true,
+    "**/python-embed/*/**": true
+  },
   "cSpell.language": "en-GB",
   "cSpell.words": [
     "3DCRT",
