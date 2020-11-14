@@ -2,9 +2,10 @@ import pathlib
 import subprocess
 import shutil
 import sys
-import tomlkit
 import urllib.request
 import zipfile
+
+import tomlkit
 
 HERE = pathlib.Path("__file__").parent.resolve()
 REPO_ROOT = HERE.parent
