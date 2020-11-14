@@ -295,8 +295,8 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: matrix.task == 'binary'
       with:
-        name: binary
-        path: build/dist
+        name: PyMedPhysGUI
+        path: build/dist/PyMedPhysGUI*.exe
 
 
     - name: Test Binary
