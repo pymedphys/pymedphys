@@ -18,7 +18,7 @@ import subprocess
 import pytest
 
 import pymedphys
-from pymedphys._utilities.test import process
+import pymedphys._utilities.test as pmp_test_utils
 
 HERE = pathlib.Path(__file__).parent.resolve()
 
@@ -32,7 +32,10 @@ def test_cypress():
         extract_directory=HERE.joinpath("cypress", "fixtures"),
     )
 
-    with process("poetry run pymedphys gui", cwd=HERE, shell=True) as _:
+    with pmp_test_utils.process(
+        [pmp_test_utils.get_executable_even_when_embedded(), "pymedphys", "gui"],
+        cwd=HERE,
+    ) as _:
         subprocess.check_call("yarn", cwd=HERE, shell=True)
 
         subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
