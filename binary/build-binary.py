@@ -21,7 +21,7 @@ import zipfile
 
 import tomlkit
 
-HERE = pathlib.Path("__file__").parent.absolute()
+HERE = pathlib.Path("__file__").parent.resolve()
 REPO_ROOT = HERE.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
 
