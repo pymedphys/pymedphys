@@ -22,13 +22,25 @@ import shutil
 PYMEDPHYS_BAT_NAME = "pymedphys.bat"
 
 
-def boot_streamlit_app(installation_path):
-    subprocess.check_call(
-        "python.exe -m pymedphys gui", cwd=installation_path, shell=True
-    )
-
-
 def main():
+    """The script that boots when PyMedPhysGUI-vX.Y.Z.exe is run.
+
+    This script checks to see if the required PyMedPhys files have been
+    installed within the current working directory. If they have not
+    it extracts them.
+
+    Once the embedded Python distribution is provisioned this boots up
+    the PyMedPhys streamlit app.
+
+    Note
+    ----
+    This script will run with pyinstaller's Python install. However, no
+    external libraries are installed within this Python instance.
+    PyMedPhys itself is stored within ``python-embed/Lib/site-packages``.
+    The Python within ``python-embed`` is not the same Python install
+    that pyinstaller is using to run this script.
+
+    """
     cwd = pathlib.Path(os.getcwd())
     installation_path = cwd.joinpath("python-embed")
     pymedphys_bat = cwd.joinpath(PYMEDPHYS_BAT_NAME)
@@ -36,10 +48,18 @@ def main():
     if not pymedphys_bat.exists():
         _install(cwd, installation_path)
 
-    boot_streamlit_app(installation_path)
+    _boot_streamlit_app(installation_path)
 
 
 def _install(cwd, installation_path):
+    """Extract the Python embedded environment to the current working directory.
+
+    Note
+    ----
+    The ``pymedphys.bat`` is extracted last, as this is used to test
+    whether or not the install was completed.
+
+    """
     pyinstaller_temp_dir = pathlib.Path(
         sys._MEIPASS  # pylint: disable = no-member, protected-access
     )
@@ -54,6 +74,20 @@ def _install(cwd, installation_path):
 
     for f in ["LICENSE", PYMEDPHYS_BAT_NAME]:
         shutil.copy(data_path.joinpath(f), cwd.joinpath(f))
+
+
+def _boot_streamlit_app(python_embedded_directory):
+    """Starts the PyMedPhys GUI within the Python embedded distribution.
+
+    Parameters
+    ----------
+    python_embedded_directory
+        The full path to the Python embedded distribution.
+
+    """
+    subprocess.check_call(
+        "python.exe -m pymedphys gui", cwd=python_embedded_directory, shell=True
+    )
 
 
 if __name__ == "__main__":
