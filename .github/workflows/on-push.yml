@@ -296,7 +296,7 @@ jobs:
       if: matrix.task == 'binary'
       with:
         name: PyMedPhysGUI
-        path: build/dist/PyMedPhysGUI*.exe
+        path: binary/build/dist/PyMedPhysGUI*.exe
 
 
     - name: Test Binary

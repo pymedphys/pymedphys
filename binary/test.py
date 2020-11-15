@@ -23,10 +23,11 @@ import psutil
 
 
 HERE = pathlib.Path("__file__").parent.resolve()
-REPO_ROOT = HERE.parent
-BUILD = REPO_ROOT.joinpath("build")
+
+BUILD = HERE.joinpath("build")
 BUILD_DIST = BUILD.joinpath("dist")
 
+REPO_ROOT = HERE.parent
 CYPRESS = REPO_ROOT.joinpath("lib", "pymedphys", "tests", "e2e")
 
 
