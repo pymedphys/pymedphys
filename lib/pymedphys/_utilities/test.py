@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import pathlib
 import subprocess
 from contextlib import contextmanager
@@ -38,5 +39,26 @@ def process(*args, **kwargs):
         proc.kill()
 
 
+def test_exe(path):
+    subprocess.check_call([path, "-c", "import os"])
+
+
+@functools.lru_cache()
 def get_executable_even_when_embedded():
-    return pathlib.Path(np.__file__).parents[4].joinpath("bin", "python")
+    exe = pathlib.Path(np.__file__).parents[4].joinpath("bin", "python")
+
+    try:
+        test_exe(exe)
+        return exe
+
+    except FileNotFoundError:
+        exe = pathlib.Path(np.__file__).parents[3].joinpath("python")
+
+    try:
+        test_exe(exe)
+    except FileNotFoundError:
+        raise ValueError(
+            "Tried to determine the python interpreter path, but was unsuccessful"
+        )
+
+    return exe
