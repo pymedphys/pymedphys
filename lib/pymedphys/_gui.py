@@ -15,7 +15,8 @@
 
 import pathlib
 import shutil
-import subprocess
+
+from pymedphys._imports import streamlit as st
 
 HERE = pathlib.Path(__file__).parent.resolve()
 STREAMLIT_CONTENT_DIR = HERE.joinpath("_streamlit")
@@ -40,6 +41,6 @@ def main(_):
     fill_streamlit_credentials()
 
     streamlit_script_path = str(STREAMLIT_CONTENT_DIR.joinpath("index.py"))
-    subprocess.check_call(
-        " ".join(["streamlit", "run", streamlit_script_path]), shell=True
-    )
+
+    st._is_running_with_streamlit = True
+    st.bootstrap.run(streamlit_script_path, "", [])
