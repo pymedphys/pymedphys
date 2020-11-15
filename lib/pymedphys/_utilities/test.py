@@ -15,6 +15,7 @@
 import functools
 import pathlib
 import subprocess
+import sys
 from contextlib import contextmanager
 
 from pymedphys._imports import numpy as np
@@ -45,6 +46,14 @@ def test_exe(path):
 
 @functools.lru_cache()
 def get_executable_even_when_embedded():
+    exe = sys.executable
+    if pathlib.Path(exe).name.startswith("python"):
+        try:
+            test_exe(exe)
+            return exe
+        except FileNotFoundError:
+            pass
+
     exe = str(pathlib.Path(np.__file__).parents[4].joinpath("bin", "python"))
 
     try:
@@ -59,7 +68,7 @@ def get_executable_even_when_embedded():
         test_exe(exe)
     except FileNotFoundError as e:
         raise ValueError(
-            "Tried to determine the python interpreter path, but was unsuccessful"
+            "Tried to determine the python interpreter path, but was unsuccessful."
         ) from e
 
     return exe
