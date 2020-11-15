@@ -460,7 +460,7 @@ def test_anonymise_cli(tmp_path):
 def _test_anonymise_cli_for_file(tmp_path, test_file_path):
     temp_filepath = str(tmp_path / "test.dcm")
 
-    dicom_anonymise_cli = pmp_test_utils.get_pymedphys_dicom_cli().append("anonymise")
+    dicom_anonymise_cli = pmp_test_utils.get_pymedphys_dicom_cli() + ["anonymise"]
 
     try:
         logging.info("CLI test on %s", test_file_path)

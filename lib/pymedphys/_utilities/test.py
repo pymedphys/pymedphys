@@ -94,7 +94,6 @@ def get_executable_even_when_embedded():
     return exe
 
 
-@functools.lru_cache()
 def get_pymedphys_dicom_cli():
     python_executable = get_executable_even_when_embedded()
     return [str(python_executable), "-m", "pymedphys", "dicom"]
