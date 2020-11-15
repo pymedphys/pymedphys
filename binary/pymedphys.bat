@@ -34,8 +34,9 @@
 @REM     "Edit environment variables for your account"
 
 @REM From there, find the variable called "PATH". Append to the end of that
-@REM variable the directory containing this `.bat` file. Make sure that each
-@REM directory within the "PATH" is separated by a semicolon (;).
+@REM variable the directory containing this `.bat` file. Make sure that the
+@REM full path location to each directory within the "PATH" variable is
+@REM separated by a semicolon (;).
 
 @REM For example, if your "PATH" originally looked like:
 
@@ -57,7 +58,7 @@
 @REM extracted `python-embed` directory. Also, shortcuts to this bat file will
 @REM not work as one might expect. If you would like to use this bat file
 @REM outside of its original directory please follow the instructions detailed
-@REM above.
+@REM above to add this `.bat` file's directory to your "PATH".
 
 @REM ==========================================================================
 
