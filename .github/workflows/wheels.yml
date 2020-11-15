@@ -25,9 +25,9 @@ jobs:
             apt-get update -q -y
             apt-get install ca-certificates python3 curl -q -y
           run: |
-            ls /etc/ssl/certs
             export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
             curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
+            export PATH=$HOME/.poetry/bin:$PATH
             cd /pymedphys
             poetry install -E wheels
             poetry run pymedphys dev wheels
