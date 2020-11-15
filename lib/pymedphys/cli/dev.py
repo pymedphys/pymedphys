@@ -1,4 +1,4 @@
-from pymedphys._dev import docs, propagate, tests
+from pymedphys._dev import docs, propagate, tests, wheels
 
 
 def dev_cli(subparsers):
@@ -11,8 +11,8 @@ def dev_cli(subparsers):
     return dev_parser
 
 
-def add_docs_parser(dev_subparsers):
-    parser = dev_subparsers.add_parser("docs")
+def add_docs_parser(subparsers):
+    parser = subparsers.add_parser("docs")
 
     parser.add_argument("--live", help="Make the docs live reload", action="store_true")
     parser.add_argument("--output", help="Custom output directory for the built docs.")
@@ -20,11 +20,16 @@ def add_docs_parser(dev_subparsers):
     parser.set_defaults(func=docs.build_docs)
 
 
-def add_test_parser(test_subparsers):
-    parser = test_subparsers.add_parser("tests")
+def add_test_parser(subparsers):
+    parser = subparsers.add_parser("tests")
     parser.set_defaults(func=tests.run_tests)
 
 
-def add_propagate_parser(test_subparsers):
-    parser = test_subparsers.add_parser("propagate")
+def add_propagate_parser(subparsers):
+    parser = subparsers.add_parser("propagate")
     parser.set_defaults(func=propagate.propagate_all)
+
+
+def add_wheels_parser(subparsers):
+    parser = subparsers.add_parser("wheels")
+    parser.set_defaults(func=wheels.wheels)
