@@ -57,9 +57,9 @@ def get_executable_even_when_embedded():
 
     try:
         test_exe(exe)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         raise ValueError(
             "Tried to determine the python interpreter path, but was unsuccessful"
-        )
+        ) from e
 
     return exe

@@ -462,7 +462,7 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
 
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
 
-    dicom_anonymise_cli = f'"{python_executable}" -m pymedphys dicom anonymise'
+    dicom_anonymise_cli = [python_executable, "-m", "pymedphys", "dicom", "anonymise"]
 
     try:
         logging.info("CLI test on %s", test_file_path)
@@ -474,7 +474,7 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
         assert not is_anonymised_file(temp_filepath)
         assert not exists(temp_anon_filepath)
 
-        anon_file_command = dicom_anonymise_cli.split() + [temp_filepath]
+        anon_file_command = dicom_anonymise_cli + [temp_filepath]
         try:
             subprocess.check_call(anon_file_command)
             assert is_anonymised_file(temp_anon_filepath)
@@ -488,7 +488,7 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
         expected_anon_filepath = label_dicom_filepath_as_anonymised(temp_filepath)
         assert not exists(expected_anon_filepath)
 
-        anon_file_pres_command = f"{dicom_anonymise_cli} -f".split() + [temp_filepath]
+        anon_file_pres_command = dicom_anonymise_cli + ["-f", temp_filepath]
         try:
             subprocess.check_call(anon_file_pres_command)
             assert is_anonymised_file(expected_anon_filepath)
@@ -502,7 +502,7 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
 
         temp_cleared_anon_filepath = str(tmp_path / test_anon_basename)
 
-        anon_file_clear_command = f"{dicom_anonymise_cli} -c".split() + [temp_filepath]
+        anon_file_clear_command = dicom_anonymise_cli + ["-c", temp_filepath]
         try:
             subprocess.check_call(anon_file_clear_command)
             assert is_anonymised_file(temp_cleared_anon_filepath)
@@ -516,8 +516,8 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
         assert not exists(temp_anon_filepath)
 
         anon_file_keep_command = (
-            f"{dicom_anonymise_cli} anonymise".split()
-            + [temp_filepath]
+            dicom_anonymise_cli
+            + ["anonymise", temp_filepath]
             + "-k PatientName".split()
         )
         try:
@@ -534,9 +534,7 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
         assert not is_anonymised_file(temp_filepath)
         assert not exists(temp_anon_filepath)
 
-        anon_file_private_command = f"{dicom_anonymise_cli} -p".split() + [
-            temp_filepath
-        ]
+        anon_file_private_command = dicom_anonymise_cli + ["-p", temp_filepath]
         try:
             subprocess.check_call(anon_file_private_command)
             assert not is_anonymised_file(temp_anon_filepath)
@@ -552,7 +550,7 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
         assert not is_anonymised_directory(tmp_path)
         assert not exists(temp_anon_filepath)
 
-        anon_dir_command = dicom_anonymise_cli.split() + [str(tmp_path)]
+        anon_dir_command = dicom_anonymise_cli + [str(tmp_path)]
         try:
             subprocess.check_call(anon_dir_command)
             assert is_anonymised_file(temp_anon_filepath)
