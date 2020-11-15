@@ -64,7 +64,13 @@ def main():
 
 
 def _linux_and_windows_support():
-    """Allow for building the exe on Linux with wine.
+    """Shimming to allow for building the exe on Linux with wine as well as on Windows.
+
+    If the OS isn't Windows all python calls a prepended with ``wine``.
+    Also, if it is being built for Linux --onefile mode is not used due
+    to the following issue:
+
+    <https://github.com/pyinstaller/pyinstaller/issues/4628#issuecomment-632025449>
     """
     if sys.platform == "win32":
         prepend = ""
