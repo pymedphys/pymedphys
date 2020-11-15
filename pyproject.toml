@@ -100,13 +100,13 @@ pytest-pylint  = {version = "*", optional = true}  # groups = ["dev", "tests"]
 
 # dev
 pre-commit = {version = "*", optional = true}  # groups = ["dev"]
-black = {version = "^19.3b0", optional = true}  # groups = ["dev", "doctests"]
+black = {version = "^19.3b0", optional = true}  # groups = ["dev", "doctests", "wheels"]
 mypy = {version = "*", optional = true}  # groups = ["dev"]
 rope = {version = "*", optional = true}  # groups = ["dev"]
 doc8 = {version = "*", optional = true}  # groups = ["dev"]
-tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests"]
+tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests", "wheels"]
 readme-renderer = {version = "*", optional = true}  # groups = ["dev"]
-wheel = {version = "*", optional = true}  # groups = ["dev"]
+wheel = {version = "*", optional = true}  # groups = ["dev", "wheels"]
 
 
 [tool.poetry.extras]
@@ -119,6 +119,7 @@ ml = ["tensorflow", "torch"]
 doctests = ["tensorflow", "black", "tomlkit"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
+wheels = ["black", "tomlkit", "wheel"]
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.cli:pymedphys_cli"

@@ -2444,11 +2444,12 @@ gui = ["streamlit", "timeago"]
 ml = ["tensorflow", "torch"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "kiwisolver", "xmltodict", "pylinac", "python_dateutil", "scikit-image", "streamlit", "timeago"]
+wheels = ["black", "tomlkit", "wheel"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "2813c82ad0419ee0113f8263b4372603358fd8f7be378910a70a6e0ed256a092"
+content-hash = "1b8c047a4d0cf196e35ccef4ec7bb1dfffbabfa598ea21bc7b2ac064dba6f91b"
 
 [metadata.files]
 absl-py = [

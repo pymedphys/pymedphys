@@ -1,0 +1,30 @@
+name: Wheels
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  BuildARMWheels:
+    runs-on: ubuntu
+    name: Build on ubuntu-20.04 armv7
+    steps:
+      - uses: actions/checkout@v2.1.0
+      - uses: uraimo/run-on-arch-action@v2.0.7
+        name: Run commands
+        id: runcmd
+        with:
+          arch: armv7
+          distro: ubuntu20.04
+          githubToken: ${{ github.token }}
+          install: |
+            curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+          run: |
+            poetry install -E wheels
+            poetry run pymedphys dev wheels
+
+      - name: Get the output
+        run: |
+          echo "The uname output was ${{ steps.runcmd.outputs.uname }}"
