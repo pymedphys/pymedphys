@@ -38,8 +38,8 @@ def main():
         )
         data_path = pyinstaller_temp_dir.joinpath("data")
 
-        bat_filename = "pymedphys.bat"
-        shutil.copy(data_path.joinpath(bat_filename), cwd.joinpath(bat_filename))
+        for f in ["LICENSE", "pymedphys.bat"]:
+            shutil.copy(data_path.joinpath(f), cwd.joinpath(f))
 
         python_xztar = data_path.joinpath("python-embed.tar.xz")
 
