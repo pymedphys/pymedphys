@@ -50,9 +50,10 @@ def get_executable_even_when_embedded():
     try:
         test_exe(exe)
         return exe
-
     except FileNotFoundError:
-        exe = pathlib.Path(np.__file__).parents[3].joinpath("python")
+        pass
+
+    exe = pathlib.Path(np.__file__).parents[3].joinpath("python")
 
     try:
         test_exe(exe)
