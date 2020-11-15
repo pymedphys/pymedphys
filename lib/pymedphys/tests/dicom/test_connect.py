@@ -25,6 +25,7 @@ import pydicom
 from pynetdicom import AE, VerificationPresentationContexts
 from pynetdicom.sop_class import RTPlanStorage  # pylint: disable=no-name-in-module
 
+import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.connect.listen import DicomListener
 from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._utilities.test import process
@@ -215,10 +216,20 @@ def test_dicom_listener_cli(test_dataset):
 
         test_directory = pathlib.Path(tmp_directory)
 
-        with process(
-            f"pymedphys dicom listen {TEST_PORT} -d {test_directory} -a {scp_ae_title}",
-            shell=True,
-        ) as _:
+        command = [
+            pmp_test_utils.get_executable_even_when_embedded(),
+            "-m",
+            "pymedphys",
+            "dicom",
+            "listen",
+            str(TEST_PORT),
+            "-d",
+            str(test_directory),
+            "-a",
+            str(scp_ae_title),
+        ]
+
+        with process(command):
 
             # Send the data to the listener
             ae = AE()

@@ -32,10 +32,14 @@ def test_cypress():
         extract_directory=HERE.joinpath("cypress", "fixtures"),
     )
 
-    with pmp_test_utils.process(
-        [pmp_test_utils.get_executable_even_when_embedded(), "-m", "pymedphys", "gui"],
-        cwd=HERE,
-    ) as _:
+    command = [
+        pmp_test_utils.get_executable_even_when_embedded(),
+        "-m",
+        "pymedphys",
+        "gui",
+    ]
+
+    with pmp_test_utils.process(command, cwd=HERE):
         subprocess.check_call("yarn", cwd=HERE, shell=True)
 
         subprocess.check_call("yarn cypress run", cwd=HERE, shell=True)
