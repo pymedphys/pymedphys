@@ -57,8 +57,11 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary']
         exclude:
+          - os: 'ubuntu'
+            task: 'binary'
+
           - os: 'windows'
             task: 'stackoverflow'
           - os: 'windows'
@@ -76,6 +79,8 @@ jobs:
             task: 'cypress'
           - os: 'macos'
             task: 'slow'
+          - os: 'macos'
+            task: 'binary'
 
         include:
           - os: 'ubuntu'
@@ -101,6 +106,8 @@ jobs:
       run: |
         echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
+# -----------------------------------------------------------------------------
+
 # Set up pip
 
     - name: Get pip cache dir
@@ -114,6 +121,8 @@ jobs:
       with:
         path: ${{ steps.pip-cache.outputs.dir }}
         key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
+
+# -----------------------------------------------------------------------------
 
 # Upgrade pip and setuptools, and install poetry
 
@@ -136,6 +145,8 @@ jobs:
       with:
         version: 1.0.9
         create_virtualenvs: true
+
+# -----------------------------------------------------------------------------
 
 # No import and run CLI with no dependencies
 
@@ -168,6 +179,7 @@ jobs:
       run: |
         pip uninstall -y pymedphys
 
+# -----------------------------------------------------------------------------
 
 # Set up Poetry
 
@@ -187,6 +199,8 @@ jobs:
       shell: bash
       run: |
         poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
+
+# -----------------------------------------------------------------------------
 
 # System installs
 
@@ -248,20 +262,51 @@ jobs:
         poetry update
         poetry install -E user -E tests -E docs -E doctests
 
-# Download all data for consistent cache
+# -----------------------------------------------------------------------------
+
+# PyMedPhys Data Cache
 
     - name: Get PyMedPhys cache directory
       id: pymedphys-cache-location
+      if: matrix.task != 'binary'
       run: |
         echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
 
     - name: PyMedPhys Cache
       id: pymedphys-cache
+      if: matrix.task != 'binary'
       uses: actions/cache@v2
       with:
         path: ${{ steps.pymedphys-cache-location.outputs.dir }}
         key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
 
+# -----------------------------------------------------------------------------
+
+# Binary building
+
+    - name: Build Binary
+      if: matrix.task == 'binary'
+      run: |
+        pip install tomlkit wheel pyinstaller
+        cd binary
+        python build-binary.py
+
+
+    - uses: actions/upload-artifact@v2
+      if: matrix.task == 'binary'
+      with:
+        name: PyMedPhysGUI
+        path: binary/build/dist/PyMedPhysGUI*.exe
+
+
+    - name: Test Binary
+      if: matrix.task == 'binary'
+      run: |
+        pip install psutil
+        cd binary
+        python test.py
+
+# -----------------------------------------------------------------------------
 
 # TESTS
 
