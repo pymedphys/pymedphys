@@ -23,6 +23,8 @@ from pymedphys._streamlit.utilities import mosaiq as st_mosaiq
 
 
 def main():
+    st.write("# Mosaiq QCL Dashboard")
+
     centres = ["rccc", "nbcc", "sash"]
     servers = {
         "rccc": "msqsql",
@@ -39,8 +41,6 @@ def main():
         centre: st_mosaiq.get_mosaiq_cursor_in_bucket(servers[centre])
         for centre in centres
     }
-
-    st.write("# Mosaiq QCLs")
 
     if st.button("Refresh"):
         st.experimental_rerun()

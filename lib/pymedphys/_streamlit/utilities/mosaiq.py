@@ -40,11 +40,21 @@ def get_mosaiq_cursor_in_bucket(server):
     return {"cursor": uncached_get_mosaiq_cursor(server)}
 
 
-def uncached_get_mosaiq_cursor(server):
+def _connect_with_streamlit_interface(server):
     password_input = create_user_input(server, input_type="password")
     user_input = create_user_input(server)
 
     _, cursor = msq_connect.single_connect(
         server, user_input=user_input, password_input=password_input, output=st.write
     )
+
     return cursor
+
+
+def uncached_get_mosaiq_cursor(server):
+    if msq_connect.is_there_a_saved_username_and_password(server):
+        return _connect_with_streamlit_interface(server)
+
+    st.write("## Login to Mosaiq SQL Database")
+
+    raise ValueError("")
