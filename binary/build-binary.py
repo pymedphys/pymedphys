@@ -115,6 +115,15 @@ def _build_and_collate_wheels(prepend):
 
 
 def _download_and_extract_embedded_python():
+    """Creates a Python embedded directory adjusted for pip compatibility.
+
+    Note
+    ----
+    After the embedded python is extracted the ``import site`` line
+    needs to be uncommented so that pip (and for that matter pymedphys)
+    is able to be called via ``python -m pip``.
+
+    """
     DOWNLOADS.mkdir(exist_ok=True)
     if not PYTHON_EMBED_PATH.exists():
         urllib.request.urlretrieve(PYTHON_EMBED_URL, PYTHON_EMBED_PATH)
