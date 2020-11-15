@@ -22,6 +22,47 @@ from getpass import getpass
 from pymedphys._imports import keyring, pymssql
 
 
+class WrongUsernameOrPassword(ValueError):
+    pass
+
+
+def connect_with_credential(
+    sql_server_and_port, username, password
+) -> "pymssql.Connection":
+    """Connects to a Mosaiq database.
+
+    Parameters
+    ----------
+    sql_server_and_port : str
+        A server and port separated by a colon (:). Eg "localhost:8888".
+    username : str
+    password : str
+
+    Returns
+    -------
+    conn : pymssql.Connection
+        The Connection object to the database.
+
+    Raises
+    ------
+    WrongUsernameOrPassword
+        If the wrong credentials are provided.
+
+    """
+    server, port = _separate_server_port_string(sql_server_and_port)
+
+    try:
+        conn = pymssql.connect(server, username, password, "MOSAIQ", port=port)
+    except pymssql.OperationalError as error:
+        error_message = error.args[0][1]
+        if error_message.startswith(b"Login failed for user"):
+            raise WrongUsernameOrPassword("Wrong credentials")
+
+        raise
+
+    return conn
+
+
 def execute_sql(cursor, sql_string, parameters=None):
     """Executes a given SQL string on an SQL cursor.
     """
@@ -55,7 +96,7 @@ def is_there_a_saved_username_and_password(sql_server_and_port):
     bool
 
     """
-    user, password = _get_username_and_password_without_prompt(sql_server_and_port)
+    user, password = get_username_and_password_without_prompt(sql_server_and_port)
 
     if user is None or user == "":
         return False
@@ -66,17 +107,25 @@ def is_there_a_saved_username_and_password(sql_server_and_port):
     return True
 
 
-def _get_username_and_password_without_prompt(storage_name):
+def get_username_and_password_without_prompt(storage_name):
     user = keyring.get_password("MosaiqSQL_username", storage_name)
     password = keyring.get_password("MosaiqSQL_password", storage_name)
 
     return user, password
 
 
+def save_username(sql_server_and_port, username):
+    keyring.set_password("MosaiqSQL_username", sql_server_and_port, username)
+
+
+def save_password(sql_server_and_port, password):
+    keyring.set_password("MosaiqSQL_password", sql_server_and_port, password)
+
+
 def _get_username_password(
     storage_name, user_input=input, password_input=getpass, output=print
 ):
-    user, password = _get_username_and_password_without_prompt(storage_name)
+    user, password = get_username_and_password_without_prompt(storage_name)
 
     if user is None or user == "":
         output(
@@ -88,14 +137,14 @@ def _get_username_password(
             error_message = "Username should not be blank."
             output(error_message)
             raise ValueError(error_message)
-        keyring.set_password("MosaiqSQL_username", storage_name, user)
+        save_username(storage_name, user)
 
     if password is None:
         output(
             "Provide password for '{}' server and '{}' user".format(storage_name, user)
         )
         password = password_input()
-        keyring.set_password("MosaiqSQL_password", storage_name, password)
+        save_password(storage_name, password)
 
     return user, password
 
