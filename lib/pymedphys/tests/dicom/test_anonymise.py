@@ -460,9 +460,7 @@ def test_anonymise_cli(tmp_path):
 def _test_anonymise_cli_for_file(tmp_path, test_file_path):
     temp_filepath = str(tmp_path / "test.dcm")
 
-    python_executable = pmp_test_utils.get_executable_even_when_embedded()
-
-    dicom_anonymise_cli = [python_executable, "-m", "pymedphys", "dicom", "anonymise"]
+    dicom_anonymise_cli = pmp_test_utils.get_pymedphys_dicom_cli().append("anonymise")
 
     try:
         logging.info("CLI test on %s", test_file_path)

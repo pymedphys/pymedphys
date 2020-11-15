@@ -24,11 +24,6 @@ import pymedphys
 import pymedphys._utilities.test as pmp_test_utils
 
 
-def get_pymedphys_dicom_cli():
-    python_executable = pmp_test_utils.get_executable_even_when_embedded()
-    return [str(python_executable), "-m", "pymedphys", "dicom"]
-
-
 @pytest.mark.pydicom
 def test_structure_dedupe():
     data_paths = pymedphys.zip_data_paths("structure-deduplication.zip")
@@ -53,7 +48,7 @@ def test_structure_dedupe():
         with tempfile.TemporaryDirectory() as temp_dir:
             output_filename = str(pathlib.Path(temp_dir).joinpath("temp.dcm"))
 
-            command = get_pymedphys_dicom_cli() + [
+            command = pmp_test_utils.get_pymedphys_dicom_cli() + [
                 "merge-contours",
                 str(input_path),
                 output_filename,
