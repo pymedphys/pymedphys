@@ -46,10 +46,20 @@ BUILD_DIST = BUILD.joinpath("dist")
 
 
 def main():
-    """Builds a ``PyMedPhysGUI.exe`` that when run extracts an embedded Python distro
-    spins up the PyMedPhys GUI, and also exposes the CLI via a ``pymedphys.bat``.
+    """Builds ``PyMedPhysGUI-vX.Y.Z.exe`` that when run extracts an
+    embedded Python distro, spins up the PyMedPhys GUI, and lastly
+    exposes the CLI via a ``pymedphys.bat``.
 
-
+    Note
+    ----
+    Under the hood this does use pyinstaller to create the exe. However
+    the pyinstaller section of the resulting code just ends up being an
+    "installer script". PyMedPhys is not installed or utilised within
+    the pyinstaller script itself. Instead, PyMedPhys is installed
+    within the embedded Python distribution which is bundled as a
+    compressed file within the executable. See
+    ``pyinstaller-bundle-script.py`` for more details on what occurs
+    when the executable is run.
 
     """
     prepend, append, one_file_mode = _linux_and_windows_support()
@@ -226,6 +236,14 @@ def _read_pyproject():
 
 @functools.lru_cache()
 def _get_version_string():
+    """Get the PyMedPhys version string.
+
+    Note
+    ----
+    Replacing the - with a . here so as to be consistent with Python
+    wheel naming.
+
+    """
     pyproject_contents = _read_pyproject()
     version_string = pyproject_contents["tool"]["poetry"]["version"]
 
