@@ -515,11 +515,11 @@ def _test_anonymise_cli_for_file(tmp_path, test_file_path):
         assert not is_anonymised_file(temp_filepath)
         assert not exists(temp_anon_filepath)
 
-        anon_file_keep_command = (
-            dicom_anonymise_cli
-            + ["anonymise", temp_filepath]
-            + "-k PatientName".split()
-        )
+        anon_file_keep_command = dicom_anonymise_cli + [
+            temp_filepath,
+            "-k",
+            "PatientName",
+        ]
         try:
             subprocess.check_call(anon_file_keep_command)
             assert not is_anonymised_file(temp_anon_filepath)
