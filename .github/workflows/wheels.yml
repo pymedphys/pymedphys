@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2.1.0
       - uses: uraimo/run-on-arch-action@v2.0.7
-        name: Run commands
+        name: Build wheels within Docker container
         id: runcmd
         with:
           arch: armv7
@@ -23,6 +23,7 @@ jobs:
             --volume "${PWD}:/pymedphys"
           install: |
             apt-get update -q -y
+            apt-get install python curl -q -y
           run: |
             curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
             cd /pymedphys
