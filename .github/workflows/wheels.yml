@@ -43,6 +43,9 @@ jobs:
             export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
             export PATH="$HOME/.poetry/bin:$HOME/.pyenv/bin:$PATH"
 
+            eval "$(pyenv init -)"
+            eval "$(pyenv virtualenv-init -)"
+
             cd /pymedphys
             poetry install -E wheels
             poetry run pymedphys dev wheels
