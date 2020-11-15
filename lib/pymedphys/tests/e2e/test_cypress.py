@@ -33,7 +33,7 @@ def test_cypress():
     )
 
     with pmp_test_utils.process(
-        [pmp_test_utils.get_executable_even_when_embedded(), "pymedphys", "gui"],
+        [pmp_test_utils.get_executable_even_when_embedded(), "-m", "pymedphys", "gui"],
         cwd=HERE,
     ) as _:
         subprocess.check_call("yarn", cwd=HERE, shell=True)
