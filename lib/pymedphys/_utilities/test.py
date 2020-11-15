@@ -30,6 +30,7 @@ def process(*args, **kwargs):
     -------
     subprocess.Popen
         The process being run
+
     """
     proc = subprocess.Popen(*args, **kwargs)
     try:
@@ -63,6 +64,7 @@ def get_executable_even_when_embedded():
     ------
     ValueError
         If each attempt at finding the Python interpreter fails.
+
     """
     exe = sys.executable
     if pathlib.Path(exe).name.startswith("python"):
