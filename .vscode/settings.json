@@ -7,6 +7,9 @@
     119
   ],
   "files.trimTrailingWhitespace": true,
+  "autoDocstring.docstringFormat": "numpy",
+  "autoDocstring.guessTypes": true,
+  "autoDocstring.includeExtendedSummary": true,
   "python.formatting.provider": "black",
   "python.sortImports.path": "isort",
   "python.linting.enabled": true,
