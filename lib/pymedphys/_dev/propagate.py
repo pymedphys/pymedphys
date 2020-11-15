@@ -130,14 +130,24 @@ def propagate_changelog():
 
 def propagate_requirements():
     subprocess.check_call("poetry update pymedphys", shell=True)
+
+    # The docs are included within ``requirements.txt`` due to netlify
+    # reading this file and spinning it up. The few extra dependencies
+    # for users who choose to go this route isn't such a bad trade off
+    # here.
     subprocess.check_call(
         "poetry export --without-hashes -E docs -E user -f requirements.txt --output requirements.txt",
         shell=True,
     )
+    with open(REQUIREMENTS_TXT, "a") as f:
+        f.write(".[user,docs]\n")
+
     subprocess.check_call(
         "poetry export --without-hashes -E dev -f requirements.txt --output requirements-dev.txt",
         shell=True,
     )
+    with open(REQUIREMENTS_DEV_TXT, "a") as f:
+        f.write(".[dev]\n")
 
     # TODO: Once the hashes pinning issue in poetry is fixed, remove the
     # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
@@ -146,12 +156,6 @@ def propagate_requirements():
         "poetry export --without-hashes -E user -E tests -f requirements.txt --output requirements-deploy.txt",
         shell=True,
     )
-
-    with open(REQUIREMENTS_TXT, "a") as f:
-        f.write(".[user,docs]\n")
-
-    with open(REQUIREMENTS_DEV_TXT, "a") as f:
-        f.write(".[dev]\n")
 
 
 def propagate_extras():

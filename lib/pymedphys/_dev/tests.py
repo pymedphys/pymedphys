@@ -41,6 +41,13 @@ def run_tests(_, remaining):
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
 
     try:
+        # By prepending the python executable like this, instead of
+        # searching the user's path for pytest it will explicitly use
+        # the pytest that is installed within the Python distribution
+        # that called ``pymedphys dev tests``.
+
+        # This supports a range of cases, such as poetry virtual
+        # environments, and embedded python installs.
         command = (
             [python_executable, "-m", "pytest"]
             + remaining
