@@ -46,6 +46,9 @@
 
 @REM     C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Users\sbiggs\bin;
 
+@REM To make this change to "PATH" come into effect you should close all of
+@REM your open command prompts and then open a new one afresh.
+
 @REM                   -----------------------------------
 @REM                    A note about shortcuts and moving
 @REM                   -----------------------------------
