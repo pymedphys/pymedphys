@@ -10,6 +10,7 @@ import dbfread
 import immutables
 import keyring
 import packaging
+import psutil
 import pymssql
 import requests
 import timeago

@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import pathlib
 import subprocess
+import sys
 from contextlib import contextmanager
 
-import psutil
+from pymedphys._imports import numpy as np
+from pymedphys._imports import psutil
 
 
 @contextmanager
@@ -26,6 +30,7 @@ def process(*args, **kwargs):
     -------
     subprocess.Popen
         The process being run
+
     """
     proc = subprocess.Popen(*args, **kwargs)
     try:
@@ -34,3 +39,61 @@ def process(*args, **kwargs):
         for child in psutil.Process(proc.pid).children(recursive=True):
             child.kill()
         proc.kill()
+
+
+def test_exe(path):
+    subprocess.check_call([path, "-c", "import os"])
+
+
+@functools.lru_cache()
+def get_executable_even_when_embedded():
+    """Get the Python executable path.
+
+    In some environments, for example a pyinstaller bundle, the Python
+    executable is not able to be found via ``sys.executable``. When
+    calling the CLI within tests it needs to be ensured that the same
+    Python that is running the tests, is the same Python that the CLI
+    command is being called with.
+
+    Returns
+    -------
+    exe : str
+        The full path to the Python executable.
+
+    Raises
+    ------
+    ValueError
+        If each attempt at finding the Python interpreter fails.
+
+    """
+    exe = sys.executable
+    if pathlib.Path(exe).name.startswith("python"):
+        try:
+            test_exe(exe)
+            return exe
+        except FileNotFoundError:
+            pass
+
+    exe = str(pathlib.Path(np.__file__).parents[4].joinpath("bin", "python"))
+
+    try:
+        test_exe(exe)
+        return exe
+    except FileNotFoundError:
+        pass
+
+    exe = str(pathlib.Path(np.__file__).parents[3].joinpath("python"))
+
+    try:
+        test_exe(exe)
+    except FileNotFoundError as e:
+        raise ValueError(
+            "Tried to determine the python interpreter path, but was unsuccessful."
+        ) from e
+
+    return exe
+
+
+def get_pymedphys_dicom_cli():
+    python_executable = get_executable_even_when_embedded()
+    return [str(python_executable), "-m", "pymedphys", "dicom"]
