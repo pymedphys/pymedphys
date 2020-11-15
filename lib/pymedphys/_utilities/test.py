@@ -46,6 +46,24 @@ def test_exe(path):
 
 @functools.lru_cache()
 def get_executable_even_when_embedded():
+    """Get the Python executable path.
+
+    In some environments, for example a pyinstaller bundle, the Python
+    executable is not able to be found via ``sys.executable``. When
+    calling the CLI within tests it needs to be ensured that the same
+    Python that is running the tests, is the same Python that the CLI
+    command is being called with.
+
+    Returns
+    -------
+    exe : str
+        The full path to the Python executable.
+
+    Raises
+    ------
+    ValueError
+        If each attempt at finding the Python interpreter fails.
+    """
     exe = sys.executable
     if pathlib.Path(exe).name.startswith("python"):
         try:
