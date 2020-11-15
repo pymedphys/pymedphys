@@ -10,6 +10,7 @@
   "autoDocstring.docstringFormat": "numpy",
   "autoDocstring.guessTypes": true,
   "autoDocstring.includeExtendedSummary": true,
+  "autoDocstring.generateDocstringOnEnter": false,
   "python.formatting.provider": "black",
   "python.sortImports.path": "isort",
   "python.linting.enabled": true,
