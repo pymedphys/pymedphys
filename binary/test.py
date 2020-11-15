@@ -56,9 +56,12 @@ def main():
             shell=True,
         )
 
-    subprocess.check_call(
-        f"{prepend}cmd.exe /C pymedphys dev tests -v", cwd=BUILD_DIST, shell=True
-    )
+    # TODO: For now just testing cypress above. Some work needs to be
+    # done re the environment before all tests can be run as below.
+
+    # subprocess.check_call(
+    #     f"{prepend}cmd.exe /C pymedphys dev tests -v", cwd=BUILD_DIST, shell=True
+    # )
 
 
 @contextmanager
