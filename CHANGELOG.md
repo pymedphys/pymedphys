@@ -12,6 +12,9 @@ This project adheres to
 
 ### News around this release
 
+* 🚀 Stuart Swerdloff ([@sjswerdloff](https://github.com/sjswerdloff)) has
+  agreed to come on board as a maintainer of PyMedPhys. Thank you Stuart! You
+  have been a massive help and encouragement.
 * Created an online PyMedPhys GUI. It is accessible from
   <https://app.pymedphys.com>. This is in its early stages and most parts of
   the online GUI are not optimised for use in this fashion.
@@ -22,7 +25,7 @@ This project adheres to
   * The online demo GUI should not have sensitive information submitted to it.
 * [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
   Masters thesis on deep learning auto-segmentation to
-  [the docs](https://docs.pymedphys.com/background/autocontouring.html).
+  [the docs](https://docs.pymedphys.com/background/autocontouring.html#details).
 * PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
   [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
   [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
@@ -1065,7 +1068,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...main
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...main
+[0.34.0]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...v0.31.0
