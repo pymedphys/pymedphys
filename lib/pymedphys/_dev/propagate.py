@@ -146,7 +146,7 @@ def propagate_requirements():
         f.write(".[dev]\n")
 
     subprocess.check_call(
-        f"poetry export -E user -f requirements.txt --output {REQUIREMENTS_USER_TXT}",
+        f"poetry export --without-hashes -E user -f requirements.txt --output {REQUIREMENTS_USER_TXT}",
         shell=True,
     )
 

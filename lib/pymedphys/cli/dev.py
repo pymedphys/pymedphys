@@ -7,6 +7,7 @@ def dev_cli(subparsers):
     add_docs_parser(dev_subparsers)
     add_test_parser(dev_subparsers)
     add_propagate_parser(dev_subparsers)
+    add_wheels_parser(dev_subparsers)
 
     return dev_parser
 
