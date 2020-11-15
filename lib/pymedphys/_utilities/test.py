@@ -45,7 +45,7 @@ def test_exe(path):
 
 @functools.lru_cache()
 def get_executable_even_when_embedded():
-    exe = pathlib.Path(np.__file__).parents[4].joinpath("bin", "python")
+    exe = str(pathlib.Path(np.__file__).parents[4].joinpath("bin", "python"))
 
     try:
         test_exe(exe)
@@ -53,7 +53,7 @@ def get_executable_even_when_embedded():
     except FileNotFoundError:
         pass
 
-    exe = pathlib.Path(np.__file__).parents[3].joinpath("python")
+    exe = str(pathlib.Path(np.__file__).parents[3].joinpath("python"))
 
     try:
         test_exe(exe)
