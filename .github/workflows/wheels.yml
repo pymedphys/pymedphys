@@ -25,7 +25,7 @@ jobs:
             apt-get update -q -y
             apt-get install python3 curl -q -y
           run: |
-            curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+            curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
             cd /pymedphys
             poetry install -E wheels
             poetry run pymedphys dev wheels
