@@ -23,11 +23,26 @@ jobs:
             --volume "${PWD}:/pymedphys"
           install: |
             apt-get update -q -y
-            apt-get install ca-certificates python3 curl python3-distutils python3-apt -q -y
+            apt-get install -q -y \
+              build-essential libssl-dev zlib1g-dev libbz2-dev \
+              libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+              xz-utils tk-dev libffi-dev liblzma-dev python-openssl git
+
+            export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+            curl https://pyenv.run | bash
+
+            export PATH="$HOME/.pyenv/bin:$PATH"
+            eval "$(pyenv init -)"
+            eval "$(pyenv virtualenv-init -)"
+
+            pyenv install 3.8.6
+            pyenv global 3.8.6
+
+            curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
           run: |
             export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-            curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 -
-            export PATH=$HOME/.poetry/bin:$PATH
+            export PATH="$HOME/.poetry/bin:$HOME/.pyenv/bin:$PATH"
+
             cd /pymedphys
             poetry install -E wheels
             poetry run pymedphys dev wheels
