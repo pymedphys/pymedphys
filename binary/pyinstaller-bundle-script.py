@@ -19,6 +19,8 @@ import pathlib
 import tarfile
 import shutil
 
+PYMEDPHYS_BAT_NAME = "pymedphys.bat"
+
 
 def boot_streamlit_app(installation_path):
     subprocess.check_call(
@@ -29,26 +31,29 @@ def boot_streamlit_app(installation_path):
 def main():
     cwd = pathlib.Path(os.getcwd())
     installation_path = cwd.joinpath("python-embed")
+    pymedphys_bat = cwd.joinpath(PYMEDPHYS_BAT_NAME)
 
-    if installation_path.exists():
-        boot_streamlit_app(installation_path)
-    else:
-        pyinstaller_temp_dir = pathlib.Path(
-            sys._MEIPASS  # pylint: disable = no-member, protected-access
-        )
-        data_path = pyinstaller_temp_dir.joinpath("data")
+    if not pymedphys_bat.exists():
+        _install(cwd, installation_path)
 
-        for f in ["LICENSE", "pymedphys.bat"]:
-            shutil.copy(data_path.joinpath(f), cwd.joinpath(f))
+    boot_streamlit_app(installation_path)
 
-        python_xztar = data_path.joinpath("python-embed.tar.xz")
 
-        installation_path.mkdir()
+def _install(cwd, installation_path):
+    pyinstaller_temp_dir = pathlib.Path(
+        sys._MEIPASS  # pylint: disable = no-member, protected-access
+    )
+    data_path = pyinstaller_temp_dir.joinpath("data")
 
-        with tarfile.open(python_xztar) as f:
-            f.extractall(installation_path)
+    python_xztar = data_path.joinpath("python-embed.tar.xz")
 
-        boot_streamlit_app(installation_path)
+    installation_path.mkdir()
+
+    with tarfile.open(python_xztar) as f:
+        f.extractall(installation_path)
+
+    for f in ["LICENSE", PYMEDPHYS_BAT_NAME]:
+        shutil.copy(data_path.joinpath(f), cwd.joinpath(f))
 
 
 if __name__ == "__main__":
