@@ -26,9 +26,11 @@ REPO_ROOT = HERE.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
 
 DIST = REPO_ROOT.joinpath("dist")
-WHEELS = REPO_ROOT.joinpath("wheels")
 
-DOWNLOADS = REPO_ROOT.joinpath("downloads")
+BUILD = HERE.joinpath("build")
+WHEELS = BUILD.joinpath("wheels")
+
+DOWNLOADS = BUILD.joinpath("downloads")
 PYTHON_EMBED_URL = (
     "https://www.python.org/ftp/python/3.7.9/python-3.7.9-embed-amd64.zip"
 )
@@ -36,7 +38,6 @@ PYTHON_EMBED_PATH = DOWNLOADS.joinpath("python-embed.zip")
 GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
 GET_PIP_PATH = DOWNLOADS.joinpath("get-pip.py")
 
-BUILD = REPO_ROOT.joinpath("build")
 BUILD_PYTHON_EMBED = BUILD.joinpath("python-embed")
 BUILD_PYTHON_EMBED_XZTAR = BUILD_PYTHON_EMBED.with_suffix(".tar.xz")
 
@@ -57,7 +58,7 @@ def main():
         append = ""
 
     subprocess.check_call(
-        f"{prepend}pip wheel -r requirements-deploy.txt -w wheels",
+        f"{prepend}pip wheel -r requirements-deploy.txt -w {WHEELS}",
         shell=True,
         cwd=REPO_ROOT,
     )
