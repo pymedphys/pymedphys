@@ -55,7 +55,9 @@ def main():
             shell=True,
         )
 
-        # subprocess.check_call("yarn cypress run", cwd=CYPRESS, shell=True)
+    subprocess.check_call(
+        f"{prepend}cmd.exe /C pymedphys dev tests", cwd=BUILD_DIST, shell=True
+    )
 
 
 @contextmanager
