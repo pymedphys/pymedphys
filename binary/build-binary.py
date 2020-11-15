@@ -18,6 +18,7 @@ import shutil
 import sys
 import urllib.request
 import zipfile
+import functools
 
 import tomlkit
 
@@ -45,6 +46,26 @@ BUILD_DIST = BUILD.joinpath("dist")
 
 
 def main():
+    """Builds a ``PyMedPhysGUI.exe`` that when run extracts an embedded Python distro
+    spins up the PyMedPhys GUI, and also exposes the CLI via a ``pymedphys.bat``.
+
+
+
+    """
+    prepend, append, one_file_mode = _linux_and_windows_support()
+
+    _build_and_collate_wheels(prepend)
+    _download_and_extract_embedded_python()
+    _get_pip(prepend)
+    _install_pymedphys_in_offline_mode(prepend)
+    _create_compressed_python_embed()
+
+    _run_pyinstaller_to_build_the_exe(prepend, append, one_file_mode)
+
+
+def _linux_and_windows_support():
+    """Allow for building the exe on Linux with wine.
+    """
     if sys.platform == "win32":
         prepend = ""
         one_file_mode = True
@@ -57,6 +78,10 @@ def main():
     else:
         append = ""
 
+    return prepend, append, one_file_mode
+
+
+def _build_and_collate_wheels(prepend):
     subprocess.check_call(
         f"{prepend}pip wheel -r requirements-deploy.txt -w {WHEELS}",
         shell=True,
@@ -64,17 +89,15 @@ def main():
     )
     subprocess.check_call("poetry build -f wheel", shell=True, cwd=REPO_ROOT)
 
-    version_string = _get_version_string().replace("-", ".")
-    pymedphys_wheel = f"pymedphys-{version_string}-py3-none-any.whl"
+    pymedphys_wheel = f"pymedphys-{_get_version_string()}-py3-none-any.whl"
 
     shutil.copy(DIST.joinpath(pymedphys_wheel), WHEELS.joinpath(pymedphys_wheel))
 
+
+def _download_and_extract_embedded_python():
     DOWNLOADS.mkdir(exist_ok=True)
     if not PYTHON_EMBED_PATH.exists():
         urllib.request.urlretrieve(PYTHON_EMBED_URL, PYTHON_EMBED_PATH)
-
-    if not GET_PIP_PATH.exists():
-        urllib.request.urlretrieve(GET_PIP_URL, GET_PIP_PATH)
 
     BUILD_PYTHON_EMBED.mkdir(exist_ok=True, parents=True)
     with zipfile.ZipFile(PYTHON_EMBED_PATH, "r") as zip_ref:
@@ -94,22 +117,29 @@ def main():
     with open(path_file, "w") as f:
         f.write(path_file_contents)
 
+
+def _get_pip(prepend):
+    if not GET_PIP_PATH.exists():
+        urllib.request.urlretrieve(GET_PIP_URL, GET_PIP_PATH)
+
     subprocess.check_call(
         f"{prepend}python.exe {GET_PIP_PATH}", shell=True, cwd=BUILD_PYTHON_EMBED
     )
 
+
+def _install_pymedphys_in_offline_mode(prepend):
     subprocess.check_call(
         f"{prepend}python.exe -m pip install pymedphys[user,tests] --no-index --find-links file://{WHEELS}",
         shell=True,
         cwd=BUILD_PYTHON_EMBED,
     )
 
+
+def _create_compressed_python_embed():
     shutil.make_archive(BUILD_PYTHON_EMBED, "xztar", BUILD_PYTHON_EMBED)
 
-    subprocess.check_call(
-        f"{prepend}pip install pyinstaller", shell=True, cwd=REPO_ROOT
-    )
 
+def _run_pyinstaller_to_build_the_exe(prepend, append, one_file_mode):
     pyinstaller_script = pathlib.Path("pyinstaller-bundle-script.py")
     pymedphys_bat = "pymedphys.bat"
 
@@ -129,7 +159,7 @@ def main():
     if one_file_mode:
         shutil.move(
             BUILD_DIST.joinpath(pyinstaller_script.with_suffix(".exe")),
-            BUILD_DIST.joinpath(f"PyMedPhysGUI-v{version_string}.exe"),
+            BUILD_DIST.joinpath(f"PyMedPhysGUI-v{_get_version_string()}.exe"),
         )
 
 
@@ -140,11 +170,12 @@ def _read_pyproject():
     return pyproject_contents
 
 
+@functools.lru_cache()
 def _get_version_string():
     pyproject_contents = _read_pyproject()
     version_string = pyproject_contents["tool"]["poetry"]["version"]
 
-    return version_string
+    return version_string.replace("-", ".")
 
 
 if __name__ == "__main__":
