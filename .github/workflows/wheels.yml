@@ -19,13 +19,17 @@ jobs:
           arch: armv7
           distro: ubuntu20.04
           githubToken: ${{ github.token }}
+          dockerRunArgs: |
+            --volume "${PWD}:/pymedphys"
           install: |
             apt-get update -q -y
           run: |
             curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+            cd /pymedphys
             poetry install -E wheels
             poetry run pymedphys dev wheels
 
-      - name: Get the output
-        run: |
-          echo "The uname output was ${{ steps.runcmd.outputs.uname }}"
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ARM-wheels
+          path: wheels
