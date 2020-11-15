@@ -41,15 +41,14 @@ def run_tests(_, remaining):
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
 
     try:
-        command = " ".join(
-            [f'"{python_executable}"', "-m"]
-            + ["pytest"]
+        command = (
+            [python_executable, "-m", "pytest"]
             + remaining
             + ["--pyargs", "pymedphys", "--failed-first"]
         )
 
-        print(f"Running the following command:\n    {command}\n")
+        print(f"Running the following command:\n    {' '.join(command)}\n")
 
-        subprocess.check_call(command, shell=True)
+        subprocess.check_call(command)
     finally:
         os.chdir(original_cwd)
