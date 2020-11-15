@@ -88,6 +88,20 @@ def _linux_and_windows_support():
 
 
 def _build_and_collate_wheels(prepend):
+    """Utilises the dependencies within requirements-deploy to build
+    a directory full of wheels.
+
+    This is undergone due to issues with the embedded Python not being
+    able to build wheels by itself.
+
+    Note
+    ----
+    Of importance, this means that the version of the Python within the
+    embedded environment needs to match the version of Python used here
+    to build the wheels.
+
+    """
+
     subprocess.check_call(
         f"{prepend}pip wheel -r requirements-deploy.txt -w {WHEELS}",
         shell=True,
