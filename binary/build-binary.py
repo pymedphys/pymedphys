@@ -25,6 +25,7 @@ import tomlkit
 HERE = pathlib.Path("__file__").parent.resolve()
 REPO_ROOT = HERE.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
+LICENSE_PATH = REPO_ROOT.joinpath("LICENSE")
 
 DIST = REPO_ROOT.joinpath("dist")
 
@@ -213,6 +214,7 @@ def _run_pyinstaller_to_build_the_exe(prepend, append, one_file_mode):
     subprocess.check_call(
         (
             f"{prepend}pyinstaller {pyinstaller_script}"
+            f' --add-data "{LICENSE_PATH};data"'
             f' --add-data "{BUILD_PYTHON_EMBED_XZTAR.name};data"'
             f' --add-data "{pymedphys_bat};data"{append}'
         ),
