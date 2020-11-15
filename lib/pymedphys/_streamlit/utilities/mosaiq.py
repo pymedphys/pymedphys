@@ -17,9 +17,9 @@ from pymedphys._imports import streamlit as st
 from pymedphys._mosaiq import connect as msq_connect
 
 
-def create_user_input(server, input_type="default"):
+def _create_user_input(server, input_type="default", key=None):
     def user_input():
-        result = st.text_input(label=server, type=input_type)
+        result = st.text_input(label=server, type=input_type, key=key)
         if not result:
             st.stop()
 
@@ -41,8 +41,10 @@ def get_mosaiq_cursor_in_bucket(server):
 
 
 def _connect_with_streamlit_interface(server):
-    password_input = create_user_input(server, input_type="password")
-    user_input = create_user_input(server)
+    password_input = _create_user_input(
+        server, input_type="password", key=f"MosaiqSQLPassword_{server}"
+    )
+    user_input = _create_user_input(server, key=f"MosaiqSQLUsername_{server}")
 
     _, cursor = msq_connect.single_connect(
         server, user_input=user_input, password_input=password_input, output=st.write
@@ -56,5 +58,7 @@ def uncached_get_mosaiq_cursor(server):
         return _connect_with_streamlit_interface(server)
 
     st.write("## Login to Mosaiq SQL Database")
+    if st.button("Wipe credentials for this login"):
+        msq_connect.delete_credentials(server)
 
-    raise ValueError("")
+    return _connect_with_streamlit_interface(server)
