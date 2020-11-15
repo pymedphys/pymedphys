@@ -148,6 +148,13 @@ def _download_and_extract_embedded_python():
 
 
 def _get_pip(prepend):
+    """Install pip within the embedded Python distribution.
+
+    Note
+    ----
+    Python embedded doesn't come with pip.
+
+    """
     if not GET_PIP_PATH.exists():
         urllib.request.urlretrieve(GET_PIP_URL, GET_PIP_PATH)
 
@@ -157,6 +164,15 @@ def _get_pip(prepend):
 
 
 def _install_pymedphys_in_offline_mode(prepend):
+    """Utilising the wheels downloaded prior, install PyMedPhys.
+
+    Note
+    ----
+    This is method is undergone since the embedded Python install has
+    no issues installing wheel files, but it would often struggle with
+    various packages when trying to install from their source tarballs.
+
+    """
     subprocess.check_call(
         f"{prepend}python.exe -m pip install pymedphys[user,tests] --no-index --find-links file://{WHEELS}",
         shell=True,
@@ -165,6 +181,15 @@ def _install_pymedphys_in_offline_mode(prepend):
 
 
 def _create_compressed_python_embed():
+    """Compress the created embedded python distribution to a tar.xz file.
+
+    Note
+    ----
+    Here the "xztar" option is chosen so as to utilise LZMA compression.
+    This takes longer to build but is ~1/2 the size of the corresponding
+    ``.zip`` file.
+
+    """
     shutil.make_archive(BUILD_PYTHON_EMBED, "xztar", BUILD_PYTHON_EMBED)
 
 
