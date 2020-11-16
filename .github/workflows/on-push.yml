@@ -141,13 +141,8 @@ jobs:
     - name: Update PATH in Windows
       if: matrix.os == 'windows'
       run: |
-        echo "$env:USERPROFILE\.poetry\bin"
-        $env:GITHUB_PATH += "$env:USERPROFILE\.poetry\bin"
-
-    - name: Print Path
-      if: matrix.os == 'windows'
-      run: |
-        echo $env:GITHUB_PATH
+        Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.poetry\bin"
+        Get-Content -Path $env:GITHUB_PATH
 
 # -----------------------------------------------------------------------------
 
