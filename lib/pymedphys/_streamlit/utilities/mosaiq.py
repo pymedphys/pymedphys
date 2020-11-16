@@ -18,7 +18,7 @@ from pymedphys._mosaiq import connect as msq_connect
 
 
 def uncached_get_mosaiq_cursor(server):
-    """Get the Mosaiq SQL cursor. Prompt user for username and password if need.
+    """Get the Mosaiq SQL cursor. Prompt user for username and password if needed.
 
     Parameters
     ----------
@@ -81,17 +81,6 @@ def uncached_get_mosaiq_cursor(server):
     return None
 
 
-def _create_user_input(server, input_type="default", key=None):
-    def user_input():
-        result = st.text_input(label=server, type=input_type, key=key)
-        if not result:
-            st.stop()
-
-        return result
-
-    return user_input
-
-
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def get_mosaiq_cursor(server):
     return uncached_get_mosaiq_cursor(server)
@@ -102,16 +91,3 @@ def get_mosaiq_cursor_in_bucket(server):
     """This allows the output cursor cache to be mutated by the user code
     """
     return {"cursor": uncached_get_mosaiq_cursor(server)}
-
-
-def _connect_with_streamlit_interface(server):
-    password_input = _create_user_input(
-        server, input_type="password", key=f"MosaiqSQLPassword_{server}"
-    )
-    user_input = _create_user_input(server, key=f"MosaiqSQLUsername_{server}")
-
-    _, cursor = msq_connect.single_connect(
-        server, user_input=user_input, password_input=password_input, output=st.write
-    )
-
-    return cursor
