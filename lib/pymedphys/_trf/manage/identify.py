@@ -28,12 +28,13 @@ from pymedphys._trf.decode.header import decode_header_from_file
 # result in greater robustness to time differences between TCS and Mosaiq.
 
 
-def date_convert_using_dateutil(date, timezone):
+def _date_convert_using_dateutil(date, timezone):
     """Converts logfile UTC date to the provided timezone.
     The date is formatted to match the syntax required by Microsoft SQL.
 
     This is the function that was originally used, but it has an
-    incompatibility with Streamlit.
+    incompatibility with Streamlit. This will be removed along with the
+    dateutil dependency in the near future.
 
     """
 
