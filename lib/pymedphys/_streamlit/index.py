@@ -69,7 +69,7 @@ APPLICATION_CATEGORIES = {
         "description": """
             These applications may not be in use at all within the
             community and they may not have any automated test coverage.
-            They may not even work.
+            **They may not even work**.
         """,
     },
 }
