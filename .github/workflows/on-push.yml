@@ -58,7 +58,8 @@ jobs:
       matrix:
         # os: ['ubuntu', 'macos', 'windows']
         os: ['windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary']
+        # task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary']
+        task: ['tests']
         exclude:
           - os: 'ubuntu'
             task: 'binary'
@@ -140,7 +141,8 @@ jobs:
     - name: Update PATH in Windows
       if: matrix.os == 'windows'
       run: |
-        $env:GITHUB_PATH += ";$env:USERPROFILE\.poetry\bin"
+        echo "$env:USERPROFILE\.poetry\bin"
+        $env:GITHUB_PATH += "$env:USERPROFILE\.poetry\bin"
 
     - name: Print Path
       if: matrix.os == 'windows'
