@@ -84,29 +84,6 @@ def execute_sql(cursor, sql_string, parameters=None):
     return data
 
 
-def is_there_a_saved_username_and_password(sql_server_and_port):
-    """Determine if there is a Mosaiq entry for the given host and port.
-
-    Parameters
-    ----------
-    sql_server_and_port : str
-        A server and port separated by a colon (:). Eg "localhost:8888".
-
-    Returns
-    bool
-
-    """
-    user, password = get_username_and_password_without_prompt(sql_server_and_port)
-
-    if user is None or user == "":
-        return False
-
-    if password is None:
-        return False
-
-    return True
-
-
 def get_username_and_password_without_prompt(storage_name):
     user = keyring.get_password("MosaiqSQL_username", storage_name)
     password = keyring.get_password("MosaiqSQL_password", storage_name)
