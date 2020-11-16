@@ -17,6 +17,69 @@ from pymedphys._imports import streamlit as st
 from pymedphys._mosaiq import connect as msq_connect
 
 
+def uncached_get_mosaiq_cursor(server):
+    """Get the Mosaiq SQL cursor. Prompt user for username and password if need.
+
+    Parameters
+    ----------
+    server : str
+        The hostname and optionally the port, separated by a colon (:).
+        The following are all valid options:
+
+            * mssql
+            * mssql:1433
+            * 127.0.0.1:8888
+
+    Returns
+    -------
+    cursor : pymssql.Cursor
+        The Mosaiq SQL cursor for the connection.
+
+    """
+    username, password = msq_connect.get_username_and_password_without_prompt(server)
+
+    if password:
+        try:
+            conn = msq_connect.connect_with_credential(server, username, password)
+            cursor = conn.cursor()
+            return cursor
+        except msq_connect.WrongUsernameOrPassword as e:
+            st.write(e)
+
+    st.write("## Login to Mosaiq SQL Database")
+
+    if not username:
+        username = ""
+
+    username = st.text_input(
+        label=f"Username for {server}",
+        value=username,
+        key=f"MosaiqSQLUsername_{server}",
+    )
+
+    if username:
+        msq_connect.save_username(server, username)
+
+    if not password:
+        password = ""
+
+    password = st.text_input(
+        label=f"Password for {server}",
+        value=password,
+        type="password",
+        key=f"MosaiqSQLPassword_{server}",
+    )
+
+    if password:
+        msq_connect.save_password(server, password)
+
+    st.button("Connect")
+
+    st.stop()
+
+    return None
+
+
 def _create_user_input(server, input_type="default", key=None):
     def user_input():
         result = st.text_input(label=server, type=input_type, key=key)
@@ -51,44 +114,3 @@ def _connect_with_streamlit_interface(server):
     )
 
     return cursor
-
-
-def uncached_get_mosaiq_cursor(server):
-    username, password = msq_connect.get_username_and_password_without_prompt(server)
-
-    if password:
-        try:
-            return msq_connect.connect_with_credential(server, username, password)
-        except msq_connect.WrongUsernameOrPassword:
-            pass
-
-    st.write("## Login to Mosaiq SQL Database")
-
-    if not username:
-        username = ""
-
-    username = st.text_input(
-        label=f"Username for {server}",
-        value=username,
-        key=f"MosaiqSQLUsername_{server}",
-    )
-
-    if username:
-        msq_connect.save_username(server, username)
-
-    if not password:
-        password = ""
-
-    password = st.text_input(
-        label=f"Password for {server}",
-        value=password,
-        type="password",
-        key=f"MosaiqSQLPassword_{server}",
-    )
-
-    if password:
-        msq_connect.save_password(server, password)
-
-    st.stop()
-
-    return None
