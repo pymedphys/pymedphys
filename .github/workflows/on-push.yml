@@ -56,10 +56,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # os: ['ubuntu', 'macos', 'windows']
-        os: ['windows']
-        # task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary']
-        task: ['tests']
+        os: ['ubuntu', 'macos', 'windows']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary']
         exclude:
           - os: 'ubuntu'
             task: 'binary'
