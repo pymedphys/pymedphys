@@ -26,6 +26,7 @@ def main():
     st.write("# Mosaiq QCL Dashboard")
 
     centres = ["rccc", "nbcc", "sash"]
+    # centres = ["nbcc"]
     servers = {
         "rccc": "msqsql",
         "nbcc": "physics-server:31433",
