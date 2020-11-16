@@ -16,6 +16,7 @@
 from datetime import datetime
 
 from pymedphys._imports import dateutil
+from pymedphys._imports import pandas as pd
 
 from pymedphys._mosaiq.delivery import get_mosaiq_delivery_details
 from pymedphys._trf.decode.header import decode_header_from_file
@@ -48,7 +49,10 @@ def date_convert(date, timezone):
     """Converts logfile UTC date to the provided timezone.
     The date is formatted to match the syntax required by Microsoft SQL."""
 
-    local_time = datetime.strptime(date, "%y/%m/%d %H:%M:%S Z")
+    utc_datetime = pd.DatetimeIndex(
+        [datetime.strptime(date, "%y/%m/%d %H:%M:%S Z")], tz="UTC"
+    )
+    local_time = utc_datetime.tz_convert(timezone)[0]  # pylint: disable = no-member
 
     mosaiq_string_time = local_time.strftime("%Y-%m-%d %H:%M:%S")
     path_string_time = local_time.strftime("%Y-%m-%d_%H%M%S")
