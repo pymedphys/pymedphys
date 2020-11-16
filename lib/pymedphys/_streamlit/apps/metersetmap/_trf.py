@@ -15,6 +15,7 @@
 
 import _thread
 
+from pymedphys._imports import dateutil
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
@@ -43,7 +44,6 @@ def _get_mosaiq_configuration(headers):
     return machine_centre_map, mosaiq_details, mosaiq_servers
 
 
-@st.cache(hash_funcs={_thread.LockType: lambda _: None})
 def get_logfile_mosaiq_info(
     headers: "pd.DataFrame", machine_centre_map, mosaiq_details, mosaiq_servers
 ):
@@ -74,6 +74,7 @@ def get_logfile_mosaiq_info(
     return details
 
 
+@st.cache()
 def _attempt_patient_name_from_mosaiq(headers):
     UNKNOWN_PATIENT_NAME = "Unknown"
 

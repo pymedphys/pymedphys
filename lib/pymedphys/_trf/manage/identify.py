@@ -27,7 +27,7 @@ from pymedphys._trf.decode.header import decode_header_from_file
 # result in greater robustness to time differences between TCS and Mosaiq.
 
 
-def date_convert(date, timezone):
+def date_convert_using_dateutil(date, timezone):
     """Converts logfile UTC date to the provided timezone.
     The date is formatted to match the syntax required by Microsoft SQL."""
 
@@ -38,6 +38,18 @@ def date_convert(date, timezone):
         tzinfo=from_timezone
     )
     local_time = utc_datetime.astimezone(to_timezone)
+    mosaiq_string_time = local_time.strftime("%Y-%m-%d %H:%M:%S")
+    path_string_time = local_time.strftime("%Y-%m-%d_%H%M%S")
+
+    return mosaiq_string_time, path_string_time
+
+
+def date_convert(date, timezone):
+    """Converts logfile UTC date to the provided timezone.
+    The date is formatted to match the syntax required by Microsoft SQL."""
+
+    local_time = datetime.strptime(date, "%y/%m/%d %H:%M:%S Z")
+
     mosaiq_string_time = local_time.strftime("%Y-%m-%d %H:%M:%S")
     path_string_time = local_time.strftime("%Y-%m-%d_%H%M%S")
 
