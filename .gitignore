@@ -279,3 +279,5 @@ v*.tar.gz
 
 *-demo
 release-notes.rst
+
+downloads/

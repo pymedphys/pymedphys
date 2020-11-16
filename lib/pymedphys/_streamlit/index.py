@@ -124,7 +124,7 @@ def get_url_app():
         return "index"
 
 
-session_state = session.initialise_session_state(app=get_url_app())
+session_state = session.session_state(app=get_url_app())
 
 
 def swap_app(app):

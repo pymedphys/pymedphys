@@ -11,6 +11,7 @@ import pytest
 
 import pydicom
 
+import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.anonymise import (
     anonymise_dataset,
     anonymise_file,
@@ -265,9 +266,11 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         )
         assert not exists(temp_anon_filepath)
 
-        anon_file_command = "pymedphys --verbose experimental dicom anonymise --pseudo".split() + [
-            temp_filepath
-        ]
+        anon_file_command = (
+            [pmp_test_utils.get_executable_even_when_embedded(), "-m"]
+            + "pymedphys --verbose experimental dicom anonymise --pseudo".split()
+            + [temp_filepath]
+        )
         logging.info("Command line: %s", anon_file_command)
         try:
             subprocess.check_call(anon_file_command)
@@ -284,9 +287,11 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         assert not is_anonymised_directory(tmp_path)
         assert not exists(temp_anon_filepath)
 
-        anon_dir_command = "pymedphys --verbose experimental dicom anonymise --pseudo".split() + [
-            str(tmp_path)
-        ]
+        anon_dir_command = (
+            [pmp_test_utils.get_executable_even_when_embedded(), "-m"]
+            + "pymedphys --verbose experimental dicom anonymise --pseudo".split()
+            + [str(tmp_path)]
+        )
         try:
             subprocess.check_call(anon_dir_command)
             # assert is_anonymised_file(temp_anon_filepath)

@@ -8,11 +8,175 @@ This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.33.0]
+## [0.34.0]
+
+### News around this release
+
+* 🚀 Stuart Swerdloff ([@sjswerdloff](https://github.com/sjswerdloff)) has
+  agreed to come on board as a maintainer of PyMedPhys. Thank you Stuart! You
+  have been a massive help and encouragement.
+* Created an online PyMedPhys GUI. It is accessible from
+  <https://app.pymedphys.com>. This is in its early stages and most parts of
+  the online GUI are not optimised for use in this fashion.
+  * Of note, its main purpose is to demonstrate the GUI functionality. If you
+    wish to begin using this GUI in your centre install PyMedPhys on your local
+    machine and then start it by calling `pymedphys gui` within a
+    terminal/command prompt.
+  * The online demo GUI should not have sensitive information submitted to it.
+* [@matthewdeancooper](https://github.com/matthewdeancooper) uploaded his
+  Masters thesis on deep learning auto-segmentation to
+  [the docs](https://docs.pymedphys.com/background/autocontouring.html#details).
+* PyMedPhys was featured in a talk at the ACPSEM 2020 Summer School. Both the
+  [video](https://simonbiggs.net/acpsem-summer-school-2020-video) and
+  [slides](https://simonbiggs.net/acpsem-summer-school-2020-slides) are
+  available online.
 
 ### "Stable" API changes
 
 (Won't truly be stable until after a 1.0.0 release)
+
+#### Breaking changes
+
+* The parameter `fraction_number` within `pymedphys.Delivery.from_dicom` and
+  `pymedphys.Delivery.to_dicom` has been changed to `fraction_group_number`.
+* The name of the first argument to `pymedphys.Delivery.from_dicom` has been
+  changed from `dicom_dataset` to `rtplan`. It now also accepts either a
+  `pydicom.Dataset` or a filepath.
+* A range of files utilised by `pymedphys.data_path` and related functions
+  that contained the words "mudensity", "mu-density", or "mu_density" have
+  been replaced with "metersetmap".
+* The exceptions that `pymedphys.Delivery.from_mosaiq` raises when either
+  no entry in Mosaiq is found (`NoMosaiqEntries`) or multiple entries are found
+  (`MultipleMosaiqEntries`) now both inherit from `ValueError` instead of the
+  base `Exception` class.
+
+#### Deprecations
+
+* All instances of `mudensity` have been replaced with `metersetmap`. The
+  `mudensity` API is still currently available, but it will be removed in a
+  future release.
+* `pymedphys.Delivery.from_logfile` has been renamed as
+  `pymedphys.Delivery.from_trf`. The previous name is still temporarily
+  available but it will be removed in a future release.
+
+#### New features
+
+* Added CLI `pymedphys dicom listen` [#1161](https://github.com/pymedphys/pymedphys/pull/1161).
+  This begins a DICOM listener which will store the DICOM files sent to it to
+  disk. It accepts the arguments `--port`, `--aetitle`, and
+  `--storage_directory`. Thanks [@pchlap](https://github.com/pchlap)!
+
+#### Bug fixes
+
+* Sometimes a range of DICOM API calls would require the downloading of a
+  baseline DICOM dictionary. This is now distributed with the library.
+
+### GUI changes
+
+#### Logistics changes
+
+* `pymedphys gui` now boots up a multi application index. This index breaks
+  applications up into five categories, mature, maturing, raw, beta, and
+  experimental.
+
+#### Pseudonymise
+
+* A new pseudonymise application has been created. This allows users to drag
+  and drop DICOM files into the GUI and then download the resulting DICOM file
+  in its pseudonymised form. Thanks
+  [@sjswerdloff](https://github.com/sjswerdloff)!
+
+#### MetersetMap
+
+##### New Features
+
+* The MetersetMap comparison application (which used to be MU density) is now
+  able to work with a bare bones configuration file which can be used by just
+  dragging and dropping TRF and DICOM files for comparison. See
+  [#1117](https://github.com/pymedphys/pymedphys/pull/1117#issue-513765705)
+  for details of the configuration file needed.
+* Path configuration now supports expansion of `~` to the users home directory.
+
+##### Bug fixes
+
+* In some cases a patient having a middle name would cause the DICOM file
+  upload method to crash. Thanks [@mchamberland](https://github.com/mchamberland)
+  for reporting in [#1137](https://github.com/pymedphys/pymedphys/issues/1137)
+  and thanks [@sjswerdloff](https://github.com/sjswerdloff) for the prompt fix
+  in [#1144](https://github.com/pymedphys/pymedphys/pull/1144)!
+
+#### Experimental applications
+
+* A new "anonymise monaco" application has been exposed. This allows the
+  back-end Monaco filesystem to be anonymised in such a way that Monaco can
+  still open and work with the contents.
+* A new "dashboard" application has been exposed. This connects to multiple
+  Mosaiq sites and displays the QCLs across each site.
+* A new "electrons" application has been exposed. This reads Monaco back-end
+  files, extract the electron insert shape and then predicts the corresponding
+  insert output factor.
+* A new "iviewdb" application has been exposed. This allows for exploration of
+  the iView database.
+* Work has begun on a new Winston Lutz Arc GUI.
+
+### Configuration changes
+
+#### New keys
+
+* `~/.pymedphys/config.toml` should now include a `version = 1` entry. This
+  is to support undergoing breaking changes within `config.toml` but allowing
+  PyMedPhys to still read in old configuration files without issue.
+* For use within the up-coming Winston-Lutz Arc GUI a new key
+  `site.export-directories.iviewdb` has been created.
+
+### Beta API changes
+
+* Nil
+
+### Experimental API changes
+
+#### Breaking changes
+
+* Removed `pymedphys experimental gui`.
+
+#### New Features
+
+* Within `pymedphys.experimental.pseudonymisation` both `pseudonymise` and
+  `is_valid_strategy_for_keywords` were added. `pseudonymise` provides
+  a convenient simple API for pseudonymisation. See [the API docs](https://docs.pymedphys.com/ref/lib/experimental/pseudonymisation.html#api)
+  for more information. Credit to [@sjswerdloff](https://github.com/sjswerdloff)
+  for all his work here.
+
+### Developer facing API changes
+
+* The pymedphys library directory has moved to `lib/pymedphys`.
+  After this move you will need to rerun `poetry install -E dev`
+* The development branch of pymedphys has moved from [master](https://github.com/pymedphys/pymedphys/tree/master)
+  to [main](https://github.com/pymedphys/pymedphys/tree/main)
+* Documentation is now stored within the library, moving from `docs` to
+  `lib/pymedphys/docs`
+* Docs can now be built, viewed, and updated with hot-reloading by running
+  `poetry run pymedphys dev docs --live`.
+* The output directory for the docs building can now be controlled by passing
+  an `--output` flag to `pymedphys dev docs`.
+* A new CLI utility that propagates a range of files that depend upon each
+  other files within the repo are "propagated" by calling
+  `poetry run pymedphys dev propagate`. The files created/updated by this
+  command are `lib/pymedphys/_version.py`, `requirements.txt` and
+  `requirements-dev.txt`, `lib/pymedphys/.pylintrc`,
+  `lib/pymedphys/docs/README.rst`, `lib/pymedphys/docs/CHANGELOG.md`, and the
+  'extras' field within `pyproject.toml`.
+* `pymedphys dev tests` includes simplified flags. `--run-only-slow` can
+  be undergone with `--slow`, `--run-only-yarn` with `--cypress`,
+  `--run-only-pydicom` with `--pydicom`, and `--run-only-pylinac` with
+  `--pylinac`.
+* Within cypress end to end testing the custom `cy.start` command now has a
+  parameter `app` which refers to the URL app key of the application to be
+  tested `http://localhost:8501/?app=${app}`.
+
+## [0.33.0]
+
+### "Stable" API changes
 
 #### Installation changes
 
@@ -904,7 +1068,8 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...main
+[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...main
+[0.34.0]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/pymedphys/pymedphys/compare/v0.30.0...v0.31.0

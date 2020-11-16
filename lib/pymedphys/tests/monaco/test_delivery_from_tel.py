@@ -42,7 +42,7 @@ def test_delivery_from_monaco():
         dcm_path = get_file_type(current_paths, "dcm")
 
         delivery_dcm = pymedphys.Delivery.from_dicom(
-            pydicom.read_file(str(dcm_path), force=True), fraction_number=1
+            pydicom.read_file(str(dcm_path), force=True), fraction_group_number=1
         )
 
         delivery_monaco = pymedphys.Delivery.from_monaco(tel_path)
