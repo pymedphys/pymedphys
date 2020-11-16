@@ -30,7 +30,12 @@ from pymedphys._trf.decode.header import decode_header_from_file
 
 def date_convert_using_dateutil(date, timezone):
     """Converts logfile UTC date to the provided timezone.
-    The date is formatted to match the syntax required by Microsoft SQL."""
+    The date is formatted to match the syntax required by Microsoft SQL.
+
+    This is the function that was originally used, but it has an
+    incompatibility with Streamlit.
+
+    """
 
     from_timezone = dateutil.tz.gettz("UTC")
     to_timezone = dateutil.tz.gettz(timezone)
