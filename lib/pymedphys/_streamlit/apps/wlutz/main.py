@@ -16,7 +16,6 @@
 from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
-from pymedphys import _losslessjpeg as lljpeg
 from pymedphys._streamlit.apps.wlutz import _dbf, _filtering, _frames
 from pymedphys._streamlit.utilities import misc
 from pymedphys._wlutz import api as _wlutz_api
@@ -24,7 +23,7 @@ from pymedphys._wlutz import api as _wlutz_api
 
 @st.cache()
 def read_image(path):
-    return lljpeg.imread(path)
+    return _wlutz_api._load_potentially_lossless_image(path)
 
 
 def main():
@@ -65,7 +64,11 @@ def main():
     ax.imshow(read_image(resolved_path))
     st.pyplot(fig)
 
-    _wlutz_api.load_potentially_lossless_image(resolved_path)
+    # img = _wlutz_api.load_potentially_lossless_image(
+    #     r"C:\Users\sbiggs\Downloads\image_123927839.JPG"
+    # )
+
+    # ax.imshow(read_image(resolved_path))
 
     # # st.write(files)
     # sorted_files = sorted(files, key=get_modified_time, reverse=True)
