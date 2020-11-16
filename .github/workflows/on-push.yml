@@ -372,6 +372,8 @@ jobs:
 
     - uses: actions/setup-node@v1
       if: matrix.task == 'cypress'
+      with:
+        node-version: '14'
 
     - name: Run Cypress tests
       if: matrix.task == 'cypress'
