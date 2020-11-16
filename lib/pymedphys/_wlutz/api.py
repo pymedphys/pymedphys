@@ -14,38 +14,68 @@
 
 
 import os  # pylint: disable = unused-import
-from typing import Any, Literal, Union, cast  # pylint: disable = unused-import
+from typing import (  # pylint: disable = unused-import
+    Any,
+    Callable,
+    Dict,
+    Literal,
+    Union,
+    cast,
+)
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pylinac
 
 from pymedphys import _losslessjpeg as lljpeg
+from pymedphys._vendor.pylinac import winstonlutz as _pylinac_wlutz
 
-from . import findbb, findfield, imginterp, iview
+from . import findbb, findfield, imginterp, iview, utilities
 
-path_or_numpy_array = Union["np.ndarray", "os.PathLike[Any]", str]
-path_types = Union["os.PathLike[Any]", str]
-Algorithms = Literal["pymedphys", "pylinac", "pylinac-v2.2.6", "pylinac-v2.2.7"]
+PathOrNumpyArray = Union["np.ndarray", "os.PathLike[Any]", str]
+PathTypes = Union["os.PathLike[Any]", str]
+Algorithms = Literal[
+    "pymedphys", "pylinac-installed", "pylinac-v2.2.6", "pylinac-v2.2.7"
+]
+
+
+class _ResultsDictionary:
+    def __init__(self, functions: Dict[Any, Callable]):
+        self._function_dict = functions
+        self._results_cache: Dict[Any, Any] = {}
+
+    def __getitem__(self, item):
+        try:
+            return self._results_cache[item]
+        except KeyError:
+            self._results_cache[item] = self._function_dict[item]()
+
+        return self._results_cache[item]
 
 
 class LosslessIViewWinstonLutz:
     def __init__(
         self,
-        image: path_or_numpy_array,
-        edge_lengths=None,
-        penumbra=None,
-        bb_diameter=None,
-        algorithm="pymedphys",
+        image: PathOrNumpyArray,
+        edge_lengths,
+        penumbra,
+        bb_diameter,
+        pylinac_interpolated_pixel_size=0.05,
     ):
         raw_image = _load_lossless_image(image)
         self._x, self._y, self._image = iview.iview_image_transform(raw_image)
-        self.edge_lengths = edge_lengths
-        self.penumbra = penumbra
-        self.bb_diameter = bb_diameter
-        self.algorithm = algorithm
-        self._field = None
-        self._field_centre = None
+        self._edge_lengths = edge_lengths
+        self._penumbra = penumbra
+        self._bb_diameter = bb_diameter
+        self._algorithm = algorithm
+        self._pylinac_interpolated_pixel_size = pylinac_interpolated_pixel_size
+
+        self._image_interpolator = None
         self._field_rotation = None
-        self._bb_centre = None
+
+        self._field_centre = {}
+        self._bb_centre = {}
+
+        self._pylinac_wl_image = None
 
     def _reset(self):
         self._field_centre = None
@@ -64,13 +94,13 @@ class LosslessIViewWinstonLutz:
         return self._image
 
     @property
-    def field(self):
-        if self._field is None:
-            self._field = imginterp.create_interpolated_field(
+    def image_interpolator(self):
+        if self._image_interpolator is None:
+            self._image_interpolator = imginterp.create_interpolated_field(
                 self.x, self.y, self.image
             )
 
-        return self._field
+        return self._image_interpolator
 
     @property
     def field_centre(self):
@@ -82,12 +112,12 @@ class LosslessIViewWinstonLutz:
     @property
     def field_rotation(self):
         if self._field_rotation is None:
-            if self.algorithm == "pymedphys":
-                self._find_field()
+            if self._algorithm == "pymedphys":
+                self._field_centre, self._field_rotation = self._find_field()
             else:
                 raise ValueError(
-                    'Need to set `algorithm="pymedphys"` do be able to '
-                    "determine `field_rotation`"
+                    "Field rotation can only be determined if the "
+                    'algorithm is set to "pymedphys"'
                 )
 
         return self._field_rotation
@@ -99,35 +129,93 @@ class LosslessIViewWinstonLutz:
             initial_centre = self._field_centre
 
         field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
-            self.field, self.edge_lengths, self.penumbra, initial_centre
+            self.image_interpolator, self._edge_lengths, self._penumbra, initial_centre
         )
 
-        self._field_centre = field_centre
-        self._field_rotation = field_rotation
+        return field_centre, field_rotation
+
+    @property
+    def pylinac_wl_image(self):
+        if not self._algorithm.startswith("pylinac"):
+            raise ValueError("Need to be using a pylinac algorithm.")
+
+        if self._pylinac_wl_image is None:
+            pylinac_version = self._algorithm.split("-")[1]
+            if pylinac_version == "installed":
+                pylinac_version = pylinac.__version__
+
+            VERSION_TO_CLASS_MAP = _pylinac_wlutz.get_version_to_class_map()
+
+            pymedphys_field_centre, pymedphys_field_rotation = _find_field_pymedphys(
+                self
+            )
+
+            pylinac_image = _centralised_straight_image()
+
+            self._pylinac_wl_image = VERSION_TO_CLASS_MAP[pylinac_version]()
+
+        return self._pylinac_wl_image
 
     def _find_field(self):
+        # if self._algorithm.startswith("pylinac"):
+        #     self.pylinac_wl_image
+
         algorithm_map = {"pymedphys": self._find_field_pymedphys}
-        algorithm_map[self.algorithm]()
+        return algorithm_map[self._algorithm]()
 
     @property
     def bb_centre(self):
         if self._bb_centre is None:
-            self._bb_centre = findbb.optimise_bb_centre(
-                self.field,
-                self.bb_diameter,
-                self.edge_lengths,
-                self.penumbra,
-                self.field_centre,
-                self.field_rotation,
-            )
+            self._bb_centre = self._find_bb()
 
-        return self.bb_centre
+        return self._bb_centre
+
+    def _find_bb_pymedphys(self):
+        return findbb.optimise_bb_centre(
+            self.image_interpolator,
+            self._bb_diameter,
+            self._edge_lengths,
+            self._penumbra,
+            self.field_centre,
+            self.field_rotation,
+        )
+
+    def _find_bb(self):
+        algorithm_map = {"pymedphys": self._find_bb_pymedphys}
+        return algorithm_map[self._algorithm]()
 
 
-def _load_lossless_image(image: path_or_numpy_array) -> "np.ndarray":
-    if isinstance(path_or_numpy_array, np.ndarray):
+def _load_lossless_image(image: PathOrNumpyArray) -> "np.ndarray":
+    if isinstance(PathOrNumpyArray, np.ndarray):
         return image
 
-    image_path = cast(path_types, image)
+    image_path = cast(PathTypes, image)
 
     return lljpeg.imread(image_path)
+
+
+def _centralised_straight_image(
+    image_interpolator,
+    field_centre,
+    field_rotation,
+    edge_lengths,
+    penumbra,
+    interpolated_pixel_size,
+):
+    centralised_straight_field = utilities.create_centralised_field(
+        image_interpolator, field_centre, field_rotation
+    )
+
+    half_x_range = edge_lengths[0] / 2 + penumbra * 3
+    half_y_range = edge_lengths[1] / 2 + penumbra * 3
+
+    x_range = np.arange(
+        -half_x_range, half_x_range + interpolated_pixel_size, interpolated_pixel_size
+    )
+    y_range = np.arange(
+        -half_y_range, half_y_range + interpolated_pixel_size, interpolated_pixel_size
+    )
+
+    xx_range, yy_range = np.meshgrid(x_range, y_range)
+
+    return centralised_straight_field(xx_range, yy_range)
