@@ -179,58 +179,116 @@ def profile(displacements, depth, direction, dose_dataset, plan_dataset):
     return extracted_dose
 
 
-def _get_indices(z_list, z_val):
-    indices = np.array([item[0] for item in z_list])
-    # This will error if more than one contour exists on a given slice
-    desired_indices = np.where(indices == z_val)[0]
-    # Multiple contour sets per slice not yet implemented
+def get_dose_grid_structure_mask(
+    structure_name: str,
+    structure_dataset: "pydicom.Dataset",
+    dose_dataset: "pydicom.Dataset",
+):
+    """Determines the 3D boolean mask defining whether or not a grid
+    point is inside or outside of a defined structure.
 
-    return desired_indices
+    In its current implementation the dose grid and the planes upon
+    which the structures are defined need to be aligned. This is due to
+    the implementation only stepping through each structure plane and
+    undergoing a 2D mask on the respective dose grid. In order to
+    undergo a mask when the contours and dose grids do not align
+    inter-slice contour interpolation would be required.
 
+    For now, having two contours for the same structure name on a single
+    slice is also not supported.
 
-def get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose):
-    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dcm_dose)
+    Parameters
+    ----------
+    structure_name
+        The name of the structure for which the mask is to be created
+    structure_dataset : pydicom.Dataset
+        An RT Structure DICOM object containing the respective
+        structures.
+    dose_dataset : pydicom.Dataset
+        An RT Dose DICOM object from which the grid mask coordinates are
+        determined.
 
-    xx_dose, yy_dose = np.meshgrid(x_dose, y_dose)
-    points = np.swapaxes(np.vstack([xx_dose.ravel(), yy_dose.ravel()]), 0, 1)
+    Raises
+    ------
+    ValueError
+        If an unsupported contour is provided or the dose grid does not
+        align with the structure planes.
 
-    x_structure, y_structure, z_structure = pull_structure(structure_name, dcm_struct)
-    structure_z_values = np.array([item[0] for item in z_structure])
+    """
+    x_dose, y_dose, z_dose = xyz_axes_from_dataset(dose_dataset)
 
-    mask = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
+    xx, yy = np.meshgrid(x_dose, y_dose)
+    points = np.swapaxes(np.vstack([xx.ravel(), yy.ravel()]), 0, 1)
 
-    for z_val in structure_z_values:
-        structure_indices = _get_indices(z_structure, z_val)
+    x_structure, y_structure, z_structure = pull_structure(
+        structure_name, structure_dataset
+    )
 
-        for structure_index in structure_indices:
-            dose_index = int(np.where(z_dose == z_val)[0])
+    structure_z_values = []
+    for item in z_structure:
+        item = np.unique(item)
+        if len(item) != 1:
+            raise ValueError("Only one z value per contour supported")
+        structure_z_values.append(item[0])
 
-            assert z_structure[structure_index][0] == z_dose[dose_index]
+    structure_z_values = np.sort(structure_z_values)
+    unique_structure_z_values = np.unique(structure_z_values)
 
-            structure_polygon = matplotlib.path.Path(
-                [
-                    (x_structure[structure_index][i], y_structure[structure_index][i])
-                    for i in range(len(x_structure[structure_index]))
-                ]
+    if np.any(structure_z_values != unique_structure_z_values):
+        raise ValueError("Only one contour per slice is currently supported")
+
+    sorted_dose_z = np.sort(z_dose)
+
+    first_dose_index = np.where(sorted_dose_z == structure_z_values[0])[0][0]
+    for i, z_val in enumerate(structure_z_values):
+        dose_index = first_dose_index + i
+        if structure_z_values[i] != sorted_dose_z[dose_index]:
+            raise ValueError(
+                "Only contours where both, there are no gaps in the "
+                "z-axis of the contours, and the contour axis and dose "
+                "axis, are aligned are supported."
             )
-            mask[:, :, dose_index] = mask[:, :, dose_index] | (
-                structure_polygon.contains_points(points).reshape(
-                    len(y_dose), len(x_dose)
-                )
-            )
 
-    return mask
+    mask_yxz = np.zeros((len(y_dose), len(x_dose), len(z_dose)), dtype=bool)
+
+    for structure_index, z_val in enumerate(structure_z_values):
+        dose_index = int(np.where(z_dose == z_val)[0])
+
+        if z_structure[structure_index][0] != z_dose[dose_index]:
+            raise ValueError("Structure and dose indices do not align")
+
+        structure_polygon = matplotlib.path.Path(
+            [
+                (x_structure[structure_index][i], y_structure[structure_index][i])
+                for i in range(len(x_structure[structure_index]))
+            ]
+        )
+
+        # This logical "or" here is actually in place for the case where
+        # there may be multiple contours on the one slice. That's not
+        # going to be used at the moment however, as that case is not
+        # yet supported in the logic above.
+        mask_yxz[:, :, dose_index] = mask_yxz[:, :, dose_index] | (
+            structure_polygon.contains_points(points).reshape(len(y_dose), len(x_dose))
+        )
+
+    mask_xyz = np.swapaxes(mask_yxz, 0, 1)
+    mask_zyx = np.swapaxes(mask_xyz, 0, 2)
+
+    return mask_zyx
 
 
-def find_dose_within_structure(structure_name, dcm_struct, dcm_dose):
-    dose = dose_from_dataset(dcm_dose)
-    mask = get_dose_grid_structure_mask(structure_name, dcm_struct, dcm_dose)
+def find_dose_within_structure(structure_name, structure_dataset, dose_dataset):
+    dose = dose_from_dataset(dose_dataset)
+    mask = get_dose_grid_structure_mask(structure_name, structure_dataset, dose_dataset)
 
     return dose[mask]
 
 
-def create_dvh(structure, dcm_struct, dcm_dose):
-    structure_dose_values = find_dose_within_structure(structure, dcm_struct, dcm_dose)
+def create_dvh(structure, structure_dataset, dose_dataset):
+    structure_dose_values = find_dose_within_structure(
+        structure, structure_dataset, dose_dataset
+    )
     hist = np.histogram(structure_dose_values, 100)
     freq = hist[0]
     bin_edge = hist[1]

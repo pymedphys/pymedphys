@@ -21,6 +21,7 @@ import pytest
 import pydicom
 
 import pymedphys
+import pymedphys._utilities.test as pmp_test_utils
 
 
 @pytest.mark.pydicom
@@ -47,7 +48,8 @@ def test_structure_dedupe():
         with tempfile.TemporaryDirectory() as temp_dir:
             output_filename = str(pathlib.Path(temp_dir).joinpath("temp.dcm"))
 
-            command = "pymedphys dicom merge-contours".split() + [
+            command = pmp_test_utils.get_pymedphys_dicom_cli() + [
+                "merge-contours",
                 str(input_path),
                 output_filename,
             ]
