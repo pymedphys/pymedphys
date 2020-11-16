@@ -130,21 +130,17 @@ jobs:
       run: |
         pip install --upgrade pip setuptools
 
-    - name: Install Poetry on *Nix
-      if: matrix.os != 'windows'
-      uses: dschep/install-poetry-action@v1.3
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.1.1
       with:
         version: 1.1.4
-        create_virtualenvs: true
+        virtualenvs-create: true
 
-    # Currently python subprocesses in Windows don't appear to appropriately
-    # fork under the poetry virtual environment for version 1.1.4
-    - name: Install Poetry on Windows
+    - name: Update PATH in Windows
       if: matrix.os == 'windows'
-      uses: dschep/install-poetry-action@v1.3
-      with:
-        version: 1.0.9
-        create_virtualenvs: true
+      run: |
+        Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.poetry\bin"
+        Get-Content -Path $env:GITHUB_PATH
 
 # -----------------------------------------------------------------------------
 
