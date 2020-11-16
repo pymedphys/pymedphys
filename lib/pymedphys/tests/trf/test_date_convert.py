@@ -26,7 +26,9 @@ def test_date_convert_parity():
     utc_date = header["date"][0]
     timezone = "Australia/Sydney"
 
-    dateutil_version = identify.date_convert_using_dateutil(utc_date, timezone)
+    dateutil_version = identify._date_convert_using_dateutil(  # pylint: disable = protected-access
+        utc_date, timezone
+    )
     pandas_version = identify.date_convert(utc_date, timezone)
 
     assert dateutil_version == pandas_version
