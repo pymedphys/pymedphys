@@ -13,9 +13,6 @@
 # limitations under the License.
 
 
-import _thread
-
-from pymedphys._imports import dateutil
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 

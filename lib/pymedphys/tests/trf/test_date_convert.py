@@ -3,6 +3,8 @@ from pymedphys._trf.manage import identify
 
 
 def test_date_convert_parity():
+    """Verify that using pandas instead of dateutil achieves the same end
+    """
     path = pymedphys.data_path("negative-metersetmap.trf")
     header, _ = pymedphys.trf.read(path)
 
