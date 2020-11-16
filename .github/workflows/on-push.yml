@@ -130,20 +130,10 @@ jobs:
       run: |
         pip install --upgrade pip setuptools
 
-    - name: Install Poetry on *Nix
-      if: matrix.os != 'windows'
+    - name: Install Poetry
       uses: snok/install-poetry@v1.1.1
       with:
         version: 1.1.4
-        virtualenvs-create: true
-
-    # Currently python subprocesses in Windows don't appear to appropriately
-    # fork under the poetry virtual environment for version 1.1.4
-    - name: Install Poetry on Windows
-      if: matrix.os == 'windows'
-      uses: snok/install-poetry@v1.1.1
-      with:
-        version: 1.0.9
         virtualenvs-create: true
 
 # -----------------------------------------------------------------------------
