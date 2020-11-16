@@ -54,11 +54,41 @@ def _connect_with_streamlit_interface(server):
 
 
 def uncached_get_mosaiq_cursor(server):
-    if msq_connect.is_there_a_saved_username_and_password(server):
-        return _connect_with_streamlit_interface(server)
+    username, password = msq_connect.get_username_and_password_without_prompt(server)
+
+    if password:
+        try:
+            return msq_connect.connect_with_credential(server, username, password)
+        except msq_connect.WrongUsernameOrPassword:
+            pass
 
     st.write("## Login to Mosaiq SQL Database")
-    if st.button("Wipe credentials for this login"):
-        msq_connect.delete_credentials(server)
 
-    return _connect_with_streamlit_interface(server)
+    if not username:
+        username = ""
+
+    username = st.text_input(
+        label=f"Username for {server}",
+        value=username,
+        key=f"MosaiqSQLUsername_{server}",
+    )
+
+    if username:
+        msq_connect.save_username(server, username)
+
+    if not password:
+        password = ""
+
+    password = st.text_input(
+        label=f"Password for {server}",
+        value=password,
+        type="password",
+        key=f"MosaiqSQLPassword_{server}",
+    )
+
+    if password:
+        msq_connect.save_password(server, password)
+
+    st.stop()
+
+    return None
