@@ -150,7 +150,7 @@ def delete_credentials(sql_server_and_port):
         pass
 
 
-def _connect_with_credential_prompt_if_fail(
+def _connect_with_credential_then_prompt_if_fail(
     sql_server_and_port, user_input=input, password_input=getpass, output=print
 ) -> "pymssql.Connection":
     """Connects to a Mosaiq database utilising credentials saved with
@@ -201,7 +201,7 @@ def _connect_with_credential_prompt_if_fail(
             delete_credentials(sql_server_and_port)
 
             output("Please try login again:")
-            conn = _connect_with_credential_prompt_if_fail(sql_server_and_port)
+            conn = _connect_with_credential_then_prompt_if_fail(sql_server_and_port)
         else:
             output(
                 "Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
@@ -227,7 +227,7 @@ def single_connect(
     """Connect to the Mosaiq server.
     Ask the user for a password if they haven't logged in before.
     """
-    conn = _connect_with_credential_prompt_if_fail(
+    conn = _connect_with_credential_then_prompt_if_fail(
         sql_server_and_port,
         user_input=user_input,
         password_input=password_input,
