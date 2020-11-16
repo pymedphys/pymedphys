@@ -56,7 +56,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu', 'macos', 'windows']
+        # os: ['ubuntu', 'macos', 'windows']
+        os: ['windows']
         task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary']
         exclude:
           - os: 'ubuntu'
@@ -137,8 +138,14 @@ jobs:
         virtualenvs-create: true
 
     - name: Update PATH in Windows
+      if: matrix.os == 'windows'
       run: |
         echo "%USERPROFILE%\.poetry\bin" >> $GITHUB_PATH
+
+    - name: Print Path
+      if: matrix.os == 'windows'
+      run: |
+        echo %PATH%
 
 # -----------------------------------------------------------------------------
 
