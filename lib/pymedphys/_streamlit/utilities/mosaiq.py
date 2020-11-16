@@ -26,8 +26,8 @@ def uncached_get_mosaiq_cursor(server):
         The hostname and optionally the port, separated by a colon (:).
         The following are all valid options:
 
-            * mssql
-            * mssql:1433
+            * msqsql
+            * msqsql:1433
             * 127.0.0.1:8888
 
     Returns
@@ -52,7 +52,7 @@ def uncached_get_mosaiq_cursor(server):
         username = ""
 
     username = st.text_input(
-        label=f"Username for {server}",
+        label=f"Username for the SQL server on {server}",
         value=username,
         key=f"MosaiqSQLUsername_{server}",
     )
@@ -64,7 +64,7 @@ def uncached_get_mosaiq_cursor(server):
         password = ""
 
     password = st.text_input(
-        label=f"Password for {server}",
+        label="Password",
         value=password,
         type="password",
         key=f"MosaiqSQLPassword_{server}",
@@ -73,7 +73,8 @@ def uncached_get_mosaiq_cursor(server):
     if password:
         msq_connect.save_password(server, password)
 
-    st.button("Connect")
+    if st.button("Connect"):
+        st.experimental_rerun()
 
     st.stop()
 
