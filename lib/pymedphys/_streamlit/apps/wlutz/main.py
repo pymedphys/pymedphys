@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt, pylinac
 from pymedphys._imports import streamlit as st
 
@@ -82,37 +83,64 @@ def main():
         "Algorithms to run", algorithm_options, algorithm_options
     )
 
-    algorithm_function_map = {
-        "PyMedPhys": _pymedphys_wlutz_calculate,
-        "PyLinac": _pylinac_wlutz_calculate,
-    }
+    show_figures = st.checkbox("Show figures", True)
+
+    results_data = []
+
+    for algorithm in selected_algorithms:
+
+        field_centre, bb_centre = _calculate_wlutz(
+            resolved_path, algorithm, bb_diameter, edge_lengths, penumbra
+        )
+        results_data.append(
+            {
+                "filepath": selected_filepath,
+                "algorithm": algorithm,
+                "diff_x": field_centre[0] - bb_centre[0],
+                "diff_y": field_centre[1] - bb_centre[1],
+                "field_centre_x": field_centre[0],
+                "field_centre_y": field_centre[1],
+                "bb_centre_x": bb_centre[0],
+                "bb_centre_y": bb_centre[1],
+            }
+        )
+
+    results = pd.DataFrame.from_dict(results_data)
+    st.write(results)
 
     # if st.button("Calculate"):
-    if True:
-        raw_image = read_image(resolved_path)
-        field_parameters = _get_field_parameters(raw_image, edge_lengths, penumbra)
-
-        wlutz_input_parameters = {
-            "bb_diameter": bb_diameter,
-            "edge_lengths": edge_lengths,
-            "penumbra": penumbra,
-            **field_parameters,
-        }
+    if show_figures:
+        wlutz_input_parameters = _get_wlutz_input_parameters(
+            resolved_path, bb_diameter, edge_lengths, penumbra
+        )
 
         for algorithm in selected_algorithms:
             st.write(algorithm)
-            calculate_function = algorithm_function_map[algorithm]
-            fig, axs = _calculate_and_create_figure(
-                calculate_function, wlutz_input_parameters
+
+            field_centre, bb_centre = _calculate_wlutz(
+                resolved_path, algorithm, bb_diameter, edge_lengths, penumbra
             )
 
+            fig, axs = _create_figure(field_centre, bb_centre, wlutz_input_parameters)
             axs[0, 0].set_title(algorithm)
             st.pyplot(fig)
 
 
-def _calculate_and_create_figure(calculate_function, wlutz_input_parameters):
-    field_centre, bb_centre = calculate_function(**wlutz_input_parameters)
+def _get_wlutz_input_parameters(image_path, bb_diameter, edge_lengths, penumbra):
+    raw_image = read_image(image_path)
 
+    field_parameters = _get_field_parameters(raw_image, edge_lengths, penumbra)
+    wlutz_input_parameters = {
+        "bb_diameter": bb_diameter,
+        "edge_lengths": edge_lengths,
+        "penumbra": penumbra,
+        **field_parameters,
+    }
+
+    return wlutz_input_parameters
+
+
+def _create_figure(field_centre, bb_centre, wlutz_input_parameters):
     fig, axs = reporting.image_analysis_figure(
         wlutz_input_parameters["x"],
         wlutz_input_parameters["y"],
@@ -128,22 +156,16 @@ def _calculate_and_create_figure(calculate_function, wlutz_input_parameters):
     return fig, axs
 
 
-def _get_field_parameters(raw_image, edge_lengths, penumbra):
-    x, y, image = iview.iview_image_transform(raw_image)
-    field = imginterp.create_interpolated_field(x, y, image)
-    initial_centre = findfield.get_centre_of_mass(x, y, image)
-    field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre, pylinac_tol=None
+@st.cache
+def _calculate_wlutz(image_path, algorithm, bb_diameter, edge_lengths, penumbra):
+    wlutz_input_parameters = _get_wlutz_input_parameters(
+        image_path, bb_diameter, edge_lengths, penumbra
     )
 
-    return {
-        "x": x,
-        "y": y,
-        "image": image,
-        "field": field,
-        "pymedphys_field_centre": field_centre,
-        "field_rotation": field_rotation,
-    }
+    calculate_function = ALGORITHM_FUNCTION_MAP[algorithm]
+    field_centre, bb_centre = calculate_function(**wlutz_input_parameters)
+
+    return field_centre, bb_centre
 
 
 def _pymedphys_wlutz_calculate(
@@ -189,3 +211,27 @@ def _pylinac_wlutz_calculate(
     bb_centre = pylinac_results[version_to_use]["bb_centre"]
 
     return field_centre, bb_centre
+
+
+ALGORITHM_FUNCTION_MAP = {
+    "PyMedPhys": _pymedphys_wlutz_calculate,
+    "PyLinac": _pylinac_wlutz_calculate,
+}
+
+
+def _get_field_parameters(raw_image, edge_lengths, penumbra):
+    x, y, image = iview.iview_image_transform(raw_image)
+    field = imginterp.create_interpolated_field(x, y, image)
+    initial_centre = findfield.get_centre_of_mass(x, y, image)
+    field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
+        field, edge_lengths, penumbra, initial_centre, pylinac_tol=None
+    )
+
+    return {
+        "x": x,
+        "y": y,
+        "image": image,
+        "field": field,
+        "pymedphys_field_centre": field_centre,
+        "field_rotation": field_rotation,
+    }
