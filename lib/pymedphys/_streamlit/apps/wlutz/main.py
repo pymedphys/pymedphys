@@ -100,7 +100,10 @@ def main():
             selected_algorithms,
         )
 
-    if st.button("Calculate"):
+    # if st.button("Calculate"):
+    if True:
+        collated_results = pd.DataFrame()
+
         for relative_image_path in table["filepath"]:
             results = _get_results_for_image(
                 database_directory,
@@ -110,6 +113,23 @@ def main():
                 edge_lengths,
                 penumbra,
             )
+
+            collated_results = collated_results.append(results)
+
+        for algorithm in selected_algorithms:
+            st.write(algorithm)
+            _plot_algorithm_by_time(collated_results, table, algorithm)
+
+
+def _plot_algorithm_by_time(diff_table, database_table, algorithm):
+    working_table = diff_table.loc[diff_table["algorithm"] == algorithm]
+    working_table = working_table.merge(
+        database_table, left_on="filepath", right_on="filepath"
+    )[["datetime", "diff_x", "diff_y"]]
+
+    working_table.set_index("datetime", inplace=True)
+    st.write(working_table)
+    st.line_chart(working_table)
 
 
 def _plot_diagnostic_figures(
