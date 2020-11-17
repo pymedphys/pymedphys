@@ -87,7 +87,8 @@ def main():
         "PyLinac": _pylinac_wlutz_calculate,
     }
 
-    if st.button("Calculate"):
+    # if st.button("Calculate"):
+    if True:
         raw_image = read_image(resolved_path)
         field_parameters = _get_field_parameters(raw_image, edge_lengths, penumbra)
 
