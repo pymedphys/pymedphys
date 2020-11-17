@@ -36,6 +36,18 @@ TEST_PORT = 9988
 METHOD_MOCK = Mock()
 
 
+def _build_hierarchical_path_to_plan(
+    storage_path: pathlib.Path, test_dataset: pydicom.dataset.Dataset
+) -> pathlib.Path:
+    file_path = pathlib.Path(storage_path).joinpath(
+        test_dataset.PatientID,
+        test_dataset.StudyInstanceUID,
+        test_dataset.SeriesInstanceUID,
+        f"RP.{test_dataset.SOPInstanceUID}.dcm",
+    )
+    return file_path
+
+
 @pytest.fixture()
 def listener():
 
@@ -51,8 +63,7 @@ def listener():
 
 @pytest.mark.pydicom
 def test_dicom_listener_echo(listener):
-    """Test to ensure that running dicom listener responds to C-ECHO
-    """
+    """Test to ensure that running dicom listener responds to C-ECHO"""
 
     # Send C-ECHO
     ae = AE()
@@ -86,11 +97,15 @@ def test_dataset():
     # Create a test DICOM object
     test_uid = pydicom.uid.generate_uid()
     test_series_uid = pydicom.uid.generate_uid()
+    test_study_uid = pydicom.uid.generate_uid()
+    patient_id = "987654321PyMedPhysID"
     test_dataset = dicom_dataset_from_dict(
         {
             "SOPClassUID": RTPlanStorage,
             "SOPInstanceUID": test_uid,
             "SeriesInstanceUID": test_series_uid,
+            "StudyInstanceUID": test_study_uid,
+            "PatientID": patient_id,
             "Modality": "RTPlan",
             "Manufacturer": "PyMedPhys",
             "BeamSequence": [{"Manufacturer": "PyMedPhys"}],
@@ -120,8 +135,7 @@ def test_dataset():
 
 @pytest.mark.pydicom
 def test_dicom_listener_send(listener, test_dataset):
-    """Test to ensure that running DicomListener receives a stores a DICOM file
-    """
+    """Test to ensure that running DicomListener receives a stores a DICOM file"""
 
     METHOD_MOCK.reset_mock()
 
@@ -138,7 +152,10 @@ def test_dicom_listener_send(listener, test_dataset):
     METHOD_MOCK.method.assert_called_once()
     args, _ = METHOD_MOCK.method.call_args_list[0]
     storage_path = args[0]
-    file_path = storage_path / f"RP.{test_dataset.SOPInstanceUID}.dcm"
+    assert storage_path.exists()
+    file_path = pathlib.Path(storage_path).joinpath(
+        f"RP.{test_dataset.SOPInstanceUID}.dcm"
+    )
     assert file_path.exists()
 
     read_dataset = pydicom.read_file(file_path)
@@ -177,7 +194,9 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
     # Modify the file to make it conflict
     args, _ = METHOD_MOCK.method.call_args_list[0]
     storage_path = args[0]
-    file_path = storage_path.joinpath(f"RP.{test_dataset.SOPInstanceUID}.dcm")
+    file_path = pathlib.Path(storage_path).joinpath(
+        f"RP.{test_dataset.SOPInstanceUID}.dcm"
+    )
     ds = pydicom.read_file(file_path)
     ds.Manufacturer = "PyMedPhysModified"
     ds.save_as(file_path, write_like_original=False)
@@ -207,8 +226,7 @@ def test_dicom_listener_send_conflicting_file(listener, test_dataset):
 
 @pytest.mark.pydicom
 def test_dicom_listener_cli(test_dataset):
-    """Test the command line interface to the DicomListener
-    """
+    """Test the command line interface to the DicomListener"""
 
     scp_ae_title = "PYMEDPHYSTEST"
 
@@ -250,7 +268,6 @@ def test_dicom_listener_cli(test_dataset):
             assert status.Status == 0
             assoc.release()
 
-        series_dir = test_directory.joinpath(test_dataset.SeriesInstanceUID)
-        file_path = series_dir.joinpath(f"RP.{test_dataset.SOPInstanceUID}.dcm")
+        file_path = _build_hierarchical_path_to_plan(test_directory, test_dataset)
         read_dataset = pydicom.read_file(file_path)
         assert read_dataset.SeriesInstanceUID == test_dataset.SeriesInstanceUID
