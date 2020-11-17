@@ -13,13 +13,15 @@
 # limitations under the License.
 
 
-from pymedphys._imports import plt
+from pymedphys._imports import plt, pylinac
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
 from pymedphys._streamlit.apps.wlutz import _dbf, _filtering, _frames
 from pymedphys._streamlit.utilities import misc
-from pymedphys._wlutz import findbb, findfield, imginterp, iview, reporting
+from pymedphys._wlutz import findbb, findfield, imginterp, iview
+from pymedphys._wlutz import pylinac as pmp_pylinac_api
+from pymedphys._wlutz import reporting
 
 
 @st.cache()
@@ -75,7 +77,22 @@ def main():
         ax.imshow(read_image(resolved_path))
         st.pyplot(fig)
 
+    algorithm_options = ["PyMedPhys", "PyLinac"]
+    selected_algorithms = st.multiselect(
+        "Algorithms to run", algorithm_options, algorithm_options
+    )
+
     if st.button("Calculate"):
+        raw_image = read_image(resolved_path)
+        (
+            x,
+            y,
+            image,
+            field,
+            pymedphys_field_centre,
+            field_rotation,
+        ) = _get_field_parameters(raw_image, edge_lengths, penumbra)
+
         field_centre, field_rotation, bb_centre, fig = _pymedphys_wlutz_calculate(
             resolved_path, bb_diameter, edge_lengths, penumbra
         )
@@ -83,13 +100,21 @@ def main():
         st.pyplot(fig)
 
 
-def _pymedphys_wlutz_calculate(resolved_path, bb_diameter, edge_lengths, penumbra):
-    img = read_image(resolved_path)
-    x, y, img = iview.iview_image_transform(img)
-    field = imginterp.create_interpolated_field(x, y, img)
-    initial_centre = findfield.get_centre_of_mass(x, y, img)
-    (field_centre, field_rotation) = findfield.field_centre_and_rotation_refining(
+def _get_field_parameters(raw_image, edge_lengths, penumbra):
+    x, y, image = iview.iview_image_transform(raw_image)
+    field = imginterp.create_interpolated_field(x, y, image)
+    initial_centre = findfield.get_centre_of_mass(x, y, image)
+    field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
         field, edge_lengths, penumbra, initial_centre
+    )
+
+    return x, y, image, field, field_centre, field_rotation
+
+
+def _pymedphys_wlutz_calculate(resolved_path, bb_diameter, edge_lengths, penumbra):
+    raw_image = read_image(resolved_path)
+    x, y, image, field, field_centre, field_rotation = _get_field_parameters(
+        raw_image, edge_lengths, penumbra
     )
 
     bb_centre = findbb.optimise_bb_centre(
@@ -98,7 +123,7 @@ def _pymedphys_wlutz_calculate(resolved_path, bb_diameter, edge_lengths, penumbr
     fig, _ = reporting.image_analysis_figure(
         x,
         y,
-        img,
+        image,
         bb_centre,
         field_centre,
         field_rotation,
@@ -108,3 +133,42 @@ def _pymedphys_wlutz_calculate(resolved_path, bb_diameter, edge_lengths, penumbr
     )
 
     return field_centre, field_rotation, bb_centre, fig
+
+
+def _pylinac_wlutz_calculate(resolved_path, edge_lengths, penumbra):
+    raw_image = read_image(resolved_path)
+    (
+        x,
+        y,
+        image,
+        field,
+        pymedphys_field_centre,
+        pymedphys_field_rotation,
+    ) = _get_field_parameters(raw_image, edge_lengths, penumbra)
+
+    version_to_use = pylinac.__version__
+    pylinac_results = pmp_pylinac_api.run_wlutz(
+        field,
+        edge_lengths,
+        penumbra,
+        pymedphys_field_centre,
+        pymedphys_field_rotation,
+        find_bb=True,
+        interpolated_pixel_size=0.05,
+        pylinac_versions=[version_to_use],
+    )
+
+    field_centre = pylinac_results[version_to_use]["field_centre"]
+    bb_centre = pylinac_results[version_to_use]["bb_centre"]
+
+    fig, _ = reporting.image_analysis_figure(
+        x,
+        y,
+        image,
+        bb_centre,
+        field_centre,
+        pymedphys_field_rotation,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+    )
