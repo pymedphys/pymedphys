@@ -13,19 +13,22 @@
 # limitations under the License.
 
 
-"""This is a streamlit app. To run this on your machine first install
-the requirements:
-
-    pip install -r requirements.txt
-
-Then you can start this app by running:
-
-    streamlit run app.py
-"""
+import pymedphys
+from pymedphys._trf.manage import identify
 
 
-from pymedphys._app import main
+def test_date_convert_parity():
+    """Verify that using pandas instead of dateutil achieves the same end
+    """
+    path = pymedphys.data_path("negative-metersetmap.trf")
+    header, _ = pymedphys.trf.read(path)
 
+    utc_date = header["date"][0]
+    timezone = "Australia/Sydney"
 
-if __name__ == "__main__":
-    main()
+    dateutil_version = identify._date_convert_using_dateutil(  # pylint: disable = protected-access
+        utc_date, timezone
+    )
+    pandas_version = identify.date_convert(utc_date, timezone)
+
+    assert dateutil_version == pandas_version

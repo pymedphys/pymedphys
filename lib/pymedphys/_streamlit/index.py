@@ -15,7 +15,7 @@
 import pathlib
 import time
 
-import streamlit as st
+from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.apps import anonymise_monaco as _anonymise_monaco
 from pymedphys._streamlit.apps import dashboard as _dashboard
@@ -28,6 +28,7 @@ from pymedphys._streamlit.utilities import session
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
+TITLE_LOGO = str(HERE.joinpath("pymedphys-title.png"))
 
 APPLICATION_CATEGORIES = {
     "mature": {
@@ -113,8 +114,6 @@ APPLICATION_OPTIONS = {
     },
 }
 
-st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
-
 
 def get_url_app():
     try:
@@ -123,11 +122,10 @@ def get_url_app():
         return "index"
 
 
-session_state = session.session_state(app=get_url_app())
-
-
 def swap_app(app):
     st.experimental_set_query_params(app=app)
+
+    session_state = session.session_state()
     session_state.app = app
 
     # Not sure why this is needed. The `set_query_params` doesn't
@@ -173,6 +171,9 @@ def index():
 
 
 def main():
+    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
+    session_state = session.session_state(app=get_url_app())
+
     if (
         session_state.app != "index"
         and not session_state.app in APPLICATION_OPTIONS.keys()

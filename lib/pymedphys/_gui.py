@@ -38,9 +38,12 @@ def fill_streamlit_credentials():
 
 
 def main(_):
+    """Boot up the pymedphys GUI
+
+    """
     fill_streamlit_credentials()
 
-    streamlit_script_path = str(STREAMLIT_CONTENT_DIR.joinpath("index.py"))
+    streamlit_script_path = str(HERE.joinpath("_app.py"))
 
     # This direct private call is undergone so as to guarantee that the
     # same Python that called ``pymedphys gui`` is the same Python that
