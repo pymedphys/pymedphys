@@ -108,7 +108,6 @@ def main():
     results = pd.DataFrame.from_dict(results_data)
     st.write(results)
 
-    # if st.button("Calculate"):
     if show_figures:
         wlutz_input_parameters = _get_wlutz_input_parameters(
             resolved_path, bb_diameter, edge_lengths, penumbra
@@ -127,9 +126,7 @@ def main():
 
 
 def _get_wlutz_input_parameters(image_path, bb_diameter, edge_lengths, penumbra):
-    raw_image = read_image(image_path)
-
-    field_parameters = _get_field_parameters(raw_image, edge_lengths, penumbra)
+    field_parameters = _get_field_parameters(image_path, edge_lengths, penumbra)
     wlutz_input_parameters = {
         "bb_diameter": bb_diameter,
         "edge_lengths": edge_lengths,
@@ -219,12 +216,29 @@ ALGORITHM_FUNCTION_MAP = {
 }
 
 
-def _get_field_parameters(raw_image, edge_lengths, penumbra):
-    x, y, image = iview.iview_image_transform(raw_image)
-    field = imginterp.create_interpolated_field(x, y, image)
+@st.cache
+def _get_pymedphys_field_centre_and_rotation(image_path, edge_lengths, penumbra):
+    x, y, image, field = _load_image_field_interpolator(image_path)
     initial_centre = findfield.get_centre_of_mass(x, y, image)
     field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
         field, edge_lengths, penumbra, initial_centre, pylinac_tol=None
+    )
+
+    return field_centre, field_rotation
+
+
+def _load_image_field_interpolator(image_path):
+    raw_image = read_image(image_path)
+    x, y, image = iview.iview_image_transform(raw_image)
+    field = imginterp.create_interpolated_field(x, y, image)
+
+    return x, y, image, field
+
+
+def _get_field_parameters(image_path, edge_lengths, penumbra):
+    x, y, image, field = _load_image_field_interpolator(image_path)
+    field_centre, field_rotation = _get_pymedphys_field_centre_and_rotation(
+        image_path, edge_lengths, penumbra
     )
 
     return {
