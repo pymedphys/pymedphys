@@ -16,6 +16,7 @@ import json
 import pathlib
 import re
 import subprocess
+import tarfile
 import textwrap
 
 from pymedphys._imports import black, tomlkit
@@ -58,6 +59,12 @@ def propagate_all(_):
     propagate_readme()
     propagate_changelog()
 
+    # Propegate setup.py last as this has the side effect of building
+    # a distribution file. Want to make sure that this distribution
+    # file includes the above propagations in case someone decides to
+    # use it.
+    propagate_setup()
+
 
 def read_pyproject():
     with open(PYPROJECT_TOML_PATH) as f:
@@ -97,6 +104,32 @@ def propagate_version():
 
     with open(VERSION_PATH, "w") as f:
         f.write(version_contents)
+
+
+def propagate_setup():
+    subprocess.check_call("poetry build -f sdist", cwd=REPO_ROOT, shell=True)
+
+    version_string = get_version_string()
+    version_dots_only = version_string.replace("-", ".")
+
+    filename = f"pymedphys-{version_dots_only}.tar.gz"
+    filepath = DIST_DIR.joinpath(filename)
+
+    with tarfile.open(filepath, "r:gz") as tar:
+        f = tar.extractfile(f"pymedphys-{version_dots_only}/setup.py")
+        setup_contents = f.read().decode()
+
+    setup_contents_list = setup_contents.split("\n")
+    setup_contents_list.insert(1, f"\n{AUTOGEN_MESSAGE[0]}")
+    setup_contents_list.insert(2, f"{AUTOGEN_MESSAGE[1]}\n")
+    setup_contents = "\n".join(setup_contents_list)
+
+    setup_contents = black.format_str(setup_contents, mode=black.FileMode())
+
+    setup_contents = setup_contents.encode("utf-8")
+
+    with open(SETUP_PY, "bw") as f:
+        f.write(setup_contents)
 
 
 def copy_file_with_autogen_message(
@@ -140,14 +173,14 @@ def propagate_requirements():
         shell=True,
     )
     with open(REQUIREMENTS_TXT, "a") as f:
-        f.write(".[user,docs]\n")
+        f.write("-e .[user,docs]\n")
 
     subprocess.check_call(
         "poetry export --without-hashes -E dev -f requirements.txt --output requirements-dev.txt",
         shell=True,
     )
     with open(REQUIREMENTS_DEV_TXT, "a") as f:
-        f.write(".[dev]\n")
+        f.write("-e .[dev]\n")
 
     # TODO: Once the hashes pinning issue in poetry is fixed, remove the
     # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
