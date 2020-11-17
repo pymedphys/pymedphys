@@ -54,7 +54,7 @@ def image_analysis_figure(
     else:
         x_bb_interp, y_bb_interp = None, None
 
-    fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(12, 15))
+    fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(9, 12))
     gs = axs[0, 0].get_gridspec()
     for ax in np.ravel(axs[0:2, 0:2]):
         ax.remove()
