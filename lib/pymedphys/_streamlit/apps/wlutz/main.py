@@ -101,20 +101,20 @@ def main():
         for algorithm in selected_algorithms:
             st.write(algorithm)
             calculate_function = algorithm_function_map[algorithm]
-            fig = _calculate_and_create_figure(
+            fig, axs = _calculate_and_create_figure(
                 calculate_function, wlutz_input_parameters
             )
 
-            fig.set_title(algorithm)
+            axs[0, 0].set_title(algorithm)
             st.pyplot(fig)
 
 
 def _calculate_and_create_figure(calculate_function, wlutz_input_parameters):
     field_centre, bb_centre = calculate_function(**wlutz_input_parameters)
 
-    fig, _ = reporting.image_analysis_figure(
+    fig, axs = reporting.image_analysis_figure(
         wlutz_input_parameters["x"],
-        wlutz_input_parameters["x"],
+        wlutz_input_parameters["y"],
         wlutz_input_parameters["image"],
         bb_centre,
         field_centre,
@@ -124,7 +124,7 @@ def _calculate_and_create_figure(calculate_function, wlutz_input_parameters):
         wlutz_input_parameters["penumbra"],
     )
 
-    return fig
+    return fig, axs
 
 
 def _get_field_parameters(raw_image, edge_lengths, penumbra):
@@ -132,7 +132,7 @@ def _get_field_parameters(raw_image, edge_lengths, penumbra):
     field = imginterp.create_interpolated_field(x, y, image)
     initial_centre = findfield.get_centre_of_mass(x, y, image)
     field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre
+        field, edge_lengths, penumbra, initial_centre, pylinac_tol=None
     )
 
     return {
@@ -157,7 +157,13 @@ def _pymedphys_wlutz_calculate(
     field_centre = pymedphys_field_centre
 
     bb_centre = findbb.optimise_bb_centre(
-        field, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
+        field,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+        field_centre,
+        field_rotation,
+        pylinac_tol=None,
     )
 
     return field_centre, bb_centre
