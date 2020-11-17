@@ -18,9 +18,8 @@ from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
 from pymedphys._streamlit.apps.wlutz import _dbf, _filtering, _frames
-
-# from pymedphys._wlutz import findbb, findfield, imginterp, iview, reporting
 from pymedphys._streamlit.utilities import misc
+from pymedphys._wlutz import findbb, findfield, imginterp, iview, reporting
 
 
 @st.cache()
@@ -62,57 +61,50 @@ def main():
     resolved_path = database_directory.joinpath(selected_filepath)
     st.write(resolved_path)
 
-    fig, ax = plt.subplots()
-    ax.imshow(read_image(resolved_path))
-    st.pyplot(fig)
+    st.sidebar.write("## Parameters")
 
-    # # st.write(files)
-    # sorted_files = sorted(files, key=get_modified_time, reverse=True)
-    # image_path = st.selectbox("Image to select", options=sorted_files[0:10])
+    width = st.sidebar.number_input("Width (mm)", 20)
+    length = st.sidebar.number_input("Length (mm)", 24)
+    edge_lengths = [width, length]
 
-    # st.write("## Parameters")
+    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
+    penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
-    # width = st.number_input("Width (mm)", 20)
-    # length = st.number_input("Length (mm)", 24)
-    # edge_lengths = [width, length]
+    if st.button("Show Image"):
+        fig, ax = plt.subplots()
+        ax.imshow(read_image(resolved_path))
+        st.pyplot(fig)
 
-    # # initial_rotation = 0
-    # bb_diameter = st.number_input("BB Diameter (mm)", 8)
-    # penumbra = st.number_input("Penumbra (mm)", 2)
+    if st.button("Calculate"):
+        field_centre, field_rotation, bb_centre, fig = _pymedphys_wlutz_calculate(
+            resolved_path, bb_diameter, edge_lengths, penumbra
+        )
 
-    # # files = sorted(IMAGES_DIR.glob("*.jpg"), key=lambda t: -os.stat(t).st_mtime)
-    # # most_recent = files[0:5]
+        st.pyplot(fig)
 
-    # # most_recent
 
-    # if st.button("Show Image"):
-    #     fig = plt.figure()
-    #     fig.imshow(read_image(image_path))
-    #     st.pyplot(fig)
+def _pymedphys_wlutz_calculate(resolved_path, bb_diameter, edge_lengths, penumbra):
+    img = read_image(resolved_path)
+    x, y, img = iview.iview_image_transform(img)
+    field = imginterp.create_interpolated_field(x, y, img)
+    initial_centre = findfield.get_centre_of_mass(x, y, img)
+    (field_centre, field_rotation) = findfield.field_centre_and_rotation_refining(
+        field, edge_lengths, penumbra, initial_centre
+    )
 
-    # if st.button("Calculate"):
-    #     img = read_image(image_path)
-    #     x, y, img = iview.iview_image_transform(img)
-    #     field = imginterp.create_interpolated_field(x, y, img)
-    #     initial_centre = findfield.get_centre_of_mass(x, y, img)
-    #     (field_centre, field_rotation) = findfield.field_centre_and_rotation_refining(
-    #         field, edge_lengths, penumbra, initial_centre, fixed_rotation=0
-    #     )
+    bb_centre = findbb.optimise_bb_centre(
+        field, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
+    )
+    fig, _ = reporting.image_analysis_figure(
+        x,
+        y,
+        img,
+        bb_centre,
+        field_centre,
+        field_rotation,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+    )
 
-    #     bb_centre = findbb.optimise_bb_centre(
-    #         field, bb_diameter, edge_lengths, penumbra, field_centre, field_rotation
-    #     )
-    #     fig = reporting.image_analysis_figure(
-    #         x,
-    #         y,
-    #         img,
-    #         bb_centre,
-    #         field_centre,
-    #         field_rotation,
-    #         bb_diameter,
-    #         edge_lengths,
-    #         penumbra,
-    #     )
-
-    #     st.write(fig)
-    #     st.pyplot()
+    return field_centre, field_rotation, bb_centre, fig
