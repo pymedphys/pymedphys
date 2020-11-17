@@ -254,6 +254,7 @@ def _pylinac_wlutz_calculate(
         find_bb=True,
         interpolated_pixel_size=0.05,
         pylinac_versions=[version_to_use],
+        fill_errors_with_nan=True,
     )
 
     field_centre = pylinac_results[version_to_use]["field_centre"]

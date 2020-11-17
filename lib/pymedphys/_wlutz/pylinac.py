@@ -33,6 +33,7 @@ def run_wlutz(
     find_bb=True,
     interpolated_pixel_size=0.05,
     pylinac_versions=None,
+    fill_errors_with_nan=False,
 ):
     VERSION_TO_CLASS_MAP = _pylinac_wlutz.VERSION_TO_CLASS_MAP
 
@@ -67,6 +68,7 @@ def run_wlutz(
             field_centre,
             field_rotation,
             find_bb=find_bb,
+            fill_errors_with_nan=fill_errors_with_nan,
         )
         results[key] = {
             "field_centre": pylinac_field_centre,
@@ -78,34 +80,51 @@ def run_wlutz(
 
 def run_pylinac_with_class(
     class_to_use,
-    centralised_image,
+    interpolated_image,
     interpolated_pixel_size,
     half_x_range,
     half_y_range,
-    field_centre,
-    field_rotation,
+    field_centre_for_interpolation,
+    field_rotation_for_interpolation,
     find_bb=True,
+    fill_errors_with_nan=False,
 ):
-    wl_image = class_to_use(centralised_image)
-    centralised_pylinac_field_centre = [
+    wl_image = class_to_use(interpolated_image)
+    interpolated_image_field_centre = [
         wl_image.field_cax.x * interpolated_pixel_size - half_x_range,
         wl_image.field_cax.y * interpolated_pixel_size - half_y_range,
     ]
 
-    field_centre = _utilities.transform_point(
-        centralised_pylinac_field_centre, field_centre, field_rotation
-    )
+    try:
+        field_centre = _utilities.transform_point(
+            interpolated_image_field_centre,
+            field_centre_for_interpolation,
+            field_rotation_for_interpolation,
+        )
+    except ValueError:
+        if fill_errors_with_nan:
+            field_centre = [np.nan, np.nan]
+        else:
+            raise
 
     if find_bb:
-        centralised_pylinac_bb_centre = [
-            wl_image.bb.x * interpolated_pixel_size - half_x_range,
-            wl_image.bb.y * interpolated_pixel_size - half_y_range,
-        ]
+        try:
+            interpolated_image_bb_centre = [
+                wl_image.bb.x * interpolated_pixel_size - half_x_range,
+                wl_image.bb.y * interpolated_pixel_size - half_y_range,
+            ]
 
-        bb_centre = _utilities.transform_point(
-            centralised_pylinac_bb_centre, field_centre, field_rotation
-        )
+            bb_centre = _utilities.transform_point(
+                interpolated_image_bb_centre,
+                field_centre_for_interpolation,
+                field_rotation_for_interpolation,
+            )
+        except ValueError:
+            if fill_errors_with_nan:
+                bb_centre = [np.nan, np.nan]
+            else:
+                raise
     else:
-        bb_centre = [None, None]
+        bb_centre = [np.nan, np.nan]
 
     return field_centre, bb_centre
