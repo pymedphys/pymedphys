@@ -25,7 +25,6 @@ from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
 
 
-@st.cache()
 def read_image(path):
     return lljpeg.imread(path)
 
