@@ -100,8 +100,7 @@ def main():
             selected_algorithms,
         )
 
-    # if st.button("Calculate"):
-    if True:
+    if st.button("Calculate"):
         collated_results = pd.DataFrame()
 
         for relative_image_path in table["filepath"]:
