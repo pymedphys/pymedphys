@@ -33,6 +33,15 @@ def read_image(path):
 def main():
     st.title("Winston-Lutz Arc")
 
+    st.sidebar.write("## Parameters")
+
+    width = st.sidebar.number_input("Width (mm)", 20)
+    length = st.sidebar.number_input("Length (mm)", 24)
+    edge_lengths = [width, length]
+
+    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
+    penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
+
     _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
 
     st.write("## Load iView databases for a given date")
@@ -59,70 +68,111 @@ def main():
 
     st.write(table)
 
-    selected_filepath = st.selectbox("Select single filepath", table["filepath"])
-
-    resolved_path = database_directory.joinpath(selected_filepath)
-    st.write(resolved_path)
-
-    st.sidebar.write("## Parameters")
-
-    width = st.sidebar.number_input("Width (mm)", 20)
-    length = st.sidebar.number_input("Length (mm)", 24)
-    edge_lengths = [width, length]
-
-    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
-    penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
-
-    if st.button("Show Image"):
-        fig, ax = plt.subplots()
-        ax.imshow(read_image(resolved_path))
-        st.pyplot(fig)
-
     algorithm_options = ["PyMedPhys", "PyLinac"]
     selected_algorithms = st.multiselect(
         "Algorithms to run", algorithm_options, algorithm_options
     )
 
-    show_figures = st.checkbox("Show figures", True)
+    show_selected_image = st.checkbox(
+        "Select a single image to show results for", False
+    )
+
+    if show_selected_image:
+        relative_image_path = st.selectbox("Select single filepath", table["filepath"])
+
+        results = _get_results_for_image(
+            database_directory,
+            relative_image_path,
+            selected_algorithms,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
+        )
+
+        st.write(results)
+
+        _plot_diagnostic_figures(
+            database_directory,
+            relative_image_path,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
+            selected_algorithms,
+        )
+
+    if st.button("Calculate"):
+        for relative_image_path in table["filepath"]:
+            results = _get_results_for_image(
+                database_directory,
+                relative_image_path,
+                selected_algorithms,
+                bb_diameter,
+                edge_lengths,
+                penumbra,
+            )
+
+
+def _plot_diagnostic_figures(
+    database_directory,
+    relative_image_path,
+    bb_diameter,
+    edge_lengths,
+    penumbra,
+    selected_algorithms,
+):
+    full_image_path = _get_full_image_path(database_directory, relative_image_path)
+    wlutz_input_parameters = _get_wlutz_input_parameters(
+        full_image_path, bb_diameter, edge_lengths, penumbra
+    )
+
+    for algorithm in selected_algorithms:
+        field_centre, _, bb_centre = _calculate_wlutz(
+            full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
+        )
+
+        fig, axs = _create_figure(field_centre, bb_centre, wlutz_input_parameters)
+        axs[0, 0].set_title(algorithm)
+        st.pyplot(fig)
+
+
+def _get_full_image_path(database_directory, relative_image_path):
+    return database_directory.joinpath(relative_image_path)
+
+
+def _get_results_for_image(
+    database_directory,
+    relative_image_path,
+    selected_algorithms,
+    bb_diameter,
+    edge_lengths,
+    penumbra,
+):
+    full_image_path = _get_full_image_path(database_directory, relative_image_path)
 
     results_data = []
 
     for algorithm in selected_algorithms:
 
-        field_centre, bb_centre = _calculate_wlutz(
-            resolved_path, algorithm, bb_diameter, edge_lengths, penumbra
+        field_centre, field_rotation, bb_centre = _calculate_wlutz(
+            full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
         )
         results_data.append(
             {
-                "filepath": selected_filepath,
+                "filepath": relative_image_path,
                 "algorithm": algorithm,
                 "diff_x": field_centre[0] - bb_centre[0],
                 "diff_y": field_centre[1] - bb_centre[1],
                 "field_centre_x": field_centre[0],
                 "field_centre_y": field_centre[1],
+                "field_rotation": field_rotation,
                 "bb_centre_x": bb_centre[0],
                 "bb_centre_y": bb_centre[1],
             }
         )
 
     results = pd.DataFrame.from_dict(results_data)
-    st.write(results)
 
-    if show_figures:
-        wlutz_input_parameters = _get_wlutz_input_parameters(
-            resolved_path, bb_diameter, edge_lengths, penumbra
-        )
-
-        for algorithm in selected_algorithms:
-            st.write(algorithm)
-
-            field_centre, bb_centre = _calculate_wlutz(
-                resolved_path, algorithm, bb_diameter, edge_lengths, penumbra
-            )
-
-            fig, axs = _create_figure(field_centre, bb_centre, wlutz_input_parameters)
-            axs[0, 0].set_title(algorithm)
-            st.pyplot(fig)
+    return results
 
 
 def _get_wlutz_input_parameters(image_path, bb_diameter, edge_lengths, penumbra):
@@ -160,9 +210,11 @@ def _calculate_wlutz(image_path, algorithm, bb_diameter, edge_lengths, penumbra)
     )
 
     calculate_function = ALGORITHM_FUNCTION_MAP[algorithm]
-    field_centre, bb_centre = calculate_function(**wlutz_input_parameters)
+    field_centre, field_rotation, bb_centre = calculate_function(
+        **wlutz_input_parameters
+    )
 
-    return field_centre, bb_centre
+    return field_centre, field_rotation, bb_centre
 
 
 def _pymedphys_wlutz_calculate(
@@ -186,7 +238,7 @@ def _pymedphys_wlutz_calculate(
         pylinac_tol=None,
     )
 
-    return field_centre, bb_centre
+    return field_centre, field_rotation, bb_centre
 
 
 def _pylinac_wlutz_calculate(
@@ -207,7 +259,7 @@ def _pylinac_wlutz_calculate(
     field_centre = pylinac_results[version_to_use]["field_centre"]
     bb_centre = pylinac_results[version_to_use]["bb_centre"]
 
-    return field_centre, bb_centre
+    return field_centre, field_rotation, bb_centre
 
 
 ALGORITHM_FUNCTION_MAP = {
