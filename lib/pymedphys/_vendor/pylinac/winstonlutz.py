@@ -76,6 +76,7 @@ def get_version_to_class_map():
         but for now has not been implemented:
 
             <https://github.com/jrkerns/pylinac/issues/277>
+
         """
 
         def __init__(self, array, *, dpi=None, sid=None, dtype=None):
