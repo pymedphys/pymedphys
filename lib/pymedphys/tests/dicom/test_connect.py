@@ -37,7 +37,7 @@ METHOD_MOCK = Mock()
 
 
 def _build_hierarchical_path_to_plan(
-    storage_path: pathlib.Path, test_dataset: pydicom.dataset.Dataset
+    storage_path: pathlib.Path, test_dataset: "pydicom.dataset.Dataset"
 ) -> pathlib.Path:
     file_path = pathlib.Path(storage_path).joinpath(
         test_dataset.PatientID,

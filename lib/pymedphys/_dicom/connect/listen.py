@@ -104,7 +104,7 @@ class DicomListener(DicomConnectBase):
             self.on_released_callback(self.association_directory)
 
     def _build_hierarchical_path_to_series(
-        self, test_dataset: pydicom.dataset.Dataset
+        self, test_dataset: "pydicom.dataset.Dataset"
     ) -> pathlib.Path:
         series_path = pathlib.Path(self.storage_directory).joinpath(
             test_dataset.PatientID,
