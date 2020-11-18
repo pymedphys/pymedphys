@@ -105,8 +105,8 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental": ["serviceplans/templates/*"],
-    "pymedphys._streamlit": ["apps/data/*"],
+    "pymedphys._experimental.serviceplans": ["templates/*"],
+    "pymedphys._streamlit.apps": ["data/*"],
     "pymedphys.docs": [
         "_static/*",
         "_templates/*",
@@ -122,18 +122,19 @@ package_data = {
         "ref/lib/experimental/*",
         "tutes/*",
     ],
-    "pymedphys.tests": [
-        "dicom/data/rtplan/*",
-        "dicom/scratch/*",
-        "e2e/cypress/*",
-        "e2e/cypress/fixtures/.gitignore",
-        "e2e/cypress/integration/streamlit/*",
-        "e2e/cypress/plugins/*",
-        "e2e/cypress/support/*",
-        "experimental/mephysto/data/baselines/*",
-        "experimental/mephysto/data/measurements/*",
-        "experimental/paulking/film/data/*",
+    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
+    "pymedphys.tests.e2e": [
+        "cypress/*",
+        "cypress/fixtures/.gitignore",
+        "cypress/integration/streamlit/*",
+        "cypress/plugins/*",
+        "cypress/support/*",
     ],
+    "pymedphys.tests.experimental.mephysto": [
+        "data/baselines/*",
+        "data/measurements/*",
+    ],
+    "pymedphys.tests.experimental.paulking.film": ["data/*"],
 }
 
 extras_require = {
