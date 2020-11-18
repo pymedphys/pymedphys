@@ -63,8 +63,10 @@ def propagate_all(args):
 
     if args.copies:
         run_copies = True
+        run_pyproject = False
     elif args.pyproject:
         run_pyproject = True
+        run_copies = False
     else:
         run_copies = True
         run_pyproject = True
@@ -84,13 +86,39 @@ def propagate_all(args):
 
 
 def propagate_file_copies_into_library():
-
-    [
+    files_to_copy = [
         (ROOT_PYLINT, LIBRARY_PYLINT),
         (ROOT_README, DOCS_README),
         (ROOT_CHANGELOG, DOCS_CHANGELOG),
         (ROOT_CONTRIBUTING, DOCS_CONTRIBUTING),
     ]
+
+    for original_path, target_path in files_to_copy:
+        _copy_file_with_autogen_message(original_path, target_path)
+
+
+def _copy_file_with_autogen_message(original_path, target_path):
+    if target_path.suffix == ".md":
+        comment_syntax = ("<!-- ", " -->")
+    elif target_path.suffix == ".rst":
+        comment_syntax = ("..\n    ", "")
+    elif target_path.name == ".pylintrc" or target_path.suffix == ".py":
+        comment_syntax = ("# ", "")
+    else:
+        raise ValueError(f"Invalid file suffix. Suffix was {target_path.suffix}")
+
+    with open(original_path) as f:
+        original_contents = f.read()
+
+    new_autogen = [
+        comment_syntax[0] + original_autogen[2::] + comment_syntax[1]
+        for original_autogen in AUTOGEN_MESSAGE
+    ]
+
+    contents_with_autogen_warning = "\n".join(new_autogen) + "\n\n" + original_contents
+
+    with open(target_path, "w+") as f:
+        f.write(contents_with_autogen_warning)
 
 
 def propagate_lock_requirements_setup_and_hash():
@@ -187,30 +215,6 @@ def _propagate_setup():
 
     with open(SETUP_PY, "bw") as f:
         f.write(setup_contents)
-
-
-def copy_file_with_autogen_message(original_path, target_path):
-    if target_path.suffix == "md":
-        comment_syntax = ("<!-- ", " -->")
-    elif target_path.suffix == "rst":
-        comment_syntax = ("..\n    ", "")
-    elif target_path.suffix == ".pylintrc" or target_path.suffix == ".py":
-        comment_syntax = ("# ", "")
-    else:
-        raise ValueError("Invalid file suffix")
-
-    with open(original_path) as f:
-        original_contents = f.read()
-
-    new_autogen = [
-        comment_syntax[0] + original_autogen[2::] + comment_syntax[1]
-        for original_autogen in AUTOGEN_MESSAGE
-    ]
-
-    contents_with_autogen_warning = "\n".join(new_autogen) + "\n\n" + original_contents
-
-    with open(target_path, "w+") as f:
-        f.write(contents_with_autogen_warning)
 
 
 def _propagate_requirements():
