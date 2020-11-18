@@ -60,13 +60,13 @@ def main():
     st.write("## Loading database image frame data")
 
     try:
-        table = _frames.dbf_frame_based_database(
+        database_table = _frames.dbf_frame_based_database(
             database_directory, refresh_cache, filtered
         )
     except FileNotFoundError:
-        table = _frames.xml_frame_based_database(database_directory, filtered)
+        database_table = _frames.xml_frame_based_database(database_directory, filtered)
 
-    st.write(table)
+    st.write(database_table)
 
     algorithm_options = ["PyMedPhys", "PyLinac"]
     selected_algorithms = st.multiselect(
@@ -101,9 +101,15 @@ def main():
         )
 
     if st.button("Calculate"):
-        collated_results = pd.DataFrame()
+        progress_bar = st.progress(0)
+        status_text = st.empty()
 
-        for relative_image_path in table["filepath"]:
+        collated_results = pd.DataFrame()
+        chart_bucket = {}
+
+        total_files = len(database_table["filepath"])
+
+        for i, relative_image_path in enumerate(database_table["filepath"][::-1]):
             results = _get_results_for_image(
                 database_directory,
                 relative_image_path,
@@ -115,9 +121,29 @@ def main():
 
             collated_results = collated_results.append(results)
 
-        for algorithm in selected_algorithms:
-            st.write(algorithm)
-            _plot_algorithm_by_time(collated_results, table, algorithm)
+            working_table = results.merge(
+                database_table, left_on="filepath", right_on="filepath"
+            )[["datetime", "diff_x", "diff_y", "algorithm"]]
+            working_table.set_index("datetime", inplace=True)
+
+            for algorithm in selected_algorithms:
+                working_table_for_algorithm = working_table.loc[
+                    working_table["algorithm"] == algorithm
+                ]
+                working_table_for_algorithm.drop("algorithm", axis=1, inplace=True)
+
+                try:
+                    chart_bucket[algorithm].add_rows(working_table_for_algorithm)
+                except KeyError:
+                    st.write(f"### {algorithm}")
+                    line_chart = st.line_chart(working_table_for_algorithm)
+                    chart_bucket[algorithm] = line_chart
+
+            ratio_complete = (i + 1) / total_files
+            progress_bar.progress(ratio_complete)
+
+            percent_complete = round(ratio_complete * 100, 2)
+            status_text.text(f"{percent_complete}% Complete")
 
 
 def _plot_algorithm_by_time(diff_table, database_table, algorithm):
@@ -248,7 +274,7 @@ def _pymedphys_wlutz_calculate(
     penumbra,
     pymedphys_field_centre,
     field_rotation,
-    **_
+    **_,
 ):
     field_centre = pymedphys_field_centre
 
