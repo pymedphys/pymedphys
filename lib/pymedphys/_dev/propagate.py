@@ -107,6 +107,15 @@ def propagate_version():
 
 
 def propagate_setup():
+    """Utilises Poetry sdist build to place a ``setup.py`` file at the root
+    of the repository.
+
+    Note
+    ----
+    This is needed so that the ``requirements.txt`` file can have an editable
+    install of PyMedPhys.
+    """
+
     subprocess.check_call("poetry build -f sdist", cwd=REPO_ROOT, shell=True)
 
     version_string = get_version_string()
@@ -162,6 +171,9 @@ def propagate_changelog():
 
 
 def propagate_requirements():
+    """Propagates requirement files for use without Poetry.
+    """
+
     subprocess.check_call("poetry update pymedphys", shell=True)
 
     # The docs are included within ``requirements.txt`` due to netlify
@@ -172,6 +184,12 @@ def propagate_requirements():
         "poetry export --without-hashes -E docs -E user -f requirements.txt --output requirements.txt",
         shell=True,
     )
+
+    # The editable install `-e` is used here so that https://app.pymedphys.com
+    # is always utilising the latest pymedphys build on main without needing
+    # a server rebuild. It also means that should a user edit the git repo
+    # they will be utilising their edits within their environment as opposed
+    # to what was originally installed.
     with open(REQUIREMENTS_TXT, "a") as f:
         f.write("-e .[user,docs]\n")
 
