@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import plt, pylinac
 from pymedphys._imports import streamlit as st
@@ -227,10 +228,15 @@ def _calculate_wlutz(image_path, algorithm, bb_diameter, edge_lengths, penumbra)
         image_path, bb_diameter, edge_lengths, penumbra
     )
 
-    calculate_function = ALGORITHM_FUNCTION_MAP[algorithm]
-    field_centre, field_rotation, bb_centre = calculate_function(
-        **wlutz_input_parameters
-    )
+    if wlutz_input_parameters["field_rotation"] == np.nan:
+        field_centre = [np.nan, np.nan]
+        field_rotation = np.nan
+        bb_centre = [np.nan, np.nan]
+    else:
+        calculate_function = ALGORITHM_FUNCTION_MAP[algorithm]
+        field_centre, field_rotation, bb_centre = calculate_function(
+            **wlutz_input_parameters
+        )
 
     return field_centre, field_rotation, bb_centre
 
@@ -263,20 +269,26 @@ def _pylinac_wlutz_calculate(
     field, edge_lengths, penumbra, pymedphys_field_centre, field_rotation, **_
 ):
     version_to_use = pylinac.__version__
-    pylinac_results = pmp_pylinac_api.run_wlutz(
-        field,
-        edge_lengths,
-        penumbra,
-        pymedphys_field_centre,
-        field_rotation,
-        find_bb=True,
-        interpolated_pixel_size=0.05,
-        pylinac_versions=[version_to_use],
-        fill_errors_with_nan=True,
-    )
 
-    field_centre = pylinac_results[version_to_use]["field_centre"]
-    bb_centre = pylinac_results[version_to_use]["bb_centre"]
+    try:
+        pylinac_results = pmp_pylinac_api.run_wlutz(
+            field,
+            edge_lengths,
+            penumbra,
+            pymedphys_field_centre,
+            field_rotation,
+            find_bb=True,
+            interpolated_pixel_size=0.05,
+            pylinac_versions=[version_to_use],
+            fill_errors_with_nan=True,
+        )
+
+        field_centre = pylinac_results[version_to_use]["field_centre"]
+        bb_centre = pylinac_results[version_to_use]["bb_centre"]
+
+    except ValueError:
+        field_centre = [np.nan, np.nan]
+        bb_centre = [np.nan, np.nan]
 
     return field_centre, field_rotation, bb_centre
 
@@ -291,9 +303,14 @@ ALGORITHM_FUNCTION_MAP = {
 def _get_pymedphys_field_centre_and_rotation(image_path, edge_lengths, penumbra):
     x, y, image, field = _load_image_field_interpolator(image_path)
     initial_centre = findfield.get_centre_of_mass(x, y, image)
-    field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre, pylinac_tol=None
-    )
+
+    try:
+        field_centre, field_rotation = findfield.field_centre_and_rotation_refining(
+            field, edge_lengths, penumbra, initial_centre, pylinac_tol=None
+        )
+    except ValueError:
+        field_centre = [np.nan, np.nan]
+        field_rotation = np.nan
 
     return field_centre, field_rotation
 
