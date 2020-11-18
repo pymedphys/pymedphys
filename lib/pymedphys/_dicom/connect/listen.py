@@ -1,4 +1,5 @@
 # Copyright (C) 2020 University of New South Wales & Ingham Institute
+# Copyright (C) 2020 Stuart Swerdloff and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +14,6 @@
 # limitations under the License.
 
 import logging
-import os
 import pathlib
 import signal
 import sys
@@ -24,6 +24,15 @@ from pymedphys._imports import pydicom, pynetdicom
 
 from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
+
+
+def hierarchical_dicom_storage_directory(
+    storage_directory, ds: "pydicom.dataset.Dataset"
+) -> pathlib.Path:
+    series_path = pathlib.Path(storage_directory).joinpath(
+        ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID
+    )
+    return series_path
 
 
 class DicomListener(DicomConnectBase):
@@ -103,16 +112,6 @@ class DicomListener(DicomConnectBase):
         if self.on_released_callback:
             self.on_released_callback(self.association_directory)
 
-    def _build_hierarchical_path_to_series(
-        self, test_dataset: "pydicom.dataset.Dataset"
-    ) -> pathlib.Path:
-        series_path = pathlib.Path(self.storage_directory).joinpath(
-            test_dataset.PatientID,
-            test_dataset.StudyInstanceUID,
-            test_dataset.SeriesInstanceUID,
-        )
-        return series_path
-
     def on_c_store(self, event):
 
         dataset = event.dataset
@@ -122,8 +121,10 @@ class DicomListener(DicomConnectBase):
         except KeyError:
             mode_prefix = "UN"
 
-        series_dir = self._build_hierarchical_path_to_series(dataset)
-        os.makedirs(series_dir, exist_ok=True)
+        series_dir = hierarchical_dicom_storage_directory(
+            self.storage_directory, dataset
+        )
+        series_dir.mkdir(parents=True, exist_ok=True)
         self.association_directory = series_dir
 
         filename = pathlib.Path(
