@@ -315,7 +315,7 @@ jobs:
 
         git config --local user.email "propagate-bot@pymedphys.com"
         git config --local user.name "PyMedPhys Propagate Bot"
-        git add poetry.lock
+        git add poetry.lock setup.py
         git commit -m "dummy commit"
 
         git status

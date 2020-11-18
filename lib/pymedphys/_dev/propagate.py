@@ -24,6 +24,9 @@ from pymedphys._imports import black, tomlkit
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
 
+POETRY_LOCK_PATH = REPO_ROOT.joinpath("poetry.lock")
+PYPROJECT_TOML_HASH_PATH = REPO_ROOT.joinpath("pyproject.hash")
+
 LIBRARY_PATH = REPO_ROOT.joinpath("lib", "pymedphys")
 DOCS_PATH = LIBRARY_PATH.joinpath("docs")
 
@@ -54,16 +57,36 @@ AUTOGEN_MESSAGE = [
 def propagate_all(_):
     propagate_version()
     propagate_extras()
-    propagate_requirements()
     propagate_pylintrc()
     propagate_readme()
     propagate_changelog()
 
-    # Propegate setup.py last as this has the side effect of building
+    # Propagation of setup.py last as this has the side effect of building
     # a distribution file. Want to make sure that this distribution
     # file includes the above propagations in case someone decides to
     # use it.
-    propagate_setup()
+    propagate_lock_requirements_setup_and_hash()
+
+
+def propagate_lock_requirements_setup_and_hash():
+    """Propagate poetry.lock, requirements.txt, setup.py, and pyproject.hash
+
+    Order here is important. Lock file propagation from pyproject.toml is needed
+    to create an up to date requirements. Setup.py creation and poetry.lock file
+    creation are non-deterministic via OS, so the hash propagation is undergone
+    last to verify that this step has been run to its completion for the
+    given pyproject.toml file.
+
+    """
+
+    _update_poetry_lock()
+    _propagate_requirements()
+    _propagate_setup()
+    _propagate_pyproject_hash()
+
+
+def _update_poetry_lock():
+    subprocess.check_call("poetry update pymedphys", shell=True)
 
 
 def read_pyproject():
@@ -106,7 +129,7 @@ def propagate_version():
         f.write(version_contents)
 
 
-def propagate_setup():
+def _propagate_setup():
     """Utilises Poetry sdist build to place a ``setup.py`` file at the root
     of the repository.
 
@@ -170,12 +193,9 @@ def propagate_changelog():
     copy_file_with_autogen_message(ROOT_CHANGELOG, DOCS_CHANGELOG, ("<!-- ", " -->"))
 
 
-def propagate_requirements():
+def _propagate_requirements():
     """Propagates requirement files for use without Poetry.
     """
-
-    subprocess.check_call("poetry update pymedphys", shell=True)
-
     # The docs are included within ``requirements.txt`` due to netlify
     # reading this file and spinning it up. The few extra dependencies
     # for users who choose to go this route isn't such a bad trade off
@@ -236,3 +256,16 @@ def propagate_extras():
 
         with open(PYPROJECT_TOML_PATH, "w") as f:
             f.write(tomlkit.dumps(pyproject_contents))
+
+
+def _propagate_pyproject_hash():
+    """Store the pyproject content hash metadata for verification of propagation.
+    """
+
+    with open(POETRY_LOCK_PATH) as f:
+        poetry_lock_contents = tomlkit.loads(f.read())
+
+    content_hash = poetry_lock_contents["metadata"]["content-hash"]
+
+    with open(PYPROJECT_TOML_HASH_PATH, "w") as f:
+        f.write(f"{content_hash}\n")
