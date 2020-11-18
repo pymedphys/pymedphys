@@ -5,7 +5,7 @@
 ..
     Please instead edit the file found at:
 ..
-        lib/pymedphys/docs/README.rst
+        lib\pymedphys\docs\README.rst
 ..
     and then run `pymedphys dev propagate --copies`
 
