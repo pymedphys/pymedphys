@@ -54,29 +54,82 @@ where you're from, and what you hope to achieve with PyMedPhys.
 .. _`the mailing list`: https://groups.google.com/g/pymedphys
 
 
-Table of contents
------------------
+Documentation For Users
+-----------------------
+
+Absolute Beginners Tutorial
+...........................
+
+Start here if you are new to Python and would like an in-depth instruction on
+how to get started.
+
+Quickstart Tutorial
+...................
+
+Start here if you are fluent in Python and just want a quick instruction on how
+to get started.
 
 `Tutorials`_
-........................
+............
 
-Get started with a hands-on introduction to PyMedPhys for beginners
+A range of lessons that take you through various complete projects with the
+intent to be able to show you what can be achieved with writing PyMedPhys based
+Python software yourself.
+
+These are aimed at you if you don't yet know what you can achieve with
+PyMedPhys but you would like to learn.
 
 `How-To guides`_
-........................
+................
 
-Guides and recipes for common problems and tasks
+Guides and recipes for common problems and tasks. These are aimed for you if
+you already know how to use Python and PyMedPhys and are looking for direction
+on a specific task you are trying to solve.
 
 `Reference`_
-............................
+............
 
 Technical reference for the `library`_ (modules, functions and classes),
-as well as the available `command line tools`_.
+as well as the available `command line tools`_. This is where you will find
+listed information for the exposed functionality of PyMedPhys.
+
+This is aimed at you if you know exactly the feature you would like to use, you
+just want to see what inputs it requires and what outputs it gives.
 
 `Background`_
-..............................
+.............
 
-Explanation and discussion of key topics and concepts
+Explanation and discussion of key topics and concepts. This is aimed at you if
+you are looking to be able to think about PyMedPhys and its implementations at
+a higher level and understand more about them.
+
+Glossary
+........
+
+List of the most important terms
+
+
+Documentation For Contributors
+------------------------------
+
+`Getting Started Contributing`_
+...............................
+
+Start here for learning how to contribute to PyMedPhys.
+
+Developer Guide
+...............
+
+
+
+
+Documentation Guide
+...................
+
+How to contribute to this documentation.
+
+Maintainers Guide
+.................
 
 
 Beta level of development
@@ -91,6 +144,7 @@ this means that upgrading ``pymedphys`` to a new version will possibly break
 any code that was using the old version of pymedphys. We try to be abreast of
 this by providing details of any breaking changes from one release to the next
 within the `Release Notes`_.
+
 
 Our Team
 --------
@@ -225,4 +279,4 @@ Past contributors
 .. _`command line tools`: https://docs.pymedphys.com/ref/cli
 
 .. _`Release Notes`: ./CHANGELOG.md
-.. _`Contributing`: ./CONTRIBUTING.md
+.. _`Getting Started Contributing`: ./CONTRIBUTING.md

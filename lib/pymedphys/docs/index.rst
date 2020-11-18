@@ -11,7 +11,7 @@
 .. _`command line tools`: /ref/cli
 
 .. _`Release Notes`: /release-notes
-.. _`Contributing`: /contributing/index
+.. _`Getting Started Contributing`: /contributing
 
 .. toctree::
     :hidden:
