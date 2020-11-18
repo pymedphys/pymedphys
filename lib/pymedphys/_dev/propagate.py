@@ -88,7 +88,7 @@ def propagate_all(args):
 def propagate_file_copies_into_library():
     files_to_copy = [
         (ROOT_PYLINT, LIBRARY_PYLINT),
-        (ROOT_README, DOCS_README),
+        (DOCS_README, ROOT_README),
         (ROOT_CHANGELOG, DOCS_CHANGELOG),
         (ROOT_CONTRIBUTING, DOCS_CONTRIBUTING),
     ]
@@ -110,9 +110,17 @@ def _copy_file_with_autogen_message(original_path, target_path):
     with open(original_path) as f:
         original_contents = f.read()
 
+    relative_original_path = original_path.relative_to(REPO_ROOT)
+
+    custom_autogen = AUTOGEN_MESSAGE + [
+        "# Please instead edit the file found at:",
+        f"#     {relative_original_path}",
+        "# and then run `pymedphys dev propagate --copies`",
+    ]
+
     new_autogen = [
         comment_syntax[0] + original_autogen[2::] + comment_syntax[1]
-        for original_autogen in AUTOGEN_MESSAGE
+        for original_autogen in custom_autogen
     ]
 
     contents_with_autogen_warning = "\n".join(new_autogen) + "\n\n" + original_contents

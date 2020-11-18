@@ -10,7 +10,8 @@
 .. _`library`: /ref/lib
 .. _`command line tools`: /ref/cli
 
-.. _`Release Notes`: /release-notes.html
+.. _`Release Notes`: /release-notes
+.. _`Contributing`: /contributing/index
 
 .. toctree::
     :hidden:
