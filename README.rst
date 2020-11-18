@@ -1,9 +1,9 @@
+.. START_OF_DOCS_IMPORT
+
 |logo|
 
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/pymedphys_title.png
     :target: https://docs.pymedphys.com/
-
-.. START_OF_DOCS_IMPORT
 
 **A community effort to develop an open standard library for Medical Physics
 in Python. Building quality transparent software together via peer review
@@ -224,4 +224,5 @@ Past contributors
 .. _`library`: https://docs.pymedphys.com/ref/lib
 .. _`command line tools`: https://docs.pymedphys.com/ref/cli
 
-.. _`Release Notes`: http://docs.pymedphys.com/release-notes.html
+.. _`Release Notes`: ./CHANGELOG.md
+.. _`Contributing`: ./CONTRIBUTING.md

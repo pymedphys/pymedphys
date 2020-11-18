@@ -1,1 +1,1 @@
-.. include:: CHANGELOG.rst
+.. include:: contributing.rst
