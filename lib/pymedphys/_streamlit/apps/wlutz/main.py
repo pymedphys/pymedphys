@@ -78,7 +78,9 @@ def main():
     )
 
     if show_selected_image:
-        relative_image_path = st.selectbox("Select single filepath", table["filepath"])
+        relative_image_path = st.selectbox(
+            "Select single filepath", database_table["filepath"]
+        )
 
         results = _get_results_for_image(
             database_directory,
