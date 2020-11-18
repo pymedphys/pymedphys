@@ -142,19 +142,19 @@ def test_dataset():
     return test_dataset
 
 
-@pytest.mark.dicom
-def test_hierarchical_dicom_storage_directory():
+@pytest.mark.pydicom
+def test_hierarchical_dicom_storage_directory(test_dataset):
     """Test to ensure the constructed directory for storing a DICOM object
     is in the Patient/Study/Series hierarchy that aligns with DICOM Query
     """
-    with tempfile.mkdtemp() as test_dir:
-        expected_directory = test_dir.joinpath(
-            test_dataset.PatientID,
-            test_dataset.StudyInstanceUID,
-            test_dataset.SeriesInstanceUID,
-        )
-        created_directory = hierarchical_dicom_storage_directory(test_dir, test_dataset)
-        assert created_directory == expected_directory
+    test_dir = pathlib.Path(tempfile.mkdtemp())
+    expected_directory = test_dir.joinpath(
+        test_dataset.PatientID,
+        test_dataset.StudyInstanceUID,
+        test_dataset.SeriesInstanceUID,
+    )
+    created_directory = hierarchical_dicom_storage_directory(test_dir, test_dataset)
+    assert created_directory == expected_directory
 
 
 @pytest.mark.pydicom
