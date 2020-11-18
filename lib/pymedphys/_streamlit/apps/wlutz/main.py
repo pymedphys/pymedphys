@@ -15,7 +15,7 @@
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plt, pylinac
+from pymedphys._imports import pylinac
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
@@ -252,15 +252,18 @@ def _pymedphys_wlutz_calculate(
 ):
     field_centre = pymedphys_field_centre
 
-    bb_centre = findbb.optimise_bb_centre(
-        field,
-        bb_diameter,
-        edge_lengths,
-        penumbra,
-        field_centre,
-        field_rotation,
-        pylinac_tol=None,
-    )
+    try:
+        bb_centre = findbb.optimise_bb_centre(
+            field,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
+            field_centre,
+            field_rotation,
+            pylinac_tol=None,
+        )
+    except ValueError:
+        bb_centre = [np.nan, np.nan]
 
     return field_centre, field_rotation, bb_centre
 
