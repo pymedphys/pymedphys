@@ -57,18 +57,40 @@ AUTOGEN_MESSAGE = [
 ]
 
 
-def propagate_all(_):
-    propagate_version()
-    propagate_extras()
-    propagate_pylintrc()
-    propagate_readme()
-    propagate_changelog()
+def propagate_all(args):
+    if args.copies and args.pyproject:
+        raise ValueError("Cannot pass --copies and --pyproject at the same time.")
 
-    # Propagation of setup.py last as this has the side effect of building
-    # a distribution file. Want to make sure that this distribution
-    # file includes the above propagations in case someone decides to
-    # use it.
-    propagate_lock_requirements_setup_and_hash()
+    if args.copies:
+        run_copies = True
+    elif args.pyproject:
+        run_pyproject = True
+    else:
+        run_copies = True
+        run_pyproject = True
+
+    if run_copies:
+        propagate_file_copies_into_library()
+
+    if run_pyproject:
+        propagate_version()
+        propagate_extras()
+
+        # Propagation of setup.py last as this has the side effect of building
+        # a distribution file. Want to make sure that this distribution
+        # file includes the above propagations in case someone decides to
+        # use it.
+        propagate_lock_requirements_setup_and_hash()
+
+
+def propagate_file_copies_into_library():
+
+    [
+        (ROOT_PYLINT, LIBRARY_PYLINT),
+        (ROOT_README, DOCS_README),
+        (ROOT_CHANGELOG, DOCS_CHANGELOG),
+        (ROOT_CONTRIBUTING, DOCS_CONTRIBUTING),
+    ]
 
 
 def propagate_lock_requirements_setup_and_hash():
@@ -167,9 +189,16 @@ def _propagate_setup():
         f.write(setup_contents)
 
 
-def copy_file_with_autogen_message(
-    original_path, target_path, comment_syntax=("# ", "")
-):
+def copy_file_with_autogen_message(original_path, target_path):
+    if target_path.suffix == "md":
+        comment_syntax = ("<!-- ", " -->")
+    elif target_path.suffix == "rst":
+        comment_syntax = ("..\n    ", "")
+    elif target_path.suffix == ".pylintrc" or target_path.suffix == ".py":
+        comment_syntax = ("# ", "")
+    else:
+        raise ValueError("Invalid file suffix")
+
     with open(original_path) as f:
         original_contents = f.read()
 
@@ -182,18 +211,6 @@ def copy_file_with_autogen_message(
 
     with open(target_path, "w+") as f:
         f.write(contents_with_autogen_warning)
-
-
-def propagate_pylintrc():
-    copy_file_with_autogen_message(ROOT_PYLINT, LIBRARY_PYLINT)
-
-
-def propagate_readme():
-    copy_file_with_autogen_message(ROOT_README, DOCS_README, ("..\n    ", ""))
-
-
-def propagate_changelog():
-    copy_file_with_autogen_message(ROOT_CHANGELOG, DOCS_CHANGELOG, ("<!-- ", " -->"))
 
 
 def _propagate_requirements():

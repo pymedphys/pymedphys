@@ -27,4 +27,17 @@ def add_test_parser(test_subparsers):
 
 def add_propagate_parser(test_subparsers):
     parser = test_subparsers.add_parser("propagate")
+
+    parser.add_argument(
+        "--copies",
+        help="Only propagate the file copies into the library.",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--pyproject",
+        help="Only propagate the dependencies of pyproject.",
+        action="store_true",
+    )
+
     parser.set_defaults(func=propagate.propagate_all)

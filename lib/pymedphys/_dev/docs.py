@@ -28,6 +28,11 @@ def build_docs(args):
         cwd=DOCS_DIR,
         shell=True,
     )
+    subprocess.check_call(
+        "pandoc contributing/CONTRIBUTING.md --from markdown --to rst -s -o contributing/contributing.rst",
+        cwd=DOCS_DIR,
+        shell=True,
+    )
 
     if args.output:
         output_directory = args.output
