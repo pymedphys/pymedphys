@@ -22,6 +22,47 @@ from getpass import getpass
 from pymedphys._imports import keyring, pymssql
 
 
+class WrongUsernameOrPassword(ValueError):
+    pass
+
+
+def connect_with_credential(
+    sql_server_and_port, username, password
+) -> "pymssql.Connection":
+    """Connects to a Mosaiq database.
+
+    Parameters
+    ----------
+    sql_server_and_port : str
+        A server and port separated by a colon (:). Eg "localhost:8888".
+    username : str
+    password : str
+
+    Returns
+    -------
+    conn : pymssql.Connection
+        The Connection object to the database.
+
+    Raises
+    ------
+    WrongUsernameOrPassword
+        If the wrong credentials are provided.
+
+    """
+    server, port = _separate_server_port_string(sql_server_and_port)
+
+    try:
+        conn = pymssql.connect(server, username, password, "MOSAIQ", port=port)
+    except pymssql.OperationalError as error:
+        error_message = error.args[0][1]
+        if error_message.startswith(b"Login failed for user"):
+            raise WrongUsernameOrPassword("Wrong credentials")
+
+        raise
+
+    return conn
+
+
 def execute_sql(cursor, sql_string, parameters=None):
     """Executes a given SQL string on an SQL cursor.
     """
@@ -43,12 +84,25 @@ def execute_sql(cursor, sql_string, parameters=None):
     return data
 
 
-def get_username_password(
-    storage_name, user_input=input, password_input=getpass, output=print
-):
-
+def get_username_and_password_without_prompt(storage_name):
     user = keyring.get_password("MosaiqSQL_username", storage_name)
     password = keyring.get_password("MosaiqSQL_password", storage_name)
+
+    return user, password
+
+
+def save_username(sql_server_and_port, username):
+    keyring.set_password("MosaiqSQL_username", sql_server_and_port, username)
+
+
+def save_password(sql_server_and_port, password):
+    keyring.set_password("MosaiqSQL_password", sql_server_and_port, password)
+
+
+def _get_username_password(
+    storage_name, user_input=input, password_input=getpass, output=print
+):
+    user, password = get_username_and_password_without_prompt(storage_name)
 
     if user is None or user == "":
         output(
@@ -60,19 +114,19 @@ def get_username_password(
             error_message = "Username should not be blank."
             output(error_message)
             raise ValueError(error_message)
-        keyring.set_password("MosaiqSQL_username", storage_name, user)
+        save_username(storage_name, user)
 
     if password is None:
         output(
             "Provide password for '{}' server and '{}' user".format(storage_name, user)
         )
         password = password_input()
-        keyring.set_password("MosaiqSQL_password", storage_name, password)
+        save_password(storage_name, password)
 
     return user, password
 
 
-def separate_server_port_string(sql_server_and_port):
+def _separate_server_port_string(sql_server_and_port):
     split_tuple = str(sql_server_and_port).split(":")
     if len(split_tuple) == 1:
         server = split_tuple[0]
@@ -88,11 +142,49 @@ def separate_server_port_string(sql_server_and_port):
     return server, port
 
 
-def try_connect_delete_user_if_fail(
+def delete_credentials(sql_server_and_port):
+    try:
+        keyring.delete_password("MosaiqSQL_username", sql_server_and_port)
+        keyring.delete_password("MosaiqSQL_password", sql_server_and_port)
+    except keyring.errors.PasswordDeleteError:
+        pass
+
+
+def _connect_with_credential_then_prompt_if_fail(
     sql_server_and_port, user_input=input, password_input=getpass, output=print
-):
-    server, port = separate_server_port_string(sql_server_and_port)
-    user, password = get_username_password(
+) -> "pymssql.Connection":
+    """Connects to a Mosaiq database utilising credentials saved with
+    the keyring library.
+
+    Parameters
+    ----------
+    sql_server_and_port : str
+        A server and port separated by a colon (:). Eg "localhost:8888".
+    user_input : callable, optional
+        A function which prompts the user for input and returns the
+        server's username, by default the built-in ``input`` function.
+    password_input : callable, optional
+        A function which prompts the user for a password input and
+        returns the password for the provided user, by default the
+        standard library ``getpass.getpass`` function.
+    output : callable, optional
+        A function which displays responses to the user, by default the
+        built-in ``print``.
+
+    Returns
+    -------
+    conn : pymssql.Connection
+        The Connection object to the database.
+
+    Note
+    ----
+    The optional callable parameters utilised by this function are
+    designed so that they can be overridden by libraries such as
+    Streamlit.
+
+    """
+    server, port = _separate_server_port_string(sql_server_and_port)
+    user, password = _get_username_password(
         sql_server_and_port,
         user_input=user_input,
         password_input=password_input,
@@ -105,13 +197,11 @@ def try_connect_delete_user_if_fail(
         error_message = error.args[0][1]
         if error_message.startswith(b"Login failed for user"):
             output("Login failed, wiping the saved username and password.")
-            try:
-                keyring.delete_password("MosaiqSQL_username", sql_server_and_port)
-                keyring.delete_password("MosaiqSQL_password", sql_server_and_port)
-            except keyring.errors.PasswordDeleteError as error:
-                pass
+
+            delete_credentials(sql_server_and_port)
+
             output("Please try login again:")
-            conn = try_connect_delete_user_if_fail(sql_server_and_port)
+            conn = _connect_with_credential_then_prompt_if_fail(sql_server_and_port)
         else:
             output(
                 "Server Input: {}, User: {}, Hostname: {}, Port: {}".format(
@@ -137,7 +227,7 @@ def single_connect(
     """Connect to the Mosaiq server.
     Ask the user for a password if they haven't logged in before.
     """
-    conn = try_connect_delete_user_if_fail(
+    conn = _connect_with_credential_then_prompt_if_fail(
         sql_server_and_port,
         user_input=user_input,
         password_input=password_input,

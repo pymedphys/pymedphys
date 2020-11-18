@@ -1,4 +1,5 @@
 # Copyright (C) 2020 University of New South Wales & Ingham Institute
+# Copyright (C) 2020 Stuart Swerdloff and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,9 +26,17 @@ from pymedphys._dicom.connect.base import DicomConnectBase
 from pymedphys._dicom.constants.core import DICOM_SOP_CLASS_NAMES_MODE_PREFIXES
 
 
+def hierarchical_dicom_storage_directory(
+    storage_directory, ds: "pydicom.dataset.Dataset"
+) -> pathlib.Path:
+    series_path = pathlib.Path(storage_directory).joinpath(
+        ds.PatientID, ds.StudyInstanceUID, ds.SeriesInstanceUID
+    )
+    return series_path
+
+
 class DicomListener(DicomConnectBase):
-    """Class which provides SCP functionality to listen for incoming DICOM objects
-    """
+    """Class which provides SCP functionality to listen for incoming DICOM objects"""
 
     def __init__(self, storage_directory=None, on_released_callback=None, **kwargs):
         """Create and instance of a DICOM Listener
@@ -63,8 +72,7 @@ class DicomListener(DicomConnectBase):
         logging.debug("Will store files received in: %s", self.storage_directory)
 
     def start(self):
-        """Start the DICOM listener
-        """
+        """Start the DICOM listener"""
 
         # Initialise the Application Entity
         self.ae = pynetdicom.AE(ae_title=self.ae_title)
@@ -87,15 +95,13 @@ class DicomListener(DicomConnectBase):
         self.ae.start_server((self.host, self.port), evt_handlers=handlers, block=False)
 
     def stop(self):
-        """Stop the DICOM listener
-        """
+        """Stop the DICOM listener"""
 
         if self.ae:
             self.ae.shutdown()
 
     def on_c_echo(self, _):  # pylint: disable = no-self-use
-        """Respond to a C-ECHO service request.
-        """
+        """Respond to a C-ECHO service request."""
         logging.debug("C-ECHO!")
         return 0x0000
 
@@ -115,9 +121,10 @@ class DicomListener(DicomConnectBase):
         except KeyError:
             mode_prefix = "UN"
 
-        series_uid = dataset.SeriesInstanceUID
-        series_dir = self.storage_directory.joinpath(series_uid)
-        series_dir.mkdir(exist_ok=True)
+        series_dir = hierarchical_dicom_storage_directory(
+            self.storage_directory, dataset
+        )
+        series_dir.mkdir(parents=True, exist_ok=True)
         self.association_directory = series_dir
 
         filename = pathlib.Path(
@@ -182,8 +189,7 @@ class DicomListener(DicomConnectBase):
 
 
 def listen_cli(args):
-    """Start a DICOM listener from the command line interface
-    """
+    """Start a DICOM listener from the command line interface"""
 
     # Start the listener
     dicom_listener = DicomListener(
