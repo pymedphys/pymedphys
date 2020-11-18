@@ -200,11 +200,6 @@ jobs:
 
 # System installs
 
-    - name: Install FreeTDS on MacOS
-      if: matrix.os == 'macos'
-      run: |
-        brew install freetds
-
     - name: Install Pandoc on Ubuntu
       if: ( matrix.task == 'docs' || matrix.task == 'updates' ) && matrix.os == 'ubuntu'
       run: |
