@@ -210,20 +210,20 @@ python-versions = "*"
 
 [[package]]
 name = "boto3"
-version = "1.16.18"
+version = "1.16.20"
 description = "The AWS SDK for Python"
 category = "main"
 optional = true
 python-versions = "*"
 
 [package.dependencies]
-botocore = ">=1.19.18,<1.20.0"
+botocore = ">=1.19.20,<1.20.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.3.0,<0.4.0"
 
 [[package]]
 name = "botocore"
-version = "1.19.18"
+version = "1.19.20"
 description = "Low-level, data-driven core of boto 3."
 category = "main"
 optional = true
@@ -833,11 +833,11 @@ test = ["ipykernel", "ipython", "mock", "pytest", "pytest-asyncio", "async-gener
 
 [[package]]
 name = "jupyter-core"
-version = "4.6.3"
+version = "4.7.0"
 description = "Jupyter core package. A base package on which Jupyter projects rely."
 category = "main"
 optional = true
-python-versions = "!=3.0,!=3.1,!=3.2,!=3.3,!=3.4,>=2.7"
+python-versions = ">=3.6"
 
 [package.dependencies]
 pywin32 = {version = ">=1.0", markers = "sys_platform == \"win32\""}
@@ -1359,7 +1359,7 @@ test = ["nose", "mock"]
 
 [[package]]
 name = "prometheus-client"
-version = "0.8.0"
+version = "0.9.0"
 description = "Python client for the Prometheus monitoring system."
 category = "main"
 optional = true
@@ -2242,14 +2242,14 @@ python-versions = ">= 3.5"
 
 [[package]]
 name = "tqdm"
-version = "4.51.0"
+version = "4.52.0"
 description = "Fast, Extensible Progress Meter"
 category = "main"
 optional = true
 python-versions = ">=2.6, !=3.0.*, !=3.1.*"
 
 [package.extras]
-dev = ["py-make (>=0.1.0)", "twine", "argopt", "pydoc-markdown"]
+dev = ["py-make (>=0.1.0)", "twine", "argopt", "pydoc-markdown", "wheel"]
 
 [[package]]
 name = "traitlets"
@@ -2543,12 +2543,12 @@ blinker = [
     {file = "blinker-1.4.tar.gz", hash = "sha256:471aee25f3992bd325afa3772f1063dbdbbca947a041b8b89466dc00d606f8b6"},
 ]
 boto3 = [
-    {file = "boto3-1.16.18-py2.py3-none-any.whl", hash = "sha256:d70d21ea137d786e84124639a62be42f92f4b09472ebfb761156057c92dc5366"},
-    {file = "boto3-1.16.18.tar.gz", hash = "sha256:51c419d890ae216b9b031be31f3182739dc3deb5b64351f286bffca2818ddb35"},
+    {file = "boto3-1.16.20-py2.py3-none-any.whl", hash = "sha256:0a4c72ef591fd4291efb9767a6a94f625afccc1e0fc7843968cd39eb6289c3e4"},
+    {file = "boto3-1.16.20.tar.gz", hash = "sha256:6c5d952f97e13997b1c7463038d96469355595cd37f87b43451759cc03756322"},
 ]
 botocore = [
-    {file = "botocore-1.19.18-py2.py3-none-any.whl", hash = "sha256:bba18b5c4eef3eb2dc39b1b1f8959ba01ac27e7e12e413e281b0fb242990c0f5"},
-    {file = "botocore-1.19.18.tar.gz", hash = "sha256:288d43e85f12e3c1d6a0535a585a182ca04e8c6e742ebaaf15357a0e3b37ca7a"},
+    {file = "botocore-1.19.20-py2.py3-none-any.whl", hash = "sha256:4576ca751264c65420daae07e244beafdfea493b4fbb815d37215c0736dc4633"},
+    {file = "botocore-1.19.20.tar.gz", hash = "sha256:00a69a507e8b817d0703c612131e6cb3a3260579d0353c56d005bd9effd92ec0"},
 ]
 cachetools = [
     {file = "cachetools-4.1.1-py3-none-any.whl", hash = "sha256:513d4ff98dd27f85743a8dc0e92f55ddb1b49e060c2d5961512855cda2c01a98"},
@@ -2920,8 +2920,8 @@ jupyter-client = [
     {file = "jupyter_client-6.1.7.tar.gz", hash = "sha256:49e390b36fe4b4226724704ea28d9fb903f1a3601b6882ce3105221cd09377a1"},
 ]
 jupyter-core = [
-    {file = "jupyter_core-4.6.3-py2.py3-none-any.whl", hash = "sha256:a4ee613c060fe5697d913416fc9d553599c05e4492d58fac1192c9a6844abb21"},
-    {file = "jupyter_core-4.6.3.tar.gz", hash = "sha256:394fd5dd787e7c8861741880bdf8a00ce39f95de5d18e579c74b882522219e7e"},
+    {file = "jupyter_core-4.7.0-py3-none-any.whl", hash = "sha256:0a451c9b295e4db772bdd8d06f2f1eb31caeec0e81fbb77ba37d4a3024e3b315"},
+    {file = "jupyter_core-4.7.0.tar.gz", hash = "sha256:aa1f9496ab3abe72da4efe0daab0cb2233997914581f9a071e07498c6add8ed3"},
 ]
 jupyterlab-pygments = [
     {file = "jupyterlab_pygments-0.1.2-py2.py3-none-any.whl", hash = "sha256:abfb880fd1561987efaefcb2d2ac75145d2a5d0139b1876d5be806e32f630008"},
@@ -3066,11 +3066,6 @@ markupsafe = [
     {file = "MarkupSafe-1.1.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:ba59edeaa2fc6114428f1637ffff42da1e311e29382d81b339c1817d37ec93c6"},
     {file = "MarkupSafe-1.1.1-cp37-cp37m-win32.whl", hash = "sha256:b00c1de48212e4cc9603895652c5c410df699856a2853135b3967591e4beebc2"},
     {file = "MarkupSafe-1.1.1-cp37-cp37m-win_amd64.whl", hash = "sha256:9bf40443012702a1d2070043cb6291650a0841ece432556f784f004937f0f32c"},
-    {file = "MarkupSafe-1.1.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:6788b695d50a51edb699cb55e35487e430fa21f1ed838122d722e0ff0ac5ba15"},
-    {file = "MarkupSafe-1.1.1-cp38-cp38-manylinux1_i686.whl", hash = "sha256:cdb132fc825c38e1aeec2c8aa9338310d29d337bebbd7baa06889d09a60a1fa2"},
-    {file = "MarkupSafe-1.1.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:13d3144e1e340870b25e7b10b98d779608c02016d5184cfb9927a9f10c689f42"},
-    {file = "MarkupSafe-1.1.1-cp38-cp38-win32.whl", hash = "sha256:596510de112c685489095da617b5bcbbac7dd6384aeebeda4df6025d0256a81b"},
-    {file = "MarkupSafe-1.1.1-cp38-cp38-win_amd64.whl", hash = "sha256:e8313f01ba26fbbe36c7be1966a7b7424942f670f38e666995b88d012765b9be"},
     {file = "MarkupSafe-1.1.1.tar.gz", hash = "sha256:29872e92839765e546828bb7754a68c418d927cd064fd4708fab9fe9c8bb116b"},
 ]
 matplotlib = [
@@ -3289,8 +3284,8 @@ premailer = [
     {file = "premailer-3.7.0.tar.gz", hash = "sha256:5eec9603e84cee583a390de69c75192e50d76e38ef0292b027bd64923766aca7"},
 ]
 prometheus-client = [
-    {file = "prometheus_client-0.8.0-py2.py3-none-any.whl", hash = "sha256:983c7ac4b47478720db338f1491ef67a100b474e3bc7dafcbaefb7d0b8f9b01c"},
-    {file = "prometheus_client-0.8.0.tar.gz", hash = "sha256:c6e6b706833a6bd1fd51711299edee907857be10ece535126a158f911ee80915"},
+    {file = "prometheus_client-0.9.0-py2.py3-none-any.whl", hash = "sha256:b08c34c328e1bf5961f0b4352668e6c8f145b4a087e09b7296ef62cbe4693d35"},
+    {file = "prometheus_client-0.9.0.tar.gz", hash = "sha256:9da7b32f02439d8c04f7777021c304ed51d9ec180604700c1ba72a4d44dceb03"},
 ]
 prompt-toolkit = [
     {file = "prompt_toolkit-3.0.3-py3-none-any.whl", hash = "sha256:c93e53af97f630f12f5f62a3274e79527936ed466f038953dfa379d4941f651a"},
@@ -3952,8 +3947,8 @@ tornado = [
     {file = "tornado-6.1.tar.gz", hash = "sha256:33c6e81d7bd55b468d2e793517c909b139960b6c790a60b7991b9b6b76fb9791"},
 ]
 tqdm = [
-    {file = "tqdm-4.51.0-py2.py3-none-any.whl", hash = "sha256:9ad44aaf0fc3697c06f6e05c7cf025dd66bc7bcb7613c66d85f4464c47ac8fad"},
-    {file = "tqdm-4.51.0.tar.gz", hash = "sha256:ef54779f1c09f346b2b5a8e5c61f96fbcb639929e640e59f8cf810794f406432"},
+    {file = "tqdm-4.52.0-py2.py3-none-any.whl", hash = "sha256:80d9d5165d678dbd027dd102dfb99f71bf05f333b61fb761dbba13b4ab719ead"},
+    {file = "tqdm-4.52.0.tar.gz", hash = "sha256:18d6a615aedd09ec8456d9524489dab330af4bd5c2a14a76eb3f9a0e14471afe"},
 ]
 traitlets = [
     {file = "traitlets-4.3.3-py2.py3-none-any.whl", hash = "sha256:70b4c6a1d9019d7b4f6846832288f86998aa3b9207c6821f3578a6a6a467fe44"},
