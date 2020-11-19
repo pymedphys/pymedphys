@@ -26,36 +26,25 @@ from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
 
 
-def read_image(path):
-    return lljpeg.imread(path)
-
-
 def main():
+    """The entrance function for the WLutz Arc Streamlit GUI.
+
+    This GUI connects to an iViewDB stored on a shared network drive
+    and allows users to plot the difference between the field centre
+    and the ball bearing centre accross a range of gantry angles.
+
+    """
     st.title("Winston-Lutz Arc")
 
-    st.sidebar.write("## Parameters")
-
-    width = st.sidebar.number_input("Width (mm)", 20)
-    length = st.sidebar.number_input("Length (mm)", 24)
-    edge_lengths = [width, length]
-
-    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
-    penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
+    edge_lengths, bb_diameter, penumbra = _set_parameters()
 
     _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
 
     st.write("## Load iView databases for a given date")
     refresh_cache = st.button("Re-query databases")
-    merged = _dbf.load_and_merge_dbfs(database_directory, refresh_cache)
 
-    st.write("## Filtering")
-    filtered = _filtering.filter_image_sets(merged)
-    filtered.sort_values("datetime", ascending=False, inplace=True)
-
-    st.write(filtered)
-
-    if len(filtered) == 0:
-        st.stop()
+    database_table = _load_database_with_cache(database_directory, refresh_cache)
+    database_table = _filtering(database_table)
 
     st.write("## Loading database image frame data")
 
@@ -146,6 +135,38 @@ def main():
 
             percent_complete = round(ratio_complete * 100, 2)
             status_text.text(f"{percent_complete}% Complete")
+
+
+def _set_parameters():
+    st.sidebar.write("## Parameters")
+
+    width = st.sidebar.number_input("Width (mm)", 20)
+    length = st.sidebar.number_input("Length (mm)", 24)
+    edge_lengths = [width, length]
+
+    bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
+    penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
+
+    return edge_lengths, bb_diameter, penumbra
+
+
+def _load_database_with_cache(database_directory, refresh_cache):
+    merged = _dbf.load_and_merge_dbfs(database_directory, refresh_cache)
+
+    return merged
+
+
+def _filtering(database_table):
+    st.write("## Filtering")
+    filtered = _filtering.filter_image_sets(database_table)
+    filtered.sort_values("datetime", ascending=False, inplace=True)
+
+    st.write(filtered)
+
+    if len(filtered) == 0:
+        st.stop()
+
+    return filtered
 
 
 def _plot_algorithm_by_time(diff_table, database_table, algorithm):
@@ -347,7 +368,7 @@ def _get_pymedphys_field_centre_and_rotation(image_path, edge_lengths, penumbra)
 
 
 def _load_image_field_interpolator(image_path):
-    raw_image = read_image(image_path)
+    raw_image = lljpeg.imread(path)
     x, y, image = iview.iview_image_transform(raw_image)
     field = imginterp.create_interpolated_field(x, y, image)
 
