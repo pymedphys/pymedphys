@@ -38,6 +38,7 @@ instead, if that is what is desired, pylinac itself should be used
 directly.
 """
 
+import functools
 from typing import List, Tuple
 
 from pymedphys._imports import numpy as np
@@ -351,11 +352,15 @@ class WLImage_2_2_6(WLImage_2_2_7):
         return _vendor_geometry.Point(x_com, y_com)
 
 
-VERSION_TO_CLASS_MAP = {
-    "2.2.6": WLImage_2_2_6,
-    "2.2.7": WLImage_2_2_7,
-    pylinac.__version__: WLImageCurrent,
-}
+@functools.lru_cache
+def get_version_to_class_map():
+    VERSION_TO_CLASS_MAP = {
+        "2.2.6": WLImage_2_2_6,
+        "2.2.7": WLImage_2_2_7,
+        pylinac.__version__: WLImageCurrent,
+    }
+
+    return VERSION_TO_CLASS_MAP
 
 
 def get_latest_wlimage():
