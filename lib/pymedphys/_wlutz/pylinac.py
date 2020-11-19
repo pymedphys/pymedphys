@@ -35,7 +35,7 @@ def run_wlutz(
     pylinac_versions=None,
     fill_errors_with_nan=False,
 ):
-    VERSION_TO_CLASS_MAP = _pylinac_wlutz.VERSION_TO_CLASS_MAP
+    VERSION_TO_CLASS_MAP = _pylinac_wlutz.get_version_to_class_map()
 
     if pylinac_versions is None:
         pylinac_versions = VERSION_TO_CLASS_MAP.keys()
