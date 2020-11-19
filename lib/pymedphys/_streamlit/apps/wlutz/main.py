@@ -44,16 +44,10 @@ def main():
     refresh_cache = st.button("Re-query databases")
 
     database_table = _load_database_with_cache(database_directory, refresh_cache)
-    database_table = _filtering(database_table)
-
-    st.write("## Loading database image frame data")
-
-    try:
-        database_table = _frames.dbf_frame_based_database(
-            database_directory, refresh_cache, filtered
-        )
-    except FileNotFoundError:
-        database_table = _frames.xml_frame_based_database(database_directory, filtered)
+    database_table = _get_user_image_set_selection(database_table)
+    database_table = _load_image_frame_database(
+        database_directory, database_table, refresh_cache
+    )
 
     st.write(database_table)
 
@@ -156,7 +150,7 @@ def _load_database_with_cache(database_directory, refresh_cache):
     return merged
 
 
-def _filtering(database_table):
+def _get_user_image_set_selection(database_table):
     st.write("## Filtering")
     filtered = _filtering.filter_image_sets(database_table)
     filtered.sort_values("datetime", ascending=False, inplace=True)
@@ -169,15 +163,19 @@ def _filtering(database_table):
     return filtered
 
 
-def _plot_algorithm_by_time(diff_table, database_table, algorithm):
-    working_table = diff_table.loc[diff_table["algorithm"] == algorithm]
-    working_table = working_table.merge(
-        database_table, left_on="filepath", right_on="filepath"
-    )[["datetime", "diff_x", "diff_y"]]
+def _load_image_frame_database(database_directory, input_database_table, refresh_cache):
+    st.write("## Loading database image frame data")
 
-    working_table.set_index("datetime", inplace=True)
-    st.write(working_table)
-    st.line_chart(working_table)
+    try:
+        database_table = _frames.dbf_frame_based_database(
+            database_directory, refresh_cache, input_database_table
+        )
+    except FileNotFoundError:
+        database_table = _frames.xml_frame_based_database(
+            database_directory, input_database_table
+        )
+
+    return database_table
 
 
 def _plot_diagnostic_figures(
@@ -368,7 +366,7 @@ def _get_pymedphys_field_centre_and_rotation(image_path, edge_lengths, penumbra)
 
 
 def _load_image_field_interpolator(image_path):
-    raw_image = lljpeg.imread(path)
+    raw_image = lljpeg.imread(image_path)
     x, y, image = iview.iview_image_transform(raw_image)
     field = imginterp.create_interpolated_field(x, y, image)
 
