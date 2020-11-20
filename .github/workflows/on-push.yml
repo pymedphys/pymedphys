@@ -194,7 +194,7 @@ jobs:
       if: steps.poetry-cache.outputs.cache-hit == 'true'
       shell: bash
       run: |
-        poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
+        timeout 10s poetry run pip --version || rm -rf .venv
 
 # -----------------------------------------------------------------------------
 
