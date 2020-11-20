@@ -352,7 +352,7 @@ class WLImage_2_2_6(WLImage_2_2_7):
         return _vendor_geometry.Point(x_com, y_com)
 
 
-@functools.lru_cache
+@functools.lru_cache()
 def get_version_to_class_map():
     VERSION_TO_CLASS_MAP = {
         "2.2.6": WLImage_2_2_6,
