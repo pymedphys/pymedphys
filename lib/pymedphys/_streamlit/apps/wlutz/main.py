@@ -87,8 +87,9 @@ def main():
         )
 
     if st.button("Calculate"):
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+        st.sidebar.write("---\n## Progress")
+        progress_bar = st.sidebar.progress(0)
+        status_text = st.sidebar.empty()
 
         collated_results = pd.DataFrame()
         chart_bucket = {}
@@ -139,7 +140,7 @@ def main():
                             table_filtered_by_port
                         )
                     except KeyError:
-                        st.write(f"### Treatment: {treatment} | Port: {port}")
+                        st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
 
                         raw_chart_x = (
                             alt.Chart(table_filtered_by_port)
@@ -316,7 +317,7 @@ def _create_figure(field_centre, bb_centre, wlutz_input_parameters):
     return fig, axs
 
 
-@st.cache
+@st.cache(show_spinner=False)
 def _calculate_wlutz(image_path, algorithm, bb_diameter, edge_lengths, penumbra):
     wlutz_input_parameters = _get_wlutz_input_parameters(
         image_path, bb_diameter, edge_lengths, penumbra
@@ -396,7 +397,7 @@ ALGORITHM_FUNCTION_MAP = {
 }
 
 
-@st.cache
+@st.cache(show_spinner=False)
 def _get_pymedphys_field_centre_and_rotation(image_path, edge_lengths, penumbra):
     x, y, image, field = _load_image_field_interpolator(image_path)
     initial_centre = findfield.get_centre_of_mass(x, y, image)
