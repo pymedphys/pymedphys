@@ -155,54 +155,55 @@ def main():
                         )
                     except KeyError:
                         st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
-
-                        raw_chart_x = (
-                            alt.Chart(table_filtered_by_port)
-                            .mark_line(point=True)
-                            .encode(
-                                x="datetime",
-                                y="diff_x",
-                                color="algorithm",
-                                tooltip=[
-                                    "time",
-                                    "diff_x",
-                                    "diff_y",
-                                    "filename",
-                                    "algorithm",
-                                ],
-                            )
+                        port_chart_bucket = _build_both_axis_altair_charts(
+                            table_filtered_by_port
                         )
-
-                        raw_chart_y = (
-                            alt.Chart(table_filtered_by_port)
-                            .mark_line(point=True)
-                            .encode(
-                                x="datetime",
-                                y="diff_y",
-                                color="algorithm",
-                                tooltip=[
-                                    "time",
-                                    "diff_x",
-                                    "diff_y",
-                                    "filename",
-                                    "algorithm",
-                                ],
-                            )
-                        )
-
-                        treatment_chart_bucket[port] = {}
-                        treatment_chart_bucket[port]["x"] = st.altair_chart(
-                            raw_chart_x, use_container_width=True
-                        )
-                        treatment_chart_bucket[port]["y"] = st.altair_chart(
-                            raw_chart_y, use_container_width=True
-                        )
+                        treatment_chart_bucket[port] = port_chart_bucket
 
             ratio_complete = (i + 1) / total_files
             progress_bar.progress(ratio_complete)
 
             percent_complete = round(ratio_complete * 100, 2)
             status_text.text(f"{percent_complete}% Complete")
+
+
+def _build_both_axis_altair_charts(table):
+    chart_bucket = {}
+
+    for axis in ["y", "x"]:
+        raw_chart = _build_altair_chart(table, axis)
+        chart_bucket[axis] = st.altair_chart(raw_chart, use_container_width=True)
+
+    st.write(chart_bucket.keys())
+
+    return chart_bucket
+
+
+def _build_altair_chart(table, axis):
+    parameters = {
+        "x": {
+            "column-name": "diff_x",
+            "axis-name": "X-axis",
+            "plot-type": "Transverse",
+        },
+        "y": {"column-name": "diff_y", "axis-name": "Y-axis", "plot-type": "Radial"},
+    }[axis]
+
+    raw_chart = (
+        alt.Chart(table)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X("datetime", axis=alt.Axis(title="Image Time")),
+            y=alt.Y(
+                parameters["column-name"],
+                axis=alt.Axis(title=f"iView {parameters['axis-name']} (Field - BB)"),
+            ),
+            color=alt.Color("algorithm", legend=alt.Legend(title="Algorithm")),
+            tooltip=["time", "diff_x", "diff_y", "filename", "algorithm"],
+        )
+    ).properties(title=f"{parameters['plot-type']} (Field - BB deviations)")
+
+    return raw_chart
 
 
 def _filepath_to_filename(path):
