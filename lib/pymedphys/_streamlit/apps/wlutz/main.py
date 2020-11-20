@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import altair as alt
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pylinac
@@ -108,21 +109,46 @@ def main():
 
             working_table = results.merge(
                 database_table, left_on="filepath", right_on="filepath"
-            )[["datetime", "diff_x", "diff_y", "algorithm"]]
-            working_table.set_index("datetime", inplace=True)
+            )[["datetime", "diff_x", "diff_y", "algorithm", "treatment", "port"]]
 
-            for algorithm in selected_algorithms:
-                working_table_for_algorithm = working_table.loc[
-                    working_table["algorithm"] == algorithm
-                ]
-                working_table_for_algorithm.drop("algorithm", axis=1, inplace=True)
+            treatments = working_table["treatment"].unique()
+            ports = working_table["port"].unique()
 
+            for treatment in treatments:
                 try:
-                    chart_bucket[algorithm].add_rows(working_table_for_algorithm)
+                    treatment_chart_bucket = chart_bucket[treatment]
                 except KeyError:
-                    st.write(f"### {algorithm}")
-                    line_chart = st.line_chart(working_table_for_algorithm)
-                    chart_bucket[algorithm] = line_chart
+                    chart_bucket[treatment] = {}
+                    treatment_chart_bucket = chart_bucket[treatment]
+
+                table_filtered_by_treatment = working_table.loc[
+                    working_table["treatment"] == treatment
+                ]
+
+                for port in ports:
+
+                    table_filtered_by_port = table_filtered_by_treatment.loc[
+                        table_filtered_by_treatment["port"] == port
+                    ]
+
+                    try:
+                        treatment_chart_bucket[port].add_rows(table_filtered_by_port)
+                    except KeyError:
+                        st.write(f"### {treatment} {port}")
+
+                        raw_chart = (
+                            alt.Chart(table_filtered_by_port)
+                            .mark_line(point=True)
+                            .encode(
+                                x="datetime",
+                                y="diff_x",
+                                color="algorithm",
+                                tooltip=["datetime", "diff_x", "algorithm"],
+                            )
+                        )
+
+                        chart = st.altair_chart(raw_chart, use_container_width=True)
+                        treatment_chart_bucket[port] = chart
 
             ratio_complete = (i + 1) / total_files
             progress_bar.progress(ratio_complete)
