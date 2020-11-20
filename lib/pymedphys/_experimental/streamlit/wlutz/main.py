@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import pathlib
+import warnings
 
 import altair as alt
 from pymedphys._imports import numpy as np
@@ -38,6 +38,9 @@ def main():
     and the ball bearing centre accross a range of gantry angles.
 
     """
+
+    warnings.filterwarnings("error")
+
     st.title("Winston-Lutz Arc")
 
     edge_lengths, bb_diameter, penumbra = _set_parameters()
@@ -68,15 +71,22 @@ def main():
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
     if show_selected_image:
-        image_name = st.selectbox("Select single filepath", database_table["filename"])
+        image_filename = st.selectbox(
+            "Select single filepath", database_table["filename"]
+        )
 
         relative_image_path = database_table.loc[
-            database_table["filename"] == image_name
+            database_table["filename"] == image_filename
         ]["filepath"]
         if len(relative_image_path) != 1:
             raise ValueError("Filepath and filelength should be a one-to-one mapping")
 
         relative_image_path = relative_image_path.iloc[0]
+
+        if _filepath_to_filename(relative_image_path) != image_filename:
+            raise ValueError("Filepath selection did not convert appropriately")
+
+        st.write(relative_image_path)
 
         results = _get_results_for_image(
             database_directory,
@@ -141,18 +151,14 @@ def main():
                 ]
 
                 for port in ports:
-
                     table_filtered_by_port = table_filtered_by_treatment.loc[
                         table_filtered_by_treatment["port"] == port
                     ]
-
                     try:
-                        treatment_chart_bucket[port]["x"].add_rows(
-                            table_filtered_by_port
-                        )
-                        treatment_chart_bucket[port]["y"].add_rows(
-                            table_filtered_by_port
-                        )
+                        for axis in ["y", "x"]:
+                            treatment_chart_bucket[port][axis].add_rows(
+                                table_filtered_by_port
+                            )
                     except KeyError:
                         st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
                         port_chart_bucket = _build_both_axis_altair_charts(
@@ -174,8 +180,6 @@ def _build_both_axis_altair_charts(table):
         raw_chart = _build_altair_chart(table, axis)
         chart_bucket[axis] = st.altair_chart(raw_chart, use_container_width=True)
 
-    st.write(chart_bucket.keys())
-
     return chart_bucket
 
 
@@ -196,12 +200,14 @@ def _build_altair_chart(table, axis):
             x=alt.X("datetime", axis=alt.Axis(title="Image Time")),
             y=alt.Y(
                 parameters["column-name"],
-                axis=alt.Axis(title=f"iView {parameters['axis-name']} (Field - BB)"),
+                axis=alt.Axis(
+                    title=f"iView {parameters['axis-name']} (mm) [Field - BB]"
+                ),
             ),
             color=alt.Color("algorithm", legend=alt.Legend(title="Algorithm")),
             tooltip=["time", "diff_x", "diff_y", "filename", "algorithm"],
         )
-    ).properties(title=f"{parameters['plot-type']} (Field - BB deviations)")
+    ).properties(title=parameters["plot-type"])
 
     return raw_chart
 
@@ -209,6 +215,7 @@ def _build_altair_chart(table, axis):
 def _filepath_to_filename(path):
     path = pathlib.Path(path)
     filename = path.name
+
     return filename
 
 
