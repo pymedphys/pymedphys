@@ -115,6 +115,8 @@ def main():
             treatments = working_table["treatment"].unique()
             ports = working_table["port"].unique()
 
+            # TODO: Provide a selectbox that allows certain treatment/ports
+            # to be overlayed.
             for treatment in treatments:
                 try:
                     treatment_chart_bucket = chart_bucket[treatment]
