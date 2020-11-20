@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import pathlib
+
 import altair as alt
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -62,10 +64,19 @@ def main():
         "Select a single image to show results for", False
     )
 
+    database_table["filename"] = database_table["filepath"].apply(_filepath_to_filename)
+    database_table["time"] = database_table["datetime"].dt.time.apply(str)
+
     if show_selected_image:
-        relative_image_path = st.selectbox(
-            "Select single filepath", database_table["filepath"]
-        )
+        image_name = st.selectbox("Select single filepath", database_table["filename"])
+
+        relative_image_path = database_table.loc[
+            database_table["filename"] == image_name
+        ]["filepath"]
+        if len(relative_image_path) != 1:
+            raise ValueError("Filepath and filelength should be a one-to-one mapping")
+
+        relative_image_path = relative_image_path.iloc[0]
 
         results = _get_results_for_image(
             database_directory,
@@ -111,7 +122,7 @@ def main():
 
             working_table = results.merge(
                 database_table, left_on="filepath", right_on="filepath"
-            )[["datetime", "diff_x", "diff_y", "algorithm", "treatment", "port"]]
+            )
 
             treatments = working_table["treatment"].unique()
             ports = working_table["port"].unique()
@@ -152,7 +163,13 @@ def main():
                                 x="datetime",
                                 y="diff_x",
                                 color="algorithm",
-                                tooltip=["datetime", "diff_x", "algorithm"],
+                                tooltip=[
+                                    "time",
+                                    "diff_x",
+                                    "diff_y",
+                                    "filename",
+                                    "algorithm",
+                                ],
                             )
                         )
 
@@ -163,7 +180,13 @@ def main():
                                 x="datetime",
                                 y="diff_y",
                                 color="algorithm",
-                                tooltip=["datetime", "diff_y", "algorithm"],
+                                tooltip=[
+                                    "time",
+                                    "diff_x",
+                                    "diff_y",
+                                    "filename",
+                                    "algorithm",
+                                ],
                             )
                         )
 
@@ -180,6 +203,12 @@ def main():
 
             percent_complete = round(ratio_complete * 100, 2)
             status_text.text(f"{percent_complete}% Complete")
+
+
+def _filepath_to_filename(path):
+    path = pathlib.Path(path)
+    filename = path.name
+    return filename
 
 
 def _set_parameters():
