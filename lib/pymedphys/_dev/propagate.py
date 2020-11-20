@@ -16,12 +16,16 @@ import json
 import pathlib
 import re
 import subprocess
+import tarfile
 import textwrap
 
 from pymedphys._imports import black, tomlkit
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
 PYPROJECT_TOML_PATH = REPO_ROOT.joinpath("pyproject.toml")
+
+POETRY_LOCK_PATH = REPO_ROOT.joinpath("poetry.lock")
+PYPROJECT_TOML_HASH_PATH = REPO_ROOT.joinpath("pyproject.hash")
 
 LIBRARY_PATH = REPO_ROOT.joinpath("lib", "pymedphys")
 DOCS_PATH = LIBRARY_PATH.joinpath("docs")
@@ -53,10 +57,36 @@ AUTOGEN_MESSAGE = [
 def propagate_all(_):
     propagate_version()
     propagate_extras()
-    propagate_requirements()
     propagate_pylintrc()
     propagate_readme()
     propagate_changelog()
+
+    # Propagation of setup.py last as this has the side effect of building
+    # a distribution file. Want to make sure that this distribution
+    # file includes the above propagations in case someone decides to
+    # use it.
+    propagate_lock_requirements_setup_and_hash()
+
+
+def propagate_lock_requirements_setup_and_hash():
+    """Propagate poetry.lock, requirements.txt, setup.py, and pyproject.hash
+
+    Order here is important. Lock file propagation from pyproject.toml is needed
+    to create an up to date requirements. Setup.py creation and poetry.lock file
+    creation are non-deterministic via OS, so the hash propagation is undergone
+    last to verify that this step has been run to its completion for the
+    given pyproject.toml file.
+
+    """
+
+    _update_poetry_lock()
+    _propagate_requirements()
+    _propagate_setup()
+    _propagate_pyproject_hash()
+
+
+def _update_poetry_lock():
+    subprocess.check_call("poetry update pymedphys", shell=True)
 
 
 def read_pyproject():
@@ -99,6 +129,41 @@ def propagate_version():
         f.write(version_contents)
 
 
+def _propagate_setup():
+    """Utilises Poetry sdist build to place a ``setup.py`` file at the root
+    of the repository.
+
+    Note
+    ----
+    This is needed so that the ``requirements.txt`` file can have an editable
+    install of PyMedPhys.
+    """
+
+    subprocess.check_call("poetry build -f sdist", cwd=REPO_ROOT, shell=True)
+
+    version_string = get_version_string()
+    version_dots_only = version_string.replace("-", ".")
+
+    filename = f"pymedphys-{version_dots_only}.tar.gz"
+    filepath = DIST_DIR.joinpath(filename)
+
+    with tarfile.open(filepath, "r:gz") as tar:
+        f = tar.extractfile(f"pymedphys-{version_dots_only}/setup.py")
+        setup_contents = f.read().decode()
+
+    setup_contents_list = setup_contents.split("\n")
+    setup_contents_list.insert(1, f"\n{AUTOGEN_MESSAGE[0]}")
+    setup_contents_list.insert(2, f"{AUTOGEN_MESSAGE[1]}\n")
+    setup_contents = "\n".join(setup_contents_list)
+
+    setup_contents = black.format_str(setup_contents, mode=black.FileMode())
+
+    setup_contents = setup_contents.encode("utf-8")
+
+    with open(SETUP_PY, "bw") as f:
+        f.write(setup_contents)
+
+
 def copy_file_with_autogen_message(
     original_path, target_path, comment_syntax=("# ", "")
 ):
@@ -128,9 +193,9 @@ def propagate_changelog():
     copy_file_with_autogen_message(ROOT_CHANGELOG, DOCS_CHANGELOG, ("<!-- ", " -->"))
 
 
-def propagate_requirements():
-    subprocess.check_call("poetry update pymedphys", shell=True)
-
+def _propagate_requirements():
+    """Propagates requirement files for use without Poetry.
+    """
     # The docs are included within ``requirements.txt`` due to netlify
     # reading this file and spinning it up. The few extra dependencies
     # for users who choose to go this route isn't such a bad trade off
@@ -139,15 +204,21 @@ def propagate_requirements():
         "poetry export --without-hashes -E docs -E user -f requirements.txt --output requirements.txt",
         shell=True,
     )
+
+    # The editable install `-e` is used here so that https://app.pymedphys.com
+    # is always utilising the latest pymedphys build on main without needing
+    # a server rebuild. It also means that should a user edit the git repo
+    # they will be utilising their edits within their environment as opposed
+    # to what was originally installed.
     with open(REQUIREMENTS_TXT, "a") as f:
-        f.write(".[user,docs]\n")
+        f.write("-e .[user,docs]\n")
 
     subprocess.check_call(
         "poetry export --without-hashes -E dev -f requirements.txt --output requirements-dev.txt",
         shell=True,
     )
     with open(REQUIREMENTS_DEV_TXT, "a") as f:
-        f.write(".[dev]\n")
+        f.write("-e .[dev]\n")
 
     # TODO: Once the hashes pinning issue in poetry is fixed, remove the
     # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
@@ -185,3 +256,16 @@ def propagate_extras():
 
         with open(PYPROJECT_TOML_PATH, "w") as f:
             f.write(tomlkit.dumps(pyproject_contents))
+
+
+def _propagate_pyproject_hash():
+    """Store the pyproject content hash metadata for verification of propagation.
+    """
+
+    with open(POETRY_LOCK_PATH) as f:
+        poetry_lock_contents = tomlkit.loads(f.read())
+
+    content_hash = poetry_lock_contents["metadata"]["content-hash"]
+
+    with open(PYPROJECT_TOML_HASH_PATH, "w") as f:
+        f.write(f"{content_hash}\n")
