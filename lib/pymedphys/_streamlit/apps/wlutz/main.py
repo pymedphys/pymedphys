@@ -132,11 +132,16 @@ def main():
                     ]
 
                     try:
-                        treatment_chart_bucket[port].add_rows(table_filtered_by_port)
+                        treatment_chart_bucket[port]["x"].add_rows(
+                            table_filtered_by_port
+                        )
+                        treatment_chart_bucket[port]["y"].add_rows(
+                            table_filtered_by_port
+                        )
                     except KeyError:
-                        st.write(f"### {treatment} {port}")
+                        st.write(f"### Treatment: {treatment} | Port: {port}")
 
-                        raw_chart = (
+                        raw_chart_x = (
                             alt.Chart(table_filtered_by_port)
                             .mark_line(point=True)
                             .encode(
@@ -147,8 +152,24 @@ def main():
                             )
                         )
 
-                        chart = st.altair_chart(raw_chart, use_container_width=True)
-                        treatment_chart_bucket[port] = chart
+                        raw_chart_y = (
+                            alt.Chart(table_filtered_by_port)
+                            .mark_line(point=True)
+                            .encode(
+                                x="datetime",
+                                y="diff_y",
+                                color="algorithm",
+                                tooltip=["datetime", "diff_y", "algorithm"],
+                            )
+                        )
+
+                        treatment_chart_bucket[port] = {}
+                        treatment_chart_bucket[port]["x"] = st.altair_chart(
+                            raw_chart_x, use_container_width=True
+                        )
+                        treatment_chart_bucket[port]["y"] = st.altair_chart(
+                            raw_chart_y, use_container_width=True
+                        )
 
             ratio_complete = (i + 1) / total_files
             progress_bar.progress(ratio_complete)
