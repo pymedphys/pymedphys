@@ -5,9 +5,9 @@
 ..
     Please instead edit the file found at:
 ..
-        lib\pymedphys\docs\README.rst
+        pymedphys/lib/pymedphys/docs/README.rst
 ..
-    and then run `pymedphys dev propagate --copies`
+    and then run `poetry run pymedphys dev propagate --copies`
 
 .. START_OF_DOCS_IMPORT
 

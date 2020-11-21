@@ -90,7 +90,7 @@ def propagate_file_copies_into_library():
         (ROOT_PYLINT, LIBRARY_PYLINT),
         (DOCS_README, ROOT_README),
         (ROOT_CHANGELOG, DOCS_CHANGELOG),
-        (ROOT_CONTRIBUTING, DOCS_CONTRIBUTING),
+        (DOCS_CONTRIBUTING, ROOT_CONTRIBUTING),
     ]
 
     for original_path, target_path in files_to_copy:
@@ -111,11 +111,14 @@ def _copy_file_with_autogen_message(original_path, target_path):
         original_contents = f.read()
 
     relative_original_path = original_path.relative_to(REPO_ROOT)
+    path_with_pymedphys_as_root = pathlib.Path("pymedphys").joinpath(
+        relative_original_path
+    )
 
     custom_autogen = AUTOGEN_MESSAGE + [
         "# Please instead edit the file found at:",
-        f"#     {relative_original_path}",
-        "# and then run `pymedphys dev propagate --copies`",
+        f"#     {path_with_pymedphys_as_root}",
+        "# and then run `poetry run pymedphys dev propagate --copies`",
     ]
 
     new_autogen = [
