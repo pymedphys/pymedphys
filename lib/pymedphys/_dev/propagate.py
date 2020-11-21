@@ -89,7 +89,7 @@ def propagate_file_copies_into_library():
     files_to_copy = [
         (ROOT_PYLINT, LIBRARY_PYLINT),
         (DOCS_README, ROOT_README),
-        (ROOT_CHANGELOG, DOCS_CHANGELOG),
+        (DOCS_CHANGELOG, ROOT_CHANGELOG),
         (DOCS_CONTRIBUTING, ROOT_CONTRIBUTING),
     ]
 

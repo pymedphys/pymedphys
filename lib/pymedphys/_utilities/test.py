@@ -66,7 +66,7 @@ def get_executable_even_when_embedded():
         If each attempt at finding the Python interpreter fails.
 
     """
-    exe = sys.executable
+    exe = str(sys.executable)
     if pathlib.Path(exe).name.startswith("python"):
         try:
             test_exe(exe)
