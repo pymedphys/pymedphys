@@ -31,9 +31,9 @@ def build_docs(args):
         [
             "jupyter-book",
             "build",
-            "-W",
-            "-n",
-            "--keep-going",
+            # "-W",
+            # "-n",
+            # "--keep-going",
             str(DOCS_DIR),
             "--path-output",
             output_directory,
