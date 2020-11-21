@@ -1,0 +1,6 @@
+title: PyMedPhys
+author: the PyMedPhys community
+copyright: "2018-2020"
+logo: img/pymedphys.svg
+execute:
+  execute_notebooks: cache
