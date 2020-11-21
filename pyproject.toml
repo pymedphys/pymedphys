@@ -50,23 +50,25 @@ pandas = {version = "*", optional = true}  # groups = ["user", "dev"]
 Pillow = {version = "*", optional = true}  # groups = ["user", "dev"]
 imageio = {version = "*", optional = true}  # groups = ["user", "dev"]
 
+## electron-factors
 shapely = {version = ">= 1.7.0", optional = true}  # groups = ["user", "dev"]
 
+## dicom
 pydicom = {version = ">=2.0.0", optional = true}  # groups = ["user", "dev", "dicom"]
 pynetdicom = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
 pylibjpeg-libjpeg = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
 
+## mosaiq
 pymssql = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-# wlutz
+## wlutz
 pylinac = {version = "2.3.2", optional = true}  # groups = ["user", "dev"]
 python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev"]
 scikit-image = {version = "*", optional = true}  # groups = ["user", "dev"]
 dbfread = {version = "*", optional = true}  # groups = ["user", "dev"]
 xmltodict = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-
-# gui
+## gui
 streamlit = {version = "0.70.0", optional = true}  # groups = ["user", "dev"]
 timeago = {version = "*", optional = true}  # groups = ["user", "dev"]
 
