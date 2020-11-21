@@ -2758,7 +2758,6 @@ dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests"
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
 docs = ["jupyter-book"]
 doctests = ["tensorflow", "black", "tomlkit"]
-experimental = ["python_dateutil", "scikit-image"]
 gui = ["streamlit", "timeago"]
 ml = ["tensorflow", "torch"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
@@ -2767,7 +2766,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "39d19f657ea55587d49f6310940d90ae0080a2f99d0fdd1217789ebd69b45a56"
+content-hash = "44a1cbbc5d26e8b36441b7602c2c618f1813e60b9947de1bbc1b721dbde75cce"
 
 [metadata.files]
 absl-py = [
