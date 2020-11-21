@@ -200,13 +200,6 @@ def _install_pymedphys_in_offline_mode(prepend):
         cwd=BUILD_PYTHON_EMBED,
     )
 
-    # Trigger building of matplotlib font cache
-    subprocess.check_call(
-        f'{prepend}python.exe -c "import matplotlib.pyplot as plt"',
-        shell=True,
-        cwd=BUILD_PYTHON_EMBED,
-    )
-
 
 def _create_compressed_python_embed():
     """Compress the created embedded python distribution to a tar.xz file.
