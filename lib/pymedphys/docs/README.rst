@@ -63,7 +63,7 @@ Absolute Beginners Tutorial
 Start here if you are new to Python and would like an in-depth instruction on
 how to get started.
 
-Quickstart Tutorial
+Quickstart How-To Guide
 ...................
 
 Start here if you are fluent in Python and just want a quick instruction on how
@@ -79,7 +79,7 @@ Python software yourself.
 These are aimed at you if you don't yet know what you can achieve with
 PyMedPhys but you would like to learn.
 
-`How-To guides`_
+`How-To Guides`_
 ................
 
 Guides and recipes for common problems and tasks. These are aimed for you if
@@ -271,7 +271,7 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
-.. _`How-To guides`: https://docs.pymedphys.com/howto
+.. _`How-To Guides`: https://docs.pymedphys.com/howto
 .. _`Reference`: https://docs.pymedphys.com/ref
 .. _`Background`: https://docs.pymedphys.com/background
 
