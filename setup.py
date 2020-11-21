@@ -190,7 +190,6 @@ extras_require = {
     "dicom": ["pydicom>=2.0.0", "pynetdicom", "pylibjpeg-libjpeg", "immutables"],
     "docs": ["jupyter-book>=0.8.3"],
     "doctests": ["tensorflow>=2.2.0", "black>=19.3b0,<20.0", "tomlkit"],
-    "experimental": ["python_dateutil", "scikit-image"],
     "gui": ["streamlit==0.70.0", "timeago"],
     "ml": ["tensorflow>=2.2.0", "torch>=1.0.0"],
     "tests": [
