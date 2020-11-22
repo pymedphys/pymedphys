@@ -190,11 +190,12 @@ jobs:
         path: .venv
         key: venv-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
+    # This is from <https://github.com/python-poetry/poetry/blob/639d5e057/.github/workflows/main.yml#L57-L60>
     - name: Ensure cache is healthy
       if: steps.poetry-cache.outputs.cache-hit == 'true'
       shell: bash
       run: |
-        poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
+        timeout 10s poetry run pip --version || rm -rf .venv
 
 # -----------------------------------------------------------------------------
 
