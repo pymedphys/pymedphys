@@ -22,7 +22,9 @@ def build_both_axis_altair_charts(table):
 
     for axis in ["y", "x"]:
         raw_chart = _build_altair_chart(table, axis)
-        chart_bucket[axis] = st.altair_chart(altair_chart=raw_chart)
+        chart_bucket[axis] = st.altair_chart(
+            altair_chart=raw_chart, use_container_width=True
+        )
 
     return chart_bucket
 
@@ -38,19 +40,23 @@ def _build_altair_chart(table, axis):
     }[axis]
 
     raw_chart = (
-        alt.Chart(table)
-        .mark_line(point=True)
-        .encode(
-            x=alt.X("datetime", axis=alt.Axis(title="Image Time")),
-            y=alt.Y(
-                parameters["column-name"],
-                axis=alt.Axis(
-                    title=f"iView {parameters['axis-name']} (mm) [Field - BB]"
+        (
+            alt.Chart(table)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("datetime", axis=alt.Axis(title="Image Time")),
+                y=alt.Y(
+                    parameters["column-name"],
+                    axis=alt.Axis(
+                        title=f"iView {parameters['axis-name']} (mm) [Field - BB]"
+                    ),
                 ),
-            ),
-            color=alt.Color("algorithm", legend=alt.Legend(title="Algorithm")),
-            tooltip=["time", "diff_x", "diff_y", "filename", "algorithm"],
+                color=alt.Color("algorithm", legend=alt.Legend(title="Algorithm")),
+                tooltip=["time", "diff_x", "diff_y", "filename", "algorithm"],
+            )
         )
-    ).properties(title=parameters["plot-type"])
+        .properties(title=parameters["plot-type"])
+        .interactive(bind_y=False)
+    )
 
     return raw_chart
