@@ -12,9 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import lzma
 
+from pymedphys._imports import altair as alt
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
+
+import pymedphys._icom.extract as pmp_icom_extract
+
+
+def read_icom_log(filepath):
+    with lzma.open(filepath, "r") as f:
+        icom_stream = f.read()
+
+    return icom_stream
 
 
 def get_paths_by_date(icom_patients_directory, selected_date=None):
@@ -35,6 +48,29 @@ def get_paths_by_date(icom_patients_directory, selected_date=None):
     )
 
     return selected_paths_by_date
+
+
+def plot_all_relevant_times(all_relevant_times):
+    for key, data in all_relevant_times.items():
+        st.write(f"### Machine ID: `{key}`")
+        relevant_times = pd.DataFrame(pd.concat(data, axis=0), columns=["datetime"])
+
+        raw_chart = (
+            alt.Chart(relevant_times)
+            .mark_bar()
+            .encode(x=alt.X("datetime", bin=alt.Bin(step=5 * 60 * 1000)), y="count()")
+        )
+
+        st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+
+
+def get_relevant_times_for_filepaths(filepaths):
+    all_relevant_times = collections.defaultdict(lambda: [])
+    for f in filepaths:
+        machine_id, relevant_times = _get_relevant_times(f)
+        all_relevant_times[machine_id].append(relevant_times)
+
+    return all_relevant_times
 
 
 def _get_service_icom_paths(root_directory):
@@ -61,3 +97,55 @@ def _get_file_datetimes(icom_paths):
     )
 
     return timestamps
+
+
+@st.cache(show_spinner=False)
+def _get_relevant_times(filepath):
+    icom_datetime, meterset, machine_id = get_icom_datetimes_meterset_machine(filepath)
+
+    machine_id = machine_id.unique()
+    if len(machine_id) != 1:
+        raise ValueError("Only one machine id per file expected")
+
+    machine_id = machine_id[0]
+
+    diff_meterset = np.concatenate([[0], np.diff(meterset)])
+    relevant_rows = diff_meterset > 0
+    relevant_times = icom_datetime.loc[relevant_rows]
+
+    return machine_id, pd.Series(relevant_times.unique(), name="datetime")
+
+
+def _get_meterset_timestep_weighting(delivery):
+    meterset = np.array(delivery.mu)
+
+    diff_meterset = np.concatenate([[0], np.diff(meterset)])
+    timestep_meterset_weighting = diff_meterset / meterset[-1]
+
+    if not np.allclose(np.sum(timestep_meterset_weighting), 1):
+        raise ValueError("Meterset position weighting should add up to 1")
+
+    return timestep_meterset_weighting
+
+
+@st.cache(show_spinner=False)
+def get_icom_datetimes_meterset_machine(filepath):
+    icom_stream = read_icom_log(filepath)
+
+    icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
+    icom_datetime = pd.to_datetime(
+        pd.Series([item[8:26].decode() for item in icom_data_points], name="datetime"),
+        format="%Y-%m-%d%H:%M:%S",
+    )
+
+    meterset = pd.Series(
+        [pmp_icom_extract.extract(item, "Delivery MU")[1] for item in icom_data_points],
+        name="meterset",
+    )
+
+    machine_id = pd.Series(
+        [pmp_icom_extract.extract(item, "Machine ID")[1] for item in icom_data_points],
+        name="machine_id",
+    )
+
+    return icom_datetime, meterset, machine_id
