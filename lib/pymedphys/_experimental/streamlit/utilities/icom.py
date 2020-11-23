@@ -58,11 +58,11 @@ def plot_all_relevant_times(all_relevant_times):
         plot_relevant_times(data)
 
 
-def plot_relevant_times(relevant_times):
+def plot_relevant_times(relevant_times, step=5):
     raw_chart = (
         alt.Chart(relevant_times)
         .mark_bar()
-        .encode(x=alt.X("datetime", bin=alt.Bin(step=5 * 60 * 1000)), y="count()")
+        .encode(x=alt.X("datetime", bin=alt.Bin(step=step * 60 * 1000)), y="count()")
     )
 
     st.altair_chart(altair_chart=raw_chart, use_container_width=True)
