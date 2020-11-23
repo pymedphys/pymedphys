@@ -17,12 +17,12 @@ import time
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._experimental.streamlit import anonymise_monaco as _anonymise_monaco
-from pymedphys._experimental.streamlit import dashboard as _dashboard
-from pymedphys._experimental.streamlit import electrons as _electrons
-from pymedphys._experimental.streamlit import icom as _icom
-from pymedphys._experimental.streamlit import iviewdb as _iviewdb
-from pymedphys._experimental.streamlit import wlutz as _wlutz
+from pymedphys._experimental.streamlit.apps import anonymise_monaco as _anonymise_monaco
+from pymedphys._experimental.streamlit.apps import dashboard as _dashboard
+from pymedphys._experimental.streamlit.apps import electrons as _electrons
+from pymedphys._experimental.streamlit.apps import icom as _icom
+from pymedphys._experimental.streamlit.apps import iviewdb as _iviewdb
+from pymedphys._experimental.streamlit.apps import wlutz as _wlutz
 from pymedphys._streamlit.apps import metersetmap as _metersetmap
 from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
 from pymedphys._streamlit.utilities import session
