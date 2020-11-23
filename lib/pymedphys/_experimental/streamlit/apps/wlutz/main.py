@@ -58,6 +58,14 @@ def main():
 
     st.write(database_table)
 
+    # TODO: Plot iCom timestamps within the same bounds as selected time
+    # range, except with a buffer.
+
+    # Default the buffer to ~10 mins, allow the user to adjust the buffer.
+
+    # Make the max +/- range of the time alignment be the buffer.
+    # Plot the altair bins to ~10 seconds
+
     # --
 
     st.write("## iView to iCom timestamp alignment")
