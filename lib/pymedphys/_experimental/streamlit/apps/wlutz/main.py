@@ -18,7 +18,7 @@ from pymedphys._imports import pylinac
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
-from pymedphys._streamlit.utilities import misc
+from pymedphys._streamlit.utilities import config, misc
 from pymedphys._wlutz import findbb, findfield, imginterp, iview
 from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
@@ -38,7 +38,13 @@ def main():
 
     edge_lengths, bb_diameter, penumbra = _set_parameters()
 
-    _, database_directory = misc.get_site_and_directory("Database Site", "iviewdb")
+    site_directories = config.get_site_directories()
+    chosen_site = misc.site_picker("Site")
+
+    database_directory = site_directories[chosen_site]["iviewdb"]
+
+    icom_directory = site_directories[chosen_site]["icom"]
+    icom_patients_directory = icom_directory.joinpath("patients")
 
     st.write("## Load iView databases for a given date")
     refresh_cache = st.button("Re-query databases")
