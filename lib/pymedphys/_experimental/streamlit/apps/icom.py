@@ -22,6 +22,7 @@ from pymedphys._imports import streamlit as st
 
 import pymedphys._icom.delivery as pmp_icom_delivery
 import pymedphys._icom.extract as pmp_icom_extract
+from pymedphys._experimental.streamlit.utilities import icom as _icom
 from pymedphys._streamlit.utilities import config, misc
 
 
@@ -34,11 +35,14 @@ def main():
     icom_patients_directory = icom_directory.joinpath("patients")
     st.write(icom_patients_directory)
 
-    selected_paths_by_date = _get_paths_by_date(icom_patients_directory)
+    selected_paths_by_date = _icom.get_paths_by_date(icom_patients_directory)
 
     st.write("## Service mode beam utilisation")
 
-    _plot_all_relevant_times(selected_paths_by_date["filepath"])
+    all_relevant_times = _get_relevant_times_for_filepaths(
+        selected_paths_by_date["filepath"]
+    )
+    _plot_all_relevant_times(all_relevant_times)
 
     st.write("## Select a time to view specific iCom data")
 
@@ -94,12 +98,7 @@ def main():
     st.write(icom_dataset)
 
 
-def _plot_all_relevant_times(filepaths):
-    all_relevant_times = collections.defaultdict(lambda: [])
-    for f in filepaths:
-        machine_id, relevant_times = _get_relevant_times(f)
-        all_relevant_times[machine_id].append(relevant_times)
-
+def _plot_all_relevant_times(all_relevant_times):
     for key, data in all_relevant_times.items():
         st.write(f"### Machine ID: `{key}`")
         relevant_times = pd.DataFrame(pd.concat(data, axis=0), columns=["datetime"])
@@ -111,6 +110,15 @@ def _plot_all_relevant_times(filepaths):
         )
 
         st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+
+
+def _get_relevant_times_for_filepaths(filepaths):
+    all_relevant_times = collections.defaultdict(lambda: [])
+    for f in filepaths:
+        machine_id, relevant_times = _get_relevant_times(f)
+        all_relevant_times[machine_id].append(relevant_times)
+
+    return all_relevant_times
 
 
 @st.cache(show_spinner=False)
@@ -209,49 +217,3 @@ def _get_meterset_timestep_weighting(delivery):
         raise ValueError("Meterset position weighting should add up to 1")
 
     return timestep_meterset_weighting
-
-
-def _get_service_icom_paths(root_directory):
-    service_mode_directories = [
-        item.name
-        for item in root_directory.glob("*")
-        if item.name.startswith("Deliver")
-    ]
-
-    service_icom_paths = []
-    for directory in service_mode_directories:
-        full_path = root_directory.joinpath(directory)
-        service_icom_paths += list(full_path.glob("*.xz"))
-
-    service_icom_paths = pd.Series(service_icom_paths, name="filepath")
-
-    return service_icom_paths
-
-
-def _get_file_datetimes(icom_paths):
-    filestems = pd.Series([item.stem for item in icom_paths], name="filestem")
-    timestamps = pd.Series(
-        pd.to_datetime(filestems, format="%Y%m%d_%H%M%S"), name="datetime"
-    )
-
-    return timestamps
-
-
-def _get_paths_by_date(icom_patients_directory, selected_date=None):
-    service_icom_paths = _get_service_icom_paths(icom_patients_directory)
-    timestamps = _get_file_datetimes(service_icom_paths)
-
-    path_dataframe = pd.concat([service_icom_paths, timestamps], axis=1)
-    timestamp_dates = timestamps.dt.date
-
-    dates = pd.Series(pd.unique(timestamp_dates)).sort_values(ascending=False)
-
-    if selected_date is None:
-        selected_date = st.selectbox("Date", list(dates))
-
-    selected_paths_by_date = path_dataframe.loc[selected_date == timestamp_dates]
-    selected_paths_by_date = selected_paths_by_date.sort_values(
-        "datetime", ascending=False
-    )
-
-    return selected_paths_by_date
