@@ -20,7 +20,6 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
-import pymedphys
 import pymedphys._icom.delivery as pmp_icom_delivery
 import pymedphys._icom.extract as pmp_icom_extract
 from pymedphys._streamlit.utilities import misc
@@ -33,20 +32,7 @@ def main():
     icom_patients_directory = icom_directory.joinpath("patients")
 
     st.write(icom_patients_directory)
-
-    service_icom_paths = _get_service_icom_paths(icom_patients_directory)
-    timestamps = _get_file_datetimes(service_icom_paths)
-
-    path_dataframe = pd.concat([service_icom_paths, timestamps], axis=1)
-    timestamp_dates = timestamps.dt.date
-
-    dates = pd.Series(pd.unique(timestamp_dates)).sort_values(ascending=False)
-    selected_date = st.selectbox("Date", list(dates))
-
-    selected_paths_by_date = path_dataframe.loc[selected_date == timestamp_dates]
-    selected_paths_by_date = selected_paths_by_date.sort_values(
-        "datetime", ascending=False
-    )
+    selected_paths_by_date = _get_paths_by_date(icom_patients_directory)
 
     st.write("## Service mode beam utilisation")
 
@@ -247,3 +233,23 @@ def _get_file_datetimes(icom_paths):
     )
 
     return timestamps
+
+
+def _get_paths_by_date(icom_patients_directory, selected_date=None):
+    service_icom_paths = _get_service_icom_paths(icom_patients_directory)
+    timestamps = _get_file_datetimes(service_icom_paths)
+
+    path_dataframe = pd.concat([service_icom_paths, timestamps], axis=1)
+    timestamp_dates = timestamps.dt.date
+
+    dates = pd.Series(pd.unique(timestamp_dates)).sort_values(ascending=False)
+
+    if selected_date is None:
+        selected_date = st.selectbox("Date", list(dates))
+
+    selected_paths_by_date = path_dataframe.loc[selected_date == timestamp_dates]
+    selected_paths_by_date = selected_paths_by_date.sort_values(
+        "datetime", ascending=False
+    )
+
+    return selected_paths_by_date
