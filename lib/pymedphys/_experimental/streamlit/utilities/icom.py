@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import collections
 import lzma
 
@@ -53,15 +54,22 @@ def get_paths_by_date(icom_patients_directory, selected_date=None):
 def plot_all_relevant_times(all_relevant_times):
     for key, data in all_relevant_times.items():
         st.write(f"### Machine ID: `{key}`")
-        relevant_times = pd.DataFrame(pd.concat(data, axis=0), columns=["datetime"])
 
-        raw_chart = (
-            alt.Chart(relevant_times)
-            .mark_bar()
-            .encode(x=alt.X("datetime", bin=alt.Bin(step=5 * 60 * 1000)), y="count()")
-        )
+        plot_relevant_times(data)
 
-        st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+
+def plot_relevant_times(relevant_times):
+    relevant_times = pd.DataFrame(
+        pd.concat(relevant_times, axis=0), columns=["datetime"]
+    )
+
+    raw_chart = (
+        alt.Chart(relevant_times)
+        .mark_bar()
+        .encode(x=alt.X("datetime", bin=alt.Bin(step=5 * 60 * 1000)), y="count()")
+    )
+
+    st.altair_chart(altair_chart=raw_chart, use_container_width=True)
 
 
 def get_relevant_times_for_filepaths(filepaths):
