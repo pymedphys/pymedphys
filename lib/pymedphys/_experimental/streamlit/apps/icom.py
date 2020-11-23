@@ -34,15 +34,10 @@ def main():
 
     st.write(icom_patients_directory)
 
-    service_icom_logs = _get_service_icom_logs(icom_patients_directory)
+    service_icom_paths = _get_service_icom_paths(icom_patients_directory)
+    timestamps = _get_file_datetimes(service_icom_paths)
 
-    filestems = pd.Series([item.stem for item in service_icom_logs], name="filestem")
-    timestamps = pd.Series(
-        pd.to_datetime(filestems, format="%Y%m%d_%H%M%S"), name="datetime"
-    )
-
-    path_dataframe = pd.concat([service_icom_logs, filestems, timestamps], axis=1)
-
+    path_dataframe = pd.concat([service_icom_paths, timestamps], axis=1)
     timestamp_dates = timestamps.dt.date
 
     dates = pd.Series(pd.unique(timestamp_dates)).sort_values(ascending=False)
@@ -52,8 +47,6 @@ def main():
     selected_paths_by_date = selected_paths_by_date.sort_values(
         "datetime", ascending=False
     )
-
-    st.write(selected_paths_by_date)
 
     st.write("## Service mode beam utilisation")
 
@@ -235,18 +228,27 @@ def _determine_length_from_delivery(delivery):
     return round(length, 1)
 
 
-def _get_service_icom_logs(root_directory):
+def _get_service_icom_paths(root_directory):
     service_mode_directories = [
         item.name
         for item in root_directory.glob("*")
         if item.name.startswith("Deliver")
     ]
 
-    service_icom_logs = []
+    service_icom_paths = []
     for directory in service_mode_directories:
         full_path = root_directory.joinpath(directory)
-        service_icom_logs += list(full_path.glob("*.xz"))
+        service_icom_paths += list(full_path.glob("*.xz"))
 
-    service_icom_logs = pd.Series(service_icom_logs, name="filepath")
+    service_icom_paths = pd.Series(service_icom_paths, name="filepath")
 
-    return service_icom_logs
+    return service_icom_paths
+
+
+def _get_file_datetimes(icom_paths):
+    filestems = pd.Series([item.stem for item in icom_paths], name="filestem")
+    timestamps = pd.Series(
+        pd.to_datetime(filestems, format="%Y%m%d_%H%M%S"), name="datetime"
+    )
+
+    return timestamps
