@@ -181,9 +181,20 @@ def _determine_width_from_delivery(delivery):
 
     mlc_indices = np.arange(80)
     leaf_centre_pos = np.array((mlc_indices - 39) * 5 - 2.5)  # Not sufficiently tested
-    is_mlc_centre_unblocked = (-jaw[:, 0][None, :] <= leaf_centre_pos[:, None]) & (
-        jaw[:, 1][None, :] >= leaf_centre_pos[:, None]
+    is_mlc_centre_unblocked = (-jaw[:, 0][:, None] <= leaf_centre_pos[None, :]) & (
+        jaw[:, 1][:, None] >= leaf_centre_pos[None, :]
     )
+
+    mlc = np.array(delivery.mlc)
+
+    st.write(np.shape(mlc))
+    st.write(np.shape(np.invert(is_mlc_centre_unblocked)))
+
+    mlc[np.invert(is_mlc_centre_unblocked)[:, :], :] = np.nan
+
+    st.write(mlc)
+
+    st.stop()
 
     is_mlc_centre_unblocked_for_all_cps = np.all(is_mlc_centre_unblocked, axis=1)
 
@@ -218,14 +229,9 @@ def _get_meterset_timestep_weighting(delivery):
 
 def _determine_length_from_delivery(delivery):
     jaw = np.array(delivery.jaw)
-    timestep_meterset_weighting = _get_meterset_timestep_weighting(delivery)
+    length = jaw[:, 0] + jaw[:, 1]
 
-    side_a = np.sum(jaw[:, 0] * timestep_meterset_weighting)
-    side_b = np.sum(jaw[:, 1] * timestep_meterset_weighting)
-
-    length = side_a + side_b
-
-    return round(length, 1)
+    return length
 
 
 def _get_service_icom_paths(root_directory):
