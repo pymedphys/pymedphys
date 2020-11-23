@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import pathlib
-import warnings
 
 import altair as alt
 from pymedphys._imports import numpy as np
@@ -38,9 +37,6 @@ def main():
     and the ball bearing centre accross a range of gantry angles.
 
     """
-
-    warnings.filterwarnings("error")
-
     st.title("Winston-Lutz Arc")
 
     edge_lengths, bb_diameter, penumbra = _set_parameters()
@@ -63,50 +59,17 @@ def main():
         "Algorithms to run", algorithm_options, algorithm_options
     )
 
-    show_selected_image = st.checkbox(
-        "Select a single image to show results for", False
-    )
-
     database_table["filename"] = database_table["filepath"].apply(_filepath_to_filename)
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
-    if show_selected_image:
-        image_filename = st.selectbox(
-            "Select single filepath", database_table["filename"]
-        )
-
-        relative_image_path = database_table.loc[
-            database_table["filename"] == image_filename
-        ]["filepath"]
-        if len(relative_image_path) != 1:
-            raise ValueError("Filepath and filelength should be a one-to-one mapping")
-
-        relative_image_path = relative_image_path.iloc[0]
-
-        if _filepath_to_filename(relative_image_path) != image_filename:
-            raise ValueError("Filepath selection did not convert appropriately")
-
-        st.write(relative_image_path)
-
-        results = _get_results_for_image(
-            database_directory,
-            relative_image_path,
-            selected_algorithms,
-            bb_diameter,
-            edge_lengths,
-            penumbra,
-        )
-
-        st.write(results)
-
-        _plot_diagnostic_figures(
-            database_directory,
-            relative_image_path,
-            bb_diameter,
-            edge_lengths,
-            penumbra,
-            selected_algorithms,
-        )
+    _show_selected_image(
+        database_directory,
+        database_table,
+        selected_algorithms,
+        bb_diameter,
+        edge_lengths,
+        penumbra,
+    )
 
     if st.button("Calculate"):
         st.sidebar.write("---\n## Progress")
@@ -171,6 +134,62 @@ def main():
 
             percent_complete = round(ratio_complete * 100, 2)
             status_text.text(f"{percent_complete}% Complete")
+
+
+def _show_selected_image(
+    database_directory,
+    database_table,
+    selected_algorithms,
+    bb_diameter,
+    edge_lengths,
+    penumbra,
+):
+    show_selected_image = st.checkbox(
+        "Select a single image to show results for", False
+    )
+
+    filenames = list(database_table["filename"])
+
+    if show_selected_image:
+        image_filename = st.selectbox("Select single filepath", filenames)
+
+        st.write(image_filename)
+
+        relative_image_path = database_table.loc[
+            database_table["filename"] == image_filename
+        ]["filepath"]
+        if len(relative_image_path) != 1:
+            raise ValueError("Filepath and filelength should be a one-to-one mapping")
+
+        relative_image_path = relative_image_path.iloc[0]
+
+        if _filepath_to_filename(relative_image_path) != image_filename:
+            raise ValueError("Filepath selection did not convert appropriately")
+
+        st.write(relative_image_path)
+
+        results = _get_results_for_image(
+            database_directory,
+            relative_image_path,
+            selected_algorithms,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
+        )
+
+        st.write(results)
+
+        figures = _plot_diagnostic_figures(
+            database_directory,
+            relative_image_path,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
+            selected_algorithms,
+        )
+
+        for fig in figures:
+            st.pyplot(fig)
 
 
 def _build_both_axis_altair_charts(table):
@@ -279,6 +298,8 @@ def _plot_diagnostic_figures(
         full_image_path, bb_diameter, edge_lengths, penumbra
     )
 
+    figures = []
+
     for algorithm in selected_algorithms:
         field_centre, _, bb_centre = _calculate_wlutz(
             full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
@@ -286,7 +307,9 @@ def _plot_diagnostic_figures(
 
         fig, axs = _create_figure(field_centre, bb_centre, wlutz_input_parameters)
         axs[0, 0].set_title(algorithm)
-        st.pyplot(fig)
+        figures.append(fig)
+
+    return figures
 
 
 def _get_full_image_path(database_directory, relative_image_path):

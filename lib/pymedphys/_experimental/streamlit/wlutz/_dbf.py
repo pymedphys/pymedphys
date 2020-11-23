@@ -273,6 +273,6 @@ def _load_dbf_base(
 ) -> "pd.DataFrame":
     dbf_path = database_directory.joinpath(filename)
     table = _dbf_to_pandas(dbf_path, refresh_cache)[columns_to_keep]
-    table.rename(column_rename_map, axis="columns", inplace=True)
+    table = table.rename(column_rename_map, axis="columns")
 
     return table
