@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import lzma
 
+from pymedphys._imports import altair as alt
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
 import pymedphys
@@ -36,12 +37,6 @@ def main():
     patient_directories = [
         item.name for item in icom_patients_directory.glob("*") if item != "archive"
     ]
-
-    service_mode = st.checkbox("Focus on Service Mode Fields", True)
-
-    if not service_mode:
-        st.write(ValueError("Not yet implemented"))
-        st.stop()
 
     service_mode_directories = [
         item for item in patient_directories if item.startswith("Deliver")
@@ -85,14 +80,10 @@ def main():
 
     st.write(filepath)
 
-    with lzma.open(filepath, "r") as f:
-        icom_stream = f.read()
-
+    icom_stream = _read_icom_log(filepath)
     icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
-    icom_datetime = pd.to_datetime(
-        pd.Series([item[8:26].decode() for item in icom_data_points], name="datetime"),
-        format="%Y-%m-%d%H:%M:%S",
-    )
+
+    icom_datetime, meterset = _get_icom_datetimes_and_meterset(filepath)
 
     icom_time = pd.Series(icom_datetime.dt.time, name="time")
     raw_delivery_items = pd.DataFrame(
@@ -108,6 +99,9 @@ def main():
         name="table",
     )
 
+    if np.all(meterset != raw_delivery_items["meterset"]):
+        raise ValueError("Expected meterset extractions to agree.")
+
     icom_dataset = pd.concat(
         [icom_time, raw_delivery_items, table, icom_datetime], axis=1
     )
@@ -119,6 +113,60 @@ def main():
 
     length = _determine_length_from_delivery(delivery)
     st.write(f"Width: `{width}` | Length: `{length}`")
+
+    _plot_all_relevant_times(selected_paths_by_date["filepath"])
+
+
+def _plot_all_relevant_times(filepaths):
+    all_relevant_times = []
+    for f in filepaths:
+        all_relevant_times.append(_get_relevant_times(f))
+
+    relevant_times = pd.DataFrame(pd.concat(all_relevant_times, axis=0))
+
+    raw_chart = (
+        alt.Chart(relevant_times)
+        .mark_bar()
+        .encode(x=alt.X("datetime", bin=alt.Bin(step=5 * 60 * 1000)), y="count()")
+    )
+
+    st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+
+
+@st.cache()
+def _get_relevant_times(filepath):
+    icom_datetime, meterset = _get_icom_datetimes_and_meterset(filepath)
+
+    diff_meterset = np.concatenate([[0], np.diff(meterset)])
+    relevant_rows = diff_meterset > 0
+    relevant_times = icom_datetime.loc[relevant_rows]
+
+    return pd.Series(relevant_times.unique(), name="datetime")
+
+
+def _read_icom_log(filepath):
+    with lzma.open(filepath, "r") as f:
+        icom_stream = f.read()
+
+    return icom_stream
+
+
+@st.cache()
+def _get_icom_datetimes_and_meterset(filepath):
+    icom_stream = _read_icom_log(filepath)
+
+    icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
+    icom_datetime = pd.to_datetime(
+        pd.Series([item[8:26].decode() for item in icom_data_points], name="datetime"),
+        format="%Y-%m-%d%H:%M:%S",
+    )
+
+    meterset = pd.Series(
+        [pmp_icom_extract.extract(item, "Delivery MU")[1] for item in icom_data_points],
+        name="meterset",
+    )
+
+    return icom_datetime, meterset
 
 
 def _check_for_consistent_mlc_width_return_mean(weighted_mlc_positions):
