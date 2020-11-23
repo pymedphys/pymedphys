@@ -140,7 +140,10 @@ known_general_scientific = [
     "mpl_toolkits", "shapely"
 ]
 known_machine_learning = [
-    "tensorflow", "streamlit"
+    "tensorflow", "pytorch"
+]
+known_streamlit = [
+    "streamlit", "altair", "streamlit_vega_lite"
 ]
 known_medphys = [
     "pydicom", "pylinac", "pynetdicom", "libjpeg"
@@ -148,7 +151,7 @@ known_medphys = [
 known_first_party = ["pymedphys"]
 sections = [
     "FUTURE", "STDLIB", "THIRDPARTY", "GENERAL_SCIENTIFIC", "MACHINE_LEARNING",
-    "MEDPHYS", "FIRSTPARTY", "LOCALFOLDER"
+    "STREAMLIT", "MEDPHYS", "FIRSTPARTY", "LOCALFOLDER"
 ]
 
 [build-system]

@@ -52,10 +52,13 @@ import skimage.draw
 import skimage.filters
 import skimage.measure
 
+import tensorflow
+
+import altair
 import streamlit
 import streamlit.bootstrap
 import streamlit.cli
-import tensorflow
+import streamlit_vega_lite
 
 import libjpeg
 import pydicom
