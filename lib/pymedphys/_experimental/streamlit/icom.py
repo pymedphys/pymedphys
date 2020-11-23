@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
+import collections
 import lzma
 
 from pymedphys._imports import altair as alt
@@ -68,6 +68,12 @@ def main():
 
     st.write(selected_paths_by_date)
 
+    st.write("## Timesteps on this date where beam was recorded as on in service mode")
+
+    _plot_all_relevant_times(selected_paths_by_date["filepath"])
+
+    st.write("## Select a time to view specific iCom data")
+
     times = selected_paths_by_date["datetime"].dt.time
     selected_time = st.selectbox("Time", list(times))
 
@@ -83,7 +89,7 @@ def main():
     icom_stream = _read_icom_log(filepath)
     icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
 
-    icom_datetime, meterset = _get_icom_datetimes_and_meterset(filepath)
+    icom_datetime, meterset, machine_id = _get_icom_datetimes_meterset_machine(filepath)
 
     icom_time = pd.Series(icom_datetime.dt.time, name="time")
     raw_delivery_items = pd.DataFrame(
@@ -103,7 +109,7 @@ def main():
         raise ValueError("Expected meterset extractions to agree.")
 
     icom_dataset = pd.concat(
-        [icom_time, raw_delivery_items, table, icom_datetime], axis=1
+        [icom_time, machine_id, raw_delivery_items, table, icom_datetime], axis=1
     )
 
     st.write(icom_dataset)
@@ -114,34 +120,41 @@ def main():
     length = _determine_length_from_delivery(delivery)
     st.write(f"Width: `{width}` | Length: `{length}`")
 
-    _plot_all_relevant_times(selected_paths_by_date["filepath"])
-
 
 def _plot_all_relevant_times(filepaths):
-    all_relevant_times = []
+    all_relevant_times = collections.defaultdict(lambda: [])
     for f in filepaths:
-        all_relevant_times.append(_get_relevant_times(f))
+        machine_id, relevant_times = _get_relevant_times(f)
+        all_relevant_times[machine_id].append(relevant_times)
 
-    relevant_times = pd.DataFrame(pd.concat(all_relevant_times, axis=0))
+    for key, data in all_relevant_times.items():
+        st.write(f"### Machine ID: `{key}`")
+        relevant_times = pd.DataFrame(pd.concat(data, axis=0), columns=["datetime"])
 
-    raw_chart = (
-        alt.Chart(relevant_times)
-        .mark_bar()
-        .encode(x=alt.X("datetime", bin=alt.Bin(step=5 * 60 * 1000)), y="count()")
-    )
+        raw_chart = (
+            alt.Chart(relevant_times)
+            .mark_bar()
+            .encode(x=alt.X("datetime", bin=alt.Bin(step=5 * 60 * 1000)), y="count()")
+        )
 
-    st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+        st.altair_chart(altair_chart=raw_chart, use_container_width=True)
 
 
 @st.cache()
 def _get_relevant_times(filepath):
-    icom_datetime, meterset = _get_icom_datetimes_and_meterset(filepath)
+    icom_datetime, meterset, machine_id = _get_icom_datetimes_meterset_machine(filepath)
+
+    machine_id = machine_id.unique()
+    if len(machine_id) != 1:
+        raise ValueError("Only one machine id per file expected")
+
+    machine_id = machine_id[0]
 
     diff_meterset = np.concatenate([[0], np.diff(meterset)])
     relevant_rows = diff_meterset > 0
     relevant_times = icom_datetime.loc[relevant_rows]
 
-    return pd.Series(relevant_times.unique(), name="datetime")
+    return machine_id, pd.Series(relevant_times.unique(), name="datetime")
 
 
 def _read_icom_log(filepath):
@@ -152,7 +165,7 @@ def _read_icom_log(filepath):
 
 
 @st.cache()
-def _get_icom_datetimes_and_meterset(filepath):
+def _get_icom_datetimes_meterset_machine(filepath):
     icom_stream = _read_icom_log(filepath)
 
     icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
@@ -166,7 +179,12 @@ def _get_icom_datetimes_and_meterset(filepath):
         name="meterset",
     )
 
-    return icom_datetime, meterset
+    machine_id = pd.Series(
+        [pmp_icom_extract.extract(item, "Machine ID")[1] for item in icom_data_points],
+        name="machine_id",
+    )
+
+    return icom_datetime, meterset, machine_id
 
 
 def _check_for_consistent_mlc_width_return_mean(weighted_mlc_positions):
