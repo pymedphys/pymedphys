@@ -34,20 +34,7 @@ def main():
 
     st.write(icom_patients_directory)
 
-    patient_directories = [
-        item.name for item in icom_patients_directory.glob("*") if item != "archive"
-    ]
-
-    service_mode_directories = [
-        item for item in patient_directories if item.startswith("Deliver")
-    ]
-
-    service_icom_logs = []
-    for directory in service_mode_directories:
-        full_path = icom_patients_directory.joinpath(directory)
-        service_icom_logs += list(full_path.glob("*.xz"))
-
-    service_icom_logs = pd.Series(service_icom_logs, name="filepath")
+    service_icom_logs = _get_service_icom_logs(icom_patients_directory)
 
     filestems = pd.Series([item.stem for item in service_icom_logs], name="filestem")
     timestamps = pd.Series(
@@ -246,3 +233,20 @@ def _determine_length_from_delivery(delivery):
     length = side_a + side_b
 
     return round(length, 1)
+
+
+def _get_service_icom_logs(root_directory):
+    service_mode_directories = [
+        item.name
+        for item in root_directory.glob("*")
+        if item.name.startswith("Deliver")
+    ]
+
+    service_icom_logs = []
+    for directory in service_mode_directories:
+        full_path = root_directory.joinpath(directory)
+        service_icom_logs += list(full_path.glob("*.xz"))
+
+    service_icom_logs = pd.Series(service_icom_logs, name="filepath")
+
+    return service_icom_logs
