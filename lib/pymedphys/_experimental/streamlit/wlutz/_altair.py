@@ -22,7 +22,7 @@ def build_both_axis_altair_charts(table):
 
     for axis in ["y", "x"]:
         raw_chart = _build_altair_chart(table, axis)
-        chart_bucket[axis] = st.altair_chart(raw_chart, use_container_width=True)
+        chart_bucket[axis] = st.altair_chart(altair_chart=raw_chart)
 
     return chart_bucket
 
