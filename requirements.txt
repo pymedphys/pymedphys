@@ -119,7 +119,6 @@ sphinx==1.7.9; (python_version >= "2.7" and python_full_version < "3.0.0") or (p
 sphinxcontrib-napoleon==0.7
 sphinxcontrib-serializinghtml==1.1.4; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.5"
 sphinxcontrib-websupport==1.2.4; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.5"
-streamlit-vega-lite==0.0.3; python_version >= "3.6"
 streamlit==0.70.0; python_version >= "3.6"
 terminado==0.9.1; python_version >= "3.6"
 testpath==0.4.4; python_version >= "3.6"
