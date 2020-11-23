@@ -76,29 +76,34 @@ def main():
         [pmp_icom_delivery.get_delivery_data_items(item) for item in icom_data_points],
         columns=["meterset", "gantry", "collimator", "mlc", "jaw"],
     )
+    if np.all(meterset != raw_delivery_items["meterset"]):
+        raise ValueError("Expected meterset extractions to agree.")
 
-    table = pd.Series(
+    turn_table = pd.Series(
         [
             pmp_icom_extract.extract(item, "Table Isocentric")[1]
             for item in icom_data_points
         ],
-        name="table",
+        name="turn_table",
     )
 
-    if np.all(meterset != raw_delivery_items["meterset"]):
-        raise ValueError("Expected meterset extractions to agree.")
+    width = _determine_width(raw_delivery_items["mlc"], raw_delivery_items["jaw"])
+    length = _determine_length(raw_delivery_items["jaw"])
 
     icom_dataset = pd.concat(
-        [icom_time, machine_id, raw_delivery_items, table, icom_datetime], axis=1
+        [
+            icom_time,
+            machine_id,
+            width,
+            length,
+            raw_delivery_items,
+            turn_table,
+            icom_datetime,
+        ],
+        axis=1,
     )
 
     st.write(icom_dataset)
-
-    delivery = pymedphys.Delivery.from_icom(icom_stream)
-    width = _determine_width_from_delivery(delivery)
-
-    length = _determine_length_from_delivery(delivery)
-    st.write(f"Width: `{width}` | Length: `{length}`")
 
 
 def _plot_all_relevant_times(filepaths):
@@ -176,8 +181,9 @@ def _check_for_consistent_mlc_width_return_mean(weighted_mlc_positions):
     return mean
 
 
-def _determine_width_from_delivery(delivery):
-    jaw = np.array(delivery.jaw)
+def _determine_width(mlc, jaw):
+    jaw = np.array(list(jaw))
+    mlc = np.array(list(mlc))
 
     mlc_indices = np.arange(80)
     leaf_centre_pos = np.array((mlc_indices - 39) * 5 - 2.5)  # Not sufficiently tested
@@ -186,25 +192,23 @@ def _determine_width_from_delivery(delivery):
         & (jaw[:, 1][:, None] >= leaf_centre_pos[None, :])
     )
 
-    mlc = np.array(delivery.mlc)
     mlc[is_mlc_centre_blocked, :] = np.nan
-
-    st.write(mlc)
-
     mean_mlc = np.nanmean(mlc, axis=1)
-    st.write(mean_mlc)
-    st.write(np.shape(mean_mlc))
 
     absolute_diff = np.abs(mlc - mean_mlc[:, None, :])
     max_absolute_diff = np.nanmax(absolute_diff, axis=1)
 
-    st.write(max_absolute_diff)
-
     mean_mlc[max_absolute_diff > 0.5] = np.nan
-
     width = np.sum(mean_mlc, axis=1)
 
-    return width
+    return pd.Series(width, name="width")
+
+
+def _determine_length(jaw):
+    jaw = np.array(list(jaw))
+    length = jaw[:, 0] + jaw[:, 1]
+
+    return pd.Series(length, name="length")
 
 
 def _get_meterset_timestep_weighting(delivery):
@@ -217,13 +221,6 @@ def _get_meterset_timestep_weighting(delivery):
         raise ValueError("Meterset position weighting should add up to 1")
 
     return timestep_meterset_weighting
-
-
-def _determine_length_from_delivery(delivery):
-    jaw = np.array(delivery.jaw)
-    length = jaw[:, 0] + jaw[:, 1]
-
-    return length
 
 
 def _get_service_icom_paths(root_directory):
