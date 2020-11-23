@@ -14,6 +14,26 @@
 
 from pymedphys._imports import streamlit as st
 
+from pymedphys._streamlit.utilities import misc
+
 
 def main():
-    pass
+    st.title("iCom Logs Explorer")
+    _, icom_directory = misc.get_site_and_directory("Site", "icom")
+
+    icom_patients_directory = icom_directory.joinpath("patients")
+
+    st.write(icom_patients_directory)
+
+    patient_directories = [
+        item.name for item in icom_patients_directory.glob("*") if item != "archive"
+    ]
+
+    service_mode = st.checkbox("Focus on Service Mode Fields", False)
+
+    if service_mode:
+        patient_directories = [
+            item for item in patient_directories if item.startswith("Deliver")
+        ]
+
+    directory_selected = st.selectbox("Patient", patient_directories)

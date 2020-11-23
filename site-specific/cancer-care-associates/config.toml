@@ -15,6 +15,7 @@ name = "rccc"
     anonymised_monaco = '\\pdc\PExIT\DataExchange\anonymised-monaco'
     icom_live = '\\rccc-physicssvr\iComLogFiles\live'
     iviewdb = '\\pdc\PExIT\DataExchange\iViewDB'
+    icom = '\\rccc-physicssvr\iComLogFiles'
 
     [site.monaco]
     focaldata = '\\rccc-monacoda\FocalData'
@@ -45,6 +46,7 @@ name = "nbcc"
     anonymised_monaco = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\anonymised-monaco'
     icom_live = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom\live'
     iviewdb = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iViewDB'
+    icom = '\\tunnel-nbcc-pdc\Physics\NBCC-DataExchange\iCom'
 
     [site.monaco]
     focaldata = '\\tunnel-nbcc-monaco\FOCALDATA'
@@ -68,6 +70,7 @@ name = "sash"
     anonymised_monaco = '\\tunnel-sash-physics-server\SASH-DataExchange\anonymised-monaco'
     icom_live = '\\tunnel-sash-physics-server\SASH-DataExchange\icom\live'
     iviewdb = '\\tunnel-sash-physics-server\iViewDB'
+    icom = '\\tunnel-sash-physics-server\SASH-DataExchange\icom'
 
     [site.monaco]
     focaldata = '\\tunnel-sash-monaco\Users\Public\Documents\CMS\FocalData'
