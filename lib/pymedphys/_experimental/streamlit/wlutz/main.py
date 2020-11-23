@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathlib
-
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pylinac
@@ -25,7 +23,7 @@ from pymedphys._wlutz import findbb, findfield, imginterp, iview
 from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
 
-from . import _altair, _dbf, _filtering, _frames
+from . import _altair, _dbf, _filtering, _frames, _utilities
 
 
 def main():
@@ -58,7 +56,9 @@ def main():
         "Algorithms to run", algorithm_options, algorithm_options
     )
 
-    database_table["filename"] = database_table["filepath"].apply(_filepath_to_filename)
+    database_table["filename"] = database_table["filepath"].apply(
+        _utilities.filepath_to_filename
+    )
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
     _show_selected_image(
@@ -162,7 +162,7 @@ def _show_selected_image(
 
         relative_image_path = relative_image_path.iloc[0]
 
-        if _filepath_to_filename(relative_image_path) != image_filename:
+        if _utilities.filepath_to_filename(relative_image_path) != image_filename:
             raise ValueError("Filepath selection did not convert appropriately")
 
         st.write(relative_image_path)
@@ -189,13 +189,6 @@ def _show_selected_image(
 
         for fig in figures:
             st.pyplot(fig)
-
-
-def _filepath_to_filename(path):
-    path = pathlib.Path(path)
-    filename = path.name
-
-    return filename
 
 
 def _set_parameters():
