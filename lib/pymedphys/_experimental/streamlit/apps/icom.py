@@ -68,7 +68,7 @@ def main():
 
     st.write(selected_paths_by_date)
 
-    st.write("## Timesteps on this date where beam was recorded as on in service mode")
+    st.write("## Service mode beam utilisation")
 
     _plot_all_relevant_times(selected_paths_by_date["filepath"])
 
@@ -140,7 +140,7 @@ def _plot_all_relevant_times(filepaths):
         st.altair_chart(altair_chart=raw_chart, use_container_width=True)
 
 
-@st.cache()
+@st.cache(show_spinner=False)
 def _get_relevant_times(filepath):
     icom_datetime, meterset, machine_id = _get_icom_datetimes_meterset_machine(filepath)
 
@@ -164,7 +164,7 @@ def _read_icom_log(filepath):
     return icom_stream
 
 
-@st.cache()
+@st.cache(show_spinner=False)
 def _get_icom_datetimes_meterset_machine(filepath):
     icom_stream = _read_icom_log(filepath)
 
