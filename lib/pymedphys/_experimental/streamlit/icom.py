@@ -100,7 +100,17 @@ def main():
         columns=["meterset", "gantry", "collimator", "mlc", "jaw"],
     )
 
-    icom_dataset = pd.concat([icom_time, raw_delivery_items, icom_datetime], axis=1)
+    table = pd.Series(
+        [
+            pmp_icom_extract.extract(item, "Table Isocentric")[1]
+            for item in icom_data_points
+        ],
+        name="table",
+    )
+
+    icom_dataset = pd.concat(
+        [icom_time, raw_delivery_items, table, icom_datetime], axis=1
+    )
 
     st.write(icom_dataset)
 
@@ -124,7 +134,7 @@ def _determine_width_from_delivery(delivery):
     jaw = np.array(delivery.jaw)
 
     mlc_indices = np.arange(80)
-    leaf_centre_pos = np.array((mlc_indices - 40) * 5 - 2.5)  # Not sufficiently tested
+    leaf_centre_pos = np.array((mlc_indices - 39) * 5 - 2.5)  # Not sufficiently tested
     is_mlc_centre_unblocked = (-jaw[:, 0][None, :] <= leaf_centre_pos[:, None]) & (
         jaw[:, 1][None, :] >= leaf_centre_pos[:, None]
     )
