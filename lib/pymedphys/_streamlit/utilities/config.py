@@ -66,6 +66,9 @@ def get_site_directories():
         "iviewdb": functools.partial(
             get_export_directory_from_site_config, export_directory="iviewdb"
         ),
+        "icom": functools.partial(
+            get_export_directory_from_site_config, export_directory="icom"
+        ),
     }
 
     site_directories = {}
