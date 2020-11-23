@@ -152,7 +152,6 @@ sphinxcontrib-napoleon==0.7
 sphinxcontrib-serializinghtml==1.1.4; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.5"
 sphinxcontrib-websupport==1.2.4; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.5"
 stevedore==3.2.2; python_version >= "3.6"
-streamlit-vega-lite==0.0.3; python_version >= "3.6"
 streamlit==0.70.0; python_version >= "3.6"
 termcolor==1.1.0
 terminado==0.9.1; python_version >= "3.6"
