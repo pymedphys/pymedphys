@@ -18,6 +18,7 @@ from pymedphys._imports import pylinac
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
+from pymedphys._experimental.streamlit.utilities import icom as _icom
 from pymedphys._streamlit.utilities import config, misc
 from pymedphys._wlutz import findbb, findfield, imginterp, iview
 from pymedphys._wlutz import pylinac as pmp_pylinac_api
@@ -56,6 +57,33 @@ def main():
     )
 
     st.write(database_table)
+
+    # --
+
+    st.write("## iCom service mode utilisation")
+
+    selected_date = database_table["datetime"].dt.date.unique()
+    if len(selected_date) != 1:
+        raise ValueError("Expected only one date")
+
+    selected_date = selected_date[0]
+
+    selected_machine_id = database_table["machine_id"].unique()
+    if len(selected_machine_id) != 1:
+        raise ValueError("Expected only one machine id")
+
+    selected_machine_id = selected_machine_id[0]
+
+    selected_paths_by_date = _icom.get_paths_by_date(
+        icom_patients_directory, selected_date=selected_date
+    )
+
+    all_relevant_times = _icom.get_relevant_times_for_filepaths(
+        selected_paths_by_date["filepath"]
+    )
+    _icom.plot_relevant_times(all_relevant_times[selected_machine_id])
+
+    # --
 
     algorithm_options = ["PyMedPhys", "PyLinac"]
     selected_algorithms = st.multiselect(
