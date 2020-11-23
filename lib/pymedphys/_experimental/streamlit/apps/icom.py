@@ -181,38 +181,30 @@ def _determine_width_from_delivery(delivery):
 
     mlc_indices = np.arange(80)
     leaf_centre_pos = np.array((mlc_indices - 39) * 5 - 2.5)  # Not sufficiently tested
-    is_mlc_centre_unblocked = (-jaw[:, 0][:, None] <= leaf_centre_pos[None, :]) & (
-        jaw[:, 1][:, None] >= leaf_centre_pos[None, :]
+    is_mlc_centre_blocked = np.invert(
+        (-jaw[:, 0][:, None] <= leaf_centre_pos[None, :])
+        & (jaw[:, 1][:, None] >= leaf_centre_pos[None, :])
     )
 
     mlc = np.array(delivery.mlc)
-
-    st.write(np.shape(mlc))
-    st.write(np.shape(np.invert(is_mlc_centre_unblocked)))
-
-    mlc[np.invert(is_mlc_centre_unblocked)[:, :], :] = np.nan
+    mlc[is_mlc_centre_blocked, :] = np.nan
 
     st.write(mlc)
 
-    st.stop()
+    mean_mlc = np.nanmean(mlc, axis=1)
+    st.write(mean_mlc)
+    st.write(np.shape(mean_mlc))
 
-    is_mlc_centre_unblocked_for_all_cps = np.all(is_mlc_centre_unblocked, axis=1)
+    absolute_diff = np.abs(mlc - mean_mlc[:, None, :])
+    max_absolute_diff = np.nanmax(absolute_diff, axis=1)
 
-    timestep_meterset_weighting = _get_meterset_timestep_weighting(delivery)
+    st.write(max_absolute_diff)
 
-    mlc = np.array(delivery.mlc)
-    mlc_a = mlc[:, is_mlc_centre_unblocked_for_all_cps, 0]
-    mlc_b = mlc[:, is_mlc_centre_unblocked_for_all_cps, 1]
+    mean_mlc[max_absolute_diff > 0.5] = np.nan
 
-    side_a = np.sum(mlc_a * timestep_meterset_weighting[:, None], axis=0)
-    side_b = np.sum(mlc_b * timestep_meterset_weighting[:, None], axis=0)
+    width = np.sum(mean_mlc, axis=1)
 
-    mean_side_a = _check_for_consistent_mlc_width_return_mean(side_a)
-    mean_side_b = _check_for_consistent_mlc_width_return_mean(side_b)
-
-    width = mean_side_a + mean_side_b
-
-    return round(width, 1)
+    return width
 
 
 def _get_meterset_timestep_weighting(delivery):
