@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import lzma
+
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
+import pymedphys._icom.delivery as pmp_icom_delivery
+import pymedphys._icom.extract as pmp_icom_extract
 from pymedphys._streamlit.utilities import misc
 
 
@@ -77,3 +81,22 @@ def main():
     filepath = selected_path_by_time["filepath"].iloc[0]
 
     st.write(filepath)
+
+    with lzma.open(filepath, "r") as f:
+        icom_stream = f.read()
+
+    icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
+    icom_datetime = pd.to_datetime(
+        pd.Series([item[8:26].decode() for item in icom_data_points], name="datetime"),
+        format="%Y-%m-%d%H:%M:%S",
+    )
+
+    icom_time = pd.Series(icom_datetime.dt.time, name="time")
+    raw_delivery_items = pd.DataFrame(
+        [pmp_icom_delivery.get_delivery_data_items(item) for item in icom_data_points],
+        columns=["meterset", "gantry", "collimator", "mlc", "jaw"],
+    )
+
+    icom_dataset = pd.concat([icom_time, raw_delivery_items, icom_datetime], axis=1)
+
+    st.write(icom_dataset)
