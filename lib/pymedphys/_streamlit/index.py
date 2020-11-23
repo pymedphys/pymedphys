@@ -20,6 +20,7 @@ from pymedphys._imports import streamlit as st
 from pymedphys._experimental.streamlit import anonymise_monaco as _anonymise_monaco
 from pymedphys._experimental.streamlit import dashboard as _dashboard
 from pymedphys._experimental.streamlit import electrons as _electrons
+from pymedphys._experimental.streamlit import icom as _icom
 from pymedphys._experimental.streamlit import iviewdb as _iviewdb
 from pymedphys._experimental.streamlit import wlutz as _wlutz
 from pymedphys._streamlit.apps import metersetmap as _metersetmap
@@ -111,6 +112,11 @@ APPLICATION_OPTIONS = {
         "category": "experimental",
         "label": "iView Database Explorer",
         "callable": _iviewdb.main,
+    },
+    "icom": {
+        "category": "experimental",
+        "label": "iCom Logs Explorer",
+        "callable": _icom.main,
     },
 }
 
