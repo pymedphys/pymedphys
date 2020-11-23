@@ -14,9 +14,12 @@
 
 import lzma
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
+from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
+import pymedphys
 import pymedphys._icom.delivery as pmp_icom_delivery
 import pymedphys._icom.extract as pmp_icom_extract
 from pymedphys._streamlit.utilities import misc
@@ -100,3 +103,79 @@ def main():
     icom_dataset = pd.concat([icom_time, raw_delivery_items, icom_datetime], axis=1)
 
     st.write(icom_dataset)
+
+    delivery = pymedphys.Delivery.from_icom(icom_stream)
+
+    jaw = np.array(delivery.jaw)
+    st.write(jaw)
+
+    meterset = np.array(delivery.mu)
+
+    mlc_nums = np.arange(80)
+    leaf_centre_pos = np.array((mlc_nums - 40) * 5 - 2.5)  # Not sufficiently tested
+    is_mlc_centre_unblocked = (-jaw[:, 0][None, :] <= leaf_centre_pos[:, None]) & (
+        jaw[:, 1][None, :] >= leaf_centre_pos[:, None]
+    )
+
+    is_mlc_centre_unblocked_for_all_cps = np.all(is_mlc_centre_unblocked, axis=1)
+    st.write(is_mlc_centre_unblocked_for_all_cps)
+
+    diff_meterset = np.concatenate([[0], np.diff(meterset)])
+    timestep_meterset_weighting = diff_meterset / meterset[-1]
+
+    if not np.allclose(np.sum(timestep_meterset_weighting), 1):
+        raise ValueError("Meterset position weighting should add up to 1")
+
+    mlc = np.array(delivery.mlc)
+    mlc_a = mlc[:, is_mlc_centre_unblocked_for_all_cps, 0]
+    mlc_b = mlc[:, is_mlc_centre_unblocked_for_all_cps, 1]
+
+    side_a = np.sum(mlc_a * timestep_meterset_weighting[:, None], axis=0)
+    side_b = np.sum(mlc_b * timestep_meterset_weighting[:, None], axis=0)
+
+    st.write(side_a, side_b)
+
+    mean_side_a = _check_for_consistent_mlc_width_return_mean(side_a)
+    mean_side_b = _check_for_consistent_mlc_width_return_mean(side_b)
+
+    width = mean_side_a + mean_side_b
+
+    st.write(np.sum(timestep_meterset_weighting))
+
+    mlc_position_weighting = is_mlc_centre_unblocked * timestep_meterset_weighting
+
+    st.write(mlc_position_weighting)
+
+    grid = pymedphys.metersetmap.grid(grid_resolution=1)
+    metersetmap = delivery.metersetmap(grid_resolution=1)
+
+    fig, ax = plt.subplots()
+
+    cs = ax.contour(
+        grid["mlc"],
+        grid["jaw"],
+        metersetmap,
+        levels=[delivery.mu[-1] / 2],
+        colors="black",
+    )
+    ax.pcolormesh(grid["mlc"], grid["jaw"], metersetmap, shading="nearest")
+    contours = [path.vertices for path in cs.collections[0].get_paths()]
+
+    if len(contours) != 1:
+        raise ValueError("Expected exactly one contour at the 0.5 x total MU level")
+
+    contour = contours[0]
+
+    ax.axis("equal")
+
+    st.pyplot(fig)
+
+    st.write(contour)
+
+
+def _check_for_consistent_mlc_width_return_mean(weighted_mlc_positions):
+    mean = np.mean(weighted_mlc_positions)
+    if np.any(np.abs(weighted_mlc_positions - mean) > 0.2):
+        raise ValueError("MLCs are not producing a consistent width")
+
+    return mean
