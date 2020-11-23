@@ -74,8 +74,6 @@ scikit-image = {version = "*", optional = true}  # groups = ["user", "dev", "exp
 streamlit = {version = "0.70.0", optional = true}  # groups = ["user", "dev", "gui"]
 timeago = {version = "*", optional = true}  # groups = ["user", "dev", "gui"]
 
-streamlit-vega-lite = {version = "0.0.3", optional = true}  # groups = ["user", "dev", "gui"]
-
 # ml
 tensorflow = {version = ">=2.2.0", optional = true}  # groups = ["ml", "doctests"]
 torch = {version = ">=1.0.0", optional = true}  # groups = ["ml"]
@@ -143,7 +141,7 @@ known_machine_learning = [
     "tensorflow", "pytorch"
 ]
 known_streamlit = [
-    "streamlit", "altair", "streamlit_vega_lite"
+    "streamlit", "altair"
 ]
 known_medphys = [
     "pydicom", "pylinac", "pynetdicom", "libjpeg"

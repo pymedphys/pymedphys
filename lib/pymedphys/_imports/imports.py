@@ -58,7 +58,6 @@ import altair
 import streamlit
 import streamlit.bootstrap
 import streamlit.cli
-import streamlit_vega_lite
 
 import libjpeg
 import pydicom
