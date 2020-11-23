@@ -14,7 +14,6 @@
 
 import pathlib
 
-import altair as alt
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pylinac
@@ -26,7 +25,7 @@ from pymedphys._wlutz import findbb, findfield, imginterp, iview
 from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
 
-from . import _dbf, _filtering, _frames
+from . import _altair, _dbf, _filtering, _frames
 
 
 def main():
@@ -124,7 +123,7 @@ def main():
                             )
                     except KeyError:
                         st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
-                        port_chart_bucket = _build_both_axis_altair_charts(
+                        port_chart_bucket = _altair.build_both_axis_altair_charts(
                             table_filtered_by_port
                         )
                         treatment_chart_bucket[port] = port_chart_bucket
@@ -190,45 +189,6 @@ def _show_selected_image(
 
         for fig in figures:
             st.pyplot(fig)
-
-
-def _build_both_axis_altair_charts(table):
-    chart_bucket = {}
-
-    for axis in ["y", "x"]:
-        raw_chart = _build_altair_chart(table, axis)
-        chart_bucket[axis] = st.altair_chart(raw_chart, use_container_width=True)
-
-    return chart_bucket
-
-
-def _build_altair_chart(table, axis):
-    parameters = {
-        "x": {
-            "column-name": "diff_x",
-            "axis-name": "X-axis",
-            "plot-type": "Transverse",
-        },
-        "y": {"column-name": "diff_y", "axis-name": "Y-axis", "plot-type": "Radial"},
-    }[axis]
-
-    raw_chart = (
-        alt.Chart(table)
-        .mark_line(point=True)
-        .encode(
-            x=alt.X("datetime", axis=alt.Axis(title="Image Time")),
-            y=alt.Y(
-                parameters["column-name"],
-                axis=alt.Axis(
-                    title=f"iView {parameters['axis-name']} (mm) [Field - BB]"
-                ),
-            ),
-            color=alt.Color("algorithm", legend=alt.Legend(title="Algorithm")),
-            tooltip=["time", "diff_x", "diff_y", "filename", "algorithm"],
-        )
-    ).properties(title=parameters["plot-type"])
-
-    return raw_chart
 
 
 def _filepath_to_filename(path):
