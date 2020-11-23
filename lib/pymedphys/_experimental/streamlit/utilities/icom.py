@@ -59,10 +59,6 @@ def plot_all_relevant_times(all_relevant_times):
 
 
 def plot_relevant_times(relevant_times):
-    relevant_times = pd.DataFrame(
-        pd.concat(relevant_times, axis=0), columns=["datetime"]
-    )
-
     raw_chart = (
         alt.Chart(relevant_times)
         .mark_bar()
@@ -73,10 +69,16 @@ def plot_relevant_times(relevant_times):
 
 
 def get_relevant_times_for_filepaths(filepaths):
-    all_relevant_times = collections.defaultdict(lambda: [])
+    all_relevant_times_list = collections.defaultdict(lambda: [])
     for f in filepaths:
         machine_id, relevant_times = _get_relevant_times(f)
-        all_relevant_times[machine_id].append(relevant_times)
+        all_relevant_times_list[machine_id].append(relevant_times)
+
+    all_relevant_times = {}
+    for key, item in all_relevant_times_list.items():
+        all_relevant_times[key] = pd.DataFrame(
+            pd.concat(item, axis=0), columns=["datetime"]
+        )
 
     return all_relevant_times
 

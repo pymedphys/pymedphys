@@ -60,7 +60,7 @@ def main():
 
     # --
 
-    st.write("## iCom service mode utilisation")
+    st.write("## iView to iCom timestamp alignment")
 
     selected_date = database_table["datetime"].dt.date.unique()
     if len(selected_date) != 1:
@@ -84,6 +84,8 @@ def main():
     _icom.plot_relevant_times(all_relevant_times[selected_machine_id])
 
     # --
+
+    st.write("## Calculations")
 
     algorithm_options = ["PyMedPhys", "PyLinac"]
     selected_algorithms = st.multiselect(
