@@ -85,6 +85,8 @@ def main():
 
     # --
 
+    _icom.plot_relevant_times(database_table, step=1)
+
     st.write("## Calculations")
 
     algorithm_options = ["PyMedPhys", "PyLinac"]
