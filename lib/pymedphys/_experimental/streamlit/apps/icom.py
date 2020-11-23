@@ -22,16 +22,18 @@ from pymedphys._imports import streamlit as st
 
 import pymedphys._icom.delivery as pmp_icom_delivery
 import pymedphys._icom.extract as pmp_icom_extract
-from pymedphys._streamlit.utilities import misc
+from pymedphys._streamlit.utilities import config, misc
 
 
 def main():
     st.title("iCom Logs Explorer")
-    _, icom_directory = misc.get_site_and_directory("Site", "icom")
 
+    site_directories = config.get_site_directories()
+    chosen_site = misc.site_picker("Site")
+    icom_directory = site_directories[chosen_site]["icom"]
     icom_patients_directory = icom_directory.joinpath("patients")
-
     st.write(icom_patients_directory)
+
     selected_paths_by_date = _get_paths_by_date(icom_patients_directory)
 
     st.write("## Service mode beam utilisation")
