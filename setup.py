@@ -38,6 +38,8 @@ packages = [
     "pymedphys._experimental.pseudonymisation",
     "pymedphys._experimental.quickcheck",
     "pymedphys._experimental.serviceplans",
+    "pymedphys._experimental.streamlit",
+    "pymedphys._experimental.streamlit.wlutz",
     "pymedphys._gamma",
     "pymedphys._gamma.api",
     "pymedphys._gamma.implementation",
@@ -54,7 +56,6 @@ packages = [
     "pymedphys._streamlit",
     "pymedphys._streamlit.apps",
     "pymedphys._streamlit.apps.metersetmap",
-    "pymedphys._streamlit.apps.wlutz",
     "pymedphys._streamlit.utilities",
     "pymedphys._trf",
     "pymedphys._trf.decode",
@@ -105,8 +106,7 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental": ["serviceplans/templates/*"],
-    "pymedphys._streamlit": ["apps/data/*"],
+    "pymedphys._experimental": ["serviceplans/templates/*", "streamlit/data/*"],
     "pymedphys.docs": [
         "_static/*",
         "_templates/*",
@@ -167,6 +167,7 @@ extras_require = {
         "scikit-image",
         "streamlit==0.70.0",
         "timeago",
+        "streamlit-vega-lite==0.0.3",
         "sphinx>=1.4,<1.8",
         "sphinx-rtd-theme>=0.4.3,<0.5.0",
         "sphinxcontrib-napoleon",
@@ -206,7 +207,7 @@ extras_require = {
     ],
     "doctests": ["tensorflow>=2.2.0", "black>=19.3b0,<20.0", "tomlkit"],
     "experimental": ["python_dateutil", "scikit-image"],
-    "gui": ["streamlit==0.70.0", "timeago"],
+    "gui": ["streamlit==0.70.0", "timeago", "streamlit-vega-lite==0.0.3"],
     "ml": ["tensorflow>=2.2.0", "torch>=1.0.0"],
     "tests": [
         "pytest",
@@ -245,6 +246,7 @@ extras_require = {
         "scikit-image",
         "streamlit==0.70.0",
         "timeago",
+        "streamlit-vega-lite==0.0.3",
     ],
 }
 
