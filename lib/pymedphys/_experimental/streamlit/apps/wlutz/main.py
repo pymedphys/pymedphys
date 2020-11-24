@@ -208,7 +208,14 @@ def main():
 
     filepaths_to_load = usable_icom_times["filepath"].unique()
 
-    st.write(usable_icom_times["filepath"].unique())
+    icom_datasets = []
+    for filepath in filepaths_to_load:
+        icom_datasets.append(_icom.get_icom_dataset(filepath))
+
+    icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
+    icom_datasets.sort_values(by="datetime", inplace=True)
+
+    st.write(icom_datasets)
 
     # scipy.interpolate.interp1d()
 
