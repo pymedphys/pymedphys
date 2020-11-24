@@ -15,6 +15,7 @@
 
 import datetime
 
+from pymedphys._imports import altair as alt
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pylinac, scipy
@@ -184,11 +185,30 @@ def main():
     )
 
     time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
-    max_diff = np.max(np.abs(time_diffs))
+    time_diffs = pd.concat([iview_datetimes, time_diffs], axis=1)
+
+    raw_chart = (
+        alt.Chart(time_diffs)
+        .mark_circle()
+        .encode(
+            x=alt.X("datetime", axis=alt.Axis(title="iView timestamp")),
+            y=alt.Y(
+                "time_diff",
+                axis=alt.Axis(title="Time diff [iView - Adjusted iCom] (s)"),
+            ),
+        )
+    ).properties(
+        title="Time displacement between iView image timestamp and closest iCom record"
+    )
+
+    st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+
+    max_diff = np.max(np.abs(time_diffs["time_diff"]))
 
     st.write(
         "The maximum deviation between an iView frame and the closest "
-        f"iCom timestep was found to be `{round(max_diff, 1)}` s."
+        f"adjusted iCom timestep was found to be "
+        f"`{round(max_diff, 1)}` s."
     )
 
     # --
