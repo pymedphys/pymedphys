@@ -188,7 +188,7 @@ def _adjust_icom_datetime_to_remove_duplicates(icom_datetime):
                 icom_datetime.iloc[icom_index] += time_delta * (current_duplicate + 1)
 
 
-@st.cache
+@st.cache(show_spinner=False)
 def get_icom_dataset(filepath):
     icom_stream = read_icom_log(filepath)
     icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
