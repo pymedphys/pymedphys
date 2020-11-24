@@ -131,6 +131,9 @@ def main():
     )
 
     iview_datetimes = pd.Series(database_table["datetime"], name="datetime")
+
+    # TODO: if more than one iCom datetime recorded for a single
+    # timestamp, iteratively adjust by 0.33.
     icom_datetimes = pd.Series(time_filtered_icom_times["datetime"], name="datetime")
 
     loop_offset, loop_minimise_f = _determine_loop_offset(
