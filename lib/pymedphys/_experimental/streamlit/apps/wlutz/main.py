@@ -132,60 +132,41 @@ def main():
 
     iview_datetimes = pd.Series(database_table["datetime"], name="datetime")
     icom_datetimes = pd.Series(time_filtered_icom_times["datetime"], name="datetime")
-    to_minimise = _create_icom_timestamp_minimiser(iview_datetimes, icom_datetimes)
 
-    total_offset = datetime.timedelta(seconds=0)
-
-    initial_deviation_to_apply = _estimated_initial_deviation_to_apply(
+    loop_offset, loop_minimise_f = _determine_loop_offset(
         iview_datetimes, icom_datetimes
     )
-    total_offset += initial_deviation_to_apply
-    icom_datetimes = icom_datetimes + initial_deviation_to_apply
-
-    absolute_total_seconds_applied = np.abs(initial_deviation_to_apply.total_seconds())
-
-    while absolute_total_seconds_applied > 0.00001:
-        deviation_to_apply = _get_mean_based_offset(iview_datetimes, icom_datetimes)
-        total_offset += deviation_to_apply
-        icom_datetimes = icom_datetimes + deviation_to_apply
-
-        absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
-
-    result = scipy.optimize.basinhopping(
-        to_minimise,
-        [initial_deviation_to_apply.total_seconds()],
-        T=1,
-        niter=1000,
-        niter_success=10,
-        stepsize=3,
+    basinhopping_offset, basinhopping_minimise_f = _determine_basinhopping_offset(
+        iview_datetimes, icom_datetimes
     )
 
-    basinhopping_result = to_minimise(result.x)
-    loop_result = to_minimise([total_offset.total_seconds()])
+    if loop_minimise_f > basinhopping_minimise_f:
+        offset_to_apply = basinhopping_offset
+        offset_used = "basinhopping"
+    else:
+        offset_to_apply = loop_offset
+        offset_used = "loop"
 
-    basinhopping_offset = result.x[0]
-    loop_offset = total_offset.total_seconds()
+    st.write(
+        f"""
+            Offset estimation undergone with two approaches. The offset from
+            the `{offset_used}` approach was utilised determining that to
+            align the iCom timestamps to the iView an offset of
+            `{round(offset_to_apply, 1)}` s is to be applied.
+
+            * Basinhopping offset: `{round(basinhopping_offset, 2)}`
+              * Minimiser `{round(basinhopping_minimise_f, 4)}`
+            * Loop offset: `{round(loop_offset, 2)}`
+              * Minimiser `{round(loop_minimise_f, 4)}`
+        """
+    )
 
     if np.abs(basinhopping_offset - loop_offset) > 1:
         raise ValueError(
             "Unable to determine the time offset. Methods are inconsistent."
         )
 
-    if loop_result > basinhopping_result:
-        offset_to_apply = basinhopping_offset
-    else:
-        offset_to_apply = loop_offset
-
-    st.write(
-        "Estimated offset to add to iCom timestamps to align with iView: "
-        f"`{round(offset_to_apply, 1)}` s"
-    )
-
-    if not np.all(
-        pd.Series(time_filtered_icom_times["datetime"], name="datetime") + total_offset
-        == icom_datetimes
-    ):
-        raise ValueError("The time offset should be internally consistent")
+    icom_datetimes += datetime.timedelta(seconds=offset_to_apply)
 
     time = icom_datetimes.dt.time
     adjusted_buffer = datetime.timedelta(seconds=30)
@@ -627,6 +608,7 @@ def _get_time_diffs(iview_datetimes, icom_datetimes):
     return alignment_time_diffs
 
 
+@st.cache
 def _estimated_initial_deviation_to_apply(iview_datetimes, icom_datetimes):
     alignment_time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
 
@@ -656,3 +638,51 @@ def _create_icom_timestamp_minimiser(iview_datetimes, icom_datetimes):
         return _get_mean_of_square_diffs(iview_datetimes, adjusted_icom_datetimes) * 10
 
     return _icom_timestamp_minimiser
+
+
+@st.cache
+def _determine_loop_offset(iview_datetimes, icom_datetimes):
+    to_minimise = _create_icom_timestamp_minimiser(iview_datetimes, icom_datetimes)
+    total_offset = datetime.timedelta(seconds=0)
+
+    initial_deviation_to_apply = _estimated_initial_deviation_to_apply(
+        iview_datetimes, icom_datetimes
+    )
+    total_offset += initial_deviation_to_apply
+    icom_datetimes = icom_datetimes + initial_deviation_to_apply
+
+    absolute_total_seconds_applied = np.abs(initial_deviation_to_apply.total_seconds())
+
+    while absolute_total_seconds_applied > 0.00001:
+        deviation_to_apply = _get_mean_based_offset(iview_datetimes, icom_datetimes)
+        total_offset += deviation_to_apply
+        icom_datetimes = icom_datetimes + deviation_to_apply
+
+        absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
+
+    loop_offset = total_offset.total_seconds()
+    loop_minimise_f = to_minimise([loop_offset])
+
+    return loop_offset, loop_minimise_f
+
+
+@st.cache
+def _determine_basinhopping_offset(iview_datetimes, icom_datetimes):
+    initial_deviation_to_apply = _estimated_initial_deviation_to_apply(
+        iview_datetimes, icom_datetimes
+    )
+
+    to_minimise = _create_icom_timestamp_minimiser(iview_datetimes, icom_datetimes)
+    result = scipy.optimize.basinhopping(
+        to_minimise,
+        [initial_deviation_to_apply.total_seconds()],
+        T=1,
+        niter=1000,
+        niter_success=100,
+        stepsize=10,
+    )
+
+    basinhopping_offset = result.x[0]
+    basinhopping_minimise_f = to_minimise(result.x)
+
+    return basinhopping_offset, basinhopping_minimise_f
