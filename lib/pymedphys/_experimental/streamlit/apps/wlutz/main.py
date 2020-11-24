@@ -217,8 +217,8 @@ def main():
 
     icom_datasets.set_index("datetime", inplace=True)
 
-    # st.write(icom_datasets)
-
+    # TODO: Need to handle the improper wrap-around of the iCom bipolar
+    # parameters
     st.line_chart(icom_datasets[["gantry", "collimator", "turn_table"]])
     st.line_chart(icom_datasets[["width", "length"]])
 
