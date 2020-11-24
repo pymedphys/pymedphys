@@ -17,7 +17,7 @@ import datetime
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import pylinac
+from pymedphys._imports import pylinac, scipy
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
@@ -132,16 +132,17 @@ def main():
 
     iview_datetimes = pd.Series(database_table["datetime"], name="datetime")
     icom_datetimes = pd.Series(time_filtered_icom_times["datetime"], name="datetime")
+    to_minimise = _create_icom_timestamp_minimiser(iview_datetimes, icom_datetimes)
 
     total_offset = datetime.timedelta(seconds=0)
 
-    deviation_to_apply = _estimated_initial_deviation_to_apply(
+    initial_deviation_to_apply = _estimated_initial_deviation_to_apply(
         iview_datetimes, icom_datetimes
     )
-    total_offset += deviation_to_apply
-    icom_datetimes = icom_datetimes + deviation_to_apply
+    total_offset += initial_deviation_to_apply
+    icom_datetimes = icom_datetimes + initial_deviation_to_apply
 
-    absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
+    absolute_total_seconds_applied = np.abs(initial_deviation_to_apply.total_seconds())
 
     while absolute_total_seconds_applied > 0.00001:
         deviation_to_apply = _get_mean_based_offset(iview_datetimes, icom_datetimes)
@@ -150,9 +151,34 @@ def main():
 
         absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
 
+    result = scipy.optimize.basinhopping(
+        to_minimise,
+        [initial_deviation_to_apply.total_seconds()],
+        T=1,
+        niter=1000,
+        niter_success=10,
+        stepsize=3,
+    )
+
+    basinhopping_result = to_minimise(result.x)
+    loop_result = to_minimise([total_offset.total_seconds()])
+
+    basinhopping_offset = result.x[0]
+    loop_offset = total_offset.total_seconds()
+
+    if np.abs(basinhopping_offset - loop_offset) > 1:
+        raise ValueError(
+            "Unable to determine the time offset. Methods are inconsistent."
+        )
+
+    if loop_result > basinhopping_result:
+        offset_to_apply = basinhopping_offset
+    else:
+        offset_to_apply = loop_offset
+
     st.write(
         "Estimated offset to add to iCom timestamps to align with iView: "
-        f"`{round(total_offset.total_seconds(), 1)}` s"
+        f"`{round(offset_to_apply, 1)}` s"
     )
 
     if not np.all(
@@ -615,3 +641,18 @@ def _get_mean_based_offset(iview_datetimes, icom_datetimes):
     new_offset = np.mean(time_diffs)
 
     return datetime.timedelta(seconds=new_offset)
+
+
+def _get_mean_of_square_diffs(iview_datetimes, icom_datetimes):
+    time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
+    return np.mean(np.square(time_diffs))
+
+
+def _create_icom_timestamp_minimiser(iview_datetimes, icom_datetimes):
+    def _icom_timestamp_minimiser(seconds):
+        deviation_to_apply = datetime.timedelta(seconds=seconds[0])
+        adjusted_icom_datetimes = icom_datetimes + deviation_to_apply
+
+        return _get_mean_of_square_diffs(iview_datetimes, adjusted_icom_datetimes) * 10
+
+    return _icom_timestamp_minimiser
