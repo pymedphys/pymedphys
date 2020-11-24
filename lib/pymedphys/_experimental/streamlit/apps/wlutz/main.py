@@ -63,7 +63,20 @@ def main():
 
     # Map iview machine id alias to name
     config = _config.get_config()
-    st.write(config)
+    linac_map = {site["name"]: site["linac"] for site in config["site"]}
+
+    alias_map = {}
+    for linac in linac_map[chosen_site]:
+        try:
+            alias_map[linac["aliases"]["iview"]] = linac["name"]
+        except KeyError:
+            alias_map[linac["name"]] = linac["name"]
+
+    st.write(alias_map)
+
+    database_table["machine_id"] = database_table["machine_id"].apply(
+        lambda x: alias_map[x]
+    )
 
     st.write(database_table)
 
