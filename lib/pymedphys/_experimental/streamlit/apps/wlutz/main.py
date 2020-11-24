@@ -72,8 +72,6 @@ def main():
         except KeyError:
             alias_map[linac["name"]] = linac["name"]
 
-    st.write(alias_map)
-
     database_table["machine_id"] = database_table["machine_id"].apply(
         lambda x: alias_map[x]
     )
@@ -113,7 +111,7 @@ def main():
     min_icom_datetime = (np.min(relevant_times["datetime"])).floor("min")
     max_icom_datetime = (np.max(relevant_times["datetime"])).ceil("min")
 
-    buffer = datetime.timedelta(minutes=10)
+    buffer = datetime.timedelta(minutes=30)
     init_min_time = np.max([min_iview_datetime - buffer, min_icom_datetime])
     init_max_time = np.min([max_iview_datetime + buffer, max_icom_datetime])
 
@@ -178,7 +176,9 @@ def main():
         st.error(
             "The time offset methods disagree by more than 1 second. "
             "Offset alignment depends upon sufficient imaging frames "
-            "being available over the time frame."
+            "being available over the time frame as well as an total "
+            "expected deviation of less than the time between "
+            "consecutive images."
         )
 
     usable_icom_times = relevant_times.copy()
