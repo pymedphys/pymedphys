@@ -14,6 +14,7 @@
 
 
 import collections
+import datetime
 import lzma
 
 from pymedphys._imports import altair as alt
@@ -150,6 +151,7 @@ def get_icom_datetimes_meterset_machine(filepath):
         pd.Series([item[8:26].decode() for item in icom_data_points], name="datetime"),
         format="%Y-%m-%d%H:%M:%S",
     )
+    _adjust_icom_datetime_to_remove_duplicates(icom_datetime)
 
     meterset = pd.Series(
         [pmp_icom_extract.extract(item, "Delivery MU")[1] for item in icom_data_points],
@@ -162,3 +164,17 @@ def get_icom_datetimes_meterset_machine(filepath):
     )
 
     return icom_datetime, meterset, machine_id
+
+
+def _adjust_icom_datetime_to_remove_duplicates(icom_datetime):
+    _, unique_index, unique_counts = np.unique(
+        icom_datetime, return_index=True, return_counts=True
+    )
+
+    for index, count in zip(unique_index, unique_counts):
+        if count > 1:
+            time_delta = datetime.timedelta(seconds=1 / count)
+            for current_duplicate, icom_index in enumerate(
+                range(index + 1, index + count)
+            ):
+                icom_datetime.iloc[icom_index] += time_delta * (current_duplicate + 1)
