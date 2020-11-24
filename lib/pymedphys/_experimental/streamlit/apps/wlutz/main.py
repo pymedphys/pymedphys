@@ -167,8 +167,10 @@ def main():
     )
 
     if np.abs(basinhopping_offset - loop_offset) > 1:
-        raise ValueError(
-            "Unable to determine the time offset. Methods are inconsistent."
+        st.error(
+            "The time offset methods disagree by more than 1 second. "
+            "Offset alignment depends upon sufficient imaging frames "
+            "being available over the time frame."
         )
 
     icom_datetimes += datetime.timedelta(seconds=offset_to_apply)
