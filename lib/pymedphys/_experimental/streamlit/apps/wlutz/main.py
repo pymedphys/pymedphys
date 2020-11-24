@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import datetime
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import pylinac
@@ -89,11 +92,40 @@ def main():
     all_relevant_times = _icom.get_relevant_times_for_filepaths(
         selected_paths_by_date["filepath"]
     )
-    _icom.plot_relevant_times(all_relevant_times[selected_machine_id])
+
+    relevant_times = all_relevant_times[selected_machine_id]
+
+    min_iview_datetime = (np.min(database_table["datetime"])).floor("min")
+    max_iview_datetime = (np.max(database_table["datetime"])).ceil("min")
+
+    time_step = datetime.timedelta(minutes=1)
+    min_icom_datetime = (np.min(relevant_times["datetime"])).floor("min")
+    max_icom_datetime = (np.max(relevant_times["datetime"])).ceil("min")
+
+    buffer = datetime.timedelta(minutes=10)
+    init_min_time = np.max([min_iview_datetime - buffer, min_icom_datetime])
+    init_max_time = np.min([max_iview_datetime + buffer, max_icom_datetime])
+
+    initial_region = [init_min_time.time(), init_max_time.time()]
+
+    icom_time_range = st.slider(
+        "iCom alignment range",
+        min_value=min_icom_datetime.time(),
+        max_value=max_icom_datetime.time(),
+        step=time_step,
+        value=initial_region,
+    )
+
+    time = relevant_times["datetime"].dt.time
+    time_filtered_icom_times = relevant_times.loc[
+        (time >= icom_time_range[0]) & (time <= icom_time_range[1])
+    ]
+
+    _icom.plot_relevant_times(time_filtered_icom_times, step=1, title="iCom")
 
     # --
 
-    _icom.plot_relevant_times(database_table, step=1)
+    _icom.plot_relevant_times(database_table, step=1, title="iView")
 
     st.write("## Calculations")
 
