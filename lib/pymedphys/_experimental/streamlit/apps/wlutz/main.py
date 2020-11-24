@@ -117,9 +117,8 @@ def main():
     )
 
     time = relevant_times["datetime"].dt.time
-    time_filtered_icom_times = relevant_times.loc[
-        (time >= icom_time_range[0]) & (time <= icom_time_range[1])
-    ]
+    icom_lookup_mask = (time >= icom_time_range[0]) & (time <= icom_time_range[1])
+    time_filtered_icom_times = relevant_times.loc[icom_lookup_mask]
 
     _icom.plot_relevant_times(
         time_filtered_icom_times,
@@ -134,20 +133,24 @@ def main():
     iview_datetimes = pd.Series(database_table["datetime"], name="datetime")
     icom_datetimes = pd.Series(time_filtered_icom_times["datetime"], name="datetime")
 
+    total_offset = datetime.timedelta(seconds=0)
+
     deviation_to_apply = _estimated_initial_deviation_to_apply(
         iview_datetimes, icom_datetimes
     )
+    total_offset += deviation_to_apply
     icom_datetimes = icom_datetimes + deviation_to_apply
 
     absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
 
     while absolute_total_seconds_applied > 0.5:
         deviation_to_apply = _get_powered_offset(iview_datetimes, icom_datetimes)
+        total_offset += deviation_to_apply
         icom_datetimes = icom_datetimes + deviation_to_apply
 
         absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
 
-    st.write(absolute_total_seconds_applied)
+    st.write(total_offset.total_seconds())
 
     # --
 
