@@ -150,7 +150,10 @@ def main():
 
         absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
 
-    st.write(total_offset.total_seconds())
+    st.write(
+        "Estimated offset to add to iCom timestamps to align with iView: "
+        f"`{round(total_offset.total_seconds(), 1)}` s"
+    )
 
     # --
 
