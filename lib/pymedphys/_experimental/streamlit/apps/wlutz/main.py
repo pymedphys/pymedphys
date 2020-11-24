@@ -149,10 +149,10 @@ def main():
 
     st.write(
         f"""
-            Offset estimation undergone with two approaches. The offset from
-            the `{offset_used}` approach was utilised determining that to
-            align the iCom timestamps to the iView an offset of
-            `{round(offset_to_apply, 1)}` s is to be applied.
+            Offset estimation undergone with two approaches. The offset
+            from the `{offset_used}` approach was utilised. The offset
+            required to align the iCom timestamps to the iView was
+            determined to be `{round(offset_to_apply, 1)}` s.
 
             * Basinhopping offset: `{round(basinhopping_offset, 2)}`
               * Minimiser `{round(basinhopping_minimise_f, 4)}`
@@ -177,6 +177,14 @@ def main():
 
     _icom.plot_relevant_times(
         pd.DataFrame(icom_datetimes), step=1, title="iCom | With offset applied"
+    )
+
+    time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
+    max_diff = np.max(np.abs(time_diffs))
+
+    st.write(
+        "The maximum deviation between an iView frame and the closest "
+        f"iCom timestep was found to be `{round(max_diff, 1)}` s."
     )
 
     # --
