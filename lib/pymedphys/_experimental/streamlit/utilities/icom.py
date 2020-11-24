@@ -22,6 +22,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
 from pymedphys._imports import streamlit as st
 
+import pymedphys._icom.delivery as pmp_icom_delivery
 import pymedphys._icom.extract as pmp_icom_extract
 
 
@@ -78,13 +79,18 @@ def get_relevant_times_for_filepaths(filepaths):
         machine_id, relevant_times = _get_relevant_times(f)
         filepath_series = pd.Series([f] * len(relevant_times), name="filepath")
 
-        all_relevant_times_list[machine_id].append(
-            pd.concat([relevant_times, filepath_series], axis=1)
+        if len(filepath_series) != len(relevant_times):
+            raise ValueError("Expected length to be consistent")
+
+        times_and_paths = pd.concat(
+            [relevant_times.reset_index()["datetime"], filepath_series], axis=1
         )
+
+        all_relevant_times_list[machine_id].append(times_and_paths)
 
     all_relevant_times = {}
     for key, item in all_relevant_times_list.items():
-        all_relevant_times[key] = pd.DataFrame(pd.concat(item, axis=0))
+        all_relevant_times[key] = pd.concat(item, axis=0)
 
     return all_relevant_times
 
@@ -180,3 +186,82 @@ def _adjust_icom_datetime_to_remove_duplicates(icom_datetime):
                 range(index + 1, index + count)
             ):
                 icom_datetime.iloc[icom_index] += time_delta * (current_duplicate + 1)
+
+
+@st.cache
+def get_icom_dataset(filepath):
+    icom_stream = read_icom_log(filepath)
+    icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
+
+    icom_datetime, meterset, machine_id = get_icom_datetimes_meterset_machine(filepath)
+
+    raw_delivery_items = pd.DataFrame(
+        [pmp_icom_delivery.get_delivery_data_items(item) for item in icom_data_points],
+        columns=["meterset", "gantry", "collimator", "mlc", "jaw"],
+    )
+    if np.all(meterset != raw_delivery_items["meterset"]):
+        raise ValueError("Expected meterset extractions to agree.")
+
+    turn_table = pd.Series(
+        [
+            pmp_icom_extract.extract(item, "Table Isocentric")[1]
+            for item in icom_data_points
+        ],
+        name="turn_table",
+    )
+
+    width = _determine_width(raw_delivery_items["mlc"], raw_delivery_items["jaw"])
+    length = _determine_length(raw_delivery_items["jaw"])
+
+    icom_dataset = pd.concat(
+        [
+            icom_datetime,
+            machine_id,
+            width,
+            length,
+            raw_delivery_items[["meterset", "gantry", "collimator"]],
+            turn_table,
+        ],
+        axis=1,
+    )
+
+    return icom_dataset
+
+
+def _check_for_consistent_mlc_width_return_mean(weighted_mlc_positions):
+    mean = np.mean(weighted_mlc_positions)
+    if np.any(np.abs(weighted_mlc_positions - mean) > 1):
+        st.write(weighted_mlc_positions)
+        raise ValueError("MLCs are not producing a consistent width")
+
+    return mean
+
+
+def _determine_width(mlc, jaw):
+    jaw = np.array(list(jaw))
+    mlc = np.array(list(mlc))
+
+    mlc_indices = np.arange(80)
+    leaf_centre_pos = np.array((mlc_indices - 39) * 5 - 2.5)  # Not sufficiently tested
+    is_mlc_centre_blocked = np.invert(
+        (-jaw[:, 0][:, None] <= leaf_centre_pos[None, :])
+        & (jaw[:, 1][:, None] >= leaf_centre_pos[None, :])
+    )
+
+    mlc[is_mlc_centre_blocked, :] = np.nan
+    mean_mlc = np.nanmean(mlc, axis=1)
+
+    absolute_diff = np.abs(mlc - mean_mlc[:, None, :])
+    max_absolute_diff = np.nanmax(absolute_diff, axis=1)
+
+    mean_mlc[max_absolute_diff > 0.5] = np.nan
+    width = np.sum(mean_mlc, axis=1)
+
+    return pd.Series(width, name="width")
+
+
+def _determine_length(jaw):
+    jaw = np.array(list(jaw))
+    length = jaw[:, 0] + jaw[:, 1]
+
+    return pd.Series(length, name="length")

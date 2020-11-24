@@ -62,14 +62,6 @@ def main():
 
     st.write(database_table)
 
-    # TODO: Plot iCom timestamps within the same bounds as selected time
-    # range, except with a buffer.
-
-    # Default the buffer to ~10 mins, allow the user to adjust the buffer.
-
-    # Make the max +/- range of the time alignment be the buffer.
-    # Plot the altair bins to ~10 seconds
-
     # --
 
     st.write("## iView to iCom timestamp alignment")
@@ -133,8 +125,6 @@ def main():
 
     iview_datetimes = pd.Series(database_table["datetime"], name="datetime")
 
-    # TODO: if more than one iCom datetime recorded for a single
-    # timestamp, iteratively adjust group by 1/n s.
     icom_datetimes = pd.Series(time_filtered_icom_times["datetime"], name="datetime")
 
     loop_offset, loop_minimise_f = _determine_loop_offset(
@@ -173,22 +163,21 @@ def main():
             "being available over the time frame."
         )
 
-    icom_datetimes += datetime.timedelta(seconds=offset_to_apply)
+    usable_icom_times = relevant_times.copy()
+    usable_icom_times["datetime"] += datetime.timedelta(seconds=offset_to_apply)
 
-    time = icom_datetimes.dt.time
+    time = usable_icom_times["datetime"].dt.time
     adjusted_buffer = datetime.timedelta(seconds=30)
     adjusted_icom_lookup_mask = (
         time >= (min_iview_datetime - adjusted_buffer).time()
     ) & (time <= (max_iview_datetime + adjusted_buffer).time())
-    icom_datetimes = icom_datetimes.loc[adjusted_icom_lookup_mask]
+    usable_icom_times = usable_icom_times.loc[adjusted_icom_lookup_mask]
 
     _icom.plot_relevant_times(
-        pd.DataFrame(icom_datetimes),
-        step=1,
-        title=f"iCom | With {offset_used} offset applied",
+        usable_icom_times, step=1, title=f"iCom | With {offset_used} offset applied"
     )
 
-    time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
+    time_diffs = _get_time_diffs(iview_datetimes, usable_icom_times["datetime"])
     time_diffs = pd.concat([iview_datetimes, time_diffs], axis=1)
 
     raw_chart = (
@@ -216,6 +205,10 @@ def main():
     )
 
     # --
+
+    filepaths_to_load = usable_icom_times["filepath"].unique()
+
+    st.write(usable_icom_times["filepath"].unique())
 
     # scipy.interpolate.interp1d()
 
