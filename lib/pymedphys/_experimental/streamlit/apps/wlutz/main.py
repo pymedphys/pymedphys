@@ -131,35 +131,23 @@ def main():
         database_table, step=1, title="iView | Timesteps with recorded image frames"
     )
 
-    iview_datetimes = np.array(database_table["datetime"])[:, None]
-    st.write(iview_datetimes.shape)
+    iview_datetimes = pd.Series(database_table["datetime"], name="datetime")
+    icom_datetimes = pd.Series(time_filtered_icom_times["datetime"], name="datetime")
 
-    icom_datetimes = np.array(time_filtered_icom_times["datetime"])[None, :]
-    st.write(icom_datetimes.shape)
-
-    all_time_diffs = icom_datetimes - iview_datetimes
-    # max_time_diffs = np.min(np.abs(all_time_diffs), axis=1)
-
-    time_diffs_pairs_index = np.argmin(np.abs(all_time_diffs), axis=1)
-    max_time_diffs = np.take_along_axis(
-        all_time_diffs, time_diffs_pairs_index[:, None], axis=1
+    deviation_to_apply = _estimated_initial_deviation_to_apply(
+        iview_datetimes, icom_datetimes
     )
+    icom_datetimes = icom_datetimes + deviation_to_apply
 
-    st.write(max_time_diffs.shape)
+    absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
 
-    alignment_time_diffs = pd.Series(
-        max_time_diffs, name="time_diff"
-    ).dt.total_seconds()
-    st.write(alignment_time_diffs)
+    while absolute_total_seconds_applied > 0.5:
+        deviation_to_apply = _get_powered_offset(iview_datetimes, icom_datetimes)
+        icom_datetimes = icom_datetimes + deviation_to_apply
 
-    # st.write(np.argmin(np.abs(all_time_diffs), axis=1))
+        absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
 
-    # time_diffs_pairs_index = np.argmin(np.abs(all_time_diffs), axis=1)[:, None]
-
-    # max_time_diffs = np.take(all_time_diffs, time_diffs_pairs_index)
-    # st.write(max_time_diffs.shape)
-
-    # max_time_diffs = np.ravel(max_time_diffs)
+    st.write(absolute_total_seconds_applied)
 
     # --
 
@@ -565,3 +553,45 @@ def _get_field_parameters(image_path, edge_lengths, penumbra):
         "pymedphys_field_centre": field_centre,
         "field_rotation": field_rotation,
     }
+
+
+def _get_time_diffs(iview_datetimes, icom_datetimes):
+    iview_datetimes = np.array(iview_datetimes)[:, None]
+    icom_datetimes = np.array(icom_datetimes)[None, :]
+
+    all_time_diffs = iview_datetimes - icom_datetimes
+
+    time_diffs_pairs_index = np.argmin(np.abs(all_time_diffs), axis=1)
+    max_time_diffs = np.take_along_axis(
+        all_time_diffs, time_diffs_pairs_index[:, None], axis=1
+    )
+
+    if max_time_diffs.shape[1] != 1:
+        raise ValueError("Expected last dimension to have collapsed")
+
+    max_time_diffs = max_time_diffs[:, 0]
+
+    alignment_time_diffs = pd.Series(
+        max_time_diffs, name="time_diff"
+    ).dt.total_seconds()
+
+    return alignment_time_diffs
+
+
+def _estimated_initial_deviation_to_apply(iview_datetimes, icom_datetimes):
+    alignment_time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
+
+    sign_to_apply = np.sign(np.sum(alignment_time_diffs))
+    deviation_to_apply = sign_to_apply * np.max(sign_to_apply * alignment_time_diffs)
+
+    return datetime.timedelta(seconds=deviation_to_apply)
+
+
+def _get_powered_offset(iview_datetimes, icom_datetimes):
+    time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
+    signed_powered_offset = np.mean(time_diffs ** 5)
+    new_offset = np.sign(signed_powered_offset) * (
+        np.abs(signed_powered_offset) ** (1 / 5)
+    )
+
+    return datetime.timedelta(seconds=new_offset)
