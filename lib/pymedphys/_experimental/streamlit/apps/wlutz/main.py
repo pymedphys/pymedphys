@@ -161,6 +161,13 @@ def main():
     ):
         raise ValueError("The time offset should be internally consistent")
 
+    time = icom_datetimes.dt.time
+    adjusted_buffer = datetime.timedelta(seconds=30)
+    adjusted_icom_lookup_mask = (
+        time >= (min_iview_datetime - adjusted_buffer).time()
+    ) & (time <= (max_iview_datetime + adjusted_buffer).time())
+    icom_datetimes = icom_datetimes.loc[adjusted_icom_lookup_mask]
+
     _icom.plot_relevant_times(
         pd.DataFrame(icom_datetimes), step=1, title="iCom | With offset applied"
     )
