@@ -61,6 +61,9 @@ name = "nbcc"
     name = "4299"
     ip = '192.168.17.40'
 
+        [site.linac.aliases]
+        iview = "4299_iView"
+
 
 [[site]]
 name = "sash"
@@ -84,6 +87,9 @@ name = "sash"
     [[site.linac]]
     name = "9002"
     ip = '192.168.40.10'
+
+        [site.linac.aliases]
+        iview = "Default"
 
 
 [trf_logfiles]
