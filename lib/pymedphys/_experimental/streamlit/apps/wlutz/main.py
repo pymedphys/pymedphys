@@ -143,8 +143,8 @@ def main():
 
     absolute_total_seconds_applied = np.abs(deviation_to_apply.total_seconds())
 
-    while absolute_total_seconds_applied > 0.5:
-        deviation_to_apply = _get_powered_offset(iview_datetimes, icom_datetimes)
+    while absolute_total_seconds_applied > 0.00001:
+        deviation_to_apply = _get_mean_based_offset(iview_datetimes, icom_datetimes)
         total_offset += deviation_to_apply
         icom_datetimes = icom_datetimes + deviation_to_apply
 
@@ -153,6 +153,16 @@ def main():
     st.write(
         "Estimated offset to add to iCom timestamps to align with iView: "
         f"`{round(total_offset.total_seconds(), 1)}` s"
+    )
+
+    if not np.all(
+        pd.Series(time_filtered_icom_times["datetime"], name="datetime") + total_offset
+        == icom_datetimes
+    ):
+        raise ValueError("The time offset should be internally consistent")
+
+    _icom.plot_relevant_times(
+        pd.DataFrame(icom_datetimes), step=1, title="iCom | With offset applied"
     )
 
     # --
@@ -593,11 +603,8 @@ def _estimated_initial_deviation_to_apply(iview_datetimes, icom_datetimes):
     return datetime.timedelta(seconds=deviation_to_apply)
 
 
-def _get_powered_offset(iview_datetimes, icom_datetimes):
+def _get_mean_based_offset(iview_datetimes, icom_datetimes):
     time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
-    signed_powered_offset = np.mean(time_diffs ** 5)
-    new_offset = np.sign(signed_powered_offset) * (
-        np.abs(signed_powered_offset) ** (1 / 5)
-    )
+    new_offset = np.mean(time_diffs)
 
     return datetime.timedelta(seconds=new_offset)
