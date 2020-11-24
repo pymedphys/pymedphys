@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -61,6 +62,22 @@ def main():
     icom_datetime, meterset, machine_id = _icom.get_icom_datetimes_meterset_machine(
         filepath
     )
+
+    _, unique_index, unique_counts = np.unique(
+        icom_datetime, return_index=True, return_counts=True
+    )
+
+    for index, count in zip(unique_index, unique_counts):
+        if count > 1:
+            time_delta = datetime.timedelta(seconds=1 / count)
+            for current_duplicate, icom_index in enumerate(
+                range(index + 1, index + count)
+            ):
+                icom_datetime.iloc[icom_index] += time_delta * (current_duplicate + 1)
+
+    # diff = pd.Series(np.diff(icom_datetime)).dt.total_seconds() == 0
+    # diff = np.concatenate([[0], diff])
+    # st.write(diff)
 
     icom_time = pd.Series(icom_datetime.dt.time, name="time")
     raw_delivery_items = pd.DataFrame(

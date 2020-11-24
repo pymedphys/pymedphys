@@ -133,7 +133,7 @@ def main():
     iview_datetimes = pd.Series(database_table["datetime"], name="datetime")
 
     # TODO: if more than one iCom datetime recorded for a single
-    # timestamp, iteratively adjust by 0.33.
+    # timestamp, iteratively adjust group by 1/n s.
     icom_datetimes = pd.Series(time_filtered_icom_times["datetime"], name="datetime")
 
     loop_offset, loop_minimise_f = _determine_loop_offset(
@@ -154,8 +154,9 @@ def main():
         f"""
             Offset estimation undergone with two approaches. The offset
             from the `{offset_used}` approach was utilised. The offset
-            required to align the iCom timestamps to the iView was
-            determined to be `{round(offset_to_apply, 1)}` s.
+            required to align the iCom timestamps to the iView
+            timestamps was determined to be
+            `{round(offset_to_apply, 1)}` s.
 
             * Basinhopping offset: `{round(basinhopping_offset, 2)}`
               * Minimiser `{round(basinhopping_minimise_f, 4)}`
