@@ -181,7 +181,9 @@ def main():
     icom_datetimes = icom_datetimes.loc[adjusted_icom_lookup_mask]
 
     _icom.plot_relevant_times(
-        pd.DataFrame(icom_datetimes), step=1, title="iCom | With offset applied"
+        pd.DataFrame(icom_datetimes),
+        step=1,
+        title=f"iCom | With {offset_used} offset applied",
     )
 
     time_diffs = _get_time_diffs(iview_datetimes, icom_datetimes)
