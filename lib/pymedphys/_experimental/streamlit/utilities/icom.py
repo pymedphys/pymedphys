@@ -76,13 +76,15 @@ def get_relevant_times_for_filepaths(filepaths):
     all_relevant_times_list = collections.defaultdict(lambda: [])
     for f in filepaths:
         machine_id, relevant_times = _get_relevant_times(f)
-        all_relevant_times_list[machine_id].append(relevant_times)
+        filepath_series = pd.Series([f] * len(relevant_times), name="filepath")
+
+        all_relevant_times_list[machine_id].append(
+            pd.concat([relevant_times, filepath_series], axis=1)
+        )
 
     all_relevant_times = {}
     for key, item in all_relevant_times_list.items():
-        all_relevant_times[key] = pd.DataFrame(
-            pd.concat(item, axis=0), columns=["datetime"]
-        )
+        all_relevant_times[key] = pd.DataFrame(pd.concat(item, axis=0))
 
     return all_relevant_times
 
@@ -127,7 +129,7 @@ def _get_relevant_times(filepath):
     relevant_rows = diff_meterset > 0
     relevant_times = icom_datetime.loc[relevant_rows]
 
-    return machine_id, pd.Series(relevant_times.unique(), name="datetime")
+    return machine_id, pd.Series(relevant_times, name="datetime")
 
 
 def _get_meterset_timestep_weighting(delivery):
