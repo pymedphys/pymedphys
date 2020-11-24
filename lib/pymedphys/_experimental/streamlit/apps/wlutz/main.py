@@ -121,11 +121,47 @@ def main():
         (time >= icom_time_range[0]) & (time <= icom_time_range[1])
     ]
 
-    _icom.plot_relevant_times(time_filtered_icom_times, step=1, title="iCom")
+    _icom.plot_relevant_times(
+        time_filtered_icom_times,
+        step=1,
+        title="iCom | Timesteps with recorded meterset",
+    )
+
+    _icom.plot_relevant_times(
+        database_table, step=1, title="iView | Timesteps with recorded image frames"
+    )
+
+    iview_datetimes = np.array(database_table["datetime"])[:, None]
+    st.write(iview_datetimes.shape)
+
+    icom_datetimes = np.array(time_filtered_icom_times["datetime"])[None, :]
+    st.write(icom_datetimes.shape)
+
+    all_time_diffs = icom_datetimes - iview_datetimes
+    # max_time_diffs = np.min(np.abs(all_time_diffs), axis=1)
+
+    time_diffs_pairs_index = np.argmin(np.abs(all_time_diffs), axis=1)
+    max_time_diffs = np.take_along_axis(
+        all_time_diffs, time_diffs_pairs_index[:, None], axis=1
+    )
+
+    st.write(max_time_diffs.shape)
+
+    alignment_time_diffs = pd.Series(
+        max_time_diffs, name="time_diff"
+    ).dt.total_seconds()
+    st.write(alignment_time_diffs)
+
+    # st.write(np.argmin(np.abs(all_time_diffs), axis=1))
+
+    # time_diffs_pairs_index = np.argmin(np.abs(all_time_diffs), axis=1)[:, None]
+
+    # max_time_diffs = np.take(all_time_diffs, time_diffs_pairs_index)
+    # st.write(max_time_diffs.shape)
+
+    # max_time_diffs = np.ravel(max_time_diffs)
 
     # --
-
-    _icom.plot_relevant_times(database_table, step=1, title="iView")
 
     st.write("## Calculations")
 
