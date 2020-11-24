@@ -215,7 +215,12 @@ def main():
     icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
     icom_datasets.sort_values(by="datetime", inplace=True)
 
-    st.write(icom_datasets)
+    icom_datasets.set_index("datetime", inplace=True)
+
+    # st.write(icom_datasets)
+
+    st.line_chart(icom_datasets[["gantry", "collimator", "turn_table"]])
+    st.line_chart(icom_datasets[["width", "length"]])
 
     # scipy.interpolate.interp1d()
 
