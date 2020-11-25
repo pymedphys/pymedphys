@@ -213,6 +213,8 @@ def get_icom_dataset(filepath):
     width = _determine_width(raw_delivery_items["mlc"], raw_delivery_items["jaw"])
     length = _determine_length(raw_delivery_items["jaw"])
 
+    length.loc[np.isnan(width)] = np.nan
+
     icom_dataset = pd.concat(
         [
             icom_datetime,
