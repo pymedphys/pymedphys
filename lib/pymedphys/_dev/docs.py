@@ -25,15 +25,18 @@ def build_docs(args):
     else:
         output_directory = str(DOCS_DIR)
 
-    subprocess.check_call(
-        [
-            "jupyter-book",
-            "build",
-            # "-W",
-            # "-n",
-            # "--keep-going",
-            str(DOCS_DIR),
-            "--path-output",
-            output_directory,
-        ]
-    )
+    if args.clean:
+        subprocess.check_call(["jupyter-book", "clean", output_directory])
+    else:
+        subprocess.check_call(
+            [
+                "jupyter-book",
+                "build",
+                # "-W",
+                # "-n",
+                # "--keep-going",
+                str(DOCS_DIR),
+                "--path-output",
+                output_directory,
+            ]
+        )
