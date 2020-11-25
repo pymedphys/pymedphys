@@ -31,4 +31,8 @@ sphinx:
   config:
     language: en
 
-  # extra_extensions:
+  extra_extensions:
+    - sphinx.ext.autodoc
+    - sphinxcontrib.napoleon
+    - sphinxarg.ext
+    - matplotlib.sphinxext.plot_directive

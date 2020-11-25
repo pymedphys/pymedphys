@@ -5,7 +5,7 @@
 ..
     Please instead edit the file found at:
 ..
-        pymedphys/lib/pymedphys/docs/README.rst
+        pymedphys\lib\pymedphys\docs\README.rst
 ..
     and then run `poetry run pymedphys dev propagate --copies`
 
