@@ -1,11 +1,6 @@
 ==================
-How to get started
+How-To Get Started
 ==================
-
-.. contents::
-    :local:
-    :backlinks: entry
-
 
 Install Python
 ==============

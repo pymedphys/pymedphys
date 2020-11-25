@@ -2,10 +2,6 @@
 Pinnacle Export Tool
 ####################
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 *******
 Summary
 *******

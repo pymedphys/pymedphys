@@ -12,3 +12,45 @@
 
 .. _`Release Notes`: /release-notes
 .. _`Getting Started Contributing`: /contributing
+
+
+.. toctree::
+    :hidden:
+    :maxdepth: 2
+    :caption: Tutorials
+
+    tutes/index
+
+.. toctree::
+    :hidden:
+    :maxdepth: 2
+    :caption: How-to Guides
+
+    howto/index
+    howto/get-started
+    howto/gamma/index
+    howto/advanced/index
+
+.. toctree::
+    :hidden:
+    :maxdepth: 2
+    :caption: Reference
+
+    ref/index
+    ref/lib/index
+    ref/cli/index
+    ref/gui/index
+    release-notes
+    genindex
+
+
+.. toctree::
+    :hidden:
+    :maxdepth: 2
+    :caption: Background
+
+    background/index
+    background/open-source-benefits
+    background/autocontouring
+    background/elekta-logfiles
+    background/file-structure

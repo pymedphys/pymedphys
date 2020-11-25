@@ -1,10 +1,6 @@
 Pinnacle Export Tool
 ====================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 .. automodule:: pymedphys.cli.experimental.pinnacle
     :no-members:
 
