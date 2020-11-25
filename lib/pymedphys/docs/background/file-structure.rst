@@ -1,10 +1,6 @@
 Repository File Structure
 =========================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 The PyMedPhys repository has the following general structure:
 
 .. code-block:: bash

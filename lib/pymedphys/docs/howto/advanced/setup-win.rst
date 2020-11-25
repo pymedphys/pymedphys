@@ -2,10 +2,6 @@
 Windows Contributor Environment Setup
 =====================================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 All contributor installation steps can be completed without administration
 access. To achieve this choose "Install for my user only" when prompted.
 
