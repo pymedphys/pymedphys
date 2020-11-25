@@ -15,6 +15,9 @@ def add_docs_parser(dev_subparsers):
     parser = dev_subparsers.add_parser("docs")
 
     parser.add_argument("--output", help="Custom output directory for the built docs.")
+    parser.add_argument(
+        "--clean", help="Delete all of the built files.", action="store_true"
+    )
 
     parser.set_defaults(func=docs.build_docs)
 
