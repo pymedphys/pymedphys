@@ -18,18 +18,11 @@ Starting a live update documentation server
 
 Assuming you have set up your machine according to the appropriate development
 guide (:doc:`setup-linux`, :doc:`setup-mac`, :doc:`setup-win`) you can then run
-the following within a terminal:
+the following within a terminal to build the documentation:
 
 .. code:: bash
 
-    poetry run pymedphys dev docs --live
-
-This will then open a browser which, once the docs have built, will display
-the current documentation.
-
-You may now edit the documentation within the docs directory and see the
-changes live update within your browser.
-
+    poetry run pymedphys dev docs
 
 Docstring extraction
 --------------------
