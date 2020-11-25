@@ -175,10 +175,11 @@ def main():
     if np.abs(basinhopping_offset - loop_offset) > 1:
         st.error(
             "The time offset methods disagree by more than 1 second. "
-            "Offset alignment depends upon sufficient imaging frames "
-            "being available over the time frame as well as an total "
-            "expected deviation of less than the time between "
-            "consecutive images."
+            "Offset alignment accuracy can be improved by either "
+            "increasing the number of imaging frames (such as provided "
+            "by movie mode) or by adjusting the clocks on both the "
+            "iView and the NRT so that the expected deviation between "
+            "them is less than the time between consecutive images."
         )
 
     usable_icom_times = relevant_times.copy()
@@ -233,12 +234,34 @@ def main():
     icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
     icom_datasets.sort_values(by="datetime", inplace=True)
 
-    icom_datasets.set_index("datetime", inplace=True)
+    icom_datasets["datetime"] += datetime.timedelta(seconds=offset_to_apply)
+
+    # icom_datasets.set_index("datetime", inplace=True)
+
+    # st.write(icom_datasets)
+
+    device_angle_chart = (
+        alt.Chart(icom_datasets)
+        .transform_fold(["gantry", "collimator", "turn_table"], as_=["device", "angle"])
+        .mark_line()
+        .encode(x="datetime:T", y="angle:Q", color="device:N")
+        .properties(title="iCom Angle Parameters")
+        .interactive(bind_x=False)
+    )
+    st.altair_chart(device_angle_chart, use_container_width=True)
+
+    field_size_chart = (
+        alt.Chart(icom_datasets)
+        .transform_fold(["length", "width"], as_=["side", "size"])
+        .mark_line()
+        .encode(x="datetime:T", y="size:Q", color="side:N")
+        .properties(title="iCom Field Size")
+        .interactive(bind_x=False)
+    )
+    st.altair_chart(field_size_chart, use_container_width=True)
 
     # TODO: Need to handle the improper wrap-around of the iCom bipolar
     # parameters
-    st.line_chart(icom_datasets[["gantry", "collimator", "turn_table"]])
-    st.line_chart(icom_datasets[["width", "length"]])
 
     # scipy.interpolate.interp1d()
 
