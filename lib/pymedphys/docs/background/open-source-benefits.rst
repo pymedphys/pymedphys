@@ -1,10 +1,6 @@
 Benefits of Open Source for Medical Physics
 ===========================================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 The aim of this document is to outline some of the benefits of Medical Physics
 code being released under an open source license.
 

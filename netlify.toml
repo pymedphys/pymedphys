@@ -1,6 +1,6 @@
 [build]
-  command = "pymedphys dev docs --output build"
-  publish = "build"
+  command = "pymedphys dev docs --output ."
+  publish = "_build/html"
 
 [[redirects]]
   from = "/en/stable/*"

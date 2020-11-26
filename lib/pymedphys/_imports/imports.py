@@ -7,7 +7,6 @@ import attr
 import black
 import dateutil
 import dbfread
-import immutables
 import keyring
 import packaging
 import psutil

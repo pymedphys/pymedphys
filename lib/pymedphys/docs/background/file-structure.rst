@@ -1,10 +1,6 @@
 Repository File Structure
 =========================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 The PyMedPhys repository has the following general structure:
 
 .. code-block:: bash
@@ -12,13 +8,12 @@ The PyMedPhys repository has the following general structure:
    pymedphys/
    |   README.rst
    |   LICENSE
-   |   changelog.md
+   |   CHANGELOG.md
    |   pyproject.toml
    |   ...
    |
-   |-- docs/
-   |
-   |-- pymedphys/
+   |-- lib/pymedphys/
+   |   | -- docs/
    |
    |-- ...
 
@@ -33,7 +28,7 @@ PyMedPhys contains a series of top-level files. These include:
 :``LICENSE``: A text file that contains a full copy of the license used by
               PyMedPhys.
 
-:``changelog.md``: A text file containing release notes for the PyMedPhys
+:``CHANGELOG.md``: A text file containing release notes for the PyMedPhys
                    source code library. ``changelog.md`` determines the text
                    presented on the `Release Notes`_ documentation page.
 
@@ -48,14 +43,14 @@ so we'll disregard them for now in the interest of brevity.
 
 (Most of) the rest of PyMedPhys is arranged in the following directories:
 
-:``docs/``: Contains most of PyMedPhys' documentation. The files within
+:``lib/pymedphys/``:    The main PyMedPhys package.
+
+:``lib/pymedphys/docs/``: Contains most of PyMedPhys' documentation. The files within
             ``docs/`` make up the text you are reading right now! A
             documentation generator called Sphinx converts the files in
             ``docs/`` into human-readable format. The same tool also pulls the
             docstrings from PyMedPhys' source code and displays them in the
             documentation pages.
-
-:``pymedphys/``:    The main PyMedPhys package.
 
 
 .. _`the PyMedPhys GitHub page`: https://github.com/pymedphys/pymedphys
