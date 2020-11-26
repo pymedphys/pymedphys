@@ -32,7 +32,7 @@ def add_propagate_parser(test_subparsers):
 
     parser.add_argument(
         "--copies",
-        help="Only propagate the file copies into the library.",
+        help="Only propagate the file coping tasks. This is much quicker.",
         action="store_true",
     )
 
