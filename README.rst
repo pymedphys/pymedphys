@@ -11,7 +11,7 @@
 
 |logo|
 
-.. |logo| image:: https://github.com/pymedphys/pymedphys/raw/6623d3404278be6734f66cc24d268e1c24885c24/lib/pymedphys/docs/_static/pymedphys_title.png
+.. |logo| image:: https://github.com/pymedphys/pymedphys/raw/ca501275227f190a77e641a75af925d9070952b6/lib/pymedphys/docs/_static/pymedphys_title.svg
     :target: https://docs.pymedphys.com/
 
 
