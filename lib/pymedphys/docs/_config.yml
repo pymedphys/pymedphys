@@ -31,6 +31,9 @@ sphinx:
   config:
     language: en
 
+    html_css_files:
+      - style.css
+
   extra_extensions:
     - sphinx.ext.autodoc
     - sphinx.ext.doctest
