@@ -1,6 +1,6 @@
 |logo|
 
-.. |logo| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/pymedphys_title.png
+.. |logo| image:: https://github.com/pymedphys/pymedphys/raw/6623d3404278be6734f66cc24d268e1c24885c24/lib/pymedphys/docs/_static/pymedphys_title.png
     :target: https://docs.pymedphys.com/
 
 
