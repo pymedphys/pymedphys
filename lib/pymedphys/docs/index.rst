@@ -17,7 +17,9 @@
 .. _`Getting Started Contributing`: contributing/index.html
 .. _`Documentation Guide`: howto/advanced/documentation.html
 
-.. |logo| image:: img/pymedphys_title.svg
+.. |logo| raw:: html
+
+    <object data="img/pymedphys_title.svg" type="image/svg+xml"></object>
 
 .. toctree::
     :hidden:
