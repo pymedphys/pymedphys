@@ -33,6 +33,9 @@ sphinx:
 
   extra_extensions:
     - sphinx.ext.autodoc
+    - sphinx.ext.doctest
+    - sphinx.ext.viewcode
+    - sphinx.ext.autosummary
     - sphinxcontrib.napoleon
     - sphinxarg.ext
     - matplotlib.sphinxext.plot_directive

@@ -65,82 +65,73 @@ where you're from, and what you hope to achieve with PyMedPhys.
 .. _`the mailing list`: https://groups.google.com/g/pymedphys
 
 
-Documentation For Users
------------------------
+Documentation
+-------------
 
-Absolute Beginners Tutorial
-...........................
-
-Start here if you are new to Python and would like an in-depth instruction on
-how to get started.
-
-Quickstart How-To Guide
-...................
-
-Start here if you are fluent in Python and just want a quick instruction on how
-to get started.
-
-`Tutorials`_
-............
-
-A range of lessons that take you through various complete projects with the
-intent to be able to show you what can be achieved with writing PyMedPhys based
-Python software yourself.
-
-These are aimed at you if you don't yet know what you can achieve with
-PyMedPhys but you would like to learn.
-
-`How-To Guides`_
-................
-
-Guides and recipes for common problems and tasks. These are aimed for you if
-you already know how to use Python and PyMedPhys and are looking for direction
-on a specific task you are trying to solve.
-
-`Reference`_
-............
-
-Technical reference for the `library`_ (modules, functions and classes),
-as well as the available `command line tools`_. This is where you will find
-listed information for the exposed functionality of PyMedPhys.
-
-This is aimed at you if you know exactly the feature you would like to use, you
-just want to see what inputs it requires and what outputs it gives.
-
-`Background`_
+For App Users
 .............
 
-Explanation and discussion of key topics and concepts. This is aimed at you if
-you are looking to be able to think about PyMedPhys and its implementations at
-a higher level and understand more about them.
+App documentation doesn't yet exist. Watch this space.
 
-Glossary
-........
+For Python Users
+................
 
-List of the most important terms
+- Absolute Beginners Tutorial **[Doesn't yet exist]**
+
+  - Start here if you are new to Python and would like an in-depth instruction on
+    how to get started.
+
+- `Quickstart How-To Guide`_
+
+  - Start here if you are fluent in Python and just want a quick instruction on how
+    to get started.
+
+- `Tutorials`_ **[Don't yet exist]**
+
+  - A range of lessons that take you through various complete projects with the
+    intent to be able to show you what can be achieved with writing PyMedPhys based
+    Python software yourself.
+  - These are aimed at you if you don't yet know what you can achieve with
+    PyMedPhys but you would like to learn.
+
+- `How-To Guides`_
+
+  - Guides and recipes for common problems and tasks. These are aimed for you if
+    you already know how to use Python and PyMedPhys and are looking for direction
+    on a specific task you are trying to solve.
+
+- `Reference`_
+
+  - Technical reference for the `library`_ (modules, functions and classes),
+    as well as the available `command line tools`_. This is where you will find
+    listed information for the exposed functionality of PyMedPhys.
+  - This is aimed at you if you know exactly the feature you would like to use, you
+    just want to see what inputs it requires and what outputs it gives.
+
+- `Background`_
+
+  - Explanation and discussion of key topics and concepts. This is aimed at you if
+    you are looking to be able to think about PyMedPhys and its implementations at
+    a higher level and understand more about them.
+
+- Glossary
+
+  - List of the most important terms
 
 
-Documentation For Contributors
-------------------------------
+For Contributors
+................
 
-`Getting Started Contributing`_
-...............................
+- `Getting Started Contributing`_ **[Under construction]**
 
-Start here for learning how to contribute to PyMedPhys.
+  - Start here for learning how to contribute to PyMedPhys.
 
-Developer Guide
-...............
+- Developer Guide **[Doesn't yet exist]**
+- `Documentation Guide`_
 
+  - How to contribute to this documentation.
 
-
-
-Documentation Guide
-...................
-
-How to contribute to this documentation.
-
-Maintainers Guide
-.................
+- Maintainers Guide **[Doesn't yet exist]**
 
 
 Beta level of development
@@ -282,7 +273,10 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
+
 .. _`How-To Guides`: https://docs.pymedphys.com/howto
+.. _`Quickstart How-To Guide`: https://docs.pymedphys.com/howto/get-started
+
 .. _`Reference`: https://docs.pymedphys.com/ref
 .. _`Background`: https://docs.pymedphys.com/background
 
@@ -291,3 +285,4 @@ Past contributors
 
 .. _`Release Notes`: ./CHANGELOG.md
 .. _`Getting Started Contributing`: ./CONTRIBUTING.md
+.. _`Documentation Guide`: https://docs.pymedphys.com/howto/advanced/documentation.rst
