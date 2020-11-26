@@ -65,17 +65,17 @@ App documentation doesn't yet exist. Watch this space.
 For Python Users
 ................
 
-- Absolute Beginners Tutorial [Doesn't yet exist]
+- Absolute Beginners Tutorial **[Doesn't yet exist]**
 
   - Start here if you are new to Python and would like an in-depth instruction on
     how to get started.
 
-- Quickstart How-To Guide
+- `Quickstart How-To Guide`_
 
   - Start here if you are fluent in Python and just want a quick instruction on how
     to get started.
 
-- `Tutorials`_ [Don't yet exist]
+- `Tutorials`_ **[Don't yet exist]**
 
   - A range of lessons that take you through various complete projects with the
     intent to be able to show you what can be achieved with writing PyMedPhys based
@@ -111,16 +111,16 @@ For Python Users
 For Contributors
 ................
 
-- `Getting Started Contributing`_
+- `Getting Started Contributing`_ **[Under construction]**
 
   - Start here for learning how to contribute to PyMedPhys.
 
-- Developer Guide
+- Developer Guide **[Doesn't yet exist]**
 - Documentation Guide
 
   - How to contribute to this documentation.
 
-- Maintainers Guide
+- Maintainers Guide **[Doesn't yet exist]**
 
 
 Beta level of development
@@ -262,7 +262,10 @@ Past contributors
 .. END_OF_DOCS_IMPORT
 
 .. _`Tutorials`: https://docs.pymedphys.com/tutes
+
 .. _`How-To Guides`: https://docs.pymedphys.com/howto
+.. _`Quickstart How-To Guide`: https://docs.pymedphys.com/howto/get-started
+
 .. _`Reference`: https://docs.pymedphys.com/ref
 .. _`Background`: https://docs.pymedphys.com/background
 

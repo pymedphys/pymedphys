@@ -3,7 +3,10 @@
    :end-before: END_OF_DOCS_IMPORT
 
 .. _`Tutorials`: /tutes
+
 .. _`How-To Guides`: /howto
+.. _`Quickstart How-To Guide`: /howto/get-started
+
 .. _`Reference`: /ref
 .. _`Background`: /background
 
