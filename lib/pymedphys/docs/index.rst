@@ -17,6 +17,7 @@
 .. _`Getting Started Contributing`: contributing/index.html
 .. _`Documentation Guide`: howto/advanced/documentation.html
 
+.. |logo| image:: img/pymedphys_title.svg
 
 .. toctree::
     :hidden:
