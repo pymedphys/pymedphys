@@ -9,12 +9,13 @@
 ..
     and then run `poetry run pymedphys dev propagate --copies`
 
+|logo|
+
 .. |logo| image:: https://github.com/pymedphys/pymedphys/raw/3f8d82fc3b53eb636a75336477734e39fa406110/docs/logos/pymedphys_title.png
     :target: https://docs.pymedphys.com/
 
-.. START_OF_DOCS_IMPORT
 
-|logo|
+.. START_OF_DOCS_IMPORT
 
 
 **A community effort to develop an open standard library for Medical Physics
