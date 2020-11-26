@@ -235,20 +235,27 @@ def main():
     icom_datasets.sort_values(by="datetime", inplace=True)
 
     icom_datasets["datetime"] += datetime.timedelta(seconds=offset_to_apply)
+    icom_datasets["time"] = icom_datasets["datetime"].dt.time
 
     # icom_datasets.set_index("datetime", inplace=True)
 
     # st.write(icom_datasets)
 
+    resize = alt.selection_interval(bind="scales")
+
     device_angle_chart = (
         alt.Chart(icom_datasets)
         .transform_fold(["gantry", "collimator", "turn_table"], as_=["device", "angle"])
-        .mark_line()
-        .encode(x="datetime:T", y="angle:Q", color="device:N")
+        .mark_line(point=True)
+        .encode(
+            x="datetime:T",
+            y="angle:Q",
+            color="device:N",
+            tooltip=["time:N", "angle:Q", "device:N"],
+        )
         .properties(title="iCom Angle Parameters")
-        .interactive(bind_x=False)
+        .add_selection(resize)
     )
-    st.altair_chart(device_angle_chart, use_container_width=True)
 
     field_size_chart = (
         alt.Chart(icom_datasets)
@@ -256,9 +263,12 @@ def main():
         .mark_line()
         .encode(x="datetime:T", y="size:Q", color="side:N")
         .properties(title="iCom Field Size")
-        .interactive(bind_x=False)
+        .add_selection(resize)
     )
-    st.altair_chart(field_size_chart, use_container_width=True)
+
+    combined = alt.vconcat(device_angle_chart, field_size_chart)
+
+    st.altair_chart(combined, use_container_width=True)
 
     # TODO: Need to handle the improper wrap-around of the iCom bipolar
     # parameters
@@ -318,7 +328,7 @@ def main():
             ports = working_table["port"].unique()
 
             # TODO: Provide a selectbox that allows certain treatment/ports
-            # to be overlayed.
+            # to be overlaid.
             for treatment in treatments:
                 try:
                     treatment_chart_bucket = chart_bucket[treatment]
