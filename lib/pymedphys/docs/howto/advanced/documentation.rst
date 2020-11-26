@@ -1,10 +1,6 @@
 Writing documentation
 =====================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 This documentation site uses a toolbox called Sphinx. This particular
 document aims to help contributors to improve the PyMedPhys
 documentation.
@@ -22,18 +18,18 @@ Starting a live update documentation server
 
 Assuming you have set up your machine according to the appropriate development
 guide (:doc:`setup-linux`, :doc:`setup-mac`, :doc:`setup-win`) you can then run
-the following within a terminal:
+the following within a terminal to build the documentation:
 
 .. code:: bash
 
-    poetry run pymedphys dev docs --live
+    poetry run pymedphys dev docs
 
-This will then open a browser which, once the docs have built, will display
-the current documentation.
+.. note::
 
-You may now edit the documentation within the docs directory and see the
-changes live update within your browser.
-
+    On Windows to build the documentation you currently need to be using
+    Python 3.7. To track the requirements for building the documentation on
+    Windows see
+    <https://jupyterbook.org/advanced/advanced.html#working-on-windows>
 
 Docstring extraction
 --------------------

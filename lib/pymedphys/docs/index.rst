@@ -1,23 +1,23 @@
-Overview
-========
-
-.. contents::
-    :local:
-    :backlinks: entry
-
 .. include:: README.rst
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 
-.. _`Tutorials`: /tutes
-.. _`How-To guides`: /howto
-.. _`Reference`: /ref
-.. _`Background`: /background
+.. _`Tutorials`: tutes/index.html
 
-.. _`library`: /ref/lib
-.. _`command line tools`: /ref/cli
+.. _`How-To Guides`: howto/index.html
+.. _`Quickstart How-To Guide`: howto/get-started.html
 
-.. _`Release Notes`: /release-notes.html
+.. _`Reference`: ref/index.html
+.. _`Background`: background/index.html
+
+.. _`library`: ref/lib/index.html
+.. _`command line tools`: ref/cli/index.html
+
+.. _`Release Notes`: release-notes.html
+.. _`Getting Started Contributing`: contributing/index.html
+.. _`Documentation Guide`: howto/advanced/documentation.html
+
+.. |logo| image:: img/pymedphys_title.svg
 
 .. toctree::
     :hidden:

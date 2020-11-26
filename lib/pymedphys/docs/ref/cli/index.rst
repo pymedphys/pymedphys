@@ -1,11 +1,6 @@
 Command Line Tools
 ==================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
-
 PyMedPhys exposes a range of its library functions to the command line as a
 command line interface (CLI). This provides the benefit of being able to call
 PyMedPhys functions from a range of locations such as:
