@@ -2,11 +2,6 @@
 Automatic Contouring Project
 ============================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
-
 Project aim
 -----------
 

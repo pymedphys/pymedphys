@@ -2,10 +2,6 @@
 Gamma Index
 ###########
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 ***
 API
 ***

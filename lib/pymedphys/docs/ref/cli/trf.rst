@@ -1,10 +1,6 @@
 Elekta Binary Logfiles
 ======================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 .. automodule:: pymedphys.cli.trf
     :no-members:
 

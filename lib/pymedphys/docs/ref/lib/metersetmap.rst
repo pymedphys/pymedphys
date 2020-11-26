@@ -2,10 +2,6 @@
 MetersetMap
 ###########
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 *******
 Summary
 *******
