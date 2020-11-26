@@ -1,10 +1,6 @@
 DICOM Files
 ===========
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 .. automodule:: pymedphys.cli.dicom
     :no-members:
 
