@@ -241,8 +241,6 @@ def main():
 
     # st.write(icom_datasets)
 
-    resize = alt.selection_interval(bind="scales")
-
     device_angle_chart = (
         alt.Chart(icom_datasets)
         .transform_fold(["gantry", "collimator", "turn_table"], as_=["device", "angle"])
@@ -254,8 +252,9 @@ def main():
             tooltip=["time:N", "angle:Q", "device:N"],
         )
         .properties(title="iCom Angle Parameters")
-        .add_selection(resize)
+        .interactive(bind_y=False)
     )
+    st.altair_chart(device_angle_chart, use_container_width=True)
 
     field_size_chart = (
         alt.Chart(icom_datasets)
@@ -263,12 +262,9 @@ def main():
         .mark_line()
         .encode(x="datetime:T", y="size:Q", color="side:N")
         .properties(title="iCom Field Size")
-        .add_selection(resize)
+        .interactive(bind_x=False)
     )
-
-    combined = alt.vconcat(device_angle_chart, field_size_chart)
-
-    st.altair_chart(combined, use_container_width=True)
+    st.altair_chart(field_size_chart, use_container_width=True)
 
     # TODO: Need to handle the improper wrap-around of the iCom bipolar
     # parameters
