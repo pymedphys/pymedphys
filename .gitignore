@@ -279,7 +279,4 @@ v*.tar.gz
 *.exe
 
 *-demo
-release-notes.rst
-contributing.rst
-
 downloads/
