@@ -239,19 +239,16 @@ def _propagate_requirements():
         "poetry export --without-hashes -E docs -E user -f requirements.txt --output requirements.txt",
         shell=True,
     )
-
-    # The editable install `-e` is used here so that https://app.pymedphys.com
-    # is always utilising the latest pymedphys build on main without needing
-    # a server rebuild. It also means that should a user edit the git repo
-    # they will be utilising their edits within their environment as opposed
-    # to what was originally installed.
     with open(REQUIREMENTS_TXT, "a") as f:
-        f.write("-e .[user,docs]\n")
+        f.write(".[user,docs]\n")
 
     subprocess.check_call(
         "poetry export --without-hashes -E dev -f requirements.txt --output requirements-dev.txt",
         shell=True,
     )
+    # The editable install `-e` used here means that should a user edit
+    # the git repo they will be utilising their edits within their
+    # environment as opposed to what was originally installed.
     with open(REQUIREMENTS_DEV_TXT, "a") as f:
         f.write("-e .[dev]\n")
 
