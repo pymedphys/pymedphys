@@ -269,6 +269,25 @@ def main():
     # TODO: Need to handle the improper wrap-around of the iCom bipolar
     # parameters
 
+    diff_gantry = np.diff(icom_datasets["gantry"]) / 360  # Rotations
+    diff_coll = np.diff(icom_datasets["collimator"]) / 360  # Rotations
+    diff_time = (
+        pd.Series(np.diff(icom_datasets["datetime"])).dt.total_seconds().to_numpy()
+        / 60  # Minutes
+    )
+
+    gantry_rpm = diff_gantry / diff_time
+    collimator_rpm = diff_coll / diff_time
+
+    gantry_expected_speed_limit = 1  # RPM
+    collimator_expected_speed_limit = 2.7  # RPM
+    noise_buffer_factor = 5
+
+    gantry_flag = np.abs(gantry_rpm) > gantry_expected_speed_limit * noise_buffer_factor
+    collimator_flag = (
+        np.abs(collimator_rpm) > collimator_expected_speed_limit * noise_buffer_factor
+    )
+
     # scipy.interpolate.interp1d()
 
     # --
