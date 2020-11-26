@@ -1,3 +1,8 @@
+.. raw:: html
+
+    <object data="_static/pymedphys_title.svg" type="image/svg+xml" class="title-logo"></object>
+
+
 .. include:: README.rst
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
@@ -16,10 +21,6 @@
 .. _`Release Notes`: release-notes.html
 .. _`Getting Started Contributing`: contributing/index.html
 .. _`Documentation Guide`: howto/advanced/documentation.html
-
-.. |logo| raw:: html
-
-    <object data="img/pymedphys_title.svg" type="image/svg+xml"></object>
 
 .. toctree::
     :hidden:
