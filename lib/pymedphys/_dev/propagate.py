@@ -117,7 +117,7 @@ def _copy_file_with_autogen_message(original_path, target_path):
 
     custom_autogen = AUTOGEN_MESSAGE + [
         "# Please instead edit the file found at:",
-        f"#     {path_with_pymedphys_as_root}",
+        f"#     {path_with_pymedphys_as_root.as_posix()}",
         "# and then run `poetry run pymedphys dev propagate --copies`",
     ]
 
