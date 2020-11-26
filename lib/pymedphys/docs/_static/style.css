@@ -9,3 +9,12 @@ body {
     width: 100%;
     height: auto;
 }
+@media (min-width: 768px) {
+    div.site-navigation div.navbar-brand-box a.navbar-brand img.logo {
+        max-height: 20vh !important;
+    }
+}
+
+div.site-navigation div.navbar-brand-box a.navbar-brand img {
+    max-height: 15vh !important;
+}
