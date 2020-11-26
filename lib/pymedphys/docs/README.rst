@@ -54,6 +54,21 @@ where you're from, and what you hope to achieve with PyMedPhys.
 .. _`the mailing list`: https://groups.google.com/g/pymedphys
 
 
+Beta level of development
+-------------------------
+
+PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
+stay in this stage until the version number leaves ``0.x.x`` and enters
+``1.x.x``. While PyMedPhys is in ``beta`` stage, **no API is guaranteed to be
+stable from one release to the next.** In fact, it is very likely that the
+entire API will change multiple times before a ``1.0.0`` release. In practice,
+this means that upgrading ``pymedphys`` to a new version will possibly break
+any code that was using the old version of pymedphys. We try to be abreast of
+this by providing details of any breaking changes from one release to the next
+within the `Release Notes`_.
+
+
+
 Documentation
 -------------
 
@@ -103,7 +118,7 @@ For Python Users
     you are looking to be able to think about PyMedPhys and its implementations at
     a higher level and understand more about them.
 
-- Glossary
+- Glossary **[Doesn't yet exist]**
 
   - List of the most important terms
 
@@ -121,20 +136,6 @@ For Contributors
   - How to contribute to this documentation.
 
 - Maintainers Guide **[Doesn't yet exist]**
-
-
-Beta level of development
--------------------------
-
-PyMedPhys is currently within the ``beta`` stage of its life-cycle. It will
-stay in this stage until the version number leaves ``0.x.x`` and enters
-``1.x.x``. While PyMedPhys is in ``beta`` stage, **no API is guaranteed to be
-stable from one release to the next.** In fact, it is very likely that the
-entire API will change multiple times before a ``1.0.0`` release. In practice,
-this means that upgrading ``pymedphys`` to a new version will possibly break
-any code that was using the old version of pymedphys. We try to be abreast of
-this by providing details of any breaking changes from one release to the next
-within the `Release Notes`_.
 
 
 Our Team
