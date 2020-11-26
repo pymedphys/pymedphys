@@ -8,7 +8,7 @@ The PyMedPhys repository has the following general structure:
    pymedphys/
    |   README.rst
    |   LICENSE
-   |   changelog.md
+   |   CHANGELOG.md
    |   pyproject.toml
    |   ...
    |
