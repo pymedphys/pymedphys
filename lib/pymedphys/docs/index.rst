@@ -2,19 +2,20 @@
    :start-after: START_OF_DOCS_IMPORT
    :end-before: END_OF_DOCS_IMPORT
 
-.. _`Tutorials`: tutes
+.. _`Tutorials`: tutes/index.html
 
-.. _`How-To Guides`: howto
-.. _`Quickstart How-To Guide`: howto/get-started
+.. _`How-To Guides`: howto/index.html
+.. _`Quickstart How-To Guide`: howto/get-started.html
 
-.. _`Reference`: ref
-.. _`Background`: background
+.. _`Reference`: ref/index.html
+.. _`Background`: background/index.html
 
-.. _`library`: ref/lib
-.. _`command line tools`: ref/cli
+.. _`library`: ref/lib/index.html
+.. _`command line tools`: ref/cli/index.html
 
-.. _`Release Notes`: release-notes
-.. _`Getting Started Contributing`: contributing
+.. _`Release Notes`: release-notes.html
+.. _`Getting Started Contributing`: contributing/index.html
+.. _`Documentation Guide`: howto/advanced/documentation.html
 
 
 .. toctree::

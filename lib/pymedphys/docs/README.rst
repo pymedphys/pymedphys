@@ -116,7 +116,7 @@ For Contributors
   - Start here for learning how to contribute to PyMedPhys.
 
 - Developer Guide **[Doesn't yet exist]**
-- Documentation Guide
+- `Documentation Guide`_
 
   - How to contribute to this documentation.
 
@@ -274,3 +274,4 @@ Past contributors
 
 .. _`Release Notes`: ./CHANGELOG.md
 .. _`Getting Started Contributing`: ./CONTRIBUTING.md
+.. _`Documentation Guide`: https://docs.pymedphys.com/howto/advanced/documentation.rst
