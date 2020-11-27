@@ -35,21 +35,6 @@ from . import _altair, _dbf, _filtering, _frames, _utilities
 GANTRY_EXPECTED_SPEED_LIMIT = 1  # RPM
 COLLIMATOR_EXPECTED_SPEED_LIMIT = 2.7  # RPM
 NOISE_BUFFER_FACTOR = 5  # To allow a noisy point to not trigger the speed limit
-TOTAL_TIME_BUFFER_FACTOR = 0.8
-
-# QUESTIONABLE_SIGN_DISTANCE = 5  # Angle about +/-180 where the sign is in question
-# GANTRY_TIME_TO_FLIP_SIGN = (
-#     (360 - 2 * QUESTIONABLE_SIGN_DISTANCE)
-#     / 360
-#     / GANTRY_EXPECTED_SPEED_LIMIT
-#     * TOTAL_TIME_BUFFER_FACTOR
-# ) * 60  # seconds
-# COLLIMATOR_TIME_TO_FLIP_SIGN = (
-#     (360 - 2 * QUESTIONABLE_SIGN_DISTANCE)
-#     / 360
-#     / COLLIMATOR_EXPECTED_SPEED_LIMIT
-#     * TOTAL_TIME_BUFFER_FACTOR
-# ) * 60  # seconds
 
 
 def main():
@@ -62,7 +47,7 @@ def main():
     """
     st.title("Winston-Lutz Arc")
 
-    edge_lengths, bb_diameter, penumbra = _set_parameters()
+    bb_diameter, penumbra = _set_parameters()
 
     site_directories = _config.get_site_directories()
     chosen_site = misc.site_picker("Site")
@@ -333,7 +318,21 @@ def main():
 
     st.write(icom_datasets)
 
-    # scipy.interpolate.interp1d()
+    midnight = (
+        icom_datasets["datetime"]
+        .iloc[0]
+        .replace(hour=0, minute=0, second=0, microsecond=0)
+    )
+
+    icom_datasets["seconds"] = (icom_datasets["datetime"] - midnight).dt.total_seconds()
+    database_table["seconds"] = (
+        database_table["datetime"] - midnight
+    ).dt.total_seconds()
+
+    for column in ["gantry", "collimator", "turn_table", "width", "length"]:
+        _table_transfer_via_interpolation(icom_datasets, database_table, column)
+
+    st.write(database_table)
 
     # --
 
@@ -350,12 +349,7 @@ def main():
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
     _show_selected_image(
-        database_directory,
-        database_table,
-        selected_algorithms,
-        bb_diameter,
-        edge_lengths,
-        penumbra,
+        database_directory, database_table, selected_algorithms, bb_diameter, penumbra
     )
 
     if st.button("Calculate"):
@@ -369,6 +363,9 @@ def main():
         total_files = len(database_table["filepath"])
 
         for i, relative_image_path in enumerate(database_table["filepath"][::-1]):
+            row = database_table.iloc[i]
+            edge_lengths = [row["width"], row["length"]]
+
             results = _get_results_for_image(
                 database_directory,
                 relative_image_path,
@@ -405,10 +402,8 @@ def main():
                         table_filtered_by_treatment["port"] == port
                     ]
                     try:
-                        for axis in ["y", "x"]:
-                            treatment_chart_bucket[port][axis].add_rows(
-                                table_filtered_by_port
-                            )
+                        for _, item in treatment_chart_bucket[port].items():
+                            item.add_rows(table_filtered_by_port)
                     except KeyError:
                         st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
                         port_chart_bucket = _altair.build_both_axis_altair_charts(
@@ -424,12 +419,7 @@ def main():
 
 
 def _show_selected_image(
-    database_directory,
-    database_table,
-    selected_algorithms,
-    bb_diameter,
-    edge_lengths,
-    penumbra,
+    database_directory, database_table, selected_algorithms, bb_diameter, penumbra
 ):
     show_selected_image = st.checkbox(
         "Select a single image to show results for", False
@@ -441,10 +431,9 @@ def _show_selected_image(
         image_filename = st.selectbox("Select single filepath", filenames)
 
         st.write(image_filename)
+        row = database_table.loc[database_table["filename"] == image_filename]
 
-        relative_image_path = database_table.loc[
-            database_table["filename"] == image_filename
-        ]["filepath"]
+        relative_image_path = row["filepath"]
         if len(relative_image_path) != 1:
             raise ValueError("Filepath and filelength should be a one-to-one mapping")
 
@@ -454,6 +443,8 @@ def _show_selected_image(
             raise ValueError("Filepath selection did not convert appropriately")
 
         st.write(relative_image_path)
+
+        edge_lengths = [row["width"].iloc[0], row["length"].iloc[0]]
 
         results = _get_results_for_image(
             database_directory,
@@ -482,14 +473,10 @@ def _show_selected_image(
 def _set_parameters():
     st.sidebar.write("## Parameters")
 
-    width = st.sidebar.number_input("Width (mm)", 20)
-    length = st.sidebar.number_input("Length (mm)", 24)
-    edge_lengths = [width, length]
-
     bb_diameter = st.sidebar.number_input("BB Diameter (mm)", 8)
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
-    return edge_lengths, bb_diameter, penumbra
+    return bb_diameter, penumbra
 
 
 def _load_database_with_cache(database_directory, refresh_cache):
@@ -949,3 +936,8 @@ def attempt_to_make_angle_continuous(
         )
 
     return angle
+
+
+def _table_transfer_via_interpolation(source, location, key):
+    interpolation = scipy.interpolate.interp1d(source["seconds"], source[key])
+    location[key] = interpolation(location["seconds"])
