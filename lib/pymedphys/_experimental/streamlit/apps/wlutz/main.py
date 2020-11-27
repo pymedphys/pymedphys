@@ -381,6 +381,11 @@ def main():
                 database_table, left_on="filepath", right_on="filepath"
             )
 
+            working_table["transformed_field_rotation"] = (
+                90 - working_table["field_rotation"] % 90
+            )
+            working_table["transformed_collimator"] = working_table["collimator"] % 90
+
             treatments = working_table["treatment"].unique()
             ports = working_table["port"].unique()
 

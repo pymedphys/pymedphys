@@ -26,6 +26,22 @@ def build_both_axis_altair_charts(table):
             altair_chart=raw_chart, use_container_width=True
         )
 
+    raw_rotation_chart = (
+        alt.Chart(table)
+        .transform_fold(
+            ["transformed_collimator", "transformed_field_rotation"],
+            as_=["method", "angle"],
+        )
+        .mark_line(point=True)
+        .encode(x="gantry", y="angle:Q", color="method:N")
+        .properties(title="Rotation iCom vs Optimisation")
+        .interactive(bind_y=False)
+    )
+
+    chart_bucket["rotation"] = st.altair_chart(
+        altair_chart=raw_rotation_chart, use_container_width=True
+    )
+
     return chart_bucket
 
 
@@ -44,7 +60,7 @@ def _build_altair_chart(table, axis):
             alt.Chart(table)
             .mark_line(point=True)
             .encode(
-                x=alt.X("gantry", axis=alt.Axis(title="Gantry")),
+                x=alt.X("gantry", axis=alt.Axis(title="Gantry (degrees)")),
                 y=alt.Y(
                     parameters["column-name"],
                     axis=alt.Axis(
