@@ -925,7 +925,7 @@ def attempt_to_make_angle_continuous(
     if init_range_to_adjust > max_range:
         raise ValueError("The adjustment range was larger than the maximum")
 
-    within_adjustment_range = np.abs(angle) > 180 - init_range_to_adjust
+    within_adjustment_range = np.abs(angle) >= 180 - init_range_to_adjust
 
     index_within = np.where(within_adjustment_range)[0]
     index_outside = np.where(np.invert(within_adjustment_range))[0]
@@ -951,9 +951,20 @@ def attempt_to_make_angle_continuous(
             "Unable to automatically determine whether the angles near 180 are + or -"
         )
 
-    angle[index_within] = np.sign(angle[closest_left_leaning]) * np.abs(
-        angle[index_within]
+    sign_to_be_adjusted = np.sign(angle[index_within]) != np.sign(
+        angle[closest_left_leaning]
     )
+
+    angles_to_be_adjusted = angle[index_within][sign_to_be_adjusted]
+    angles_to_be_adjusted = angles_to_be_adjusted + 360 * np.sign(
+        angle[closest_left_leaning][sign_to_be_adjusted]
+    )
+
+    st.write(angles_to_be_adjusted)
+
+    angle[index_within[sign_to_be_adjusted]] = angles_to_be_adjusted
+
+    st.write(angle)
 
     rpm = determine_speed(angle, time)
     if np.any(rpm > speed_limit):
