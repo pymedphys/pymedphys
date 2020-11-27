@@ -469,6 +469,7 @@ def _show_selected_image(
         figures = _plot_diagnostic_figures(
             database_directory,
             relative_image_path,
+            field_rotation,
             bb_diameter,
             edge_lengths,
             penumbra,
@@ -525,6 +526,7 @@ def _load_image_frame_database(database_directory, input_database_table, refresh
 def _plot_diagnostic_figures(
     database_directory,
     relative_image_path,
+    field_rotation,
     bb_diameter,
     edge_lengths,
     penumbra,
@@ -539,7 +541,12 @@ def _plot_diagnostic_figures(
 
     for algorithm in selected_algorithms:
         field_centre, _, bb_centre = _calculate_wlutz(
-            full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
+            full_image_path,
+            algorithm,
+            field_rotation,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
         )
 
         fig, axs = _create_figure(field_centre, bb_centre, wlutz_input_parameters)
