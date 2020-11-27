@@ -37,19 +37,19 @@ COLLIMATOR_EXPECTED_SPEED_LIMIT = 2.7  # RPM
 NOISE_BUFFER_FACTOR = 5  # To allow a noisy point to not trigger the speed limit
 TOTAL_TIME_BUFFER_FACTOR = 0.8
 
-QUESTIONABLE_SIGN_DISTANCE = 5  # Angle about +/-180 where the sign is in question
-GANTRY_TIME_TO_FLIP_SIGN = (
-    (360 - 2 * QUESTIONABLE_SIGN_DISTANCE)
-    / 360
-    / GANTRY_EXPECTED_SPEED_LIMIT
-    * TOTAL_TIME_BUFFER_FACTOR
-) * 60  # seconds
-COLLIMATOR_TIME_TO_FLIP_SIGN = (
-    (360 - 2 * QUESTIONABLE_SIGN_DISTANCE)
-    / 360
-    / COLLIMATOR_EXPECTED_SPEED_LIMIT
-    * TOTAL_TIME_BUFFER_FACTOR
-) * 60  # seconds
+# QUESTIONABLE_SIGN_DISTANCE = 5  # Angle about +/-180 where the sign is in question
+# GANTRY_TIME_TO_FLIP_SIGN = (
+#     (360 - 2 * QUESTIONABLE_SIGN_DISTANCE)
+#     / 360
+#     / GANTRY_EXPECTED_SPEED_LIMIT
+#     * TOTAL_TIME_BUFFER_FACTOR
+# ) * 60  # seconds
+# COLLIMATOR_TIME_TO_FLIP_SIGN = (
+#     (360 - 2 * QUESTIONABLE_SIGN_DISTANCE)
+#     / 360
+#     / COLLIMATOR_EXPECTED_SPEED_LIMIT
+#     * TOTAL_TIME_BUFFER_FACTOR
+# ) * 60  # seconds
 
 
 def main():
@@ -196,7 +196,8 @@ def main():
         st.error(
             "The time offset methods disagree by more than 1 second. "
             "Offset alignment accuracy can be improved by either "
-            "increasing the number of imaging frames (such as provided "
+            "decreasing the time of capture between consecutive imaging "
+            "frames (such as provided "
             "by movie mode) or by adjusting the clocks on both the "
             "iView and the NRT so that the expected deviation between "
             "them is less than the time between consecutive images."
@@ -270,15 +271,23 @@ def main():
 
     beam_on_chart = (
         alt.Chart(icom_datasets)
-        .mark_area(opacity=0.1, color="black")
+        .mark_area(fillOpacity=0.1, strokeOpacity=0.3, stroke="black", fill="black")
         .encode(x="datetime:T", y="beam_shade_min:Q", y2="beam_shade_max:Q")
     )
 
-    st.altair_chart(beam_on_chart, use_container_width=True)
+    # st.altair_chart(beam_on_chart, use_container_width=True)
 
-    st.write(icom_datasets)
-    # icom_datasets["gantry"] = fix_bipolar_angle(icom_datasets["gantry"])
-    # icom_datasets["collimator"] = fix_bipolar_angle(icom_datasets["collimator"])
+    # st.write(icom_datasets)
+    icom_datasets["gantry"] = attempt_to_make_angle_continuous(
+        icom_datasets["datetime"],
+        icom_datasets["gantry"].to_numpy(),
+        GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
+    )
+    icom_datasets["collimator"] = attempt_to_make_angle_continuous(
+        icom_datasets["datetime"],
+        icom_datasets["collimator"].to_numpy(),
+        COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
+    )
 
     icom_datasets["width"] = icom_datasets["width"].round(2)
 
@@ -299,7 +308,7 @@ def main():
             .properties(title="iCom Angle Parameters")
             .interactive(bind_y=False)
         )
-    ).configure_point(size=5)
+    ).configure_point(size=10)
 
     st.altair_chart(device_angle_chart, use_container_width=True)
 
@@ -321,7 +330,7 @@ def main():
     # TODO: Need to handle the improper wrap-around of the iCom bipolar
     # parameters
 
-    gantry_flag, collimator_flag = get_collimator_and_gantry_flags(icom_datasets)
+    # gantry_flag, collimator_flag = get_collimator_and_gantry_flags(icom_datasets)
 
     # TODO: for each flag, find the next left most "safe angle" (< |175|), and also
     # find the next right most "safe angle". Make an "index pair" for each flag.
@@ -333,8 +342,8 @@ def main():
     # gone by between consecutive steps such that a sufficient rotation to flip the
     # sign could have occurred, end the group there. (or something like that).
 
-    st.write(GANTRY_TIME_TO_FLIP_SIGN)
-    st.write(COLLIMATOR_TIME_TO_FLIP_SIGN)
+    # st.write(GANTRY_TIME_TO_FLIP_SIGN)
+    # st.write(COLLIMATOR_TIME_TO_FLIP_SIGN)
 
     angle_speed_check(icom_datasets)
 
@@ -867,22 +876,26 @@ def expand_border_events(mask):
     return combined
 
 
+def determine_speed(angle, time):
+    diff_angle = np.diff(angle) / 360
+    diff_time = pd.Series(np.diff(time)).dt.total_seconds().to_numpy() / 60
+
+    rpm = diff_angle / diff_time
+
+    return np.abs(rpm)
+
+
 def get_collimator_and_gantry_flags(icom_datasets):
-    diff_gantry = np.diff(icom_datasets["gantry"]) / 360  # Rotations
-    diff_coll = np.diff(icom_datasets["collimator"]) / 360  # Rotations
-    diff_time = (
-        pd.Series(np.diff(icom_datasets["datetime"])).dt.total_seconds().to_numpy()
-        / 60  # Minutes
+    gantry_rpm = determine_speed(icom_datasets["gantry"], icom_datasets["datetime"])
+    collimator_rpm = determine_speed(
+        icom_datasets["collimator"], icom_datasets["datetime"]
     )
 
-    gantry_rpm = diff_gantry / diff_time
-    collimator_rpm = diff_coll / diff_time
-
-    gantry_flag = np.abs(gantry_rpm) > GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR
+    gantry_flag = gantry_rpm > GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR
     gantry_flag = expand_border_events(gantry_flag)
 
     collimator_flag = (
-        np.abs(collimator_rpm) > COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR
+        collimator_rpm > COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR
     )
     collimator_flag = expand_border_events(collimator_flag)
 
@@ -901,36 +914,56 @@ def angle_speed_check(icom_datasets):
         )
 
 
-# def attempt_to_make_angle_continuous(angle: "pd.Series"):
-#     output = angle.to_numpy()
+def attempt_to_make_angle_continuous(
+    time: "pd.Series",
+    angle,
+    speed_limit,
+    init_range_to_adjust=0,
+    max_range=5,
+    range_iter=0.1,
+):
+    if init_range_to_adjust > max_range:
+        raise ValueError("The adjustment range was larger than the maximum")
 
-#     maximum_overshoot = 3
+    within_adjustment_range = np.abs(angle) > 180 - init_range_to_adjust
 
+    index_within = np.where(within_adjustment_range)[0]
+    index_outside = np.where(np.invert(within_adjustment_range))[0]
 
-#     if np.all(angle == 180):
-#         return angle
+    where_closest_left_leaning = np.argmin(
+        np.abs(index_within[:, None] - index_outside[None, :]), axis=1
+    )
+    where_closest_right_leaning = (
+        len(index_outside)
+        - 1
+        - np.argmin(
+            np.abs(index_within[::-1, None] - index_outside[None, ::-1]), axis=1
+        )[::-1]
+    )
 
-#     angle[angle > 180] = angle[angle > 180] - 360
+    closest_left_leaning = index_outside[where_closest_left_leaning]
+    closest_right_leaning = index_outside[where_closest_right_leaning]
 
-#     is_180 = np.where(angle == 180)[0]
-#     not_180 = np.where(np.invert(angle == 180))[0]
+    if np.any(
+        np.sign(angle[closest_left_leaning]) != np.sign(angle[closest_right_leaning])
+    ):
+        raise ValueError(
+            "Unable to automatically determine whether the angles near 180 are + or -"
+        )
 
-#     where_closest_left_leaning = np.argmin(
-#         np.abs(is_180[:, None] - not_180[None, :]), axis=1
-#     )
-#     where_closest_right_leaning = (
-#         len(not_180)
-#         - 1
-#         - np.argmin(np.abs(is_180[::-1, None] - not_180[None, ::-1]), axis=1)[::-1]
-#     )
+    angle[index_within] = np.sign(angle[closest_left_leaning]) * np.abs(
+        angle[index_within]
+    )
 
-#     closest_left_leaning = not_180[where_closest_left_leaning]
-#     closest_right_leaning = not_180[where_closest_right_leaning]
+    rpm = determine_speed(angle, time)
+    if np.any(rpm > speed_limit):
+        angle = attempt_to_make_angle_continuous(
+            time,
+            angle,
+            speed_limit,
+            init_range_to_adjust=init_range_to_adjust + range_iter,
+            max_range=max_range,
+            range_iter=range_iter,
+        )
 
-#     assert np.all(
-#         np.sign(angle[closest_left_leaning]) == np.sign(angle[closest_right_leaning])
-#     ), "Unable to automatically determine whether angle is 180 or -180"
-
-#     angle[is_180] = np.sign(angle[closest_left_leaning]) * angle[is_180]
-
-#     return angle
+    return angle
