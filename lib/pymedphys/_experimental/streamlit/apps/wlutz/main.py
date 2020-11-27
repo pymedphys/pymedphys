@@ -255,6 +255,8 @@ def main():
         icom_datasets.append(_icom.get_icom_dataset(filepath))
 
     icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
+    icom_datasets = icom_datasets.copy(deep=True)
+
     icom_datasets.sort_values(by="datetime", inplace=True)
 
     icom_datasets["datetime"] += datetime.timedelta(seconds=offset_to_apply)
@@ -277,17 +279,19 @@ def main():
 
     # st.altair_chart(beam_on_chart, use_container_width=True)
 
-    # st.write(icom_datasets)
-    icom_datasets["gantry"] = attempt_to_make_angle_continuous(
-        icom_datasets["datetime"],
-        icom_datasets["gantry"].to_numpy(),
-        GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
-    )
-    icom_datasets["collimator"] = attempt_to_make_angle_continuous(
-        icom_datasets["datetime"],
-        icom_datasets["collimator"].to_numpy(),
-        COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
-    )
+    try:
+        angle_speed_check(icom_datasets)
+    except ValueError:
+        icom_datasets["gantry"] = attempt_to_make_angle_continuous(
+            icom_datasets["datetime"],
+            icom_datasets["gantry"].to_numpy(),
+            GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
+        )
+        icom_datasets["collimator"] = attempt_to_make_angle_continuous(
+            icom_datasets["datetime"],
+            icom_datasets["collimator"].to_numpy(),
+            COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
+        )
 
     icom_datasets["width"] = icom_datasets["width"].round(2)
 
@@ -301,7 +305,7 @@ def main():
             .mark_line(point=True)
             .encode(
                 x="datetime:T",
-                y=alt.Y("angle:Q", axis=alt.Axis(title=f"Angle (degrees)")),
+                y=alt.Y("angle:Q", axis=alt.Axis(title="Angle (degrees)")),
                 color="device:N",
                 tooltip=["time:N", "device:N", "angle:Q"],
             )
@@ -327,25 +331,21 @@ def main():
     )
     st.altair_chart(field_size_chart, use_container_width=True)
 
-    # TODO: Need to handle the improper wrap-around of the iCom bipolar
-    # parameters
-
-    # gantry_flag, collimator_flag = get_collimator_and_gantry_flags(icom_datasets)
-
-    # TODO: for each flag, find the next left most "safe angle" (< |175|), and also
-    # find the next right most "safe angle". Make an "index pair" for each flag.
-    # This defines the "unsafe" bounds caused by a flag. Add these index pairs to a set
-    # so at to make sure their unique. Iterate over each bound index and find the sign
-    # of the bounds. If the sign is different, raise an error, if the sign is the
-    # same apply that sign to the lot.
-    # Safe angle, groups also need to be divided by "time gaps", if enough time has
-    # gone by between consecutive steps such that a sufficient rotation to flip the
-    # sign could have occurred, end the group there. (or something like that).
-
-    # st.write(GANTRY_TIME_TO_FLIP_SIGN)
-    # st.write(COLLIMATOR_TIME_TO_FLIP_SIGN)
-
     angle_speed_check(icom_datasets)
+
+    instantaneous_dose_rate = (
+        np.diff(icom_datasets["meterset"])
+        / pd.Series(np.diff(icom_datasets["datetime"])).dt.total_seconds().to_numpy()
+    )
+
+    instantaneous_dose_rate = (
+        np.concatenate([[0], instantaneous_dose_rate]) * 60  # MU / min
+    )
+
+    icom_datasets["dose_rate"] = instantaneous_dose_rate
+    # icom_datasets["dose_rate"].rolling(10, win_type="gaussian").sum(std=3)
+
+    st.write(icom_datasets)
 
     # scipy.interpolate.interp1d()
 

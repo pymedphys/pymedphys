@@ -210,6 +210,21 @@ def get_icom_dataset(filepath):
         name="turn_table",
     )
 
+    energy = pd.Series(
+        [pmp_icom_extract.extract(item, "Energy")[1] for item in icom_data_points],
+        name="energy",
+    )
+
+    interlocks = pd.Series(
+        [pmp_icom_extract.extract(item, "Interlocks")[1] for item in icom_data_points],
+        name="interlocks",
+    )
+
+    beam_timer = pd.Series(
+        [pmp_icom_extract.extract(item, "Beam Timer")[1] for item in icom_data_points],
+        name="beam_timer",
+    )
+
     width = _determine_width(raw_delivery_items["mlc"], raw_delivery_items["jaw"])
     length = _determine_length(raw_delivery_items["jaw"])
 
@@ -219,10 +234,13 @@ def get_icom_dataset(filepath):
         [
             icom_datetime,
             machine_id,
+            energy,
             width,
             length,
             raw_delivery_items[["meterset", "gantry", "collimator"]],
             turn_table,
+            interlocks,
+            beam_timer,
         ],
         axis=1,
     )
