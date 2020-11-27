@@ -44,7 +44,7 @@ def _build_altair_chart(table, axis):
             alt.Chart(table)
             .mark_line(point=True)
             .encode(
-                x=alt.X("datetime", axis=alt.Axis(title="Image Time")),
+                x=alt.X("gantry", axis=alt.Axis(title="Gantry")),
                 y=alt.Y(
                     parameters["column-name"],
                     axis=alt.Axis(
