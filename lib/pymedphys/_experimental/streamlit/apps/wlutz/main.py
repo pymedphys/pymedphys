@@ -638,8 +638,8 @@ def _calculate_wlutz(
         image_path, bb_diameter, edge_lengths, penumbra
     )
 
-    if algorithm == "pylinac":
-        wlutz_input_parameters["field_rotation"] = field_rotation
+    # if algorithm == "PyLinac":
+    #     wlutz_input_parameters["field_rotation"] = field_rotation
 
     if wlutz_input_parameters["field_rotation"] == np.nan:
         field_centre = [np.nan, np.nan]

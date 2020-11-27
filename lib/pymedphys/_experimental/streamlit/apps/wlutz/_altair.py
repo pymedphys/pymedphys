@@ -26,8 +26,10 @@ def build_both_axis_altair_charts(table):
             altair_chart=raw_chart, use_container_width=True
         )
 
+    no_pylinac = table.loc[table["algorithm"] != "PyLinac"]
+
     raw_rotation_chart = (
-        alt.Chart(table)
+        alt.Chart(no_pylinac)
         .transform_fold(
             ["transformed_collimator", "transformed_field_rotation"],
             as_=["method", "angle"],
