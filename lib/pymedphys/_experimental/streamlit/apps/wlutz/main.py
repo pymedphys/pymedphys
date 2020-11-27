@@ -277,8 +277,6 @@ def main():
         .encode(x="datetime:T", y="beam_shade_min:Q", y2="beam_shade_max:Q")
     )
 
-    # st.altair_chart(beam_on_chart, use_container_width=True)
-
     try:
         angle_speed_check(icom_datasets)
     except ValueError:
@@ -332,18 +330,6 @@ def main():
     st.altair_chart(field_size_chart, use_container_width=True)
 
     angle_speed_check(icom_datasets)
-
-    instantaneous_dose_rate = (
-        np.diff(icom_datasets["meterset"])
-        / pd.Series(np.diff(icom_datasets["datetime"])).dt.total_seconds().to_numpy()
-    )
-
-    instantaneous_dose_rate = (
-        np.concatenate([[0], instantaneous_dose_rate]) * 60  # MU / min
-    )
-
-    icom_datasets["dose_rate"] = instantaneous_dose_rate
-    # icom_datasets["dose_rate"].rolling(10, win_type="gaussian").sum(std=3)
 
     st.write(icom_datasets)
 
@@ -937,23 +923,8 @@ def attempt_to_make_angle_continuous(
     where_closest_left_leaning = np.argmin(
         np.abs(index_within[:, None] - index_outside[None, :]), axis=1
     )
-    where_closest_right_leaning = (
-        len(index_outside)
-        - 1
-        - np.argmin(
-            np.abs(index_within[::-1, None] - index_outside[None, ::-1]), axis=1
-        )[::-1]
-    )
 
     closest_left_leaning = index_outside[where_closest_left_leaning]
-    closest_right_leaning = index_outside[where_closest_right_leaning]
-
-    if np.any(
-        np.sign(angle[closest_left_leaning]) != np.sign(angle[closest_right_leaning])
-    ):
-        raise ValueError(
-            "Unable to automatically determine whether the angles near 180 are + or -"
-        )
 
     sign_to_be_adjusted = np.sign(angle[index_within]) != np.sign(
         angle[closest_left_leaning]
