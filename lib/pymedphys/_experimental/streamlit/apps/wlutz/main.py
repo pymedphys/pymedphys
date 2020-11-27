@@ -365,11 +365,13 @@ def main():
         for i, relative_image_path in enumerate(database_table["filepath"][::-1]):
             row = database_table.iloc[i]
             edge_lengths = [row["width"], row["length"]]
+            field_rotation = 90 - row["collimator"]
 
             results = _get_results_for_image(
                 database_directory,
                 relative_image_path,
                 selected_algorithms,
+                field_rotation,
                 bb_diameter,
                 edge_lengths,
                 penumbra,
@@ -450,11 +452,13 @@ def _show_selected_image(
         st.write(relative_image_path)
 
         edge_lengths = [row["width"].iloc[0], row["length"].iloc[0]]
+        field_rotation = 90 - row["collimator"].iloc[0]
 
         results = _get_results_for_image(
             database_directory,
             relative_image_path,
             selected_algorithms,
+            field_rotation,
             bb_diameter,
             edge_lengths,
             penumbra,
@@ -553,6 +557,7 @@ def _get_results_for_image(
     database_directory,
     relative_image_path,
     selected_algorithms,
+    field_rotation,
     bb_diameter,
     edge_lengths,
     penumbra,
@@ -563,8 +568,13 @@ def _get_results_for_image(
 
     for algorithm in selected_algorithms:
 
-        field_centre, field_rotation, bb_centre = _calculate_wlutz(
-            full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
+        field_centre, field_rotation_calculated, bb_centre = _calculate_wlutz(
+            full_image_path,
+            algorithm,
+            field_rotation,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
         )
         results_data.append(
             {
@@ -574,7 +584,7 @@ def _get_results_for_image(
                 "diff_y": field_centre[1] - bb_centre[1],
                 "field_centre_x": field_centre[0],
                 "field_centre_y": field_centre[1],
-                "field_rotation": field_rotation,
+                "field_rotation": field_rotation_calculated,
                 "bb_centre_x": bb_centre[0],
                 "bb_centre_y": bb_centre[1],
             }
@@ -614,10 +624,15 @@ def _create_figure(field_centre, bb_centre, wlutz_input_parameters):
 
 
 @st.cache(show_spinner=False)
-def _calculate_wlutz(image_path, algorithm, bb_diameter, edge_lengths, penumbra):
+def _calculate_wlutz(
+    image_path, algorithm, field_rotation, bb_diameter, edge_lengths, penumbra
+):
     wlutz_input_parameters = _get_wlutz_input_parameters(
         image_path, bb_diameter, edge_lengths, penumbra
     )
+
+    if algorithm == "pylinac":
+        wlutz_input_parameters["field_rotation"] = field_rotation
 
     if wlutz_input_parameters["field_rotation"] == np.nan:
         field_centre = [np.nan, np.nan]
