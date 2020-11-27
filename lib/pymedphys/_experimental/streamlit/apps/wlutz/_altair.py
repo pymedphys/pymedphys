@@ -33,7 +33,11 @@ def build_both_axis_altair_charts(table):
             as_=["method", "angle"],
         )
         .mark_line(point=True)
-        .encode(x="gantry", y="angle:Q", color="method:N")
+        .encode(
+            x="gantry",
+            y=alt.Y("angle:Q", axis=alt.Axis(title="Angle Modulo 90")),
+            color="method:N",
+        )
         .properties(title="Rotation iCom vs Optimisation")
         .interactive(bind_y=False)
     )
