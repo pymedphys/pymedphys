@@ -36,7 +36,7 @@ def build_both_axis_altair_charts(table):
         )
         .mark_line(point=True)
         .encode(
-            x="gantry",
+            x=alt.X("gantry", axis=alt.Axis(title="Gantry (degrees)")),
             y=alt.Y("angle:Q", axis=alt.Axis(title="Angle Modulo 90")),
             color="method:N",
         )
