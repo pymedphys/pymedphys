@@ -52,9 +52,15 @@ name = "rccc"
     name = "2619"
     ip = '192.168.100.200'
 
+        [site.linac.directories]
+        qa = '\\pdc\OneDrive$\RCCC Specific Files\Linac Beam Data Record\Synergy 2619'
+
     [[site.linac]]
     name = "2694"
     ip = '192.168.100.201'
+
+        [site.linac.directories]
+        qa = '\\pdc\OneDrive$\RCCC Specific Files\Linac Beam Data Record\Synergy 2694'
 
 
 [[site]]
@@ -83,6 +89,9 @@ name = "nbcc"
         [site.linac.aliases]
         iview = "4299_iView"
 
+        [site.linac.directories]
+        qa = '\\pdc\OneDrive$\NBCCC Specific Files\Linac Beam Data Record\VersaHD 4299'
+
 
 [[site]]
 name = "sash"
@@ -109,6 +118,9 @@ name = "sash"
 
         [site.linac.aliases]
         iview = "Default"
+
+        [site.linac.directories]
+        qa = '\\pdc\OneDrive$\SASH Specific Files\Linac Beam Data Record\Synergy 9002'
 
 
 [trf_logfiles]
