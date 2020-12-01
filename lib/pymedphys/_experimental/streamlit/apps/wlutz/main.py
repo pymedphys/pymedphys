@@ -414,42 +414,49 @@ def main():
             working_table["transformed_collimator"] = working_table["collimator"] % 90
 
             treatments = working_table["treatment"].unique()
+            if len(treatments) != 1:
+                raise ValueError("Expected exactly one treatment per image")
+
+            treatment = treatments[0]
+
             ports = working_table["port"].unique()
+            if len(ports) != 1:
+                raise ValueError("Expected exactly one port per image")
 
-            # TODO: Provide a selectbox that allows certain treatment/ports
-            # to be overlaid.
-            for treatment in treatments:
-                try:
-                    treatment_chart_bucket = chart_bucket[treatment]
-                except KeyError:
-                    chart_bucket[treatment] = {}
-                    treatment_chart_bucket = chart_bucket[treatment]
+            port = ports[0]
 
-                table_filtered_by_treatment = working_table.loc[
-                    working_table["treatment"] == treatment
-                ]
+            try:
+                treatment_chart_bucket = chart_bucket[treatment]
+            except KeyError:
+                chart_bucket[treatment] = {}
+                treatment_chart_bucket = chart_bucket[treatment]
 
-                for port in ports:
-                    table_filtered_by_port = table_filtered_by_treatment.loc[
-                        table_filtered_by_treatment["port"] == port
-                    ]
-                    try:
-                        for _, item in treatment_chart_bucket[port][
-                            "streamlit_wrapper"
-                        ].items():
-                            item.add_rows(table_filtered_by_port)
-                    except KeyError:
-                        st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
-                        port_chart_bucket = _altair.build_both_axis_altair_charts(
-                            table_filtered_by_port
-                        )
-                        treatment_chart_bucket[port] = port_chart_bucket
+            table_filtered_by_treatment = working_table.loc[
+                working_table["treatment"] == treatment
+            ]
+
+            table_filtered_by_port = table_filtered_by_treatment.loc[
+                table_filtered_by_treatment["port"] == port
+            ]
+            try:
+                for _, item in treatment_chart_bucket[port][
+                    "streamlit_wrapper"
+                ].items():
+                    item.add_rows(table_filtered_by_port)
+            except KeyError:
+                st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
+                port_chart_bucket = _altair.build_both_axis_altair_charts(
+                    table_filtered_by_port
+                )
+                treatment_chart_bucket[port] = port_chart_bucket
 
             ratio_complete = (i + 1) / total_files
             progress_bar.progress(ratio_complete)
 
             percent_complete = round(ratio_complete * 100, 2)
             status_text.text(f"{percent_complete}% Complete")
+
+    # for treatment in treatments:
 
 
 def _show_selected_image(
