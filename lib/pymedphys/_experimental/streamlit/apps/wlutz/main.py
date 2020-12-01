@@ -19,7 +19,7 @@ import pathlib
 from pymedphys._imports import altair as alt
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import pylinac, scipy
+from pymedphys._imports import plt, pylinac, scipy
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
@@ -109,8 +109,6 @@ def main():
     wlutz_directory_by_date = wlutz_directory.joinpath(
         selected_date.strftime("%Y-%m-%d")
     )
-
-    wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
 
     st.write(
         f"""
@@ -432,9 +430,7 @@ def main():
                 table_filtered_by_treatment["port"] == port
             ]
             try:
-                for _, item in treatment_chart_bucket[port][
-                    "streamlit_wrapper"
-                ].items():
+                for _, item in treatment_chart_bucket[port].items():
                     item.add_rows(table_filtered_by_port)
             except KeyError:
                 st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
@@ -458,17 +454,39 @@ def main():
             wlutz_directory_by_date.joinpath("results.csv"), index=False
         )
 
+        wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
+
         for treatment, treatment_chart_bucket in chart_bucket.items():
             for port, port_chart_bucket in treatment_chart_bucket.items():
-                for axis, altair_chart in port_chart_bucket["altair_reference"].items():
-                    chart_filename = f"{treatment}_{port}_{axis}"
-                    chart_filepath = wlutz_directory_by_date.joinpath(chart_filename)
-                    for file_format in ["png", "html"]:
-                        filepath_with_suffix = chart_filepath.with_suffix(
-                            f".{file_format}"
+                for column, title in zip(
+                    ["diff_x", "diff_y"], ["Transverse", "Radial"]
+                ):
+                    plot_filename = f"{treatment}-{port}-{title}.png"
+                    plot_filepath = wlutz_directory_by_date.joinpath(plot_filename)
+
+                    mask = (contextualised_results["treatment"] == treatment) & (
+                        contextualised_results["port"] == port
+                    )
+
+                    masked = contextualised_results.loc[mask]
+
+                    fig, ax = plt.subplots()
+                    for algorithm in selected_algorithms:
+                        algorithm_masked = masked.loc[masked["algorithm"] == algorithm]
+                        ax.plot(
+                            algorithm_masked["gantry"],
+                            algorithm_masked[column],
+                            ".-",
+                            label=algorithm,
                         )
-                        st.write(filepath_with_suffix)
-                        altair_chart.save(filepath_with_suffix, format=file_format)
+
+                    ax.set_xlabel("Gantry Angle (degrees)")
+                    ax.set_ylabel("Field centre - BB centre (mm)")
+                    ax.set_title(f"{treatment} | {port} | {title}")
+                    ax.grid("true")
+
+                    ax.legend(loc="best")
+                    fig.savefig(plot_filepath)
 
 
 def _show_selected_image(
