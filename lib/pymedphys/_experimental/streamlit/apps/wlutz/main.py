@@ -535,6 +535,11 @@ def main():
 
         st.write(statistics_collection)
 
+        statistics_overview_csv_path = wlutz_directory_by_date.joinpath(
+            "statistics_overview.csv"
+        )
+        statistics_collection.to_csv(statistics_overview_csv_path, index=False)
+
 
 def _show_selected_image(
     database_directory, database_table, selected_algorithms, bb_diameter, penumbra
