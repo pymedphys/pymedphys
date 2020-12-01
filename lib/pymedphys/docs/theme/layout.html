@@ -43,12 +43,19 @@
     <div id="main-content" class="row">
         <div class="col-12 col-md-9 pl-md-3 pr-md-0">
             {{ super() }}
-            <div id='discourse-comments'></div>
+
+            <div class="section" id="comments">
+                <h1>
+                    Comments
+                    <a class="headerlink" href="#comments" title="Permalink to this headline">¶</a>
+                </h1>
+                <div id='discourse-comments'></div>
+            </div>
 
             <script type="text/javascript">
                 DiscourseEmbed = {
                     discourseUrl: 'https://pymedphys.discourse.group/',
-                    discourseEmbedUrl: 'https://docs.pymedphys.com<%= current_page.url %>'
+                    discourseEmbedUrl: 'https://docs.pymedphys.com/{{ pagename }}'
                 };
 
                 (function () {
