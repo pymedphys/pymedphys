@@ -188,7 +188,9 @@ def _adjust_icom_datetime_to_remove_duplicates(icom_datetime):
                 icom_datetime.iloc[icom_index] += time_delta * (current_duplicate + 1)
 
 
-@st.cache(show_spinner=False)
+# TODO: Remove "allow_output_mutation" once determine what is causing
+# the issue here.
+@st.cache(show_spinner=False, allow_output_mutation=True)
 def get_icom_dataset(filepath):
     icom_stream = read_icom_log(filepath)
     icom_data_points = pmp_icom_extract.get_data_points(icom_stream)
