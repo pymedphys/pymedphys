@@ -469,6 +469,7 @@ def main():
             database_table, left_on="filepath", right_on="filepath"
         )
 
+        st.write("## Raw results")
         st.write(contextualised_results)
 
         wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
@@ -479,12 +480,14 @@ def main():
         merged_with_previous.drop_duplicates(inplace=True)
         merged_with_previous.to_csv(raw_results_csv_path, index=False)
 
+        statistics_collection = []
+
         for treatment, treatment_chart_bucket in chart_bucket.items():
             for port, port_chart_bucket in treatment_chart_bucket.items():
-                for column, title in zip(
+                for column, orientation in zip(
                     ["diff_x", "diff_y"], ["Transverse", "Radial"]
                 ):
-                    plot_filename = f"{treatment}-{port}-{title}.png"
+                    plot_filename = f"{treatment}-{port}-{orientation}.png"
                     plot_filepath = wlutz_directory_by_date.joinpath(plot_filename)
 
                     mask = (contextualised_results["treatment"] == treatment) & (
@@ -503,13 +506,34 @@ def main():
                             label=algorithm,
                         )
 
+                        description = algorithm_masked[column].describe()
+                        description = description.round(2)
+                        description["algorithm"] = algorithm
+                        description["treatment"] = treatment
+                        description["port"] = port
+                        description["orientation"] = orientation
+
+                        statistics_collection.append(description)
+
                     ax.set_xlabel("Gantry Angle (degrees)")
                     ax.set_ylabel("Field centre - BB centre (mm)")
-                    ax.set_title(f"{treatment} | {port} | {title}")
+
+                    descriptor = f"{treatment} | {port} | {orientation}"
+                    ax.set_title(descriptor)
                     ax.grid("true")
 
                     ax.legend(loc="best")
                     fig.savefig(plot_filepath)
+
+        st.write("## Overview Statistics")
+
+        statistics_collection = pd.concat(statistics_collection, axis=1).T
+        statistics_collection.reset_index(inplace=True)
+        statistics_collection = statistics_collection[
+            ["treatment", "port", "orientation", "algorithm", "min", "max", "mean"]
+        ]
+
+        st.write(statistics_collection)
 
 
 def _show_selected_image(
