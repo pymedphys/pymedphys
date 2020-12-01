@@ -14,6 +14,7 @@
 
 
 import datetime
+import pathlib
 
 from pymedphys._imports import altair as alt
 from pymedphys._imports import numpy as np
@@ -85,8 +86,6 @@ def main():
 
     # --
 
-    st.write("## iView to iCom timestamp alignment")
-
     selected_date = database_table["datetime"].dt.date.unique()
     if len(selected_date) != 1:
         raise ValueError("Expected only one date")
@@ -98,6 +97,32 @@ def main():
         raise ValueError("Expected only one machine id")
 
     selected_machine_id = selected_machine_id[0]
+
+    # --
+
+    linac_to_directories_map = {
+        item["name"]: item["directories"] for item in linac_map[chosen_site]
+    }
+
+    qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
+    wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
+    wlutz_directory_by_date = wlutz_directory.joinpath(
+        selected_date.strftime("%Y-%m-%d")
+    )
+
+    wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
+
+    st.write(
+        f"""
+        ## Directory where results are being saved
+
+        `{wlutz_directory_by_date}`
+    """
+    )
+
+    # --
+
+    st.write("## iView to iCom timestamp alignment")
 
     selected_paths_by_date = _icom.get_paths_by_date(
         icom_patients_directory, selected_date=selected_date
