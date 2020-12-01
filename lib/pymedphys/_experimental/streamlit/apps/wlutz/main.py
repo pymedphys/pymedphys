@@ -378,10 +378,10 @@ def main():
     )
 
     if st.button("Calculate"):
-        results_csv_path = wlutz_directory_by_date.joinpath("results.csv")
+        raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
         try:
             previously_calculated_results = pd.read_csv(
-                results_csv_path, index_col=False
+                raw_results_csv_path, index_col=False
             )
         except FileNotFoundError:
             previously_calculated_results = None
@@ -401,23 +401,22 @@ def main():
                     previously_calculated_results["filepath"] == relative_image_path
                 ][RESULTS_DATA_COLUMNS]
 
-                previous_results_algorithms_dont_match = set(
+                an_algorithm_not_already_calculated = set(selected_algorithms).issubset(
                     results["algorithm"].unique()
-                ) != set(selected_algorithms)
+                )
 
             if (
                 previously_calculated_results is None
-                or previous_results_algorithms_dont_match
+                or an_algorithm_not_already_calculated
             ):
                 row = database_table.iloc[i]
                 edge_lengths = [row["width"], row["length"]]
-                field_rotation = 90 - row["collimator"]
+                # field_rotation = 90 - row["collimator"]
 
                 results = _get_results_for_image(
                     database_directory,
                     relative_image_path,
                     selected_algorithms,
-                    field_rotation,
                     bb_diameter,
                     edge_lengths,
                     penumbra,
@@ -471,7 +470,12 @@ def main():
         )
 
         st.write(contextualised_results)
-        contextualised_results.to_csv(results_csv_path, index=False)
+
+        merged_with_previous = pd.concat(
+            [contextualised_results, previously_calculated_results]
+        )
+        merged_with_previous.drop_duplicates(inplace=True)
+        merged_with_previous.to_csv(raw_results_csv_path, index=False)
 
         wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
 
@@ -490,7 +494,7 @@ def main():
                     masked = contextualised_results.loc[mask]
 
                     fig, ax = plt.subplots()
-                    for algorithm in selected_algorithms:
+                    for algorithm in sorted(selected_algorithms):
                         algorithm_masked = masked.loc[masked["algorithm"] == algorithm]
                         ax.plot(
                             algorithm_masked["gantry"],
@@ -535,13 +539,12 @@ def _show_selected_image(
         st.write(relative_image_path)
 
         edge_lengths = [row["width"].iloc[0], row["length"].iloc[0]]
-        field_rotation = 90 - row["collimator"].iloc[0]
+        # field_rotation = 90 - row["collimator"].iloc[0]
 
         results = _get_results_for_image(
             database_directory,
             relative_image_path,
             selected_algorithms,
-            field_rotation,
             bb_diameter,
             edge_lengths,
             penumbra,
@@ -552,7 +555,6 @@ def _show_selected_image(
         figures = _plot_diagnostic_figures(
             database_directory,
             relative_image_path,
-            field_rotation,
             bb_diameter,
             edge_lengths,
             penumbra,
@@ -609,7 +611,6 @@ def _load_image_frame_database(database_directory, input_database_table, refresh
 def _plot_diagnostic_figures(
     database_directory,
     relative_image_path,
-    field_rotation,
     bb_diameter,
     edge_lengths,
     penumbra,
@@ -624,12 +625,7 @@ def _plot_diagnostic_figures(
 
     for algorithm in selected_algorithms:
         field_centre, _, bb_centre = _calculate_wlutz(
-            full_image_path,
-            algorithm,
-            field_rotation,
-            bb_diameter,
-            edge_lengths,
-            penumbra,
+            full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
         )
 
         fig, axs = _create_figure(field_centre, bb_centre, wlutz_input_parameters)
@@ -660,7 +656,6 @@ def _get_results_for_image(
     database_directory,
     relative_image_path,
     selected_algorithms,
-    field_rotation,
     bb_diameter,
     edge_lengths,
     penumbra,
@@ -672,12 +667,7 @@ def _get_results_for_image(
     for algorithm in selected_algorithms:
 
         field_centre, field_rotation_calculated, bb_centre = _calculate_wlutz(
-            full_image_path,
-            algorithm,
-            field_rotation,
-            bb_diameter,
-            edge_lengths,
-            penumbra,
+            full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
         )
         results_data.append(
             {
@@ -730,15 +720,10 @@ def _create_figure(field_centre, bb_centre, wlutz_input_parameters):
 
 
 @st.cache(show_spinner=False)
-def _calculate_wlutz(
-    image_path, algorithm, field_rotation, bb_diameter, edge_lengths, penumbra
-):
+def _calculate_wlutz(image_path, algorithm, bb_diameter, edge_lengths, penumbra):
     wlutz_input_parameters = _get_wlutz_input_parameters(
         image_path, bb_diameter, edge_lengths, penumbra
     )
-
-    # if algorithm == "PyLinac":
-    #     wlutz_input_parameters["field_rotation"] = field_rotation
 
     if wlutz_input_parameters["field_rotation"] == np.nan:
         field_centre = [np.nan, np.nan]
