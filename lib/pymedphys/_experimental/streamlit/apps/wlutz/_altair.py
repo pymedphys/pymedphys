@@ -27,6 +27,7 @@ def build_both_axis_altair_charts(table):
         chart_bucket["streamlit_wrapper"][axis] = st.altair_chart(
             altair_chart=raw_chart, use_container_width=True
         )
+        chart_bucket["altair_reference"] = raw_chart
 
     no_pylinac = table.loc[table["algorithm"] != "PyLinac"]
 
@@ -46,6 +47,7 @@ def build_both_axis_altair_charts(table):
         .interactive(bind_y=False)
     )
 
+    chart_bucket["altair_reference"]["rotation"] = raw_rotation_chart
     chart_bucket["streamlit_wrapper"]["rotation"] = st.altair_chart(
         altair_chart=raw_rotation_chart, use_container_width=True
     )
