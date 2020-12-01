@@ -349,8 +349,10 @@ def main():
         .replace(hour=0, minute=0, second=0, microsecond=0)
     )
 
-    icom_datasets["seconds"] = (icom_datasets["datetime"] - midnight).dt.total_seconds()
-    database_table["seconds"] = (
+    icom_datasets["seconds_since_midnight"] = (
+        icom_datasets["datetime"] - midnight
+    ).dt.total_seconds()
+    database_table["seconds_since_midnight"] = (
         database_table["datetime"] - midnight
     ).dt.total_seconds()
 
@@ -413,17 +415,8 @@ def main():
             )
             working_table["transformed_collimator"] = working_table["collimator"] % 90
 
-            treatments = working_table["treatment"].unique()
-            if len(treatments) != 1:
-                raise ValueError("Expected exactly one treatment per image")
-
-            treatment = treatments[0]
-
-            ports = working_table["port"].unique()
-            if len(ports) != 1:
-                raise ValueError("Expected exactly one port per image")
-
-            port = ports[0]
+            treatment = _collapse_column_to_single_value(working_table, "treatment")
+            port = _collapse_column_to_single_value(working_table, "port")
 
             try:
                 treatment_chart_bucket = chart_bucket[treatment]
@@ -456,7 +449,26 @@ def main():
             percent_complete = round(ratio_complete * 100, 2)
             status_text.text(f"{percent_complete}% Complete")
 
-    # for treatment in treatments:
+        contextualised_results: pd.DataFrame = collated_results.merge(
+            database_table, left_on="filepath", right_on="filepath"
+        )
+
+        st.write(contextualised_results)
+        contextualised_results.to_csv(
+            wlutz_directory_by_date.joinpath("results.csv"), index=False
+        )
+
+        for treatment, treatment_chart_bucket in chart_bucket.items():
+            for port, port_chart_bucket in treatment_chart_bucket.items():
+                for axis, altair_chart in port_chart_bucket["altair_reference"].items():
+                    chart_filename = f"{treatment}_{port}_{axis}"
+                    chart_filepath = wlutz_directory_by_date.joinpath(chart_filename)
+                    for file_format in ["png", "html"]:
+                        filepath_with_suffix = chart_filepath.with_suffix(
+                            f".{file_format}"
+                        )
+                        st.write(filepath_with_suffix)
+                        altair_chart.save(filepath_with_suffix, format=file_format)
 
 
 def _show_selected_image(
@@ -1000,5 +1012,15 @@ def attempt_to_make_angle_continuous(
 
 
 def _table_transfer_via_interpolation(source, location, key):
-    interpolation = scipy.interpolate.interp1d(source["seconds"], source[key])
-    location[key] = interpolation(location["seconds"])
+    interpolation = scipy.interpolate.interp1d(
+        source["seconds_since_midnight"], source[key]
+    )
+    location[key] = interpolation(location["seconds_since_midnight"])
+
+
+def _collapse_column_to_single_value(dataframe, column):
+    results = dataframe[column].unique()
+    if len(results) != 1:
+        raise ValueError(f"Expected exactly one {column} per image")
+
+    return results[0]
