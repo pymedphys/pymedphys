@@ -443,6 +443,18 @@ optional = true
 python-versions = "*"
 
 [[package]]
+name = "flashgamma"
+version = "0.0.1"
+description = "Analysis of radiotherapy dose distributions"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[[package]]
 name = "gast"
 version = "0.3.3"
 description = "Python AST that abstracts the underlying Python version"
@@ -2780,6 +2792,7 @@ dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests"
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
 docs = ["jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon"]
 doctests = ["tensorflow", "black", "tomlkit"]
+external = ["flashgamma"]
 ml = ["tensorflow", "torch"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago"]
@@ -2787,7 +2800,7 @@ user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "bcd7774770cd8296bf0d538bc12e8da3d79c5563068b490c3249d839cf783655"
+content-hash = "c412bf51ef0ebb5367d33038f8e9b79a1356dbb01dbc04d69ebe1a01ba84f472"
 
 [metadata.files]
 absl-py = [
@@ -3028,6 +3041,9 @@ enum-compat = [
 filelock = [
     {file = "filelock-3.0.12-py3-none-any.whl", hash = "sha256:929b7d63ec5b7d6b71b0fa5ac14e030b3f70b75747cef1b10da9b879fef15836"},
     {file = "filelock-3.0.12.tar.gz", hash = "sha256:18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59"},
+]
+flashgamma = [
+    {file = "flashgamma-0.0.1.tar.gz", hash = "sha256:68d214ed92854505b6987d28fe180de3f834900236cbc02316a9d04f08907a2e"},
 ]
 gast = [
     {file = "gast-0.3.3-py2.py3-none-any.whl", hash = "sha256:8f46f5be57ae6889a4e16e2ca113b1703ef17f2b0abceb83793eaba9e1351a45"},
