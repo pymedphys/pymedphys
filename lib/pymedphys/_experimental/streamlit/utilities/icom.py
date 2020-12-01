@@ -225,10 +225,9 @@ def get_icom_dataset(filepath):
         name="beam_timer",
     )
 
-    width = _determine_width(raw_delivery_items["mlc"], raw_delivery_items["jaw"])
-    length = _determine_length(raw_delivery_items["jaw"])
-
-    length.loc[np.isnan(width)] = np.nan
+    width, length, centre_x, centre_y = _determine_width_length_centre(
+        raw_delivery_items["mlc"], raw_delivery_items["jaw"]
+    )
 
     icom_dataset = pd.concat(
         [
@@ -241,6 +240,8 @@ def get_icom_dataset(filepath):
             turn_table,
             interlocks,
             beam_timer,
+            centre_x,
+            centre_y,
         ],
         axis=1,
     )
@@ -257,12 +258,9 @@ def _check_for_consistent_mlc_width_return_mean(weighted_mlc_positions):
     return mean
 
 
-def _determine_width(mlc, jaw):
-    jaw = np.array(list(jaw))
-    mlc = np.array(list(mlc))
-
+def _get_mean_unblocked_mlc_pos(mlc, jaw):
     mlc_indices = np.arange(80)
-    leaf_centre_pos = np.array((mlc_indices - 39) * 5 - 2.5)  # Not sufficiently tested
+    leaf_centre_pos = np.array((mlc_indices - 39) * 5 - 2.5)
     is_mlc_centre_blocked = np.invert(
         (-jaw[:, 0][:, None] <= leaf_centre_pos[None, :])
         & (jaw[:, 1][:, None] >= leaf_centre_pos[None, :])
@@ -275,13 +273,27 @@ def _determine_width(mlc, jaw):
     max_absolute_diff = np.nanmax(absolute_diff, axis=1)
 
     mean_mlc[max_absolute_diff > 0.5] = np.nan
-    width = np.sum(mean_mlc, axis=1)
 
-    return pd.Series(width, name="width")
+    return mean_mlc
 
 
-def _determine_length(jaw):
+def _determine_width_length_centre(mlc, jaw):
     jaw = np.array(list(jaw))
-    length = jaw[:, 0] + jaw[:, 1]
+    mlc = np.array(list(mlc))
 
-    return pd.Series(length, name="length")
+    mean_mlc = _get_mean_unblocked_mlc_pos(mlc, jaw)
+    width = pd.Series(np.sum(mean_mlc, axis=1), name="width")
+    length = pd.Series(jaw[:, 0] + jaw[:, 1], name="length")
+
+    centre_x = pd.Series(
+        (-mean_mlc[:, 0] + mean_mlc[:, 1]) / 2, name="experimental_icom_centre_x"
+    )
+    centre_y = pd.Series(
+        (-jaw[:, 0] + jaw[:, 1]) / 2, name="experimental_icom_centre_y"
+    )
+
+    length.loc[np.isnan(width)] = np.nan
+    centre_x.loc[np.isnan(width)] = np.nan
+    centre_y.loc[np.isnan(width)] = np.nan
+
+    return width, length, centre_x, centre_y

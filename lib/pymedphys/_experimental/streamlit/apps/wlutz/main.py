@@ -260,12 +260,12 @@ def main():
 
     icom_datasets = []
     for filepath in filepaths_to_load:
-        icom_datasets.append(_icom.get_icom_dataset(filepath))
+        icom_dataframe = _icom.get_icom_dataset(filepath)
+        st.write(icom_dataframe)
+        icom_datasets.append(icom_dataframe)
 
     icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
-    icom_datasets = icom_datasets.copy(deep=True)
-
-    icom_datasets.sort_values(by="datetime", inplace=True)
+    icom_datasets = icom_datasets.sort_values(by="datetime", inplace=False)
 
     icom_datasets["datetime"] += datetime.timedelta(seconds=offset_to_apply)
     icom_datasets["time"] = icom_datasets["datetime"].dt.round("ms").dt.time
@@ -401,13 +401,13 @@ def main():
                     previously_calculated_results["filepath"] == relative_image_path
                 ][RESULTS_DATA_COLUMNS]
 
-                an_algorithm_not_already_calculated = set(selected_algorithms).issubset(
-                    results["algorithm"].unique()
-                )
+                selected_algorithms_already_calculated = set(
+                    selected_algorithms
+                ).issubset(results["algorithm"].unique())
 
             if (
                 previously_calculated_results is None
-                or an_algorithm_not_already_calculated
+                or not selected_algorithms_already_calculated
             ):
                 row = database_table.iloc[i]
                 edge_lengths = [row["width"], row["length"]]
