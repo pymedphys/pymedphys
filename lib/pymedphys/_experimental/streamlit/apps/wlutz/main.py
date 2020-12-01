@@ -384,7 +384,7 @@ def main():
                 results_csv_path, index_col=False
             )
         except FileNotFoundError:
-            previously_calculated_results = pd.DataFrame()
+            previously_calculated_results = None
 
         st.sidebar.write("---\n## Progress")
         progress_bar = st.sidebar.progress(0)
@@ -396,11 +396,19 @@ def main():
         total_files = len(database_table["filepath"])
 
         for i, relative_image_path in enumerate(database_table["filepath"][::-1]):
-            results = previously_calculated_results.loc[
-                previously_calculated_results["filepath"] == relative_image_path
-            ][RESULTS_DATA_COLUMNS]
+            if previously_calculated_results is not None:
+                results = previously_calculated_results.loc[
+                    previously_calculated_results["filepath"] == relative_image_path
+                ][RESULTS_DATA_COLUMNS]
 
-            if set(results["algorithm"].unique()) != set(selected_algorithms):
+            previous_results_algorithms_dont_match = set(
+                results["algorithm"].unique()
+            ) != set(selected_algorithms)
+
+            if (
+                previously_calculated_results is None
+                or previous_results_algorithms_dont_match
+            ):
                 row = database_table.iloc[i]
                 edge_lengths = [row["width"], row["length"]]
                 field_rotation = 90 - row["collimator"]
