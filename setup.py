@@ -166,6 +166,7 @@ extras_require = {
         "xmltodict",
         "streamlit==0.70.0",
         "timeago",
+        "altair_saver",
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
@@ -221,6 +222,7 @@ extras_require = {
         "xmltodict",
         "streamlit==0.70.0",
         "timeago",
+        "altair_saver",
     ],
 }
 
