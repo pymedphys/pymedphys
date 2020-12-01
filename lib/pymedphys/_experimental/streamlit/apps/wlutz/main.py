@@ -434,7 +434,9 @@ def main():
                         table_filtered_by_treatment["port"] == port
                     ]
                     try:
-                        for _, item in treatment_chart_bucket[port].items():
+                        for _, item in treatment_chart_bucket[port][
+                            "streamlit_wrapper"
+                        ].items():
                             item.add_rows(table_filtered_by_port)
                     except KeyError:
                         st.write(f"### Treatment: `{treatment}` | Port: `{port}`")
