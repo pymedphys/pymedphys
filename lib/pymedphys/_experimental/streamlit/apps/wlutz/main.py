@@ -378,6 +378,14 @@ def main():
     )
 
     if st.button("Calculate"):
+        results_csv_path = wlutz_directory_by_date.joinpath("results.csv")
+        try:
+            previously_calculated_results = pd.read_csv(
+                results_csv_path, index_col=False
+            )
+        except FileNotFoundError:
+            previously_calculated_results = pd.DataFrame()
+
         st.sidebar.write("---\n## Progress")
         progress_bar = st.sidebar.progress(0)
         status_text = st.sidebar.empty()
@@ -388,19 +396,24 @@ def main():
         total_files = len(database_table["filepath"])
 
         for i, relative_image_path in enumerate(database_table["filepath"][::-1]):
-            row = database_table.iloc[i]
-            edge_lengths = [row["width"], row["length"]]
-            field_rotation = 90 - row["collimator"]
+            results = previously_calculated_results.loc[
+                previously_calculated_results["filepath"] == relative_image_path
+            ][RESULTS_DATA_COLUMNS]
 
-            results = _get_results_for_image(
-                database_directory,
-                relative_image_path,
-                selected_algorithms,
-                field_rotation,
-                bb_diameter,
-                edge_lengths,
-                penumbra,
-            )
+            if set(results["algorithm"].unique()) != set(selected_algorithms):
+                row = database_table.iloc[i]
+                edge_lengths = [row["width"], row["length"]]
+                field_rotation = 90 - row["collimator"]
+
+                results = _get_results_for_image(
+                    database_directory,
+                    relative_image_path,
+                    selected_algorithms,
+                    field_rotation,
+                    bb_diameter,
+                    edge_lengths,
+                    penumbra,
+                )
 
             collated_results = collated_results.append(results)
 
@@ -450,9 +463,7 @@ def main():
         )
 
         st.write(contextualised_results)
-        contextualised_results.to_csv(
-            wlutz_directory_by_date.joinpath("results.csv"), index=False
-        )
+        contextualised_results.to_csv(results_csv_path, index=False)
 
         wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
 
@@ -624,6 +635,19 @@ def _get_full_image_path(database_directory, relative_image_path):
     return database_directory.joinpath(relative_image_path)
 
 
+RESULTS_DATA_COLUMNS = [
+    "filepath",
+    "algorithm",
+    "diff_x",
+    "diff_y",
+    "field_centre_x",
+    "field_centre_y",
+    "field_rotation",
+    "bb_centre_x",
+    "bb_centre_y",
+]
+
+
 def _get_results_for_image(
     database_directory,
     relative_image_path,
@@ -662,6 +686,9 @@ def _get_results_for_image(
         )
 
     results = pd.DataFrame.from_dict(results_data)
+
+    if set(results.columns) != set(RESULTS_DATA_COLUMNS):
+        raise ValueError("Unexpected columns")
 
     return results
 
