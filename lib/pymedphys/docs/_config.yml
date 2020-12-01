@@ -32,7 +32,6 @@ sphinx:
     language: en
 
     html_theme: 'theme'
-
     html_theme_path:
       - .
 
