@@ -28,7 +28,25 @@ def add_to_context(
 
     def generate_toc_html():
         initial_html = sbt_generate_toc_html()
-        initial_html += "<h1>FOOBAR</h1>"
-        return initial_html
+
+        try:
+            end_list_index = initial_html.rindex("</ul>")
+        except ValueError:
+            return initial_html
+
+        new_html = f"""
+                {initial_html[0:end_list_index]}
+                <li class="toc-h2 nav-item toc-entry">
+                    <a class="reference internal nav-link" href="#comments">
+                        Comments
+                    </a>
+                    <ul class="nav section-nav flex-column">
+                    </ul>
+                </li>
+            </ul>
+            {initial_html[end_list_index::]}
+        """
+
+        return new_html
 
     context["generate_toc_html"] = generate_toc_html
