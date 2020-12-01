@@ -471,13 +471,13 @@ def main():
 
         st.write(contextualised_results)
 
+        wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
+
         merged_with_previous = pd.concat(
             [contextualised_results, previously_calculated_results]
         )
         merged_with_previous.drop_duplicates(inplace=True)
         merged_with_previous.to_csv(raw_results_csv_path, index=False)
-
-        wlutz_directory_by_date.mkdir(parents=True, exist_ok=True)
 
         for treatment, treatment_chart_bucket in chart_bucket.items():
             for port, port_chart_bucket in treatment_chart_bucket.items():
