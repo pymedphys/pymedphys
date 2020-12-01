@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import base64
 import datetime
 import pathlib
 
@@ -535,10 +536,23 @@ def main():
 
         st.write(statistics_collection)
 
+        statistics_filename = "statistics_overview.csv"
+
         statistics_overview_csv_path = wlutz_directory_by_date.joinpath(
-            "statistics_overview.csv"
+            statistics_filename
         )
         statistics_collection.to_csv(statistics_overview_csv_path, index=False)
+
+        with open(statistics_overview_csv_path, "rb") as f:
+            csv_bytes = f.read()
+
+        b64 = base64.b64encode(csv_bytes).decode()
+        href = f"""
+            <a href=\"data:file/zip;base64,{b64}\" download='{statistics_filename}'>
+                Download `statistics_overview.csv`.
+            </a>
+        """
+        st.markdown(href, unsafe_allow_html=True)
 
 
 def _show_selected_image(
