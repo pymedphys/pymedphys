@@ -13,7 +13,7 @@ def setup(app: Sphinx):
     app.add_html_theme("sphinx_pymedphys_theme", str(HERE))
     app.connect("html-page-context", add_to_context)
 
-    return {"parallel_read_safe": False, "parallel_write_safe": False}
+    return {"parallel_read_safe": True, "parallel_write_safe": True}
 
 
 def add_to_context(
@@ -24,7 +24,6 @@ def add_to_context(
     doctree: Optional[document],  # pylint: disable = unused-argument
 ):
     sbt_generate_toc_html = context["generate_toc_html"]
-    print(context)
 
     def generate_toc_html():
         initial_html = sbt_generate_toc_html()
