@@ -19,10 +19,12 @@ from pymedphys._imports import streamlit as st
 
 def build_both_axis_altair_charts(table):
     chart_bucket = {}
+    chart_bucket["altair_reference"] = {}
+    chart_bucket["streamlit_wrapper"] = {}
 
     for axis in ["y", "x"]:
         raw_chart = _build_altair_chart(table, axis)
-        chart_bucket[axis] = st.altair_chart(
+        chart_bucket["streamlit_wrapper"][axis] = st.altair_chart(
             altair_chart=raw_chart, use_container_width=True
         )
 
@@ -44,7 +46,7 @@ def build_both_axis_altair_charts(table):
         .interactive(bind_y=False)
     )
 
-    chart_bucket["rotation"] = st.altair_chart(
+    chart_bucket["streamlit_wrapper"]["rotation"] = st.altair_chart(
         altair_chart=raw_rotation_chart, use_container_width=True
     )
 
