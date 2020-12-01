@@ -401,9 +401,9 @@ def main():
                     previously_calculated_results["filepath"] == relative_image_path
                 ][RESULTS_DATA_COLUMNS]
 
-            previous_results_algorithms_dont_match = set(
-                results["algorithm"].unique()
-            ) != set(selected_algorithms)
+                previous_results_algorithms_dont_match = set(
+                    results["algorithm"].unique()
+                ) != set(selected_algorithms)
 
             if (
                 previously_calculated_results is None
