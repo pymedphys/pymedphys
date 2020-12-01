@@ -31,9 +31,7 @@ sphinx:
   config:
     language: en
 
-    html_theme: 'theme'
-    html_theme_path:
-      - .
+    html_theme: 'sphinx_pymedphys_theme'
 
     html_css_files:
       - style.css
