@@ -18,5 +18,6 @@ certainly don't have to create them all by yourself, instead, just take the
 task by the horns, design the overall tutorial flow/course, and find people who
 can build each component.
 
-Please reach out by sending me (@SimonBiggs) a private message on the Discourse
+If you would like to consider taking this on
+please reach out by sending me (@SimonBiggs) a private message on the Discourse
 group (https://pymedphys.discourse.group/u/simonbiggs/summary).
