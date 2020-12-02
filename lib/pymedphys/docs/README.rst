@@ -92,7 +92,7 @@ For Python Users
   - Start here if you are fluent in Python and just want a quick instruction on how
     to get started.
 
-- `Tutorials`_ **[Don't yet exist]**
+- `Tutorials`_
 
   - A range of lessons that take you through various complete projects with the
     intent to be able to show you what can be achieved with writing PyMedPhys based
