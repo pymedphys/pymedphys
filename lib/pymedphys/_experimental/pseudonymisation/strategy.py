@@ -17,7 +17,7 @@ import datetime
 import hashlib
 import logging
 import random
-from decimal import Decimal, DecimalTuple
+from decimal import Decimal
 
 from pymedphys._imports import pydicom
 
@@ -206,23 +206,30 @@ def _pseudonymise_DS(value):
         a decimal string of the same sign and exponent.
 
     """
-    my_decimal = Decimal(value)
+    # must call string on value because it is actually of type DSfloat
+    # so to get the original string, invoke __str__(), see class DSfloat in pydicom
+    # str(value) invokes value.__str__()
+    original_DS_value = str(value)
+    my_decimal = Decimal(original_DS_value)
     as_tuple = my_decimal.as_tuple()
     digits = as_tuple.digits
+    # print ("digits :" + str(digits))
     count_digits = len(digits)
     my_hash_func = hashlib.new("sha3_256")
-    encoded_value = str(value).encode("ASCII")
+    encoded_value = original_DS_value.encode("ASCII")
     my_hash_func.update(encoded_value)
-    # my_digest = my_hash_func.digest()
+
     my_hex_digest = my_hash_func.hexdigest()
+
     sliced_digest = my_hex_digest[0:count_digits]
+    # convert the hex digest values to a base ten integer
     my_integer = int(sliced_digest, 16)
     my_integer_string = str(my_integer)
-    # string_count = len(my_integer_string)
+
     new_digits = list()
-    for i in range(0, count_digits + 1):
+    for i in range(0, count_digits):
         new_digits.append(int(my_integer_string[i : i + 1]))
-    print("new digits : " + str(new_digits))
+    # print("new digits : " + str(new_digits))
     new_decimal_tuple = tuple((as_tuple.sign, tuple(new_digits), as_tuple.exponent))
     new_decimal = Decimal(new_decimal_tuple)
     return str(new_decimal)

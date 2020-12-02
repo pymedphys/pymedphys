@@ -82,6 +82,29 @@ def test_pseudonymise_convenience_api():
 
 
 @pytest.mark.pydicom
+def test_identifier_with_DS_vr():
+    # PatientWeight is of type DS
+    # Because the strategy is only applied when the identifier is found
+    # in the dataset, the defect only surfaced in that circumstance
+    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+    logging.info("Using pseudonymisation strategy")
+    identifying_keywords = ["PatientID", "PatientWeight"]
+    ds_input = pydicom.Dataset()
+    ds_input.PatientID = "ABC123"
+    ds_input.PatientWeight = "73.2"
+    # not expected to cause problems
+    ds_pseudo = anonymise_dataset(
+        ds_input,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords,
+    )
+    assert ds_pseudo is not None
+    assert ds_pseudo.PatientWeight != ds_input.PatientWeight
+    assert ds_pseudo.PatientWeight <= (ds_input.PatientWeight * 10.0)
+    assert ds_pseudo.PatientWeight >= (ds_input.PatientWeight * 0.1)
+
+
+@pytest.mark.pydicom
 def test_identifier_with_unknown_vr():
     # The fundamental feature being tested is behaviour in
     # response to a programmer error.
