@@ -80,6 +80,7 @@ torch = {version = ">=1.0.0", optional = true}  # groups = ["ml"]
 jupyter-book = {version = ">=0.8.3", optional = true}  # groups = ["dev", "docs"]
 sphinx-argparse = {version = "*", optional = true}  # groups = ["dev", "docs"]
 sphinxcontrib-napoleon = {version = "*", optional = true}  # groups = ["dev", "docs"]
+sphinx-book-theme = {version = "*", optional = true}  # groups = ["dev", "docs", "doctests"]
 
 # tests
 pytest = {version = "*", optional = true}  # groups = ["dev", "tests"]
