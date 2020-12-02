@@ -139,6 +139,7 @@ package_data = {
 
 extras_require = {
     ':python_version >= "3.6" and python_version < "3.7"': ["dataclasses"],
+    "comparables": ["flashgamma"],
     "dev": [
         "tqdm",
         "attrs",
