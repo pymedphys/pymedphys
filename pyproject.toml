@@ -72,8 +72,8 @@ xmltodict = {version = "*", optional = true}  # groups = ["user", "dev"]
 streamlit = {version = "0.70.0", optional = true}  # groups = ["user", "dev"]
 timeago = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-# external
-flashgamma = {version = "*", optional = true}  # groups = ["external"]
+# comparables
+flashgamma = {version = "*", optional = true}  # groups = ["comparables"]
 
 # ml
 tensorflow = {version = ">=2.2.0", optional = true}  # groups = ["ml", "doctests"]
@@ -106,7 +106,7 @@ readme-renderer = {version = "*", optional = true}  # groups = ["dev"]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago"]
 dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
-external = ["flashgamma"]
+comparables = ["flashgamma"]
 ml = ["tensorflow", "torch"]
 doctests = ["tensorflow", "black", "tomlkit"]
 docs = ["jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon"]
