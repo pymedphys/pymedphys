@@ -168,6 +168,7 @@ extras_require = {
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
+        "sphinx-book-theme",
         "pytest",
         "pytest-sugar",
         "hypothesis",
@@ -183,8 +184,18 @@ extras_require = {
         "readme-renderer",
     ],
     "dicom": ["pydicom>=2.0.0", "pynetdicom", "pylibjpeg-libjpeg"],
-    "docs": ["jupyter-book>=0.8.3", "sphinx-argparse", "sphinxcontrib-napoleon"],
-    "doctests": ["tensorflow>=2.2.0", "black>=19.3b0,<20.0", "tomlkit"],
+    "docs": [
+        "jupyter-book>=0.8.3",
+        "sphinx-argparse",
+        "sphinxcontrib-napoleon",
+        "sphinx-book-theme",
+    ],
+    "doctests": [
+        "tensorflow>=2.2.0",
+        "sphinx-book-theme",
+        "black>=19.3b0,<20.0",
+        "tomlkit",
+    ],
     "ml": ["tensorflow>=2.2.0", "torch>=1.0.0"],
     "tests": [
         "pytest",
