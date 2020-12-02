@@ -15,7 +15,7 @@ task, and most of the developers of PyMedPhys are focused on developing
 PyMedPhys itself. Are you reading this and thinking that you might be able to
 manage and facilitate the creation of a suite of Notebooks like this? You
 certainly don't have to create them all by yourself, instead, just take the
-task by the horns design the overall tutorial flow/course, and find people who
+task by the horns, design the overall tutorial flow/course, and find people who
 can build each component.
 
 Please reach out by sending me (@SimonBiggs) a private message on the Discourse
