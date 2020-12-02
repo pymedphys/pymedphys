@@ -211,21 +211,19 @@ def _pseudonymise_DS(value):
     digits = as_tuple.digits
     count_digits = len(digits)
     my_hash_func = hashlib.new("sha3_256")
-    encoded_value = digits.encode("ASCII")
+    encoded_value = str(value).encode("ASCII")
     my_hash_func.update(encoded_value)
     # my_digest = my_hash_func.digest()
-    my_hex_digest = my_hash_func.hex_digest()
+    my_hex_digest = my_hash_func.hexdigest()
     sliced_digest = my_hex_digest[0:count_digits]
     my_integer = int(sliced_digest, 16)
     my_integer_string = str(my_integer)
     # string_count = len(my_integer_string)
     new_digits = list()
-    for i in range(0, count_digits):
-        new_digits.append(my_integer_string[i : i + 1])
-
-    new_decimal_tuple = DecimalTuple(
-        as_tuple.sign, tuple(new_digits), as_tuple.exponent
-    )
+    for i in range(0, count_digits + 1):
+        new_digits.append(int(my_integer_string[i : i + 1]))
+    print("new digits : " + str(new_digits))
+    new_decimal_tuple = tuple((as_tuple.sign, tuple(new_digits), as_tuple.exponent))
     new_decimal = Decimal(new_decimal_tuple)
     return str(new_decimal)
 
