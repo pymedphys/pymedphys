@@ -72,6 +72,8 @@ packages = [
     "pymedphys.beta",
     "pymedphys.cli",
     "pymedphys.cli.experimental",
+    "pymedphys.docs",
+    "pymedphys.docs.theme",
     "pymedphys.experimental",
     "pymedphys.tests",
     "pymedphys.tests.coordinates",
@@ -104,24 +106,23 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys": [
-        "docs/*",
-        "docs/_static/*",
-        "docs/background/*",
-        "docs/contributing/*",
-        "docs/howto/*",
-        "docs/howto/advanced/*",
-        "docs/howto/gamma/*",
-        "docs/img/*",
-        "docs/ref/*",
-        "docs/ref/cli/*",
-        "docs/ref/gui/*",
-        "docs/ref/lib/*",
-        "docs/ref/lib/experimental/*",
-        "docs/tutes/*",
-    ],
     "pymedphys._experimental": ["serviceplans/templates/*"],
     "pymedphys._streamlit": ["apps/data/*"],
+    "pymedphys.docs": [
+        "_static/*",
+        "background/*",
+        "contributing/*",
+        "howto/*",
+        "howto/advanced/*",
+        "howto/gamma/*",
+        "img/*",
+        "ref/*",
+        "ref/cli/*",
+        "ref/gui/*",
+        "ref/lib/*",
+        "ref/lib/experimental/*",
+        "tutes/*",
+    ],
     "pymedphys.tests": [
         "dicom/data/rtplan/*",
         "dicom/scratch/*",
@@ -168,6 +169,7 @@ extras_require = {
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
+        "sphinx-book-theme",
         "pytest",
         "pytest-sugar",
         "hypothesis",
@@ -183,8 +185,18 @@ extras_require = {
         "readme-renderer",
     ],
     "dicom": ["pydicom>=2.0.0", "pynetdicom", "pylibjpeg-libjpeg"],
-    "docs": ["jupyter-book>=0.8.3", "sphinx-argparse", "sphinxcontrib-napoleon"],
-    "doctests": ["tensorflow>=2.2.0", "black>=19.3b0,<20.0", "tomlkit"],
+    "docs": [
+        "jupyter-book>=0.8.3",
+        "sphinx-argparse",
+        "sphinxcontrib-napoleon",
+        "sphinx-book-theme",
+    ],
+    "doctests": [
+        "tensorflow>=2.2.0",
+        "sphinx-book-theme",
+        "black>=19.3b0,<20.0",
+        "tomlkit",
+    ],
     "ml": ["tensorflow>=2.2.0", "torch>=1.0.0"],
     "tests": [
         "pytest",
@@ -223,7 +235,10 @@ extras_require = {
     ],
 }
 
-entry_points = {"console_scripts": ["pymedphys = pymedphys.__main__:main"]}
+entry_points = {
+    "console_scripts": ["pymedphys = pymedphys.__main__:main"],
+    "sphinx.html_themes": ["sphinx_pymedphys_theme = pymedphys.docs.theme"],
+}
 
 setup_kwargs = {
     "name": "pymedphys",
