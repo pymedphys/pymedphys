@@ -77,7 +77,8 @@ Documentation
 For App Users
 .............
 
-App documentation doesn't yet exist. Watch this space.
+Documentation of the PyMedPhys application's graphical user interface doesn't
+yet exist. Watch this space.
 
 For Python Users
 ................
