@@ -120,25 +120,25 @@ package_data = {
         "docs/ref/lib/experimental/*",
         "docs/tutes/*",
     ],
-    "pymedphys._experimental.serviceplans": ["templates/*"],
-    "pymedphys._streamlit.apps": ["data/*"],
-    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
-    "pymedphys.tests.e2e": [
-        "cypress/*",
-        "cypress/fixtures/.gitignore",
-        "cypress/integration/streamlit/*",
-        "cypress/plugins/*",
-        "cypress/support/*",
+    "pymedphys._experimental": ["serviceplans/templates/*"],
+    "pymedphys._streamlit": ["apps/data/*"],
+    "pymedphys.tests": [
+        "dicom/data/rtplan/*",
+        "dicom/scratch/*",
+        "e2e/cypress/*",
+        "e2e/cypress/fixtures/.gitignore",
+        "e2e/cypress/integration/streamlit/*",
+        "e2e/cypress/plugins/*",
+        "e2e/cypress/support/*",
+        "experimental/mephysto/data/baselines/*",
+        "experimental/mephysto/data/measurements/*",
+        "experimental/paulking/film/data/*",
     ],
-    "pymedphys.tests.experimental.mephysto": [
-        "data/baselines/*",
-        "data/measurements/*",
-    ],
-    "pymedphys.tests.experimental.paulking.film": ["data/*"],
 }
 
 extras_require = {
     ':python_version >= "3.6" and python_version < "3.7"': ["dataclasses"],
+    "comparables": ["flashgamma"],
     "dev": [
         "tqdm",
         "attrs",
