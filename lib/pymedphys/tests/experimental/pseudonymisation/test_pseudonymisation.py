@@ -105,6 +105,24 @@ def test_identifier_with_DS_vr():
 
 
 @pytest.mark.pydicom
+def test_identifier_with_utc_DT_vr():
+    # in the dataset, the defect only surfaced in that circumstance
+    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+    logging.info("Using pseudonymisation strategy")
+    identifying_keywords = ["PatientID", "AcquisitionDateTime"]
+    ds_input = pydicom.Dataset()
+    ds_input.PatientID = "ABC123"
+    ds_input.AcquisitionDateTime = "20161117094353+1100"
+    # not expected to cause problems
+    ds_pseudo = anonymise_dataset(
+        ds_input,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords,
+    )
+    assert ds_pseudo is not None
+
+
+@pytest.mark.pydicom
 def test_identifier_with_unknown_vr():
     # The fundamental feature being tested is behaviour in
     # response to a programmer error.

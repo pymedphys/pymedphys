@@ -159,34 +159,36 @@ def _pseudonymise_CS(value):
     return my_sliced_pseudonym
 
 
+def _add_tzinfo(d: datetime.datetime, tz: datetime.timezone) -> datetime.datetime:
+    return datetime.datetime.combine(d.date(), d.time(), tz)
+
+
 def _pseudonymise_DA(
     value, format_str=DICOM_DATE_FORMAT_STR, earliest_study=DEFAULT_EARLIEST_STUDY_DATE
 ):
     epoch_start = EPOCH_START
     # earliest_study = DEFAULT_EARLIEST_STUDY_DATE
     # format_str = DICOM_DATE_FORMAT_STR
-    try:
-        my_datetime_obj = datetime.datetime.strptime(value, format_str)
-    except ValueError:
-        my_datetime_obj = datetime.datetime.strptime(value, DICOM_DATE_FORMAT_STR)
-    try:
-        earliest_study_datetime_obj = datetime.datetime.strptime(
-            earliest_study, format_str
-        )
-    except ValueError:
-        earliest_study_datetime_obj = datetime.datetime.strptime(
-            earliest_study, DICOM_DATE_FORMAT_STR
-        )
-    try:
-        epoch_start_datetime_obj = datetime.datetime.strptime(epoch_start, format_str)
-    except ValueError:
-        epoch_start_datetime_obj = datetime.datetime.strptime(
-            epoch_start, DICOM_DATE_FORMAT_STR
-        )
+
+    # let pydicom do the heavy lifting on parsing the datetime values
+    my_datetime_obj = pydicom.valuerep.DT(value)
+    earliest_study_datetime_obj = pydicom.valuerep.DT(earliest_study)
+    epoch_start_datetime_obj = pydicom.valuerep.DT(epoch_start)
+
+    # convert to pure datetime.datetime for date arithmetic
+    earliest_study_datetime_obj = _add_tzinfo(
+        earliest_study_datetime_obj, my_datetime_obj.tzinfo
+    )
+    epoch_start_datetime_obj = _add_tzinfo(
+        epoch_start_datetime_obj, my_datetime_obj.tzinfo
+    )
+    my_datetime_obj = _add_tzinfo(my_datetime_obj, my_datetime_obj.tzinfo)
 
     time_delta = my_datetime_obj - earliest_study_datetime_obj
+    # this failed when using type DT instead of datetime.datetime
     my_new_date = epoch_start_datetime_obj + time_delta
-    my_pseudonym_date = my_new_date.strftime(DICOM_DATE_FORMAT_STR)
+
+    my_pseudonym_date = my_new_date.strftime(format_str)
     return my_pseudonym_date
 
 
