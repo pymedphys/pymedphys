@@ -2,11 +2,6 @@
 Pseudonymisation Tool
 #####################
 
-.. contents::
-    :local:
-    :backlinks: entry
-
-
 .. automodule:: pymedphys.experimental.pseudonymisation
     :no-members:
 

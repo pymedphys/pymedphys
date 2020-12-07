@@ -57,8 +57,11 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
-        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'codeql']
+        task: ['tests', 'docs', 'stackoverflow', 'updates', 'cypress', 'slow', 'binary']
         exclude:
+          - os: 'ubuntu'
+            task: 'binary'
+
           - os: 'windows'
             task: 'stackoverflow'
           - os: 'windows'
@@ -67,8 +70,6 @@ jobs:
             task: 'cypress'
           - os: 'windows'
             task: 'slow'
-          - os: 'windows'
-            task: 'codeql'
 
           - os: 'macos'
             task: 'stackoverflow'
@@ -79,7 +80,7 @@ jobs:
           - os: 'macos'
             task: 'slow'
           - os: 'macos'
-            task: 'codeql'
+            task: 'binary'
 
         include:
           - os: 'ubuntu'
@@ -105,6 +106,8 @@ jobs:
       run: |
         echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
 
+# -----------------------------------------------------------------------------
+
 # Set up pip
 
     - name: Get pip cache dir
@@ -119,27 +122,27 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         key: pip-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}
 
+# -----------------------------------------------------------------------------
+
 # Upgrade pip and setuptools, and install poetry
 
     - name: Upgrade pip and setuptools
       run: |
         pip install --upgrade pip setuptools
 
-    - name: Install Poetry on *Nix
-      if: matrix.os != 'windows'
-      uses: dschep/install-poetry-action@v1.3
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.1.1
       with:
         version: 1.1.4
-        create_virtualenvs: true
+        virtualenvs-create: true
 
-    # Currently python subprocesses in Windows don't appear to appropriately
-    # fork under the poetry virtual environment for version 1.1.4
-    - name: Install Poetry on Windows
+    - name: Update PATH in Windows
       if: matrix.os == 'windows'
-      uses: dschep/install-poetry-action@v1.3
-      with:
-        version: 1.0.9
-        create_virtualenvs: true
+      run: |
+        Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.poetry\bin"
+        Get-Content -Path $env:GITHUB_PATH
+
+# -----------------------------------------------------------------------------
 
 # No import and run CLI with no dependencies
 
@@ -172,14 +175,7 @@ jobs:
       run: |
         pip uninstall -y pymedphys
 
-
-# Set up CodeQL
-    - name: Initialize CodeQL
-      if: matrix.task == 'codeql'
-      uses: github/codeql-action/init@v1
-      with:
-        languages: python, javascript
-
+# -----------------------------------------------------------------------------
 
 # Set up Poetry
 
@@ -194,18 +190,16 @@ jobs:
         path: .venv
         key: venv-${{ matrix.task }}-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
+    # This is from <https://github.com/python-poetry/poetry/blob/639d5e057/.github/workflows/main.yml#L57-L60>
     - name: Ensure cache is healthy
       if: steps.poetry-cache.outputs.cache-hit == 'true'
       shell: bash
       run: |
-        poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
+        timeout 10s poetry run pip --version || rm -rf .venv
+
+# -----------------------------------------------------------------------------
 
 # System installs
-
-    - name: Install FreeTDS on MacOS
-      if: matrix.os == 'macos'
-      run: |
-        brew install freetds
 
     - name: Install Pandoc on Ubuntu
       if: ( matrix.task == 'docs' || matrix.task == 'updates' ) && matrix.os == 'ubuntu'
@@ -225,7 +219,7 @@ jobs:
 ## Plain install
 
     - name: Install a plain environment
-      if: matrix.task == 'stackoverflow' || matrix.task == 'codeql'
+      if: matrix.task == 'stackoverflow'
       run: |
         poetry install -E user
 
@@ -260,22 +254,68 @@ jobs:
         poetry update
         poetry install -E user -E tests -E docs -E doctests
 
-# Download all data for consistent cache
+# -----------------------------------------------------------------------------
+
+# PyMedPhys Data Cache
 
     - name: Get PyMedPhys cache directory
       id: pymedphys-cache-location
+      if: matrix.task != 'binary'
       run: |
         echo "::set-output name=dir::$(poetry run python -c 'import pymedphys._config as cf; print(str(cf.get_config_dir()))')"
 
     - name: PyMedPhys Cache
       id: pymedphys-cache
+      if: matrix.task != 'binary'
       uses: actions/cache@v2
       with:
         path: ${{ steps.pymedphys-cache-location.outputs.dir }}
         key: pymedphys-${{ matrix.task }}-${{ runner.os }}-${{ hashFiles('**/hashes.json') }}
 
+# -----------------------------------------------------------------------------
+
+# Binary building
+
+    - name: Build Binary
+      if: matrix.task == 'binary'
+      run: |
+        pip install tomlkit wheel pyinstaller
+        cd binary
+        python build-binary.py
+
+
+    - uses: actions/upload-artifact@v2
+      if: matrix.task == 'binary'
+      with:
+        name: PyMedPhysGUI
+        path: binary/build/dist/PyMedPhysGUI*.exe
+
+
+    - name: Test Binary
+      if: matrix.task == 'binary'
+      run: |
+        pip install psutil
+        cd binary
+        python test.py
+
+# -----------------------------------------------------------------------------
 
 # TESTS
+
+## Propagate
+
+    - name: See if propagate is needed
+      if: matrix.os == 'ubuntu' && matrix.task == 'tests'
+      run: |
+        poetry run pymedphys dev propagate
+
+        git config --local user.email "propagate-bot@pymedphys.com"
+        git config --local user.name "PyMedPhys Propagate Bot"
+        git add poetry.lock setup.py
+        git commit -m "dummy commit"
+
+        git status
+        git diff-index --quiet HEAD --
 
 ## Pytest
 
@@ -319,15 +359,13 @@ jobs:
       run: |
         poetry run python ./examples/stackoverflow/gamma.py
 
-## CodeQL
-    - name: Perform CodeQL Analysis
-      if: matrix.task == 'codeql'
-      uses: github/codeql-action/analyze@v1
 
 ## Cypress
 
     - uses: actions/setup-node@v1
       if: matrix.task == 'cypress'
+      with:
+        node-version: '14'
 
     - name: Run Cypress tests
       if: matrix.task == 'cypress'

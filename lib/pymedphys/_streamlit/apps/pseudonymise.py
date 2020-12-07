@@ -19,7 +19,6 @@ import base64
 import datetime
 import io
 import pathlib
-
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from pymedphys._imports import pydicom
@@ -228,8 +227,6 @@ def _gen_index_list_to_fifty_mbyte_increment(file_buffer_list):
 
 
 def main():
-    st.set_option("deprecation.showfileUploaderEncoding", False)
-
     uploaded_file_buffer_list = st.file_uploader(
         "Files to pseudonymise, refresh page after downloading zip(s)",
         ["dcm"],

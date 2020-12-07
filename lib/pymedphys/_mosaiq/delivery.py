@@ -78,7 +78,7 @@ def get_mosaiq_delivery_details(
     Args:
     Args:
         cursor: A pymssql cursor pointing to the Mosaiq SQL server
-        machine: The name of the machine the delivery occured on
+        machine: The name of the machine the delivery occurred on
         delivery_time: The time of the treatment delivery
         field_label: The beam field label, called Field ID within Monaco
         field_name: The beam field name, called Description within Monaco

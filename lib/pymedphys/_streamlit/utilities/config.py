@@ -14,6 +14,7 @@
 
 
 import functools
+import os
 import pathlib
 
 from pymedphys._imports import streamlit as st
@@ -45,7 +46,9 @@ def get_monaco_from_site_config(site_config):
 
 
 def get_export_directory_from_site_config(site_config, export_directory):
-    return pathlib.Path(site_config["export-directories"][export_directory])
+    return pathlib.Path(
+        os.path.expanduser(site_config["export-directories"][export_directory])
+    )
 
 
 @st.cache
@@ -59,6 +62,9 @@ def get_site_directories():
         ),
         "anonymised_monaco": functools.partial(
             get_export_directory_from_site_config, export_directory="anonymised_monaco"
+        ),
+        "iviewdb": functools.partial(
+            get_export_directory_from_site_config, export_directory="iviewdb"
         ),
     }
 

@@ -1,0 +1,46 @@
+title: PyMedPhys
+author: the PyMedPhys community
+copyright: "2018-2020"
+logo: img/pymedphys.svg
+execute:
+  execute_notebooks: cache
+parse:
+  myst_extended_syntax: true
+
+html:
+  favicon: img/pymedphys.svg
+  google_analytics_id: UA-26591325-7
+  home_page_in_navbar: false
+  use_edit_page_button: true
+  use_repository_button: true
+  use_issues_button: true
+  baseurl: https://docs.pymedphys.com/
+
+repository:
+  url: https://github.com/pymedphys/pymedphys
+  branch: main
+  path_to_book: lib/pymedphys/docs
+
+launch_buttons:
+  notebook_interface: "jupyterlab"
+  binderhub_url: "https://mybinder.org"
+  colab_url: "https://colab.research.google.com"
+  thebe: true
+
+sphinx:
+  config:
+    language: en
+
+    html_theme: 'sphinx_pymedphys_theme'
+
+    html_css_files:
+      - style.css
+
+  extra_extensions:
+    - sphinx.ext.autodoc
+    - sphinx.ext.doctest
+    - sphinx.ext.viewcode
+    - sphinx.ext.autosummary
+    - sphinxcontrib.napoleon
+    - sphinxarg.ext
+    - matplotlib.sphinxext.plot_directive

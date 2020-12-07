@@ -11,6 +11,7 @@ import pytest
 
 import pydicom
 
+import pymedphys._utilities.test as pmp_test_utils
 from pymedphys._dicom.anonymise import (
     anonymise_dataset,
     anonymise_file,
@@ -78,6 +79,47 @@ def test_pseudonymise_convenience_api():
             # the hardcode values.
             for input_file, pseudo_file in zip(get_test_filepaths(), pseudo_file_list):
                 _assert_values_changed_and_not_hardcoded(input_file, pseudo_file)
+
+
+@pytest.mark.pydicom
+def test_identifier_with_DS_vr():
+    # PatientWeight is of type DS
+    # Because the strategy is only applied when the identifier is found
+    # in the dataset, the defect only surfaced in that circumstance
+    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+    logging.info("Using pseudonymisation strategy")
+    identifying_keywords = ["PatientID", "PatientWeight"]
+    ds_input = pydicom.Dataset()
+    ds_input.PatientID = "ABC123"
+    ds_input.PatientWeight = "73.2"
+    # not expected to cause problems
+    ds_pseudo = anonymise_dataset(
+        ds_input,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords,
+    )
+    assert ds_pseudo is not None
+    assert ds_pseudo.PatientWeight != ds_input.PatientWeight
+    assert ds_pseudo.PatientWeight <= (ds_input.PatientWeight * 10.0)
+    assert ds_pseudo.PatientWeight >= (ds_input.PatientWeight * 0.1)
+
+
+@pytest.mark.pydicom
+def test_identifier_with_utc_DT_vr():
+    # in the dataset, the defect only surfaced in that circumstance
+    replacement_strategy = pseudonymisation_api.pseudonymisation_dispatch
+    logging.info("Using pseudonymisation strategy")
+    identifying_keywords = ["PatientID", "AcquisitionDateTime"]
+    ds_input = pydicom.Dataset()
+    ds_input.PatientID = "ABC123"
+    ds_input.AcquisitionDateTime = "20161117094353+1100"
+    # not expected to cause problems
+    ds_pseudo = anonymise_dataset(
+        ds_input,
+        replacement_strategy=replacement_strategy,
+        identifying_keywords=identifying_keywords,
+    )
+    assert ds_pseudo is not None
 
 
 @pytest.mark.pydicom
@@ -265,9 +307,11 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         )
         assert not exists(temp_anon_filepath)
 
-        anon_file_command = "pymedphys --verbose experimental dicom anonymise --pseudo".split() + [
-            temp_filepath
-        ]
+        anon_file_command = (
+            [pmp_test_utils.get_executable_even_when_embedded(), "-m"]
+            + "pymedphys --verbose experimental dicom anonymise --pseudo".split()
+            + [temp_filepath]
+        )
         logging.info("Command line: %s", anon_file_command)
         try:
             subprocess.check_call(anon_file_command)
@@ -284,9 +328,11 @@ def _test_pseudonymise_cli_for_file(tmp_path, test_file_path):
         assert not is_anonymised_directory(tmp_path)
         assert not exists(temp_anon_filepath)
 
-        anon_dir_command = "pymedphys --verbose experimental dicom anonymise --pseudo".split() + [
-            str(tmp_path)
-        ]
+        anon_dir_command = (
+            [pmp_test_utils.get_executable_even_when_embedded(), "-m"]
+            + "pymedphys --verbose experimental dicom anonymise --pseudo".split()
+            + [str(tmp_path)]
+        )
         try:
             subprocess.check_call(anon_dir_command)
             # assert is_anonymised_file(temp_anon_filepath)

@@ -15,17 +15,20 @@
 import pathlib
 import time
 
-import streamlit as st
+from pymedphys._imports import streamlit as st
 
 from pymedphys._streamlit.apps import anonymise_monaco as _anonymise_monaco
 from pymedphys._streamlit.apps import dashboard as _dashboard
 from pymedphys._streamlit.apps import electrons as _electrons
+from pymedphys._streamlit.apps import iviewdb as _iviewdb
 from pymedphys._streamlit.apps import metersetmap as _metersetmap
 from pymedphys._streamlit.apps import pseudonymise as _pseudonymise
+from pymedphys._streamlit.apps import wlutz as _wlutz
 from pymedphys._streamlit.utilities import session
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
+TITLE_LOGO = str(HERE.joinpath("pymedphys-title.png"))
 
 APPLICATION_CATEGORIES = {
     "mature": {
@@ -67,7 +70,7 @@ APPLICATION_CATEGORIES = {
         "description": """
             These applications may not be in use at all within the
             community and they may not have any automated test coverage.
-            They may not even work.
+            **They may not even work**.
         """,
     },
 }
@@ -99,9 +102,17 @@ APPLICATION_OPTIONS = {
         "label": "Anonymising Monaco Backend Files",
         "callable": _anonymise_monaco.main,
     },
+    "wlutz": {
+        "category": "experimental",
+        "label": "Winston-Lutz",
+        "callable": _wlutz.main,
+    },
+    "iviewdb": {
+        "category": "experimental",
+        "label": "iView Database Explorer",
+        "callable": _iviewdb.main,
+    },
 }
-
-st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
 
 
 def get_url_app():
@@ -111,11 +122,10 @@ def get_url_app():
         return "index"
 
 
-session_state = session.initialise_session_state(app=get_url_app())
-
-
 def swap_app(app):
     st.experimental_set_query_params(app=app)
+
+    session_state = session.session_state()
     session_state.app = app
 
     # Not sure why this is needed. The `set_query_params` doesn't
@@ -161,6 +171,9 @@ def index():
 
 
 def main():
+    st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
+    session_state = session.session_state(app=get_url_app())
+
     if (
         session_state.app != "index"
         and not session_state.app in APPLICATION_OPTIONS.keys()

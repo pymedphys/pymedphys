@@ -41,9 +41,8 @@ def _get_mosaiq_configuration(headers):
     return machine_centre_map, mosaiq_details, mosaiq_servers
 
 
-@st.cache
 def get_logfile_mosaiq_info(
-    headers, machine_centre_map, mosaiq_details, mosaiq_servers
+    headers: "pd.DataFrame", machine_centre_map, mosaiq_details, mosaiq_servers
 ):
     details = []
 
@@ -72,6 +71,7 @@ def get_logfile_mosaiq_info(
     return details
 
 
+@st.cache()
 def _attempt_patient_name_from_mosaiq(headers):
     UNKNOWN_PATIENT_NAME = "Unknown"
 
@@ -142,7 +142,9 @@ def trf_input_method(patient_id="", key_namespace="", **_):
     As such, all references to patient ID and name within this
     ``trf_input_method`` are actually a reference to their Mosaiq
     database counterparts.
+
     """
+
     FILE_UPLOAD = "File upload"
     INDEXED_TRF_SEARCH = "Search indexed TRF directory"
 

@@ -1,10 +1,6 @@
 Pseudonymisation Tool
 =====================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 .. automodule:: pymedphys.cli.experimental.dicom
     :no-members:
 

@@ -17,15 +17,68 @@ from pymedphys._imports import streamlit as st
 from pymedphys._mosaiq import connect as msq_connect
 
 
-def create_user_input(server, input_type="default"):
-    def user_input():
-        result = st.text_input(label=server, type=input_type)
-        if not result:
-            st.stop()
+def uncached_get_mosaiq_cursor(server):
+    """Get the Mosaiq SQL cursor. Prompt user for username and password if needed.
 
-        return result
+    Parameters
+    ----------
+    server : str
+        The hostname and optionally the port, separated by a colon (:).
+        The following are all valid options:
 
-    return user_input
+            * msqsql
+            * msqsql:1433
+            * 127.0.0.1:8888
+
+    Returns
+    -------
+    cursor : pymssql.Cursor
+        The Mosaiq SQL cursor for the connection.
+
+    """
+    username, password = msq_connect.get_username_and_password_without_prompt(server)
+
+    if password:
+        try:
+            conn = msq_connect.connect_with_credential(server, username, password)
+            cursor = conn.cursor()
+            return cursor
+        except msq_connect.WrongUsernameOrPassword as e:
+            st.write(e)
+
+    st.write("## Login to Mosaiq SQL Database")
+
+    if not username:
+        username = ""
+
+    username = st.text_input(
+        label=f"Username for the SQL server on {server}",
+        value=username,
+        key=f"MosaiqSQLUsername_{server}",
+    )
+
+    if username:
+        msq_connect.save_username(server, username)
+
+    if not password:
+        password = ""
+
+    password = st.text_input(
+        label="Password",
+        value=password,
+        type="password",
+        key=f"MosaiqSQLPassword_{server}",
+    )
+
+    if password:
+        msq_connect.save_password(server, password)
+
+    if st.button("Connect"):
+        st.experimental_rerun()
+
+    st.stop()
+
+    return None
 
 
 @st.cache(allow_output_mutation=True, suppress_st_warning=True)
@@ -38,13 +91,3 @@ def get_mosaiq_cursor_in_bucket(server):
     """This allows the output cursor cache to be mutated by the user code
     """
     return {"cursor": uncached_get_mosaiq_cursor(server)}
-
-
-def uncached_get_mosaiq_cursor(server):
-    password_input = create_user_input(server, input_type="password")
-    user_input = create_user_input(server)
-
-    _, cursor = msq_connect.single_connect(
-        server, user_input=user_input, password_input=password_input, output=st.write
-    )
-    return cursor
