@@ -24,13 +24,14 @@ from pymedphys._imports import plt, pylinac, scipy
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
-from pymedphys._experimental.streamlit.utilities import icom as _icom
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 from pymedphys._utilities import transforms as pmp_transforms
 from pymedphys._wlutz import findbb, findfield, imginterp, iview
 from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
+
+from pymedphys._experimental.streamlit.utilities import icom as _icom
 
 from . import _altair, _dbf, _filtering, _frames, _utilities
 

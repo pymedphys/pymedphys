@@ -23,6 +23,7 @@ import watchdog.observers.polling
 import xmltodict
 import yaml
 
+import altair
 import imageio
 import matplotlib
 import matplotlib.patches
@@ -50,13 +51,11 @@ import skimage
 import skimage.draw
 import skimage.filters
 import skimage.measure
-
-import tensorflow
-
-import altair
 import streamlit
 import streamlit.bootstrap
 import streamlit.cli
+
+import tensorflow
 
 import libjpeg
 import pydicom

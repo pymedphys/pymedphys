@@ -15,8 +15,9 @@
 
 from pymedphys._imports import streamlit as st
 
-from pymedphys._experimental.streamlit.utilities import icom as _icom
 from pymedphys._streamlit.utilities import config, misc
+
+from pymedphys._experimental.streamlit.utilities import icom as _icom
 
 
 def main():
