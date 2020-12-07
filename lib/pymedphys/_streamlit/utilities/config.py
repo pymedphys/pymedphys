@@ -53,6 +53,15 @@ def get_export_directory_from_site_config(site_config, export_directory):
 
 @st.cache
 def get_site_directories():
+    """A config wrapper that retrieves a dictionary that maps site to directory.
+
+    Returns
+    -------
+    site_directories
+        A dictionary indexed by site. Each site has within it a
+        dictionary that is indexed by directory type.
+
+    """
     config = get_config()
 
     site_directory_functions = {
