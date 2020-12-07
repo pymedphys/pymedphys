@@ -38,6 +38,10 @@ packages = [
     "pymedphys._experimental.pseudonymisation",
     "pymedphys._experimental.quickcheck",
     "pymedphys._experimental.serviceplans",
+    "pymedphys._experimental.streamlit",
+    "pymedphys._experimental.streamlit.apps",
+    "pymedphys._experimental.streamlit.apps.wlutz",
+    "pymedphys._experimental.streamlit.utilities",
     "pymedphys._gamma",
     "pymedphys._gamma.api",
     "pymedphys._gamma.implementation",
@@ -54,7 +58,6 @@ packages = [
     "pymedphys._streamlit",
     "pymedphys._streamlit.apps",
     "pymedphys._streamlit.apps.metersetmap",
-    "pymedphys._streamlit.apps.wlutz",
     "pymedphys._streamlit.utilities",
     "pymedphys._trf",
     "pymedphys._trf.decode",
@@ -106,9 +109,8 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys": [".vscode/*"],
-    "pymedphys._experimental.serviceplans": ["templates/*"],
-    "pymedphys._streamlit.apps": ["data/*"],
+    "pymedphys._experimental": ["serviceplans/templates/*"],
+    "pymedphys._streamlit": ["apps/data/*"],
     "pymedphys.docs": [
         "_static/*",
         "background/*",
@@ -124,19 +126,18 @@ package_data = {
         "ref/lib/experimental/*",
         "tutes/*",
     ],
-    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
-    "pymedphys.tests.e2e": [
-        "cypress/*",
-        "cypress/fixtures/.gitignore",
-        "cypress/integration/streamlit/*",
-        "cypress/plugins/*",
-        "cypress/support/*",
+    "pymedphys.tests": [
+        "dicom/data/rtplan/*",
+        "dicom/scratch/*",
+        "e2e/cypress/*",
+        "e2e/cypress/fixtures/.gitignore",
+        "e2e/cypress/integration/streamlit/*",
+        "e2e/cypress/plugins/*",
+        "e2e/cypress/support/*",
+        "experimental/mephysto/data/baselines/*",
+        "experimental/mephysto/data/measurements/*",
+        "experimental/paulking/film/data/*",
     ],
-    "pymedphys.tests.experimental.mephysto": [
-        "data/baselines/*",
-        "data/measurements/*",
-    ],
-    "pymedphys.tests.experimental.paulking.film": ["data/*"],
 }
 
 extras_require = {
@@ -166,7 +167,7 @@ extras_require = {
         "scikit-image",
         "dbfread",
         "xmltodict",
-        "streamlit==0.70.0",
+        "streamlit==0.72.0",
         "timeago",
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
@@ -232,7 +233,7 @@ extras_require = {
         "scikit-image",
         "dbfread",
         "xmltodict",
-        "streamlit==0.70.0",
+        "streamlit==0.72.0",
         "timeago",
     ],
 }
