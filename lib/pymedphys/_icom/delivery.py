@@ -19,8 +19,31 @@ import pymedphys._base.delivery
 from . import extract
 
 
-def get_delivery_data_items(single_icom_stream):
-    shrunk_stream, mu = extract.extract(single_icom_stream, "Delivery MU")
+def get_delivery_data_items(single_icom_stream: bytes):
+    """Convert a single timestep of an iCom byte stream into a delivery timestep.
+
+    Parameters
+    ----------
+    single_icom_stream
+        The message provided by the Elekta iCom Vx stream for one timestep.
+
+    Returns
+    -------
+    meterset
+        The machine meterset (MU) value.
+    gantry
+        The gantry angle.
+    collimator
+        The collimator angle.
+    mlc
+        The MLC positions adjusted to be in the ``pymedphys.Delivery``
+        coordinate system.
+    jaw
+        The Jaw positions adjusted to be in the ``pymedphys.Delivery``
+        coordinate system.
+    """
+
+    shrunk_stream, meterset = extract.extract(single_icom_stream, "Delivery MU")
     shrunk_stream, gantry = extract.extract(shrunk_stream, "Gantry")
     shrunk_stream, collimator = extract.extract(shrunk_stream, "Collimator")
 
@@ -30,7 +53,7 @@ def get_delivery_data_items(single_icom_stream):
     shrunk_stream, raw_jaw = extract.extract_coll(shrunk_stream, b"ASYMY", 2)
     jaw = _convert_icom_jaw_to_delivery_coords(raw_jaw)
 
-    return mu, gantry, collimator, mlc, jaw
+    return meterset, gantry, collimator, mlc, jaw
 
 
 def delivery_from_icom_stream(icom_stream):
