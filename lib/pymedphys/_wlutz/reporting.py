@@ -63,7 +63,7 @@ def image_analysis_figure(
     Returns
     -------
     fig, axs
-        The matplotlib figure and axis objects that is returned from
+        The matplotlib figure and axis objects that are returned from
         building a figure with ``plt.subplots(ncols=2, nrows=4)``.
 
     """
