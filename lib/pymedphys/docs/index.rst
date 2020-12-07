@@ -2,6 +2,10 @@
 
     <object data="_static/pymedphys_title.svg" type="image/svg+xml" class="title-logo"></object>
 
+-------------
+Documentation
+-------------
+
 
 .. include:: README.rst
    :start-after: START_OF_DOCS_IMPORT
