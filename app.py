@@ -24,11 +24,7 @@ Then you can start this app by running:
 """
 
 
-from pymedphys._streamlit import index
-
-
-def main():
-    index.main()
+from pymedphys._app import main
 
 
 if __name__ == "__main__":

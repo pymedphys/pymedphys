@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pymedphys"
-version = "0.34.0-dev10"
-readme = "README.rst"
+version = "0.35.0-dev2"
+readme = "lib/pymedphys/docs/README.rst"
 description = "Medical Physics library"
 authors = [
     "PyMedPhys Contributors <developers@pymedphys.com>",
@@ -30,7 +30,7 @@ packages = [{include = "pymedphys", from = "lib" }]
 
 [tool.poetry.dependencies]
 python = "^3.6"
-dataclasses = {version = "*", python = "~3.6.0"}
+dataclasses = {version = "*", python = "~3.6"}
 
 # library
 tqdm = {version = "*", optional = true}  # groups = ["user", "dev"]
@@ -50,42 +50,40 @@ pandas = {version = "*", optional = true}  # groups = ["user", "dev"]
 Pillow = {version = "*", optional = true}  # groups = ["user", "dev"]
 imageio = {version = "*", optional = true}  # groups = ["user", "dev"]
 
+## electron-factors
 shapely = {version = ">= 1.7.0", optional = true}  # groups = ["user", "dev"]
 
-dbfread = {version = "*", optional = true}  # groups = ["user", "dev"]
-
+## dicom
 pydicom = {version = ">=2.0.0", optional = true}  # groups = ["user", "dev", "dicom"]
 pynetdicom = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
 pylibjpeg-libjpeg = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
-immutables = {version = "*", optional = true}  # groups = ["user", "dev", "dicom"]
 
-cython = {version = "*", optional = true}  # groups = ["user", "dev"]
+## mosaiq
 pymssql = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-kiwisolver = {version = "!=1.3.0", optional = true}  # groups = ["user", "dev"]
+## wlutz
+pylinac = {version = "2.3.2", optional = true}  # groups = ["user", "dev"]
+python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev"]
+scikit-image = {version = "*", optional = true}  # groups = ["user", "dev"]
+dbfread = {version = "*", optional = true}  # groups = ["user", "dev"]
+xmltodict = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-# used within experimental modules
-python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev", "experimental"]
-scikit-image = {version = "*", optional = true}  # groups = ["user", "dev", "experimental"]
+## gui
+streamlit = {version = "0.70.0", optional = true}  # groups = ["user", "dev"]
+timeago = {version = "*", optional = true}  # groups = ["user", "dev"]
 
-# gui
-streamlit = {version = "0.70.0", optional = true}  # groups = ["user", "dev", "gui"]
-timeago = {version = "*", optional = true}  # groups = ["user", "dev", "gui"]
+# comparables
+flashgamma = {version = "*", optional = true}  # groups = ["comparables"]
 
 # ml
 tensorflow = {version = ">=2.2.0", optional = true}  # groups = ["ml", "doctests"]
+torch = {version = ">=1.0.0", optional = true}  # groups = ["ml"]
 
 # docs
-sphinx = {version = ">= 1.4, < 1.8", optional = true}  # groups = ["dev", "docs"]
-sphinx-rtd-theme  = {version = "^0.4.3", optional = true}  # groups = ["dev", "docs"]
-sphinxcontrib-napoleon = {version = "*", optional = true}  # groups = ["dev", "docs"]
+jupyter-book = {version = ">=0.8.3", optional = true}  # groups = ["dev", "docs"]
 sphinx-argparse = {version = "*", optional = true}  # groups = ["dev", "docs"]
-sphinx-autobuild = {version = "*", optional = true}  # groups = ["dev", "docs"]
-nbsphinx  = {version = "*", optional = true}  # groups = ["dev", "docs"]
-jupyter_client = {version = "*", optional = true}  # groups = ["dev", "docs"]
-ipython = {version = "*", optional = true}  # groups = ["dev", "docs"]
-ipykernel = {version = "*", optional = true}  # groups = ["dev", "docs"]
-nbconvert = {version = "6.0.6", optional = true}  # groups = ["dev", "docs"]
+sphinxcontrib-napoleon = {version = "*", optional = true}  # groups = ["dev", "docs"]
+sphinx-book-theme = {version = "*", optional = true}  # groups = ["dev", "docs", "doctests"]
 
 # tests
 pytest = {version = "*", optional = true}  # groups = ["dev", "tests"]
@@ -104,19 +102,22 @@ doc8 = {version = "*", optional = true}  # groups = ["dev"]
 tomlkit = {version = "*", optional = true}  # groups = ["dev", "doctests"]
 readme-renderer = {version = "*", optional = true}  # groups = ["dev"]
 
+
 [tool.poetry.extras]
-user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "kiwisolver", "python_dateutil", "scikit-image", "streamlit", "timeago"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "dbfread", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables", "cython", "pymssql", "kiwisolver", "python_dateutil", "scikit-image", "streamlit", "timeago", "sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
-dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg", "immutables"]
-experimental = ["python_dateutil", "scikit-image"]
-gui = ["streamlit", "timeago"]
-ml = ["tensorflow"]
-doctests = ["tensorflow", "black", "tomlkit"]
-docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-napoleon", "sphinx-argparse", "sphinx-autobuild", "nbsphinx", "jupyter_client", "ipython", "ipykernel", "nbconvert"]
+user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
+dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
+comparables = ["flashgamma"]
+ml = ["tensorflow", "torch"]
+doctests = ["tensorflow", "sphinx-book-theme", "black", "tomlkit"]
+docs = ["jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme"]
 tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
 
 [tool.poetry.scripts]
-pymedphys = "pymedphys.cli:pymedphys_cli"
+pymedphys = "pymedphys.__main__:main"
+
+[tool.poetry.plugins."sphinx.html_themes"]
+sphinx_pymedphys_theme = "pymedphys.docs.theme"
 
 [tool.isort]
 multi_line_output = 3

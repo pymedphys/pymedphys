@@ -16,6 +16,7 @@
 from datetime import datetime
 
 from pymedphys._imports import dateutil
+from pymedphys._imports import pandas as pd
 
 from pymedphys._mosaiq.delivery import get_mosaiq_delivery_details
 from pymedphys._trf.decode.header import decode_header_from_file
@@ -27,9 +28,15 @@ from pymedphys._trf.decode.header import decode_header_from_file
 # result in greater robustness to time differences between TCS and Mosaiq.
 
 
-def date_convert(date, timezone):
+def _date_convert_using_dateutil(date, timezone):
     """Converts logfile UTC date to the provided timezone.
-    The date is formatted to match the syntax required by Microsoft SQL."""
+    The date is formatted to match the syntax required by Microsoft SQL.
+
+    This is the function that was originally used, but it has an
+    incompatibility with Streamlit. This will be removed along with the
+    dateutil dependency in the near future.
+
+    """
 
     from_timezone = dateutil.tz.gettz("UTC")
     to_timezone = dateutil.tz.gettz(timezone)
@@ -38,6 +45,21 @@ def date_convert(date, timezone):
         tzinfo=from_timezone
     )
     local_time = utc_datetime.astimezone(to_timezone)
+    mosaiq_string_time = local_time.strftime("%Y-%m-%d %H:%M:%S")
+    path_string_time = local_time.strftime("%Y-%m-%d_%H%M%S")
+
+    return mosaiq_string_time, path_string_time
+
+
+def date_convert(date, timezone):
+    """Converts logfile UTC date to the provided timezone.
+    The date is formatted to match the syntax required by Microsoft SQL."""
+
+    utc_datetime = pd.DatetimeIndex(
+        [datetime.strptime(date, "%y/%m/%d %H:%M:%S Z")], tz="UTC"
+    )
+    local_time = utc_datetime.tz_convert(timezone)[0]  # pylint: disable = no-member
+
     mosaiq_string_time = local_time.strftime("%Y-%m-%d %H:%M:%S")
     path_string_time = local_time.strftime("%Y-%m-%d_%H%M%S")
 

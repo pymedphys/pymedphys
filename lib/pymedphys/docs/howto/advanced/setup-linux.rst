@@ -2,11 +2,6 @@
 Linux Contributor Environment Setup
 ===================================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
-
 Overview
 ========
 

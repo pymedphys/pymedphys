@@ -2,10 +2,6 @@
 Windows Contributor Environment Setup
 =====================================
 
-.. contents::
-    :local:
-    :backlinks: entry
-
 All contributor installation steps can be completed without administration
 access. To achieve this choose "Install for my user only" when prompted.
 
@@ -36,8 +32,8 @@ More Advanced Options
 * `Setting up OpenSSH on Windows 10`_
 * `Add Jupyter Kernel to Poetry`_
 
-.. _`Setting up OpenSSH on Windows 10`: ../win-open-ssh.html
-.. _`Add Jupyter Kernel to Poetry`: ../add-jupyter-kernel.html
+.. _`Setting up OpenSSH on Windows 10`: /howto/advanced/win-open-ssh
+.. _`Add Jupyter Kernel to Poetry`: /howto/advanced/add-jupyter-kernel
 
 Opinionated Recommendations
 ===========================
