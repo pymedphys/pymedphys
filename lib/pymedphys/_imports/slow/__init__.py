@@ -1,10 +1,17 @@
+import importlib
 import pathlib
 
-from pymedphys._imports import _magic
+from pymedphys._imports import _parse
+
+from pymedphys._vendor import apipkg
 
 HERE = pathlib.Path(__file__).parent
 
-IMPORTABLES = _magic.import_magic(HERE)
+imports_for_apipkg = _parse.parse_imports(HERE)
+apipkg.initpkg(__name__, imports_for_apipkg)  # type: ignore
+
+THIS = importlib.import_module(__name__)
+IMPORTABLES = dir(THIS)
 
 # This will never actually run, but it helps pylint know what's going on
 if "tensorflow" not in IMPORTABLES:

@@ -1,10 +1,7 @@
 import ast
-import importlib
-
-from pymedphys._vendor import apipkg
 
 
-def import_magic(import_directory):
+def parse_imports(import_directory):
 
     with open(import_directory.joinpath("imports.py")) as f:
         imports_string = f.read()
@@ -27,9 +24,4 @@ def import_magic(import_directory):
 
         imports_for_apipkg[asname] = alias.name
 
-    apipkg.initpkg(__name__, imports_for_apipkg)  # type: ignore
-
-    THIS = importlib.import_module(__name__)
-    IMPORTABLES = dir(THIS)
-
-    return IMPORTABLES
+    return imports_for_apipkg
