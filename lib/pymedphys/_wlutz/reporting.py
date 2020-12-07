@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Tuple
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import plt
@@ -20,17 +21,52 @@ from . import createaxis, imginterp, interppoints
 
 
 def image_analysis_figure(
-    x,
-    y,
-    img,
-    bb_centre,
-    field_centre,
-    field_rotation,
-    bb_diameter,
-    edge_lengths,
-    penumbra,
+    x: "np.array",
+    y: "np.array",
+    img: "np.array",
+    bb_centre: Tuple[float, float],
+    field_centre: Tuple[float, float],
+    field_rotation: float,
+    bb_diameter: float,
+    edge_lengths: Tuple[float, float],
+    penumbra: float,
     units="(mm)",
 ):
+    """Create a figure which displays diagnostic information for the WLutz result.
+
+    Parameters
+    ----------
+    x
+        The horizontal coordinates of the EPID image.
+    y
+        The vertical coordinates of the EPID image.
+    img
+        The pixel values of the EPID image.
+    bb_centre
+        The coordinates of the ball bearing centre, provided in the form
+        (x, y).
+    field_centre
+        The coordinates of the field centre, provided in the form
+        (x, y).
+    field_rotation
+        The rotation in degrees of the field.
+    bb_diameter
+        The diameter of the ballbearing.
+    edge_lengths
+        The field edge lengths in the form (width, length).
+    penumbra
+        A parameter that represents an approximate width of the field
+        edge penumbra.
+    units : str, optional
+        The units string to display on the figure, by default "(mm)".
+
+    Returns
+    -------
+    fig, axs
+        The matplotlib figure and axis objects that is returned from
+        building a figure with ``plt.subplots(ncols=2, nrows=4)``.
+
+    """
     field = imginterp.create_interpolated_field(x, y, img)
 
     x_half_bound = edge_lengths[0] / 2 + penumbra * 3
@@ -54,7 +90,7 @@ def image_analysis_figure(
     else:
         x_bb_interp, y_bb_interp = None, None
 
-    fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(12, 15))
+    fig, axs = plt.subplots(ncols=2, nrows=4, figsize=(9, 12))
     gs = axs[0, 0].get_gridspec()
     for ax in np.ravel(axs[0:2, 0:2]):
         ax.remove()
