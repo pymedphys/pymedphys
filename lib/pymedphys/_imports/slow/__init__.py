@@ -7,7 +7,7 @@ from pymedphys._vendor import apipkg
 
 HERE = pathlib.Path(__file__).parent
 
-imports_for_apipkg = _parse.parse_imports(HERE)
+imports_for_apipkg = _parse.parse_imports(HERE.joinpath("imports.py"))
 apipkg.initpkg(__name__, imports_for_apipkg)  # type: ignore
 
 THIS = importlib.import_module(__name__)

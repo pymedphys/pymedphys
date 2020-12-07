@@ -1,9 +1,21 @@
 import ast
 
 
-def parse_imports(import_directory):
+def parse_imports(filepath):
+    """Formulate a dictionary of imports within python file for usage by ``apipkg``.
 
-    with open(import_directory.joinpath("imports.py")) as f:
+    Parameters
+    ----------
+    filepath
+        The python file containing the imports to be parsed.
+
+    Returns
+    -------
+    imports_for_apipkg
+        A dictionary of imports in the format expected by ``apipkg``.
+
+    """
+    with open(filepath) as f:
         imports_string = f.read()
 
     imports_for_apipkg = {}
