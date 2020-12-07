@@ -141,10 +141,9 @@ known_medphys = [
     "pydicom", "pylinac", "pynetdicom", "libjpeg"
 ]
 known_first_party = ["pymedphys"]
-known_experimental = ["pymedphys._experimental"]
 sections = [
     "FUTURE", "STDLIB", "THIRDPARTY", "GENERAL_SCIENTIFIC", "MACHINE_LEARNING",
-    "MEDPHYS", "FIRSTPARTY", "EXPERIMENTAL", "LOCALFOLDER"
+    "MEDPHYS", "FIRSTPARTY", "LOCALFOLDER"
 ]
 
 [build-system]
