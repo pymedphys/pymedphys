@@ -125,21 +125,19 @@ known_third_party = [
 ]
 known_general_scientific = [
     "numpy", "scipy", "pandas", "imageio", "PIL", "skimage", "matplotlib",
-    "mpl_toolkits", "shapely"
+    "mpl_toolkits", "shapely", "streamlit", "altair"
 ]
 known_machine_learning = [
     "tensorflow", "pytorch"
-]
-known_streamlit = [
-    "streamlit", "altair"
 ]
 known_medphys = [
     "pydicom", "pylinac", "pynetdicom", "libjpeg"
 ]
 known_first_party = ["pymedphys"]
+known_experimental = ["pymedphys._experimental"]
 sections = [
     "FUTURE", "STDLIB", "THIRDPARTY", "GENERAL_SCIENTIFIC", "MACHINE_LEARNING",
-    "STREAMLIT", "MEDPHYS", "FIRSTPARTY", "LOCALFOLDER"
+    "MEDPHYS", "FIRSTPARTY", "EXPERIMENTAL", "LOCALFOLDER"
 ]
 
 [build-system]
