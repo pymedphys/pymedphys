@@ -34,7 +34,7 @@ def get_delivery_data_items(single_icom_stream: bytes):
     gantry
         The gantry angle.
     collimator
-        The collimator angle
+        The collimator angle.
     mlc
         The MLC positions adjusted to be in the ``pymedphys.Delivery``
         coordinate system.
