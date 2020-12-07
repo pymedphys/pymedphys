@@ -2,7 +2,7 @@ import ast
 
 
 def parse_imports(filepath):
-    """Formulate a dictionary of imports within python file for usage by ``apipkg``.
+    """Formulate a dictionary of imports within a python file for usage by ``apipkg``.
 
     Parameters
     ----------
