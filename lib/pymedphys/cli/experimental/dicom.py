@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pymedphys._experimental.pseudonymisation import anonymise_with_pseudo_cli
 from pymedphys.cli import dicom
+
+from pymedphys._experimental.pseudonymisation import anonymise_with_pseudo_cli
 
 
 def dicom_cli(subparsers):
