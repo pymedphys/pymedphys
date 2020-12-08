@@ -8,6 +8,62 @@ This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.35.0]
+
+### News around this release
+
+### "Stable" API changes
+
+(Won't truly be stable until after a 1.0.0 release)
+
+#### Breaking changes
+
+
+#### Deprecations
+
+
+#### New features
+
+#### Bug fixes
+
+
+### GUI changes
+
+#### Logistics changes
+
+
+#### Pseudonymise
+
+
+#### MetersetMap
+
+##### New Features
+
+
+##### Bug fixes
+
+
+#### Experimental applications
+
+
+### Configuration changes
+
+#### New keys
+
+
+### Beta API changes
+
+
+### Experimental API changes
+
+#### Breaking changes
+
+
+#### New Features
+
+### Developer facing API changes
+
+
 ## [0.34.0]
 
 ### News around this release
@@ -32,8 +88,6 @@ This project adheres to
   available online.
 
 ### "Stable" API changes
-
-(Won't truly be stable until after a 1.0.0 release)
 
 #### Breaking changes
 
@@ -1068,7 +1122,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...main
+[0.35.0]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...v0.32.0
