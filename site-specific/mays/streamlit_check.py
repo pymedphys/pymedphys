@@ -22,7 +22,7 @@ When exporting the DICOM, only the RP is needed. Once you have that, you can sel
 will run.
 """
 )
-dicomFile = st.file_uploader("Please select a RP file.")
+dicomFile = st.file_uploader("Please select a RP file.", force=True)
 
 if dicomFile is not None:
     # retrieve data from both systems.
@@ -33,9 +33,11 @@ if dicomFile is not None:
     dicom_table = dicom_table.sort_values(["field_label"])
 
     mrn = dicom_table.iloc[0]["mrn"]
+    st.write(mrn)
 
     with connect.connect(server) as cursor:
         mosaiq_table = get_all_treatment_data(cursor, mrn)
+        st.write(mosaiq_table)
         if mosaiq_table.iloc[0]["create_id"] is not None:
             try:
                 site_initials = get_staff_initials(
@@ -131,14 +133,18 @@ if dicomFile is not None:
         mosaiq_field = str(field_selection) + "_MOSAIQ"
         st.write("**RX**: ", results[field_selection + "_DICOM"]["rx"])
 
-        field_approval_id = mosaiq_table[mosaiq_table["field_name"] == field_selection][
-            "field_approval"
-        ]
-        with connect.connect(server) as cursor:
-            field_approval_initials = get_staff_initials(
-                cursor, str(int(field_approval_id.iloc[0]))
-            )
-        st.write("**Field Approved by: **", field_approval_initials[0][0])
+        try:
+            field_approval_id = mosaiq_table[
+                mosaiq_table["field_name"] == field_selection
+            ]["field_approval"]
+            with connect.connect(server) as cursor:
+                field_approval_initials = get_staff_initials(
+                    cursor, str(int(field_approval_id.iloc[0]))
+                )
+            st.write("**Field Approved by: **", field_approval_initials[0][0])
+        except:
+            st.write("This field is not approved.")
+
         display_results = results[[dicom_field, mosaiq_field]]
         display_results = display_results.drop(
             ["dob", "first_name", "last_name", "mrn"], axis=0
