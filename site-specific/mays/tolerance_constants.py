@@ -1,4 +1,5 @@
 TOLERANCE_TYPES = {
+    0: "Unspecified",
     1: "Standard",
     2: "Hexapod",
     3: "electrons",
@@ -56,4 +57,13 @@ METERSET_UNITS = {
     3: "MP (Mega-Particles)",
     4: "Minutes",
     5: "Seconds",
+}
+
+TERMINATION_STATUS = {0: "Unknown", 1: "Normal", 2: "Operator", 3: "Machine"}
+
+TERMINATION_VERIFY = {
+    0: "Unspecified",
+    1: "Verified",
+    2: "Verified, override",
+    3: "Not Verified",
 }

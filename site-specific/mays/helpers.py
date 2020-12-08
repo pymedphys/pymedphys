@@ -98,7 +98,6 @@ def get_all_dicom_treatment_info(dicomFile):
                 "energy [MV]": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
                 .NominalBeamEnergy,
-                "tolerance": dicom.BeamSequence[bn - 1].ReferencedToleranceTableNumber,
                 "monitor_units": beam.BeamMeterset,
                 "meterset_rate": dicom.BeamSequence[bn - 1]
                 .ControlPointSequence[0]
@@ -157,6 +156,13 @@ def get_all_dicom_treatment_info(dicomFile):
                 .TableTopEccentricAngle,
                 "technique": "",
             }
+
+            try:
+                dicomBeam["tolerance"] = dicom.BeamSequence[
+                    bn - 1
+                ].ReferencedToleranceTableNumber
+            except:
+                dicomBeam["tolerance"] = 0
 
             table = table.append(dicomBeam, ignore_index=True, sort=False)
 

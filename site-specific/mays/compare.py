@@ -179,3 +179,26 @@ def compare_to_mosaiq(dicom_table, mos_table):
 
 
 #######################################################################################################################
+
+
+def weekly_check_color_results(val):
+    failures = [
+        "Unverified Treatment",
+        "Partial Treatment",
+        "Treatment Overridden",
+        "New Field Delivered",
+        "Prescription Altered",
+        "Site Setup Altered",
+    ]
+    failure_flag = 0
+    for failure in failures:
+        # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
+        if failure in set(val):
+            failure_flag += 1
+        else:
+            failure_flag += 0
+
+    if failure_flag == 0:
+        return ["background-color: #C1FFC1"] * len(val)
+    else:
+        return ["background-color: #EE6363"] * len(val)

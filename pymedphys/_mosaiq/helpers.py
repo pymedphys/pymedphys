@@ -271,8 +271,8 @@ def get_incomplete_qcls(cursor, location):
         """
         SELECT
             Ident.IDA,
-            Patient.Last_Name,
             Patient.First_Name,
+            Patient.Last_Name,
             Chklist.Due_DtTm,
             Chklist.Instructions,
             Chklist.Notes,
@@ -293,8 +293,8 @@ def get_incomplete_qcls(cursor, location):
         data=data,
         columns=[
             "patient_id",
-            "last_name",
             "first_name",
+            "last_name",
             "due",
             "instructions",
             "comment",
@@ -356,6 +356,7 @@ def get_all_treatment_data(cursor, mrn):
     dataframe_column_to_sql_reference = collections.OrderedDict(
         [
             ("mrn", "Ident.IDA"),
+            ("Pat_ID", "Ident.Pat_ID1"),
             ("first_name", "Patient.First_Name"),
             ("last_name", "Patient.Last_Name"),
             ("dob", "Patient.Birth_DtTm"),
@@ -492,15 +493,18 @@ def get_all_treatment_history_data(cursor, mrn):
     dataframe_column_to_sql_reference = collections.OrderedDict(
         [
             ("dose_ID", "TrackTreatment.DHS_ID"),
+            ("pat_ID", "Dose_Hst.Pat_ID1"),
+            ("first_name", "Patient.First_Name"),
+            ("last_name", "Patient.Last_Name"),
             ("date", "Fld_Hst.Tx_DtTm"),
+            ("site", "Site.Site_Name"),
             ("field_name", "TxField.Field_Name"),
             ("field_label", "TxField.Field_Label"),
             ("fraction", "Dose_Hst.Fractions_Tx"),
+            ("rx", "Site.Dose_Ttl"),
             ("actual fx dose", "Dose_Hst.Dose_Tx_Act"),
             ("actual rx", "Dose_Hst.Dose_Ttl_Act"),
-            ("actual cumRx", "Dose_Hst.Dose_Ttl_Cum_Act"),
-            ("dose projected", "Dose_Hst.Dose_Addtl_Projected"),
-            ("cumm projected", "Dose_Hst.Cum_Addtl_Projected"),
+            ("field_dose_delivered", "Dose_Hst.Dose_Addtl_Projected"),
             ("machine", "Dose_Hst.Machine_ID_Staff_ID"),
             ("energy", "Dose_Hst.Energy"),
             ("energy_unit", "Dose_Hst.Energy_Unit_Enum"),
@@ -516,8 +520,10 @@ def get_all_treatment_history_data(cursor, mrn):
             ("field_y", "TxFieldPoint_Hst.Field_Y"),
             ("status", "Patient.Clin_Status"),
             ("site_ID", "Dose_Hst.SIT_ID"),
+            ("site_version", "Site.Version"),
             ("field_ID", "Dose_Hst.FLD_ID"),
             ("site_setup_ID", "SiteSetup.SIS_ID"),
+            ("site_setup_version", "SiteSetup.Version"),
             ("was_verified", "Dose_Hst.WasVerified"),
             ("was_overridden", "Dose_Hst.WasOverridden"),
             ("partial_treatment", "Dose_Hst.PartiallyTreated"),
@@ -525,6 +531,7 @@ def get_all_treatment_history_data(cursor, mrn):
             ("new_field", "Dose_Hst.NewFieldDef"),
             ("been_charted", "Dose_Hst.HasBeenCharted"),
             ("termination_status", "Dose_Hst.Termination_Status_Enum"),
+            ("termination_verified", "Dose_Hst.Termination_Verify_Status_Enum"),
             ("modality", "Dose_Hst.Modality_Enum"),
             ("field_type", "Dose_Hst.Type_Enum"),
             ("meterset", "Dose_Hst.Meterset"),
@@ -544,25 +551,37 @@ def get_all_treatment_history_data(cursor, mrn):
     sql_string = (
         select_string
         + """
-        From Ident, Dose_Hst, Fld_Hst, TrackTreatment, Patient, TxField, TxFieldPoint_Hst, SiteSetup
-        WHERE
-        TxFieldPoint_Hst.FHS_ID = Fld_Hst.FHS_ID AND
-        TxFieldPoint_Hst.Point=0 AND
-        TrackTreatment.DHS_ID = Dose_Hst.DHS_ID AND
-        Dose_Hst.SIS_ID = SiteSetup.SIS_ID AND
-        FLD_HST.DHS_ID = Dose_Hst.DHS_ID AND
-        Dose_Hst.Pat_ID1 = Patient.Pat_ID1 AND
-        Patient.Pat_ID1 = Ident.Pat_ID1 AND
-        TrackTreatment.WasQAMode = 0 AND
-        TrackTreatment.FLD_ID = TxField.FLD_ID AND
-        Ident.IDA = %(mrn)s
-        """
+                From Ident, Dose_Hst, Fld_Hst, TrackTreatment, Patient, TxField, TxFieldPoint_Hst, SiteSetup, Site
+                WHERE
+                    Ident.IDA = %(mrn)s AND
+                    Patient.Pat_ID1 = Ident.Pat_ID1 AND
+                    Dose_Hst.Pat_ID1 = Patient.Pat_ID1 AND
+                    Site.SIT_ID = Dose_Hst.SIT_ID AND
+                    TxField.FLD_ID = Dose_Hst.FLD_ID AND
+                    SiteSetup.SIS_ID = Dose_Hst.SIS_ID AND
+                    TrackTreatment.DHS_ID = Dose_Hst.DHS_ID AND
+                    FLD_HST.Pat_ID1 = Patient.Pat_ID1 AND
+                    FLD_HST.DHS_ID = Dose_Hst.DHS_ID AND
+                    TxFieldPoint_Hst.FHS_ID = Fld_Hst.FHS_ID AND
+                    TxFieldPoint_Hst.Point=0 AND
+                    TrackTreatment.WasQAMode = 0
+        """,
     )
 
-    table = execute_sql(cursor=cursor, sql_string=sql_string, parameters={"mrn": mrn})
+    table = execute_sql(
+        cursor=cursor, sql_string=sql_string[0], parameters={"mrn": mrn}
+    )
 
     treatment_history = pd.DataFrame(data=table, columns=columns)
     treatment_history = treatment_history.sort_values(by=["date"])
+    treatment_history["total_dose_delivered"] = (
+        treatment_history["actual rx"] + treatment_history["field_dose_delivered"]
+    )
+    treatment_history["total_dose_delivered"] = (
+        treatment_history["total_dose_delivered"].astype(str)
+        + "/"
+        + treatment_history["rx"].astype(str)
+    )
     treatment_history["field_type"] = [
         FIELD_TYPES[item] for item in treatment_history["field_type"]
     ]
