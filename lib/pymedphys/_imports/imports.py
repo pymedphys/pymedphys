@@ -54,7 +54,6 @@ import skimage.measure
 import streamlit
 import streamlit.bootstrap
 import streamlit.cli
-import tensorflow
 
 import libjpeg
 import pydicom
