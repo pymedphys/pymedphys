@@ -31,6 +31,7 @@ packages = [{include = "pymedphys", from = "lib" }]
 [tool.poetry.dependencies]
 python = "^3.6"
 dataclasses = {version = "*", python = "~3.6"}
+typing-extensions = {version = "*"}
 
 # library
 tqdm = {version = "*", optional = true}  # groups = ["user", "dev"]
