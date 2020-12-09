@@ -12,28 +12,52 @@ This project adheres to
 
 ### News around this release
 
+* Installation on MacOS (Intel) has been simplified and is now the same as for other platforms, thanks to work by the new pymssql maintainers.
+
 ### "Stable" API changes
 
 (Won't truly be stable until after a 1.0.0 release)
 
 #### Breaking changes
 
+* DicomListener removed from public API (access is only through CLI)
 
 #### Deprecations
 
 
 #### New features
 
+* `pymedphys dicom listen` stores incoming DICOM objects in a directory hierarchy: PatientID/Study Instance UID/Series Instance UID
+aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and OnkoDICOM
+
 #### Bug fixes
 
+* `pymedphys dicom listen` logging was bypassing CLI directives
+* CLI initialisation was delayed by unused tensorflow imports
+
+### Documenation Changes
+
+#### Logistics changes
+
+* Linked to Discourse group witin tutorials
+* Discourse commenting now available directly within the hosted documentation
 
 ### GUI changes
+
+* improved layout and fonts
+* improved demonstrations and tutorials using Jupyter Book
+*  app.pymedphys.com runs live against the main branch of pymedphys
 
 #### Logistics changes
 
 
+
 #### Pseudonymise
 
+##### Bug fixes
+
+* Pseudonymisation of Decimal String (e.g. Patient Weight) was failing
+* Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets would fail.
 
 #### MetersetMap
 
@@ -63,6 +87,7 @@ This project adheres to
 
 ### Developer facing API changes
 
+* increased docstring coverage of public functions
 
 ## [0.34.0]
 
