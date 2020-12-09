@@ -37,7 +37,7 @@ st.write(weekly_check_results_stylized)
 
 default = pd.DataFrame(["< Select a patient >"])
 patient_list = (
-    weekly_check_results["index"]
+    weekly_check_results["patient_id"]
     + ", "
     + weekly_check_results["first_name"]
     + " "

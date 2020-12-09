@@ -25,6 +25,8 @@ from pymedphys._experimental.streamlit.apps import anonymise_monaco as _anonymis
 from pymedphys._experimental.streamlit.apps import dashboard as _dashboard
 from pymedphys._experimental.streamlit.apps import electrons as _electrons
 from pymedphys._experimental.streamlit.apps import iviewdb as _iviewdb
+from pymedphys._experimental.streamlit.apps import transfer_check as _transfer_check
+from pymedphys._experimental.streamlit.apps import weekly_check as _weekly_check
 from pymedphys._experimental.streamlit.apps import wlutz as _wlutz
 
 HERE = pathlib.Path(__file__).parent.resolve()
@@ -112,6 +114,16 @@ APPLICATION_OPTIONS = {
         "category": "experimental",
         "label": "iView Database Explorer",
         "callable": _iviewdb.main,
+    },
+    "data-transfer": {
+        "category": "experimental",
+        "label": "Pre-Treatment Data Transfer Check",
+        "callable": _transfer_check.main,
+    },
+    "weekly-check": {
+        "category": "experimental",
+        "label": "Weekly Chart Review",
+        "callable": _weekly_check.main,
     },
 }
 

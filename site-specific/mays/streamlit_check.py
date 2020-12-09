@@ -8,6 +8,7 @@ from pymedphys._mosaiq import connect
 from pymedphys._mosaiq.helpers import get_all_treatment_data, get_staff_initials
 from tolerance_constants import SITE_CONSTANTS, TOLERANCE_TYPES
 
+
 currdir = os.getcwd()
 server = "PRDMOSAIQIWVV01.utmsa.local"
 
@@ -33,11 +34,8 @@ if dicomFile is not None:
     dicom_table = dicom_table.sort_values(["field_label"])
 
     mrn = dicom_table.iloc[0]["mrn"]
-    st.write(mrn)
-
     with connect.connect(server) as cursor:
         mosaiq_table = get_all_treatment_data(cursor, mrn)
-        st.write(mosaiq_table)
         if mosaiq_table.iloc[0]["create_id"] is not None:
             try:
                 site_initials = get_staff_initials(

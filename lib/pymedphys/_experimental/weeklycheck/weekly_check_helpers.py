@@ -1,14 +1,16 @@
-import pandas as pd
-import streamlit as st
+from datetime import date, timedelta
+
 import matplotlib.pyplot as plt
 import numpy as np
-from datetime import date, timedelta
+import pandas as pd
+
+import streamlit as st
 
 from pymedphys._mosaiq import connect
 from pymedphys._mosaiq.helpers import (
+    get_all_treatment_data,
     get_all_treatment_history_data,
     get_incomplete_qcls,
-    get_all_treatment_data,
 )
 
 
