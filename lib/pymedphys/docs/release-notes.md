@@ -31,7 +31,6 @@ aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like
 
 #### Bug fixes
 
-* `pymedphys dicom listen` logging was bypassing CLI directives
 * CLI initialisation was delayed by unused tensorflow imports
 
 ### Documenation Changes
