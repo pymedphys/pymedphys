@@ -14,12 +14,12 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+_build/
 develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-/lib/
 lib64/
 parts/
 sdist/
@@ -74,7 +74,7 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+lib/pymedphys/docs/_build/
 
 # PyBuilder
 target/
@@ -279,4 +279,4 @@ v*.tar.gz
 *.exe
 
 *-demo
-CHANGELOG.rst
+downloads/

@@ -4,9 +4,7 @@ import config
 import create_rs
 import dicom_helpers
 import inference
-
-import pydicom
-from pydicom.dataset import Dataset
+import structure_storage_scu
 
 
 def vacunet(study_path, root_uid):
@@ -26,5 +24,15 @@ def vacunet(study_path, root_uid):
     assert len(contours) == len(dicom_series)
 
     dicom_structure_file = create_rs.create_rs_file(dicom_series, contours, root_uid)
+
+    # For RT structure file instance
+    save_path = study_path + "/" + dicom_structure_file.SOPInstanceUID + ".dcm"
+    dicom_structure_file.save_as(save_path, write_like_original=False)
+
+    # Forward to SCU for export
+    if config.FORWARD_IMAGES:
+        structure_storage_scu.export_files(study_path, directory=True)
+    else:
+        structure_storage_scu.export_files([save_path], directory=False)
 
     return dicom_structure_file

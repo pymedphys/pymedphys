@@ -21,7 +21,8 @@ disable =
     ungrouped-imports,
     import-outside-toplevel,
     no-else-return,
-    unbalanced-tuple-unpacking
+    unbalanced-tuple-unpacking,
+    raise-missing-from
 
 
 [FORMAT]
@@ -36,4 +37,5 @@ extension-pkg-whitelist =
     tensorflow.__version__,
     tensorflow.data.experimental,
     scipy.special,
-    win32api
+    win32api,
+    pynetdicom.sop_class

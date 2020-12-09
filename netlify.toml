@@ -1,22 +1,6 @@
 [build]
-# Current directory usage for poetry is for caching purposes
-
-# restore_cwd_cache '.venv' 'python virtualenv' &&
-# restore_home_cache ".cache" "pip cache" &&
-# restore_home_cache ".pymedphys" "pymedphys cache" &&
-
-# cache_home_directory ".cache" "pip cache" &&
-# cache_home_directory ".pymedphys" "pymedphys cache" &&
-# cache_cwd_directory ".venv" "python virtualenv"
-
-  command = """
-pip install poetry &&
-poetry config virtualenvs.in-project true &&
-poetry install -vvv --no-dev -E docs &&
-poetry run pymedphys dev docs
-"""
-
-  publish = "docs/_build/html"
+  command = "pymedphys dev docs --output ."
+  publish = "_build/html"
 
 [[redirects]]
   from = "/en/stable/*"
@@ -52,6 +36,12 @@ poetry run pymedphys dev docs
   from = "/en/0.5.x/*"
   to = "/:splat"
   status = 301
+  force = true
+
+[[redirects]]
+  from = "https://app.pymedphys.com/*"
+  to = "https://share.streamlit.io/pymedphys/pymedphys/main/app.py/:splat"
+  status = 302
   force = true
 
 [[redirects]]
