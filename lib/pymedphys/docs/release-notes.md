@@ -12,7 +12,6 @@ This project adheres to
 
 ### News around this release
 
-* Installation on MacOS (Intel) has been simplified and is now the same as for other platforms, thanks to work by the new pymssql maintainers.
 
 ### "Stable" API changes
 
@@ -33,7 +32,7 @@ aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like
 
 * CLI initialisation was delayed by unused tensorflow imports
 
-### Documenation Changes
+### Documentation Changes
 
 #### Logistics changes
 
@@ -54,8 +53,6 @@ aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like
 
 ##### Bug fixes
 
-* Pseudonymisation of Decimal String (e.g. Patient Weight) was failing
-* Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets would fail.
 
 #### MetersetMap
 
@@ -83,9 +80,20 @@ aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like
 
 #### New Features
 
+#### Bug fixes
+
+
+* Pseudonymisation of Decimal String (e.g. Patient Weight) was failing
+* Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets would fail.
+
 ### Developer facing API changes
 
 * increased docstring coverage of public functions
+
+### Installation changes
+
+* Installation on MacOS (Intel) has been simplified and is now the same as for other platforms, thanks to work by the new pymssql maintainers.
+
 
 ## [0.34.0]
 
