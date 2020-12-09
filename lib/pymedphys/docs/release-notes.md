@@ -20,7 +20,6 @@ This project adheres to
 
 #### Breaking changes
 
-* DicomListener removed from public API (access is only through CLI)
 
 #### Deprecations
 
@@ -28,7 +27,7 @@ This project adheres to
 #### New features
 
 * `pymedphys dicom listen` stores incoming DICOM objects in a directory hierarchy: PatientID/Study Instance UID/Series Instance UID
-aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and OnkoDICOM
+aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and OnkoDICOM. NOTE: This changes where a 3rd party or in-house program would expect to find the DICOM data on the file system compared to the previous release.
 
 #### Bug fixes
 
