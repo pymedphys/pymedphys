@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import base64
 import io
 import pathlib
 
@@ -34,8 +35,10 @@ def main():
     ax.plot([0, 1], [1, 0])
     st.pyplot(fig)
 
+    xlsx_filepath = HOME.joinpath(".pymedphys", "demo.xlsx")
+
     with io.BytesIO() as in_memory_file:
-        with xlsxwriter.Workbook(HOME.joinpath("demo.xlsx")) as workbook:
+        with xlsxwriter.Workbook(xlsx_filepath) as workbook:
             worksheet = workbook.add_worksheet()
             worksheet.insert_image("A1", LOGO_PATH)
 
@@ -43,3 +46,20 @@ def main():
             fig.savefig(in_memory_file, format="png")
             in_memory_file.seek(0)
             worksheet.insert_image("A10", "a_plot.png", {"image_data": in_memory_file})
+
+    _insert_file_download_link(xlsx_filepath)
+
+
+def _insert_file_download_link(filepath: pathlib.Path):
+    with open(filepath, "rb") as f:
+        contents = f.read()
+
+    filename = filepath.name
+
+    b64 = base64.b64encode(contents).decode()
+    href = f"""
+        <a href="data:file/zip;base64,{b64}" download='{filename}'>
+            Click to download {filename}
+        </a>
+    """
+    st.markdown(href, unsafe_allow_html=True)
