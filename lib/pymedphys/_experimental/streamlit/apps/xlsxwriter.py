@@ -87,6 +87,9 @@ def main():
         wlutz_xlsx_filepath, {"nan_inf_to_errors": True}
     ) as workbook:
         overview_worksheet = workbook.add_worksheet(name="Overview")
+        data_worksheet = workbook.add_worksheet(name="Data")
+
+        data_column_start = "A"
 
         for treatment in dataframe["treatment"].unique():
             filtered_by_treatment = dataframe.loc[dataframe["treatment"] == treatment]
@@ -101,10 +104,11 @@ def main():
                         filtered_by_port["algorithm"] == algorithm
                     ]
 
-                    data_sheet_name = f"{treatment} | {port} | {algorithm}"
-                    data_worksheet = workbook.add_worksheet(name=data_sheet_name)
+                    data_header = f"{treatment} | {port} | {algorithm}"
 
-                    references = _write_data_get_references(
+                    references, data_column_start = _write_data_get_references(
+                        data_column_start,
+                        data_header,
                         filtered_by_algorithm[["gantry", "diff_x", "diff_y"]],
                         data_worksheet,
                     )
@@ -127,24 +131,33 @@ def main():
 
 
 def _write_data_get_references(
-    dataframe: "pd.DataFrame", worksheet: "xlsxwriter.worksheet"
+    data_column_start,
+    data_header: str,
+    dataframe: "pd.DataFrame",
+    worksheet: "xlsxwriter.worksheet",
 ):
+    top_left_cell = f"{data_column_start}1"
+    worksheet.write(top_left_cell, data_header)
+    _, col = xlsxwriter.utility.xl_cell_to_rowcol(top_left_cell)
+
     columns = dataframe.columns
-    worksheet.write_row("A1", dataframe.columns)
-    last_row_number = len(dataframe) + 1
+    last_row_number = len(dataframe) + 2
+    last_col_letter_with_gap = xlsxwriter.utility.xl_col_to_name(col + len(columns) + 1)
     sheet_name = worksheet.name
+
+    worksheet.write_row(f"{data_column_start}2", dataframe.columns)
 
     references = {}
     for i, column in enumerate(columns):
         series = dataframe[column]
-        column_letter = xlsxwriter.utility.xl_col_to_name(i)
-        worksheet.write_column(f"{column_letter}2", series)
+        column_letter = xlsxwriter.utility.xl_col_to_name(col + i)
+        worksheet.write_column(f"{column_letter}3", series)
 
         references[
             column
-        ] = f"={sheet_name}!${column_letter}$2:${column_letter}${last_row_number}"
+        ] = f"={sheet_name}!${column_letter}$3:${column_letter}${last_row_number}"
 
-    return references
+    return references, last_col_letter_with_gap
 
 
 def _filter_by_column(dataframe, column):
