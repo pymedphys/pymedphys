@@ -21,31 +21,49 @@ from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
 
+from pymedphys._experimental.streamlit.apps.wlutz import _utilities
+
 HOME = pathlib.Path.home()
 PYMEDPHYS_LIBRARY_ROOT = pathlib.Path(__file__).parents[3]
 LOGO_PATH = PYMEDPHYS_LIBRARY_ROOT.joinpath("_streamlit", "pymedphys-title.png")
 
 
 def main():
-    st.write("Boo")
+    if st.button("Make demo.xlsx"):
+        st.write(f"`{PYMEDPHYS_LIBRARY_ROOT}`")
 
-    st.write(f"`{PYMEDPHYS_LIBRARY_ROOT}`")
+        fig, ax = plt.subplots()
+        ax.plot([0, 1], [1, 0])
+        st.pyplot(fig)
 
-    fig, ax = plt.subplots()
-    ax.plot([0, 1], [1, 0])
-    st.pyplot(fig)
+        xlsx_filepath = HOME.joinpath(".pymedphys", "demo.xlsx")
 
-    xlsx_filepath = HOME.joinpath(".pymedphys", "demo.xlsx")
+        with io.BytesIO() as in_memory_file:
+            with xlsxwriter.Workbook(xlsx_filepath) as workbook:
+                worksheet = workbook.add_worksheet()
+                worksheet.insert_image("A1", LOGO_PATH)
 
-    with io.BytesIO() as in_memory_file:
-        with xlsxwriter.Workbook(xlsx_filepath) as workbook:
-            worksheet = workbook.add_worksheet()
-            worksheet.insert_image("A1", LOGO_PATH)
+                fig.savefig(in_memory_file, format="png")
+                worksheet.insert_image(
+                    "A10", "a_plot.png", {"image_data": in_memory_file}
+                )
 
-            fig.savefig(in_memory_file, format="png")
-            worksheet.insert_image("A10", "a_plot.png", {"image_data": in_memory_file})
+        _insert_file_download_link(xlsx_filepath)
 
-    _insert_file_download_link(xlsx_filepath)
+    st.write("## Playing with Wlutz results")
+
+    (
+        _,
+        _,
+        wlutz_directory_by_date,
+        _,
+        _,
+        _,
+    ) = _utilities.get_directories_and_initial_database(refresh_cache=False)
+
+    raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
+
+    st.write(f"`{raw_results_csv_path}`")
 
 
 def _insert_file_download_link(filepath: pathlib.Path):
