@@ -82,10 +82,10 @@ def main():
 
     dataframe = dataframe.sort_values("seconds_since_midnight")
 
+    dataframe = dataframe.fillna("")
+
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
-    with xlsxwriter.Workbook(
-        wlutz_xlsx_filepath, {"nan_inf_to_errors": True}
-    ) as workbook:
+    with xlsxwriter.Workbook(wlutz_xlsx_filepath) as workbook:
         overview_worksheet = workbook.add_worksheet(name="Overview")
         data_worksheet = workbook.add_worksheet(name="Data")
 
@@ -98,7 +98,7 @@ def main():
                     filtered_by_treatment["port"] == port
                 ]
 
-                chart = workbook.add_chart({"type": "scatter"})
+                chart = workbook.add_chart({"type": "scatter", "subtype": "straight"})
                 for algorithm in filtered_by_port["algorithm"].unique():
                     filtered_by_algorithm = filtered_by_port.loc[
                         filtered_by_port["algorithm"] == algorithm
