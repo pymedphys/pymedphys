@@ -121,6 +121,10 @@ def main():
                         }
                     )
 
+                chart.set_title({"name": f"{treatment} | {port}"})
+                chart.set_x_axis({"name": "Gantry Angle (degrees)"})
+                chart.set_y_axis({"name": "Field - BB (mm)"})
+
                 overview_worksheet.insert_chart("A1", chart)
 
     _insert_file_download_link(wlutz_xlsx_filepath)
