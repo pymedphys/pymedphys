@@ -79,7 +79,6 @@ def get_all_dicom_treatment_info(dicomFile):
                 "dose_reference": doseRef,
                 "field_label": dicom.BeamSequence[bn - 1].BeamName,
                 "field_name": dicom.BeamSequence[bn - 1].BeamDescription,
-                "field_type": "",
                 "machine": dicom.BeamSequence[bn - 1].TreatmentMachineName,
                 "rx": prescriptionDescription[fn - 1],
                 "modality": dicom.BeamSequence[bn - 1].RadiationType,
@@ -161,7 +160,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 dicomBeam["tolerance"] = dicom.BeamSequence[
                     bn - 1
                 ].ReferencedToleranceTableNumber
-            except:
+            except AttributeError:
                 dicomBeam["tolerance"] = 0
 
             table = table.append(dicomBeam, ignore_index=True, sort=False)

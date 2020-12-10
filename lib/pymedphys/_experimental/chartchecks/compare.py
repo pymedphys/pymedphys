@@ -4,13 +4,12 @@ import pandas as pd
 
 #######################################################################################################################
 
-"""
-Summary: Define a function which assigns color values depending on whether or not the values between systems match.
-Input: Table of values which you wish to compare.
-Results:    match = green
-            mismatch = red
-            uncomparable = yellow
-"""
+
+# Summary: Define a function which assigns color values depending on whether or not the values between systems match.
+# Input: Table of values which you wish to compare.
+# Results:    match = green
+#             mismatch = red
+#             uncomparable = yellow
 
 
 def color_results(val):
@@ -30,7 +29,7 @@ def color_results(val):
         return ["background-color: #FDFF8A", "background-color: #FDFF8A"]
 
     # begin comparing everything else, if they match make green (#C1FFC1), else red (#EE6363)
-    elif type(val[0]) == str and type(val[1]) == str:
+    elif isinstance(val[0], str) and isinstance(val[1], str):
         if val[0].lower() == val[1].lower():
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
         else:
@@ -69,7 +68,7 @@ def color_results(val):
         else:
             return ["background-color: #EE6363", "background-color: #EE6363"]
 
-    elif type(val[0]) == float and type(val[1]) == str:
+    elif isinstance(val[0], float) and isinstance(val[1], str):
         if val[0] == val[1]:
             return ["background-color: #C1FFC1", "background-color: #C1FFC1"]
         else:
@@ -86,10 +85,10 @@ def color_results(val):
 
 #######################################################################################################################
 
-"""
-Summary: Define a function which collects general prescription information for a patient.
-Results: Creates a pandas dataframe with 2 columns (one Dicom, one Mosaiq) for each prescription.
-"""
+# """
+# Summary: Define a function which collects general prescription information for a patient.
+# Results: Creates a pandas dataframe with 2 columns (one Dicom, one Mosaiq) for each prescription.
+# """
 
 
 def get_general_info(dicom_table, mos_table):
@@ -145,12 +144,12 @@ def get_general_info(dicom_table, mos_table):
 
 
 #######################################################################################################################
-
-"""
-Summary: Define a function which compares two dataframes and produces an excel spreadsheet of the results.
-Input: One dataframe from DICOM, one dataframe from Mosaiq.
-Results: Produces a dataframe giving a side by side comparison of the two systems
-"""
+#
+# """
+# Summary: Define a function which compares two dataframes and produces an excel spreadsheet of the results.
+# Input: One dataframe from DICOM, one dataframe from Mosaiq.
+# Results: Produces a dataframe giving a side by side comparison of the two systems
+# """
 
 
 def compare_to_mosaiq(dicom_table, mos_table):

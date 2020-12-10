@@ -5,11 +5,9 @@ import pandas as pd
 
 import streamlit as st
 
-from pymedphys._experimental.transfercheck.compare import weekly_check_color_results
-from pymedphys._experimental.weeklycheck.weekly_check_helpers import (
+from pymedphys._experimental.chartchecks.compare import weekly_check_color_results
+from pymedphys._experimental.chartchecks.weekly_check_helpers import (
     compare_all_incompletes,
-    compare_delivered_to_planned,
-    compare_single_incomplete,
     get_delivered_fields,
     plot_couch_positions,
     show_incomplete_weekly_checks,
@@ -17,7 +15,7 @@ from pymedphys._experimental.weeklycheck.weekly_check_helpers import (
 
 
 def main():
-    currdir = os.getcwd()
+    # currdir = os.getcwd()
 
     st.title("Weekly Check")
 
@@ -49,7 +47,7 @@ def main():
     patient_list = pd.concat([default, patient_list]).reset_index(drop=True)
     patient_select = st.selectbox("Select a patient: ", patient_list[0])
 
-    if patient_select is not "< Select a patient >":
+    if patient_select != "< Select a patient >":
         mrn = patient_select.split(",")[0]
         # planned, delivered, patient_results = compare_single_incomplete(mrn)
         todays_date = date.today()

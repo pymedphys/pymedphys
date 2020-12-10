@@ -288,7 +288,7 @@ def get_incomplete_qcls(cursor, location):
         """,
         {"location": location},
     )
-    datetime.date
+
     results = pd.DataFrame(
         data=data,
         columns=[

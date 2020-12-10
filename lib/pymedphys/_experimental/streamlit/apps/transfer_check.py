@@ -14,7 +14,7 @@ from pymedphys._experimental.chartchecks.tolerance_constants import (
 
 
 def main():
-    currdir = os.getcwd()
+    # currdir = os.getcwd()
     server = "PRDMOSAIQIWVV01.utmsa.local"
 
     st.title("Data Transfer Check")
@@ -46,7 +46,7 @@ def main():
                     site_initials = get_staff_initials(
                         cursor, str(mosaiq_table.iloc[0]["create_id"])
                     )
-                except:
+                except AttributeError:
                     site_initials = ""
 
         # mosaiq_table = mosaiq_table[mosaiq_table["field_version"] == 0]
@@ -137,7 +137,7 @@ def main():
         field_selection = st.radio("Select field to compare:", rx_fields)
         st.subheader("Comparison")
 
-        if len(field_selection) is not 0:
+        if len(field_selection) != 0:
             dicom_field = str(field_selection) + "_DICOM"
             mosaiq_field = str(field_selection) + "_MOSAIQ"
             st.write("**RX**: ", results[field_selection + "_DICOM"]["rx"])
@@ -151,7 +151,7 @@ def main():
                         cursor, str(int(field_approval_id.iloc[0]))
                     )
                 st.write("**Field Approved by: **", field_approval_initials[0][0])
-            except:
+            except AttributeError:
                 st.write("This field is not approved.")
 
             display_results = results[[dicom_field, mosaiq_field]]

@@ -44,13 +44,13 @@ def compare_delivered_to_planned(patient):
         planned_values = get_all_treatment_data(cursor, patient)
         patient_results = pd.DataFrame()
         try:
-            current_fx = max(delivered_values["fraction"])
+            # current_fx = max(delivered_values["fraction"])
             todays_date = date.today()
             week_ago = timedelta(days=7)
             delivered_values = delivered_values[
                 delivered_values["date"] > todays_date - week_ago
             ]
-        except:
+        except AttributeError:
             print("fraction field empty")
         primary_checks = {
             "patient_id": patient,
@@ -79,8 +79,8 @@ def compare_delivered_to_planned(patient):
         for check in primary_checks.keys():
             patient_results[check] = [primary_checks[check]]
 
-    delivered_parameters = delivered_values.columns
-    planned_parameters = planned_values.columns
+    # delivered_parameters = delivered_values.columns
+    # planned_parameters = planned_values.columns
     # for field in range(0, len(delivered_values)):
     #     for parameter in delivered_parameters:
     #         if parameter in planned_parameters:
@@ -172,5 +172,3 @@ def plot_couch_positions(delivered):
     ax.set_title("Couch Positions for Each Beam On")
     ax.legend()
     st.pyplot(fig)
-
-    return
