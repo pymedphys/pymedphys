@@ -30,7 +30,7 @@ from pymedphys._wlutz import reporting
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
-from . import _altair, _dbf, _filtering, _frames, _utilities
+from . import _altair, _filtering, _frames, _utilities
 
 GANTRY_EXPECTED_SPEED_LIMIT = 1  # RPM
 COLLIMATOR_EXPECTED_SPEED_LIMIT = 2.7  # RPM
@@ -504,7 +504,7 @@ def main():
         b64 = base64.b64encode(csv_bytes).decode()
         href = f"""
             <a href=\"data:file/zip;base64,{b64}\" download='{statistics_filename}'>
-                Download `statistics_overview.csv`.
+                Download `{statistics_filename}`.
             </a>
         """
         st.markdown(href, unsafe_allow_html=True)
