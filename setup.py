@@ -48,6 +48,7 @@ packages = [
     "pymedphys._gamma.utilities",
     "pymedphys._icom",
     "pymedphys._imports",
+    "pymedphys._imports.slow",
     "pymedphys._losslessjpeg",
     "pymedphys._metersetmap",
     "pymedphys._metersetmap.delivery",
@@ -168,6 +169,7 @@ extras_require = {
         "xmltodict",
         "streamlit==0.70.0",
         "timeago",
+        "xlsxwriter",
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
         "sphinxcontrib-napoleon",
@@ -234,6 +236,7 @@ extras_require = {
         "xmltodict",
         "streamlit==0.70.0",
         "timeago",
+        "xlsxwriter",
     ],
 }
 
