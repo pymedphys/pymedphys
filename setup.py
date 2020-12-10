@@ -24,6 +24,7 @@ packages = [
     "pymedphys._electronfactors",
     "pymedphys._experimental",
     "pymedphys._experimental.autosegmentation",
+    "pymedphys._experimental.chartchecks",
     "pymedphys._experimental.fileformats",
     "pymedphys._experimental.fileformats.mapcheck",
     "pymedphys._experimental.fileformats.mephysto",
@@ -42,8 +43,6 @@ packages = [
     "pymedphys._experimental.streamlit.apps",
     "pymedphys._experimental.streamlit.apps.wlutz",
     "pymedphys._experimental.streamlit.utilities",
-    "pymedphys._experimental.transfercheck",
-    "pymedphys._experimental.weeklycheck",
     "pymedphys._gamma",
     "pymedphys._gamma.api",
     "pymedphys._gamma.implementation",
@@ -112,7 +111,8 @@ packages = [
 
 package_data = {
     "": ["*"],
-    "pymedphys._experimental": ["serviceplans/templates/*", "streamlit/apps/data/*"],
+    "pymedphys._experimental.serviceplans": ["templates/*"],
+    "pymedphys._experimental.streamlit.apps": ["data/*"],
     "pymedphys.docs": [
         "_static/*",
         "background/*",
@@ -128,21 +128,23 @@ package_data = {
         "ref/lib/experimental/*",
         "tutes/*",
     ],
-    "pymedphys.tests": [
-        "dicom/data/rtplan/*",
-        "dicom/scratch/*",
-        "e2e/cypress/*",
-        "e2e/cypress/fixtures/*",
-        "e2e/cypress/integration/streamlit/*",
-        "e2e/cypress/plugins/*",
-        "e2e/cypress/support/*",
-        "experimental/mephysto/data/baselines/*",
-        "experimental/mephysto/data/measurements/*",
-        "experimental/paulking/film/data/*",
+    "pymedphys.tests.dicom": ["data/rtplan/*", "scratch/*"],
+    "pymedphys.tests.e2e": [
+        "cypress/*",
+        "cypress/fixtures/.gitignore",
+        "cypress/integration/streamlit/*",
+        "cypress/plugins/*",
+        "cypress/support/*",
     ],
+    "pymedphys.tests.experimental.mephysto": [
+        "data/baselines/*",
+        "data/measurements/*",
+    ],
+    "pymedphys.tests.experimental.paulking.film": ["data/*"],
 }
 
 extras_require = {
+    ':extra == "user" or extra == "dev"': ["matplotlib==3.2"],
     ':python_version >= "3.6" and python_version < "3.7"': ["dataclasses"],
     "comparables": ["flashgamma"],
     "dev": [
@@ -154,7 +156,6 @@ extras_require = {
         "PyYAML",
         "requests",
         "numpy>=1.12",
-        "matplotlib",
         "scipy",
         "pandas",
         "Pillow",
@@ -220,7 +221,6 @@ extras_require = {
         "PyYAML",
         "requests",
         "numpy>=1.12",
-        "matplotlib",
         "scipy",
         "pandas",
         "Pillow",

@@ -59,7 +59,7 @@ latexcodec==2.0.1; python_version >= "3.6" and python_full_version < "3.0.0" or 
 lxml==4.6.2; python_version >= "2.7" and python_full_version < "3.0.0" or python_full_version >= "3.5.0"
 markdown-it-py==0.5.6; python_version >= "3.6" and python_version < "4.0"
 markupsafe==1.1.1; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
-matplotlib==3.3.3; python_version >= "3.6"
+matplotlib==3.2.0; python_version >= "3.6"
 mistune==0.8.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 myst-nb==0.10.1; python_version >= "3.6"
 myst-parser==0.12.10; python_version >= "3.6"
