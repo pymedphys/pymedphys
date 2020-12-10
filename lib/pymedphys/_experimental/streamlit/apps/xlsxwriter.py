@@ -69,56 +69,61 @@ def main():
     st.write(f"`{raw_results_csv_path}`")
 
     try:
-        raw_results_dataframe = _get_results(raw_results_csv_path)
+        dataframe = _get_results(raw_results_csv_path)
     except FileNotFoundError:
         st.error("Winston Lutz results not yet calculated/saved for this date.")
         st.stop()
 
     # st.write(raw_results_dataframe)
 
-    filtered = raw_results_dataframe
-    for column in ["treatment", "port", "algorithm"]:
-        filtered = _filter_by_column(filtered, column)
+    # filtered = raw_results_dataframe
+    # for column in ["treatment", "port", "algorithm"]:
+    #     filtered = _filter_by_column(filtered, column)
 
-    filtered = filtered.sort_values("seconds_since_midnight")
-
-    st.write(filtered)
+    dataframe = dataframe.sort_values("seconds_since_midnight")
 
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
-    with xlsxwriter.Workbook(wlutz_xlsx_filepath) as workbook:
+    with xlsxwriter.Workbook(
+        wlutz_xlsx_filepath, {"nan_inf_to_errors": True}
+    ) as workbook:
         overview_worksheet = workbook.add_worksheet(name="Overview")
-        data_worksheet = workbook.add_worksheet(name="Data")
 
-        references = _write_data_get_references(
-            filtered[["gantry", "diff_x", "diff_y"]], data_worksheet
-        )
+        for treatment in dataframe["treatment"].unique():
+            filtered_by_treatment = dataframe.loc[dataframe["treatment"] == treatment]
+            for port in filtered_by_treatment["port"].unique():
+                filtered_by_port = filtered_by_treatment.loc[
+                    filtered_by_treatment["port"] == port
+                ]
 
-        st.write(references)
+                chart = workbook.add_chart({"type": "scatter"})
+                for algorithm in filtered_by_port["algorithm"].unique():
+                    filtered_by_algorithm = filtered_by_port.loc[
+                        filtered_by_port["algorithm"] == algorithm
+                    ]
 
-        chart = workbook.add_chart({"type": "scatter"})
-        chart.add_series(
-            {
-                "name": "Transverse",
-                "categories": references["gantry"],
-                "values": references["diff_x"],
-            }
-        )
+                    data_sheet_name = f"{treatment} | {port} | {algorithm}"
+                    data_worksheet = workbook.add_worksheet(name=data_sheet_name)
 
-        chart.add_series(
-            {
-                "name": "Radial",
-                "categories": references["gantry"],
-                "values": references["diff_y"],
-            }
-        )
+                    references = _write_data_get_references(
+                        filtered_by_algorithm[["gantry", "diff_x", "diff_y"]],
+                        data_worksheet,
+                    )
 
-        overview_worksheet.insert_chart("A1", chart)
+                    chart.add_series(
+                        {
+                            "name": algorithm,
+                            "categories": references["gantry"],
+                            "values": references["diff_x"],
+                        }
+                    )
+
+                overview_worksheet.insert_chart("A1", chart)
 
     _insert_file_download_link(wlutz_xlsx_filepath)
 
 
-def _create_chart(workbook, dataframe, title):
-    chart = workbook.add_chart({"type": "scatter"})
+# def _create_chart(workbook, dataframe, title):
+#     chart = workbook.add_chart({"type": "scatter"})
 
 
 def _write_data_get_references(
