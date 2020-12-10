@@ -13,9 +13,33 @@
 # limitations under the License.
 
 
+import io
+import pathlib
+
+from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 from pymedphys._imports import xlsxwriter
+
+HOME = pathlib.Path.home()
+PYMEDPHYS_LIBRARY_ROOT = pathlib.Path(__file__).parents[3]
+LOGO_PATH = PYMEDPHYS_LIBRARY_ROOT.joinpath("_streamlit", "pymedphys-title.png")
 
 
 def main():
     st.write("Boo")
+
+    st.write(f"`{PYMEDPHYS_LIBRARY_ROOT}`")
+
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], [1, 0])
+    st.pyplot(fig)
+
+    with io.BytesIO() as in_memory_file:
+        with xlsxwriter.Workbook(HOME.joinpath("demo.xlsx")) as workbook:
+            worksheet = workbook.add_worksheet()
+            worksheet.insert_image("A1", LOGO_PATH)
+
+            in_memory_file = io.BytesIO()
+            fig.savefig(in_memory_file, format="png")
+            in_memory_file.seek(0)
+            worksheet.insert_image("A10", "a_plot.png", {"image_data": in_memory_file})
