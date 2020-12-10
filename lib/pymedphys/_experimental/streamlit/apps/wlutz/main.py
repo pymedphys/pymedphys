@@ -15,7 +15,6 @@
 
 import base64
 import datetime
-import pathlib
 
 from pymedphys._imports import altair as alt
 from pymedphys._imports import numpy as np
@@ -24,8 +23,6 @@ from pymedphys._imports import plt, pylinac, scipy
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
-from pymedphys._streamlit.utilities import config as _config
-from pymedphys._streamlit.utilities import misc
 from pymedphys._utilities import transforms as pmp_transforms
 from pymedphys._wlutz import findbb, findfield, imginterp, iview
 from pymedphys._wlutz import pylinac as pmp_pylinac_api
@@ -52,64 +49,21 @@ def main():
 
     bb_diameter, penumbra = _set_parameters()
 
-    site_directories = _config.get_site_directories()
-    chosen_site = misc.site_picker("Site")
+    refresh_cache = st.button("Re-query databases")
+    (
+        database_directory,
+        icom_directory,
+        wlutz_directory_by_date,
+        database_table,
+        selected_date,
+        selected_machine_id,
+    ) = _utilities.get_directories_and_initial_database(refresh_cache)
 
-    database_directory = site_directories[chosen_site]["iviewdb"]
-
-    icom_directory = site_directories[chosen_site]["icom"]
     icom_patients_directory = icom_directory.joinpath("patients")
 
-    st.write("## Load iView databases for a given date")
-    refresh_cache = st.button("Re-query databases")
-
-    database_table = _load_database_with_cache(database_directory, refresh_cache)
     database_table = _get_user_image_set_selection(database_table)
     database_table = _load_image_frame_database(
         database_directory, database_table, refresh_cache
-    )
-
-    # Map iview machine id alias to name
-    config = _config.get_config()
-    linac_map = {site["name"]: site["linac"] for site in config["site"]}
-
-    alias_map = {}
-    for linac in linac_map[chosen_site]:
-        try:
-            alias_map[linac["aliases"]["iview"]] = linac["name"]
-        except KeyError:
-            alias_map[linac["name"]] = linac["name"]
-
-    database_table["machine_id"] = database_table["machine_id"].apply(
-        lambda x: alias_map[x]
-    )
-
-    st.write(database_table)
-
-    # --
-
-    selected_date = database_table["datetime"].dt.date.unique()
-    if len(selected_date) != 1:
-        raise ValueError("Expected only one date")
-
-    selected_date = selected_date[0]
-
-    selected_machine_id = database_table["machine_id"].unique()
-    if len(selected_machine_id) != 1:
-        raise ValueError("Expected only one machine id")
-
-    selected_machine_id = selected_machine_id[0]
-
-    # --
-
-    linac_to_directories_map = {
-        item["name"]: item["directories"] for item in linac_map[chosen_site]
-    }
-
-    qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
-    wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
-    wlutz_directory_by_date = wlutz_directory.joinpath(
-        selected_date.strftime("%Y-%m-%d")
     )
 
     st.write(
@@ -616,12 +570,6 @@ def _set_parameters():
     penumbra = st.sidebar.number_input("Penumbra (mm)", 2)
 
     return bb_diameter, penumbra
-
-
-def _load_database_with_cache(database_directory, refresh_cache):
-    merged = _dbf.load_and_merge_dbfs(database_directory, refresh_cache)
-
-    return merged
 
 
 def _get_user_image_set_selection(database_table):

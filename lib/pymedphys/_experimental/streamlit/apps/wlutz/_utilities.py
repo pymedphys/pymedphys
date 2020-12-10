@@ -14,9 +14,80 @@
 
 import pathlib
 
+from pymedphys._streamlit.utilities import config as _config
+from pymedphys._streamlit.utilities import misc
+
+from . import _dbf
+
 
 def filepath_to_filename(path):
     path = pathlib.Path(path)
     filename = path.name
 
     return filename
+
+
+def get_directories_and_initial_database(refresh_cache):
+    site_directories = _config.get_site_directories()
+    chosen_site = misc.site_picker("Site")
+
+    database_directory = site_directories[chosen_site]["iviewdb"]
+
+    icom_directory = site_directories[chosen_site]["icom"]
+
+    database_table = _load_database_with_cache(database_directory, refresh_cache)
+
+    config = _config.get_config()
+    linac_map = {site["name"]: site["linac"] for site in config["site"]}
+
+    alias_map = {}
+    for linac in linac_map[chosen_site]:
+        try:
+            alias_map[linac["aliases"]["iview"]] = linac["name"]
+        except KeyError:
+            alias_map[linac["name"]] = linac["name"]
+
+    database_table["machine_id"] = database_table["machine_id"].apply(
+        lambda x: alias_map[x]
+    )
+
+    # --
+
+    selected_date = database_table["datetime"].dt.date.unique()
+    if len(selected_date) != 1:
+        raise ValueError("Expected only one date")
+
+    selected_date = selected_date[0]
+
+    selected_machine_id = database_table["machine_id"].unique()
+    if len(selected_machine_id) != 1:
+        raise ValueError("Expected only one machine id")
+
+    selected_machine_id = selected_machine_id[0]
+
+    # --
+
+    linac_to_directories_map = {
+        item["name"]: item["directories"] for item in linac_map[chosen_site]
+    }
+
+    qa_directory = pathlib.Path(linac_to_directories_map[selected_machine_id]["qa"])
+    wlutz_directory = qa_directory.joinpath("Winston-Lutz Results")
+    wlutz_directory_by_date = wlutz_directory.joinpath(
+        selected_date.strftime("%Y-%m-%d")
+    )
+
+    return (
+        database_directory,
+        icom_directory,
+        wlutz_directory_by_date,
+        database_table,
+        selected_date,
+        selected_machine_id,
+    )
+
+
+def _load_database_with_cache(database_directory, refresh_cache):
+    merged = _dbf.load_and_merge_dbfs(database_directory, refresh_cache)
+
+    return merged

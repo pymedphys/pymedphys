@@ -42,9 +42,7 @@ def main():
             worksheet = workbook.add_worksheet()
             worksheet.insert_image("A1", LOGO_PATH)
 
-            in_memory_file = io.BytesIO()
             fig.savefig(in_memory_file, format="png")
-            in_memory_file.seek(0)
             worksheet.insert_image("A10", "a_plot.png", {"image_data": in_memory_file})
 
     _insert_file_download_link(xlsx_filepath)
