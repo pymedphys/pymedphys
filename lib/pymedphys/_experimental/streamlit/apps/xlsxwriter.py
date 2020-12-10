@@ -28,6 +28,8 @@ HOME = pathlib.Path.home()
 PYMEDPHYS_LIBRARY_ROOT = pathlib.Path(__file__).parents[3]
 LOGO_PATH = PYMEDPHYS_LIBRARY_ROOT.joinpath("_streamlit", "pymedphys-title.png")
 
+FIGURE_CELL_HEIGHT = 15
+
 
 def main():
     st.title("Excel file creation sandbox")
@@ -90,6 +92,7 @@ def main():
         data_worksheet = workbook.add_worksheet(name="Data")
 
         data_column_start = "A"
+        figure_row = 1
 
         for treatment in dataframe["treatment"].unique():
             filtered_by_treatment = dataframe.loc[dataframe["treatment"] == treatment]
@@ -98,7 +101,13 @@ def main():
                     filtered_by_treatment["port"] == port
                 ]
 
-                chart = workbook.add_chart({"type": "scatter", "subtype": "straight"})
+                chart_transverse = workbook.add_chart(
+                    {"type": "scatter", "subtype": "straight"}
+                )
+                chart_radial = workbook.add_chart(
+                    {"type": "scatter", "subtype": "straight"}
+                )
+
                 for algorithm in filtered_by_port["algorithm"].unique():
                     filtered_by_algorithm = filtered_by_port.loc[
                         filtered_by_port["algorithm"] == algorithm
@@ -113,7 +122,7 @@ def main():
                         data_worksheet,
                     )
 
-                    chart.add_series(
+                    chart_transverse.add_series(
                         {
                             "name": algorithm,
                             "categories": references["gantry"],
@@ -121,17 +130,29 @@ def main():
                         }
                     )
 
-                chart.set_title({"name": f"{treatment} | {port}"})
-                chart.set_x_axis({"name": "Gantry Angle (degrees)"})
-                chart.set_y_axis({"name": "Field - BB (mm)"})
+                    chart_radial.add_series(
+                        {
+                            "name": algorithm,
+                            "categories": references["gantry"],
+                            "values": references["diff_y"],
+                        }
+                    )
 
-                overview_worksheet.insert_chart("A1", chart)
+                chart_transverse.set_title(
+                    {"name": f"{treatment} | {port} | Transverse"}
+                )
+                chart_transverse.set_x_axis({"name": "Gantry Angle (degrees)"})
+                chart_transverse.set_y_axis({"name": "Field - BB (mm)"})
+
+                chart_radial.set_title({"name": f"{treatment} | {port} | Radial"})
+                chart_radial.set_x_axis({"name": "Gantry Angle (degrees)"})
+                chart_radial.set_y_axis({"name": "Field - BB (mm)"})
+
+                overview_worksheet.insert_chart(f"A{figure_row}", chart_radial)
+                overview_worksheet.insert_chart(f"I{figure_row}", chart_transverse)
+                figure_row += FIGURE_CELL_HEIGHT
 
     _insert_file_download_link(wlutz_xlsx_filepath)
-
-
-# def _create_chart(workbook, dataframe, title):
-#     chart = workbook.add_chart({"type": "scatter"})
 
 
 def _write_data_get_references(
