@@ -94,9 +94,15 @@ def main():
         data_column_start = "A"
         figure_row = 1
 
-        for treatment in dataframe["treatment"].unique():
+        treatments = dataframe["treatment"].unique()
+        treatments.sort()
+
+        for treatment in treatments:
             filtered_by_treatment = dataframe.loc[dataframe["treatment"] == treatment]
-            for port in filtered_by_treatment["port"].unique():
+
+            ports = filtered_by_treatment["port"].unique()
+            ports.sort()
+            for port in ports:
                 filtered_by_port = filtered_by_treatment.loc[
                     filtered_by_treatment["port"] == port
                 ]
@@ -108,7 +114,10 @@ def main():
                     {"type": "scatter", "subtype": "straight"}
                 )
 
-                for algorithm in filtered_by_port["algorithm"].unique():
+                algorithms = filtered_by_port["algorithm"].unique()
+                algorithms.sort()
+
+                for algorithm in algorithms:
                     filtered_by_algorithm = filtered_by_port.loc[
                         filtered_by_port["algorithm"] == algorithm
                     ]
@@ -161,6 +170,8 @@ def _write_data_get_references(
     dataframe: "pd.DataFrame",
     worksheet: "xlsxwriter.worksheet",
 ):
+    # TODO: Make data header be on separate rows for easy querying by excel user.
+
     top_left_cell = f"{data_column_start}1"
     worksheet.write(top_left_cell, data_header)
     _, col = xlsxwriter.utility.xl_cell_to_rowcol(top_left_cell)
