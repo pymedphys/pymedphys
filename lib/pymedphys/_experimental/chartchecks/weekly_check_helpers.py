@@ -50,7 +50,7 @@ def compare_delivered_to_planned(patient):
             delivered_values = delivered_values[
                 delivered_values["date"] > todays_date - week_ago
             ]
-        except AttributeError:
+        except (TypeError, ValueError, AttributeError):
             print("fraction field empty")
         primary_checks = {
             "patient_id": patient,

@@ -27,7 +27,7 @@ def get_all_dicom_treatment_info(dicomFile):
 
     try:
         prescriptionDescription = dicom.PrescriptionDescription.split("\\")
-    except AttributeError:
+    except (TypeError, ValueError, AttributeError):
         prescriptionDescription = ""
 
     for fraction in dicom.FractionGroupSequence:
@@ -160,7 +160,7 @@ def get_all_dicom_treatment_info(dicomFile):
                 dicomBeam["tolerance"] = dicom.BeamSequence[
                     bn - 1
                 ].ReferencedToleranceTableNumber
-            except AttributeError:
+            except (TypeError, ValueError, AttributeError):
                 dicomBeam["tolerance"] = 0
 
             table = table.append(dicomBeam, ignore_index=True, sort=False)

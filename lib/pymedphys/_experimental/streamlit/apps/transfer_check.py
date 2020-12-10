@@ -1,5 +1,3 @@
-import os
-
 import streamlit as st
 
 from pymedphys._mosaiq import connect
@@ -44,9 +42,9 @@ def main():
             if mosaiq_table.iloc[0]["create_id"] is not None:
                 try:
                     site_initials = get_staff_initials(
-                        cursor, str(mosaiq_table.iloc[0]["create_id"])
+                        cursor, str(int(mosaiq_table.iloc[0]["create_id"]))
                     )
-                except AttributeError:
+                except (TypeError, ValueError, AttributeError):
                     site_initials = ""
 
         # mosaiq_table = mosaiq_table[mosaiq_table["field_version"] == 0]
@@ -151,7 +149,7 @@ def main():
                         cursor, str(int(field_approval_id.iloc[0]))
                     )
                 st.write("**Field Approved by: **", field_approval_initials[0][0])
-            except AttributeError:
+            except (TypeError, ValueError, AttributeError):
                 st.write("This field is not approved.")
 
             display_results = results[[dicom_field, mosaiq_field]]
