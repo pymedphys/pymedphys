@@ -14,7 +14,7 @@ THIS = importlib.import_module(__name__)
 IMPORTABLES = dir(THIS)
 
 # This will never actually run, but it helps pylint know what's going on
-if "numpy" not in IMPORTABLES:
+if "tensorflow" not in IMPORTABLES:
     from .imports import *
 
     raise ValueError("This section of code should never run")
