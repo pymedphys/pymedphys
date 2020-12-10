@@ -27,6 +27,7 @@ from pymedphys._experimental.streamlit.apps import electrons as _electrons
 from pymedphys._experimental.streamlit.apps import icom as _icom
 from pymedphys._experimental.streamlit.apps import iviewdb as _iviewdb
 from pymedphys._experimental.streamlit.apps import wlutz as _wlutz
+from pymedphys._experimental.streamlit.apps import xlsxwriter as _xlsxwriter
 
 HERE = pathlib.Path(__file__).parent.resolve()
 FAVICON = str(HERE.joinpath("pymedphys.png"))
@@ -118,6 +119,11 @@ APPLICATION_OPTIONS = {
         "category": "experimental",
         "label": "iCom Logs Explorer",
         "callable": _icom.main,
+    },
+    "xlsxwriter": {
+        "category": "experimental",
+        "label": "Writing Excel Demo",
+        "callable": _xlsxwriter.main,
     },
 }
 
