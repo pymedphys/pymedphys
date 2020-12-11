@@ -261,16 +261,16 @@ def _make_requirements_txt(
     Parameters
     ----------
     extras : List[str]
-        A list of pypi extras to include within the requirements file.
+        A list of pip extras to include within the requirements file.
     filename : str
         The filename of the requirements file. Will be created in the
         repo root.
     include_pymedphys : bool, optional
         Whether or not the requirements file should include an
-        installation of the git repo, by default True
+        installation of the git repo, by default True.
     editable : bool, optional
         Whether or not the pymedphys install should be 'editable', by
-        default True
+        default True.
     """
     filepath = REPO_ROOT.joinpath(filename)
 
