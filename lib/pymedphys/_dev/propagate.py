@@ -261,6 +261,10 @@ def _propagate_requirements():
     )
 
 
+def _make_requirements_txt():
+    pass
+
+
 def propagate_extras():
     pyproject_contents = read_pyproject()
 
