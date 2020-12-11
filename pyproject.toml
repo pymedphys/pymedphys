@@ -62,14 +62,14 @@ pylibjpeg-libjpeg = {version = "*", optional = true}  # groups = ["user", "dev",
 pymssql = {version = "*", optional = true}  # groups = ["user", "dev"]
 
 ## wlutz
-pylinac = {version = "2.3.2", optional = true}  # groups = ["user", "dev"]
+pylinac = {version = "2.4.0.1", optional = true}  # groups = ["user", "dev"]
 python_dateutil = {version = "*", optional = true}  # groups = ["user", "dev"]
 scikit-image = {version = "*", optional = true}  # groups = ["user", "dev"]
 dbfread = {version = "*", optional = true}  # groups = ["user", "dev"]
 xmltodict = {version = "*", optional = true}  # groups = ["user", "dev"]
 
 ## gui
-streamlit = {version = "0.70.0", optional = true}  # groups = ["user", "dev"]
+streamlit = {version = "0.71.0", optional = true}  # groups = ["user", "dev"]
 timeago = {version = "*", optional = true}  # groups = ["user", "dev"]
 
 # comparables
