@@ -18,6 +18,7 @@ import re
 import subprocess
 import tarfile
 import textwrap
+from typing import List
 
 from pymedphys._imports import black, tomlkit
 
@@ -252,7 +253,25 @@ def _propagate_requirements():
     _make_requirements_txt(["user"], "requirements-user.txt", editable=True)
 
 
-def _make_requirements_txt(extras, filename, include_pymedphys=True, editable=True):
+def _make_requirements_txt(
+    extras: List[str], filename: str, include_pymedphys=True, editable=True
+):
+    """Create a requirements.txt file with poetry pins.
+
+    Parameters
+    ----------
+    extras : List[str]
+        A list of pypi extras to include within the requirements file.
+    filename : str
+        The filename of the requirements file. Will be created in the
+        repo root.
+    include_pymedphys : bool, optional
+        Whether or not the requirements file should include an
+        installation of the git repo, by default True
+    editable : bool, optional
+        Whether or not the pymedphys install should be 'editable', by
+        default True
+    """
     filepath = REPO_ROOT.joinpath(filename)
 
     poetry_environment_flags = " ".join([f"-E {item}" for item in extras])
