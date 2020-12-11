@@ -119,15 +119,6 @@ def _build_and_collate_wheels(prepend):
         cwd=REPO_ROOT,
     )
 
-    # Recent dev commits remove pylinac gui, delete production pylinac
-    # wheel and test with a recent development commit.
-    WHEELS.joinpath("pylinac-2.3.2-py3-none-any.whl").unlink()
-    subprocess.check_call(
-        f"{prepend}python -m pip wheel git+https://github.com/jrkerns/pylinac.git@446d4cf7fd1999ac1c418765db329f394515d5c0",
-        shell=True,
-        cwd=WHEELS,
-    )
-
     subprocess.check_call("poetry build -f wheel", shell=True, cwd=REPO_ROOT)
 
     pymedphys_wheel = f"pymedphys-{_get_version_string()}-py3-none-any.whl"
