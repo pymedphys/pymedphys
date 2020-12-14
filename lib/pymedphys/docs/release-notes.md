@@ -7,11 +7,14 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+All notable changes to this project will be documented in this file.
+
+This project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.35.0]
 
 ### News around this release
-
 
 ### Breaking public API changes
 
@@ -19,27 +22,32 @@ This project adheres to
 
 ### New features and enhancements
 
-* `pymedphys dicom listen` stores incoming DICOM objects in a directory hierarchy: PatientID/Study Instance UID/Series Instance UID
-aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and OnkoDICOM. NOTE: This changes where a 3rd party or in-house program would expect to find the DICOM data on the file system compared to the previous release.
+* `pymedphys dicom listen` stores incoming DICOM objects in a directory
+  hierarchy: PatientID/Study Instance UID/Series Instance UID aligning with the
+  DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and
+  OnkoDICOM. NOTE: This changes where a 3rd party or in-house program would
+  expect to find the DICOM data on the file system compared to the previous
+  release.
 
-* Linked to Discourse group witin tutorials
+* Linked to Discourse group within tutorials
 * Discourse commenting now available directly within the hosted documentation
 
-* improved layout and fonts
-* improved demonstrations and tutorials using Jupyter Book
-*  app.pymedphys.com runs live against the main branch of pymedphys
+* Improved layout and fonts
+* Improved demonstrations and tutorials using Jupyter Book
+* <https://app.pymedphys.com> runs live against the main branch of pymedphys
 
-* increased docstring coverage of public functions
+* Increased docstring coverage of public functions
 
-* Installation on MacOS (Intel) has been simplified and is now the same as for other platforms, thanks to work by the new pymssql maintainers.
+* Installation on MacOS (Intel) has been simplified and is now the same as for
+  other platforms, thanks to work by the new pymssql maintainers.
 
 ### Bug fixes
 
 * CLI initialisation was delayed by unused tensorflow imports
 
 * Pseudonymisation of Decimal String (e.g. Patient Weight) was failing
-* Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets would fail.
-
+* Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets
+  would fail.
 
 ## [0.34.0]
 
