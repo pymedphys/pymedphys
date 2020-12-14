@@ -28,7 +28,8 @@ This project adheres to
 * Discourse commenting now available directly within the hosted documentation
 
 * Improved layout and fonts
-* Improved demonstrations and tutorials using Jupyter Book
+* Documentation now uses the new [Jupyter Book](https://jupyterbook.org/) tool
+  from the [Executable Book Project](https://executablebooks.org/).
 * <https://app.pymedphys.com> runs live against the main branch of pymedphys
 
 * Increased docstring coverage of public functions
