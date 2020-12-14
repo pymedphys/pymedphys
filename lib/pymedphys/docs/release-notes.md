@@ -21,7 +21,8 @@ This project adheres to
 * `pymedphys dicom listen` stores incoming DICOM objects in a directory
   hierarchy: PatientID/Study Instance UID/Series Instance UID aligning with the
   DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and
-  OnkoDICOM.
+  OnkoDICOM. See PR [#1208](https://github.com/pymedphys/pymedphys/pull/1208)
+  for more details.
   * NOTE: This changes where a 3rd party or in-house program would
     expect to find the DICOM data on the file system compared to the previous
     release.
@@ -56,7 +57,8 @@ This project adheres to
 
 * CLI initialisation was delayed by unused tensorflow imports
 
-* Pseudonymisation of Decimal String (e.g. Patient Weight) was failing
+* Pseudonymisation of Decimal String (e.g. Patient Weight) was failing. See
+  [#1244](https://github.com/pymedphys/pymedphys/pull/1244) for more details.
 * Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets
   would fail.
 
