@@ -628,7 +628,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "importlib-metadata"
-version = "3.2.0"
+version = "3.3.0"
 description = "Read metadata from Python packages"
 category = "main"
 optional = true
@@ -3150,8 +3150,8 @@ imagesize = [
     {file = "imagesize-1.2.0.tar.gz", hash = "sha256:b1f6b5a4eab1f73479a50fb79fcf729514a900c341d8503d62a62dbc4127a2b1"},
 ]
 importlib-metadata = [
-    {file = "importlib_metadata-3.2.0-py3-none-any.whl", hash = "sha256:3314a7d37120371fd6b4eb91d46e28c062c5a9e113be14d2cc5620062f86e210"},
-    {file = "importlib_metadata-3.2.0.tar.gz", hash = "sha256:8f3c7e27824aa3283b384ee1f9238770e4fafe479150fa7012830dfae110e7d0"},
+    {file = "importlib_metadata-3.3.0-py3-none-any.whl", hash = "sha256:bf792d480abbd5eda85794e4afb09dd538393f7d6e6ffef6e9f03d2014cf9450"},
+    {file = "importlib_metadata-3.3.0.tar.gz", hash = "sha256:5c5a2720817414a6c41f0a49993908068243ae02c1635a228126519b509c8aed"},
 ]
 importlib-resources = [
     {file = "importlib_resources-3.0.0-py2.py3-none-any.whl", hash = "sha256:d028f66b66c0d5732dae86ba4276999855e162a749c92620a38c1d779ed138a7"},
