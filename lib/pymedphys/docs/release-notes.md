@@ -36,6 +36,9 @@ This project adheres to
 * Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to work by the new pymssql maintainers.
 
+* Streamlit development now supports reloading during development. See PR
+  [@1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
+
 ### Bug fixes
 
 * CLI initialisation was delayed by unused tensorflow imports
@@ -272,7 +275,6 @@ Nil
   * See discussion on the poetry
   [issue tracker](https://github.com/python-poetry/poetry/issues/1644#issuecomment-688256688)
   for more details.
-
 
 ## [0.32.0]
 
