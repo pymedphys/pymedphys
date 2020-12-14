@@ -53,6 +53,9 @@ This project adheres to
   from the repo while using the exact dependencies that are being tested within
   the CI. See PR [#1266](https://github.com/pymedphys/pymedphys/pull/1266) for
   more details.
+* `pymedphys dev propagate` had the `--copies` and `pyproject` flags added.
+  This allows for subsections of propagate to be undergone instead of the whole
+  procedure.
 
 ### Bug fixes
 
