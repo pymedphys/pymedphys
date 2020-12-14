@@ -20,9 +20,10 @@ This project adheres to
 * `pymedphys dicom listen` stores incoming DICOM objects in a directory
   hierarchy: PatientID/Study Instance UID/Series Instance UID aligning with the
   DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and
-  OnkoDICOM. NOTE: This changes where a 3rd party or in-house program would
-  expect to find the DICOM data on the file system compared to the previous
-  release.
+  OnkoDICOM.
+  * NOTE: This changes where a 3rd party or in-house program would
+    expect to find the DICOM data on the file system compared to the previous
+    release.
 
 * Linked to Discourse group within tutorials
 * Discourse commenting now available directly within the hosted documentation
@@ -39,6 +40,11 @@ This project adheres to
 
 * Streamlit development now supports reloading during development. See PR
   [@1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
+
+* A pre-release binary has been built and CI infrastructure around it has begun
+  being built. Watch this space for a future release where it will be
+  officially distributed. See PR
+  [@1192](https://github.com/pymedphys/pymedphys/pull/1192) for more details.
 
 ### Bug fixes
 
