@@ -70,6 +70,13 @@ This project adheres to
   opposed to the streamlit able to be found on the user's PATH. See
   [pymedphys/_gui.py](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/_gui.py#L48-L56) for
   more details. This is to support booting the GUI within the binary.
+* `dateutil` dependency was removed for compatibility reasons with Streamlit's
+  cache. This tool was replaced with an equivalent tool within `pandas`. See
+  [pymedphys/_trf/manage/identify.py](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/_trf/manage/identify.py#L31-L66)
+  for more details.
+* A range of fixes for the testing infrastructure for the case where the
+  pymedphys CLI isn't on the user's path.
+  * This was to support testing within the binary infrastructure.
 
 ### Library structure changes
 
