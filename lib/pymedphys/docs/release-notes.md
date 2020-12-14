@@ -44,6 +44,10 @@ This project adheres to
 * Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets
   would fail.
 
+* Improved Mosaiq username and password login. Thank you
+  [@nickmenzies](https://github.com/nickmenzies) for reporting. See PR
+  [#1199](https://github.com/pymedphys/pymedphys/pull/1199) for more details.
+
 ## [0.34.0]
 
 ### News around this release
