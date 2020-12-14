@@ -14,6 +14,39 @@ This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.35.0]
+
+### News around this release
+
+
+### Breaking public API changes
+
+(Won't truly be stable until after a 1.0.0 release)
+
+### New features and enhancements
+
+* `pymedphys dicom listen` stores incoming DICOM objects in a directory hierarchy: PatientID/Study Instance UID/Series Instance UID
+aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and OnkoDICOM. NOTE: This changes where a 3rd party or in-house program would expect to find the DICOM data on the file system compared to the previous release.
+
+* Linked to Discourse group witin tutorials
+* Discourse commenting now available directly within the hosted documentation
+
+* improved layout and fonts
+* improved demonstrations and tutorials using Jupyter Book
+*  app.pymedphys.com runs live against the main branch of pymedphys
+
+* increased docstring coverage of public functions
+
+* Installation on MacOS (Intel) has been simplified and is now the same as for other platforms, thanks to work by the new pymssql maintainers.
+
+### Bug fixes
+
+* CLI initialisation was delayed by unused tensorflow imports
+
+* Pseudonymisation of Decimal String (e.g. Patient Weight) was failing
+* Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets would fail.
+
+
 ## [0.34.0]
 
 ### News around this release
@@ -38,8 +71,6 @@ This project adheres to
   available online.
 
 ### "Stable" API changes
-
-(Won't truly be stable until after a 1.0.0 release)
 
 #### Breaking changes
 
@@ -1074,7 +1105,7 @@ pymedphys.zip_data_paths("mu-density-gui-e2e-data.zip", extract_directory=CWD)
 
 * Began keeping record of changes in `changelog.md`
 
-[Unreleased]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...main
+[0.35.0]: https://github.com/pymedphys/pymedphys/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/pymedphys/pymedphys/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/pymedphys/pymedphys/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/pymedphys/pymedphys/compare/v0.31.0...v0.32.0
