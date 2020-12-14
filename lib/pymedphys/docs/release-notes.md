@@ -46,6 +46,9 @@ This project adheres to
   officially distributed. See PR
   [@1192](https://github.com/pymedphys/pymedphys/pull/1192) for more details.
 
+* Create a [`__main__.py`](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/__main__.py#L1-L19)
+  so that the PyMedPhys CLI can be called using `python -m pymedphys`.
+
 ### Bug fixes
 
 * CLI initialisation was delayed by unused tensorflow imports
