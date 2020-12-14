@@ -13,86 +13,32 @@ This project adheres to
 ### News around this release
 
 
-### "Stable" API changes
+### Breaking public API changes
 
 (Won't truly be stable until after a 1.0.0 release)
 
-#### Breaking changes
-
-
-#### Deprecations
-
-
-#### New features
+### New features and enhancements
 
 * `pymedphys dicom listen` stores incoming DICOM objects in a directory hierarchy: PatientID/Study Instance UID/Series Instance UID
 aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and OnkoDICOM. NOTE: This changes where a 3rd party or in-house program would expect to find the DICOM data on the file system compared to the previous release.
 
-#### Bug fixes
-
-* CLI initialisation was delayed by unused tensorflow imports
-
-### Documentation Changes
-
-#### Logistics changes
-
 * Linked to Discourse group witin tutorials
 * Discourse commenting now available directly within the hosted documentation
-
-### GUI changes
 
 * improved layout and fonts
 * improved demonstrations and tutorials using Jupyter Book
 *  app.pymedphys.com runs live against the main branch of pymedphys
 
-#### Logistics changes
+* increased docstring coverage of public functions
 
+* Installation on MacOS (Intel) has been simplified and is now the same as for other platforms, thanks to work by the new pymssql maintainers.
 
+### Bug fixes
 
-#### Pseudonymise
-
-##### Bug fixes
-
-
-#### MetersetMap
-
-##### New Features
-
-
-##### Bug fixes
-
-
-#### Experimental applications
-
-
-### Configuration changes
-
-#### New keys
-
-
-### Beta API changes
-
-
-### Experimental API changes
-
-#### Breaking changes
-
-
-#### New Features
-
-#### Bug fixes
-
+* CLI initialisation was delayed by unused tensorflow imports
 
 * Pseudonymisation of Decimal String (e.g. Patient Weight) was failing
 * Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets would fail.
-
-### Developer facing API changes
-
-* increased docstring coverage of public functions
-
-### Installation changes
-
-* Installation on MacOS (Intel) has been simplified and is now the same as for other platforms, thanks to work by the new pymssql maintainers.
 
 
 ## [0.34.0]
