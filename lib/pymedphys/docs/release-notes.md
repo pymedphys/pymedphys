@@ -13,7 +13,7 @@ This project adheres to
 
 ### Breaking changes
 
-* **Developer facing** -- The `--live` parameter within `pymedphys dev docs`
+* **Developer facing only**: The `--live` parameter within `pymedphys dev docs`
   has been removed.
 
 ### New features and enhancements
@@ -48,6 +48,7 @@ This project adheres to
   [@1192](https://github.com/pymedphys/pymedphys/pull/1192) for more details.
 * Create a [`__main__.py`](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/__main__.py#L1-L19)
   so that the PyMedPhys CLI can be called using `python -m pymedphys`.
+  * This is to support running the GUI and the tests within the binary.
 * Created a `requirements-user.txt`, this will allow users to install PyMedPhys
   from the repo while using the exact dependencies that are being tested within
   the CI. See PR [#1266](https://github.com/pymedphys/pymedphys/pull/1266) for
@@ -65,6 +66,15 @@ This project adheres to
 * Improved Mosaiq username and password login. Thank you
   [@nickmenzies](https://github.com/nickmenzies) for reporting. See PR
   [#1199](https://github.com/pymedphys/pymedphys/pull/1199) for more details.
+* `pymedphys gui` will use the Python used to run the CLI to boot streamlit as
+  opposed to the streamlit able to be found on the user's PATH. See
+  [pymedphys/_gui.py](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/_gui.py#L48-L56) for
+  more details. This is to support booting the GUI within the binary.
+
+### Library structure changes
+
+* All GUI tools that are labelled experimental are now appropriately located
+  within the experimental part of the library.
 
 ## [0.34.0]
 
