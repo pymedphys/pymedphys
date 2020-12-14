@@ -11,9 +11,10 @@ This project adheres to
 
 ### News around this release
 
-### Breaking public API changes
+### Breaking changes
 
-(Won't truly be stable until after a 1.0.0 release)
+* **Developer facing** -- The `--live` parameter within `pymedphys dev docs`
+  has been removed.
 
 ### New features and enhancements
 
