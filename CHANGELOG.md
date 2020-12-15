@@ -13,39 +13,94 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [0.35.0]
 
 ### News around this release
 
+* PyMedPhys now has a Discourse group at <https://pymedphys.discourse.group>.
+  The goal for this group is to build a community where we can discuss and
+  collaborate around all things related to PyMedPhys.
 
-### Breaking public API changes
+### Breaking changes
 
-(Won't truly be stable until after a 1.0.0 release)
+* **Developer facing only**: The `--live` parameter within `pymedphys dev docs`
+  has been removed.
 
 ### New features and enhancements
 
-* `pymedphys dicom listen` stores incoming DICOM objects in a directory hierarchy: PatientID/Study Instance UID/Series Instance UID
-aligning with the DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and OnkoDICOM. NOTE: This changes where a 3rd party or in-house program would expect to find the DICOM data on the file system compared to the previous release.
+* `pymedphys dicom listen` stores incoming DICOM objects in a directory
+  hierarchy: PatientID/Study Instance UID/Series Instance UID aligning with the
+  DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and
+  OnkoDICOM. See PR [#1208](https://github.com/pymedphys/pymedphys/pull/1208)
+  for more details.
 
-* Linked to Discourse group witin tutorials
-* Discourse commenting now available directly within the hosted documentation
+```{note}
+This `pymedphys dicom listen` adjustment changes where a 3rd party or in-house
+program would expect to find the DICOM data on the file system compared to the
+previous release.
 
-* improved layout and fonts
-* improved demonstrations and tutorials using Jupyter Book
-*  app.pymedphys.com runs live against the main branch of pymedphys
+Please raise an issue on GitHub
+<https://github.com/pymedphys/pymedphys/issues/new> if you believe changes like
+this in the future should be considered a breaking change.
+```
 
-* increased docstring coverage of public functions
-
-* Installation on MacOS (Intel) has been simplified and is now the same as for other platforms, thanks to work by the new pymssql maintainers.
+* Documentation now uses the new [Jupyter Book](https://jupyterbook.org/) tool
+  from the [Executable Book Project](https://executablebooks.org/). Among other
+  things this has enabled:
+  * Live running of notebook documentation using
+    [Thebe](https://thebelab.readthedocs.io/)
+  * Discourse commenting now available directly within the hosted documentation
+  * The ability to utilise the expanded
+    [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
+* Increased docstring coverage of public functions
+* Installation on MacOS (Intel) has been simplified and is now the same as for
+  other platforms, thanks to [@termim](https://github.com/termim) who has taken
+  on the mantle of maintaining `pymssql`. See PR
+  [pymssql#677](https://github.com/pymssql/pymssql/pull/677) for more details.
+* Streamlit development now supports reloading during development across the
+  whole PyMedPhys library. See PR
+  [#1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
+* A pre-release binary has been built and CI infrastructure around it has begun
+  being built. Watch this space for a future release where it will be
+  officially distributed. See PR
+  [#1192](https://github.com/pymedphys/pymedphys/pull/1192) for more details.
+* Create a [`__main__.py`](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/__main__.py#L1-L19)
+  so that the PyMedPhys CLI can be called using `python -m pymedphys`.
+  * This is to support running the GUI and the tests within the binary.
+* Created a `requirements-user.txt`, this will allow users to install PyMedPhys
+  from the repo while using the exact dependencies that are being tested within
+  the CI. See PR [#1266](https://github.com/pymedphys/pymedphys/pull/1266) for
+  more details.
+* `pymedphys dev propagate` had the `--copies` and `--pyproject` flags added.
+  This allows for subsections of propagate to be undergone instead of the whole
+  procedure.
 
 ### Bug fixes
 
 * CLI initialisation was delayed by unused tensorflow imports
+* Pseudonymisation of Decimal String (e.g. Patient Weight) was failing. See
+  [#1244](https://github.com/pymedphys/pymedphys/pull/1244) for more details.
+* Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets
+  would fail.
+* Improved Mosaiq username and password login. Thank you
+  [@nickmenzies](https://github.com/nickmenzies) for reporting. See PR
+  [#1199](https://github.com/pymedphys/pymedphys/pull/1199) for more details.
+* `pymedphys gui` will use the Python used to run the CLI to boot streamlit as
+  opposed to the streamlit able to be found on the user's PATH. See
+  [pymedphys/_gui.py](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/_gui.py#L48-L56) for
+  more details. This is to support booting the GUI within the binary.
+* `dateutil` dependency was removed for compatibility reasons with Streamlit's
+  cache. This tool was replaced with an equivalent tool within `pandas`. See
+  [pymedphys/_trf/manage/identify.py](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/_trf/manage/identify.py#L31-L66)
+  for more details.
+* A range of fixes for the testing infrastructure for the case where the
+  pymedphys CLI isn't on the user's path.
+  * This was to support testing within the binary infrastructure.
 
-* Pseudonymisation of Decimal String (e.g. Patient Weight) was failing
-* Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets would fail.
+### Library structure changes
 
+* All GUI tools that are labelled experimental are now appropriately located
+  within the experimental part of the library.
 
 ## [0.34.0]
 
@@ -271,7 +326,6 @@ Nil
   * See discussion on the poetry
   [issue tracker](https://github.com/python-poetry/poetry/issues/1644#issuecomment-688256688)
   for more details.
-
 
 ## [0.32.0]
 
