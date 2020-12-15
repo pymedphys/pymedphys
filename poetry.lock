@@ -1785,6 +1785,17 @@ pytest = ">=5.4"
 toml = ">=0.7.1"
 
 [[package]]
+name = "pytest-rerunfailures"
+version = "9.1.1"
+description = "pytest plugin to re-run tests to eliminate flaky failures"
+category = "main"
+optional = true
+python-versions = ">=3.5"
+
+[package.dependencies]
+pytest = ">=5.0"
+
+[[package]]
 name = "pytest-sugar"
 version = "0.9.4"
 description = "pytest-sugar is a plugin for pytest that changes the default look and feel of pytest (e.g. progressbar, show tests that fail instantly)."
@@ -2779,18 +2790,18 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 
 [extras]
 comparables = ["flashgamma"]
-dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
 docs = ["jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex"]
 doctests = ["tensorflow", "sphinx-book-theme", "sphinxcontrib-bibtex", "black", "tomlkit"]
 ml = ["tensorflow", "torch"]
-tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
+tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures"]
 user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "74531e5b869f6719ff9e9b932fea97e785b16377d3cedf71a885cbf061b2b480"
+content-hash = "e76339ceb31585d5d774ed24b112f0f85d79e762d4f495663a685d4cfe29652f"
 
 [metadata.files]
 absl-py = [
@@ -3800,6 +3811,10 @@ pytest = [
 pytest-pylint = [
     {file = "pytest-pylint-0.18.0.tar.gz", hash = "sha256:790c7a8019fab08e59bd3812db1657a01995a975af8b1c6ce95b9aa39d61da27"},
     {file = "pytest_pylint-0.18.0-py3-none-any.whl", hash = "sha256:b63aaf8b80ff33c8ceaa7f68323ed04102c7790093ccf6bdb261a4c2dc6fd564"},
+]
+pytest-rerunfailures = [
+    {file = "pytest-rerunfailures-9.1.1.tar.gz", hash = "sha256:1cb11a17fc121b3918414eb5eaf314ee325f2e693ac7cb3f6abf7560790827f2"},
+    {file = "pytest_rerunfailures-9.1.1-py3-none-any.whl", hash = "sha256:2eb7d0ad651761fbe80e064b0fd415cf6730cdbc53c16a145fd84b66143e609f"},
 ]
 pytest-sugar = [
     {file = "pytest-sugar-0.9.4.tar.gz", hash = "sha256:b1b2186b0a72aada6859bea2a5764145e3aaa2c1cfbb23c3a19b5f7b697563d3"},

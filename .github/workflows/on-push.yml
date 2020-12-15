@@ -370,7 +370,7 @@ jobs:
     - name: Run Cypress tests
       if: matrix.task == 'cypress'
       run: |
-        poetry run pymedphys dev tests -v -s --cypress
+        poetry run pymedphys dev tests --reruns 5 -v -s --cypress
 
     - uses: actions/upload-artifact@v2
       if: failure() && matrix.task == 'cypress'

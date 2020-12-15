@@ -180,6 +180,7 @@ extras_require = {
         "psutil",
         "pylint",
         "pytest-pylint",
+        "pytest-rerunfailures",
         "pre-commit",
         "black>=19.3b0,<20.0",
         "mypy",
@@ -211,6 +212,7 @@ extras_require = {
         "psutil",
         "pylint",
         "pytest-pylint",
+        "pytest-rerunfailures",
     ],
     "user": [
         "tqdm",
