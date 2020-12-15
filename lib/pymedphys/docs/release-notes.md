@@ -11,7 +11,9 @@ This project adheres to
 
 ### News around this release
 
-* New Discourse group -- add more details here...
+* PyMedPhys now has a Discourse group at <https://pymedphys.discourse.group>.
+  The goal for this group is to build a community where we can discuss and
+  collaborate around all things related to PyMedPhys.
 
 ### Breaking changes
 
