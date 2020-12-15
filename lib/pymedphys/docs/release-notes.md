@@ -48,7 +48,7 @@ this in the future should be considered a breaking change.
     [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
 * Increased docstring coverage of public functions
 * Installation on MacOS (Intel) has been simplified and is now the same as for
-  other platforms, thanks to work by the new pymssql maintainers.
+  other platforms, thanks to work by the new `pymssql` maintainers.
 * Streamlit development now supports reloading during development. See PR
   [#1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
 * A pre-release binary has been built and CI infrastructure around it has begun
@@ -62,7 +62,7 @@ this in the future should be considered a breaking change.
   from the repo while using the exact dependencies that are being tested within
   the CI. See PR [#1266](https://github.com/pymedphys/pymedphys/pull/1266) for
   more details.
-* `pymedphys dev propagate` had the `--copies` and `pyproject` flags added.
+* `pymedphys dev propagate` had the `--copies` and `--pyproject` flags added.
   This allows for subsections of propagate to be undergone instead of the whole
   procedure.
 
