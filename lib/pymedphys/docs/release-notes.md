@@ -9,6 +9,10 @@ This project adheres to
 
 ## [0.35.0]
 
+### News around this release
+
+* New Discourse group -- add more details here...
+
 ### Breaking changes
 
 * **Developer facing only**: The `--live` parameter within `pymedphys dev docs`
@@ -24,20 +28,15 @@ This project adheres to
   * NOTE: This changes where a 3rd party or in-house program would
     expect to find the DICOM data on the file system compared to the previous
     release.
-
-* Linked to Discourse group within tutorials
-* Discourse commenting now available directly within the hosted documentation
-
-* Improved layout and fonts
 * Documentation now uses the new [Jupyter Book](https://jupyterbook.org/) tool
-  from the [Executable Book Project](https://executablebooks.org/).
-* <https://app.pymedphys.com> runs live against the main branch of pymedphys
-
+  from the [Executable Book Project](https://executablebooks.org/). Among other
+  things this has enabled:
+  * Live running of notebook documentation using
+    [Thebe](https://thebelab.readthedocs.io/)
+  * Discourse commenting now available directly within the hosted documentation
 * Increased docstring coverage of public functions
-
 * Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to work by the new pymssql maintainers.
-
 * Streamlit development now supports reloading during development. See PR
   [@1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
 * A pre-release binary has been built and CI infrastructure around it has begun
