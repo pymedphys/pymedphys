@@ -93,6 +93,7 @@ hypothesis = { version = "*", optional = true }  # groups = ["dev", "tests"]
 psutil = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
 pytest-pylint = { version = "*", optional = true }  # groups = ["dev", "tests"]
+pytest-rerunfailures = { version = "*", optional = true }  # groups = ["dev", "tests"]
 
 # dev
 pre-commit = { version = "*", optional = true }  # groups = ["dev"]
@@ -105,96 +106,14 @@ readme-renderer = { version = "*", optional = true }  # groups = ["dev"]
 
 
 [tool.poetry.extras]
-user = [
-    "tqdm",
-    "attrs",
-    "watchdog",
-    "keyring",
-    "packaging",
-    "PyYAML",
-    "requests",
-    "numpy",
-    "matplotlib",
-    "scipy",
-    "pandas",
-    "Pillow",
-    "imageio",
-    "shapely",
-    "pydicom",
-    "pynetdicom",
-    "pylibjpeg-libjpeg",
-    "pymssql",
-    "pylinac",
-    "python_dateutil",
-    "scikit-image",
-    "dbfread",
-    "xmltodict",
-    "streamlit",
-    "timeago",
-]
-dev = [
-    "tqdm",
-    "attrs",
-    "watchdog",
-    "keyring",
-    "packaging",
-    "PyYAML",
-    "requests",
-    "numpy",
-    "matplotlib",
-    "scipy",
-    "pandas",
-    "Pillow",
-    "imageio",
-    "shapely",
-    "pydicom",
-    "pynetdicom",
-    "pylibjpeg-libjpeg",
-    "pymssql",
-    "pylinac",
-    "python_dateutil",
-    "scikit-image",
-    "dbfread",
-    "xmltodict",
-    "streamlit",
-    "timeago",
-    "jupyter-book",
-    "sphinx-argparse",
-    "sphinxcontrib-napoleon",
-    "sphinx-book-theme",
-    "sphinxcontrib-bibtex",
-    "pytest",
-    "pytest-sugar",
-    "hypothesis",
-    "psutil",
-    "pylint",
-    "pytest-pylint",
-    "pre-commit",
-    "black",
-    "mypy",
-    "rope",
-    "doc8",
-    "tomlkit",
-    "readme-renderer",
-]
+user = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago"]
+dev = ["tqdm", "attrs", "watchdog", "keyring", "packaging", "PyYAML", "requests", "numpy", "matplotlib", "scipy", "pandas", "Pillow", "imageio", "shapely", "pydicom", "pynetdicom", "pylibjpeg-libjpeg", "pymssql", "pylinac", "python_dateutil", "scikit-image", "dbfread", "xmltodict", "streamlit", "timeago", "jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex", "pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures", "pre-commit", "black", "mypy", "rope", "doc8", "tomlkit", "readme-renderer"]
 dicom = ["pydicom", "pynetdicom", "pylibjpeg-libjpeg"]
 comparables = ["flashgamma"]
 ml = ["tensorflow", "torch"]
-doctests = [
-    "tensorflow",
-    "sphinx-book-theme",
-    "sphinxcontrib-bibtex",
-    "black",
-    "tomlkit",
-]
-docs = [
-    "jupyter-book",
-    "sphinx-argparse",
-    "sphinxcontrib-napoleon",
-    "sphinx-book-theme",
-    "sphinxcontrib-bibtex",
-]
-tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint"]
+doctests = ["tensorflow", "sphinx-book-theme", "sphinxcontrib-bibtex", "black", "tomlkit"]
+docs = ["jupyter-book", "sphinx-argparse", "sphinxcontrib-napoleon", "sphinx-book-theme", "sphinxcontrib-bibtex"]
+tests = ["pytest", "pytest-sugar", "hypothesis", "psutil", "pylint", "pytest-pylint", "pytest-rerunfailures"]
 
 [tool.poetry.scripts]
 pymedphys = "pymedphys.__main__:main"
