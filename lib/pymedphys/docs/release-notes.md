@@ -57,12 +57,10 @@ This project adheres to
 ### Bug fixes
 
 * CLI initialisation was delayed by unused tensorflow imports
-
 * Pseudonymisation of Decimal String (e.g. Patient Weight) was failing. See
   [#1244](https://github.com/pymedphys/pymedphys/pull/1244) for more details.
 * Pseudonymisation of Date, Time or DateTime elements with embedded UTC offsets
   would fail.
-
 * Improved Mosaiq username and password login. Thank you
   [@nickmenzies](https://github.com/nickmenzies) for reporting. See PR
   [#1199](https://github.com/pymedphys/pymedphys/pull/1199) for more details.
