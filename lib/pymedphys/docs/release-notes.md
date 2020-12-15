@@ -9,8 +9,6 @@ This project adheres to
 
 ## [0.35.0]
 
-### News around this release
-
 ### Breaking changes
 
 * **Developer facing only**: The `--live` parameter within `pymedphys dev docs`
