@@ -32,6 +32,10 @@ This project adheres to
 This `pymedphys dicom listen` adjustment changes where a 3rd party or in-house
 program would expect to find the DICOM data on the file system compared to the
 previous release.
+
+Please raise an GitHub <https://github.com/pymedphys/pymedphys/issues/new> if
+you believe changes like this in the future should be considered a breaking
+change.
 ```
 
 * Documentation now uses the new [Jupyter Book](https://jupyterbook.org/) tool
@@ -40,6 +44,8 @@ previous release.
   * Live running of notebook documentation using
     [Thebe](https://thebelab.readthedocs.io/)
   * Discourse commenting now available directly within the hosted documentation
+  * The ability to utilise the expanded
+    [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
 * Increased docstring coverage of public functions
 * Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to work by the new pymssql maintainers.
