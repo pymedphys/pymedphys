@@ -33,9 +33,9 @@ This `pymedphys dicom listen` adjustment changes where a 3rd party or in-house
 program would expect to find the DICOM data on the file system compared to the
 previous release.
 
-Please raise an GitHub <https://github.com/pymedphys/pymedphys/issues/new> if
-you believe changes like this in the future should be considered a breaking
-change.
+Please raise an issue on GitHub
+<https://github.com/pymedphys/pymedphys/issues/new> if you believe changes like
+this in the future should be considered a breaking change.
 ```
 
 * Documentation now uses the new [Jupyter Book](https://jupyterbook.org/) tool
