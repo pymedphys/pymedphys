@@ -27,9 +27,13 @@ This project adheres to
   DICOM Q/R hierarchy, and more suitable for use with tools like dicompyler and
   OnkoDICOM. See PR [#1208](https://github.com/pymedphys/pymedphys/pull/1208)
   for more details.
-  * NOTE: This changes where a 3rd party or in-house program would
-    expect to find the DICOM data on the file system compared to the previous
-    release.
+
+```{note}
+This `pymedphys dicom listen` adjustment changes where a 3rd party or in-house
+program would expect to find the DICOM data on the file system compared to the
+previous release.
+```
+
 * Documentation now uses the new [Jupyter Book](https://jupyterbook.org/) tool
   from the [Executable Book Project](https://executablebooks.org/). Among other
   things this has enabled:
