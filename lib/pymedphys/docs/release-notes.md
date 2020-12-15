@@ -48,7 +48,9 @@ this in the future should be considered a breaking change.
     [MyST](https://jupyterbook.org/content/myst.html) Documentation formatting.
 * Increased docstring coverage of public functions
 * Installation on MacOS (Intel) has been simplified and is now the same as for
-  other platforms, thanks to work by the new `pymssql` maintainers.
+  other platforms, thanks to [@termim](https://github.com/termim) who has taken
+  on the mantle of maintaining `pymssql`. See PR
+  [pymssql#677](https://github.com/pymssql/pymssql/pull/677) for more details.
 * Streamlit development now supports reloading during development. See PR
   [#1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
 * A pre-release binary has been built and CI infrastructure around it has begun
