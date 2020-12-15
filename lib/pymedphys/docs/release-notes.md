@@ -38,11 +38,11 @@ This project adheres to
 * Installation on MacOS (Intel) has been simplified and is now the same as for
   other platforms, thanks to work by the new pymssql maintainers.
 * Streamlit development now supports reloading during development. See PR
-  [@1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
+  [#1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
 * A pre-release binary has been built and CI infrastructure around it has begun
   being built. Watch this space for a future release where it will be
   officially distributed. See PR
-  [@1192](https://github.com/pymedphys/pymedphys/pull/1192) for more details.
+  [#1192](https://github.com/pymedphys/pymedphys/pull/1192) for more details.
 * Create a [`__main__.py`](https://github.com/pymedphys/pymedphys/blob/56667dc84a532179f37a486e61663736c0f43eae/lib/pymedphys/__main__.py#L1-L19)
   so that the PyMedPhys CLI can be called using `python -m pymedphys`.
   * This is to support running the GUI and the tests within the binary.
