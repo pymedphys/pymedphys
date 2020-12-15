@@ -51,7 +51,8 @@ this in the future should be considered a breaking change.
   other platforms, thanks to [@termim](https://github.com/termim) who has taken
   on the mantle of maintaining `pymssql`. See PR
   [pymssql#677](https://github.com/pymssql/pymssql/pull/677) for more details.
-* Streamlit development now supports reloading during development. See PR
+* Streamlit development now supports reloading during development across the
+  whole PyMedPhys library. See PR
   [#1202](https://github.com/pymedphys/pymedphys/pull/1202) for more details.
 * A pre-release binary has been built and CI infrastructure around it has begun
   being built. Watch this space for a future release where it will be
