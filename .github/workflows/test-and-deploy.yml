@@ -427,6 +427,9 @@ jobs:
           poetry build
           poetry publish -r test-pypi
 
+          poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
+          # poetry publish
+
 
 
 
