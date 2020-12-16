@@ -385,7 +385,7 @@ jobs:
 
 
   PyPI:
-    needs:
+    # needs:
       # - PreCommit
       # - Tests
     if: github.event_name == 'release' && github.event.action == 'created'
