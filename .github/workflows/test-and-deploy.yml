@@ -457,6 +457,7 @@ jobs:
         run: |
           echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
       - name: Download Wheels
+        # Should change to using requirements-user.txt
         run: |
           pip install wheel
           pip wheel pymedphys[user]==${{ steps.tag_version.outputs.VERSION }} -w wheels
