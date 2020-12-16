@@ -440,10 +440,10 @@ jobs:
     needs:
       - PyPI
       - ValidateVersionReleaseMatch
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: ['ubuntu', 'macos', 'windows']
         python-version: [3.6, 3.7, 3.8]
     steps:
       - name: Set up Python
