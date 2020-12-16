@@ -422,9 +422,10 @@ jobs:
         uses: snok/install-poetry@v1
       - name: Configure Poetry, build, and publish
         run: |
+          poetry build
+
           poetry config repositories.test-pypi https://test.pypi.org/legacy/
           poetry config pypi-token.test-pypi ${{ secrets.TEST_PYPI_API_TOKEN }}
-          poetry build
           poetry publish -r test-pypi
 
           poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
