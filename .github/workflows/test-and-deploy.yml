@@ -407,7 +407,8 @@ jobs:
 
 
   PyPI:
-    # needs:
+    needs:
+      - ValidateVersionReleaseMatch
       # - PreCommit
       # - Tests
     if: github.event_name == 'release' && github.event.action == 'created'
@@ -420,6 +421,7 @@ jobs:
   WheelBundles:
     needs:
       - PyPI
+      - ValidateVersionReleaseMatch
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
     steps:
@@ -431,6 +433,7 @@ jobs:
     needs:
       # - Tests
       - WheelBundles
+      - ValidateVersionReleaseMatch
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
     steps:
