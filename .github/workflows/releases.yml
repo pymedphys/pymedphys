@@ -1,0 +1,14 @@
+name: Releases
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  HelloWorld:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: |
+          echo Hello World
