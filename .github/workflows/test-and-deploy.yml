@@ -136,7 +136,7 @@ jobs:
           pip install --upgrade pip setuptools
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
+        uses: snok/install-poetry@v1.1.1
         with:
           version: 1.1.4
           virtualenvs-create: true
@@ -419,7 +419,7 @@ jobs:
         with:
           python-version: 3.8
       - name: Install Poetry
-        uses: snok/install-poetry@v1
+        uses: snok/install-poetry@v1.1.1
       - name: Build and publish
         run: |
           poetry build
