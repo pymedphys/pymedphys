@@ -438,10 +438,11 @@ jobs:
 
   WheelBundles:
     needs:
-      - PyPI
+      # - PyPI
       - ValidateVersionReleaseMatch
     runs-on: ${{ matrix.os }}-latest
     strategy:
+      fail-fast: false
       matrix:
         os: ['ubuntu', 'macos', 'windows']
         python-version: [3.6, 3.7, 3.8]
