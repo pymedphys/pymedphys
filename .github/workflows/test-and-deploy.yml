@@ -440,11 +440,33 @@ jobs:
     needs:
       - PyPI
       - ValidateVersionReleaseMatch
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.6, 3.7, 3.8]
     steps:
-      - name: Hello World
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Get the tag version number
+        # https://github.community/t/how-to-get-just-the-tag-name/16241/7
+        id: tag_version
         run: |
-          echo Hello World
+          echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
+      - name: Download Wheels
+        run: |
+          pip install wheel
+          pip wheel pymedphys[user]==${{ steps.tag_version.outputs.VERSION }} -w wheels
+      - name: Get Wheel Types
+        id: wheel_label
+        run: |
+          python -c "import pathlib; path = str(next(pathlib.Path('.pymedphys-wheels').glob('pyarrow*.whl'))); print(f'::set-output name=NAMING::{'-'.join(path.split('-')[2::])[:-4]}')"
+      - uses: actions/upload-artifact@v2
+        with:
+          name: wheels-${{ steps.wheel_label.outputs.NAMING }}
+          path: wheels/*.whl
 
 
   UpdateRelease:
