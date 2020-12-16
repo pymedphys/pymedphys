@@ -13,6 +13,12 @@ All notable changes to this project will be documented in this file.
 This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0-dev0]
+
+### Some dummy stuff for testing
+
+Hello World!
+
 ## [0.35.0]
 
 ### News around this release
