@@ -458,7 +458,7 @@ jobs:
       - name: Download Wheels
         run: |
           pip install wheel
-          pip wheel pymedphys[user]==${{ steps.tag_version.outputs.VERSION }} -w wheels
+          pip wheel -i https://test.pypi.org/simple/ pymedphys[user]==${{ steps.tag_version.outputs.VERSION }} -w wheels
       - name: Get Wheel Types
         id: wheel_label
         run: |
