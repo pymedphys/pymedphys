@@ -447,20 +447,15 @@ jobs:
         os: ['ubuntu', 'macos', 'windows']
         python-version: [3.6, 3.7, 3.8]
     steps:
+      - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Get the tag version number
-        # https://github.community/t/how-to-get-just-the-tag-name/16241/7
-        id: tag_version
-        run: |
-          echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
       - name: Download Wheels
-        # Should change to using requirements-user.txt
         run: |
           pip install wheel
-          pip wheel pymedphys[user]==${{ steps.tag_version.outputs.VERSION }} -w wheels
+          pip wheel -r requirements-user.txt -w wheels
       - name: Get Wheel Types
         id: wheel_label
         run: |
