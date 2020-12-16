@@ -1,4 +1,4 @@
-name: PullRequests
+name: TestAndDeploy
 
 on:
   push:
@@ -383,10 +383,31 @@ jobs:
         path: pymedphys/tests/e2e/cypress/videos
 
 
-  Deploy:
+  PyPI:
     needs:
       - PreCommit
       - Tests
+    if: github.event_name == 'release' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: |
+          echo Hello World
+
+  WheelBundles:
+    needs:
+      - PyPI
+    if: github.event_name == 'release' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: |
+          echo Hello World
+
+  UpdateRelease:
+    needs:
+      - Tests
+      - WheelBundles
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
     steps:
