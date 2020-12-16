@@ -27,7 +27,7 @@ jobs:
           echo ${{ steps.extract_branch.outputs.branch }}
       - uses: actions/checkout@v2
       - name: Set up Python 3.8
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: 3.8
 
@@ -384,6 +384,10 @@ jobs:
           path: pymedphys/tests/e2e/cypress/videos
 
 
+# --------------------------------------------------------------------------- #
+#                                  DEPLOYMENT                                 #
+# --------------------------------------------------------------------------- #
+
   ValidateVersionReleaseMatch:
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
@@ -395,7 +399,7 @@ jobs:
 
       - uses: actions/checkout@v2
       - name: Set up Python 3.8
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: 3.8
       - name: Install base PyMedPhys
@@ -415,7 +419,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.8
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: 3.8
       - name: Install Poetry
@@ -432,8 +436,6 @@ jobs:
           # poetry publish
 
 
-
-
   WheelBundles:
     needs:
       - PyPI
@@ -443,6 +445,7 @@ jobs:
       - name: Hello World
         run: |
           echo Hello World
+
 
   UpdateRelease:
     needs:
