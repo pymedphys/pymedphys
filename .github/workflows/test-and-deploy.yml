@@ -391,7 +391,7 @@ jobs:
       - name: Get the tag version number
         # https://github.community/t/how-to-get-just-the-tag-name/16241/7
         id: tag_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\v//}
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/v/}
 
       - uses: actions/checkout@v2
       - name: Set up Python 3.8
