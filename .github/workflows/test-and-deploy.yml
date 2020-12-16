@@ -459,7 +459,7 @@ jobs:
       - name: Get Wheel Types
         id: wheel_label
         run: |
-          python -c "import pathlib; path = str(next(pathlib.Path('.pymedphys-wheels').glob('pyarrow*.whl'))); print(f'::set-output name=NAMING::{'-'.join(path.split('-')[2::])[:-4]}')"
+          python -c "import pathlib; path = str(next(pathlib.Path('wheels').glob('pyarrow*.whl'))); print(f\"::set-output name=NAMING::{'-'.join(path.split('-')[2::])[:-4]}\")"
       - uses: actions/upload-artifact@v2
         with:
           name: wheels-${{ steps.wheel_label.outputs.NAMING }}
