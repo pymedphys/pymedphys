@@ -57,7 +57,7 @@ jobs:
 # =============================================================================
 
   Tests:
-    if: github.event_name != 'release'  # Skip on release while building out the CI
+    if: false  # Skip on release while building out the CI
     strategy:
       fail-fast: false
       matrix:
