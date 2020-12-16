@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*.*.*'
   pull_request:
+  release:
+    types:
+      - created
 
 
 jobs:
@@ -380,3 +381,15 @@ jobs:
       with:
         name: cypress-videos
         path: pymedphys/tests/e2e/cypress/videos
+
+
+  Deploy:
+    needs:
+      - PreCommit
+      - Tests
+    if: github.event_name == 'release' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: |
+          echo Hello World
