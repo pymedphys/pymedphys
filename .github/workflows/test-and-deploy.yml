@@ -386,8 +386,8 @@ jobs:
 
   PyPI:
     needs:
-      - PreCommit
-      - Tests
+      # - PreCommit
+      # - Tests
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
     steps:
@@ -407,7 +407,7 @@ jobs:
 
   UpdateRelease:
     needs:
-      - Tests
+      # - Tests
       - WheelBundles
     if: github.event_name == 'release' && github.event.action == 'created'
     runs-on: ubuntu-latest
