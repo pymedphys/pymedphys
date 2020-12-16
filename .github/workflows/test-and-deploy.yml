@@ -433,12 +433,12 @@ jobs:
           poetry publish -r test-pypi
 
           poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
-          # poetry publish
+          poetry publish
 
 
   WheelBundles:
     needs:
-      # - PyPI
+      - PyPI
       - ValidateVersionReleaseMatch
     runs-on: ${{ matrix.os }}-latest
     strategy:
@@ -458,7 +458,7 @@ jobs:
       - name: Download Wheels
         run: |
           pip install wheel
-          pip wheel -i https://test.pypi.org/simple/ pymedphys[user]==${{ steps.tag_version.outputs.VERSION }} -w wheels
+          pip wheel pymedphys[user]==${{ steps.tag_version.outputs.VERSION }} -w wheels
       - name: Get Wheel Types
         id: wheel_label
         run: |
