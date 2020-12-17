@@ -93,77 +93,83 @@ def main():
         raw_data_worksheet = workbook.add_worksheet(name="Raw Data")
         interpolated_data_worksheet = workbook.add_worksheet(name="Interpolated Data")
 
-        data_column_start = "A"
-        figure_row = 1
-
-        treatments = dataframe["treatment"].unique()
-        treatments.sort()
-
-        for treatment in treatments:
-            filtered_by_treatment = dataframe.loc[dataframe["treatment"] == treatment]
-
-            ports = filtered_by_treatment["port"].unique()
-            ports.sort()
-            for port in ports:
-                filtered_by_port = filtered_by_treatment.loc[
-                    filtered_by_treatment["port"] == port
-                ]
-
-                chart_transverse = workbook.add_chart(
-                    {"type": "scatter", "subtype": "straight"}
-                )
-                chart_radial = workbook.add_chart(
-                    {"type": "scatter", "subtype": "straight"}
-                )
-
-                algorithms = filtered_by_port["algorithm"].unique()
-                algorithms.sort()
-
-                for algorithm in algorithms:
-                    filtered_by_algorithm = filtered_by_port.loc[
-                        filtered_by_port["algorithm"] == algorithm
-                    ]
-
-                    data_header = f"{treatment} | {port} | {algorithm}"
-
-                    references, data_column_start = _write_data_get_references(
-                        data_column_start,
-                        data_header,
-                        filtered_by_algorithm[["gantry", "diff_x", "diff_y"]],
-                        raw_data_worksheet,
-                    )
-
-                    chart_transverse.add_series(
-                        {
-                            "name": algorithm,
-                            "categories": references["gantry"],
-                            "values": references["diff_x"],
-                        }
-                    )
-
-                    chart_radial.add_series(
-                        {
-                            "name": algorithm,
-                            "categories": references["gantry"],
-                            "values": references["diff_y"],
-                        }
-                    )
-
-                chart_transverse.set_title(
-                    {"name": f"{treatment} | {port} | Transverse"}
-                )
-                chart_transverse.set_x_axis({"name": "Gantry Angle (degrees)"})
-                chart_transverse.set_y_axis({"name": "Field - BB (mm)"})
-
-                chart_radial.set_title({"name": f"{treatment} | {port} | Radial"})
-                chart_radial.set_x_axis({"name": "Gantry Angle (degrees)"})
-                chart_radial.set_y_axis({"name": "Field - BB (mm)"})
-
-                algorithm_worksheet.insert_chart(f"A{figure_row}", chart_radial)
-                algorithm_worksheet.insert_chart(f"I{figure_row}", chart_transverse)
-                figure_row += FIGURE_CELL_HEIGHT
+        _create_algorithms_chart_sheet(
+            dataframe, workbook, raw_data_worksheet, algorithm_worksheet
+        )
 
     _insert_file_download_link(wlutz_xlsx_filepath)
+
+
+def _create_algorithms_chart_sheet(
+    dataframe, workbook, raw_data_worksheet, algorithm_worksheet
+):
+    data_column_start = "A"
+    figure_row = 1
+
+    treatments = dataframe["treatment"].unique()
+    treatments.sort()
+
+    for treatment in treatments:
+        filtered_by_treatment = dataframe.loc[dataframe["treatment"] == treatment]
+
+        ports = filtered_by_treatment["port"].unique()
+        ports.sort()
+        for port in ports:
+            filtered_by_port = filtered_by_treatment.loc[
+                filtered_by_treatment["port"] == port
+            ]
+
+            chart_transverse = workbook.add_chart(
+                {"type": "scatter", "subtype": "straight"}
+            )
+            chart_radial = workbook.add_chart(
+                {"type": "scatter", "subtype": "straight"}
+            )
+
+            algorithms = filtered_by_port["algorithm"].unique()
+            algorithms.sort()
+
+            for algorithm in algorithms:
+                filtered_by_algorithm = filtered_by_port.loc[
+                    filtered_by_port["algorithm"] == algorithm
+                ]
+
+                data_header = f"{treatment} | {port} | {algorithm}"
+
+                references, data_column_start = _write_data_get_references(
+                    data_column_start,
+                    data_header,
+                    filtered_by_algorithm[["gantry", "diff_x", "diff_y"]],
+                    raw_data_worksheet,
+                )
+
+                chart_transverse.add_series(
+                    {
+                        "name": algorithm,
+                        "categories": references["gantry"],
+                        "values": references["diff_x"],
+                    }
+                )
+
+                chart_radial.add_series(
+                    {
+                        "name": algorithm,
+                        "categories": references["gantry"],
+                        "values": references["diff_y"],
+                    }
+                )
+
+            chart_transverse.set_title({"name": f"{treatment} | {port} | Transverse"})
+            chart_transverse.set_x_axis({"name": "Gantry Angle (degrees)"})
+            chart_transverse.set_y_axis({"name": "Field - BB (mm)"})
+
+            chart_radial.set_title({"name": f"{treatment} | {port} | Radial"})
+            chart_radial.set_x_axis({"name": "Gantry Angle (degrees)"})
+            chart_radial.set_y_axis({"name": "Field - BB (mm)"})
+
+            algorithm_worksheet.insert_chart(f"A{figure_row}", chart_radial)
+            algorithm_worksheet.insert_chart(f"I{figure_row}", chart_transverse)
+            figure_row += FIGURE_CELL_HEIGHT
 
 
 def _write_data_get_references(
