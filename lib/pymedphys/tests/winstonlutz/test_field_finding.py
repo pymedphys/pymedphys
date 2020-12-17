@@ -86,8 +86,10 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     zz = field(xx, yy)
 
     initial_centre = pymedphys._wlutz.findfield.get_centre_of_mass(x, y, zz)
+
+    # Only test for fixed rotation for now
     (centre, rotation) = pymedphys._wlutz.findfield.field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre
+        field, edge_lengths, penumbra, initial_centre, fixed_rotation=actual_rotation
     )
 
     try:
