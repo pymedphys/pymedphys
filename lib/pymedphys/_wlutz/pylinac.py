@@ -26,12 +26,10 @@ class PylinacComparisonDeviation(ValueError):
 
 def run_wlutz(
     field,
-    edge_lengths,
-    penumbra,
-    field_centre,
     field_rotation,
+    search_radius=40,
     find_bb=True,
-    interpolated_pixel_size=0.05,
+    interpolated_pixel_size=0.25,
     pylinac_versions=None,
     fill_errors_with_nan=False,
 ):
@@ -41,20 +39,14 @@ def run_wlutz(
         pylinac_versions = VERSION_TO_CLASS_MAP.keys()
 
     centralised_straight_field = _utilities.create_centralised_field(
-        field, field_centre, field_rotation
+        field, [0, 0], field_rotation
     )
 
-    half_x_range = edge_lengths[0] / 2 + penumbra * 3
-    half_y_range = edge_lengths[1] / 2 + penumbra * 3
-
-    x_range = np.arange(
-        -half_x_range, half_x_range + interpolated_pixel_size, interpolated_pixel_size
-    )
-    y_range = np.arange(
-        -half_y_range, half_y_range + interpolated_pixel_size, interpolated_pixel_size
+    interp_coord = np.arange(
+        -search_radius, search_radius + interpolated_pixel_size, interpolated_pixel_size
     )
 
-    xx_range, yy_range = np.meshgrid(x_range, y_range)
+    xx_range, yy_range = np.meshgrid(interp_coord, interp_coord)
     centralised_image = centralised_straight_field(xx_range, yy_range)
 
     results = {}
@@ -63,9 +55,7 @@ def run_wlutz(
             VERSION_TO_CLASS_MAP[key],
             centralised_image,
             interpolated_pixel_size,
-            half_x_range,
-            half_y_range,
-            field_centre,
+            search_radius,
             field_rotation,
             find_bb=find_bb,
             fill_errors_with_nan=fill_errors_with_nan,
@@ -82,24 +72,20 @@ def run_pylinac_with_class(
     class_to_use,
     interpolated_image,
     interpolated_pixel_size,
-    half_x_range,
-    half_y_range,
-    field_centre_for_interpolation,
+    search_radius,
     field_rotation_for_interpolation,
     find_bb=True,
     fill_errors_with_nan=False,
 ):
     wl_image = class_to_use(interpolated_image)
     interpolated_image_field_centre = [
-        wl_image.field_cax.x * interpolated_pixel_size - half_x_range,
-        wl_image.field_cax.y * interpolated_pixel_size - half_y_range,
+        wl_image.field_cax.x * interpolated_pixel_size - search_radius,
+        wl_image.field_cax.y * interpolated_pixel_size - search_radius,
     ]
 
     try:
         field_centre = _utilities.transform_point(
-            interpolated_image_field_centre,
-            field_centre_for_interpolation,
-            field_rotation_for_interpolation,
+            interpolated_image_field_centre, [0, 0], field_rotation_for_interpolation
         )
     except ValueError:
         if fill_errors_with_nan:
@@ -110,14 +96,12 @@ def run_pylinac_with_class(
     if find_bb:
         try:
             interpolated_image_bb_centre = [
-                wl_image.bb.x * interpolated_pixel_size - half_x_range,
-                wl_image.bb.y * interpolated_pixel_size - half_y_range,
+                wl_image.bb.x * interpolated_pixel_size - search_radius,
+                wl_image.bb.y * interpolated_pixel_size - search_radius,
             ]
 
             bb_centre = _utilities.transform_point(
-                interpolated_image_bb_centre,
-                field_centre_for_interpolation,
-                field_rotation_for_interpolation,
+                interpolated_image_bb_centre, [0, 0], field_rotation_for_interpolation
             )
         except ValueError:
             if fill_errors_with_nan:
