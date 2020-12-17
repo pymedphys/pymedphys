@@ -173,20 +173,6 @@ def index():
 
 def main():
     st.set_page_config(page_title="PyMedPhys", page_icon=FAVICON)
-
-    google_analytics_code = """
-        <!-- Global site tag (gtag.js) - Google Analytics -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
-            function gtag() { dataLayer.push(arguments); }
-            gtag('js', new Date());
-
-            gtag('config', 'G-Z9MH3VT85Y');
-        </script>
-    """
-
-    st.components.v1.html(google_analytics_code, height=0)
     session_state = session.session_state(app=get_url_app())
 
     if (
