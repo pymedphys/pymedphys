@@ -58,76 +58,70 @@ REFERENCE = "Reference"
 ALL = "All"
 
 
-def get_latest_wlimage():
-    VERSION_TO_CLASS_MAP = get_version_to_class_map()
-    return VERSION_TO_CLASS_MAP[pylinac.__version__]
+class WLImageCurrent:
+    """This is a composition of pylinac's WLImage class and its ImageArray class.
 
+    It is designed to be able to support raw image in-memory arrays
+    instead of DICOM files on disk as the original WLImage class
+    required.
 
-@functools.lru_cache()
-def get_version_to_class_map():
-    class WLImageCurrent(pylinac.image.ArrayImage):
-        """This is a custom override version of pylinac's WLImage class.
+    See the following issue where this API was proposed upstream
+    but for now has not been implemented:
 
-        It is designed to be able to support raw image in-memory arrays
-        instead of DICOM files on disk as the original WLImage class
-        required.
+        <https://github.com/jrkerns/pylinac/issues/277>
 
-        See the following issue where this API was proposed upstream
-        but for now has not been implemented:
+    """
 
-            <https://github.com/jrkerns/pylinac/issues/277>
+    def __init__(self, array, *, dpi=None, sid=None, dtype=None):
+        """Adapted from
+        <https://github.com/jrkerns/pylinac/blob/14a5296ae4ee0ecb01865d08f15070c82e19fc45/pylinac/winston_lutz.py#L594-L612>
         """
+        self._array_image = pylinac.image.ArrayImage(
+            array, dpi=dpi, sid=sid, dtype=dtype
+        )
+        self._array_image.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
 
-        def __init__(self, array, *, dpi=None, sid=None, dtype=None):
-            """Adapted from
-            <https://github.com/jrkerns/pylinac/blob/14a5296ae4ee0ecb01865d08f15070c82e19fc45/pylinac/winston_lutz.py#L594-L612>
-            """
-            super().__init__(array, dpi=dpi, sid=sid, dtype=dtype)
-            self.check_inversion_by_histogram(percentiles=(0.01, 50, 99.99))
-            self._clean_edges()
-            self.ground()
-            self.normalize()
-            self._field_cax = None
-            self.rad_field_bounding_box = None
-            self._bb = None
-
-        def _run_field_finding(self):
-            self._field_cax, self.rad_field_bounding_box = self._find_field_centroid()
-
-        @property
-        def field_cax(self):
-            if self._field_cax is None:
-                self._run_field_finding()
-
-            return self._field_cax
-
-        @property
-        def bb(self):
-            if self._bb is None:
-                if self.rad_field_bounding_box is None:
-                    self._run_field_finding()
-
-                self._bb = self._find_bb()
-
-            return self._bb
-
-        _clean_edges = (
+        self._array_image._clean_edges = (
             pylinac.winston_lutz.WLImage._clean_edges  # pylint: disable = protected-access
         )
-        _find_field_centroid = (
+        self._array_image._clean_edges(self._array_image)
+
+        self._array_image.ground()
+        self._array_image.normalize()
+
+        self._array_image.rad_field_bounding_box = None
+        self._field_cax = None
+        self._bb = None
+
+        self._array_image.find_field_centroid = (
             pylinac.winston_lutz.WLImage._find_field_centroid  # pylint: disable = protected-access
         )
-        _find_bb = (
+        self._array_image.find_bb = (
             pylinac.winston_lutz.WLImage._find_bb  # pylint: disable = protected-access
         )
 
-    VERSION_TO_CLASS_MAP = {
-        "2.2.6": WLImage_2_2_6,
-        "2.2.7": WLImage_2_2_7,
-        pylinac.__version__: WLImageCurrent,
-    }
+    def _run_field_finding(self):
+        (
+            self._field_cax,
+            self._array_image.rad_field_bounding_box,
+        ) = self._array_image.find_field_centroid(self._array_image)
 
-    return VERSION_TO_CLASS_MAP
+    @property
+    def field_cax(self):
+        if self._field_cax is None:
+            self._run_field_finding()
+
+        return self._field_cax
+
+    @property
+    def bb(self):
+        if self._bb is None:
+            if self._array_image.rad_field_bounding_box is None:
+                self._run_field_finding()
+
+            self._bb = self._array_image.find_bb(self._array_image)
+
+        return self._bb
 
 
 class WLImage_2_2_7(_vendor_image.ArrayImage):
@@ -356,3 +350,18 @@ class WLImage_2_2_6(WLImage_2_2_7):
         y_arr = np.abs(np.average(bw_bb_img, weights=inv_img, axis=1))
         y_com = _vendor_profile.SingleProfile(y_arr).fwxm_center(interpolate=True)
         return _vendor_geometry.Point(x_com, y_com)
+
+
+@functools.lru_cache()
+def get_version_to_class_map():
+    VERSION_TO_CLASS_MAP = {
+        "2.2.6": WLImage_2_2_6,
+        "2.2.7": WLImage_2_2_7,
+        pylinac.__version__: WLImageCurrent,
+    }
+
+    return VERSION_TO_CLASS_MAP
+
+
+def get_latest_wlimage():
+    return WLImageCurrent
