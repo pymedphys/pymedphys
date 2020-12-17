@@ -20,7 +20,8 @@ from hypothesis.strategies import floats
 
 import numpy as np
 
-import pymedphys._mocks.profiles as mock_profiles
+# import pymedphys._mocks.profiles as mock_profiles
+import pymedphys._mocks.wlutz as mock_wlutz
 import pymedphys._wlutz.pylinac as wrapped_pylinac
 
 
@@ -38,11 +39,27 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     edge_lengths = [x_edge, y_edge]
     actual_centre = [x_centre, y_centre]
 
-    field = mock_profiles.create_rectangular_field_function(
-        actual_centre, edge_lengths, penumbra, actual_rotation
+    x = np.arange(-20, 20.1, 0.1)
+    y = np.arange(-22, 22.1, 0.1)
+    img = mock_wlutz.create_test_image(
+        x,
+        y,
+        actual_centre,
+        edge_lengths,
+        penumbra,
+        actual_rotation,
+        bb_centre,
+        bb_diameter,
+        bb_max_attenuation,
     )
 
-    results = wrapped_pylinac.run_wlutz(field, actual_rotation, find_bb=False)
+    # field = mock_profiles.create_rectangular_field_function(
+    #     actual_centre, edge_lengths, penumbra, actual_rotation
+    # )
+
+    results = wrapped_pylinac.run_wlutz(
+        x, y, img, rotation=actual_rotation, find_bb=False
+    )
 
     assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.2)
     assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.2)
