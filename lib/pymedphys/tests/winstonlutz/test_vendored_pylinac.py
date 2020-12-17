@@ -45,6 +45,6 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     # change from using actual centre here
     results = wrapped_pylinac.run_wlutz(field, actual_rotation, find_bb=False)
 
-    assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.4)
-    assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.5)
-    assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.2)
+    assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.2)
+    assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.1)
+    assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.1)
