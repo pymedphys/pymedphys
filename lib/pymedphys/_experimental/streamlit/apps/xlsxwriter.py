@@ -88,8 +88,10 @@ def main():
 
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
     with xlsxwriter.Workbook(wlutz_xlsx_filepath) as workbook:
-        overview_worksheet = workbook.add_worksheet(name="Overview")
-        data_worksheet = workbook.add_worksheet(name="Data")
+        summary_worksheet = workbook.add_worksheet(name="Summary")
+        algorithm_worksheet = workbook.add_worksheet(name="Algorithms")
+        raw_data_worksheet = workbook.add_worksheet(name="Raw Data")
+        interpolated_data_worksheet = workbook.add_worksheet(name="Interpolated Data")
 
         data_column_start = "A"
         figure_row = 1
@@ -128,7 +130,7 @@ def main():
                         data_column_start,
                         data_header,
                         filtered_by_algorithm[["gantry", "diff_x", "diff_y"]],
-                        data_worksheet,
+                        raw_data_worksheet,
                     )
 
                     chart_transverse.add_series(
@@ -157,8 +159,8 @@ def main():
                 chart_radial.set_x_axis({"name": "Gantry Angle (degrees)"})
                 chart_radial.set_y_axis({"name": "Field - BB (mm)"})
 
-                overview_worksheet.insert_chart(f"A{figure_row}", chart_radial)
-                overview_worksheet.insert_chart(f"I{figure_row}", chart_transverse)
+                algorithm_worksheet.insert_chart(f"A{figure_row}", chart_radial)
+                algorithm_worksheet.insert_chart(f"I{figure_row}", chart_transverse)
                 figure_row += FIGURE_CELL_HEIGHT
 
     _insert_file_download_link(wlutz_xlsx_filepath)
