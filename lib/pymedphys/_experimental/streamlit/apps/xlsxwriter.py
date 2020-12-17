@@ -84,6 +84,11 @@ def main():
 
     dataframe = dataframe.sort_values("seconds_since_midnight")
 
+    # treatment = "00_06MV_0600DR"
+    # filtered_by_treatment = _filter_by(dataframe, "treatment", treatment)
+
+    # st.write(filtered_by_treatment)
+
     dataframe = dataframe.fillna("")
 
     wlutz_xlsx_filepath = wlutz_directory_by_date.joinpath("overview.xlsx")
@@ -100,6 +105,12 @@ def main():
     _insert_file_download_link(wlutz_xlsx_filepath)
 
 
+def _filter_by(dataframe, column, value):
+    filtered = dataframe.loc[dataframe[column] == value]
+
+    return filtered
+
+
 def _create_algorithms_chart_sheet(
     dataframe, workbook, raw_data_worksheet, algorithm_worksheet
 ):
@@ -110,14 +121,12 @@ def _create_algorithms_chart_sheet(
     treatments.sort()
 
     for treatment in treatments:
-        filtered_by_treatment = dataframe.loc[dataframe["treatment"] == treatment]
+        filtered_by_treatment = _filter_by(dataframe, "treatment", treatment)
 
         ports = filtered_by_treatment["port"].unique()
         ports.sort()
         for port in ports:
-            filtered_by_port = filtered_by_treatment.loc[
-                filtered_by_treatment["port"] == port
-            ]
+            filtered_by_port = _filter_by(filtered_by_treatment, "port", port)
 
             chart_transverse = workbook.add_chart(
                 {"type": "scatter", "subtype": "straight"}
@@ -130,9 +139,9 @@ def _create_algorithms_chart_sheet(
             algorithms.sort()
 
             for algorithm in algorithms:
-                filtered_by_algorithm = filtered_by_port.loc[
-                    filtered_by_port["algorithm"] == algorithm
-                ]
+                filtered_by_algorithm = _filter_by(
+                    filtered_by_port, "algorithm", algorithm
+                )
 
                 data_header = f"{treatment} | {port} | {algorithm}"
 

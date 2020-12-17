@@ -217,7 +217,7 @@ def main():
     icom_datasets = []
     for filepath in filepaths_to_load:
         icom_dataframe = _icom.get_icom_dataset(filepath)
-        st.write(icom_dataframe)
+        # st.write(icom_dataframe)
         icom_datasets.append(icom_dataframe.copy())
 
     icom_datasets = pd.concat(icom_datasets, axis=0, ignore_index=True)
