@@ -1,10 +1,13 @@
 import streamlit as st
 
 from pymedphys._mosaiq import connect
-from pymedphys._mosaiq.helpers import get_all_treatment_data, get_staff_initials
 
 from pymedphys._experimental.chartchecks.compare import color_results, compare_to_mosaiq
-from pymedphys._experimental.chartchecks.helpers import get_all_dicom_treatment_info
+from pymedphys._experimental.chartchecks.helpers import (
+    get_all_dicom_treatment_info,
+    get_all_treatment_data,
+    get_staff_initials,
+)
 from pymedphys._experimental.chartchecks.tolerance_constants import (
     SITE_CONSTANTS,
     TOLERANCE_TYPES,

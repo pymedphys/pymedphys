@@ -67,3 +67,39 @@ TERMINATION_VERIFY = {
     2: "Verified, override",
     3: "Not Verified",
 }
+
+FIELD_TYPES = {
+    0: "Unspecified",
+    1: "Static",
+    2: "StepNShoot",
+    3: "Setup",
+    4: "kV Setup",
+    5: "CT",
+    6: "Port",
+    7: "Fixed",
+    8: "Dynamic",
+    9: "MV CT",
+    11: "Arc",
+    12: "Skip Arcs",
+    13: "VMAT",
+    14: "DMLC",
+    15: "Helical",
+    16: "Fixed Angle",
+    17: "Path",
+    18: "Shot",
+    20: "User Defined",
+    21: "PDR",
+}
+
+ORIENTATION = {
+    0: "Unknown",
+    1: "HFS",
+    2: "HFP",
+    3: "HFDL",
+    4: "HFDR",
+    5: "FFS",
+    6: "FFP",
+    7: "FFDL",
+    8: "FFDR",
+    9: "SITTING",
+}
