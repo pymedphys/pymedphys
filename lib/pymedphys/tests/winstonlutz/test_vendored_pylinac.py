@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
-
 import pytest
 from hypothesis import Verbosity, given, settings
 from hypothesis.strategies import floats
@@ -25,7 +23,7 @@ import pymedphys._wlutz.pylinac as wrapped_pylinac
 
 
 @pytest.mark.slow
-@settings(deadline=datetime.timedelta(milliseconds=4000), verbosity=Verbosity.verbose)
+@settings(max_examples=10, verbosity=Verbosity.verbose)
 @given(
     floats(-20, 20),
     floats(-20, 20),
@@ -44,9 +42,9 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
 
     # change from using actual centre here
     results = wrapped_pylinac.run_wlutz(
-        field, edge_lengths, penumbra, actual_centre, actual_rotation, find_bb=False
+        field, edge_lengths, penumbra, [0, 0], actual_rotation, find_bb=False
     )
 
-    assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.5)
+    assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.3)
     assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.5)
-    assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.5)
+    assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.1)
