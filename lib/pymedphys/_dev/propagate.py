@@ -18,6 +18,7 @@ import re
 import subprocess
 import tarfile
 import textwrap
+from typing import List
 
 from pymedphys._imports import black, tomlkit
 
@@ -235,30 +236,64 @@ def _propagate_requirements():
     # reading this file and spinning it up. The few extra dependencies
     # for users who choose to go this route isn't such a bad trade off
     # here.
-    subprocess.check_call(
-        "poetry export --without-hashes -E docs -E user -f requirements.txt --output requirements.txt",
-        shell=True,
-    )
-    with open(REQUIREMENTS_TXT, "a") as f:
-        f.write(".[user,docs]\n")
+    _make_requirements_txt(["user", "docs"], "requirements.txt", editable=False)
 
-    subprocess.check_call(
-        "poetry export --without-hashes -E dev -f requirements.txt --output requirements-dev.txt",
-        shell=True,
-    )
     # The editable install `-e` used here means that should a user edit
     # the git repo they will be utilising their edits within their
     # environment as opposed to what was originally installed.
-    with open(REQUIREMENTS_DEV_TXT, "a") as f:
-        f.write("-e .[dev]\n")
+    _make_requirements_txt(["dev"], "requirements-dev.txt", editable=True)
 
     # TODO: Once the hashes pinning issue in poetry is fixed, remove the
     # --without-hashes. See <https://github.com/python-poetry/poetry/issues/1584>
     # for more details.
-    subprocess.check_call(
-        "poetry export --without-hashes -E user -E tests -f requirements.txt --output requirements-deploy.txt",
-        shell=True,
+    _make_requirements_txt(
+        ["user", "tests"], "requirements-deploy.txt", include_pymedphys=False
     )
+
+    _make_requirements_txt(["user"], "requirements-user.txt", editable=True)
+
+
+def _make_requirements_txt(
+    extras: List[str], filename: str, include_pymedphys=True, editable=True
+):
+    """Create a requirements.txt file with poetry pins.
+
+    Parameters
+    ----------
+    extras : List[str]
+        A list of pip extras to include within the requirements file.
+    filename : str
+        The filename of the requirements file. Will be created in the
+        repo root.
+    include_pymedphys : bool, optional
+        Whether or not the requirements file should include an
+        installation of the git repo, by default True.
+    editable : bool, optional
+        Whether or not the pymedphys install should be 'editable', by
+        default True.
+    """
+    filepath = REPO_ROOT.joinpath(filename)
+
+    poetry_environment_flags = " ".join([f"-E {item}" for item in extras])
+
+    subprocess.check_call(
+        (
+            "poetry export --without-hashes "
+            + poetry_environment_flags
+            + " -f requirements.txt --output "
+            + filename
+        ),
+        shell=True,
+        cwd=REPO_ROOT,
+    )
+
+    if include_pymedphys:
+        pymedphys_install_command = f".[{','.join(extras)}]\n"
+        if editable:
+            pymedphys_install_command = f"-e {pymedphys_install_command}"
+
+        with open(filepath, "a") as f:
+            f.write(pymedphys_install_command)
 
 
 def propagate_extras():
