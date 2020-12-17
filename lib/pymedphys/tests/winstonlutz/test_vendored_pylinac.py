@@ -25,11 +25,7 @@ import pymedphys._wlutz.pylinac as wrapped_pylinac
 
 
 @pytest.mark.slow
-@settings(
-    deadline=datetime.timedelta(milliseconds=4000),
-    max_examples=10,
-    verbosity=Verbosity.verbose,
-)
+@settings(deadline=datetime.timedelta(milliseconds=4000), verbosity=Verbosity.verbose)
 @given(
     floats(-20, 20),
     floats(-20, 20),
@@ -46,14 +42,11 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
         actual_centre, edge_lengths, penumbra, actual_rotation
     )
 
-    x = np.arange(-50, 50, 0.1)
-    y = np.arange(-50, 50, 0.1)
-    xx, yy = np.meshgrid(x, y)
-    zz = field(xx, yy)
-
+    # change from using actual centre here
     results = wrapped_pylinac.run_wlutz(
-        field, edge_lengths, penumbra, [0, 0], actual_rotation, find_bb=False
+        field, edge_lengths, penumbra, actual_centre, actual_rotation, find_bb=False
     )
 
-    for key, item in results.items():
-        assert np.allclose(actual_centre, item["field_centre"])
+    assert np.allclose(actual_centre, results["2.2.6"]["field_centre"], atol=0.5)
+    assert np.allclose(actual_centre, results["2.2.7"]["field_centre"], atol=0.5)
+    assert np.allclose(actual_centre, results["2.3.2"]["field_centre"], atol=0.5)
