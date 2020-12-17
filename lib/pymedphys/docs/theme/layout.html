@@ -12,6 +12,16 @@
 {% block extrahead %}
 {{ super() }}
 
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MH3VT85Y"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-Z9MH3VT85Y');
+</script>
+
 {% if pageurl %}
 <!-- Opengraph tags -->
 <meta property="og:url" content="{{ pageurl }}" />
