@@ -169,7 +169,7 @@ extras_require = {
         "scikit-image",
         "dbfread",
         "xmltodict",
-        "streamlit==0.71.0",
+        "streamlit==0.73.0",
         "timeago",
         "jupyter-book>=0.8.3",
         "sphinx-argparse",
@@ -240,7 +240,7 @@ extras_require = {
         "scikit-image",
         "dbfread",
         "xmltodict",
-        "streamlit==0.71.0",
+        "streamlit==0.73.0",
         "timeago",
     ],
 }
