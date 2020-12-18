@@ -89,9 +89,9 @@ jobs:
 
         include:
           - os: 'ubuntu'
-            python-version: 3.8
+            python-version: 3.9
           - os: 'windows'
-            python-version: 3.7
+            python-version: 3.6
           - os: 'macos'
             python-version: 3.8
 
