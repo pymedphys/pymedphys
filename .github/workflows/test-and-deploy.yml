@@ -88,6 +88,10 @@ jobs:
             task: 'binary'
 
         include:
+          # Version numbers chosen so that highest and lowest Python version is
+          # utilised, 3.7 is chosen on Windows to align with Jupyter Book until
+          # https://github.com/executablebooks/jupyter-book/issues/906 is fixed.
+          # See https://jupyterbook.org/advanced/advanced.html#working-on-windows
           - os: 'ubuntu'
             python-version: 3.9
           - os: 'windows'
