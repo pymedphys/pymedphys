@@ -51,7 +51,7 @@ def main():
         _wait_for_port(8501, timeout=300)
 
         subprocess.check_call(
-            f"{prepend}cmd.exe /C pymedphys dev tests -v -s --cypress",
+            f"{prepend}cmd.exe /C pymedphys dev tests --reruns 5 -v -s --cypress",
             cwd=BUILD_DIST,
             shell=True,
         )
