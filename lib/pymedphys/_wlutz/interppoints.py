@@ -40,6 +40,7 @@ def transform_penumbra_points(points_at_origin, centre, rotation):
 
 
 def translate_and_rotate_transform(centre, rotation):
+    centre = np.array(centre, copy=False)
     transform = matplotlib.transforms.Affine2D()
     try:
         transform.rotate_deg(-rotation)
