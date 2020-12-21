@@ -18,13 +18,12 @@ import functools
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
-from pymedphys._imports import plt, pylinac
+from pymedphys._imports import plt
 from pymedphys._imports import streamlit as st
 
-from pymedphys import _losslessjpeg as lljpeg
-from pymedphys._wlutz import findbb, findfield, imginterp, iview
-from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
+
+from pymedphys._experimental.streamlit.utilities import wlutz as _wlutz
 
 from . import _altair, _utilities
 
@@ -43,26 +42,12 @@ RESULTS_DATA_COLUMNS = [
 functools.lru_cache()
 
 
-def get_algorithm_function_map():
-    ALGORITHM_FUNCTION_MAP = {
-        "PyMedPhys": _pymedphys_wlutz_calculate,
-        f"PyLinac v{pylinac.__version__}": functools.partial(
-            _pylinac_wlutz_calculate, pylinac_version=pylinac.__version__
-        ),
-        "PyLinac v2.2.6": functools.partial(
-            _pylinac_wlutz_calculate, pylinac_version="2.2.6"
-        ),
-    }
-
-    return ALGORITHM_FUNCTION_MAP
-
-
 def calculations_ui(
     database_table, database_directory, wlutz_directory_by_date, bb_diameter, penumbra
 ):
     st.write("## Calculations")
 
-    ALGORITHM_FUNCTION_MAP = get_algorithm_function_map()
+    ALGORITHM_FUNCTION_MAP = _wlutz.get_algorithm_function_map()
 
     algorithm_options = list(ALGORITHM_FUNCTION_MAP.keys())
     selected_algorithms = st.multiselect(
@@ -368,7 +353,7 @@ def plot_diagnostic_figures(
     penumbra,
     selected_algorithms,
 ):
-    x, y, image = _load_iview_image(full_image_path)
+    x, y, image = _wlutz.load_iview_image(full_image_path)
 
     figures = []
 
@@ -411,82 +396,8 @@ def _get_full_image_path(database_directory, relative_image_path):
 def _calculate_wlutz(
     image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
 ):
-    x, y, image = _load_iview_image(image_path)
-
-    ALGORITHM_FUNCTION_MAP = get_algorithm_function_map()
-
-    calculate_function = ALGORITHM_FUNCTION_MAP[algorithm]
-    field_centre, bb_centre = calculate_function(
-        x=x,
-        y=y,
-        image=image,
-        bb_diameter=bb_diameter,
-        edge_lengths=edge_lengths,
-        penumbra=penumbra,
-        icom_field_rotation=icom_field_rotation,
+    field_centre, bb_centre = _wlutz.calculate(
+        image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
     )
 
     return field_centre, bb_centre
-
-
-def _pymedphys_wlutz_calculate(
-    x, y, image, bb_diameter, edge_lengths, penumbra, icom_field_rotation, **_
-):
-
-    initial_centre = findfield.get_centre_of_mass(x, y, image)
-    field = imginterp.create_interpolated_field(x, y, image)
-    try:
-        field_centre, _ = findfield.field_centre_and_rotation_refining(
-            field,
-            edge_lengths,
-            penumbra,
-            initial_centre,
-            pylinac_tol=None,
-            fixed_rotation=icom_field_rotation,
-        )
-    except ValueError:
-        field_centre = [np.nan, np.nan]
-
-    try:
-        bb_centre = findbb.optimise_bb_centre(
-            field,
-            bb_diameter,
-            edge_lengths,
-            penumbra,
-            field_centre,
-            icom_field_rotation,
-            pylinac_tol=None,
-        )
-    except ValueError:
-        bb_centre = [np.nan, np.nan]
-
-    return field_centre, bb_centre
-
-
-def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, pylinac_version, **_):
-    try:
-        pylinac_results = pmp_pylinac_api.run_wlutz(
-            x,
-            y,
-            image,
-            icom_field_rotation,
-            find_bb=True,
-            pylinac_versions=[pylinac_version],
-            fill_errors_with_nan=True,
-        )
-
-        field_centre = pylinac_results[pylinac_version]["field_centre"]
-        bb_centre = pylinac_results[pylinac_version]["bb_centre"]
-
-    except ValueError:
-        field_centre = [np.nan, np.nan]
-        bb_centre = [np.nan, np.nan]
-
-    return field_centre, bb_centre
-
-
-def _load_iview_image(image_path):
-    raw_image = lljpeg.imread(image_path)
-    x, y, image = iview.iview_image_transform(raw_image)
-
-    return x, y, image
