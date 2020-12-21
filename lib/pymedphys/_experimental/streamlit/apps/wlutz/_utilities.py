@@ -14,6 +14,8 @@
 
 import pathlib
 
+from pymedphys._imports import numpy as np
+
 from pymedphys._streamlit.utilities import config as _config
 from pymedphys._streamlit.utilities import misc
 
@@ -25,6 +27,15 @@ def filepath_to_filename(path):
     filename = path.name
 
     return filename
+
+
+def expand_border_events(mask):
+    shifted_right = np.concatenate([[False], mask])
+    shifted_left = np.concatenate([mask, [False]])
+
+    combined = np.logical_or(shifted_right, shifted_left)
+
+    return combined
 
 
 def get_directories_and_initial_database(refresh_cache):

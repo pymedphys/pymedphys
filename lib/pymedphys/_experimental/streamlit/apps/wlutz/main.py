@@ -23,18 +23,13 @@ from pymedphys._imports import plt, pylinac, scipy
 from pymedphys._imports import streamlit as st
 
 from pymedphys import _losslessjpeg as lljpeg
-from pymedphys._utilities import transforms as pmp_transforms
 from pymedphys._wlutz import findbb, findfield, imginterp, iview
 from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
 
 from pymedphys._experimental.streamlit.utilities import icom as _icom
 
-from . import _altair, _filtering, _frames, _utilities
-
-GANTRY_EXPECTED_SPEED_LIMIT = 1  # RPM
-COLLIMATOR_EXPECTED_SPEED_LIMIT = 2.7  # RPM
-NOISE_BUFFER_FACTOR = 5  # To allow a noisy point to not trigger the speed limit
+from . import _altair, _angles, _filtering, _frames, _utilities
 
 
 def main():
@@ -228,7 +223,9 @@ def main():
 
     # icom_datasets.set_index("datetime", inplace=True)
 
-    beam_on_mask = expand_border_events(np.diff(icom_datasets["meterset"]) > 0)
+    beam_on_mask = _utilities.expand_border_events(
+        np.diff(icom_datasets["meterset"]) > 0
+    )
     beam_shade_min = -200 * beam_on_mask
     beam_shade_max = 200 * beam_on_mask
 
@@ -242,41 +239,30 @@ def main():
     )
 
     try:
-        angle_speed_check(icom_datasets)
-    except ValueError:
-        icom_datasets["gantry"] = attempt_to_make_angle_continuous(
-            icom_datasets["datetime"],
-            icom_datasets["gantry"].to_numpy(),
-            GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
-        )
-        icom_datasets["collimator"] = attempt_to_make_angle_continuous(
-            icom_datasets["datetime"],
-            icom_datasets["collimator"].to_numpy(),
-            COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR,
-        )
+        icom_datasets = _angles.make_icom_angles_continuous(icom_datasets)
+    finally:
+        device_angle_chart = (
+            beam_on_chart
+            + (
+                alt.Chart(icom_datasets)
+                .transform_fold(
+                    ["gantry", "collimator", "turn_table"], as_=["device", "angle"]
+                )
+                .mark_line(point=True)
+                .encode(
+                    x="datetime:T",
+                    y=alt.Y("angle:Q", axis=alt.Axis(title="Angle (degrees)")),
+                    color="device:N",
+                    tooltip=["time:N", "device:N", "angle:Q"],
+                )
+                .properties(title="iCom Angle Parameters")
+                .interactive(bind_y=False)
+            )
+        ).configure_point(size=10)
+
+        st.altair_chart(device_angle_chart, use_container_width=True)
 
     icom_datasets["width"] = icom_datasets["width"].round(2)
-
-    device_angle_chart = (
-        beam_on_chart
-        + (
-            alt.Chart(icom_datasets)
-            .transform_fold(
-                ["gantry", "collimator", "turn_table"], as_=["device", "angle"]
-            )
-            .mark_line(point=True)
-            .encode(
-                x="datetime:T",
-                y=alt.Y("angle:Q", axis=alt.Axis(title="Angle (degrees)")),
-                color="device:N",
-                tooltip=["time:N", "device:N", "angle:Q"],
-            )
-            .properties(title="iCom Angle Parameters")
-            .interactive(bind_y=False)
-        )
-    ).configure_point(size=10)
-
-    st.altair_chart(device_angle_chart, use_container_width=True)
 
     field_size_chart = (
         alt.Chart(icom_datasets)
@@ -292,8 +278,6 @@ def main():
         .interactive(bind_x=False)
     )
     st.altair_chart(field_size_chart, use_container_width=True)
-
-    angle_speed_check(icom_datasets)
 
     st.write(icom_datasets)
 
@@ -932,113 +916,6 @@ def _determine_basinhopping_offset(iview_datetimes, icom_datetimes):
     basinhopping_minimise_f = to_minimise(result.x)
 
     return basinhopping_offset, basinhopping_minimise_f
-
-
-def fix_bipolar_angle(angle: "pd.Series"):
-    output = angle.to_numpy()
-    output[output < 0] = output[output < 0] + 360
-
-    output = pmp_transforms.convert_IEC_angle_to_bipolar(output)
-
-    return output
-
-
-def expand_border_events(mask):
-    shifted_right = np.concatenate([[False], mask])
-    shifted_left = np.concatenate([mask, [False]])
-
-    combined = np.logical_or(shifted_right, shifted_left)
-
-    return combined
-
-
-def determine_speed(angle, time):
-    diff_angle = np.diff(angle) / 360
-    diff_time = pd.Series(np.diff(time)).dt.total_seconds().to_numpy() / 60
-
-    rpm = diff_angle / diff_time
-
-    return np.abs(rpm)
-
-
-def get_collimator_and_gantry_flags(icom_datasets):
-    gantry_rpm = determine_speed(icom_datasets["gantry"], icom_datasets["datetime"])
-    collimator_rpm = determine_speed(
-        icom_datasets["collimator"], icom_datasets["datetime"]
-    )
-
-    gantry_flag = gantry_rpm > GANTRY_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR
-    gantry_flag = expand_border_events(gantry_flag)
-
-    collimator_flag = (
-        collimator_rpm > COLLIMATOR_EXPECTED_SPEED_LIMIT * NOISE_BUFFER_FACTOR
-    )
-    collimator_flag = expand_border_events(collimator_flag)
-
-    return gantry_flag, collimator_flag
-
-
-def angle_speed_check(icom_datasets):
-    gantry_flag, collimator_flag = get_collimator_and_gantry_flags(icom_datasets)
-
-    if np.any(gantry_flag):
-        raise ValueError("The gantry angle is changing faster than should be possible.")
-
-    if np.any(collimator_flag):
-        raise ValueError(
-            "The collimator angle is changing faster than should be possible."
-        )
-
-
-def attempt_to_make_angle_continuous(
-    time: "pd.Series",
-    angle,
-    speed_limit,
-    init_range_to_adjust=0,
-    max_range=5,
-    range_iter=0.1,
-):
-    if init_range_to_adjust > max_range:
-        raise ValueError("The adjustment range was larger than the maximum")
-
-    within_adjustment_range = np.abs(angle) >= 180 - init_range_to_adjust
-    outside_adjustment_range = np.invert(within_adjustment_range)
-
-    if not np.any(outside_adjustment_range):
-        raise ValueError("No data outside the safe angle bounds.")
-
-    index_within = np.where(within_adjustment_range)[0]
-    index_outside = np.where(np.invert(within_adjustment_range))[0]
-
-    where_closest_left_leaning = np.argmin(
-        np.abs(index_within[:, None] - index_outside[None, :]), axis=1
-    )
-
-    closest_left_leaning = index_outside[where_closest_left_leaning]
-
-    sign_to_be_adjusted = np.sign(angle[index_within]) != np.sign(
-        angle[closest_left_leaning]
-    )
-
-    angles_to_be_adjusted = angle[index_within][sign_to_be_adjusted]
-    angles_to_be_adjusted = angles_to_be_adjusted + 360 * np.sign(
-        angle[closest_left_leaning][sign_to_be_adjusted]
-    )
-
-    angle[index_within[sign_to_be_adjusted]] = angles_to_be_adjusted
-
-    rpm = determine_speed(angle, time)
-    if np.any(rpm > speed_limit):
-        angle = attempt_to_make_angle_continuous(
-            time,
-            angle,
-            speed_limit,
-            init_range_to_adjust=init_range_to_adjust + range_iter,
-            max_range=max_range,
-            range_iter=range_iter,
-        )
-
-    return angle
 
 
 def _table_transfer_via_interpolation(source, location, key):
