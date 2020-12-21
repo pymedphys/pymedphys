@@ -17,6 +17,7 @@ from pymedphys._imports import numpy as np
 
 from pymedphys._vendor.pylinac import winstonlutz as _pylinac_wlutz
 
+from . import imginterp as _imginterp
 from . import utilities as _utilities
 
 
@@ -25,7 +26,9 @@ class PylinacComparisonDeviation(ValueError):
 
 
 def run_wlutz(
-    field,
+    x,
+    y,
+    image,
     field_rotation,
     search_radius=40,
     find_bb=True,
@@ -37,6 +40,8 @@ def run_wlutz(
 
     if pylinac_versions is None:
         pylinac_versions = VERSION_TO_CLASS_MAP.keys()
+
+    field = _imginterp.create_interpolated_field(x, y, image)
 
     centralised_straight_field = _utilities.create_centralised_field(
         field, [0, 0], field_rotation
