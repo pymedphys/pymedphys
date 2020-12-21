@@ -74,8 +74,8 @@ def calculations_ui(
     )
     database_table["time"] = database_table["datetime"].dt.time.apply(str)
 
-    _show_selected_image(
-        database_directory, database_table, selected_algorithms, bb_diameter, penumbra
+    deviation_plot_threshold = st.number_input(
+        "Display deviations greater than", value=0.2
     )
 
     if st.button("Calculate"):
@@ -86,59 +86,8 @@ def calculations_ui(
             selected_algorithms,
             bb_diameter,
             penumbra,
+            deviation_plot_threshold,
         )
-
-
-def _show_selected_image(
-    database_directory, database_table, selected_algorithms, bb_diameter, penumbra
-):
-    show_selected_image = st.checkbox(
-        "Select a single image to show results for", False
-    )
-
-    filenames = list(database_table["filename"])
-
-    if show_selected_image:
-        image_filename = st.selectbox("Select single filepath", filenames)
-
-        st.write(image_filename)
-        database_row_all_filename_matches = database_table.loc[
-            database_table["filename"] == image_filename
-        ]
-
-        relative_image_path = database_row_all_filename_matches["filepath"]
-        if len(relative_image_path) != 1:
-            raise ValueError("Filepath and filelength should be a one-to-one mapping")
-
-        database_row = database_row_all_filename_matches.iloc[0]
-        relative_image_path = database_row["filepath"]
-
-        if _utilities.filepath_to_filename(relative_image_path) != image_filename:
-            raise ValueError("Filepath selection did not convert appropriately")
-
-        st.write(relative_image_path)
-        results = get_results_for_image(
-            database_directory,
-            relative_image_path,
-            selected_algorithms,
-            bb_diameter,
-            database_row,
-            penumbra,
-        )
-
-        st.write(results)
-
-        figures = plot_diagnostic_figures(
-            database_directory,
-            relative_image_path,
-            bb_diameter,
-            database_row,
-            penumbra,
-            selected_algorithms,
-        )
-
-        for fig in figures:
-            st.pyplot(fig)
 
 
 def run_calculation(
@@ -148,6 +97,7 @@ def run_calculation(
     selected_algorithms,
     bb_diameter,
     penumbra,
+    deviation_plot_threshold,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -166,7 +116,9 @@ def run_calculation(
 
     total_files = len(database_table["filepath"])
 
-    for i, relative_image_path in enumerate(database_table["filepath"][::-1]):
+    for progress_index, (_, database_row) in enumerate(database_table[::-1].iterrows()):
+        relative_image_path = database_row["filepath"]
+
         if previously_calculated_results is not None:
             results = previously_calculated_results.loc[
                 previously_calculated_results["filepath"] == relative_image_path
@@ -176,19 +128,42 @@ def run_calculation(
                 results["algorithm"].unique()
             )
 
+        full_image_path = _get_full_image_path(database_directory, relative_image_path)
+        edge_lengths, icom_field_rotation = _get_calculation_icom_items(database_row)
+
         if (
             previously_calculated_results is None
             or not selected_algorithms_already_calculated
         ):
-            database_row = database_table.iloc[i]
             results = get_results_for_image(
-                database_directory,
+                full_image_path,
                 relative_image_path,
                 selected_algorithms,
                 bb_diameter,
-                database_row,
+                edge_lengths,
+                icom_field_rotation,
                 penumbra,
             )
+
+        min_diff = results[["diff_x", "diff_y"]].min(axis=0)
+        max_diff = results[["diff_x", "diff_y"]].max(axis=0)
+
+        diff_range = max_diff - min_diff
+        if np.any(diff_range > deviation_plot_threshold):
+            st.write(results)
+            st.write(database_row)
+
+            figures = plot_diagnostic_figures(
+                full_image_path,
+                bb_diameter,
+                edge_lengths,
+                icom_field_rotation,
+                penumbra,
+                selected_algorithms,
+            )
+
+            for fig in figures:
+                st.pyplot(fig)
 
         collated_results = collated_results.append(results)
 
@@ -222,7 +197,7 @@ def run_calculation(
             )
             treatment_chart_bucket[port] = port_chart_bucket
 
-        ratio_complete = (i + 1) / total_files
+        ratio_complete = (progress_index + 1) / total_files
         progress_bar.progress(ratio_complete)
 
         percent_complete = round(ratio_complete * 100, 2)
@@ -331,15 +306,14 @@ def _get_calculation_icom_items(database_row):
 
 
 def get_results_for_image(
-    database_directory,
+    full_image_path,
     relative_image_path,
     selected_algorithms,
     bb_diameter,
-    database_row,
+    edge_lengths,
+    icom_field_rotation,
     penumbra,
 ):
-    full_image_path = _get_full_image_path(database_directory, relative_image_path)
-    edge_lengths, icom_field_rotation = _get_calculation_icom_items(database_row)
 
     results_data = []
 
@@ -375,16 +349,13 @@ def get_results_for_image(
 
 
 def plot_diagnostic_figures(
-    database_directory,
-    relative_image_path,
+    full_image_path,
     bb_diameter,
-    database_row,
+    edge_lengths,
+    icom_field_rotation,
     penumbra,
     selected_algorithms,
 ):
-    full_image_path = _get_full_image_path(database_directory, relative_image_path)
-    edge_lengths, icom_field_rotation = _get_calculation_icom_items(database_row)
-
     x, y, image = _load_iview_image(full_image_path)
 
     figures = []
