@@ -396,20 +396,14 @@ def _pymedphys_wlutz_calculate(
     return field_centre, field_rotation, bb_centre
 
 
-def _pylinac_wlutz_calculate(
-    field, edge_lengths, penumbra, pymedphys_field_centre, field_rotation, **_
-):
+def _pylinac_wlutz_calculate(field, icom_field_rotation, **_):
     version_to_use = pylinac.__version__
 
     try:
         pylinac_results = pmp_pylinac_api.run_wlutz(
             field,
-            edge_lengths,
-            penumbra,
-            pymedphys_field_centre,
-            field_rotation,
+            icom_field_rotation,
             find_bb=True,
-            interpolated_pixel_size=0.05,
             pylinac_versions=[version_to_use],
             fill_errors_with_nan=True,
         )
@@ -421,7 +415,7 @@ def _pylinac_wlutz_calculate(
         field_centre = [np.nan, np.nan]
         bb_centre = [np.nan, np.nan]
 
-    return field_centre, field_rotation, bb_centre
+    return field_centre, icom_field_rotation, bb_centre
 
 
 ALGORITHM_FUNCTION_MAP = {
