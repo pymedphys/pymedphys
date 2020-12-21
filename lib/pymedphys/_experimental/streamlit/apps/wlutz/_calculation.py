@@ -78,6 +78,8 @@ def calculations_ui(
         "Display deviations greater than", value=0.2
     )
 
+    plot_when_data_missing = st.checkbox("Plot when data missing", value=True)
+
     if st.button("Calculate"):
         run_calculation(
             database_table,
@@ -87,6 +89,7 @@ def calculations_ui(
             bb_diameter,
             penumbra,
             deviation_plot_threshold,
+            plot_when_data_missing,
         )
 
 
@@ -98,6 +101,7 @@ def run_calculation(
     bb_diameter,
     penumbra,
     deviation_plot_threshold,
+    plot_when_data_missing,
 ):
     raw_results_csv_path = wlutz_directory_by_date.joinpath("raw_results.csv")
     try:
@@ -149,7 +153,15 @@ def run_calculation(
         max_diff = results[["diff_x", "diff_y"]].max(axis=0)
 
         diff_range = max_diff - min_diff
-        if np.any(diff_range > deviation_plot_threshold):
+
+        display_diagnostic_plot = np.any(diff_range > deviation_plot_threshold)
+        if (
+            plot_when_data_missing
+            and results[["diff_x", "diff_y"]].isnull().values.any()
+        ):
+            display_diagnostic_plot = True
+
+        if display_diagnostic_plot:
             st.write(results)
             st.write(database_row)
 
