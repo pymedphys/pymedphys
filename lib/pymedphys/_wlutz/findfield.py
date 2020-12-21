@@ -15,8 +15,6 @@
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pylinac, scipy
 
-from pymedphys._vendor.pylinac import winstonlutz as pylinac_wlutz
-
 from .interppoints import (
     define_penumbra_points_at_origin,
     define_rotation_field_points_at_origin,
@@ -29,18 +27,14 @@ BASINHOPPING_NITER = 200
 INITIAL_ROTATION = 0
 
 
-def get_initial_centre(x, y, img):
-    WLImage = pylinac_wlutz.get_latest_wlimage()
-    wl_image = WLImage(img)
-    min_x = np.min(x)
-    dx = x[1] - x[0]
-    min_y = np.min(y)
-    dy = y[1] - y[0]
+def get_initial_centre(x, y, image, field_rotation):
+    pylinac_version = pylinac.__version__
 
-    field_centre = [
-        wl_image.field_cax.x * dx + min_x,
-        wl_image.field_cax.y * dy + min_y,
-    ]
+    pylinac_results = run_wlutz(
+        x, y, image, field_rotation, find_bb=False, pylinac_versions=[pylinac_version]
+    )
+
+    field_centre = pylinac_results[pylinac_version]["field_centre"]
 
     return field_centre
 
