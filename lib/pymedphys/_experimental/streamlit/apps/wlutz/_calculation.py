@@ -94,11 +94,6 @@ def run_calculation(
             database_table, left_on="filepath", right_on="filepath"
         )
 
-        working_table["transformed_field_rotation"] = (
-            90 - working_table["field_rotation"] % 90
-        )
-        working_table["transformed_collimator"] = working_table["collimator"] % 90
-
         treatment = _collapse_column_to_single_value(working_table, "treatment")
         port = _collapse_column_to_single_value(working_table, "port")
 

@@ -26,28 +26,6 @@ def build_both_axis_altair_charts(table):
             altair_chart=raw_chart, use_container_width=True
         )
 
-    no_pylinac = table.loc[table["algorithm"] != "PyLinac"]
-
-    raw_rotation_chart = (
-        alt.Chart(no_pylinac)
-        .transform_fold(
-            ["transformed_collimator", "transformed_field_rotation"],
-            as_=["method", "angle"],
-        )
-        .mark_line(point=True)
-        .encode(
-            x=alt.X("gantry", axis=alt.Axis(title="Gantry (degrees)")),
-            y=alt.Y("angle:Q", axis=alt.Axis(title="Angle Modulo 90")),
-            color="method:N",
-        )
-        .properties(title="Rotation iCom vs Optimisation")
-        .interactive(bind_y=False)
-    )
-
-    chart_bucket["rotation"] = st.altair_chart(
-        altair_chart=raw_rotation_chart, use_container_width=True
-    )
-
     return chart_bucket
 
 
