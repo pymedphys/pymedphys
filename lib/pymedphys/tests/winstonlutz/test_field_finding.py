@@ -45,15 +45,15 @@ def test_find_field_in_image():
     assert (expected_centre, expected_rotation) == (centre, rotation)
 
 
-# @pytest.mark.slow
-@pytest.mark.skip(
-    reason=(
-        "Wlutz field finding algorithm is being shelved for now. "
-        "Will use pylinac only for the time being. When more resources "
-        "are available, will implement independent algorithm to run "
-        "alongside pylinac."
-    )
-)
+# @pytest.mark.skip(
+#     reason=(
+#         "Wlutz field finding algorithm is being shelved for now. "
+#         "Will use pylinac only for the time being. When more resources "
+#         "are available, will implement independent algorithm to run "
+#         "alongside pylinac."
+#     )
+# )
+@pytest.mark.slow
 @settings(
     deadline=datetime.timedelta(milliseconds=4000),
     max_examples=10,
@@ -86,8 +86,10 @@ def test_field_finding(x_centre, y_centre, x_edge, y_edge, penumbra, actual_rota
     zz = field(xx, yy)
 
     initial_centre = pymedphys._wlutz.findfield.get_centre_of_mass(x, y, zz)
+
+    # Only test for fixed rotation for now
     (centre, rotation) = pymedphys._wlutz.findfield.field_centre_and_rotation_refining(
-        field, edge_lengths, penumbra, initial_centre
+        field, edge_lengths, penumbra, initial_centre, fixed_rotation=actual_rotation
     )
 
     try:

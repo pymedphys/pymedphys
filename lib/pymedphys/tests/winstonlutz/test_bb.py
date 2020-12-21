@@ -64,34 +64,6 @@ def test_small_bb():
     )
 
 
-def create_test_image(
-    field_centre,
-    field_side_lengths,
-    field_penumbra,
-    field_rotation,
-    bb_centre,
-    bb_diameter,
-    bb_max_attenuation,
-):
-    field = wlutz_mocks.create_field_with_bb_func(
-        field_centre,
-        field_side_lengths,
-        field_penumbra,
-        field_rotation,
-        bb_centre,
-        bb_diameter,
-        bb_max_attenuation,
-    )
-
-    x = np.arange(-20, 20.1, 0.1)
-    y = np.arange(-22, 22.1, 0.1)
-    xx, yy = np.meshgrid(x, y)
-
-    img = field(xx, yy)
-
-    return x, y, img
-
-
 def run_test(
     field_centre,
     field_side_lengths,
@@ -102,7 +74,11 @@ def run_test(
     bb_max_attenuation,
 ):
 
-    x, y, img = create_test_image(
+    x = np.arange(-20, 20.1, 0.1)
+    y = np.arange(-22, 22.1, 0.1)
+    img = wlutz_mocks.create_test_image(
+        x,
+        y,
         field_centre,
         field_side_lengths,
         field_penumbra,
