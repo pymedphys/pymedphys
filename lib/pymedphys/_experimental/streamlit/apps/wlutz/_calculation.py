@@ -79,16 +79,13 @@ def run_calculation(
             previously_calculated_results is None
             or not selected_algorithms_already_calculated
         ):
-            row = database_table.iloc[i]
-            edge_lengths = [row["width"], row["length"]]
-            # field_rotation = 90 - row["collimator"]
-
+            database_row = database_table.iloc[i]
             results = get_results_for_image(
                 database_directory,
                 relative_image_path,
                 selected_algorithms,
                 bb_diameter,
-                edge_lengths,
+                database_row,
                 penumbra,
             )
 
@@ -230,22 +227,35 @@ def _collapse_column_to_single_value(dataframe, column):
     return results[0]
 
 
+def _get_calculation_icom_items(database_row):
+    edge_lengths = [database_row["width"], database_row["length"]]
+    icom_field_rotation = 90 - database_row["collimator"]
+
+    return edge_lengths, icom_field_rotation
+
+
 def get_results_for_image(
     database_directory,
     relative_image_path,
     selected_algorithms,
     bb_diameter,
-    edge_lengths,
+    database_row,
     penumbra,
 ):
     full_image_path = _get_full_image_path(database_directory, relative_image_path)
+    edge_lengths, icom_field_rotation = _get_calculation_icom_items(database_row)
 
     results_data = []
 
     for algorithm in selected_algorithms:
 
         field_centre, field_rotation_calculated, bb_centre = _calculate_wlutz(
-            full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
+            full_image_path,
+            algorithm,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
+            icom_field_rotation,
         )
         results_data.append(
             {
@@ -273,20 +283,26 @@ def plot_diagnostic_figures(
     database_directory,
     relative_image_path,
     bb_diameter,
-    edge_lengths,
+    database_row,
     penumbra,
     selected_algorithms,
 ):
     full_image_path = _get_full_image_path(database_directory, relative_image_path)
+    edge_lengths, icom_field_rotation = _get_calculation_icom_items(database_row)
     wlutz_input_parameters = _get_wlutz_input_parameters(
-        full_image_path, bb_diameter, edge_lengths, penumbra
+        full_image_path, bb_diameter, edge_lengths, penumbra, icom_field_rotation
     )
 
     figures = []
 
     for algorithm in selected_algorithms:
         field_centre, _, bb_centre = _calculate_wlutz(
-            full_image_path, algorithm, bb_diameter, edge_lengths, penumbra
+            full_image_path,
+            algorithm,
+            bb_diameter,
+            edge_lengths,
+            penumbra,
+            icom_field_rotation,
         )
 
         fig, axs = _create_figure(field_centre, bb_centre, wlutz_input_parameters)
@@ -316,12 +332,16 @@ def _get_full_image_path(database_directory, relative_image_path):
     return database_directory.joinpath(relative_image_path)
 
 
-def _get_wlutz_input_parameters(image_path, bb_diameter, edge_lengths, penumbra):
+@st.cache(show_spinner=False)
+def _get_wlutz_input_parameters(
+    image_path, bb_diameter, edge_lengths, penumbra, icom_field_rotation
+):
     field_parameters = _get_field_parameters(image_path, edge_lengths, penumbra)
     wlutz_input_parameters = {
         "bb_diameter": bb_diameter,
         "edge_lengths": edge_lengths,
         "penumbra": penumbra,
+        "icom_field_rotation": icom_field_rotation,
         **field_parameters,
     }
 
@@ -329,9 +349,11 @@ def _get_wlutz_input_parameters(image_path, bb_diameter, edge_lengths, penumbra)
 
 
 @st.cache(show_spinner=False)
-def _calculate_wlutz(image_path, algorithm, bb_diameter, edge_lengths, penumbra):
+def _calculate_wlutz(
+    image_path, algorithm, bb_diameter, edge_lengths, penumbra, icom_field_rotation
+):
     wlutz_input_parameters = _get_wlutz_input_parameters(
-        image_path, bb_diameter, edge_lengths, penumbra
+        image_path, bb_diameter, edge_lengths, penumbra, icom_field_rotation
     )
 
     if wlutz_input_parameters["field_rotation"] == np.nan:

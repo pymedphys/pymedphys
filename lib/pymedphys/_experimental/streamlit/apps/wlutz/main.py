@@ -203,9 +203,11 @@ def _show_selected_image(
         image_filename = st.selectbox("Select single filepath", filenames)
 
         st.write(image_filename)
-        row = database_table.loc[database_table["filename"] == image_filename]
+        database_row = database_table.loc[
+            database_table["filename"] == image_filename
+        ].iloc[0]
 
-        relative_image_path = row["filepath"]
+        relative_image_path = database_row["filepath"]
         if len(relative_image_path) != 1:
             raise ValueError("Filepath and filelength should be a one-to-one mapping")
 
@@ -215,16 +217,12 @@ def _show_selected_image(
             raise ValueError("Filepath selection did not convert appropriately")
 
         st.write(relative_image_path)
-
-        edge_lengths = [row["width"].iloc[0], row["length"].iloc[0]]
-        # field_rotation = 90 - row["collimator"].iloc[0]
-
         results = _calculation.get_results_for_image(
             database_directory,
             relative_image_path,
             selected_algorithms,
             bb_diameter,
-            edge_lengths,
+            database_row,
             penumbra,
         )
 
@@ -234,7 +232,7 @@ def _show_selected_image(
             database_directory,
             relative_image_path,
             bb_diameter,
-            edge_lengths,
+            database_row,
             penumbra,
             selected_algorithms,
         )
