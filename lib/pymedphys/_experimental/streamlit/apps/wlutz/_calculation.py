@@ -14,6 +14,7 @@
 
 
 import base64
+import functools
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pandas as pd
@@ -25,7 +26,7 @@ from pymedphys._wlutz import findbb, findfield, imginterp, iview
 from pymedphys._wlutz import pylinac as pmp_pylinac_api
 from pymedphys._wlutz import reporting
 
-from . import _altair
+from . import _altair, _utilities
 
 RESULTS_DATA_COLUMNS = [
     "filepath",
@@ -37,6 +38,88 @@ RESULTS_DATA_COLUMNS = [
     "bb_centre_x",
     "bb_centre_y",
 ]
+
+
+def calculations_ui(
+    database_table, database_directory, wlutz_directory_by_date, bb_diameter, penumbra
+):
+    st.write("## Calculations")
+
+    algorithm_options = list(ALGORITHM_FUNCTION_MAP.keys())
+    selected_algorithms = st.multiselect(
+        "Algorithms to run", algorithm_options, algorithm_options
+    )
+
+    database_table["filename"] = database_table["filepath"].apply(
+        _utilities.filepath_to_filename
+    )
+    database_table["time"] = database_table["datetime"].dt.time.apply(str)
+
+    _show_selected_image(
+        database_directory, database_table, selected_algorithms, bb_diameter, penumbra
+    )
+
+    if st.button("Calculate"):
+        run_calculation(
+            database_table,
+            database_directory,
+            wlutz_directory_by_date,
+            selected_algorithms,
+            bb_diameter,
+            penumbra,
+        )
+
+
+def _show_selected_image(
+    database_directory, database_table, selected_algorithms, bb_diameter, penumbra
+):
+    show_selected_image = st.checkbox(
+        "Select a single image to show results for", False
+    )
+
+    filenames = list(database_table["filename"])
+
+    if show_selected_image:
+        image_filename = st.selectbox("Select single filepath", filenames)
+
+        st.write(image_filename)
+        database_row_all_filename_matches = database_table.loc[
+            database_table["filename"] == image_filename
+        ]
+
+        relative_image_path = database_row_all_filename_matches["filepath"]
+        if len(relative_image_path) != 1:
+            raise ValueError("Filepath and filelength should be a one-to-one mapping")
+
+        database_row = database_row_all_filename_matches.iloc[0]
+        relative_image_path = database_row["filepath"]
+
+        if _utilities.filepath_to_filename(relative_image_path) != image_filename:
+            raise ValueError("Filepath selection did not convert appropriately")
+
+        st.write(relative_image_path)
+        results = get_results_for_image(
+            database_directory,
+            relative_image_path,
+            selected_algorithms,
+            bb_diameter,
+            database_row,
+            penumbra,
+        )
+
+        st.write(results)
+
+        figures = plot_diagnostic_figures(
+            database_directory,
+            relative_image_path,
+            bb_diameter,
+            database_row,
+            penumbra,
+            selected_algorithms,
+        )
+
+        for fig in figures:
+            st.pyplot(fig)
 
 
 def run_calculation(
@@ -376,8 +459,9 @@ def _pymedphys_wlutz_calculate(
     return field_centre, bb_centre
 
 
-def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, **_):
-    version_to_use = pylinac.__version__
+def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, pylinac_version, **_):
+    if pylinac_version is None:
+        pylinac_version = pylinac.__version__
 
     try:
         pylinac_results = pmp_pylinac_api.run_wlutz(
@@ -386,12 +470,12 @@ def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, **_):
             image,
             icom_field_rotation,
             find_bb=True,
-            pylinac_versions=[version_to_use],
+            pylinac_versions=[pylinac_version],
             fill_errors_with_nan=True,
         )
 
-        field_centre = pylinac_results[version_to_use]["field_centre"]
-        bb_centre = pylinac_results[version_to_use]["bb_centre"]
+        field_centre = pylinac_results[pylinac_version]["field_centre"]
+        bb_centre = pylinac_results[pylinac_version]["bb_centre"]
 
     except ValueError:
         field_centre = [np.nan, np.nan]
@@ -402,7 +486,12 @@ def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, **_):
 
 ALGORITHM_FUNCTION_MAP = {
     "PyMedPhys": _pymedphys_wlutz_calculate,
-    "PyLinac": _pylinac_wlutz_calculate,
+    "PyLinac Installed": functools.partial(
+        _pylinac_wlutz_calculate, pylinac_version=None
+    ),
+    "PyLinac v2.2.6": functools.partial(
+        _pylinac_wlutz_calculate, pylinac_version="2.2.6"
+    ),
 }
 
 
