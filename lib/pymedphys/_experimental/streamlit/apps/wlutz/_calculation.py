@@ -40,10 +40,29 @@ RESULTS_DATA_COLUMNS = [
 ]
 
 
+functools.lru_cache()
+
+
+def get_algorithm_function_map():
+    ALGORITHM_FUNCTION_MAP = {
+        "PyMedPhys": _pymedphys_wlutz_calculate,
+        f"PyLinac v{pylinac.__version__}": functools.partial(
+            _pylinac_wlutz_calculate, pylinac_version=pylinac.__version__
+        ),
+        "PyLinac v2.2.6": functools.partial(
+            _pylinac_wlutz_calculate, pylinac_version="2.2.6"
+        ),
+    }
+
+    return ALGORITHM_FUNCTION_MAP
+
+
 def calculations_ui(
     database_table, database_directory, wlutz_directory_by_date, bb_diameter, penumbra
 ):
     st.write("## Calculations")
+
+    ALGORITHM_FUNCTION_MAP = get_algorithm_function_map()
 
     algorithm_options = list(ALGORITHM_FUNCTION_MAP.keys())
     selected_algorithms = st.multiselect(
@@ -411,6 +430,8 @@ def _calculate_wlutz(
 ):
     x, y, image = _load_iview_image(image_path)
 
+    ALGORITHM_FUNCTION_MAP = get_algorithm_function_map()
+
     calculate_function = ALGORITHM_FUNCTION_MAP[algorithm]
     field_centre, bb_centre = calculate_function(
         x=x,
@@ -460,9 +481,6 @@ def _pymedphys_wlutz_calculate(
 
 
 def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, pylinac_version, **_):
-    if pylinac_version is None:
-        pylinac_version = pylinac.__version__
-
     try:
         pylinac_results = pmp_pylinac_api.run_wlutz(
             x,
@@ -482,17 +500,6 @@ def _pylinac_wlutz_calculate(x, y, image, icom_field_rotation, pylinac_version, 
         bb_centre = [np.nan, np.nan]
 
     return field_centre, bb_centre
-
-
-ALGORITHM_FUNCTION_MAP = {
-    "PyMedPhys": _pymedphys_wlutz_calculate,
-    "PyLinac Installed": functools.partial(
-        _pylinac_wlutz_calculate, pylinac_version=None
-    ),
-    "PyLinac v2.2.6": functools.partial(
-        _pylinac_wlutz_calculate, pylinac_version="2.2.6"
-    ),
-}
 
 
 def _load_iview_image(image_path):
