@@ -14,15 +14,16 @@
 
 import toml
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import pylinac
 
 import pymedphys
-from pymedphys._wlutz import reporting
 
 from pymedphys._experimental.streamlit.utilities import wlutz as _wlutz
+
+# import matplotlib.pyplot as plt
+# from pymedphys._wlutz import reporting
 
 
 def test_line_artefact_images():
